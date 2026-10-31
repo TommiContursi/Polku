@@ -4229,6 +4229,7 @@ DRAWER = """(async () => {
   // …and stands out: drawn over the route, wider, with the rest of the route faded (#83)
   const ids = m.getStyle().layers.map((l) => l.id), faded = () => m.getPaintProperty('route-line', 'line-opacity');
   if (!(ids.indexOf('route-lit-casing') > ids.indexOf('route-line') && ids.indexOf('route-lit') > ids.indexOf('route-lit-casing'))) errs.push('the lit stretch is drawn under the route');
+  if (!(ids.indexOf('route-portage') > ids.indexOf('route-lit') && ids.indexOf('route-unchecked') > ids.indexOf('route-lit'))) errs.push('the lit stretch covers the carries or Not checked');
   if (!(faded() < 1)) errs.push(`the rest of the route isn't faded while a stretch is lit: ${faded()}`);
   const hl = p.chart.highlight;
   if (!hl || Math.abs(hl[0] - p.lengthTo(s.from)) > 1 || Math.abs(hl[1] - p.lengthTo(s.to)) > 1) errs.push(`the profile lit ${JSON.stringify(hl)}`);

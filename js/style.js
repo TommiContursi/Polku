@@ -511,13 +511,14 @@ export function buildStyle(s, ctx) {
     },
   });
   add({ id: 'route-color', type: 'line', source: 'routeColor', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5), 'line-opacity': dim['route-color'], 'line-opacity-transition': { duration: 0, delay: 0 } } });
+  // the stretch you pick or point at (a leg, a stretch, a climb, an item of Check; planner.js litLeg): drawn over the
+  // route, wider, in its leg's colour, with an edge that stands out on the map, while the rest of the route fades;
+  // under the carries' dots and Not checked's dashes, which stay on it
+  add({ id: 'route-lit-casing', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#ffffff' : '#111827', 'line-width': zi(8, 9, 16, 17) } });
+  add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': legColor, 'line-width': zi(8, 5, 16, 10) } });
   add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
   // a stretch a source didn't cover (25d part 3): dashed over the line in Not checked's colour
   add({ id: 'route-unchecked', type: 'line', source: 'headsGaps', layout: { 'line-cap': 'butt' }, paint: { 'line-color': WARN_COLORS.unk, 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [1.2, 1.2] } });
-  // the stretch you pick or point at (a leg, a stretch, a climb, an item of Check; planner.js litLeg): drawn over the
-  // route, wider, in its leg's colour, with an edge that stands out on the map, while the rest of the route fades
-  add({ id: 'route-lit-casing', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#ffffff' : '#111827', 'line-width': zi(8, 9, 16, 17) } });
-  add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': legColor, 'line-width': zi(8, 5, 16, 10) } });
   add({ id: 'route-preview-casing', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#ffffff' : '#111827', 'line-width': zi(8, 9, 16, 15) } });
   add({ id: 'route-preview', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 5, 16, 9) } });
   // static arrows: hidden while the moving chevrons show the way instead (js/routeflow.js, ctx.flowMoving)
