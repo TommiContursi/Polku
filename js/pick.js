@@ -23,7 +23,7 @@ const metresPerPixel = (ll, zoom) => (40075016.686 * Math.cos((ll[1] * Math.PI) 
  * ways, a, wx, places: undefined while asked, 'failed', 'none' (no way there), or the answer.
  */
 export const newPick = (spot, { hold = false, sport, sec, zoom, touch = false } = {}) => ({
-  spot, ll: spot.ll, hold, sport, sec, zoom, touch, ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, dead: false,
+  spot, ll: spot.ll, hold, sport, sec, zoom, touch, at: Date.now(), ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, dead: false,
 });
 
 /** Asks for the pick's ways and what follows; `changed()` after each answer. A closed pick (`dead`) stops. */
@@ -35,12 +35,15 @@ export async function resolvePick(pick, changed) {
   try { await loadWays(wayTile(pick.ll), { force: true }); } catch { step(() => { pick.ways = 'failed'; }); return; }
   const seed = nearestWay(pick.ll, (pick.touch ? 18 : 9) * metresPerPixel(pick.ll, pick.zoom));
   if (!seed) { step(() => { pick.ways = 'none'; }); elevation(pick.ll).then((e) => step(() => { pick.ele = Number.isFinite(e) ? e : null; }), () => step(() => { pick.ele = null; })); return; }
-  const j = await joinWay(seed);
+  // (drawn and measured from the tiles in, and grown as the tiles its ends run into come: `growing` till then)
+  const put = (j, growing) => {
+    pick.ways = { seed, ...j, geo: lineOf(j.chain), len: j.chain.reduce((s, { w }) => s + w.len, 0), growing };
+    pick.title = wayTitle(j.chain);
+    pick.line = wayLine(j.chain);
+  };
+  const j = await joinWay(seed, (part) => step(() => put({ ...part, side: [] }, true)));
   if (pick.dead) return;
-  pick.ways = { seed, ...j, geo: lineOf(j.chain), len: j.chain.reduce((s, { w }) => s + w.len, 0) };
-  pick.title = wayTitle(j.chain);
-  pick.line = wayLine(j.chain);
-  step(() => {});
+  step(() => put(j, false));
   try {
     pick.a = await analyse(pick.ways.geo, { activity: pick.sport });
   } catch { pick.a = 'failed'; }

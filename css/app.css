@@ -1842,12 +1842,20 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .pick-mark { display: block; width: 22px; height: 6px; border-radius: 3px; background: var(--c, #374151); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0, 0, 0, .25); }
 .pick-mark.dot { width: 16px; height: 16px; border-radius: 50%; }
 .pick-prof { position: relative; height: 64px; margin: 2px 0 0; }
+/* while a pick's ways come (#574): its shapes, after 300 ms and breathing as the busy bar; delays count from the tap */
+.pick-skel { display: grid; gap: 12px; margin: 2px 0 8px; }
+.pick-skel i { display: block; border-radius: 8px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
+  animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards, pulse 1.6s ease-in-out calc(480ms - var(--since)) infinite; }
+.pick-skel-nums { display: flex; gap: 20px; }
+.pick-skel-nums i { width: 64px; height: 40px; }
+.pick-skel-chart { height: 110px; }
+.pick-skel-by { width: 55%; height: 40px; }
+.pick-chart { display: block; width: 100%; height: 110px; cursor: crosshair; touch-action: none; }
 .pick-prof svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .pick-prof .ax { position: absolute; left: 0; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pick-prof .ax.top { top: -2px; }
 .pick-prof .ax.bot { bottom: -2px; }
-.pick-by { display: grid; gap: 6px 0; margin-top: 2px; }
-.pick-by .chip { gap: 4px; }
+.pick-by { margin-top: 6px; }
 .pick-facts .insp-row b { font-weight: var(--weight-name); }
 .pick-facts .insp-row small { flex-basis: 100%; color: var(--muted); font-size: var(--font-small); }
 .pick-note, .pick-fail { margin: 0; font-size: var(--font-small); color: var(--muted); }

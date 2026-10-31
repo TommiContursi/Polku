@@ -24,7 +24,7 @@ import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView } 
 import { describe } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard, pickLine, thingCard } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard, pickLine, thingCard, nearestSample } from './cards.js';
 import { pickData } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -2791,6 +2791,13 @@ export class Planner {
   }
 
   onMapMove(e) {
+    // the pointer on a pick whose card has its profile: the spot there, and on the profile (#574)
+    const pc = this.cards.current;
+    if (pc && pc.chart && this.map.getLayer('pick-line') && e.originalEvent.target === this.map.getCanvas()) { // (not the card's own profile, over the map)
+      const on = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['pick-line', 'pick-casing'] }).length;
+      const i = on ? nearestSample(pc.chart.a, [e.lngLat.lng, e.lngLat.lat]) : -1;
+      if (on || this.pickHovered) { pc.chart.setHover(i); this.pickSpot(pc, on ? i : null); }
+    }
     const way = this.alts && this.map.getLayer('route-alts-line') && !this.edit
       && this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-alts-line', 'route-alts-casing', 'route-alts-glow', 'route-alts-label'] }).find((f) => !f.properties.route);
     if (this.alts) this.altHover(way ? way.properties.i : null);
@@ -3127,7 +3134,24 @@ export class Planner {
       m.on('dragstart', () => this.beginEdit(i, this.snapshot(), m));
       m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
       m.on('dragend', () => this.endEdit());
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointCard(p); });
+      // a tap: when you're there and the profile up to it; a hold (0.5 s, still) or a right-click: its card with the actions (#574)
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointCard(p, { actions: false }); });
+      el.addEventListener('contextmenu', (ev) => { ev.preventDefault(); ev.stopPropagation(); if (!held) this.openPointCard(p); }); // (Android sends one after a hold)
+      let hold = null, ring = null, t0 = null, held = false;
+      const cancel = () => { clearTimeout(hold); hold = null; ring?.remove(); ring = null; };
+      el.addEventListener('touchstart', (ev) => {
+        cancel();
+        held = false;
+        if (ev.touches.length !== 1) return;
+        const t = ev.touches[0];
+        t0 = [t.clientX, t.clientY];
+        ring = h('div', { class: 'hold-ring', style: `left:${t.clientX}px;top:${t.clientY}px`, 'aria-hidden': 'true' });
+        setTimeout(() => { if (ring) document.body.append(ring); }, 150);
+        hold = setTimeout(() => { cancel(); held = true; if (navigator.vibrate) navigator.vibrate(10); this.openPointCard(p); }, 500);
+      }, { passive: true });
+      el.addEventListener('touchmove', (ev) => { const t = ev.touches[0]; if (hold && (!t || Math.hypot(t.clientX - t0[0], t.clientY - t0[1]) > 10)) cancel(); }, { passive: true }); // (a drag moves it)
+      el.addEventListener('touchend', (ev) => { cancel(); if (held) { ev.preventDefault(); this.noClickUntil = Date.now() + 400; } }); // (no tap's card as it lifts)
+      el.addEventListener('touchcancel', cancel);
       return m;
     });
   }
@@ -3695,7 +3719,13 @@ export class Planner {
   }
   // What a tap picked, drawn on the map like a route (#574): its colours along it, a street's other side, an area's outline;
   // nothing drawn with no pick
+  // a spot along a pick's profile, as the route's dot on the map
+  pickSpot(card, i) {
+    this.pickHovered = i != null;
+    this.app.setData('routeHover', i == null ? EMPTY : { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: card.chart.a.pts[i] } }] });
+  }
   drawPick(pick) {
+    if (!pick && this.pickHovered) this.pickSpot(null, null);
     const d = pick ? pickData(pick) : { pick: EMPTY, side: EMPTY, area: EMPTY };
     this.app.setData('pick', d.pick);
     this.app.setData('pickSide', d.side);
@@ -3856,13 +3886,13 @@ export class Planner {
 
   // A point's card (25d, #345, Revision 4 of #355): built in js/cards.js. `p` is the point itself, not its index: the
   // card follows it through a move, Undo and a new order, and closes when it's gone. From the map there's no Back.
-  openPointCard(p, { from = 'map', el = null } = {}) {
+  openPointCard(p, { from = 'map', el = null, actions = true } = {}) {
     if (!this.points.includes(p)) return;
     if (this.menu) this.menu.remove();
     this.stopPicking();
     const beside = this.besideRow(el);
     if (beside) this.focusPoint(this.points.indexOf(p)); // (from the list: the point in sight, the card at its row)
-    this.cards.open(pointCard(this, p), { at: p, beside, from });
+    this.cards.open(pointCard(this, p, { actions }), { at: p, beside, from });
   }
   // a desktop's card from the list (part 4): beside the panel, level with its row; elsewhere null (at its place)
   besideRow(el) {
@@ -4345,8 +4375,8 @@ export class Planner {
     this.els.warnings = h('div', { class: 'list warnings' });
     this.els.wind = h('div', { class: 'list wind' });
     this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
-      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point or the line for options · hold the map for more'
-      : 'Click the map to add points · drag a point or the line to reshape · click a point or the line for options · right-click the map for more');
+      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point to see it, hold it for options · tap the line for options · hold the map for more'
+      : 'Click the map to add points · drag a point or the line to reshape · click a point to see it, right-click it for options · click the line for options · right-click the map for more');
     this.els.dock = h('div', { class: 'dock' }); // (the timeline stays over the map while planning: #225)
 
     // The profile, one, under the header: always in sight (but at the summary size), with the
@@ -5285,7 +5315,7 @@ export class Planner {
       enabled: () => (this.active || this.cards.place === 'peek') && this.layout() === 'sheet', // (a card's sheet with the planner put away too, #570)
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows, not a card (a
       // finger on a card moves the sheet at its peek and where the card can't scroll that way itself, js/sheet.js, #603)
-      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')
+      grab: (t, type) => !t.closest('#profile-canvas, .pick-chart, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')
         && (type !== 'mouse' || (!!t.closest('.sheet-handle, .fold-line, .sheet-head, .pl-tabs') && !t.closest('.card'))),
       // the sizes, lowest first (stops(): the start's views are the peek only, so a swipe up springs back). From the line a
       // second swipe down puts the planner away, or closes the card (Fold, then away): a single swipe stops at the line

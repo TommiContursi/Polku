@@ -4688,7 +4688,7 @@ BACK_TO_START = """(async (entry) => {
   const sports = p.legs.map((_, i) => p.legSport(i));
   p.reveal('points');
   const before = p.snapshot(), past = p.past.length;
-  if (entry === 'finish') p.markers[p.markers.length - 1].getElement().click();
+  if (entry === 'finish') p.markers[p.markers.length - 1].getElement().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
   const selector = entry === 'finish' ? '.pl-way.card .row[title="Adds a leg back to the start"]'
     : entry === 'toolbar' ? '#pl-tools button[aria-label="Back to start"]' // the desktop toolbar (25a), room for it at 1920
     : 'button[title="Route back to where you started"]';
@@ -4707,7 +4707,7 @@ BACK_TO_START = """(async (entry) => {
     if (!same(coords[0], before.points[before.points.length - 1]) || !same(coords[coords.length - 1], before.points[0])) errs.push('closing geometry does not join the old finish to the start');
   }
   const closed = p.snapshot(), closedPast = p.past.length;
-  if (entry === 'finish') p.markers[p.markers.length - 1].getElement().click();
+  if (entry === 'finish') p.markers[p.markers.length - 1].getElement().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
   const again = document.querySelector(selector);
   if (again) {
     if (!again.disabled) errs.push('Back to start is still enabled on a closed route');
@@ -11874,7 +11874,8 @@ def point_card(chrome):
         pg.js(SETTLED)
         return pg
 
-    def tap_marker(pg, i, name, touch):
+    # a hold (or a right-click) opens the point's card with its actions; a tap, with hold=False, the short one (#574)
+    def tap_marker(pg, i, name, touch, hold=True):
         # where the point is under the toolbox, a button, a note or the card, the map moves to it first, as a person moves it
         # (looked at once the sheet and the toolbox are in place, as at() does)
         placed(pg)
@@ -11889,8 +11890,20 @@ def point_card(chrome):
         if isinstance(cov, str):
             fails.append(f'{name}: point {i} is {cov}')
         time.sleep(0.3)
-        if not press(pg, at(pg, f"polku.planner.markers[{i}]?.getElement().querySelector('.wp')"), f'{name}: point {i} of {pg.js("polku.planner.points.length")}', touch):
+        a = at(pg, f"polku.planner.markers[{i}]?.getElement().querySelector('.wp')")
+        if not hold or not a:
+            press(pg, a, f'{name}: point {i} of {pg.js("polku.planner.points.length")}', touch)
             return st(pg)
+        trail.append(f'{name}: a hold on point {i}')
+        if touch:
+            t0 = time.time()
+            pg.touch('start', a['x'], a['y'], t0)
+            time.sleep(0.7)
+            pg.touch('end', at=t0 + 0.7)
+        else:
+            for kind in ('mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': a['x'], 'y': a['y'], 'button': 'right', 'buttons': 2 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+        time.sleep(0.5)
         return st(pg)
 
     # a spot on the map the card and the planner leave free, dy px above and dx px beside a point
@@ -11905,6 +11918,13 @@ def point_card(chrome):
 
     def one_size(pg, w, h_, phone, name, touch):
         nonlocal fails
+        # a tap: when you're there, how far along, and the profile in colour up to it, grey after; On the profile; no actions
+        s = tap_marker(pg, 1, name, touch, hold=False)
+        grey = pg.js("!!document.querySelector('.pl-way.card .pick-prof path[fill=\"#d6dde3\"]')")
+        if s['kind'] != 'point' or s['labels'] != ['there at', 'from the start', 'height'] or s['heads'] or s['rows'] or not grey or 'On the profile' not in s['text']:
+            fails.append(f"{name}: a tap on via 1: card {s['kind']}, numbers {s['labels']}, groups {s['heads']}, rows {s['rows']}, {'' if grey else 'no '}profile grey after it, {'' if 'On the profile' in s['text'] else 'no '}On the profile")
+        pg.js("polku.planner.cards.close(); true")
+        time.sleep(0.4)
         s = tap_marker(pg, 1, name, touch)
         if s['kind'] != 'point' or s['i'] != 1 or s['menu']:
             fails.append(f"{name}: a tap on via 1: {s['kind'] or 'no'} card for point {s['i']}{', and the old menu' if s['menu'] else ''}")
@@ -12478,7 +12498,7 @@ RC_LOOK = """((phone) => {
   if (!c) return ['no card'];
   const ok = new Set(['pl-way', 'card', 'way-bar', 'way-back', 'btn', 'small', 'quiet', 'tool', 'way-x', 'way-head', 'way-hint', 'card-mark', 'sheet-sum', 'sum-item', 'miss', 'wait',
     'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-cost', 'pl-viewnote', 'primary', 'big', 'acts', 'warn-row', 'look', 'unk', 'insp-row', 'insp-info', 'insp-more', 'link', 'way-chips', 'chip', 'way-fold', 'way-facts',
-    'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-by', 'chip-group', 'chip-group-label', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot']);
+    'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-chart', 'profile-box', 'profile-tip', 'chart-reset', 'pick-skel', 'pick-skel-nums', 'pick-skel-chart', 'pick-skel-by', 'sr-only', 'pick-by', 'mode-select', 'mode-select-label', 'mode-select-box', 'mode-select-chev', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   const least = phone ? 44 : 36;
@@ -12682,7 +12702,7 @@ def route_card(chrome):
             fails.append(f'{name}: Undo after Clear route: {pg.js("polku.planner.points.length")} points, not {n}')
         # the start's card while drawing: Back to start first; it closes the loop, one step of Undo; a loop has none
         close(pg)
-        pg.js("polku.planner.markers[0].getElement().click(); true")
+        pg.js("polku.planner.markers[0].getElement().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })); true")
         time.sleep(0.4)
         s = st(pg)
         if s['kind'] != 'point' or not s['rows'] or s['rows'][0] != 'Back to start':
@@ -12693,7 +12713,7 @@ def route_card(chrome):
             if r['n'] != s['n'] + 1 or not r['loop'] or r['past'] != s['past'] + 1:
                 fails.append(f"{name}: the start's Back to start: {r}")
             close(pg)
-            pg.js("polku.planner.markers[0].getElement().click(); true")
+            pg.js("polku.planner.markers[0].getElement().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })); true")
             time.sleep(0.4)
             if 'Back to start' in st(pg)['rows']:
                 fails.append(f"{name}: the start's card on a loop still has Back to start")
@@ -12701,7 +12721,7 @@ def route_card(chrome):
             time.sleep(0.6)
         close(pg)
         # a point's Next stretch, to …: the stretch it's on, from the point you see before it to the next; Back to the point
-        pg.js("polku.planner.markers[2].getElement().click(); true")
+        pg.js("polku.planner.markers[2].getElement().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })); true")
         time.sleep(0.4)
         if 'Next stretch, to Lielahti' not in st(pg)['rows']:
             fails.append(f"{name}: via 2's row to its stretch: {st(pg)['rows']}")
@@ -15389,9 +15409,9 @@ PICK_STATE = """(() => {
   const p = polku.planner, c = p.cards.current, box = document.querySelector('.pl-way.card'), pick = c && c.pick;
   return { kind: c && c.kind, ways: pick ? (typeof pick.ways === 'object' ? 'in' : pick.ways ?? null) : null, heights: pick ? (typeof pick.a === 'object' ? 'in' : pick.a ?? null) : null,
     title: box ? box.querySelector('.way-hint b')?.textContent : '', sub: box ? box.querySelector('.way-hint small')?.textContent || '' : '', text: box ? box.textContent : '',
-    nums: box ? [...box.querySelectorAll('.sum-item')].map((e) => e.textContent) : [], chips: box ? [...box.querySelectorAll('.pick-by .chip')].map((e) => ({ k: e.dataset.k, on: e.getAttribute('aria-pressed') === 'true', text: e.textContent.trim() })) : [],
+    nums: box ? [...box.querySelectorAll('.sum-item')].map((e) => e.textContent) : [], chips: box ? [...box.querySelectorAll('.pick-by option')].map((e) => ({ k: e.value, on: e.selected, text: e.textContent.trim() })) : [],
     legend: box ? [...box.querySelectorAll('.bd-legend .bd-item')].map((e) => [e.querySelector('span').textContent.trim(), e.querySelector('b').textContent]) : [],
-    fills: box ? [...new Set([...box.querySelectorAll('.pick-prof path[fill]')].map((e) => e.getAttribute('fill')))] : [],
+    chart: c && c.chart ? { mode: c.chart.mode, same: c.chart.a === pick.a, shown: !!box.querySelector('canvas.pick-chart') } : null,
     rows: box ? [...box.querySelectorAll('.pick-facts .insp-row')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent]) : [],
     drawn: polku.map.getSource('pick') ? polku.map.querySourceFeatures('pick').length : 0 };
 })()"""
@@ -15460,12 +15480,12 @@ def pick_card(chrome):
         if not way:
             fails.append(f"Rauhaniemenreitti: Colour by offers {[c['k'] for c in r['chips']]}, not Way type")
         else:
-            pg.js("document.querySelector('.pick-by .chip[data-k=way]').click(); new Promise((r) => setTimeout(r, 400))")
+            pg.js("(() => { const s = document.querySelector('.pick-by select'); s.value = 'way'; s.dispatchEvent(new Event('change', { bubbles: true })); return new Promise((r) => setTimeout(r, 400)); })()")
             r = state(pg)
             total = metres(r['nums'][0].split('long')[0]) if r['nums'] else 0
             legend = sum(metres(v) for _, v in r['legend'])
-            if len(r['legend']) < 2 or len(r['fills']) < 2 or abs(legend - total) > max(25, total * 0.03):
-                fails.append(f"Rauhaniemenreitti by Way type: legend {r['legend']} ({legend:.0f} m of {total:.0f} m), the profile in {len(r['fills'])} colours")
+            if len(r['legend']) < 2 or r['chart'] != {'mode': 'way', 'same': True, 'shown': True} or abs(legend - total) > max(25, total * 0.03):
+                fails.append(f"Rauhaniemenreitti by Way type: legend {r['legend']} ({legend:.0f} m of {total:.0f} m), the profile {r['chart']}")
         # road works (#564, #565): a click opens the same card as a way, not the old popup, the works ringed on the map, and dates
         # outside this year with their year
         y = pg.js('new Date().getFullYear()')
@@ -15613,7 +15633,7 @@ GROUPS = [
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
-    ('pointcard', [point_card], 'a point\'s card (25d): a tap opens it in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
+    ('pointcard', [point_card], 'a point\'s card (25d): a tap shows when you\'re there and the profile up to it, a hold or a right-click opens it with its actions in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('pickcard', [pick_card], 'a pick (#574): road works on the same card with their years (#564, #565), the line at the spot on a phone, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
     ('spotcard', [spot_card, spot_card_foot], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),

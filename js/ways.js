@@ -169,12 +169,16 @@ function oriented(chain) {
   return q[0] < p[0] || (q[0] === p[0] && q[1] < p[1]) ? chain.slice().reverse().map((x) => ({ w: x.w, rev: !x.rev })) : chain;
 }
 
-/** The pick for a tapped piece: the chain, the other carriageway and where it stopped; the tiles its ends run into are loaded first (up to six). */
-export async function joinWay(seed) {
+/**
+ * The pick for a tapped piece: the chain, the other carriageway and where it stopped; the tiles its ends run into are
+ * loaded first (up to six), and `grew(walk)` has the chain so far before each.
+ */
+export async function joinWay(seed, grew = () => {}) {
   let j = walk(seed);
   for (let k = 0; k < 6; k++) {
     const out = Object.values(j.stops).filter((s) => s.why === 'end' && !waysLoaded(s.at));
     if (!out.length) break;
+    grew(j);
     await Promise.all(out.map((s) => loadWays(wayTile(s.at)).catch(() => null)));
     j = walk(seed);
   }

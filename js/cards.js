@@ -5,7 +5,7 @@ import { h, icon, toast } from './ui.js';
 import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton } from './card.js';
 import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unmapped } from './facts.js';
 import { newPick, resolvePick, modesOf, modeOf, setMode } from './pick.js';
-import { breakdownRows, colorAt, PICK_MODES } from './chart.js';
+import { breakdownRows, colorAt, PICK_MODES, COLOR_MODES, NO_TERRAIN, ProfileChart } from './chart.js';
 import { notRight, isHttp, thingOf, depthAt } from './inspect.js';
 import { elevation } from './dem.js';
 import { iconUrl } from './icons.js';
@@ -42,10 +42,11 @@ function stepper({ value, unit, step, min = 0, max = 1440, label, set, line = nu
     line ? h('small', {}, line) : null);
 }
 
-// A point's card [p-point, r-stop, r-night, r-change, r-start, r-end, r-view-point]
-export function pointCard(pl, p) {
+// A point's card [p-point, r-stop, r-night, r-change, r-start, r-end, r-view-point]. A tap gives when you're there, how far
+// along and the profile up to it (#574); `actions` (a hold, a right-click, the list) adds what you can do there.
+export function pointCard(pl, p, { actions = true } = {}) {
   const card = {
-    kind: 'point', key: p, pill: null,
+    kind: 'point', key: p, pill: null, actions,
     get i() { return pl.points.indexOf(card.key); },
     get title() { return card.renaming ? card.nameField() : pl.nameOf(card.i); },
     get label() { return pl.nameOf(card.i); },
@@ -91,6 +92,16 @@ function pointBody(pl, card, body) {
   if (!pending && (failed || waits)) {
     body.append(h('p', { class: 'rt-cost' }, failed ? 'A leg before it couldn’t be routed, so these are along a straight line there. Check has a Retry.'
       : 'A leg before it waits for the router, so these are along a straight line there for now.'));
+  }
+  // the route's profile, coloured as the route is up to the point and grey after it
+  const a = !pending && pl.analysis, k = a && Number.isFinite(a.minE) ? a.along.findIndex((d) => d >= pl.lengthTo(i) - 1) : -1;
+  if (k >= 0) body.append(profileOf(a, pl.colorMode, k));
+  if (!card.actions) {
+    // On the profile: the legs on both sides of it
+    if (k >= 0) body.append(h('div', { class: 'insp-actions card-foot' }, h('button', { type: 'button', class: 'btn quiet', html: icon('mountain', 16),
+      onclick: () => pl.showStretchOnProfile({ from: Math.max(0, card.i - 1), to: Math.min(pl.points.length - 1, card.i + 1) }) }, h('span', {}, 'On the profile'))));
+    if (view) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
+    return;
   }
   // At this point: Pass by · Stop · Night, and the stop's minutes or the night's morning hour under it
   if (via) {
@@ -638,7 +649,7 @@ export function pickLine(card, open) {
   for (const ev of ['mousedown', 'touchstart', 'pointerdown', 'click', 'dblclick']) el.addEventListener(ev, (e) => e.stopPropagation()); // (the map's, not a tap on it)
   const update = () => {
     const { pick, spot } = card, a = pick.a && pick.a !== 'failed' ? pick.a : null, w = pick.wx && pick.wx !== 'failed' ? pick.wx : null;
-    const k = a && sampleAt(a, spot.ll), gr = a && !(a.eleGap && a.eleGap[k]) ? Math.round(a.grade[k]) || 0 : null;
+    const k = a && nearestSample(a, spot.ll), gr = a && !(a.eleGap && a.eleGap[k]) ? Math.round(a.grade[k]) || 0 : null;
     const rows = [card.sub, gr != null ? `${Math.round(a.ele[k])} m · ${gr >= 0 ? '+' : '−'}${Math.abs(gr)} % here` : null,
       w ? `Wind ${w.speed.toFixed(0)} m/s from the ${compass(w.dir)} · ${w.temp.toFixed(0)} °C · ${w.precip >= 0.1 ? `${w.temp < 0.5 ? 'snow' : 'rain'} ${w.precip.toFixed(1)} mm/h` : 'dry'}` : null].filter(Boolean);
     el.setAttribute('aria-label', `${card.title}. ${rows.join('. ')}. Open its card`);
@@ -656,12 +667,12 @@ const factGroup = (title, list) => {
 const failed = (text, retry) => h('p', { class: 'pick-fail' }, text, retry ? h('button', { type: 'button', class: 'btn quiet', onclick: retry }, 'Try again') : null);
 
 // the sample of an analysis nearest a spot
-const sampleAt = (a, ll) => a.pts.reduce((b, q, k) => (Math.hypot(q[0] - ll[0], q[1] - ll[1]) < Math.hypot(a.pts[b][0] - ll[0], a.pts[b][1] - ll[1]) ? k : b), 0);
-// the small profile, coloured as the map: the whole pick, a dashed line where you tapped
-function profileOf(a, mode, ll) {
+export const nearestSample = (a, ll) => a.pts.reduce((b, q, k) => (Math.hypot(q[0] - ll[0], q[1] - ll[1]) < Math.hypot(a.pts[b][0] - ll[0], a.pts[b][1] - ll[1]) ? k : b), 0);
+// a route's small profile, coloured as the route up to its sample `upTo`, grey after it, a dashed line there
+function profileOf(a, mode, upTo) {
   const W = 300, H = 60, n = a.pts.length, lo = a.minE, hi = Math.max(a.maxE, a.minE + 10), total = a.along[n - 1] || 1;
   const X = (i) => (a.along[i] / total) * W, Y = (i) => H - 4 - ((a.ele[i] - lo) / (hi - lo)) * (H - 10);
-  const cs = a.pts.map((_, i) => (i ? colorAt(a, i, mode) : null));
+  const cs = a.pts.map((_, i) => (!i ? null : i > upTo ? NO_TERRAIN : colorAt(a, i, mode)));
   let paths = '', start = 1;
   for (let i = 1; i <= n; i++) {
     if (i < n && cs[i] === cs[start]) continue;
@@ -672,20 +683,38 @@ function profileOf(a, mode, ll) {
   }
   let ink = '';
   for (let k = 0; k < n; k++) ink += `${k ? 'L' : 'M'}${X(k).toFixed(1)},${Y(k).toFixed(1)} `;
-  const sx = X(sampleAt(a, ll)).toFixed(1);
-  const box = h('div', { class: 'pick-prof', role: 'img', 'aria-label': `Height profile, ${Math.round(a.minE)} to ${Math.round(a.maxE)} m, coloured by ${PICK_MODES[mode].toLowerCase()}` });
+  const sx = X(upTo).toFixed(1);
+  const box = h('div', { class: 'pick-prof', role: 'img', 'aria-label': `Height profile, ${Math.round(a.minE)} to ${Math.round(a.maxE)} m, coloured by ${COLOR_MODES[mode].toLowerCase()} up to here` });
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${paths}<path d="${ink}" fill="none" stroke="var(--chart-ink)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`
     + `<line x1="${sx}" x2="${sx}" y1="0" y2="${H}" stroke="var(--chart-ink)" stroke-width="1.5" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/></svg><span class="ax top">${Math.round(a.maxE)} m</span><span class="ax bot">${Math.round(a.minE)} m</span>`;
   return box;
+}
+
+// A pick's profile is the route's own (js/chart.js), kept by its card: a pointer or a finger along it shows the spot on the
+// map and says where it is, and the map's pointer on the pick shows it here (planner.onMapMove())
+function pickChart(pl, card, a, mode) {
+  if (!card.chart) {
+    const canvas = h('canvas', { class: 'pick-chart' }), tip = h('div', { class: 'profile-tip', hidden: true });
+    card.chartBox = h('div', { class: 'profile-box', role: 'img' }, canvas, tip);
+    card.chart = new ProfileChart(canvas, tip);
+    card.chart.onHover = (i) => pl.pickSpot(card, i);
+    card.chart.onClick = (i) => pl.map.easeTo({ center: card.chart.a.pts[i], duration: 500 });
+  }
+  card.chartBox.setAttribute('aria-label', `Height profile, ${Math.round(a.minE)} to ${Math.round(a.maxE)} m, coloured by ${PICK_MODES[mode].toLowerCase()}`);
+  card.chart.setData(a, mode);
+  return card.chartBox;
 }
 
 // Colour by under it: every fact that changes along the way, where this pick has data, grouped as the route's are; then the
 // words of each colour with their lengths (never colour alone)
 function colourBy(pl, pick) {
   const a = pick.a, mode = modeOf(a);
-  const chips = h('div', { class: 'way-chips pick-by', role: 'group', 'aria-label': 'Colour by' }, ...modesOf(a).map(([title, modes]) => h('div', { class: 'chip-group', role: 'group', 'aria-label': title },
-    h('span', { class: 'chip-group-label', 'aria-hidden': 'true' }, title),
-    ...modes.map((k) => h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': String(k === mode), html: k === mode ? icon('check', 15) : '', onclick: () => { setMode(k); pl.drawPick(pick); pl.cards.refresh(); } }, h('span', {}, PICK_MODES[k]))))));
+  // (the route's own Colour by, the profile's dropdown)
+  const sel = h('select', { 'aria-label': 'Colour the profile by', onchange: (e) => { setMode(e.target.value); pl.drawPick(pick); pl.cards.refresh(); } },
+    ...modesOf(a).map(([title, modes]) => h('optgroup', { label: title }, ...modes.map((k) => h('option', { value: k }, PICK_MODES[k])))));
+  sel.value = mode;
+  const chips = h('label', { class: 'mode-select pick-by' }, h('span', { class: 'mode-select-label' }, 'Colour by'),
+    h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
   const legend = h('div', { class: 'bd-legend' }, ...breakdownRows(a, mode).filter((r) => r[1] > 0).map(([words, d, color, key]) => h('span', { class: 'bd-item', 'data-category': String(key) },
     h('i', { style: `background:${color}`, 'aria-hidden': 'true' }), h('span', {}, `${cap(String(words))} `), h('b', {}, fmtDist(d)))));
   // (a pick has no direction of its own: head and tail are for going from its west end to its east end)
@@ -716,15 +745,17 @@ function pickBody(pl, card, body) {
   if (way) {
     spot.osm = { type: 'way', id: w.seed.id };
     const pieces = new Set(w.chain.map((x) => x.w.id)).size;
-    body.append(nums([{ value: fmtDist(w.len), label: pieces > 1 ? `long, ${pieces} pieces` : 'long' },
+    // (while the tiles its ends run into come, its length so far: it may grow)
+    body.append(nums([{ value: fmtDist(w.len), label: `${w.growing ? 'long so far' : 'long'}${pieces > 1 ? `, ${pieces} pieces` : ''}` },
       a ? { value: `${Math.round(a.up)} m`, label: 'up' } : pick.a === 'failed' ? { value: '?', label: 'heights didn’t load', missing: true } : { value: '–', label: 'up', wait: true },
       a ? { value: `${Math.round(a.down)} m`, label: 'down' } : pick.a === 'failed' ? null : { value: '–', label: 'down', wait: true }]));
-    if (a) body.append(profileOf(a, modeOf(a), spot.ll), ...colourBy(pl, pick));
+    if (a) body.append(pickChart(pl, card, a, modeOf(a)), ...colourBy(pl, pick));
     else if (pick.a === 'failed') body.append(failed('The terrain didn’t load: no profile or grades yet. ', pick.again));
+    else body.append(skeleton(pick, { nums: false }));
     const stops = Object.values(w.stops);
     if (stops.some((s) => s.unloaded)) body.append(failed('It may go on: the ways beyond didn’t load.'));
     if (stops.some((s) => s.why === 'long')) body.append(failed('It goes on for more than 25 km: the card stops there.'));
-  } else if (w === undefined) body.append(failed('Asking OpenStreetMap for the way.'));
+  } else if (w === undefined) body.append(skeleton(pick));
   else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again));
   else body.append(nums([pick.ele === undefined ? { value: '–', label: 'height here', wait: true } : pick.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(pick.ele)} m`, label: 'height here' }]));
   // what a hold opens it for: your route's actions (in the route's view, the planner's note with Edit)
@@ -732,7 +763,7 @@ function pickBody(pl, card, body) {
   else if (pick.hold) body.append(...yourRoute(pl, spot, { add: true }));
   const g = way ? wayGroups(w.chain, a) : wayGroups([{ w: { tags: spot.tags || {}, len: 1 } }]);
   // the incline where you tapped, whatever the sport (what the hover says, #561)
-  if (a && !(a.eleGap && a.eleGap[sampleAt(a, spot.ll)])) { const gr = Math.round(a.grade[sampleAt(a, spot.ll)]) || 0; g.diff.unshift(['Grade here', `${gr >= 0 ? '+' : '−'}${Math.abs(gr)} %`, gr >= 0 ? 'uphill, where you tapped' : 'downhill, where you tapped']); }
+  if (a && !(a.eleGap && a.eleGap[nearestSample(a, spot.ll)])) { const gr = Math.round(a.grade[nearestSample(a, spot.ll)]) || 0; g.diff.unshift(['Grade here', `${gr >= 0 ? '+' : '−'}${Math.abs(gr)} %`, gr >= 0 ? 'uphill, where you tapped' : 'downhill, where you tapped']); }
   body.append(...factGroup('Getting along', g.along), ...factGroup('Surface', g.surface), ...factGroup('Difficulty', g.diff), ...weatherGroup(pick), ...placesGroup(pl, pick));
   if (card.osm && card.osm.rows) body.append(h('h4', { class: 'menu-h' }, 'All OpenStreetMap details'), ...card.osm.rows.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))));
   const miss = way ? unmapped(w.chain) : [];
@@ -741,6 +772,13 @@ function pickBody(pl, card, body) {
     h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card }) }, 'Not right?')));
   body.append(osmState(card), pickFoot(pl, card, spot));
 }
+// While the ways come (or, `nums` off, the heights): the card's own shapes for its numbers, profile and Colour by, so nothing
+// jumps when they're in. They
+// show after 300 ms and breathe, as the busy bar does; a rebuild (the weather came) goes on where it was, as the delays
+// count from the tap (--since).
+const skeleton = (pick, { nums = true } = {}) => h('div', { class: 'pick-skel', role: 'status', style: `--since:${Date.now() - pick.at}ms` },
+  h('span', { class: 'sr-only' }, nums ? 'Loading the way from OpenStreetMap' : 'Loading its heights'),
+  nums ? h('div', { class: 'pick-skel-nums', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')) : null, h('i', { class: 'pick-skel-chart', 'aria-hidden': 'true' }), h('i', { class: 'pick-skel-by', 'aria-hidden': 'true' }));
 // the card's last row: Share and Weather here ›; a hold adds All OpenStreetMap details and Copy
 function pickFoot(pl, card, spot) {
   const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: icon(ic, 16) }, h('span', {}, label));
