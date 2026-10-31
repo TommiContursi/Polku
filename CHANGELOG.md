@@ -16,7 +16,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - On a desktop, **Clear route** is a button on the toolbar just before **⋯**, while you edit and in the route's view alike. When the toolbar runs out of room it's the last of the route's actions to go into **⋯**. A note still offers **Undo**, which brings the route back for you to edit.
 - In the route's view a line sets **Clear route** apart from **Edit**.
-- **⋯** lists the same things in the same order on a phone and a desktop: **Clear route** first, farthest from the button, then the whole route's actions, then **Share link**, **Export GPX** and **Save offline**, the most used, nearest it. Opened from the keyboard, it starts on the first item that isn't **Clear route**.
+- **⋯** lists the same things in the same order on a phone and a desktop: **Clear route** first, farthest from the button, then the whole route's actions, then **Share link**, **Export GPX** and **Save offline**, the most used, nearest it. Where **⋯** has too little room, it opens scrolled to those three. Opened from the keyboard, it starts on the first item in sight that isn't **Clear route**.
 
 ### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))
 
