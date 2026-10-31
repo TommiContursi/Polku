@@ -27,6 +27,22 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Road works, traffic incidents, road conditions, busy roads, military areas, sea marks and their lights, faults and signs, navigation lines, fairways, restriction areas, light sectors and the water now open the same card as a trail, not the old popup. The thing is ringed or drawn on the map, the card says where its facts come from, and its last row has **Share**, **Weather here ›** and, for road works, **Fintraffic traffic situation**. The water's card has its depth from Traficom's chart and **Paddle from here**. Hold the map there for **Your route**.
 - Road works' and incidents' dates show their year when it isn't this year, so works that run over a year no longer seem to end before they begin.
 
+### Settings is in folding groups, with what's still to come ([#321](https://github.com/TommiContursi/Polku/issues/321), [#143](https://github.com/TommiContursi/Polku/issues/143))
+
+- **Settings** now opens on a short list of groups that fold like Layers' groups: speeds and tiles by sport, Display, language and units, route arrows and marks, map and planner, hidden Heads-up, offline maps, what's saved on this device, Strava and Garmin, data sources and About Polku. Each group stays open or folded as you leave it.
+- **Route arrows and marks** has the route's moving arrows and its distance marks with their times. Layers keeps them too, with your route, so you find them in either place.
+- Settings that are planned but not built yet, such as language, text size and Strava, are already in their groups, greyed and marked **Coming**. They don't respond until they're built.
+- A sport's row in **Speeds and tiles by sport** shows its speeds and its five Layers tiles, and **Edit** changes that sport's tiles, whatever sport the map has.
+- **Map and planner** has a row that opens **Layers**, and **3D height**, which Layers also has under 3D terrain.
+- **Hidden Heads-up** lists the kinds of Heads-up you've hidden, each with **Show again**.
+- **Saved on this device** says how many recent searches Polku keeps, and **Clear** forgets them.
+- Closing Settings from the keyboard puts the focus back on ⚙, as closing Layers puts it on **Layers**, so the next Tab starts from there.
+
+### Heads-up says why, and what it means for you ([#618](https://github.com/TommiContursi/Polku/issues/618))
+
+- An item's card now says why it's there and what to expect. A path that's hard to follow says how OpenStreetMap rates it and suggests a map or GPS. A technical trail says what its MTB grade means, such as lots of large stones, roots and drops at S3. Steps, overgrown and muddy stretches, fallen trees, fords, wet boardwalks, steep stretches, unpaved roads on road tyres, alpine terrain, straight lines, portages, ferries and busy roads each say why too.
+- A technical trail is now named by the hardest grade along its stretch, not the grade where it starts.
+
 ### The blue route and LIPAS's routes are easier to tell from the map ([#611](https://github.com/TommiContursi/Polku/issues/611), [#560](https://github.com/TommiContursi/Polku/issues/560))
 
 - Over water, on the Trail map, Plain and Maastokartta, the blue route now has a dark edge instead of a white one, so it stands out from the sea and its marks. On the night map and the aerial photos it keeps its white edge, and a leg over land is as it was.

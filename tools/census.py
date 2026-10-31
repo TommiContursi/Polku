@@ -35,6 +35,7 @@ CENSUS = r"""(() => {
   const name = (el) => { let s = el.tagName.toLowerCase(); if (el.id) s += '#' + el.id; const c = typeof el.className === 'string' ? el.className.trim().split(/\s+/).filter(Boolean).slice(0, 3) : []; if (c.length) s += '.' + c.join('.'); return s; };
   const path = (el) => { const p = []; for (let e = el; e && p.length < 3 && e !== document.body; e = e.parentElement) p.unshift(name(e)); return p.join(' > '); };
   const seen = (el) => { const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) return false;
+    if (!el.checkVisibility()) return false; // (inside a folded <details>: laid out, not shown)
     for (let e = el; e; e = e.parentElement) { const s = getComputedStyle(e); if (s.visibility === 'hidden' || s.display === 'none' || +s.opacity === 0) return false; } return true; };
   const text = [], controls = [], radius = {}, shadow = {}, timing = {}, family = {};
   for (const el of document.body.querySelectorAll('*')) {

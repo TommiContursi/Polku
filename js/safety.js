@@ -517,7 +517,7 @@ export class SafetyLayers {
       let s = -1, peak = 0;
       const flush = (e) => {
         if (s >= 0 && a.along[e] - a.along[s] >= 150) {
-          out.push({ kind: 'busy', at: a.along[s], len: a.along[e] - a.along[s], lngLat: a.pts[s], text: `Busy road, about ${fmtAadt(peak)} vehicles a day`, avoid: avoidAt({ i0: s, i1: e }), tier: 'look', src: { kind: 'estimate', by: 'Fintraffic’s yearly counts' } });
+          out.push({ kind: 'busy', at: a.along[s], len: a.along[e] - a.along[s], lngLat: a.pts[s], text: `Busy road, about ${fmtAadt(peak)} vehicles a day`, note: 'Cars pass close and fast. Keep to the edge, or look for a quieter road or a cycle path alongside.', avoid: avoidAt({ i0: s, i1: e }), tier: 'look', src: { kind: 'estimate', by: 'Fintraffic’s yearly counts' } });
         }
         s = -1; peak = 0;
       };
