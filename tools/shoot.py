@@ -425,7 +425,7 @@ SCENES = {
     'phone-part-terrain': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=NO_TERRAIN(True), js=TAB('warnings')),
     'desk-closed': dict(DESK, timeline=True),
     'desk-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json'),
-    'desk-settings': dict(DESK, timeline=False, js="document.querySelector('#btn-settings') && document.querySelector('#btn-settings').click(); true"),
+    'desk-settings': dict(DESK, timeline=False, js="document.querySelector('#btn-settings') && document.querySelector('#btn-settings').click(); document.querySelector('#settings-body [data-group=settings-display]').open = true; true"),
     'desk-acts': dict(DESK, timeline=False, js="document.querySelector('.act-current') && document.querySelector('.act-current').click(); true"),
     'desk-road': dict(DESK, timeline=False, activity='road', hash='#15.2/61.4975/23.7605'),
     'desk-run': dict(DESK, timeline=False, activity='run', hash='#15.2/61.4975/23.7605'),

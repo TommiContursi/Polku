@@ -163,7 +163,7 @@ button { font: inherit; color: inherit; }
   :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back):active:not(:disabled) { transform: none; }
 }
 /* a small heading, everywhere: 12 px capitals in grey (#356) */
-.menu-h, .act-head, .lp-sec h3, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .speed-route h4, .wind-title, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
+.menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .speed-route h4, .wind-title, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
   font-size: var(--font-small); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
 }
 #map { position: fixed; inset: 0; }
@@ -504,9 +504,6 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 10px 6px 16px; }
 .panel-head h2 { margin: 0; font-size: 16px; }
 .panel-body { overflow: auto; padding: 0 16px 16px; }
-.lp-sec { padding: 10px 0; border-top: 1px solid var(--line); }
-.lp-sec:first-child { border-top: 0; }
-.lp-sec h3 { margin: 0 0 8px; }
 .note { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
 /* whose map: the sport sets the starting layers */
 .lp-sport { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 9px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--text); font-size: 13px; }
@@ -544,10 +541,11 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
 .tg-text { flex: 1; display: flex; flex-direction: column; }
 .tg-text small { color: var(--muted); font-size: 11px; }
-.lp-sec > .tg-text, .lg-group > .tg-text, .lg-group > .coming > .tg-text, .speed-box > .tg-text { padding: 7px 0 8px; } /* a setting's name over its chips (Appearance) */
+.lg-group > .tg-text, .lg-group > .coming > .tg-text, .speed-box > .tg-text { padding: 7px 0 8px; } /* a setting's name over its chips (Appearance) */
 /* a setting its issue hasn't built yet: its control greyed and off, its words readable, Coming beside its name (Settings, #321) */
-.coming .tg-ui, .coming > span[aria-hidden]:first-child, .coming .val, .coming .way-chev { opacity: .5; }
-.coming .tg-text, .coming b { color: var(--muted); }
+.coming .tg-ui, .coming > span[aria-hidden]:first-child, .coming .way-chev { opacity: .5; }
+.coming .tg-text, .coming b, .coming .val, .coming .seg button:disabled { color: var(--muted); }
+.coming .seg button:disabled { opacity: 1; }
 /* keep the real checkbox inside its row: focusing it must not scroll the page */
 .tg input { position: absolute; right: 0; top: 50%; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .tg-ui { width: 36px; height: 21px; border-radius: 999px; background: var(--line); box-shadow: inset 0 0 0 1.5px var(--muted); position: relative; flex: none; transition: background-color var(--t-press) ease, box-shadow var(--t-press) ease; }

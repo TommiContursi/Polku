@@ -968,7 +968,6 @@ const toggle = (label, on, fn, note = '') => {
 };
 const seg = (options, value, fn) => h('div', { class: 'seg small full' },
   ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
-const section = (title, ...kids) => h('section', { class: 'lp-sec' }, h('h3', {}, title), ...kids);
 // A raster layer's opacity, right under its switch while it's on; remembered per layer
 // (overlays by id, the weather fields as wx:rain and wx:temp; style.js reads the same keys).
 const WX_OPACITY = {
