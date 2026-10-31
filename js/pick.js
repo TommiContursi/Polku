@@ -5,8 +5,9 @@
 
 import { analyse } from './analysis.js';
 import { windAlong, pointForecasts, sampleAt } from './weather.js';
-import { loadWays, nearestWay, joinWay, lineOf, wayTile, walk, waysLoaded } from './ways.js';
-import { wayTitle, wayLine } from './facts.js';
+import { loadWays, nearestWay, joinWay, lineOf, wayTile, walk, waysLoaded, areaAt } from './ways.js';
+import { wayTitle, wayLine, areaTitle, areaKind } from './facts.js';
+import { depthAt } from './inspect.js';
 import { breakdownRows, colorAt, PICK_GROUPS } from './chart.js';
 import { lipasNear } from './lipas.js';
 import { elevation } from './dem.js';
@@ -20,10 +21,12 @@ const metresPerPixel = (ll, zoom) => (40075016.686 * Math.cos((ll[1] * Math.PI) 
 /**
  * A new pick at `spot` (the planner's: where, the map's own words for it). `hold`: opened by a hold or a right-click, so
  * it has the actions; `sec`: the hour the map's weather shows; `zoom`, `touch`: how far a finger or a pointer reaches.
- * ways, a, wx, places: undefined while asked, 'failed', 'none' (no way there), or the answer.
+ * ways, a, wx, places, area: undefined while asked, 'failed', 'none' (no way there; no area: null), or the answer. Where
+ * no way is in reach, the area the spot is in (`spot.area`: the map draws water or a park there) and, on water, its depth
+ * (`depth`: words, or null where Traficom didn't answer).
  */
 export const newPick = (spot, { hold = false, sport, sec, zoom, touch = false } = {}) => ({
-  spot, ll: spot.ll, hold, sport, sec, zoom, touch, at: Date.now(), ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, dead: false,
+  spot, ll: spot.ll, hold, sport, sec, zoom, touch, at: Date.now(), ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, area: undefined, depth: undefined, dead: false,
 });
 
 /** Asks for the pick's ways and what follows; `changed()` after each answer. A closed pick (`dead`) stops. */
@@ -34,7 +37,19 @@ export async function resolvePick(pick, changed) {
   nearPlaces(pick.ll).then((p) => step(() => { pick.places = p; }), () => step(() => { pick.places = 'failed'; }));
   try { await loadWays(wayTile(pick.ll), { force: true }); } catch { step(() => { pick.ways = 'failed'; }); return; }
   const seed = nearestWay(pick.ll, (pick.touch ? 18 : 9) * metresPerPixel(pick.ll, pick.zoom));
-  if (!seed) { step(() => { pick.ways = 'none'; }); elevation(pick.ll).then((e) => step(() => { pick.ele = Number.isFinite(e) ? e : null; }), () => step(() => { pick.ele = null; })); return; }
+  if (!seed) {
+    step(() => { pick.ways = 'none'; });
+    elevation(pick.ll).then((e) => step(() => { pick.ele = Number.isFinite(e) ? e : null; }), () => step(() => { pick.ele = null; }));
+    // (only where the map draws water or a park: a tap on bare land asks nothing)
+    if (!pick.spot.area) { step(() => { pick.area = null; pick.line = 'Nothing is mapped right here'; }); return; }
+    if (pick.spot.area === 'water') depthAt(pick.ll).then((d) => step(() => { pick.depth = d; }), () => step(() => { pick.depth = null; }));
+    const area = await areaAt(pick.ll).catch(() => 'failed');
+    step(() => {
+      pick.area = area;
+      if (area && area !== 'failed') { pick.title = areaTitle(area.tags); pick.line = areaKind(area.tags); }
+    });
+    return;
+  }
   // (drawn and measured from the tiles in, and grown as the tiles its ends run into come: `growing` till then)
   const put = (j, growing) => {
     pick.ways = { seed, ...j, geo: lineOf(j.chain), len: j.chain.reduce((s, { w }) => s + w.len, 0), growing };
@@ -91,7 +106,8 @@ export const setMode = (mode) => store.set('pickColour', mode);
 // ------------------------------------------------------------------ what the map draws
 /** The pick's lines for the map: its colours along it, the other carriageway, and an area's outline. */
 export function pickData(pick) {
-  const w = pick.ways, a = pick.a;
+  const w = pick.ways, a = pick.a, ar = pick.area;
+  if (ar && typeof ar === 'object') return { pick: EMPTY, side: EMPTY, area: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: ar.lines } }] } };
   if (!w || typeof w === 'string') return { pick: EMPTY, side: EMPTY, area: EMPTY };
   const line = (color, coords) => ({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: coords } });
   const feats = [];

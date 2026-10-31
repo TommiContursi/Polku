@@ -316,6 +316,16 @@ const WANT = { path: [['surface', 'surface'], ['width', 'width'], ['mtb:scale', 
   street: [['surface', 'surface'], ['lit', 'lit'], ['maxspeed', 'speed limit']], road: [['surface', 'surface'], ['lit', 'lit'], ['maxspeed', 'speed limit'], ['cycleway', 'bikes']] };
 export const unmapped = (chain) => (WANT[wayKind(chain)] || [['surface', 'surface']]).filter(([k]) => !chain.some(({ w }) => w.tags[k] != null || (k === 'cycleway' && Object.keys(w.tags).some((x) => x.startsWith('cycleway'))))).map(([, word]) => word);
 
+// ------------------------------------------------------------------ an area (#574: a lake, a park): its name or kind, its own facts
+const AREA_KIND = { lake: 'Lake', pond: 'Pond', reservoir: 'Reservoir', river: 'River', oxbow: 'Oxbow lake', lagoon: 'Lagoon', park: 'Park', nature_reserve: 'Nature reserve', recreation_ground: 'Recreation ground', protected_area: 'Protected area' };
+export const areaKind = (t) => (t.natural === 'water' ? AREA_KIND[t.water] || 'Water' : t.boundary === 'national_park' ? 'National park' : AREA_KIND[t.leisure] || AREA_KIND[t.boundary] || 'Area');
+export const areaTitle = (t) => t.name || areaKind(t);
+/** Its facts as rows, and what an area of its kind would have and this one doesn't. */
+export function areaFacts(t) {
+  const rows = [t.access ? ['Access', cap(plain(t.access))] : null, t.operator ? ['Run by', t.operator] : null, t.opening_hours ? ['Open', t.opening_hours] : null, t.salt === 'yes' ? ['Water', 'Salt'] : null].filter(Boolean);
+  return { rows, missing: (t.natural === 'water' ? [['access', 'access']] : [['access', 'access'], ['operator', 'who runs it']]).filter(([k]) => !t[k]).map(([, word]) => word) };
+}
+
 // The card's facts in groups, by length along the way (a fact that changes says how much of each), the same for every
 // sport: Getting along, Surface, Difficulty. [label, value, note] rows; `a` is the pick's analysis, once it's in.
 export function wayGroups(chain, a = null) {

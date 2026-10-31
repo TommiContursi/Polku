@@ -63,6 +63,13 @@ export function winterAt(feats, ll) {
   return best && WINTER_TEXT[best.cls] ? { cls: best.cls, beside: best.cls === 'ski' } : null;
 }
 
+// The area the map draws at a spot, where a pick asks OpenStreetMap what it is (#574): 'water', 'park' (a park, a nature
+// reserve, a national park) or null
+export function areaUnder(map, pt) {
+  const at = (ids, ok = () => true) => { const layers = ids.filter((id) => map.getLayer(id)); return layers.length > 0 && map.queryRenderedFeatures(pt, { layers }).some(ok); };
+  return at(['water']) ? 'water' : at(['park-fill']) || at(['lc-grass'], (f) => ['park', 'recreation_ground'].includes(f.properties.subclass)) ? 'park' : null;
+}
+
 export function pickFeature(feats) {
   for (const re of PRIORITY) {
     const f = feats.find((x) => re.test(x.layer.id));
@@ -88,14 +95,15 @@ export function initInspector(map, app) {
     const leg = map.getLayer('route-casing') && map.queryRenderedFeatures(box, { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     if (leg && app.openRoute) { app.openRoute(leg.properties.leg, e.lngLat); return; }
     const feats = map.queryRenderedFeatures(box, { layers: inspectLayers(map) });
-    const f = pickFeature(feats);
+    // (nothing else there: a lake or a park is picked too, #574)
+    const f = pickFeature(feats) || (areaUnder(map, e.point) && { layer: { id: 'area' } });
     if (!f) return;
     // cameras and ships open their own modal / live card
     if (f.layer.id === 'cameras') { app.openCamera(f.properties.id, f.properties.name); return; }
     if (/^sf-ships/.test(f.layer.id)) { app.openShip(f.properties.mmsi); return; }
-    // a way, a place, a LIPAS route or place: the planner's card at the spot (25d part 6)
-    if (!/^(nm-|sf-|military|water$)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
-    // the map's other things (road works, a sea mark, the water…): the same card (#564)
+    // a way, a place, a LIPAS route or place, a lake, a park: the planner's card at the spot (25d part 6)
+    if (!/^(nm-|sf-|military)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
+    // the map's other things (road works, a sea mark…): the same card (#564)
     app.openThing(f, ll);
   });
 

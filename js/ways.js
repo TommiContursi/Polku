@@ -86,6 +86,31 @@ export function seedWays(x, y, d) {
   index(x, y, d);
 }
 
+// ------------------------------------------------------------------ an area at a spot (#574: a lake, a park)
+// The smallest named lake, park or nature area a spot is in, asked of Overpass once for the spot (to about 10 m) and cached a
+// week. Its outline comes only within about 5 km of the spot, so a tap on a big lake loads little. { id, tags, lines, outer,
+// whole } or null where there's none: `lines` the outline as drawn, `outer` its outer edge, `whole` when that is all of it.
+const AREA = '[~"^(natural|leisure|boundary)$"~"^(water|park|nature_reserve|recreation_ground|national_park|protected_area)$"]';
+const areas = new Map(); // for checks: 'lat/lon' (4 decimals) → an answer
+export const seedArea = (ll, json) => areas.set(ll.map((v) => v.toFixed(4)).reverse().join('/'), json);
+export async function areaAt(ll) {
+  const [lat, lon] = [ll[1].toFixed(4), ll[0].toFixed(4)], key = `${lat}/${lon}`;
+  const box = [+lat - 0.045, +lon - 0.09, +lat + 0.045, +lon + 0.09];
+  const json = areas.get(key) || (held ? (heldFail ? Promise.reject(new Error('Overpass')) : { elements: [] })
+    : cachedOverpass(`area/${key}`, `[out:json][timeout:25];is_in(${lat},${lon})->.a;(way(pivot.a)${AREA};rel(pivot.a)${AREA};)->.x;.x out tags bb;.x out skel geom(${box.map((v) => v.toFixed(4)).join(',')});`, (j) => j, { race: true }));
+  const els = new Map();
+  for (const e of (await json).elements || []) els.set(`${e.type}/${e.id}`, { ...els.get(`${e.type}/${e.id}`), ...e });
+  const size = ({ bounds: b }) => (b ? (b.maxlat - b.minlat) * (b.maxlon - b.minlon) : Infinity);
+  const best = [...els.values()].filter((e) => e.tags).sort((a, b) => !a.tags.name - !b.tags.name || size(a) - size(b))[0];
+  if (!best) return null;
+  // (outside the box Overpass leaves a point out as null: the outline is cut there)
+  const runs = (g) => g.reduce((out, q) => { if (q) out.at(-1).push([q.lon, q.lat]); else if (out.at(-1).length) out.push([]); return out; }, [[]]).filter((l) => l.length > 1);
+  const parts = best.geometry ? [{ role: 'outer', geometry: best.geometry }] : (best.members || []).filter((m) => m.geometry);
+  const b = best.bounds;
+  return { id: `${best.type}/${best.id}`, tags: best.tags, lines: parts.flatMap((m) => runs(m.geometry)), outer: parts.filter((m) => m.role !== 'inner').flatMap((m) => runs(m.geometry)),
+    whole: !!b && b.minlat > box[0] && b.minlon > box[1] && b.maxlat < box[2] && b.maxlon < box[3] };
+}
+
 /** The nearest piece within `metres` of a spot, from the tiles that have loaded, or null. */
 export function nearestWay(ll, metres) {
   const [x, y] = wayTile(ll), m = metres / 111320, mx = m / Math.cos((ll[1] * Math.PI) / 180);
