@@ -266,7 +266,11 @@ deviceMore.addEventListener('change', applyTheme);
     if (last && d < 1000) { moved += d; if (d > 34) slow += d; }
     last = t;
     if (moved >= 3000) {
-      if (slow > moved / 2 && !state.fewerEffects && !state.fewerOffered) offerFewer();
+      if (slow > moved / 2 && !state.fewerEffects && !state.fewerOffered) {
+        state.fewerOffered = true;
+        saveSettings();
+        toast('Polku is drawing slowly in this browser.', { ms: 12000, action: { label: 'Use fewer effects', fn: () => setFewerEffects(true) } });
+      }
       moved = slow = 0;
     }
     if (performance.now() < until) raf = requestAnimationFrame(frame);
@@ -279,11 +283,6 @@ deviceMore.addEventListener('change', applyTheme);
   };
   map.on('move', moving);
   addEventListener('scroll', moving, { capture: true, passive: true });
-}
-function offerFewer() {
-  state.fewerOffered = true;
-  saveSettings();
-  toast('Polku is drawing slowly in this browser.', { ms: 12000, action: { label: 'Use fewer effects', fn: () => setFewerEffects(true) } });
 }
 function setFewerEffects(on) {
   state.fewerEffects = on;
