@@ -416,7 +416,7 @@ PANELS_MOTION = """(async (reduced) => {
   // Settings' speeds
   click(document.querySelector('#btn-settings')); await wait(300);
   const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
-  if (!row().closest('details').open) { click(row().closest('details').querySelector('summary')); await wait(400); }
+  row().closest('details').open = true; await wait(100); // (its group folds, #321; opened as Layers' Trail details is, and kept open by its toggle event)
   if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
   click(row());
   got = [fades(sb.querySelector('.speed-box')), fades(row().querySelector('.way-chev'))].join(', ');
@@ -433,12 +433,12 @@ PANELS_MOTION = """(async (reduced) => {
   if (!got.includes('background-color')) errs.push(`${tag}the ${now.textContent} preset moves ${got}, not its colour`);
   if (document.activeElement !== now) errs.push(`${tag}the focus went to ${document.activeElement.tagName}.${document.activeElement.className}, not the preset it pressed`);
   await wait(300);
-  const display = sb.querySelector('[data-group="settings-display"]');
-  if (!display.open) { click(display.querySelector('summary')); await wait(400); }
+  sb.querySelector('[data-group="settings-display"]').open = true; await wait(100);
   click(sb.querySelector('[data-appearance][aria-pressed="true"]'));
   got = fades(sb.querySelector('.speed-box'));
   if (got !== 'nothing') errs.push(`${tag}Settings drawn again: the open speeds move ${got}`);
   click(row()); await wait(300);
+  row().closest('details').open = false; await wait(100); // (folded again, as it began: the storage is put back below)
   click(document.querySelector('#settings-panel .panel-close'));
   for (const [k, v] of saved) if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v);
   await wait(300);
@@ -465,7 +465,7 @@ PANELS_KEYS = """(async () => {
   click(document.querySelector('#btn-layers')); await wait(300);
   click(document.querySelector('#btn-settings')); await wait(300);
   const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
-  if (!row().closest('details').open) { click(row().closest('details').querySelector('summary')); await wait(400); }
+  row().closest('details').open = true; await wait(100); // (its group folds, #321; opened as Layers' Trail details is, and kept open by its toggle event)
   if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
   row().focus();
   click(row(), 0);
