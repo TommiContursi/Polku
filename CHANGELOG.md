@@ -10,12 +10,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - On the desktop toolbar, **Done** is now its first button, at the planner's end, where it stays as the drawing tools and the route's actions come and go. In the route's view **Edit** is in the same place.
 - The toolbar is rounded at both ends and floats 12 px from the planner, beside a side panel and above a panel at the bottom, instead of ending square against a planner that may be shorter.
 - **Show the whole route** is always under **Locate** with the map's buttons now, on a desktop too, whether the planner is open or not. It's no longer on the toolbar.
-- When the toolbar is short of room, the drawing modes you aren't using show only their icons, and their tooltips say the names, before any of the route's actions goes into **⋯**. A laptop-sized window shows more of those actions than before, and a big screen shows every name.
+- When the toolbar is short of room, the three drawing modes show only their icons, all together, and their tooltips say the names, before any of the route's actions goes into **⋯**. Picking another mode then moves nothing. A laptop-sized window shows every route action, and a big screen shows every name.
 
 ### Clear route is one click on a desktop ([#594](https://github.com/TommiContursi/Polku/issues/594))
 
 - On a desktop, **Clear route** is a button on the toolbar just before **⋯**, while you edit and in the route's view alike. When the toolbar runs out of room it's the last of the route's actions to go into **⋯**. A note still offers **Undo**, which brings the route back for you to edit.
-- On a phone, **Clear route** is the first item in **⋯**.
+- In the route's view a line sets **Clear route** apart from **Edit**.
+- **⋯** lists the same things in the same order on a phone and a desktop: **Clear route** first, farthest from the button, then the whole route's actions, then **Share link**, **Export GPX** and **Save offline**, the most used, nearest it. Opened from the keyboard, it starts on the first item that isn't **Clear route**.
 
 ### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))
 

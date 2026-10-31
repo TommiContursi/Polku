@@ -11010,9 +11010,9 @@ def toolbox(chrome):
       return { side, folds: [...p.tools.classList].filter((k) => /^fold|^tb-rows$/.test(k)), timeline: !!t, edge: side ? Math.abs(b.left - (r.right + 12)) <= 1 && Math.abs(b.bottom - (innerHeight - 12)) <= 1 : Math.abs(b.bottom - (r.top - 12)) <= 1 && Math.abs(b.left - r.left) <= 1,
         round: ['TopLeft', 'TopRight', 'BottomLeft', 'BottomRight'].every((c) => parseFloat(getComputedStyle(p.tools)['border' + c + 'Radius']) >= 16),
         named: [...p.tools.querySelectorAll('.tb-modes button')].every((b) => b.getAttribute('aria-label')), // (a mode keeps its name for a screen reader where its words fold away)
-        smaller: p.tools.classList.contains('fold2') || ![...p.tools.querySelectorAll('[data-opt]')].some((o) => o.hidden),
+        smaller: p.tools.classList.contains('fold3') || ![...p.tools.querySelectorAll('[data-opt]')].some((o) => o.hidden),
         clear: b.right <= (level ? c.left - 12 : innerWidth - 12) + 0.5, below: b.top >= document.querySelector('.topbar').getBoundingClientRect().bottom - 0.5,
-        active: [...p.tools.querySelectorAll('.tb-modes [aria-checked=true] span')].some((s) => s.offsetParent),
+        together: ((n) => n.every((x) => x.offsetParent) || !n.some((x) => x.offsetParent))([...p.tools.querySelectorAll('.tb-modes button span')]), // (the modes' names go together, #594)
         scale: s.bottom <= b.top + 0.5 && s.bottom >= b.top - 12 && (!side || s.left >= r.right - 0.5),
         apart: !t || t.bottom <= b.top + 0.5 || t.top >= b.bottom - 0.5 || t.right <= b.left + 0.5 || t.left >= b.right - 0.5,
         credits: ((i) => { const q = i.getBoundingClientRect(), e = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return !!e && i.contains(e); })(document.querySelector('.maplibregl-ctrl-attrib-button')) }; })()"""
@@ -11023,7 +11023,7 @@ def toolbox(chrome):
         placed(pg)
         pg.js(SETTLED)  # (the scale and the timeline follow the toolbar's room, --tools-h, in 0.2 s)
         e = pg.js(ON_EDGE)
-        if not (e['edge'] and e['round'] and e['smaller'] and e['named'] and e['clear'] and e['below'] and e['active'] and e['scale'] and e['apart'] and (e['credits'] or not e['side'])) or (label == 'the side panel' and set(e['folds']) - {'fold2'}):
+        if not (e['edge'] and e['round'] and e['smaller'] and e['named'] and e['together'] and e['clear'] and e['below'] and e['scale'] and e['apart'] and (e['credits'] or not e['side'])) or (label == 'the side panel' and set(e['folds']) - {'fold3'}):
             fails.append(f'{name} {label}: the toolbar {e}')
         if label == 'the panel at the bottom':
             d = dupes(pg, f'{name} {label}')
@@ -11159,7 +11159,7 @@ def toolbox(chrome):
             placed(pg)
             pg.js(SETTLED)
             e = pg.js(ON_EDGE)
-            if not (e['edge'] and e['round'] and e['smaller'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or ('fold4' in e['folds']) != short or 'tb-rows' in e['folds']:
+            if not (e['edge'] and e['round'] and e['smaller'] and e['together'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or ('fold4' in e['folds']) != short or 'tb-rows' in e['folds']:
                 fails.append(f'{name}, {style}: the toolbar {e}')
         d = dupes(pg, name)
         if pg.js("document.getElementById('btn-fit').hidden") or 'Show the whole route' in d['bar']:
@@ -11177,6 +11177,20 @@ def toolbox(chrome):
     if not (e['edge'] and e['round'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' not in e['folds']:
         fails.append(f'{name}: the toolbar {e}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    # a laptop's window (#594): picking another mode changes neither the toolbar's width nor what's on it (the modes'
+    # names fold together, not around the one picked)
+    name = '1280x800'
+    pg = page(1280, 800, False)
+    pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+    seen = []
+    for mode in ('auto', 'line', 'water', 'auto'):
+        click(pg, f'#pl-tools .tb-modes [data-mode="{mode}"]', f'{name}: the mode {mode}')
+        placed(pg)
+        seen.append(pg.js("(() => { const t = polku.planner.tools; return Math.round(t.getBoundingClientRect().width) + ' ' + [...t.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent).map((b) => b.getAttribute('aria-label') || b.textContent.trim()).join('|'); })()"))
+    if len(set(seen)) != 1:
+        fails.append(f'{name}: the toolbar changed as the mode changed: ' + ' / '.join(seen))
+    fails += [f'{name} console: {x[:160]}' for x in pg.errors()]
     pg.close()
     # a big screen keeps the full version (#594): every name and every route action on the toolbar, none folded
     name = '1920x1080'
@@ -12056,9 +12070,11 @@ def route_view(chrome):
             pg.js(SETTLED)
             time.sleep(0.4)
             press(pg, at(pg, "polku.planner.els.more"), f'{name}: More', touch)
-            first = pg.js("document.querySelector('.menu-pop .menu-item')?.textContent.trim() || ''")
-            if not first.startswith('Clear route'):  # (#594: a phone's toolbox doesn't float it, so More starts with it)
-                fails.append(f'{name}: the route’s view’s More starts with “{first}”, not Clear route')
+            # (#594: one order everywhere, Clear route first and farthest from More, Take it along last and nearest; the
+            # focus not on Clear route)
+            m = pg.js("(() => { const it = [...document.querySelectorAll('.menu-pop .menu-item')].map((b) => b.textContent.trim()); const a = document.activeElement; return { first: it[0] || '', last: it[it.length - 1] || '', focus: a && a.classList.contains('menu-item') && !a.classList.contains('danger') }; })()")
+            if not m['first'].startswith('Clear route') or not m['last'].startswith('Save offline') or not m['focus']:
+                fails.append(f'{name}: the route’s view’s More: {m} (Clear route first, Save offline last, the focus not on Clear route)')
             if not pg.js("(() => { const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith('Clear route')); if (b) { b.dataset.rvPick = '1'; b.scrollIntoView({ block: 'nearest' }); } return !!b; })()"):
                 fails.append(f"{name}: no Clear route in the route’s view’s More: {pg.js('[...document.querySelectorAll(`.menu-pop .menu-item`)].map((b) => b.textContent.trim())')}")
             press(pg, at(pg, "document.querySelector('.menu-pop [data-rv-pick]')"), f'{name}: Clear route', touch)
@@ -12080,8 +12096,8 @@ def route_view(chrome):
         line0 = pg.js("JSON.stringify(polku.planner.points)")
         press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done', touch)
         v = view_ok(pg, f'{name}: after Done')
-        if v['tools'] != ['Edit', 'Clear route', 'More']:
-            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}")
+        if v['tools'] != ['Edit', 'Clear route', 'More'] or not pg.js("!!polku.planner.tools.querySelector('.tb-sep[data-group=clear]').offsetParent"):
+            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}, a line before Clear route: {pg.js('!!polku.planner.tools.querySelector(`.tb-sep[data-group=clear]`).offsetParent')}")
         # Clear route is one click there (#594), with its note's Undo; Undo brings the route back, in editing as from More
         press(pg, at(pg, "polku.planner.els.clearTool"), f'{name}: Clear route', touch)
         c = pg.js("({ n: polku.planner.points.length, editing: polku.planner.editing, note: document.getElementById('toast').textContent })")

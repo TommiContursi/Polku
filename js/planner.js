@@ -40,7 +40,7 @@ const MODE_KEY = { auto: 'P', line: 'S', water: 'W' };
 // what the desktop toolbar shortens where room runs out (placeTools()): the style's caption, the names of
 // the modes not in use, then all the modes' names, then the style's name (the longest beside a 1024 px window's panel);
 // last, beside the side panel, a second row
-const FOLDS = ['fold1', 'fold2', 'foldS', 'fold3', 'fold4', 'tb-rows'];
+const FOLDS = ['fold1', 'foldS', 'fold3', 'fold4', 'tb-rows'];
 // how a sport goes along a line, for "MTB legs can't be paddled on the same line"
 const VERB = { mtb: 'ridden', gravel: 'ridden', road: 'ridden', hike: 'walked', trailrun: 'run', run: 'run', paddle: 'paddled', swim: 'swum' };
 const MODE_DESC = { auto: 'Along paths and roads, in the route style', line: 'Straight: off the trail, or across a gap', water: 'Polku’s water router: round land and marked hazards' };
@@ -5646,15 +5646,15 @@ export class Planner {
       const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
       const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
       const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 : box.getBoundingClientRect().right > limit);
-      // in turn: the names of the modes not in use (the toolbar's tooltips say them), the route's actions from the
-      // last, the style's caption, the sport's name (its icon stays), Clear route (the action kept longest), all the
-      // modes' names, then the style's name shortens; last, beside the side panel of a narrow window, a second row above
-      // the first
+      // in turn: the three modes' names together (their tooltips and labels say them; picking another mode then moves
+      // nothing, #594), the route's actions from the last, the style's caption, the sport's name (its icon stays), Clear
+      // route (the action kept longest), then the style's name shortens; last, beside the side panel of a narrow window,
+      // a second row above the first
       box.classList.remove(...FOLDS);
       setOpts(box, opts.length);
-      const steps = [() => box.classList.add('fold2')];
+      const steps = [() => box.classList.add('fold3')];
       for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
-      steps.push(() => box.classList.add('fold1'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold3'), () => box.classList.add('fold4'));
+      steps.push(() => box.classList.add('fold1'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold4'));
       if (side) steps.push(() => { box.classList.add('tb-rows'); box.style.maxWidth = `${limit - r.right - 12}px`; });
       for (const step of steps) {
         if (!over()) break;
@@ -5798,7 +5798,7 @@ export class Planner {
   speedLine(sport) { const s = speedSummary(sport, this.craft); return sport === 'paddle' ? s.txt : `${s.name} · ${s.txt}`; }
 
   // ---------------------------------------------------------------- More (⋯)
-  // The whole route's actions: take it along, the whole route, and Clear apart (with Undo in a note).
+  // The whole route's actions: Clear route apart (with Undo in a note), the whole route, and take it along.
   // Moving the panel stays at the end of the tabs' row and in Settings.
   toggleMore() {
     if (this.moreMenu) { this.moreMenu.close(); return; }
@@ -5821,10 +5821,11 @@ export class Planner {
       { icon: 'upload', label: 'Import GPX or KML…', desc: 'Shows a file’s track, to plan on', fn: () => $('#file-input').click() },
     ]);
     const clear = off(this.els.clearTool) && { icon: 'trash', label: 'Clear route', desc: 'Undo brings it back', fn: () => this.clear(), cls: 'danger menu-apart', disabled: !n };
-    // Clear route is the menu's first item on phones, where it isn't on the toolbar; on desktops it ends the list (#594)
+    // one order everywhere, chosen 2026-10-31 (#594): it opens up from More at the map's foot, so Clear route is the
+    // farthest from it and Take it along, the most used, the nearest (popMenu() doesn't put the focus on Clear route)
     this.moreMenu = popMenu(this.els.more, [
       n ? { head: this.routeTitle(), sub: 'Kept on this device' } : null,
-      ...(desk ? [take, take && whole ? 'hr' : null, whole, clear ? 'hr' : null, clear] : [clear, clear ? 'hr' : null, take, take && whole ? 'hr' : null, whole]),
+      clear, clear ? 'hr' : null, whole, take ? 'hr' : null, take,
     ], { label: 'More', maxRight: desk ? null : $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
       onClose: () => { this.moreMenu = null; this.els.more.setAttribute('aria-expanded', 'false'); } });
     this.els.more.setAttribute('aria-expanded', 'true');

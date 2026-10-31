@@ -2249,15 +2249,15 @@ body.dropping .drop-hint { display: flex; }
 .sportbtn > .ic:first-child { color: var(--accent); }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
 .pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594) */
-/* the route's view (25c): Edit, Show the whole route, Clear route and More; nothing to keep apart */
-.pl-tools[data-stage="view"] .tb-sep { display: none; }
+/* the route's view (25c): Edit, then Clear route kept apart by its line (#594), and More */
+.pl-tools[data-stage="view"] .tb-sep:not([data-group="clear"]) { display: none; }
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo and redo */
 .pl-tools[data-stage="folded"] .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
 .pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child) { display: none; }
-/* where room runs out (planner.js FOLDS): first the names of the modes not in use (their tooltips say them), then the
-   route's actions go into More, then the style's caption, the sport's name, all the modes' names, and the style's name */
+/* where room runs out (planner.js FOLDS): first the three modes' names together (their tooltips say them), then the
+   route's actions go into More, then the style's caption, the sport's name, and the style's name shortens */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
-.pl-tools.fold2 .tb-modes button[aria-checked="false"] span, .pl-tools.fold3 .tb-modes button span { display: none; }
+.pl-tools.fold3 .tb-modes button span { display: none; }
 .pl-tools.foldS .sportbtn > span { display: none; }
 .pl-tools.fold4 .stylebtn .two span { max-width: 4.5em; overflow: hidden; text-overflow: ellipsis; }
 /* last, beside the side panel of a narrow window: a second row, growing up from the map's foot (its max-width, up to the
