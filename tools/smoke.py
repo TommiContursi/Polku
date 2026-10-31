@@ -2498,31 +2498,33 @@ HEADS = """(async () => {
   // one stretch of samples [i0, i1) with these tags (and mode), the rest plain
   const attrs = (sport, runs) => Array.from({ length: n }, (_, i) => { const r = runs.find(([i0, i1]) => i >= i0 && i < i1); return { sport, tags: r ? r[2] : { highway: 'track' }, ...(r && r[3] ? { mode: r[3] } : {}) }; });
   const flat = new Float32Array(n);
-  // expect: [text's start, tier, src.kind, src.by] for each item a maker made
+  // expect: [text's start, tier, src.kind, src.by, and the note's start where it says why (#618)] for each item a maker made
   const expect = (what, items, want) => {
-    for (const [re, tier, kind, by] of want) {
+    for (const [re, tier, kind, by, why] of want) {
       const w = items.find((x) => re.test(x.text));
       if (!w) { errs.push(`${what}: no item ${re} in ${items.map((x) => x.text).join(' / ')}`); continue; }
       if (w.tier !== tier || !w.src || w.src.kind !== kind || w.src.by !== by) errs.push(`${what}: ${w.text}: ${w.tier}, ${JSON.stringify(w.src)}, not ${tier}, ${kind} · ${by}`);
+      if (why && !why.test(w.note || '')) errs.push(`${what}: ${w.text}'s note says "${w.note || ''}", not ${why}`);
     }
     for (const w of items) if (!(w.tier === 'read' || w.tier === 'look') || !w.src || !w.src.by) errs.push(`${what}: ${w.text} has no group or source`);
   };
   // analysis.js: bike runs, then foot runs, then the rest
-  const bike = A.findWarnings(along, flat, attrs('mtb', [[0, 6, { highway: 'steps' }], [10, 16, { highway: 'path', bicycle: 'no' }], [20, 26, { highway: 'path', 'mtb:scale': '3' }], [30, 50, { highway: 'track', portage: 'yes' }], [50, 56, { route: 'ferry' }]]), pts, 'mtb');
-  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap'], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap'], [/^Technical trail S3/, 'look', 'map', 'OpenStreetMap'], [/^Carry/, 'look', 'map', 'OpenStreetMap'], [/^Ferry/, 'look', 'map', 'OpenStreetMap']]);
+  // (the technical stretch is S3, then S4: named by its hardest)
+  const bike = A.findWarnings(along, flat, attrs('mtb', [[0, 6, { highway: 'steps' }], [10, 16, { highway: 'path', bicycle: 'no' }], [20, 23, { highway: 'path', 'mtb:scale': '3' }], [23, 26, { highway: 'path', 'mtb:scale': '4' }], [30, 50, { highway: 'track', portage: 'yes' }], [50, 56, { route: 'ferry' }]]), pts, 'mtb');
+  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap', /^highway=steps · /], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap', /^bicycle=no · /], [/^Technical trail S4/, 'look', 'map', 'OpenStreetMap', /^mtb:scale=4 · Extremely difficult\./], [/^Carry/, 'look', 'map', 'OpenStreetMap', /^portage=yes · /], [/^Ferry/, 'look', 'map', 'OpenStreetMap', /^route=ferry · /]]);
   const steep = Float32Array.from({ length: n }, (_, i) => (i < 20 ? 20 : i < 40 ? -25 : 0));
-  expect('findWarnings, steep', A.findWarnings(along, steep, attrs('mtb', []), pts, 'mtb'), [[/^Steep climb/, 'look', 'estimate', 'the terrain model'], [/^Steep descent/, 'look', 'estimate', 'the terrain model']]);
+  expect('findWarnings, steep', A.findWarnings(along, steep, attrs('mtb', []), pts, 'mtb'), [[/^Steep climb/, 'look', 'estimate', 'the terrain model', /^Steeper than 15 %/], [/^Steep descent/, 'look', 'estimate', 'the terrain model', /^Steeper than 18 %/]]);
   expect('findWarnings, hike', A.findWarnings(along, Float32Array.from({ length: n }, (_, i) => (i < 20 ? 30 : 0)), attrs('hike', [[30, 40, { highway: 'path', sac_scale: 'alpine_hiking' }], [40, 60, { highway: 'path', access: 'no' }]]), pts, 'hike'),
-    [[/^Very steep/, 'look', 'estimate', 'the terrain model'], [/^Alpine terrain/, 'read', 'map', 'OpenStreetMap'], [/^Marked no access/, 'read', 'map', 'OpenStreetMap']]);
-  expect('findWarnings, road', A.findWarnings(along, flat, attrs('road', [[0, 20, { highway: 'track', surface: 'gravel' }], [20, 40, { highway: 'path', foot: 'no', access: 'private' }], [40, 60, {}, 'line']]), pts, 'road'),
-    [[/^Unpaved/, 'look', 'map', 'OpenStreetMap'], [/^Marked private/, 'look', 'map', 'OpenStreetMap'], [/^Straight line/, 'look', 'calculated', 'how you drew it']]);
+    [[/^Very steep/, 'look', 'estimate', 'the terrain model', /^Steeper than 25 %/], [/^Alpine terrain/, 'read', 'map', 'OpenStreetMap', /^sac_scale=alpine_hiking · /], [/^Marked no access/, 'read', 'map', 'OpenStreetMap']]);
+  expect('findWarnings, road', A.findWarnings(along, flat, attrs('road', [[0, 10, { highway: 'track', surface: 'gravel' }], [10, 20, { highway: 'track' }], [20, 40, { highway: 'path', foot: 'no', access: 'private' }], [40, 60, {}, 'line']]), pts, 'road'),
+    [[/^Unpaved/, 'look', 'map', 'OpenStreetMap', /^surface=gravel, highway=track, highway=path · /], [/^Marked private/, 'look', 'map', 'OpenStreetMap'], [/^Straight line/, 'look', 'calculated', 'how you drew it', /^Drawn point to point/]]);
   expect('findWarnings, on foot', A.findWarnings(along, flat, attrs('hike', [[0, 20, { highway: 'path', foot: 'no' }]]), pts, 'hike'), [[/^Marked no walking/, 'read', 'map', 'OpenStreetMap']]);
   // the trail details (from the router's tags here)
   const td = { trail: new Uint8Array(n).fill(1), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: new Uint8Array(n), mud: new Uint8Array(n), tree: new Uint8Array(n), ford: new Uint8Array(n), boardwalk: new Uint8Array(n), points: [{ i: 50, at: 500, ll: pts[50], kind: 'barrier', barrier: 'fence' }] };
   for (let i = 0; i < 12; i++) { td.vis[i] = 2; td.veg[i + 12] = 1; td.mud[i + 24] = 1; }
   td.tree[40] = 1; td.ford[45] = 1;
   expect('trailWarnings', A.trailWarnings({ along, pts, td, attr: attrs('mtb', []) }, { activity: 'mtb' }),
-    [[/^Hard to follow/, 'look', 'map', 'OpenStreetMap'], [/^Overgrown/, 'look', 'map', 'OpenStreetMap'], [/^Wet or muddy/, 'look', 'map', 'OpenStreetMap'], [/^Fallen trees/, 'look', 'map', 'OpenStreetMap'], [/^Ford/, 'look', 'map', 'OpenStreetMap']]);
+    [[/^Hard to follow/, 'look', 'map', 'OpenStreetMap', /^trail_visibility=bad · /], [/^Overgrown/, 'look', 'map', 'OpenStreetMap', /^obstacle=vegetation · /], [/^Wet or muddy/, 'look', 'map', 'OpenStreetMap', /^surface=mud or obstacle=mud · /], [/^Fallen trees/, 'look', 'map', 'OpenStreetMap', /^obstacle=fallen_tree · /], [/^Ford/, 'look', 'map', 'OpenStreetMap', /^ford=yes · /]]);
   // Fintraffic: its caches seeded for the route's box, so nothing is fetched
   const S = polku.safety, road = { highway: 'primary' }, line = (c) => ({ type: 'LineString', coordinates: c });
   const ra = { pts, along, attr: pts.map(() => ({ sport: 'mtb', tags: road })), tAt: new Float32Array(n), activity: 'mtb' };
@@ -2536,7 +2538,7 @@ HEADS = """(async () => {
   S.roadcondFeatures = () => [{ type: 'Feature', properties: { id: 'c1', label: 'Slippery', reasons: 'ice', roadTemp: -2 }, geometry: line(mid) }];
   try {
     const hz = await S.hazardsAlong(ra, { activity: 'mtb', startSec: now / 1000 });
-    expect('hazardsAlong', hz, [[/^Road works/, 'read', 'live', 'Fintraffic'], [/^Traffic incident/, 'read', 'live', 'Fintraffic'], [/^Slippery/, 'read', 'estimate', 'Fintraffic’s road weather'], [/^Busy road/, 'look', 'estimate', 'Fintraffic’s yearly counts']]);
+    expect('hazardsAlong', hz, [[/^Road works/, 'read', 'live', 'Fintraffic'], [/^Traffic incident/, 'read', 'live', 'Fintraffic'], [/^Slippery/, 'read', 'estimate', 'Fintraffic’s road weather'], [/^Busy road/, 'look', 'estimate', 'Fintraffic’s yearly counts', /^Cars pass close/]]);
     const w = hz.find((x) => /^Road works/.test(x.text));
     if (w && w.src.at !== now - 120000) errs.push(`road works' time: ${w.src.at}, not when its tile answered (${now - 120000})`);
     // no answer: not checked, never an empty list

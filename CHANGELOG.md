@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### Heads-up says why, and what it means for you ([#618](https://github.com/TommiContursi/Polku/issues/618))
+
+- An item's card now says why it's there and what to expect. A path that's hard to follow says how OpenStreetMap rates it and suggests a map or GPS. A technical trail says what its MTB grade means, such as lots of large stones, roots and drops at S3. Steps, overgrown and muddy stretches, fallen trees, fords, wet boardwalks, steep stretches, unpaved roads on road tyres, alpine terrain, straight lines, portages, ferries and busy roads each say why too.
+- A technical trail is now named by the hardest grade along its stretch, not the grade where it starts.
+
 ### The blue route and LIPAS's routes are easier to tell from the map ([#611](https://github.com/TommiContursi/Polku/issues/611), [#560](https://github.com/TommiContursi/Polku/issues/560))
 
 - Over water, on the Trail map, Plain and Maastokartta, the blue route now has a dark edge instead of a white one, so it stands out from the sea and its marks. On the night map and the aerial photos it keeps its white edge, and a leg over land is as it was.
