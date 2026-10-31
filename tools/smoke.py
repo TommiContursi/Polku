@@ -15709,7 +15709,7 @@ def pick_card(chrome):
         load = pg.js("""(async () => {
           const pick = polku.planner.cards.current.pick, kept = { a: pick.a, ways: pick.ways }, card = () => document.querySelector('.pl-way.card');
           const look = () => { const hd = card().querySelector('.sec-head'); return { head: hd ? hd.textContent : '', open: hd && hd.getAttribute('aria-expanded'), say: card().querySelector('.pick-skel .pick-note')?.textContent || '', shapes: !!card().querySelector('.pick-skel-chart') }; };
-          const click = async () => { card().querySelector('.sec-head').click(); await new Promise((r) => setTimeout(r, 300)); return look(); };
+          const click = async () => { const hd = card().querySelector('.sec-head'); if (hd) hd.click(); await new Promise((r) => setTimeout(r, 300)); return look(); };
           const out = {};
           pick.a = undefined; polku.planner.cards.refresh(); out.heights = look();
           out.folded = await click(); out.opened = await click();
