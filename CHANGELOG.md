@@ -4,6 +4,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### The blue route and LIPAS's routes are easier to tell from the map ([#611](https://github.com/TommiContursi/Polku/issues/611), [#560](https://github.com/TommiContursi/Polku/issues/560))
+
+- Over water, on the Trail map, Plain and Maastokartta, the blue route now has a dark edge instead of a white one, so it stands out from the sea and its marks. On the night map and the aerial photos it keeps its white edge, and a leg over land is as it was.
+- LIPAS's ski tracks, MTB routes, multi-use routes and skating routes on natural ice were pink or violet, close to your magenta route, most of all on the night map. They are now blue-violet, so they read as a different colour from the route. The map key lists LIPAS's ski tracks apart from OpenStreetMap's, which stay pink.
+
+### Paddle no longer asks you to zoom in to see every trail ([#613](https://github.com/TommiContursi/Polku/issues/613))
+
+- In Paddle the **Zoom in to see every trail** hint no longer shows on the map, as Paddle's map isn't about trails. The other sports keep it, and it is back as soon as you change sport.
+
 ### The stretch you pick stands out on the map ([#83](https://github.com/TommiContursi/Polku/issues/83))
 
 - The leg or stretch you open or point at in the planner, and a climb or an item of Check you pick, is now drawn over the route, wider, with a dark edge (a white one on the aerial photos and the night map), and the rest of the route fades while it's lit. You can see at once where it starts and ends. It keeps its leg's colour, blue on the water, and the arrows still show the way.

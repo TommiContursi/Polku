@@ -873,14 +873,29 @@ LIPAS_RIDE = """(async () => {
 })()"""
 
 
+# LIPAS's lines against the route (#560): the route's magenta has a hue of 329°. A pink or a violet line (250°–350°) beside
+# it reads as its family on the night map, where a thin line's white edge makes every colour pale, so the ski tracks (pink)
+# and the violet routes are blue-violet (about 240°), which reads as a different colour
+LIPAS_HUES = """(async () => {
+  const C = await import(location.origin + '/js/config.js');
+  const hue = (hex) => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255), max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+    return d === 0 ? 0 : ((max === r ? (g - b) / d : max === g ? 2 + (b - r) / d : 4 + (r - g) / d) * 60 + 360) % 360; };
+  const route = hue(C.ROUTE_COLORS.route);
+  if (Math.abs(route - 329) > 5) return [`the route's hue is ${Math.round(route)}°, not about 329°`];
+  return Object.entries(C.LIPAS_TYPES).filter(([k, t]) => C.isLipasRoute(k) && hue(t.color) >= 250 && hue(t.color) <= 350)
+    .map(([k, t]) => `${t.name} (${k}) is ${t.color}, hue ${Math.round(hue(t.color))}°: a pink or violet line beside the route's magenta`);
+})()"""
+
+
 def lipas(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/62.4345/25.9026')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(LIPAS_RIDE)
+    fails += pg.js(LIPAS_HUES)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} LIPAS search & ride" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} LIPAS search & ride, and no pink or violet line beside the route" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -1329,6 +1344,52 @@ def water_late(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} water routing when OSM's rocks come late" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Paddle's map (#611, #613). A leg over water has an edge that stands out from the sea at 3:1 (WCAG's non-text contrast),
+# on the light map and on the night map: white is only 1.8:1 against the light map's pale sea. And Paddle has no "Zoom in
+# to see every trail" hint, which the land sports keep: it goes with the sport, at once, in either direction.
+PADDLE_MAP = """(async () => {
+  const errs = [], map = polku.map;
+  const idle = () => new Promise((ok) => { const t = setTimeout(ok, 20000); map.once('idle', () => { clearTimeout(t); ok(); }); });
+  const lum = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  // the edge of a leg over water: a colour, or a case on the leg's mode with the water's colour first (js/style.js)
+  const edge = () => { const c = map.getPaintProperty('route-casing', 'line-color'); return Array.isArray(c) ? c[2] : c; };
+  const seas = [];
+  for (const base of ['trail', 'night']) {
+    if (polku.state.base !== base) { polku.set({ base }); await idle(); }
+    const sea = map.getPaintProperty('water', 'fill-color');
+    seas.push(sea);
+    const r = ratio(edge(), sea);
+    if (r < 3) errs.push(`${base}: a leg over water has a ${edge()} edge on ${sea}, ${r.toFixed(1)}:1, under 3:1`);
+  }
+  if (seas[0] === seas[1]) errs.push(`the sea is ${seas[0]} on both maps: the base map didn't change`);
+  // the hint: shown by the zoom, and by the sport
+  polku.set({ base: 'trail' }); await idle();
+  const hint = document.querySelector('#zoom-hint'), shown = () => hint.getBoundingClientRect().width > 0 && getComputedStyle(hint).visibility !== 'hidden';
+  const zoomed = new Promise((ok) => map.once('zoomend', ok));
+  map.jumpTo({ zoom: 12.5 }); await zoomed; await idle();
+  if (shown()) errs.push('Paddle at zoom 12.5 shows "Zoom in to see every trail"');
+  polku.set({ activity: 'mtb' }); await idle();
+  if (!shown()) errs.push('MTB at zoom 12.5 doesn\\'t show "Zoom in to see every trail", or not at once');
+  polku.set({ activity: 'paddle' }); await idle();
+  if (shown()) errs.push('back in Paddle, "Zoom in to see every trail" stays');
+  return errs;
+})()"""
+
+
+def paddle_map(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'paddle', 'base': 'trail'}, {'polku:plannerDock': '"left"'}, '#12/60.152/24.97')
+        fails = pg.js(PADDLE_MAP, timeout=80000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Paddle's map: a leg over water stands out from the sea, and no hint about trails" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -14726,7 +14787,7 @@ GROUPS = [
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_late], 'the paddling router\'s costs (recorded fairways, a fixed wind), and OSM\'s rocks coming late (mocked)'),
+    ('water', [water, water_late, paddle_map], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late (mocked), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),

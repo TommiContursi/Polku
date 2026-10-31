@@ -1774,6 +1774,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card .insp-row .btn { flex: none; }
 .maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
+body[data-activity="paddle"] #zoom-hint { display: none; } /* (Paddle's map isn't about trails, #613) */
 .card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
 .card-pill { z-index: 5; /* over the map's credits where a narrow screen leaves no room beside them */ display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }
 @media (pointer: coarse) {
