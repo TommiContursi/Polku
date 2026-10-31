@@ -118,7 +118,7 @@ What Polku does that its neighbours don't do together:
 - **Outdoors asks for more:** legible in bright sun, usable while moving, with wet or cold hands and at a glance. Controls in reach of one thumb, forgiving touch targets, the important numbers and warnings easy to read in hard conditions.
 - **Keyboards, screen readers and enlarged text** work on phone and desktop alike, even where their patterns differ. What's done on the map has a practical alternative where possible.
 - **Nothing essential depends on colour, a gesture or the map alone.** Route information is also said in words.
-- **Polku follows the person's settings:** larger text, reduced motion, light or dark, more contrast and reduced transparency (the glass over the map turns solid, as Settings' High contrast makes it).
+- **Polku follows the person's settings:** larger text, reduced motion, light or dark, more contrast and reduced transparency (the glass over the map turns solid, as Settings' High contrast and Fewer effects make it).
 - **Light or dark is the person's choice:** Automatic follows the device and is the default; Light and Dark in Settings set it for Polku alone, on this device, and Match the map makes it dark over the aerial photos and the night map and light over the drawn maps.
 - **Known gaps (2026-10-17):** the page blocks pinch-zoom (`user-scalable=no` in `index.html`), looked at in #73; the top bar may sit under a notch in a home-screen app (#134); taps flash and hover colours stay on phones (#208).
 - The aim is an app that's comfortable and reliable for everyone, not one that only passes an audit.

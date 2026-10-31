@@ -282,7 +282,7 @@ Depth comes from floating over the map: what floats is glass with one soft shado
 
 **The Edge Rule.** Every glass surface has the edge with its shadow (`box-shadow: var(--shadow), var(--edge)`). A ring for a chosen or open state adds to it.
 
-**The Clear Glass Rule.** When the person asks for reduced transparency (`prefers-reduced-transparency`) or more contrast (`prefers-contrast: more`, or Settings' **High contrast**), every glass turns solid (`--surface-solid`, no blur). More contrast also takes the darker grey, heavier lines and the 3:1 rim (`data-contrast` on `<html>`, set as `data-theme` is).
+**The Clear Glass Rule.** When the person asks for reduced transparency (`prefers-reduced-transparency`) or more contrast (`prefers-contrast: more`, or Settings' **High contrast**), or picks Settings' **Fewer effects** (`data-glass="solid"`), every glass turns solid (`--surface-solid`, no blur). More contrast also takes the darker grey, heavier lines and the 3:1 rim (`data-contrast` on `<html>`, set as `data-theme` is).
 
 ## Shapes
 

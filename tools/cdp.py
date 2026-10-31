@@ -264,6 +264,8 @@ class Page:
         self.goto(BASE + 'sw.js')
         items = {'polku:settings': json.dumps(settings or {'activity': 'mtb'})}
         items.update(storage or {})
+        # Polku's offer of Fewer effects when frames are slow (#632) would come up in every test on SwiftShader
+        items['polku:settings'] = json.dumps({'fewerOffered': True, **json.loads(items['polku:settings'])})
         self.js('localStorage.clear(); ' + ''.join(f'localStorage.setItem({json.dumps(k)}, {json.dumps(v)}); ' for k, v in items.items()) + 'true')
         self.goto(BASE + hash_)
         self.map_loaded()

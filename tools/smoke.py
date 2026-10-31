@@ -4070,7 +4070,7 @@ def fit_phone(chrome):
             try:
                 pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': FIT_ROUTER % (0.06, 1500)}, pg.s)
                 pg.goto(BASE + 'sw.js')
-                pg.js("localStorage.clear(); localStorage.setItem('polku:settings', '{\"activity\":\"mtb\"}'); localStorage.setItem('polku:plannerDock', '\"left\"');"
+                pg.js("localStorage.clear(); localStorage.setItem('polku:settings', '{\"activity\":\"mtb\",\"fewerOffered\":true}'); localStorage.setItem('polku:plannerDock', '\"left\"');"
                       f" localStorage.setItem('polku:sheetState', {json.dumps(json.dumps({'sheet': st}))}); true")
                 pg.goto(url)
                 pg.map_loaded()
@@ -7057,6 +7057,72 @@ def appearance(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} Appearance: each choice on both devices from the first paint, the device and the map changing, and Settings by touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Fewer effects (#632): solid panels for a browser that draws Polku slowly. SLOW_FRAMES holds every frame 40 ms while it
+# turns the map, so frames come at about 20 a second, as in a browser that can't keep up.
+SLOW_FRAMES = """(() => { window.__slow = true; const m = polku.map;
+  const f = () => { if (!window.__slow) return; const t = performance.now(); while (performance.now() - t < 40) {} m.jumpTo({ bearing: m.getBearing() + 0.3 }); requestAnimationFrame(f); };
+  requestAnimationFrame(f); return true; })()"""
+LOOK_NOW = """(() => ({ glass: document.documentElement.dataset.glass || 'none', search: getComputedStyle(document.querySelector('.search')).backdropFilter,
+  saved: JSON.parse(localStorage.getItem('polku:settings')), toast: document.querySelector('#toast:not([hidden])')?.textContent || null,
+  on: [...document.querySelectorAll('#settings-body .tg')].find((t) => t.textContent.startsWith('Fewer effects'))?.querySelector('input')?.checked ?? null }))()"""
+
+
+def fewer_effects(chrome):
+    """Frames slower than 30 a second while the map turns: Polku offers Fewer effects once, its action turns the glass
+    solid and saves it, it's set before the first paint after a reload and shows on in Settings, and Settings' switch
+    turns the glass back by touch. A page that has offered it doesn't offer it again."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        def tap(sel, name, text=None):
+            at = pg.js(f"""(() => {{ const b = [...document.querySelectorAll({json.dumps(sel)})].find((e) => !{json.dumps(text)} || e.textContent.startsWith({json.dumps(text)}));
+              if (!b) return null; b.scrollIntoView({{ block: 'nearest' }}); const r = b.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()""")
+            if not at:
+                fails.append(f'{name}: not there')
+                return False
+            pg.tap(*at)
+            time.sleep(0.5)
+            return True
+
+        pg.open_app({'activity': 'mtb', 'fewerOffered': False})
+        r = pg.js(LOOK_NOW)
+        if r['glass'] != 'glass' or r['search'] == 'none':
+            fails.append(f"at first: data-glass {r['glass']}, the search's backdrop {r['search']}")
+        pg.js(SLOW_FRAMES)
+        offered = pg.js("new Promise((ok) => { const t0 = performance.now(), f = () => { const t = document.querySelector('#toast:not([hidden])'); if (t && /slowly/.test(t.textContent)) ok(true); else if (performance.now() - t0 > 20000) ok(false); else setTimeout(f, 100); }; f(); })", timeout=25000)
+        pg.js('window.__slow = false; true')
+        if not offered:
+            fails.append('frames at about 20 a second for 20 s while the map turned: no offer of Fewer effects')
+        elif tap('#toast .toast-act', 'the offer’s action'):
+            r = pg.js(LOOK_NOW)
+            if r['glass'] != 'solid' or r['search'] != 'none' or (r['saved'].get('fewerEffects'), r['saved'].get('fewerOffered')) != (True, True):
+                fails.append(f"Use fewer effects: data-glass {r['glass']}, the search's backdrop {r['search']}, saved {r['saved'].get('fewerEffects')} offered {r['saved'].get('fewerOffered')}")
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': THEME_LOG.replace('theme', 'glass').replace('Theme', 'Glass')}, pg.s)
+        pg.reload()
+        r = pg.js(LOOK_NOW)
+        if r['glass'] != 'solid' or pg.js('window.__glassLog') != ['solid', '<body>']:
+            fails.append(f"after a reload: data-glass {r['glass']}, set {pg.js('window.__glassLog')} from the start, not solid before <body> and nothing after")
+        tap('#btn-settings', 'Settings')
+        tap('#settings-body [data-group="settings-display"] > summary', 'Display')
+        if pg.js(LOOK_NOW)['on'] is not True:
+            fails.append('after a reload: Settings’ Fewer effects is off')
+        if tap('#settings-body .tg', 'Fewer effects', 'Fewer effects'):
+            r = pg.js(LOOK_NOW)
+            if r['glass'] != 'glass' or r['search'] == 'none' or r['saved'].get('fewerEffects') is not False or r['on'] is not False:
+                fails.append(f"Fewer effects off by touch: data-glass {r['glass']}, the search's backdrop {r['search']}, saved {r['saved'].get('fewerEffects')}, the switch {r['on']}")
+        pg.js("document.querySelector('#settings-panel .panel-close').click(); true")
+        pg.js(SLOW_FRAMES)
+        time.sleep(12)
+        pg.js('window.__slow = false; true')
+        if pg.js(LOOK_NOW)['toast']:
+            fails.append(f"offered once already: slow frames brought {pg.js(LOOK_NOW)['toast']!r}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Fewer effects: offered once when frames are slow, the glass solid and saved, set before the first paint, and Settings' switch by touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -15561,6 +15627,7 @@ GROUPS = [
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),

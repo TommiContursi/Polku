@@ -48,6 +48,8 @@ const DEFAULTS = {
   trailColors: 'down',
   appearance: 'auto', // Settings → Appearance: 'auto' (the device's), 'light', 'dark' or 'map' (Match the map, #323)
   highContrast: false,
+  fewerEffects: false, // Settings → Fewer effects: solid panels instead of the glass over the map (#330, #632)
+  fewerOffered: false, // Polku has offered Fewer effects on this device, once, as frames were slow
   hillshade: true,
   contours: true,
   terrain3d: false,
@@ -238,10 +240,12 @@ const deviceDark = matchMedia('(prefers-color-scheme: dark)'), deviceMore = matc
 function applyTheme() {
   const root = document.documentElement, contrast = state.highContrast || deviceMore.matches ? 'more' : 'normal';
   const a = state.appearance, theme = (a === 'auto' ? deviceDark.matches : a === 'map' ? mapDark() : a === 'dark') ? 'dark' : 'light';
-  if (root.dataset.contrast === contrast && root.dataset.theme === theme) return;
+  const glass = state.fewerEffects ? 'solid' : 'glass';
+  if (root.dataset.contrast === contrast && root.dataset.theme === theme && root.dataset.glass === glass) return;
   // the new look everywhere at once: drawn once with no transitions, so no button fades behind the panels
   root.classList.add('restyle');
   root.dataset.contrast = contrast;
+  root.dataset.glass = glass;
   if (root.dataset.theme !== theme) { // (a write redraws the map: palette.js)
     root.dataset.theme = theme;
     $('meta[name="theme-color"]').content = theme === 'dark' ? '#181c1a' : '#1f6f4a';
@@ -251,6 +255,41 @@ function applyTheme() {
 }
 deviceDark.addEventListener('change', applyTheme);
 deviceMore.addEventListener('change', applyTheme);
+
+// Polku offers Fewer effects once on this device when it draws slowly here (#632): over 3 s of frames timed while the
+// map moves or something scrolls, more than half of it in frames slower than 30 a second. A gap over 1 s (a hidden
+// tab, a style loading) doesn't count, and a shorter long task alone can't fill half of it. Rows a browser draws late as they scroll in don't slow the frames: this can't see those.
+{
+  let moved = 0, slow = 0, last = 0, until = 0, raf = 0;
+  const frame = (t) => {
+    const d = t - last;
+    if (last && d < 1000) { moved += d; if (d > 34) slow += d; }
+    last = t;
+    if (moved >= 3000) {
+      if (slow > moved / 2 && !state.fewerEffects && !state.fewerOffered) {
+        state.fewerOffered = true;
+        saveSettings();
+        toast('Polku is drawing slowly in this browser.', { ms: 12000, action: { label: 'Use fewer effects', fn: () => setFewerEffects(true) } });
+      }
+      moved = slow = 0;
+    }
+    if (performance.now() < until) raf = requestAnimationFrame(frame);
+    else raf = last = 0;
+  };
+  const moving = () => {
+    if (state.fewerEffects || state.fewerOffered) return;
+    until = performance.now() + 300;
+    if (!raf) raf = requestAnimationFrame(frame);
+  };
+  map.on('move', moving);
+  addEventListener('scroll', moving, { capture: true, passive: true });
+}
+function setFewerEffects(on) {
+  state.fewerEffects = on;
+  applyTheme();
+  saveSettings();
+  if (!$('#settings-panel').hidden) renderSettingsPanel();
+}
 
 function applyStyle() {
   applyTheme(); // (the base map may have changed: Match the map)
@@ -1561,9 +1600,9 @@ function renderSettingsPanel() {
     h('p', { class: 'note' }, 'Automatic follows your device. Match the map is dark over the aerial photos and the night map, and light over the rest. Kept on this device only.'),
     comingChoice('Text and buttons', ['Standard', 'Smaller', 'Larger']),
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails, solid panels and darker grey words, for bright sunlight'),
-    comingToggle('Colours for colour blindness', 'Difficulty, the profile and warnings in colours that stay apart'),
+        comingToggle('Colours for colour blindness', 'Difficulty, the profile and warnings in colours that stay apart'),
     comingToggle('Less motion', 'Panels appear without sliding; the route’s arrows stand still'),
-    comingToggle('Fewer effects', 'No glass or shadows, for slower phones')));
+    toggle('Fewer effects', state.fewerEffects, setFewerEffects, 'Solid panels instead of the see-through glass, for a phone or browser that scrolls or moves the map slowly')));
 
   p.append(group('language', 'Language and units',
     comingChoice('Language', ['Automatic', 'English', 'Suomi', 'Svenska']),
