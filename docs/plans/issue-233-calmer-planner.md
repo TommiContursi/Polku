@@ -718,8 +718,37 @@ A preset with the user's leaning, which the page opens on:
 - **C:** a flick of one stop, 0.99, the start's views resisting, and the marks.
 - **D:** the sheet scrolls as one.
 
-It decides nothing until the user chooses.
+**Chosen on 2026-10-30:** the leaning, built as below ("The sheet's stops, built"), the desktop's side panel scrolling as one too.
 
 **Not in it:** cards (#574), the weather card (part 2), building it in the app.
 
 **Not checked:** the feel on a real iPhone or Android phone, Safari, VoiceOver and TalkBack on ⌃ and ⌄. The mock-up was tried in headless Chrome (`tools/cdp.py`), at every size above, its swipes by touch and ⌃ and ⌄ by a script's click, with the browser pane hidden. A mouse drag on the desktop's bottom dock wasn't tried. Headless Chrome draws about a frame every 0.6 s, so springs were judged by where they came to rest, not by eye.
+
+### The sheet's stops, built (2026-10-30)
+
+The user's leaning, as [the work package](https://github.com/TommiContursi/Polku/issues/233#issuecomment-6523500922) has it, with #586, #597 and #598.
+- **B:** the planner's sizes are its line, the peek, half and full. The profile size is gone from the code (`SHEET_STATES`, its CSS, `--profile-h`): what asked for it (the handle's tap from the peek, the profile's section, a stretch's On the profile) asks for half, and a size remembered as the profile size opens at half.
+- **C:** a flick moves one stop, to the next one past where it's let go; deceleration 0.99 for every sheet (`SWIPE.decel`, shared with the quick layer drawer and the phone's Layers panel); the start's views resist above their peek; the marks while dragging, a tick at each stop and the named line at the stop a release now would go to (`ride.to`).
+- **#586:** every stop is measured as it will rest. The key facts' line steps aside only at the peek, the peek counts the toolbox as the peek has it, docked or floating, from any size, and it counts the row of what to read, which goes above the peek while Check or the list says it. Today's jumps were from full on a phone (the toolbox docked, the key facts' line away), and from the line at 360 px and 200 % (the toolbox floating over the line, docked into the peek).
+- **D:** at half and full on a phone (720 px wide or less) the whole sheet scrolls as one (`.scroll-all`), the top row staying over what scrolls and taking the numbers and the route's name once they've scrolled under it; a finger on the numbers scrolls (#597), the top row stays over the docked toolbox (#598) and moves the sheet. **The desktop's side panel** scrolls as one too, when it's open (the user's choice, 2026-10-30): its top row lies over its top once the numbers have scrolled away, with the name on a line of its own, the numbers and ⌄. Its resize grip, which reached 7 px past the panel's edge, is now beside the panel rather than in it, so the scrolling panel neither clips it nor scrolls it away.
+- **A:** with a mouse or trackpad, ⌃ beside ⌄ in a narrow window's top row and the bottom dock's header row, each one size (`stepSheet()`, which the handle's arrows use too); ⌄ from the peek folds, ⌃ is dimmed at full. By touch and over a card, ⌄ folds at once.
+- **Found on the way:** with the sheet scrolled as one, a drag on the handle used to be handed to the browser, which may not pan there, so it did nothing (200 % at full, scrolled). `js/sheet.js` now never hands over where `touch-action` is `none`. The routing bar is sticky on the sheet's top edge where it scrolls, and a card closed finds the list's scroll in the sheet (`listScroller()`).
+- **The mock-up** runs against `main` at 894d6a7. Its option frame expects the profile size and wraps `scrollAll()`, so on later commits it no longer draws the options; it isn't rebuilt.
+- **Checks:** `python3 tools/smoke.py sheetstops` (390 × 844, 360 × 740, 200 % and the bottom dock by mouse for #586; flicks, a quick release, the marks and the start by touch; D by touch at 390 × 844 and 200 %, and on the side panel by mouse, with its grip; ⌃ and ⌄ by mouse at 700 × 844 and the bottom dock, and none by touch; a card's stops by touch at 390 × 844 and 360 × 740, with ↑ and ↓, a short card and a card over the planner's start), with the profile size's checks in `fold`, `quick`, `warnfix`, `loops`, `winterroute`, `panels`, `tabs`, `button3d` and the sizes moved to half.
+- **The motion review (/review-animations, 2026-10-30)** found four things, all fixed:
+  - A sheet scrolled as one, swiped down to the peek, landed showing the list and then jumped to its top. Its content now scrolls back in step with the spring.
+  - Tapped down, the content snapped to the top. The peek hides the list at once, so it can't scroll back with the move; the numbers fade in where the list was instead.
+  - With 0.99 the drawers no longer closed on a medium swipe down. A drawer let go moving down faster than 0.11 px/ms, pulled below its size, closes now: Emil Kowalski's momentum dismissal.
+  - The marks flashed on every flick. They now fade in only once a drag has lasted `--t-open`.
+- **Codex's review:** a tab or a step reset the whole sheet to its top where it scrolls as one, which at 200 % took the tab out of sight. It now opens at its start (`listToTop()`).
+- **A card's stops (the user's ask, 2026-10-30):** a long card opened at nearly half (471 px at 390 × 844, half 422), so its peek and half were the same stop. A card now has the planner's stops, each no taller than the card:
+  - its peek no taller than the planner's peek with a route (194 px at 390 × 844, 251 at 360 × 740), nor 52 % of the window; before the planner has had a route, its name and numbers, as the planner's peek has the route's (a share of the screen was tried: at 200 % a long Finnish name ran out of a third of it);
+  - half, then full, each as tall as the card at most; a card that fits in less has its own height alone;
+  - a finger on the card itself moves the sheet at its peek and, dragged, shows the card whole; at half and full the card scrolls first. A mouse still moves it by its top row only. Decided with /animate: no new motion, the swipe's own spring.
+  - Measured from what the card holds rather than the header, it also opens in sight over the planner's start, where the header shrank to the sheet's height and the card opened under the screen's edge (#606).
+  - At 200 % the card's peek (251 px, 52 % of the window) is above half (211 px), so a card there has its line, its peek and full, as the planner has no half there either.
+- **The motion review of a card's stops (/review-animations, 2026-10-31), fixed:**
+  - Dragged from half, a scrolled card grew to its whole height and its content jumped 120 px down as the finger started (at 390 × 844). Dragged, a card now shows itself from where it's scrolled to its end, so its content stays under the finger and the sheet is never empty under it (decided with /animate and the apple-design skill: touch and content move together). Let go, it scrolls back in step with the spring: to its top at the peek, and at half and full no further than it scrolls there.
+  - ↓ from half left the card's peek scrolled, its name out of sight where a finger can't scroll it back. At its peek or line a card is at its top: at once from the keyboard, fading in over `--t-open` from ⌄ by mouse, as the planner's numbers do.
+  - Found on the way: where the planner's peek has no key facts' line (a source that hasn't answered), a card's peek cut its numbers. It's never shorter than the card's name and numbers now.
+- **Not checked:** a real phone (iPhone, Android), Safari, VoiceOver and TalkBack on ⌃ and ⌄, and the feel of 0.99 and the marks by hand.

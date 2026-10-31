@@ -10,7 +10,8 @@
 // - The sheet follows the finger 1:1 with transform (the caller changes its real size once, at the
 //   end); past its first or last size it resists (rubber band) instead of stopping dead.
 // - On release it aims for where a flick would come to rest (Apple's projection) and goes to the
-//   size nearest that; a quick flick moves at least one size in its direction.
+//   size nearest that; a quick flick moves at least one size in its direction. While the finger holds it, ride.to is
+//   where a release now would go.
 // - It settles with a spring that starts at the finger's speed, and can be grabbed again mid-way.
 // - Reduced motion: the sheet still follows the finger, but sizes change without travel.
 
@@ -19,8 +20,9 @@
 export const SWIPE = {
   start: 10, // px the finger moves before the sheet follows
   flick: 1.1, // px/ms: a release at least this fast is a flick
-  decel: 0.998, // deceleration per ms, for where a flick would come to rest
+  decel: 0.99, // deceleration per ms, for where a flick would come to rest: Apple's faster one, so a slow release lands near the finger (#233's sheet's stops)
   closeAt: 0.4, // a sheet that closes by a swipe does so past this share of its height
+  dismiss: 0.11, // px/ms: …or let go moving down at least this fast, pulled below its size (a drawer's momentum dismissal)
   damping: 0.85, // the spring's damping ratio (1: no bounce)
   response: 0.3, // the spring's response, s
   rubber: 0.55, // resistance past the first and last size
@@ -56,9 +58,10 @@ const own = (t, type) => !!t.closest('input[type=range], [contenteditable=""], [
  *                     { H: its height during the drag, now: the visible height now, from: the size it's at,
  *                       sizes: [{ name, at, rest }] lowest first (rest: where it settles, if not at),
  *                       min, max: the range it moves freely (rubber band outside) }
- *  pick(aim, ride)    optional: the size for a release that would come to rest at aim; default the nearest
+ *  pick(aim, ride, v) optional: the size for a release at v px/ms (+ up) that would come to rest at aim; default the nearest
  *  aim(name, ride)    optional: on release, before the spring (a view that changes at once)
- *  moved(v, ride)     optional: the sheet is at visible height v now, under the finger or the spring (a cross-fade)
+ *  moved(v, ride)     optional: the sheet is at visible height v now, under the finger or the spring (a cross-fade);
+ *                     under the finger, ride.to is the size a release now would go to
  *  end(name, ride)    it has come to rest at that size; the transform is cleared just before
  *  cancel(ride)       stopped from outside (stop()), mid-way
  * Returns { stop(), busy }.
@@ -70,10 +73,14 @@ export function swipeSheet(el, o) {
   let quietUntil = 0; // the click that may follow a drag isn't a tap
 
   const place = (v) => { ride.v = v; el.style.transform = `translateY(${ride.H - v}px)`; if (o.moved) o.moved(v, ride); };
-  // what scrolls under the finger: a body in the sheet, or the sheet itself where it scrolls as one (the planner at 200 %)
+  // what scrolls under the finger: a body in the sheet, or the sheet itself where it scrolls as one (the planner's, on a
+  // phone); none where the browser may not pan it up and down (touch-action without pan-y: the planner's top row, which
+  // stays as it scrolls, and a card at its peek, which a finger moves rather than scrolls)
   const scroller = (t) => {
     for (let n = t; n; n = n === el ? null : n.parentElement) {
-      if (n.scrollHeight > n.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(n).overflowY)) return n;
+      const cs = getComputedStyle(n);
+      if (!/auto|pan-y|manipulation/.test(cs.touchAction)) return null;
+      if (n.scrollHeight > n.clientHeight + 1 && /auto|scroll/.test(cs.overflowY)) return n;
     }
     return null;
   };
@@ -127,7 +134,9 @@ export function swipeSheet(el, o) {
       try { el.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
     }
     const want = g.base - dy;
-    place(want > ride.max ? ride.max + rubber(want - ride.max, ride.H) : want < ride.min ? ride.min - rubber(ride.min - want, ride.H) : want);
+    ride.v = want > ride.max ? ride.max + rubber(want - ride.max, ride.H) : want < ride.min ? ride.min - rubber(ride.min - want, ride.H) : want;
+    ride.to = landing(speed(e.timeStamp)).name;
+    place(ride.v);
   });
 
   const up = (e) => {
@@ -152,16 +161,21 @@ export function swipeSheet(el, o) {
     if (performance.now() < quietUntil) { e.stopPropagation(); e.preventDefault(); }
   }, true);
 
-  function release(v) {
+  // where a release at v px/ms from here goes
+  function landing(v) {
     const S = ride.sizes, aim = ride.v + project(v);
     const at = (name) => Math.max(0, S.findIndex((s) => s.name === name));
-    let i = o.pick ? at(o.pick(aim, ride)) : S.reduce((b, s, k) => (Math.abs(s.at - aim) < Math.abs(S[b].at - aim) ? k : b), 0);
+    let i = o.pick ? at(o.pick(aim, ride, v)) : S.reduce((b, s, k) => (Math.abs(s.at - aim) < Math.abs(S[b].at - aim) ? k : b), 0);
     const i0 = at(ride.from);
     if (Math.abs(v) >= SWIPE.flick) { // a flick: where it would come to rest, and at least one size its way
       if (v < 0 && i >= i0) i = Math.max(0, i0 - 1);
       if (v > 0 && i <= i0) i = Math.min(S.length - 1, i0 + 1);
     }
-    const to = S[i];
+    return S[i];
+  }
+
+  function release(v) {
+    const to = landing(v);
     if (o.aim) o.aim(to.name, ride);
     if (ride) settle(to, v); // (unless the change it made stopped the swipe: then it has gone already)
   }
