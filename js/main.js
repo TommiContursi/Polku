@@ -1728,7 +1728,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
   for (const el of $$('.panel')) {
     const on = el.id === id && (el.hidden || step);
     el.hidden = !on;
-    el.classList.toggle('instant', on && instant);
+    el.classList.toggle('instant', instant); // (opening or closing: a phone's Settings slides only for a finger)
     if (on && step) { el.classList.add('step-in'); el.addEventListener('animationend', () => el.classList.remove('step-in'), { once: true }); }
     const btn = $(`[data-panel="${el.id}"]`);
     if (btn) btn.setAttribute('aria-pressed', String(on));
@@ -1746,7 +1746,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
 }
 // a button pressed from the keyboard (detail 0) opens its panel at once
 for (const btn of $$('[data-panel]')) btn.addEventListener('click', (e) => openPanel(btn.dataset.panel, { instant: e.detail === 0 }));
-for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', () => openPanel(null));
+for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', (e) => openPanel(null, { instant: e.detail === 0 }));
 $('#layers-panel .panel-back').addEventListener('click', () => openPanel('quick-layers', { back: true }));
 
 for (const b of $$('#btn-plan, #btn-plan-search')) b.addEventListener('click', () => planner.setActive(!planner.active));
@@ -1831,7 +1831,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') {
     if (layersEscape()) return;
     if (planner.cards.escape()) return; // a card: one back (from the first, closed); Move: cancelled
-    openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
+    openPanel(null, { instant: true }); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
   }
 });
 

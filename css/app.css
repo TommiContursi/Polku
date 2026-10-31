@@ -2072,7 +2072,7 @@ body.dropping .drop-hint { display: flex; }
   #layers-panel.dragging, .qd.dragging { user-select: none; }
   #layers-panel .panel-head { padding-top: 2px; }
   /* Settings is a drawer too (#634): up from the bottom as the quick drawer comes, as tall as it holds up to the top bar,
-     down by a swipe (js/sheet.js), ✕ or a tap on the map, the way it came; from the keyboard at once (.instant) */
+     down by a swipe (js/sheet.js), ✕ or a tap on the map, the way it came; from the keyboard, in and out at once (.instant) */
   #settings-panel {
     z-index: 12; left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: calc(100% - 64px);
     padding-bottom: env(safe-area-inset-bottom, 0px); border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2), var(--edge);
@@ -2090,6 +2090,7 @@ body.dropping .drop-hint { display: flex; }
   #settings-panel, #settings-panel[hidden] { transition: opacity 150ms ease, display 150ms allow-discrete; }
   @starting-style { #settings-panel:not([hidden]) { opacity: 0; transform: none; } }
   #settings-panel[hidden] { opacity: 0; transform: none; }
+  #settings-panel.instant, #settings-panel.dragging { transition: none; }
 }
 /* short phones (phase 24): under 760 px high the maps, tiles and headings come closer, so the map you're
    changing stays in view (58 % of a 360 × 740 screen, 62 % of a 375 × 667 one) */

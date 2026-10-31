@@ -7771,6 +7771,18 @@ def panels(chrome):
             after = pg.js(SHEET_STATE)
             if not pg.js("document.querySelector('#settings-panel').hidden && document.querySelector('#quick-scrim').hidden"):
                 fails.append('390x844, Settings open, a tap on the map above it: Settings or its scrim still there')
+            # from the keyboard it closes at once, as it opens: Escape, and Enter on its ✕
+            for key, how in (('Escape', 'Escape'), ('Enter', 'Enter on its ✕')):
+                pg.tap(*centre('#btn-settings'))
+                time.sleep(0.4)
+                if key == 'Enter':
+                    pg.js("document.querySelector('#settings-panel .panel-close').focus(); true")
+                for kind in ('keyDown', 'keyUp'):
+                    pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': key, 'code': key, 'windowsVirtualKeyCode': 27 if key == 'Escape' else 13, **({'text': '\r'} if key == 'Enter' and kind == 'keyDown' else {})}, pg.s)
+                shown = pg.js("new Promise((ok) => requestAnimationFrame(() => ok(getComputedStyle(document.querySelector('#settings-panel')).display)))")
+                if shown != 'none':
+                    fails.append(f'390x844, Settings closed by {how}: still drawn ({shown}) a frame later, not at once')
+                time.sleep(0.3)
             if after['st'] != before['st'] or abs(after['h'] - before['h']) > 1:
                 fails.append(f"390x844, Settings swiped and tapped away: the planner {after['st']} {after['h']:.0f} px, not {before['st']} {before['h']:.0f} px")
         fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
