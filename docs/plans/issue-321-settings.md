@@ -24,16 +24,16 @@ Settings holds how Polku behaves. The map's choices stay in Layers, and the rout
 
 | Preference | Where it is today | Proposal |
 |---|---|---|
-| Speeds per sport, paddle craft | Settings, and the planner's How you go | Settings → Your sports (both stay, #87) |
-| The five quick tiles per sport | The Layers drawer's Edit | Also in Your sports, a sport's row; the drawer keeps Edit |
+| Speeds per sport, paddle craft | Settings, and the planner's How you go | Settings → Speeds and tiles by sport (both stay, #87) |
+| The five quick tiles per sport | The Layers drawer's Edit | Also in Speeds and tiles by sport, a sport's row; the drawer keeps Edit |
 | Appearance, High contrast | Settings → Display | Stay |
-| Moving arrows on the route | Settings → Display | → Your route on the map |
-| Distance marks, arrival times, elapsed time | Check › On the map | → Your route on the map; Check's section goes |
+| Moving arrows on the route | Settings → Display | → Route arrows and marks |
+| Distance marks, arrival times, elapsed time | Check › On the map | → Route arrows and marks; Check's section goes |
 | Details on hover, Trackpad rotates & tilts | Settings → Display | → Map and planner |
 | 3D height (exaggeration) | Layers, under 3D terrain | → Map and planner; 3D on or off stays in Layers |
 | The planner's place (desktop) | Settings, the planner's button and ⋯ | Map and planner; the planner keeps its button |
-| Heads-up kinds you've hidden | The end of Check | Also Settings → Hidden in Check (#143); Check keeps its list |
-| Recent searches | Search, kept with no way to clear | Settings → On this device: Clear (new, small) |
+| Heads-up kinds you've hidden | The end of Check | Also Settings → Hidden Heads-up (#143); Check keeps its list |
+| Recent searches | Search, kept with no way to clear | Settings → Saved on this device: Clear (new, small) |
 | Routing server, MML key | Settings, their own sections | Inside Data sources |
 | What's new | Settings, first | About Polku, last |
 | Winter: Auto, On, Off | Layers → Winter | Stays: it only decides what Winter's layers show |
@@ -44,20 +44,20 @@ Settings holds how Polku behaves. The map's choices stay in Layers, and the rout
 
 ## The groups, in order
 
-1. **Your sports:** each sport's speeds and its five Layers tiles.
+1. **Speeds and tiles by sport:** each sport's speeds and its five Layers tiles.
 2. **Display:** Appearance, High contrast; planned: text and buttons as Smaller, Standard or Larger (#325;
    Smaller is new, for a denser desktop), colours for colour blindness (#324), less motion (#327), fewer
    effects (#330).
 3. **Language and units:** planned: language, Automatic (the device's), English, Suomi or Svenska (#184), and
    units (#326).
-4. **Your route on the map:** moving arrows, distance marks, arrival and elapsed times; planned: trails show
+4. **Route arrows and marks:** moving arrows, distance marks, arrival and elapsed times; planned: trails show
    through the route (#199).
 5. **Map and planner:** a row that opens Layers (the base map, trails, 3D, the timeline and weather on the map
    stay there, and this is where someone looking for them in Settings finds the way), 3D height, details on hover, trackpad, the planner's place on a desktop; planned: turning
    the map with two fingers (#328), when Polku opens, where you left off or a fresh start (#329), keeping the screen on (#331).
-6. **Hidden in Check:** each hidden kind with Show again (#143).
+6. **Hidden Heads-up:** each hidden kind with Show again (#143).
 7. **Offline maps:** as today.
-8. **On this device:** what Polku keeps here, Clear recent searches; planned: export and import (#282), reset
+8. **Saved on this device:** what Polku keeps here, Clear recent searches; planned: export and import (#282), reset
    settings (#332).
 9. **Strava and Garmin:** planned (#188): connect each, optional, with what it's for. Not a button of its own
    beside ⚙: it's set up once, and the top bar has no room on a phone. Where they're used (send a route to

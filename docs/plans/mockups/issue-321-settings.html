@@ -347,7 +347,7 @@ function groups(P, desk) {
   speeds.querySelectorAll('.speed-sport-row').forEach((r) => { r.dataset.tiles = (tiles[r.dataset.k] || tiles.mtb).join(', '); });
   const head = (name, n) => `<div class="tg-text"><span>${name} ${planned(n)}</span></div>`;
   return [
-    { id: 'sports', title: 'Your sports', html: speeds.outerHTML +
+    { id: 'sports', title: 'Speeds and tiles by sport', html: speeds.outerHTML +
       `<p class="note">Each sport's speeds time your route, and so decide the weather you meet on the way. Its five tiles are the ones Layers shows for it. Kept on this device only.</p>` },
     { id: 'display', title: 'Display', html: P.appearance +
       soon(head('Text and buttons', 325) + seg(['Smaller', 'Standard', 'Larger'], 'Standard', 'Text and buttons')) +
@@ -358,7 +358,7 @@ function groups(P, desk) {
     { id: 'lang', title: 'Language and units', html:
       soon(head('Language', 184) + seg(['Automatic', 'English', 'Suomi', 'Svenska'], 'Automatic', 'Language')) +
       soon(head('Units', 326) + seg(['Metric', 'Imperial'], 'Metric', 'Units')) },
-    { id: 'route', title: 'Your route on the map', html: P.arrows +
+    { id: 'route', title: 'Route arrows and marks', html: P.arrows +
       tg('Distance marks', 'Every 1, 5, 10 or 25 km, by the route\'s length', true) +
       tg('Arrival times at marks', 'The clock time you reach each mark', true) +
       tg('Elapsed time at marks', 'From departure, with stops and changeovers', true) +
@@ -371,11 +371,11 @@ function groups(P, desk) {
       soon(head('When Polku opens', 329) + seg(['Where you left off', 'A fresh start'], 'Where you left off', 'When Polku opens')) +
       soon(tg('Keep the screen on while following', 'Only while Follow me is on', false, '', planned(331))) +
       (desk ? `<div class="tg-text">Route planner</div>${P.planner.querySelector('.seg').outerHTML}` : '') },
-    { id: 'hidden', title: 'Hidden in Check', html:
+    { id: 'hidden', title: 'Hidden Heads-up', html:
       rows(row(EYE_OFF, 'Steps', '', 'Show again'), row(EYE_OFF, 'Gates and barriers', '', 'Show again')) +
       `<p class="note">A Heads-up row's ⋯ hides a kind you don't need.</p>` },
     { id: 'offline', title: 'Offline maps', html: P.offline },
-    { id: 'device', title: 'On this device', html:
+    { id: 'device', title: 'Saved on this device', html:
       rows(row(I.search, 'Recent searches', '6 places', 'Clear'),
         row(I.download, 'Export a copy', 'Your route, settings and places, as a file', '', planned(282)),
         row(I.upload, 'Import a copy', 'From another device', '', planned(282)),
