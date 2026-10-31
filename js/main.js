@@ -652,9 +652,9 @@ new ResizeObserver(fitColumn).observe($('#map-ctrls'));
 map.on('rotateend', fitColumn);
 $('#planner').addEventListener('sheetrest', syncPlannerPadding);
 
-// On a phone Settings sits above the planner's sheet while that leaves it 320 px under the top bar, as the
-// quick layers do above a bottom planner on a desktop; with less (a full sheet, a short or turned phone) it
-// covers the sheet instead (#240). The sheet keeps its size either way.
+// On a desktop with the planner at the bottom, Settings and All layers sit above it while that leaves them 320 px under
+// the top bar, as the quick layers do; with less they cover it instead (#257). The planner keeps its size either way.
+// On a phone both are drawers of their own (#634), which this doesn't move.
 function placePanels() {
   const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
   document.body.classList.toggle('panels-over', sheet > 0 && innerHeight - sheet - 12 - 64 < 320); // (a phone's sheet, a desktop's bottom planner: #257)
@@ -1524,6 +1524,19 @@ const lpSwipe = swipeSheet($('#layers-panel'), {
   cancel: () => $('#layers-panel').classList.remove('dragging'),
 });
 
+// Settings on a phone is a drawer too (#634): down past 40 %, or let go moving down, closes it; there's nothing above it
+const spSwipe = swipeSheet($('#settings-panel'), {
+  enabled: () => phoneMQ.matches && !$('#settings-panel').hidden,
+  start: () => {
+    const sp = $('#settings-panel'), H = sp.offsetHeight;
+    sp.classList.add('dragging');
+    return { H, now: H, min: 0, max: H, from: 'open', sizes: [{ name: 'closed', at: 0 }, { name: 'open', at: H }] };
+  },
+  pick: (aim, r, v) => (aim < r.H * (1 - SWIPE.closeAt) || (v <= -SWIPE.dismiss && r.v < r.H) ? 'closed' : 'open'),
+  end: (name) => { $('#settings-panel').classList.remove('dragging'); if (name === 'closed') openPanel(null, { instant: true }); },
+  cancel: () => $('#settings-panel').classList.remove('dragging'),
+});
+
 // Esc steps back (a tile's settings, Edit, the full panel), then closes, with focus back on Layers
 function layersEscape() {
   if (quickOpen() && quickView !== 'quick') { quickStep('quick'); return true; }
@@ -1534,8 +1547,10 @@ function layersEscape() {
 for (const el of $$('#quick-layers, #layers-panel')) el.addEventListener('keydown', (e) => { if (e.key === 'Escape' && layersEscape()) { e.preventDefault(); e.stopPropagation(); } });
 // a tap on the map closes the phone sheet, and does nothing else (no waypoint while planning)
 $('#quick-scrim').addEventListener('click', () => openPanel(null));
+// the scrim under a phone's drawer: Layers' or Settings'
+const syncScrim = () => { $('#quick-scrim').hidden = !((layersOpen() || !$('#settings-panel').hidden) && phoneMQ.matches); };
 phoneMQ.addEventListener('change', () => {
-  $('#quick-scrim').hidden = !(layersOpen() && phoneMQ.matches);
+  syncScrim();
   $('#quick-layers').setAttribute('aria-modal', String(phoneMQ.matches));
   if (quickOpen()) placeQuick();
 });
@@ -1708,10 +1723,11 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
   const focusSettings = $('#settings-panel').contains(document.activeElement);
   if (id === 'quick-layers' && wasLayers && !back) id = null;
   lpSwipe.stop();
+  spSwipe.stop();
   for (const el of $$('.panel')) {
     const on = el.id === id && (el.hidden || step);
     el.hidden = !on;
-    el.classList.toggle('instant', on && instant);
+    el.classList.toggle('instant', instant); // (opening or closing: a phone's Settings slides only for a finger)
     if (on && step) { el.classList.add('step-in'); el.addEventListener('animationend', () => el.classList.remove('step-in'), { once: true }); }
     const btn = $(`[data-panel="${el.id}"]`);
     if (btn) btn.setAttribute('aria-pressed', String(on));
@@ -1720,7 +1736,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
   showQuick(id === 'quick-layers', { instant: instant || step || back, back });
   const lay = layersOpen();
   $('#btn-layers').setAttribute('aria-expanded', String(lay));
-  $('#quick-scrim').hidden = !(lay && phoneMQ.matches);
+  syncScrim();
   if (id === 'quick-layers' && !back) $('#quick-layers .qd-base[tabindex="0"]')?.focus({ preventScroll: true });
   else if (back) $('#quick-layers .qt-more')?.focus({ preventScroll: true });
   else if (step && id === 'layers-panel') $('#layers-panel .panel-back')?.focus({ preventScroll: true });
@@ -1729,7 +1745,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
 }
 // a button pressed from the keyboard (detail 0) opens its panel at once
 for (const btn of $$('[data-panel]')) btn.addEventListener('click', (e) => openPanel(btn.dataset.panel, { instant: e.detail === 0 }));
-for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', () => openPanel(null));
+for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', (e) => openPanel(null, { instant: e.detail === 0 }));
 $('#layers-panel .panel-back').addEventListener('click', () => openPanel('quick-layers', { back: true }));
 
 for (const b of $$('#btn-plan, #btn-plan-search')) b.addEventListener('click', () => planner.setActive(!planner.active));
@@ -1814,7 +1830,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') {
     if (layersEscape()) return;
     if (planner.cards.escape()) return; // a card: one back (from the first, closed); Move: cancelled
-    openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
+    openPanel(null, { instant: true }); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
   }
 });
 
