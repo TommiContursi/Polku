@@ -15618,7 +15618,7 @@ PICK_STATE = """(() => {
     legend: box ? [...box.querySelectorAll('.bd-legend .bd-item')].map((e) => [e.querySelector('span').textContent.trim(), e.querySelector('b').textContent]) : [],
     chart: c && c.chart ? { mode: c.chart.mode, same: c.chart.a === pick.a, shown: !!box.querySelector('canvas.pick-chart') } : null,
     rows: box ? [...box.querySelectorAll('.pick-facts .insp-row')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent]) : [],
-    drawn: polku.map.getSource('pick') ? polku.map.querySourceFeatures('pick').length : 0 };
+    drawn: polku.map.getSource('pick') ? polku.map.querySourceFeatures('pick').length : 0, outline: polku.map.getSource('pickArea') ? polku.map.querySourceFeatures('pickArea').length : 0 };
 })()"""
 
 
@@ -15629,13 +15629,13 @@ def pick_card(chrome):
     def state(pg):
         return pg.js(PICK_STATE)
 
-    def tap(pg, ll, want=('in', 'in'), secs=40, right=False):
+    def tap(pg, ll, want=('in', 'in'), secs=40, right=False, on='^(path|track|cycleway|road)-'):
         """A click (or a right-click: a hold) at a spot of the map, then until the ways and the heights are in (or the time is up)."""
-        # (the map there drawn: a way of the map's own under the spot, or 20 s)
+        # (the map there drawn: a layer `on` under the spot, a way of the map's own unless said, or 20 s)
         s = pg.js(f"""(async () => {{
           polku.planner.cards.close(); polku.map.jumpTo({{ center: {json.dumps(ll)}, zoom: 16.5 }});
           const q = polku.map.project({json.dumps(ll)}), r = polku.map.getCanvas().getBoundingClientRect(), t0 = Date.now();
-          while (Date.now() - t0 < 20000 && !polku.map.queryRenderedFeatures([[q.x - 7, q.y - 7], [q.x + 7, q.y + 7]]).some((f) => /^(path|track|cycleway|road)-/.test(f.layer.id))) await new Promise((ok) => setTimeout(ok, 250));
+          while (Date.now() - t0 < 20000 && !polku.map.queryRenderedFeatures([[q.x - 7, q.y - 7], [q.x + 7, q.y + 7]]).some((f) => new RegExp({json.dumps(on)}).test(f.layer.id))) await new Promise((ok) => setTimeout(ok, 250));
           return {{ x: r.left + q.x, y: r.top + q.y, under: [...new Set(polku.map.queryRenderedFeatures([[q.x - 7, q.y - 7], [q.x + 7, q.y + 7]]).map((f) => f.layer.id))].slice(0, 8) }}; }})()""", timeout=40000)
         for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
             pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': s['x'], 'y': s['y'], 'button': 'none' if kind == 'mouseMoved' else 'right' if right else 'left',
@@ -15704,6 +15704,24 @@ def pick_card(chrome):
             back = pg.js("!!document.querySelector('.pl-way.card canvas.pick-chart') && document.querySelector('.pl-way.card .sec-head').getAttribute('aria-expanded')")
             if f['chart'] or f['by'] or not (f['sum'] or '').startswith('Way type') or f['kept'] != 'false' or back != 'true':
                 fails.append(f"Rauhaniemenreitti's profile folded: {f}; opened again: {back}")
+        # an area (#574): a lake and a park by their outline from OpenStreetMap (recorded: tools/fixtures/areas-tampere.json), with
+        # their name and kind; the water with its depth and Paddle from here, also where OpenStreetMap has no area there or no answer
+        pg.js("""(async () => { const W = await import(location.origin + '/js/ways.js'), fx = await (await fetch(location.origin + '/tools/fixtures/areas-tampere.json')).json();
+          for (const [k, d] of Object.entries(fx.areas)) W.seedArea(k.split('/').map(Number).reverse(), d);
+          return true; })()""")
+        area = lambda r: {k: r[k] for k in ('kind', 'ways', 'title', 'sub', 'nums', 'rows', 'outline')} | {'paddle': 'Paddle from here' in r['text'], 'at': r['at']['under']}
+        for name, ll, on, want in (('Iidesjärvi', [23.8129, 61.4844], '^water$', ('Iidesjärvi', 'Lake', True)), ('Sorsapuisto', [23.7824, 61.4978], '^(lc-grass|park-fill)$', ('Sorsapuisto', 'Park', False)),
+                                   ('water with no area', [23.8045, 61.4862], '^water$', ('Water', '', True))):
+            r = tap(pg, ll, want=('none', None), secs=15, on=on)
+            rows = dict(r['rows'])
+            if (r['title'], r['sub'], r['paddle']) != want or ('Depth' in rows) != want[2] or (want[2] and rows.get('Depth') != 'Traficom didn’t answer') \
+                    or bool(r['outline']) != (want[0] != 'Water') or (want[0] == 'Iidesjärvi' and not any('round its edge' in n for n in r['nums'])):
+                fails.append(f"{name}: {area(r)} (its name, its kind, its outline drawn and how far round it; on water the depth and Paddle from here)")
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
+        r = tap(pg, [23.8045, 61.4862], want=('failed', None), secs=15, on='^water$')
+        if r['ways'] != 'failed' or dict(r['rows']).get('Depth') != 'Traficom didn’t answer' or 'Paddle from here' not in r['text'] or "didn’t answer" not in r['text']:
+            fails.append(f"the water, OpenStreetMap not answering: {area(r)} (the depth and Paddle from here still, and saying it didn't answer)")
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
         # road works (#564, #565): a click opens the same card as a way, not the old popup, the works ringed on the map, and dates
         # outside this year with their year
         y = pg.js('new Date().getFullYear()')
