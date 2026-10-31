@@ -52,8 +52,9 @@ Settings holds how Polku behaves. The map's choices stay in Layers, and the rout
    units (#326).
 4. **Your route on the map:** moving arrows, distance marks, arrival and elapsed times; planned: trails show
    through the route (#199).
-5. **Map and planner:** 3D height, details on hover, trackpad, the planner's place on a desktop; planned: turning
-   the map with two fingers (#328), when Polku opens (#329), keeping the screen on (#331).
+5. **Map and planner:** a row that opens Layers (the base map, trails, 3D, the timeline and weather on the map
+   stay there, and this is where someone looking for them in Settings finds the way), 3D height, details on hover, trackpad, the planner's place on a desktop; planned: turning
+   the map with two fingers (#328), when Polku opens, where you left off or a fresh start (#329), keeping the screen on (#331).
 6. **Hidden in Check:** each hidden kind with Show again (#143).
 7. **Offline maps:** as today.
 8. **On this device:** what Polku keeps here, Clear recent searches; planned: export and import (#282), reset
@@ -70,7 +71,8 @@ last, once these names settle.
 
 **Planned settings ship greyed, marked Coming** (the user's choice, 2026-10-31): the control as it will be,
 disabled and grey the way the app greys a switch it can't use now (`.onmap .tg.off`, `.seg button:disabled`),
-with a Coming tag beside its name so a screen reader says why. Each issue then makes its control work. The
+with a Coming tag beside its name so a screen reader says why. Each issue then makes its control work. Every new row is Polku's plain row (`row` in `rows`, with `val`), its
+tag the inline `cur`. The
 mock-up's Planned switch shows them greyed or as they'll work.
 
 ## Two layouts

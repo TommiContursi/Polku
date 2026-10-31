@@ -14,7 +14,7 @@
   panels, so A and B use the shared controls as they are: .lp-sec, .lg-group, .tg, .seg, .chip, .row, .btn.
   Settings that aren't built yet are marked "planned" with their issue.
 
-  ?v=today|a|b  &theme=light|dark  &planned=coming|show|hide  &marks=show|hide
+  ?v=today|a|b  &theme=light|dark  &planned=coming|show|hide
 -->
 <style>
 /* ======================================================= the page (mock-up chrome, not the design) */
@@ -51,24 +51,21 @@ body.page { margin: 0; padding: 24px 16px 60px; font: 14px/1.45 system-ui, -appl
 .gear { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; background: var(--accent, #2a6); opacity: .9; }
 .panel-body { overscroll-behavior: contain; }
 /* the mock-up's own marks */
-.plan-tag { display: inline-block; width: fit-content; align-self: flex-start; margin-left: 6px; padding: 0 6px; border: 1px dashed currentColor; border-radius: 999px; font-size: 10.5px; font-weight: 600; line-height: 16px; color: var(--muted); vertical-align: 1px; }
 body.no-planned .planned { display: none !important; }
-body.pl-coming .plan-tag .t-n, body:not(.pl-coming) .plan-tag .t-soon { display: none; }
-/* greyed as the app greys a switch it can't use now (.onmap .tg.off, .seg button:disabled) */
-body.pl-coming .planned, body.pl-coming .planned :is(small, .tg-text) { color: var(--muted); }
-body.pl-coming .planned :is(.tg-ui, .btn) { opacity: .5; cursor: not-allowed; }
+body.pl-coming .cur .t-n, body:not(.pl-coming) .cur .t-soon { display: none; }
+/* greyed as the app greys what can't be used now (.onmap .tg.off at .5, .seg button:disabled at .45) */
+body.pl-coming .planned { opacity: .5; cursor: not-allowed; }
+/* a heading over a switch: the build extends .lp-sec > .tg-text's padding to these */
+.lg-group > .tg-text, .lg-group > .planned > .tg-text { padding: 7px 0 8px; }
 body:not(.pl-coming) .planned { opacity: .8; }
-.moved { box-shadow: inset 3px 0 0 #d9a520; padding-left: 6px; margin-left: -6px; border-radius: 2px; }
-body.no-marks .moved { box-shadow: none; padding-left: 0; margin-left: 0; }
-.mk-key { display: inline-block; width: 10px; height: 10px; margin-right: 4px; background: #d9a520; border-radius: 2px; }
 .speed-box.mock { padding: 4px 0 10px 32px; }
 .speed-box.mock h4 { margin: 8px 0 4px; font-size: 12px; }
 .tile-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
-.sub-h { margin: 14px 0 4px; font-size: 12.5px; font-weight: 700; }
-.row-act { margin-left: auto; }
-.hid-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-.hid-row:last-of-type { border-bottom: 0; }
-.hid-row > span { flex: 1; }
+/* copied from css/app.css at 349971f: the plain row's value and the inline tag ("your route"), not in today's panel */
+.row .val { flex: none; max-width: 42%; font-size: var(--font-row); font-weight: var(--weight-name); color: var(--accent); text-align: right; overflow-wrap: break-word; }
+.row.danger b, .row.danger > span:first-child { color: var(--bad); }
+.cur { margin-left: 4px; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.lg-group > .rows { margin-bottom: 6px; }
 .lg-group > .note:first-of-type { margin-top: 0; }
 </style>
 <style id="app-css">
@@ -284,8 +281,7 @@ button { font: inherit; color: inherit; }
   <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/321">#321</a>. Polku's preferences in one place, in the order people come for them. The plan and the decisions: <a href="../issue-321-settings.md">issue-321-settings.md</a>.</p>
   <div class="bar"><span>Version</span><div class="sw" data-sw="v"><button data-val="today">Today</button><button data-val="a">A: one list</button><button data-val="b">B: folding groups</button></div></div>
   <div class="bar"><span>Look</span><div class="sw" data-sw="theme"><button data-val="light">Light</button><button data-val="dark">Dark</button></div>
-    <span>Planned</span><div class="sw" data-sw="planned"><button data-val="coming">Grey, Coming</button><button data-val="show">As they'll work</button><button data-val="hide">Hide</button></div>
-    <span>Moved here</span><div class="sw" data-sw="marks"><button data-val="show">Mark</button><button data-val="hide">Don't</button></div></div>
+    <span>Planned</span><div class="sw" data-sw="planned"><button data-val="coming">Grey, Coming</button><button data-val="show">As they'll work</button><button data-val="hide">Hide</button></div></div>
   <div class="why" id="why"></div>
   <div class="frames">
     <div><p class="fr-cap">Phone, 390 × 844</p><div class="scene phone" id="f-phone"></div></div>
@@ -308,11 +304,14 @@ const $ = (s, el = document) => el.querySelector(s);
 const ic = (d, s = 20) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const EYE_OFF = '<path d="M3 3l18 18"/><path d="M10.6 5.1Q11.3 5 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-2.7 3.8M6.6 6.6C4.3 8 2.7 10.2 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>';
 let uid = 0;
-const tg = (label, line, on = false, cls = '', tag = '') => { const id = `m-${++uid}`; return `<label class="tg ${cls}" for="${id}"><span class="tg-text">${label}${tag}<small>${line}</small></span><input type="checkbox" id="${id}" role="switch"${on ? ' checked' : ''}><span class="tg-ui" aria-hidden="true"></span></label>`; };
+const tg = (label, line, on = false, cls = '', tag = '') => { const id = `m-${++uid}`; return `<label class="tg ${cls}" for="${id}"><span class="tg-text">${tag ? `<span>${label}${tag}</span>` : label}<small>${line}</small></span><input type="checkbox" id="${id}" role="switch"${on ? ' checked' : ''}><span class="tg-ui" aria-hidden="true"></span></label>`; };
+const row = (icon, name, line, val = '', tag = '') => `<button type="button" class="row${tag ? ' planned' : ''}"><span>${ic(icon)}</span><span><b>${name}${tag}</b>${line ? `<small>${line}</small>` : ''}</span>${val ? `<span class="val">${val}</span>` : `<span class="way-chev">${ic(I.chev, 16)}</span>`}</button>`;
+const rows = (...r) => `<div class="rows">${r.join('')}</div>`;
+const I = { chev: '<path d="m9 6 6 6-6 6"/>', layers: '<path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/><path d="m2 18 10 5 10-5" opacity=".55"/>', search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>', download: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>', upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>', link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>', reset: '<path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6"/><path d="M4 4v4.6h4.6"/>' };
 const seg = (opts, on, label) => `<div class="seg small full" role="group" aria-label="${label}">${opts.map((o) => `<button type="button" aria-pressed="${o === on}">${o}</button>`).join('')}</div>`;
-const planned = (n) => `<span class="plan-tag"><span class="t-soon">Coming</span><span class="t-n">planned #${n}</span></span>`;
+const planned = (n) => `<span class="cur"><span class="t-soon">Coming</span><span class="t-n">planned #${n}</span></span>`;
 // a planned setting: its control as it will work, or greyed and disabled with Coming until it's built (the user's choice, 2026-10-31)
-const soon = (name, line, n, ctl) => `<div class="planned">${ctl}</div>`;
+const soon = (ctl) => `<div class="planned">${ctl}</div>`;
 
 // ids go (each panel is drawn twice), and with them each label's for: a label around its input names it anyway
 const unid = (el) => { for (const x of [el, ...el.querySelectorAll('[id], [for]')]) { x.removeAttribute('id'); x.removeAttribute('for'); } };
@@ -345,52 +344,50 @@ function parts() {
 function groups(P, desk) {
   const tiles = { mtb: ['Trail colours', 'Trail details', 'Official routes', 'Waymarked MTB', 'Rain radar'], paddle: ['Depths', 'Fairways', 'Wind', 'Ships', 'Rain radar'] };
   const speeds = P.speeds.cloneNode(true);
-  speeds.querySelectorAll('.speed-sport-row').forEach((r) => {
-    const k = r.dataset.k, t = tiles[k] || tiles.mtb;
-    r.dataset.tiles = t.join(', ');
-  });
+  speeds.querySelectorAll('.speed-sport-row').forEach((r) => { r.dataset.tiles = (tiles[r.dataset.k] || tiles.mtb).join(', '); });
+  const head = (name, n) => `<div class="tg-text"><span>${name} ${planned(n)}</span></div>`;
   return [
     { id: 'sports', title: 'Your sports', html: speeds.outerHTML +
       `<p class="note">Each sport's speeds time your route, and so decide the weather you meet on the way. Its five tiles are the ones Layers shows for it. Kept on this device only.</p>` },
     { id: 'display', title: 'Display', html: P.appearance +
-      soon('Text and buttons', 'Smaller fits more on a desktop; larger is easier outdoors and with tired eyes. The map\'s words follow', 325, `<div class="tg-text">Text and buttons ${planned(325)}</div>${seg(['Smaller', 'Standard', 'Larger'], 'Standard', 'Text and buttons')}`) +
+      soon(head('Text and buttons', 325) + seg(['Smaller', 'Standard', 'Larger'], 'Standard', 'Text and buttons')) +
       P.contrast +
-      soon('Colours for colour blindness', 'Trail difficulty, the profile and warnings in colours that stay apart', 324, tg('Colours for colour blindness', 'Trail difficulty, the profile and warnings in colours that stay apart', false, '', planned(324))) +
-      soon('Less motion', 'Panels appear without sliding, the route\'s arrows stand still', 327, tg('Less motion', 'Panels appear without sliding, the route\'s arrows stand still. Your device\'s setting turns it on too', false, '', planned(327))) +
-      soon('Fewer effects', 'No glass or shadows, for slower phones and a little battery', 330, tg('Fewer effects', 'No glass or shadows, for slower phones and a little battery', false, '', planned(330))) },
+      soon(tg('Colours for colour blindness', 'Difficulty, the profile and warnings in colours that stay apart', false, '', planned(324))) +
+      soon(tg('Less motion', 'Panels appear without sliding; the route\'s arrows stand still', false, '', planned(327))) +
+      soon(tg('Fewer effects', 'No glass or shadows, for slower phones', false, '', planned(330))) },
     { id: 'lang', title: 'Language and units', html:
-      soon('Language', 'English now; Finnish and Swedish', 184, `<div class="tg-text">Language ${planned(184)}</div>${seg(['Automatic', 'English', 'Suomi', 'Svenska'], 'Automatic', 'Language')}<p class="note">Automatic follows your device's language.</p>`) +
-      soon('Units', 'Kilometres and metres, or miles and feet', 326, `<div class="tg-text">Units ${planned(326)}</div>${seg(['Metric', 'Imperial'], 'Metric', 'Units')}`) },
-    { id: 'route', title: 'Your route on the map', html: `<div class="moved">${P.arrows}</div>
-       <div class="moved">${tg('Distance marks', 'Every 1, 5, 10 or 25 km along the route, by its length', true)}
-       ${tg('Arrival times at marks', 'The clock time you reach each mark', true)}
-       ${tg('Elapsed time at marks', 'Hours, minutes and seconds from departure, including stops and changeovers', true)}</div>` +
-      soon('Trails show through the route', 'The route drawn so the trail\'s colours stay visible', 199, tg('Trails show through the route', 'The route drawn thinner and beside the trail, so its colours stay visible', false, '', planned(199))) },
+      soon(head('Language', 184) + seg(['Automatic', 'English', 'Suomi', 'Svenska'], 'Automatic', 'Language')) +
+      soon(head('Units', 326) + seg(['Metric', 'Imperial'], 'Metric', 'Units')) },
+    { id: 'route', title: 'Your route on the map', html: P.arrows +
+      tg('Distance marks', 'Every 1, 5, 10 or 25 km, by the route\'s length', true) +
+      tg('Arrival times at marks', 'The clock time you reach each mark', true) +
+      tg('Elapsed time at marks', 'From departure, with stops and changeovers', true) +
+      soon(tg('Trails show through the route', 'So the trail\'s colours stay visible under it', false, '', planned(199))) },
     { id: 'map', title: 'Map and planner', html:
-      `<div class="moved"><label class="range"><span>3D height</span><input type="range" min="1" max="3" step="0.1" value="1.4" aria-label="3D height"></label><p class="note">How tall hills stand in 3D. 3D itself is in Layers.</p></div>` +
+      rows(row(I.layers, 'Layers', 'The base map, trails, 3D, the timeline and weather on the map')) +
+      `<label class="range"><span>3D height</span><input type="range" min="1" max="3" step="0.1" value="1.4" aria-label="3D height"></label>` +
       P.hover + P.trackpad +
-      soon('Turn the map with two fingers', 'Off keeps north up, so a pinch only zooms', 328, tg('Turn the map with two fingers', 'Off keeps north up, so a pinch only zooms', true, '', planned(328))) +
-      soon('When Polku opens', 'Where you left off, where you are, or all of Finland', 329, `<div class="tg-text">When Polku opens ${planned(329)}</div>${seg(['Where you left off', 'Where you are', 'All of Finland'], 'Where you left off', 'When Polku opens')}`) +
-      soon('Keep the screen on while following', 'Only while Follow me is on', 331, tg('Keep the screen on while following', 'Only while Follow me is on; it costs battery', false, '', planned(331))) +
-      (desk ? `<div class="tg-text">Route planner on a desktop</div>${P.planner.querySelector('.seg').outerHTML}<p class="note">The button beside the planner's fold, and its ⋯ menu, have the same switch.</p>` : '') },
+      soon(tg('Turn the map with two fingers', 'Off keeps north up; a pinch only zooms', true, '', planned(328))) +
+      soon(head('When Polku opens', 329) + seg(['Where you left off', 'A fresh start'], 'Where you left off', 'When Polku opens')) +
+      soon(tg('Keep the screen on while following', 'Only while Follow me is on', false, '', planned(331))) +
+      (desk ? `<div class="tg-text">Route planner</div>${P.planner.querySelector('.seg').outerHTML}` : '') },
     { id: 'hidden', title: 'Hidden in Check', html:
-      `<div class="moved"><div class="hid-row">${ic(EYE_OFF, 18)}<span>Steps</span><button type="button" class="btn">Show again</button></div>
-       <div class="hid-row">${ic(EYE_OFF, 18)}<span>Gates and barriers</span><button type="button" class="btn">Show again</button></div></div>
-       <p class="note">A Heads-up row's ⋯ hides a kind you don't need. Check lists them at its end too.</p>` },
+      rows(row(EYE_OFF, 'Steps', '', 'Show again'), row(EYE_OFF, 'Gates and barriers', '', 'Show again')) +
+      `<p class="note">A Heads-up row's ⋯ hides a kind you don't need.</p>` },
     { id: 'offline', title: 'Offline maps', html: P.offline },
     { id: 'device', title: 'On this device', html:
-      `<p class="note">Polku keeps your route, these settings, offline maps and recent searches here, and nowhere else.</p>
-       <div class="hid-row"><span>Recent searches<small class="note" style="display:block;margin:0">6 places</small></span><button type="button" class="btn">Clear</button></div>` +
-      soon('A copy of everything', 'Export and import, to move to another device', 282, `<div class="hid-row"><span>A copy of everything ${planned(282)}</span><button type="button" class="btn">Export</button><button type="button" class="btn">Import</button></div>`) +
-      soon('Reset settings', 'Your route and offline maps stay', 332, `<div class="hid-row"><span>Settings as they first were ${planned(332)}<small class="note" style="display:block;margin:0">Your route and offline maps stay</small></span><button type="button" class="btn">Reset</button></div>`) },
+      rows(row(I.search, 'Recent searches', '6 places', 'Clear'),
+        row(I.download, 'Export a copy', 'Your route, settings and places, as a file', '', planned(282)),
+        row(I.upload, 'Import a copy', 'From another device', '', planned(282)),
+        row(I.reset, 'Reset settings', 'Your route and offline maps stay', '', planned(332))) +
+      `<p class="note">Polku keeps all of this here, and nowhere else.</p>` },
     { id: 'accounts', title: 'Strava and Garmin', html:
-      `<p class="note">Optional: Polku works without an account. Nothing is sent until you connect one.</p>` +
-      soon('Strava', 'Your past trips as a heatmap, and your real speeds', 188, `<div class="hid-row"><span>Strava ${planned(188)}<small class="note" style="display:block;margin:0">Your past trips as a heatmap, and your real speeds</small></span><button type="button" class="btn">Connect</button></div>`) +
-      soon('Garmin', 'Send a route to your watch or bike computer', 188, `<div class="hid-row"><span>Garmin ${planned(188)}<small class="note" style="display:block;margin:0">Send a route to your watch or bike computer</small></span><button type="button" class="btn">Connect</button></div>`) },
-    { id: 'data', title: 'Data sources', html: P.usage + `<p class="sub-h moved">Routing server (optional)</p><div class="moved">${P.router}</div><p class="sub-h moved">MML API key (optional)</p><div class="moved">${P.mml}</div>` },
+      rows(row(I.link, 'Strava', 'Your past trips as a heatmap, and your real speeds', 'Connect', planned(188)),
+        row(I.link, 'Garmin', 'Send a route to your watch or bike computer', 'Connect', planned(188))) +
+      `<p class="note">Optional: Polku works without an account.</p>` },
+    { id: 'data', title: 'Data sources', html: P.usage + `<div class="tg-text">Routing server (optional)</div>${P.router}<div class="tg-text">MML API key (optional)</div>${P.mml}` },
     { id: 'about', title: 'About Polku', html: P.about +
-      soon('How to use Polku', 'The guide, inside the app', 321, `<div style="margin-top:8px"><button type="button" class="btn">How to use Polku</button> ${planned(321)}</div>`) +
-      soon('Credits and licence', 'Where the maps and data come from', 321, `<div style="margin-top:8px"><button type="button" class="btn">Credits and licence</button> ${planned(321)}</div>`) },
+      rows(row(I.info, 'How to use Polku', '', '', planned(321)), row(I.info, 'Credits and licence', '', '', planned(321))) },
   ];
 }
 
@@ -428,8 +425,8 @@ document.addEventListener('click', (e) => {
     box.innerHTML = `<p class="note">The speed editor, as today.</p>` + (t.length ? `<h4>Tiles in Layers</h4><div class="tile-chips">${t.map((x) => `<span class="chip"><span>${x}</span></span>`).join('')}</div><button type="button" class="btn">Edit tiles</button>` : '');
     r.after(box);
   }
-  const hb = e.target.closest('.hid-row .btn');
-  if (hb && hb.textContent === 'Show again') hb.closest('.hid-row').remove();
+  const hb = e.target.closest('.row');
+  if (hb && hb.querySelector('.val')?.textContent === 'Show again') hb.remove();
   const sb = e.target.closest('.seg button');
   if (sb) sb.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === sb)));
   const ch = e.target.closest('.way-chips .chip');
@@ -437,15 +434,14 @@ document.addEventListener('click', (e) => {
 });
 
 const q = new URLSearchParams(location.search);
-const st = { v: q.get('v') || 'b', theme: q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), planned: q.get('planned') || 'coming', marks: q.get('marks') || 'show' };
+const st = { v: q.get('v') || 'b', theme: q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), planned: q.get('planned') || 'coming' };
 function render() {
   document.documentElement.dataset.theme = st.theme;
   document.body.classList.toggle('no-planned', st.planned === 'hide');
   document.body.classList.toggle('pl-coming', st.planned === 'coming');
-  setTimeout(() => document.querySelectorAll('.planned :is(input, button)').forEach((el) => { el.disabled = st.planned === 'coming'; }));
-  document.body.classList.toggle('no-marks', st.marks === 'hide');
+  setTimeout(() => document.querySelectorAll('.planned :is(input, button), button.planned').forEach((el) => { el.disabled = st.planned === 'coming'; }));
   for (const sw of document.querySelectorAll('.sw')) for (const b of sw.children) b.setAttribute('aria-pressed', String(st[sw.dataset.sw] === b.dataset.val));
-  $('#why').innerHTML = WHY[st.v] + (st.v !== 'today' ? '<p><span class="mk-key"></span>Moved here from elsewhere in Polku. Planned settings show as the app could ship them now, greyed and disabled with Coming, or as they\'ll work, with their issue.</p>' : '');
+  $('#why').innerHTML = WHY[st.v] + (st.v !== 'today' ? '<p>Planned settings show as the app could ship them now, greyed and disabled with Coming, or as they\'ll work, with their issue.</p>' : '');
   for (const [id, desk] of [['f-phone', false], ['f-desk', true]]) { const f = $(`#${id}`); f.querySelector('.panel')?.remove(); f.append(panel(st.v, desk)); }
   history.replaceState(null, '', `?${new URLSearchParams(st)}`);
 }
