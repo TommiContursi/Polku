@@ -4,7 +4,9 @@ A proposal for the user to choose from, 2026-10-31, on `main` at 349971f. The mo
 [issue-321-settings.html](mockups/issue-321-settings.html), shows today's panel beside two layouts, on a phone
 and a desktop, light and dark. It covers #321's layout question for the
 [Settings and accessibility](https://github.com/TommiContursi/Polku/milestone/17) milestone and gives each of
-its planned settings a place. No app code until the user picks.
+its planned settings a place.
+
+**Chosen 2026-10-31: B, folding groups.** Decisions 2 and 3 below are still open.
 
 ## What's wrong today
 
@@ -73,13 +75,14 @@ first time, which PRODUCT.md's "no more taps" rule weighs against A's scrolling;
 
 ## Decisions for the user
 
-1. A or B.
+1. A or B: **B**, chosen 2026-10-31.
 2. Distance marks and their times move from Check to Settings (recommended: they're set once, not per route).
 3. A Clear button for recent searches (recommended: Polku keeps them, so it should let you remove them).
 
-## Building it, once chosen
+## Building it
 
-One PR for #321: `renderSettingsPanel()` in `js/main.js` regrouped, the moves above (Check's On the map in
-`js/planner.js` waits until #603 is merged, since it changes that file), `docs/USING.md`, the CHANGELOG and
-smoke checks in the groups the moves touch (`panels`, `marks`, `heads`, `quick`, `appearance`). B adds no new motion: the folding is Layers' own. The planned settings
-then land one issue at a time, each in its group.
+One PR for #321: `renderSettingsPanel()` in `js/main.js` regrouped into B's folding groups, the moves above,
+`docs/USING.md`, the CHANGELOG and smoke checks in the groups the moves touch (`panels`, `marks`, `heads`,
+`quick`, `appearance`). It starts once #603 and #610 are merged, since both change `js/main.js`,
+`js/planner.js`, the CHANGELOG and `tools/smoke.py`. B adds no new motion: the folding is Layers' own. The
+planned settings then land one issue at a time, each in its group.
