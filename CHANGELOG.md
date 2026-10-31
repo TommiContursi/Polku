@@ -14,6 +14,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - On a desktop, resting the pointer on a way says the same as its card's line and draws the whole way plainly, before a click. To know the whole way, the hover asks OpenStreetMap once for the ways of the map's tile under the pointer (about 1.2 km), as a tap does.
 - The wind colours are for going along the way in the direction the card names (its west end to its east end, as drawn). The weather is the hour the map's weather shows: now, unless you've picked another.
 
+### A place's facts are on its card, and your route's actions come with a hold ([#574](https://github.com/TommiContursi/Polku/issues/574))
+
+- A place's card (a shelter, a campfire site, a toilet, an obstacle, a LIPAS place) now shows its height and all its facts in groups, and a LIPAS route's card its facts and pages. **What's here ›** has gone, as everything it said is on the card.
+- **Add to my route**, **Start here**, **End here**, **Round trip from here** and **Avoid this spot** are on a card you open by holding the map (or a right-click on a desktop), with **All OpenStreetMap details** and **Copy** for the spot's coordinates. A tap opens the card to read. A LIPAS route's **Follow this route** stays on its card; its **Add to my route** and **Start a route here** come with a hold, and **The trail under it** has gone: tap the trail itself.
+
 ### Road works, sea marks and the water open the same card ([#564](https://github.com/TommiContursi/Polku/issues/564), [#565](https://github.com/TommiContursi/Polku/issues/565))
 
 - Road works, traffic incidents, road conditions, busy roads, military areas, sea marks and their lights, faults and signs, navigation lines, fairways, restriction areas, light sectors and the water now open the same card as a trail, not the old popup. The thing is ringed or drawn on the map, the card says where its facts come from, and its last row has **Share**, **Weather here ›** and, for road works, **Fintraffic traffic situation**. The water's card has its depth from Traficom's chart and **Paddle from here**. Hold the map there for **Your route**.
