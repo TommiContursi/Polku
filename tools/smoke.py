@@ -370,6 +370,7 @@ LAYERS_MOTION = """(async (reduced) => {
 PANELS_MOTION = """(async (reduced) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], tag = reduced ? 'reduced motion: ' : '';
   const saved = ['polku:speeds', 'polku:layerGroups'].map((k) => [k, localStorage.getItem(k)]);
+  const openGroup = (d) => { const k = 'polku:layerGroups'; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || '{}'), [d.dataset.group]: true })); d.open = true; }; // (Settings' groups fold, #321: open, and kept open over a rebuild)
   const click = (el, detail = 1) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
   const fades = (el) => el.getAnimations().map((a) => a.transitionProperty).filter(Boolean).sort().join(' ') || 'nothing';
   const named = (els) => [...new Set(els.flatMap((e) => e.getAnimations().map((a) => a.animationName).filter(Boolean)))].join(' ') || 'nothing';
@@ -416,7 +417,7 @@ PANELS_MOTION = """(async (reduced) => {
   // Settings' speeds
   click(document.querySelector('#btn-settings')); await wait(300);
   const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
-  row().closest('details').open = true; await wait(100); // (its group folds, #321; opened as Layers' Trail details is, and kept open by its toggle event)
+  openGroup(row().closest('details'));
   if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
   click(row());
   got = [fades(sb.querySelector('.speed-box')), fades(row().querySelector('.way-chev'))].join(', ');
@@ -433,7 +434,7 @@ PANELS_MOTION = """(async (reduced) => {
   if (!got.includes('background-color')) errs.push(`${tag}the ${now.textContent} preset moves ${got}, not its colour`);
   if (document.activeElement !== now) errs.push(`${tag}the focus went to ${document.activeElement.tagName}.${document.activeElement.className}, not the preset it pressed`);
   await wait(300);
-  sb.querySelector('[data-group="settings-display"]').open = true; await wait(100);
+  openGroup(sb.querySelector('[data-group="settings-display"]'));
   click(sb.querySelector('[data-appearance][aria-pressed="true"]'));
   got = fades(sb.querySelector('.speed-box'));
   if (got !== 'nothing') errs.push(`${tag}Settings drawn again: the open speeds move ${got}`);
@@ -448,6 +449,7 @@ PANELS_MOTION = """(async (reduced) => {
 PANELS_KEYS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const saved = ['polku:speeds', 'polku:layerGroups'].map((k) => [k, localStorage.getItem(k)]);
+  const openGroup = (d) => { const k = 'polku:layerGroups'; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || '{}'), [d.dataset.group]: true })); d.open = true; }; // (Settings' groups fold, #321: open, and kept open over a rebuild)
   const click = (el, detail = 1) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
   const fades = (el) => el.getAnimations().map((a) => a.transitionProperty).filter(Boolean).sort().join(' ') || 'nothing';
   const named = (els) => [...new Set(els.flatMap((e) => e.getAnimations().map((a) => a.animationName).filter(Boolean)))].join(' ') || 'nothing';
@@ -464,7 +466,7 @@ PANELS_KEYS = """(async () => {
   click(document.querySelector('#btn-layers')); await wait(300);
   click(document.querySelector('#btn-settings')); await wait(300);
   const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
-  row().closest('details').open = true; await wait(100); // (its group folds, #321; opened as Layers' Trail details is, and kept open by its toggle event)
+  openGroup(row().closest('details'));
   if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
   row().focus();
   click(row(), 0);
@@ -5193,7 +5195,8 @@ def layers(chrome):
     # a real click first, as a finger's or a mouse's, on ⚙ (Layers then takes Settings' place): a control the app
     # focuses after it shows no keyboard focus, as after a tap (with no real input yet, or after a press on something
     # that takes no focus, Chrome shows a focus from code as the keyboard's)
-    x, y = pg.js("(() => { const r = document.querySelector('#btn-settings').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+    # (⚙ may hold the focus already, from Settings closing (#621): a press on it then keeps how it was focused)
+    x, y = pg.js("(() => { document.activeElement.blur(); const r = document.querySelector('#btn-settings').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
     for event, buttons in (('mousePressed', 1), ('mouseReleased', 0)):
         pg.c.send('Input.dispatchMouseEvent', {'type': event, 'x': x, 'y': y, 'button': 'left', 'buttons': buttons, 'clickCount': 1}, pg.s)
     fails += pg.js(PANELS_MOTION + '(false)')
