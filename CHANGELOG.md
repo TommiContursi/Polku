@@ -9,11 +9,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - On a desktop, **Settings** (⚙) is at the top right of the window, over the panel it opens. The logo, the search and the sport stay at the top left.
 - On the desktop toolbar, **Done** is now its first button, at the planner's end, where it stays as the drawing tools and the route's actions come and go. In the route's view **Edit** is in the same place.
 - The toolbar is rounded at both ends and floats 12 px from the planner, beside a side panel and above a panel at the bottom, instead of ending square against a planner that may be shorter.
+- **Show the whole route** is always under **Locate** with the map's buttons now, on a desktop too, whether the planner is open or not. It's no longer on the toolbar.
 - When the toolbar is short of room, the drawing modes you aren't using show only their icons, and their tooltips say the names, before any of the route's actions goes into **⋯**. A laptop-sized window shows more of those actions than before, and a big screen shows every name.
 
-### Clear route is one click in the route's view ([#594](https://github.com/TommiContursi/Polku/issues/594))
+### Clear route is one click on a desktop ([#594](https://github.com/TommiContursi/Polku/issues/594))
 
-- On a desktop, in the route's view, **Clear route** is a button on the toolbar next to **⋯**. A note still offers **Undo**, which brings the route back for you to edit.
+- On a desktop, **Clear route** is a button on the toolbar just before **⋯**, while you edit and in the route's view alike. When the toolbar runs out of room it's the last of the route's actions to go into **⋯**. A note still offers **Undo**, which brings the route back for you to edit.
 - On a phone, **Clear route** is the first item in **⋯**.
 
 ### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))

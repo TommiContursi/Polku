@@ -302,7 +302,7 @@ def NO_TERRAIN(part=False):
 # the planner open at half, and a round-trip loop clicked on its line (its farthest point from
 # the start). Older code leaves the full sheet up and the map unmoved, fits the track as if there
 # were no planner, and throws the loops away for a new start.
-FIT_BUTTON = "(async () => { polku.planner.els.fit.click(); await new Promise((r) => setTimeout(r, 1200)); return true; })()"
+FIT_BUTTON = "(async () => { document.getElementById('btn-fit').click(); await new Promise((r) => setTimeout(r, 1200)); return true; })()"
 GPX_IMPORT = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); p.setSheetState('half', { remember: false }); await wait(600);"
               " const s = await (await fetch(location.origin + '/tools/fixtures/route-kauppi-mtb.json')).json(), c = s.legs.flatMap((l) => l.result.coords);"
               " const gpx = `<?xml version=\"1.0\"?><gpx version=\"1.1\"><trk><name>Kauppi</name><trkseg>${c.map(([x, y]) => `<trkpt lat=\"${y}\" lon=\"${x}\"></trkpt>`).join('')}</trkseg></trk></gpx>`;"
