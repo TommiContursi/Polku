@@ -416,6 +416,7 @@ PANELS_MOTION = """(async (reduced) => {
   // Settings' speeds
   click(document.querySelector('#btn-settings')); await wait(300);
   const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
+  if (!row().closest('details').open) { click(row().closest('details').querySelector('summary')); await wait(400); }
   if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
   click(row());
   got = [fades(sb.querySelector('.speed-box')), fades(row().querySelector('.way-chev'))].join(', ');
@@ -462,6 +463,7 @@ PANELS_KEYS = """(async () => {
   click(document.querySelector('#btn-layers')); await wait(300);
   click(document.querySelector('#btn-settings')); await wait(300);
   const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
+  if (!row().closest('details').open) { click(row().closest('details').querySelector('summary')); await wait(400); }
   if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
   row().focus();
   click(row(), 0);
@@ -6532,6 +6534,7 @@ def changelog(chrome):
           p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.80,61.51]); p.addPoint([23.82,61.52]); await p.analysing;
           const count = () => document.querySelectorAll('.modal-changelog[open]').length;
           document.querySelector('#btn-settings').click();
+          document.querySelector('#settings-body [data-group="settings-about"] > summary').click(); // (About Polku folds, #321)
           window.notesOpener = document.querySelector('#btn-changelog');
           if (!window.notesOpener) return ['no What’s new entry in Settings'];
           window.notesSnapshot = () => JSON.stringify({points:p.points, legs:p.legs.map(l => l.result?.coords), undo:p.past.length, active:p.active, timeline:polku.state.timeline, camera:[polku.map.getCenter().toArray(),polku.map.getZoom(),polku.map.getPitch(),polku.map.getBearing()]});
@@ -6612,7 +6615,7 @@ def changelog(chrome):
 
     loaded = "new Promise(r=>{const start=Date.now(); const go=()=>!document.querySelector('.changelog-notes[aria-busy]') || Date.now()-start>15000 ? r():setTimeout(go,50);go();})"
     try:
-        pg.js("document.querySelector('#btn-settings').click(); true")
+        pg.js("document.querySelector('#btn-settings').click(); document.querySelector('#settings-body [data-group=\"settings-about\"] > summary').click(); true")
         offline(True)
         pg.js("document.querySelector('#btn-changelog').click(); " + loaded)
         status = pg.js("document.querySelector('.modal-changelog [role=status]').textContent")
@@ -7027,6 +7030,7 @@ def appearance(chrome):
         scheme(pg, 'dark')
         pg.open_app({'activity': 'mtb', 'base': 'trail'})
         tap('#btn-settings', 'Settings')
+        tap('#settings-body [data-group="settings-display"] > summary', 'Display')
         before = pg.js(THEME_NOW)
         if before['pressed'] != ['auto']:
             fails.append(f"Settings: {before['pressed']} chosen at first, not Automatic")
@@ -7353,6 +7357,9 @@ def glass_modes(chrome):
         at = pg.js("(() => { const r = document.querySelector('#btn-settings').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
         pg.tap(*at)
         time.sleep(0.6)
+        at = pg.js("(() => { const r = document.querySelector('#settings-body [data-group=\"settings-display\"] > summary').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
+        pg.tap(*at)  # (Display folds, #321)
+        time.sleep(0.6)
         tap_high_contrast('High contrast on')
         r = look(pg, 'phone, High contrast on in Settings', 'more')
         saved = pg.js("JSON.parse(localStorage.getItem('polku:settings')).highContrast")
@@ -7676,6 +7683,105 @@ def panels(chrome):
 # and keys: the panel's top below the top bar, its heading and ✕ on the screen with nothing over them, its body
 # scrolling under the wheel, its ✕ closing it, and the planner as it was. Raised too high to leave them room
 # (under 320 px), they open over it.
+def settings_groups(chrome):
+    """Settings in folding groups (#321): they fit a phone folded, stay as left over a reload, planned settings can't be
+    used, and the moves work by touch: a hidden Heads-up kind shown again (#143), recent searches cleared, 3D height
+    here and not in Layers, and another sport's tiles edited from its row."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        recent = [{'kind': 'place', 'label': 'Pyynikki', 'sub': 'Tampere', 'center': [23.73, 61.49]}, {'kind': 'place', 'label': 'Kauppi', 'sub': 'Tampere', 'center': [23.83, 61.51]}]
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:hideWarn': json.dumps({'roadwork': 'Road works'}), 'polku:recentSearches': json.dumps(recent)})
+
+        def tap(sel, name):
+            at = pg.js(f"""(() => {{ const b = document.querySelector({json.dumps(sel)}); if (!b) return null; b.scrollIntoView({{ block: 'nearest' }});
+              const r = b.getBoundingClientRect(); return r.width ? [r.x + r.width / 2, r.y + r.height / 2] : null; }})()""")
+            if not at:
+                fails.append(f'{name}: not there to tap')
+                return False
+            pg.tap(*at)
+            time.sleep(0.5)
+            return True
+        group = lambda g: f'#settings-body [data-group="settings-{g}"]'
+
+        tap('#btn-settings', 'Settings')
+        st = pg.js("""(() => { const b = document.querySelector('#settings-body'), g = [...b.querySelectorAll(':scope > .lg-group')];
+          return { titles: g.map((d) => d.querySelector('.lg-title').textContent), open: g.filter((d) => d.open).length, fits: b.scrollHeight <= b.clientHeight + 1,
+            coming: b.querySelectorAll('.coming').length, usable: [...b.querySelectorAll('.coming')].flatMap((c) => [c, ...c.querySelectorAll('input, button')]).filter((c) => 'disabled' in c && !c.disabled).length }; })()""")
+        want = ['Speeds and tiles by sport', 'Display', 'Language and units', 'Route arrows and marks', 'Map and planner', 'Hidden Heads-up', 'Offline maps', 'Saved on this device', 'Strava and Garmin', 'Data sources', 'About Polku']
+        if st['titles'] != want:
+            fails.append(f"the groups are {st['titles']}")
+        if st['open'] or not st['fits']:
+            fails.append(f"at first: {st['open']} groups open, the folded list {'fits' if st['fits'] else 'doesn’t fit'} on a 390 × 844 phone")
+        if st['coming'] < 12 or st['usable']:
+            fails.append(f"{st['coming']} planned settings, {st['usable']} of their controls usable")
+
+        # a hidden Heads-up kind, shown again
+        tap(group('hidden') + ' > summary', 'Hidden Heads-up')
+        if tap(group('hidden') + ' .row[data-k="roadwork"]', 'Road works, Show again'):
+            r = pg.js(f"""({{ kept: JSON.parse(localStorage.getItem('polku:hideWarn') || '{{}}'), note: document.querySelector('{group('hidden')} .note').textContent }})""")
+            if r['kept'] or not r['note'].startswith('Nothing hidden'):
+                fails.append(f"Show again: still hidden {r['kept']}, the group says “{r['note'][:40]}”")
+
+        # recent searches, cleared
+        tap(group('device') + ' > summary', 'Saved on this device')
+        line = pg.js(f"document.querySelector('{group('device')} .row[data-k=recent] small').textContent")
+        if line != '2 places':
+            fails.append(f'Recent searches says “{line}”, not 2 places')
+        if tap(group('device') + ' .row[data-k=recent]', 'Recent searches, Clear'):
+            r = pg.js(f"""({{ kept: JSON.parse(localStorage.getItem('polku:recentSearches') || '[]').length, line: document.querySelector('{group('device')} .row[data-k=recent] small').textContent }})""")
+            if r != {'kept': 0, 'line': 'None'}:
+                fails.append(f'Clear: {r}')
+
+        # distance marks: Settings' switch is Layers' too, and the times follow it
+        tap(group('route') + ' > summary', 'Route arrows and marks')
+        km = pg.js('polku.planner.marks.km')
+        sw = lambda: pg.js(f"""(() => {{ const t = (n) => [...document.querySelectorAll('{group('route')} label.tg')].find((l) => l.textContent.startsWith(n)).querySelector('input');
+          return {{ km: polku.planner.marks.km, here: t('Distance marks').checked, times: t('Arrival times').disabled, layers: polku.planner.els.onMap.querySelector('input').checked }}; }})()""")
+        pg.js(f"""[...document.querySelectorAll('{group('route')} label.tg')].find((l) => l.textContent.startsWith('Distance marks')).click(), true""")
+        time.sleep(0.3)
+        r = sw()
+        if r != {'km': not km, 'here': not km, 'times': km, 'layers': not km}:
+            fails.append(f'Distance marks from Settings, {km} → {r}')
+
+        # 3D height: here, and in Layers under 3D terrain
+        tap(group('map') + ' > summary', 'Map and planner')
+        r = pg.js(f"""(() => {{ const i = document.querySelector('{group('map')} input[aria-label="3D height"]'); if (!i) return null;
+          i.value = '2'; i.dispatchEvent(new Event('input', {{ bubbles: true }}));
+          polku.set({{ terrain3d: true }});
+          return {{ saved: JSON.parse(localStorage.getItem('polku:settings')).exaggeration, inLayers: document.querySelector('#layers-body input[aria-label="3D height"]')?.value }}; }})()""")
+        if r != {'saved': 2, 'inLayers': '2'}:
+            fails.append(f'3D height: {r}')
+        pg.js('polku.set({ terrain3d: false }); true')
+
+        # the groups stay as you left them, over a reload
+        pg.reload()
+        tap('#btn-settings', 'Settings, after a reload')
+        opened = pg.js("[...document.querySelectorAll('#settings-body > .lg-group')].filter((d) => d.open).map((d) => d.dataset.group)")
+        if sorted(opened) != ['settings-device', 'settings-hidden', 'settings-map', 'settings-route']:
+            fails.append(f'after a reload, open: {opened}')
+
+        # Paddle's tiles, edited from its row while the map is on MTB
+        tap(group('sports') + ' > summary', 'Speeds and tiles by sport')
+        tap('#settings-body .speed-sport-row[data-k="paddle"]', 'Paddle')
+        before = pg.js("polku.state.quickTiles.mtb ? [...polku.state.quickTiles.mtb] : null")
+        if tap(group('sports') + ' .speed-box .btn', "Edit Paddle's tiles"):
+            time.sleep(0.4)
+            head = pg.js("document.querySelector('#quick-layers.open .qd-head h2')?.textContent")
+            if head != 'Your tiles for Paddle':
+                fails.append(f"Edit Paddle's tiles opened “{head}”")
+            n = pg.js("document.querySelectorAll('#quick-layers .qt-rm').length")
+            if tap('#quick-layers .qt-rm', "Paddle's first tile, off"):
+                r = pg.js("({ paddle: (polku.state.quickTiles.paddle || []).length, mtb: polku.state.quickTiles.mtb ? [...polku.state.quickTiles.mtb] : null })")
+                if r['paddle'] != n - 1 or r['mtb'] != before:
+                    fails.append(f"a Paddle tile taken off: Paddle has {r['paddle']} of {n}, MTB's {before} → {r['mtb']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Settings: eleven folding groups that fit a phone and stay as left, planned settings off, Show again, Clear, marks and 3D height in both places, and another sport's tiles by touch" + ''.join(f'\n     - {f}' for f in fails))
+    return not fails
+
+
 def panels_desktop(chrome):
     fails = []
     for w, h_ in ((1440, 900), (1024, 768)):
@@ -8390,6 +8496,7 @@ def nextleg(chrome):
     if st['seg'] or st['rows'] != 'mtb*,gravel,road,hike,trailrun,run,paddle,swim':
         fails.append(f'{name}: Settings: {st}')
     t0 = pg.js('nlT.state()')['time']
+    press(pg, pg.js("nlT.at('#settings-body [data-group=settings-sports] > summary')"), f'{name}: Settings, Speeds and tiles by sport', False)
     press(pg, pg.js("nlT.at('#settings-body .speed-sport-row[data-k=mtb]')"), f'{name}: Settings, MTB', False)
     press(pg, pg.js("nlT.at([...document.querySelectorAll('#settings-body .speed-presets button')].find((b) => b.textContent === 'Fast'))"), f'{name}: Settings, Fast', False)
     time.sleep(1)
@@ -15447,6 +15554,7 @@ GROUPS = [
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
+    ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a hidden Heads-up kind shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),

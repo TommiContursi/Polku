@@ -13,6 +13,9 @@ import { store, toast } from './ui.js';
 const GROUPS = [['coords', 'Coordinates'], ['recent', 'Recent'], ['places', 'Places'], ['routes', 'Routes · LIPAS'], ['stops', 'Stops · LIPAS'], ['trails', 'Trails on the map']];
 const MAX = { places: 5, routes: 5, stops: 4, trails: 3, recent: 6 };
 const RECENT = 'recentSearches';
+// Settings › Saved on this device lists how many, and clears them
+export const recentSearches = () => store.get(RECENT, []);
+export const clearRecentSearches = () => store.set(RECENT, []);
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const shortType = (type) => (LIPAS_TYPES[type] ? LIPAS_TYPES[type].name.replace(/\s*\(.*\)$/, '') : 'LIPAS');

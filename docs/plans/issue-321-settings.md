@@ -6,13 +6,13 @@ and a desktop, light and dark. It covers #321's layout question for the
 [Settings and accessibility](https://github.com/TommiContursi/Polku/milestone/17) milestone and gives each of
 its planned settings a place.
 
-**Chosen 2026-10-31: B, folding groups.** Decisions 2 and 3 below are still open.
+**Chosen 2026-10-31: B, folding groups.** Built in one PR the same day; see "What was built" at the end. Distance marks are in both Settings and Layers (decision 2).
 
 ## What's wrong today
 
 - **The order.** About Polku comes first, then eight sport rows. On a phone the panel is 62 % of the screen and
   about 2,000 px long, so Display starts a screen and a half down.
-- **Preferences live elsewhere.** Distance marks and their times are in the planner's Check › On the map, 3D
+- **Preferences live elsewhere.** 3D
   height is under 3D terrain in Layers, the Heads-up kinds you've hidden only show at the end of Check, and the
   quick tiles per sport can only be changed from the drawer's Edit. Recent searches can't be cleared at all.
 - **No room to grow.** The milestone plans about twelve settings (#143, #199, #282, #324–#332) and none has a
@@ -27,10 +27,10 @@ Settings holds how Polku behaves. The map's choices stay in Layers, and the rout
 | Speeds per sport, paddle craft | Settings, and the planner's How you go | Settings → Speeds and tiles by sport (both stay, #87) |
 | The five quick tiles per sport | The Layers drawer's Edit | Also in Speeds and tiles by sport, a sport's row; the drawer keeps Edit |
 | Appearance, High contrast | Settings → Display | Stay |
-| Moving arrows on the route | Settings → Display | → Route arrows and marks |
-| Distance marks, arrival times, elapsed time | Check › On the map | → Route arrows and marks; Check's section goes |
+| Moving arrows on the route | Settings → Display | → Route arrows and marks; also in Layers › Your route |
+| Distance marks, arrival times, elapsed time | Layers › Your route (since #424; the proposal had them in Check) | Also in Route arrows and marks; Layers keeps them |
 | Details on hover, Trackpad rotates & tilts | Settings → Display | → Map and planner |
-| 3D height (exaggeration) | Layers, under 3D terrain | → Map and planner; 3D on or off stays in Layers |
+| 3D height (exaggeration) | Layers, under 3D terrain | Also in Map and planner; Layers keeps it, with 3D on or off |
 | The planner's place (desktop) | Settings, the planner's button and ⋯ | Map and planner; the planner keeps its button |
 | Heads-up kinds you've hidden | The end of Check | Also Settings → Hidden Heads-up (#143); Check keeps its list |
 | Recent searches | Search, kept with no way to clear | Settings → Saved on this device: Clear (new, small) |
@@ -50,8 +50,8 @@ Settings holds how Polku behaves. The map's choices stay in Layers, and the rout
    effects (#330).
 3. **Language and units:** planned: language, Automatic (the device's), English, Suomi or Svenska (#184), and
    units (#326).
-4. **Route arrows and marks:** moving arrows, distance marks, arrival and elapsed times; planned: trails show
-   through the route (#199).
+4. **Route arrows and marks:** moving arrows, distance marks, arrival and elapsed times, the same switches
+   as Layers' Your route; planned: trails show through the route (#199).
 5. **Map and planner:** a row that opens Layers (the base map, trails, 3D, the timeline and weather on the map
    stay there, and this is where someone looking for them in Settings finds the way), 3D height, details on hover, trackpad, the planner's place on a desktop; planned: turning
    the map with two fingers (#328), when Polku opens, where you left off or a fresh start (#329), keeping the screen on (#331).
@@ -70,7 +70,7 @@ routes (#157) and help (#114, #189) stay in their own work; Settings may link to
 last, once these names settle.
 
 **Planned settings ship greyed, marked Coming** (the user's choice, 2026-10-31): the control as it will be,
-disabled and grey the way the app greys a switch it can't use now (`.onmap .tg.off`, `.seg button:disabled`),
+disabled and grey the way the app greys a switch it can't use now (`.tg.off`, `.seg button:disabled`),
 with a Coming tag beside its name so a screen reader says why. Each issue then makes its control work. Every new row is Polku's plain row (`row` in `rows`, with `val`), its
 tag the inline `cur`. The
 mock-up's Planned switch shows them greyed or as they'll work.
@@ -89,8 +89,8 @@ first time, which PRODUCT.md's "no more taps" rule weighs against A's scrolling;
 ## Decisions for the user
 
 1. A or B: **B**, chosen 2026-10-31.
-2. Distance marks and their times move from Check to Settings (recommended: they're set once, not per route).
-3. A Clear button for recent searches (recommended: Polku keeps them, so it should let you remove them).
+2. Distance marks: they had already moved from Check to Layers › Your route in #424. The user's rule (2026-10-31): a setting can be in two places, so it's found where people look for it. The marks and arrows are in both, and so is 3D height.
+3. A Clear button for recent searches: yes.
 
 ## Building it
 
@@ -99,3 +99,13 @@ One PR for #321: `renderSettingsPanel()` in `js/main.js` regrouped into B's fold
 `quick`, `appearance`). It starts once #603 and #610 are merged, since both change `js/main.js`,
 `js/planner.js`, the CHANGELOG and `tools/smoke.py`. B adds no new motion: the folding is Layers' own. The
 planned settings then land one issue at a time, each in its group.
+
+## What was built (2026-10-31)
+
+- `renderSettingsPanel()` in `js/main.js` builds the eleven groups above with `layerGroup()`, all folded the first time.
+- Planned settings (#184, #188, #199, #282, #324–#332 and About's two rows) are their controls disabled, greyed by `.coming` and tagged Coming.
+- A sport's speed row also lists its quick tiles; its Edit opens the drawer's editor for that sport (`quickStep('edit', sport)`).
+- Two places, one control: 3D height (`heightRange()`) in Map and planner and under Layers' 3D terrain; the arrows (`arrowsToggle()`) and marks (`planner.marksSwitches()`) in Route arrows and marks and Layers' Your route.
+- Hidden Heads-up lists `hiddenKinds()` with Show again (#143); Check keeps its list.
+- Saved on this device: recent searches' count and Clear.
+- `tools/smoke.py settings` checks the groups, Coming, Show again, Clear, 3D height, the open groups over a reload and Edit for another sport, at 390 × 844; the groups the change touched open Settings' groups first.
