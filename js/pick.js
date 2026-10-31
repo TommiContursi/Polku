@@ -48,7 +48,7 @@ export async function resolvePick(pick, changed) {
     pick.a = await analyse(pick.ways.geo, { activity: pick.sport });
   } catch { pick.a = 'failed'; }
   step(() => {});
-  if (pick.a !== 'failed') await loadWeather(pick, changed);
+  if (pick.a !== 'failed' && store.get('pickProfile', true)) await loadWeather(pick, changed); // (folded, not asked: js/cards.js)
 }
 
 // the weather along it, all at the map's hour (nothing is "when you get there": it isn't going anywhere)

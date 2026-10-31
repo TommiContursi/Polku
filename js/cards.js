@@ -1,10 +1,10 @@
 // The cards' contents (25d, Revision 4 of #355): built from the card's parts (js/card.js) and what the planner says;
 // the planner keeps the actions. A card shows only what can be done now: in the route's view, what works there and
 // the planner's note with Edit.
-import { h, icon, toast } from './ui.js';
+import { h, icon, toast, store } from './ui.js';
 import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton } from './card.js';
 import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unmapped } from './facts.js';
-import { newPick, resolvePick, modesOf, modeOf, setMode } from './pick.js';
+import { newPick, resolvePick, modesOf, modeOf, setMode, loadWeather } from './pick.js';
 import { breakdownRows, colorAt, PICK_MODES, COLOR_MODES, NO_TERRAIN, ProfileChart } from './chart.js';
 import { notRight, isHttp, thingOf, depthAt } from './inspect.js';
 import { elevation } from './dem.js';
@@ -611,6 +611,7 @@ export function pickCard(pl, spot) {
   // (as a card, or as the line at the spot before it's opened)
   const changed = () => { const line = pl.picked === card; if (here() || line) pl.drawPick(pick); if (here()) pl.cards.refresh(); if (line) pl.renderLine(); };
   pick.again = () => { pick.ways = pick.a = undefined; pl.cards.refresh(); resolvePick(pick, changed); };
+  pick.weather = () => loadWeather(pick, changed);
   resolvePick(pick, changed);
   return card;
 }
@@ -705,6 +706,19 @@ function pickChart(pl, card, a, mode) {
   return card.chartBox;
 }
 
+// The profile, Colour by and its words in one group that folds (the planner's sections' control), remembered. Folded, no
+// chart is drawn and the weather along the way isn't asked (js/pick.js); its line says what the map's colours are.
+function profileGroup(pl, card, a) {
+  const open = store.get('pickProfile', true), mode = modeOf(a);
+  const head = h('button', { type: 'button', class: 'sec-head', 'aria-expanded': String(open), onclick: () => {
+    store.set('pickProfile', !open);
+    if (!open && !a.wind && !a.windError) card.pick.weather();
+    pl.cards.refresh();
+  } }, h('span', { class: 'sec-title' }, 'Profile'), h('span', { class: 'sec-sum' }, [PICK_MODES[mode], Number.isFinite(a.minE) ? `${Math.round(a.minE)}–${Math.round(a.maxE)} m` : ''].filter(Boolean).join(' · ')),
+  h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }));
+  return h('section', { class: 'sec', 'data-open': String(open) }, head, open ? h('div', { class: 'sec-body' }, pickChart(pl, card, a, mode), ...colourBy(pl, card.pick)) : null);
+}
+
 // Colour by under it: every fact that changes along the way, where this pick has data, grouped as the route's are; then the
 // words of each colour with their lengths (never colour alone)
 function colourBy(pl, pick) {
@@ -749,7 +763,7 @@ function pickBody(pl, card, body) {
     body.append(nums([{ value: fmtDist(w.len), label: `${w.growing ? 'long so far' : 'long'}${pieces > 1 ? `, ${pieces} pieces` : ''}` },
       a ? { value: `${Math.round(a.up)} m`, label: 'up' } : pick.a === 'failed' ? { value: '?', label: 'heights didn’t load', missing: true } : { value: '–', label: 'up', wait: true },
       a ? { value: `${Math.round(a.down)} m`, label: 'down' } : pick.a === 'failed' ? null : { value: '–', label: 'down', wait: true }]));
-    if (a) body.append(pickChart(pl, card, a, modeOf(a)), ...colourBy(pl, pick));
+    if (a) body.append(profileGroup(pl, card, a));
     else if (pick.a === 'failed') body.append(failed('The terrain didn’t load: no profile or grades yet. ', pick.again));
     else body.append(skeleton(pick, { nums: false }));
     const stops = Object.values(w.stops);

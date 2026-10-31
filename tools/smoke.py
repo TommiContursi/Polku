@@ -12498,7 +12498,7 @@ RC_LOOK = """((phone) => {
   if (!c) return ['no card'];
   const ok = new Set(['pl-way', 'card', 'way-bar', 'way-back', 'btn', 'small', 'quiet', 'tool', 'way-x', 'way-head', 'way-hint', 'card-mark', 'sheet-sum', 'sum-item', 'miss', 'wait',
     'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-cost', 'pl-viewnote', 'primary', 'big', 'acts', 'warn-row', 'look', 'unk', 'insp-row', 'insp-info', 'insp-more', 'link', 'way-chips', 'chip', 'way-fold', 'way-facts',
-    'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-chart', 'profile-box', 'profile-tip', 'chart-reset', 'pick-skel', 'pick-skel-nums', 'pick-skel-chart', 'pick-skel-by', 'sr-only', 'pick-by', 'mode-select', 'mode-select-label', 'mode-select-box', 'mode-select-chev', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot']);
+    'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-chart', 'profile-box', 'profile-tip', 'chart-reset', 'pick-skel', 'pick-skel-nums', 'pick-skel-chart', 'pick-skel-by', 'sr-only', 'sec', 'sec-head', 'sec-title', 'sec-sum', 'sec-chev', 'sec-body', 'pick-by', 'mode-select', 'mode-select-label', 'mode-select-box', 'mode-select-chev', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   const least = phone ? 44 : 36;
@@ -15486,6 +15486,14 @@ def pick_card(chrome):
             legend = sum(metres(v) for _, v in r['legend'])
             if len(r['legend']) < 2 or r['chart'] != {'mode': 'way', 'same': True, 'shown': True} or abs(legend - total) > max(25, total * 0.03):
                 fails.append(f"Rauhaniemenreitti by Way type: legend {r['legend']} ({legend:.0f} m of {total:.0f} m), the profile {r['chart']}")
+            # the profile folds by its head, remembered: no chart and no Colour by, its line saying what the map's colours are; and back
+            fold = "(() => { document.querySelector('.pl-way.card .sec-head').click(); return new Promise((r) => setTimeout(r, 400)); })()"
+            pg.js(fold)
+            f = pg.js("({ chart: !!document.querySelector('.pl-way.card canvas.pick-chart'), by: !!document.querySelector('.pl-way.card .pick-by'), sum: document.querySelector('.pl-way.card .sec-sum')?.textContent, kept: localStorage.getItem('polku:pickProfile') })")
+            pg.js(fold)
+            back = pg.js("!!document.querySelector('.pl-way.card canvas.pick-chart') && document.querySelector('.pl-way.card .sec-head').getAttribute('aria-expanded')")
+            if f['chart'] or f['by'] or not (f['sum'] or '').startswith('Way type') or f['kept'] != 'false' or back != 'true':
+                fails.append(f"Rauhaniemenreitti's profile folded: {f}; opened again: {back}")
         # road works (#564, #565): a click opens the same card as a way, not the old popup, the works ringed on the map, and dates
         # outside this year with their year
         y = pg.js('new Date().getFullYear()')

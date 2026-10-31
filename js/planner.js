@@ -2793,7 +2793,7 @@ export class Planner {
   onMapMove(e) {
     // the pointer on a pick whose card has its profile: the spot there, and on the profile (#574)
     const pc = this.cards.current;
-    if (pc && pc.chart && this.map.getLayer('pick-line') && e.originalEvent.target === this.map.getCanvas()) { // (not the card's own profile, over the map)
+    if (pc && pc.chart && pc.chart.canvas.isConnected && this.map.getLayer('pick-line') && e.originalEvent.target === this.map.getCanvas()) { // (not the card's own profile, over the map)
       const on = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['pick-line', 'pick-casing'] }).length;
       const i = on ? nearestSample(pc.chart.a, [e.lngLat.lng, e.lngLat.lat]) : -1;
       if (on || this.pickHovered) { pc.chart.setHover(i); this.pickSpot(pc, on ? i : null); }
