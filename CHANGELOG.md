@@ -14,6 +14,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - On a desktop, resting the pointer on a way says the same as its card's line and draws the whole way plainly, before a click. To know the whole way, the hover asks OpenStreetMap once for the ways of the map's tile under the pointer (about 1.2 km), as a tap does.
 - The wind colours are for going along the way in the direction the card names (its west end to its east end, as drawn). The weather is the hour the map's weather shows: now, unless you've picked another.
 
+### Road works, sea marks and the water open the same card ([#564](https://github.com/TommiContursi/Polku/issues/564), [#565](https://github.com/TommiContursi/Polku/issues/565))
+
+- Road works, traffic incidents, road conditions, busy roads, military areas, sea marks and their lights, faults and signs, navigation lines, fairways, restriction areas, light sectors and the water now open the same card as a trail, not the old popup. The thing is ringed or drawn on the map, the card says where its facts come from, and its last row has **Share**, **Weather here ›** and, for road works, **Fintraffic traffic situation**. The water's card has its depth from Traficom's chart and **Paddle from here**. Hold the map there for **Your route**.
+- Road works' and incidents' dates show their year when it isn't this year, so works that run over a year no longer seem to end before they begin.
+
 ### The blue route and LIPAS's routes are easier to tell from the map ([#611](https://github.com/TommiContursi/Polku/issues/611), [#560](https://github.com/TommiContursi/Polku/issues/560))
 
 - Over water, on the Trail map, Plain and Maastokartta, the blue route now has a dark edge instead of a white one, so it stands out from the sea and its marks. On the night map and the aerial photos it keeps its white edge, and a leg over land is as it was.
