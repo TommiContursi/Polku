@@ -7465,7 +7465,7 @@ PANEL_BOX = """((id) => {
 })"""
 
 
-# Settings and all layers over the planner on a phone (#240), opened by touch with the sheet at every size:
+# Settings and all layers over the planner on a phone (#240; Settings is a drawer since #634), opened by touch with the sheet at every size:
 # the panel's top below the top bar, its heading and ✕ on screen with nothing over them, its body scrolling
 # under a finger, the ✕ closing it, and the sheet as it was. A short phone and a turned one too.
 # Holds MapLibre's load event until __col.release(), and notes where Locate and 3D are after every frame
@@ -7730,21 +7730,52 @@ def panels(chrome):
                 if after['st'] != before['st'] or abs(after['h'] - before['h']) > 1:
                     fails.append(f"{name}: the planner {after['st']} {after['h']:.0f} px after it closed, not {before['st']} {before['h']:.0f} px")
         if (w, h_, sport) == (390, 844, 'mtb'):
-            # Settings open above the sheet at half, then the sheet swiped up to full under it: Settings covers it
+            # Settings is a drawer (#634): at the screen's foot over the planner at half, a short swipe down leaves it
+            # open, a swipe down its scrolled body scrolls it back first, a long one closes it, and so does a tap on the map
             pg.js("polku.planner.setSheetState('half'); true")
             pg.js(SETTLED)
+            before = pg.js(SHEET_STATE)
+            box = lambda: pg.js(PANEL_BOX + "('#settings-panel')")
             pg.tap(*centre('#btn-settings'))
             time.sleep(0.4)
-            hd = centre('#planner .sheet-handle')
-            pg.swipe(hd[0], hd[1], 100, ms=500, hold=0.2)
+            r = box()
+            if not r['open'] or abs(r['bottom'] - h_) > 1:
+                fails.append(f"390x844, Settings: {'open' if r['open'] else 'closed'}, its bottom at {r['bottom']:.0f} px, not at the screen's foot")
+            head = centre('#settings-panel .panel-head h2')
+            pg.swipe(head[0], head[1], head[1] + 40, ms=400, hold=0.2)
             pg.js(SETTLED)
-            r = pg.js(PANEL_BOX + "('#settings-panel')")
-            st = pg.js(SHEET_STATE)['st']
-            if st != 'full' or not r['open'] or r['top'] < r['bar'] - 0.5 or not (r['xin'] and r['xfree']):
-                fails.append(f"390x844: Settings open and the sheet swiped up: the sheet {st}, Settings {'open' if r['open'] else 'closed'}, its top at {r['top']:.0f} px, its ✕ {'free' if r['xin'] and r['xfree'] else 'covered or off the screen'}")
+            r2 = box()
+            if not r2['open'] or abs(r2['top'] - r['top']) > 1:
+                fails.append(f"390x844, Settings swiped down 40 px: {'open' if r2['open'] else 'closed'}, its top {r['top']:.0f} → {r2['top']:.0f} px")
+            pg.js("document.querySelectorAll('#settings-body > .lg-group').forEach((d) => d.open = true); document.querySelector('#settings-body').scrollTop = 300; true")
+            time.sleep(0.3)
+            r = box()
+            x, top, bottom = r['body']
+            pg.swipe(x, top + 30, top + 230, ms=400, hold=0.1)
+            pg.js(SETTLED)
+            shut, back = pg.js("document.querySelector('#settings-panel').hidden"), pg.js("document.querySelector('#settings-body').scrollTop")
+            if shut or back > 150:
+                fails.append(f"390x844, Settings scrolled 300 px, a finger down its body: {'closed it' if shut else f'scrolled to {back:.0f} px'}")
+            head = centre('#settings-panel .panel-head h2')
+            pg.swipe(head[0], head[1], h_ - 10, ms=400)
+            pg.js(SETTLED)
+            time.sleep(0.4)
+            if not pg.js("document.querySelector('#settings-panel').hidden"):
+                fails.append('390x844, Settings swiped down to the screen’s foot: still open')
+            pg.tap(*centre('#btn-settings'))
+            time.sleep(0.4)
+            pg.js("document.querySelectorAll('#settings-body > .lg-group').forEach((d) => d.open = false); true")
+            time.sleep(0.3)
+            pg.tap(195, (box()['bar'] + box()['top']) / 2)  # the map above the drawer
+            time.sleep(0.4)
+            after = pg.js(SHEET_STATE)
+            if not pg.js("document.querySelector('#settings-panel').hidden && document.querySelector('#quick-scrim').hidden"):
+                fails.append('390x844, Settings open, a tap on the map above it: Settings or its scrim still there')
+            if after['st'] != before['st'] or abs(after['h'] - before['h']) > 1:
+                fails.append(f"390x844, Settings swiped and tapped away: the planner {after['st']} {after['h']:.0f} px, not {before['st']} {before['h']:.0f} px")
         fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} Settings and all layers over the planner on phones" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} Settings and all layers over the planner on phones, and Settings a drawer you swipe away" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -15633,7 +15664,7 @@ GROUPS = [
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a hidden Heads-up kind shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
-    ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240); desktops, the planner at the bottom, by mouse and keys (#257)'),
+    ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),

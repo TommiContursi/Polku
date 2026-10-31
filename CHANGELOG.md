@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### Settings is a sheet you swipe on phones ([#634](https://github.com/TommiContursi/Polku/issues/634))
+
+- On a phone, **Settings** now comes up from the bottom like the layer drawer. Swipe it down or tap the map to close it, as you do with Layers. It grows with the groups you open, up to the top bar, and the planner under it keeps its size.
+
 ### Fewer effects, for a phone or browser that draws Polku slowly ([#632](https://github.com/TommiContursi/Polku/issues/632))
 
 - **Settings → Display → Fewer effects** now works. It turns the see-through glass over the map into solid panels. The glass is the most work for a browser to draw, so panels and the map move more smoothly without it, most of all in a slow browser. The choice stays on this device.
