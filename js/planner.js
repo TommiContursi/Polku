@@ -1,7 +1,7 @@
 // Route planner: waypoints, per-leg routing modes, undo/redo, the bottom sheet
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
-import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS, ROUTE_COLORS } from './config.js';
+import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
@@ -9,7 +9,7 @@ import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout, noTerrain, NO_TERRAIN } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
@@ -17,7 +17,7 @@ import { sunTimes, darkness } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
+import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags, wayExtras } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt, keepInView } from './inspect.js';
@@ -25,6 +25,7 @@ import { describe } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
 import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard } from './cards.js';
+import { pickData } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -3592,7 +3593,7 @@ export class Planner {
         if (navigator.vibrate) navigator.vibrate(10);
         this.noClickUntil = Date.now() + 700;
         cam = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
-        this.openSpotCard(ll, { pt, touch: true });
+        this.openSpotCard(ll, { pt, touch: true, hold: true });
         held = this.cards.current;
       };
       timers = [
@@ -3654,7 +3655,7 @@ export class Planner {
       if (Date.now() - lastTouch < 1000 || this.edit || this.picking || onUi(e) || (d && Math.hypot(e.point.x - d.x, e.point.y - d.y) > 4)) return;
       const li = this.active ? this.lineAt(e.point, 6) : null;
       if (li != null) { if (this.drawing()) this.openStretchCard(this.stretchAt(li), { edit: true, at: [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)] }); else this.openRouteCard(li, e.lngLat); return; }
-      this.openSpotCard(e.lngLat, { pt: e.point });
+      this.openSpotCard(e.lngLat, { pt: e.point, hold: true });
     });
     map.on('rotatestart', () => { const c = this.cards.current; if (c && (c.kind === 'spot' || c.kind === 'place')) this.cards.close(); });
   }
@@ -3674,7 +3675,7 @@ export class Planner {
 
   // What's there (part 5): a place's card on its icon, else the spot's, with the way or what else the map has there.
   // `place`: a place to show (from search, part 6); `from`: the card it's opened from (Back goes back to it)
-  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '' } = {}) {
+  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '', hold = false } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
@@ -3687,7 +3688,15 @@ export class Planner {
     this.openCard(spotCard(this, { ll, pin, title: d ? text(d.title) : water ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       ...wayExtras(way ? way.properties : {}, { winter: winterAt(feats, ll), uphill: feats.find((x) => x.layer.id === 'uphill-line'), bike }),
-      partOf: route && route.properties.name ? { props: route.properties, ll } : null }), ll, from);
+      partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch }), ll, from);
+  }
+  // What a tap picked, drawn on the map like a route (#574): its colours along it, a street's other side, an area's outline;
+  // nothing drawn with no pick
+  drawPick(pick) {
+    const d = pick ? pickData(pick) : { pick: EMPTY, side: EMPTY, area: EMPTY };
+    this.app.setData('pick', d.pick);
+    this.app.setData('pickSide', d.side);
+    this.app.setData('pickArea', d.area);
   }
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
   openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
@@ -6443,82 +6452,10 @@ export class Planner {
   }
 
   // The same category key drives totals, bar segments and map previews.
-  breakdownKey(mode, i) {
-    const a = this.analysis;
-    switch (mode) {
-      case 'sport': return a.attr[i]?.sport || a.activity;
-      case 'surface': return a.surf[i];
-      case 'way': return a.way[i];
-      case 'width': case 'vis': return a.td?.[mode][i];
-      case 'wind': return a.wind && windClass(a.wind.head[i], a.wind.speed[i]).key;
-      case 'temp': return a.wind && tempBand(a.wind.temp[i]).key;
-      case 'rain': return a.wind && rainBand(a.wind.precip[i], a.wind.temp[i]).key;
-      case 'uphill': return noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down';
-      case 'both': return a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99;
-      case 'down': return a.down6[i] >= 0 ? a.down6[i] : 'not graded';
-      default: return noTerrain(a, i) ? GRADE_BANDS.length : GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min);
-    }
-  }
+  breakdownKey(mode, i) { return breakdownKey(this.analysis, mode, i); }
 
   // Full distance accounting, including unknown stretches once a kind has data.
-  breakdownRows(mode) {
-    const a = this.analysis;
-    if (!a || !(a.total > 0)) return [];
-    if (['wind', 'temp', 'rain'].includes(mode) && !a.wind) return [];
-    if ((mode === 'width' || mode === 'vis') && (!a.td || !a.td[mode].some((k) => k >= 0))) return [];
-    if (mode === 'surface' && !a.surf.some((k) => k !== 'unknown')) return [];
-    if (mode === 'grade' && a.terrain?.all) return [];
-    if (mode === 'down' && !a.down6.some((k) => k >= 0)) return [];
-    if (mode === 'uphill' && a.terrain?.all && !a.upCls.some((k) => k >= 0)) return [];
-    if (mode === 'both' && a.terrain?.all && !a.upCls.some((k) => k >= 0) && !a.down6.some((k) => k >= 0)) return [];
-    let rows;
-    const n = a.along.length;
-    const sumBy = () => {
-      const m = new Map();
-      for (let i = 1; i < n; i++) {
-        const k = this.breakdownKey(mode, i);
-        if (k == null) continue;
-        m.set(k, (m.get(k) || 0) + a.along[i] - a.along[i - 1]);
-      }
-      return m;
-    };
-    if (mode === 'sport') {
-      const m = sumBy();
-      rows = [...m.entries()].map(([k, d]) => [ACTIVITIES[k] ? ACTIVITIES[k].label : k, d, SPORT_COLORS[k] || '#64748b', k]);
-    } else if (mode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown, k]);
-    else if (mode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other, k]);
-    else if ((mode === 'width' || mode === 'vis') && a.td) {
-      const sc = TRAIL_SCALES[mode];
-      const m = sumBy();
-      // narrow → wide (clear → barely visible), then the not-mapped and the roads
-      rows = [...m.entries()].sort((x, y) => (x[0] < 0) - (y[0] < 0) || (x[0] < 0 ? y[0] - x[0] : x[0] - y[0])).map(([k, d]) => [sc.labels[k + 2], d, sc.colors[k + 2], k]);
-    }
-    else if (['wind', 'temp', 'rain'].includes(mode)) {
-      const classes = { wind: WIND_CLASSES, temp: TEMP_BANDS, rain: RAIN_BANDS }[mode];
-      const m = sumBy();
-      rows = classes.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color, c.key]);
-    }
-    else if (mode === 'uphill') {
-      const m = sumBy();
-      const last = (k) => (k === 'no terrain' ? 2 : k === 'flat / down' ? 1 : 0);
-      rows = [...m.entries()].sort((x, y) => last(x[0]) - last(y[0]) || x[0] - y[0])
-        .map(([k, d]) => [typeof k === 'string' ? k : UPHILL_TEXT[k], d, typeof k === 'string' ? '#d6dde3' : DIFF_COLORS[k], k]);
-    } else if (mode === 'both') {
-      // climbs by uphill grade, the rest by MTB difficulty: S0…S6, then ↑S0…↑S5, then not graded
-      const m = sumBy();
-      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3', k]
-        : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10], k] : [MTB_SCALE_TEXT[k].split(':')[0], d, DIFF_COLORS[k], k]));
-    } else if (mode === 'down') {
-      const m = sumBy();
-      rows = [...m.entries()].sort((x, y) => (x[0] === 'not graded' ? 1 : y[0] === 'not graded' ? -1 : x[0] - y[0]))
-        .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : DIFF_COLORS[k], k]);
-    } else {
-      // where the terrain is missing: not flat, unknown
-      const m = sumBy();
-      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (GRADE_BANDS[k] ? [GRADE_BANDS[k][2], d, GRADE_BANDS[k][1], k] : ['no terrain', d, NO_TERRAIN, k]));
-    }
-    return rows;
-  }
+  breakdownRows(mode) { return breakdownRows(this.analysis, mode); }
 
   renderClimbs() {
     const a = this.analysis;

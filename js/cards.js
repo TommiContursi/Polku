@@ -3,13 +3,15 @@
 // the planner's note with Edit.
 import { h, icon, toast } from './ui.js';
 import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton } from './card.js';
-import { pointNums, headline, wayFacts, SPORT_FACTS, spotNums, placeFacts, placeGroups } from './facts.js';
+import { pointNums, headline, wayFacts, SPORT_FACTS, placeFacts, placeGroups, wayGroups, unmapped } from './facts.js';
+import { newPick, resolvePick, modesOf, modeOf, setMode } from './pick.js';
+import { breakdownRows, colorAt, PICK_MODES } from './chart.js';
 import { notRight, isHttp } from './inspect.js';
 import { elevation } from './dem.js';
 import { iconUrl } from './icons.js';
 import { ACTIVITIES, CRAFTS, LIPAS_TYPES } from './config.js';
 import { STYLES, styleName } from './styles.js';
-import { fmtDist, fmtDuration } from './geo.js';
+import { fmtDist, fmtDuration, compass, bearing } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
 import { LONG_HOURS } from './weather.js';
 
@@ -569,15 +571,16 @@ function placeMark(spot) {
 }
 
 export function spotCard(pl, spot) {
+  if (!spot.place) return pickCard(pl, spot);
   const card = {
-    kind: spot.place ? 'place' : 'spot', key: spot.ll, spot, ele: undefined, pinned: !!spot.pin,
+    kind: 'place', key: spot.ll, spot, ele: undefined, pinned: !!spot.pin,
     get title() { return spot.title; }, get label() { return spot.title; }, get sub() { return spot.line; },
     get pill() {
       if (pl.inView()) return null;
       if (!pl.points.length) return { label: 'Start a route here', icon: 'plus', fn: () => pl.startRouteAt(spot.ll) };
       return pl.byTheLine(spot.ll) ? { label: 'Add a point here', icon: 'plus', fn: () => pl.addWhereItFits(spot.ll) } : { label: 'Add to my route', icon: 'plus', fn: () => pl.addWhereItFits(spot.ll) };
     },
-    mark: () => (spot.place ? placeMark(spot) : h('span', { class: 'card-pin' })), at: () => spot.ll, fold: () => [spot.line],
+    mark: () => placeMark(spot), at: () => spot.ll, fold: () => [spot.line],
     build: (body) => spotBody(pl, card, body),
   };
   // (the height can come while What's here, a card of its own above this one, is the open one: it's built again too)
@@ -585,24 +588,151 @@ export function spotCard(pl, spot) {
   return card;
 }
 
-function spotBody(pl, card, body) {
-  const { spot } = card, view = pl.inView(), n = pl.points.length, near = n > 1 ? pl.nearLine(spot.ll) : null;
-  if (spot.place) {
-    if (spot.src) body.append(h('p', { class: 'rt-cost' }, spot.src));
-    const facts = placeFacts(spot.tags);
-    // (plain lines with a tick, never pills that look like buttons)
-    for (const f of facts) body.append(h('div', { class: 'insp-row' }, h('b', {}, h('span', { class: 'menu-tick', 'aria-hidden': 'true', html: icon('check', 16) }), ` ${f}`)));
-  } else body.append(nums(spotNums({ fromRoute: near ? near.d : null, ele: card.ele, tags: spot.way ? spot.tags : null, sport: pl.app.activity() })));
-  body.append(rows(item({ icon: 'info', label: 'What’s here', line: 'Everything Polku knows here', chev: true, onclick: () => pl.cards.open(spotHereCard(pl, card), { at: spot.ll, from: card }) })));
-  if (view) { body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }), foot(pl, card, spot)); return; }
-  // Your route: only what can be done now (with no route, a round trip from here)
-  const undo = { label: 'Undo', fn: () => pl.undo() };
+// ------------------------------------------------------------------ a pick: a way joined from its pieces, and what else is known there (#574)
+// The card for a tap or a hold on a way (or on nothing): its name or kind and how you get along it, its length with the
+// profile coloured by Colour by, the facts in groups, the weather here now, the places at the spot, and in one quiet
+// line what OpenStreetMap doesn't have. The same facts for every sport. It shows what the map's own tile knows at once
+// and fills in as the ways, the heights and the weather come, saying so while it waits.
+export function pickCard(pl, spot) {
+  const pick = newPick(spot, { hold: !!spot.hold, sport: pl.app.activity(), sec: pl.app.weatherSec(), zoom: pl.map.getZoom(), touch: !!spot.touch });
+  const here = () => pl.cards.stack.some((e) => e.card === card);
+  const card = {
+    kind: 'spot', key: spot.ll, spot, pick, osm: null, pinned: true,
+    get title() { return pick.title || spot.title; }, get label() { return this.title; }, get sub() { return pick.line || spot.line; },
+    mark: () => h('span', { class: 'pick-mark', style: `--c:${markColour(pick)}` }), at: () => spot.ll, fold: () => [card.sub],
+    build: (body) => pickBody(pl, card, body),
+    gone: () => { pick.dead = true; pl.drawPick(null); },
+  };
+  const changed = () => { if (here()) { pl.drawPick(pick); pl.cards.refresh(); } };
+  pick.again = () => { pick.ways = pick.a = undefined; pl.cards.refresh(); resolvePick(pick, changed); };
+  resolvePick(pick, changed);
+  return card;
+}
+const PLAIN = '#374151';
+const markColour = (pick) => (pick.a && pick.a !== 'failed' && (breakdownRows(pick.a, modeOf(pick.a))[0] || [])[2]) || PLAIN;
+// facts as rows: the name, its value, and where it changes how much of each
+const factGroup = (title, list) => {
+  const kept = list.filter(Boolean);
+  return kept.length ? [h('h4', { class: 'menu-h' }, title), h('div', { class: 'pick-facts', role: 'group', 'aria-label': title }, ...kept.map(([k, v, note]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v), note ? h('small', {}, note) : null)))] : [];
+};
+const failed = (text, retry) => h('p', { class: 'pick-fail' }, text, retry ? h('button', { type: 'button', class: 'btn quiet', onclick: retry }, 'Try again') : null);
+
+// the sample of an analysis nearest a spot
+const sampleAt = (a, ll) => a.pts.reduce((b, q, k) => (Math.hypot(q[0] - ll[0], q[1] - ll[1]) < Math.hypot(a.pts[b][0] - ll[0], a.pts[b][1] - ll[1]) ? k : b), 0);
+// the small profile, coloured as the map: the whole pick, a dashed line where you tapped
+function profileOf(a, mode, ll) {
+  const W = 300, H = 60, n = a.pts.length, lo = a.minE, hi = Math.max(a.maxE, a.minE + 10), total = a.along[n - 1] || 1;
+  const X = (i) => (a.along[i] / total) * W, Y = (i) => H - 4 - ((a.ele[i] - lo) / (hi - lo)) * (H - 10);
+  const cs = a.pts.map((_, i) => (i ? colorAt(a, i, mode) : null));
+  let paths = '', start = 1;
+  for (let i = 1; i <= n; i++) {
+    if (i < n && cs[i] === cs[start]) continue;
+    let d = `M${X(start - 1).toFixed(1)},${H} `;
+    for (let k = start - 1; k < i; k++) d += `L${X(k).toFixed(1)},${Y(k).toFixed(1)} `;
+    paths += `<path d="${d}L${X(i - 1).toFixed(1)},${H}Z" fill="${cs[start]}" opacity="0.92"/>`;
+    start = i;
+  }
+  let ink = '';
+  for (let k = 0; k < n; k++) ink += `${k ? 'L' : 'M'}${X(k).toFixed(1)},${Y(k).toFixed(1)} `;
+  const sx = X(sampleAt(a, ll)).toFixed(1);
+  const box = h('div', { class: 'pick-prof', role: 'img', 'aria-label': `Height profile, ${Math.round(a.minE)} to ${Math.round(a.maxE)} m, coloured by ${PICK_MODES[mode].toLowerCase()}` });
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${paths}<path d="${ink}" fill="none" stroke="var(--chart-ink)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`
+    + `<line x1="${sx}" x2="${sx}" y1="0" y2="${H}" stroke="var(--chart-ink)" stroke-width="1.5" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/></svg><span class="ax top">${Math.round(a.maxE)} m</span><span class="ax bot">${Math.round(a.minE)} m</span>`;
+  return box;
+}
+
+// Colour by under it: every fact that changes along the way, where this pick has data, grouped as the route's are; then the
+// words of each colour with their lengths (never colour alone)
+function colourBy(pl, pick) {
+  const a = pick.a, mode = modeOf(a);
+  const chips = h('div', { class: 'way-chips pick-by', role: 'group', 'aria-label': 'Colour by' }, ...modesOf(a).map(([title, modes]) => h('div', { class: 'chip-group', role: 'group', 'aria-label': title },
+    h('span', { class: 'chip-group-label', 'aria-hidden': 'true' }, title),
+    ...modes.map((k) => h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': String(k === mode), html: k === mode ? icon('check', 15) : '', onclick: () => { setMode(k); pl.drawPick(pick); pl.cards.refresh(); } }, h('span', {}, PICK_MODES[k]))))));
+  const legend = h('div', { class: 'bd-legend' }, ...breakdownRows(a, mode).filter((r) => r[1] > 0).map(([words, d, color, key]) => h('span', { class: 'bd-item', 'data-category': String(key) },
+    h('i', { style: `background:${color}`, 'aria-hidden': 'true' }), h('span', {}, `${cap(String(words))} `), h('b', {}, fmtDist(d)))));
+  // (a pick has no direction of its own: head and tail are for going from its west end to its east end)
+  const dir = mode === 'wind' ? h('p', { class: 'pick-note' }, `Headwind and tailwind are for going ${compass(bearing(a.pts[0], a.pts[a.pts.length - 1]))} along it.`) : null;
+  return [chips, legend, dir].filter(Boolean);
+}
+
+// the weather here, at the hour the map's weather shows
+function weatherGroup(pick) {
+  const now = Math.abs(pick.sec - Date.now() / 1000) < 1800, title = now ? 'Weather here now' : `Weather here at ${new Date(pick.sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  if (pick.wx === undefined) return factGroup(title, [['Weather', 'Asking the forecast']]);
+  if (pick.wx === 'failed') return [h('h4', { class: 'menu-h' }, title), failed('The forecast didn’t load.')];
+  const w = pick.wx;
+  return factGroup(title, [['Wind', `${w.speed.toFixed(0)} m/s from the ${compass(w.dir)}`, `Gusts ${w.gust.toFixed(0)} m/s`], ['Rain', w.precip >= 0.1 ? `${w.precip.toFixed(1)} mm an hour${w.temp < 0.5 ? ', snow' : ''}` : 'Dry'],
+    ['Temperature', `${w.temp.toFixed(0)} °C`, 'Open-Meteo’s forecast for its 3 km square']]);
+}
+// LIPAS's places at the spot, each its own card
+function placesGroup(pl, pick) {
+  if (!pick.places || !pick.places.length) return [];
+  if (pick.places === 'failed') return [h('h4', { class: 'menu-h' }, 'At this spot'), failed('LIPAS didn’t answer, so places here aren’t shown.')];
+  return [h('h4', { class: 'menu-h' }, 'At this spot'), rows(...pick.places.map((x) => item({ icon: 'pin', label: x.name, line: (LIPAS_TYPES[x.type] || {}).name || 'From LIPAS', chev: true,
+    onclick: () => pl.openLipasCard({ type: x.type, lipasId: x.id, name: x.name, typeName: (LIPAS_TYPES[x.type] || {}).name || '', icon: (LIPAS_TYPES[x.type] || {}).icon || '' }, x.at || pick.ll, {}) })))];
+}
+
+function pickBody(pl, card, body) {
+  const { pick, spot } = card, w = pick.ways, view = pl.inView(), a = pick.a && pick.a !== 'failed' ? pick.a : null;
+  const way = w && typeof w === 'object';
+  if (way) {
+    spot.osm = { type: 'way', id: w.seed.id };
+    const pieces = new Set(w.chain.map((x) => x.w.id)).size;
+    body.append(nums([{ value: fmtDist(w.len), label: pieces > 1 ? `long, ${pieces} pieces` : 'long' },
+      a ? { value: `${Math.round(a.up)} m`, label: 'up' } : pick.a === 'failed' ? { value: '?', label: 'heights didn’t load', missing: true } : { value: '–', label: 'up', wait: true },
+      a ? { value: `${Math.round(a.down)} m`, label: 'down' } : pick.a === 'failed' ? null : { value: '–', label: 'down', wait: true }]));
+    if (a) body.append(profileOf(a, modeOf(a), spot.ll), ...colourBy(pl, pick));
+    else if (pick.a === 'failed') body.append(failed('The terrain didn’t load: no profile or grades yet. ', pick.again));
+    const stops = Object.values(w.stops);
+    if (stops.some((s) => s.why === 'end')) body.append(failed('It goes on beyond what’s loaded.'));
+    if (stops.some((s) => s.why === 'long')) body.append(failed('It goes on for more than 25 km: the card stops there.'));
+  } else if (w === undefined) body.append(failed('Asking OpenStreetMap for the way.'));
+  else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again));
+  else body.append(nums([pick.ele === undefined ? { value: '–', label: 'height here', wait: true } : pick.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(pick.ele)} m`, label: 'height here' }]));
+  // what a hold opens it for: your route's actions (in the route's view, the planner's note with Edit)
+  if (view) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
+  else if (pick.hold) body.append(...yourRoute(pl, spot, { add: true }));
+  const g = way ? wayGroups(w.chain, a) : wayGroups([{ w: { tags: spot.tags || {}, len: 1 } }]);
+  // the incline where you tapped, whatever the sport (what the hover says, #561)
+  if (a && !(a.eleGap && a.eleGap[sampleAt(a, spot.ll)])) { const gr = Math.round(a.grade[sampleAt(a, spot.ll)]) || 0; g.diff.unshift(['Grade here', `${gr >= 0 ? '+' : '−'}${Math.abs(gr)} %`, gr >= 0 ? 'uphill, where you tapped' : 'downhill, where you tapped']); }
+  body.append(...factGroup('Getting along', g.along), ...factGroup('Surface', g.surface), ...factGroup('Difficulty', g.diff), ...weatherGroup(pick), ...placesGroup(pl, pick));
+  if (card.osm && card.osm.rows) body.append(h('h4', { class: 'menu-h' }, 'All OpenStreetMap details'), ...card.osm.rows.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))));
+  const miss = way ? unmapped(w.chain) : [];
+  // (only what OpenStreetMap's own ways say can be "not mapped": while they load or didn't come, no claim)
+  body.append(h('p', { class: 'pick-unmapped' }, h('span', {}, way ? (miss.length ? `Not mapped: ${miss.join(', ')}.` : 'From OpenStreetMap.') : w === 'none' ? 'Nothing is mapped right here.' : ''),
+    h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card }) }, 'Not right?')));
+  body.append(pickFoot(pl, card, spot));
+}
+// the card's last row: Share and Weather here ›; a hold adds All OpenStreetMap details and Copy
+function pickFoot(pl, card, spot) {
+  const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: icon(ic, 16) }, h('span', {}, label));
+  return h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(spot.ll)),
+    ...(card.pick.hold ? [spot.osm && !card.osm ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.id ? spot.osm : null)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll)))] : []));
+}
+
+// Your route: only what can be done now (with no route, a round trip from here). `add`: the spot's one action first, as the
+// pill was (Add to my route, Add a point here by the line, Start a route here with no route).
+function yourRoute(pl, spot, { add = false } = {}) {
+  const n = pl.points.length, undo = { label: 'Undo', fn: () => pl.undo() };
+  const pill = !add ? null : !n ? { label: 'Start a route here', fn: () => pl.startRouteAt(spot.ll) } : { label: pl.byTheLine(spot.ll) ? 'Add a point here' : 'Add to my route', fn: () => pl.addWhereItFits(spot.ll) };
   const yours = acts(
+    pill ? item({ icon: 'plus', label: pill.label, line: 'In your route, where it fits', k: 'add', onclick: pill.fn }) : null,
     n ? item({ icon: 'flag', label: 'Start here', line: 'Adds a new start point', k: 'start', onclick: () => pl.startFrom(spot.ll) }) : null,
     n ? item({ icon: 'flagend', label: 'End here', line: 'Adds a new end point', k: 'end', onclick: () => { pl.cards.close(); pl.endAt(spot.ll); toast('A new end is added', { ms: 7000, action: undo }); } }) : null,
     pl.loopsHere() ? item({ icon: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose, from here', k: 'loop', onclick: () => { pl.cards.close(); pl.openLoop(spot.ll); } }) : null,
     n ? item({ icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); if (!pl.active) pl.setActive(true); pl.addNogo(spot.ll, 40, spot.place ? spot.title : 'Avoided place'); } }) : null);
-  if (yours) body.append(h('h4', { class: 'menu-h' }, 'Your route'), yours);
+  return yours ? [h('h4', { class: 'menu-h' }, 'Your route'), yours] : [];
+}
+
+function spotBody(pl, card, body) {
+  const { spot } = card, view = pl.inView(), n = pl.points.length;
+  if (spot.src) body.append(h('p', { class: 'rt-cost' }, spot.src));
+  const facts = placeFacts(spot.tags);
+  // (plain lines with a tick, never pills that look like buttons)
+  for (const f of facts) body.append(h('div', { class: 'insp-row' }, h('b', {}, h('span', { class: 'menu-tick', 'aria-hidden': 'true', html: icon('check', 16) }), ` ${f}`)));
+  body.append(rows(item({ icon: 'info', label: 'What’s here', line: 'Everything Polku knows here', chev: true, onclick: () => pl.cards.open(spotHereCard(pl, card), { at: spot.ll, from: card }) })));
+  if (view) { body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }), foot(pl, card, spot)); return; }
+  body.append(...yourRoute(pl, spot));
   body.append(foot(pl, card, spot));
 }
 

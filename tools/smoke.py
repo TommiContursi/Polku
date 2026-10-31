@@ -11771,7 +11771,7 @@ PC_LOOK = """((phone) => {
   for (const l of c.querySelectorAll('.sum-item small')) if (phone && parseFloat(getComputedStyle(l).fontSize) < 12.5) out.push(`a number's label at ${getComputedStyle(l).fontSize}`);
   for (const b of c.querySelectorAll('.sum-item b')) { const lh = parseFloat(getComputedStyle(b).lineHeight) || 20; if (b.offsetHeight > lh * 1.5) out.push(`“${b.textContent}” on more than one line`); }
   // (but the card folded to its title row: its name and two numbers, one line, step 3 of #233's fix round)
-  if (/ · /.test(((k) => { k.querySelectorAll('.way-facts').forEach((e) => e.remove()); return k.textContent; })(c.cloneNode(true)))) out.push('facts strung with “ · ”');
+  if (/ · /.test(((k) => { k.querySelectorAll('.way-facts, .way-hint small').forEach((e) => e.remove()); return k.textContent; })(c.cloneNode(true)))) out.push('facts strung with “ · ”');
   const rows = [...c.querySelectorAll('.row')], rm = rows[rows.length - 1];
   if (!rm || rm.querySelector('b').textContent !== 'Remove' || !rm.classList.contains('danger')) out.push('Remove isn’t the last row, in red');
   else if (rm.parentElement.previousElementSibling?.tagName !== 'HR') out.push('Remove isn’t apart, after a line');
@@ -12481,7 +12481,8 @@ RC_LOOK = """((phone) => {
   const c = document.querySelector('.pl-way.card'), out = [], r = (e) => e.getBoundingClientRect();
   if (!c) return ['no card'];
   const ok = new Set(['pl-way', 'card', 'way-bar', 'way-back', 'btn', 'small', 'quiet', 'tool', 'way-x', 'way-head', 'way-hint', 'card-mark', 'sheet-sum', 'sum-item', 'miss', 'wait',
-    'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-cost', 'pl-viewnote', 'primary', 'big', 'acts', 'warn-row', 'look', 'unk', 'insp-row', 'insp-info', 'insp-more', 'link', 'way-chips', 'chip', 'way-fold', 'way-facts']);
+    'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-cost', 'pl-viewnote', 'primary', 'big', 'acts', 'warn-row', 'look', 'unk', 'insp-row', 'insp-info', 'insp-more', 'link', 'way-chips', 'chip', 'way-fold', 'way-facts',
+    'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-by', 'chip-group', 'chip-group-label', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   const least = phone ? 44 : 36;
@@ -13114,6 +13115,7 @@ def spot_card(chrome):
         pg.js(RC_ROUTER)
         pg.js(SC_HELP)
         pg.js('sc.places(false)')  # (a hold or a tap is never on a place unless the check says so, whatever the tiles have)
+        pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")  # (no ways from Overpass: a spot with no way, and its height)
         return pg
 
     def route(pg, name, o):
@@ -13142,11 +13144,8 @@ def spot_card(chrome):
         if c['kind'] != 'spot' or c['place'] != 'peek' or c['n'] != 0:
             fails.append(f"{name}: a finger held 0.65 s with no route: {c['kind'] or 'no'} card ({c['place']}), {c['n']} points")
         else:
-            if c['rows'] != ['What’s here', 'Round trip from here'] or not c['pill'] or 'from your route' in c['labels'] or c['labels'][:1] != ['height']:
+            if c['rows'] != ['Start a route here', 'Round trip from here'] or c['pill'] or c['labels'][:1] != ['height here']:
                 fails.append(f"{name}: no route, the spot's card: rows {c['rows']}, numbers {c['labels']}, pill {bool(c['pill'])}")
-            pill = pg.js("document.querySelector('.card-pill')?.textContent.trim()")
-            if pill != 'Start a route here':
-                fails.append(f"{name}: no route, the pill says “{pill}”")
             # Android's contextmenu after the hold: no second card
             pg.js("window.scCard = polku.planner.cards.current; true")
             pg.js(f"polku.map.getCanvas().dispatchEvent(new MouseEvent('contextmenu', {{ clientX: {s['x']}, clientY: {s['y']}, button: 2, bubbles: true, cancelable: true }})); true")
@@ -13157,7 +13156,7 @@ def spot_card(chrome):
             if lk['canvas'] != 'none' or lk['card'] == 'none':
                 fails.append(f"{name}: a hold selects the map's text ({lk['canvas']}), or the card's text can't be selected ({lk['card']})")
             # the pill: a route of one point, drawing; the first point's peek says how to see what's there
-            press(pg, at(pg, "document.querySelector('.card-pill')"), f'{name}: Start a route here', True)
+            press(pg, at(pg, row('Start a route here')), f'{name}: Start a route here', True)
             r = pg.js("(() => { const p = polku.planner; return { n: p.points.length, editing: p.editing && p.active, card: !!p.cards.current, tip: document.querySelector('#planner .sum-empty small')?.textContent || '' }; })()")
             if r['n'] != 1 or not r['editing'] or r['card'] or r['tip'] != 'Hold the map to see what’s there.':
                 fails.append(f'{name}: Start a route here: {r}')
@@ -13210,16 +13209,12 @@ def spot_card(chrome):
             past, n = st(pg)['past'], st(pg)['n']
             hold(pg, s, 0.65)
             c = st(pg)
-            pill = pg.js("document.querySelector('.card-pill')?.textContent.trim()")
             pg.js('sc.calm()')
-            over = pg.js(PILL_OVER)
-            if over:
-                fails.append(f'{name}: held {what}: {over} over the pill')
-            if c['kind'] != 'spot' or c['labels'][:1] != ['from your route'] or pill != 'Add to my route' or c['rows'][:1] != ['What’s here'] or not {'Start here', 'End here', 'Avoid this spot'} <= set(c['rows']):
-                fails.append(f"{name}: held {what}: {c['kind']} card, numbers {c['labels']}, pill “{pill}”, rows {c['rows']}")
+            if c['kind'] != 'spot' or c['labels'][:1] != ['height here'] or c['rows'][:1] != ['Add to my route'] or not {'Start here', 'End here', 'Avoid this spot'} <= set(c['rows']):
+                fails.append(f"{name}: held {what}: {c['kind']} card, numbers {c['labels']}, rows {c['rows']}")
                 pg.js('polku.planner.cards.close(); true')
                 continue
-            press(pg, at(pg, "document.querySelector('.card-pill')"), f'{name}: Add to my route {what}', True)
+            press(pg, at(pg, row('Add to my route')), f'{name}: Add to my route {what}', True)
             r = pg.js(f"(() => {{ const p = polku.planner, s = {json.dumps(ll)}; return {{ n: p.points.length, past: p.past.length, i: p.points.findIndex((q) => Math.abs(q[0] - s[0]) < 4e-4 && Math.abs(q[1] - s[1]) < 2e-4), note: sc.note() }}; }})()")
             after = 'Kaupintie' if want == 1 else 'End'
             if r['n'] != n + 1 or r['past'] != past + 1 or r['i'] != want or not r['note'].startswith(f'Added after {after}'):
@@ -13238,11 +13233,11 @@ def spot_card(chrome):
         else:
             past, calls = st(pg)['past'], st(pg)['calls']
             hold(pg, s, 0.65)
-            pill = pg.js("document.querySelector('.card-pill')?.textContent.trim()")
-            if pill != 'Add a point here':
-                fails.append(f'{name}: held 20 m from the line, the pill says “{pill}”')
+            first = st(pg)['rows'][:1]
+            if first != ['Add a point here']:
+                fails.append(f'{name}: held 20 m from the line, the first row says {first}')
             pg.js('sc.calm()')
-            pill_at = at(pg, "document.querySelector('.card-pill')")
+            pill_at = at(pg, row('Add a point here'))
             n_before = pg.js('polku.planner.points.length')
             press(pg, pill_at, f'{name}: Add a point here', True)
             for _ in range(12):  # (the tap's answer, on a slow page a moment after)
@@ -13253,7 +13248,7 @@ def spot_card(chrome):
               const x = (u) => [(u[0] - a[0]) * k, (u[1] - a[1]) * 111320], Bq = x(b), Q = x(q), f = Math.max(0, Math.min(1, (Q[0] * Bq[0] + Q[1] * Bq[1]) / (Bq[0] ** 2 + Bq[1] ** 2)));
               return {{ n: p.points.length, past: p.past.length, calls: (window.routerCalls || []).length, line: Math.hypot(Q[0] - f * Bq[0], Q[1] - f * Bq[1]) }}; }})()""")
             if r['n'] != 4 or r['past'] != past + 1 or r['calls'] != calls or r['line'] > 2:
-                fails.append(f"{name}: Add a point here 20 m from the line: {r} (4 points, on the line, no call); the pill at {pill_at} over {pg.js(PILL_OVER) or 'nothing'}, the cards: {pg.js('sc.log()')}")
+                fails.append(f"{name}: Add a point here 20 m from the line: {r} (4 points, on the line, no call); the row at {pill_at}, the cards: {pg.js('sc.log()')}")
             pg.js('polku.planner.undo(); true')
             time.sleep(0.6)
         route(pg, name, ROUTE)
@@ -13316,7 +13311,7 @@ def spot_card(chrome):
         s = pg.js('sc.spot()')
         hold(pg, s, 0.65)
         c = st(pg)
-        if c['kind'] != 'spot' or c['pill'] or c['rows'] != ['What’s here'] or not c['note']:
+        if c['kind'] != 'spot' or c['pill'] or c['rows'] or not c['note']:
             fails.append(f"{name}: held in the route's view: {c['kind']} card, pill {bool(c['pill'])}, rows {c['rows']}, the note {c['note']}")
         pg.js('polku.planner.cards.close(); polku.planner.setEditing(true); true')
         # the planner put away: the card in the sheet, as while planning (#570)
@@ -13389,8 +13384,8 @@ def spot_card(chrome):
         c = st(pg)
         if c['kind'] != 'spot' or c['place'] != 'float' or not c['card'] or not (c['card']['left'] - 30 <= s['x'] <= c['card']['right'] + 30 and c['card']['top'] - 30 <= s['y'] <= c['card']['bottom'] + 30):
             fails.append(f"{name}: a right-click: {c['kind'] or 'no'} card ({c['place']}) at {c['card']}, the pointer at {s['x']}, {s['y']}")
-        elif c['first'] is None or c['first']['text'] != 'Add to my route':
-            fails.append(f"{name}: the right-click's card begins with {c['first']}")
+        elif c['rows'][:1] != ['Add to my route']:
+            fails.append(f"{name}: the right-click's card begins with {c['rows'][:1]}")
         pg.js('polku.planner.cards.close(); true')
         # a right-drag of 40 px turns the map and leaves no card
         s, b0 = pg.js('sc.spot()'), pg.js('polku.map.getBearing()')
@@ -13882,6 +13877,7 @@ def spot_card_foot(chrome):
             pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#15/61.514/23.818')
             pg.js(RC_ROUTER)
             pg.js(SC_HELP)
+            pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")
             pg.js(f"({RC_ROUTE})({json.dumps({'mode': 'line', 'pts': [[23.8, 61.512], [23.815, 61.5155], [23.83, 61.513]]})})", timeout=60000)
             for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true })"),
                              ('a place', f"polku.planner.openPlaceCard({{ layer: {{ id: 'poi-minor' }}, properties: {{ class: 'toilets', name: {json.dumps(name_)} }}, geometry: {{ type: 'Point', coordinates: polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]).toArray() }} }}, [23.82, 61.516])")):
@@ -13901,9 +13897,10 @@ def spot_card_foot(chrome):
                 if not r:
                     fails.append(f'{name}: {what}: no card with a last row')
                     continue
-                if not r['last'] or r['words'] != ['Share', 'Weather here ›', 'Not right?'] or r['small'] or r['out'] or r['wide'][0] > 0 or r['wide'][1] > 0:
+                want = ['Share', 'Weather here ›'] if what == 'a spot' else ['Share', 'Weather here ›', 'Not right?']  # (a spot's Not right? is at the end of its Not mapped line)
+                if not r['last'] or r['words'] != want or r['small'] or r['out'] or r['wide'][0] > 0 or r['wide'][1] > 0:
                     fails.append(f'{name}: {what}: the last row {r}')
-                if (w == 195) != (r['lines'] == 3) or (w != 195 and r['lines'] != 1):
+                if (w == 195) != (r['lines'] == len(want)) or (w != 195 and r['lines'] != 1):
                     fails.append(f"{name}: {what}: the last row is on {r['lines']} lines (one where there's room, a line each at 200 %)")
                 pg.js('polku.planner.cards.close(); true')
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
@@ -15403,6 +15400,108 @@ def pastforecast(chrome):
     return not fails
 
 
+# A pick (#574): a tap on a way joins its pieces into one thing, and its card says the same for every sport. The ways come from
+# a recorded Overpass answer (tools/fixtures/ways-tampere.json, every other tile empty), the terrain and the forecast are set
+# values, so no service is asked. A tap by a mouse at 1440 × 900.
+PICK_SEED = """(async () => {
+  const W = await import(location.origin + '/js/ways.js'), fx = await (await fetch(location.origin + '/tools/fixtures/ways-tampere.json')).json();
+  W.holdWays();
+  // (no place's icon, and no road works, under a tap: the ways are what's tapped)
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
+  for (const [k, d] of Object.entries(fx.tiles)) { const [x, y] = k.split('/').map(Number); W.seedWays(x, y, d); }
+  window.__fx = fx;
+  return true;
+})()"""
+# the card as a person reads it, once the ways and the heights are in
+PICK_STATE = """(() => {
+  const p = polku.planner, c = p.cards.current, box = document.querySelector('.pl-way.card'), pick = c && c.pick;
+  return { kind: c && c.kind, ways: pick ? (typeof pick.ways === 'object' ? 'in' : pick.ways ?? null) : null, heights: pick ? (typeof pick.a === 'object' ? 'in' : pick.a ?? null) : null,
+    title: box ? box.querySelector('.way-hint b')?.textContent : '', sub: box ? box.querySelector('.way-hint small')?.textContent || '' : '', text: box ? box.textContent : '',
+    nums: box ? [...box.querySelectorAll('.sum-item')].map((e) => e.textContent) : [], chips: box ? [...box.querySelectorAll('.pick-by .chip')].map((e) => ({ k: e.dataset.k, on: e.getAttribute('aria-pressed') === 'true', text: e.textContent.trim() })) : [],
+    legend: box ? [...box.querySelectorAll('.bd-legend .bd-item')].map((e) => [e.querySelector('span').textContent.trim(), e.querySelector('b').textContent]) : [],
+    fills: box ? [...new Set([...box.querySelectorAll('.pick-prof path[fill]')].map((e) => e.getAttribute('fill')))] : [],
+    rows: box ? [...box.querySelectorAll('.pick-facts .insp-row')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent]) : [],
+    drawn: polku.map.getSource('pick') ? polku.map.querySourceFeatures('pick').length : 0 };
+})()"""
+
+
+def pick_card(chrome):
+    fails = []
+    metres = lambda s: float(s.split()[0]) * (1000 if s.endswith('km') else 1)  # "1.04 km", "387 m"
+
+    def state(pg):
+        return pg.js(PICK_STATE)
+
+    def tap(pg, ll, want=('in', 'in'), secs=40, right=False):
+        """A click (or a right-click: a hold) at a spot of the map, then until the ways and the heights are in (or the time is up)."""
+        # (the map there drawn: a way of the map's own under the spot, or 20 s)
+        s = pg.js(f"""(async () => {{
+          polku.planner.cards.close(); polku.map.jumpTo({{ center: {json.dumps(ll)}, zoom: 16.5 }});
+          const q = polku.map.project({json.dumps(ll)}), r = polku.map.getCanvas().getBoundingClientRect(), t0 = Date.now();
+          while (Date.now() - t0 < 20000 && !polku.map.queryRenderedFeatures([[q.x - 7, q.y - 7], [q.x + 7, q.y + 7]]).some((f) => /^(path|track|cycleway|road)-/.test(f.layer.id))) await new Promise((ok) => setTimeout(ok, 250));
+          return {{ x: r.left + q.x, y: r.top + q.y, under: [...new Set(polku.map.queryRenderedFeatures([[q.x - 7, q.y - 7], [q.x + 7, q.y + 7]]).map((f) => f.layer.id))].slice(0, 8) }}; }})()""", timeout=40000)
+        for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': s['x'], 'y': s['y'], 'button': 'none' if kind == 'mouseMoved' else 'right' if right else 'left',
+                                                  'buttons': (2 if right else 1) if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+        t0, r = time.time(), None
+        while time.time() - t0 < secs:
+            time.sleep(0.4)
+            r = state(pg)
+            if r['kind'] == 'spot' and (r['ways'], r['heights']) == want:
+                break
+        time.sleep(0.5)
+        r = state(pg)
+        r['at'] = s
+        return r
+
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': f"{DEM_MOCK.replace(chr(39) + 'fail' + chr(39) + ', asked', chr(39) + 'ok' + chr(39) + ', asked')};{EMPTY_DEPTHS};{WX_FIXED};"}, pg.s)
+        pg.open_app({'activity': 'gravel', 'trailsByActivity': {'gravel': {'trailColors': 'both'}}}, {'polku:winter': '"off"'}, '#16/61.5107/23.8159')
+        pg.js(PICK_SEED)
+        # #561: in Gravel, a trail's card says its MTB grade and its incline (the card had height and "surface not mapped")
+        r = tap(pg, [23.81593, 61.51065])
+        if (r['ways'], r['heights']) != ('in', 'in') or not re.search(r'S5', r['sub'] + ' ' + ' '.join(v for _, v in r['rows'])) or 'Grade here' not in dict(r['rows']):
+            fails.append(f"the S5 path in Gravel: ways {r['ways']}, heights {r['heights']}, line “{r['sub']}”, facts {r['rows']} (the grade S5 and the incline, whatever the sport)")
+        if not r['drawn']:
+            fails.append('the S5 path in Gravel: nothing drawn on the map')
+        # #562: a detail that wasn't loaded is never "not mapped": the ways failing, the card says what it has, no claim
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
+        r = tap(pg, [25.7652, 62.2289], want=('failed', None), secs=15, right=True)
+        if r['ways'] != 'failed' or re.search(r'not mapped', r['text'], re.I) or "didn’t answer" not in r['text']:
+            fails.append(f"the ways not loaded: {r['ways']}, “not mapped” in the card {bool(re.search('not mapped', r['text'], re.I))}, says it didn't answer {'didn’t answer' in r['text']}")
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
+        # the path of #562 (way 1063593743), the ways in: its width and visibility are read from OpenStreetMap
+        r = tap(pg, pg.js("(() => { const w = __fx.tiles[Object.keys(__fx.tiles).find((k) => __fx.tiles[k].w.some((x) => x[0] === 1063593743))].w.find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()"))
+        facts = dict(r['rows'])
+        if facts.get('Width', '')[:3] != '0.3' or 'faint' not in facts.get('Visibility', '').lower() or facts.get('Surface') != 'Dirt':
+            fails.append(f"the path of #562: width, visibility and surface read {facts.get('Width')}, {facts.get('Visibility')}, {facts.get('Surface')}")
+        # a street in many pieces is one thing: Hämeenkatu, all its pieces, about a kilometre
+        r = tap(pg, pg.js("(() => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 7956116), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()"))
+        n = re.search(r'(\d+) pieces', ' '.join(r['nums']))
+        if r['title'] != 'Hämeenkatu' or not n or int(n.group(1)) < 15 or not r['nums'] or not 950 <= metres(r['nums'][0].split('long')[0]) <= 1100:
+            fails.append(f"Hämeenkatu: {r['kind']} card “{r['title']}”, ways {r['ways']}, heights {r['heights']}, numbers {r['nums']}, the click at {r['at']} (one street, 15 pieces or more, about 1 km)")
+        # a route across kinds (#574, 2026-10-31): Rauhaniemenreitti joins streets and a cycleway; Way type is on offer, colours the
+        # profile and the legend's lengths are the pick's length
+        r = tap(pg, pg.js("(() => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 108549043), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()"))
+        way = next((c for c in r['chips'] if c['k'] == 'way'), None)
+        if not way:
+            fails.append(f"Rauhaniemenreitti: Colour by offers {[c['k'] for c in r['chips']]}, not Way type")
+        else:
+            pg.js("document.querySelector('.pick-by .chip[data-k=way]').click(); new Promise((r) => setTimeout(r, 400))")
+            r = state(pg)
+            total = metres(r['nums'][0].split('long')[0]) if r['nums'] else 0
+            legend = sum(metres(v) for _, v in r['legend'])
+            if len(r['legend']) < 2 or len(r['fills']) < 2 or abs(legend - total) > max(25, total * 0.03):
+                fails.append(f"Rauhaniemenreitti by Way type: legend {r['legend']} ({legend:.0f} m of {total:.0f} m), the profile in {len(r['fills'])} colours")
+        fails += [f'console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
+    except Exception as e:
+        fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a pick: its ways joined, the grade and incline for every sport, nothing \"not mapped\" that wasn't loaded, Way type on a trail across kinds" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
@@ -15459,6 +15558,7 @@ GROUPS = [
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap opens it in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
+    ('pickcard', [pick_card], 'a pick (#574): a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
     ('spotcard', [spot_card, spot_card_foot], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'What\'s here in levels and Not right? (25d part 6a): a way\'s facts for your sport first and a missing one said so, All OpenStreetMap details once a card (a failure, a late answer), Copy, Not right?, a place\'s facts, a path\'s card with the planner put away, a ship\'s own card (a recorded tile, mocked Overpass)'),
