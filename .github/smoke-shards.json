@@ -2,7 +2,7 @@
   "about": "The smoke suite's groups and sizes in parallel jobs (.github/workflows/smoke.yml), each about 10 minutes on GitHub's runner: 8–11 in run 39898918235, with `tilefail` placed by its 86 s in run 39901539991. `button3d` and `button3dphone` (#226) have a job each: as one group they took 16–27 minutes (#411). Every group and size is in exactly one job: .github/smoke_plan.py fails the run otherwise. Journey D's four new groups (25d, #233) have a job of their own, and so do the map's cards' four. `fold` (step 3 of #233) is in the shortest job, Journey D's (3.9 minutes in run 40635867577), as it takes about as long as that job's four together (117 s and 111 s on the development Mac, #577). `glass` (#547) is with `values`, the other check of the look.",
   "shards": [
     ["changelog", "trails", "lipas", "marked", "backtostart", "shortcut", "sports", "colours", "toolbox", "390x844"],
-    ["layers", "header", "routebits", "detour", "winterroute", "previews", "quick", "contrast", "sportmenu", "1440x900"],
+    ["layers", "raster", "header", "routebits", "detour", "winterroute", "previews", "quick", "contrast", "sportmenu", "1440x900"],
     ["water", "editing", "routemenu", "avoid", "flow", "winter", "sweep", "drawer", "heading", "panels", "column", "tilefail", "controls"],
     ["radar", "weather", "pacing", "multi", "terrain", "stops", "access", "otherways", "loops", "fit", "marks", "runner", "1024x768", "360x740"],
     ["button3d"],

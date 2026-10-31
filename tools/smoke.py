@@ -5180,6 +5180,176 @@ def header_fit(chrome):
     return not fails
 
 
+# Raster density and depth visibility (#649, #650): intercept only image services,
+# keep MapLibre's actual source selection, and observe the URLs after real controls.
+RASTER_IMAGES = """(() => {
+  const real = window.fetch.bind(window), pngs = new Map();
+  window.__rasters = [];
+  window.fetch = (input, init) => {
+    const u = new URL(String(input && input.url ? input.url : input), location.href);
+    if (!['server.arcgisonline.com', 'tiles.kartat.kapsi.fi', 'avoin-karttakuva.maanmittauslaitos.fi',
+      'julkinen.traficom.fi', 'avoinapi.vaylapilvi.fi'].includes(u.hostname)) return real(input, init);
+    const size = +(u.searchParams.get('width') || 256);
+    u.searchParams.delete('api-key');
+    window.__rasters.push(u.href);
+    const missing = u.hostname === 'server.arcgisonline.com' && +u.pathname.split('/tile/')[1].split('/')[0] >= window.__missingAerialFrom;
+    if (missing && u.searchParams.get('blankTile') === 'false') return Promise.resolve(new Response(null, { status: 404 }));
+    const cacheKey = missing ? 'missing-' + size : size;
+    if (!pngs.has(cacheKey)) {
+      const c = new OffscreenCanvas(size, size), g = c.getContext('2d');
+      g.fillStyle = missing ? '#cccccc' : '#bfd5db'; g.fillRect(0, 0, size, size);
+      g.strokeStyle = '#1f4d6b'; g.lineWidth = size / 128;
+      if (!missing) for (let p = 0; p < size; p += size / 8) { g.beginPath(); g.moveTo(p, 0); g.lineTo(p, size); g.stroke(); }
+      pngs.set(cacheKey, c.convertToBlob({ type: 'image/png' }));
+    }
+    return pngs.get(cacheKey).then((png) => new Response(png, { headers: { 'Content-Type': 'image/png' } }));
+  };
+})();"""
+
+RASTER_MAPS = """(async () => {
+  const m = polku.map, errs = [], ratio = devicePixelRatio > 1 ? 2 : 1;
+  const waitFor = (fn) => new Promise((ok, bad) => {
+    const t = performance.now(), go = () => fn() ? ok() : performance.now() - t > 15000
+      ? bad(new Error('raster request did not arrive')) : setTimeout(go, 25); go();
+  });
+  const frame = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+  const asked = (host, layer = '') => __rasters.map((s) => new URL(s)).filter((u) => u.hostname === host && (!layer || u.searchParams.get('layers') === layer));
+  const clear = () => { window.__rasters.length = 0; };
+  const checkWms = (urls, size, dpi, name) => {
+    if (!urls.length) { errs.push(`${name}: no image request`); return; }
+    for (const u of urls) {
+      if (u.searchParams.get('width') !== String(size) || u.searchParams.get('height') !== String(size)) errs.push(`${name}: image is not ${size} pixels`);
+      if (dpi && !String(u.searchParams.get('format_options')).includes(`dpi:${dpi}`)) errs.push(`${name}: missing ${dpi} DPI for readable symbols`);
+    }
+  };
+  document.querySelector('#btn-layers').click();
+  await frame();
+  document.querySelector('#quick-layers .qt-more').click();
+  await frame();
+  const baseButton = (key) => [...document.querySelectorAll('#layers-body .base-opt')].find((b) => b.querySelector('span').textContent === {
+    trail: 'Trail map', maasto: 'Maastokartta', ortofi: 'Aerial FI', aerial: 'Aerial', mml: 'MML WMTS',
+  }[key]);
+  const base = async (key, host, layer = '') => {
+    clear();
+    baseButton(key).closest('details').open = true;
+    baseButton(key).click();
+    await waitFor(() => asked(host, layer).length);
+    await waitFor(() => m.areTilesLoaded());
+    return asked(host, layer);
+  };
+  let urls = await base('maasto', 'tiles.kartat.kapsi.fi', 'peruskartta');
+  checkWms(urls, 1024, 0, 'terrain base');
+  if (!urls.some((u) => { const b = u.searchParams.get('bbox').split(',').map(Number); return b[2] - b[0] < 4892; })) errs.push('terrain base still requests the coarse zoom-12 extent');
+  urls = await base('ortofi', 'tiles.kartat.kapsi.fi', 'ortokuva');
+  checkWms(urls, 512 * ratio, 0, 'Finnish aerial');
+  urls = await base('aerial', 'server.arcgisonline.com');
+  const esriZoom = (u) => +u.pathname.split('/tile/')[1].split('/')[0];
+  if (!urls.some((u) => esriZoom(u) === (ratio === 2 ? 14 : 13))) errs.push('aerial image does not supply the expected screen density at map zoom 12');
+  clear(); m.jumpTo({ zoom: 20 });
+  await waitFor(() => asked('server.arcgisonline.com').length);
+  if (asked('server.arcgisonline.com').some((u) => esriZoom(u) > 19)) errs.push('aerial asks for unavailable imagery beyond level 19');
+  m.jumpTo({ zoom: 12 }); await waitFor(() => m.areTilesLoaded());
+  urls = await base('mml', 'avoin-karttakuva.maanmittauslaitos.fi');
+  const mmlZoom = (u) => +u.pathname.split('/').slice(-3)[0];
+  if (!urls.some((u) => mmlZoom(u) === 14)) errs.push('MML terrain loses the detailed map when zoomed out to 12');
+  clear(); m.jumpTo({ zoom: 18 });
+  await waitFor(() => asked('avoin-karttakuva.maanmittauslaitos.fi').length);
+  if (asked('avoin-karttakuva.maanmittauslaitos.fi').some((u) => mmlZoom(u) > 16)) errs.push('MML asks beyond its open-service level 16');
+  m.jumpTo({ zoom: 9 }); await waitFor(() => m.areTilesLoaded());
+  baseButton('trail').click();
+  await frame();
+  const { RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
+  const toggle = async (id) => {
+    const row = [...document.querySelectorAll('#layers-body label.tg')].find((r) => r.querySelector('.tg-text')?.firstChild.textContent.trim() === RASTER_OVERLAYS[id].label);
+    if (!row) throw new Error(`no ${id} switch`);
+    row.closest('details').open = true;
+    row.querySelector('input').click(); await frame();
+  };
+  clear(); await toggle('depthContours');
+  if (asked('julkinen.traficom.fi', 'DepthContour_L').length) errs.push('depth curves requested below their wide-view boundary');
+  clear(); m.jumpTo({ zoom: 10 });
+  await waitFor(() => asked('julkinen.traficom.fi', 'DepthContour_L').length).catch(() => {});
+  await waitFor(() => m.areTilesLoaded()); await frame();
+  urls = asked('julkinen.traficom.fi', 'DepthContour_L');
+  if (!urls.length) errs.push('depth contours are hidden at zoom 10 although the service supplies them');
+  else checkWms(urls, 512 * ratio, ratio > 1 ? 180 : 0, 'depth contours');
+  m.jumpTo({ zoom: 12 }); await waitFor(() => m.areTilesLoaded());
+  clear(); await toggle('soundings');
+  if (asked('julkinen.traficom.fi', 'Sounding_P').length) errs.push('depth numbers requested below zoom 13');
+  clear(); m.jumpTo({ zoom: 13 });
+  await waitFor(() => asked('julkinen.traficom.fi', 'Sounding_P').length).catch(() => {});
+  await waitFor(() => m.areTilesLoaded()); await frame();
+  urls = asked('julkinen.traficom.fi', 'Sounding_P');
+  if (!urls.length) errs.push('depth numbers stay hidden at zoom 13 although the service supplies them');
+  else checkWms(urls, 512 * ratio, ratio > 1 ? 180 : 0, 'depth numbers');
+  clear(); await toggle('drPaved');
+  await waitFor(() => asked('avoinapi.vaylapilvi.fi', 'dr_paallystetty_tie').length);
+  checkWms(asked('avoinapi.vaylapilvi.fi', 'dr_paallystetty_tie'), 512 * ratio, ratio > 1 ? 180 : 0, 'road overlay');
+  clear(); await toggle('maastoOverlay');
+  await waitFor(() => asked('tiles.kartat.kapsi.fi', 'peruskartta').length);
+  checkWms(asked('tiles.kartat.kapsi.fi', 'peruskartta'), 1024, 0, 'terrain overlay');
+  if (!asked('tiles.kartat.kapsi.fi', 'peruskartta').some((u) => { const b = u.searchParams.get('bbox').split(',').map(Number); return b[2] - b[0] < 2446; })) errs.push('terrain overlay does not use the detailed base extent');
+  clear(); await toggle('mmlMaastoOverlay');
+  await waitFor(() => asked('avoin-karttakuva.maanmittauslaitos.fi').length);
+  if (!asked('avoin-karttakuva.maanmittauslaitos.fi').some((u) => mmlZoom(u) === 15)) errs.push('MML overlay loses the detailed base extent');
+  return errs;
+})()"""
+
+
+def raster_maps(chrome):
+    fails = []
+    off = {k: False for k in ('lipasRoutes', 'lipasPoints', 'pois', 'depthAreas', 'depthContours', 'soundings', 'fairways', 'sfShips', 'nautical', 'seaIce')}
+    for w, h_, phone, density in ((1440, 900, False, 1), (390, 844, True, 2), (390, 844, True, 3)):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Emulation.setDeviceMetricsOverride', {'width': w, 'height': h_, 'deviceScaleFactor': density, 'mobile': phone}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': RASTER_IMAGES + WX_FIXED}, pg.s)
+        pg.open_app({'activity': 'paddle', 'mmlKey': 'raster-fixture', 'overlaysByActivity': {'paddle': off}},
+                    {'polku:winter': '"off"'}, '#12/61.515/23.85')
+        fails += [f'{density}x: {e}' for e in pg.js(RASTER_MAPS, timeout=180000)]
+        fails += [f'{density}x console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} raster map requests and depth visibility (1x, 2x and 3x screens)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+def aerial_fallback(chrome):
+    fails = []
+    for w, h_, phone in ((1440, 900, False), (390, 844, True)):
+        for start in (12, 20):
+            pg = chrome.page(w, h_, phone)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': RASTER_IMAGES + WX_FIXED + 'window.__missingAerialFrom = 18;'}, pg.s)
+            pg.open_app({'base': 'aerial', 'activity': 'run',
+                         'overlaysByActivity': {'run': {'lipasRoutes': False, 'lipasPoints': False, 'pois': False, 'sfRoadworks': False}}},
+                        {'polku:winter': '"off"'}, f'#{start}/61.515/23.85')
+            result = pg.js("""(async () => {
+              const m = polku.map;
+              for (const layer of m.getStyle().layers) if (!['background', 'aerial'].includes(layer.id)) m.setLayoutProperty(layer.id, 'visibility', 'none');
+              m.jumpTo({ zoom: 20 });
+              await new Promise((ok, bad) => {
+                const t = performance.now(), go = () => m.loaded() && m.areTilesLoaded() ? ok()
+                  : performance.now() - t > 15000 ? bad(new Error('aerial fallback did not settle')) : setTimeout(go, 25); go();
+              });
+              const pixel = await new Promise((ok) => {
+                m.once('render', () => {
+                  const gl = m.painter.context.gl, p = new Uint8Array(4);
+                  gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p);
+                  ok([...p]);
+                }); m.triggerRepaint();
+              });
+              const levels = __rasters.filter((s) => new URL(s).hostname === 'server.arcgisonline.com')
+                .map((s) => +new URL(s).pathname.split('/tile/')[1].split('/')[0]);
+              return { pixel, levels };
+            })()""")
+            if result['pixel'][2] - result['pixel'][0] < 10:
+                fails.append(f'{w}x{h_}, starting at {start}: the last available blue image became {result["pixel"]}, not a parent image')
+            if start == 20 and not any(z <= 17 for z in result['levels']):
+                fails.append(f'{w}x{h_}, cold close view: no available parent image was requested')
+            fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} missing aerial detail keeps or loads its last available image" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def layers(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/60.15/24.95')
@@ -15636,6 +15806,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
     ('layers', [layers], 'the Layers panel in every sport'),
+    ('raster', [raster_maps, aerial_fallback], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),

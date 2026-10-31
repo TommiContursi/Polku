@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### Clearer terrain maps, aerial photos and depths ([#649](https://github.com/TommiContursi/Polku/issues/649), [#650](https://github.com/TommiContursi/Polku/issues/650), [#653](https://github.com/TommiContursi/Polku/issues/653))
+
+- **Maastokartta** and **MML WMTS** keep a more detailed terrain map when you zoom out, including their overlay versions. Aerial photos and the depth and road layers use sharper images on high-density screens, with the depth and road symbols kept at a readable size.
+- When a closer **Aerial** image is unavailable, the map keeps the available coarser image instead of showing a missing-data picture. Zooming further cannot add detail that the original photograph does not contain.
+- Depth contours appear one zoom step farther out, from level 10, and depth numbers from level 13. **Depths are for planning, not navigation, and are never used for routing.**
+
 ### Settings is a sheet you swipe on phones ([#634](https://github.com/TommiContursi/Polku/issues/634))
 
 - On a phone, **Settings** now comes up from the bottom like the layer drawer. Swipe it down or tap the map to close it, as you do with Layers. It grows with the groups you open, up to the top bar, and the planner under it keeps its size.
