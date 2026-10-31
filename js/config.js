@@ -152,15 +152,15 @@ export const MTB_SCALE_TEXT = [
   'S6 · Barely rideable',
 ];
 
-// What each MTB grade (mtb:scale) means for a rider, as Heads-up says it
+// What each MTB grade (mtb:scale) means for a rider, as Heads-up says it: from the MTB-TrailMap JOSM style's guide
 export const MTB_MEANS = [
-  'smooth and firm, no obstacles: fine for anyone on a bike',
-  'small roots and stones, some loose ground: easy for most riders',
-  'bigger roots and rocks, low steps and tighter turns: needs some riding skill',
-  'big rocks and roots, high steps, tight switchbacks and steep bits: for skilled riders, and many walk parts of it',
-  'very steep, with rock gardens and tight switchbacks: for experts, and most people walk it',
-  'drops, boulders and very steep ground: only the best riders ride it',
-  'barely rideable: most people carry the bike',
+  'easy: a smooth path, needles on the ground, few stones or roots; fine for beginners, and easy on a gravel bike',
+  'intermediate: small stones and roots you can ride over on a mountain bike; easy with basic skills, though a beginner may need to get off now and then',
+  'difficult: larger stones and roots, maybe small drops; it takes concentration even from experienced riders, most of all uphill and when wet, and a gravel bike goes on your shoulder',
+  'very difficult: many large stones, roots and drops, and hard climbs; slow even for experienced riders, almost impossible uphill, and beginners often push',
+  'extremely difficult: big obstacles and drops that take trials skills even at walking pace; slow going on foot too',
+  'almost impossible: big obstacles, drops and a twisting path; practically unrideable for almost everyone',
+  'unrideable: long vertical drops or large obstacles close together; take care even on foot',
 ];
 
 export const UPHILL_TEXT = [
