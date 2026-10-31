@@ -13,6 +13,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **Map and planner** has a row that opens **Layers**, and **3D height**, which Layers also has under 3D terrain.
 - **Hidden Heads-up** lists the kinds of Heads-up you've hidden, each with **Show again**.
 - **Saved on this device** says how many recent searches Polku keeps, and **Clear** forgets them.
+- Closing Settings from the keyboard puts the focus back on ⚙, as closing Layers puts it on **Layers**, so the next Tab starts from there.
 
 ### Heads-up says why, and what it means for you ([#618](https://github.com/TommiContursi/Polku/issues/618))
 

@@ -1667,6 +1667,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
   if (id === 'settings-panel') renderSettingsPanel(); // fresh: speeds may have changed in the planner
   if (id === 'layers-panel') renderLayersPanel(); // fresh: a route drawn or cleared since (its group, #424's C)
   const wasLayers = layersOpen(), focusIn = $$('#quick-layers, #layers-panel').some((el) => el.contains(document.activeElement));
+  const focusSettings = $('#settings-panel').contains(document.activeElement);
   if (id === 'quick-layers' && wasLayers && !back) id = null;
   lpSwipe.stop();
   for (const el of $$('.panel')) {
@@ -1686,6 +1687,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
   else if (back) $('#quick-layers .qt-more')?.focus({ preventScroll: true });
   else if (step && id === 'layers-panel') $('#layers-panel .panel-back')?.focus({ preventScroll: true });
   else if (!lay && focusIn) $('#btn-layers').focus({ preventScroll: true });
+  else if (focusSettings && $('#settings-panel').hidden) $('#btn-settings').focus({ preventScroll: true }); // (not left on a hidden control, #621)
 }
 // a button pressed from the keyboard (detail 0) opens its panel at once
 for (const btn of $$('[data-panel]')) btn.addEventListener('click', (e) => openPanel(btn.dataset.panel, { instant: e.detail === 0 }));

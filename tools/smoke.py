@@ -438,7 +438,6 @@ PANELS_MOTION = """(async (reduced) => {
   got = fades(sb.querySelector('.speed-box'));
   if (got !== 'nothing') errs.push(`${tag}Settings drawn again: the open speeds move ${got}`);
   click(row()); await wait(300);
-  row().closest('details').open = false; await wait(100); // (folded again, as it began: the storage is put back below)
   click(document.querySelector('#settings-panel .panel-close'));
   for (const [k, v] of saved) if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v);
   await wait(300);
@@ -7359,7 +7358,7 @@ def glass_modes(chrome):
         at = pg.js("(() => { const r = document.querySelector('#btn-settings').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
         pg.tap(*at)
         time.sleep(0.6)
-        pg.tap(*pg.js("(() => { const r = document.querySelector('#settings-body [data-group=\"settings-display\"] > summary').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))  # (Display folds, #321; it stays open over the reload)
+        pg.js("(async () => { document.querySelector('#settings-body [data-group=\"settings-display\"]').open = true; await new Promise((r) => setTimeout(r, 100)); return true; })()")  # (Display folds, #321; kept open over the reload by its toggle event)
         time.sleep(0.6)
         tap_high_contrast('High contrast on')
         r = look(pg, 'phone, High contrast on in Settings', 'more')
@@ -7776,10 +7775,18 @@ def settings_groups(chrome):
                 r = pg.js("({ paddle: (polku.state.quickTiles.paddle || []).length, mtb: polku.state.quickTiles.mtb ? [...polku.state.quickTiles.mtb] : null })")
                 if r['paddle'] != n - 1 or r['mtb'] != before:
                     fails.append(f"a Paddle tile taken off: Paddle has {r['paddle']} of {n}, MTB's {before} → {r['mtb']}")
+
+        # closed with the focus on one of its rows, the focus goes back to ⚙, not a hidden control (#621)
+        pg.js("document.querySelector('#quick-layers.open') && document.querySelector('#btn-layers').click(), true")
+        tap('#btn-settings', 'Settings, again')
+        r = pg.js("""(() => { document.querySelector('#settings-body .speed-sport-row').focus(); document.querySelector('#settings-panel .panel-close').click();
+          return document.activeElement.id || document.activeElement.className; })()""")
+        if r != 'btn-settings':
+            fails.append(f'Settings closed from a row: the focus is on {r}, not ⚙')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} Settings: eleven folding groups that fit a phone and stay as left, planned settings off, Show again, Clear, marks and 3D height in both places, and another sport's tiles by touch" + ''.join(f'\n     - {f}' for f in fails))
+    print(f"{'ok  ' if not fails else 'FAIL'} Settings: eleven folding groups that fit a phone and stay as left, planned settings off, Show again, Clear, marks and 3D height in both places, another sport's tiles by touch, and the focus back on ⚙" + ''.join(f'\n     - {f}' for f in fails))
     return not fails
 
 
