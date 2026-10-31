@@ -9012,12 +9012,17 @@ def fold_phone(chrome):
         fold_settled(pg, fails, 'step 14')
         pg.js("(() => { const p = polku.planner; p.map.jumpTo({ center: p.points[1], zoom: 15, offset: [0, -200] }); return true; })()")
         time.sleep(0.4)
-        pg.tap(*fold_at(pg, "polku.planner.markers[1].getElement().querySelector('.wp')"))
+        # (a hold: the point's card with its actions, taller than half; a tap's is shorter, whole at half, #574)
+        x, y = fold_at(pg, "polku.planner.markers[1].getElement().querySelector('.wp')")
+        t0 = time.time()
+        pg.touch('start', x, y, t0)
+        time.sleep(0.7)
+        pg.touch('end', at=t0 + 0.7)
         time.sleep(0.6)
         fold_settled(pg, fails, 'step 15')
         s = info()
         if s['card'] != 'point' or s['st'] != 'peek' or not s['fold']:
-            fails.append(f"a tap on point 1: card {s['card']}, {s['st']}, ⌄ {bool(s['fold'])}")
+            fails.append(f"a hold on point 1: card {s['card']}, {s['st']}, ⌄ {bool(s['fold'])}")
         else:
             y = s['panel']['t'] + 30
             pg.swipe(120, y, y - 300, ms=500, hold=0.1)
