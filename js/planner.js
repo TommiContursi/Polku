@@ -5182,7 +5182,7 @@ export class Planner {
     // scrolls there (to its top where it fits whole)
     let unscroll = null;
     this.sheetSwipe = swipeSheet(this.panel, {
-      enabled: () => this.active && this.layout() === 'sheet',
+      enabled: () => (this.active || this.cards.place === 'peek') && this.layout() === 'sheet', // (a card's sheet with the planner put away too, #570)
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows, not a card (a
       // finger on a card moves the sheet at its peek and where the card can't scroll that way itself, js/sheet.js, #603)
       grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')

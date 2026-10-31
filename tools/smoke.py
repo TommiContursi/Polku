@@ -9923,6 +9923,20 @@ def stops_card(chrome):
             s = pg.js("(() => { const p = polku.planner, b = p.cards.box, e = b.querySelector(':scope > .sheet-sum') || b.querySelector(':scope > .way-head'); return [p.panel.dataset.state, Math.round(e.getBoundingClientRect().bottom), p.panel.offsetHeight]; })()")
             if s[0] != 'peek' or s[1] > h - 12:
                 fails.append(f"{tag}: a spot's card over the planner's start, {s[0]} at {s[2]} px: its numbers end at {s[1]} px, under the screen's edge ({h})")
+            # with the planner put away, the sheet for a spot's card alone: a finger on the card takes it to half (Codex's review:
+            # at its peek the card can't scroll, and the swipe was only the open planner's, so the rest of it was out of reach)
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            pg.js("(() => { const p = polku.planner; p.cards.close(); p.close(); return true; })()")
+            time.sleep(0.6)
+            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a spot's card, the planner put away")
+            x, y = body()
+            pg.swipe(x, y, y - 150, ms=500, steps=20, hold=0.2)
+            fold_settled(pg, fails, f"{tag} the spot's card swiped up, the planner put away")
+            s = info()
+            if s['card'] != 'spot' or s['st'] != 'half' or pg.js('polku.planner.active'):
+                fails.append(f"{tag}: a finger on a spot's card, 150 px up from its peek, the planner put away: {s['st']}, card {s['card']} (half)")
             fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
