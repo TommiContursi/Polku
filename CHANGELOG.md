@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### Fewer effects, for a phone or browser that draws Polku slowly ([#632](https://github.com/TommiContursi/Polku/issues/632))
+
+- **Settings → Display → Fewer effects** now works. It turns the see-through glass over the map into solid panels. The glass is the most work for a browser to draw, so panels and the map move more smoothly without it, most of all in a slow browser. The choice stays on this device.
+- When the map or a list keeps moving slowly, Polku offers **Use fewer effects**, once on each device. It never changes the look by itself. It can't tell when a browser is only slow to show the rows of a list as you scroll, so try the switch yourself if that happens.
+
 ### Settings is in folding groups, with what's still to come ([#321](https://github.com/TommiContursi/Polku/issues/321), [#143](https://github.com/TommiContursi/Polku/issues/143))
 
 - **Settings** now opens on a short list of groups that fold like Layers' groups: speeds and tiles by sport, Display, language and units, route arrows and marks, map and planner, hidden Heads-up, offline maps, what's saved on this device, Strava and Garmin, data sources and About Polku. Each group stays open or folded as you leave it.

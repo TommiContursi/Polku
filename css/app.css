@@ -121,12 +121,13 @@
   --shadow-sheet: 0 -6px 28px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
-/* The modes (#382's §7): reduced transparency and more contrast turn every glass solid. More contrast is data-contrast
+/* The modes (#382's §7): reduced transparency, more contrast and Fewer effects turn every glass solid. More contrast is data-contrast
    on <html>, from the device (prefers-contrast: more) or Settings' High contrast, set as data-theme is (index.html,
    applyTheme()); it also takes a darker grey, heavier lines and a 3:1 rim. As specific as the dark block, and after it. */
 @media (prefers-reduced-transparency: reduce) {
   :root[data-theme] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; }
 }
+:root[data-glass="solid"] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; } /* Settings' Fewer effects (#632) */
 :root[data-contrast="more"] {
   --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none;
   --muted: var(--muted-hc); --muted-glass: var(--muted-hc); --line: var(--line-hc);
