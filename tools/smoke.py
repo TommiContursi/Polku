@@ -4602,6 +4602,135 @@ def winter(chrome):
     return not fails
 
 
+# Lit ways (#638). Overpass answers the lit query with the recorded Laajavuori ways (cut from the winter tile's lit
+# tags), or 504 while window.litFail is set; nothing else of Overpass is answered.
+LIT_OVERPASS = """(() => {
+  const real = window.fetch.bind(window);
+  let fx = null;
+  window.litFail = false;
+  window.litAsked = 0;
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/overpass/.test(url)) return real(input, init);
+    const q = init && init.body ? new URLSearchParams(init.body).get('data') || '' : '';
+    if (!/way\\[highway\\]\\[lit\\]/.test(q)) return new Response('', { status: 504 });
+    window.litAsked++;
+    if (window.litFail) return new Response('', { status: 504 });
+    fx ||= await (await real(location.origin + '/tools/fixtures/lit-laajavuori.json')).json();
+    const geometry = (flat) => flat.flatMap((v, i) => (i % 2 ? [] : [{ lon: v, lat: flat[i + 1] }]));
+    return new Response(JSON.stringify({ elements: fx.data.w.map(([id, lit, flat]) => ({ type: 'way', id, tags: { highway: 'path', lit: lit ? 'yes' : 'no' }, geometry: geometry(flat) })) }));
+  };
+})();"""
+
+LIT_HELP = """
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], map = polku.map, S = polku.state;
+  const until = async (ok, ms = 10000) => { for (const t0 = Date.now(); !ok() && Date.now() - t0 < ms;) await wait(100); return ok(); };
+  const idle = () => Promise.race([wait(15000), new Promise((r) => map.once('idle', r))]);
+  const qd = document.querySelector('#quick-layers');
+  const small = () => { const s = qd.querySelector('.qt[data-id="lit"] .qt-l small'); return s && !s.hidden ? s.textContent : ''; };
+  const drawn = (id) => map.queryRenderedFeatures({ layers: [id] }).length;
+  const panel = async () => {
+    if (document.querySelector('#layers-panel').hidden) { if (!qd.classList.contains('open')) document.querySelector('#btn-layers').click(); await wait(250); qd.querySelector('.qt-more').click(); await wait(300); }
+    const g = document.querySelector('#layers-body .lg-group[data-group="dark"]');
+    if (g) g.open = true;
+    return g;
+  };
+  const look = (g) => [...g.querySelectorAll('.seg button')].find((b) => b.getAttribute('aria-pressed') === 'true')?.textContent;
+  const saved = () => JSON.parse(localStorage.getItem('polku:settings')).litLook;
+"""
+
+LIT = """(async () => {""" + LIT_HELP + """
+  const L = await import(location.origin + '/js/lit.js');
+  // no answer an earlier run cached
+  await new Promise((ok) => {
+    const r = indexedDB.open('polku');
+    r.onerror = () => ok();
+    r.onsuccess = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains('overpass')) { db.close(); ok(); return; }
+      const t = db.transaction('overpass', 'readwrite');
+      t.objectStore('overpass').delete(IDBKeyRange.bound('lit1/', 'lit1/~'));
+      t.oncomplete = t.onerror = () => { db.close(); ok(); };
+    };
+  });
+  // what counts as lit, unlit, and saying nothing
+  const tags = ['yes', '24/7', 'automatic', 'sunset-sunrise', 'limited', 'interval', 'no', 'disused', 'maybe', undefined];
+  const slim = L.slimLit({ elements: tags.map((lit, i) => ({ type: 'way', id: i, tags: { highway: 'path', ...(lit ? { lit } : {}) }, geometry: [{ lon: 25, lat: 62 }, { lon: 25.001, lat: 62 }] })) });
+  if (slim.w.map((w) => `${w[0]}:${w[1]}`).join() !== '0:1,1:1,2:1,3:1,4:1,5:1,6:0,7:0') errs.push(`lit, unlit and no tag: ${slim.w.map((w) => `${tags[w[0]]}:${w[1]}`)}`);
+  // Overpass doesn't answer: the tile says so, and nothing looks drawn
+  window.litFail = true;
+  document.querySelector('#btn-layers').click(); await wait(250);
+  qd.querySelector('.qt-tog[data-tile="lit"]').click();
+  if (!S.overlays.lit) errs.push('the Lit ways tile did not turn it on');
+  await until(() => small() === 'No data now');
+  if (small() !== 'No data now') errs.push(`Overpass not answering: the tile says “${small()}”`);
+  if (!window.litAsked) errs.push('(the test) the lit ways were never asked for');
+  if (map.querySourceFeatures('litWays').length) errs.push('Overpass not answering: lit ways drawn');
+  // zoomed out, the tile says to zoom in; asking for nothing there
+  const asked = window.litAsked;
+  map.jumpTo({ zoom: 13 }); await wait(700);
+  if (small() !== 'Zoom in to see') errs.push(`at zoom 13 the tile says “${small()}”`);
+  if (window.litAsked !== asked) errs.push(`at zoom 13 the lit ways were asked for ${window.litAsked - asked} times`);
+  // it answers again: the lines come, and the tile's status goes
+  window.litFail = false;
+  L.forgetLitFailures();
+  map.jumpTo({ zoom: 15 }); await idle();
+  await until(() => drawn('lit-line') && small() !== 'No data now');
+  if (small() === 'No data now') errs.push('Overpass back: the tile still says No data now');
+  for (const id of ['lit-line', 'lit-casing', 'lit-unlit']) if (!drawn(id)) errs.push(`${id}: nothing drawn`);
+  // the lines stand out at 3:1 from the map's ground and its forest, on the Trail map and the night map
+  const lum = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  for (const base of ['trail', 'night']) {
+    polku.set({ base }); await idle();
+    for (const [what, layer, prop] of [['the ground', 'background', 'background-color'], ['the forest', 'lc-wood', 'fill-color']]) {
+      const under = map.getPaintProperty(layer, prop);
+      for (const line of ['lit-casing', 'lit-unlit']) {
+        const c = map.getPaintProperty(line, 'line-color'), r = ratio(c, under);
+        if (r < 3) errs.push(`${base}: ${line} ${c} on ${what} ${under}, ${r.toFixed(1)}:1, under 3:1`);
+      }
+    }
+  }
+  polku.set({ base: 'trail' }); await idle();
+  // the full panel: the same switch, and its look under it
+  const g = await panel();
+  if (!g) return [...errs, 'no After dark group in Layers'];
+  const sw = g.querySelector('label.tg input');
+  if (!sw || !sw.checked || !/Lit where OpenStreetMap says so/.test(g.textContent)) errs.push('After dark: Lit ways not on, or no “Lit where OpenStreetMap says so”');
+  if (look(g) !== 'Lines') errs.push(`the look starts as ${look(g)}, not Lines`);
+  [...g.querySelectorAll('.seg button')].find((b) => b.textContent === 'In the dark').click(); await wait(200);
+  if (S.litLook !== 'dark' || saved() !== 'dark') errs.push(`In the dark: the look ${S.litLook}, saved ${saved()}`);
+  return errs;
+})()"""
+
+# after a reload: the overlay and its look as they were; then Lines, kept too
+LIT_AFTER = """(async () => {""" + LIT_HELP + """
+  await until(() => drawn('lit-line'));
+  if (!S.overlays.lit || !drawn('lit-line')) errs.push('Lit ways not on, or not drawn, after a reload');
+  const g = await panel();
+  if (!g || look(g) !== 'In the dark' || S.litLook !== 'dark') return [...errs, `after a reload the look is ${g && look(g)} (${S.litLook}), not In the dark`];
+  [...g.querySelectorAll('.seg button')].find((b) => b.textContent === 'Lines').click(); await wait(200);
+  if (S.litLook !== 'lines' || saved() !== 'lines') errs.push(`Lines: the look ${S.litLook}, saved ${saved()}`);
+  return errs;
+})()"""
+
+
+def lit(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': LIT_OVERPASS}, pg.s)
+        pg.open_app({'activity': 'run', 'quickTiles': {'run': ['lit', 'lipasRoutes', 'sfRoadworks', 'pois', 'wx:rain']}},
+                    {'polku:plannerDock': '"left"', 'polku:winter': '"off"'}, '#15/62.26/25.685')
+        fails = pg.js(LIT, timeout=120000)
+        pg.reload()
+        fails += [f'reload: {e}' for e in pg.js(LIT_AFTER, timeout=60000)]
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} lit ways on the map" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Clicks and taps on the route: a click or a tap on the line, or on a leg's handle, opens
 # that part's menu and adds no point (its first button does); with the planner closed, a
 # click on the route opens it with that part's menu; a LIPAS route drawn over a trail is
@@ -15551,6 +15680,7 @@ GROUPS = [
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
     ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, an import\'s card clear of the track\'s end (#131), loops tapped on the map (mocked BRouter)'),
     ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
+    ('lit', [lit], 'lit ways (#638): the Lit ways tile draws lit and unlit ways from a recorded tile, says when Overpass doesn\'t answer or you\'re zoomed out, 3:1 on the Trail map and the night map, and Lines / In the dark kept over a reload'),
     ('sports', [sport_switch], 'changing the sport with a route drawn (B of #233): the route keeps its sports and style (#71), the pill asks, The whole route and its Undo, land to water'),
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
     ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),
