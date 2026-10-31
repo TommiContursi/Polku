@@ -7,8 +7,20 @@ Where the toolbar, the planner and the top bar sit on a desktop: today's layout 
   - a warning no longer moves the route's numbers.
 
   The build starts once [#603](https://github.com/TommiContursi/Polku/pull/603) is merged, since it changes the planner's top too. [#568](https://github.com/TommiContursi/Polku/issues/568) and step 3, part 2 of [#233](https://github.com/TommiContursi/Polku/issues/233) follow it.
+- **Status (2026-10-31): E is built,** with the changes the user added on 2026-10-31: [what was built](#built-2026-10-31).
 - **D was recommended** before the choice; [the recommendation](#recommendation-d) stays below, with where the idea loses and wins.
 - **The mock-up:** [mockups/issue-594-desktop-layout.html](mockups/issue-594-desktop-layout.html). Today on the left, an option on the right, in the same scene and at the same size.
+
+## Built (2026-10-31)
+
+[#594](https://github.com/TommiContursi/Polku/issues/594) with [#595](https://github.com/TommiContursi/Polku/issues/595), as the user set it on 2026-10-31: the work package of 2026-10-30, with Clear route and the smaller modes added. Nothing else moved ([#568](https://github.com/TommiContursi/Polku/issues/568) and step 3, part 2 of [#233](https://github.com/TommiContursi/Polku/issues/233) follow).
+
+- **⚙ at the top right** on a desktop 900 px wide or more (the side panel's switch): 12 px from the window's top and right edges, over Settings' panel. The top bar keeps the logo, the search and the sport, 682 px wide, with the search at its old size. ⚙ stays last in the keyboard's order. Between 721 and 899 px it stays in the row, where a top-right ⚙ would sit on the sport.
+- **Done and Edit first on the toolbar** (`buildTools()`): the toolbar's one Tab stop starts on them, and the arrow keys, Home and End walk the whole toolbar as before. Edit lands where Done was.
+- **The toolbar rounded at every corner and 12 px from the planner** in both docks (#595): `at-side` and `at-bottom` and their square ends are gone. Beside a side panel it starts 12 px from the panel's edge, above a bottom panel it floats 12 px over its top, and `--tools-h` counts that gap. The room beside it is 12 px less (940 px at 1440, 524 at 1024).
+- **The warning row under the numbers** beside the side panel (`renderReadRow()`). On a phone's peek and in a panel at the bottom it stays above them, where they stay still. At half and full height a warning still moves them. The words are unchanged.
+- **Clear route** is on the desktop toolbar in the route's view (Edit, Show the whole route, Clear route, ⋯: 220 px instead of 179), and first in ⋯ on a phone, where nothing new floats. In editing on a desktop it stays where it was, and it is still the first route action to fold into ⋯ (at 1440 it's there); in the route's view it folds first too. The note and its Undo are as before: Undo brings the route back in editing, not in the route's view, as it does from ⋯.
+- **The smaller modes first.** Where the toolbar is short of room, the modes you aren't using show only their icons (`fold2`) before any route action goes into ⋯. At 1440 the toolbar then shows six route actions instead of three (907 px wide; only Clear route is in ⋯), at 1280 three, and at 1920 and wider every name and all seven actions. At 1024 it folds as before, to 521 px. The mode buttons have an accessible name now (`aria-label`), since their words fold away more often.
 
 ## The mock-up
 

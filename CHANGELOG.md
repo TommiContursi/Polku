@@ -4,6 +4,23 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### The desktop's top bar and toolbar keep their places ([#594](https://github.com/TommiContursi/Polku/issues/594), [#595](https://github.com/TommiContursi/Polku/issues/595))
+
+- On a desktop, **Settings** (⚙) is at the top right of the window, over the panel it opens. The logo, the search and the sport stay at the top left.
+- On the desktop toolbar, **Done** is now its first button, at the planner's end, where it stays as the drawing tools and the route's actions come and go. In the route's view **Edit** is in the same place.
+- The toolbar is rounded at both ends and floats 12 px from the planner, beside a side panel and above a panel at the bottom, instead of ending square against a planner that may be shorter.
+- **Show the whole route** is always under **Locate** with the map's buttons now, on a desktop too, whether the planner is open or not. It's no longer on the toolbar.
+- When the toolbar is short of room, the drawing modes you aren't using show only their icons, and their tooltips say the names, before any of the route's actions goes into **⋯**. A laptop-sized window shows more of those actions than before, and a big screen shows every name.
+
+### Clear route is one click on a desktop ([#594](https://github.com/TommiContursi/Polku/issues/594))
+
+- On a desktop, **Clear route** is a button on the toolbar just before **⋯**, while you edit and in the route's view alike. When the toolbar runs out of room it's the last of the route's actions to go into **⋯**. A note still offers **Undo**, which brings the route back for you to edit.
+- On a phone, **Clear route** is the first item in **⋯**.
+
+### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))
+
+- Beside a desktop's side panel, "1 to read before you go" now appears under the route's numbers, so they stay where they are when it comes. On a phone's peek and in a panel at the bottom, which grow up from their foot, it stays above them. At half and full height it still moves the numbers.
+
 ### Heads-up says why, and what it means for you ([#618](https://github.com/TommiContursi/Polku/issues/618))
 
 - An item's card now says why it's there and what to expect. A path that's hard to follow says how OpenStreetMap rates it and suggests a map or GPS. A technical trail says what its MTB grade means, such as lots of large stones, roots and drops at S3. Steps, overgrown and muddy stretches, fallen trees, fords, wet boardwalks, steep stretches, unpaved roads on road tyres, alpine terrain, straight lines, portages, ferries and busy roads each say why too.
