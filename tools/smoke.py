@@ -11178,8 +11178,8 @@ def toolbox(chrome):
         fails.append(f'{name}: the toolbar {e}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    # a laptop's window (#594): picking another mode changes neither the toolbar's width nor what's on it (the modes'
-    # names fold together, not around the one picked)
+    # a laptop's window (#594): picking another mode changes neither what's on the toolbar nor where the modes are (the
+    # modes' names fold together, not around the one picked); Over water may change the next leg's sport, and its name
     name = '1280x800'
     pg = page(1280, 800, False)
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
@@ -11187,9 +11187,9 @@ def toolbox(chrome):
     for mode in ('auto', 'line', 'water', 'auto'):
         click(pg, f'#pl-tools .tb-modes [data-mode="{mode}"]', f'{name}: the mode {mode}')
         placed(pg)
-        seen.append(pg.js("(() => { const t = polku.planner.tools; return Math.round(t.getBoundingClientRect().width) + ' ' + [...t.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent).map((b) => b.getAttribute('aria-label') || b.textContent.trim()).join('|'); })()"))
+        seen.append(pg.js("(() => { const t = polku.planner.tools, at = (b) => Math.round(b.getBoundingClientRect().left) + '+' + Math.round(b.getBoundingClientRect().width); return [...t.querySelectorAll('.tb-modes button')].map(at).join(',') + ' ' + [...t.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent).map((b) => (b.getAttribute('aria-label') || b.textContent.trim()).replace(/^Next leg: .*/, 'Next leg')).join('|'); })()"))
     if len(set(seen)) != 1:
-        fails.append(f'{name}: the toolbar changed as the mode changed: ' + ' / '.join(seen))
+        fails.append(f'{name}: the toolbar changed as the mode changed (the modes, then what shows): ' + ' / '.join(seen))
     fails += [f'{name} console: {x[:160]}' for x in pg.errors()]
     pg.close()
     # a big screen keeps the full version (#594): every name and every route action on the toolbar, none folded
