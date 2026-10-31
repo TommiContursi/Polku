@@ -242,23 +242,23 @@ export function findWarnings(along, grade, sAttr, pts, activity) {
   // the tags that made a stretch's item, each once: "surface=gravel, highway=track"
   const tagsIn = (s, e, f) => [...new Set(Array.from({ length: e - s + 1 }, (_, k) => f(t(s + k))))].join(', ');
   const hardest = (s, e) => Math.max(...Array.from({ length: e - s + 1 }, (_, k) => mtbScale(t(s + k))));
-  pushRun((i) => bikeAt(i) && t(i).highway === 'steps', 'Steps — carry the bike', 'look', OSM, 0, 'highway=steps · carry or push the bike up or down them');
+  pushRun((i) => bikeAt(i) && t(i).highway === 'steps', 'Steps — carry the bike', 'look', OSM, 0, 'highway=steps · You’ll have to carry or push the bike.');
   pushRun((i) => bikeAt(i) && ['no', 'dismount'].includes(t(i).bicycle), 'Cycling not allowed here', 'read', OSM, 0,
-    (s) => (t(s).bicycle === 'dismount' ? 'bicycle=dismount · get off and walk the bike here' : 'bicycle=no · no bikes here: walk the bike through, or plan another way'));
+    (s) => (t(s).bicycle === 'dismount' ? 'bicycle=dismount · Get off and walk the bike here.' : 'bicycle=no · Bikes aren’t allowed. Walk the bike through, or find another way.'));
   pushRun((i) => bikeAt(i) && mtbScale(t(i)) >= 3, (s, e) => `Technical trail S${hardest(s, e)}`, 'look', OSM, 0, (s, e) => `mtb:scale=${hardest(s, e)} · ${MTB_MEANS[hardest(s, e)]}`);
   pushRun((i) => bikeAt(i) && grade[i] >= 15, (s, e) => `Steep climb, up to ${Math.round(Math.max(...Array.from(grade.slice(s, e + 1))))} %`, 'look', TERRAIN, 50,
-    'steeper than 15 %: most riders push the bike here, or ride it in their lowest gear');
-  pushRun((i) => bikeAt(i) && grade[i] <= -18, 'Steep descent', 'look', TERRAIN, 40, 'steeper than 18 % down: slow down before it and keep your weight back, or walk it');
+    'Steeper than 15 %. Most riders push here, or ride it in their lowest gear.');
+  pushRun((i) => bikeAt(i) && grade[i] <= -18, 'Steep descent', 'look', TERRAIN, 40, 'Steeper than 18 % downhill. Slow down before it and keep your weight back, or walk it.');
   // road tyres: anything that isn't paved, over a stretch worth mentioning
   pushRun((i) => sp(i) === 'road' && sAttr[i].mode !== 'water' && !PAVED.has(surfaceOf(t(i))) && surfaceOf(t(i)) !== 'unknown', (s, e) => `Unpaved for ${Math.round(along[e] - along[s])} m — rough on road tyres`, 'look', OSM, 150,
-    (s, e) => `${tagsIn(s, e, (x) => (x.surface ? `surface=${x.surface}` : `highway=${x.highway}`))} · slow going with less grip on thin tyres, and a puncture is more likely`);
+    (s, e) => `${tagsIn(s, e, (x) => (x.surface ? `surface=${x.surface}` : `highway=${x.highway}`))} · Slow on road tyres, with less grip and more risk of a puncture.`);
   const footAt = (i) => sp(i) === 'hike' || sp(i) === 'trailrun';
   pushRun((i) => footAt(i) && /^(demanding_alpine|difficult_alpine|alpine)/.test(t(i).sac_scale || ''), 'Alpine terrain (SAC T4+)', 'read', OSM, 0,
-    (s, e) => `${tagsIn(s, e, (x) => `sac_scale=${x.sac_scale}`)} · steep, rocky and exposed: you need your hands in places, the path can vanish, and a slip can be serious`);
-  pushRun((i) => footAt(i) && grade[i] >= 25, (s) => (sp(s) === 'trailrun' ? 'Very steep — walk it' : 'Very steep section'), 'look', TERRAIN, 40, 'steeper than 25 %: slow, tiring going, and slippery when wet');
+    (s, e) => `${tagsIn(s, e, (x) => `sac_scale=${x.sac_scale}`)} · Steep, rocky and exposed. You’ll need your hands in places, the path can disappear, and a fall can be serious.`);
+  pushRun((i) => footAt(i) && grade[i] >= 25, (s) => (sp(s) === 'trailrun' ? 'Very steep — walk it' : 'Very steep section'), 'look', TERRAIN, 40, 'Steeper than 25 %. Slow and tiring, and slippery when wet.');
   pushRun((i) => sAttr[i].mode === 'line', 'Straight line — not following paths', 'look', DRAWN, 150,
-    'drawn from point to point: the ground between may be forest, bog or water, and its distance and time are rough');
-  pushRun((i) => t(i).portage === 'yes', (s, e) => `Carry / portage ${Math.round(along[e] - along[s])} m`, 'look', OSM, 0, 'portage=yes · carry the boat and your gear over land here');
+    'Drawn point to point, not along a path. The ground in between could be forest, bog or water, so the distance and time are rough.');
+  pushRun((i) => t(i).portage === 'yes', (s, e) => `Carry / portage ${Math.round(along[e] - along[s])} m`, 'look', OSM, 0, 'portage=yes · Carry the boat and your gear over land here.');
   // ways marked private or closed for the stretch's sport (bikes' "no" has its own row above)
   const marked = (i) => {
     if (sAttr[i].mode === 'water' || sAttr[i].mode === 'line') return null;
@@ -271,7 +271,7 @@ export function findWarnings(along, grade, sAttr, pts, activity) {
     if (cur && (!m || m.tag !== cur.tag)) { out.push(accessRow(cur, along[s], along[i - 1] - along[s], pts[s])); s = -1; }
     if (m && s < 0) s = i;
   }
-  pushRun((i) => t(i).route === 'ferry', 'Ferry crossing', 'look', OSM, 0, 'route=ferry · check its timetable before you go: the time doesn’t include waiting for it');
+  pushRun((i) => t(i).route === 'ferry', 'Ferry crossing', 'look', OSM, 0, 'route=ferry · Check the timetable before you go. The time doesn’t include waiting for the ferry.');
   return out.sort((a, b) => a.at - b.at);
 }
 
@@ -372,13 +372,13 @@ export function trailWarnings(a, opt = {}) {
   const barely = (s, e) => td.vis.slice(s, e + 1).some((v) => v >= 3);
   // (visClass()'s classes: 2 is trail_visibility=bad, 3 horrible or no)
   run((i) => td.vis[i] >= 2, 100, (s, e) => `${barely(s, e) ? 'Barely visible path' : 'Hard to follow'} for ${m(s, e)}`,
-    (s, e) => (barely(s, e) ? 'trail_visibility=horrible or no · often no path to see: find your way by map and GPS, and allow more time'
-      : 'trail_visibility=bad · the path fades in places: watch for it, and keep a map or GPS at hand'));
-  run((i) => td.veg[i], 100, (s, e) => `Overgrown for ${m(s, e)}`, 'obstacle=vegetation · plants grow over the path: slow going, scratched legs, ticks, and wet after rain');
-  run((i) => td.mud[i], 50, (s, e) => `Wet or muddy for ${m(s, e)}`, 'surface=mud or obstacle=mud · soft and slippery, worst after rain: slow down, and on a bike expect to walk parts');
-  run((i) => td.tree[i], 0, () => 'Fallen trees on the trail', 'obstacle=fallen_tree · they may have been cleared since they were mapped: expect to climb over, or lift the bike', 'td-tree');
-  run((i) => td.ford[i], 0, () => 'Ford: no bridge', 'ford=yes · the trail goes through the water: expect wet feet, and deeper water after rain', 'td-ford');
-  if (opt.wet) run((i) => td.boardwalk[i], 100, (s, e) => `Boardwalk for ${m(s, e)}: slippery when wet`, 'bridge=boardwalk · wet wood is slippery, for tyres most of all: slow down and keep off the edges');
+    (s, e) => (barely(s, e) ? 'trail_visibility=horrible or no · Often there’s no path to see. Navigate with a map or GPS, and allow extra time.'
+      : 'trail_visibility=bad · The path fades in places. Keep a map or GPS handy.'));
+  run((i) => td.veg[i], 100, (s, e) => `Overgrown for ${m(s, e)}`, 'obstacle=vegetation · Plants have grown over the path. Expect slow going, scratches and ticks, and wet legs after rain.');
+  run((i) => td.mud[i], 50, (s, e) => `Wet or muddy for ${m(s, e)}`, 'surface=mud or obstacle=mud · Soft and slippery, worst after rain. On a bike you may have to walk parts of it.');
+  run((i) => td.tree[i], 0, () => 'Fallen trees on the trail', 'obstacle=fallen_tree · They may have been cleared since. If not, climb over or lift the bike.', 'td-tree');
+  run((i) => td.ford[i], 0, () => 'Ford: no bridge', 'ford=yes · No bridge, so you go through the water. Expect wet feet, and deeper water after rain.', 'td-ford');
+  if (opt.wet) run((i) => td.boardwalk[i], 100, (s, e) => `Boardwalk for ${m(s, e)}: slippery when wet`, 'bridge=boardwalk · Wet wood is slippery, especially for tyres. Slow down and keep away from the edges.');
   for (const p of td.points) {
     if (isWater(sp(p.i))) continue;
     const { title, note } = obstacleText(p, groupOf(sp(p.i)) === 'bike');

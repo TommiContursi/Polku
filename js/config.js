@@ -154,13 +154,13 @@ export const MTB_SCALE_TEXT = [
 
 // What each MTB grade (mtb:scale) means for a rider, as Heads-up says it: from the MTB-TrailMap JOSM style's guide
 export const MTB_MEANS = [
-  'easy: a smooth path, needles on the ground, few stones or roots; fine for beginners, and easy on a gravel bike',
-  'intermediate: small stones and roots you can ride over on a mountain bike; easy with basic skills, though a beginner may need to get off now and then',
-  'difficult: larger stones and roots, maybe small drops; it takes concentration even from experienced riders, most of all uphill and when wet, and a gravel bike goes on your shoulder',
-  'very difficult: many large stones, roots and drops, and hard climbs; slow even for experienced riders, almost impossible uphill, and beginners often push',
-  'extremely difficult: big obstacles and drops that take trials skills even at walking pace; slow going on foot too',
-  'almost impossible: big obstacles, drops and a twisting path; practically unrideable for almost everyone',
-  'unrideable: long vertical drops or large obstacles close together; take care even on foot',
+  'Easy. A smooth path, like a forest path covered in needles, with few stones or roots. Fine for beginners and easy on a gravel bike.',
+  'Intermediate. Small stones or roots you can ride over. Easy with basic skills, though a beginner may need to get off now and then.',
+  'Difficult. Larger stones and roots, maybe small drops. Takes concentration even for experienced riders, especially uphill or when wet. On a gravel bike you’ll be carrying it.',
+  'Very difficult. Lots of large stones, roots and drops, and hard climbs. Slow even for experienced riders, and beginners often have to push.',
+  'Extremely difficult. Big obstacles and drops that take trials skills, even at walking pace. Slow on foot too.',
+  'Almost impossible. Big obstacles, drops and twisty sections. Practically unrideable for almost everyone.',
+  'Unrideable, whatever your skills. Long drops or big obstacles close together. Take care even on foot.',
 ];
 
 export const UPHILL_TEXT = [

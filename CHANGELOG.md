@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Heads-up says why, and what it means for you ([#618](https://github.com/TommiContursi/Polku/issues/618))
 
-- An item's card now says what made it and what it means out there. A path that's hard to follow says how OpenStreetMap rates it and to keep a map or GPS at hand. A technical trail says what its MTB grade means in plain words, such as many large stones, roots and drops at S3. Steps, overgrown and muddy stretches, fallen trees, fords, wet boardwalks, steep stretches, unpaved roads on road tyres, alpine terrain, straight lines, portages, ferries and busy roads each say why and what to expect.
+- An item's card now says why it's there and what to expect. A path that's hard to follow says how OpenStreetMap rates it and suggests a map or GPS. A technical trail says what its MTB grade means, such as lots of large stones, roots and drops at S3. Steps, overgrown and muddy stretches, fallen trees, fords, wet boardwalks, steep stretches, unpaved roads on road tyres, alpine terrain, straight lines, portages, ferries and busy roads each say why too.
 - A technical trail is now named by the hardest grade along its stretch, not the grade where it starts.
 
 ### The blue route and LIPAS's routes are easier to tell from the map ([#611](https://github.com/TommiContursi/Polku/issues/611), [#560](https://github.com/TommiContursi/Polku/issues/560))
