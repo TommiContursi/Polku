@@ -12,7 +12,8 @@ import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
 import { buildStyle, routeDim } from './style.js';
 import { installIcons, iconUrl } from './icons.js';
-import { Planner, parseShared, parsePin, dockOf } from './planner.js';
+import { Planner, parseShared, parsePin, dockOf, hiddenKinds } from './planner.js';
+import { item } from './card.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
 import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
@@ -20,7 +21,7 @@ import { prefetchWater } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
 import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection } from './offline.js';
-import { initSearch } from './search.js';
+import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist } from './geo.js';
 import { $, $$, h, icon, toast, store, popMenu, settleControls } from './ui.js';
@@ -967,7 +968,6 @@ const toggle = (label, on, fn, note = '') => {
 };
 const seg = (options, value, fn) => h('div', { class: 'seg small full' },
   ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
-const section = (title, ...kids) => h('section', { class: 'lp-sec' }, h('h3', {}, title), ...kids);
 // A raster layer's opacity, right under its switch while it's on; remembered per layer
 // (overlays by id, the weather fields as wx:rain and wx:temp; style.js reads the same keys).
 const WX_OPACITY = {
@@ -1016,7 +1016,7 @@ const withOpacity = (id, tg) => { const row = opacityRow(id); return row ? h('di
 function layerGroup(id, title, count, ...kids) {
   const openByDefault = kids[0] === true ? kids.shift() : false; // optional flag before the children
   const saved = store.get('layerGroups', {})[id];
-  const d = h('details', { class: 'lg-group', open: saved ?? (openByDefault || count > 0) },
+  const d = h('details', { class: 'lg-group', 'data-group': id, open: saved ?? (openByDefault || count > 0) },
     // a click that opens it fades its rows in, once (.enter); not the keyboard's, nor Layers drawn again
     h('summary', { onclick: (e) => d.classList.toggle('enter', !!e.detail && !d.open) }, h('span', { class: 'lg-title' }, title), count ? h('span', { class: 'lg-count' }, `${count} on`) : null), ...kids);
   d.addEventListener('animationend', () => d.classList.remove('enter'));
@@ -1027,10 +1027,13 @@ function layerGroup(id, title, count, ...kids) {
 // The full panel's switches, built by the same functions for the panel and for a tile's settings in the
 // quick drawer (#123), so the two are always the same switches. A change renders both again.
 const rerender = (fn) => (v) => { fn(v); renderLayersPanel(); };
+// Settings has these too (#321): the same controls, so either place finds them
+const heightRange = () => h('label', { class: 'range' }, '3D height',
+  h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), 'aria-label': '3D height', oninput: (e) => { state.exaggeration = +e.target.value; if (state.terrain3d) map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } }));
+const arrowsToggle = () => toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery');
 const terrain3dControls = () => [
   toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
-  state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
-    h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), 'aria-label': '3D exaggeration', oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null,
+  state.terrain3d ? heightRange() : null,
 ];
 function trailControls() {
   const act = ACTIVITIES[state.activity];
@@ -1130,7 +1133,7 @@ function renderLayersPanel() {
   // your route's marks on the map, while one is drawn (#424's C: from Check)
   if (planner.points.length > 1) {
     planner.renderOnMap();
-    p.append(layerGroup('route', 'Your route', Object.values(planner.marks).filter(Boolean).length, true, planner.els.onMap, h('p', { class: 'note' }, 'On the map while a route is drawn.')));
+    p.append(layerGroup('route', 'Your route', Object.values(planner.marks).filter(Boolean).length, true, arrowsToggle(), planner.els.onMap, h('p', { class: 'note' }, 'On the map while a route is drawn. Settings has these too.')));
   }
 
   // base maps as thumbnails
@@ -1194,6 +1197,7 @@ function renderLayersPanel() {
 // Its steps: a tile's settings (its ›) and Edit (your own tiles); More opens the full panel.
 const phoneMQ = matchMedia('(max-width: 720px)');
 let quickView = 'quick'; // while it's open: 'quick', 'opts:<tile>' or 'edit'
+let quickEditAct = null; // Edit's sport: the map's, or the one Settings' Edit opened it for
 const quickOpen = () => $('#quick-layers').classList.contains('open');
 const layersOpen = () => quickOpen() || !$('#layers-panel').hidden;
 const plain = (t) => t.replace(/­/g, ''); // a label without its soft hyphens, for screen readers
@@ -1210,7 +1214,7 @@ function quickTiles(act = state.activity) {
   if (state.winterOn && i >= 0 && !t.includes(cold)) t[i] = cold;
   return t;
 }
-const tileLabel = (id) => (id === 'lipasPoints' && QUICK_PLACES[state.activity]) || QUICK_TILE[id].label;
+const tileLabel = (id, act = state.activity) => (id === 'lipasPoints' && QUICK_PLACES[act]) || QUICK_TILE[id].label;
 // a tile is on while its switch in the full panel is (Depths: while any of its three is)
 function tileOn(id) {
   if (id === 'trailColors') return state.trailColors !== 'off';
@@ -1332,32 +1336,33 @@ function renderQuickLayers(dir = null) {
   let parts;
   if (v === 'edit') {
     // your own tiles: a tap on one takes it off, a chip adds one, five at most
-    const tiles = quickTiles(), full = tiles.length >= QUICK_MAX;
-    const set = (list) => { state.quickTiles = { ...state.quickTiles, [state.activity]: list }; saveSettings(); renderQuickLayers(); };
+    const ea = quickEditAct || state.activity, eAct = ACTIVITIES[ea];
+    const tiles = quickTiles(ea), full = tiles.length >= QUICK_MAX;
+    const set = (list) => { state.quickTiles = { ...state.quickTiles, [ea]: list }; saveSettings(); renderQuickLayers(); };
     const groups = [];
     for (const [id, t] of Object.entries(QUICK_TILE)) {
       if (tiles.includes(id) || (id === 'mmlMaastoOverlay' && !state.mmlKey)) continue;
       if (!groups.length || groups[groups.length - 1][0] !== t.group) groups.push([t.group, []]);
       groups[groups.length - 1][1].push(id);
     }
-    parts = [...head(`Your tiles for ${act.label}`, { close: false }),
+    parts = [...head(`Your tiles for ${eAct.label}`, { close: false }),
       h('div', { class: 'qd-body qd-edit' },
         h('h3', { class: 'qd-lab' }, `On the drawer · ${tiles.length} of ${QUICK_MAX}`),
         h('div', { class: 'qd-tiles' },
           ...tiles.map((id) => h('div', { class: 'qt' }, h('button', {
             type: 'button', class: 'qt-rm', 'data-rm': id, 'aria-label': `Take off ${plain(tileLabel(id))}`, onclick: () => set(tiles.filter((x) => x !== id)),
-          }, h('span', { class: 'qt-ic', html: icon(QUICK_TILE[id].icon, 20) }), h('span', { class: 'qt-l' }, tileLabel(id)), h('span', { class: 'rm', html: icon('minus', 16) })))),
+          }, h('span', { class: 'qt-ic', html: icon(QUICK_TILE[id].icon, 20) }), h('span', { class: 'qt-l' }, tileLabel(id, ea)), h('span', { class: 'rm', html: icon('minus', 16) })))),
           ...Array.from({ length: QUICK_MAX - tiles.length }, () => h('div', { class: 'qd-slot' }, 'Room for one more: add it below'))),
         h('h3', { class: 'qd-lab' }, full ? 'Add a tile · take one off first' : 'Add a tile'),
         ...groups.flatMap(([g, ids]) => [h('h4', { class: 'qd-grp' }, g), h('div', { class: 'qd-add' },
-          ...ids.map((id) => h('button', { type: 'button', class: 'qd-chip', 'data-add': id, disabled: full, onclick: () => set([...tiles, id]), html: `${icon('plus', 16)}<span>${tileLabel(id)}</span>` })))])),
+          ...ids.map((id) => h('button', { type: 'button', class: 'qd-chip', 'data-add': id, disabled: full, onclick: () => set([...tiles, id]), html: `${icon('plus', 16)}<span>${tileLabel(id, ea)}</span>` })))])),
       h('div', { class: 'qd-foot' },
         h('button', { type: 'button', class: 'qd-link', onclick: () => {
-          const { [state.activity]: _, ...rest } = state.quickTiles;
+          const { [ea]: _, ...rest } = state.quickTiles;
           state.quickTiles = rest;
           saveSettings();
           renderQuickLayers();
-        } }, `Reset to ${act.label}’s tiles`),
+        } }, `Reset to ${eAct.label}’s tiles`),
         h('button', { type: 'button', class: 'qd-done', onclick: () => quickStep('quick') }, 'Done'))];
   } else if (v.startsWith('opts:')) {
     const id = v.slice(5);
@@ -1408,10 +1413,11 @@ function renderQuickLayers(dir = null) {
 // One step in (a tile's settings, Edit) or back to the tiles. A tile's settings keep the drawer's
 // height, so nothing jumps (their body scrolls); Edit grows past it, up to the room there is.
 // Focus goes in, and back to what opened it.
-function quickStep(view) {
+function quickStep(view, act = null) {
   const qd = $('#quick-layers'), from = quickView, h0 = `${Math.round(qd.offsetHeight)}px`;
   if (view === from) return;
   quickView = view;
+  quickEditAct = act;
   qd.style.height = view.startsWith('opts:') ? h0 : '';
   qd.style.minHeight = view === 'edit' ? h0 : '';
   renderQuickLayers(view === 'quick' ? 'out' : 'in');
@@ -1498,23 +1504,32 @@ phoneMQ.addEventListener('change', () => {
 map.once('idle', () => (window.requestIdleCallback || setTimeout)(() => { for (const [k] of BASES) new Image().src = thumb(k); }));
 
 // ------------------------------------------------------------------ settings panel
-// How Polku behaves (not what the map shows): your speeds, the planner, display, offline, data (#321).
+// How Polku behaves (not what the map shows: that's Layers): folding groups like Layers' (#321's B, the plan in
+// docs/plans/issue-321-settings.md), each open or folded as you left it. A setting its issue hasn't built yet is
+// there already, greyed and off, with Coming beside its name.
 let speedOpen = null; // the sport whose speeds Settings shows opened (none at first)
 let speedNew = null; // the sport whose speeds a tap has just opened: they fade in, once
+const soon = () => h('span', { class: 'cur' }, 'Coming');
+const coming = (el) => {
+  el.classList.add('coming');
+  for (const c of [el, ...el.querySelectorAll('input, button')]) if ('disabled' in c) c.disabled = true;
+  return el;
+};
+const comingChoice = (label, options) => coming(h('div', {}, h('div', { class: 'tg-text' }, h('span', {}, label, ' ', soon())), seg(options.map((o) => [o, o]), options[0], () => {})));
+const comingToggle = (label, note, on = false) => coming(toggle(h('span', {}, label, ' ', soon()), on, () => {}, note));
+const comingRow = (ic, label, line, val = null) => coming(item({ icon: ic, label: h('span', {}, label, ' ', soon()), line, val, chev: val == null, k: label }));
 function renderSettingsPanel() {
   const p = $('#settings-body');
   const keepScroll = p.scrollTop;
   requestAnimationFrame(() => { p.scrollTop = keepScroll; });
   const settle = settleControls(p);
   p.innerHTML = '';
-  p.append(section('About Polku',
-    h('button', { type: 'button', class: 'btn', id: 'btn-changelog', onclick: (e) => openChangelog(e.currentTarget) }, 'What’s new'),
-    h('p', { class: 'note' }, 'Read recent changes without leaving your route.')));
+  const group = (id, title, ...kids) => layerGroup(`settings-${id}`, title, 0, ...kids);
 
-  // Your speeds: every sport in a row of its own, its speeds in one line; a tap opens the planner's own editor in
-  // place, one sport at a time. A change re-times the route when it has legs in that sport, whatever the map's
-  // sport is (#87). The sport itself is the pill's (and the next leg's, the planner's drawing menu): Settings holds
-  // settings, not the map's choices (#321).
+  // Speeds and tiles by sport: every sport in a row of its own, its speeds in one line; a tap opens the planner's own
+  // editor in place, one sport at a time, and its five Layers tiles. A change re-times the route when it has legs in
+  // that sport, whatever the map's sport is (#87). The sport itself is the pill's (and the next leg's, the planner's
+  // drawing menu): Settings holds settings, not the map's choices (#321).
   const inRoute = planner.points.length > 1 ? planner.routeSports() : [];
   const speeds = h('div', { class: 'speed-list rows' });
   for (const [k, a] of Object.entries(ACTIVITIES)) {
@@ -1531,40 +1546,83 @@ function renderSettingsPanel() {
       craft: planner.craft, onCraft: (c) => planner.setCraft(c),
       onChange: () => { row.querySelector('small').textContent = planner.speedLine(k); if (planner.routeSports().includes(k)) planner.retime(); },
     });
+    box.append(h('div', { class: 'tg-text' }, 'Tiles in Layers', h('small', {}, quickTiles(k).map((id) => plain(tileLabel(id, k))).join(' · '))),
+      h('button', { type: 'button', class: 'btn', onclick: () => { openPanel('quick-layers'); quickStep('edit', k); } }, `Edit ${a.label}’s tiles`));
   }
-  p.append(section('Your speeds', speeds,
-    h('p', { class: 'note' }, 'Polku times your route with these speeds, so they also decide when you reach each place and the weather you meet there. A change applies at once to your route’s legs in that sport. The planner has the same speeds in its drawing menu and in Route › How you go. Kept on this device only.')));
+  p.append(group('sports', 'Speeds and tiles by sport', speeds,
+    h('p', { class: 'note' }, 'Polku times your route with these speeds, so they also decide when you reach each place and the weather you meet there. A change applies at once to your route’s legs in that sport. The planner has the same speeds in its drawing menu and in Route › How you go. A sport’s five tiles are the ones Layers shows while it’s chosen. Kept on this device only.')));
 
-  if (planner.sideMQ && planner.sideMQ.matches) {
-    p.append(section('Route planner',
-      seg([['left', 'Side panel (left)'], ['bottom', 'Bottom panel']], dockOf(), (v) => { planner.setDock(v); renderSettingsPanel(); }),
-      h('p', { class: 'note' }, 'Open it with Plan or R. The button beside its fold, and its ⋯ menu, have the same switch. While planning, the departure clock lives inside it.')));
-  }
-
-  p.append(section('Display',
+  p.append(group('display', 'Display',
     h('div', { class: 'tg-text', id: 'appearance-h' }, 'Appearance'),
     h('div', { class: 'way-chips', role: 'group', 'aria-labelledby': 'appearance-h' }, ...APPEARANCES.map(([k, label]) => h('button', {
       type: 'button', class: 'chip', 'data-appearance': k, 'aria-pressed': String(state.appearance === k), html: `${state.appearance === k ? icon('check', 15) : ''}<span>${label}</span>`,
       onclick: () => { state.appearance = k; saveSettings(); applyTheme(); renderSettingsPanel(); $(`#settings-body [data-appearance="${k}"]`)?.focus(); },
     }))),
     h('p', { class: 'note' }, 'Automatic follows your device. Match the map is dark over the aerial photos and the night map, and light over the rest. Kept on this device only.'),
+    comingChoice('Text and buttons', ['Standard', 'Smaller', 'Larger']),
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails, solid panels and darker grey words, for bright sunlight'),
+    comingToggle('Colours for colour blindness', 'Difficulty, the profile and warnings in colours that stay apart'),
+    comingToggle('Less motion', 'Panels appear without sliding; the route’s arrows stand still'),
+    comingToggle('Fewer effects', 'No glass or shadows, for slower phones')));
+
+  p.append(group('language', 'Language and units',
+    comingChoice('Language', ['Automatic', 'English', 'Suomi', 'Svenska']),
+    comingChoice('Units', ['Metric', 'Imperial'])));
+
+  // the same switches as Layers' Your route; a change draws these again, for the times' switches
+  p.append(group('route', 'Route arrows and marks', arrowsToggle(),
+    h('div', { onchange: () => renderSettingsPanel() }, ...planner.marksSwitches()),
+    comingToggle('Trails show through the route', 'So the trail’s colours stay visible under it'),
+    h('p', { class: 'note' }, 'On the map while a route is drawn. Layers has these too, with your route.')));
+
+  p.append(group('map', 'Map and planner',
+    h('div', { class: 'rows' }, item({ icon: 'layers', label: 'Layers', line: 'The base map, trails, 3D, the timeline and weather on the map', chev: true, onclick: () => openPanel('quick-layers') })),
+    heightRange(),
+    h('p', { class: 'note' }, 'How tall the hills stand in 3D. Layers turns 3D on and off, and has this too.'),
     hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
-    toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery'),
-    hoverCapable() ? toggle('Trackpad rotates & tilts', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms') : null));
+    hoverCapable() ? toggle('Trackpad rotates & tilts', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms') : null,
+    comingToggle('Turn the map with two fingers', 'Off keeps north up; a pinch only zooms', true),
+    comingChoice('When Polku opens', ['Where you left off', 'A fresh start']),
+    comingToggle('Keep the screen on while following', 'Only while Follow me is on'),
+    ...(planner.sideMQ && planner.sideMQ.matches ? [
+      h('div', { class: 'tg-text' }, 'Route planner'),
+      seg([['left', 'Side panel (left)'], ['bottom', 'Bottom panel']], dockOf(), (v) => { planner.setDock(v); renderSettingsPanel(); }),
+      h('p', { class: 'note' }, 'Open it with Plan or R. The button beside its fold, and its ⋯ menu, have the same switch. While planning, the departure clock lives inside it.')] : [])));
+
+  // the Heads-up kinds you've hidden in Check (#143), each to show again; Check lists them at its end too
+  const hidden = Object.entries(hiddenKinds());
+  p.append(group('hidden', 'Hidden Heads-up',
+    hidden.length ? h('div', { class: 'rows' }, ...hidden.map(([key, label]) => item({ icon: 'eyeOff', label, val: 'Show again', k: key,
+      onclick: () => { planner.hideWarnKind({ key, label }, false); renderSettingsPanel(); ($('#settings-body [data-group="settings-hidden"] .row') || $('#settings-body [data-group="settings-hidden"] summary')).focus(); } }))) : null,
+    h('p', { class: 'note' }, hidden.length ? 'Hidden from Check on every route.' : 'Nothing hidden. A Heads-up row’s ⋯ hides a kind you don’t need, and it’s listed here to show again.')));
 
   const offlineBox = h('div', { class: 'off-list' });
-  p.append(section('Offline maps', offlineBox));
+  p.append(group('offline', 'Offline maps', offlineBox));
   renderOfflineSection(offlineBox, { open: openOfflineArea });
 
-  usageBox = h('div', { class: 'use-list' });
-  p.append(section('Data sources', usageBox));
-  renderUsage(usageBox);
+  const recent = recentSearches().length;
+  p.append(group('device', 'Saved on this device',
+    h('div', { class: 'rows' },
+      item({ icon: 'search', label: 'Recent searches', line: recent ? `${recent} place${recent > 1 ? 's' : ''}` : 'None', val: recent ? 'Clear' : null, k: 'recent', el: recent ? 'button' : 'div',
+        onclick: recent ? () => { clearRecentSearches(); renderSettingsPanel(); toast('Recent searches cleared'); } : null }),
+      comingRow('download', 'Export a copy', 'Your route, settings and places, as a file'),
+      comingRow('upload', 'Import a copy', 'From another device'),
+      comingRow('retry', 'Reset settings', 'Your route and offline maps stay')),
+    h('p', { class: 'note' }, 'Polku keeps your route, these settings, offline maps and recent searches on this device, and nowhere else.')));
 
+  p.append(group('accounts', 'Strava and Garmin',
+    h('div', { class: 'rows' },
+      comingRow('link', 'Strava', 'Your past trips as a heatmap, and your real speeds', 'Connect'),
+      comingRow('link', 'Garmin', 'Send a route to your watch or bike computer', 'Connect')),
+    h('p', { class: 'note' }, 'Optional: Polku works without an account.')));
+
+  usageBox = h('div', { class: 'use-list' });
   // your own BRouter: no shared limits (tools/brouter-local.sh starts one on this computer)
   const routerInput = h('input', { type: 'url', placeholder: BROUTER, value: store.get('brouterUrl', ''), autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Routing server address' });
   const routerNote = h('p', { class: 'note' });
-  p.append(section('Routing server (optional)',
+  const keyInput = h('input', { type: 'password', placeholder: 'Paste your MML API key', value: state.mmlKey, autocomplete: 'off', spellcheck: 'false', 'aria-label': 'MML API key' });
+  p.append(group('data', 'Data sources', usageBox,
+    h('div', { class: 'tg-text' }, 'Routing server (optional)'),
     h('p', { class: 'note' }, 'Routes come from brouter.de, a free public server that takes about a dozen routes a minute from one device. If you run BRouter yourself, enter its address — for one on this computer, http://localhost:17777/brouter (see tools/brouter-local.sh). Empty means brouter.de.'),
     h('div', { class: 'key-row' }, routerInput, h('button', { type: 'button', class: 'btn', onclick: async () => {
       const v = routerInput.value.trim().replace(/\/+$/, '');
@@ -1581,10 +1639,8 @@ function renderSettingsPanel() {
       store.set('brouterUrl', v === BROUTER ? '' : v);
       routerNote.textContent = v && v !== BROUTER ? 'Saved — routes now come from your server.' : 'Saved — routes come from brouter.de.';
       planner.retryFailed();
-    } }, 'Save')), routerNote));
-
-  const keyInput = h('input', { type: 'password', placeholder: 'Paste your MML API key', value: state.mmlKey, autocomplete: 'off', spellcheck: 'false' });
-  p.append(section('MML API key (optional)',
+    } }, 'Save')), routerNote,
+    h('div', { class: 'tg-text' }, 'MML API key (optional)'),
     h('p', { class: 'note' }, 'Maastokartta works without a key via Kapsi. A key adds the official MML WMTS service as an extra base and overlay. Keys are free from ',
       h('a', { href: 'https://www.maanmittauslaitos.fi/rajapinnat/api-avaimen-ohje', target: '_blank', rel: 'noopener' }, 'maanmittauslaitos.fi'),
       ' and is stored only in this browser.'),
@@ -1593,6 +1649,12 @@ function renderSettingsPanel() {
       if (!state.mmlKey && state.base === 'mml') state.base = 'trail';
       applyStyle(); renderLayersPanel(); renderSettingsPanel(); toast(state.mmlKey ? 'MML key saved' : 'MML key removed');
     } }, 'Save'))));
+  renderUsage(usageBox);
+
+  p.append(group('about', 'About Polku',
+    h('button', { type: 'button', class: 'btn', id: 'btn-changelog', onclick: (e) => openChangelog(e.currentTarget) }, 'What’s new'),
+    h('p', { class: 'note' }, 'Read recent changes without leaving your route.'),
+    h('div', { class: 'rows' }, comingRow('info', 'How to use Polku', ''), comingRow('info', 'Credits and licence', ''))));
   settle();
 }
 
@@ -1604,6 +1666,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
   if (id === 'settings-panel') renderSettingsPanel(); // fresh: speeds may have changed in the planner
   if (id === 'layers-panel') renderLayersPanel(); // fresh: a route drawn or cleared since (its group, #424's C)
   const wasLayers = layersOpen(), focusIn = $$('#quick-layers, #layers-panel').some((el) => el.contains(document.activeElement));
+  const focusSettings = $('#settings-panel').contains(document.activeElement);
   if (id === 'quick-layers' && wasLayers && !back) id = null;
   lpSwipe.stop();
   for (const el of $$('.panel')) {
@@ -1623,6 +1686,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
   else if (back) $('#quick-layers .qt-more')?.focus({ preventScroll: true });
   else if (step && id === 'layers-panel') $('#layers-panel .panel-back')?.focus({ preventScroll: true });
   else if (!lay && focusIn) $('#btn-layers').focus({ preventScroll: true });
+  else if (focusSettings && $('#settings-panel').hidden) $('#btn-settings').focus({ preventScroll: true }); // (not left on a hidden control, #621)
 }
 // a button pressed from the keyboard (detail 0) opens its panel at once
 for (const btn of $$('[data-panel]')) btn.addEventListener('click', (e) => openPanel(btn.dataset.panel, { instant: e.detail === 0 }));

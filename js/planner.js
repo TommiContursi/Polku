@@ -166,7 +166,7 @@ function hideKind(w) {
     || w.text.split(/ — |[:(,×]| for | up to | S\d| \d/)[0].trim();
   return key ? { key, label: HIDE_LABEL[key] || key } : null;
 }
-const hiddenKinds = () => store.get('hideWarn', {}); // { key: label }
+export const hiddenKinds = () => store.get('hideWarn', {}); // { key: label }
 // "Not right?": a note on OpenStreetMap at the place asks its mappers to look; fixing the
 // map yourself needs an OpenStreetMap account
 const osmNote = ([lon, lat]) => `https://www.openstreetmap.org/note/new#map=19/${lat.toFixed(6)}/${lon.toFixed(6)}`;
@@ -4438,16 +4438,18 @@ export class Planner {
     this.els.profSize.setAttribute('aria-label', this.els.profSize.title);
   }
 
-  // Check › On the map: what the route shows on the map besides its line (once in ⋯)
+  // Layers › Your route, and Settings › Route arrows and marks: what the route shows on the map besides its line
   renderOnMap() {
-    const box = this.els.onMap;
-    if (!box) return;
+    this.els.onMap?.replaceChildren(...this.marksSwitches());
+  }
+
+  marksSwitches() {
     const sw = (label, on, fn, disabled = false, line = '') => h('label', { class: `tg${disabled ? ' off' : ''}` },
       h('span', { class: 'tg-text' }, label, h('small', {}, line)), h('input', { type: 'checkbox', role: 'switch', checked: on, disabled, onchange: (e) => fn(e.target.checked) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
-    box.replaceChildren(
+    return [
       sw('Distance marks', !!this.marks.km, (v) => this.setMarks({ km: v }), false, 'Every 1, 5, 10 or 25 km along the route, by its length'),
       sw('Arrival times at marks', !!this.marks.time, (v) => this.setMarks({ time: v }), !this.marks.km, 'The clock time you reach each mark'),
-      sw('Elapsed time at marks', !!this.marks.duration, (v) => this.setMarks({ duration: v }), !this.marks.km, 'Hours, minutes and seconds from departure, including stops and changeovers'));
+      sw('Elapsed time at marks', !!this.marks.duration, (v) => this.setMarks({ duration: v }), !this.marks.km, 'Hours, minutes and seconds from departure, including stops and changeovers')];
   }
 
   // Go › Take it along: the route as a file, a link, or the map saved for offline

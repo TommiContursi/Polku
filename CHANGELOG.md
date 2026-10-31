@@ -4,6 +4,17 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### Settings is in folding groups, with what's still to come ([#321](https://github.com/TommiContursi/Polku/issues/321), [#143](https://github.com/TommiContursi/Polku/issues/143))
+
+- **Settings** now opens on a short list of groups that fold like Layers' groups: speeds and tiles by sport, Display, language and units, route arrows and marks, map and planner, hidden Heads-up, offline maps, what's saved on this device, Strava and Garmin, data sources and About Polku. Each group stays open or folded as you leave it.
+- **Route arrows and marks** has the route's moving arrows and its distance marks with their times. Layers keeps them too, with your route, so you find them in either place.
+- Settings that are planned but not built yet, such as language, text size and Strava, are already in their groups, greyed and marked **Coming**. They don't respond until they're built.
+- A sport's row in **Speeds and tiles by sport** shows its speeds and its five Layers tiles, and **Edit** changes that sport's tiles, whatever sport the map has.
+- **Map and planner** has a row that opens **Layers**, and **3D height**, which Layers also has under 3D terrain.
+- **Hidden Heads-up** lists the kinds of Heads-up you've hidden, each with **Show again**.
+- **Saved on this device** says how many recent searches Polku keeps, and **Clear** forgets them.
+- Closing Settings from the keyboard puts the focus back on ⚙, as closing Layers puts it on **Layers**, so the next Tab starts from there.
+
 ### Heads-up says why, and what it means for you ([#618](https://github.com/TommiContursi/Polku/issues/618))
 
 - An item's card now says why it's there and what to expect. A path that's hard to follow says how OpenStreetMap rates it and suggests a map or GPS. A technical trail says what its MTB grade means, such as lots of large stones, roots and drops at S3. Steps, overgrown and muddy stretches, fallen trees, fords, wet boardwalks, steep stretches, unpaved roads on road tyres, alpine terrain, straight lines, portages, ferries and busy roads each say why too.
