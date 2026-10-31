@@ -108,7 +108,7 @@ A straight part, a gap or a walking part says so in Check (Worth a look: "Straig
 | #197 (Hike and Run over foot=private) | **Stays apart:** a profile question |
 | #274 (Route DNA) | **Stays apart.** The label's second line is the short form of a comparison |
 
-Moving #86, #127 and #244 into this milestone is the user's call (AGENTS.md: a fix whose code a phase rebuilds).
+#86, #127 and #244 moved into this milestone on 2026-10-31, the user's choice (AGENTS.md: a fix whose code a phase rebuilds).
 
 ## The parts
 
