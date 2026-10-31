@@ -95,7 +95,10 @@ November 2026").
   not verify the work or run the suite: those stay with the session.
 - **Lead with what the user must do:** every reply and Hand-over opens with
   **Needs you** (merge, decide, test, or nothing), **Next** and **Left** (in
-  sessions or PRs). `needs-owner` labels what waits on the user.
+  sessions or PRs). An issue or PR that waits on the user is assigned to
+  them, and unassigned once they've answered; a draft still being built
+  isn't. A mention or a review request never reaches them: every agent
+  posts as them.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
   issue, headed "Hand-over", in 6–8 short lines after the three above, no

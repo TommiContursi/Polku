@@ -2775,14 +2775,15 @@ CARD_SCROLL_ARM = """(async (click) => {
   for (let k = 0; k < 50 && !(p.cards.current && p.cards.box); k++) await wait(100);
   const row = p.cards.box && [...p.cards.box.querySelectorAll('.row')].find((r) => /Sunrise and sunset/.test(r.textContent));
   if (!row) return 'no Sunrise and sunset on the card';
-  const real = Element.prototype.scrollIntoView, body = p.els.body, at = [];
-  Element.prototype.scrollIntoView = function (o) { const r = real.call(this, o); at.push(body.scrollTop); return r; };
-  window.cardScroll = { real, body, at };
+  // (what scrolls the list, read when it scrolls: the sheet itself where it scrolls as one, which it doesn't with a card)
+  const real = Element.prototype.scrollIntoView, at = [];
+  Element.prototype.scrollIntoView = function (o) { const r = real.call(this, o); at.push(p.listScroller().scrollTop); return r; };
+  window.cardScroll = { real, at };
   if (click) row.click(); else row.focus();
   return '';
 })"""
 CARD_SCROLL_READ = """(async (atOnce) => {
-  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), { real, body, at } = window.cardScroll;
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), { real, at } = window.cardScroll, body = p.listScroller();
   // (until it has been asked for and the list has stopped: a smooth scroll on a page too busy for frames takes seconds)
   let end = -1;
   for (let k = 0; k < 100 && !(at.length && body.scrollTop && body.scrollTop === end); k++) { end = body.scrollTop; await wait(150); }
@@ -3515,10 +3516,10 @@ def warnfix(chrome):
           if (!step) return ['no ‹ › on the card'];
           const c = card.getBoundingClientRect(), s = step.getBoundingClientRect();
           if (s.bottom > c.bottom + 1 || s.top < c.top) errs.push(`‹ › at ${Math.round(s.top)}–${Math.round(s.bottom)}, the card shows ${Math.round(c.top)}–${Math.round(c.bottom)}`);
-          // (#444) the profile size with the row there: the whole chart, and back at the peek the row and the numbers in sight
-          p.cards.close(); p.setTab('route'); p.setSheetState('profile'); await wait(400); await """ + SETTLED + """;
+          // (#444) half with the row there: the chart in sight, and back at the peek the row and the numbers in sight
+          p.cards.close(); p.setTab('route'); p.setSheetState('half'); await wait(400); await """ + SETTLED + """;
           const cv = document.getElementById('profile-canvas').getBoundingClientRect(), sb = p.panel.getBoundingClientRect().bottom;
-          if (cv.height < 60 || cv.bottom > sb + 1) errs.push(`the profile size with the row: the chart ${Math.round(cv.top)}–${Math.round(cv.bottom)}, the sheet ends at ${Math.round(sb)}`);
+          if (cv.height < 60 || cv.bottom > sb + 1) errs.push(`half with the row: the chart ${Math.round(cv.top)}–${Math.round(cv.bottom)}, the sheet ends at ${Math.round(sb)}`);
           p.setSheetState('peek'); await wait(400); await """ + SETTLED + """;
           const rr = p.els.readRow.getBoundingClientRect(), nr = p.els.row.getBoundingClientRect(), pr = p.panel.getBoundingClientRect();
           if (p.els.readRow.hidden || !rr.height) errs.push('back at the peek, no row');
@@ -3751,7 +3752,7 @@ FIT_LIB = """(() => {
     p.setActive(true); p.clear(); p.setMode('line');
     for (const q of """ + json.dumps(FIT_ROUTE) + """) p.addPoint(q);
     for (let k = 0; k < 100 && !p.analysis; k++) await wait(200);
-    for (const st of ['peek', 'profile', 'half', 'full']) {
+    for (const st of ['peek', 'half', 'full']) {
       await state(st);
       away();
       const mv = moved();
@@ -4156,14 +4157,12 @@ DRAWER = """(async () => {
     if (p.tab !== tab || el.closest('.pl-pane').hidden) errs.push(`reveal(${id}) didn’t open ${tab}`);
   }
   p.openStep(null); // (reveal(style) opened How you go's step)
-  // the profile: under the header, out of the tabs; at the profile size, not at peek
+  // the profile: under the header, out of the tabs; not at peek
   const cv = document.querySelector('#profile-canvas');
   if (!cv || !cv.closest('.pl-profile') || cv.closest('.pl-pane')) errs.push('the profile isn’t under the header');
   if (p.layout() === 'sheet') {
     p.setSheetState('peek', { remember: false }); await wait(400);
     if (cv.offsetHeight) errs.push('the profile shows at peek');
-    p.setSheetState('profile', { remember: false }); await wait(400);
-    if (cv.offsetHeight < 100) errs.push(`the profile is ${cv.offsetHeight} px at the profile size`);
     p.setSheetState('half', { remember: false }); await wait(400);
   }
   const h0 = cv.offsetHeight;
@@ -4226,11 +4225,17 @@ DRAWER = """(async () => {
   await wait(150);
   const lit = m.getSource('routeLit').serialize().data;
   if (!(lit.features && lit.features.length === 1)) errs.push('pointing at a stretch lit nothing on the map');
+  // …and stands out: drawn over the route, wider, with the rest of the route faded (#83)
+  const ids = m.getStyle().layers.map((l) => l.id), faded = () => m.getPaintProperty('route-line', 'line-opacity');
+  if (!(ids.indexOf('route-lit-casing') > ids.indexOf('route-line') && ids.indexOf('route-lit') > ids.indexOf('route-lit-casing'))) errs.push('the lit stretch is drawn under the route');
+  if (!(ids.indexOf('route-portage') > ids.indexOf('route-lit') && ids.indexOf('route-unchecked') > ids.indexOf('route-lit'))) errs.push('the lit stretch covers the carries or Not checked');
+  if (!(faded() < 1)) errs.push(`the rest of the route isn't faded while a stretch is lit: ${faded()}`);
   const hl = p.chart.highlight;
   if (!hl || Math.abs(hl[0] - p.lengthTo(s.from)) > 1 || Math.abs(hl[1] - p.lengthTo(s.to)) > 1) errs.push(`the profile lit ${JSON.stringify(hl)}`);
   row.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
   await wait(150);
   if ((m.getSource('routeLit').serialize().data.features || []).length) errs.push('the leg stayed lit');
+  if (faded() !== 1) errs.push(`the route stayed faded: ${faded()}`);
   if (/\bnull\b|undefined/.test(p.panel.textContent)) errs.push('“null” written in the drawer');
   // the tab is remembered, and the arrow keys move along the tabs
   p.setTab('route');
@@ -5868,6 +5873,13 @@ def quick_swipe(chrome):
     time.sleep(0.4)
     if st()['open']:
         fails.append('a flick down did not close the drawer')
+    # let go moving down, slower than a flick (80 px in 200 ms): closed, as a drawer thrown down is (SWIPE.dismiss), which
+    # 0.99's short projection wouldn't do by itself (#233's sheet's stops)
+    top = opened()
+    pg.swipe(195, top + 30, top + 110, ms=200, steps=10)
+    time.sleep(0.5)
+    if st()['open']:
+        fails.append('a swipe down let go moving (80 px in 200 ms, slower than a flick) did not close the drawer')
     # from the ✕: a drag that starts on a button moves the sheet all the way, and doesn't press it
     top = opened()
     x = pg.js("(() => { const b = document.querySelector('#quick-layers .qd-x').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
@@ -5909,8 +5921,8 @@ def quick_swipe(chrome):
     pg.swipe(head[0], head[1], head[1] - 300, ms=700, hold=0.2)  # slowly up from peek: the nearest size
     pg.js(SETTLED)
     s1 = st()
-    if s1['st'] not in ('profile', 'half'):
-        fails.append(f'planner: a slow drag up 300 px from peek came to {s1["st"]}, not profile or half')
+    if s1['st'] != 'half':
+        fails.append(f'planner: a slow drag up 300 px from peek came to {s1["st"]}, not half')
     if pg.js("document.querySelector('#planner').classList.contains('dragging') || !!document.querySelector('#planner').style.transform"):
         fails.append('planner: still dragging after it came to rest')
     sheet_h = pg.js("parseFloat(document.documentElement.style.getPropertyValue('--sheet-h'))")
@@ -5927,7 +5939,7 @@ def quick_swipe(chrome):
     head = pg.js("(() => { const b = document.querySelector('#planner .sheet-sum').getBoundingClientRect(); return [b.left + 30, b.top + b.height / 2]; })()")
     pg.swipe(head[0], head[1], head[1] + 30, ms=25, steps=3)  # a short flick down from half: a size down at least, though it moved 30 px
     pg.js(SETTLED)
-    if st()['st'] not in ('profile', 'peek', 'folded') or not pg.js('polku.planner.active'):  # (as far as the line, where a flick comes to rest: never away, step 3 of #233)
+    if st()['st'] not in ('peek', 'folded') or not pg.js('polku.planner.active'):  # (as far as the line, where a flick comes to rest: never away, step 3 of #233)
         fails.append(f'planner: a short flick down from half came to {st()["st"]}, open {pg.js("polku.planner.active")}')
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)
@@ -5941,7 +5953,7 @@ def quick_swipe(chrome):
     # the body, scrolled to its top: a drag down moves the sheet
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)
-    pg.js("polku.planner.els.body.scrollTop = 0; true")
+    pg.js("polku.planner.listScroller().scrollTop = 0; true")
     # on a waypoint's row (a button, most of the list): a drag down moves the sheet like the rest
     body = pg.js("(() => { const b = document.querySelector('#planner .wpl-point').getBoundingClientRect(); return [b.left + 40, b.top + b.height / 2]; })()")
     pg.swipe(body[0], body[1], body[1] + 300, ms=700, hold=0.2)
@@ -5960,7 +5972,7 @@ def quick_swipe(chrome):
     # in Reorder a row keeps its own drag (a finger held 0.45 s): the sheet stays
     pg.js("(() => { const p = polku.planner; p.reordering = true; p.renderWaypoints(); p.setSheetState('full'); return true; })()")
     pg.js(SETTLED)
-    pg.js("polku.planner.els.body.scrollTop = 0; true")
+    pg.js("polku.planner.listScroller().scrollTop = 0; true")
     grip = pg.js("(() => { const b = document.querySelector('#planner .wpl-row').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
     pg.swipe(grip[0], grip[1], grip[1] + 40, ms=400, hold=0.6)
     pg.js(SETTLED)
@@ -6013,7 +6025,7 @@ def check(chrome, w, h, phone, bottom=False):
     # while planning, the timeline stays over the map (#225): on a phone just above the sheet, clear of the toolbox
     if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):
         fails.append('the timeline isn’t over the map while planning')
-    states = ['open', 'folded'] if layout == 'side' else ['peek', 'profile', 'half', 'full']
+    states = ['open', 'folded'] if layout == 'side' else ['peek', 'half', 'full']
     for st in states:
         pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
         late = pg.js(SETTLED)  # the sheet's and the controls' transitions (slow in software rendering)
@@ -6028,14 +6040,12 @@ def check(chrome, w, h, phone, bottom=False):
                 fails.append(f'side/{st}: only {free:.0%} of the width left for the map')
         elif st == 'peek' and r['h'] > 0.27 * h + r['kf'] + 8:  # the summary, Round trip & Style, and the routing modes; the key facts' line on top (#471's A2 puts it in the peek); ⌄'s row's 8 px (step 3 of #233, decided 2026-10-28)
             fails.append(f'peek is {r["h"]:.0f} px tall ({r["h"] / h:.0%} of the screen)')
-        elif st == 'half' and not (0.4 * h < r['h'] < 0.6 * h):
-            fails.append(f'half is {r["h"]:.0f} px tall')
-        elif st == 'profile':
+        elif st == 'half':
             cv = pg.js("(() => { const c = document.querySelector('#profile-canvas').getBoundingClientRect(), s = document.querySelector('#planner').getBoundingClientRect(); return { top: c.top, bottom: c.bottom, sb: s.bottom, h: c.height }; })()")
-            if not (0.2 * h < r['h'] < 0.46 * h):
-                fails.append(f'profile size is {r["h"]:.0f} px tall ({r["h"] / h:.0%} of the screen)')
-            elif cv['h'] < 60 or cv['bottom'] > cv['sb']:
-                fails.append('the profile size does not show the whole chart')
+            if not (0.4 * h < r['h'] < 0.6 * h):
+                fails.append(f'half is {r["h"]:.0f} px tall')
+            elif cv['h'] < 60 or cv['bottom'] > cv['sb']:  # (the profile, short: there's no profile size since the sheet's stops, #233)
+                fails.append('half does not show the chart')
     pg.js(f"polku.planner.setSheetState({json.dumps(states[0])}, {{ remember: false }}); true")
     time.sleep(1.0)
     fails += [f'edit: {e}' for e in pg.js(EDIT)]
@@ -7526,7 +7536,7 @@ def panels(chrome):
         pg.open_app({'activity': sport}, {'polku:winter': '"off"'})
         pg.js(PLAN_TWO)
         centre = lambda s: pg.js(f"(() => {{ const r = document.querySelector({json.dumps(s)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
-        for st in ('peek', 'profile', 'half', 'full'):
+        for st in ('peek', 'half', 'full'):
             pg.js(f"polku.planner.setSheetState({json.dumps(st)}); true")
             pg.js(SETTLED)
             before = pg.js(SHEET_STATE)
@@ -7620,7 +7630,7 @@ def panels_desktop(chrome):
         centre = lambda s: pg.js(f"(() => {{ const r = document.querySelector({json.dumps(s)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
         if pg.js("polku.planner.layout()") != 'sheet':
             fails.append(f'{w}x{h_}: the planner isn’t at the bottom (the check proves nothing)')
-        for st in ('peek', 'profile', 'half', 'full'):
+        for st in ('peek', 'half', 'full'):
             pg.js(f"polku.planner.setSheetState({json.dumps(st)}); true")
             pg.js(SETTLED)
             before = pg.js(SHEET_STATE)
@@ -8562,7 +8572,7 @@ def button3d(chrome, phones=False):
             expect(pg, f'{name}, a second tap', False)
             fails += [f'{name} closed: {o}' for o in overlaps(pg.js(BOXES))]
             pg.js(PLAN_TWO)
-            for st in ('peek', 'profile', 'half'):
+            for st in ('peek', 'half'):
                 pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
                 late = pg.js(SETTLED)
                 if late:
@@ -8660,14 +8670,6 @@ def fold_phone(chrome):
         if not 7 <= gap <= 9:  # (a px either way: the rows' sub-pixel heights)
             fails.append(f"peek without the key facts' line: {gap} px under the numbers, not the header's 8")
         fold_settled(pg, fails, 'step 1b')
-        # …and the profile size ends at its zone's foot (the zone's own padding under its chart), as the peek at its last row
-        pg.js("polku.planner.setSheetState('profile', { remember: false }); true")
-        fold_settled(pg, fails, 'step 1c')
-        d = pg.js("Math.round(polku.planner.panel.getBoundingClientRect().bottom - polku.planner.els.profZone.getBoundingClientRect().bottom)")
-        if not -3 <= d <= 0:
-            fails.append(f"profile: the sheet ends {d} px from its zone's foot")
-        pg.js("polku.planner.setSheetState('peek'); true")
-        fold_settled(pg, fails, 'step 1d')
         # (the handle a button: Safari rings a div with tabindex after a tap, and it doesn't focus a button)
         if pg.js("polku.planner.els.handle.tagName") != 'BUTTON':
             fails.append('the handle is not a button')
@@ -8751,7 +8753,7 @@ def fold_phone(chrome):
         # the map's buttons don't chase the sheet (#540): with motion, a fold changes their place once, and they go with the
         # sheet there in one move (#569), so their place in the layout (their bottom, the move left out) changes once
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
-        pg.js("polku.planner.setSheetState('profile'); true")
+        pg.js("polku.planner.setSheetState('half'); true")
         fold_settled(pg, fails, 'step 12')
         seen, moves = pg.js("""new Promise((done) => { const col = document.getElementById('map-ctrls'), out = new Set(), t0 = performance.now();
           polku.planner.fold(); const moves = col.getAnimations().filter((a) => a.id === 'ride').length;
@@ -8776,9 +8778,15 @@ def fold_phone(chrome):
             pg.swipe(120, y, y - 300, ms=500, hold=0.1)
             fold_settled(pg, fails, 'step 16')
             s = info()
+            if s['st'] != 'half' or s['card'] != 'point':
+                fails.append(f"a swipe up on the card: {s['st']}, card {s['card']} (its rest is a swipe up, at half)")
+            y = s['panel']['t'] + 30
+            pg.swipe(120, y, y - 300, ms=500, hold=0.1)
+            fold_settled(pg, fails, 'step 16b')
+            s = info()
             fit = pg.js("(() => { const c = polku.planner.cards.box; return c.scrollHeight <= c.clientHeight + 1; })()")
             if s['st'] != 'full' or s['card'] != 'point':
-                fails.append(f"a swipe up on the card: {s['st']}, card {s['card']} (it opens as tall as it is)")
+                fails.append(f"a second swipe up on the card: {s['st']}, card {s['card']} (it opens as tall as it is)")
             elif not fit or abs(s['panel']['h'] - s['cardFull']) > 1 or s['panel']['h'] >= 844 - 76:
                 fails.append(f"a swipe up on the card: the sheet {s['panel']['h']:.0f} px (the card's height {s['cardFull']}), the card whole {fit}")
             pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
@@ -8807,7 +8815,7 @@ def fold_phone(chrome):
             s = info()
             if s['card'] or s['st'] != 'folded' or not s['active'] or 'km' not in s['lineText']:
                 fails.append(f"✕ on the card's line: card {s['card']}, {s['st']}, open {s['active']}, the line “{s['lineText']}”")
-        # folded from half, a card's line opens the card at its own size, not the planner's half (which closed it)
+        # folded from half, a card's line opens the card at its own size, not the planner's half
         pg.js("polku.planner.setSheetState('half'); polku.planner.fold(); true")
         fold_settled(pg, fails, 'step 22')
         pg.tap(*fold_at(pg, "polku.planner.markers[1].getElement().querySelector('.wp')"))
@@ -8931,8 +8939,13 @@ def fold_desktop(chrome):
         # the bottom dock: the panel's line, the toolbar on its top edge
         pg.js("polku.planner.setDock('bottom'); polku.planner.setSheetState('half'); true")
         fold_settled(pg, fails, 'step 28')
+        # (with a mouse ⌄ moves one size, A of the sheet's stops: from half to the peek, then to the line)
         fold_click(pg, *fold_at(pg, 'polku.planner.els.min'))
         fold_settled(pg, fails, 'step 29')
+        if info()['st'] != 'peek':
+            fails.append(f"bottom, ⌄ by mouse from half: {info()['st']}, not the peek")
+        fold_click(pg, *fold_at(pg, 'polku.planner.els.min'))
+        fold_settled(pg, fails, 'step 29b')
         s = info()
         if s['st'] != 'folded' or s['panel']['h'] > 64 or abs(s['panel']['b'] - 888) > 1:
             fails.append(f"bottom, ⌄: {s['st']}, the panel {s['panel']}")
@@ -9012,7 +9025,7 @@ def fold_mouse(chrome):
             if not moving or st() not in want:
                 fails.append(f"a mouse drag on {what}: the sheet {'followed' if moving else 'stayed still'}, came to {st()} (not {' or '.join(want)})")
 
-        opened = ('peek', 'profile', 'half')
+        opened = ('peek', 'half')
         pg.js("polku.planner.fold({ instant: true }); true")
         fold_settled(pg, fails, 'folded')
         drag('the folded line, 200 px up', *fold_at(pg, 'polku.planner.els.foldGo'), -200, opened)
@@ -9022,11 +9035,11 @@ def fold_mouse(chrome):
         drag("the folded line's handle, 200 px up", x, y, -200, opened)
         pg.js("polku.planner.setSheetState('peek', { instant: true }); true")
         fold_settled(pg, fails, 'peek')
-        drag("the peek's handle, 200 px up", *fold_at(pg, 'polku.planner.els.handle'), -200, ('profile', 'half'))
+        drag("the peek's handle, 200 px up", *fold_at(pg, 'polku.planner.els.handle'), -200, ('half',))
         drag('the handle, 500 px down', *fold_at(pg, 'polku.planner.els.handle'), 500, ('folded',))
         pg.js("polku.planner.setSheetState('peek', { instant: true }); true")
         fold_settled(pg, fails, 'peek again')
-        drag("the peek's handle, 200 px up in 40 px moves", *fold_at(pg, 'polku.planner.els.handle'), -200, ('profile', 'half'), 40)
+        drag("the peek's handle, 200 px up in 40 px moves", *fold_at(pg, 'polku.planner.els.handle'), -200, ('half',), 40)
         pg.js("polku.planner.fold({ instant: true }); true")
         fold_settled(pg, fails, 'folded once more')
         # let go just off the sheet before a drag starts: the mouse moving on with no button moves nothing
@@ -9447,6 +9460,565 @@ def fold_away_card(chrome):
 def fold(chrome):
     fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + [f'800x844, by mouse: {f}' for f in fold_mouse(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)] + [f'390x844, its motion: {f}' for f in fold_motion(chrome)] + [f'390x844, a card with the planner put away: {f}' for f in fold_away_card(chrome)]
     print(f"{'ok  ' if not fails else 'FAIL'} fold, then away: the planner and the cards" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The sheet's stops (#233's work package of 2026-10-30): where the planner's sheet stops and how a swipe gets there.
+# Where a swipe landed, with reduced motion: the size it set before it came to rest (its transform, the last one in the
+# style's old values), against the size the sheet rests at
+LANDED = """(() => { const p = polku.planner.panel; window.landed = null;
+  new MutationObserver((rs) => { for (const r of rs) { const o = r.oldValue || '', t = /translateY\\((-?[\\d.]+)px\\)/.exec(o), h = /height: ([\\d.]+)px/.exec(o);
+    if (t && h) window.landed = Math.round(+h[1] - +t[1]); } }).observe(p, { attributes: true, attributeFilter: ['style'], attributeOldValue: true });
+  return true; })()"""
+
+
+# #586: a swipe lands where the sheet rests: the peek is measured from every size with the toolbox and the key facts' line
+# as the peek has them (a full sheet docks the toolbox and has no room for the map's buttons; the line floats the toolbox)
+def stops_land(chrome):
+    fails = []
+    for w, h in ((390, 844), (360, 740), (195, 422), (1440, 900)):
+        pg = chrome.page(w, h, w < 900)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            if w > 900:
+                pg.js("polku.planner.setDock('bottom'); true")
+            pg.js(LANDED)
+            mouse = lambda kind, x, y, b: pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left' if b or kind != 'mouseMoved' else 'none', 'buttons': b, 'clickCount': 1}, pg.s)
+            for start in ('full', 'half', 'folded'):
+                pg.js(f"polku.planner.setSheetState('{start}', {{ remember: false }}); polku.planner.setSheetState('peek', {{ remember: false }}); polku.planner.setSheetState('{start}', {{ remember: false }}); window.landed = null; true")
+                fold_settled(pg, fails, f'{w}x{h} at {start}')
+                peek, top = pg.js("(() => { const p = polku.planner; p.measureSheet(); return [parseFloat(p.panel.style.getPropertyValue('--peek-h')), p.panel.getBoundingClientRect().top]; })()")
+                # by its handle (or the line's), slowly, let go where the peek's top will be: no flick
+                x, y = pg.js("(() => { const p = polku.planner, e = p.panel.dataset.state === 'folded' ? p.els.fold : p.els.handle, r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + 9]; })()")
+                to = h - peek + (y - top)
+                if w > 900:
+                    mouse('mouseMoved', x, y, 0)
+                    mouse('mousePressed', x, y, 1)
+                    for k in range(1, 21):
+                        mouse('mouseMoved', x, y + (to - y) * k / 20, 1)
+                        time.sleep(0.016)
+                    time.sleep(0.3)
+                    mouse('mouseReleased', x, to, 0)
+                else:
+                    pg.swipe(x, y, to, ms=500, steps=20, hold=0.3)
+                fold_settled(pg, fails, f'{w}x{h} from {start}')
+                st, landed, rest = pg.js("[polku.planner.panel.dataset.state, window.landed, polku.planner.panel.offsetHeight]")
+                if st != 'peek' or landed is None or abs(landed - rest) > 1:
+                    fails.append(f'{w}x{h}: a swipe from {start} to the peek landed at {landed} px and rests at {rest} px ({st})')
+            fails += [f'{w}x{h}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    return fails
+
+
+# C: a flick moves one stop; a release just under a flick's speed lands near the finger (0.99); the marks while dragging;
+# the start's views resist above their peek. By touch at 390 × 844
+def stops_swipe(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        st = lambda: pg.js('polku.planner.panel.dataset.state')
+        shown = lambda: pg.js("(() => { const p = polku.planner.panel, t = /translateY\\((-?[\\d.]+)px\\)/.exec(p.style.transform); return Math.round(p.offsetHeight - (t ? +t[1] : 0)); })()")
+        handle = lambda: pg.js("(() => { const p = polku.planner, e = p.panel.dataset.state === 'folded' ? p.els.fold : p.els.handle, r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + 9]; })()")
+
+        def at(size):
+            pg.js(f"polku.planner.setSheetState('{size}', {{ remember: false }}); true")
+            fold_settled(pg, fails, f'at {size}')
+        # a light flick, 80 px in 60 ms (1.3 px/ms): one stop its way, from each (from the line 40 px, short of the peek 66 px up)
+        for start, dy, want in (('peek', -80, 'half'), ('half', -80, 'full'), ('full', 80, 'half'), ('half', 80, 'peek'), ('folded', -40, 'peek')):
+            at(start)
+            x, y = handle()
+            pg.swipe(x, y, y + dy, ms=abs(dy) * 3 // 4, steps=4)
+            fold_settled(pg, fails, f'a flick from {start}')
+            if st() != want:
+                fails.append(f'a light flick {"up" if dy < 0 else "down"} from {start} came to {st()}, not {want}')
+        # let go 50 px above half at 0.9 px/ms, just under a flick: it comes to rest about 90 px on, so at half (not full, as at 0.998)
+        at('peek')
+        x, y = handle()
+        peek = pg.js("polku.planner.panel.offsetHeight")
+        pg.swipe(x, y, y - (844 * 0.5 + 50 - peek), ms=int((844 * 0.5 + 50 - peek) / 0.9), steps=20)
+        fold_settled(pg, fails, 'a quick release')
+        if st() != 'half':
+            fails.append(f'let go 50 px above half at 0.9 px/ms: it came to {st()}, not half')
+        # the marks: a tick at each stop and the line named where a release now would go; gone once it's let go
+        at('peek')
+        x, y = handle()
+        # (when they were asked for, so a slow machine's late read is told apart from a mark shown at once)
+        pg.js("(() => { const b = document.querySelector('.sheet-marks'); window.marksOn = 0; new MutationObserver(() => { if (b.classList.contains('on') && !window.marksOn) window.marksOn = performance.now(); }).observe(b, { attributes: true }); return true; })()")
+        pg.touch('start', x, y)
+        early = None
+        for k in range(1, 13):
+            pg.touch('move', x, y - 25 * k)
+            if k == 2:
+                early = pg.js("({ vis: getComputedStyle(document.querySelector('.sheet-marks')).visibility, dt: window.marksOn ? performance.now() - window.marksOn : null })")
+            time.sleep(0.03)
+        if early and early['dt'] is not None and early['dt'] < 120 and early['vis'] != 'hidden':
+            fails.append(f"the marks show {early['dt']:.0f} ms into a drag, as long as a flick lasts: {early['vis']}")
+        time.sleep(0.4)  # (still: no flick, so the nearest stop)
+        pg.touch('move', x, y - 301)
+        m = pg.js("(() => { const b = document.querySelector('.sheet-marks'); return { on: b.classList.contains('on'), ticks: [...b.querySelectorAll('i')].map((i) => i.dataset.n), to: b.querySelector('i.to')?.dataset.n, named: b.querySelector('b').textContent }; })()")
+        pg.touch('end')
+        fold_settled(pg, fails, 'the marks')
+        if not m['on'] or m['ticks'] != ['folded', 'peek', 'half', 'full'] or m['to'] != 'half' or m['named'] != 'Half':
+            fails.append(f'the marks while dragging up 300 px from the peek: {m}')
+        if pg.js("document.querySelector('.sheet-marks').classList.contains('on')"):
+            fails.append('the marks stay once the sheet is let go')
+        # the start's views: dragged up 200 px, the sheet goes less than half of it, and back to its peek
+        pg.js("polku.planner.clear(); polku.planner.setActive(true, { edit: true }); true")
+        fold_settled(pg, fails, 'the start')
+        peek = pg.js("polku.planner.panel.offsetHeight")
+        x, y = handle()
+        pg.touch('start', x, y)
+        for k in range(1, 11):
+            pg.touch('move', x, y - 20 * k)
+            time.sleep(0.03)
+        up = shown() - peek
+        pg.touch('end')
+        fold_settled(pg, fails, 'the start let go')
+        if not 0 < up < 100 or st() != 'peek':
+            fails.append(f'the start\'s ways dragged up 200 px: the sheet went {up} px up and came to {st()}')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
+# D: on a phone at half and full the whole sheet scrolls as one under its top row. A finger on the numbers scrolls it (#597);
+# the top row stays over what scrolls, the docked toolbox too, so ⌄ is what a tap at its place hits (#598), takes the
+# numbers once they're under it, and a finger there moves the sheet; at the content's top a finger down lowers it; a card
+# opened from the list and closed finds it where it was. By touch at 390 × 844 and 200 %
+def stops_scroll(chrome):
+    fails = []
+    for w, h in ((390, 844), (195, 422)):
+        pg = chrome.page(w, h, True)
+        tag = f'{w}x{h}'
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            st = lambda: pg.js('polku.planner.panel.dataset.state')
+            for size in (('half', 'full') if w > 300 else ('full',)):
+                pg.js(f"polku.planner.setSheetState('{size}', {{ remember: false }}); polku.planner.panel.scrollTop = 0; true")
+                fold_settled(pg, fails, f'{tag} at {size}')
+                if not pg.js("polku.planner.panel.classList.contains('scroll-all')"):
+                    fails.append(f"{tag} at {size}: the sheet doesn't scroll as one")
+                    continue
+                x, y = fold_at(pg, 'polku.planner.els.sum')
+                pg.swipe(x, y, y - 120, ms=400, steps=12, hold=0.2)
+                fold_settled(pg, fails, f'{tag} the numbers swiped up at {size}')
+                top = pg.js("polku.planner.panel.scrollTop")
+                if st() != size or top < 40:
+                    fails.append(f'{tag}: a finger on the numbers, 120 px up at {size}: the sheet scrolled {top} px and is at {st()}')
+                pg.js("polku.planner.panel.scrollTop = 400; true")
+                time.sleep(0.3)
+                fold_settled(pg, fails, f'{tag} scrolled at {size}')
+                r = pg.js("""(() => { const p = polku.planner, b = p.els.foldBtn.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+                  return { on: p.panel.classList.contains('sum-on'), sum: p.els.topSum.textContent, first: p.els.sum.querySelector('.sum-item > b')?.textContent.trim(), hit: hit && (p.els.foldBtn.contains(hit) ? 'fold' : hit.getAttribute('aria-label') || hit.className) }; })()""")
+                if r['hit'] != 'fold':
+                    fails.append(f'{tag} scrolled at {size}: a tap at ⌄ hits {r["hit"]}')
+                if not r['on'] or not r['first'] or not r['sum'].startswith(r['first']):
+                    fails.append(f'{tag} scrolled at {size}: the top row says "{r["sum"]}" (shown {r["on"]}), not the numbers from {r["first"]}')
+                # the top row moves the sheet, scrolled too: its handle, 200 px down
+                x, y = fold_at(pg, 'polku.planner.els.handle')
+                pg.swipe(x, y, y + 200, ms=600, steps=20, hold=0.3)
+                fold_settled(pg, fails, f'{tag} the handle down at {size}')
+                if st() == size:
+                    fails.append(f'{tag}: the handle dragged 200 px down at {size}, scrolled: the sheet stayed at {size}')
+            # a tab or a step from its start (Codex on #603): scrolled to the end at full, Check or How you go leaves the tabs in
+            # sight with room for the tab under them, not the sheet at its own top (at 200 % its header and profile fill it)
+            for how, js in (('Check', "p.setTab('check', { user: true })"), ('How you go', "p.openStep('how')")):
+                pg.js(f"(() => {{ const p = polku.planner; p.openStep(null); p.setTab('route'); p.setSheetState('full', {{ remember: false }}); return true; }})()")
+                fold_settled(pg, fails, f'{tag} at full for {how}')
+                pg.js("polku.planner.panel.scrollTop = polku.planner.panel.scrollHeight; true")
+                time.sleep(0.3)
+                pg.js(f"(() => {{ const p = polku.planner; {js}; return true; }})()")
+                fold_settled(pg, fails, f'{tag} {how}')
+                r = pg.js("(() => { const p = polku.planner, t = p.els.tabs.getBoundingClientRect(), row = p.els.top.getBoundingClientRect(), s = p.panel.getBoundingClientRect(); return { tabs: Math.round(t.top), row: Math.round(row.bottom), foot: Math.round(s.bottom), scroll: Math.round(p.panel.scrollTop) }; })()")
+                if r['tabs'] < r['row'] - 2 or r['tabs'] > r['foot'] - 80:
+                    fails.append(f"{tag} at full, scrolled to the end, then {how}: the tabs at {r['tabs']} px, not in sight between the top row ({r['row']}) and the foot ({r['foot']}) with room under them (scrolled {r['scroll']} px)")
+            pg.js("polku.planner.openStep(null); true")
+            if w > 300:
+                # at the content's top, a finger down on the numbers lowers the sheet
+                pg.js("polku.planner.setSheetState('half', { remember: false }); polku.planner.panel.scrollTop = 0; true")
+                fold_settled(pg, fails, f'{tag} at half again')
+                x, y = fold_at(pg, 'polku.planner.els.sum')
+                pg.swipe(x, y, y + 200, ms=600, steps=20, hold=0.3)
+                fold_settled(pg, fails, f'{tag} the numbers down at half')
+                if st() not in ('peek', 'folded'):
+                    fails.append(f'{tag}: a finger on the numbers, 200 px down at half from the top: the sheet came to {st()}')
+                # a point's card opened from the list and closed: the list where it was
+                pg.js("polku.planner.setSheetState('half', { remember: false }); polku.planner.setTab('route'); true")
+                fold_settled(pg, fails, f'{tag} at half for a card')
+                # (scrolled until the first point's row is in sight under the top row: how far depends on what's above it)
+                was = pg.js("(() => { const p = polku.planner, r = p.els.points.querySelector('.wpl-point'); if (r) p.panel.scrollTop += r.getBoundingClientRect().top - p.els.top.getBoundingClientRect().bottom - 60; return Math.round(p.panel.scrollTop); })()")
+                time.sleep(0.3)
+                row = pg.js("""(() => { const p = polku.planner, rows = [...p.els.points.querySelectorAll('.wpl-point')], s = p.panel.getBoundingClientRect(), t = p.els.top.getBoundingClientRect();
+                  const r = rows.map((e) => e.getBoundingClientRect()).find((b) => b.top > t.bottom && b.bottom < s.bottom);
+                  return r ? [r.left + r.width / 2, r.top + r.height / 2] : null; })()""")
+                if not row or not was:
+                    fails.append(f'{tag}: no row of the list in sight at half, scrolled {was} px')
+                else:
+                    pg.tap(*row)
+                    time.sleep(0.6)
+                    fold_settled(pg, fails, f'{tag} a card from the list')
+                    card = pg.js("polku.planner.cards.current?.kind")
+                    pg.js("polku.planner.cards.close(); true")
+                    time.sleep(0.4)
+                    fold_settled(pg, fails, f'{tag} the card closed')
+                    back = pg.js("[polku.planner.panel.dataset.state, polku.planner.panel.scrollTop]")
+                    if card != 'point' or back[0] != 'half' or abs(back[1] - was) > 2:
+                        fails.append(f'{tag}: a point\'s card from the list, scrolled {was} px at half ({card}), closed: {back[0]}, scrolled {back[1]} px')
+            fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    return fails
+
+
+# A: with a mouse or trackpad ⌃ beside ⌄, each one size (⌄ from the peek folds, ⌃ dimmed at full): a narrow window's top
+# row and the bottom dock's header row, by real clicks; by touch no ⌃, and ⌄ folds at once
+def stops_arrows(chrome):
+    fails = []
+    for w, h, ups, down in ((700, 844, 'up', 'foldBtn'), (1440, 900, 'upMin', 'min')):
+        pg = chrome.page(w, h, False)
+        tag = f'{w}x{h}, by mouse'
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            if w > 900:
+                pg.js("polku.planner.setDock('bottom'); true")
+            pg.js("polku.planner.setSheetState('peek', { remember: false }); true")
+            fold_settled(pg, fails, f'{tag} at the peek')
+            seen = []
+            for b in (ups, ups, ups, down, down, down):
+                at = fold_at(pg, f'polku.planner.els.{b}')
+                if not at:
+                    fails.append(f'{tag}: no {b} in sight at {pg.js("polku.planner.panel.dataset.state")}')
+                    break
+                fold_click(pg, *at)
+                fold_settled(pg, fails, f'{tag} {b} pressed')
+                seen.append(pg.js("[polku.planner.panel.dataset.state, polku.planner.els.up.disabled]"))
+            if [x[0] for x in seen] != ['half', 'full', 'full', 'half', 'peek', 'folded'] or not seen[1][1] or seen[3][1]:
+                fails.append(f'{tag}: ⌃ ⌃ ⌃ ⌄ ⌄ ⌄ from the peek went through {seen}, not half, full (⌃ dimmed), full, half, peek and the line')
+            fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        pg.js("polku.planner.setSheetState('full', { remember: false }); true")
+        fold_settled(pg, fails, '390x844 by touch at full')
+        if fold_at(pg, 'polku.planner.els.up'):
+            fails.append('390x844 by touch: ⌃ shows')
+        pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
+        time.sleep(0.4)
+        fold_settled(pg, fails, '390x844 by touch, ⌄ tapped')
+        if pg.js('polku.planner.panel.dataset.state') != 'folded':
+            fails.append(f"390x844 by touch: ⌄ at full came to {pg.js('polku.planner.panel.dataset.state')}, not the line")
+    finally:
+        pg.close()
+    return fails
+
+
+# A sheet scrolled as one, leaving it: let go towards the peek, its content goes back to its top with the spring, so nothing
+# jumps once it rests (motion on, read each frame); by a tap on the handle the numbers fade in where the list was, and with
+# Enter at once
+def stops_unscroll(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    tag = '390x844, scrolled'
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'light'}, {'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        st = lambda: pg.js('polku.planner.panel.dataset.state')
+        scrolled = lambda: (pg.js("polku.planner.setSheetState('half', { remember: false }); true"), fold_settled(pg, fails, f'{tag} at half'),
+                            pg.js("polku.planner.panel.scrollTop = 150; Math.round(polku.planner.panel.scrollTop)"))[2]
+        if scrolled() < 100:
+            fails.append(f'{tag}: the sheet at half scrolls only {pg.js("polku.planner.panel.scrollTop")} px')
+            return fails
+        pg.js("""(() => { const p = polku.planner.panel; window.frames_ = []; let n = 0;
+          const tick = () => { window.frames_.push([Math.round(p.scrollTop), p.classList.contains('dragging')]); if (++n < 400) requestAnimationFrame(tick); };
+          requestAnimationFrame(tick); return true; })()""")
+        x, y = fold_at(pg, 'polku.planner.els.handle')
+        pg.swipe(x + 80, y, y + 220, ms=700, steps=20, hold=0.3)
+        fold_settled(pg, fails, f'{tag} dragged to the peek')
+        f = pg.js('window.frames_')
+        drag = [i for i, v in enumerate(f) if v[1]]
+        jump = abs(f[drag[-1]][0] - f[drag[-1] + 1][0]) if drag and drag[-1] + 1 < len(f) else None
+        if st() != 'peek' or pg.js('polku.planner.panel.scrollTop') != 0 or jump is None or jump > 12:
+            fails.append(f'{tag}: the top row dragged down to the peek: at {st()}, the content {jump} px from its top on the last frame before it rested')
+        scrolled()
+        x, y = fold_at(pg, 'polku.planner.els.handle')
+        pg.tap(x, y)
+        fades = pg.js("polku.planner.els.head.getAnimations().length")
+        fold_settled(pg, fails, f'{tag} tapped to the peek')
+        if st() != 'peek' or not fades:
+            fails.append(f'{tag}: a tap on the handle: at {st()}, the numbers {"fade in" if fades else "there at once"}')
+        scrolled()
+        pg.js("polku.planner.els.handle.focus(); true")
+        for kind in ('rawKeyDown', 'keyUp'):
+            pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}, pg.s)
+        fades = pg.js("polku.planner.els.head.getAnimations().length")
+        fold_settled(pg, fails, f'{tag} Enter on the handle')
+        if fades:
+            fails.append(f'{tag}: Enter on the handle: the numbers fade in ({fades}), not at once')
+        fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
+# D on the desktop's side panel, by mouse: it scrolls as one, the wheel over the numbers too; once they've gone, its top row
+# lies over the panel's top with the name and the numbers, and its ⌄ folds the panel; the resize grip is beside the panel
+# (not in it, which would clip it and scroll it away), at its edge and middle, scrolled too, and still resizes it; a card on
+# the map leaves the panel's scroll as it was
+def stops_side(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    tag = '1440x900, the side panel'
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        pg.js("polku.planner.setTab('check'); polku.planner.setSheetState('open'); polku.planner.panel.scrollTop = 0; true")
+        fold_settled(pg, fails, f'{tag} open')
+        info = lambda: pg.js("""(() => { const p = polku.planner, P = p.panel, r = P.getBoundingClientRect(), g = document.querySelector('.sheet-resize'), gb = g.getBoundingClientRect();
+          return { all: P.classList.contains('scroll-all'), on: P.classList.contains('sum-on'), top: Math.round(P.scrollTop), max: P.scrollHeight - P.clientHeight, row: getComputedStyle(p.els.top).visibility,
+            sum: p.els.topSum.textContent, first: p.els.sum.querySelector('.sum-item > b')?.textContent.trim(), name: p.routeTitle(), inPanel: P.contains(g), shown: !!g.offsetParent,
+            gx: Math.round(gb.left + gb.width / 2), gy: Math.round(gb.top + gb.height / 2), right: Math.round(r.right), mid: Math.round(r.top + r.height / 2), w: Math.round(r.width) }; })()""")
+        s = info()
+        if not s['all'] or s['on'] or s['row'] != 'hidden':
+            fails.append(f"{tag} at rest: scrolls as one {s['all']}, its top row shown {s['on']} ({s['row']}), not scrolling as one with no row")
+        if s['max'] < 60:
+            fails.append(f"{tag}: only {s['max']} px to scroll, too little to check")
+        x, y = fold_at(pg, 'polku.planner.els.sum')
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseWheel', 'x': x, 'y': y, 'deltaX': 0, 'deltaY': 300}, pg.s)
+        time.sleep(0.6)
+        fold_settled(pg, fails, f'{tag} wheeled')
+        s = info()
+        if s['top'] < 40 or not s['on'] or s['row'] != 'visible':
+            fails.append(f"{tag}: the wheel over the numbers scrolled {s['top']} px, its top row shown {s['on']} ({s['row']})")
+        if not s['first'] or not s['sum'].startswith(s['first']) or s['name'] not in s['sum']:
+            fails.append(f"{tag} scrolled: the top row says \"{s['sum']}\", not the numbers from {s['first']} and {s['name']}")
+        if s['inPanel'] or not s['shown'] or abs(s['gx'] - s['right']) > 2 or abs(s['gy'] - s['mid']) > 2:
+            fails.append(f"{tag} scrolled: the grip is {'in' if s['inPanel'] else 'beside'} the panel, shown {s['shown']}, at {s['gx']}, {s['gy']}, not at its edge {s['right']} and middle {s['mid']}")
+        w0 = s['w']
+        for typ, dx in (('mousePressed', 0), ('mouseMoved', 30), ('mouseMoved', 60), ('mouseReleased', 60)):
+            pg.c.send('Input.dispatchMouseEvent', {'type': typ, 'x': s['gx'] + dx, 'y': s['gy'], 'button': 'left', 'buttons': 0 if typ == 'mouseReleased' else 1, 'clickCount': 1}, pg.s)
+            time.sleep(0.15)
+        fold_settled(pg, fails, f'{tag} resized')
+        s = info()
+        if abs(s['w'] - w0 - 60) > 2 or abs(s['gx'] - s['right']) > 2:
+            fails.append(f"{tag}: the grip dragged 60 px: the panel {w0} → {s['w']} px wide, the grip at {s['gx']} by its edge at {s['right']}")
+        top = s['top']
+        pg.js("(() => { const p = polku.planner; p.openPointCard(p.points[1]); return true; })()")
+        time.sleep(0.6)
+        fold_settled(pg, fails, f'{tag} a card on the map')
+        c = pg.js("[polku.planner.cards.where(), polku.planner.panel.classList.contains('scroll-all'), Math.round(polku.planner.panel.scrollTop)]")
+        if c[0] != 'float' or not c[1] or abs(c[2] - top) > 2:
+            fails.append(f'{tag}: a point\'s card on the map ({c[0]}): the panel scrolls as one {c[1]}, scrolled {c[2]} px, not {top}')
+        pg.js("polku.planner.cards.close(); true")
+        time.sleep(0.4)
+        at = fold_at(pg, "polku.planner.els.top.querySelector('.sheet-fold')")
+        if not at:
+            fails.append(f'{tag} scrolled: no ⌄ in its top row')
+        else:
+            fold_click(pg, *at)
+            fold_settled(pg, fails, f'{tag} the row\'s ⌄')
+            s = pg.js("[polku.planner.panel.dataset.state, !!document.querySelector('.sheet-resize').offsetParent]")
+            if s != ['folded', False]:
+                fails.append(f'{tag}: the top row\'s ⌄ left the panel {s[0]} with its grip shown {s[1]}, not folded with none')
+        fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
+# A card's stops (#603): the planner's, each no taller than the card. Its peek is the planner's peek at most; a finger on its
+# body takes it to half (dragged, the card as tall as it is, never the sheet empty under it), where the card scrolls first and
+# a finger down at its top lowers it; a card that fits in less has its own height alone; ↑ and ↓ on the handle step through
+# them. By touch at 390 × 844 and 360 × 740
+def stops_card(chrome):
+    fails = []
+    for w, h in ((390, 844), (360, 740)):
+        tag = f'{w}x{h}'
+        pg = chrome.page(w, h, True)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            info = lambda: pg.js("""(() => { const p = polku.planner, b = p.cards.box; return { st: p.panel.dataset.state, h: p.panel.offsetHeight,
+              card: p.cards.current ? p.cards.current.kind : null, stops: p.stops().map((z) => z.name), scroll: b ? Math.round(b.scrollTop) : 0,
+              whole: b ? b.scrollHeight <= b.clientHeight + 1 : null }; })()""")
+            body = lambda: pg.js("(() => { const r = polku.planner.cards.box.getBoundingClientRect(); return [r.left + r.width / 2, r.top + Math.min(r.height - 12, 90)]; })()")
+            key = lambda k, code: [pg.c.send('Input.dispatchKeyEvent', {'type': e, 'key': k, 'code': k, 'windowsVirtualKeyCode': code}, pg.s) for e in ('rawKeyDown', 'keyUp')]
+            pg.js("polku.planner.setSheetState('peek', { remember: false }); true")
+            fold_settled(pg, fails, f'{tag} the planner at its peek')
+            plan = pg.js("polku.planner.panel.offsetHeight")
+            pg.js("(() => { const p = polku.planner; p.openPointCard(p.points[1]); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a point's card")
+            s = info()
+            # (taller only to show its name and numbers whole, where the planner's peek has no key facts' line: a source that
+            # didn't answer)
+            named = pg.js("(() => { const p = polku.planner, b = p.cards.box; return Math.ceil(b.querySelector(':scope > .sheet-sum').getBoundingClientRect().bottom - p.panel.getBoundingClientRect().top + parseFloat(getComputedStyle(b).paddingBottom)); })()")
+            if s['card'] != 'point' or s['st'] != 'peek' or s['h'] > max(plan, named) + 1 or s['stops'] != ['folded', 'peek', 'half', 'full']:
+                fails.append(f"{tag}: a point's card opened at the planner's peek ({plan} px, its name and numbers {named}): {s['st']} at {s['h']} px, its stops {s['stops']}")
+            # held 200 px up from its peek: the card shows as much of itself as the sheet does
+            x, y = body()
+            t0 = time.time()
+            pg.touch('start', x, y, t0)
+            for k in range(1, 21):
+                time.sleep(0.03)
+                pg.touch('move', x, y - 10 * k, t0 + 0.03 * k)
+            time.sleep(0.3)
+            r = pg.js("(() => { const b = polku.planner.cards.box.getBoundingClientRect(); return [Math.round(b.bottom), Math.round(Math.min(innerHeight, b.top + polku.planner.cards.box.scrollHeight))]; })()")
+            pg.touch('end')
+            fold_settled(pg, fails, f'{tag} the card let go')
+            if r[0] < r[1] - 2:
+                fails.append(f"{tag}: a point's card held 200 px up from its peek ends at {r[0]} px, the sheet empty under it to {r[1]}")
+            # a finger on its body, 150 px up, let go slowly: half, the card not scrolled
+            pg.js("polku.planner.setSheetState('peek', { remember: false }); true")
+            fold_settled(pg, fails, f'{tag} the card at its peek')
+            x, y = body()
+            pg.swipe(x, y, y - 150, ms=500, steps=20, hold=0.2)
+            fold_settled(pg, fails, f'{tag} the card swiped up')
+            s = info()
+            if s['st'] != 'half' or s['scroll'] or abs(s['h'] - h * 0.5) > 2:
+                fails.append(f"{tag}: a finger on a point's card, 150 px up from its peek: {s['st']} at {s['h']} px, the card scrolled {s['scroll']} px (half)")
+            # at half the card scrolls first; at its top a finger down lowers the sheet
+            x, y = body()
+            pg.swipe(x, y, y - 120, ms=500, steps=20, hold=0.2)
+            fold_settled(pg, fails, f'{tag} the card scrolled at half')
+            s = info()
+            if s['st'] != 'half' or s['scroll'] < 60:
+                fails.append(f"{tag}: a finger on a point's card at half, 120 px up: {s['st']}, the card scrolled {s['scroll']} px (it scrolls first)")
+            pg.js("polku.planner.cards.box.scrollTop = 0; true")
+            time.sleep(0.2)
+            x, y = body()
+            pg.swipe(x, y, y + 150, ms=500, steps=20, hold=0.2)
+            fold_settled(pg, fails, f'{tag} the card down at half')
+            if info()['st'] != 'peek':
+                fails.append(f"{tag}: a finger on a point's card at half, at its top, 150 px down: {info()['st']} (its peek)")
+            # ↑ and ↓ on the handle: half, full, half
+            pg.js("polku.planner.els.handle.focus(); true")
+            seen = []
+            for k, code in (('ArrowUp', 38), ('ArrowUp', 38), ('ArrowDown', 40)):
+                key(k, code)
+                fold_settled(pg, fails, f'{tag} {k} on the card')
+                seen.append(info()['st'])
+            if seen != ['half', 'full', 'half'] or info()['card'] != 'point':
+                fails.append(f"{tag}: ↑, ↑ and ↓ on the handle of a point's card: {seen}, card {info()['card']} (half, full, half)")
+            # a card that fits in less than the planner's peek: its own height, and no stop above it
+            pg.js("(() => { const p = polku.planner; p.cards.close(); p.setSheetState('peek', { remember: false }); p.openCard({ kind: 'note', key: 'short', title: 'A short card', build: () => {} }, p.points[1]); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f'{tag} a short card')
+            s = info()
+            if s['card'] != 'note' or s['st'] != 'peek' or s['h'] >= plan or not s['whole'] or s['stops'] != ['folded', 'peek']:
+                fails.append(f"{tag}: a short card: {s['st']} at {s['h']} px (the planner's peek {plan}), whole {s['whole']}, its stops {s['stops']}")
+            x, y = body()
+            pg.swipe(x, y, y - 150, ms=500, steps=20, hold=0.2)
+            fold_settled(pg, fails, f'{tag} the short card swiped up')
+            if info()['st'] != 'peek' or info()['h'] != s['h']:
+                fails.append(f"{tag}: a short card swiped 150 px up: {info()['st']} at {info()['h']} px, not its own {s['h']}")
+            # with no route, a spot's card over the planner's start: its name and numbers in sight (#606: it opened under the screen's edge)
+            pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a spot's card over the start")
+            s = pg.js("(() => { const p = polku.planner, b = p.cards.box, e = b.querySelector(':scope > .sheet-sum') || b.querySelector(':scope > .way-head'); return [p.panel.dataset.state, Math.round(e.getBoundingClientRect().bottom), p.panel.offsetHeight]; })()")
+            if s[0] != 'peek' or s[1] > h - 12:
+                fails.append(f"{tag}: a spot's card over the planner's start, {s[0]} at {s[2]} px: its numbers end at {s[1]} px, under the screen's edge ({h})")
+            # with the planner put away, the sheet for a spot's card alone: a finger on the card takes it to half (Codex's review:
+            # at its peek the card can't scroll, and the swipe was only the open planner's, so the rest of it was out of reach)
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            pg.js("(() => { const p = polku.planner; p.cards.close(); p.close(); return true; })()")
+            time.sleep(0.6)
+            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a spot's card, the planner put away")
+            x, y = body()
+            pg.swipe(x, y, y - 150, ms=500, steps=20, hold=0.2)
+            fold_settled(pg, fails, f"{tag} the spot's card swiped up, the planner put away")
+            s = info()
+            if s['card'] != 'spot' or s['st'] != 'half' or pg.js('polku.planner.active'):
+                fails.append(f"{tag}: a finger on a spot's card, 150 px up from its peek, the planner put away: {s['st']}, card {s['card']} (half)")
+            fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    return fails
+
+
+# A scrolled card (#603's motion review): dragged from half by its top row, it keeps its height and scroll, so its content
+# doesn't jump as the finger starts (it went 120 px down: the card grew to its whole height); let go, it scrolls back with
+# the spring, to its top at the peek; ↓ to the peek brings it to its top too. With motion on at 390 × 844, and reduced
+def stops_card_scroll(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        pg.js("(() => { const p = polku.planner; p.setSheetState('peek', { remember: false }); p.openPointCard(p.points[1]); return true; })()")
+        time.sleep(0.6)
+        for media in ('no-preference', 'reduce'):
+            tag = f'390x844, a scrolled card, {"motion" if media == "no-preference" else "reduced motion"}'
+            pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
+            st = lambda: pg.js('polku.planner.panel.dataset.state')
+            scroll = lambda: pg.js('Math.round(polku.planner.cards.box.scrollTop)')
+            scrolled = lambda: (pg.js("polku.planner.setSheetState('half', { remember: false }); true"), fold_settled(pg, fails, f'{tag} at half'),
+                                pg.js("polku.planner.cards.box.scrollTop = 120; Math.round(polku.planner.cards.box.scrollTop)"))[2]
+            if scrolled() < 100:
+                fails.append(f"{tag}: a point's card at half scrolls only {scroll()} px")
+                break
+            # where the card's content is in the sheet, each frame, whether a finger is down, and how much of the sheet is empty
+            # under the card that has more to show: the finger moves the sheet, never the content in it (let go, it may scroll
+            # back with the spring)
+            record = lambda: pg.js("""(() => { const p = polku.planner, P = p.panel; window.frames_ = []; let n = 0, down = false;
+              addEventListener('touchstart', () => { down = true; }, true); addEventListener('touchend', () => { down = false; }, true);
+              const tick = () => { const b = p.cards.box; const r = b && b.getBoundingClientRect();
+                window.frames_.push([b ? Math.round(b.querySelector('.way-head').getBoundingClientRect().top - P.getBoundingClientRect().top) : null, P.classList.contains('dragging'), down,
+                  b ? Math.round(Math.min(innerHeight, r.top - b.scrollTop + b.scrollHeight) - r.bottom) : 0]);
+                if (++n < 400) requestAnimationFrame(tick); };
+              requestAnimationFrame(tick); return true; })()""")
+            # how far the content moves in the sheet as the drag begins and as it rests (with reduced motion it changes size at
+            # once at rest, without travel, so only as it begins)
+            jumps = lambda f: max([abs(a[0] - b[0]) for a, b in zip(f, f[1:]) if a[1] != b[1]][:2 if media == 'no-preference' else 1], default=None)
+            if media == 'no-preference':
+                record()
+                x, y = fold_at(pg, 'polku.planner.els.handle')
+                pg.swipe(x + 80, y, y - 100, ms=700, steps=20, hold=0.3)
+                fold_settled(pg, fails, f'{tag} dragged up from half')
+                f = pg.js('window.frames_')
+                held = [v[0] for v in f if v[1] and v[2]]
+                empty = max((v[3] for v in f if v[1] and v[2]), default=None)
+                if not held or max(abs(v - held[0]) for v in held) > 12 or jumps(f) is None or jumps(f) > 12:
+                    fails.append(f"{tag}: dragged 100 px up from half by its top row, the content moved in the sheet: {held[:1]} → {sorted(set(held))[-1:] if held else None} while dragged, {jumps(f)} px as the drag began or ended")
+                if empty is None or empty > 2:
+                    fails.append(f"{tag}: dragged 100 px up from half by its top row, the sheet showed {empty} px empty under the card, which has more to show")
+                scrolled()
+            record()
+            x, y = fold_at(pg, 'polku.planner.els.handle')
+            pg.swipe(x + 80, y, y + 220, ms=700, steps=20, hold=0.3)
+            fold_settled(pg, fails, f'{tag} dragged to the peek')
+            f = pg.js('window.frames_')
+            if st() != 'peek' or scroll() != 0 or jumps(f) is None or jumps(f) > 12:
+                fails.append(f"{tag}: dragged down to the peek by its top row: at {st()}, the card scrolled {scroll()} px, its content {jumps(f)} px apart as it began or rested")
+            scrolled()
+            pg.js("polku.planner.els.handle.focus(); true")
+            for kind in ('rawKeyDown', 'keyUp'):
+                pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': 'ArrowDown', 'code': 'ArrowDown', 'windowsVirtualKeyCode': 40}, pg.s)
+            fold_settled(pg, fails, f'{tag} ↓ from half')
+            if st() != 'peek' or scroll() != 0:
+                fails.append(f"{tag}: ↓ on the handle from half: at {st()}, the card scrolled {scroll()} px (its peek, at its top)")
+        fails += [f'390x844: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
+def sheet_stops(chrome):
+    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)] + stops_scroll(chrome) + stops_unscroll(chrome) + stops_side(chrome) + stops_arrows(chrome) + stops_card(chrome) + stops_card_scroll(chrome)
+    print(f"{'ok  ' if not fails else 'FAIL'} the sheet's stops" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -11648,9 +12220,9 @@ def point_card(chrome):
             time.sleep(0.4)
         # Back from a card opened from the list: the sheet at its size and the list at its scroll, as they were
         if phone:
-            pg.js("(() => { const p = polku.planner; p.setSheetState('half'); p.els.body.scrollTop = 120; return true; })()")
+            pg.js("(() => { const p = polku.planner; p.setSheetState('half'); p.listScroller().scrollTop = 120; return true; })()")
             pg.js(SETTLED)
-            was = pg.js("({ sheet: polku.planner.panel.dataset.state, scroll: polku.planner.els.body.scrollTop })")
+            was = pg.js("({ sheet: polku.planner.panel.dataset.state, scroll: polku.planner.listScroller().scrollTop })")
             pg.js("(() => { const p = polku.planner; p.openPointCard(p.points[2], { from: 'list' }); return true; })()")
             time.sleep(0.5)
             s = st(pg)
@@ -11659,7 +12231,7 @@ def point_card(chrome):
             press(pg, at(pg, "document.querySelector('.pl-way.card .way-back')"), f'{name}: Back', touch)
             pg.js(SETTLED)
             time.sleep(0.3)
-            now = pg.js("({ sheet: polku.planner.panel.dataset.state, scroll: polku.planner.els.body.scrollTop, kind: polku.planner.cards.current && polku.planner.cards.current.kind })")
+            now = pg.js("({ sheet: polku.planner.panel.dataset.state, scroll: polku.planner.listScroller().scrollTop, kind: polku.planner.cards.current && polku.planner.cards.current.kind })")
             if now['kind'] or now['sheet'] != was['sheet'] or abs(now['scroll'] - was['scroll']) > 2:
                 fails.append(f'{name}: Back from a card opened from the list: {now}, it was {was}')
             pg.js("polku.planner.setSheetState('peek'); true")
@@ -11812,6 +12384,11 @@ RC_ON = """(async (li, t) => {
   const R = m.getCanvas().getBoundingClientRect(), q = m.project(ll);
   return { x: Math.round(R.left + q.x), y: Math.round(R.top + q.y), ll };
 })"""
+# what routeLit draws (#83): 'that stretch' when it's the line of the stretch from…to as the route has it now
+RC_LIT = """((from, to) => {
+  const f = polku.map.getSource('routeLit').serialize().data.features || [];
+  return !f.length ? 'nothing' : JSON.stringify(f[0].geometry.coordinates) === JSON.stringify(polku.planner.stretchCoords({ from, to })) ? 'that stretch' : 'another line';
+})"""
 RC_STATE = """(() => {
   const p = polku.planner, c = document.querySelector('.pl-way.card'), r = (e) => e.getBoundingClientRect(), vis = (e) => !!e && e.getClientRects().length > 0;
   const box = (e) => (e ? (({ left, top, right, bottom, width, height }) => ({ left, top, right, bottom, width, height }))(r(e)) : null);
@@ -11938,6 +12515,9 @@ def route_card(chrome):
         if s['kind'] != 'route' or s['place'] != 'peek' or s['n'] != s0['n'] or s['past'] != s0['past'] or s['menu']:
             fails.append(f"{name}: a tap on the line: {s['kind'] or 'no'} card ({s['place']}), {s['n'] - s0['n']} points added, {s['past'] - s0['past']} steps in Undo{', and the old menu' if s['menu'] else ''}")
         else:
+            lit = pg.js(f"({RC_LIT})(1, 2)")
+            if lit != 'that stretch':
+                fails.append(f"{name}: with the route's card open, the map lights {lit}, not the leg tapped (#83)")
             # (the map has moved the spot into sight above the card in the peek, as for a point's card)
             spot = pg.js(f"(() => {{ const R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project({json.dumps(t['ll'])}); return {{ x: R.left + q.x, y: R.top + q.y }}; }})()")
             if not s['pill'] or not s['pin'] or not 0 <= spot['y'] - s['pill']['bottom'] <= 60 or spot['y'] >= s['card']['top']:
@@ -11971,8 +12551,8 @@ def route_card(chrome):
           const at = (q, k) => !!c && Math.abs(c[k < 0 ? c.length - 1 : 0][0] - q[0]) < 1e-6 && Math.abs(c[k < 0 ? c.length - 1 : 0][1] - q[1]) < 1e-6;
           return c ? (at(p.points[0], 0) && at(p.points[4], -1) ? 'the stretch' : `${c.length} points, not the stretch`) : 'nothing'; })()""")
         press(pg, on_line(pg, 1, 0.3), f'{name}: the line', touch)
-        if lit() != 'the stretch':
-            fails.append(f"{name}: lit on the map with the route's card open: {lit()}")
+        if pg.js(f"({RC_LIT})(1, 2)") != 'that stretch':
+            fails.append(f"{name}: lit on the map with the route's card open: {lit()}, not the leg tapped (#83)")
         tap_row(pg, 'This stretch', name, touch)
         if lit() != 'the stretch':
             fails.append(f"{name}: lit on the map with the stretch's card open: {lit()}")
@@ -12010,7 +12590,14 @@ def route_card(chrome):
         if r['view'] != r['want']:
             fails.append(f'{name}: On the profile: the profile at {r["view"]}, not the stretch at {r["want"]}')
         pg.js("polku.planner.chart.setView(null, true); true")
+        # (On the profile raises a phone's sheet to half, which has the profile since the sheet's stops (#233), and covers
+        # the last leg: lowered to the peek again, as a finger would, before the line is tapped)
+        if touch:
+            pg.js("polku.planner.setSheetState('peek'); true")
+            pg.js(SETTLED)
         press(pg, on_line(pg, 4, 0.3), f'{name}: the last leg', touch)
+        if st(pg)['kind'] != 'route':
+            fails.append(f"{name}: a tap on the last leg after On the profile: {st(pg)['kind']} card")
         past, nogos = st(pg)['past'], pg.js("polku.planner.nogos.length")
         tap_row(pg, 'Avoid this spot', name, touch)
         r = pg.js("({ nogos: polku.planner.nogos.length, past: polku.planner.past.length })")
@@ -12103,6 +12690,9 @@ def route_card(chrome):
         if s['kind'] != 'route' or s['place'] != 'float' or s['n'] != s0['n'] or s['past'] != s0['past']:
             fails.append(f"{name}: a click on the line: {s['kind']} card ({s['place']}), {s['n'] - s0['n']} points added, {s['past'] - s0['past']} steps in Undo")
         else:
+            lit = pg.js(f"({RC_LIT})(0, 1)")
+            if lit != 'that stretch':
+                fails.append(f"{name}: with the route's card open, the map lights {lit}, not the leg clicked (#83)")
             f = s['first']
             near = f and round(math.hypot(max(0, f['box']['left'] - t['x'], t['x'] - f['box']['right']), max(0, f['box']['top'] - t['y'], t['y'] - f['box']['bottom'])))
             if not f or f['text'] != 'Add a point here' or near > 30:
@@ -12133,6 +12723,44 @@ def route_card(chrome):
             if mid['kind'] != 'route' or s['kind'] != 'route' or s['values'][2:] != ['S0']:
                 fails.append(f"{name}: the route's card while its leg was routed again: {mid['kind']} card, then {s['kind']}, its difficulty {s['values'][2:]}")
             close(pg)
+            # the mouse over the line lights the leg under it, as a click does; a late source doesn't take it away; off the
+            # line, or off the map, nothing is (#83)
+            mouse = lambda at: (pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'], 'y': at['y'], 'button': 'none'}, pg.s), time.sleep(0.3))
+            # (what's lit, once it is: a frame can take a second on GitHub's runner)
+            lit_as = lambda want, span: pg.js(f"(async () => {{ let r; for (let k = 0; k < 30; k++) {{ r = ({RC_LIT}){span}; if (r === {json.dumps(want)}) break; await new Promise((x) => setTimeout(x, 100)); }} return r; }})()")
+            lit = []
+            for li, stretch in ((0, '(0, 1)'), (1, '(1, 2)')):
+                u = on_line(pg, li, 0.5)
+                mouse(u)
+                lit.append(lit_as('that stretch', stretch))
+            pg.js("polku.planner.renderWarnings(); true")  # a source answering late draws the list again: the leg stays lit
+            lit.append(pg.js(f"({RC_LIT})(1, 2)"))
+            # while it's worked out again with a route a moment behind (a drag's preview), the lit leg is that line too
+            lit.append(pg.js("""(() => { const p = polku.planner, m = polku.map, L = p.legs[1], r = L.result; L.result = null; L.preview = r.coords.slice(1, -1); p.drawRoute();
+              const drawn = m.getSource('route').serialize().data.features.find((f) => f.properties.leg === 1 && f.properties.kind === 'leg'), f = m.getSource('routeLit').serialize().data.features[0];
+              const lit = !f ? 'nothing' : JSON.stringify(f.geometry.coordinates) === JSON.stringify(drawn.geometry.coordinates) ? 'that stretch' : 'another line';
+              L.result = r; L.preview = null; p.drawRoute(); return lit; })()"""))
+            mouse({'x': u['x'], 'y': u['y'] - 60})
+            lit.append(lit_as('nothing', '(1, 2)'))
+            mouse(u)
+            mouse({'x': 150, 'y': 450})  # onto the planner, beside the map
+            lit.append(lit_as('nothing', '(1, 2)'))
+            if lit != ['that stretch', 'that stretch', 'that stretch', 'that stretch', 'nothing', 'nothing']:
+                fails.append(f"{name}: the mouse over the first leg, the second, the list drawn again, a preview, off the line and off the map lit {lit} (#83)")
+            # the mouse resting on a stretch in the list while its end moves: the lit stretch is its new line, while the
+            # route is worked out and once it's in (#83)
+            r = pg.js("(() => { const b = document.querySelector('.wpl-stretch[data-from=\"1\"]'); b.scrollIntoView({ block: 'center' }); const r = b.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()")
+            mouse(r)
+            pg.js("(() => { const p = polku.planner; window.rcHold = new Promise((r) => { window.rcRelease = r; }); p.movePoint(2, [p.points[2][0], p.points[2][1] + 0.0005]); return true; })()")
+            time.sleep(0.5)
+            lit = [pg.js(f"({RC_LIT})(1, 2)")]
+            pg.js("window.rcRelease(); window.rcHold = null; true")
+            pg.js("(async () => { const p = polku.planner; for (let k = 0; k < 100 && !(p.legs[1].result && p.analysisFits()); k++) await new Promise((x) => setTimeout(x, 100)); return true; })()")
+            lit.append(pg.js(f"({RC_LIT})(1, 2)"))
+            if lit != ['that stretch', 'that stretch']:
+                fails.append(f"{name}: a stretch lit from the list while its end moved: {lit[0]}, then {lit[1]}, not its new line (#83)")
+            mouse({'x': 1000, 'y': 450})
+            on_line(pg, 0, 0.3)  # (back where the clicks below expect the line)
             # at the window's right edge it opens to the left; near the bottom upwards, its button still at the click
             for where, tx, ty in (('right edge', 1440 - 110, 'y'), ('bottom', 'x', 900 - 130)):
                 pg.js(f"(() => {{ const m = polku.map, R = m.getCanvas().getBoundingClientRect(), q = m.project({json.dumps(t['ll'])}), x = R.left + q.x, y = R.top + q.y; m.panBy([x - ({tx}), y - ({ty})], {{ duration: 0 }}); return true; }})()")
@@ -13234,7 +13862,7 @@ SE_STATE = """(() => {
     rows: [...s.querySelectorAll('.wpl-point, .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch') ? `~${b.textContent}` : `${b.dataset.i}:${b.textContent}`)) }));
   return { secs, reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn')].filter(vis).map((b) => b.textContent.trim()),
     rows: [...L.querySelectorAll('.wpl-row')].map((x) => x.dataset.i), shapes: [...L.querySelectorAll('.wpl-point.shape')].filter(vis).length,
-    kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.els.body.scrollTop,
+    kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.listScroller().scrollTop,
     short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
     readRow: !p.els.readRow.hidden, text: L.textContent };
 })()"""
@@ -13264,7 +13892,7 @@ def sections_list(chrome):
 
     # where a list's row is once it's scrolled into view, as a finger scrolls it: the sheet's body (or a card) only, never
     # the page, which the app puts back at once; the sheet settled
-    at = lambda pg, sel: (pg.js(SETTLED), pg.js(f"""(async () => {{ const e = {sel}; if (!e) return null; const box = e.closest('.pl-way.card') || polku.planner.els.body;
+    at = lambda pg, sel: (pg.js(SETTLED), pg.js(f"""(async () => {{ const e = {sel}; if (!e) return null; const box = e.closest('.pl-way.card') || polku.planner.listScroller();
       let b = e.getBoundingClientRect(); const r = box.getBoundingClientRect();
       if (b.top < r.top + 8 || b.bottom > r.bottom - 8) box.scrollTop += b.top + b.height / 2 - (r.top + r.height / 2);
       await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
@@ -13375,7 +14003,7 @@ def sections_list(chrome):
             fails.append(f'{name}: a quick swipe on Reorder’s list moved a point')
         # (both rows in view at once, measured together: measuring one by scrolling would move the other)
         pg.js(SETTLED)
-        ab = pg.js("""(async () => { const L = polku.planner.els.points, body = polku.planner.els.body, r = (k) => L.querySelector(`.wpl-row[data-i="${k}"]`).getBoundingClientRect();
+        ab = pg.js("""(async () => { const L = polku.planner.els.points, body = polku.planner.listScroller(), r = (k) => L.querySelector(`.wpl-row[data-i="${k}"]`).getBoundingClientRect();
           body.scrollTop += r(2).top - (body.getBoundingClientRect().top + 60);
           await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
           const c = (b) => ({ x: Math.round(b.left + Math.min(60, b.width / 2)), y: Math.round(b.top + b.height / 2) }); return [c(r(2)), c(r(4))]; })()""")
@@ -14340,7 +14968,9 @@ KF_JS = """(() => { window.KF = {
     return { line: f ? [...f.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : null, h: f ? [...f.querySelectorAll('.kf-b')].map((b) => Math.round(b.getBoundingClientRect().height)) : [],
       strip: [...p.els.stats.querySelectorAll('.stat')].map((s) => `${s.querySelector('.stat-label').textContent}: ${s.querySelector('.stat-value').textContent}`) };
   },
-  at(k) { const b = polku.planner.els.facts.querySelectorAll('.kf-b')[k]; if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + Math.min(80, r.width / 3), y: r.top + r.height / 2 }; },
+  // (scrolled back to the top first, as a person would where the sheet scrolls as one and the last fact's tap scrolled
+  // the line away with the rest)
+  at(k) { polku.planner.listScroller().scrollTop = 0; const b = polku.planner.els.facts.querySelectorAll('.kf-b')[k]; if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + Math.min(80, r.width / 3), y: r.top + r.height / 2 }; },
 }; return true; })()"""
 
 KF_CLIMBS = """(() => {
@@ -14657,7 +15287,7 @@ PF_JS = """(async () => {
   if (all.some((t) => /cold|Frostbite/.test(t))) errs.push(`cold past the forecast is a warning: ${all.join(' / ')}`);
   set(cold(1, k));
   if (!p.headsUp().read.some((x) => /Frostbite|Very cold/.test(x.text))) errs.push('cold within the forecast is no warning');
-  p.setSheetState('profile'); await wait(500); // (the profile in sight, as a person raises it)
+  p.setSheetState('half'); await wait(500); // (the profile in sight, as a person raises it)
   p.showMode('wind'); await wait(300);
   const tag = document.querySelector('.pl-profile .nofc');
   if (!tag || !tag.getClientRects().length || tag.textContent !== 'No forecast yet') errs.push(`the profile's cut: ${tag ? tag.textContent : 'none'}`);
@@ -14775,6 +15405,7 @@ GROUPS = [
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
+    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]

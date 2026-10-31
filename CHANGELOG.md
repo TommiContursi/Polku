@@ -2,7 +2,32 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-31
+
+### The leg under the pointer lights up, and follows the route ([#83](https://github.com/TommiContursi/Polku/issues/83))
+
+- On a desktop, pointing at your route on the map now lights the leg under the pointer, between the two numbered points around it. Off the route, or off the map, it goes again.
+- A tap or click on the route lights that leg too, while its card is open, and no longer the whole stretch to the next point where something changes. **This stretch** and **Edit this stretch** still light the whole stretch they change.
+- A lit stretch now follows the route as it changes: when you move a point while it's lit, it shows the new line while the route is worked out and once it's in, not the line it had before.
+
+### The stretch you pick stands out on the map ([#83](https://github.com/TommiContursi/Polku/issues/83))
+
+- The leg or stretch you open or point at in the planner, and a climb or an item of Check you pick, is now drawn over the route, wider, with a dark edge (a white one on the aerial photos and the night map), and the rest of the route fades while it's lit. You can see at once where it starts and ends. It keeps its leg's colour, blue on the water, and the arrows still show the way.
+
 ## 2026-10-30
+
+### The planner's sheet stops where you'd expect ([#233](https://github.com/TommiContursi/Polku/issues/233))
+
+- On a phone the planner has four sizes: its line, the peek, half and full. The size that showed the profile with the most map beside it has gone: half shows the profile too, smaller, under the route's numbers and with the list.
+- A light flick moves the planner one size: from the peek to half, from half to full, and back down the same way. A slow swipe comes to rest at the size nearest where you let go.
+- While you drag the planner, after a moment, a mark at the screen's left edge shows each size it can stop at, and a line names the one it will go to if you let go now. A quick flick doesn't show them, as it goes one size anyway.
+- A swipe lands where the planner rests: it no longer jumps to another height once it has stopped ([#586](https://github.com/TommiContursi/Polku/issues/586)).
+- At half and full on a phone the whole planner scrolls as one, the route's numbers too, under the row with the handle and ⌄, which stays. Once the numbers have scrolled away, that row shows them with the route's name. A finger on that row moves the planner. At the top of the planner, a finger down lowers it. Done and the route's numbers scroll away with the rest, so scroll back up to reach them. Swiped down to its peek, the planner scrolls back to the top as it comes down.
+- On a computer, the planner beside the map scrolls as one too. Once the route's numbers have scrolled away, a row at its top shows the route's name, its numbers and **⌄**. The grip that sets its width stays at its edge.
+- At 200 % zoom with the planner at full, a finger on the route's numbers scrolls it too, and ⌄ stays in reach above the toolbox when it's scrolled ([#597](https://github.com/TommiContursi/Polku/issues/597), [#598](https://github.com/TommiContursi/Polku/issues/598)).
+- With a mouse or a trackpad, **⌃** sits beside **⌄**, and each moves the planner one size: in a narrow window, and with the planner at the bottom of a wide one. ⌄ from the peek folds it to its line. By touch, ⌄ still folds it at once.
+- Before you have a route, the ways to begin don't move up when you drag them: they spring back at once.
+- A card, such as a point's, opens no taller than the planner's peek, so more of the map stays in sight, but always with its name and numbers. A swipe up, on the card itself too, takes it to half, and another to its whole height, full at most. At half and full the card scrolls first, and from its top a swipe down lowers it. A scrolled card stays under your finger as you drag it, and back at its peek or its line it's at its top again. A card shorter than the planner's peek opens at its own height and stays so.
 
 ### Choices in Layers and Settings fade to their new look ([#540](https://github.com/TommiContursi/Polku/issues/540))
 
