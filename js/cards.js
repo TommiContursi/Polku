@@ -597,7 +597,7 @@ export function pickCard(pl, spot) {
   const pick = newPick(spot, { hold: !!spot.hold, sport: pl.app.activity(), sec: pl.app.weatherSec(), zoom: pl.map.getZoom(), touch: !!spot.touch });
   const here = () => pl.cards.stack.some((e) => e.card === card);
   const card = {
-    kind: 'way', key: spot.ll, spot, pick, osm: null, pinned: true,
+    kind: 'spot', key: spot.ll, spot, pick, osm: null, pinned: true,
     get title() { return pick.title || spot.title; }, get label() { return this.title; }, get sub() { return pick.line || spot.line; },
     mark: () => h('span', { class: 'pick-mark', style: `--c:${markColour(pick)}` }), at: () => spot.ll, fold: () => [card.sub],
     build: (body) => pickBody(pl, card, body),
