@@ -3,7 +3,7 @@
 // the planner's note with Edit.
 import { h, icon, toast } from './ui.js';
 import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton } from './card.js';
-import { pointNums, headline, wayFacts, SPORT_FACTS, placeFacts, placeGroups, wayGroups, unmapped } from './facts.js';
+import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unmapped } from './facts.js';
 import { newPick, resolvePick, modesOf, modeOf, setMode } from './pick.js';
 import { breakdownRows, colorAt, PICK_MODES } from './chart.js';
 import { notRight, isHttp, thingOf, depthAt } from './inspect.js';
@@ -573,17 +573,11 @@ function placeMark(spot) {
 export function spotCard(pl, spot) {
   if (!spot.place) return pickCard(pl, spot);
   const card = {
-    kind: 'place', key: spot.ll, spot, ele: undefined, pinned: !!spot.pin,
+    kind: 'place', key: spot.ll, spot, ele: undefined, pinned: !!spot.pin, osm: null,
     get title() { return spot.title; }, get label() { return spot.title; }, get sub() { return spot.line; },
-    get pill() {
-      if (pl.inView()) return null;
-      if (!pl.points.length) return { label: 'Start a route here', icon: 'plus', fn: () => pl.startRouteAt(spot.ll) };
-      return pl.byTheLine(spot.ll) ? { label: 'Add a point here', icon: 'plus', fn: () => pl.addWhereItFits(spot.ll) } : { label: 'Add to my route', icon: 'plus', fn: () => pl.addWhereItFits(spot.ll) };
-    },
     mark: () => placeMark(spot), at: () => spot.ll, fold: () => [spot.line],
     build: (body) => spotBody(pl, card, body),
   };
-  // (the height can come while What's here, a card of its own above this one, is the open one: it's built again too)
   elevation(spot.ll).then((e) => { card.ele = Number.isFinite(e) ? e : null; }, () => { card.ele = null; }).then(() => { if (pl.cards.stack.some((x) => x.card === card)) pl.cards.refresh(); });
   return card;
 }
@@ -745,13 +739,13 @@ function pickBody(pl, card, body) {
   // (only what OpenStreetMap's own ways say can be "not mapped": while they load or didn't come, no claim)
   body.append(h('p', { class: 'pick-unmapped' }, h('span', {}, way ? (miss.length ? `Not mapped: ${miss.join(', ')}.` : 'From OpenStreetMap.') : w === 'none' ? 'Nothing is mapped right here.' : ''),
     h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card }) }, 'Not right?')));
-  body.append(pickFoot(pl, card, spot));
+  body.append(osmState(card), pickFoot(pl, card, spot));
 }
 // the card's last row: Share and Weather here ›; a hold adds All OpenStreetMap details and Copy
 function pickFoot(pl, card, spot) {
   const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: icon(ic, 16) }, h('span', {}, label));
   return h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(spot.ll)),
-    ...(card.pick.hold ? [spot.osm && !card.osm ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.id ? spot.osm : null)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll)))] : []));
+    ...(card.pick.hold ? [spot.osm && !osmIn(card) ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.id ? spot.osm : null)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll)))] : []));
 }
 
 // Your route: only what can be done now (with no route, a round trip from here). `add`: the spot's one action first, as the
@@ -768,58 +762,24 @@ function yourRoute(pl, spot, { add = false } = {}) {
   return yours ? [h('h4', { class: 'menu-h' }, 'Your route'), yours] : [];
 }
 
+// A place's card (#574: What's here's facts on the card): its height, where it comes from, its facts in groups (LIPAS's,
+// or OpenStreetMap's once its tags are asked for, a fact its kind would have and doesn't saying so), its pages; a hold adds
+// Your route; the last row as every card's.
 function spotBody(pl, card, body) {
-  const { spot } = card, view = pl.inView(), n = pl.points.length;
+  const { spot } = card, osm = card.osm && card.osm.w, tags = { ...spot.tags, ...(osm ? osm.tags : {}) };
+  body.append(nums([card.ele === undefined ? { value: '–', label: 'height', wait: true } : card.ele === null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(card.ele)} m`, label: 'height' }]));
   if (spot.src) body.append(h('p', { class: 'rt-cost' }, spot.src));
-  const facts = placeFacts(spot.tags);
-  // (plain lines with a tick, never pills that look like buttons)
-  for (const f of facts) body.append(h('div', { class: 'insp-row' }, h('b', {}, h('span', { class: 'menu-tick', 'aria-hidden': 'true', html: icon('check', 16) }), ` ${f}`)));
-  body.append(rows(item({ icon: 'info', label: 'What’s here', line: 'Everything Polku knows here', chev: true, onclick: () => pl.cards.open(spotHereCard(pl, card), { at: spot.ll, from: card }) })));
-  if (view) { body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }), foot(pl, card, spot)); return; }
-  body.append(...yourRoute(pl, spot));
-  body.append(foot(pl, card, spot));
+  if (pl.inView()) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
+  else if (spot.hold) body.append(...yourRoute(pl, spot, { add: true }));
+  body.append(...factsIn(spot.lipas ? lipasFacts(spot.lipas) : placeGroups(tags, spot.kind, { known: !!osm })));
+  if (spot.lipas && spot.lipas.info) body.append(h('p', { class: 'insp-info' }, spot.lipas.info));
+  body.append(rows(spot.partOf ? item({ icon: 'route', label: `Part of ${spot.partOf.props.name}`, line: 'A marked route, from LIPAS', chev: true, onclick: () => pl.cards.open(lipasCard(pl, spot.partOf.props, spot.ll, { click: spot.ll }), { at: spot.ll, from: card }) }) : null,
+    ...(spot.lipas ? lipasLinks(spot.lipas) : [])) || '');
+  if (osm) body.append(h('h4', { class: 'menu-h' }, 'All OpenStreetMap details'), ...card.osm.rows.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))));
+  body.append(osmState(card), foot(pl, card, spot));
 }
-
-// What's here › [p-more, p-placemore, d-place]: a way's details for your sport first, then the other sports', what the map
-// draws on it, then the spot: its height and coordinates with Copy; a place's at the site, getting there, when it's open,
-// last checked; LIPAS's words and pages. All OpenStreetMap details asks for the map's own data (once), whose tags then
-// fill the facts too (Last checked, a toilet's fee); Not right? says how to fix it. A missing fact says so.
-function spotHereCard(pl, spotC) {
-  const { spot } = spotC;
-  const card = {
-    kind: 'spothere', key: spot.ll, title: spot.title, sub: spot.line, mark: spotC.mark, at: () => spot.ll, osm: null, fold: (box) => [details(box)],
-    build: (body) => {
-      const osm = card.osm && card.osm.w, tags = { ...spot.tags, ...(osm ? osm.tags : {}) }, sport = pl.app.activity();
-      body.append(h('p', { class: 'rt-cost' }, spot.src || (spot.way ? 'From OpenStreetMap' : 'From the map')));
-      const facts = [
-        ...(spot.way ? wayFacts(osm ? { ...spot.tags, ...osm.tags } : spot.tags, sport) : []), ...(spot.extra || []),
-        ...(spot.place && !spot.lipas ? placeGroups(tags, spot.kind, { known: !!osm }) : []),
-        ...(spot.lipas ? lipasFacts(spot.lipas) : []),
-        { group: 'The spot', label: 'Height', value: spotC.ele === undefined ? '…' : spotC.ele === null ? 'not known' : `${Math.round(spotC.ele)} m`, missing: spotC.ele === null },
-        { group: 'The spot', label: 'Coordinates', value: coords(spot.ll), copy: true }];
-      // (In winter and Last checked from the map's own data close the list, as wayFacts() orders them)
-      let g = null;
-      for (const f of facts) {
-        if (f.group !== g) { g = f.group; body.append(h('h4', { class: 'menu-h' }, g)); }
-        body.append(h('div', { class: `insp-row${f.missing ? ' miss' : ''}` }, h('span', {}, f.label), h('b', {}, f.missing ? `? ${f.value}` : f.value),
-          f.copy ? h('button', { type: 'button', class: 'btn small quiet', onclick: () => copyText(coords(spot.ll)) }, 'Copy') : null));
-      }
-      if (spot.closed) {
-        body.append(h('p', { class: 'insp-info' }, `Marked ${spot.closed} in OpenStreetMap, so routes keep off it. Private usually means closed: factory and military sites, house yards, roads closed by a sign. In Finland private roads and apartment-block yards are open on foot and by bike, so there it may be tagged wrong: Not right? says how to tell its mappers.`));
-      }
-      if (spot.lipas && spot.lipas.info) body.append(h('p', { class: 'insp-info' }, spot.lipas.info));
-      const links = [
-        spot.partOf ? item({ icon: 'route', label: `Part of ${spot.partOf.props.name}`, line: 'A marked route, from LIPAS', chev: true, onclick: () => pl.cards.open(lipasCard(pl, spot.partOf.props, spot.ll, { click: spot.ll }), { at: spot.ll, from: card }) }) : null,
-        ...(spot.lipas ? lipasLinks(spot.lipas) : []),
-        spot.osm ? (osm ? null : item({ icon: 'details', label: 'All OpenStreetMap details', line: card.osm ? card.osm.state : 'The map’s own data, as tags', k: 'osm', onclick: () => pl.osmOnCard(card, spot.ll, spot.osm.type === 'way' && !spot.osm.id ? null : spot.osm) })) : null,
-      ];
-      body.append(rows(...links) || '');
-      if (osm) body.append(h('h4', { class: 'menu-h' }, 'All OpenStreetMap details'), ...card.osm.rows.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))));
-      body.append(foot(pl, card, spot));
-    },
-  };
-  return card;
-}
+// [{ group, label, value, missing }] as the card's groups
+const factsIn = (list) => [...new Set(list.map((f) => f.group))].flatMap((g) => factGroup(g, list.filter((f) => f.group === g).map((f) => [f.label, f.missing ? `? ${f.value}` : f.value])));
 
 // LIPAS's facts of a place or a route, and its pages
 function lipasFacts(p) {
@@ -835,11 +795,14 @@ function lipasLinks(p) {
 
 // the card's last row [p-spot]: Share, Weather here › and Not right?
 function foot(pl, card, spot) {
-  return h('div', { class: 'insp-actions card-foot' },
-    h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.shareSpot(spot), html: icon('share', 16) }, h('span', {}, 'Share')),
-    h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.weatherHere(spot.ll), html: icon('cloudSun', 16) }, h('span', {}, 'Weather here ›')),
-    h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card }) }, 'Not right?'));
+  const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: ic ? icon(ic, 16) : '' }, h('span', {}, label));
+  return h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(spot.ll)),
+    btn('Not right?', null, () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card })),
+    ...(spot.hold ? [spot.osm && !osmIn(card) ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.type === 'way' && !spot.osm.id ? null : spot.osm)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll)))] : []));
 }
+// All OpenStreetMap details asked for, or in: its button goes (a failure keeps it, saying so on the card)
+const osmIn = (card) => !!(card.osm && (card.osm.rows || card.osm.asking));
+const osmState = (card) => (card.osm && card.osm.state && !card.osm.rows ? failed(card.osm.state) : '');
 
 // Not right? [p-notright]: where the details come from, and how to tell: OpenStreetMap's note page at the spot (no
 // account), or its editor for that way or place; LIPAS's page for a LIPAS place
@@ -861,16 +824,16 @@ function notRightCard(pl, from, spot) {
 }
 
 // A LIPAS route [d-lipas]: from LIPAS, how long, what following it gives once LIPAS has sent all its parts (one request,
-// kept); Follow this route, Add to my route, Start a route here; the trail under it; What's here. A ski track, a skating
+// kept); Follow this route; with a hold Add to my route and Start a route here; LIPAS's facts and pages. A ski track, a skating
 // or snowmobile route says what it's for instead of Follow (#306: in words for every sport).
 const WINTER_LIPAS_NOTE = {
   4402: 'A ski track: keep off it on foot and by bike. Whether it’s groomed: the operator’s website.',
   4421: 'A snowmobile route: for snowmobiles, not a way to walk or ride.',
   1550: 'A skating route on natural ice. Polku never says ice is safe: check the operator’s status before you go.',
 };
-export function lipasCard(pl, props, ll, { click = null, near = null, under = false } = {}) {
+export function lipasCard(pl, props, ll, { click = null, near = null, hold = false } = {}) {
   const winter = (LIPAS_TYPES[props.type] || {}).winter;
-  const spot = { ll, title: props.name, line: [props.typeName, props.city].filter(Boolean).join(', '), src: 'From LIPAS', image: props.icon ? `lipas-${props.icon}` : null, lipas: props, place: true, tags: {} };
+  const spot = { ll, title: props.name, line: [props.typeName, props.city].filter(Boolean).join(', '), src: 'From LIPAS', image: props.icon ? `lipas-${props.icon}` : null, lipas: props, place: true, tags: {}, hold };
   const card = {
     kind: 'lipas', key: ll, props, ride: null, spot, title: spot.title, sub: spot.line, mark: () => placeMark(spot), at: () => ll, ele: undefined, fold: () => [spot.line],
     build: (body) => {
@@ -881,14 +844,13 @@ export function lipasCard(pl, props, ll, { click = null, near = null, under = fa
             : `${km(r.km)} km, ${r.loop ? 'a loop' : 'one way'}${r.left >= 0.3 ? `, side trails of ${r.left.toFixed(1)} km left out` : ''}. It follows LIPAS’s line: no routing needed.`));
       if (!winter) {
         body.append(mainButton(r && r.network ? 'Follow this stretch' : 'Follow this route', 'route', () => { pl.cards.close(); pl.app.rideLipas(props, { click, near }); }));
-        body.append(acts(
-          pl.points.length ? item({ icon: 'plus', label: 'Add to my route', line: 'Your route goes to it and follows it', k: 'add', onclick: () => { pl.cards.close(); pl.app.rideLipas(props, { click, near, add: true }); } }) : null,
-          item({ icon: 'flag', label: 'Start a route here', line: 'A new route, from this spot', k: 'start', onclick: () => { pl.cards.close(); pl.setActive(true, { edit: true }); pl.clear(); pl.addPoint(click || ll); } })));
+        if (hold && !pl.inView()) {
+          body.append(h('h4', { class: 'menu-h' }, 'Your route'), acts(
+            pl.points.length ? item({ icon: 'plus', label: 'Add to my route', line: 'Your route goes to it and follows it', k: 'add', onclick: () => { pl.cards.close(); pl.app.rideLipas(props, { click, near, add: true }); } }) : null,
+            item({ icon: 'flag', label: 'Start a route here', line: 'A new route, from this spot', k: 'start', onclick: () => { pl.cards.close(); pl.setActive(true, { edit: true }); pl.clear(); pl.addPoint(click || ll); } })));
+        }
       }
-      body.append(rows(
-        item({ icon: 'info', label: 'What’s here', line: 'Everything Polku knows here', chev: true, onclick: () => pl.cards.open(spotHereCard(pl, card), { at: ll, from: card }) }),
-        under ? item({ icon: 'route', label: 'The trail under it', line: 'The way the route runs on, here', chev: true, onclick: () => pl.openSpotCard(click, { from: card }) }) : null));
-      body.append(foot(pl, card, spot));
+      body.append(...factsIn(lipasFacts(props)), rows(...lipasLinks(props)) || '', foot(pl, card, spot));
     },
   };
   elevation(ll).then((e) => { card.ele = Number.isFinite(e) ? e : null; }, () => { card.ele = null; }).then(() => { if (pl.cards.stack.some((e) => e.card === card)) pl.cards.refresh(); });

@@ -18,9 +18,9 @@ import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './win
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
-import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags, wayExtras } from './facts.js';
+import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
-import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt, keepInView } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView } from './inspect.js';
 import { describe } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
@@ -3678,16 +3678,17 @@ export class Planner {
   openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '', hold = false } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
-    if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
+    if (place) { this.openPlaceCard(place, ll, { from, pin, hold }); return; }
     const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
+    const route = feats.find((x) => x.layer.id === 'lipas-route');
+    // a hold on a LIPAS route: its card, with Add to my route and Start a route here (#574's hold menu)
+    if (hold && route && from === 'map') { this.openLipasCard(route.properties, ll, { click: ll, hold }); return; }
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
     const water = !d && this.map.getLayer('water') && this.map.queryRenderedFeatures(p, { layers: ['water'] }).length;
-    const route = feats.find((x) => x.layer.id === 'lipas-route');
     const card = spotCard(this, { ll, pin, title: d ? text(d.title) : water ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
-      ...wayExtras(way ? way.properties : {}, { winter: winterAt(feats, ll), uphill: feats.find((x) => x.layer.id === 'uphill-line'), bike }),
       partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch });
     // a phone's tap while browsing: the line at the spot first (#574); a hold, a click and the rest: the card
     if (card.kind === 'spot' && touch && !hold && !pin && from === 'map' && this.cards.where() === 'peek') { this.showLine(card); return; }
@@ -3763,20 +3764,21 @@ export class Planner {
     this.openCard(c, c.spot.ll);
   }
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
-  openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
+  openPlaceCard(f, ll, { from = 'map', pin = false, hold = false } = {}) {
     const p = f.properties, id = f.layer.id, at = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates.map((x) => +x.toFixed(6)) : ll;
     const kind = id === 'label-peak' ? 'peak' : p.subclass || p.class || '', words = (s) => { const t = String(s).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
     const o = /^td-/.test(id) ? obstacleText(p, groupOf(this.app.activity()) === 'bike') : null;
     const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null, lipas: p }
       : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
         : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', osm: { type: 'place', id: null } };
-    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p }), at, from);
+    this.hideLine();
+    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p, hold }), at, from);
   }
-  // A LIPAS route's card (part 6): Follow it, add it to your route, the trail under it, What's here
-  openLipasCard(props, ll, { click = null, near = null } = {}) {
+  // A LIPAS route's card (part 6): Follow it, its facts and pages; with a hold, add it to your route or start one from it
+  openLipasCard(props, ll, { click = null, near = null, hold = false } = {}) {
     const at = Array.isArray(ll) ? ll : [ll.lng, ll.lat];
-    const p = this.map.project(at), under = click ? this.map.queryRenderedFeatures(hitBox(p, false), { layers: inspectLayers(this.map) }).some((x) => /^(path|track|cycleway)-|^road-/.test(x.layer.id)) : false;
-    this.openCard(lipasCard(this, props, at, { click, near, under }), at);
+    this.hideLine();
+    this.openCard(lipasCard(this, props, at, { click, near, hold }), at);
   }
   openCard(card, at, from = 'map') {
     if (this.menu) this.menu.remove();

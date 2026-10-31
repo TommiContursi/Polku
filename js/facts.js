@@ -2,7 +2,6 @@
 // missing one says so in its place, in the same words on every card. 1b adds the route's, by sport.
 import { fmtDist, fmtDuration } from './geo.js';
 import { OFFROAD_BIKE, isWater, ACTIVITIES, UPHILL_TEXT } from './config.js';
-import { WINTER_TEXT } from './winter.js';
 import { surfaceClass } from './analysis.js';
 import { VIS_TEXT, visClass } from './trails.js';
 import { forecastKnown } from './weather.js';
@@ -206,44 +205,8 @@ export function spotNums({ fromRoute, ele, tags, sport }) {
   ].filter(Boolean);
 }
 
-// A place's facts, as plain lines: three at most, from what the map has (a tile's properties, OpenStreetMap's tags once
-// they're asked for, LIPAS's)
-const PLACE_FACTS = [
-  (t) => (t.fee === 'no' ? 'Free' : t.fee === 'yes' ? 'A fee' : null),
-  (t) => (t.opening_hours ? (t.opening_hours === '24/7' ? 'Open all the time' : `Open ${t.opening_hours}`) : null),
-  (t) => (t.toilets === 'yes' || t.wc === 'true' ? 'A toilet' : null),
-  (t) => (t.fireplace === 'yes' || ['firepit', 'bbq'].includes(t.subclass) ? 'A fireplace' : null),
-  (t) => (t.drinking_water === 'yes' ? 'Drinking water' : null),
-  (t) => (t.wheelchair === 'yes' ? 'Wheelchair access' : t.wheelchair === 'no' ? 'No wheelchair access' : null),
-  (t) => (t.ele ? `${Math.round(t.ele)} m high` : null),
-  (t) => (t.length ? `${t.length} km long` : null),
-  (t) => (t.surface ? cap(plain(t.surface)) : null),
-];
-export const placeFacts = (tags) => PLACE_FACTS.map((f) => f(tags || {})).filter(Boolean).slice(0, 3);
-
-// ------------------------------------------------------------------ What's here, in levels (part 6)
-// What the map draws about a way beyond its tags: its winter (winterAt()), the uphill layer's grade, its access, a bridge
-// or boardwalk, what the trail details found on it. { extra: [{ group, label, value }], closed }: closed says why routes
-// keep off it for your sport ('no walking', 'private or no access'), or null.
-export function wayExtras(p, { winter = null, uphill = null, bike = false }) {
-  const own = bike ? 'bicycle' : 'foot';
-  const access = [p.access === 'no' ? 'private or no access' : '', ...['bicycle', 'foot', 'horse'].filter((k) => p[k]).map((k) => `${k} ${p[k]}`)].filter(Boolean).join(', ');
-  const issues = [p.veg && 'overgrown', p.mud && 'wet or muddy', p.tree && 'fallen trees', p.wayford && 'a ford'].filter(Boolean).join(', ');
-  return {
-    extra: [
-      winter ? { group: 'In winter', label: winter.beside ? 'Beside it' : 'On the map', value: winter.beside ? 'A ski track: keep off it on foot and by bike' : WINTER_TEXT[winter.cls] } : null,
-      uphill ? { group: 'The way', label: 'Uphill', value: `${UPHILL_TEXT[uphill.properties.cls]}, ${uphill.properties.grade} %` } : null,
-      access ? { group: 'The way', label: 'Access', value: cap(access) } : null,
-      p.brunnel ? { group: 'The way', label: 'Structure', value: p.boardwalk ? 'Boardwalk (pitkospuut)' : cap(p.brunnel) } : null,
-      issues ? { group: 'The way', label: 'On the way', value: cap(issues) } : null,
-      p.informal ? { group: 'The way', label: 'Path', value: 'Informal, not an official trail' } : null,
-    ].filter(Boolean),
-    closed: own === 'foot' && p.foot === 'no' ? 'no walking' : p.access === 'no' && !['yes', 'designated', 'permissive'].includes(p[own]) ? 'private or no access' : null,
-  };
-}
-
-// A place's What's here [p-placemore]: at the site, getting there, when it's open, when it was last checked, as far as
-// the map knows. `known`: OpenStreetMap's tags are in (All OpenStreetMap details), so what a place of its kind would have
+// A place's facts on its card (#574; What's here's before): at the site, getting there, when it's open, when it was last
+// checked, as far as the map knows. `known`: OpenStreetMap's tags are in (All OpenStreetMap details), so what a place of its kind would have
 // and doesn't says "not mapped"; before that, only what's there shows. [{ group, label, value, missing }]
 const YES = (v) => (v === 'yes' ? 'Yes' : v === 'no' ? 'No' : v && cap(plain(v)));
 const PLACE_ROWS = [
