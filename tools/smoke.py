@@ -844,14 +844,9 @@ LIPAS_RIDE = """(async () => {
   for (let k = 0; k < 30 && !/loop|one way/.test(note()); k++) await wait(150);
   if (!/^18 km, a loop/.test(note())) errs.push(`the card says: ${note() || 'nothing'}`);
   if (!polku.map.getLayer('lipas-pick') || !polku.map.queryRenderedFeatures({ layers: ['lipas-pick'] }).length) errs.push('the picked route is not highlighted');
-  // What's here must finish its height too, for a route opened from search.
-  [...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b')?.textContent === 'What’s here').click();
-  const height = () => [...document.querySelectorAll('.pl-way.card .insp-row')].find((r) => r.firstChild.textContent === 'Height')?.querySelector('b').textContent;
-  for (let k = 0; k < 50 && height() === '…'; k++) await wait(200);
-  if (!height() || height() === '…') errs.push(`a LIPAS route's What's here keeps Height at ${height() || 'nothing'}`);
-  polku.planner.cards.back();
-  for (let k = 0; k < 20 && polku.planner.cards.current?.kind !== 'lipas'; k++) await wait(100);
-  ride = [...document.querySelectorAll('.pl-way.card button')].find((b) => /Follow this route/.test(b.textContent));
+  // LIPAS's own facts on the card (#574: What's here has gone)
+  const lipasHeads = [...document.querySelectorAll('.pl-way.card .menu-h')].map((e) => e.textContent);
+  if (!lipasHeads.includes('From LIPAS') || [...document.querySelectorAll('.pl-way.card .row b')].some((b) => b.textContent === 'What’s here')) errs.push(`a LIPAS route's card: groups ${lipasHeads.join(', ')} (From LIPAS on the card, no What's here)`);
   ride.click();
   const p = polku.planner;
   for (let k = 0; k < 50 && !(p.analysis && p.legs.length === 3); k++) await wait(200);
