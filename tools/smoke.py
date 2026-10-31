@@ -11753,7 +11753,7 @@ PC_LOOK = """((phone) => {
   // DEVELOPING's "Shared controls", and the cards' new ones (25d's "How every card is built")
   const ok = new Set(['pl-way', 'card', 'way-bar', 'way-back', 'btn', 'small', 'quiet', 'tool', 'way-x', 'way-head', 'way-hint', 'card-mark', 'wp', 'wp-start', 'wp-via', 'wp-end', 'wp-loop',
     'sheet-sum', 'sum-item', 'miss', 'wait', 'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-step', 'ring', 'rt-len', 'rt-cost', 'tg', 'tg-text', 'tg-ui',
-    'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'stylebtn', 'way-chips', 'chip', 'way-fold', 'way-facts']);
+    'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'stylebtn', 'way-chips', 'chip', 'way-fold', 'way-facts', 'pick-prof', 'ax', 'top', 'bot']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   // targets: 44 px by touch, 36 px with a mouse (the user, 2026-10-22, #380)
@@ -15404,6 +15404,27 @@ PICK_SEED = """(async () => {
   window.__fx = fx;
   return true;
 })()"""
+# A cycleway beside a street, made up: A, then a side street's crossing at node 2 (X), B, a crossing mapped as a footway
+# (G, 33 m), D, its named piece E, then another name's cycleway (H) and a street (F) both going on: the pick from A
+CYCLE_WALK = """(async (url) => {
+  const W = await import(url), G = await import('/js/geo.js');
+  const [tx, ty] = W.wayTile([21.005, 60.505]), [w, s] = G.tileBounds(tx, ty, W.WAYS_Z), y = s + 0.005, x0 = w + 0.002, dx = 0.002, gap = 0.0006;
+  const xs = [x0, x0 + dx, x0 + 2 * dx, x0 + 2 * dx + gap, x0 + 3 * dx + gap, x0 + 4 * dx + gap, x0 + 5 * dx + gap];
+  const n = (i) => 9e12 + i, piece = (id, tags, a, b, pa, pb) => [id, 0, tags, [n(a), n(b)], [...pa, ...pb], null];
+  const P = (i) => [xs[i - 1], y];
+  W.seedWays(tx, ty, { v: 2, w: [
+    piece(901, { highway: 'cycleway', foot: 'designated' }, 1, 2, P(1), P(2)),
+    piece(902, { highway: 'cycleway', foot: 'designated' }, 2, 3, P(2), P(3)),
+    piece(903, { highway: 'cycleway', cycleway: 'crossing' }, 2, 20, P(2), [xs[1], y - 0.0003]),
+    piece(904, { highway: 'footway', footway: 'crossing' }, 3, 4, P(3), P(4)),
+    piece(905, { highway: 'cycleway' }, 4, 5, P(4), P(5)),
+    piece(906, { highway: 'cycleway', name: 'Testiväylä' }, 5, 6, P(5), P(6)),
+    piece(907, { highway: 'cycleway', name: 'Toinen' }, 6, 7, P(6), P(7)),
+    piece(908, { highway: 'residential', name: 'Testikatu' }, 6, 21, P(6), [xs[6], y + 0.0004]),
+  ] });
+  const seed = W.nearestWay([(xs[0] + xs[1]) / 2, y], 5);
+  return W.walk(seed).chain.map((x) => x.w.id);
+})"""
 # the card as a person reads it, once the ways and the heights are in
 PICK_STATE = """(() => {
   const p = polku.planner, c = p.cards.current, box = document.querySelector('.pl-way.card'), pick = c && c.pick;
@@ -15457,6 +15478,11 @@ def pick_card(chrome):
             fails.append(f"the S5 path in Gravel: ways {r['ways']}, heights {r['heights']}, line “{r['sub']}”, facts {r['rows']} (the grade S5 and the incline, whatever the sport)")
         if not r['drawn']:
             fails.append('the S5 path in Gravel: nothing drawn on the map')
+        # a cycleway beside a street (#574, 2026-10-31: Survontie's in Jyväskylä stopped at every side street) goes on through the
+        # side street's crossing, over a crossing mapped as a footway and into its named piece, but not into another name or a street
+        got = pg.js(f"({CYCLE_WALK})('/js/ways.js')")
+        if got != [901, 902, 904, 905, 906]:
+            fails.append(f'a cycleway beside a street: the pick from its first piece joins {got}, not 901, 902, 904 (a crossing), 905 and 906 (named)')
         # #562: a detail that wasn't loaded is never "not mapped": the ways failing, the card says what it has, no claim
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
         r = tap(pg, [25.7652, 62.2289], want=('failed', None), secs=15, right=True)

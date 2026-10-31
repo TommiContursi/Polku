@@ -107,13 +107,21 @@ export function nearestWay(ll, metres) {
 // Pieces that continue each other (one ends where the next begins) join when they belong to the same marked route, else
 // have the same name; unnamed ones join while their kind stays the same, and stop at every junction. At a fork the pick
 // goes straight on. A road stops where its number changes, a loop where it began, and everything at 25 km.
+// A cycleway goes on where it goes straight on (a turn under 30°): through a junction (a side street's crossing), into a
+// piece of itself with a name or without one (never into another name), and over a short piece of another kind (a crossing
+// mapped as a footway, 50 m at most) to the cycleway beyond it.
 const joinKey = (w) => (w.rel ? `r:${w.rel}` : w.tags.name ? `n:${w.tags.name}` : `k:${kindOf(w.tags)}`);
+const STRAIGHT = 30, GAP = 50;
+const cycle = (w) => !w.rel && kindOf(w.tags) === 'cycleway';
 const turn = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
 const sameRef = (a, b) => !(a.tags.ref && b.tags.ref && a.tags.ref !== b.tags.ref);
 
 /** { chain: [{ w, rev }], stops: { start, end: { why, at } } }: `why` is end, junction, loop or long (joinWay() adds `unloaded`). */
 export function walk(seed) {
-  const key = joinKey(seed), used = new Set([seed]), stops = {};
+  const key = joinKey(seed), used = new Set([seed]), stops = {}, bike = cycle(seed);
+  let name = seed.tags.name;
+  // (a cycleway's own piece, named or not, but never another name)
+  const kin = (w) => bike && cycle(w) && (!w.tags.name || !name || w.tags.name === name);
   const chain = [{ w: seed, rev: false }];
   let total = seed.len;
   for (const side of ['end', 'start']) {
@@ -122,13 +130,25 @@ export function walk(seed) {
     let at = side === 'end' ? c0[c0.length - 1] : c0[0], from = side === 'end' ? c0[c0.length - 2] : c0[1];
     for (;;) {
       const here = ends.get(node) || [];
-      if (key.startsWith('k:') && here.length > 2) { stops[side] = { why: 'junction', at }; break; }
-      const cands = here.filter((w) => !used.has(w) && joinKey(w) === key && sameRef(last, w));
-      if (!cands.length) { stops[side] = { why: 'end', at }; break; }
-      if (total > LONG) { stops[side] = { why: 'long', at }; break; }
+      const junction = key.startsWith('k:') && here.length > 2;
+      if (junction && !bike) { stops[side] = { why: 'junction', at }; break; }
       const out = bearing(from, at);
-      const best = cands.map((w) => { const fwd = w.nodes[0] === node; return { w, fwd, turn: turn(out, bearing(at, fwd ? w.coords[1] : w.coords[w.coords.length - 2])) }; })
-        .sort((a, b) => a.turn - b.turn)[0];
+      const head = (w, n) => { const fwd = w.nodes[0] === n, c = w.coords; return { w, fwd, turn: turn(out, bearing(at, fwd ? c[1] : c[c.length - 2])) }; };
+      // its own pieces; a cycleway's kin and short gaps only straight on, and through a junction only straight on
+      let cands = here.filter((w) => !used.has(w) && sameRef(last, w) && (joinKey(w) === key || kin(w))).map((w) => head(w, node))
+        .filter((c) => (!junction && joinKey(c.w) === key) || c.turn < STRAIGHT);
+      if (!cands.length && bike) {
+        // (and straight on again into the cycleway beyond it)
+        const beyond = ({ w, fwd }) => {
+          const c = fwd ? w.coords : [...w.coords].reverse(), n = fwd ? w.nodes[1] : w.nodes[0], b = bearing(c[c.length - 2], c[c.length - 1]);
+          return (ends.get(n) || []).some((x) => x !== w && !used.has(x) && kin(x) && turn(b, bearing(c[c.length - 1], x.nodes[0] === n ? x.coords[1] : x.coords[x.coords.length - 2])) < STRAIGHT);
+        };
+        cands = here.filter((w) => !used.has(w) && !cycle(w) && w.len <= GAP).map((w) => head(w, node)).filter((c) => c.turn < STRAIGHT && beyond(c));
+      }
+      if (!cands.length) { stops[side] = { why: junction ? 'junction' : 'end', at }; break; }
+      if (total > LONG) { stops[side] = { why: 'long', at }; break; }
+      const best = cands.sort((a, b) => a.turn - b.turn)[0];
+      if (bike && !name && best.w.tags.name) name = best.w.tags.name;
       used.add(best.w);
       total += best.w.len;
       last = best.w;
