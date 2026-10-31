@@ -4,6 +4,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### A tap on a way picks the whole way, and its card tells everything known about it ([#574](https://github.com/TommiContursi/Polku/issues/574), [#561](https://github.com/TommiContursi/Polku/issues/561), [#562](https://github.com/TommiContursi/Polku/issues/562))
+
+- A tap or a hold on a street, a trail or a cycleway now picks what a person would call one thing, not a piece of it: the pieces that continue each other join, by the marked route they belong to, or their name, or while their kind stays the same. The pick is drawn on the map like a route, coloured along its length. A long street stops at 25 km, a loop where it began, and unnamed paths at every junction.
+- The card says the same for every sport. It has the way's length, up and down, a small height profile coloured like the map, and the facts in groups: **Getting along**, **Surface**, **Difficulty** and **Weather here now**, then the places at the spot. A way's MTB grade and the grade where you tapped are on it in every sport, not only in MTB.
+- **Colour by** under the profile offers every fact that changes along the way, where it has the data, grouped like the route's: gradient, uphill difficulty, MTB and hiking difficulty, surface, way type, smoothness, winter care, width, visibility, wind, temperature, rain, bikes, one way, lit and speed limit. The words of each colour and their lengths are under it. Your last choice is kept.
+- What OpenStreetMap doesn't have is one quiet line, **Not mapped: …**, with **Not right?**. A detail that wasn't loaded is never said to be not mapped: while the ways come, or when OpenStreetMap doesn't answer, the card shows what the map's own tile knows and says so.
+- The wind colours are for going along the way in the direction the card names (its west end to its east end, as drawn). The weather is the hour the map's weather shows: now, unless you've picked another.
+
 ### The blue route and LIPAS's routes are easier to tell from the map ([#611](https://github.com/TommiContursi/Polku/issues/611), [#560](https://github.com/TommiContursi/Polku/issues/560))
 
 - Over water, on the Trail map, Plain and Maastokartta, the blue route now has a dark edge instead of a white one, so it stands out from the sea and its marks. On the night map and the aerial photos it keeps its white edge, and a leg over land is as it was.

@@ -2,7 +2,12 @@
 
 The design. What's still to do, and its status, is on GitHub: [#574](https://github.com/TommiContursi/Polku/issues/574), which holds the user's decisions of 2026-10-29 and now includes #561, #562, #564 and #565.
 
-**Where it stands (2026-10-29): a mock-up to choose from.** It decides nothing until the user chooses. Where #574's decisions don't cover a case, the mock-up shows it and asks ([Questions](#questions-for-you)). Nothing in the app changes yet.
+**Where it stands (2026-10-31): being built, in [PR #623](https://github.com/TommiContursi/Polku/pull/623).** The user chose on 2026-10-29 after trying the mock-up ([the work package](https://github.com/TommiContursi/Polku/issues/574#issuecomment-6509528950), and [way type on the profile](https://github.com/TommiContursi/Polku/issues/574#issuecomment-6542232289) on 2026-10-31); where the package differs from the mock-up below, the package wins:
+
+- **The ten questions, answered:** at a fork straight on; two carriageways are one street, both sides drawn; a side street with the same name at a T is left out; a pick follows the marked route its pieces belong to; roundabouts and loops stop where they began; a long road stops where its number or name changes, and at 25 km; unnamed paths stop at every junction; Colour by difficulty is two choices, MTB and Hiking; the desktop's hover draws the way; the buttons as the mock-up starts them, with What's here › gone.
+- **Four changes:** the line at the spot and the hover keep today's hover, in rows, and add what the pick knows; Colour by on a pick offers every fact the card shows that changes along the way, where it has the data, grouped like the route's (the route's list with Width and Visibility, plus bikes, one way, lit, speed limit, smoothness and winter care; not Both or Sport), with the weather at the hour the map's weather shows; difficulty and how bikes get along as pictures, designed with /impeccable and shown before the PR leaves draft; the card shows the map tile's own facts at once and fills in as Overpass answers.
+- **The card's heights on a phone** are #603's stops (the planner's peek, half, full; a short card keeps its own height), not the mock-up's 62 %.
+- **Built so far (part 1):** ways for every tap and the join, the pick drawn on the map, the way's card with Colour by. Still to build: the line at the spot and the hover, areas, places and the map's other things on the same card (the old popups go), the buttons' places, the icons and the motion.
 
 ## Why
 
