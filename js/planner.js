@@ -5829,6 +5829,14 @@ export class Planner {
     ], { label: 'More', maxRight: desk ? null : $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
       onClose: () => { this.moreMenu = null; this.els.more.setAttribute('aria-expanded', 'false'); } });
     this.els.more.setAttribute('aria-expanded', 'true');
+    // opened up from More with too little room above: its end by More in sight (Take it along, the most used), and the
+    // focus on the first item there that isn't Clear route (#594)
+    const m = this.moreMenu.el;
+    if (m.scrollHeight > m.clientHeight + 1 && m.getBoundingClientRect().bottom <= this.els.more.getBoundingClientRect().top + 1) {
+      m.scrollTop = m.scrollHeight;
+      const top = m.getBoundingClientRect().top;
+      [...m.querySelectorAll('.menu-item:not(:disabled):not(.danger)')].find((b) => b.getBoundingClientRect().top >= top)?.focus({ preventScroll: true });
+    }
   }
 
   closeMore() {

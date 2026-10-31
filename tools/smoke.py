@@ -12072,9 +12072,9 @@ def route_view(chrome):
             press(pg, at(pg, "polku.planner.els.more"), f'{name}: More', touch)
             # (#594: one order everywhere, Clear route first and farthest from More, Take it along last and nearest; the
             # focus not on Clear route)
-            m = pg.js("(() => { const it = [...document.querySelectorAll('.menu-pop .menu-item')].map((b) => b.textContent.trim()); const a = document.activeElement; return { first: it[0] || '', last: it[it.length - 1] || '', focus: a && a.classList.contains('menu-item') && !a.classList.contains('danger') }; })()")
-            if not m['first'].startswith('Clear route') or not m['last'].startswith('Save offline') or not m['focus']:
-                fails.append(f'{name}: the route’s view’s More: {m} (Clear route first, Save offline last, the focus not on Clear route)')
+            m = pg.js("(() => { const el = document.querySelector('.menu-pop'), b = [...el.querySelectorAll('.menu-item')], it = b.map((x) => x.textContent.trim()), a = document.activeElement, r = el.getBoundingClientRect(), q = b[b.length - 1].getBoundingClientRect(); return { first: it[0] || '', last: it[it.length - 1] || '', focus: a && a.classList.contains('menu-item') && !a.classList.contains('danger'), lastSeen: q.top >= r.top - 1 && q.bottom <= r.bottom + 1 }; })()")
+            if not m['first'].startswith('Clear route') or not m['last'].startswith('Save offline') or not m['focus'] or not m['lastSeen']:
+                fails.append(f'{name}: the route’s view’s More: {m} (Clear route first, Save offline last and in sight, the focus not on Clear route)')
             if not pg.js("(() => { const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith('Clear route')); if (b) { b.dataset.rvPick = '1'; b.scrollIntoView({ block: 'nearest' }); } return !!b; })()"):
                 fails.append(f"{name}: no Clear route in the route’s view’s More: {pg.js('[...document.querySelectorAll(`.menu-pop .menu-item`)].map((b) => b.textContent.trim())')}")
             press(pg, at(pg, "document.querySelector('.menu-pop [data-rv-pick]')"), f'{name}: Clear route', touch)
