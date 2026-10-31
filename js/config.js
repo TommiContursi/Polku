@@ -152,6 +152,17 @@ export const MTB_SCALE_TEXT = [
   'S6 · Barely rideable',
 ];
 
+// What each MTB grade (mtb:scale) means for a rider, as Heads-up says it
+export const MTB_MEANS = [
+  'smooth and firm, no obstacles: fine for anyone on a bike',
+  'small roots and stones, some loose ground: easy for most riders',
+  'bigger roots and rocks, low steps and tighter turns: needs some riding skill',
+  'big rocks and roots, high steps, tight switchbacks and steep bits: for skilled riders, and many walk parts of it',
+  'very steep, with rock gardens and tight switchbacks: for experts, and most people walk it',
+  'drops, boulders and very steep ground: only the best riders ride it',
+  'barely rideable: most people carry the bike',
+];
+
 export const UPHILL_TEXT = [
   '↑S0 · Under 10 %, good grip',
   '↑S1 · Under 15 %, few obstacles',
