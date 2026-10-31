@@ -4226,11 +4226,17 @@ DRAWER = """(async () => {
   await wait(150);
   const lit = m.getSource('routeLit').serialize().data;
   if (!(lit.features && lit.features.length === 1)) errs.push('pointing at a stretch lit nothing on the map');
+  // …and stands out: drawn over the route, wider, with the rest of the route faded (#83)
+  const ids = m.getStyle().layers.map((l) => l.id), faded = () => m.getPaintProperty('route-line', 'line-opacity');
+  if (!(ids.indexOf('route-lit-casing') > ids.indexOf('route-line') && ids.indexOf('route-lit') > ids.indexOf('route-lit-casing'))) errs.push('the lit stretch is drawn under the route');
+  if (!(ids.indexOf('route-portage') > ids.indexOf('route-lit') && ids.indexOf('route-unchecked') > ids.indexOf('route-lit'))) errs.push('the lit stretch covers the carries or Not checked');
+  if (!(faded() < 1)) errs.push(`the rest of the route isn't faded while a stretch is lit: ${faded()}`);
   const hl = p.chart.highlight;
   if (!hl || Math.abs(hl[0] - p.lengthTo(s.from)) > 1 || Math.abs(hl[1] - p.lengthTo(s.to)) > 1) errs.push(`the profile lit ${JSON.stringify(hl)}`);
   row.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
   await wait(150);
   if ((m.getSource('routeLit').serialize().data.features || []).length) errs.push('the leg stayed lit');
+  if (faded() !== 1) errs.push(`the route stayed faded: ${faded()}`);
   if (/\bnull\b|undefined/.test(p.panel.textContent)) errs.push('“null” written in the drawer');
   // the tab is remembered, and the arrow keys move along the tabs
   p.setTab('route');

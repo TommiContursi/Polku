@@ -10,7 +10,7 @@ import { pointForecasts, sampleAt } from './weather.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
 import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
-import { buildStyle } from './style.js';
+import { buildStyle, routeDim } from './style.js';
 import { installIcons, iconUrl } from './icons.js';
 import { Planner, parseShared, parsePin, dockOf } from './planner.js';
 import { UphillLayer } from './uphill.js';
@@ -205,6 +205,7 @@ function setData(id, fc) {
   const src = map.getSource(id);
   if (src) src.setData(fc);
   if (id === 'route' && flow) flow.setData(fc);
+  if (id === 'routeLit' && src) for (const [layer, v] of Object.entries(routeDim(fc.features.length > 0))) map.setPaintProperty(layer, 'line-opacity', v);
 }
 
 // The route's moving chevrons (#198, js/routeflow.js; `flow`, made below). While they move,

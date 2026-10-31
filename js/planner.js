@@ -1405,7 +1405,7 @@ export class Planner {
       const loading = !leg.result || leg.status === 'waiting';
       // while dragging, a route that's a moment behind the pointer, joined to it
       const coords = loading ? (leg.preview ? [from, ...leg.preview, to] : [from, to]) : leg.result.coords;
-      const mode = leg.status === 'error' ? 'line' : leg.mode === 'fixed' ? 'auto' : leg.mode;
+      const mode = drawnMode(leg);
       features.push({ type: 'Feature', properties: { leg: i, mode, loading, kind: 'leg' }, geometry: { type: 'LineString', coordinates: coords } });
       // a point the route couldn't reach (too far from a path to snap): a thin dashed line to it
       if (!loading && coords.length > 1) {
@@ -3002,8 +3002,7 @@ export class Planner {
   }
   // a stretch under the mouse in the list: lit on the map, as a leg's row was
   lightStretchHover(s) {
-    const coords = this.legs.slice(s.from, s.to).flatMap((l, k) => { const c = l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]; return k ? c.slice(1) : c; });
-    this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] });
+    this.showLit(this.stretchCoords(s), s.from, s.to);
     if (this.chart && this.analysis) this.chart.setHighlight([this.lengthTo(s.from), this.lengthTo(s.to)]);
   }
 
@@ -4453,14 +4452,22 @@ export class Planner {
     if (!leg) {
       // (what was picked stays lit: a climb, an item of Check, the stretch a card is about)
       const s = this.stretchLit && this.legs[this.stretchLit.from] ? this.stretchLit : null;
-      const coords = s ? this.legs.slice(s.from, s.to).flatMap((l, k) => { const c = l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]; return k ? c.slice(1) : c; }) : this.focusLit;
-      this.app.setData('routeLit', coords ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] } : EMPTY);
+      if (s) this.showLit(this.stretchCoords(s), s.from, s.to);
+      else if (this.focusLit) this.showLit(this.focusLit, this.legAt(this.focusHl[0]), this.legAt(this.focusHl[1]) + 1);
+      else this.app.setData('routeLit', EMPTY);
       if (this.chart) this.chart.setHighlight(s && this.analysis ? [this.lengthTo(s.from), this.lengthTo(s.to)] : this.focusHl || null);
       return;
     }
-    const coords = leg.result ? leg.result.coords : [this.points[i], this.points[i + 1]];
-    this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] });
+    this.showLit(leg.result ? leg.result.coords : [this.points[i], this.points[i + 1]], i, i + 1);
     if (this.chart && this.analysis) this.chart.setHighlight([this.lengthTo(i), this.lengthTo(i + 1)]);
+  }
+  // routeLit: `coords` over legs from…to−1, in their colour when they go the same way (style.js route-lit)
+  showLit(coords, from, to) {
+    const modes = new Set(this.legs.slice(from, to).map(drawnMode));
+    this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: modes.size === 1 ? { mode: [...modes][0] } : {}, geometry: { type: 'LineString', coordinates: coords } }] });
+  }
+  stretchCoords(s) {
+    return this.legs.slice(s.from, s.to).flatMap((l, k) => { const c = l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]; return k ? c.slice(1) : c; });
   }
   // back to the open leg (if one is open), else nothing lit
   unlitLeg() { this.litLeg(null); }
@@ -6929,7 +6936,7 @@ export class Planner {
     this.focusHl = [a.along[i0], a.along[i1]];
     this.chart.setHighlight(this.focusHl);
     this.focusLit = a.pts.slice(i0, i1 + 1);
-    this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.focusLit.length > 1 ? this.focusLit : [a.pts[i0], a.pts[i0]] } }] });
+    this.showLit(this.focusLit.length > 1 ? this.focusLit : [a.pts[i0], a.pts[i0]], this.legAt(a.along[i0]), this.legAt(a.along[i1]) + 1);
     // a short cut the route didn't take (#104): drawn while its row is the one picked
     const cut = sel && sel.cut;
     this.app.setData('accessCut', cut ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: cut } }] } : EMPTY);
@@ -7086,6 +7093,8 @@ const shortDuration = (sec) => { const hr = Math.floor(sec / 3600), m = Math.rou
 // A LIPAS leg's place along LIPAS's line, the other way round
 const flipSrc = (src) => (src ? { ...src, a: src.b, b: src.a } : null);
 
+// how a leg is drawn (style.js): a leg that couldn't be routed as a straight line, a fixed one as any routed one
+const drawnMode = (leg) => (leg.status === 'error' ? 'line' : leg.mode === 'fixed' ? 'auto' : leg.mode);
 // {i, t} of the spot `m` metres along a line (for splitLeg)
 function alongAt(c, m) {
   let s = 0;

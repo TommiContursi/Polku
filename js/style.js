@@ -59,6 +59,9 @@ PALETTES.mml = { ...PALETTES.trail, hillshade: false };
 PALETTES.maasto = PALETTES.mml;
 export const isAerial = (base) => base === 'aerial' || base === 'ortofi';
 export const isTopo = (base) => base === 'mml' || base === 'maasto';
+// the route's opacities, faded while a stretch of it is lit (main.js sets them again when routeLit changes); at once, as
+// the lit stretch comes and goes with the pointer
+export const routeDim = (lit) => ({ 'route-glow': lit ? 0.1 : 0.3, 'route-casing': lit ? 0.6 : 0.9, 'route-line': lit ? 0.5 : 1, 'route-color': lit ? 0.5 : 1 });
 
 // mtb:scale → 0..6, or -1 when missing. (to-number("") is 0, hence the has-guard.)
 const MTB_IDX = ['case', ['has', 'mtb_scale'], ['to-number', ['slice', ['to-string', ['get', 'mtb_scale']], 0, 1], -1], -1];
@@ -477,8 +480,6 @@ export function buildStyle(s, ctx) {
 
   // a point the route couldn't reach: a thin dashed line to it (planner.js drawRoute)
   add({ id: 'route-gap', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'gap'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#64748b', 'line-width': zi(8, 1, 16, 2), 'line-dasharray': [1, 2] } });
-  // the leg lit from the waypoint list: a soft glow under the line
-  add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.route, 'line-width': zi(8, 16, 16, 30), 'line-opacity': 0.4, 'line-blur': zi(8, 4, 16, 9) } });
   // the short cut through a way marked private or closed that the route goes round: dashed, in the private dots' purple
   add({ id: 'access-cut', type: 'line', source: 'accessCut', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#c4b5fd' : '#7c3aed', 'line-width': zi(8, 3, 16, 6), 'line-dasharray': [1.5, 1.2] } });
   // other ways for a leg (#95, #211): drawn like the route where they leave it (the same width,
@@ -492,21 +493,29 @@ export function buildStyle(s, ctx) {
   // the route's glow (#198): a soft halo in its colour so it stands out on a busy map, and a
   // brighter one on the leg under the pointer (ctx.hoverLeg, set while you point at it)
   const routeGlowColor = ['case', ['==', ['get', 'mode'], 'water'], ROUTE_COLORS.water, ROUTE_COLORS.route];
+  const legColor = ['case', ['==', ['get', 'mode'], 'water'], ROUTE_COLORS.water, ['==', ['get', 'mode'], 'line'], ROUTE_COLORS.line, ROUTE_COLORS.route];
+  const dim = routeDim((ctx.data.routeLit || EMPTY).features.length > 0);
   const glowable = ['all', ['!=', ['get', 'kind'], 'gap'], ['!', ['boolean', ['get', 'loading'], false]]];
-  add({ id: 'route-glow', type: 'line', source: 'route', filter: glowable, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': routeGlowColor, 'line-width': zi(8, 12, 16, 26), 'line-blur': zi(8, 5, 16, 11), 'line-opacity': 0.3 } });
+  add({ id: 'route-glow', type: 'line', source: 'route', filter: glowable, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': routeGlowColor, 'line-width': zi(8, 12, 16, 26), 'line-blur': zi(8, 5, 16, 11), 'line-opacity': dim['route-glow'], 'line-opacity-transition': { duration: 0, delay: 0 } } });
   // fades in and out in 150 ms (a hover, often seen: short and soft)
   add({ id: 'route-glow-hover', type: 'line', source: 'route', filter: glowable, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': routeGlowColor, 'line-width': zi(8, 16, 16, 34), 'line-blur': zi(8, 6, 16, 13), 'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.55, 0], 'line-opacity-transition': { duration: 150, delay: 0 } } });
-  add({ id: 'route-casing', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'gap'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
+  add({ id: 'route-casing', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'gap'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': dim['route-casing'], 'line-opacity-transition': { duration: 0, delay: 0 } } });
   add({
     id: 'route-line', type: 'line', source: 'route', filter: ['all', ['!=', ['get', 'kind'], 'portage'], ['!=', ['get', 'kind'], 'gap']],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': ['case', ['get', 'loading'], ROUTE_COLORS.loading, ['==', ['get', 'mode'], 'water'], ROUTE_COLORS.water, ['==', ['get', 'mode'], 'line'], ROUTE_COLORS.line, ROUTE_COLORS.route],
+      'line-color': ['case', ['get', 'loading'], ROUTE_COLORS.loading, legColor],
       'line-width': zi(8, 3, 16, 6.5),
+      'line-opacity': dim['route-line'], 'line-opacity-transition': { duration: 0, delay: 0 },
       'line-dasharray': ['case', ['get', 'loading'], ['literal', [1, 1.5]], ['==', ['get', 'mode'], 'line'], ['literal', [2.5, 1.2]], ['literal', [1, 0]]],
     },
   });
-  add({ id: 'route-color', type: 'line', source: 'routeColor', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5) } });
+  add({ id: 'route-color', type: 'line', source: 'routeColor', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5), 'line-opacity': dim['route-color'], 'line-opacity-transition': { duration: 0, delay: 0 } } });
+  // the stretch you pick or point at (a leg, a stretch, a climb, an item of Check; planner.js litLeg): drawn over the
+  // route, wider, in its leg's colour, with an edge that stands out on the map, while the rest of the route fades;
+  // under the carries' dots and Not checked's dashes, which stay on it
+  add({ id: 'route-lit-casing', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#ffffff' : '#111827', 'line-width': zi(8, 9, 16, 17) } });
+  add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': legColor, 'line-width': zi(8, 5, 16, 10) } });
   add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
   // a stretch a source didn't cover (25d part 3): dashed over the line in Not checked's colour
   add({ id: 'route-unchecked', type: 'line', source: 'headsGaps', layout: { 'line-cap': 'butt' }, paint: { 'line-color': WARN_COLORS.unk, 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [1.2, 1.2] } });
