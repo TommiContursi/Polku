@@ -17,7 +17,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### A place's facts are on its card, and your route's actions come with a hold ([#574](https://github.com/TommiContursi/Polku/issues/574))
 
 - A place's card (a shelter, a campfire site, a toilet, an obstacle, a LIPAS place) now shows its height and all its facts in groups, and a LIPAS route's card its facts and pages. **What's here ›** has gone, as everything it said is on the card.
-- **Add to my route**, **Start here**, **End here**, **Round trip from here** and **Avoid this spot** are on a card you open by holding the map (or a right-click on a desktop), with **All OpenStreetMap details** and **Copy** for the spot's coordinates. A tap opens the card to read. A LIPAS route's **Follow this route** stays on its card; its **Add to my route** and **Start a route here** come with a hold, and **The trail under it** has gone: tap the trail itself.
+- **Add to my route**, **Start here**, **End here**, **Round trip from here** and **Avoid this spot** are on a card you open by holding the map (or a right-click on a desktop), with **All OpenStreetMap details** and **Copy** for the spot's coordinates. A tap opens the card to read. A LIPAS route's card keeps **Follow this route**, **Add to my route** and **Start a route here**; **The trail under it** has gone: tap the trail itself.
 
 ### Road works, sea marks and the water open the same card ([#564](https://github.com/TommiContursi/Polku/issues/564), [#565](https://github.com/TommiContursi/Polku/issues/565))
 

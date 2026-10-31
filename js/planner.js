@@ -3681,8 +3681,6 @@ export class Planner {
     if (place) { this.openPlaceCard(place, ll, { from, pin, hold }); return; }
     const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
     const route = feats.find((x) => x.layer.id === 'lipas-route');
-    // a hold on a LIPAS route: its card, with Add to my route and Start a route here (#574's hold menu)
-    if (hold && route && from === 'map') { this.openLipasCard(route.properties, ll, { click: ll, hold }); return; }
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
@@ -3774,11 +3772,11 @@ export class Planner {
     this.hideLine();
     this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p, hold }), at, from);
   }
-  // A LIPAS route's card (part 6): Follow it, its facts and pages; with a hold, add it to your route or start one from it
-  openLipasCard(props, ll, { click = null, near = null, hold = false } = {}) {
+  // A LIPAS route's card (part 6): Follow it, add it to your route or start one from it, its facts and pages
+  openLipasCard(props, ll, { click = null, near = null } = {}) {
     const at = Array.isArray(ll) ? ll : [ll.lng, ll.lat];
     this.hideLine();
-    this.openCard(lipasCard(this, props, at, { click, near, hold }), at);
+    this.openCard(lipasCard(this, props, at, { click, near }), at);
   }
   openCard(card, at, from = 'map') {
     if (this.menu) this.menu.remove();

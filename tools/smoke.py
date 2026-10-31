@@ -967,7 +967,7 @@ MARKED_JS = """(() => {
   // what the pick holds (its parts as sent to the map), and whether it's drawn
   mk.picked = () => ({ parts: parts('lipasPick').length, keys: [...new Set(parts('lipasPick').map((f) => keyOf(f.properties)))].join(), drawn: drawn('lipas-pick').length > 0 });
   mk.card = () => { const c = polku.planner.cards.current; return c ? `${c.kind}${c.props ? ` ${keyOf(c.props)}` : ''}` : 'none'; };
-  mk.close = async () => { polku.planner.cards.close(); await wait(300); return true; };
+  mk.close = async () => { polku.planner.cards.close(); polku.planner.hideLine(); await wait(300); return true; };
   // a route of yours between two points (none for none), the planner put away again: its line is drawn over the marked route's
   mk.plan = async (ll) => {
     const p = polku.planner;

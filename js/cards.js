@@ -824,16 +824,16 @@ function notRightCard(pl, from, spot) {
 }
 
 // A LIPAS route [d-lipas]: from LIPAS, how long, what following it gives once LIPAS has sent all its parts (one request,
-// kept); Follow this route; with a hold Add to my route and Start a route here; LIPAS's facts and pages. A ski track, a skating
+// kept); Follow this route, Add to my route and Start a route here; LIPAS's facts and pages. A ski track, a skating
 // or snowmobile route says what it's for instead of Follow (#306: in words for every sport).
 const WINTER_LIPAS_NOTE = {
   4402: 'A ski track: keep off it on foot and by bike. Whether it’s groomed: the operator’s website.',
   4421: 'A snowmobile route: for snowmobiles, not a way to walk or ride.',
   1550: 'A skating route on natural ice. Polku never says ice is safe: check the operator’s status before you go.',
 };
-export function lipasCard(pl, props, ll, { click = null, near = null, hold = false } = {}) {
+export function lipasCard(pl, props, ll, { click = null, near = null } = {}) {
   const winter = (LIPAS_TYPES[props.type] || {}).winter;
-  const spot = { ll, title: props.name, line: [props.typeName, props.city].filter(Boolean).join(', '), src: 'From LIPAS', image: props.icon ? `lipas-${props.icon}` : null, lipas: props, place: true, tags: {}, hold };
+  const spot = { ll, title: props.name, line: [props.typeName, props.city].filter(Boolean).join(', '), src: 'From LIPAS', image: props.icon ? `lipas-${props.icon}` : null, lipas: props, place: true, tags: {} };
   const card = {
     kind: 'lipas', key: ll, props, ride: null, spot, title: spot.title, sub: spot.line, mark: () => placeMark(spot), at: () => ll, ele: undefined, fold: () => [spot.line],
     build: (body) => {
@@ -844,7 +844,8 @@ export function lipasCard(pl, props, ll, { click = null, near = null, hold = fal
             : `${km(r.km)} km, ${r.loop ? 'a loop' : 'one way'}${r.left >= 0.3 ? `, side trails of ${r.left.toFixed(1)} km left out` : ''}. It follows LIPAS’s line: no routing needed.`));
       if (!winter) {
         body.append(mainButton(r && r.network ? 'Follow this stretch' : 'Follow this route', 'route', () => { pl.cards.close(); pl.app.rideLipas(props, { click, near }); }));
-        if (hold && !pl.inView()) {
+        // (on the card, not in a hold's: a hold over a route gives the way under it, #574)
+        if (!pl.inView()) {
           body.append(h('h4', { class: 'menu-h' }, 'Your route'), acts(
             pl.points.length ? item({ icon: 'plus', label: 'Add to my route', line: 'Your route goes to it and follows it', k: 'add', onclick: () => { pl.cards.close(); pl.app.rideLipas(props, { click, near, add: true }); } }) : null,
             item({ icon: 'flag', label: 'Start a route here', line: 'A new route, from this spot', k: 'start', onclick: () => { pl.cards.close(); pl.setActive(true, { edit: true }); pl.clear(); pl.addPoint(click || ll); } })));
