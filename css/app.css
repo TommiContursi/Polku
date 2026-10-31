@@ -1278,8 +1278,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 }
 .li:hover, .li.sel { background: var(--surface-2); }
 .li .ic { color: var(--warn); }
-.btn.avoid { min-height: 26px; padding-block: 2px; padding-inline: 9px; font-size: 12px; color: var(--bad); border-color: rgba(220,38,38,.35); }
-.btn.avoid:hover { background: rgba(220,38,38,.08); }
 .hidden-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 2px 2px; font-size: 12px; color: var(--muted); }
 .hidden-kinds .on-chip { background: var(--surface-2); color: var(--muted); }
 .li-main { display: flex; flex-direction: column; min-width: 0; }
@@ -1842,6 +1840,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 @media (prefers-reduced-motion: reduce) { .pick-line { transition: opacity var(--t-open) linear; } @starting-style { .pick-line { transform: none; } } .pick-line:active { transform: none; } }
 /* a pick's card (#574): the profile coloured as the map, Colour by under it, its facts in groups, what isn't mapped in one quiet line */
 .pick-mark { display: block; width: 22px; height: 6px; border-radius: 3px; background: var(--c, #374151); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0, 0, 0, .25); }
+.pick-mark.dot { width: 16px; height: 16px; border-radius: 50%; }
 .pick-prof { position: relative; height: 64px; margin: 2px 0 0; }
 .pick-prof svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .pick-prof .ax { position: absolute; left: 0; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -1872,16 +1871,8 @@ body[data-activity="paddle"] #zoom-hint { display: none; } /* (Paddle's map isn'
 .polku-popup .maplibregl-popup-content { border-radius: 14px; padding: 12px var(--pop-pad); box-shadow: var(--shadow); background: var(--surface-solid); color: var(--text); }
 .polku-popup .maplibregl-popup-tip { border-top-color: var(--surface-solid); border-bottom-color: var(--surface-solid); }
 .polku-popup .maplibregl-popup-close-button { font-size: 18px; width: 26px; height: 26px; right: 4px; top: 4px; border-radius: 8px; color: var(--muted); }
-/* the map's card: never wider than the screen less 8 px each side (at 200 %, #435; its widths and max-height are in
-   js/inspect.js); a tall one scrolls, with room in it for the focus rings */
-.insp {
-  min-width: min(calc(230px + 2 * var(--space-4)), calc(100vw - 2 * (var(--space-8) + var(--pop-pad) - var(--space-4))));
-  padding: var(--space-4); margin: calc(-1 * var(--space-4)); overflow-y: auto; overscroll-behavior: contain;
-}
 body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit beside them is over them (keepInView(), #435) */
-.insp-title { font-weight: 700; font-size: var(--font-title); padding-right: 22px; overflow-wrap: anywhere; } /* (a long name breaks rather than leave its card, #435) */
 @media (min-width: 721px) { .polku-popup { --font-title: 0.9375rem; } } /* (a desktop's card at its spot, as .card-float) */
-.insp-sub { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 /* a fact's value beside its name, or under it where there's no room (a phone at 200 %, #435) */
 .insp-row { display: flex; flex-wrap: wrap; column-gap: 10px; row-gap: var(--space-2); padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
 .insp-row span { color: var(--muted); }
@@ -1889,8 +1880,6 @@ body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit besi
 .insp-row b { flex: 1 1 120px; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 .insp-row b .dot { vertical-align: 0; }
 .insp-info { font-size: 12px; color: var(--muted); margin: 6px 0; }
-.insp-links { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; }
-.insp-links a { color: var(--accent); display: inline-flex; align-items: center; gap: 3px; font-weight: 600; text-decoration: none; }
 .insp-more { margin-top: 6px; }
 .insp-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 .insp-ride { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.35; }

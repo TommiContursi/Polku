@@ -6,7 +6,7 @@ import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton 
 import { pointNums, headline, wayFacts, SPORT_FACTS, placeFacts, placeGroups, wayGroups, unmapped } from './facts.js';
 import { newPick, resolvePick, modesOf, modeOf, setMode } from './pick.js';
 import { breakdownRows, colorAt, PICK_MODES } from './chart.js';
-import { notRight, isHttp } from './inspect.js';
+import { notRight, isHttp, thingOf, depthAt } from './inspect.js';
 import { elevation } from './dem.js';
 import { iconUrl } from './icons.js';
 import { ACTIVITIES, CRAFTS, LIPAS_TYPES } from './config.js';
@@ -611,6 +611,31 @@ export function pickCard(pl, spot) {
 }
 const PLAIN = '#374151';
 const markColour = (pick) => (pick.a && pick.a !== 'failed' && (breakdownRows(pick.a, modeOf(pick.a))[0] || [])[2]) || PLAIN;
+// The map's other things (#564): road works, an incident, road conditions, a busy road, a military area, a sea mark and its
+// kin, and the water, on the same card as a way, highlighted on the map: what it is, its facts, where they come from, and the
+// card's last row (Share, Weather here ›, and the source's own page where it has one). The water's depth comes from Traficom.
+export function thingCard(pl, f, ll) {
+  const t = thingOf(f, pl.map), spot = { ll, title: t.title, line: t.sub || '' };
+  const card = {
+    kind: 'thing', key: ll, spot, depth: undefined, pinned: true,
+    get title() { return t.title; }, get label() { return t.title; }, get sub() { return t.sub || ''; },
+    mark: () => h('span', { class: 'pick-mark dot', style: `--c:${f.layer.id === 'water' ? 'var(--route-water, #0ea5e9)' : '#f59e0b'}` }), at: () => ll, fold: () => [t.sub || t.title],
+    build: (body) => {
+      if (t.src) body.append(h('p', { class: 'rt-cost' }, t.src));
+      const rows = t.depth ? [['Depth', card.depth === undefined ? 'Asking Traficom' : card.depth === null ? 'Traficom didn’t answer' : card.depth]] : t.rows;
+      body.append(...factGroup(t.group || 'About it', rows));
+      if (t.info) body.append(h('p', { class: 'insp-info' }, t.info));
+      if (t.depth && !pl.inView()) body.append(acts(item({ icon: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here', k: 'paddle', onclick: () => pl.paddleFrom(ll) })));
+      const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: icon(ic, 16) }, h('span', {}, label));
+      body.append(h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(ll)),
+        t.link ? btn(t.link[0], 'external', () => window.open(t.link[1], '_blank', 'noopener')) : null));
+    },
+    gone: () => pl.drawThing(null),
+  };
+  if (t.depth) depthAt(ll).then((d) => { card.depth = d; }, () => { card.depth = null; }).then(() => { if (pl.cards.stack.some((e) => e.card === card)) pl.cards.refresh(); });
+  return card;
+}
+
 // The line at the spot (#574): on a phone, a tap while browsing picks the thing and says what it is above the spot, in rows as
 // the hover does: its name, how you get along it, its height and grade where you tapped, the weather. A tap on it opens the
 // card. `update()` says it again as the pick fills in.

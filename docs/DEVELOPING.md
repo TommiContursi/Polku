@@ -342,7 +342,6 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 |---|---|---|
 | Back, in words, and ✕ on a row of their own | `way-bar`, `btn small quiet way-back`, `tool way-x` | the start's steps ("‹ Ways to begin") |
 | A heading and its line | `way-head`, `way-hint`: the title 17 px (`--font-title`), 15 px on a desktop's card; a long name breaks rather than leave its card | "Round trip from your start" |
-| The same title on the map's own cards | `insp-title`: `--font-title`, 15 px on a desktop | a trail's or a LIPAS place's card |
 | A small heading | `menu-h`; `act-head`, `lp-sec h3`, `lg-title`, `qd-lab`, `chip-group-label`, `sec-title`, `stat-label` and the rest share its one rule: 12 px capitals in `--muted`, .06em | the ⋯ menu's groups |
 | A choice to begin with | `way-tile` with `way-ic`, `way-t`, `way-chev`: a tile, with a green icon (the start's tiles stay tiles) | Ways to begin |
 | A choice with its value | `stylebtn` with `two` | Route style, Direction |

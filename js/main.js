@@ -424,15 +424,6 @@ const inspector = initInspector(map, {
   // the map's own cards: with the planner put away, and in the route's view for what the planner doesn't take (25c)
   // (and not the click that ends a hold on the map, whose card is the planner's: 25d part 5)
   isPlanning: (e) => (planner.active && (!planner.inView() || (!!e && planner.tookClick === e.originalEvent))) || Date.now() < planner.noClickUntil,
-  routeFrom: (ll, mode) => {
-    planner.setActive(true, { edit: true });
-    if (mode) planner.setMode(mode);
-    planner.clear();
-    planner.addPoint(ll);
-    toast('Now click where you want to go');
-  },
-  routeTo: (ll) => { planner.setActive(true, { edit: true }); planner.addPoint(ll); },
-  avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
   // a click on your route with the planner closed: open it, with that part's choices
   // (in the route's view too, where the planner leaves map taps to the map: 25c)
   // Check's markers on the route with the planner put away: their card first (25d part 3)
@@ -449,9 +440,9 @@ const inspector = initInspector(map, {
     setData('lipasPick', lit);
     planner.cards.current.gone = () => { if (data.lipasPick === lit) setData('lipasPick', { type: 'FeatureCollection', features: [] }); };
   },
+  openThing: (f, ll) => planner.openThing(f, ll),
   cardOpen: () => !!planner.cards.current || !!planner.picked, // (the line at the spot too, #574)
   closeCard: () => { planner.cards.close(); planner.hideLine(); },
-  vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });

@@ -11486,7 +11486,7 @@ def route_view(chrome):
     # (where it is once the sheet has come to its size: ✕ measured while the planner came back after the note's Open had
     # something over it; settle=False for the note, which goes in 6 s)
     at = lambda pg, sel, settle=True: (settle and pg.js(SETTLED), pg.js(f"({TB_AT})({sel})"))[1]
-    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: !!document.querySelector('.maplibregl-popup .insp') || ['spot', 'place', 'lipas'].includes(p.cards.current && p.cards.current.kind), card: p.cards.current ? p.cards.current.kind : '', pill: !!document.querySelector('.card-pill, .pl-way.card .btn.primary.big') }; })()")
+    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: ['spot', 'place', 'lipas', 'thing'].includes(p.cards.current && p.cards.current.kind), card: p.cards.current ? p.cards.current.kind : '', pill: !!document.querySelector('.card-pill, .pl-way.card .btn.primary.big') }; })()")
     shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
 
     def ready(pg, name):
@@ -14293,14 +14293,7 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
     const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
     if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
   }
-  // titles: the map's card's as a step's (17 px); on a desktop as a card's at the point (15 px)
-  box.innerHTML = `<div class="card-float"><div class="pl-way card"><div class="way-hint"><b>A</b></div></div></div>`;
-  const pop = document.body.appendChild(document.createElement('div'));
-  pop.className = 'maplibregl-popup polku-popup';
-  pop.innerHTML = '<div class="maplibregl-popup-content"><div class="insp"><div class="insp-title">A trail</div></div></div>';
-  const step = way.querySelector('.way-hint b'), title = cs(pop.querySelector('.insp-title')).fontSize, tw = desk ? cs(box.querySelector('b')).fontSize : step && cs(step).fontSize;
-  if (title !== tw) out.push(`the map's card's title ${title}, not ${tw}`);
-  pop.remove(); box.remove();
+  box.remove();
   // one stepper: − 30 min + in one box, the number typable
   way.querySelector('.rt-chips [data-k=len-other]').click(); await wait(500);
   const st = document.querySelector('.pl-way .rt-step'), len = st && st.querySelector('.rt-len'), parts = st ? [st.querySelector('[data-k=dec]'), st.querySelector('input'), st.querySelector('[data-k=inc]')] : [];
@@ -15493,6 +15486,32 @@ def pick_card(chrome):
             legend = sum(metres(v) for _, v in r['legend'])
             if len(r['legend']) < 2 or len(r['fills']) < 2 or abs(legend - total) > max(25, total * 0.03):
                 fails.append(f"Rauhaniemenreitti by Way type: legend {r['legend']} ({legend:.0f} m of {total:.0f} m), the profile in {len(r['fills'])} colours")
+        # road works (#564, #565): a click opens the same card as a way, not the old popup, the works ringed on the map, and dates
+        # outside this year with their year
+        y = pg.js('new Date().getFullYear()')
+        ll = [23.8159, 61.5107]
+        # (set again until it's drawn: the live road works may draw their own over it as the map moves)
+        pg.js(f"""(async () => {{ polku.planner.cards.close(); polku.map.jumpTo({{ center: {json.dumps(ll)}, zoom: 16.5 }});
+          await new Promise((r) => polku.map.once('idle', () => setTimeout(r, 400)));
+          polku.map.setLayoutProperty('sf-points', 'visibility', 'visible');
+          const q = polku.map.project({json.dumps(ll)}), t0 = Date.now();
+          while (Date.now() - t0 < 15000 && !polku.map.queryRenderedFeatures([[q.x - 6, q.y - 6], [q.x + 6, q.y + 6]], {{ layers: ['sf-points'] }}).some((f) => f.properties.title === 'Tie 45')) {{
+            polku.safety.app.setData('sfPoints', {{ type: 'FeatureCollection', features: [{{ type: 'Feature', geometry: {{ type: 'Point', coordinates: {json.dumps(ll)} }},
+              properties: {{ kind: 'roadwork', icon: 'sf-roadwork', title: 'Tie 45', where: 'Kumpulantie to Hämeentie', start: '{y - 1}-12-15T00:00:00Z', end: '{y + 1}-09-30T20:59:00Z' }} }}] }});
+            await new Promise((r) => setTimeout(r, 500));
+          }}
+          return true; }})()""", timeout=30000)
+        s = pg.js(f"(() => {{ const q = polku.map.project({json.dumps(ll)}), r = polku.map.getCanvas().getBoundingClientRect(); return {{ x: r.left + q.x, y: r.top + q.y }}; }})()")
+        for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': s['x'], 'y': s['y'], 'button': 'none' if kind == 'mouseMoved' else 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+        time.sleep(1)
+        r = pg.js("""(() => { const c = polku.planner.cards.current, box = document.querySelector('.pl-way.card');
+          return { kind: c && c.kind, title: box && box.querySelector('.way-hint b').textContent, rows: box ? [...box.querySelectorAll('.insp-row')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent]) : [],
+            old: !!document.querySelector('.maplibregl-popup .insp'), ring: polku.map.querySourceFeatures('pickRing').length, foot: box ? [...box.querySelectorAll('.card-foot .btn')].map((b) => b.textContent.trim()) : [] }; })()""")
+        rows = dict(r['rows'])
+        if r['kind'] != 'thing' or r['title'] != 'Road works' or r['old'] or not r['ring'] or str(y - 1) not in rows.get('From', '') or str(y + 1) not in rows.get('Until', '') or 'Fintraffic traffic situation' not in r['foot']:
+            fails.append(f"road works: {r['kind']} card “{r['title']}”, the old popup {r['old']}, ringed {r['ring']}, From “{rows.get('From')}”, Until “{rows.get('Until')}”, the last row {r['foot']} (the card, with the years {y - 1} and {y + 1})")
+        pg.js("polku.planner.cards.close(); polku.map.setLayoutProperty('sf-points', 'visibility', 'none'); true")
         # the desktop's hover (#574): resting on a way says what its card would, and draws it plainly; away, it goes
         pg.js("polku.planner.cards.close(); true")
         at = pg.js("""(async () => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 7956116), f = w[4], i = Math.floor(f.length / 4) * 2, ll = [f[i], f[i + 1]];
@@ -15616,7 +15635,7 @@ GROUPS = [
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap opens it in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
-    ('pickcard', [pick_card], 'a pick (#574): a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
+    ('pickcard', [pick_card], 'a pick (#574): road works on the same card with their years (#564, #565), the line at the spot on a phone, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
     ('spotcard', [spot_card, spot_card_foot], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'What\'s here in levels and Not right? (25d part 6a): a way\'s facts for your sport first and a missing one said so, All OpenStreetMap details once a card (a failure, a late answer), Copy, Not right?, a place\'s facts, a path\'s card with the planner put away, a ship\'s own card (a recorded tile, mocked Overpass)'),

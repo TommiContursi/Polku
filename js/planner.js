@@ -24,7 +24,7 @@ import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt, kee
 import { describe } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard, pickLine } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard, pickLine, thingCard } from './cards.js';
 import { pickData } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -3701,6 +3701,30 @@ export class Planner {
     this.app.setData('pick', d.pick);
     this.app.setData('pickSide', d.side);
     this.app.setData('pickArea', d.area);
+    this.app.setData('pickRing', EMPTY);
+  }
+  // The map's other things (#564): their card, the thing highlighted (a line in amber, an area's outline, a ring at a point)
+  openThing(f, ll) {
+    this.hideLine();
+    this.openCard(thingCard(this, f, ll), ll);
+    this.drawThing(f);
+  }
+  drawThing(f) {
+    const g = f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
+    const line = g && /LineString/.test(g.type), area = g && /Polygon/.test(g.type) && f.layer.id !== 'water';
+    this.app.setData('pick', line ? fc(g, { color: '#f59e0b' }) : EMPTY);
+    this.app.setData('pickSide', EMPTY);
+    this.app.setData('pickArea', area ? fc(g) : EMPTY);
+    this.app.setData('pickRing', g && !line && !area ? fc({ type: 'Point', coordinates: g.type === 'Point' ? g.coordinates : this.cards.current.key }) : EMPTY);
+  }
+  // Paddle from here, on the water's card: a new route over the water from the spot
+  paddleFrom(ll) {
+    this.cards.close();
+    this.setActive(true, { edit: true });
+    this.setMode('water');
+    this.clear();
+    this.addPoint(ll);
+    toast('Now click where you want to go');
   }
   // A desktop's hover (#574): the way under the pointer drawn plainly, while no pick of its own is shown
   hoverPick(coords) {
