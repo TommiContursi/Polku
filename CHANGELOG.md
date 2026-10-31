@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-31
+
+### The stretch you pick stands out on the map ([#83](https://github.com/TommiContursi/Polku/issues/83))
+
+- The leg or stretch you open or point at in the planner, and a climb or an item of Check you pick, is now drawn over the route, wider, with a dark edge (a white one on the aerial photos and the night map), and the rest of the route fades while it's lit. You can see at once where it starts and ends. It keeps its leg's colour, blue on the water, and the arrows still show the way.
+
 ## 2026-10-30
 
 ### Choices in Layers and Settings fade to their new look ([#540](https://github.com/TommiContursi/Polku/issues/540))
