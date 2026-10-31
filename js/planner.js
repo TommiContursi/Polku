@@ -1404,8 +1404,7 @@ export class Planner {
     this.legs.forEach((leg, i) => {
       const from = this.points[i], to = this.points[i + 1];
       const loading = !leg.result || leg.status === 'waiting';
-      // while dragging, a route that's a moment behind the pointer, joined to it
-      const coords = loading ? (leg.preview ? [from, ...leg.preview, to] : [from, to]) : leg.result.coords;
+      const coords = this.legLine(i);
       const mode = drawnMode(leg);
       features.push({ type: 'Feature', properties: { leg: i, mode, loading, kind: 'leg' }, geometry: { type: 'LineString', coordinates: coords } });
       // a point the route couldn't reach (too far from a path to snap): a thin dashed line to it
@@ -4482,7 +4481,13 @@ export class Planner {
     this.litSpan = { from: s.from, to: s.to };
   }
   stretchCoords(s) {
-    return this.legs.slice(s.from, s.to).flatMap((l, k) => { const c = l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]; return k ? c.slice(1) : c; });
+    return this.legs.slice(s.from, s.to).flatMap((l, k) => { const c = this.legLine(s.from + k); return k ? c.slice(1) : c; });
+  }
+  // leg i's line as the map draws it: while it's worked out, straight, or (while dragging) a route a moment behind the
+  // pointer, joined to it
+  legLine(i) {
+    const leg = this.legs[i], from = this.points[i], to = this.points[i + 1];
+    return !leg.result || leg.status === 'waiting' ? (leg.preview ? [from, ...leg.preview, to] : [from, to]) : leg.result.coords;
   }
   // back to the open leg (if one is open), else nothing lit
   unlitLeg() { this.litLeg(null); }

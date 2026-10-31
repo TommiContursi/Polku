@@ -12153,20 +12153,27 @@ def route_card(chrome):
             # the mouse over the line lights the leg under it, as a click does; a late source doesn't take it away; off the
             # line, or off the map, nothing is (#83)
             mouse = lambda at: (pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'], 'y': at['y'], 'button': 'none'}, pg.s), time.sleep(0.3))
+            # (what's lit, once it is: a frame can take a second on GitHub's runner)
+            lit_as = lambda want, span: pg.js(f"(async () => {{ let r; for (let k = 0; k < 30; k++) {{ r = ({RC_LIT}){span}; if (r === {json.dumps(want)}) break; await new Promise((x) => setTimeout(x, 100)); }} return r; }})()")
             lit = []
             for li, stretch in ((0, '(0, 1)'), (1, '(1, 2)')):
                 u = on_line(pg, li, 0.5)
                 mouse(u)
-                lit.append(pg.js(f"({RC_LIT}){stretch}"))
+                lit.append(lit_as('that stretch', stretch))
             pg.js("polku.planner.renderWarnings(); true")  # a source answering late draws the list again: the leg stays lit
             lit.append(pg.js(f"({RC_LIT})(1, 2)"))
+            # while it's worked out again with a route a moment behind (a drag's preview), the lit leg is that line too
+            lit.append(pg.js("""(() => { const p = polku.planner, m = polku.map, L = p.legs[1], r = L.result; L.result = null; L.preview = r.coords.slice(1, -1); p.drawRoute();
+              const drawn = m.getSource('route').serialize().data.features.find((f) => f.properties.leg === 1 && f.properties.kind === 'leg'), f = m.getSource('routeLit').serialize().data.features[0];
+              const lit = !f ? 'nothing' : JSON.stringify(f.geometry.coordinates) === JSON.stringify(drawn.geometry.coordinates) ? 'that stretch' : 'another line';
+              L.result = r; L.preview = null; p.drawRoute(); return lit; })()"""))
             mouse({'x': u['x'], 'y': u['y'] - 60})
-            lit.append(pg.js(f"({RC_LIT})(1, 2)"))
+            lit.append(lit_as('nothing', '(1, 2)'))
             mouse(u)
             mouse({'x': 150, 'y': 450})  # onto the planner, beside the map
-            lit.append(pg.js(f"({RC_LIT})(1, 2)"))
-            if lit != ['that stretch', 'that stretch', 'that stretch', 'nothing', 'nothing']:
-                fails.append(f"{name}: the mouse over the first leg, the second, the list drawn again, off the line and off the map lit {lit} (#83)")
+            lit.append(lit_as('nothing', '(1, 2)'))
+            if lit != ['that stretch', 'that stretch', 'that stretch', 'that stretch', 'nothing', 'nothing']:
+                fails.append(f"{name}: the mouse over the first leg, the second, the list drawn again, a preview, off the line and off the map lit {lit} (#83)")
             # the mouse resting on a stretch in the list while its end moves: the lit stretch is its new line, while the
             # route is worked out and once it's in (#83)
             r = pg.js("(() => { const b = document.querySelector('.wpl-stretch[data-from=\"1\"]'); b.scrollIntoView({ block: 'center' }); const r = b.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()")
