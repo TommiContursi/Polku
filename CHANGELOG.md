@@ -4,6 +4,21 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### The desktop's top bar and toolbar keep their places ([#594](https://github.com/TommiContursi/Polku/issues/594), [#595](https://github.com/TommiContursi/Polku/issues/595))
+
+- On a desktop, **Settings** (⚙) is at the top right of the window, over the panel it opens. The logo, the search and the sport stay at the top left.
+- On the desktop toolbar, **Done** is now its first button, at the planner's end, where it stays as the drawing tools and the route's actions come and go. In the route's view **Edit** is in the same place.
+- The toolbar is rounded at both ends and floats 12 px from the planner, beside a side panel and above a panel at the bottom, instead of ending square against a planner that may be shorter.
+- When the toolbar is short of room, the drawing modes you aren't using show only their icons, and their tooltips say the names, before any of the route's actions goes into **⋯**. A laptop-sized window shows more of those actions than before, and a big screen shows every name.
+
+### Clear route is one click in the route's view ([#594](https://github.com/TommiContursi/Polku/issues/594))
+
+- On a desktop, in the route's view, **Clear route** is a button on the toolbar next to **⋯**. A note still offers **Undo**, which brings the route back for you to edit.
+- On a phone, **Clear route** is the first item in **⋯**.
+
+### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))
+
+- Beside a desktop's side panel, "1 to read before you go" now appears under the route's numbers, so they stay where they are when it comes. On a phone's peek and in a panel at the bottom, which grow up from their foot, it stays above them. At half and full height it still moves the numbers.
 ### Clearer terrain maps, aerial photos and depths ([#649](https://github.com/TommiContursi/Polku/issues/649), [#650](https://github.com/TommiContursi/Polku/issues/650), [#653](https://github.com/TommiContursi/Polku/issues/653))
 
 - **Maastokartta** and **MML WMTS** keep a more detailed terrain map when you zoom out, including their overlay versions. Aerial photos and the depth and road layers use sharper images on high-density screens, with the depth and road symbols kept at a readable size.
