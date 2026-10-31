@@ -111,7 +111,7 @@ const joinKey = (w) => (w.rel ? `r:${w.rel}` : w.tags.name ? `n:${w.tags.name}` 
 const turn = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
 const sameRef = (a, b) => !(a.tags.ref && b.tags.ref && a.tags.ref !== b.tags.ref);
 
-/** { chain: [{ w, rev }], stops: { start, end: { why, at } } }: `why` is end, junction, loop or long. */
+/** { chain: [{ w, rev }], stops: { start, end: { why, at } } }: `why` is end, junction, loop or long (joinWay() adds `unloaded`). */
 export function walk(seed) {
   const key = joinKey(seed), used = new Set([seed]), stops = {};
   const chain = [{ w: seed, rev: false }];
@@ -178,6 +178,8 @@ export async function joinWay(seed) {
     await Promise.all(out.map((s) => loadWays(wayTile(s.at)).catch(() => null)));
     j = walk(seed);
   }
+  // (an end in a tile that didn't load: the way may go on, and the card says so)
+  for (const s of Object.values(j.stops)) s.unloaded = s.why === 'end' && !waysLoaded(s.at);
   return { chain: oriented(j.chain), side: otherSide(seed, j.chain), stops: j.stops };
 }
 

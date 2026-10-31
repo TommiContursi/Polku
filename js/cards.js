@@ -728,7 +728,7 @@ function pickBody(pl, card, body) {
     if (a) body.append(profileOf(a, modeOf(a), spot.ll), ...colourBy(pl, pick));
     else if (pick.a === 'failed') body.append(failed('The terrain didn’t load: no profile or grades yet. ', pick.again));
     const stops = Object.values(w.stops);
-    if (stops.some((s) => s.why === 'end')) body.append(failed('It goes on beyond what’s loaded.'));
+    if (stops.some((s) => s.unloaded)) body.append(failed('It may go on: the ways beyond didn’t load.'));
     if (stops.some((s) => s.why === 'long')) body.append(failed('It goes on for more than 25 km: the card stops there.'));
   } else if (w === undefined) body.append(failed('Asking OpenStreetMap for the way.'));
   else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again));
