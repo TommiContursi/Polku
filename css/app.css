@@ -2047,11 +2047,6 @@ body.dropping .drop-hint { display: flex; }
   body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers and Done) */
   .wx-bar.docked { width: auto; }
   .orbit { width: 62px; height: 62px; }
-  /* above the planner's sheet, under the top bar; with too little room there it covers the sheet in its
-     place, and the top bar's menus still open over it (placePanels() in js/main.js, #240) */
-  .panel { left: 12px; right: 12px; top: auto; bottom: calc(12px + var(--sheet-h)); width: auto; max-height: min(62vh, calc(100% - 76px - var(--sheet-h))); }
-  body.panels-over .panel { left: 8px; right: 8px; bottom: 8px; max-height: calc(100% - 72px); z-index: 7; }
-  body.panels-over .topbar { z-index: 8; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
   /* the header's controls are 44 px to touch: Done, and the time that opens the departure */
@@ -2104,6 +2099,26 @@ body.dropping .drop-hint { display: flex; }
   #layers-panel::before { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 240px; background: var(--surface-solid); }
   #layers-panel.dragging, .qd.dragging { user-select: none; }
   #layers-panel .panel-head { padding-top: 2px; }
+  /* Settings is a drawer too (#634): up from the bottom as the quick drawer comes, as tall as it holds up to the top bar,
+     down by a swipe (js/sheet.js), ✕ or a tap on the map, the way it came; from the keyboard, in and out at once (.instant) */
+  #settings-panel {
+    z-index: 12; left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: calc(100% - 64px);
+    padding-bottom: env(safe-area-inset-bottom, 0px); border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2), var(--edge);
+    transition: transform 260ms var(--ease-drawer), display 180ms allow-discrete;
+  }
+  @starting-style { #settings-panel:not([hidden]) { opacity: 1; transform: translateY(100%); } }
+  #settings-panel[hidden] { transform: translateY(100%); transition: transform 180ms var(--ease-drawer), display 180ms allow-discrete; }
+  #settings-panel.instant, #settings-panel.dragging { transition: none; }
+  #settings-panel::before { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 240px; background: var(--surface-solid); }
+  #settings-panel > .qd-grab { display: block; }
+  #settings-panel .panel-head { padding-top: 2px; }
+  #settings-panel.dragging { user-select: none; }
+}
+@media (max-width: 720px) and (prefers-reduced-motion: reduce) {
+  #settings-panel, #settings-panel[hidden] { transition: opacity 150ms ease, display 150ms allow-discrete; }
+  @starting-style { #settings-panel:not([hidden]) { opacity: 0; transform: none; } }
+  #settings-panel[hidden] { opacity: 0; transform: none; }
+  #settings-panel.instant, #settings-panel.dragging { transition: none; }
 }
 /* short phones (phase 24): under 760 px high the maps, tiles and headings come closer, so the map you're
    changing stays in view (58 % of a 360 × 740 screen, 62 % of a 375 × 667 one) */

@@ -259,7 +259,7 @@ The weights are `--weight-regular` (400), `--weight-name` (600) and `--weight-st
 The map is fixed behind everything (`#map`, inset 0). Over it:
 - **The top bar** sits 12 px from the top and left edges, up to 730 px wide.
 - **The map's buttons** stand at the right edge.
-- **The planner** is a side panel on a desktop and a sheet from the bottom on a phone, with a peek, a middle and a full height. The layer drawer is a card beside the Layers button on a desktop, a sheet on a phone.
+- **The planner** is a side panel on a desktop and a sheet from the bottom on a phone, with a peek, a middle and a full height. The layer drawer is a card beside the Layers button on a desktop, a sheet on a phone; Settings is a panel under ⚙ on a desktop and a sheet like the drawer on a phone.
 
 The switch is at **720 px**: up to 720 px wide is the phone layout, 721 px and up the desktop one; there's a wider step at 900 px, and short screens (under 500 px or 760 px high) get a more compact sheet. Touch is decided by the pointer, not the width: `pointer: coarse` grows targets to 44 px, and hover styles apply only where `hover: hover`.
 
