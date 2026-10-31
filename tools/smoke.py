@@ -13876,6 +13876,7 @@ def spot_card_foot(chrome):
             pg.js(RC_ROUTER)
             pg.js(SC_HELP)
             pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")
+            pg.js('sc.places(false)')  # (a spot is never a place's, whatever the tiles have under it)
             pg.js(f"({RC_ROUTE})({json.dumps({'mode': 'line', 'pts': [[23.8, 61.512], [23.815, 61.5155], [23.83, 61.513]]})})", timeout=60000)
             for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true })"),
                              ('a place', f"polku.planner.openPlaceCard({{ layer: {{ id: 'poi-minor' }}, properties: {{ class: 'toilets', name: {json.dumps(name_)} }}, geometry: {{ type: 'Point', coordinates: polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]).toArray() }} }}, [23.82, 61.516])")):
