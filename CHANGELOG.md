@@ -4,9 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
-### The stretch under the pointer lights up, and follows the route ([#83](https://github.com/TommiContursi/Polku/issues/83))
+### The leg under the pointer lights up, and follows the route ([#83](https://github.com/TommiContursi/Polku/issues/83))
 
-- On a desktop, pointing at your route on the map now lights the stretch under the pointer, as far as the points you see at each end, so you can tell which part a click would open. Off the route, or off the map, it goes again.
+- On a desktop, pointing at your route on the map now lights the leg under the pointer, between the two numbered points around it. Off the route, or off the map, it goes again.
+- A tap or click on the route lights that leg too, while its card is open, and no longer the whole stretch to the next point where something changes. **This stretch** and **Edit this stretch** still light the whole stretch they change.
 - A lit stretch now follows the route as it changes: when you move a point while it's lit, it shows the new line while the route is worked out and once it's in, not the line it had before.
 
 ### The stretch you pick stands out on the map ([#83](https://github.com/TommiContursi/Polku/issues/83))

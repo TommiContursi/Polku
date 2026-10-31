@@ -2808,8 +2808,8 @@ export class Planner {
     const view = this.inView();
     this.map.getCanvas().style.cursor = hit ? (view ? 'pointer' : 'grab') : (view ? '' : 'crosshair'); // the line can be dragged (not in the route's view)
     if (!hit) { this.mapUnhover(); return; }
-    // the stretch under the pointer lit, as a click opens its card (#83)
-    const s = this.stretchAt(over.properties.leg), l = this.litSpan;
+    // the leg under the pointer lit, as a click lights it (#83)
+    const li = over.properties.leg, s = { from: li, to: li + 1 }, l = this.litSpan;
     if (!l || l.from !== s.from || l.to !== s.to) this.lightStretchHover(s);
     const p = [e.lngLat.lng, e.lngLat.lat];
     const k = Math.cos((p[1] * Math.PI) / 180);
@@ -2896,7 +2896,7 @@ export class Planner {
     }
     this.litRows();
     // an open leg stays lit (on a phone that's how a leg shows itself); otherwise nothing is
-    if (!box.matches(':hover')) this.unlitLeg();
+    if (!box.matches(':hover') && !this.mapHover) this.unlitLeg(); // (not the leg under the pointer on the map)
   }
 
   // The open card's row in Route's list, lit: a point's own row, or the stretch's it folds into; a stretch's cards
@@ -4230,7 +4230,7 @@ export class Planner {
         for (const r of this.els.warnings.querySelectorAll('[data-key]')) { if (r.dataset.key === key) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
         if (!key && this.itemLit) this.unlightItem();
         // a stretch's cards (the route's, the stretch's, Edit this stretch and its steps): the stretch lit, end to end (1b)
-        this.lightStretch(card && card.kind !== 'item' ? card.stretch || card.s || null : null);
+        this.lightStretch(card && card.kind !== 'item' ? card.lit || card.stretch || card.s || null : null);
         if (key !== this.headsOpen) { this.headsOpen = key; this.drawHeads(); } // (the open one ringed, Worth a look's shown)
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.renderFold();
