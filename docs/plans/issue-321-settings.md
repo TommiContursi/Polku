@@ -68,9 +68,10 @@ Most used first, the technical ones near the end, and About last, where every se
 routes (#157) and help (#114, #189) stay in their own work; Settings may link to them. Search (#333) comes
 last, once these names settle.
 
-**Planned settings ship as rows that say Coming** (the user's idea, 2026-10-31): the setting's name and what
-it will do, and no control, so nothing looks like it works and doesn't. Each issue then turns its row into the
-real control. The mock-up's Planned switch shows both.
+**Planned settings ship greyed, marked Coming** (the user's choice, 2026-10-31): the control as it will be,
+disabled and grey the way the app greys a switch it can't use now (`.onmap .tg.off`, `.seg button:disabled`),
+with a Coming tag beside its name so a screen reader says why. Each issue then makes its control work. The
+mock-up's Planned switch shows them greyed or as they'll work.
 
 ## Two layouts
 

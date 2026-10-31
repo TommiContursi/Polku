@@ -53,10 +53,10 @@ body.page { margin: 0; padding: 24px 16px 60px; font: 14px/1.45 system-ui, -appl
 /* the mock-up's own marks */
 .plan-tag { display: inline-block; width: fit-content; align-self: flex-start; margin-left: 6px; padding: 0 6px; border: 1px dashed currentColor; border-radius: 999px; font-size: 10.5px; font-weight: 600; line-height: 16px; color: var(--muted); vertical-align: 1px; }
 body.no-planned .planned { display: none !important; }
-body.pl-coming .pl-ctl, body:not(.pl-coming) .pl-row { display: none; }
-.pl-row { display: flex; align-items: center; gap: 10px; min-height: var(--target, 40px); padding: 6px 0; }
-.pl-row .tg-text { flex: 1; color: var(--muted); }
-.soon { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+body.pl-coming .plan-tag .t-n, body:not(.pl-coming) .plan-tag .t-soon { display: none; }
+/* greyed as the app greys a switch it can't use now (.onmap .tg.off, .seg button:disabled) */
+body.pl-coming .planned, body.pl-coming .planned :is(small, .tg-text) { color: var(--muted); }
+body.pl-coming .planned :is(.tg-ui, .btn) { opacity: .5; cursor: not-allowed; }
 body:not(.pl-coming) .planned { opacity: .8; }
 .moved { box-shadow: inset 3px 0 0 #d9a520; padding-left: 6px; margin-left: -6px; border-radius: 2px; }
 body.no-marks .moved { box-shadow: none; padding-left: 0; margin-left: 0; }
@@ -284,7 +284,7 @@ button { font: inherit; color: inherit; }
   <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/321">#321</a>. Polku's preferences in one place, in the order people come for them. The plan and the decisions: <a href="../issue-321-settings.md">issue-321-settings.md</a>.</p>
   <div class="bar"><span>Version</span><div class="sw" data-sw="v"><button data-val="today">Today</button><button data-val="a">A: one list</button><button data-val="b">B: folding groups</button></div></div>
   <div class="bar"><span>Look</span><div class="sw" data-sw="theme"><button data-val="light">Light</button><button data-val="dark">Dark</button></div>
-    <span>Planned</span><div class="sw" data-sw="planned"><button data-val="coming">As “Coming” rows</button><button data-val="show">As they'll work</button><button data-val="hide">Hide</button></div>
+    <span>Planned</span><div class="sw" data-sw="planned"><button data-val="coming">Grey, Coming</button><button data-val="show">As they'll work</button><button data-val="hide">Hide</button></div>
     <span>Moved here</span><div class="sw" data-sw="marks"><button data-val="show">Mark</button><button data-val="hide">Don't</button></div></div>
   <div class="why" id="why"></div>
   <div class="frames">
@@ -310,9 +310,9 @@ const EYE_OFF = '<path d="M3 3l18 18"/><path d="M10.6 5.1Q11.3 5 12 5c5 0 9 4.5 
 let uid = 0;
 const tg = (label, line, on = false, cls = '', tag = '') => { const id = `m-${++uid}`; return `<label class="tg ${cls}" for="${id}"><span class="tg-text">${label}${tag}<small>${line}</small></span><input type="checkbox" id="${id}" role="switch"${on ? ' checked' : ''}><span class="tg-ui" aria-hidden="true"></span></label>`; };
 const seg = (opts, on, label) => `<div class="seg small full" role="group" aria-label="${label}">${opts.map((o) => `<button type="button" aria-pressed="${o === on}">${o}</button>`).join('')}</div>`;
-const planned = (n) => `<span class="plan-tag">planned #${n}</span>`;
-// a planned setting: its control as it would work, or the quiet row the app could show until it's built
-const soon = (name, line, n, ctl) => `<div class="planned"><div class="pl-ctl">${ctl}</div><div class="pl-row"><span class="tg-text">${name}<small>${line}</small></span><span class="soon">Coming</span></div></div>`;
+const planned = (n) => `<span class="plan-tag"><span class="t-soon">Coming</span><span class="t-n">planned #${n}</span></span>`;
+// a planned setting: its control as it will work, or greyed and disabled with Coming until it's built (the user's choice, 2026-10-31)
+const soon = (name, line, n, ctl) => `<div class="planned">${ctl}</div>`;
 
 // the parts of today's panel that move as they are
 function parts() {
@@ -439,9 +439,10 @@ function render() {
   document.documentElement.dataset.theme = st.theme;
   document.body.classList.toggle('no-planned', st.planned === 'hide');
   document.body.classList.toggle('pl-coming', st.planned === 'coming');
+  setTimeout(() => document.querySelectorAll('.planned :is(input, button)').forEach((el) => { el.disabled = st.planned === 'coming'; }));
   document.body.classList.toggle('no-marks', st.marks === 'hide');
   for (const sw of document.querySelectorAll('.sw')) for (const b of sw.children) b.setAttribute('aria-pressed', String(st[sw.dataset.sw] === b.dataset.val));
-  $('#why').innerHTML = WHY[st.v] + (st.v !== 'today' ? '<p><span class="mk-key"></span>Moved here from elsewhere in Polku. Planned settings show as the app could ship them now, a quiet row saying Coming, or as they\'ll work, with their issue.</p>' : '');
+  $('#why').innerHTML = WHY[st.v] + (st.v !== 'today' ? '<p><span class="mk-key"></span>Moved here from elsewhere in Polku. Planned settings show as the app could ship them now, greyed and disabled with Coming, or as they\'ll work, with their issue.</p>' : '');
   for (const [id, desk] of [['f-phone', false], ['f-desk', true]]) { const f = $(`#${id}`); f.querySelector('.panel')?.remove(); f.append(panel(st.v, desk)); }
   history.replaceState(null, '', `?${new URLSearchParams(st)}`);
 }
