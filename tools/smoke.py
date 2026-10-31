@@ -715,6 +715,9 @@ def trail_card(chrome):
             fails.append(f'{name}: no trail from the recorded tile on the screen')
         else:
             pg.quick_tap(*at)  # (a tap by the touch's own times: pg.tap() on a busy page can be a hold, and the spot's menu)
+            line = pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const b = document.querySelector('.pick-line'), r = b && b.getBoundingClientRect(); r || Date.now() - t0 > 5000 ? ok(r && [r.left + r.width / 2, r.top + r.height / 2]) : setTimeout(go, 100); }; go(); })")
+            if line:
+                pg.quick_tap(*line)  # (the line at the spot first, its card from a tap on it: #574)
             r = pg.js(f"({CARD_FIT})('.sheet .pl-way.card', true)")  # (the way's card on the planner's card, 25d part 6, in the sheet: #570)
             fails += [f'{name}: {e}' for e in r['errs']]
             if w == 390 and not r.get('shown'):
@@ -11486,8 +11489,8 @@ def route_view(chrome):
     # (where it is once the sheet has come to its size: ✕ measured while the planner came back after the note's Open had
     # something over it; settle=False for the note, which goes in 6 s)
     at = lambda pg, sel, settle=True: (settle and pg.js(SETTLED), pg.js(f"({TB_AT})({sel})"))[1]
-    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: ['spot', 'place', 'lipas', 'thing'].includes(p.cards.current && p.cards.current.kind), card: p.cards.current ? p.cards.current.kind : '', pill: !!document.querySelector('.card-pill, .pl-way.card .btn.primary.big') }; })()")
-    shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
+    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: ['spot', 'place', 'lipas', 'thing'].includes(p.cards.current && p.cards.current.kind) || !!p.picked, card: p.cards.current ? p.cards.current.kind : '', pill: !!document.querySelector('.card-pill, .pl-way.card .btn.primary.big') }; })()")
+    shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); polku.planner.hideLine(); return true; })()")
 
     def ready(pg, name):
         if not pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000):
@@ -13878,7 +13881,7 @@ def spot_card_foot(chrome):
             pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")
             pg.js('sc.places(false)')  # (a spot is never a place's, whatever the tiles have under it)
             pg.js(f"({RC_ROUTE})({json.dumps({'mode': 'line', 'pts': [[23.8, 61.512], [23.815, 61.5155], [23.83, 61.513]]})})", timeout=60000)
-            for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true })"),
+            for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true }); if (polku.planner.picked) polku.planner.openLine()"),
                              ('a place', f"polku.planner.openPlaceCard({{ layer: {{ id: 'poi-minor' }}, properties: {{ class: 'toilets', name: {json.dumps(name_)} }}, geometry: {{ type: 'Point', coordinates: polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]).toArray() }} }}, [23.82, 61.516])")):
                 pg.js(f"{js}; new Promise((r) => setTimeout(() => r(true), 1500))")
                 pg.js('sc.calm()')

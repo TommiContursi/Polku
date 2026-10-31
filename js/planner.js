@@ -3740,6 +3740,10 @@ export class Planner {
     this.lineMk = new maplibregl.Marker({ element: this.line.el, anchor: 'bottom', offset: [0, -22] }).setLngLat(card.spot.ll).addTo(this.map);
     this.linePin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(card.spot.ll).addTo(this.map);
     this.drawPick(card.pick);
+    // over the map's buttons where it meets them (a phone at 200 %): they step aside while it shows, as a card's do (#435)
+    const b = this.line.el.getBoundingClientRect(), col = document.getElementById('map-ctrls').getBoundingClientRect();
+    this.lineOver = b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
+    if (this.lineOver) document.body.classList.add('card-over');
   }
   renderLine() { if (this.line) this.line.update(); }
   // keep: its card is opening, so the pick stays
@@ -3749,6 +3753,7 @@ export class Planner {
     this.picked = this.line = null;
     this.lineMk.remove();
     this.linePin.remove();
+    if (this.lineOver) { this.lineOver = false; document.body.classList.remove('card-over'); }
     if (!keep) c.gone();
     return true;
   }
