@@ -81,5 +81,5 @@ first time, which PRODUCT.md's "no more taps" rule weighs against A's scrolling;
 
 One PR for #321: `renderSettingsPanel()` in `js/main.js` regrouped, the moves above (Check's On the map in
 `js/planner.js` waits until #603 is merged, since it changes that file), `docs/USING.md`, the CHANGELOG and
-smoke checks in the `settings` group. B adds no new motion: the folding is Layers' own. The planned settings
+smoke checks in the groups the moves touch (`panels`, `marks`, `heads`, `quick`, `appearance`). B adds no new motion: the folding is Layers' own. The planned settings
 then land one issue at a time, each in its group.
