@@ -309,7 +309,7 @@ export function buildStyle(s, ctx) {
     // no access in winter: red and white, like a closed ski base
     add({ id: 'winter-closed', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('closed'), layout: { 'line-join': 'round' }, paint: { 'line-color': '#dc2626', 'line-width': W } });
     add({ id: 'winter-closed-dash', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('closed'), layout: { 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(11, 1, 14, 2, 18, 3.5), 'line-dasharray': ['literal', [1, 1]] } });
-    // ski tracks from OSM: the double line in pink (LIPAS's in its own magenta)
+    // ski tracks from OSM: the double line in pink (LIPAS's in its own blue-violet)
     add({ id: 'winter-ski', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('ski'), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#f472b6', 'line-width': zi(11, 2.4, 14, 4.4, 18, 7) } });
     add({ id: 'winter-ski-gap', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('ski'), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(11, 0.8, 14, 1.6, 18, 2.6) } });
   }
@@ -495,11 +495,15 @@ export function buildStyle(s, ctx) {
   const routeGlowColor = ['case', ['==', ['get', 'mode'], 'water'], ROUTE_COLORS.water, ROUTE_COLORS.route];
   const legColor = ['case', ['==', ['get', 'mode'], 'water'], ROUTE_COLORS.water, ['==', ['get', 'mode'], 'line'], ROUTE_COLORS.line, ROUTE_COLORS.route];
   const dim = routeDim((ctx.data.routeLit || EMPTY).features.length > 0);
+  // an edge that stands out on the map: dark on the light maps, white on the night map and the aerial photos. A leg over water has it
+  // too on the light maps, where its white one is lost on the sea's pale blue (#611); a leg over land keeps the white one
+  const darkMap = aerialBase || s.base === 'night';
+  const edge = darkMap ? '#ffffff' : '#111827';
   const glowable = ['all', ['!=', ['get', 'kind'], 'gap'], ['!', ['boolean', ['get', 'loading'], false]]];
   add({ id: 'route-glow', type: 'line', source: 'route', filter: glowable, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': routeGlowColor, 'line-width': zi(8, 12, 16, 26), 'line-blur': zi(8, 5, 16, 11), 'line-opacity': dim['route-glow'], 'line-opacity-transition': { duration: 0, delay: 0 } } });
   // fades in and out in 150 ms (a hover, often seen: short and soft)
   add({ id: 'route-glow-hover', type: 'line', source: 'route', filter: glowable, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': routeGlowColor, 'line-width': zi(8, 16, 16, 34), 'line-blur': zi(8, 6, 16, 13), 'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.55, 0], 'line-opacity-transition': { duration: 150, delay: 0 } } });
-  add({ id: 'route-casing', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'gap'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': dim['route-casing'], 'line-opacity-transition': { duration: 0, delay: 0 } } });
+  add({ id: 'route-casing', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'gap'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': darkMap ? '#ffffff' : ['case', ['==', ['get', 'mode'], 'water'], edge, '#ffffff'], 'line-width': zi(8, 5, 16, 11), 'line-opacity': dim['route-casing'], 'line-opacity-transition': { duration: 0, delay: 0 } } });
   add({
     id: 'route-line', type: 'line', source: 'route', filter: ['all', ['!=', ['get', 'kind'], 'portage'], ['!=', ['get', 'kind'], 'gap']],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
@@ -514,12 +518,12 @@ export function buildStyle(s, ctx) {
   // the stretch you pick or point at (a leg, a stretch, a climb, an item of Check; planner.js litLeg): drawn over the
   // route, wider, in its leg's colour, with an edge that stands out on the map, while the rest of the route fades;
   // under the carries' dots and Not checked's dashes, which stay on it
-  add({ id: 'route-lit-casing', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#ffffff' : '#111827', 'line-width': zi(8, 9, 16, 17) } });
+  add({ id: 'route-lit-casing', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': edge, 'line-width': zi(8, 9, 16, 17) } });
   add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': legColor, 'line-width': zi(8, 5, 16, 10) } });
   add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
   // a stretch a source didn't cover (25d part 3): dashed over the line in Not checked's colour
   add({ id: 'route-unchecked', type: 'line', source: 'headsGaps', layout: { 'line-cap': 'butt' }, paint: { 'line-color': WARN_COLORS.unk, 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [1.2, 1.2] } });
-  add({ id: 'route-preview-casing', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#ffffff' : '#111827', 'line-width': zi(8, 9, 16, 15) } });
+  add({ id: 'route-preview-casing', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': edge, 'line-width': zi(8, 9, 16, 15) } });
   add({ id: 'route-preview', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 5, 16, 9) } });
   // static arrows: hidden while the moving chevrons show the way instead (js/routeflow.js, ctx.flowMoving)
   add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['all', ['!', ['get', 'loading']], ['!=', ['get', 'kind'], 'gap']], layout: { visibility: ctx.flowMoving ? 'none' : 'visible', 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
