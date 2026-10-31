@@ -15493,9 +15493,68 @@ def pick_card(chrome):
             legend = sum(metres(v) for _, v in r['legend'])
             if len(r['legend']) < 2 or len(r['fills']) < 2 or abs(legend - total) > max(25, total * 0.03):
                 fails.append(f"Rauhaniemenreitti by Way type: legend {r['legend']} ({legend:.0f} m of {total:.0f} m), the profile in {len(r['fills'])} colours")
+        # the desktop's hover (#574): resting on a way says what its card would, and draws it plainly; away, it goes
+        pg.js("polku.planner.cards.close(); true")
+        at = pg.js("""(async () => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 7956116), f = w[4], i = Math.floor(f.length / 4) * 2, ll = [f[i], f[i + 1]];
+          polku.map.jumpTo({ center: ll, zoom: 16.5 }); await new Promise((r) => polku.map.once('idle', () => setTimeout(r, 400)));
+          const q = polku.map.project(ll), r = polku.map.getCanvas().getBoundingClientRect(); return { x: r.left + q.x, y: r.top + q.y }; })()""")
+        for dx in (12, 6, 0):
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'] + dx, 'y': at['y'], 'button': 'none'}, pg.s)
+            time.sleep(0.05)
+        time.sleep(1.5)
+        h = pg.js("({ tip: !document.querySelector('.hover-tip').hidden && document.querySelector('.hover-tip').textContent, drawn: polku.map.querySourceFeatures('pick').length, capable: matchMedia('(hover: hover) and (pointer: fine)').matches })")
+        if not h['tip'] or not h['tip'].startswith('Hämeenkatu') or not h['drawn']:
+            fails.append(f"the hover on Hämeenkatu: the tooltip “{h['tip']}”, {h['drawn']} lines drawn (its name and line, the way drawn; a hover pointer: {h['capable']})")
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'], 'y': at['y'] + 160, 'button': 'none'}, pg.s)
+        time.sleep(1)
+        if pg.js("polku.map.querySourceFeatures('pick').length"):
+            fails.append('the hover moved off the way: the way still drawn')
         fails += [f'console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
+    pg.close()
+
+    # a phone, browsing (#574): a tap shows the line at the spot, a tap on it the card; a tap elsewhere or Escape takes it away
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': f"{DEM_MOCK.replace(chr(39) + 'fail' + chr(39) + ', asked', chr(39) + 'ok' + chr(39) + ', asked')};{EMPTY_DEPTHS};{WX_FIXED};"}, pg.s)
+        pg.open_app({'activity': 'hike'}, {'polku:winter': '"off"'}, '#16/61.5107/23.8159')
+        pg.js(PICK_SEED)
+        spot = lambda: pg.js("""(async () => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2, ll = [f[i], f[i + 1]];
+          polku.map.jumpTo({ center: ll, zoom: 16.5 }); await new Promise((r) => polku.map.once('idle', () => setTimeout(r, 400)));
+          const q = polku.map.project(ll), r = polku.map.getCanvas().getBoundingClientRect(); return { x: r.left + q.x, y: r.top + q.y }; })()""")
+        line = "(() => { const b = document.querySelector('.pick-line'), r = b && b.getBoundingClientRect(); return { line: b ? [...b.querySelectorAll('b, small')].map((e) => e.textContent) : null, at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height }, card: polku.planner.cards.current && polku.planner.cards.current.kind, drawn: polku.map.querySourceFeatures('pick').length }; })()"
+        s = spot()
+        pg.quick_tap(s['x'], s['y'])
+        for _ in range(40):
+            time.sleep(0.25)
+            r = pg.js(line)
+            if r['line'] and re.search(r'% here', ' '.join(r['line'])):
+                break
+        if not r['line'] or r['card'] or not r['drawn'] or not re.search(r'dirt', ' '.join(r['line']), re.I) or not re.search(r'% here', ' '.join(r['line'])) or r['at']['h'] < 44:
+            fails.append(f"390x844: a tap on the path: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn (its name, how you get along it, the grade here; no card yet; 44 px at least)")
+        else:
+            pg.quick_tap(r['at']['x'], r['at']['y'])
+            time.sleep(1)
+            r = pg.js(line)
+            if r['line'] or r['card'] != 'spot' or not r['drawn']:
+                fails.append(f"390x844: a tap on the line: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn (the card, the pick still drawn)")
+            pg.js('polku.planner.cards.close(); true')
+        s = spot()
+        pg.quick_tap(s['x'], s['y'])
+        for _ in range(20):
+            time.sleep(0.25)
+            before = pg.js(line)
+            if before['line']:
+                break
+        pg.quick_tap(s['x'] + 60, s['y'] + 160)  # (anywhere: with the line showing, a tap only takes it away)
+        time.sleep(1)
+        r = pg.js(line)
+        if not before['line'] or r['line'] or r['card'] or r['drawn']:
+            fails.append(f"390x844: a tap away from the line {before['line']}: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn (all gone)")
+        fails += [f'390x844 console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
+    except Exception as e:
+        fails.append(f"390x844: raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} a pick: its ways joined, the grade and incline for every sport, nothing \"not mapped\" that wasn't loaded, Way type on a trail across kinds" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails

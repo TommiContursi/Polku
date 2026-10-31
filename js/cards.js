@@ -603,13 +603,32 @@ export function pickCard(pl, spot) {
     build: (body) => pickBody(pl, card, body),
     gone: () => { pick.dead = true; pl.drawPick(null); },
   };
-  const changed = () => { if (here()) { pl.drawPick(pick); pl.cards.refresh(); } };
+  // (as a card, or as the line at the spot before it's opened)
+  const changed = () => { const line = pl.picked === card; if (here() || line) pl.drawPick(pick); if (here()) pl.cards.refresh(); if (line) pl.renderLine(); };
   pick.again = () => { pick.ways = pick.a = undefined; pl.cards.refresh(); resolvePick(pick, changed); };
   resolvePick(pick, changed);
   return card;
 }
 const PLAIN = '#374151';
 const markColour = (pick) => (pick.a && pick.a !== 'failed' && (breakdownRows(pick.a, modeOf(pick.a))[0] || [])[2]) || PLAIN;
+// The line at the spot (#574): on a phone, a tap while browsing picks the thing and says what it is above the spot, in rows as
+// the hover does: its name, how you get along it, its height and grade where you tapped, the weather. A tap on it opens the
+// card. `update()` says it again as the pick fills in.
+export function pickLine(card, open) {
+  const el = h('button', { type: 'button', class: 'pick-line', onclick: open });
+  for (const ev of ['mousedown', 'touchstart', 'pointerdown', 'click', 'dblclick']) el.addEventListener(ev, (e) => e.stopPropagation()); // (the map's, not a tap on it)
+  const update = () => {
+    const { pick, spot } = card, a = pick.a && pick.a !== 'failed' ? pick.a : null, w = pick.wx && pick.wx !== 'failed' ? pick.wx : null;
+    const k = a && sampleAt(a, spot.ll), gr = a && !(a.eleGap && a.eleGap[k]) ? Math.round(a.grade[k]) || 0 : null;
+    const rows = [card.sub, gr != null ? `${Math.round(a.ele[k])} m · ${gr >= 0 ? '+' : '−'}${Math.abs(gr)} % here` : null,
+      w ? `Wind ${w.speed.toFixed(0)} m/s from the ${compass(w.dir)} · ${w.temp.toFixed(0)} °C · ${w.precip >= 0.1 ? `${w.temp < 0.5 ? 'snow' : 'rain'} ${w.precip.toFixed(1)} mm/h` : 'dry'}` : null].filter(Boolean);
+    el.setAttribute('aria-label', `${card.title}. ${rows.join('. ')}. Open its card`);
+    el.replaceChildren(h('span', {}, h('b', {}, card.title), ...rows.map((r) => h('small', {}, r))), h('span', { class: 'ic', 'aria-hidden': 'true', html: icon('chevronUp', 18) }));
+  };
+  update();
+  return { el, update };
+}
+
 // facts as rows: the name, its value, and where it changes how much of each
 const factGroup = (title, list) => {
   const kept = list.filter(Boolean);

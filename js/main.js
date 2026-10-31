@@ -34,6 +34,7 @@ import { swipeSheet, SWIPE } from './sheet.js';
 import { renderUsage } from './usage.js';
 import { renderSpeedEditor } from './speeds.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
+import { wayUnder } from './pick.js';
 import { isAerial } from './style.js';
 import { RouteFlow } from './routeflow.js';
 import { openChangelog } from './changelog.js';
@@ -448,13 +449,14 @@ const inspector = initInspector(map, {
     setData('lipasPick', lit);
     planner.cards.current.gone = () => { if (data.lipasPick === lit) setData('lipasPick', { type: 'FeatureCollection', features: [] }); };
   },
-  cardOpen: () => !!planner.cards.current,
-  closeCard: () => planner.cards.close(),
+  cardOpen: () => !!planner.cards.current || !!planner.picked, // (the line at the spot too, #574)
+  closeCard: () => { planner.cards.close(); planner.hideLine(); },
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
+const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => planner.hoverPick(coords),
+  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
@@ -1712,6 +1714,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') {
     if (layersEscape()) return;
     if (planner.cards.escape()) return; // a card: one back (from the first, closed); Move: cancelled
+    if (planner.hideLine()) return; // the line at the spot (#574)
     openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
   }
 });

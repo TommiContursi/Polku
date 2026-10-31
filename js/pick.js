@@ -5,7 +5,7 @@
 
 import { analyse } from './analysis.js';
 import { windAlong, pointForecasts, sampleAt } from './weather.js';
-import { loadWays, nearestWay, joinWay, lineOf, wayTile } from './ways.js';
+import { loadWays, nearestWay, joinWay, lineOf, wayTile, walk, waysLoaded } from './ways.js';
 import { wayTitle, wayLine } from './facts.js';
 import { breakdownRows, colorAt, PICK_GROUPS } from './chart.js';
 import { lipasNear } from './lipas.js';
@@ -58,6 +58,18 @@ export async function loadWeather(pick, changed) {
     a.wind = { ...w, startSec: pick.sec };
   } catch { a.windError = true; }
   changed();
+}
+
+/**
+ * The way under a desktop's pointer, said as its pick would say it (#574: hover and card say the same): { title, line,
+ * coords }, or null where there's none, or while its tile loads (once, as a tap's would; `loaded()` after it has).
+ */
+export function wayUnder(ll, zoom, loaded) {
+  if (!waysLoaded(ll)) { loadWays(wayTile(ll)).then(loaded, () => {}); return null; }
+  const w = nearestWay(ll, 9 * metresPerPixel(ll, zoom));
+  if (!w) return null;
+  const { chain } = walk(w);
+  return { title: wayTitle(chain), line: wayLine(chain), coords: lineOf(chain).coords };
 }
 
 // LIPAS's places within about 100 m, as the rows at the spot (places only; the routes have their own cards)

@@ -1829,6 +1829,17 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-foot .btn { flex: 1 1 auto; justify-content: center; gap: 5px; padding: 0 8px; white-space: nowrap; }
 @container (max-width: 290px) { .card-foot { flex-wrap: wrap; } .card-foot .btn { white-space: normal; } } /* a narrow card or an enlarged text: a button on a line of its own where it must */
 .card .insp-row.miss b { color: var(--muted); font-weight: 500; }
+/* the line at the spot (#574): on a phone, what a tap picked, in the hover's words, as a button above the spot's pin */
+.pick-line { display: flex; align-items: center; gap: 8px; max-width: min(300px, calc(100vw - 24px)); min-height: 44px; padding: 6px 8px 7px 12px; border: 0; border-radius: var(--radius-control);
+  background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font: inherit; text-align: left; cursor: pointer;
+  transform-origin: 50% 100%; transition: opacity var(--t-open) var(--ease-out), transform var(--t-press) var(--ease-out); }
+@starting-style { .pick-line { opacity: 0; transform: scale(0.96); } }
+.pick-line > span:first-child { display: grid; gap: 1px; min-width: 0; }
+.pick-line b { font-size: var(--font-control); font-weight: var(--weight-strong); overflow-wrap: anywhere; }
+.pick-line small { font-size: var(--font-small); color: var(--muted); overflow-wrap: anywhere; }
+.pick-line .ic { flex: none; color: var(--muted); }
+.pick-line:active { transform: scale(0.97); }
+@media (prefers-reduced-motion: reduce) { .pick-line { transition: opacity var(--t-open) linear; } @starting-style { .pick-line { transform: none; } } .pick-line:active { transform: none; } }
 /* a pick's card (#574): the profile coloured as the map, Colour by under it, its facts in groups, what isn't mapped in one quiet line */
 .pick-mark { display: block; width: 22px; height: 6px; border-radius: 3px; background: var(--c, #374151); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0, 0, 0, .25); }
 .pick-prof { position: relative; height: 64px; margin: 2px 0 0; }

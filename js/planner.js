@@ -24,7 +24,7 @@ import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt, kee
 import { describe } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard, pickLine } from './cards.js';
 import { pickData } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -3685,10 +3685,14 @@ export class Planner {
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
     const water = !d && this.map.getLayer('water') && this.map.queryRenderedFeatures(p, { layers: ['water'] }).length;
     const route = feats.find((x) => x.layer.id === 'lipas-route');
-    this.openCard(spotCard(this, { ll, pin, title: d ? text(d.title) : water ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
+    const card = spotCard(this, { ll, pin, title: d ? text(d.title) : water ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       ...wayExtras(way ? way.properties : {}, { winter: winterAt(feats, ll), uphill: feats.find((x) => x.layer.id === 'uphill-line'), bike }),
-      partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch }), ll, from);
+      partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch });
+    // a phone's tap while browsing: the line at the spot first (#574); a hold, a click and the rest: the card
+    if (card.kind === 'spot' && touch && !hold && !pin && from === 'map' && this.cards.where() === 'peek') { this.showLine(card); return; }
+    this.hideLine();
+    this.openCard(card, ll, from);
   }
   // What a tap picked, drawn on the map like a route (#574): its colours along it, a street's other side, an area's outline;
   // nothing drawn with no pick
@@ -3697,6 +3701,37 @@ export class Planner {
     this.app.setData('pick', d.pick);
     this.app.setData('pickSide', d.side);
     this.app.setData('pickArea', d.area);
+  }
+  // A desktop's hover (#574): the way under the pointer drawn plainly, while no pick of its own is shown
+  hoverPick(coords) {
+    if (this.picked || this.cards.current) return;
+    this.app.setData('pick', coords ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: '#374151' }, geometry: { type: 'LineString', coordinates: coords } }] } : EMPTY);
+  }
+  // The line at the spot (#574): a phone's tap while browsing shows what it picked, with a pin at the spot; a tap on the
+  // line opens its card, and a tap elsewhere, Escape or the next pick takes it away
+  showLine(card) {
+    this.hideLine();
+    this.picked = card;
+    this.line = pickLine(card, () => this.openLine());
+    this.lineMk = new maplibregl.Marker({ element: this.line.el, anchor: 'bottom', offset: [0, -22] }).setLngLat(card.spot.ll).addTo(this.map);
+    this.linePin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(card.spot.ll).addTo(this.map);
+    this.drawPick(card.pick);
+  }
+  renderLine() { if (this.line) this.line.update(); }
+  // keep: its card is opening, so the pick stays
+  hideLine({ keep = false } = {}) {
+    const c = this.picked;
+    if (!c) return false;
+    this.picked = this.line = null;
+    this.lineMk.remove();
+    this.linePin.remove();
+    if (!keep) c.gone();
+    return true;
+  }
+  openLine() {
+    const c = this.picked;
+    this.hideLine({ keep: true });
+    this.openCard(c, c.spot.ll);
   }
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
   openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
