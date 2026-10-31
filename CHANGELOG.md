@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-31
 
+### Fewer effects, for a phone or browser that draws Polku slowly ([#632](https://github.com/TommiContursi/Polku/issues/632))
+
+- **Settings → Display → Fewer effects** now works. It turns the see-through glass over the map into solid panels. The glass is the most work for a browser to draw, so panels and the map move more smoothly without it, most of all in a slow browser. The choice stays on this device.
+- When the map or a list keeps moving slowly, Polku offers **Use fewer effects**, once on each device. It never changes the look by itself. It can't tell when a browser is only slow to show the rows of a list as you scroll, so try the switch yourself if that happens.
+
 ### A tap on a way picks the whole way, and its card tells everything known about it ([#574](https://github.com/TommiContursi/Polku/issues/574), [#561](https://github.com/TommiContursi/Polku/issues/561), [#562](https://github.com/TommiContursi/Polku/issues/562))
 
 - A tap or a hold on a street, a trail or a cycleway now picks what a person would call one thing, not a piece of it: the pieces that continue each other join, by the marked route they belong to, or their name, or while their kind stays the same. The pick is drawn on the map like a route, coloured along its length. A long street stops at 25 km, a loop where it began, and unnamed paths at every junction. A cycleway goes on where it goes straight on: past a side street's crossing, over a short crossing mapped as a footway, and into a piece of itself with or without its name, but never into another name or onto a street.
