@@ -314,6 +314,9 @@ const planned = (n) => `<span class="plan-tag"><span class="t-soon">Coming</span
 // a planned setting: its control as it will work, or greyed and disabled with Coming until it's built (the user's choice, 2026-10-31)
 const soon = (name, line, n, ctl) => `<div class="planned">${ctl}</div>`;
 
+// ids go (each panel is drawn twice), and with them each label's for: a label around its input names it anyway
+const unid = (el) => { for (const x of [el, ...el.querySelectorAll('[id], [for]')]) { x.removeAttribute('id'); x.removeAttribute('for'); } };
+
 // the parts of today's panel that move as they are
 function parts() {
   const t = $('#today').content.cloneNode(true);
@@ -322,7 +325,7 @@ function parts() {
   const disp = by('Display');
   const tgs = [...disp.querySelectorAll('.tg')];
   const pick = (re) => tgs.find((l) => re.test(l.textContent));
-  const keep = (el) => { el.removeAttribute('id'); el.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id')); return el.outerHTML; };
+  const keep = (el) => { unid(el); return el.outerHTML; };
   return {
     about: keep(by('About').querySelector('.btn')),
     speeds: by('Your speeds').querySelector('.speed-list'),
@@ -394,7 +397,7 @@ function groups(P, desk) {
 function panel(v, desk) {
   if (v === 'today') {
     const el = $('#today').content.firstElementChild.cloneNode(true);
-    el.removeAttribute('id'); el.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+    unid(el);
     if (!desk) el.querySelector('.lp-sec:nth-child(3)')?.remove(); // (Route planner is a desktop's only)
     return el;
   }
