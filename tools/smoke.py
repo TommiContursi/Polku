@@ -9323,7 +9323,6 @@ FOLD_KINDS = """(async () => {
   // (Route style shows on a stretch that follows paths: its mode set by hand, with no routing)
   p.legs[p.stretchAt(1).from].mode = 'auto';
   await read('estyle', () => { p.openStretchCard(p.stretchAt(1), { edit: true }); out.styleVal = p.cards.box.querySelector('[data-k=style] .val')?.textContent.trim(); row('Route style'); });
-  await read('spothere', () => { p.openSpotCard(spot); row('What'); });
   await read('notright', () => { p.openSpotCard(spot); row('Not right'); });
   await read('place', () => p.openPlaceCard({ properties: { name: 'Pyynikki', class: 'peak', ele: 160 }, layer: { id: 'label-peak' }, geometry: { type: 'Point', coordinates: [23.73, 61.495] } }, [23.73, 61.495]));
   await read('lipas', () => p.openLipasCard({ name: 'Kaupin kuntorata', typeName: 'Kuntorata', city: 'Tampere' }, [23.81, 61.512]));
@@ -9347,7 +9346,6 @@ def fold_kinds(chrome):
             'edit': re.escape(f"Edit this stretch, {r['edit']['sub']}"),
             'esport': r'Sport for this stretch, MTB',
             'estyle': re.escape(f"Route style, {r.get('styleVal')}"),
-            'spothere': r'[^,]+, ' + str(r['spothere']['rows']) + r' details?',
             'notright': r'Not right\?',
             'place': r'Pyynikki, Peak',
             'lipas': r'Kaupin kuntorata, Kuntorata, Tampere',
