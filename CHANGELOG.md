@@ -15,7 +15,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - At 200 % zoom with the planner at full, a finger on the route's numbers scrolls it too, and ⌄ stays in reach above the toolbox when it's scrolled ([#597](https://github.com/TommiContursi/Polku/issues/597), [#598](https://github.com/TommiContursi/Polku/issues/598)).
 - With a mouse or a trackpad, **⌃** sits beside **⌄**, and each moves the planner one size: in a narrow window, and with the planner at the bottom of a wide one. ⌄ from the peek folds it to its line. By touch, ⌄ still folds it at once.
 - Before you have a route, the ways to begin don't move up when you drag them: they spring back at once.
-- A card, such as a point's, opens no taller than the planner's peek, so more of the map stays in sight. A swipe up, on the card itself too, takes it to half, and another to its whole height, full at most. At half and full the card scrolls first, and from its top a swipe down lowers it. A card shorter than the planner's peek opens at its own height and stays so.
+- A card, such as a point's, opens no taller than the planner's peek, so more of the map stays in sight, but always with its name and numbers. A swipe up, on the card itself too, takes it to half, and another to its whole height, full at most. At half and full the card scrolls first, and from its top a swipe down lowers it. A scrolled card stays under your finger as you drag it, and back at its peek or its line it's at its top again. A card shorter than the planner's peek opens at its own height and stays so.
 
 ### Choices in Layers and Settings fade to their new look ([#540](https://github.com/TommiContursi/Polku/issues/540))
 

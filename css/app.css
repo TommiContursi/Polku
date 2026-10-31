@@ -1728,11 +1728,12 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .card-peek .card { max-height: 52dvh; touch-action: pan-y; padding-bottom: 6px; }
 /* in the sheet, the card's peek is its top, no taller than the planner's peek (--card-peek, planner.js, #603), with its own
    6 px under it (none of the header's); a finger on it moves the sheet rather than scrolling it there (a wheel and the keyboard
-   still do: js/sheet.js), and while it's dragged it's as tall as it is, so the sheet never shows empty under it */
+   still do: js/sheet.js), and while it's dragged it shows itself from where it's scrolled to its end (--card-drag,
+   planner.js), so the sheet never shows empty under it and its content doesn't move */
 .sheet.carded .card-peek .card { max-height: var(--card-peek, calc(52dvh - 8px)); }
 .sheet.carded > .sheet-head { padding-bottom: 0; }
 .sheet.carded[data-state="peek"] .card-peek .card { touch-action: pan-x; }
-.sheet.carded.dragging .card-peek .card { max-height: none; }
+.sheet.carded.dragging .card-peek .card { max-height: none; height: var(--card-drag, auto); }
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
 /* the card has the whole sheet (step 3 of #233): the planner's profile, tabs and list wait behind it; swiped up, the sheet
    is half and full, each as tall as the card at most (--card-half, --card-full, planner.js), and the card scrolls inside it */

@@ -4906,6 +4906,14 @@ export class Planner {
     // (folded, the toolbox is the mode, undo and redo; what comes back when it opens isn't new, so it doesn't fade in)
     if ((st === 'folded') !== (was === 'folded')) { this.toolsShown = null; this.renderTools(); }
     this.scrollAll();
+    // a card at its peek or line is at its top, its name and numbers in sight (a finger there moves the sheet, so it couldn't
+    // scroll it back); as the planner's numbers do (scrollAll()), it fades in there, but not from the keyboard. A swipe has
+    // already scrolled it back
+    const c = p.classList.contains('carded') && this.cards.box;
+    if (c && c.scrollTop > 0 && !['half', 'full'].includes(st)) {
+      c.scrollTop = 0;
+      if (!instant) c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: token('--t-open'), easing: cssVar('--ease-out') });
+    }
     this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
     // its sizes measured for this size first, so it moves there once (not to one measured at the last size, then on)
     this.stopSheet();
@@ -5050,6 +5058,7 @@ export class Planner {
     if (name === 'closed') this.foldAway();
     else if (name) this.setSheetState(name);
     p.style.height = '';
+    p.style.removeProperty('--card-drag');
     void p.offsetHeight;
     p.classList.remove('dragging');
     this.restingSheet = false;
@@ -5092,12 +5101,13 @@ export class Planner {
       if (readRow) rr.hidden = true;
       let h = this.peekBare + (this.panel.dataset.state === 'peek' ? take : shown && this.peekDocks ? this.dockTake || 0 : 0);
       // a card's peek is no taller than the planner's own with a route, nor than 52 % of the window: the rest of it is a swipe
-      // up, at half (#603). Before the planner has had one, it's the card's name and numbers, as the planner's is its route's
-      // (not a share of the screen, which text outgrows at 200 %). A card that fits in less is as tall as it is
+      // up, at half (#603). It always has the card's name and numbers, as the planner's has its route's: where the planner's
+      // is shorter (no key facts' line yet), and before the planner has had a route (not a share of the screen, which text
+      // outgrows at 200 %). A card that fits in less is as tall as it is
       if (c) {
         const end = c.querySelector(':scope > .sheet-sum') || c.querySelector(':scope > .way-head');
         const named = end.getBoundingClientRect().bottom - c.getBoundingClientRect().top + c.scrollTop + parseFloat(getComputedStyle(c).paddingBottom);
-        const room = Math.floor(Math.min(dvh() * 0.52 - 8, this.planPeek ? this.planPeek - h : named)), card = Math.min(c.scrollHeight, room);
+        const room = Math.floor(Math.min(dvh() * 0.52 - 8, Math.max(named, (this.planPeek || 0) - h))), card = Math.min(c.scrollHeight, room);
         this.panel.style.setProperty('--card-peek', `${room}px`);
         this.peekBare += card;
         h += card;
@@ -5168,7 +5178,8 @@ export class Planner {
     };
     const unmark = () => marks.classList.remove('on');
     // let go towards the peek or the line with the sheet scrolled as one: its content goes back to its top with the spring,
-    // so it lands there and nothing jumps at rest (scrollAll())
+    // so it lands there and nothing jumps at rest (scrollAll()). A scrolled card does too, and at half and full as far as it
+    // scrolls there (to its top where it fits whole)
     let unscroll = null;
     this.sheetSwipe = swipeSheet(this.panel, {
       enabled: () => this.active && this.layout() === 'sheet',
@@ -5182,6 +5193,10 @@ export class Planner {
         sizes();
         const full = dvh() - 76, now = this.shownHeight(), from = this.panel.dataset.state;
         this.stopSheet(); // (caught mid-move: the finger takes it from where it is)
+        // dragged, a card shows itself from where it's scrolled to its end: never the sheet empty under it, and its content
+        // stays where it was, under the finger (grown whole, a scrolled card jumped to its top; css/app.css)
+        const c = this.panel.classList.contains('carded') && this.cards.box;
+        if (c) this.panel.style.setProperty('--card-drag', `${c.offsetHeight + c.scrollHeight - c.clientHeight - c.scrollTop}px`);
         this.panel.classList.add('dragging');
         this.panel.style.height = `${full}px`;
         const up = this.stops();
@@ -5206,7 +5221,7 @@ export class Planner {
       // the line and what it folds cross-fade as the sheet passes between them, so nothing jumps at rest
       moved: (v, ride) => {
         if (ride.to && marks.classList.contains('on')) markTo(ride.to);
-        if (unscroll) { const d = unscroll.v0 - unscroll.to; this.panel.scrollTop = unscroll.S * (Math.abs(d) < 1 ? 0 : Math.max(0, Math.min(1, (v - unscroll.to) / d))); }
+        if (unscroll) { const u = unscroll, d = u.v0 - u.to; u.el.scrollTop = u.T + (u.S - u.T) * (Math.abs(d) < 1 ? 0 : Math.max(0, Math.min(1, (v - u.to) / d))); }
         if (!this.foldable()) return;
         const top = px('--peek-h'), line = px('--fold-h'), f = Math.max(0, Math.min(1, (top - v) / Math.max(1, top - line)));
         this.els.fold.style.opacity = f;
@@ -5214,8 +5229,10 @@ export class Planner {
       },
       aim: (name, ride) => {
         unmark();
-        const p = this.panel, to = ride.sizes.find((z) => z.name === name);
-        unscroll = p.classList.contains('scroll-all') && p.scrollTop > 0 && to && !['half', 'full'].includes(name) ? { S: p.scrollTop, v0: ride.v, to: to.at } : null;
+        const p = this.panel, to = ride.sizes.find((z) => z.name === name), open = ['half', 'full'].includes(name), c = p.classList.contains('carded') && this.cards.box;
+        // (a card scrolls at most its whole height, from its top in the sheet, less the stop's)
+        const el = c || p, S = el.scrollTop, T = c && open && to ? Math.min(S, Math.max(0, c.getBoundingClientRect().top - p.getBoundingClientRect().top + c.scrollHeight - to.at)) : 0;
+        unscroll = to && S > T && (c || (p.classList.contains('scroll-all') && !open)) ? { el, S, T, v0: ride.v, to: to.at } : null;
       },
       end: (name) => { unscroll = null; this.restSheet(name); },
       cancel: () => { unscroll = null; unmark(); this.restSheet(null); },
