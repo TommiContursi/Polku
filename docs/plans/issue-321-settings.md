@@ -45,29 +45,39 @@ Settings holds how Polku behaves. The map's choices stay in Layers, and the rout
 ## The groups, in order
 
 1. **Your sports:** each sport's speeds and its five Layers tiles.
-2. **Display:** Appearance, High contrast; planned: larger text (#325), colours for colour blindness (#324),
-   less motion (#327), fewer effects (#330).
-3. **Your route on the map:** moving arrows, distance marks, arrival and elapsed times; planned: trails show
+2. **Display:** Appearance, High contrast; planned: text and buttons as Smaller, Standard or Larger (#325;
+   Smaller is new, for a denser desktop), colours for colour blindness (#324), less motion (#327), fewer
+   effects (#330).
+3. **Language and units:** planned: language, Automatic (the device's), English, Suomi or Svenska (#184), and
+   units (#326).
+4. **Your route on the map:** moving arrows, distance marks, arrival and elapsed times; planned: trails show
    through the route (#199).
-4. **Map and planner:** 3D height, details on hover, trackpad, the planner's place on a desktop; planned: turning
-   the map with two fingers (#328), units (#326), when Polku opens (#329), keeping the screen on (#331).
-5. **Hidden in Check:** each hidden kind with Show again (#143).
-6. **Offline maps:** as today.
-7. **On this device:** what Polku keeps here, Clear recent searches; planned: export and import (#282), reset
+5. **Map and planner:** 3D height, details on hover, trackpad, the planner's place on a desktop; planned: turning
+   the map with two fingers (#328), when Polku opens (#329), keeping the screen on (#331).
+6. **Hidden in Check:** each hidden kind with Show again (#143).
+7. **Offline maps:** as today.
+8. **On this device:** what Polku keeps here, Clear recent searches; planned: export and import (#282), reset
    settings (#332).
-8. **Data sources:** the services' use, then the routing server and the MML key.
-9. **About Polku:** What's new; planned: how to use, credits and licence (#321).
+9. **Strava and Garmin:** planned (#188): connect each, optional, with what it's for. Not a button of its own
+   beside ⚙: it's set up once, and the top bar has no room on a phone. Where they're used (send a route to
+   Garmin in Go › Take it along, your Strava history in Layers) gets its own entry when it's built.
+10. **Data sources:** the services' use, then the routing server and the MML key.
+11. **About Polku:** What's new; planned: how to use, credits and licence (#321).
 
-Most used first, the technical ones near the end, and About last, where every settings screen keeps it.
-Languages (#184), saved routes (#157) and help (#114, #189) stay in their own work; Settings may link to them.
-Search (#333) comes last, once these names settle.
+Most used first, the technical ones near the end, and About last, where every settings screen keeps it. Saved
+routes (#157) and help (#114, #189) stay in their own work; Settings may link to them. Search (#333) comes
+last, once these names settle.
+
+**Planned settings ship as rows that say Coming** (the user's idea, 2026-10-31): the setting's name and what
+it will do, and no control, so nothing looks like it works and doesn't. Each issue then turns its row into the
+real control. The mock-up's Planned switch shows both.
 
 ## Two layouts
 
 - **A: one list.** Today's single scroll with these groups. Nothing folds, so nothing takes a tap more than
   today. It grows to about 3,400 px with every planned setting.
-- **B: folding groups (recommended).** The same groups as Layers' folding groups (`.lg-group`, the same
-  control). Settings opens on the list of nine names, which fits one phone screen, and each group stays open
+- **B: folding groups (chosen).** The same groups as Layers' folding groups (`.lg-group`, the same
+  control). Settings opens on the list of eleven names, which fits one phone screen, and each group stays open
   or folded as you leave it. Every setting is then one tap away the first time, where today it's a scroll.
 
 B is recommended because the list only grows, and Layers already teaches the control. It costs one tap the

@@ -14,7 +14,7 @@
   panels, so A and B use the shared controls as they are: .lp-sec, .lg-group, .tg, .seg, .chip, .row, .btn.
   Settings that aren't built yet are marked "planned" with their issue.
 
-  ?v=today|a|b  &theme=light|dark  &planned=show|hide
+  ?v=today|a|b  &theme=light|dark  &planned=coming|show|hide  &marks=show|hide
 -->
 <style>
 /* ======================================================= the page (mock-up chrome, not the design) */
@@ -53,7 +53,11 @@ body.page { margin: 0; padding: 24px 16px 60px; font: 14px/1.45 system-ui, -appl
 /* the mock-up's own marks */
 .plan-tag { display: inline-block; width: fit-content; align-self: flex-start; margin-left: 6px; padding: 0 6px; border: 1px dashed currentColor; border-radius: 999px; font-size: 10.5px; font-weight: 600; line-height: 16px; color: var(--muted); vertical-align: 1px; }
 body.no-planned .planned { display: none !important; }
-.planned { opacity: .8; }
+body.pl-coming .pl-ctl, body:not(.pl-coming) .pl-row { display: none; }
+.pl-row { display: flex; align-items: center; gap: 10px; min-height: var(--target, 40px); padding: 6px 0; }
+.pl-row .tg-text { flex: 1; color: var(--muted); }
+.soon { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+body:not(.pl-coming) .planned { opacity: .8; }
 .moved { box-shadow: inset 3px 0 0 #d9a520; padding-left: 6px; margin-left: -6px; border-radius: 2px; }
 body.no-marks .moved { box-shadow: none; padding-left: 0; margin-left: 0; }
 .mk-key { display: inline-block; width: 10px; height: 10px; margin-right: 4px; background: #d9a520; border-radius: 2px; }
@@ -280,7 +284,7 @@ button { font: inherit; color: inherit; }
   <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/321">#321</a>. Polku's preferences in one place, in the order people come for them. The plan and the decisions: <a href="../issue-321-settings.md">issue-321-settings.md</a>.</p>
   <div class="bar"><span>Version</span><div class="sw" data-sw="v"><button data-val="today">Today</button><button data-val="a">A: one list</button><button data-val="b">B: folding groups</button></div></div>
   <div class="bar"><span>Look</span><div class="sw" data-sw="theme"><button data-val="light">Light</button><button data-val="dark">Dark</button></div>
-    <span>Planned</span><div class="sw" data-sw="planned"><button data-val="show">Show</button><button data-val="hide">Hide</button></div>
+    <span>Planned</span><div class="sw" data-sw="planned"><button data-val="coming">As “Coming” rows</button><button data-val="show">As they'll work</button><button data-val="hide">Hide</button></div>
     <span>Moved here</span><div class="sw" data-sw="marks"><button data-val="show">Mark</button><button data-val="hide">Don't</button></div></div>
   <div class="why" id="why"></div>
   <div class="frames">
@@ -297,8 +301,8 @@ button { font: inherit; color: inherit; }
 <script>
 const WHY = {
   today: '<p><b>Today</b> (main at 349971f). About Polku comes first, and on a phone Display starts a screen and a half down. Distance marks, 3D height and hidden Heads-up are elsewhere, and twelve planned settings have no place yet.</p>',
-  a: '<p><b>A: one list.</b> Today\'s single scroll, regrouped in nine groups, the ones people use most first and About last. Nothing folds, so nothing takes a tap more than today; it\'s long, about 3,000 px with every planned setting.</p>',
-  b: '<p><b>B: folding groups (recommended).</b> The same nine groups, folded like Layers\' groups, with the same control. Settings opens on its list of groups, short enough for one phone screen, and each group stays open or folded as you leave it. Every setting is a tap away, and none is further down than the ninth row.</p>',
+  a: '<p><b>A: one list.</b> Today\'s single scroll, regrouped in eleven groups, the ones people use most first and About last. Nothing folds, so nothing takes a tap more than today; it\'s long, about 3,000 px with every planned setting.</p>',
+  b: '<p><b>B: folding groups (chosen 2026-10-31).</b> Eleven groups, folded like Layers\' groups, with the same control. Settings opens on its list of groups, short enough for one phone screen, and each group stays open or folded as you leave it. Every setting is a tap away, and none is further down than the eleventh row.</p>',
 };
 const $ = (s, el = document) => el.querySelector(s);
 const ic = (d, s = 20) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -307,6 +311,8 @@ let uid = 0;
 const tg = (label, line, on = false, cls = '', tag = '') => { const id = `m-${++uid}`; return `<label class="tg ${cls}" for="${id}"><span class="tg-text">${label}${tag}<small>${line}</small></span><input type="checkbox" id="${id}" role="switch"${on ? ' checked' : ''}><span class="tg-ui" aria-hidden="true"></span></label>`; };
 const seg = (opts, on, label) => `<div class="seg small full" role="group" aria-label="${label}">${opts.map((o) => `<button type="button" aria-pressed="${o === on}">${o}</button>`).join('')}</div>`;
 const planned = (n) => `<span class="plan-tag">planned #${n}</span>`;
+// a planned setting: its control as it would work, or the quiet row the app could show until it's built
+const soon = (name, line, n, ctl) => `<div class="planned"><div class="pl-ctl">${ctl}</div><div class="pl-row"><span class="tg-text">${name}<small>${line}</small></span><span class="soon">Coming</span></div></div>`;
 
 // the parts of today's panel that move as they are
 function parts() {
@@ -343,37 +349,45 @@ function groups(P, desk) {
   return [
     { id: 'sports', title: 'Your sports', html: speeds.outerHTML +
       `<p class="note">Each sport's speeds time your route, and so decide the weather you meet on the way. Its five tiles are the ones Layers shows for it. Kept on this device only.</p>` },
-    { id: 'display', title: 'Display', html: P.appearance + P.contrast +
-      `<div class="planned">${tg('Larger text and buttons', 'Bigger words and controls everywhere, the map too', false, '', planned(325))}
-       ${tg('Colours for colour blindness', 'Trail difficulty, the profile and warnings in colours that stay apart', false, '', planned(324))}
-       ${tg('Less motion', 'Panels appear without sliding, the route\'s arrows stand still. Your device\'s setting turns it on too', false, '', planned(327))}
-       ${tg('Fewer effects', 'No glass or shadows, for slower phones and a little battery', false, '', planned(330))}</div>` },
+    { id: 'display', title: 'Display', html: P.appearance +
+      soon('Text and buttons', 'Smaller fits more on a desktop; larger is easier outdoors and with tired eyes. The map\'s words follow', 325, `<div class="tg-text">Text and buttons ${planned(325)}</div>${seg(['Smaller', 'Standard', 'Larger'], 'Standard', 'Text and buttons')}`) +
+      P.contrast +
+      soon('Colours for colour blindness', 'Trail difficulty, the profile and warnings in colours that stay apart', 324, tg('Colours for colour blindness', 'Trail difficulty, the profile and warnings in colours that stay apart', false, '', planned(324))) +
+      soon('Less motion', 'Panels appear without sliding, the route\'s arrows stand still', 327, tg('Less motion', 'Panels appear without sliding, the route\'s arrows stand still. Your device\'s setting turns it on too', false, '', planned(327))) +
+      soon('Fewer effects', 'No glass or shadows, for slower phones and a little battery', 330, tg('Fewer effects', 'No glass or shadows, for slower phones and a little battery', false, '', planned(330))) },
+    { id: 'lang', title: 'Language and units', html:
+      soon('Language', 'English now; Finnish and Swedish', 184, `<div class="tg-text">Language ${planned(184)}</div>${seg(['Automatic', 'English', 'Suomi', 'Svenska'], 'Automatic', 'Language')}<p class="note">Automatic follows your device's language.</p>`) +
+      soon('Units', 'Kilometres and metres, or miles and feet', 326, `<div class="tg-text">Units ${planned(326)}</div>${seg(['Metric', 'Imperial'], 'Metric', 'Units')}`) },
     { id: 'route', title: 'Your route on the map', html: `<div class="moved">${P.arrows}</div>
        <div class="moved">${tg('Distance marks', 'Every 1, 5, 10 or 25 km along the route, by its length', true)}
        ${tg('Arrival times at marks', 'The clock time you reach each mark', true)}
-       ${tg('Elapsed time at marks', 'Hours, minutes and seconds from departure, including stops and changeovers', true)}</div>
-       <div class="planned">${tg('Trails show through the route', 'The route drawn thinner and beside the trail, so its colours stay visible', false, '', planned(199))}</div>` },
+       ${tg('Elapsed time at marks', 'Hours, minutes and seconds from departure, including stops and changeovers', true)}</div>` +
+      soon('Trails show through the route', 'The route drawn so the trail\'s colours stay visible', 199, tg('Trails show through the route', 'The route drawn thinner and beside the trail, so its colours stay visible', false, '', planned(199))) },
     { id: 'map', title: 'Map and planner', html:
       `<div class="moved"><label class="range"><span>3D height</span><input type="range" min="1" max="3" step="0.1" value="1.4" aria-label="3D height"></label><p class="note">How tall hills stand in 3D. 3D itself is in Layers.</p></div>` +
       P.hover + P.trackpad +
-      `<div class="planned">${tg('Turn the map with two fingers', 'Off keeps north up, so a pinch only zooms', true, '', planned(328))}
-       <div class="tg-text">Units ${planned(326)}</div>${seg(['Metric', 'Imperial'], 'Metric', 'Units')}
-       <div class="tg-text">When Polku opens ${planned(329)}</div>${seg(['Where you left off', 'Where you are', 'All of Finland'], 'Where you left off', 'When Polku opens')}
-       ${tg('Keep the screen on while following', 'Only while Follow me is on; it costs battery', false, '', planned(331))}</div>` +
+      soon('Turn the map with two fingers', 'Off keeps north up, so a pinch only zooms', 328, tg('Turn the map with two fingers', 'Off keeps north up, so a pinch only zooms', true, '', planned(328))) +
+      soon('When Polku opens', 'Where you left off, where you are, or all of Finland', 329, `<div class="tg-text">When Polku opens ${planned(329)}</div>${seg(['Where you left off', 'Where you are', 'All of Finland'], 'Where you left off', 'When Polku opens')}`) +
+      soon('Keep the screen on while following', 'Only while Follow me is on', 331, tg('Keep the screen on while following', 'Only while Follow me is on; it costs battery', false, '', planned(331))) +
       (desk ? `<div class="tg-text">Route planner on a desktop</div>${P.planner.querySelector('.seg').outerHTML}<p class="note">The button beside the planner's fold, and its ⋯ menu, have the same switch.</p>` : '') },
-    { id: 'hidden', title: 'Hidden in Check', count: '2 hidden', html:
+    { id: 'hidden', title: 'Hidden in Check', html:
       `<div class="moved"><div class="hid-row">${ic(EYE_OFF, 18)}<span>Steps</span><button type="button" class="btn">Show again</button></div>
        <div class="hid-row">${ic(EYE_OFF, 18)}<span>Gates and barriers</span><button type="button" class="btn">Show again</button></div></div>
        <p class="note">A Heads-up row's ⋯ hides a kind you don't need. Check lists them at its end too.</p>` },
-    { id: 'offline', title: 'Offline maps', count: '', html: P.offline },
+    { id: 'offline', title: 'Offline maps', html: P.offline },
     { id: 'device', title: 'On this device', html:
       `<p class="note">Polku keeps your route, these settings, offline maps and recent searches here, and nowhere else.</p>
-       <div class="hid-row"><span>Recent searches<small class="note" style="display:block;margin:0">6 places</small></span><button type="button" class="btn">Clear</button></div>
-       <div class="planned"><div class="hid-row"><span>A copy of everything ${planned(282)}</span><button type="button" class="btn">Export</button><button type="button" class="btn">Import</button></div>
-       <div class="hid-row"><span>Settings as they first were ${planned(332)}<small class="note" style="display:block;margin:0">Your route and offline maps stay</small></span><button type="button" class="btn">Reset</button></div></div>` },
+       <div class="hid-row"><span>Recent searches<small class="note" style="display:block;margin:0">6 places</small></span><button type="button" class="btn">Clear</button></div>` +
+      soon('A copy of everything', 'Export and import, to move to another device', 282, `<div class="hid-row"><span>A copy of everything ${planned(282)}</span><button type="button" class="btn">Export</button><button type="button" class="btn">Import</button></div>`) +
+      soon('Reset settings', 'Your route and offline maps stay', 332, `<div class="hid-row"><span>Settings as they first were ${planned(332)}<small class="note" style="display:block;margin:0">Your route and offline maps stay</small></span><button type="button" class="btn">Reset</button></div>`) },
+    { id: 'accounts', title: 'Strava and Garmin', html:
+      `<p class="note">Optional: Polku works without an account. Nothing is sent until you connect one.</p>` +
+      soon('Strava', 'Your past trips as a heatmap, and your real speeds', 188, `<div class="hid-row"><span>Strava ${planned(188)}<small class="note" style="display:block;margin:0">Your past trips as a heatmap, and your real speeds</small></span><button type="button" class="btn">Connect</button></div>`) +
+      soon('Garmin', 'Send a route to your watch or bike computer', 188, `<div class="hid-row"><span>Garmin ${planned(188)}<small class="note" style="display:block;margin:0">Send a route to your watch or bike computer</small></span><button type="button" class="btn">Connect</button></div>`) },
     { id: 'data', title: 'Data sources', html: P.usage + `<p class="sub-h moved">Routing server (optional)</p><div class="moved">${P.router}</div><p class="sub-h moved">MML API key (optional)</p><div class="moved">${P.mml}</div>` },
     { id: 'about', title: 'About Polku', html: P.about +
-      `<div class="planned" style="margin-top:8px"><button type="button" class="btn">How to use Polku</button> <button type="button" class="btn">Credits and licence</button> ${planned(321)}</div>` },
+      soon('How to use Polku', 'The guide, inside the app', 321, `<div style="margin-top:8px"><button type="button" class="btn">How to use Polku</button> ${planned(321)}</div>`) +
+      soon('Credits and licence', 'Where the maps and data come from', 321, `<div style="margin-top:8px"><button type="button" class="btn">Credits and licence</button> ${planned(321)}</div>`) },
   ];
 }
 
@@ -420,13 +434,14 @@ document.addEventListener('click', (e) => {
 });
 
 const q = new URLSearchParams(location.search);
-const st = { v: q.get('v') || 'b', theme: q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), planned: q.get('planned') || 'show', marks: q.get('marks') || 'show' };
+const st = { v: q.get('v') || 'b', theme: q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), planned: q.get('planned') || 'coming', marks: q.get('marks') || 'show' };
 function render() {
   document.documentElement.dataset.theme = st.theme;
   document.body.classList.toggle('no-planned', st.planned === 'hide');
+  document.body.classList.toggle('pl-coming', st.planned === 'coming');
   document.body.classList.toggle('no-marks', st.marks === 'hide');
   for (const sw of document.querySelectorAll('.sw')) for (const b of sw.children) b.setAttribute('aria-pressed', String(st[sw.dataset.sw] === b.dataset.val));
-  $('#why').innerHTML = WHY[st.v] + (st.v !== 'today' ? '<p><span class="mk-key"></span>Moved here from elsewhere in Polku. Dashed tags are settings their issues plan, placed where they\'d go.</p>' : '');
+  $('#why').innerHTML = WHY[st.v] + (st.v !== 'today' ? '<p><span class="mk-key"></span>Moved here from elsewhere in Polku. Planned settings show as the app could ship them now, a quiet row saying Coming, or as they\'ll work, with their issue.</p>' : '');
   for (const [id, desk] of [['f-phone', false], ['f-desk', true]]) { const f = $(`#${id}`); f.querySelector('.panel')?.remove(); f.append(panel(st.v, desk)); }
   history.replaceState(null, '', `?${new URLSearchParams(st)}`);
 }
