@@ -545,8 +545,9 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .tg-text { flex: 1; display: flex; flex-direction: column; }
 .tg-text small { color: var(--muted); font-size: 11px; }
 .lp-sec > .tg-text, .lg-group > .tg-text, .lg-group > .coming > .tg-text, .speed-box > .tg-text { padding: 7px 0 8px; } /* a setting's name over its chips (Appearance) */
-/* a setting its issue hasn't built yet: there, greyed and off, Coming beside its name (Settings, #321) */
-.coming { opacity: .5; }
+/* a setting its issue hasn't built yet: its control greyed and off, its words readable, Coming beside its name (Settings, #321) */
+.coming .tg-ui, .coming > span[aria-hidden]:first-child, .coming .val, .coming .way-chev { opacity: .5; }
+.coming .tg-text, .coming b { color: var(--muted); }
 /* keep the real checkbox inside its row: focusing it must not scroll the page */
 .tg input { position: absolute; right: 0; top: 50%; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .tg-ui { width: 36px; height: 21px; border-radius: 999px; background: var(--line); box-shadow: inset 0 0 0 1.5px var(--muted); position: relative; flex: none; transition: background-color var(--t-press) ease, box-shadow var(--t-press) ease; }

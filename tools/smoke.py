@@ -433,6 +433,8 @@ PANELS_MOTION = """(async (reduced) => {
   if (!got.includes('background-color')) errs.push(`${tag}the ${now.textContent} preset moves ${got}, not its colour`);
   if (document.activeElement !== now) errs.push(`${tag}the focus went to ${document.activeElement.tagName}.${document.activeElement.className}, not the preset it pressed`);
   await wait(300);
+  const display = sb.querySelector('[data-group="settings-display"]');
+  if (!display.open) { click(display.querySelector('summary')); await wait(400); }
   click(sb.querySelector('[data-appearance][aria-pressed="true"]'));
   got = fades(sb.querySelector('.speed-box'));
   if (got !== 'nothing') errs.push(`${tag}Settings drawn again: the open speeds move ${got}`);
@@ -7357,8 +7359,7 @@ def glass_modes(chrome):
         at = pg.js("(() => { const r = document.querySelector('#btn-settings').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
         pg.tap(*at)
         time.sleep(0.6)
-        at = pg.js("(() => { const r = document.querySelector('#settings-body [data-group=\"settings-display\"] > summary').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
-        pg.tap(*at)  # (Display folds, #321)
+        pg.tap(*pg.js("(() => { const r = document.querySelector('#settings-body [data-group=\"settings-display\"] > summary').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))  # (Display folds, #321; it stays open over the reload)
         time.sleep(0.6)
         tap_high_contrast('High contrast on')
         r = look(pg, 'phone, High contrast on in Settings', 'more')
