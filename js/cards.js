@@ -617,6 +617,8 @@ const factGroup = (title, list) => {
 };
 const failed = (text, retry) => h('p', { class: 'pick-fail' }, text, retry ? h('button', { type: 'button', class: 'btn quiet', onclick: retry }, 'Try again') : null);
 
+// the sample of an analysis nearest a spot
+const sampleAt = (a, ll) => a.pts.reduce((b, q, k) => (Math.hypot(q[0] - ll[0], q[1] - ll[1]) < Math.hypot(a.pts[b][0] - ll[0], a.pts[b][1] - ll[1]) ? k : b), 0);
 // the small profile, coloured as the map: the whole pick, a dashed line where you tapped
 function profileOf(a, mode, ll) {
   const W = 300, H = 60, n = a.pts.length, lo = a.minE, hi = Math.max(a.maxE, a.minE + 10), total = a.along[n - 1] || 1;
@@ -632,7 +634,7 @@ function profileOf(a, mode, ll) {
   }
   let ink = '';
   for (let k = 0; k < n; k++) ink += `${k ? 'L' : 'M'}${X(k).toFixed(1)},${Y(k).toFixed(1)} `;
-  const spot = a.pts.reduce((b, q, k) => (Math.hypot(q[0] - ll[0], q[1] - ll[1]) < Math.hypot(a.pts[b][0] - ll[0], a.pts[b][1] - ll[1]) ? k : b), 0), sx = X(spot).toFixed(1);
+  const sx = X(sampleAt(a, ll)).toFixed(1);
   const box = h('div', { class: 'pick-prof', role: 'img', 'aria-label': `Height profile, ${Math.round(a.minE)} to ${Math.round(a.maxE)} m, coloured by ${PICK_MODES[mode].toLowerCase()}` });
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${paths}<path d="${ink}" fill="none" stroke="var(--chart-ink)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`
     + `<line x1="${sx}" x2="${sx}" y1="0" y2="${H}" stroke="var(--chart-ink)" stroke-width="1.5" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/></svg><span class="ax top">${Math.round(a.maxE)} m</span><span class="ax bot">${Math.round(a.minE)} m</span>`;
@@ -656,7 +658,7 @@ function colourBy(pl, pick) {
 // the weather here, at the hour the map's weather shows
 function weatherGroup(pick) {
   const now = Math.abs(pick.sec - Date.now() / 1000) < 1800, title = now ? 'Weather here now' : `Weather here at ${new Date(pick.sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  if (pick.wx === undefined) return factGroup(title, [['Weather', '…']]);
+  if (pick.wx === undefined) return factGroup(title, [['Weather', 'Asking the forecast']]);
   if (pick.wx === 'failed') return [h('h4', { class: 'menu-h' }, title), failed('The forecast didn’t load.')];
   const w = pick.wx;
   return factGroup(title, [['Wind', `${w.speed.toFixed(0)} m/s from the ${compass(w.dir)}`, `Gusts ${w.gust.toFixed(0)} m/s`], ['Rain', w.precip >= 0.1 ? `${w.precip.toFixed(1)} mm an hour${w.temp < 0.5 ? ', snow' : ''}` : 'Dry'],
@@ -684,17 +686,20 @@ function pickBody(pl, card, body) {
     const stops = Object.values(w.stops);
     if (stops.some((s) => s.why === 'end')) body.append(failed('It goes on beyond what’s loaded.'));
     if (stops.some((s) => s.why === 'long')) body.append(failed('It goes on for more than 25 km: the card stops there.'));
-  } else if (w === undefined) body.append(failed('Asking OpenStreetMap for the way…'));
+  } else if (w === undefined) body.append(failed('Asking OpenStreetMap for the way.'));
   else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again));
   else body.append(nums([pick.ele === undefined ? { value: '–', label: 'height here', wait: true } : pick.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(pick.ele)} m`, label: 'height here' }]));
   // what a hold opens it for: your route's actions (in the route's view, the planner's note with Edit)
   if (view) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
   else if (pick.hold) body.append(...yourRoute(pl, spot, { add: true }));
   const g = way ? wayGroups(w.chain, a) : wayGroups([{ w: { tags: spot.tags || {}, len: 1 } }]);
+  // the incline where you tapped, whatever the sport (what the hover says, #561)
+  if (a && !(a.eleGap && a.eleGap[sampleAt(a, spot.ll)])) { const gr = Math.round(a.grade[sampleAt(a, spot.ll)]) || 0; g.diff.unshift(['Grade here', `${gr >= 0 ? '+' : '−'}${Math.abs(gr)} %`, gr >= 0 ? 'uphill, where you tapped' : 'downhill, where you tapped']); }
   body.append(...factGroup('Getting along', g.along), ...factGroup('Surface', g.surface), ...factGroup('Difficulty', g.diff), ...weatherGroup(pick), ...placesGroup(pl, pick));
   if (card.osm && card.osm.rows) body.append(h('h4', { class: 'menu-h' }, 'All OpenStreetMap details'), ...card.osm.rows.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))));
   const miss = way ? unmapped(w.chain) : [];
-  body.append(h('p', { class: 'pick-unmapped' }, h('span', {}, way ? (miss.length ? `Not mapped: ${miss.join(', ')}.` : 'From OpenStreetMap.') : spot.way ? 'From the map’s own tiles.' : 'Nothing is mapped right here.'),
+  // (only what OpenStreetMap's own ways say can be "not mapped": while they load or didn't come, no claim)
+  body.append(h('p', { class: 'pick-unmapped' }, h('span', {}, way ? (miss.length ? `Not mapped: ${miss.join(', ')}.` : 'From OpenStreetMap.') : w === 'none' ? 'Nothing is mapped right here.' : ''),
     h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card }) }, 'Not right?')));
   body.append(pickFoot(pl, card, spot));
 }
