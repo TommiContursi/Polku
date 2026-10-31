@@ -132,7 +132,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 ### Marked routes from LIPAS
 
 - **LIPAS routes** (`js/lipas.js`, `js/search.js`):
-  - **Colours:** `LIPAS_TYPES` in `js/config.js` has them, for the line, its label, a picked or lit route and the map key. None is pink or violet (hue 250°–350°): beside the route's magenta they read as its family, and with a thin line's white edge on the night map all the paler (#560). Smoke's `lipas` group checks the hue.
+  - **Colours:** `LIPAS_TYPES` in `js/config.js` has them, for the line, its label, a picked or lit route, the swatch in the start's list of marked routes and the map key. None is pink or violet (hue 250°–350°): beside the route's magenta they read as its family, and with a thin line's white edge on the night map all the paler (#560). Smoke's `lipas` group checks the hue.
   - **Precision:** geometry comes in EPSG:3067 at full precision and is converted in `js/geo.js`, because LIPAS's EPSG:4326 output is rounded to about 10 m.
   - **One line:** a route's parts are joined at junctions into one line where they can be ridden each once (an Euler path), and ridden as fixed legs, with no routing calls.
   - **Share links** carry those legs as references (`lr=`), not as lines.
