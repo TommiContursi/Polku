@@ -99,7 +99,8 @@ export async function areaAt(ll) {
   const json = areas.get(key) || (held ? (heldFail ? Promise.reject(new Error('Overpass')) : { elements: [] })
     : cachedOverpass(`area/${key}`, `[out:json][timeout:25];is_in(${lat},${lon})->.a;(way(pivot.a)${AREA};rel(pivot.a)${AREA};)->.x;.x out tags bb;.x out skel geom(${box.map((v) => v.toFixed(4)).join(',')});`, (j) => j, { race: true }));
   const els = new Map();
-  for (const e of (await json).elements || []) els.set(`${e.type}/${e.id}`, { ...els.get(`${e.type}/${e.id}`), ...e });
+  // (twice each: its tags with the whole area's bounds, then its outline with only that part's: the first bounds stay)
+  for (const e of (await json).elements || []) els.set(`${e.type}/${e.id}`, { ...e, ...els.get(`${e.type}/${e.id}`) });
   const size = ({ bounds: b }) => (b ? (b.maxlat - b.minlat) * (b.maxlon - b.minlon) : Infinity);
   const best = [...els.values()].filter((e) => e.tags).sort((a, b) => !a.tags.name - !b.tags.name || size(a) - size(b))[0];
   if (!best) return null;
