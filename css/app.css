@@ -2230,6 +2230,8 @@ body.dropping .drop-hint { display: flex; }
 .modebtn .tb-sport { flex: none; }
 .modebtn .tb-style { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .pl-tools:not(.docked):not(.desk) .modebtn .two small { max-width: 7.5em; } /* floating: the style shortens before the toolbox docks */
+/* the planner folded on a phone floats it, as it has no row to dock into: where it's wider than the window (200 %), undo, redo and More go to a row of their own */
+.pl-tools[data-stage="folded"] { flex-wrap: wrap; max-width: calc(100vw - 16px); }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
@@ -2251,9 +2253,6 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594) */
 /* the route's view (25c): Edit, then Clear route kept apart by its line (#594), and More */
 .pl-tools[data-stage="view"] .tb-sep:not([data-group="clear"]) { display: none; }
-/* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo and redo */
-.pl-tools[data-stage="folded"] .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
-.pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child) { display: none; }
 /* where room runs out (planner.js FOLDS): first the three modes' names together (their tooltips say them), then the
    route's actions go into More, then the style's caption, the sport's name, and the style's name shortens */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
