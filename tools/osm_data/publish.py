@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Guarded explicit-FTPS publication; no hosting configuration is uploaded."""
+"""Guarded pinned-host-key SFTP publication; no hosting configuration is uploaded."""
 
 import argparse
+import base64
 from contextlib import contextmanager
 from datetime import datetime, timezone
-import ftplib
+import hmac
 import hashlib
 import io
 import json
@@ -12,7 +13,7 @@ import os
 from pathlib import Path
 import posixpath
 import re
-import ssl
+import paramiko
 import urllib.request
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
@@ -69,32 +70,96 @@ def current(manifest):
 
 
 def settings():
-    values = [os.environ.get('OSM_' + key, '') for key in ('FTP_HOST', 'FTP_USER', 'FTP_PASSWORD', 'FTP_ROOT', 'PUBLIC_URL')]
-    host, user, password, root, url = values
-    require(all(values), 'Missing publication environment variables')
-    require(re.fullmatch(r'[A-Za-z0-9.-]+', host), 'Invalid FTPS hostname')
+    values = [os.environ.get('OSM_' + key, '') for key in ('FTP_HOST', 'FTP_USER', 'FTP_PASSWORD', 'FTP_ROOT', 'PUBLIC_URL', 'SFTP_HOST_KEY_SHA256')]
+    host, user, password, root, url, fingerprint = values
+    require(all(values), 'Missing SFTP publication settings, including OSM_SFTP_HOST_KEY_SHA256')
+    require(re.fullmatch(r'[A-Za-z0-9.-]+', host), 'Invalid SFTP hostname')
+    require(re.fullmatch(r'SHA256:[A-Za-z0-9+/]{43}', fingerprint), 'Invalid pinned SSH host key SHA256 fingerprint')
     require(root.startswith('/') and root.endswith('/polku-osm') and root == posixpath.normpath(root)
             and '\\' not in root and not any(p in {'.', '..'} for p in root.split('/'))
             and not any(ord(c) < 32 or ord(c) == 127 for c in root), 'Unsafe FTP root: require a dedicated /polku-osm directory')
-    return host, user, password, root, public_url(url)
+    return host, user, password, root, public_url(url), fingerprint
+
+
+class SFTPFiles:
+    """Small FTP-like file-operation facade; all transfers are SSH-encrypted."""
+    def __init__(self, transport, sftp):
+        self.transport, self.sftp = transport, sftp
+
+    def cwd(self, path):
+        self.sftp.chdir(path)
+
+    def nlst(self, path='.'):
+        return self.sftp.listdir(path)
+
+    def mkd(self, path):
+        return self.sftp.mkdir(path)
+
+    def size(self, path):
+        return self.sftp.stat(path).st_size
+
+    def storbinary(self, command, body):
+        require(command.startswith('STOR '), 'Invalid upload command')
+        with self.sftp.open(command[5:], 'wb') as output:
+            while chunk := body.read(1024 * 1024):
+                output.write(chunk)
+            output.flush()
+
+    def retrbinary(self, command, callback):
+        require(command.startswith('RETR '), 'Invalid download command')
+        with self.sftp.open(command[5:], 'rb') as source:
+            while chunk := source.read(1024 * 1024):
+                callback(chunk)
+
+    def rename(self, old, new):
+        # Immutable directory moves never overwrite an existing release.
+        return self.sftp.rename(old, new)
+
+    def replace(self, old, new):
+        # POSIX rename-over-existing is mandatory for atomic pointer switching.
+        # Do not delete current.json or fall back to an unsafe SFTP rename.
+        return self.sftp.posix_rename(old, new)
+
+    def close(self):
+        try:
+            self.sftp.close()
+        finally:
+            self.transport.close()
+
+
+def open_sftp(host, user, password, expected_fingerprint):
+    """Verify the server key *before* sending credentials, with no TOFU fallback."""
+    transport = paramiko.Transport((host, 22))
+    try:
+        transport.start_client(timeout=30)
+        key = transport.get_remote_server_key()
+        actual = 'SHA256:' + base64.b64encode(hashlib.sha256(key.asbytes()).digest()).decode('ascii').rstrip('=')
+        require(hmac.compare_digest(actual, expected_fingerprint),
+                'SFTP server host key differs from pinned fingerprint; stop and verify with OVH')
+        transport.auth_password(username=user, password=password)
+        require(transport.is_authenticated(), 'SFTP authentication failed')
+        client = paramiko.SFTPClient.from_transport(transport)
+        require(client is not None, 'SFTP subsystem unavailable')
+        return SFTPFiles(transport, client)
+    except BaseException:
+        transport.close()
+        raise
 
 
 @contextmanager
 def connection(config):
-    host, user, password, root, _ = config
-    ftp = ftplib.FTP_TLS(context=ssl.create_default_context())
+    host, user, password, root, _, fingerprint = config
+    remote = None
     try:
-        ftp.connect(host, 21, timeout=60)
-        ftp.login(user, password)
-        ftp.prot_p()
-        ftp.cwd(root)
-        ftp.voidcmd('TYPE I')
-        yield ftp
+        remote = open_sftp(host, user, password, fingerprint)
+        remote.cwd(root)
+        yield remote
     except Exception as error:
         message = str(error).replace(password, '[redacted]').replace(user, '[redacted]')
         raise RuntimeError(message) from None
     finally:
-        ftp.close()
+        if remote is not None:
+            remote.close()
 
 
 def retrieve(ftp, path):
@@ -188,7 +253,7 @@ def replace_pointer(ftp, raw):
     ftp.storbinary('STOR ' + name, io.BytesIO(raw))
     require(ftp.size(name) == len(raw) and retrieve(ftp, name) == raw, 'Temporary pointer differs')
     # OSM_ALLOW_PUBLISH is set only after the operator verifies atomic overwrite on this host.
-    ftp.rename(name, 'current.json')
+    ftp.replace(name, 'current.json')
 
 
 def promote(ftp, url, manifest, previous, directory, samples, release_raw):
@@ -242,8 +307,8 @@ def publish(directory):
         ftp.storbinary('STOR ' + stage + '/manifest.json', io.BytesIO(raw))
         samples = verify_remote(ftp, stage, manifest, raw)
         ftp.rename(stage, final)
-        probe(config[-1], manifest, raw, samples)
-        promote(ftp, config[-1], manifest, previous, directory, samples, raw)
+        probe(config[-2], manifest, raw, samples)
+        promote(ftp, config[-2], manifest, previous, directory, samples, raw)
 
 
 def rollback(manifest_path):
@@ -258,8 +323,8 @@ def rollback(manifest_path):
         manifest = validate(json.loads(raw))
         require(current(manifest) == target, 'Rollback manifest differs from immutable release')
         samples = verify_remote(ftp, base, manifest, raw)
-        probe(config[-1], manifest, raw, samples)
-        promote(ftp, config[-1], manifest, previous, path.parent, samples, raw)
+        probe(config[-2], manifest, raw, samples)
+        promote(ftp, config[-2], manifest, previous, path.parent, samples, raw)
 
 
 def check(url):
@@ -281,14 +346,14 @@ def verify_access():
     config = settings()
     with connection(config) as ftp:
         ftp.nlst()
-    request = urllib.request.Request(config[-1] + '/current.json', method='HEAD',
+    request = urllib.request.Request(config[-2] + '/current.json', method='HEAD',
                                     headers={'Origin': 'https://polku.si'})
     try:
         response = urllib.request.urlopen(request, timeout=30)
     except HTTPError as error:
         response = error
     with response:
-        return {'ftps_read_access': True, 'public_status': response.status,
+        return {'sftp_read_access': True, 'public_status': response.status,
                 'public_cors': response.headers.get('Access-Control-Allow-Origin') == '*'}
 
 
@@ -307,7 +372,7 @@ def main():
             rollback(args.manifest)
         elif args.command == 'verify-access':
             print(json.dumps(verify_access(), sort_keys=True))
-            print('Only FTPS read access checked; no files written or publication verified.')
+            print('Only pinned-host-key SFTP read access checked; no files written or publication verified.')
             return
         else:
             check(args.url)
