@@ -5566,6 +5566,81 @@ def pacing(chrome):
     return not fails
 
 
+def loading(chrome):
+    """Routing cancellation, service refusal/deadlines, terrain and LIPAS, with controlled answers."""
+    passed = True
+    checks = [('sharedCancellation', ''), ('profileSubscribers', ''), ('routeCacheBound', ''),
+              ('plannerCancellation', ''), ('plannerSharedGeneration', ''),
+              ('alreadyCancelledRequest', ''), ('networkDeadline', ''),
+              ('customRefusal', '403'), ('customRefusal', '429'), ('customRefusal', '500'), ('customRefusal', '503'),
+              ('missingProfile', ''), ('missingProfile', 'true'), ('customRecovery', ''), ('profileQueueBudget', ''), ('routingDeadline', ''), ('routingBodyFallback', ''),
+              ('valhallaDeadline', ''), ('valhallaCancellation', ''),
+              ('terrainPool', ''), ('terrainDeadline', ''), ('terrainPendingCache', ''), ('lipasViewport', ''), ('lipasShared', ''), ('lipasLate', ''),
+              ('overpassValidity', ''), ('overpassValidity', "'shape'"), ('overpassFourth', ''), ('overpassBudget', '')]
+    for name, args in checks:
+        pg = chrome.page(1440, 900)
+        try:
+            pg.goto(BASE + 'sw.js')
+            pg.js("localStorage.clear(); new Promise(ok => { const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/css/app.css'; css.onload = () => ok(true); document.head.append(css); })")
+            result = pg.js(f"import('/tools/loading_checks.js').then(async T => {{ try {{ return {{pass: true, metrics: await T.{name}({args})}}; }} catch(e) {{ return {{pass: false, error: e.message}}; }} }})")
+            errors = pg.errors()
+            if errors:
+                result['pass'] = False
+                result['console'] = errors
+            print(f"{'ok  ' if result['pass'] else 'FAIL'} {name}({args}) {json.dumps(result)}", flush=True)
+            passed &= result['pass']
+        finally:
+            pg.close()
+    return passed
+
+
+def routing_edits(chrome):
+    pg = chrome.page(1440, 900)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
+        pg.open_app({'activity': 'hike', 'timeline': True}, {'polku:brouterUrl': json.dumps('https://own.invalid/brouter'), 'polku:winter': '"off"'})
+        fails = pg.js("""(async () => {
+          const p = polku.planner, real = fetch, asked = [], errs = [];
+          let cancelled = 0;
+          const until = async (fn) => { for (let i = 0; i < 100 && !fn(); i++) await new Promise(ok => setTimeout(ok, 50)); return fn(); };
+          window.fetch = (url, init) => {
+            if (!String(url).startsWith('https://own.invalid/brouter')) return real(url, init);
+            return new Promise((ok, no) => {
+              const e = { done: false, release() { if (this.done) return; this.done = true; ok(Response.json({ features: [{ geometry: { coordinates: new URL(url).searchParams.get('lonlats').split('|').map(q => q.split(',').map(Number)) }, properties: {} }] })); } };
+              asked.push(e);
+              init.signal.addEventListener('abort', () => { if (e.done) return; e.done = true; cancelled++; no(new DOMException('Aborted', 'AbortError')); }, { once: true });
+            });
+          };
+          try {
+            p.setActive(true); p.clear(); p.setMode('auto');
+            p.addPoint([23.750, 61.500]); p.addPoint([23.751, 61.500]);
+            if (!await until(() => asked.length === 1)) return ['the first leg was not requested'];
+            p.addPoint([23.752, 61.500]);
+            if (!await until(() => asked.length === 2)) return ['the changed route was not requested'];
+            if (cancelled !== 1) errs.push('editing left the previous route request running');
+            asked.forEach(e => e.release());
+            const ready = () => !p.panel.classList.contains('busy') && p.legs.every(l => l.status === 'ok' && l.result);
+            if (!await until(ready)) errs.push('the current route did not finish');
+            p.undo();
+            if (!await until(() => p.points.length === 2 && ready())) errs.push('Undo did not restore the two-point route');
+            p.redo();
+            if (!await until(() => p.points.length === 3 && ready())) errs.push('Redo did not restore the current route');
+            if (asked.length !== 2) errs.push(`Undo/Redo sent ${asked.length - 2} extra routing requests`);
+            p.addPoint([23.753, 61.500]);
+            if (!await until(() => asked.length === 3)) return [...errs, 'the final leg was not requested'];
+            p.clear();
+            if (!await until(() => cancelled === 2 && !p.panel.classList.contains('busy'))) errs.push('Clear left a route request or busy state behind');
+            if (p.points.length || (await polku.map.getSource('route').getData()).features.length) errs.push('Clear left an obsolete route on the map');
+          } finally { window.fetch = real; }
+          return errs;
+        })()""", timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} routing through edits, Undo/Redo and Clear (mocked router)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # 23a, which way you face. Headless Chrome has no GPS and no compass, so the page gets its own:
 # fixes handed to the watch, deviceorientationabsolute events. The dot follows the fixes and the
 # map follows the dot; the cone turns with the compass, and with the GPS's course while moving;
@@ -15889,6 +15964,7 @@ GROUPS = [
     ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
+    ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
