@@ -1,9 +1,9 @@
 # Operating Finland's static OSM data
 
 The #154 implementation builds Finland's roads and paths outside the web host
-and serves complete features through a static PMTiles archive. The production
-switch in `js/config.js` is empty until a real publication has passed its checks.
-Merging this implementation does not deploy data, change DNS or change OVH.
+and serves complete features through a static PMTiles archive. The app source
+is selected by `OSM_DATA_MANIFEST` in `js/config.js`. Data publication is separate
+from app activation; changing the app URL does not upload data or change OVH.
 
 See the [dependency inventory](plans/osm-data-inventory.md),
 [architecture decision](plans/issue-154-static-osm.md),
@@ -141,7 +141,7 @@ Staging and orphan releases are retained for inspection, never deleted blindly.
 
 After live publication and browser verification from `https://polku.si`, set
 `OSM_DATA_MANIFEST` in `js/config.js` to the verified absolute `current.json`
-URL in a small activation PR. This initial PR leaves it empty. With a static
+URL in a small activation PR, merged only with owner approval. With a static
 source configured, migrated road/path requests never fall back to public
 Overpass; failure keeps the existing card's unavailable-data message. Other
 Overpass consumers still use their current sources.

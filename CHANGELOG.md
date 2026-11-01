@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-02
+
+### Roads and paths load from Finland's map snapshot ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- Picking a road or path in Finland loads its geometry from a hosted OpenStreetMap snapshot instead of waiting for public Overpass servers. The joining rules and card details stay the same; missing data is still shown as unavailable. Routing, map tiles and other detailed map features keep their existing sources.
+
 ## 2026-11-01
 
 ### A tap on a way picks the whole way, and its card tells everything known about it ([#574](https://github.com/TommiContursi/Polku/issues/574), [#561](https://github.com/TommiContursi/Polku/issues/561), [#562](https://github.com/TommiContursi/Polku/issues/562))

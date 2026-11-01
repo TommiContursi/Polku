@@ -44,11 +44,12 @@ class Preview(SimpleHTTPRequestHandler):
         self.data = path == '/__osm' or path.startswith('/__osm/')
         if path == '/js/config.js':
             source = (Path(self.directory) / 'js/config.js').read_text(encoding='utf-8')
-            marker = "OSM_DATA_MANIFEST = ''"
-            if source.count(marker) != 1:
-                return self.send_error(500, 'Expected one empty OSM_DATA_MANIFEST setting')
             url = f'http://127.0.0.1:{self.server.server_port}/__osm/current.json'
-            body = source.replace(marker, f"OSM_DATA_MANIFEST = '{url}'").encode()
+            source, count = re.subn(r"^export const OSM_DATA_MANIFEST = '[^'\n]*';$",
+                                    f"export const OSM_DATA_MANIFEST = '{url}';", source, flags=re.MULTILINE)
+            if count != 1:
+                return self.send_error(500, 'Expected one OSM_DATA_MANIFEST setting')
+            body = source.encode()
             self.send_response(200)
             self.send_header('Content-Type', 'text/javascript; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))

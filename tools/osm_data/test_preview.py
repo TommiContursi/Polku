@@ -108,6 +108,15 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(headers['Access-Control-Allow-Origin'], '*')
         self.assertIn('Range', headers['Access-Control-Allow-Headers'])
 
+    def test_preview_overrides_an_already_configured_live_source_in_response_only(self):
+        source = self.config.replace("OSM_DATA_MANIFEST = ''", "OSM_DATA_MANIFEST = 'https://ducksoft.fi/polku-osm/current.json'")
+        config = self.repo / 'js/config.js'
+        config.write_text(source)
+        status, headers, body = self.request('/js/config.js')
+        self.assertEqual(status, 200)
+        self.assertIn(f"OSM_DATA_MANIFEST = '{self.base}/__osm/current.json'", body.decode())
+        self.assertEqual(config.read_text(), source)
+
 
 if __name__ == '__main__':
     unittest.main()
