@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-01
 
+### The map stays smooth zoomed far out ([#667](https://github.com/TommiContursi/Polku/issues/667))
+
+- With **Trail details** on, as MTB, Hike and Trail run have them, moving the map while zoomed far out no longer holds it up. At the whole world it took up to half a second on each move and hundreds of megabytes of a phone's memory. The details still show from zoom 13, and winter ways from zoom 11.
+
 ### Less waiting while routes and map data load ([#659](https://github.com/TommiContursi/Polku/issues/659))
 
 - Changing a route stops land-routing requests it no longer needs, while requests still needed by the current route are shared. A busy BRouter is left to recover with Polku's own route profiles too. Polku uploads its route profile again if the server has lost it.
