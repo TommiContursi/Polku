@@ -16552,6 +16552,16 @@ def pick_card(chrome):
 
 
 def osm_data(chrome):
+    import subprocess
+    from pathlib import Path
+    checks = ('test_monitor_runs_without_the_sftp_dependency',
+              'test_monitor_rejects_an_immutable_or_freshly_cached_current_pointer')
+    result = subprocess.run([sys.executable, '-m', 'unittest',
+                             *(f'tools.osm_data.test_publish.PublishTests.{name}' for name in checks)],
+                            cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        print('FAIL osmdata: publishing monitor regressions\n' + result.stderr, flush=True)
+        return False
     failures = []
     for width, height, phone in [(1440, 900, False), (390, 844, True)]:
         pg = chrome.page(width, height, phone)

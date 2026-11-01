@@ -1,6 +1,7 @@
 """Publication boundaries use in-memory SFTP and HTTP; no live credentials."""
 
 import copy
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from email.message import Message
 import ftplib
@@ -221,9 +222,11 @@ class PublishTests(unittest.TestCase):
         self.host = Host()
         self.host.add_release(self.old, current=True)
         self.previous = self.host.files[ROOT + '/current.json']
-        self.enterContext(patch.dict('os.environ', ENV, clear=True))
-        self.enterContext(patch.object(publish, 'open_sftp', self.host.ftp))
-        self.enterContext(patch.object(publish.urllib.request, 'urlopen', self.host.http))
+        patches = ExitStack()
+        self.addCleanup(patches.close)
+        patches.enter_context(patch.dict('os.environ', ENV, clear=True))
+        patches.enter_context(patch.object(publish, 'open_sftp', self.host.ftp))
+        patches.enter_context(patch.object(publish.urllib.request, 'urlopen', self.host.http))
 
     def test_verified_release_switches_pointer_and_saves_previous(self):
         publish.publish(self.release_dir)
