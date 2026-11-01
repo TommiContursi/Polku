@@ -59,9 +59,10 @@ CORS and exposed Range headers, immutable release caching and revalidated
 `current.json`. It is never uploaded by the publisher. PMTiles' internal gzip
 compression stays enabled. Check the actual CDN as well as Apache.
 
-Before enabling publication, verify explicit FTPS on port 21 with validated
-certificates, encrypted data connections, sufficient quota, directory rename
-and atomic rename-over-existing-file. Use disposable files in the dedicated
+Before enabling publication, verify SFTP on port 22 with the OVH server's
+independently authenticated SSH host-key SHA256 fingerprint pinned in GitHub,
+sufficient quota, directory rename, and POSIX atomic rename-over-existing-file.
+Never trust a fingerprint based only on an unauthenticated ssh-keyscan result. Use disposable files in the dedicated
 directory to establish the last capability; a sequential successful rename
 alone does not prove atomicity. The publisher requires the operator's approval
 and never deletes a live pointer to emulate an overwrite.
@@ -72,9 +73,10 @@ environment secrets through GitHub's secret UI, never in source or chat:
 
 | Secret | Value |
 | --- | --- |
-| `OSM_FTP_HOST` | OVH's explicit FTPS hostname |
+| `OSM_FTP_HOST` | OVH's FTP/SFTP hostname (existing secret name retained), without a scheme or port |
 | `OSM_FTP_USER` | The dedicated FTP account |
-| `OSM_FTP_PASSWORD` | Its password |
+| `OSM_FTP_PASSWORD` | Its password (reused for SFTP) |
+| `OSM_SFTP_HOST_KEY_SHA256` | Independently verified SSH host-key fingerprint, `SHA256:...` (not the output of an unverified scan alone) |
 
 Repository variables (the monitor needs the public URL outside the deployment
 environment) are:
@@ -97,9 +99,10 @@ Before merging, an approved first publication can use the same builder and
 `publish.py` locally from this branch, with the protected credentials supplied
 to that process. It still uses verified automated transfers, not manual uploads.
 
-If the deployment environment permits only `main`, merge this preparation PR
-with `OSM_PUBLISH_ENABLED` unset and the app's source setting empty. Then run
-**Finland OSM data → verify-access** first. This protected operation checks FTPS
+If the deployment environment permits only `main`, merge the SFTP fix
+with `OSM_PUBLISH_ENABLED` unset and the app's source setting empty. Add the
+verified `OSM_SFTP_HOST_KEY_SHA256` environment secret. Then run
+**Finland OSM data → verify-access** first. This protected operation checks pinned-host-key SFTP
 login and directory listing, and reports the public manifest's HTTP/CORS status.
 It writes no hosting files and does not prove upload, Range or rename capability.
 The default manual operation is this read-only check; full publication stays gated.
@@ -114,7 +117,7 @@ particular historical snapshot must remain reproducible after that retention.
 
 With publication enabled, the publisher first checks every local file's SHA-256
 and size. It uploads into a unique staging directory, reads every file back
-through encrypted FTP to verify its entire hash, then renames the directory to
+through encrypted SFTP to verify its entire hash, then renames the directory to
 `releases/<release>/`. Release IDs include both source and archive digests, so
 changed extraction code can publish the same upstream snapshot safely.
 
@@ -156,7 +159,7 @@ the implementation does not send email or create a separate notification
 service. Inspect the run summary and uploaded browser evidence.
 
 Run the **rollback** workflow with an existing release ID. It retrieves the
-immutable manifest, verifies the existing files through FTPS and public HTTP,
+immutable manifest, verifies the existing files through SFTP and public HTTP,
 and switches the pointer through the same guarded path. It does not rebuild or
 overwrite release files. The equivalent approved local commands are:
 

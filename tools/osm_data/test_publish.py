@@ -1,4 +1,4 @@
-"""Publication boundaries use in-memory FTPS and HTTP; no live credentials."""
+"""Publication boundaries use in-memory SFTP and HTTP; no live credentials."""
 
 import copy
 from datetime import datetime, timezone
@@ -9,7 +9,6 @@ import io
 import json
 from pathlib import Path
 import posixpath
-import ssl
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -23,7 +22,8 @@ ROOT = '/home/example/www/polku-osm'
 PUBLIC = 'https://data.example/polku-osm'
 ENV = {'OSM_FTP_HOST': 'ftp.example', 'OSM_FTP_USER': 'user-private',
        'OSM_FTP_PASSWORD': 'password-private', 'OSM_FTP_ROOT': ROOT,
-       'OSM_PUBLIC_URL': PUBLIC, 'OSM_ALLOW_PUBLISH': 'true'}
+       'OSM_PUBLIC_URL': PUBLIC, 'OSM_ALLOW_PUBLISH': 'true',
+       'OSM_SFTP_HOST_KEY_SHA256': 'SHA256:' + 'A' * 43}
 ARCHIVE = b'PMTiles' + bytes(range(256)) * 40
 LICENSE = b'OpenStreetMap contributors, ODbL 1.0\n'
 
@@ -80,14 +80,11 @@ class Host:
 
     def ftp(self, *args, **kwargs):
         host = self
-        context = kwargs['context']
-        if context.verify_mode != ssl.CERT_REQUIRED or not context.check_hostname:
-            raise AssertionError('TLS certificate validation disabled')
         self.connections += 1
 
         class Connection:
             def __init__(self):
-                self.path, self.protected = '/', False
+                self.path, self.protected = '/', True
             def connect(self, server, port=21, **kwargs):
                 if server != 'ftp.example' or port != 21:
                     raise AssertionError('expected explicit FTPS on port 21')
@@ -136,6 +133,8 @@ class Host:
                 if name not in host.files:
                     raise ftplib.error_perm('550 missing')
                 callback(host.files[name])
+            def replace(self, old, new):
+                return self.rename(old, new)
             def rename(self, old, new):
                 old, new = self.abs(old), self.abs(new)
                 if new == ROOT + '/current.json':
@@ -197,7 +196,7 @@ class PublishTests(unittest.TestCase):
         self.host.add_release(self.old, current=True)
         self.previous = self.host.files[ROOT + '/current.json']
         self.enterContext(patch.dict('os.environ', ENV, clear=True))
-        self.enterContext(patch.object(publish.ftplib, 'FTP_TLS', self.host.ftp))
+        self.enterContext(patch.object(publish, 'open_sftp', self.host.ftp))
         self.enterContext(patch.object(publish.urllib.request, 'urlopen', self.host.http))
 
     def test_verified_release_switches_pointer_and_saves_previous(self):
@@ -230,7 +229,7 @@ class PublishTests(unittest.TestCase):
                 self.host = Host()
                 self.host.add_release(self.old, current=True)
                 setattr(self.host, failure, True)
-                with patch.object(publish.ftplib, 'FTP_TLS', self.host.ftp), patch.object(publish.urllib.request, 'urlopen', self.host.http):
+                with patch.object(publish, 'open_sftp', self.host.ftp), patch.object(publish.urllib.request, 'urlopen', self.host.http):
                     with self.assertRaises((ValueError, RuntimeError)):
                         publish.publish(self.release_dir)
                 self.assertEqual(self.host.files[ROOT + '/current.json'], self.previous)
@@ -300,7 +299,7 @@ class PublishTests(unittest.TestCase):
         files, dirs = dict(self.host.files), set(self.host.dirs)
         with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
             result = publish.verify_access()
-        self.assertTrue(result['ftps_read_access'])
+        self.assertTrue(result['sftp_read_access'])
         self.assertEqual(result['public_status'], 200)
         self.assertEqual((self.host.files, self.host.dirs), (files, dirs))
         self.assertEqual(self.host.pointer_writes, 0)
@@ -311,10 +310,50 @@ class PublishTests(unittest.TestCase):
         files = dict(self.host.files)
         with patch.object(publish.urllib.request, 'urlopen', forbidden):
             result = publish.verify_access()
-        self.assertTrue(result['ftps_read_access'])
+        self.assertTrue(result['sftp_read_access'])
         self.assertEqual(result['public_status'], 403)
         self.assertFalse(result['public_cors'])
         self.assertEqual(self.host.files, files)
+
+    def test_host_key_mismatch_aborts_before_password_authentication(self):
+        class Key:
+            def asbytes(self):
+                return b'an unexpected SSH host key'
+        class Transport:
+            authenticated = False
+            closed = False
+            def start_client(self, timeout=None):
+                pass
+            def get_remote_server_key(self):
+                return Key()
+            def auth_password(self, username, password):
+                self.authenticated = True
+            def close(self):
+                self.closed = True
+        transport = Transport()
+        with patch.object(publish.paramiko, 'Transport', return_value=transport):
+            with self.assertRaisesRegex(ValueError, 'host key differs'):
+                publish.open_sftp('ftp.example', 'user', 'secret', ENV['OSM_SFTP_HOST_KEY_SHA256'])
+        self.assertFalse(transport.authenticated)
+        self.assertTrue(transport.closed)
+
+    def test_missing_host_key_pin_rejects_access_without_connection(self):
+        with patch.dict('os.environ', {'OSM_SFTP_HOST_KEY_SHA256': ''}):
+            with self.assertRaisesRegex(ValueError, 'OSM_SFTP_HOST_KEY_SHA256'):
+                publish.verify_access()
+        self.assertEqual(self.host.connections, 0)
+
+    def test_atomic_pointer_replace_uses_posix_rename_only(self):
+        class Stub:
+            posix_rename_calls = []
+            def posix_rename(self, old, new):
+                self.posix_rename_calls.append((old, new))
+                raise OSError('POSIX rename extension unavailable')
+        fake = Stub()
+        remote = publish.SFTPFiles(None, fake)
+        with self.assertRaisesRegex(OSError, 'extension unavailable'):
+            remote.replace('pointer.tmp', 'current.json')
+        self.assertEqual(fake.posix_rename_calls, [('pointer.tmp', 'current.json')])
 
 
 if __name__ == '__main__':
