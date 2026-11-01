@@ -33,7 +33,8 @@ export const newPick = (spot, { hold = false, sport, sec, zoom, touch = false } 
 export async function resolvePick(pick, changed) {
   const step = (fn) => { if (!pick.dead) { fn(); changed(); } };
   // the weather here and the places at the spot don't wait for the ways
-  pointForecasts([pick.ll]).then(([s]) => sampleAt(s, pick.sec), () => 'failed').then((w) => step(() => { pick.wx = w; }));
+  // (an older forecast, where Open-Meteo couldn't be reached, says so: `stale`, `from`)
+  pointForecasts([pick.ll]).then((list) => ({ ...sampleAt(list[0], pick.sec), stale: !!list.stale, from: list.from || null }), () => 'failed').then((w) => step(() => { pick.wx = w; }));
   nearPlaces(pick.ll).then((p) => step(() => { pick.places = p; }), () => step(() => { pick.places = 'failed'; }));
   if (pick.spot.area === 'water') depthAt(pick.ll).then((d) => step(() => { pick.depth = d; }), () => step(() => { pick.depth = null; }));
   try { await loadWays(wayTile(pick.ll), { force: true }); } catch { step(() => { pick.ways = 'failed'; }); return; }

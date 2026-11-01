@@ -10,7 +10,7 @@ import { notRight, isHttp, thingOf } from './inspect.js';
 import { elevation } from './dem.js';
 import { iconUrl } from './icons.js';
 import { darkWords } from './palette.js';
-import { ACTIVITIES, CRAFTS, LIPAS_TYPES, DIFF_COLORS } from './config.js';
+import { ACTIVITIES, CRAFTS, LIPAS_TYPES, DIFF_COLORS, isLipasRoute } from './config.js';
 import { STYLES, styleName } from './styles.js';
 import { fmtDist, fmtDuration, compass, bearing, lineLength } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
@@ -650,7 +650,7 @@ export function pickLine(card, open) {
     const { pick, spot } = card, a = pick.a && pick.a !== 'failed' ? pick.a : null, w = pick.wx && pick.wx !== 'failed' ? pick.wx : null;
     const k = a && nearestSample(a, spot.ll), gr = a && !(a.eleGap && a.eleGap[k]) ? Math.round(a.grade[k]) || 0 : null;
     const rows = [card.sub, gr != null ? `${Math.round(a.ele[k])} m · ${gr >= 0 ? '+' : '−'}${Math.abs(gr)} % here` : null,
-      w ? `Wind ${w.speed.toFixed(0)} m/s from the ${compass(w.dir)} · ${w.temp.toFixed(0)} °C · ${w.precip >= 0.1 ? `${w.temp < 0.5 ? 'snow' : 'rain'} ${w.precip.toFixed(1)} mm/h` : 'dry'}` : null].filter(Boolean);
+      w ? `Wind ${w.speed.toFixed(0)} m/s from the ${compass(w.dir)} · ${w.temp.toFixed(0)} °C · ${w.precip >= 0.1 ? `${w.temp < 0.5 ? 'snow' : 'rain'} ${w.precip.toFixed(1)} mm/h` : 'dry'}${w.stale ? ' · older forecast' : ''}` : null].filter(Boolean);
     el.setAttribute('aria-label', `${card.title}. ${rows.join('. ')}. Open its card`);
     el.replaceChildren(h('span', {}, h('b', {}, card.title), ...rows.map((r) => h('small', {}, r))), h('span', { class: 'ic', 'aria-hidden': 'true', html: icon('chevronUp', 18) }));
   };
@@ -751,7 +751,8 @@ function colourBy(pl, pick) {
     h('i', { style: `background:${color}`, 'aria-hidden': 'true' }), h('span', {}, `${cap(String(words))} `), h('b', {}, fmtDist(d)))));
   // (a pick has no direction of its own: head and tail are for going from its west end to its east end)
   const dir = mode === 'wind' ? h('p', { class: 'pick-note' }, `Headwind and tailwind are for going ${compass(bearing(a.pts[0], a.pts[a.pts.length - 1]))} along it.`) : null;
-  return [chips, legend, dir].filter(Boolean);
+  const old = ['wind', 'temp', 'rain'].includes(mode) && a.wind && a.wind.stale ? failed(olderForecast(a.wind.from)) : null;
+  return [chips, legend, dir, old].filter(Boolean);
 }
 
 // the weather here, at the hour the map's weather shows
@@ -760,15 +761,21 @@ function weatherGroup(pick) {
   if (pick.wx === undefined) return factGroup(title, [['Weather', 'Asking the forecast']]);
   if (pick.wx === 'failed') return [h('h4', { class: 'menu-h' }, title), failed('The forecast didn’t load.')];
   const w = pick.wx;
-  return factGroup(title, [['Wind', `${w.speed.toFixed(0)} m/s from the ${compass(w.dir)}`, `Gusts ${w.gust.toFixed(0)} m/s`], ['Rain', w.precip >= 0.1 ? `${w.precip.toFixed(1)} mm an hour${w.temp < 0.5 ? ', snow' : ''}` : 'Dry'],
+  const g = factGroup(title, [['Wind', `${w.speed.toFixed(0)} m/s from the ${compass(w.dir)}`, `Gusts ${w.gust.toFixed(0)} m/s`], ['Rain', w.precip >= 0.1 ? `${w.precip.toFixed(1)} mm an hour${w.temp < 0.5 ? ', snow' : ''}` : 'Dry'],
     ['Temperature', `${w.temp.toFixed(0)} °C`, 'Open-Meteo’s forecast for its 3 km square']]);
+  if (w.stale) g.splice(1, 0, failed(olderForecast(w.from))); // (under its heading)
+  return g;
 }
+// as the route's notice says it
+const olderForecast = (from) => `Older forecast${from ? ` (from ${new Date(from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}: Open-Meteo couldn’t be reached.`;
 // LIPAS's places at the spot, each its own card
 function placesGroup(pl, pick) {
   if (!pick.places || !pick.places.length) return [];
   if (pick.places === 'failed') return [h('h4', { class: 'menu-h' }, 'At this spot'), failed('LIPAS didn’t answer, so places here aren’t shown.')];
   return [h('h4', { class: 'menu-h' }, 'At this spot'), rows(...pick.places.map((x) => item({ icon: 'pin', label: x.name, line: (LIPAS_TYPES[x.type] || {}).name || 'From LIPAS', chev: true,
-    onclick: () => pl.openLipasCard({ type: x.type, lipasId: x.id, name: x.name, typeName: (LIPAS_TYPES[x.type] || {}).name || '', icon: (LIPAS_TYPES[x.type] || {}).icon || '' }, x.at || pick.ll, {}) })))];
+    // (a place its own card, as search opens one; a route, such as a skating route, the route's)
+    onclick: () => { const props = { type: x.type, lipasId: x.id, name: x.name, typeName: (LIPAS_TYPES[x.type] || {}).name || '', icon: (LIPAS_TYPES[x.type] || {}).icon || '' };
+      if (isLipasRoute(x.type)) pl.openLipasCard(props, x.at || pick.ll, {}); else pl.openPlaceCard({ layer: { id: 'lipas-point' }, properties: props }, x.at || pick.ll); } })))];
 }
 
 function pickBody(pl, card, body) {
@@ -778,10 +785,14 @@ function pickBody(pl, card, body) {
   if (way) {
     spot.osm = { type: 'way', id: w.seed.id };
     const pieces = new Set(w.chain.map((x) => x.w.id)).size;
-    // (while the tiles its ends run into come, its length so far: it may grow)
+    // (while the tiles its ends run into come, its length so far: it may grow; with no terrain, or part of it, as the route
+    // says it: no number that isn't there, and none estimated unsaid)
+    const ter = a && a.terrain, none = ter && ter.all;
     body.append(nums([{ value: fmtDist(w.len), label: `${w.growing ? 'long so far' : 'long'}${pieces > 1 ? `, ${pieces} pieces` : ''}` },
-      a ? { value: `${Math.round(a.up)} m`, label: 'up' } : pick.a === 'failed' ? { value: '?', label: 'heights didn’t load', missing: true } : { value: '–', label: 'up', wait: true },
-      a ? { value: `${Math.round(a.down)} m`, label: 'down' } : pick.a === 'failed' ? null : { value: '–', label: 'down', wait: true }]));
+      a ? (none ? { value: '?', label: 'up and down: no terrain', missing: true } : { value: `${Math.round(a.up)} m`, label: ter ? 'up, part estimated' : 'up' })
+        : pick.a === 'failed' ? { value: '?', label: 'heights didn’t load', missing: true } : { value: '–', label: 'up', wait: true },
+      a ? (none ? null : { value: `${Math.round(a.down)} m`, label: ter ? 'down, part estimated' : 'down' }) : pick.a === 'failed' ? null : { value: '–', label: 'down', wait: true }]));
+    if (ter && ter.retry) body.append(failed(none ? '' : `The terrain didn’t load for ${fmtDist(ter.missing)} of it: estimated there. `, pick.again));
     if (a) body.append(profileGroup(pl, card, a));
     else if (pick.a === 'failed') body.append(failed('The terrain didn’t load: no profile or grades yet. ', pick.again));
     else body.append(profileGroup(pl, card, null, 'Loading the heights for its profile'));

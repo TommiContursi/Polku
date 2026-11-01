@@ -50,22 +50,47 @@ export function slimWays(json) {
 let held = false, heldFail = false; // for checks: every tile that isn't seeded has no ways (or fails), and Overpass isn't asked
 export const holdWays = (on = true, fail = false) => { held = on; heldFail = on && fail; };
 const tiles = new Map(); // 'x/y' → { at, promise, ok }
-const pieces = new Map(); // 'id.k' → a piece
+const ofWay = new Map(); // a way's id → its pieces
 const ends = new Map(); // a node → the pieces that start or end at it
 const inTile = new Map(); // 'x/y' → its pieces
 
+// Each tile's answer cuts a way at the junctions it knows, so two tiles can cut the same way differently (a path ending on it in
+// one of them). The first answer's pieces are kept and cut again at the other's ends, found by the coordinate both answers give
+// that node (they hold the whole way), so no stretch is in the index twice and every junction stops a walk.
 function index(x, y, d) {
   const list = inTile.get(`${x}/${y}`) || [];
   inTile.set(`${x}/${y}`, list);
-  for (const [id, k, tags, nodes, flat, rel] of d.w) {
-    if (pieces.has(`${id}.${k}`)) continue;
-    const coords = [];
-    for (let i = 0; i < flat.length; i += 2) coords.push([flat[i], flat[i + 1]]);
+  const make = (id, tags, nodes, coords, rel) => {
     const lon = coords.map((p) => p[0]), lat = coords.map((p) => p[1]);
-    const w = { id, k, tags, nodes, coords, rel, len: lineLength(coords), box: [Math.min(...lon), Math.min(...lat), Math.max(...lon), Math.max(...lat)] };
-    pieces.set(`${id}.${k}`, w);
-    list.push(w);
-    for (const n of new Set(nodes)) ends.set(n, [...(ends.get(n) || []), w]);
+    return { id, tags, nodes, coords, rel, len: lineLength(coords), box: [Math.min(...lon), Math.min(...lat), Math.max(...lon), Math.max(...lat)] };
+  };
+  const link = (w, on) => { for (const n of new Set(w.nodes)) ends.set(n, on ? [...(ends.get(n) || []), w] : (ends.get(n) || []).filter((x) => x !== w)); };
+  const byWay = new Map();
+  for (const piece of d.w) byWay.set(piece[0], [...(byWay.get(piece[0]) || []), piece]);
+  for (const [id, got] of byWay) {
+    if (!ofWay.has(id)) {
+      ofWay.set(id, got.map(([, , tags, nodes, flat, rel]) => {
+        const coords = [];
+        for (let i = 0; i < flat.length; i += 2) coords.push([flat[i], flat[i + 1]]);
+        const w = make(id, tags, nodes, coords, rel);
+        link(w, true);
+        return w;
+      }));
+    } else {
+      for (const [, , , [a, b], flat] of got) {
+        for (const [n, lon, lat] of [[a, flat[0], flat[1]], [b, flat[flat.length - 2], flat[flat.length - 1]]]) {
+          const have = ofWay.get(id), w = have.find((p) => !p.nodes.includes(n) && p.coords.slice(1, -1).some(([u, v]) => u === lon && v === lat));
+          if (!w) continue;
+          const j = w.coords.findIndex(([u, v], i) => i > 0 && u === lon && v === lat);
+          const parts = [make(id, w.tags, [w.nodes[0], n], w.coords.slice(0, j + 1), w.rel), make(id, w.tags, [n, w.nodes[1]], w.coords.slice(j), w.rel)];
+          link(w, false);
+          parts.forEach((p) => link(p, true));
+          have.splice(have.indexOf(w), 1, ...parts);
+          for (const l of inTile.values()) { const i = l.indexOf(w); if (i >= 0) l.splice(i, 1, ...parts); }
+        }
+      }
+    }
+    for (const w of ofWay.get(id)) if (!list.includes(w)) list.push(w);
   }
 }
 

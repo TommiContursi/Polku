@@ -15991,6 +15991,19 @@ CYCLE_WALK = """(async (url) => {
   const seed = W.nearestWay([(xs[0] + xs[1]) / 2, y], 5);
   return W.walk(seed).chain.map((x) => x.w.id);
 })"""
+# One tile knows an unnamed path (801) whole; the next also knows a path (802) that ends on its middle node, so it cuts 801 there
+# (Codex on #623, 2026-11-01: the two cuttings were both kept, and a pick doubled back and went on into 802). The pick from 801's
+# first half stops at that junction, as unnamed paths do.
+SPLIT_WALK = """(async (url) => {
+  const W = await import(url), G = await import('/js/geo.js');
+  const [tx, ty] = W.wayTile([21.105, 60.505]), [w, s] = G.tileBounds(tx, ty, W.WAYS_Z), y = s + 0.005, x0 = w + 0.002;
+  const P = [[x0, y], [x0 + 0.002, y], [x0 + 0.004, y], [x0 + 0.002, y + 0.002]].map(([u, v]) => [+u.toFixed(5), +v.toFixed(5)]);
+  const f = (...ps) => ps.flat(), n = (i) => 8e12 + i, path = { highway: 'path' };
+  W.seedWays(tx, ty, { v: 2, w: [[801, 0, path, [n(1), n(3)], f(P[0], P[1], P[2]), null]] });
+  W.seedWays(tx + 1, ty, { v: 2, w: [[801, 0, path, [n(1), n(2)], f(P[0], P[1]), null], [801, 1, path, [n(2), n(3)], f(P[1], P[2]), null], [802, 0, path, [n(2), n(4)], f(P[1], P[3]), null]] });
+  const chain = W.walk(W.nearestWay([(P[0][0] + P[1][0]) / 2, P[0][1]], 5)).chain;
+  return { ids: chain.map((x) => x.w.id), len: Math.round(chain.reduce((m, x) => m + x.w.len, 0)), half: Math.round(G.lineLength([P[0], P[1]])), ll: [(P[0][0] + P[1][0]) / 2, P[0][1]] };
+})"""
 # the card as a person reads it, once the ways and the heights are in
 PICK_STATE = """(() => {
   const p = polku.planner, c = p.cards.current, box = document.querySelector('.pl-way.card'), pick = c && c.pick;
@@ -16053,6 +16066,18 @@ def pick_card(chrome):
         got = pg.js(f"({CYCLE_WALK})('/js/ways.js')")
         if got != [901, 902, 904, 905, 906]:
             fails.append(f'a cycleway beside a street: the pick from its first piece joins {got}, not 901, 902, 904 (a crossing), 905 and 906 (named)')
+        got = pg.js(f"({SPLIT_WALK})('/js/ways.js')")
+        if got['ids'] != [801] or got['len'] != got['half']:
+            fails.append(f"a path two tiles cut differently: the pick from its first half joins {got['ids']}, {got['len']} m (801 alone, {got['half']} m: it stops where 802 meets it)")
+        # with no terrain there (its tiles failing): no number that isn't there, and Try again (Codex on #623: "NaN m")
+        pg.js("window.__dem.mode = 'fail'; true")
+        nt = pg.js(f"""(async () => {{ const p = polku.planner; p.cards.close(); polku.map.jumpTo({{ center: {json.dumps(got['ll'])}, zoom: 16.5 }}); p.openSpotCard({json.dumps(got['ll'])});
+          const t0 = Date.now(); while (Date.now() - t0 < 20000 && !(p.cards.current && p.cards.current.pick && p.cards.current.pick.a && typeof p.cards.current.pick.a === 'object')) await new Promise((r) => setTimeout(r, 250));
+          await new Promise((r) => setTimeout(r, 400)); const box = document.querySelector('.pl-way.card');
+          return {{ nums: box ? [...box.querySelectorAll('.sum-item')].map((e) => e.textContent) : [], again: !!box && [...box.querySelectorAll('.pick-fail button')].some((b) => b.textContent === 'Try again') }}; }})()""", timeout=40000)
+        pg.js("window.__dem.mode = 'ok'; polku.planner.cards.close(); true")
+        if any('NaN' in x for x in nt['nums']) or not any('no terrain' in x for x in nt['nums']) or not nt['again']:
+            fails.append(f"a way with no terrain: its numbers {nt['nums']}, Try again {nt['again']} (? for up and down, no terrain, and Try again)")
         # #562: a detail that wasn't loaded is never "not mapped": the ways failing, the card says what it has, no claim
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
         r = tap(pg, [25.7652, 62.2289], want=('failed', None), secs=15, right=True)
@@ -16123,6 +16148,18 @@ def pick_card(chrome):
                 or fo['open'] != 'false' or fo['shapes'] or 'Loading the heights' not in fo['head'] or op['open'] != 'true' or not op['shapes'] \
                 or not ws['head'].startswith('Profile') or 'Loading the whole way' not in ws['say']:
             fails.append(f"the profile while it loads: {load} (says what it waits for, folds by its head and opens again)")
+        # an older forecast says so under Weather here now; a LIPAS place at the spot opens its place card (Codex on #623)
+        old = pg.js("""(async () => { const c = polku.planner.cards.current, pick = c.pick, wx = pick.wx, places = pick.places;
+          pick.wx = { ...wx, stale: true, from: Date.now() - 2 * 3600e3 }; pick.places = [{ type: 301, id: 9301, name: 'Testilaavu', at: pick.ll }]; polku.planner.cards.refresh();
+          await new Promise((r) => setTimeout(r, 300));
+          const box = document.querySelector('.pl-way.card'), said = /Older forecast \\(from \\d/.test(box.textContent);
+          [...box.querySelectorAll('.row')].find((r) => r.textContent.includes('Testilaavu')).click();
+          await new Promise((r) => setTimeout(r, 500));
+          const now = polku.planner.cards.current, out = { said, kind: now && now.kind, follow: /Follow this route/.test(document.querySelector('.pl-way.card')?.textContent || '') };
+          polku.planner.cards.back(); await new Promise((r) => setTimeout(r, 300));
+          Object.assign(pick, { wx, places }); polku.planner.cards.refresh(); return out; })()""")
+        if not old['said'] or old['kind'] != 'place' or old['follow']:
+            fails.append(f"Rauhaniemenreitti: an older forecast said {old['said']}; a lean-to at the spot opens a {old['kind']} card, Follow this route {old['follow']} (its place card)")
         # an area (#574): a lake and a park by their outline from OpenStreetMap (recorded: tools/fixtures/areas-tampere.json), with
         # their name and kind; the water with its depth and Paddle from here, also where OpenStreetMap has no area there or no answer
         pg.js("""(async () => { const W = await import(location.origin + '/js/ways.js'), fx = await (await fetch(location.origin + '/tools/fixtures/areas-tampere.json')).json();
