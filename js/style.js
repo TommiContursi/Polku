@@ -96,6 +96,11 @@ export function buildStyle(s, ctx) {
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
     routePreview: { type: 'geojson', data: ctx.data.routePreview || EMPTY }, // a breakdown category, while hovered or keyboard-previewed
     routeLit: { type: 'geojson', data: ctx.data.routeLit || EMPTY }, // the leg you open or point at in the waypoint list
+    // what a tap picked (#574), drawn like a route: its colours along it, the street's other side, an area's outline, a ring
+    pick: { type: 'geojson', data: ctx.data.pick || EMPTY },
+    pickSide: { type: 'geojson', data: ctx.data.pickSide || EMPTY },
+    pickArea: { type: 'geojson', data: ctx.data.pickArea || EMPTY },
+    pickRing: { type: 'geojson', data: ctx.data.pickRing || EMPTY },
     // Check's items on the route (25d part 3): close ones merged, keeping the most serious one's sign (sev: 3 read before
     // you go, 2 not checked, 1 worth a look); the open one apart, with its obstacle's own icon (#85); the stretches a
     // source didn't cover
@@ -549,6 +554,16 @@ export function buildStyle(s, ctx) {
   add({ id: 'route-unchecked', type: 'line', source: 'headsGaps', layout: { 'line-cap': 'butt' }, paint: { 'line-color': WARN_COLORS.unk, 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [1.2, 1.2] } });
   add({ id: 'route-preview-casing', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': edge, 'line-width': zi(8, 9, 16, 15) } });
   add({ id: 'route-preview', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 5, 16, 9) } });
+  // what a tap picked (#574): a soft dark shadow, a white casing and its colours, so it reads apart from the red route
+  add({ id: 'pick-area-fill', type: 'fill', source: 'pickArea', paint: { 'fill-color': '#111827', 'fill-opacity': 0.06 } });
+  add({ id: 'pick-area-casing', type: 'line', source: 'pickArea', layout: { 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.9 } });
+  add({ id: 'pick-area-line', type: 'line', source: 'pickArea', layout: { 'line-join': 'round' }, paint: { 'line-color': '#111827', 'line-width': 2.5 } });
+  for (const [src, w] of [['pickSide', 0.75], ['pick', 1]]) {
+    add({ id: `${src}-shadow`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#0b1220', 'line-width': zi(10, 9 * w, 16, 20 * w), 'line-blur': zi(10, 3, 16, 6), 'line-opacity': 0.35 } });
+    add({ id: `${src}-casing`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(10, 6 * w, 16, 13 * w) } });
+    add({ id: `${src}-line`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'color'], '#374151'], 'line-width': zi(10, 3.5 * w, 16, 7.5 * w) } });
+  }
+  add({ id: 'pick-ring', type: 'circle', source: 'pickRing', paint: { 'circle-radius': 13, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#111827', 'circle-stroke-width': 3 } });
   // static arrows: hidden while the moving chevrons show the way instead (js/routeflow.js, ctx.flowMoving)
   add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['all', ['!', ['get', 'loading']], ['!=', ['get', 'kind'], 'gap']], layout: { visibility: ctx.flowMoving ? 'none' : 'visible', 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
   add({

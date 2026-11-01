@@ -10,6 +10,6 @@
     ["routeview", "pointcard", "heads", "onroute", "warnfix", "sections"],
     ["values", "glass", "appearance", "effects", "start", "nextleg", "routecard"],
     ["leave", "keyfacts", "tabs", "pastforecast", "fold"],
-    ["spotcard", "crosshair", "facts", "sharespot", "sheetstops", "settings"]
+    ["spotcard", "pickcard", "crosshair", "facts", "sharespot", "sheetstops", "settings"]
   ]
 }

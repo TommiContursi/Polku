@@ -1,7 +1,7 @@
 // Route planner: waypoints, per-leg routing modes, undo/redo, the bottom sheet
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
-import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS, ROUTE_COLORS } from './config.js';
+import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
@@ -9,7 +9,7 @@ import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout, noTerrain, NO_TERRAIN } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
@@ -17,14 +17,15 @@ import { sunTimes, darkness } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
-import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags, wayExtras } from './facts.js';
+import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
+import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
-import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt, keepInView } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard, pickLine, thingCard, nearestSample } from './cards.js';
+import { pickData } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -2799,6 +2800,13 @@ export class Planner {
   }
 
   onMapMove(e) {
+    // the pointer on a pick whose card has its profile: the spot there, and on the profile (#574)
+    const pc = this.cards.current;
+    if (pc && pc.chart && pc.chart.canvas.isConnected && this.map.getLayer('pick-line') && e.originalEvent.target === this.map.getCanvas()) { // (not the card's own profile, over the map)
+      const on = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['pick-line', 'pick-casing'] }).length;
+      const i = on ? nearestSample(pc.chart.a, [e.lngLat.lng, e.lngLat.lat]) : -1;
+      if (on || this.pickHovered) { pc.chart.setHover(i); this.pickSpot(pc, on ? i : null); }
+    }
     const way = this.alts && this.map.getLayer('route-alts-line') && !this.edit
       && this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-alts-line', 'route-alts-casing', 'route-alts-glow', 'route-alts-label'] }).find((f) => !f.properties.route);
     if (this.alts) this.altHover(way ? way.properties.i : null);
@@ -3135,7 +3143,24 @@ export class Planner {
       m.on('dragstart', () => this.beginEdit(i, this.snapshot(), m));
       m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
       m.on('dragend', () => this.endEdit());
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointCard(p); });
+      // a tap: when you're there and the profile up to it; a hold (0.5 s, still) or a right-click: its card with the actions (#574)
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointCard(p, { actions: false }); });
+      el.addEventListener('contextmenu', (ev) => { ev.preventDefault(); ev.stopPropagation(); if (!held) this.openPointCard(p); }); // (Android sends one after a hold)
+      let hold = null, ring = null, t0 = null, held = false;
+      const cancel = () => { clearTimeout(hold); hold = null; ring?.remove(); ring = null; };
+      el.addEventListener('touchstart', (ev) => {
+        cancel();
+        held = false;
+        if (ev.touches.length !== 1) return;
+        const t = ev.touches[0];
+        t0 = [t.clientX, t.clientY];
+        ring = h('div', { class: 'hold-ring', style: `left:${t.clientX}px;top:${t.clientY}px`, 'aria-hidden': 'true' });
+        setTimeout(() => { if (ring) document.body.append(ring); }, 150);
+        hold = setTimeout(() => { cancel(); held = true; if (navigator.vibrate) navigator.vibrate(10); this.openPointCard(p); }, 500);
+      }, { passive: true });
+      el.addEventListener('touchmove', (ev) => { const t = ev.touches[0]; if (hold && (!t || Math.hypot(t.clientX - t0[0], t.clientY - t0[1]) > 10)) cancel(); }, { passive: true }); // (a drag moves it)
+      el.addEventListener('touchend', (ev) => { cancel(); if (held) { ev.preventDefault(); this.noClickUntil = Date.now() + 400; } }); // (no tap's card as it lifts)
+      el.addEventListener('touchcancel', cancel);
       return m;
     });
   }
@@ -3601,7 +3626,7 @@ export class Planner {
         if (navigator.vibrate) navigator.vibrate(10);
         this.noClickUntil = Date.now() + 700;
         cam = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
-        this.openSpotCard(ll, { pt, touch: true });
+        this.openSpotCard(ll, { pt, touch: true, hold: true });
         held = this.cards.current;
       };
       timers = [
@@ -3663,7 +3688,7 @@ export class Planner {
       if (Date.now() - lastTouch < 1000 || this.edit || this.picking || onUi(e) || (d && Math.hypot(e.point.x - d.x, e.point.y - d.y) > 4)) return;
       const li = this.active ? this.lineAt(e.point, 6) : null;
       if (li != null) { if (this.drawing()) this.openStretchCard(this.stretchAt(li), { edit: true, at: [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)] }); else this.openRouteCard(li, e.lngLat); return; }
-      this.openSpotCard(e.lngLat, { pt: e.point });
+      this.openSpotCard(e.lngLat, { pt: e.point, hold: true });
     });
     map.on('rotatestart', () => { const c = this.cards.current; if (c && (c.kind === 'spot' || c.kind === 'place')) this.cards.close(); });
   }
@@ -3683,36 +3708,124 @@ export class Planner {
 
   // What's there (part 5): a place's card on its icon, else the spot's, with the way or what else the map has there.
   // `place`: a place to show (from search, part 6); `from`: the card it's opened from (Back goes back to it)
-  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '' } = {}) {
+  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '', hold = false } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
-    if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
+    if (place) { this.openPlaceCard(place, ll, { from, pin, hold }); return; }
     const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
+    const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
-    const water = !d && this.map.getLayer('water') && this.map.queryRenderedFeatures(p, { layers: ['water'] }).length;
-    const route = feats.find((x) => x.layer.id === 'lipas-route');
-    this.openCard(spotCard(this, { ll, pin, title: d ? text(d.title) : water ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
+    // (the water or a park the map draws there: what OpenStreetMap says it is, where no way is in reach; the line waits for the ways)
+    const area = areaUnder(this.map, p);
+    const card = spotCard(this, { ll, pin, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
-      ...wayExtras(way ? way.properties : {}, { winter: winterAt(feats, ll), uphill: feats.find((x) => x.layer.id === 'uphill-line'), bike }),
-      partOf: route && route.properties.name ? { props: route.properties, ll } : null }), ll, from);
+      partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch, area });
+    // a phone's tap while browsing: the line at the spot first (#574); a hold, a click and the rest: the card
+    if (card.kind === 'spot' && touch && !hold && !pin && from === 'map' && this.cards.where() === 'peek') { this.showLine(card); return; }
+    this.hideLine();
+    this.openCard(card, ll, from);
+  }
+  // What a tap picked, drawn on the map like a route (#574): its colours along it, a street's other side, an area's outline;
+  // nothing drawn with no pick
+  // a spot along a pick's profile, as the route's dot on the map
+  pickSpot(card, i) {
+    this.pickHovered = i != null;
+    this.app.setData('routeHover', i == null ? EMPTY : { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: card.chart.a.pts[i] } }] });
+  }
+  drawPick(pick) {
+    if (!pick && this.pickHovered) this.pickSpot(null, null);
+    const d = pick ? pickData(pick) : { pick: EMPTY, side: EMPTY, area: EMPTY };
+    this.app.setData('pick', d.pick);
+    this.app.setData('pickSide', d.side);
+    this.app.setData('pickArea', d.area);
+    this.app.setData('pickRing', EMPTY);
+  }
+  // The map's other things (#564): their card, the thing highlighted (a line in amber, an area's outline, a ring at a point)
+  openThing(f, ll) {
+    this.hideLine();
+    this.openCard(thingCard(this, f, ll), ll);
+    this.drawThing(f);
+  }
+  drawThing(f) {
+    const g = f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
+    const line = g && /LineString/.test(g.type), area = g && /Polygon/.test(g.type);
+    this.app.setData('pick', line ? fc(g, { color: '#f59e0b' }) : EMPTY);
+    this.app.setData('pickSide', EMPTY);
+    this.app.setData('pickArea', area ? fc(g) : EMPTY);
+    this.app.setData('pickRing', g && !line && !area ? fc({ type: 'Point', coordinates: g.type === 'Point' ? g.coordinates : this.cards.current.key }) : EMPTY);
+  }
+  // Paddle from here, on the water's card: a new route over the water from the spot
+  paddleFrom(ll) {
+    this.cards.close();
+    this.setActive(true, { edit: true });
+    this.setMode('water');
+    this.clear();
+    this.addPoint(ll);
+    toast('Now click where you want to go');
+  }
+  // A desktop's hover (#574): the way under the pointer drawn plainly, while no pick of its own is shown
+  hoverPick(coords) {
+    if (this.picked || this.cards.current) return;
+    this.app.setData('pick', coords ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: '#374151' }, geometry: { type: 'LineString', coordinates: coords } }] } : EMPTY);
+  }
+  // The line at the spot (#574): a phone's tap while browsing shows what it picked, with a pin at the spot; a tap on the
+  // line opens its card, and a tap elsewhere, Escape or the next pick takes it away
+  showLine(card) {
+    this.hideLine();
+    this.picked = card;
+    this.line = pickLine(card, () => this.openLine());
+    // (in a plain div: the map moves the marker by its transform, which the button's own press and entrance mustn't animate)
+    this.lineMk = new maplibregl.Marker({ element: h('div', {}, this.line.el), anchor: 'bottom', offset: [0, -22] }).setLngLat(card.spot.ll).addTo(this.map);
+    this.linePin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(card.spot.ll).addTo(this.map);
+    this.drawPick(card.pick);
+    this.fitLine();
+  }
+  renderLine() { if (this.line) { this.line.update(); this.fitLine(); } }
+  // As it opens and each time it grows (its heights, the weather, its name): whole on the screen for a tap by its edge (a phone
+  // at 200 %), in from the sides and under the spot with no room above it; over the map's buttons, they step aside (#435)
+  fitLine() {
+    this.lineMk.setOffset([0, -22]);
+    const r = this.line.el.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;
+    const dx = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8)), dy = r.top < top ? r.height + 44 : 0;
+    if (dx || dy) this.lineMk.setOffset([dx, dy - 22]);
+    const b = this.line.el.getBoundingClientRect(), col = document.getElementById('map-ctrls').getBoundingClientRect();
+    const over = b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
+    if (over !== !!this.lineOver) { this.lineOver = over; document.body.classList.toggle('card-over', over); }
+  }
+  // keep: its card is opening, so the pick stays
+  hideLine({ keep = false } = {}) {
+    const c = this.picked;
+    if (!c) return false;
+    this.picked = this.line = null;
+    this.lineMk.remove();
+    this.linePin.remove();
+    if (this.lineOver) { this.lineOver = false; document.body.classList.remove('card-over'); }
+    if (!keep) c.gone();
+    return true;
+  }
+  openLine() {
+    const c = this.picked;
+    this.hideLine({ keep: true });
+    this.openCard(c, c.spot.ll);
   }
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
-  openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
+  openPlaceCard(f, ll, { from = 'map', pin = false, hold = false } = {}) {
     const p = f.properties, id = f.layer.id, at = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates.map((x) => +x.toFixed(6)) : ll;
     const kind = id === 'label-peak' ? 'peak' : p.subclass || p.class || '', words = (s) => { const t = String(s).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
     const o = /^td-/.test(id) ? obstacleText(p, groupOf(this.app.activity()) === 'bike') : null;
     const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null, lipas: p }
       : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
         : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', osm: { type: 'place', id: null } };
-    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p }), at, from);
+    this.hideLine();
+    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p, hold }), at, from);
   }
-  // A LIPAS route's card (part 6): Follow it, add it to your route, the trail under it, What's here
+  // A LIPAS route's card (part 6): Follow it, add it to your route or start one from it, its facts and pages
   openLipasCard(props, ll, { click = null, near = null } = {}) {
     const at = Array.isArray(ll) ? ll : [ll.lng, ll.lat];
-    const p = this.map.project(at), under = click ? this.map.queryRenderedFeatures(hitBox(p, false), { layers: inspectLayers(this.map) }).some((x) => /^(path|track|cycleway)-|^road-/.test(x.layer.id)) : false;
-    this.openCard(lipasCard(this, props, at, { click, near, under }), at);
+    this.hideLine();
+    this.openCard(lipasCard(this, props, at, { click, near }), at);
   }
   openCard(card, at, from = 'map') {
     if (this.menu) this.menu.remove();
@@ -3792,13 +3905,13 @@ export class Planner {
 
   // A point's card (25d, #345, Revision 4 of #355): built in js/cards.js. `p` is the point itself, not its index: the
   // card follows it through a move, Undo and a new order, and closes when it's gone. From the map there's no Back.
-  openPointCard(p, { from = 'map', el = null } = {}) {
+  openPointCard(p, { from = 'map', el = null, actions = true } = {}) {
     if (!this.points.includes(p)) return;
     if (this.menu) this.menu.remove();
     this.stopPicking();
     const beside = this.besideRow(el);
     if (beside) this.focusPoint(this.points.indexOf(p)); // (from the list: the point in sight, the card at its row)
-    this.cards.open(pointCard(this, p), { at: p, beside, from });
+    this.cards.open(pointCard(this, p, { actions }), { at: p, beside, from });
   }
   // a desktop's card from the list (part 4): beside the panel, level with its row; elsewhere null (at its place)
   besideRow(el) {
@@ -4215,6 +4328,7 @@ export class Planner {
       peek: this.els.card,
       where: () => (this.layout() === 'sheet' && !this.sideMQ.matches ? 'peek' : 'float'),
       onChange: (card, fresh) => {
+        if (card && fresh && this.picked && card !== this.picked) this.hideLine(); // (another card: the line at the spot and its pick go)
         this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
         // the planner put away: the sheet comes for the card alone, and goes with it (#570)
         if (!this.active) {
@@ -4281,8 +4395,8 @@ export class Planner {
     this.els.warnings = h('div', { class: 'list warnings' });
     this.els.wind = h('div', { class: 'list wind' });
     this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
-      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point or the line for options · hold the map for more'
-      : 'Click the map to add points · drag a point or the line to reshape · click a point or the line for options · right-click the map for more');
+      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point to see it, hold it for options · tap the line for options · hold the map for more'
+      : 'Click the map to add points · drag a point or the line to reshape · click a point to see it, right-click it for options · click the line for options · right-click the map for more');
     this.els.dock = h('div', { class: 'dock' }); // (the timeline stays over the map while planning: #225)
 
     // The profile, one, under the header: always in sight (but at the summary size), with the
@@ -5224,7 +5338,7 @@ export class Planner {
       enabled: () => (this.active || this.cards.place === 'peek') && this.layout() === 'sheet', // (a card's sheet with the planner put away too, #570)
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows, not a card (a
       // finger on a card moves the sheet at its peek and where the card can't scroll that way itself, js/sheet.js, #603)
-      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')
+      grab: (t, type) => !t.closest('#profile-canvas, .pick-chart, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')
         && (type !== 'mouse' || (!!t.closest('.sheet-handle, .fold-line, .sheet-head, .pl-tabs') && !t.closest('.card'))),
       // the sizes, lowest first (stops(): the start's views are the peek only, so a swipe up springs back). From the line a
       // second swipe down puts the planner away, or closes the card (Fold, then away): a single swipe stops at the line
@@ -6464,82 +6578,10 @@ export class Planner {
   }
 
   // The same category key drives totals, bar segments and map previews.
-  breakdownKey(mode, i) {
-    const a = this.analysis;
-    switch (mode) {
-      case 'sport': return a.attr[i]?.sport || a.activity;
-      case 'surface': return a.surf[i];
-      case 'way': return a.way[i];
-      case 'width': case 'vis': return a.td?.[mode][i];
-      case 'wind': return a.wind && windClass(a.wind.head[i], a.wind.speed[i]).key;
-      case 'temp': return a.wind && tempBand(a.wind.temp[i]).key;
-      case 'rain': return a.wind && rainBand(a.wind.precip[i], a.wind.temp[i]).key;
-      case 'uphill': return noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down';
-      case 'both': return a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99;
-      case 'down': return a.down6[i] >= 0 ? a.down6[i] : 'not graded';
-      default: return noTerrain(a, i) ? GRADE_BANDS.length : GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min);
-    }
-  }
+  breakdownKey(mode, i) { return breakdownKey(this.analysis, mode, i); }
 
   // Full distance accounting, including unknown stretches once a kind has data.
-  breakdownRows(mode) {
-    const a = this.analysis;
-    if (!a || !(a.total > 0)) return [];
-    if (['wind', 'temp', 'rain'].includes(mode) && !a.wind) return [];
-    if ((mode === 'width' || mode === 'vis') && (!a.td || !a.td[mode].some((k) => k >= 0))) return [];
-    if (mode === 'surface' && !a.surf.some((k) => k !== 'unknown')) return [];
-    if (mode === 'grade' && a.terrain?.all) return [];
-    if (mode === 'down' && !a.down6.some((k) => k >= 0)) return [];
-    if (mode === 'uphill' && a.terrain?.all && !a.upCls.some((k) => k >= 0)) return [];
-    if (mode === 'both' && a.terrain?.all && !a.upCls.some((k) => k >= 0) && !a.down6.some((k) => k >= 0)) return [];
-    let rows;
-    const n = a.along.length;
-    const sumBy = () => {
-      const m = new Map();
-      for (let i = 1; i < n; i++) {
-        const k = this.breakdownKey(mode, i);
-        if (k == null) continue;
-        m.set(k, (m.get(k) || 0) + a.along[i] - a.along[i - 1]);
-      }
-      return m;
-    };
-    if (mode === 'sport') {
-      const m = sumBy();
-      rows = [...m.entries()].map(([k, d]) => [ACTIVITIES[k] ? ACTIVITIES[k].label : k, d, SPORT_COLORS[k] || '#64748b', k]);
-    } else if (mode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown, k]);
-    else if (mode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other, k]);
-    else if ((mode === 'width' || mode === 'vis') && a.td) {
-      const sc = TRAIL_SCALES[mode];
-      const m = sumBy();
-      // narrow → wide (clear → barely visible), then the not-mapped and the roads
-      rows = [...m.entries()].sort((x, y) => (x[0] < 0) - (y[0] < 0) || (x[0] < 0 ? y[0] - x[0] : x[0] - y[0])).map(([k, d]) => [sc.labels[k + 2], d, sc.colors[k + 2], k]);
-    }
-    else if (['wind', 'temp', 'rain'].includes(mode)) {
-      const classes = { wind: WIND_CLASSES, temp: TEMP_BANDS, rain: RAIN_BANDS }[mode];
-      const m = sumBy();
-      rows = classes.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color, c.key]);
-    }
-    else if (mode === 'uphill') {
-      const m = sumBy();
-      const last = (k) => (k === 'no terrain' ? 2 : k === 'flat / down' ? 1 : 0);
-      rows = [...m.entries()].sort((x, y) => last(x[0]) - last(y[0]) || x[0] - y[0])
-        .map(([k, d]) => [typeof k === 'string' ? k : UPHILL_TEXT[k], d, typeof k === 'string' ? '#d6dde3' : DIFF_COLORS[k], k]);
-    } else if (mode === 'both') {
-      // climbs by uphill grade, the rest by MTB difficulty: S0…S6, then ↑S0…↑S5, then not graded
-      const m = sumBy();
-      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3', k]
-        : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10], k] : [MTB_SCALE_TEXT[k].split(':')[0], d, DIFF_COLORS[k], k]));
-    } else if (mode === 'down') {
-      const m = sumBy();
-      rows = [...m.entries()].sort((x, y) => (x[0] === 'not graded' ? 1 : y[0] === 'not graded' ? -1 : x[0] - y[0]))
-        .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : DIFF_COLORS[k], k]);
-    } else {
-      // where the terrain is missing: not flat, unknown
-      const m = sumBy();
-      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (GRADE_BANDS[k] ? [GRADE_BANDS[k][2], d, GRADE_BANDS[k][1], k] : ['no terrain', d, NO_TERRAIN, k]));
-    }
-    return rows;
-  }
+  breakdownRows(mode) { return breakdownRows(this.analysis, mode); }
 
   renderClimbs() {
     const a = this.analysis;

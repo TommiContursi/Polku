@@ -36,6 +36,7 @@ import { swipeSheet, SWIPE } from './sheet.js';
 import { renderUsage } from './usage.js';
 import { renderSpeedEditor } from './speeds.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
+import { wayUnder } from './pick.js';
 import { isAerial } from './style.js';
 import { RouteFlow } from './routeflow.js';
 import { openChangelog } from './changelog.js';
@@ -415,6 +416,7 @@ const planner = new Planner(map, {
     if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
   },
   weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
+  weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   routeTip: (ev, d) => hover.route(ev, d),
   saveOffline: () => {
@@ -468,15 +470,6 @@ const inspector = initInspector(map, {
   // the map's own cards: with the planner put away, and in the route's view for what the planner doesn't take (25c)
   // (and not the click that ends a hold on the map, whose card is the planner's: 25d part 5)
   isPlanning: (e) => (planner.active && (!planner.inView() || (!!e && planner.tookClick === e.originalEvent))) || Date.now() < planner.noClickUntil,
-  routeFrom: (ll, mode) => {
-    planner.setActive(true, { edit: true });
-    if (mode) planner.setMode(mode);
-    planner.clear();
-    planner.addPoint(ll);
-    toast('Now click where you want to go');
-  },
-  routeTo: (ll) => { planner.setActive(true, { edit: true }); planner.addPoint(ll); },
-  avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
   // a click on your route with the planner closed: open it, with that part's choices
   // (in the route's view too, where the planner leaves map taps to the map: 25c)
   // Check's markers on the route with the planner put away: their card first (25d part 3)
@@ -493,13 +486,14 @@ const inspector = initInspector(map, {
     setData('lipasPick', lit);
     planner.cards.current.gone = () => { if (data.lipasPick === lit) setData('lipasPick', { type: 'FeatureCollection', features: [] }); };
   },
-  cardOpen: () => !!planner.cards.current,
-  closeCard: () => planner.cards.close(),
-  vessel: (mmsi) => safety.vessel(mmsi),
+  openThing: (f, ll) => planner.openThing(f, ll),
+  cardOpen: () => !!planner.cards.current || !!planner.picked, // (the line at the spot too, #574)
+  closeCard: () => { planner.cards.close(); planner.hideLine(); },
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
+const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => planner.hoverPick(coords),
+  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
@@ -1853,6 +1847,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') {
     if (layersEscape()) return;
     if (planner.cards.escape()) return; // a card: one back (from the first, closed); Move: cancelled
+    if (planner.hideLine()) return; // the line at the spot (#574)
     openPanel(null, { instant: true }); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
   }
 });

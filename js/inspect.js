@@ -1,11 +1,10 @@
-// Click-to-inspect: what the map's own cards show with the planner put away. Ways, places and LIPAS's routes and places
-// open on the planner's card (25d part 6: openSpot()); ships, cameras, sea marks, road works and the water's depth keep
-// their own cards here, from what the map draws and, on demand, Overpass and Traficom.
+// Click-to-inspect: what a tap on the map opens with the planner put away. Ways, places, LIPAS's routes and places, the water
+// and a park open on the planner's card (25d part 6: openSpot()), and so do road works, sea marks and the map's other things
+// (#564: openThing(), with thingOf() here); ships and cameras keep their own live card and modal.
 
 import { TRAFICOM_WMS, isLipasRoute } from './config.js';
 import { overpass } from './osm.js';
 import { dist, pointSegment } from './geo.js';
-import { h, icon } from './ui.js';
 import { NAV_TEXT } from './nautical.js';
 import { WINTER_TEXT } from './winter.js';
 import { request } from './net.js';
@@ -64,6 +63,13 @@ export function winterAt(feats, ll) {
   return best && WINTER_TEXT[best.cls] ? { cls: best.cls, beside: best.cls === 'ski' } : null;
 }
 
+// The area the map draws at a spot, where a pick asks OpenStreetMap what it is (#574): 'water', 'park' (a park, a nature
+// reserve, a national park) or null
+export function areaUnder(map, pt) {
+  const at = (ids, ok = () => true) => { const layers = ids.filter((id) => map.getLayer(id)); return layers.length > 0 && map.queryRenderedFeatures(pt, { layers }).some(ok); };
+  return at(['water']) ? 'water' : at(['park-fill']) || at(['lc-grass'], (f) => ['park', 'recreation_ground'].includes(f.properties.subclass)) ? 'park' : null;
+}
+
 export function pickFeature(feats) {
   for (const re of PRIORITY) {
     const f = feats.find((x) => re.test(x.layer.id));
@@ -73,52 +79,32 @@ export function pickFeature(feats) {
 }
 
 export function initInspector(map, app) {
-  let popup = null;
-
-  // the card for a ship's, a sea mark's, a road's or the water's feature
-  async function show(f, ll) {
-    if (popup) popup.remove();
-    // as wide as the room beside the map's buttons, or over them where it's too narrow (a phone at 200 %); a tall
-    // card scrolls inside the room there is, under the top bar, less its padding and its tip (#435)
-    const beside = window.innerWidth - columnWidth() - 8;
-    const body = h('div', { class: 'insp', style: `max-height: ${Math.max(220, window.innerHeight - 8 - 120 - 24 - 10)}px` });
-    popup = new maplibregl.Popup({ maxWidth: `${beside >= INSP_LEAST ? Math.min(320, beside) : window.innerWidth - 16}px`, className: 'polku-popup', offset: 8 }).setLngLat(ll).setDOMContent(body).addTo(map);
-    keepInView(map, popup);
-    const pop = popup;
-    const actions = h('div', { class: 'insp-actions' },
-      h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeFrom(ll); }, html: `${icon('flag', 15)} Route from here` }),
-      h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeTo(ll); }, html: `${icon('plus', 15)} Add to route` }),
-      h('button', { type: 'button', class: 'btn avoid', title: 'Routes will go around this spot (40 m)', onclick: () => { pop.remove(); app.avoid(ll, body.querySelector('.insp-title')?.textContent); }, html: `${icon('close', 15)} Avoid` }));
-    if (/^nm-/.test(f.layer.id)) { renderNautical(body, f, map); body.append(actions); return; }
-    if (/^sf-|^military/.test(f.layer.id)) { await renderSafety(body, f, app); body.append(actions); return; }
-    await renderWater(body, ll, map, app);
-  }
-
   let lastTouch = 0, openAtPress = false;
-  map.on('touchstart', () => { lastTouch = Date.now(); openAtPress = (!!popup && popup.isOpen()) || app.cardOpen(); });
+  map.on('touchstart', () => { lastTouch = Date.now(); openAtPress = app.cardOpen(); });
   map.on('click', async (e) => {
     if (app.isPlanning(e)) return; // (the planner's: drawing, or something it took in the route's view)
     const touch = Date.now() - lastTouch < 800;
     // a finger beside an open card closes it; another tap opens the next one
-    if (touch && openAtPress) { openAtPress = false; if (popup) popup.remove(); app.closeCard(); return; }
+    if (touch && openAtPress) { openAtPress = false; app.closeCard(); return; }
     const box = hitBox(e.point, touch);
     const ll = [e.lngLat.lng, e.lngLat.lat];
     // a marker of Check's on your route (25d part 3): its card
     const head = app.headAt && app.headAt(e.point, touch);
-    if (head) { if (popup) popup.remove(); app.openHead(head); return; }
+    if (head) { app.openHead(head); return; }
     // your route, with the planner closed: open it there
     const leg = map.getLayer('route-casing') && map.queryRenderedFeatures(box, { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
-    if (leg && app.openRoute) { if (popup) popup.remove(); app.openRoute(leg.properties.leg, e.lngLat); return; }
+    if (leg && app.openRoute) { app.openRoute(leg.properties.leg, e.lngLat); return; }
     const feats = map.queryRenderedFeatures(box, { layers: inspectLayers(map) });
-    const f = pickFeature(feats);
-    if (popup) popup.remove();
+    // (nothing else there: a lake or a park is picked too, #574)
+    const f = pickFeature(feats) || (areaUnder(map, e.point) && { layer: { id: 'area' } });
     if (!f) return;
     // cameras and ships open their own modal / live card
     if (f.layer.id === 'cameras') { app.openCamera(f.properties.id, f.properties.name); return; }
     if (/^sf-ships/.test(f.layer.id)) { app.openShip(f.properties.mmsi); return; }
-    // a way, a place, a LIPAS route or place: the planner's card at the spot (25d part 6)
-    if (!/^(nm-|sf-|military|water$)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
-    show(f, ll);
+    // a way, a place, a LIPAS route or place, a lake, a park: the planner's card at the spot (25d part 6)
+    if (!/^(nm-|sf-|military)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
+    // the map's other things (road works, a sea mark…): the same card (#564)
+    app.openThing(f, ll);
   });
 
   return {
@@ -165,8 +151,6 @@ export function keepInView(map, popup, pad = {}) {
 
 // what the map's column of buttons takes at the right, its margins included
 const columnWidth = () => (window.innerWidth < 720 ? 64 : 84);
-// the map's card at its narrowest: .insp's min-width and the popup's padding (css/app.css)
-const INSP_LEAST = 258;
 
 // the popups open over the map's column; it hides while there's one
 const overIt = new Set();
@@ -176,9 +160,6 @@ export function overColumn(popup, on) {
   document.body.classList.toggle('card-over', overIt.size > 0);
 }
 
-function row(label, value, html = false) {
-  return h('div', { class: 'insp-row' }, h('span', {}, label), html ? h('b', { html: value }) : h('b', {}, value));
-}
 
 // OpenStreetMap's way at a spot, asked once (Overpass): the way given (a trail drawn from OSM knows its own), else the
 // nearest one with a highway tag within 12 m. { id, tags, len } or null.
@@ -213,43 +194,71 @@ export async function osmDetails({ type = 'way', id = null, ll }) {
   return near ? { type: near.type, id: near.id, tags: near.tags, len: 0 } : null;
 }
 
-const when = (iso) => (iso ? new Date(iso).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+// a date and a time, with the year when it isn't this year (#565: long works seemed to end before they began)
+const when = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'numeric', ...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}), hour: '2-digit', minute: '2-digit' });
+};
+const clip = (t, n) => (t && t.length > n ? `${t.slice(0, n)}…` : t);
 
-async function renderSafety(body, f, app) {
-  const p = f.properties;
-  const kind = f.layer.id === 'military-fill' ? 'military' : p.kind;
-  if (kind === 'incident' || kind === 'roadwork') {
-    body.append(h('div', { class: 'insp-title' }, kind === 'incident' ? 'Traffic incident' : 'Road works'));
-    if (p.title) body.append(h('div', { class: 'insp-sub' }, p.title));
-    if (p.details) body.append(row('Effect', p.details));
-    if (p.start) body.append(row('From', when(p.start)));
-    if (p.end) body.append(row('Until', when(p.end)));
-    if (p.where) body.append(h('p', { class: 'insp-info' }, p.where.length > 240 ? `${p.where.slice(0, 240)}…` : p.where));
-    body.append(h('div', { class: 'insp-links' }, h('a', { href: 'https://liikennetilanne.fintraffic.fi/', target: '_blank', rel: 'noopener', html: `Fintraffic traffic situation ${icon('external', 13)}` })));
-  } else if (kind === 'roadcond') {
-    body.append(h('div', { class: 'insp-title' }, p.label));
-    if (p.reasons) body.append(row('Why', p.reasons));
-    if (p.roadTemp != null) body.append(row('Road surface', `${Math.round(p.roadTemp)} °C (air ${Math.round(p.temp)} °C)`));
-    body.append(row('Forecast for', `${when(p.at)}${p.forecast ? ` (${p.forecast})` : ''}`));
-  } else if (kind === 'aadt') {
-    body.append(h('div', { class: 'insp-title' }, 'Busy road'));
-    body.append(row('Traffic', `about ${Math.round(p.aadt).toLocaleString('fi-FI')} vehicles/day`));
-    body.append(h('p', { class: 'insp-info' }, p.aadt >= 5000 ? 'Heavy traffic for cycling — look for a cycleway or a quieter road.' : p.aadt >= 2000 ? 'Steady traffic; often fast cars on rural roads.' : 'Moderate traffic.'));
-  } else if (kind === 'ship') {
-    body.append(h('div', { class: 'insp-title' }, 'Ship'));
-    body.append(row('Speed', `${(p.sog || 0).toFixed(1)} kn${p.moving ? '' : ' (stopped)'}`));
-    body.append(row('Position', `${p.age} min ago`));
-    const v = await app.vessel(p.mmsi);
-    if (v) {
-      body.querySelector('.insp-title').textContent = v.name || 'Ship';
-      if (v.destination) body.append(row('Destination', v.destination));
-      if (v.draught) body.append(row('Draught', `${(v.draught / 10).toFixed(1)} m`));
+/**
+ * What the card says of the map's other things (#564), from what the map draws: road works, an incident, road conditions,
+ * a busy road, a military area, a sea mark and its kin. { title, sub, group, rows: [[label, value]], info, link: [words,
+ * url], src }. The water is a pick's, with depthAt().
+ */
+export function thingOf(f, map) {
+  const p = f.properties, id = f.layer.id, rows = (...r) => r.filter(Boolean);
+  if (id === 'military-fill') return { title: 'Military area', rows: [], info: 'May be closed or have live firing. Check the Defence Forces’ notices before you go.' };
+  if (/^sf-/.test(id)) {
+    if (p.kind === 'incident' || p.kind === 'roadwork') {
+      return { title: p.kind === 'incident' ? 'Traffic incident' : 'Road works', sub: p.title || '', group: p.kind === 'incident' ? 'The incident' : 'The works',
+        rows: rows(p.details && ['Effect', p.details], ['From', when(p.start) || 'Not said'], ['Until', when(p.end) || 'Not said']), info: clip(p.where, 240),
+        link: ['Fintraffic traffic situation', 'https://liikennetilanne.fintraffic.fi/'], src: 'From Fintraffic' };
     }
-    body.append(h('p', { class: 'insp-info' }, 'Big ships can’t stop or turn quickly — cross fairways fast and well ahead of them.'));
-  } else if (kind === 'military') {
-    body.append(h('div', { class: 'insp-title' }, 'Military area'));
-    body.append(h('p', { class: 'insp-info' }, 'May be closed or have live firing. Check the Defence Forces’ notices before you go.'));
+    if (p.kind === 'roadcond') return { title: p.label, group: 'The road', rows: rows(p.reasons && ['Why', p.reasons], p.roadTemp != null && ['Road surface', `${Math.round(p.roadTemp)} °C (air ${Math.round(p.temp)} °C)`], ['Forecast for', `${when(p.at)}${p.forecast ? ` (${p.forecast})` : ''}`]), src: 'From Fintraffic' };
+    if (p.kind === 'aadt') {
+      return { title: 'Busy road', group: 'The road', rows: [['Traffic', `about ${Math.round(p.aadt).toLocaleString('fi-FI')} vehicles/day`]], src: 'From Väylävirasto',
+        info: p.aadt >= 5000 ? 'Heavy traffic for cycling: look for a cycleway or a quieter road.' : p.aadt >= 2000 ? 'Steady traffic; often fast cars on rural roads.' : 'Moderate traffic.' };
+    }
+    return null;
   }
+  const nav = { title: '', rows: [], src: 'From Väylävirasto' };
+  if (p.kind === 'mark') {
+    const lt = p.num && map ? map.querySourceFeatures('nmLights', { filter: ['==', ['get', 'num'], p.num] })[0] : null, q = lt && lt.properties;
+    return { ...nav, title: p.name || MARK_TYPE[p.type] || p.type || 'Mark', sub: [MARK_TYPE[p.type] || p.type, p.sub === 'KELLUVA' ? 'floating' : p.sub ? 'fixed' : ''].filter(Boolean).join(' · '), group: 'The mark',
+      rows: rows(p.nav && NAV_TEXT[p.nav] && ['Meaning', NAV_TEXT[p.nav]], q ? ['Light', `${q.char}${q.charFi && q.charFi !== q.char ? ` (${q.charFi})` : ''}`] : ['Light', p.lit ? 'Lit at night' : 'Unlit'],
+        q && q.range && ['Range', `${q.range} nm`], q && q.height && ['Height', `${q.height} m above water`], p.fault && ['Status', 'Reported fault'], p.where && ['Location', p.where], p.owner && ['Maintained by', p.owner.trim()], p.num && ['Number', p.num]) };
+  }
+  if (p.kind === 'fault') {
+    return { ...nav, title: p.name || 'Aid to navigation', sub: 'Reported fault', group: 'The fault', rows: rows(['Fault', p.fault], p.atonType && ['Type', p.atonType], p.fairway && ['Fairway', p.fairway], p.since && ['Since', new Date(p.since).toLocaleDateString()]),
+      info: 'Don’t rely on this mark: the light may be out or the buoy moved.' };
+  }
+  if (p.kind === 'sign') return { ...nav, title: 'Waterway sign', group: 'The sign', rows: rows(p.label && ['Value', p.label], p.extra && ['Plate', p.extra], p.where && ['Location', p.where]) };
+  if (p.kind === 'navline') {
+    return { ...nav, title: p.fairway || 'Navigation line', sub: p.type || 'Navigation line', group: 'The line',
+      rows: rows(p.swept && ['Swept depth', `${(+p.swept).toFixed(1)} m`], p.draught && ['Design draught', `${(+p.draught).toFixed(1)} m`], p.bearing != null && ['Direction', `${Math.round(p.bearing)}°`]) };
+  }
+  if (p.kind === 'fairway') {
+    return { ...nav, title: p.fairway || 'Fairway area', group: 'The fairway', rows: rows(p.depth && ['Swept depth', `${(+p.depth).toFixed(1)} m`], p.marking && ['Marking', p.marking], p.traffic && ['Traffic', p.traffic]),
+      info: 'Ships use this fairway. Paddle along its edge, cross it quickly and at right angles.' };
+  }
+  if (p.kind === 'speed' || p.kind === 'restrict') return { ...nav, title: p.place || 'Restriction area', group: 'The rules', rows: rows(p.limit && ['Speed limit', p.limit], p.what && ['Rules', p.what]), info: clip(p.info, 220) };
+  if (p.kind === 'sector') {
+    return { ...nav, title: `${(SECTOR_NAME[p.code] || 'Light').replace(/^./, (c) => c.toUpperCase())} light sector`, group: 'The sector', rows: [['Bearings', `${p.from}° – ${p.to}° (towards the light)`]],
+      info: 'White means safe passage; red or green, off the fairway on that side.' };
+  }
+  return null;
+}
+
+/** The water's depth at a spot, from Traficom's chart (shown, never routed on): words for the card. */
+export async function depthAt(ll) {
+  const R = 400, k = 20037508.34, x = (ll[0] * k) / 180, y = (Math.log(Math.tan(((90 + ll[1]) * Math.PI) / 360)) * k) / Math.PI;
+  const url = `${TRAFICOM_WMS}?service=WMS&request=GetFeatureInfo&version=1.1.1&layers=DepthArea_A&query_layers=DepthArea_A&styles=`
+    + `&srs=EPSG:3857&bbox=${x - R},${y - R},${x + R},${y + R}&width=101&height=101&x=50&y=50&info_format=application/json&feature_count=1`;
+  const j = await (await request('traficom', url)).json();
+  const pr = j.features && j.features[0] && j.features[0].properties;
+  return pr ? `${pr.DRVAL1}–${pr.DRVAL2} m` : 'Not charted here';
 }
 
 export const MARK_TYPE = {
@@ -258,79 +267,3 @@ export const MARK_TYPE = {
   Suuntaloisto: 'Directional light', Tutkamerkki: 'Radar reflector mark', 'Muu merkki': 'Other mark',
 };
 export const SECTOR_NAME = { p: 'red', vi: 'green', v: 'white', k: 'yellow' };
-
-function renderNautical(body, f, map) {
-  const p = f.properties;
-  if (p.kind === 'mark') {
-    body.append(h('div', { class: 'insp-title' }, p.name || MARK_TYPE[p.type] || p.type || 'Mark'));
-    body.append(h('div', { class: 'insp-sub' }, [MARK_TYPE[p.type] || p.type, p.sub === 'KELLUVA' ? 'floating' : p.sub ? 'fixed' : ''].filter(Boolean).join(' · ')));
-    if (p.nav && NAV_TEXT[p.nav]) body.append(row('Meaning', NAV_TEXT[p.nav]));
-    const lt = p.num ? map.querySourceFeatures('nmLights', { filter: ['==', ['get', 'num'], p.num] })[0] : null;
-    if (lt) {
-      const q = lt.properties;
-      body.append(row('Light', `${q.char}${q.charFi && q.charFi !== q.char ? ` (${q.charFi})` : ''}`));
-      if (q.range) body.append(row('Range', `${q.range} nm`));
-      if (q.height) body.append(row('Height', `${q.height} m above water`));
-    } else body.append(row('Light', p.lit ? 'Lit at night' : 'Unlit'));
-    if (p.fault) body.append(row('Status', '<span class="pill bad">Reported fault</span>', true));
-    if (p.where) body.append(row('Location', p.where));
-    if (p.owner) body.append(row('Maintained by', p.owner.trim()));
-    if (p.num) body.append(row('Number', p.num));
-  } else if (p.kind === 'fault') {
-    body.append(h('div', { class: 'insp-title' }, p.name || 'Aid to navigation'));
-    body.append(h('div', { class: 'insp-sub' }, 'Reported fault'));
-    body.append(row('Fault', p.fault));
-    if (p.atonType) body.append(row('Type', p.atonType));
-    if (p.fairway) body.append(row('Fairway', p.fairway));
-    if (p.since) body.append(row('Since', new Date(p.since).toLocaleDateString()));
-    body.append(h('p', { class: 'insp-info' }, 'Don’t rely on this mark — the light may be out or the buoy moved.'));
-  } else if (p.kind === 'sign') {
-    body.append(h('div', { class: 'insp-title' }, 'Waterway sign'));
-    if (p.label) body.append(row('Value', p.label));
-    if (p.extra) body.append(row('Plate', p.extra));
-    if (p.where) body.append(row('Location', p.where));
-  } else if (p.kind === 'navline') {
-    body.append(h('div', { class: 'insp-title' }, p.fairway || 'Navigation line'));
-    body.append(h('div', { class: 'insp-sub' }, p.type || 'Navigation line'));
-    if (p.swept) body.append(row('Swept depth', `${(+p.swept).toFixed(1)} m`));
-    if (p.draught) body.append(row('Design draught', `${(+p.draught).toFixed(1)} m`));
-    if (p.bearing != null) body.append(row('Direction', `${Math.round(p.bearing)}°`));
-  } else if (p.kind === 'fairway') {
-    body.append(h('div', { class: 'insp-title' }, p.fairway || 'Fairway area'));
-    if (p.depth) body.append(row('Swept depth', `${(+p.depth).toFixed(1)} m`));
-    if (p.marking) body.append(row('Marking', p.marking));
-    if (p.traffic) body.append(row('Traffic', p.traffic));
-    body.append(h('p', { class: 'insp-info' }, 'Ships use this fairway. Paddle along its edge, cross it quickly and at right angles.'));
-  } else if (p.kind === 'speed' || p.kind === 'restrict') {
-    body.append(h('div', { class: 'insp-title' }, p.place || 'Restriction area'));
-    if (p.limit) body.append(row('Speed limit', p.limit));
-    if (p.what) body.append(row('Rules', p.what));
-    if (p.info) body.append(h('p', { class: 'insp-info' }, p.info.length > 220 ? `${p.info.slice(0, 220)}…` : p.info));
-  } else if (p.kind === 'sector') {
-    body.append(h('div', { class: 'insp-title' }, `${(SECTOR_NAME[p.code] || 'Light').replace(/^./, (c) => c.toUpperCase())} light sector`));
-    body.append(row('Bearings', `${p.from}° – ${p.to}° (towards the light)`));
-    body.append(h('p', { class: 'insp-info' }, 'White = safe passage, red / green = off the fairway on that side.'));
-  }
-}
-
-async function renderWater(body, ll, map, app) {
-  body.append(h('div', { class: 'insp-title' }, 'Water'));
-  const depthRow = row('Depth', '…');
-  body.append(depthRow);
-  body.append(h('div', { class: 'insp-actions' },
-    h('button', { type: 'button', class: 'btn', onclick: () => app.routeFrom(ll, 'water'), html: `${icon('paddle', 15)} Paddle from here` })));
-  try {
-    const R = 400;
-    const k = 20037508.34;
-    const x = (ll[0] * k) / 180;
-    const y = (Math.log(Math.tan(((90 + ll[1]) * Math.PI) / 360)) * k) / Math.PI;
-    const url = `${TRAFICOM_WMS}?service=WMS&request=GetFeatureInfo&version=1.1.1&layers=DepthArea_A&query_layers=DepthArea_A&styles=` +
-      `&srs=EPSG:3857&bbox=${x - R},${y - R},${x + R},${y + R}&width=101&height=101&x=50&y=50&info_format=application/json&feature_count=1`;
-    const res = await request('traficom', url);
-    const j = await res.json();
-    const pr = j.features && j.features[0] && j.features[0].properties;
-    depthRow.lastChild.textContent = pr ? `${pr.DRVAL1}–${pr.DRVAL2} m (Traficom chart)` : 'Not charted here';
-  } catch {
-    depthRow.lastChild.textContent = 'Unavailable';
-  }
-}

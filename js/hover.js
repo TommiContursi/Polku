@@ -39,9 +39,11 @@ export function initHover(map, app) {
   let current = null; // what the tooltip shows
 
   let glowing = false; // a leg of your route glows brighter because the pointer rests on it
+  let drawn = false; // the way under the pointer drawn on the map (#574)
   const hide = () => {
     clearTimeout(timer);
     timer = 0;
+    if (drawn) { drawn = false; app.hoverPick(null); }
     if (glowing && app.hoverLeg) { app.hoverLeg(null); glowing = false; }
     route = false;
     current = null;
@@ -80,6 +82,10 @@ export function initHover(map, app) {
     }
     if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false, planning }); }
     if (!d) { hide(); return; }
+    // a way: as its pick says it, from OpenStreetMap's own ways once its tile is in, with what only the map draws after
+    // it (the uphill grade, access, a bridge, the trail details, winter), and the way drawn under the pointer (#574)
+    const w = d.said && app.wayUnder && app.wayUnder(map.unproject(at).toArray(), () => { if (at && !route && app.enabled()) probe(); });
+    if (w) d = { title: w.title, bits: [escapeHtml(w.line), ...d.bits.filter((b) => !d.said.includes(b))], upAt: 1, pending: d.pending, coords: w.coords };
     render(d);
     // the incline from the DEM arrives a moment later
     if (d.pending) {
@@ -91,6 +97,7 @@ export function initHover(map, app) {
 
   const render = (d) => {
     current = d;
+    if (app.hoverPick && (d.coords || drawn)) { drawn = !!d.coords; app.hoverPick(d.coords || null); }
     const lines = d.lines || (d.bits.length ? [d.bits.join(' · ')] : []);
     tip.innerHTML = `<b>${escapeHtml(d.title)}</b>${lines.map((l) => `<span>${l}</span>`).join('')}`;
     tip.hidden = false;
@@ -222,15 +229,15 @@ function way(feats, ctx) {
   const w = wayKind(feats);
   const route = feats.find((x) => x.layer.id === 'lipas-route');
   const up = feats.find((x) => x.layer.id === 'uphill-line');
-  const bits = [];
+  const bits = [], said = []; // said: what a pick's line says too (#574), so a way's hover doesn't say it twice
   const title = (route && route.properties.name) || (w ? w.name : 'Trail');
-  if (route && route.properties.name && w) bits.push(e(w.name));
+  if (route && route.properties.name && w) said.push(bits[bits.push(e(w.name)) - 1]);
   const wp = w ? w.p : {};
   const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
-  if (Number.isFinite(idx)) bits.push(`${dot(DIFF_COLORS[idx])}S${idx}`);
+  if (Number.isFinite(idx)) said.push(bits[bits.push(`${dot(DIFF_COLORS[idx])}S${idx}`) - 1]);
   if (up) bits.push(`${dot(DIFF_COLORS[up.properties.cls])}${UPHILL_TEXT[up.properties.cls].split(' ')[0]} ${up.properties.grade} %`);
   const upAt = bits.length;
-  if (wp.surface) bits.push(e(String(wp.surface).replace(/_/g, ' ')));
+  if (wp.surface) said.push(bits[bits.push(e(String(wp.surface).replace(/_/g, ' '))) - 1]);
   if (wp.bicycle === 'no') bits.push('no bikes');
   // marked private or closed for your sport (the tiles fold private into no): routes keep off it
   const own = ctx && ctx.bike ? 'bicycle' : 'foot';
@@ -241,7 +248,7 @@ function way(feats, ctx) {
   // what its winter colour means, where the winter ways are drawn
   const win = ctx && ctx.ll ? winterAt(feats, ctx.ll) : null;
   if (win) bits.push(win.beside ? '❄ a ski track beside it' : `❄ ${e(WINTER_TEXT[win.cls].toLowerCase())}`);
-  const d = { title, bits, upAt };
+  const d = { title, bits, upAt, said };
   // uphill layer off (or not computed here): work out the incline on the spot
   if (!up && w && ctx) {
     const trail = /^(path|track|cycleway)-/.test(w.f.layer.id);

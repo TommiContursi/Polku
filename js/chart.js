@@ -2,9 +2,10 @@
 // fill is coloured by the selected mode, hover is synced both ways with the
 // map, and dragging across the chart zooms into a stretch.
 
-import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE, isWater, SPORT_COLORS, ACTIVITIES } from './config.js';
+import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, GRADE_BANDS, OFFROAD_BIKE, isWater, SPORT_COLORS, ACTIVITIES } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
-import { windClass, tempBand, rainBand, forecastKnown } from './weather.js';
+import { windClass, tempBand, rainBand, forecastKnown, WIND_CLASSES, TEMP_BANDS, RAIN_BANDS } from './weather.js';
+import { WAY_SCALES, NOT_MAPPED } from './facts.js';
 import { escapeHtml, icon } from './ui.js';
 import { fromCss } from './palette.js';
 
@@ -36,6 +37,14 @@ export const COLOR_GROUPS = [
   ['Weather', ['wind', 'temp', 'rain']],
   ['Route', ['sport']],
 ];
+
+// What a pick can be coloured by (#574): the route's list that one way can have data for, and what only its tags say
+// (WAY_SCALES in js/facts.js). Not Both, which mixes two scales, nor Sport, which is a route's.
+export const PICK_MODES = {
+  grade: COLOR_MODES.grade, uphill: COLOR_MODES.uphill, down: COLOR_MODES.down, hiking: 'Hiking difficulty', surface: COLOR_MODES.surface, way: COLOR_MODES.way, smooth: 'Smoothness', winter: 'Winter care',
+  width: COLOR_MODES.width, vis: COLOR_MODES.vis, wind: COLOR_MODES.wind, temp: COLOR_MODES.temp, rain: COLOR_MODES.rain, bikes: 'Cycling', oneway: 'One way', lit: 'Lit', speed: 'Speed limit',
+};
+export const PICK_GROUPS = [['Terrain', ['grade', 'uphill', 'down', 'hiking']], ['Ground', ['surface', 'way', 'smooth', 'winter', 'width', 'vis']], ['Weather', ['wind', 'temp', 'rain']], ['The way', ['bikes', 'oneway', 'lit', 'speed']]];
 
 // Trail width and visibility along the route (analysis.js a.td): index = class + 2
 // (-2 not a trail, -1 a trail without the tag, then js/trails.js's classes).
@@ -73,8 +82,96 @@ export function colorAt(a, i, mode) {
     case 'temp': return a.wind ? tempBand(a.wind.temp[i]).color : '#e2e8f0';
     case 'rain': return a.wind ? rainBand(a.wind.precip[i], a.wind.temp[i]).color : '#e2e8f0';
     case 'sport': return SPORT_COLORS[(a.attr[i] && a.attr[i].sport) || a.activity] || '#64748b';
-    default: return gradeColor(a.grade[i]);
+    default: {
+      const sc = WAY_SCALES[mode];
+      if (!sc) return gradeColor(a.grade[i]);
+      const k = sc.of(tagsAt(a, i));
+      return k && sc.items[k] ? sc.items[k][1] : NOT_MAPPED;
+    }
   }
+}
+const tagsAt = (a, i) => (a.attr[i] && a.attr[i].tags) || {};
+
+// The category of sample i in a mode: one key drives the totals, the bar's segments and the map's previews (the route's
+// Check, and a pick's Colour by).
+export function breakdownKey(a, mode, i) {
+  switch (mode) {
+    case 'sport': return a.attr[i]?.sport || a.activity;
+    case 'surface': return a.surf[i];
+    case 'way': return a.way[i];
+    case 'width': case 'vis': return a.td?.[mode][i];
+    case 'wind': return a.wind && windClass(a.wind.head[i], a.wind.speed[i]).key;
+    case 'temp': return a.wind && tempBand(a.wind.temp[i]).key;
+    case 'rain': return a.wind && rainBand(a.wind.precip[i], a.wind.temp[i]).key;
+    case 'uphill': return noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down';
+    case 'both': return a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99;
+    case 'down': return a.down6[i] >= 0 ? a.down6[i] : 'not graded';
+    case 'grade': return noTerrain(a, i) ? GRADE_BANDS.length : GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min);
+    default: return WAY_SCALES[mode].of(tagsAt(a, i)) || 'none';
+  }
+}
+
+// [[words, metres, colour, key]] for a mode, with the full distance accounting, including unknown stretches once a kind
+// has data; none when it has none (a mode the route or the pick has nothing for).
+export function breakdownRows(a, mode) {
+  if (!a || !(a.total > 0)) return [];
+  if (['wind', 'temp', 'rain'].includes(mode) && !a.wind) return [];
+  if ((mode === 'width' || mode === 'vis') && (!a.td || !a.td[mode].some((k) => k >= 0))) return [];
+  if (mode === 'surface' && !a.surf.some((k) => k !== 'unknown')) return [];
+  if (mode === 'grade' && a.terrain?.all) return [];
+  if (mode === 'down' && !a.down6.some((k) => k >= 0)) return [];
+  if (mode === 'uphill' && a.terrain?.all && !a.upCls.some((k) => k >= 0)) return [];
+  if (mode === 'both' && a.terrain?.all && !a.upCls.some((k) => k >= 0) && !a.down6.some((k) => k >= 0)) return [];
+  let rows;
+  const n = a.along.length;
+  const sumBy = () => {
+    const m = new Map();
+    for (let i = 1; i < n; i++) {
+      const k = breakdownKey(a, mode, i);
+      if (k == null) continue;
+      m.set(k, (m.get(k) || 0) + a.along[i] - a.along[i - 1]);
+    }
+    return m;
+  };
+  if (mode === 'sport') {
+    const m = sumBy();
+    rows = [...m.entries()].map(([k, d]) => [ACTIVITIES[k] ? ACTIVITIES[k].label : k, d, SPORT_COLORS[k] || '#64748b', k]);
+  } else if (mode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown, k]);
+  else if (mode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other, k]);
+  else if ((mode === 'width' || mode === 'vis') && a.td) {
+    const sc = TRAIL_SCALES[mode];
+    const m = sumBy();
+    // narrow → wide (clear → barely visible), then the not-mapped and the roads
+    rows = [...m.entries()].sort((x, y) => (x[0] < 0) - (y[0] < 0) || (x[0] < 0 ? y[0] - x[0] : x[0] - y[0])).map(([k, d]) => [sc.labels[k + 2], d, sc.colors[k + 2], k]);
+  } else if (['wind', 'temp', 'rain'].includes(mode)) {
+    const classes = { wind: WIND_CLASSES, temp: TEMP_BANDS, rain: RAIN_BANDS }[mode];
+    const m = sumBy();
+    rows = classes.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color, c.key]);
+  } else if (mode === 'uphill') {
+    const m = sumBy();
+    const last = (k) => (k === 'no terrain' ? 2 : k === 'flat / down' ? 1 : 0);
+    rows = [...m.entries()].sort((x, y) => last(x[0]) - last(y[0]) || x[0] - y[0])
+      .map(([k, d]) => [typeof k === 'string' ? k : UPHILL_TEXT[k], d, typeof k === 'string' ? '#d6dde3' : DIFF_COLORS[k], k]);
+  } else if (mode === 'both') {
+    // climbs by uphill grade, the rest by MTB difficulty: S0…S6, then ↑S0…↑S5, then not graded
+    const m = sumBy();
+    rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3', k]
+      : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10], k] : [MTB_SCALE_TEXT[k].split(':')[0], d, DIFF_COLORS[k], k]));
+  } else if (mode === 'down') {
+    const m = sumBy();
+    rows = [...m.entries()].sort((x, y) => (x[0] === 'not graded' ? 1 : y[0] === 'not graded' ? -1 : x[0] - y[0]))
+      .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : DIFF_COLORS[k], k]);
+  } else if (mode === 'grade') {
+    // where the terrain is missing: not flat, unknown
+    const m = sumBy();
+    rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (GRADE_BANDS[k] ? [GRADE_BANDS[k][2], d, GRADE_BANDS[k][1], k] : ['no terrain', d, NO_TERRAIN, k]));
+  } else {
+    // a pick's tags (WAY_SCALES): in the legend's order, then what isn't mapped; none when no piece says anything
+    const sc = WAY_SCALES[mode], m = sumBy();
+    if (![...m.keys()].some((k) => k !== 'none' && !(sc.quiet || []).includes(k))) return [];
+    rows = [...Object.entries(sc.items).filter(([k]) => m.has(k)).map(([k, [words, color]]) => [words, m.get(k), color, k]), ...(m.has('none') ? [['not mapped', m.get('none'), NOT_MAPPED, 'none']] : [])];
+  }
+  return rows;
 }
 
 const clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

@@ -80,6 +80,10 @@
   --temp-frost: #6d28d9; --temp-cold: #3b82f6; --temp-cool: #7dd3fc; --temp-mild: #86efac; --temp-warm: #fde047; --temp-warmer: #fdba74; --temp-hot: #f97316; --temp-hotter: #dc2626;
   --rain-dry: #a3acb9; --rain-drizzle: #93c5fd; --rain-rain: #3b82f6; --rain-heavy: #1e3a8a; --rain-snow: #a78bfa;
   --wind-strong-head: #b91c1c; --wind-head: #f87171; --wind-cross: #f59e0b; --wind-tail: #4ade80; --wind-strong-tail: #15803d; --wind-calm: #a3acb9;
+  --bikes-separate: #15803d; --bikes-shared: #65a30d; --bikes-cycleway: #4d7c0f; --bikes-lane: #ca8a04; --bikes-track: #a16207; --bikes-beside: #b45309;
+  --bikes-trail: #7c2d12; --bikes-walk: #64748b; --bikes-traffic: #ea580c; --bikes-no: #334155;
+  --lit-yes: #facc15; --lit-no: #475569; --oneway-one: #f97316; --oneway-bikes: #16a34a; --oneway-both: #94a3b8;
+  --winter-ploughed: #3b82f6; --winter-not: #94a3b8; --winter-nobikes: #dc2626; --winter-ski: #7c3aed;
   color-scheme: light;
 }
 @media (pointer: coarse) { :root { --target: 44px; } }
@@ -1281,8 +1285,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 }
 .li:hover, .li.sel { background: var(--surface-2); }
 .li .ic { color: var(--warn); }
-.btn.avoid { min-height: 26px; padding-block: 2px; padding-inline: 9px; font-size: 12px; color: var(--bad); border-color: rgba(220,38,38,.35); }
-.btn.avoid:hover { background: rgba(220,38,38,.08); }
 .hidden-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 2px 2px; font-size: 12px; color: var(--muted); }
 .hidden-kinds .on-chip { background: var(--surface-2); color: var(--muted); }
 .li-main { display: flex; flex-direction: column; min-width: 0; }
@@ -1832,6 +1834,49 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-foot .btn { flex: 1 1 auto; justify-content: center; gap: 5px; padding: 0 8px; white-space: nowrap; }
 @container (max-width: 290px) { .card-foot { flex-wrap: wrap; } .card-foot .btn { white-space: normal; } } /* a narrow card or an enlarged text: a button on a line of its own where it must */
 .card .insp-row.miss b { color: var(--muted); font-weight: 500; }
+/* the line at the spot (#574): on a phone, what a tap picked, in the hover's words, as a button above the spot's pin; its
+   marker is a plain div round it, so the map's own placing (a transform on the marker) never animates */
+.spot-line { display: flex; align-items: center; gap: 8px; max-width: min(300px, calc(100vw - 24px)); min-height: 44px; padding: 6px 8px 7px 12px; border: 0; border-radius: var(--radius-control);
+  background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font: inherit; text-align: left; cursor: pointer;
+  transform-origin: 50% 100%; transition: opacity var(--t-open) var(--ease-out), transform var(--t-press) var(--ease-out); }
+@starting-style { .spot-line { opacity: 0; transform: scale(0.96); } }
+.spot-line > span:first-child { display: grid; gap: 1px; min-width: 0; }
+.spot-line b { font-size: var(--font-control); font-weight: var(--weight-strong); overflow-wrap: anywhere; }
+.spot-line small { font-size: var(--font-small); color: var(--muted); overflow-wrap: anywhere; }
+.spot-line .ic { flex: none; color: var(--muted); }
+.spot-line:active { transform: scale(0.97); }
+@media (prefers-reduced-motion: reduce) { .spot-line { transition: opacity var(--t-open) linear; } @starting-style { .spot-line { transform: none; } } .spot-line:active { transform: none; } }
+/* a pick's card (#574): the profile coloured as the map, Colour by under it, its facts in groups, what isn't mapped in one quiet line */
+.pick-mark { display: block; width: 22px; height: 6px; border-radius: 3px; background: var(--c, #374151); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0, 0, 0, .25); }
+.pick-mark.dot { width: 16px; height: 16px; border-radius: 50%; }
+.pick-prof { position: relative; height: 64px; margin: 2px 0 0; }
+/* while a pick's ways come (#574): its shapes, after 300 ms and breathing as the busy bar; delays count from the tap */
+.pick-skel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 2px 0 8px; }
+.pick-skel i { display: block; border-radius: 8px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
+  animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards, pulse 1.6s ease-in-out calc(480ms - var(--since)) infinite; }
+.pick-skel .pick-note { animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards; } /* what's asked, in words, with the shapes */
+@media (prefers-reduced-motion: reduce) { .pick-skel i { animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards; } } /* (the words say it's loading: the shapes stop breathing) */
+.pick-skel-nums { display: flex; gap: 20px; }
+.pick-skel-nums i { flex: 0 1 64px; min-width: 0; height: 40px; } /* (narrower on a narrow card: 200 %) */
+.pick-skel-chart { height: 110px; }
+.pick-skel-by { width: 55%; height: 40px; }
+.pick-chart { display: block; width: 100%; height: 110px; cursor: crosshair; touch-action: none; }
+.pick-prof svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pick-prof .ax { position: absolute; left: 0; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pick-prof .ax.top { top: -2px; }
+.pick-prof .ax.bot { bottom: -2px; }
+.pick-by { margin-top: 6px; }
+.pick-facts .insp-row b { font-weight: var(--weight-name); }
+/* a fact's picture before its words (#574): a sign in the words' ink, or a grade's badge, kept on a line with its first word */
+.pick-facts .insp-row b .fw { white-space: nowrap; color: inherit; }
+.sign { display: inline-block; height: 1.4em; width: auto; vertical-align: -0.38em; overflow: visible; }
+.pick-facts .sign { margin-right: 0.3em; }
+.sign * { vector-effect: non-scaling-stroke; }
+.pick-facts .insp-row small { flex-basis: 100%; color: var(--muted); font-size: var(--font-small); }
+.pick-note, .pick-fail { margin: 0; font-size: var(--font-small); color: var(--muted); }
+.pick-unmapped { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font-size: var(--font-small); color: var(--muted); }
+.pick-unmapped .btn, .pick-fail .btn { min-height: var(--target); margin-block: calc((var(--target) - 1.4em) / -2); padding: 0 6px; font-size: var(--font-small); } /* (a finger's target, without growing the line) */
+.pick-unmapped .btn { color: var(--accent); }
 .card .insp-row .btn { flex: none; }
 .maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
@@ -1849,16 +1894,8 @@ body[data-activity="paddle"] #zoom-hint { display: none; } /* (Paddle's map isn'
 .polku-popup .maplibregl-popup-content { border-radius: 14px; padding: 12px var(--pop-pad); box-shadow: var(--shadow); background: var(--surface-solid); color: var(--text); }
 .polku-popup .maplibregl-popup-tip { border-top-color: var(--surface-solid); border-bottom-color: var(--surface-solid); }
 .polku-popup .maplibregl-popup-close-button { font-size: 18px; width: 26px; height: 26px; right: 4px; top: 4px; border-radius: 8px; color: var(--muted); }
-/* the map's card: never wider than the screen less 8 px each side (at 200 %, #435; its widths and max-height are in
-   js/inspect.js); a tall one scrolls, with room in it for the focus rings */
-.insp {
-  min-width: min(calc(230px + 2 * var(--space-4)), calc(100vw - 2 * (var(--space-8) + var(--pop-pad) - var(--space-4))));
-  padding: var(--space-4); margin: calc(-1 * var(--space-4)); overflow-y: auto; overscroll-behavior: contain;
-}
 body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit beside them is over them (keepInView(), #435) */
-.insp-title { font-weight: 700; font-size: var(--font-title); padding-right: 22px; overflow-wrap: anywhere; } /* (a long name breaks rather than leave its card, #435) */
 @media (min-width: 721px) { .polku-popup { --font-title: 0.9375rem; } } /* (a desktop's card at its spot, as .card-float) */
-.insp-sub { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 /* a fact's value beside its name, or under it where there's no room (a phone at 200 %, #435) */
 .insp-row { display: flex; flex-wrap: wrap; column-gap: 10px; row-gap: var(--space-2); padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
 .insp-row span { color: var(--muted); }
@@ -1866,8 +1903,6 @@ body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit besi
 .insp-row b { flex: 1 1 120px; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 .insp-row b .dot { vertical-align: 0; }
 .insp-info { font-size: 12px; color: var(--muted); margin: 6px 0; }
-.insp-links { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; }
-.insp-links a { color: var(--accent); display: inline-flex; align-items: center; gap: 3px; font-weight: 600; text-decoration: none; }
 .insp-more { margin-top: 6px; }
 .insp-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 .insp-ride { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.35; }
