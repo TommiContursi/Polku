@@ -231,7 +231,8 @@ export class WinterWays {
     for (const k of keys) { const [x, y] = k.split('/').map(Number); winterTile(x, y).catch(() => {}); }
     this.publish();
   }
-  publish() { this.onData(this.on ? winterFeatures(this.on ? this.keys() : []) : { type: 'FeatureCollection', features: [] }); }
+  // (below the zoom where they draw, no tiles are listed: zoomed far out, that's millions, #667)
+  publish() { this.onData(this.on && this.map.getZoom() >= WINTER_MIN_ZOOM ? winterFeatures(this.keys()) : { type: 'FeatureCollection', features: [] }); }
 }
 
 // ---------------------------------------------------------------- sea ice

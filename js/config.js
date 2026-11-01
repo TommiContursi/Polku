@@ -442,6 +442,7 @@ export const QUICK_TILE = {
   lipasWinter: { group: 'Winter', label: 'Ski tracks & snow­mobile routes', icon: 'flake', winter: true },
   seaIce: { group: 'Winter', label: 'Sea ice', icon: 'flake', winter: true },
   'wx:snow': { group: 'Winter', label: 'Snow depth', icon: 'snow' },
+  lit: { group: 'After dark', label: 'Lit ways', icon: 'moon', opts: true, note: 'OpenStreetMap' },
   lipasRoutes: { group: 'Marked routes', label: 'Official routes', icon: 'flag', note: 'LIPAS', zoom: 8 },
   wmtHiking: { group: 'Marked routes', label: 'Waymarked hiking', icon: 'sign' },
   wmtMtb: { group: 'Marked routes', label: 'Waymarked MTB', icon: 'sign' },

@@ -31,6 +31,17 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The water's card has its depth from Traficom's chart and **Paddle from here**, also on the open sea and when OpenStreetMap doesn't answer. The depth is for planning, not navigation.
 - Road works' and incidents' dates show their year when it isn't this year, so works that run over a year no longer seem to end before they begin.
 
+### Lit ways on the map ([#638](https://github.com/TommiContursi/Polku/issues/638))
+
+- **Lit ways**, in **Layers → More → After dark**, shows which paths and streets OpenStreetMap says are lit after dark. A lit way has a bright yellow line, and one it says isn't lit has a thin dashed grey line. A way OpenStreetMap says nothing about has no line, so no line doesn't mean dark.
+- **In the dark**, under its switch, dims the map under a navy veil and lets the lit ways glow warm white over it. Ways that aren't lit stay a dashed line. The veil covers only the part of the map whose lighting has come in, so a part that didn't load is never dark as if nothing there were lit.
+- **Opacity**, under the look, sets how strong either look is, and stays as you set it.
+- The lines show from zoom 14 and stay as you zoom out to 13. **Lit ways** can also be one of your tiles in the Layers drawer. Its tile says **Zoom in to see** further out, and **No data now** while OpenStreetMap's server doesn't answer for part of the view.
+
+### The map stays smooth zoomed far out ([#667](https://github.com/TommiContursi/Polku/issues/667))
+
+- With **Trail details** on, as MTB, Hike and Trail run have them, moving the map while zoomed far out no longer holds it up. At the whole world it took up to half a second on each move and hundreds of megabytes of a phone's memory. The details still show from zoom 13, and winter ways from zoom 11.
+
 ### Less waiting while routes and map data load ([#659](https://github.com/TommiContursi/Polku/issues/659))
 
 - Changing a route stops land-routing requests it no longer needs, while requests still needed by the current route are shared. A busy BRouter is left to recover with Polku's own route profiles too. Polku uploads its route profile again if the server has lost it.
@@ -56,6 +67,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))
 
 - Beside a desktop's side panel, "1 to read before you go" now appears under the route's numbers, so they stay where they are when it comes. On a phone's peek and in a panel at the bottom, which grow up from their foot, it stays above them. At half and full height it still moves the numbers.
+
 ## 2026-10-31
 
 ### Clearer terrain maps, aerial photos and depths ([#649](https://github.com/TommiContursi/Polku/issues/649), [#650](https://github.com/TommiContursi/Polku/issues/650), [#653](https://github.com/TommiContursi/Polku/issues/653))
