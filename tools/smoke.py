@@ -16555,12 +16555,17 @@ def osm_data(chrome):
     import subprocess
     from pathlib import Path
     checks = ('test_monitor_runs_without_the_sftp_dependency',
-              'test_monitor_rejects_an_immutable_or_freshly_cached_current_pointer')
+              'test_monitor_rejects_an_immutable_or_freshly_cached_current_pointer',
+              'test_sftp_pipelines_writes_and_bounds_read_prefetch',
+              'test_sftp_resume_uses_nontruncating_seek_and_surfaces_close_errors',
+              'test_resume_complete_stage_does_not_reupload_payload',
+              'test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix',
+              'test_resume_rejects_corrupt_or_oversized_prefix_without_writing')
     result = subprocess.run([sys.executable, '-m', 'unittest',
                              *(f'tools.osm_data.test_publish.PublishTests.{name}' for name in checks)],
                             cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True, timeout=30)
     if result.returncode:
-        print('FAIL osmdata: publishing monitor regressions\n' + result.stderr, flush=True)
+        print('FAIL osmdata: publishing regressions\n' + result.stderr, flush=True)
         return False
     failures = []
     for width, height, phone in [(1440, 900, False), (390, 844, True)]:
