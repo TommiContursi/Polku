@@ -23,6 +23,7 @@ async function ask(i, query, signal, timeoutMs) {
     const res = await request('overpass', OVERPASS[i], { method: 'POST', body: new URLSearchParams({ data: query }), signal: ctrl.signal, backoff: false });
     if (!res.ok) throw new Error(`Overpass ${res.status}`);
     const json = await res.json();
+    if (!json || json.remark || !Array.isArray(json.elements)) throw new Error(json?.remark || 'Overpass returned incomplete data');
     preferred = i;
     return json;
   } finally {
@@ -30,12 +31,19 @@ async function ask(i, query, signal, timeoutMs) {
   }
 }
 
-export async function overpass(query, { race = false, timeoutMs = 20000 } = {}) {
+export async function overpass(query, { race = false, timeoutMs = race ? 25000 : 20000 } = {}) {
   const order = OVERPASS.map((_, k) => (preferred + k) % OVERPASS.length);
   if (race) {
     const stop = new AbortController();
     try {
-      return await Promise.any(order.slice(0, 3).map((i) => ask(i, query, stop.signal, 25000)));
+      try {
+        return await Promise.any(order.slice(0, 3).map((i) => ask(i, query, stop.signal, timeoutMs)));
+      } catch (err) {
+        for (const i of order.slice(3)) {
+          try { return await ask(i, query, stop.signal, timeoutMs); } catch (e) { err = e; }
+        }
+        throw err;
+      }
     } finally {
       stop.abort();
     }

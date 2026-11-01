@@ -10,7 +10,7 @@ import { CUSTOM_PROFILES } from './styles.js';
 import { dist } from './geo.js';
 import { store } from './ui.js';
 
-// Settings → Routing server: your own BRouter (no limits but your computer's), or brouter.de.
+// Settings → Routing server: your own BRouter (its own capacity), or brouter.de.
 export const routerUrl = () => (store.get('brouterUrl', '') || '').trim().replace(/\/+$/, '') || BROUTER;
 const routerSource = () => (routerUrl() === BROUTER ? 'brouter' : 'brouterOwn');
 /** Calls the router takes right now without waiting (Infinity for your own). */
@@ -19,19 +19,17 @@ export const routerHeadroom = () => headroom(routerSource());
 export const routerRoomThisMinute = () => roomIn(routerSource(), 60e3);
 
 const cache = new Map();
+function remember(key, value) {
+  cache.set(key, value);
+  while (cache.size > 400) cache.delete(cache.keys().next().value);
+}
 // Requests in flight, shared: a drag's live preview and the commit that follows
 // it ask for the same leg, and that must cost one BRouter call, not two. The
 // fetch is cancelled only when everyone who asked for it has given up.
 const inflight = new Map();
 
-// wait for a request someone else made (never cancels it)
-function join(key) {
-  const e = inflight.get(key);
-  e.users++;
-  return e.promise;
-}
-
 function shared(key, run, signal) {
+  if (signal?.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
   let e = inflight.get(key);
   if (!e) {
     const ctrl = new AbortController();
@@ -42,7 +40,7 @@ function shared(key, run, signal) {
   e.users++;
   if (!signal) return e.promise;
   return new Promise((ok, fail) => {
-    const quit = () => { if (--e.users === 0) { e.ctrl.abort(); inflight.delete(key); } fail(new DOMException('Aborted', 'AbortError')); };
+    const quit = () => { if (--e.users === 0) { e.ctrl.abort(); if (inflight.get(key) === e) inflight.delete(key); } fail(new DOMException('Aborted', 'AbortError')); };
     if (signal.aborted) { quit(); return; }
     signal.addEventListener('abort', quit, { once: true });
     e.promise.then(ok, fail).finally(() => signal.removeEventListener('abort', quit));
@@ -80,23 +78,25 @@ const nogoParam = (nogos) => (nogos && nogos.length
 const paramStr = (params) => Object.keys(params || {}).sort().map((k) => `&profile:${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('');
 
 // Polku's own profiles go to the routing server once per session (one fixed id
-// each, so it's one file there, not one per visitor); a 500 for one of them
-// means the server has dropped it: upload again and retry, once.
-const uploaded = new Map();
-function ensureProfile(profile, signal, again = false) {
+// each, so it's one file there, not one per visitor). A missing file returns
+// an empty 500; try one re-upload (the stock profile if it fails), then apply
+// normal backoff if routing fails.
+const uploaded = new Set();
+function ensureProfile(profile, signal, maxWait, again = false) {
   const def = CUSTOM_PROFILES[profile];
   if (!def) return Promise.resolve();
   const k = `${routerUrl()}|${profile}`;
   if (again) uploaded.delete(k);
-  if (!uploaded.has(k)) {
-    uploaded.set(k, (async () => {
-      const text = await (await fetch(def.file)).text(); // Polku's own file, next to the app
-      const res = await request(routerSource(), `${routerUrl()}/profile/${profile}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: text, signal });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || j.error || j.profileid !== profile) throw new Error(j.error || `the router didn't take Polku's profile (${res.status})`);
-    })().catch((e) => { uploaded.delete(k); throw e; }));
-  }
-  return uploaded.get(k);
+  if (uploaded.has(k)) return Promise.resolve();
+  return shared(`profile|${k}`, async (sig) => {
+    const file = await request('polku', def.file, { signal: sig, timeoutMs: 15000 });
+    if (!file.ok) throw new Error(`Polku's profile didn't load (${file.status})`);
+    const text = await file.text();
+    const res = await request(routerSource(), `${routerUrl()}/profile/${profile}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: text, signal: sig, maxWait, timeoutMs: 15000 });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j.error || j.profileid !== profile) throw new Error(j.error || `the router didn't take Polku's profile (${res.status})`);
+    uploaded.add(k);
+  }, signal);
 }
 
 // the variables only Polku's own profiles have (a stock profile can't take them)
@@ -107,7 +107,7 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
   const custom = !!CUSTOM_PROFILES[profile];
   if (custom) {
     try {
-      await ensureProfile(profile, signal);
+      await ensureProfile(profile, signal, maxWait, retried); // a retry uploads it again
     } catch (e) {
       if (e.name === 'AbortError' || e.name === 'Limited') throw e;
       // can't use Polku's profile: the stock one it's made from, without Polku's own variables
@@ -121,13 +121,12 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
   // Not part of any cache key, so routes cached or saved before stay valid.
   const url = `${routerUrl()}?lonlats=${pts.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join('|')}` +
     `&profile=${profile}&alternativeidx=${alt}&format=geojson${nogoParam(nogos)}${paramStr(params)}&profile:processUnusedTags=1`;
-  // a dropped custom profile answers 500: not an outage, so no back-off for those
-  const res = await request(routerSource(), url, { signal, maxWait, ...(custom ? { backoff: false } : {}) });
-  if (custom && res.status >= 500 && !retried) {
-    await ensureProfile(profile, signal, true);
-    return brouter(pts, profile, signal, nogos, maxWait, params, true, alt);
-  }
+  const res = await request(routerSource(), url, {
+    signal, maxWait, timeoutMs: 120000,
+    backoff: custom && !retried ? async (r) => !(r.status === 500 && !(await r.clone().text()).trim()) : true,
+  });
   const text = await res.text();
+  if (custom && !retried && res.status === 500 && !text.trim()) return brouter(pts, profile, signal, nogos, maxWait, params, true, alt);
   if (!res.ok) throw Object.assign(new Error(explain(text) || `BRouter ${res.status}`), { busy: /killed by thread-priority-watchdog|timeout|retry later/i.test(text) });
   const gj = JSON.parse(text);
   const f = gj.features[0];
@@ -166,7 +165,12 @@ const pause = (ms, signal) => new Promise((ok, no) => {
 const legKey = (mode, profile, opts, from, to) => `${mode}|${profile}|${opts.portage}|${from.join(',')}|${to.join(',')}|${nogoParam(opts.nogos)}|${paramStr(opts.params)}|${JSON.stringify(opts.water || {})}|${routerUrl()}${opts.alt ? `|alt${opts.alt}` : ''}`;
 // a busy server drops the oldest request it's running: one more try after a moment
 const brouterRetry = (pts, profile, sig, opts) => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params, false, opts.alt || 0)
-  .catch((e) => (e.busy ? pause(2000, sig).then(() => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params, false, opts.alt || 0)) : Promise.reject(e)));
+  .catch((e) => (e.busy ? pause(2000, sig).then(() => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params, false, opts.alt || 0)) : Promise.reject(e)))
+  .catch((e) => {
+    // Reading a timed-out response body may reject with AbortError too.
+    if (e.name === 'AbortError' && !sig.aborted) throw new DOMException('The router response timed out', 'TimeoutError');
+    throw e;
+  });
 
 // When BRouter can't take the call now (a pause, a long wait for a paced slot,
 // an outage) or can't route it, Valhalla does (not for paddling, and never for
@@ -180,10 +184,10 @@ async function standIn(err, points, profile, opts, signal) {
   if (cache.has(key)) return cache.get(key);
   try {
     const legs = await shared(key, (sig) => valhallaRoute(points, base, sig, opts.nogos, opts.valhalla), signal);
-    cache.set(key, legs);
+    remember(key, legs);
     return legs;
   } catch (e) {
-    throw e.name === 'AbortError' ? e : err;
+    throw signal?.aborted ? e : err;
   }
 }
 
@@ -212,8 +216,7 @@ export async function routeLeg({ from, to, mode, profile, opts = {} }, signal) {
     result = { ...r, portage: [] };
     if (r.note) { cache.delete(key); return result; } // a fallback: ask again next time
   }
-  cache.set(key, result);
-  if (cache.size > 400) cache.delete(cache.keys().next().value);
+  remember(key, result);
   return result;
 }
 
@@ -228,7 +231,7 @@ export async function routeRun({ points, profile, opts = {} }, signal) {
   const keys = points.slice(1).map((to, i) => legKey('auto', profile, opts, points[i], to));
   // all known already, or on their way (a drag's preview asked for them): no new call
   if (keys.every((k) => cache.has(k) || inflight.has(k))) {
-    return Promise.all(keys.map((k) => (cache.has(k) ? cache.get(k) : join(k).then((r) => ({ ...r, portage: [] })))));
+    return Promise.all(keys.map((k) => (cache.has(k) ? cache.get(k) : shared(k, null, signal).then((r) => ({ ...r, portage: [] })))));
   }
   let r;
   try {
@@ -250,10 +253,9 @@ export async function routeRun({ points, profile, opts = {} }, signal) {
     const res = b > a
       ? { coords: c.slice(a, b + 1), tags: r.tags.slice(a, b), portage: [] }
       : { coords: [c[a], c[a]], tags: [r.tags[Math.max(0, a - 1)] || {}], portage: [] };
-    if (r.note) { if (k === 0) res.note = r.note; } else cache.set(key, res); // a fallback isn't kept: ask again next time
+    if (r.note) { if (k === 0) res.note = r.note; } else remember(key, res); // a fallback isn't kept: ask again next time
     return res;
   });
-  while (cache.size > 400) cache.delete(cache.keys().next().value);
   return legs;
 }
 
@@ -274,6 +276,6 @@ export async function routeLoop({ points, profile, opts = {} }, signal) {
     const legs = await standIn(e, points, profile, opts, signal);
     r = { coords: legs.flatMap((l, i) => (i ? l.coords.slice(1) : l.coords)), tags: legs.flatMap((l) => l.tags), provider: 'valhalla' };
   }
-  if (!r.note) cache.set(key, r);
+  if (!r.note) remember(key, r);
   return r;
 }

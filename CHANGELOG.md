@@ -11,6 +11,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **Opacity**, under the look, sets how strong either look is, and stays as you set it.
 - The lines show from zoom 14 and stay as you zoom out to 13. **Lit ways** can also be one of your tiles in the Layers drawer. Its tile says **Zoom in to see** further out, and **No data now** while OpenStreetMap's server doesn't answer for part of the view.
 
+### Less waiting while routes and map data load ([#659](https://github.com/TommiContursi/Polku/issues/659))
+
+- Changing a route stops land-routing requests it no longer needs, while requests still needed by the current route are shared. A busy BRouter is left to recover with Polku's own route profiles too. Polku uploads its route profile again if the server has lost it.
+- A routing request that stops responding has a time limit, separate from waiting for the public server's next slot. If Valhalla's optional trail details take too long, the route appears with those details unknown.
+- Height tiles keep loading while one tile is slow. A tile that stops responding falls back to coarser terrain; heights that are still missing remain marked as missing.
+- LIPAS routes and places redraw for the current view, with simultaneous arrivals combined, instead of redrawing everything seen during the session.
+- An OpenStreetMap server's error response no longer stops valid answers from other servers. If the first three servers fail, the remaining server is tried too.
+
 ### The desktop's top bar and toolbar keep their places ([#594](https://github.com/TommiContursi/Polku/issues/594), [#595](https://github.com/TommiContursi/Polku/issues/595))
 
 - On a desktop, **Settings** (⚙) is at the top right of the window, over the panel it opens. The logo, the search and the sport stay at the top left.

@@ -20,7 +20,7 @@
 //   tabs, a shared connection): a back-off that grows if it happens again.
 
 export const SOURCES = {
-  polku: { label: 'Polku', what: 'release notes' },
+  polku: { label: 'Polku', what: 'release notes and routing profiles' },
   openmeteo: { label: 'Open-Meteo', what: 'weather', limits: [[60e3, 600, 'minute'], [3600e3, 5000, 'hour'], [864e5, 10000, 'day']] },
   overpass: { label: 'Overpass', what: 'OSM trail details, lit ways, uphill tags, click details and rocks on the water', limits: [[864e5, 10000, 'day']] },
   // brouter.de refuses with 403 "Please, retry later!" when one address calls too often. Measured 2026-10-13:
@@ -65,11 +65,13 @@ const emit = (source, s) => { for (const fn of listeners) fn(source, s); };
 
 /**
  * fetch() for a known source. opts.weight: calls this request counts as;
- * opts.backoff: false to only count (e.g. Overpass, whose mirrors take turns);
+ * opts.backoff: false to only count, or a response predicate to exempt expected 5xx errors;
  * opts.maxWait: ms this call may wait for a paced slot, else Limited ('pacing').
+ * opts.timeoutMs: a separate deadline per dispatched attempt, including its response body.
  */
 export async function request(source, url, opts = {}) {
-  const { weight = 1, backoff = true, maxWait = Infinity, ...init } = opts;
+  const { weight = 1, backoff = true, maxWait = Infinity, timeoutMs = 0, ...init } = opts;
+  if (init.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   if (backoff && sourceStatus(source)) { const s = status.get(source); throw new Limited(source, s.until, s.reason); }
   // runs the moment the call may go: a back-off that began while it waited stops it, else it's counted
   let s;
@@ -79,17 +81,22 @@ export async function request(source, url, opts = {}) {
     count(source, weight);
   };
   await slot(source, init.signal, maxWait, take);
+  const send = () => {
+    if (!timeoutMs) return fetch(url, init);
+    const deadline = AbortSignal.timeout(timeoutMs);
+    return fetch(url, { ...init, signal: init.signal ? AbortSignal.any([init.signal, deadline]) : deadline });
+  };
   let res;
   try {
-    res = await fetch(url, init).catch(async (err) => {
+    res = await send().catch(async (err) => {
       // a dropped connection gets one more try before it counts as a failure: a call like any other, paced and counted
-      if (err.name === 'AbortError' || !navigator.onLine) throw err;
+      if (init.signal?.aborted || err.name === 'AbortError' || err.name === 'TimeoutError' || !navigator.onLine) throw err;
       await sleep(800, init.signal);
       await slot(source, init.signal, maxWait, take);
-      return fetch(url, init);
+      return send();
     });
   } catch (err) {
-    if (err.name !== 'AbortError' && err.name !== 'Limited' && backoff && navigator.onLine) fail(source, 'down');
+    if (!init.signal?.aborted && err.name !== 'AbortError' && err.name !== 'TimeoutError' && err.name !== 'Limited' && backoff && navigator.onLine) fail(source, 'down');
     throw err;
   }
   const ref = SOURCES[source] && SOURCES[source].refused;
@@ -99,7 +106,7 @@ export async function request(source, url, opts = {}) {
     throw new Limited(source, e.until, e.reason);
   }
   if (res.status === 429 || (res.status >= 500 && res.status !== 501)) {
-    if (!backoff) return res;
+    if (!backoff || (res.status >= 500 && typeof backoff === 'function' && !await backoff(res))) return res;
     let wait = null;
     const ra = res.headers.get('Retry-After');
     if (ra) wait = /^\d+$/.test(ra) ? +ra * 1000 : Date.parse(ra) - Date.now();
@@ -167,11 +174,11 @@ function waitFor(source, ahead = 0) {
 // the same one. Paced calls that must wait queue in the order they were made;
 // one that would wait more than maxWait is refused at once (Limited 'pacing').
 function slot(source, signal, maxWait, take) {
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   const q = (queues[source] ||= []);
   if (!(SOURCES[source] && SOURCES[source].pace) || (!q.length && waitFor(source) <= 0)) return take();
   const wait = waitFor(source, q.length);
   if (wait > maxWait) throw new Limited(source, Date.now() + wait, 'pacing');
-  if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
   return new Promise((ok, no) => {
     // a call that's cancelled while it waits leaves the queue, and its place to the next
     const quit = () => { q.splice(q.indexOf(me), 1); no(new DOMException('Aborted', 'AbortError')); pump(source); };
