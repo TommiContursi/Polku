@@ -109,6 +109,8 @@ export const setMode = (mode) => store.set('pickColour', mode);
 export function pickData(pick) {
   const w = pick.ways, a = pick.a, ar = pick.area;
   if (ar && typeof ar === 'object') return { pick: EMPTY, side: EMPTY, area: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: ar.lines } }] } };
+  // (the ways still coming: the map's own line under the tap, plain)
+  if (w === undefined && pick.spot.geom) return { pick: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: PLAIN }, geometry: pick.spot.geom }] }, side: EMPTY, area: EMPTY };
   if (!w || typeof w === 'string') return { pick: EMPTY, side: EMPTY, area: EMPTY };
   const line = (color, coords) => ({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: coords } });
   const feats = [];
