@@ -105,8 +105,10 @@ export class LitWays {
   }
   schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => this.update(), ms); }
   update() {
-    const z = this.map.getZoom(), b = this.map.getBounds();
-    const want = this.on ? tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]) : [];
+    const z = this.map.getZoom();
+    // zoomed out it draws nothing: list no tiles (Finland in view at zoom 5 is 300,000 of them, Codex's review of #641)
+    if (!this.on || z < LIT_Z) { this.publish([]); return; }
+    const b = this.map.getBounds(), want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
     if (z >= LIT_MIN_ZOOM && want.length <= MAX_VIEW) {
       for (const [x, y] of want) {
         if (loaded(x, y)) continue;
@@ -118,7 +120,7 @@ export class LitWays {
       }
       if (want.every(([x, y]) => loaded(x, y))) this.failing = false;
     }
-    this.publish(z >= LIT_Z ? want.filter(([x, y]) => loaded(x, y)) : []);
+    this.publish(want.filter(([x, y]) => loaded(x, y)));
   }
   publish(list) {
     const key = list.map((t) => t.join('/')).join(';');

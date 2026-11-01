@@ -4684,6 +4684,13 @@ LIT = """(async () => {""" + LIT_HELP + """
   const way = (id) => ({ type: 'way', id, nodes: [1, 2], geometry: [{ lat: 62, lon: 25 }, { lat: 62, lon: 25.001 }] });
   const slim = L.slimLit({ elements: [way(1), way(2), { type: 'count', id: 0, tags: { ways: '2' } }, way(3)] });
   if (slim.w.map((w) => `${w[0]}:${w[1]}`).join() !== '1:1,2:1,3:0') errs.push(`lit before the count, unlit after: ${slim.w.map((w) => `${w[0]}:${w[1]}`)}`);
+  // zoomed out it draws nothing, and lists no tiles: Finland in view at zoom 5 is 300,000 of them (Codex's review of #641)
+  let bounds = 0;
+  const far = { getZoom: () => 5, getBounds: () => { bounds++; return { getWest: () => 17, getSouth: () => 57, getEast: () => 33, getNorth: () => 72 }; }, on: () => {} };
+  const shown = [], lw = new L.LitWays(far, { onData: (fc) => shown.push(fc.features.length), onFail: () => {} });
+  lw.on = true;
+  lw.update();
+  if (bounds || shown.join() !== '0') errs.push(`zoomed out (zoom 5), Lit ways asked the view's bounds ${bounds} times and published ${shown}`);
   // Overpass answers with a server-side timeout: no data, so the tile says so, and nothing looks drawn
   window.litFail = 'remark';
   document.querySelector('#btn-layers').click(); await wait(250);
