@@ -369,6 +369,28 @@ export async function terrainDeadline() {
   return { attempts, upstreamAborts: cancelled, missing: result.value.failed };
 }
 
+export async function terrainPendingCache() {
+  const c = clock(), D = await import('../js/dem.js'), G = await import('../js/geo.js');
+  const canvas = new OffscreenCanvas(2, 2), ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgb(128,100,0)'; ctx.fillRect(0, 0, 2, 2);
+  const png = await canvas.convertToBlob(), held = [];
+  let first, sent = 0, firstCalls = 0;
+  window.fetch = async (url) => {
+    sent++; first ||= url;
+    if (url === first) { firstCalls++; await new Promise(ok => held.push(ok)); }
+    return new Response(png);
+  };
+  const points = Array.from({ length: 230 }, (_, i) => { const [w, s, e, n] = G.tileBounds(9000 + i, 4600, 14); return [(w + e) / 2, (s + n) / 2]; });
+  const all = track(D.elevations(points));
+  for (let i = 0; i < 100 && sent < points.length; i++) await c.settle();
+  assert(sent === points.length, 'the terrain-cache stress setup did not fill its slots');
+  const shared = track(D.elevations([points[0]])); await c.settle();
+  held.forEach(go => go()); await c.settle();
+  for (let i = 0; i < 100 && (!all.done || !shared.done); i++) await c.settle();
+  assert(firstCalls === 1 && all.done && shared.done, `cache eviction duplicated a pending terrain tile (${firstCalls} fetches)`);
+  return { distinctTiles: points.length, pendingTileFetches: firstCalls };
+}
+
 export async function valhallaCancellation() {
   const c = clock(), V = await import('../js/valhalla.js');
   let release, signal;

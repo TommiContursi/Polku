@@ -10,6 +10,13 @@ const RETRY_MS = 15000;
 const FAILED = Object.freeze({ failed: true });
 const cache = new Map(); // "z/x/y" -> { p: Promise<{w,h,el}|null|FAILED>, failed: when it failed, or 0 }
 
+function trimTiles() {
+  for (const [key, tile] of cache) {
+    if (cache.size <= MAX_TILES) break;
+    if (tile.done) cache.delete(key);
+  }
+}
+
 function decode(img) {
   const w = img.width, h = img.height;
   const canvas = typeof OffscreenCanvas !== 'undefined'
@@ -36,7 +43,7 @@ function loadTile(z, x, y) {
     return hit.p;
   }
   const url = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-  const entry = { failed: 0 };
+  const entry = { failed: 0, done: false };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15000);
   entry.p = fetch(url, { signal: ctrl.signal })
@@ -47,10 +54,10 @@ function loadTile(z, x, y) {
     })
     .then((b) => (b ? createImageBitmap(b).then(decode) : null))
     .catch(() => { entry.failed = Date.now(); return FAILED; })
-    .finally(() => clearTimeout(timer));
+    .finally(() => { clearTimeout(timer); entry.done = true; trimTiles(); });
   cache.delete(key);
   cache.set(key, entry);
-  while (cache.size > MAX_TILES) cache.delete(cache.keys().next().value);
+  trimTiles();
   return entry.p;
 }
 
