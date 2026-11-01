@@ -15791,6 +15791,15 @@ def pick_card(chrome):
             if (r['title'], r['sub'], 'Paddle from here' in r['text']) != want or ('Depth' in rows) != want[2] or (want[2] and rows.get('Depth') != 'Traficom didn’t answer') or 'Bikes' in rows \
                     or bool(r['outline']) != (want[0] != 'Water') or (want[0] == 'Iidesjärvi' and not any('round its edge' in n for n in r['nums'])):
                 fails.append(f"{name}: {area(r)} (its name, its kind, its outline drawn and how far round it; on water the depth and Paddle from here)")
+        # a big lake, as Overpass gives it (Pyhäjärvi, 2026-11-01): its tags with the whole lake's bounds, then its outline cut at the
+        # box (nulls) with the bounds of that part only; drawn, but never a length round its edge from a part of it
+        pg.js("""import(location.origin + '/js/ways.js').then((W) => { W.seedArea([23.8100, 61.4870], { elements: [
+          { type: 'relation', id: 9, tags: { natural: 'water', water: 'lake', name: 'Isojärvi' }, bounds: { minlat: 61.2, minlon: 23.3, maxlat: 61.6, maxlon: 24.2 } },
+          { type: 'relation', id: 9, bounds: { minlat: 61.486, minlon: 23.8, maxlat: 61.489, maxlon: 23.82 }, members: [{ type: 'way', ref: 1, role: 'outer', geometry: [null,
+            { lat: 61.488, lon: 23.8 }, { lat: 61.489, lon: 23.815 }, { lat: 61.486, lon: 23.82 }, null, null] }] }] }); return true; })""")
+        r = tap(pg, [23.8100, 61.4870], want=('none', None), secs=15, on='^water$')
+        if r['title'] != 'Isojärvi' or not r['outline'] or any('round its edge' in n for n in r['nums']):
+            fails.append(f"a big lake cut at the box: {area(r)} (its outline drawn, no length round its edge)")
         # road works (#564, #565): a click opens the same card as a way, not the old popup, the works ringed on the map, and dates
         # outside this year with their year
         y = pg.js('new Date().getFullYear()')
