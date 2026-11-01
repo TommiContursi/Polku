@@ -61,6 +61,14 @@ is retained in [.agents/skills/LICENSE](.agents/skills/LICENSE).
 
 ## Browser libraries loaded from a CDN
 
+The static OSM reader also bundles PMTiles 4.5.0 (BSD-3-Clause) and its fflate
+decompressor (MIT) in `js/vendor/pmtiles-4.5.0.js`. This is the upstream npm
+browser distribution with its source-map reference removed and one ES module
+export appended. Complete notices are retained in
+[pmtiles-LICENSE.txt](js/vendor/pmtiles-LICENSE.txt) and
+[fflate-LICENSE.txt](js/vendor/fflate-LICENSE.txt). The reader loads only when
+static OSM data is selected; there is no app bundling step.
+
 `index.html` loads these libraries from unpkg; their distributions are not
 vendored in this repository. Their licences and bundled third-party notices
 continue to apply, including to browser-cached copies.

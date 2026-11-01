@@ -2,8 +2,11 @@
 // and the trail details (js/trails.js) only load trails, so a tap asks Overpass for all the ways of a z14 tile (about
 // 1.2 km here) once, cached a week as the trail details' z13 tiles are (js/osm.js), and joins the pieces that continue
 // each other into one pick. A tile's ways are cut at every junction, so a walk can stop at one.
+// With OSM_DATA_MANIFEST configured, complete static ways replace these Overpass tile queries (#154).
 
 import { cachedOverpass } from './osm.js';
+import { OSM_DATA_MANIFEST } from './config.js';
+import { StaticOSM } from './osm-data.js';
 import { lonLatToTile, tileBounds, pointSegment, lineLength, bearing } from './geo.js';
 import { kindOf } from './facts.js';
 
@@ -16,6 +19,7 @@ const KEEP = ['highway', 'name', 'ref', 'surface', 'smoothness', 'tracktype', 'l
   'junction', 'service', 'footway', 'informal', 'check_date', 'survey:date'];
 const LONG = 25000; // m: a pick stops here at the longest
 const RETRY = 120e3; // a tile that didn't answer is left alone for 2 minutes (a tap asks again at once)
+const staticOSM = OSM_DATA_MANIFEST ? new StaticOSM(OSM_DATA_MANIFEST) : null;
 
 export const wayTile = ([lon, lat]) => lonLatToTile(lon, lat, WAYS_Z).map(Math.floor);
 
@@ -30,7 +34,7 @@ const waysQuery = (x, y) => {
 export function slimWays(json) {
   if (json.remark && /error|timed out|out of memory/i.test(json.remark)) throw new Error(`Overpass: ${json.remark}`);
   const els = json.elements || [], route = new Map(), uses = new Map();
-  for (const r of els) if (r.type === 'relation') for (const m of r.members || []) if (m.type === 'way' && !route.has(m.ref)) route.set(m.ref, r.tags.name);
+  for (const r of els) if (r.type === 'relation' && r.tags?.type === 'route' && r.tags.name) for (const m of r.members || []) if (m.type === 'way' && !route.has(m.ref)) route.set(m.ref, r.tags.name);
   const ways = els.filter((el) => el.type === 'way' && el.geometry && el.nodes && el.nodes.length > 1);
   for (const el of ways) for (const n of el.nodes) uses.set(n, (uses.get(n) || 0) + 1);
   const tags = (t = {}) => Object.fromEntries(KEEP.filter((k) => t[k] != null).map((k) => [k, t[k]]));
@@ -99,7 +103,9 @@ export function loadWays([x, y], { force = false } = {}) {
   const key = `${x}/${y}`, t = tiles.get(key);
   if (t && (t.ok !== false || (!force && Date.now() - t.at < RETRY))) return t.promise;
   const entry = { at: Date.now(), ok: null };
-  entry.promise = (held ? (heldFail ? Promise.reject(new Error('Overpass')) : Promise.resolve({ v: 2, w: [] })) : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, timeoutMs: 40000 })) // (the query's own [timeout:40])
+  entry.promise = (held ? (heldFail ? Promise.reject(new Error('OSM ways')) : Promise.resolve({ v: 2, w: [] }))
+    : staticOSM ? staticOSM.ways([x, y]).then(slimWays)
+      : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, timeoutMs: 40000 }))
     .then((d) => { index(x, y, d); entry.ok = true; return d; }, (err) => { entry.ok = false; throw err; });
   tiles.set(key, entry);
   return entry.promise;
@@ -242,14 +248,14 @@ function oriented(chain) {
 
 /**
  * The pick for a tapped piece: the chain, the other carriageway and where it stopped; the tiles its ends run into are
- * loaded first (up to six), and `grew(walk)` has the chain so far before each.
+ * loaded first (up to six rounds for Overpass, 64 for static reads), and `grew(walk)` has the chain so far before each.
  */
 export async function joinWay(seed, at, grew = () => {}) {
   // (the tapped piece as the index has it now: a tile loaded since may have cut it, index(); the part nearest the tap)
   const near = (w) => Math.min(...w.coords.slice(1).map((c, i) => pointSegment(at, w.coords[i], c).d));
   const again = () => { const now = ofWay.get(seed.id) || []; if (!now.includes(seed)) seed = now.reduce((b, p) => (near(p) < near(b) ? p : b)); return seed; };
   let j = walk(again());
-  for (let k = 0; k < 6; k++) {
+  for (let k = 0; k < (staticOSM ? 64 : 6); k++) {
     const out = Object.values(j.stops).filter((s) => s.why === 'end' && !waysLoaded(s.at));
     if (!out.length) break;
     grew(j);

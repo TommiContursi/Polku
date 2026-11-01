@@ -94,6 +94,12 @@ Polku brings together open data and free public services. Each source keeps its 
 
 Requests are paced, cached and counted; see **Settings → Data sources**. Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
 
+An optional weekly Finland-wide OSM data build and road/path selection source
+are prepared in this repository, using Geofabrik and static hosting. Production
+activation awaits verified hosting; Overpass remains the current source. The
+[installation and operations guide](docs/OSM_DATA.md) covers deployment,
+freshness, rollback, data licensing and the host's logging requirements.
+
 Polku's original application code is proprietary: © 2026 Tommi Contursi, all rights reserved. Using the free service does not grant permission to reuse its code in another product. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); third-party code and data retain their own licences.
 
 ## Limitations

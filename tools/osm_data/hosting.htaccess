@@ -1,0 +1,16 @@
+# Sample only. Installing this in the dedicated polku-osm directory needs owner approval.
+# Verify the actual host/CDN honors every header and disables gzip AND Brotli.
+Options -Indexes
+SetEnv no-gzip 1
+SetEnv no-brotli 1
+AddType application/vnd.pmtiles .pmtiles
+AddType application/json .json
+
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+Header always set Access-Control-Allow-Headers "Range, If-Match"
+Header always set Access-Control-Expose-Headers "ETag, Content-Length, Content-Range, Accept-Ranges"
+Header always set Cache-Control "public, max-age=31536000, immutable"
+<Files "current.json">
+    Header always set Cache-Control "no-cache"
+</Files>

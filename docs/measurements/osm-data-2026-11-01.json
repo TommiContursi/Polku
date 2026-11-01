@@ -1,0 +1,972 @@
+{
+  "manifest": {
+    "attribution": "\u00a9 OpenStreetMap contributors",
+    "bounds": [
+      19.1318455,
+      59.7227023,
+      31.6325567,
+      70.1961985
+    ],
+    "built_at": "2026-11-01T19:20:13Z",
+    "datasets": {
+      "ways": {
+        "bytes": 679838796,
+        "format": "pmtiles-json",
+        "schema": 1,
+        "sha256": "11398e5b9ab9ccfa2ee7fd553345385bed3dfc8a248ecaff72cae163243b0b3e",
+        "tiles": 233335,
+        "url": "ways.pmtiles",
+        "zoom": 14
+      }
+    },
+    "files": [
+      {
+        "bytes": 679838796,
+        "path": "ways.pmtiles",
+        "sha256": "11398e5b9ab9ccfa2ee7fd553345385bed3dfc8a248ecaff72cae163243b0b3e"
+      },
+      {
+        "bytes": 1206,
+        "path": "LICENSE.txt",
+        "sha256": "e983ac09833dcfd83229ea9007a868b1876ed30c5b48d79f227c92837c7b12c8"
+      },
+      {
+        "bytes": 1349,
+        "path": "measurements.json",
+        "sha256": "baea7474b1dc6397c5a5738264f77a22e08d891c2eae3fc629027c382c7d9430"
+      }
+    ],
+    "license": {
+      "name": "Open Database License 1.0",
+      "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+    },
+    "release": "20261031T212306Z-6e4ba0730c8f",
+    "schema": 1,
+    "source": {
+      "bytes": 774468258,
+      "sha256": "6e4ba0730c8fa4f71c35aa91a5cb3b9ce7f163daa84d886cd94f9b522dd3f80f",
+      "timestamp": "2026-10-31T21:23:06Z",
+      "url": "https://download.geofabrik.de/europe/finland-latest.osm.pbf"
+    }
+  },
+  "build": {
+    "build_seconds": 425.093,
+    "eligible_node_references": 24489366,
+    "individual_gzip_json": {
+      "archive_bytes": 679838796,
+      "files": 233335,
+      "note": "Same tile payloads; one file/upload per non-empty tile instead of one archive.",
+      "total_bytes": 714567087
+    },
+    "max_tile": [
+      14,
+      9326,
+      4742
+    ],
+    "peak_rss_bytes": 1927020544,
+    "relation_tile_references": 30997,
+    "relations": 5916,
+    "sample_tiles": {
+      "Helsinki": {
+        "gzip_bytes": 310682,
+        "lat": 60.1699,
+        "lon": 24.9384,
+        "raw_bytes": 1859560,
+        "relations": 103,
+        "tile": [
+          14,
+          9326,
+          4742
+        ],
+        "ways": 4684
+      },
+      "Kilpisjarvi north": {
+        "gzip_bytes": 7396,
+        "lat": 69.05,
+        "lon": 20.8,
+        "raw_bytes": 39441,
+        "relations": 8,
+        "tile": [
+          14,
+          9138,
+          3790
+        ],
+        "ways": 70
+      },
+      "Nuuksio forest": {
+        "gzip_bytes": 8710,
+        "lat": 60.3,
+        "lon": 24.5,
+        "raw_bytes": 41904,
+        "relations": 5,
+        "tile": [
+          14,
+          9307,
+          4730
+        ],
+        "ways": 49
+      },
+      "Rural central Finland": {
+        "gzip_bytes": 5089,
+        "lat": 62.2,
+        "lon": 25.5,
+        "raw_bytes": 22019,
+        "relations": 1,
+        "tile": [
+          14,
+          9352,
+          4550
+        ],
+        "ways": 40
+      },
+      "Turku coast": {
+        "gzip_bytes": 136122,
+        "lat": 60.45,
+        "lon": 22.25,
+        "raw_bytes": 780794,
+        "relations": 6,
+        "tile": [
+          14,
+          9204,
+          4716
+        ],
+        "ways": 1910
+      }
+    },
+    "source_nodes": 101413767,
+    "source_relations": 158018,
+    "source_ways": 10276937,
+    "tile_gzip_bytes": {
+      "max": 310682,
+      "p50": 2097,
+      "p95": 7714,
+      "p99": 17115,
+      "total": 714567087
+    },
+    "tile_raw_bytes": {
+      "max": 1859560,
+      "p50": 8506,
+      "p95": 34230,
+      "p99": 83845,
+      "total": 3102230791
+    },
+    "tiles": 233335,
+    "way_duplication_factor": 1.3154101630066126,
+    "way_tile_references": 2912668,
+    "ways": 2214266
+  },
+  "browser": {
+    "browser": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/156.0.8078.74",
+      "revision": "@d331de35ca8ab1358c7a17e4bd41627d55eaef51",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "jsVersion": "15.6.75.25"
+    },
+    "origin": "http://127.0.0.1:8796/",
+    "cases": {
+      "desktop": [
+        {
+          "name": "Helsinki",
+          "ll": [
+            24.9384,
+            60.1699
+          ],
+          "tapped": [
+            24.938344999999998,
+            60.169885
+          ],
+          "cold_ms": 206.7000000178814,
+          "repeat_ms": 2,
+          "requests": 5,
+          "bytes": 630363,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/current.json",
+              "bytes": 1055
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=0-16383",
+              "bytes": 16384
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=409800-418798",
+              "bytes": 8999
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=581632768-581943449",
+              "bytes": 310682
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=581339525-581632767",
+              "bytes": 293243
+            }
+          ],
+          "seed": 29689101,
+          "pieces": 19,
+          "metres": 382.99972031442564,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                24.93828,
+                60.16986
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                24.94475,
+                60.17068
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Rural central Finland",
+          "ll": [
+            25.5,
+            62.2
+          ],
+          "tapped": [
+            25.500115,
+            62.1999
+          ],
+          "cold_ms": 15.299999982118607,
+          "repeat_ms": 0,
+          "requests": 2,
+          "bytes": 13708,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=227174-235792",
+              "bytes": 8619
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=275672826-275677914",
+              "bytes": 5089
+            }
+          ],
+          "seed": 799203557,
+          "pieces": 2,
+          "metres": 299.3825191272199,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                25.50107,
+                62.20167
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                25.49901,
+                62.19925
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Nuuksio forest",
+          "ll": [
+            24.5,
+            60.3
+          ],
+          "tapped": [
+            24.49998,
+            60.297205
+          ],
+          "cold_ms": 23.30000001192093,
+          "repeat_ms": 0,
+          "requests": 3,
+          "bytes": 25304,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=367777-376377",
+              "bytes": 8601
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=464441051-464449760",
+              "bytes": 8710
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=464433058-464441050",
+              "bytes": 7993
+            }
+          ],
+          "seed": 80995733,
+          "pieces": 1,
+          "metres": 89.39516536425032,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                24.49937,
+                60.29747
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                24.50059,
+                60.29694
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Turku coast",
+          "ll": [
+            22.25,
+            60.45
+          ],
+          "tapped": [
+            22.249615,
+            60.449855
+          ],
+          "cold_ms": 33.80000001192093,
+          "repeat_ms": 0,
+          "requests": 2,
+          "bytes": 145138,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=991-10006",
+              "bytes": 9016
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=13265683-13401804",
+              "bytes": 136122
+            }
+          ],
+          "seed": 943377512,
+          "pieces": 1,
+          "metres": 130.33030876581248,
+          "stops": {
+            "end": {
+              "why": "junction",
+              "at": [
+                22.24864,
+                60.44952
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                22.25059,
+                60.45019
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Kilpisjarvi north",
+          "ll": [
+            20.8,
+            69.05
+          ],
+          "tapped": [
+            20.7988,
+            69.04989499999999
+          ],
+          "cold_ms": 93.40000000596046,
+          "repeat_ms": 0.09999999403953552,
+          "requests": 20,
+          "bytes": 110038,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=537358-545822",
+              "bytes": 8465
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679441156-679448551",
+              "bytes": 7396
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679435601-679437880",
+              "bytes": 2280
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679468947-679477611",
+              "bytes": 8665
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679102343-679105063",
+              "bytes": 2721
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679450372-679453554",
+              "bytes": 3183
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679109559-679112035",
+              "bytes": 2477
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679456853-679464214",
+              "bytes": 7362
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679106191-679109558",
+              "bytes": 3368
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679066039-679069033",
+              "bytes": 2995
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679162671-679169619",
+              "bytes": 6949
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679059013-679062909",
+              "bytes": 3897
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679120172-679129741",
+              "bytes": 9570
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679051970-679055534",
+              "bytes": 3565
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679142477-679157344",
+              "bytes": 14868
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679050379-679051969",
+              "bytes": 1591
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679129742-679139620",
+              "bytes": 9879
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679048664-679050378",
+              "bytes": 1715
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679074371-679076370",
+              "bytes": 2000
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679090674-679097765",
+              "bytes": 7092
+            }
+          ],
+          "seed": 1316356398,
+          "pieces": 102,
+          "metres": 20735.392362497587,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                20.9104,
+                69.0197
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                20.55122,
+                69.05987
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Tykkikallio Jyvaskyla",
+          "ll": [
+            25.7656,
+            62.2306
+          ],
+          "tapped": [
+            25.765504999999997,
+            62.230565
+          ],
+          "cold_ms": 12.799999982118607,
+          "repeat_ms": 0,
+          "requests": 1,
+          "bytes": 68119,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=277188097-277256215",
+              "bytes": 68119
+            }
+          ],
+          "seed": 195373633,
+          "pieces": 1,
+          "metres": 23.494205135176205,
+          "stops": {
+            "end": {
+              "why": "junction",
+              "at": [
+                25.76548,
+                62.23067
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                25.76553,
+                62.23046
+              ],
+              "unloaded": false
+            }
+          }
+        }
+      ],
+      "phone_emulated": [
+        {
+          "name": "Helsinki",
+          "ll": [
+            24.9384,
+            60.1699
+          ],
+          "tapped": [
+            24.938344999999998,
+            60.169885
+          ],
+          "cold_ms": 1570.300000011921,
+          "repeat_ms": 6.5999999940395355,
+          "requests": 5,
+          "bytes": 630363,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/current.json",
+              "bytes": 1055
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=0-16383",
+              "bytes": 16384
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=409800-418798",
+              "bytes": 8999
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=581632768-581943449",
+              "bytes": 310682
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=581339525-581632767",
+              "bytes": 293243
+            }
+          ],
+          "seed": 29689101,
+          "pieces": 19,
+          "metres": 382.99972031442564,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                24.93828,
+                60.16986
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                24.94475,
+                60.17068
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Rural central Finland",
+          "ll": [
+            25.5,
+            62.2
+          ],
+          "tapped": [
+            25.500115,
+            62.1999
+          ],
+          "cold_ms": 205,
+          "repeat_ms": 0,
+          "requests": 2,
+          "bytes": 13708,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=227174-235792",
+              "bytes": 8619
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=275672826-275677914",
+              "bytes": 5089
+            }
+          ],
+          "seed": 799203557,
+          "pieces": 2,
+          "metres": 299.3825191272199,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                25.50107,
+                62.20167
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                25.49901,
+                62.19925
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Nuuksio forest",
+          "ll": [
+            24.5,
+            60.3
+          ],
+          "tapped": [
+            24.49998,
+            60.297205
+          ],
+          "cold_ms": 299.59999999403954,
+          "repeat_ms": 0,
+          "requests": 3,
+          "bytes": 25304,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=367777-376377",
+              "bytes": 8601
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=464441051-464449760",
+              "bytes": 8710
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=464433058-464441050",
+              "bytes": 7993
+            }
+          ],
+          "seed": 80995733,
+          "pieces": 1,
+          "metres": 89.39516536425032,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                24.49937,
+                60.29747
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                24.50059,
+                60.29694
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Turku coast",
+          "ll": [
+            22.25,
+            60.45
+          ],
+          "tapped": [
+            22.249615,
+            60.449855
+          ],
+          "cold_ms": 391.90000000596046,
+          "repeat_ms": 0,
+          "requests": 2,
+          "bytes": 145138,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=991-10006",
+              "bytes": 9016
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=13265683-13401804",
+              "bytes": 136122
+            }
+          ],
+          "seed": 943377512,
+          "pieces": 1,
+          "metres": 130.33030876581248,
+          "stops": {
+            "end": {
+              "why": "junction",
+              "at": [
+                22.24864,
+                60.44952
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                22.25059,
+                60.45019
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Kilpisjarvi north",
+          "ll": [
+            20.8,
+            69.05
+          ],
+          "tapped": [
+            20.7988,
+            69.04989499999999
+          ],
+          "cold_ms": 1818.0999999940395,
+          "repeat_ms": 1,
+          "requests": 20,
+          "bytes": 110038,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=537358-545822",
+              "bytes": 8465
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679441156-679448551",
+              "bytes": 7396
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679435601-679437880",
+              "bytes": 2280
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679468947-679477611",
+              "bytes": 8665
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679102343-679105063",
+              "bytes": 2721
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679450372-679453554",
+              "bytes": 3183
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679109559-679112035",
+              "bytes": 2477
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679456853-679464214",
+              "bytes": 7362
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679106191-679109558",
+              "bytes": 3368
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679066039-679069033",
+              "bytes": 2995
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679162671-679169619",
+              "bytes": 6949
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679059013-679062909",
+              "bytes": 3897
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679120172-679129741",
+              "bytes": 9570
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679051970-679055534",
+              "bytes": 3565
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679142477-679157344",
+              "bytes": 14868
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679050379-679051969",
+              "bytes": 1591
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679129742-679139620",
+              "bytes": 9879
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679048664-679050378",
+              "bytes": 1715
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679074371-679076370",
+              "bytes": 2000
+            },
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=679090674-679097765",
+              "bytes": 7092
+            }
+          ],
+          "seed": 1316356398,
+          "pieces": 102,
+          "metres": 20735.392362497587,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                20.9104,
+                69.0197
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                20.55122,
+                69.05987
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Tykkikallio Jyvaskyla",
+          "ll": [
+            25.7656,
+            62.2306
+          ],
+          "tapped": [
+            25.765504999999997,
+            62.230565
+          ],
+          "cold_ms": 192.90000000596046,
+          "repeat_ms": 0,
+          "requests": 1,
+          "bytes": 68119,
+          "network": [
+            {
+              "url": "http://127.0.0.1:8796/__osm/ways.pmtiles",
+              "range": "bytes=277188097-277256215",
+              "bytes": 68119
+            }
+          ],
+          "seed": 195373633,
+          "pieces": 1,
+          "metres": 23.494205135176205,
+          "stops": {
+            "end": {
+              "why": "junction",
+              "at": [
+                25.76548,
+                62.23067
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                25.76553,
+                62.23046
+              ],
+              "unloaded": false
+            }
+          }
+        }
+      ]
+    }
+  },
+  "overpass": {
+    "ll": [
+      25.7656,
+      62.2306
+    ],
+    "xy": [
+      9364,
+      4547
+    ],
+    "query": "[out:json][timeout:40];way[highway~\"^(trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|pedestrian|track|path|footway|cycleway|bridleway|steps)(_link)?$\"](62.226996,25.751953,62.237233,25.773926)->.w;.w out body geom qt;rel(bw.w)[type=route][route~\"^(hiking|foot|bicycle|mtb|running|ski|fitness_trail)$\"][name];out body;",
+    "ms": 80009.40000000596,
+    "ok": false,
+    "error": "AbortError: signal is aborted without reason"
+  }
+}

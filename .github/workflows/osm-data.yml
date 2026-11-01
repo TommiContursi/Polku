@@ -1,0 +1,184 @@
+name: Finland OSM data
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Build, monitor, or roll back to an existing immutable release
+        type: choice
+        options: [build, check, rollback]
+        default: build
+      release:
+        description: Existing release ID for rollback
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: osm-data
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14.3'
+      - name: Build dependencies and checks
+        run: |
+          python -m pip install -r tools/osm_data/requirements.txt
+          python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
+          node --test tools/osm_data/client.test.mjs
+      - name: Download complete Finland source and checksum
+        run: |
+          mkdir -p osm-build
+          curl --fail --location --retry 3 https://download.geofabrik.de/europe/finland-latest.osm.pbf -o osm-build/finland.osm.pbf
+          curl --fail --location --retry 3 https://download.geofabrik.de/europe/finland-latest.osm.pbf.md5 -o osm-build/finland.osm.pbf.md5
+      - name: Transform, validate and measure
+        run: python tools/osm_data/builder.py osm-build/finland.osm.pbf osm-build/release --md5 osm-build/finland.osm.pbf.md5
+      - name: Browser selection and mobile emulation against the full archive
+        env:
+          POLKU_URL: http://127.0.0.1:8765/
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-chrome
+        run: |
+          python tools/osm_data/preview.py --release osm-build/release --port 8765 > osm-build/preview.log 2>&1 &
+          for i in $(seq 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8765/index.html; then break; fi
+            sleep 1
+          done
+          python tools/smoke.py osmdata
+          python tools/osm_data/measure_browser.py > osm-build/browser-measurements.json
+      - name: Build measurements
+        if: always()
+        run: |
+          if test -f osm-build/release/measurements.json; then
+            echo '### Finland-wide OSM build' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat osm-build/release/measurements.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Browser evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: finland-osm-browser-evidence
+          path: |
+            osm-build/browser-measurements.json
+            osm-build/preview.log
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: finland-osm-release
+          path: osm-build/release/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: finland-osm-source
+          path: |
+            osm-build/finland.osm.pbf
+            osm-build/finland.osm.pbf.md5
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    needs: build
+    if: vars.OSM_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: finland-osm-release
+          path: osm-build/release
+      - name: Verify and publish to the dedicated directory
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py publish osm-build/release
+      - name: Preserve the previous pointer for rollback
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-rollback-${{ github.run_id }}
+          path: osm-build/release/rollback-*.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+  monitor:
+    if: (github.event.schedule == '17 7 * * *' && vars.OSM_PUBLISH_ENABLED == 'true') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'check')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Freshness, integrity metadata and browser access
+        env:
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py check "$OSM_PUBLIC_URL/current.json"
+
+  rollback:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'rollback' && vars.OSM_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Read the immutable release requested for rollback
+        env:
+          RELEASE: ${{ inputs.release }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from tools.osm_data.publish import NAME, current, get, public_url, require, validate
+          release = os.environ['RELEASE']
+          require(NAME.fullmatch(release), 'Invalid release ID')
+          raw = get(public_url(os.environ['OSM_PUBLIC_URL']) + '/releases/' + release + '/manifest.json', immutable=True)
+          manifest = validate(json.loads(raw))
+          require(manifest['release'] == release, 'Release ID differs')
+          Path('rollback.json').write_text(json.dumps(current(manifest)))
+          PY
+      - name: Verify existing release before switching the pointer
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py rollback --manifest rollback.json
