@@ -3768,6 +3768,10 @@ export class Planner {
     this.line = pickLine(card, () => this.openLine());
     this.lineMk = new maplibregl.Marker({ element: this.line.el, anchor: 'bottom', offset: [0, -22] }).setLngLat(card.spot.ll).addTo(this.map);
     this.linePin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(card.spot.ll).addTo(this.map);
+    // whole on the screen for a tap by its edge (a phone at 200 %): in from the sides, and under the spot with no room above it
+    const r = this.line.el.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;
+    const dx = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8)), dy = r.top < top ? r.height + 44 : 0;
+    if (dx || dy) this.lineMk.setOffset([dx, dy - 22]);
     this.drawPick(card.pick);
     // over the map's buttons where it meets them (a phone at 200 %): they step aside while it shows, as a card's do (#435)
     const b = this.line.el.getBoundingClientRect(), col = document.getElementById('map-ctrls').getBoundingClientRect();

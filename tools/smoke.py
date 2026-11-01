@@ -15999,10 +15999,11 @@ def pick_card(chrome):
         cyc = next((p for p in r['pics'] if p[0] == 'Cycling'), None)
         if 'shared with walkers' not in dict(r['rows']).get('Cycling', '').lower() or not cyc or cyc[1] != 1 or 'The way' not in r['text'] or 'Getting along' in r['text']:
             fails.append(f"Rauhaniemenreitti: Cycling “{dict(r['rows']).get('Cycling')}” with {cyc and cyc[1]} signs, “The way” {'The way' in r['text']} (a sign for the shared-use path, none for the road)")
-        # the line under a way's name says what its first words are about (2026-11-01: a bare "Shared with walkers" read as its kind)
+        # the line under a way's name says what its words are about (2026-11-01: a bare "Shared with walkers" read as its kind, and
+        # a bare "S0" said nothing)
         line = pg.js("(async () => { const W = await import(location.origin + '/js/ways.js'), F = await import(location.origin + '/js/facts.js'); return F.wayLine(W.walk(W.nearestWay([23.79179, 61.50892], 5)).chain); })()")
-        if not line.startswith('Cycling: shared with walkers'):
-            fails.append(f"Kuntokolmonen's line: “{line}” (Cycling: shared with walkers, first)")
+        if not line.startswith('Cycling: shared with walkers · MTB: easy path'):
+            fails.append(f"Kuntokolmonen's line: “{line}” (Cycling: shared with walkers · MTB: easy path, each said what it's about)")
         way = next((c for c in r['chips'] if c['k'] == 'way'), None)
         if not way:
             fails.append(f"Rauhaniemenreitti: Colour by offers {[c['k'] for c in r['chips']]}, not Way type")
