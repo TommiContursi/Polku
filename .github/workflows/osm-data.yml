@@ -246,7 +246,7 @@ jobs:
           retention-days: 90
 
   monitor:
-    if: (github.event.schedule == '17 7 * * *' && vars.OSM_PUBLISH_ENABLED == 'true') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'check')
+    if: (github.event.schedule == '17 7 * * *' && vars.OSM_PUBLIC_URL != '') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'check')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
