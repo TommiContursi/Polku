@@ -15,7 +15,7 @@ import { keepInView, overColumn } from './inspect.js';
 // ------------------------------------------------------------------ the parts
 
 // Three numbers, each with what it is under it ("10:09", "there at"); a missing one dashed, saying so; a grade with its
-// one word on a line of its own ("S1", "fairly easy", "difficulty")
+// one word on a line of its own ("S1", "intermediate path", "difficulty")
 export function nums(list) {
   return h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map(({ value, word, label, missing, wait }) =>
     h('span', { class: `sum-item${missing ? ' miss' : wait ? ' wait' : ''}`, 'aria-busy': wait ? 'true' : null }, h('b', {}, value), word ? h('em', {}, word) : null, h('small', {}, label))));

@@ -1,7 +1,7 @@
 // The facts a card shows (25d). Pure: read from the route's analysis and what the planner says of a point, so a
 // missing one says so in its place, in the same words on every card. 1b adds the route's, by sport.
 import { fmtDist, fmtDuration } from './geo.js';
-import { OFFROAD_BIKE, isWater, ACTIVITIES, UPHILL_TEXT } from './config.js';
+import { OFFROAD_BIKE, isWater, ACTIVITIES, UPHILL_TEXT, MTB_SCALE_TEXT } from './config.js';
 import { surfaceClass } from './analysis.js';
 import { VIS_TEXT, visClass } from './trails.js';
 import { forecastKnown } from './weather.js';
@@ -13,7 +13,7 @@ import { fromCss } from './palette.js';
 export const SPORT_FACTS = { mtb: ['clock', 'grade', 'mtb'], gravel: ['clock', 'grade', 'surface'], road: ['clock', 'grade', 'surface'], hike: ['clock', 'grade', 'sac'], trailrun: ['clock', 'grade', 'sac'], run: ['clock', 'grade', 'surface'], paddle: ['clock', 'wind', 'temp'], swim: ['clock', 'wind', 'temp'] };
 
 // one short word a grade, on its own line under it
-const MTB_WORDS = ['easy', 'fairly easy', 'medium', 'hard', 'very hard', 'extreme', 'extreme'];
+const MTB_WORDS = MTB_SCALE_TEXT.map((t) => t.split(' · ')[1].toLowerCase()); // "easy path", "intermediate path"…
 const SAC = { hiking: ['T1', 'easy'], mountain_hiking: ['T2', 'medium'], demanding_mountain_hiking: ['T3', 'hard'], alpine_hiking: ['T4', 'alpine'], demanding_alpine_hiking: ['T5', 'alpine'], difficult_alpine_hiking: ['T6', 'alpine'] };
 // a way's MTB grade (mtb:scale, or the uphill one), as "S1" and its word; null when it isn't mapped
 export function mtbGrade(tags, key = 'mtb:scale') {
@@ -306,8 +306,9 @@ export function wayLine(chain) {
   const bits = [], kind = wayKind(chain), bikes = byLen(chain, bikesOf)[0][0];
   // (said what it's about: the bare words, first in the line, read as the way's name or kind)
   if (bikes && !['trail', 'traffic'].includes(bikes) || kind === 'road') bits.push(`Cycling: ${WAY_SCALES.bikes.items[bikes][0].toLowerCase()}`);
-  const grade = first(chain, (t) => (mtbGrade(t) || {}).value || null) || first(chain, (t) => (sacGrade(t) || {}).value || null);
-  if (grade) bits.push(grade);
+  // (a grade with its topic: a bare "S0" says nothing here)
+  const mtb = first(chain, (t) => (mtbGrade(t) || {}).word || null), sac = !mtb && first(chain, (t) => (sacGrade(t) ? `${sacGrade(t).value} ${sacGrade(t).word}` : null));
+  if (mtb || sac) bits.push(mtb ? `MTB: ${mtb}` : `Hiking: ${sac}`);
   const surface = first(chain, (t) => t.surface || null), width = first(chain, (t) => t.width || null), lit = first(chain, WAY_SCALES.lit.of);
   if (surface) bits.push(plain(surface));
   if (width && ['path', 'track', 'cycleway'].includes(kind)) bits.push(`${width}\u00a0m wide`);
@@ -348,14 +349,14 @@ export function wayGroups(chain, a = null) {
     for (let i = 0, j = 0; i < a.pts.length; i++) { while (j < a.pts.length - 1 && a.along[j] - a.along[i] < 50) j++; const d = a.along[j] - a.along[i]; if (d >= 30) s = Math.max(s, Math.abs(((a.ele[j] - a.ele[i]) / d) * 100)); }
     return s;
   })();
-  const upCls = a ? Math.max(-1, ...a.upCls) : -1;
+  const upCls = a ? Math.max(-1, ...a.upCls) : -1, up = upCls >= 0 && UPHILL_TEXT[upCls].split(/ · |, /); // ["↑S0", "Easy uphill", …]
   const winter = v(winterOf, (k) => ({ ski: 'a ski track: keep off on foot and by bike', nobikes: 'no bikes in winter', ploughed: 'ploughed', not: 'not ploughed' }[k]));
   return {
     along: [row('Cycling', v(bikesOf, (k) => WAY_SCALES.bikes.items[k][0].toLowerCase())), one ? ['One way', one.value, '', one.parts] : null, row('Width', v((x) => x.width || null, (x) => `${x}\u00a0m`)), row('Lit', v(WAY_SCALES.lit.of, (k) => (k === 'yes' ? 'yes' : 'no'))),
       row('Speed limit', v((x) => x.maxspeed || null, (x) => `${x} km/h`)), no.length ? ['Not allowed', cap(no.join(', ')), ''] : null].filter(Boolean),
     surface: [row('Surface', v((x) => x.surface || null)), row('Smoothness', v((x) => x.smoothness || null, (x) => SMOOTH_TEXT[x] || plain(x))), row('Winter care', winter)].filter(Boolean),
     diff: [row('MTB', v((x) => (mtbGrade(x) ? `${mtbGrade(x).value} ${mtbGrade(x).word}` : null), String)),
-      upCls >= 0 ? ['Uphill', UPHILL_TEXT[upCls].split(' · ')[0], `Steepest ${Math.round(steepest)} % over 50 m, worked out from the terrain`, [[UPHILL_TEXT[upCls].split(' · ')[0], UPHILL_TEXT[upCls].split(' · ')[0]]]] : steepest >= 3 ? ['Steepest', `${Math.round(steepest)} % over 50 m`, ''] : null,
+      up ? ['Uphill', `${up[0]} ${up[1]}`, `Steepest ${Math.round(steepest)} % over 50 m, worked out from the terrain`, [[up[0], `${up[0]} ${up[1]}`]]] : steepest >= 3 ? ['Steepest', `${Math.round(steepest)} % over 50 m`, ''] : null,
       row('Hiking', v((x) => (sacGrade(x) ? `${sacGrade(x).value} ${sacGrade(x).word}` : null), String)), row('Visibility', v((x) => (x.trail_visibility ? VIS_TEXT[visClass(x)] : null), String))].filter(Boolean),
   };
 }

@@ -674,6 +674,7 @@ function factParts(label, parts) {
       const c = DIFF_COLORS[+g[2] - (g[1] === 'T' ? 1 : 0)]; // (hiking's T1 is the scale's first colour)
       mark = h('span', { class: `badge${darkWords(c) ? ' ink' : ''}`, style: `background:${c}` }, g[0]);
       words = text.slice(g[0].length).trimStart();
+      if (!i) words = cap(words); // ("S2 difficult path": the badge, then "Difficult path")
     } else if (name) mark = h('span', { html: sign(name) }).firstChild;
     const [first, ...rest] = words.split(' ');
     // (a space after a badge, read with its grade; a sign is hidden from screen readers and has its own margin)

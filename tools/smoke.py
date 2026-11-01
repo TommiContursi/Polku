@@ -13266,13 +13266,13 @@ def route_card(chrome):
             near = f and round(math.hypot(max(0, f['box']['left'] - t['x'], t['x'] - f['box']['right']), max(0, f['box']['top'] - t['y'], t['y'] - f['box']['bottom'])))
             if not f or f['text'] != 'Add a point here' or near > 30:
                 fails.append(f"{name}: the card's first button {f}, for a click at {t['x']}, {t['y']}")
-            if s['values'][2:] != ['S1'] or s['words'] != ['fairly easy'] or s['labels'] != ['there at', s['labels'][1], 'difficulty'] or s['labels'][1] not in ('uphill', 'downhill'):
+            if s['values'][2:] != ['S1'] or s['words'] != ['intermediate path'] or s['labels'] != ['there at', s['labels'][1], 'difficulty'] or s['labels'][1] not in ('uphill', 'downhill'):
                 fails.append(f"{name}: an mtb:scale=1 way's numbers: {s['values']} {s['words']} {s['labels']}")
             fails += [f'{name}: {o}' for o in pg.js(f"({RC_LOOK})(false)")]
             # What's here ›: the trail as the map knows it, your sport's first
             tap_row(pg, 'What’s here', name, touch)
             s = st(pg)
-            if s['kind'] != 'here' or s['heads'][:2] != ['For MTB', 'For hiking'] or 'S1, fairly easy' not in s['text'] or 'T1, easy' not in s['text']:
+            if s['kind'] != 'here' or s['heads'][:2] != ['For MTB', 'For hiking'] or 'S1, intermediate path' not in s['text'] or 'T1, easy' not in s['text']:
                 fails.append(f"{name}: What’s here ›: {s['kind']} card, groups {s['heads']}")
             press(pg, at(pg, "document.querySelector('.pl-way.card .way-back')"), f'{name}: Back', touch)
             # Edit this stretch: a stretch of one leg that follows paths has Other ways
