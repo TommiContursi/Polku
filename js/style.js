@@ -112,6 +112,7 @@ export function buildStyle(s, ctx) {
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS', promoteId: 'lipasId' }, // the LIPAS id as the feature id: the route under the mouse is lit by its feature state
     winterWays: { type: 'geojson', data: ctx.data.winterWays || EMPTY }, // OSM's winter tags (js/winter.js)
     litWays: { type: 'geojson', data: ctx.data.litWays || EMPTY }, // OSM's lit and unlit ways (js/lit.js)
+    litCover: { type: 'geojson', data: ctx.data.litCover || EMPTY }, // the lit tiles that came in: In the dark's veil
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
     lipasPick: { type: 'geojson', data: ctx.data.lipasPick || EMPTY }, // a route picked in search, while its card is open
@@ -316,14 +317,25 @@ export function buildStyle(s, ctx) {
   }
 
   // ---- Lit ways (OSM: js/lit.js) ------------------------------------------
-  // lit: a bright line with an edge that stands out on the map (as the route's: dark on the light maps, white on the
-  // night map and the aerial photos); unlit: a thin dashed grey line, so the two don't differ by colour alone; no tag: none
+  // Lines: lit a bright line with an edge that stands out on the map (as the route's: dark on the light maps, white on
+  // the night map and the aerial photos); unlit a thin dashed grey line, so the two don't differ by colour alone; no tag:
+  // none. In the dark (#638's look A): a navy veil over the lit tiles that came in, so where none did the map isn't
+  // dimmed and missing data never looks like no lights, lit ways glowing warm white over it, unlit still dashed. Your
+  // opacity scales either look; no transitions, so nothing fades.
   if (s.overlays.lit) {
-    const darkMap = aerialBase || s.base === 'night';
+    const darkMap = aerialBase || s.base === 'night', dark = s.litLook === 'dark';
+    const k = s.overlayOpacity && s.overlayOpacity.lit != null ? s.overlayOpacity.lit : 1;
     const lit = (v) => ['==', ['get', 'lit'], v];
-    add({ id: 'lit-unlit', type: 'line', source: 'litWays', minzoom: 13, filter: lit(0), layout: { 'line-join': 'round' }, paint: { 'line-color': darkMap ? '#9ca3af' : '#6b7280', 'line-width': zi(13, 1.2, 16, 2.2, 18, 3), 'line-dasharray': ['literal', [2, 1.5]] } });
-    add({ id: 'lit-casing', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': darkMap ? '#ffffff' : '#111827', 'line-width': zi(13, 3, 16, 5.5, 18, 8) } });
-    add({ id: 'lit-line', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#facc15', 'line-width': zi(13, 1.6, 16, 3.2, 18, 5) } });
+    const still = { duration: 0, delay: 0 };
+    if (dark) add({ id: 'lit-veil', type: 'fill', source: 'litCover', minzoom: 13, paint: { 'fill-color': '#0b1a33', 'fill-opacity': k * (s.base === 'night' ? 0.45 : darkMap ? 0.55 : 0.7), 'fill-opacity-transition': still, 'fill-antialias': false } });
+    add({ id: 'lit-unlit', type: 'line', source: 'litWays', minzoom: 13, filter: lit(0), layout: { 'line-join': 'round' }, paint: { 'line-color': dark ? '#cbd5e1' : darkMap ? '#9ca3af' : '#6b7280', 'line-width': zi(13, 1.2, 16, 2.2, 18, 3), 'line-dasharray': ['literal', [2, 1.5]], 'line-opacity': k, 'line-opacity-transition': still } });
+    if (dark) {
+      add({ id: 'lit-glow', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffe6a8', 'line-width': zi(13, 8, 16, 18, 18, 28), 'line-blur': zi(13, 4, 16, 10, 18, 16), 'line-opacity': k * 0.6, 'line-opacity-transition': still } });
+      add({ id: 'lit-core', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fffaf0', 'line-width': zi(13, 1.2, 16, 2.4, 18, 3.5), 'line-opacity': k, 'line-opacity-transition': still } });
+    } else {
+      add({ id: 'lit-casing', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': darkMap ? '#ffffff' : '#111827', 'line-width': zi(13, 3, 16, 5.5, 18, 8), 'line-opacity': k, 'line-opacity-transition': still } });
+      add({ id: 'lit-line', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#facc15', 'line-width': zi(13, 1.6, 16, 3.2, 18, 5), 'line-opacity': k, 'line-opacity-transition': still } });
+    }
   }
 
   // ---- Uphill difficulty (computed overlay) -----------------------------

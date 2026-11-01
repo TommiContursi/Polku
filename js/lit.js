@@ -120,6 +120,11 @@ export class LitWays {
     const key = list.map((t) => t.join('/')).join(';');
     if (key === this.shown) return;
     this.shown = key;
-    this.onData(litFeatures(list));
+    // the tiles that came in, for In the dark's veil: where none did, the map isn't dimmed
+    const cover = { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: list.map(([x, y]) => {
+      const [w, s, e, n] = tileBounds(x, y, LIT_Z);
+      return [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
+    }) } };
+    this.onData(litFeatures(list), { type: 'FeatureCollection', features: list.length ? [cover] : [] });
   }
 }

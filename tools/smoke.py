@@ -4700,17 +4700,61 @@ LIT = """(async () => {""" + LIT_HELP + """
   if (look(g) !== 'Lines') errs.push(`the look starts as ${look(g)}, not Lines`);
   [...g.querySelectorAll('.seg button')].find((b) => b.textContent === 'In the dark').click(); await wait(200);
   if (S.litLook !== 'dark' || saved() !== 'dark') errs.push(`In the dark: the look ${S.litLook}, saved ${saved()}`);
+  // In the dark: a veil over the tiles that came in, the lit ways glowing over it, the unlit ones still dashed
+  await until(() => drawn('lit-core') && drawn('lit-veil'));
+  for (const id of ['lit-veil', 'lit-glow', 'lit-core', 'lit-unlit']) if (!drawn(id)) errs.push(`In the dark: ${id} drawn nowhere`);
+  if (map.getLayer('lit-casing') || map.getLayer('lit-line')) errs.push('In the dark still draws the lines');
+  // where a tile didn't answer, the map isn't dimmed (missing data never looks like no lights)
+  window.litFail = true;
+  const home = map.getCenter(), asked0 = window.litAsked;
+  map.jumpTo({ center: [25.80, 62.30] }); await idle();
+  await until(() => window.litAsked > asked0); await wait(500);
+  if (window.litAsked === asked0) errs.push('(the test) the tiles away were never asked for');
+  if (drawn('lit-veil')) errs.push('In the dark: the veil over tiles that didn\\'t answer');
+  window.litFail = false;
+  map.jumpTo({ center: home }); await idle();
+  await until(() => drawn('lit-veil'));
+  // 3:1 over the veil: the lit core and the unlit dashes on the veil laid over the map's ground and forest
+  const mix = (a, b, t) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, '0')).join('');
+  for (const base of ['trail', 'night']) {
+    polku.set({ base }); await idle();
+    const veil = map.getPaintProperty('lit-veil', 'fill-color'), t = map.getPaintProperty('lit-veil', 'fill-opacity');
+    for (const [what, layer, prop] of [['the ground', 'background', 'background-color'], ['the forest', 'lc-wood', 'fill-color']]) {
+      const under = mix(map.getPaintProperty(layer, prop), veil, t);
+      for (const line of ['lit-core', 'lit-unlit']) {
+        const c = map.getPaintProperty(line, 'line-color'), r = ratio(c, under);
+        if (r < 3) errs.push(`${base}, In the dark: ${line} ${c} on ${what} under the veil ${under}, ${r.toFixed(1)}:1, under 3:1`);
+      }
+    }
+  }
+  polku.set({ base: 'trail' }); await idle();
+  // its opacity: the look's strength, kept
+  const range = (await panel()).querySelector('input[type=range]');
+  if (!range) errs.push('Lit ways has no opacity');
+  else {
+    const t0 = map.getPaintProperty('lit-veil', 'fill-opacity');
+    range.value = '50';
+    range.dispatchEvent(new Event('input', { bubbles: true }));
+    range.dispatchEvent(new Event('change', { bubbles: true }));
+    await until(() => map.getPaintProperty('lit-veil', 'fill-opacity') < t0);
+    const t1 = map.getPaintProperty('lit-veil', 'fill-opacity');
+    if (Math.abs(t1 - t0 / 2) > 0.01) errs.push(`opacity 50 %: the veil ${t0} → ${t1}`);
+    if ((JSON.parse(localStorage.getItem('polku:settings')).overlayOpacity || {}).lit !== 0.5) errs.push('the opacity was not saved');
+  }
   return errs;
 })()"""
 
 # after a reload: the overlay and its look as they were; then Lines, kept too
 LIT_AFTER = """(async () => {""" + LIT_HELP + """
-  await until(() => drawn('lit-line'));
-  if (!S.overlays.lit || !drawn('lit-line')) errs.push('Lit ways not on, or not drawn, after a reload');
+  await until(() => drawn('lit-core') && drawn('lit-veil'));
+  if (!S.overlays.lit || !drawn('lit-core') || !drawn('lit-veil')) errs.push('Lit ways not on, or not drawn in the dark, after a reload');
+  if (S.overlayOpacity.lit !== 0.5) errs.push(`after a reload the opacity is ${S.overlayOpacity.lit}, not 0.5`);
   const g = await panel();
   if (!g || look(g) !== 'In the dark' || S.litLook !== 'dark') return [...errs, `after a reload the look is ${g && look(g)} (${S.litLook}), not In the dark`];
   [...g.querySelectorAll('.seg button')].find((b) => b.textContent === 'Lines').click(); await wait(200);
   if (S.litLook !== 'lines' || saved() !== 'lines') errs.push(`Lines: the look ${S.litLook}, saved ${saved()}`);
+  await until(() => drawn('lit-line'));
+  if (!drawn('lit-line') || map.getLayer('lit-veil')) errs.push('Lines again: no lines, or the veil stays');
   return errs;
 })()"""
 
@@ -15680,7 +15724,7 @@ GROUPS = [
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
     ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, an import\'s card clear of the track\'s end (#131), loops tapped on the map (mocked BRouter)'),
     ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
-    ('lit', [lit], 'lit ways (#638): the Lit ways tile draws lit and unlit ways from a recorded tile, says when Overpass doesn\'t answer or you\'re zoomed out, 3:1 on the Trail map and the night map, and Lines / In the dark kept over a reload'),
+    ('lit', [lit], 'lit ways (#638): the Lit ways tile draws lit and unlit ways from a recorded tile, says when Overpass doesn\'t answer or you\'re zoomed out; In the dark veils only the tiles that came in; 3:1 on the Trail map and the night map in both looks; the look and its opacity kept over a reload'),
     ('sports', [sport_switch], 'changing the sport with a route drawn (B of #233): the route keeps its sports and style (#71), the pill asks, The whole route and its Undo, land to water'),
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
     ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),

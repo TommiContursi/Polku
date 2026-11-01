@@ -284,7 +284,7 @@ const details = new TrailDetails(map, {
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
 // (a tile that comes in may end "No data now" on the Lit ways tile)
-const litWays = new LitWays(map, { onData: (fc) => { setData('litWays', fc); refreshQuickSoon(); }, onFail: () => refreshQuickSoon() });
+const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); refreshQuickSoon(); }, onFail: () => refreshQuickSoon() });
 
 // ------------------------------------------------------------------ winter
 // Winter switches itself on where there's snow (Auto), or is yours to set.
@@ -992,6 +992,7 @@ const WX_OPACITY = {
 };
 const opacitySpec = (id) => (RASTER_OVERLAYS[id]
   ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }
+  : id === 'lit' ? { label: 'Lit ways', opacity: 1, on: () => !!state.overlays.lit } // (no layers: style.js scales its look)
   : WX_OPACITY[id]);
 const opacityOf = (id) => (state.overlayOpacity[id] != null ? state.overlayOpacity[id] : opacitySpec(id).opacity);
 const opacityRow = (id) => {
@@ -1004,7 +1005,8 @@ const opacityRow = (id) => {
         const v = +e.target.value / 100;
         state.overlayOpacity[id] = v;
         pct.textContent = `${e.target.value} %`;
-        for (const l of o.layers) if (map.getLayer(l)) map.setPaintProperty(l, 'raster-opacity', v); // live, no style rebuild
+        if (o.layers) for (const l of o.layers) { if (map.getLayer(l)) map.setPaintProperty(l, 'raster-opacity', v); } // live, no style rebuild
+        else { cancelAnimationFrame(tcFrame); tcFrame = requestAnimationFrame(() => map.setStyle(buildStyle(state, ctx), { diff: true })); } // (as the trail colours')
       },
       onchange: () => saveSettings() }), pct);
 };
@@ -1080,17 +1082,17 @@ function trailControls() {
     mapKey(...(state.trailColors === 'winter' ? KEYS.winter() : KEYS.trails())),
   ];
 }
-// one overlay's switch, with its opacity under it while it's on (Lit ways: its look)
+// one overlay's switch, with its opacity under it while it's on (Lit ways: its look, then its opacity)
 const overlayToggle = (id) => {
   const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
-  const tg = withOpacity(id, toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
+  const tg = toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
     setOverlay(id, v);
     if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
     if (v && id === 'lit' && map.getZoom() < LIT_MIN_ZOOM) toast(`Zoom in to level ${LIT_MIN_ZOOM}+ to see the lit ways`);
-  }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || ''));
-  if (id !== 'lit' || !state.overlays.lit) return tg;
-  return h('div', { class: 'tg-group' }, tg, seg(LIT_LOOKS, state.litLook, (v) => { state.litLook = v; applyStyle(); renderLayersPanel(); }));
+  }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
+  if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
+  return h('div', { class: 'tg-group' }, tg, seg(LIT_LOOKS, state.litLook, (v) => { state.litLook = v; applyStyle(); renderLayersPanel(); }), opacityRow(id));
 };
 // weather on the map: the same switches as on the Weather button's timeline
 const timelineToggle = () => toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
