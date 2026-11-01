@@ -7,6 +7,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### Lit ways on the map ([#638](https://github.com/TommiContursi/Polku/issues/638))
 
 - **Lit ways**, in **Layers → More → After dark**, shows which paths and streets OpenStreetMap says are lit after dark. A lit way has a bright yellow line, and one it says isn't lit has a thin dashed grey line. A way OpenStreetMap says nothing about has no line, so no line doesn't mean dark.
+- **In the dark**, under its switch, dims the map under a navy veil and lets the lit ways glow warm white over it. Ways that aren't lit stay a dashed line. The veil covers only the part of the map whose lighting has come in, so a part that didn't load is never dark as if nothing there were lit.
+- **Opacity**, under the look, sets how strong either look is, and stays as you set it.
 - The lines show from zoom 14 and stay as you zoom out to 13. **Lit ways** can also be one of your tiles in the Layers drawer. Its tile says **Zoom in to see** further out, and **No data now** while OpenStreetMap's server doesn't answer for part of the view.
 
 ## 2026-10-31
