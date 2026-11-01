@@ -79,7 +79,8 @@ const paramStr = (params) => Object.keys(params || {}).sort().map((k) => `&profi
 
 // Polku's own profiles go to the routing server once per session (one fixed id
 // each, so it's one file there, not one per visitor). A missing file returns
-// an empty 500; try one re-upload, then apply normal backoff if routing fails.
+// an empty 500; try one re-upload (the stock profile if it fails), then apply
+// normal backoff if routing fails.
 const uploaded = new Set();
 function ensureProfile(profile, signal, maxWait, again = false) {
   const def = CUSTOM_PROFILES[profile];
@@ -106,7 +107,7 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
   const custom = !!CUSTOM_PROFILES[profile];
   if (custom) {
     try {
-      await ensureProfile(profile, signal, maxWait);
+      await ensureProfile(profile, signal, maxWait, retried); // a retry uploads it again
     } catch (e) {
       if (e.name === 'AbortError' || e.name === 'Limited') throw e;
       // can't use Polku's profile: the stock one it's made from, without Polku's own variables
@@ -125,10 +126,7 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
     backoff: custom && !retried ? async (r) => !(r.status === 500 && !(await r.clone().text()).trim()) : true,
   });
   const text = await res.text();
-  if (custom && !retried && res.status === 500 && !text.trim()) {
-    await ensureProfile(profile, signal, maxWait, true);
-    return brouter(pts, profile, signal, nogos, maxWait, params, true, alt);
-  }
+  if (custom && !retried && res.status === 500 && !text.trim()) return brouter(pts, profile, signal, nogos, maxWait, params, true, alt);
   if (!res.ok) throw Object.assign(new Error(explain(text) || `BRouter ${res.status}`), { busy: /killed by thread-priority-watchdog|timeout|retry later/i.test(text) });
   const gj = JSON.parse(text);
   const f = gj.features[0];
