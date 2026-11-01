@@ -4657,6 +4657,7 @@ LIT_OVERPASS = """(() => {
     const q = init && init.body ? new URLSearchParams(init.body).get('data') || '' : '';
     if (!/way\\[highway\\]\\[lit~/.test(q)) return new Response('', { status: 504 });
     window.litAsked++;
+    if (window.litGate) await window.litGate; // (held, as a slow server would)
     if (window.litFail === 'remark') return new Response(JSON.stringify({ remark: 'runtime error: Query timed out in "query" at line 1 after 26 seconds.', elements: [] }));
     if (window.litFail) return new Response('', { status: 504 });
     fx ||= await (await real(location.origin + '/tools/fixtures/lit-laajavuori.json')).json();
@@ -4731,6 +4732,20 @@ LIT = """(async () => {""" + LIT_HELP + """
   await until(() => drawn('lit-line') && small() !== 'No data now');
   if (small() === 'No data now') errs.push('Overpass back: the tile still says No data now');
   for (const id of ['lit-line', 'lit-casing', 'lit-unlit']) if (!drawn(id)) errs.push(`${id}: nothing drawn`);
+  // a tile of a view you've left fails late: the view in sight has all its tiles, so the tile doesn't say No data now (#671)
+  {
+    let open; window.litGate = new Promise((ok) => { open = ok; }); window.litFail = true;
+    const here = map.getCenter(), n0 = window.litAsked;
+    map.jumpTo({ center: [25.80, 62.30] }); await idle();
+    await until(() => window.litAsked > n0);
+    map.jumpTo({ center: here }); await idle(); await wait(700);
+    if (small() === 'No data now') errs.push('(the test) back in the loaded view the tile says No data now before anything failed');
+    window.litGate = null; open();
+    let n1; do { n1 = window.litAsked; await wait(600); } while (window.litAsked !== n1); // (every mirror has had its turn)
+    await wait(400);
+    if (small() === 'No data now') errs.push('a tile of the view you left failed late: the tile says No data now, though the view in sight is complete');
+    window.litFail = false; L.forgetLitFailures();
+  }
   // the lines stand out at 3:1 from the map's ground and its forest, on the Trail map and the night map
   const lum = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
