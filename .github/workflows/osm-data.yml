@@ -13,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Verify access, build, monitor, or roll back an immutable release
+        description: Verify access, build, publish a verified build, monitor, or roll back
         type: choice
-        options: [verify-access, test-host, build, check, rollback]
+        options: [verify-access, test-host, build, publish-existing, check, rollback]
         default: verify-access
       release:
         description: Existing release ID for rollback
@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: osm-data
@@ -194,6 +195,48 @@ jobs:
           OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
         run: python tools/osm_data/publish.py publish osm-build/release
       - name: Preserve the previous pointer for rollback
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-rollback-${{ github.run_id }}
+          path: osm-build/release/rollback-*.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+  publish-existing:
+    # One-time, explicitly chosen upload of the previously verified Finland build.
+    # Does not enable unattended publication or rebuild the archive.
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'publish-existing' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Download the successful full-Finland build
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: finland-osm-release
+          path: osm-build/release
+          github-token: ${{ github.token }}
+          run-id: 41350050764
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Validate and publish immutable OSM release
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py publish osm-build/release
+      - name: Preserve previous pointer for rollback
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
