@@ -107,6 +107,8 @@ login and directory listing, and reports the public manifest's HTTP/CORS status.
 It writes no hosting files and does not prove upload, Range or rename capability.
 The default manual operation is this read-only check; full publication stays gated.
 
+Run **Finland OSM data → test-host** first. This writes only tiny disposable files into a unique `host-test-*` subdirectory of `polku-osm`, checks SFTP upload/readback, POSIX rename-over-existing, directory rename and public HTTP Range/CORS/cache, then removes its test folder. It never touches the real `current.json`, and it works without enabling publication.
+
 Run **Actions → Finland OSM data → build**. Weekly builds are scheduled Monday
 at 03:17 UTC. Build checks, transformation, gzip validation, country count and
 extent gates, and full-country browser checks all run before publication.

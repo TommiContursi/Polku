@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 import hmac
 import hashlib
+import errno
 import io
 import json
 import os
@@ -97,6 +98,12 @@ class SFTPFiles:
 
     def size(self, path):
         return self.sftp.stat(path).st_size
+
+    def remove(self, path):
+        return self.sftp.remove(path)
+
+    def rmd(self, path):
+        return self.sftp.rmdir(path)
 
     def storbinary(self, command, body):
         require(command.startswith('STOR '), 'Invalid upload command')
@@ -209,7 +216,9 @@ def verify_remote(ftp, base, manifest, raw):
 
 
 def get(url, byte_range=None, immutable=False, encoding='gzip, br'):
-    headers = {'Origin': 'https://polku.si', 'Accept-Encoding': encoding}
+    # OVH can reject Python's default user agent, though browser requests succeed.
+    headers = {'Origin': 'https://polku.si', 'Accept-Encoding': encoding,
+               'User-Agent': 'Mozilla/5.0'}
     if byte_range:
         start, end, size = byte_range
         headers['Range'] = f'bytes={start}-{end - 1}'
@@ -341,13 +350,55 @@ def check(url):
     probe(base, release, raw)
 
 
+def test_host():
+    """Check live host SFTP/HTTP with tiny, isolated, automatically removed files."""
+    config = settings()
+    directory = 'host-test-' + uuid.uuid4().hex
+    moved = directory + '-moved'
+    body = b'Polku OVH transfer test: ' + bytes(range(32))
+    replacement = b'{"test":2}'
+    with connection(config) as ftp:
+        active = None
+        try:
+            ftp.mkd(directory)
+            active = directory
+            ftp.storbinary('STOR ' + active + '/sample.pmtiles', io.BytesIO(body))
+            require(ftp.size(active + '/sample.pmtiles') == len(body)
+                    and retrieve(ftp, active + '/sample.pmtiles') == body,
+                    'Disposable SFTP upload verification failed')
+            ftp.storbinary('STOR ' + active + '/pointer.json', io.BytesIO(b'{"test":1}'))
+            ftp.storbinary('STOR ' + active + '/pointer.tmp', io.BytesIO(replacement))
+            ftp.replace(active + '/pointer.tmp', active + '/pointer.json')
+            require(retrieve(ftp, active + '/pointer.json') == replacement,
+                    'SFTP POSIX overwrite verification failed')
+            ftp.rename(directory, moved)
+            active = moved
+            require(ftp.size(active + '/sample.pmtiles') == len(body),
+                    'SFTP directory rename verification failed')
+            sample = get(config[-2] + '/' + active + '/sample.pmtiles',
+                         (0, 10, len(body)), immutable=True)
+            require(sample == body[:10], 'OVH HTTP Range bytes differ from SFTP upload')
+            return {'sftp_write_and_rename': True, 'posix_overwrite': True,
+                    'http_range_cors_and_cache': True, 'test_cleanup': 'complete'}
+        finally:
+            if active is not None:
+                # Only remove files in the uniquely named temporary test folder.
+                for name in ('sample.pmtiles', 'pointer.tmp', 'pointer.json'):
+                    try:
+                        ftp.remove(active + '/' + name)
+                    except OSError as error:
+                        if error.errno != errno.ENOENT:
+                            raise
+                ftp.rmd(active)
+
+
 def verify_access():
     """Check protected credentials and the configured path without writing host files."""
     config = settings()
     with connection(config) as ftp:
         ftp.nlst()
     request = urllib.request.Request(config[-2] + '/current.json', method='HEAD',
-                                    headers={'Origin': 'https://polku.si'})
+                                    headers={'Origin': 'https://polku.si', 'User-Agent': 'Mozilla/5.0'})
     try:
         response = urllib.request.urlopen(request, timeout=30)
     except HTTPError as error:
@@ -364,12 +415,15 @@ def main():
     commands.add_parser('rollback').add_argument('--manifest', type=Path, required=True)
     commands.add_parser('check').add_argument('url')
     commands.add_parser('verify-access')
+    commands.add_parser('test-host')
     args = parser.parse_args()
     try:
         if args.command == 'publish':
             publish(args.directory)
         elif args.command == 'rollback':
             rollback(args.manifest)
+        elif args.command == 'test-host':
+            print(json.dumps(test_host(), sort_keys=True))
         elif args.command == 'verify-access':
             print(json.dumps(verify_access(), sort_keys=True))
             print('Only pinned-host-key SFTP read access checked; no files written or publication verified.')

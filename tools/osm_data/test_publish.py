@@ -121,6 +121,16 @@ class Host:
             def nlst(self, path='.'):
                 base = self.abs(path).rstrip('/') + '/'
                 return [p for p in host.files.keys() | host.dirs if p.startswith(base) and '/' not in p[len(base):]]
+            def remove(self, path):
+                path = self.abs(path)
+                if path not in host.files:
+                    raise FileNotFoundError(2, 'No such file', path)
+                del host.files[path]
+            def rmd(self, path):
+                path = self.abs(path)
+                if path not in host.dirs or any(p.startswith(path + '/') for p in host.files):
+                    raise OSError('Directory missing or not empty')
+                host.dirs.remove(path)
             def size(self, path):
                 path = self.abs(path)
                 if path not in host.files:
@@ -140,6 +150,12 @@ class Host:
                     raise ftplib.error_perm('550 missing')
                 callback(host.files[name])
             def replace(self, old, new):
+                if new.endswith('/pointer.json'):
+                    old, new = self.abs(old), self.abs(new)
+                    if host.fail_pointer:
+                        raise OSError('POSIX rename extension unsupported')
+                    host.files[new] = host.files.pop(old)
+                    return
                 return self.rename(old, new)
             def rename(self, old, new):
                 old, new = self.abs(old), self.abs(new)
@@ -212,6 +228,36 @@ class PublishTests(unittest.TestCase):
         self.assertTrue(any(p.read_bytes() == self.previous for p in self.release_dir.glob('rollback*.json')))
         self.assertEqual(self.host.files[ROOT + '/releases/new-release/LICENSE.txt'], LICENSE)
         self.assertFalse(any(p.endswith('.htaccess') for p in self.host.files))
+
+    def test_host_checks_disposable_files_without_touching_release_or_pointer(self):
+        original_files, original_dirs = dict(self.host.files), set(self.host.dirs)
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            result = publish.test_host()
+        self.assertTrue(result['sftp_write_and_rename'])
+        self.assertTrue(result['posix_overwrite'])
+        self.assertTrue(result['http_range_cors_and_cache'])
+        self.assertEqual(self.host.files, original_files)
+        self.assertEqual(self.host.dirs, original_dirs)
+        self.assertEqual(self.host.pointer_writes, 0)
+
+    def test_host_fails_safely_when_posix_overwrite_unsupported(self):
+        original_files, original_dirs = dict(self.host.files), set(self.host.dirs)
+        self.host.fail_pointer = True
+        with self.assertRaisesRegex(RuntimeError, 'POSIX rename extension unsupported'):
+            publish.test_host()
+        self.assertEqual(self.host.files, original_files)
+        self.assertEqual(self.host.dirs, original_dirs)
+
+    def test_public_range_probe_uses_browser_user_agent(self):
+        original_http = self.host.http
+        def browser_only(request, **kwargs):
+            if request.get_header('User-agent') != 'Mozilla/5.0':
+                raise HTTPError(request.full_url, 403, 'blocked user agent', {}, None)
+            return original_http(request, **kwargs)
+        with patch.object(publish.urllib.request, 'urlopen', browser_only):
+            body = publish.get(PUBLIC + '/releases/previous-release/ways.pmtiles',
+                               (0, 10, len(ARCHIVE)), immutable=True)
+        self.assertEqual(body, ARCHIVE[:10])
 
     def test_unsafe_root_and_missing_approval_fail_before_connect(self):
         for root in ['', '/', '/home/example/www', '/www/../polku-osm', '/www/polku-osm\r\nDELE x']:
