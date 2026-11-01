@@ -1,6 +1,7 @@
 // Immutable OSM releases: only the selected tiles are downloaded, through the app's network door.
 import { request } from './net.js';
 import { idb } from './idb.js';
+import { tileBounds } from './geo.js';
 
 const cache = idb('overpass');
 const TIMEOUT = 8000;
@@ -28,6 +29,7 @@ export class StaticOSM {
       }
       const d = manifest?.datasets?.ways;
       if (manifest?.schema !== 1 || !manifest.release || !Number.isFinite(Date.parse(manifest.source?.timestamp))
+        || !Array.isArray(manifest.bounds) || manifest.bounds.length !== 4 || !manifest.bounds.every(Number.isFinite)
         || d?.format !== 'pmtiles-json' || d.schema !== 1 || d.zoom !== 14 || !Number.isSafeInteger(d.bytes) || d.bytes < 127) throw new Error('Unsupported OSM manifest schema');
       const url = new URL(d.url, this.url), base = new URL(this.url);
       if (url.origin !== base.origin || !['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid OSM archive URL');
@@ -40,6 +42,8 @@ export class StaticOSM {
   async ways([x, y]) {
     if (![x, y].every((v) => Number.isInteger(v) && v >= 0 && v < 2 ** 14)) throw new Error('Invalid OSM tile');
     const { manifest, url, bytes } = await this.ready();
+    const [w, s, e, n] = tileBounds(x, y, 14), [west, south, east, north] = manifest.bounds;
+    if (e < west || w > east || n < south || s > north) throw new Error('Outside static OSM coverage');
     const key = `static/${url}/${manifest.release}/14/${x}/${y}`;
     if (this.tiles.has(key)) return this.tiles.get(key);
     const promise = (async () => {

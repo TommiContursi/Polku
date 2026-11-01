@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { StaticOSM } from '../../js/osm-data.js';
 
 const archive = await readFile(new URL('../fixtures/osm-static.pmtiles', import.meta.url));
-const manifest = { schema: 1, release: 'fixture', source: { timestamp: '2026-11-01T00:00:00Z' },
+const manifest = { schema: 1, release: 'fixture', bounds: [-180, -85.05112878, 180, 85.05112878], source: { timestamp: '2026-11-01T00:00:00Z' },
   datasets: { ways: { format: 'pmtiles-json', schema: 1, zoom: 14, url: 'ways.pmtiles', bytes: archive.length } } };
 let calls = [], mode = 'ok';
 globalThis.fetch = async (url, init = {}) => {
@@ -46,4 +46,12 @@ test('rejects incompatible manifests and invalid tile coordinates', async () => 
   await assert.rejects(new StaticOSM('https://data.example/bad/current.json').ways([8192, 8192]), /schema/);
   manifest.schema = old;
   await assert.rejects(new StaticOSM('https://data.example/invalid/current.json').ways([-1, NaN]), /tile/);
+});
+
+test('outside the extract extent is unavailable rather than an empty mapped tile', async () => {
+  const bounds = manifest.bounds;
+  manifest.bounds = [19, 59, 32, 71];
+  try {
+    await assert.rejects(new StaticOSM('https://data.example/outside/current.json').ways([0, 0]), /coverage/);
+  } finally { manifest.bounds = bounds; }
 });

@@ -46,15 +46,15 @@ previews exercise the static integration before that switch.
 
 ## Implementation and checks
 
-- [ ] Build and validate a deterministic Finland-wide roads archive; test a
+- [x] Build and validate a deterministic Finland-wide roads archive; test a
   crossing between tiles, shared nodes, long segments, tags and memberships,
   missing geometry, checksum failures and repeatable output.
-- [ ] Add the PMTiles reader through `request()` and release-scoped caching;
+- [x] Add the PMTiles reader through `request()` and release-scoped caching;
   test partial HTTP responses, missing/corrupt data, concurrent reads, offline
   reuse and that migrated way selection never asks Overpass.
-- [ ] Add weekly build, artifacts, guarded FTPS publication, rollback and
+- [x] Add weekly build, artifacts, guarded FTPS publication, rollback and
   freshness monitoring. Test publication failure before pointer replacement.
-- [ ] Measure full-country size/build resources plus urban, rural, forest,
+- [x] Measure full-country size/build resources plus urban, rural, forest,
   coastal and northern tiles. Compare individual-file transfer cost and the
   existing Overpass request. Test desktop/mobile-sized browsers separately
   from real devices, which are not available in this session.
@@ -65,3 +65,20 @@ Review focus: sparse empty tiles versus out-of-coverage data; failed release
 publication; geometry crossing a tile without a node inside it; incomplete
 relations at extract edges; cached tiles from different releases. Root runs
 all verification; research agents do not run the suite.
+
+## Measured decision and activation boundary
+
+The complete build produced 679,838,796 bytes in PMTiles versus 714,567,087
+bytes in 233,335 separate gzip JSON files. Two full builds produced the same
+archive SHA-256. PMTiles is selected for its measured size and much smaller
+publication file count. Full-country browser checks exposed the old six-round
+growth cap; static selection now allows 64 rounds while preserving the 25 km
+and joining rules. The source's outer extent is checked before sparse tiles
+can be treated as empty. This does not turn the extent rectangle into a
+coverage polygon or promise data outside the Geofabrik extract.
+
+OVH publication remains gated by owner-approved directory/header setup,
+protected FTPS credentials and verified atomic replacement. The production
+source setting remains empty. The [operations guide](../OSM_DATA.md) is the
+concrete setup/activation procedure; the [measurements](osm-data-measurements.md)
+separate local results from hosting and real-device checks still needed.

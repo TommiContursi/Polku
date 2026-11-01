@@ -23,6 +23,13 @@ workspace. The optional `/usr/bin/time -l` wrapper returned a sandbox sysctl
 error after the builder completed; the duration/RSS above are the builder's
 own measurements, not an asserted successful timing-wrapper exit.
 
+A second complete build with the final release naming took 460.829 seconds.
+Its archive SHA-256 is identical to the first build:
+`11398e5b9ab9ccfa2ee7fd553345385bed3dfc8a248ecaff72cae163243b0b3e`.
+This checks reproducibility across two full builds, in addition to the small
+fixture test. The final release ID is
+`20261031T212306Z-6e4ba0730c8f-11398e5b9ab9`.
+
 | Representation | Data bytes | Files | Selection data |
 | --- | ---: | ---: | --- |
 | PMTiles JSON, complete ways | 679,838,796 | 1 archive | Original coordinates, nodes, tags and memberships |

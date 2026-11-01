@@ -6,7 +6,7 @@ export async function checkStaticOSM() {
   const { idb } = await import('/js/idb.js');
   const archive = await (await fetch('/tools/fixtures/osm-static.pmtiles')).arrayBuffer();
   const root = `${location.origin}/__test_osm_${Date.now()}/`, url = root + 'current.json';
-  const manifest = { schema: 1, release: 'fixture', source: { timestamp: '2026-11-01T00:00:00Z' },
+  const manifest = { schema: 1, release: 'fixture', bounds: [-180, -85.05112878, 180, 85.05112878], source: { timestamp: '2026-11-01T00:00:00Z' },
     datasets: { ways: { format: 'pmtiles-json', schema: 1, zoom: 14, url: 'ways.pmtiles', bytes: archive.byteLength } } };
   const real = window.fetch, calls = [], fails = [];
   // The weekly full-country preview exercises a long northern way beyond the old six-round limit.

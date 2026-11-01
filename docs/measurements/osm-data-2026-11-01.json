@@ -968,5 +968,161 @@
     "ms": 80009.40000000596,
     "ok": false,
     "error": "AbortError: signal is aborted without reason"
+  },
+  "repeat_build": {
+    "build_seconds": 460.829,
+    "eligible_node_references": 24489366,
+    "individual_gzip_json": {
+      "archive_bytes": 679838796,
+      "files": 233335,
+      "note": "Same tile payloads; one file/upload per non-empty tile instead of one archive.",
+      "total_bytes": 714567087
+    },
+    "max_tile": [
+      14,
+      9326,
+      4742
+    ],
+    "peak_rss_bytes": 1938948096,
+    "relation_tile_references": 30997,
+    "relations": 5916,
+    "sample_tiles": {
+      "Helsinki": {
+        "gzip_bytes": 310682,
+        "lat": 60.1699,
+        "lon": 24.9384,
+        "raw_bytes": 1859560,
+        "relations": 103,
+        "tile": [
+          14,
+          9326,
+          4742
+        ],
+        "ways": 4684
+      },
+      "Kilpisjarvi north": {
+        "gzip_bytes": 7396,
+        "lat": 69.05,
+        "lon": 20.8,
+        "raw_bytes": 39441,
+        "relations": 8,
+        "tile": [
+          14,
+          9138,
+          3790
+        ],
+        "ways": 70
+      },
+      "Nuuksio forest": {
+        "gzip_bytes": 8710,
+        "lat": 60.3,
+        "lon": 24.5,
+        "raw_bytes": 41904,
+        "relations": 5,
+        "tile": [
+          14,
+          9307,
+          4730
+        ],
+        "ways": 49
+      },
+      "Rural central Finland": {
+        "gzip_bytes": 5089,
+        "lat": 62.2,
+        "lon": 25.5,
+        "raw_bytes": 22019,
+        "relations": 1,
+        "tile": [
+          14,
+          9352,
+          4550
+        ],
+        "ways": 40
+      },
+      "Turku coast": {
+        "gzip_bytes": 136122,
+        "lat": 60.45,
+        "lon": 22.25,
+        "raw_bytes": 780794,
+        "relations": 6,
+        "tile": [
+          14,
+          9204,
+          4716
+        ],
+        "ways": 1910
+      }
+    },
+    "source_nodes": 101413767,
+    "source_relations": 158018,
+    "source_ways": 10276937,
+    "tile_gzip_bytes": {
+      "max": 310682,
+      "p50": 2097,
+      "p95": 7714,
+      "p99": 17115,
+      "total": 714567087
+    },
+    "tile_raw_bytes": {
+      "max": 1859560,
+      "p50": 8506,
+      "p95": 34230,
+      "p99": 83845,
+      "total": 3102230791
+    },
+    "tiles": 233335,
+    "way_duplication_factor": 1.3154101630066126,
+    "way_tile_references": 2912668,
+    "ways": 2214266
+  },
+  "repeat_manifest": {
+    "attribution": "\u00a9 OpenStreetMap contributors",
+    "bounds": [
+      19.1318455,
+      59.7227023,
+      31.6325567,
+      70.1961985
+    ],
+    "built_at": "2026-11-01T19:44:10Z",
+    "datasets": {
+      "ways": {
+        "bytes": 679838796,
+        "format": "pmtiles-json",
+        "schema": 1,
+        "sha256": "11398e5b9ab9ccfa2ee7fd553345385bed3dfc8a248ecaff72cae163243b0b3e",
+        "tiles": 233335,
+        "url": "ways.pmtiles",
+        "zoom": 14
+      }
+    },
+    "files": [
+      {
+        "bytes": 679838796,
+        "path": "ways.pmtiles",
+        "sha256": "11398e5b9ab9ccfa2ee7fd553345385bed3dfc8a248ecaff72cae163243b0b3e"
+      },
+      {
+        "bytes": 1206,
+        "path": "LICENSE.txt",
+        "sha256": "e983ac09833dcfd83229ea9007a868b1876ed30c5b48d79f227c92837c7b12c8"
+      },
+      {
+        "bytes": 1349,
+        "path": "measurements.json",
+        "sha256": "69979ac6ede3de3768f7439599a5e659eed516a890393b33fed6525d1e1645e3"
+      }
+    ],
+    "license": {
+      "name": "Open Database License 1.0",
+      "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+    },
+    "release": "20261031T212306Z-6e4ba0730c8f-11398e5b9ab9",
+    "schema": 1,
+    "source": {
+      "bytes": 774468258,
+      "sha256": "6e4ba0730c8fa4f71c35aa91a5cb3b9ce7f163daa84d886cd94f9b522dd3f80f",
+      "timestamp": "2026-10-31T21:23:06Z",
+      "url": "https://download.geofabrik.de/europe/finland-latest.osm.pbf"
+    }
   }
 }

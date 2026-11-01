@@ -3,6 +3,7 @@
 POLKU_URL=http://127.0.0.1:8796/ python tools/osm_data/measure_browser.py > measurements.json
 The phone case is Chrome emulation: 4x CPU, 80 ms latency, 10 Mbit/s download.
 """
+from contextlib import redirect_stdout
 import json
 from pathlib import Path
 import sys
@@ -58,28 +59,30 @@ SCRIPT = """(async () => {
 
 
 def main():
-    chrome = Chrome()
-    result = {'browser': chrome.send('Browser.getVersion'), 'origin': BASE, 'cases': {}}
-    try:
-        for label, width, height, phone in [('desktop', 1440, 900, False), ('phone_emulated', 390, 844, True)]:
-            page = chrome.page(width, height, phone)
-            try:
-                chrome.send('Storage.clearDataForOrigin', {'origin': BASE.rstrip('/'), 'storageTypes': 'indexeddb,cache_storage'}, page.s)
-                chrome.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, page.s)
-                page.open_app({'activity': 'mtb', 'layers': {'trails': False, 'uphill': False, 'wx': False}})
-                if phone:
-                    chrome.send('Emulation.setCPUThrottlingRate', {'rate': 4}, page.s)
-                    chrome.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 80,
-                                'downloadThroughput': 1250000, 'uploadThroughput': 625000}, page.s)
-                data = page.js(SCRIPT.replace('SAMPLES', json.dumps(SAMPLES)), timeout=180000)
-                assert len(data) == len(SAMPLES) and all(row['pieces'] and row['metres'] > 0 for row in data)
-                assert all(not stop.get('unloaded') for row in data for stop in row['stops'].values()), 'selection ended on missing data'
-                result['cases'][label] = data
-            finally:
-                page.close()
-    finally:
-        chrome.close()
-    print(json.dumps(result, indent=2))
+    output = sys.stdout
+    with redirect_stdout(sys.stderr):
+        chrome = Chrome()
+        result = {'browser': chrome.send('Browser.getVersion'), 'origin': BASE, 'cases': {}}
+        try:
+            for label, width, height, phone in [('desktop', 1440, 900, False), ('phone_emulated', 390, 844, True)]:
+                page = chrome.page(width, height, phone)
+                try:
+                    chrome.send('Storage.clearDataForOrigin', {'origin': BASE.rstrip('/'), 'storageTypes': 'indexeddb,cache_storage'}, page.s)
+                    chrome.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, page.s)
+                    page.open_app({'activity': 'mtb', 'layers': {'trails': False, 'uphill': False, 'wx': False}})
+                    if phone:
+                        chrome.send('Emulation.setCPUThrottlingRate', {'rate': 4}, page.s)
+                        chrome.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 80,
+                                    'downloadThroughput': 1250000, 'uploadThroughput': 625000}, page.s)
+                    data = page.js(SCRIPT.replace('SAMPLES', json.dumps(SAMPLES)), timeout=180000)
+                    assert len(data) == len(SAMPLES) and all(row['pieces'] and row['metres'] > 0 for row in data)
+                    assert all(not stop.get('unloaded') for row in data for stop in row['stops'].values()), 'selection ended on missing data'
+                    result['cases'][label] = data
+                finally:
+                    page.close()
+        finally:
+            chrome.close()
+        print(json.dumps(result, indent=2), file=output)
 
 
 if __name__ == '__main__':
