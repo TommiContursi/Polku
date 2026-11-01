@@ -233,6 +233,52 @@ export async function profileQueueBudget() {
   return { uploads, routes, queueBudgetMs: 6000 };
 }
 
+export async function overpassValidity(kind = 'remark') {
+  const c = clock(), O = await import('../js/osm.js'), { OVERPASS } = await import('../js/config.js');
+  let sent = 0;
+  window.fetch = (url, init) => {
+    sent++;
+    const i = OVERPASS.indexOf(String(url));
+    if (i === 0) return Promise.resolve(Response.json(kind === 'remark' ? { remark: 'runtime error: timeout', elements: [] } : { status: 'error' }));
+    return new Promise((ok, no) => {
+      if (i === 1) setTimeout(() => ok(Response.json({ elements: [{ type: 'node', id: 2 }] })), 10);
+      init.signal.addEventListener('abort', () => no(abort()), { once: true });
+    });
+  };
+  const result = track(O.overpass('mock', { race: true }));
+  await c.advance(20);
+  assert(result.value?.elements?.[0]?.id === 2 && !result.value.remark, `invalid Overpass ${kind} won or cancelled the valid mirror`);
+  assert(sent === 3, 'validation changed the initial mirror fanout');
+  return { winner: 2, initialRequests: sent };
+}
+
+export async function overpassFourth() {
+  const O = await import('../js/osm.js'), { OVERPASS } = await import('../js/config.js');
+  const sent = [];
+  window.fetch = async (url) => {
+    const i = OVERPASS.indexOf(String(url)); sent.push(i);
+    return i === 3 ? Response.json({ elements: [{ type: 'node', id: 4 }] }) : new Response('bad', { status: 400 });
+  };
+  const result = await O.overpass('mock', { race: true }).catch(() => null);
+  assert(result?.elements?.[0]?.id === 4 && sent.join() === '0,1,2,3', `healthy fourth Overpass mirror not used (sent ${sent})`);
+  return { sent, winner: 4 };
+}
+
+export async function overpassBudget() {
+  const c = clock(), O = await import('../js/osm.js');
+  const start = Date.now(), sent = [];
+  let stopped = 0;
+  window.fetch = (url, init) => new Promise((ok, no) => {
+    sent.push(Date.now() - start);
+    init.signal.addEventListener('abort', () => { stopped++; no(abort()); }, { once: true });
+  });
+  const result = track(O.overpass('mock', { race: true, timeoutMs: 75 }));
+  await c.advance(74); assert(!result.done && stopped === 0, 'Overpass stopped before its supplied budget');
+  await c.advance(77);
+  assert(result.error && sent.join() === '0,0,0,75' && stopped === 4, 'the mirror race ignored its supplied per-request deadline');
+  return { sentAtMs: sent, stopped, mirrorBudgetMs: 75 };
+}
+
 export async function profileSubscribers() {
   const c = clock(), R = await import('../js/router.js');
   let uploads = 0, stopped = 0, release;

@@ -5575,7 +5575,8 @@ def loading(chrome):
               ('customRefusal', '403'), ('customRefusal', '429'), ('customRefusal', '500'), ('customRefusal', '503'),
               ('missingProfile', ''), ('customRecovery', ''), ('profileQueueBudget', ''), ('routingDeadline', ''), ('routingBodyFallback', ''),
               ('valhallaDeadline', ''), ('valhallaCancellation', ''),
-              ('terrainPool', ''), ('terrainDeadline', ''), ('lipasViewport', ''), ('lipasShared', ''), ('lipasLate', '')]
+              ('terrainPool', ''), ('terrainDeadline', ''), ('lipasViewport', ''), ('lipasShared', ''), ('lipasLate', ''),
+              ('overpassValidity', ''), ('overpassValidity', "'shape'"), ('overpassFourth', ''), ('overpassBudget', '')]
     for name, args in checks:
         pg = chrome.page(1440, 900)
         try:
