@@ -81,6 +81,11 @@ class Host:
     def ftp(self, *args, **kwargs):
         host = self
         self.connections += 1
+        _, user, password, _fingerprint = args
+        if self.denied_login:
+            raise ftplib.error_perm(f'530 {user} {password}')
+        if (user, password) != (ENV['OSM_FTP_USER'], ENV['OSM_FTP_PASSWORD']):
+            raise AssertionError('wrong credentials')
 
         class Connection:
             def __init__(self):
