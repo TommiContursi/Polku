@@ -15669,6 +15669,7 @@ PICK_STATE = """(() => {
     legend: box ? [...box.querySelectorAll('.bd-legend .bd-item')].map((e) => [e.querySelector('span').textContent.trim(), e.querySelector('b').textContent]) : [],
     chart: c && c.chart ? { mode: c.chart.mode, same: c.chart.a === pick.a, shown: !!box.querySelector('canvas.pick-chart') } : null,
     rows: box ? [...box.querySelectorAll('.pick-facts .insp-row')].map((e) => [e.querySelector('span').textContent, e.querySelector('b').textContent]) : [],
+    pics: box ? [...box.querySelectorAll('.pick-facts .insp-row')].map((e) => [e.querySelector('span').textContent, e.querySelectorAll('svg.sign[aria-hidden="true"]').length, [...e.querySelectorAll('.badge')].map((b) => b.textContent)]) : [],
     drawn: polku.map.getSource('pick') ? polku.map.querySourceFeatures('pick').length : 0, outline: polku.map.getSource('pickArea') ? polku.map.querySourceFeatures('pickArea').length : 0 };
 })()"""
 
@@ -15713,6 +15714,9 @@ def pick_card(chrome):
             fails.append(f"the S5 path in Gravel: ways {r['ways']}, heights {r['heights']}, line “{r['sub']}”, facts {r['rows']} (the grade S5 and the incline, whatever the sport)")
         if not r['drawn']:
             fails.append('the S5 path in Gravel: nothing drawn on the map')
+        # a grade as its badge, before its word (#574's icons, 2026-11-01)
+        if not any(k == 'MTB' and b and b[0] == 'S5' for k, _, b in r['pics']):
+            fails.append(f"the S5 path: the grades' badges {[(k, b) for k, _, b in r['pics'] if b]} (S5 on the MTB row)")
         # a cycleway beside a street (#574, 2026-10-31: Survontie's in Jyväskylä stopped at every side street) goes on through the
         # side street's crossing, over a crossing mapped as a footway and into its named piece, but not into another name or a street
         got = pg.js(f"({CYCLE_WALK})('/js/ways.js')")
@@ -15737,6 +15741,10 @@ def pick_card(chrome):
         # a route across kinds (#574, 2026-10-31): Rauhaniemenreitti joins streets and a cycleway; Way type is on offer, colours the
         # profile and the legend's lengths are the pick's length
         r = tap(pg, pg.js("(() => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 108549043), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()"))
+        # how bikes get along, in plain words with its sign, under "The way" (2026-11-01: "Getting along" was unclear)
+        cyc = next((p for p in r['pics'] if p[0] == 'Cycling'), None)
+        if 'designated shared-use path' not in dict(r['rows']).get('Cycling', '').lower() or not cyc or cyc[1] != 1 or 'The way' not in r['text'] or 'Getting along' in r['text']:
+            fails.append(f"Rauhaniemenreitti: Cycling “{dict(r['rows']).get('Cycling')}” with {cyc and cyc[1]} signs, “The way” {'The way' in r['text']} (a sign for the shared-use path, none for the road)")
         way = next((c for c in r['chips'] if c['k'] == 'way'), None)
         if not way:
             fails.append(f"Rauhaniemenreitti: Colour by offers {[c['k'] for c in r['chips']]}, not Way type")
@@ -15795,7 +15803,7 @@ def pick_card(chrome):
                                    ('water with no area', [23.8045, 61.4862], '^water$', ('Water', '', True))):
             r = tap(pg, ll, want=('none', None), secs=15, on=on)
             rows = dict(r['rows'])
-            if (r['title'], r['sub'], 'Paddle from here' in r['text']) != want or ('Depth' in rows) != want[2] or (want[2] and rows.get('Depth') != 'Traficom didn’t answer') or 'Bikes' in rows \
+            if (r['title'], r['sub'], 'Paddle from here' in r['text']) != want or ('Depth' in rows) != want[2] or (want[2] and rows.get('Depth') != 'Traficom didn’t answer') or 'Cycling' in rows \
                     or bool(r['outline']) != (want[0] != 'Water') or (want[0] == 'Iidesjärvi' and not any('round its edge' in n for n in r['nums'])):
                 fails.append(f"{name}: {area(r)} (its name, its kind, its outline drawn and how far round it; on water the depth and Paddle from here)")
         # a big lake, as Overpass gives it (Pyhäjärvi, 2026-11-01): its tags with the whole lake's bounds, then its outline cut at the

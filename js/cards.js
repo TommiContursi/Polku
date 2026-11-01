@@ -1,7 +1,7 @@
 // The cards' contents (25d, Revision 4 of #355): built from the card's parts (js/card.js) and what the planner says;
 // the planner keeps the actions. A card shows only what can be done now: in the route's view, what works there and
 // the planner's note with Edit.
-import { h, icon, toast, store } from './ui.js';
+import { h, icon, sign, toast, store } from './ui.js';
 import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton } from './card.js';
 import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unmapped, areaFacts } from './facts.js';
 import { newPick, resolvePick, modesOf, modeOf, setMode, loadWeather } from './pick.js';
@@ -9,7 +9,8 @@ import { breakdownRows, colorAt, PICK_MODES, COLOR_MODES, NO_TERRAIN, ProfileCha
 import { notRight, isHttp, thingOf } from './inspect.js';
 import { elevation } from './dem.js';
 import { iconUrl } from './icons.js';
-import { ACTIVITIES, CRAFTS, LIPAS_TYPES } from './config.js';
+import { darkWords } from './palette.js';
+import { ACTIVITIES, CRAFTS, LIPAS_TYPES, DIFF_COLORS } from './config.js';
 import { STYLES, styleName } from './styles.js';
 import { fmtDist, fmtDuration, compass, bearing, lineLength } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
@@ -660,8 +661,25 @@ export function pickLine(card, open) {
 // facts as rows: the name, its value, and where it changes how much of each
 const factGroup = (title, list) => {
   const kept = list.filter(Boolean);
-  return kept.length ? [h('h4', { class: 'menu-h' }, title), h('div', { class: 'pick-facts', role: 'group', 'aria-label': title }, ...kept.map(([k, v, note]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v), note ? h('small', {}, note) : null)))] : [];
+  return kept.length ? [h('h4', { class: 'menu-h' }, title), h('div', { class: 'pick-facts', role: 'group', 'aria-label': title }, ...kept.map(([k, v, note, parts]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, ...(parts ? factParts(k, parts) : [v])), note ? h('small', {}, note) : null)))] : [];
 };
+// A fact's pictures (#574), each before its words and kept on a line with the first of them: how bikes get along and one way
+// as signs, a grade (MTB, hiking, uphill) as the badge on its difficulty's colour. The words say the same.
+const SIGN_OF = { Cycling: { separate: 'separated', shared: 'shared', cycleway: 'bikepath', lane: 'lane', track: 'track', beside: 'track', walk: 'footway', no: 'nobikes' }, 'One way': { one: 'oneway', cars: 'bikesboth' } };
+function factParts(label, parts) {
+  return parts.flatMap(([key, text], i) => {
+    const g = /^(MTB|Hiking|Uphill)$/.test(label) && /^↑?([ST])([0-6])/.exec(key), name = (SIGN_OF[label] || {})[key];
+    let mark = null, words = text;
+    if (g) {
+      const c = DIFF_COLORS[+g[2] - (g[1] === 'T' ? 1 : 0)]; // (hiking's T1 is the scale's first colour)
+      mark = h('span', { class: `badge${darkWords(c) ? ' ink' : ''}`, style: `background:${c}` }, g[0]);
+      words = text.slice(g[0].length).trimStart();
+    } else if (name) mark = h('span', { html: sign(name) }).firstChild;
+    const [first, ...rest] = words.split(' ');
+    // (a space after a badge, read with its grade; a sign is hidden from screen readers and has its own margin)
+    return [i ? ', ' : '', ...(mark ? [h('span', { class: 'fw' }, mark, g && first ? ' ' : '', first), rest.length ? ` ${rest.join(' ')}` : ''] : [text])];
+  });
+}
 const failed = (text, retry) => h('p', { class: 'pick-fail' }, text, retry ? h('button', { type: 'button', class: 'btn quiet', onclick: retry }, 'Try again') : null);
 
 // the sample of an analysis nearest a spot
@@ -784,7 +802,7 @@ function pickBody(pl, card, body) {
   const g = way ? wayGroups(w.chain, a) : spot.way ? wayGroups([{ w: { tags: spot.tags || {}, len: 1 } }]) : { along: [], surface: [], diff: [] };
   // the incline where you tapped, whatever the sport (what the hover says, #561)
   if (a && !(a.eleGap && a.eleGap[nearestSample(a, spot.ll)])) { const gr = Math.round(a.grade[nearestSample(a, spot.ll)]) || 0; g.diff.unshift(['Grade here', `${gr >= 0 ? '+' : '−'}${Math.abs(gr)} %`, gr >= 0 ? 'uphill, where you tapped' : 'downhill, where you tapped']); }
-  body.append(...factGroup('Getting along', g.along), ...factGroup('Surface', g.surface), ...factGroup('Difficulty', g.diff));
+  body.append(...factGroup('The way', g.along), ...factGroup('Surface', g.surface), ...factGroup('Difficulty', g.diff));
   // an area's own facts; the water's depth from Traficom's chart (shown, never routed on) and Paddle from here, whatever OpenStreetMap says
   body.append(...factGroup('About it', [...(ar ? areaFacts(ar.tags).rows : []),
     water ? ['Depth', pick.depth === undefined ? 'Asking Traficom' : pick.depth === null ? 'Traficom didn’t answer' : pick.depth, 'From Traficom’s chart'] : null]));

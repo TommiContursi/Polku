@@ -42,9 +42,9 @@ export const COLOR_GROUPS = [
 // (WAY_SCALES in js/facts.js). Not Both, which mixes two scales, nor Sport, which is a route's.
 export const PICK_MODES = {
   grade: COLOR_MODES.grade, uphill: COLOR_MODES.uphill, down: COLOR_MODES.down, hiking: 'Hiking difficulty', surface: COLOR_MODES.surface, way: COLOR_MODES.way, smooth: 'Smoothness', winter: 'Winter care',
-  width: COLOR_MODES.width, vis: COLOR_MODES.vis, wind: COLOR_MODES.wind, temp: COLOR_MODES.temp, rain: COLOR_MODES.rain, bikes: 'Bikes', oneway: 'One way', lit: 'Lit', speed: 'Speed limit',
+  width: COLOR_MODES.width, vis: COLOR_MODES.vis, wind: COLOR_MODES.wind, temp: COLOR_MODES.temp, rain: COLOR_MODES.rain, bikes: 'Cycling', oneway: 'One way', lit: 'Lit', speed: 'Speed limit',
 };
-export const PICK_GROUPS = [['Terrain', ['grade', 'uphill', 'down', 'hiking']], ['Ground', ['surface', 'way', 'smooth', 'winter', 'width', 'vis']], ['Weather', ['wind', 'temp', 'rain']], ['Getting along', ['bikes', 'oneway', 'lit', 'speed']]];
+export const PICK_GROUPS = [['Terrain', ['grade', 'uphill', 'down', 'hiking']], ['Ground', ['surface', 'way', 'smooth', 'winter', 'width', 'vis']], ['Weather', ['wind', 'temp', 'rain']], ['The way', ['bikes', 'oneway', 'lit', 'speed']]];
 
 // Trail width and visibility along the route (analysis.js a.td): index = class + 2
 // (-2 not a trail, -1 a trail without the tag, then js/trails.js's classes).

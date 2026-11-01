@@ -1861,6 +1861,11 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .pick-prof .ax.bot { bottom: -2px; }
 .pick-by { margin-top: 6px; }
 .pick-facts .insp-row b { font-weight: var(--weight-name); }
+/* a fact's picture before its words (#574): a sign in the words' ink, or a grade's badge, kept on a line with its first word */
+.pick-facts .insp-row b .fw { white-space: nowrap; color: inherit; }
+.sign { display: inline-block; height: 1.4em; width: auto; vertical-align: -0.38em; overflow: visible; }
+.pick-facts .sign { margin-right: 0.3em; }
+.sign * { vector-effect: non-scaling-stroke; }
 .pick-facts .insp-row small { flex-basis: 100%; color: var(--muted); font-size: var(--font-small); }
 .pick-note, .pick-fail { margin: 0; font-size: var(--font-small); color: var(--muted); }
 .pick-unmapped { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font-size: var(--font-small); color: var(--muted); }

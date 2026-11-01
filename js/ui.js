@@ -103,6 +103,29 @@ const P = {
 export const icon = (name, size = 20) =>
   `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;
 
+// How bikes get along and one way, as the traffic signs' shapes in the words' own ink (#574; never the signs' blue, which is
+// water's and yours): [its width on the 24 px grid, the shape, what's in it]. Two figures sit side by side on a plate:
+// stacked in a round sign, as on the road, they blur at 20 px. Sized by the text (`.sign`); the words beside it say the same.
+const WALKER = '<circle cx="12" cy="3.6" r="2.1"/><path d="M12 7.6v6.4M12 14l-3.2 7M12 14l3.2 7M7.5 11.6 12 8.6l4.5 3"/>';
+const fig = (body, x, y, s) => `<svg x="${x}" y="${y}" width="${s}" height="${s}" viewBox="0 0 24 24">${body}</svg>`;
+const BESIDE = fig(P.bike, 2.4, 3.4, 17.2);
+const SIGNS = {
+  bikepath: [24, 'round', fig(P.bike, 3.6, 3.6, 16.8)],
+  shared: [36, 'plate', fig(P.bike, 2.6, 3.4, 17.2) + fig(WALKER, 17, 3, 17.6)],
+  separated: [36, 'plate', `${fig(P.bike, 1.8, 3.8, 16.4)}<path d="M18 4v16"/>${fig(WALKER, 18.4, 3.6, 16.6)}`],
+  lane: [36, 'square', `${BESIDE}<path d="M27.5 4.2v3M27.5 10.5v3M27.5 16.8v3"/>`],
+  track: [36, 'square', `${BESIDE}<path d="M26 3v18M30.5 5v14"/>`],
+  footway: [24, 'round', fig(WALKER, 3.4, 2.8, 17.6)],
+  nobikes: [24, 'round', `${fig(P.bike, 3.6, 3.6, 16.8)}<path d="m5.2 5.2 13.6 13.6"/>`],
+  oneway: [24, 'square', '<path d="M12 19V5M7.4 9.6 12 5l4.6 4.6"/>'],
+  bikesboth: [36, 'square', '<path d="M11 19V5M6.4 9.6 11 5l4.6 4.6M25 6.6v10.8M22.4 9.2 25 6.6l2.6 2.6M22.4 14.8l2.6 2.6 2.6-2.6"/>'],
+};
+export const sign = (name) => {
+  const [w, shape, inner] = SIGNS[name];
+  const frame = shape === 'round' ? '<circle cx="12" cy="12" r="10.6"/>' : `<rect x="1.2" y="1.2" width="${w - 2.4}" height="21.6" rx="${shape === 'plate' ? 10.8 : 4.6}"/>`;
+  return `<svg class="sign" width="${w}" height="24" viewBox="0 0 ${w} 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${frame}${inner}</svg>`;
+};
+
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
