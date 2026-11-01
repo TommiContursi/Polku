@@ -18,8 +18,7 @@ export const RASTER_RATIO = globalThis.devicePixelRatio > 1 ? 2 : 1;
 
 export const BROUTER = 'https://brouter.de/brouter';
 export const PHOTON = 'https://photon.komoot.io/api/';
-// Set to the verified current.json URL after the dedicated OSM host is published (#154).
-export const OSM_DATA_MANIFEST = '';
+export const OSM_DATA_MANIFEST = 'https://ducksoft.fi/polku-osm/current.json';
 export const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
