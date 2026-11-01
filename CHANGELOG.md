@@ -11,6 +11,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **Opacity**, under the look, sets how strong either look is, and stays as you set it.
 - The lines show from zoom 14 and stay as you zoom out to 13. **Lit ways** can also be one of your tiles in the Layers drawer. Its tile says **Zoom in to see** further out, and **No data now** while OpenStreetMap's server doesn't answer for part of the view.
 
+### The map stays smooth zoomed far out ([#667](https://github.com/TommiContursi/Polku/issues/667))
+
+- With **Trail details** on, as MTB, Hike and Trail run have them, moving the map while zoomed far out no longer holds it up. At the whole world it took up to half a second on each move and hundreds of megabytes of a phone's memory. The details still show from zoom 13, and winter ways from zoom 11.
+
 ### Less waiting while routes and map data load ([#659](https://github.com/TommiContursi/Polku/issues/659))
 
 - Changing a route stops land-routing requests it no longer needs, while requests still needed by the current route are shared. A busy BRouter is left to recover with Polku's own route profiles too. Polku uploads its route profile again if the server has lost it.

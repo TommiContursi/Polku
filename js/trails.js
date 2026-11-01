@@ -235,6 +235,9 @@ export class TrailDetails {
     if (!this.enabled) return;
     const map = this.map;
     const z = map.getZoom();
+    // below zoom 13 the details don't show anyway: the map's own trails are enough there. And no tiles are listed:
+    // the world on a phone at zoom 1 is millions, 0.4 s and 840 MB on every move (#667)
+    if (z < 13) { this.publish([]); return; }
     const b = map.getBounds();
     const want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
     if (z >= MIN_ZOOM && want.length <= MAX_VIEW) {
@@ -242,8 +245,7 @@ export class TrailDetails {
         if (!loadedTile(x, y)) trailTile(x, y).catch((err) => { if (!err.held && this.app.onBusy) this.app.onBusy(); });
       }
     }
-    // below zoom 13 the details don't show anyway: the map's own trails are enough there
-    this.publish(z >= 13 ? want.filter(([x, y]) => loadedTile(x, y)).slice(0, 24) : []);
+    this.publish(want.filter(([x, y]) => loadedTile(x, y)).slice(0, 24));
   }
 
   publish(list) {
