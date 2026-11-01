@@ -3784,14 +3784,22 @@ export class Planner {
   }
   renderLine() { if (this.line) { this.line.update(); this.fitLine(); } }
   // As it opens and each time it grows (its heights, the weather, its name): whole on the screen for a tap by its edge (a phone
-  // at 200 %), in from the sides and under the spot with no room above it; over the map's buttons, they step aside (#435)
+  // at 200 %), in from the sides and under the spot with no room above it; left of the map's buttons, or, where it can't fit
+  // beside them (200 %), over them, and they step aside (#435, #674)
   fitLine() {
     this.lineMk.setOffset([0, -22]);
     const r = this.line.el.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;
-    const dx = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8)), dy = r.top < top ? r.height + 44 : 0;
+    const dx = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8));
+    const dy = r.top < top ? r.height + 44 : 0, col = document.getElementById('map-ctrls').getBoundingClientRect();
     if (dx || dy) this.lineMk.setOffset([dx, dy - 22]);
-    const b = this.line.el.getBoundingClientRect(), col = document.getElementById('map-ctrls').getBoundingClientRect();
-    const over = b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
+    const hits = (b) => b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
+    let b = this.line.el.getBoundingClientRect();
+    const aside = b.right - (col.left - 8);
+    if (hits(b) && b.left - aside >= 8) {
+      this.lineMk.setOffset([dx - aside, dy - 22]);
+      b = this.line.el.getBoundingClientRect();
+    }
+    const over = hits(b);
     if (over !== !!this.lineOver) { this.lineOver = over; document.body.classList.toggle('card-over', over); }
   }
   // keep: its card is opening, so the pick stays

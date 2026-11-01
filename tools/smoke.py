@@ -16543,6 +16543,20 @@ def pick_card(chrome):
           const r = b().getBoundingClientRect(); p.hideLine(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), limit: Math.round(top), h: innerHeight }; })()""")
         if not grow or grow['top'] < grow['limit'] - 1 or grow['bottom'] > grow['h']:
             fails.append(f"390x844: the line grown with a long name: {grow} (whole on the screen, under the top bar)")
+        # a spot by the right edge (#674): the line steps left of the map's buttons, which all stay (it hid them all, only #435's 200 % needs that)
+        beside = pg.js("""(async () => {
+          const p = polku.planner, m = polku.map, b = () => document.querySelector('.spot-line'), c = m.getCanvas().getBoundingClientRect();
+          const k0 = document.getElementById('map-ctrls').getBoundingClientRect();  // (the spot level with the column's middle, so the line above it is beside the buttons)
+          p.cards.close(); p.openSpotCard(m.unproject([innerWidth * 0.8 - c.left, (k0.top + k0.bottom) / 2 - c.top]).toArray(), { touch: true });
+          for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
+          if (!b()) return null;
+          await new Promise((r) => setTimeout(r, 400));
+          const box = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom].map(Math.round); }, l = box(b()), col = box(document.getElementById('map-ctrls'));
+          const out = { buttons: getComputedStyle(document.querySelector('.map-ctrls')).visibility, over: document.body.classList.contains('card-over'), line: l, column: col,
+            crossing: l[0] < col[2] && l[2] > col[0] && l[1] < col[3] && l[3] > col[1] };
+          p.hideLine(); return out; })()""")
+        if not beside or beside['buttons'] != 'visible' or beside['over'] or beside['crossing']:
+            fails.append(f"390x844: the line at a spot by the right edge: {beside} (the map's buttons visible, the line beside them, not over)")
         fails += [f'390x844 console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"390x844: raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
