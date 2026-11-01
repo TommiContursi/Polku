@@ -47,8 +47,8 @@ export function slimWays(json) {
   return { v: 2, w: out };
 }
 
-let held = false, heldFail = false; // for checks: every tile that isn't seeded has no ways (or fails), and Overpass isn't asked
-export const holdWays = (on = true, fail = false) => { held = on; heldFail = on && fail; };
+let held = false, heldFail = false, heldWait = false; // for checks: every tile that isn't seeded has no ways (or fails, or is still coming), and Overpass isn't asked
+export const holdWays = (on = true, fail = false, wait = false) => { held = on; heldFail = on && fail; heldWait = on && wait; };
 const tiles = new Map(); // 'x/y' → { at, promise, ok }
 const ofWay = new Map(); // a way's id → its pieces
 const ends = new Map(); // a node → the pieces that start or end at it
@@ -99,7 +99,7 @@ export function loadWays([x, y], { force = false } = {}) {
   const key = `${x}/${y}`, t = tiles.get(key);
   if (t && (t.ok !== false || (!force && Date.now() - t.at < RETRY))) return t.promise;
   const entry = { at: Date.now(), ok: null };
-  entry.promise = (held ? (heldFail ? Promise.reject(new Error('Overpass')) : Promise.resolve({ v: 2, w: [] })) : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, timeoutMs: 40000 })) // (the query's own [timeout:40])
+  entry.promise = (held ? (heldFail ? Promise.reject(new Error('Overpass')) : heldWait ? new Promise(() => {}) : Promise.resolve({ v: 2, w: [] })) : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, timeoutMs: 40000 })) // (the query's own [timeout:40])
     .then((d) => { index(x, y, d); entry.ok = true; return d; }, (err) => { entry.ok = false; throw err; });
   tiles.set(key, entry);
   return entry.promise;

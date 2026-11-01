@@ -3719,7 +3719,10 @@ export class Planner {
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
     // (the water or a park the map draws there: what OpenStreetMap says it is, where no way is in reach; the line waits for the ways)
     const area = areaUnder(this.map, p);
-    const card = spotCard(this, { ll, pin, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
+    // (the tile joins ways of one kind into one feature: the line of them nearest the tap, drawn while the ways come)
+    const lines = feats.filter((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)).flatMap((x) => (x.geometry.type === 'LineString' ? [x.geometry.coordinates] : x.geometry.type === 'MultiLineString' ? x.geometry.coordinates : []));
+    const near = lines.map((c) => [nearestOnLine(ll, c).d, c]).sort((a, b) => a[0] - b[0])[0];
+    const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch, area });
     // a phone's tap while browsing: the line at the spot first (#574); a hold, a click and the rest: the card

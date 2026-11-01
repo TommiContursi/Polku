@@ -16332,6 +16332,16 @@ def pick_card(chrome):
         if r['ways'] != 'failed' or re.search(r'not mapped', r['text'], re.I) or "didn’t answer" not in r['text']:
             fails.append(f"the ways not loaded: {r['ways']}, “not mapped” in the card {bool(re.search('not mapped', r['text'], re.I))}, says it didn't answer {'didn’t answer' in r['text']}")
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
+        # #675: the ways still coming from Overpass (here, never): the map's own way is drawn at once, and the card says it's asking, and
+        # after 10 s that OpenStreetMap is slow
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, false, true); return true; })')
+        r = tap(pg, [24.93773, 60.17055], want=(None, None), secs=3)
+        if r['kind'] != 'spot' or r['ways'] is not None or not r['drawn'] or 'Loading the whole way' not in r['text']:
+            fails.append(f"a tap on a way while its ways come: {r['kind']} card, ways {r['ways']}, {r['drawn']} lines drawn, the card says “{r['text'][:160]}” (the map's own way drawn at once, “Loading the whole way”)")
+        slow = pg.js("(() => { polku.planner.cards.current.pick.at -= 11000; polku.planner.cards.refresh(); return document.querySelector('.pl-way.card').textContent; })()")
+        if 'OpenStreetMap is slow to answer' not in slow or 'Loading the whole way' in slow:
+            fails.append(f"a tap on a way, its ways 11 s late: the card says “{slow[:160]}” (OpenStreetMap is slow to answer: still asking)")
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
         # the path of #562 (way 1063593743), the ways in: its width and visibility are read from OpenStreetMap
         r = tap(pg, pg.js("(() => { const w = __fx.tiles[Object.keys(__fx.tiles).find((k) => __fx.tiles[k].w.some((x) => x[0] === 1063593743))].w.find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()"))
         facts = dict(r['rows'])
@@ -16557,6 +16567,22 @@ def pick_card(chrome):
           p.hideLine(); return out; })()""")
         if not beside or beside['buttons'] != 'visible' or beside['over'] or beside['crossing']:
             fails.append(f"390x844: the line at a spot by the right edge: {beside} (the map's buttons visible, the line beside them, not over)")
+        # #675: the ways still coming (here, never): the line says it's asking, the map's own way is drawn, and after 10 s that OpenStreetMap is slow
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, false, true); return true; })')
+        wait = pg.js("""(async () => {
+          const p = polku.planner, m = polku.map, ll = [24.93773, 60.17055], b = () => document.querySelector('.spot-line'), words = () => (b() ? [...b().querySelectorAll('b, small')].map((e) => e.textContent) : null);
+          p.cards.close(); m.jumpTo({ center: ll, zoom: 16.5 });
+          const q = m.project(ll), t0 = Date.now();
+          while (Date.now() - t0 < 20000 && !m.queryRenderedFeatures([[q.x - 14, q.y - 14], [q.x + 14, q.y + 14]]).some((f) => /^(path|track|cycleway|road)-/.test(f.layer.id))) await new Promise((r) => setTimeout(r, 250));
+          p.openSpotCard(ll, { touch: true });
+          for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
+          await new Promise((r) => setTimeout(r, 400));
+          const out = { line: words(), drawn: m.querySourceFeatures('pick').length };
+          if (p.picked) { p.picked.pick.at -= 11000; p.renderLine(); out.slow = words(); p.hideLine(); }
+          return out; })()""", timeout=40000)
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
+        if not wait['line'] or not re.search(r'Loading the whole way', ' '.join(wait['line'])) or not wait['drawn'] or not re.search(r'OpenStreetMap is slow', ' '.join(wait['slow'] or [])):
+            fails.append(f"390x844: a tap on a way while its ways come: the line {wait['line']}, {wait['drawn']} lines drawn, 11 s later {wait['slow']} (“Loading the whole way…” and the map's own way drawn; then “OpenStreetMap is slow: still asking…”)")
         fails += [f'390x844 console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"390x844: raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
