@@ -74,7 +74,7 @@ export function loadWays([x, y], { force = false } = {}) {
   const key = `${x}/${y}`, t = tiles.get(key);
   if (t && (t.ok !== false || (!force && Date.now() - t.at < RETRY))) return t.promise;
   const entry = { at: Date.now(), ok: null };
-  entry.promise = (held ? (heldFail ? Promise.reject(new Error('Overpass')) : Promise.resolve({ v: 2, w: [] })) : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true }))
+  entry.promise = (held ? (heldFail ? Promise.reject(new Error('Overpass')) : Promise.resolve({ v: 2, w: [] })) : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, timeoutMs: 40000 })) // (the query's own [timeout:40])
     .then((d) => { index(x, y, d); entry.ok = true; return d; }, (err) => { entry.ok = false; throw err; });
   tiles.set(key, entry);
   return entry.promise;
