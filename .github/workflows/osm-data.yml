@@ -1,6 +1,12 @@
 name: Finland OSM data
 
 on:
+  pull_request:
+    paths:
+      - 'tools/osm_data/publish.py'
+      - 'tools/osm_data/test_publish.py'
+      - 'tools/osm_data/sftp-requirements.txt'
+      - '.github/workflows/osm-data.yml'
   schedule:
     - cron: '17 3 * * 1'
     - cron: '17 7 * * *'
@@ -23,6 +29,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test-sftp:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Test publishing boundaries without credentials
+        run: python -m unittest tools.osm_data.test_publish -v
+
   verify-access:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'verify-access'
     runs-on: ubuntu-24.04
