@@ -268,10 +268,10 @@ const winterOf = (t) => (t['piste:type'] === 'nordic' ? 'ski' : /no @ \(winter\)
 // hiking grades take the difficulty scale's colours
 export const WAY_SCALES = fromCss({
   hiking: { of: (t) => SAC_KEY[t.sac_scale] || null, items: { T1: ['T1 easy', '--diff-s0'], T2: ['T2 medium', '--diff-s1'], T3: ['T3 hard', '--diff-s2'], T4: ['T4 alpine', '--diff-s3'], T5: ['T5 alpine', '--diff-s4'], T6: ['T6 alpine', '--diff-s5'] } },
-  // (in StreetComplete's words, from its bike paths overlay and cycleway quest: plain, and exact to OpenStreetMap)
-  bikes: { of: bikesOf, quiet: ['trail', 'walk', 'traffic'], items: { separate: ['Separated bike and foot path', '--bikes-separate'], shared: ['Designated shared-use path', '--bikes-shared'], cycleway: ['Bike path', '--bikes-cycleway'],
-    lane: ['Bicycle lane', '--bikes-lane'], track: ['Protected bicycle lane or path', '--bikes-track'], beside: ['Bike path beside it, mapped separately', '--bikes-beside'], trail: ['Path or trail', '--bikes-trail'], walk: ['Footway', '--bikes-walk'],
-    traffic: ['On the road, no bicycle lane', '--bikes-traffic'], no: ['Cycling not allowed', '--bikes-no'] } },
+  // (words that follow "Cycling": the card's row and Colour by say it, and the way's line starts "Cycling: …", wayLine())
+  bikes: { of: bikesOf, quiet: ['trail', 'walk', 'traffic'], items: { separate: ['Separated from walkers', '--bikes-separate'], shared: ['Shared with walkers', '--bikes-shared'], cycleway: ['Bike path', '--bikes-cycleway'],
+    lane: ['Bicycle lane', '--bikes-lane'], track: ['Protected bicycle lane', '--bikes-track'], beside: ['Bike path beside the road', '--bikes-beside'], trail: ['On a path or trail', '--bikes-trail'], walk: ['Footway, for walking', '--bikes-walk'],
+    traffic: ['With traffic, no bicycle lane', '--bikes-traffic'], no: ['Not allowed', '--bikes-no'] } },
   oneway: { of: oneWayOf, quiet: ['both'], items: { one: ['One way, bikes too', '--oneway-one'], cars: ['One way for cars, both ways for bikes', '--oneway-bikes'], both: ['Both ways', '--oneway-both'] } },
   lit: { of: (t) => (t.lit === 'no' ? 'no' : t.lit ? 'yes' : null), items: { yes: ['Lit', '--lit-yes'], no: ['Not lit', '--lit-no'] } },
   speed: { of: speedOf, items: { 20: ['20 km/h or less', '--diff-s0'], 30: ['30 km/h', '--diff-s1'], 40: ['40 km/h', '--diff-s2'], 50: ['50 km/h', '--diff-s3'], 60: ['60 km/h', '--diff-s4'], 70: ['70 km/h or more', '--diff-s5'] } },
@@ -301,10 +301,11 @@ const first = (chain, fn) => (byLen(chain, fn).find(([v]) => v) || [])[0];
 export const wayKind = (chain) => byLen(chain, kindOf)[0][0];
 export const wayTitle = (chain) => (chain.find((x) => x.w.rel) || {}).w?.rel || (chain.find((x) => x.w.tags.name) || {}).w?.tags.name || KIND_NAME[wayKind(chain)] || 'Way';
 
-// the way's line, at the spot and under the card's name: "Designated shared-use path · S0 · fine gravel · 3 m wide · lit"
+// the way's line, at the spot and under the card's name: "Cycling: shared with walkers · S0 · fine gravel · 3 m wide · lit"
 export function wayLine(chain) {
   const bits = [], kind = wayKind(chain), bikes = byLen(chain, bikesOf)[0][0];
-  if (bikes && !['trail', 'traffic'].includes(bikes) || kind === 'road') bits.push(WAY_SCALES.bikes.items[bikes][0]);
+  // (said what it's about: the bare words, first in the line, read as the way's name or kind)
+  if (bikes && !['trail', 'traffic'].includes(bikes) || kind === 'road') bits.push(`Cycling: ${WAY_SCALES.bikes.items[bikes][0].toLowerCase()}`);
   const grade = first(chain, (t) => (mtbGrade(t) || {}).value || null) || first(chain, (t) => (sacGrade(t) || {}).value || null);
   if (grade) bits.push(grade);
   const surface = first(chain, (t) => t.surface || null), width = first(chain, (t) => t.width || null), lit = first(chain, WAY_SCALES.lit.of);
