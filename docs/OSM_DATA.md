@@ -163,6 +163,11 @@ without publishing. Enable GitHub Actions failure notifications for the owner;
 the implementation does not send email or create a separate notification
 service. Inspect the run summary and uploaded browser evidence.
 
+The manual **check** operation also works while unattended publication is off.
+It needs only Python's standard library. It rejects a `current.json` response
+that is immutable or can remain fresh without revalidation; release files keep
+their immutable caching policy.
+
 Run the **rollback** workflow with an existing release ID. It retrieves the
 immutable manifest, verifies the existing files through SFTP and public HTTP,
 and switches the pointer through the same guarded path. It does not rebuild or

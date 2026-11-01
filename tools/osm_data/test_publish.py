@@ -6,6 +6,7 @@ from email.message import Message
 import ftplib
 import hashlib
 import io
+import importlib.util
 import json
 from pathlib import Path
 import posixpath
@@ -67,6 +68,7 @@ class Host:
         self.bad_range = self.bad_after_pointer = self.changed_manifest_after_pointer = False
         self.denied_login = False
         self.connections = self.pointer_writes = 0
+        self.pointer_cache = 'no-cache'
         self.release_headers = {'Access-Control-Allow-Origin': '*',
                                 'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
                                 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable'}
@@ -193,6 +195,8 @@ class Host:
             changed['attribution'] = 'unexpected replacement'
             data = encoded(changed)
         headers = dict(self.release_headers)
+        if path.endswith('/current.json'):
+            headers['Cache-Control'] = self.pointer_cache
         headers['Content-Type'] = 'application/json' if path.endswith('.json') else 'application/vnd.pmtiles'
         byte_range = req.get_header('Range')
         if byte_range:
@@ -335,10 +339,30 @@ class PublishTests(unittest.TestCase):
         self.host.files[ROOT + '/current.json'] = encoded(old)
         with self.assertRaises(ValueError):
             publish.check(PUBLIC + '/current.json')
+
         self.host.files[ROOT + '/current.json'] = self.previous
         self.host.release_headers['Access-Control-Allow-Origin'] = 'https://other.example'
         with self.assertRaises(ValueError):
             publish.check(PUBLIC + '/current.json')
+
+    def test_monitor_runs_without_the_sftp_dependency(self):
+        original_import = __import__
+        def no_sftp(name, *args, **kwargs):
+            if name == 'paramiko':
+                raise ModuleNotFoundError('SFTP dependency is not installed in monitor jobs')
+            return original_import(name, *args, **kwargs)
+        with patch('builtins.__import__', side_effect=no_sftp):
+            spec = importlib.util.spec_from_file_location('http_monitor', publish.__file__)
+            monitor = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(monitor)
+            monitor.check(PUBLIC + '/current.json')
+
+    def test_monitor_rejects_an_immutable_or_freshly_cached_current_pointer(self):
+        for policy in ['public, max-age=31536000, immutable', 'public, max-age=900', '']:
+            with self.subTest(policy=policy):
+                self.host.pointer_cache = policy
+                with self.assertRaisesRegex(ValueError, 'current.json|revalidat'):
+                    publish.check(PUBLIC + '/current.json')
 
     def test_credentials_are_redacted_from_failure(self):
         self.host.denied_login = True
@@ -383,7 +407,7 @@ class PublishTests(unittest.TestCase):
             def close(self):
                 self.closed = True
         transport = Transport()
-        with patch.object(publish.paramiko, 'Transport', return_value=transport):
+        with patch('paramiko.Transport', return_value=transport):
             with self.assertRaisesRegex(ValueError, 'host key differs'):
                 real_open_sftp('ftp.example', 'user', 'secret', ENV['OSM_SFTP_HOST_KEY_SHA256'])
         self.assertFalse(transport.authenticated)
