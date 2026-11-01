@@ -15,7 +15,7 @@ on:
       operation:
         description: Verify access, build, monitor, or roll back an immutable release
         type: choice
-        options: [verify-access, build, check, rollback]
+        options: [verify-access, test-host, build, check, rollback]
         default: verify-access
       release:
         description: Existing release ID for rollback
@@ -68,6 +68,30 @@ jobs:
           OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
           OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
         run: python tools/osm_data/publish.py verify-access
+
+  test-host:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'test-host'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Check disposable SFTP transfer, overwrite, rename and public HTTP
+        env:
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py test-host
 
   build:
     if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')
