@@ -15759,7 +15759,7 @@ def pick_card(chrome):
         # folds by its head, then opens again; while the ways come, the same. (Set back on Rauhaniemenreitti's own pick after.)
         load = pg.js("""(async () => {
           const pick = polku.planner.cards.current.pick, kept = { a: pick.a, ways: pick.ways }, card = () => document.querySelector('.pl-way.card');
-          const look = () => { const hd = card().querySelector('.sec-head'); return { head: hd ? hd.textContent : '', open: hd && hd.getAttribute('aria-expanded'), say: card().querySelector('.pick-skel .pick-note')?.textContent || '', shapes: !!card().querySelector('.pick-skel-chart') }; };
+          const look = () => { const hd = card().querySelector('.sec-head'), sh = card().querySelector('.pick-skel-chart'); return { head: hd ? hd.textContent : '', open: hd && hd.getAttribute('aria-expanded'), say: card().querySelector('.pick-skel .pick-note')?.textContent || '', shapes: !!sh, moves: sh ? getComputedStyle(sh).animationName : '' }; };
           const click = async () => { const hd = card().querySelector('.sec-head'); if (hd) hd.click(); await new Promise((r) => setTimeout(r, 300)); return look(); };
           const out = {};
           pick.a = undefined; polku.planner.cards.refresh(); out.heights = look();
@@ -15768,6 +15768,12 @@ def pick_card(chrome):
           Object.assign(pick, kept); polku.planner.cards.refresh();
           return out; })()""")
         hs, fo, op, ws = load['heights'], load['folded'], load['opened'], load['ways']
+        # with reduced motion the shapes only fade in: the words say it's loading, so they don't breathe
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+        calm = pg.js("(() => { const pick = polku.planner.cards.current.pick, a = pick.a; pick.a = undefined; polku.planner.cards.refresh(); const sh = document.querySelector('.pl-way.card .pick-skel-chart'), m = sh ? getComputedStyle(sh).animationName : ''; pick.a = a; polku.planner.cards.refresh(); return m; })()")
+        pg.c.send('Emulation.setEmulatedMedia', {'features': []}, pg.s)
+        if 'pulse' not in hs['moves'] or calm != 'bar-in':
+            fails.append(f"the profile's shapes while it loads: {hs['moves']}, with reduced motion {calm} (they breathe; with reduced motion they only fade in)")
         if not hs['head'].startswith('Profile') or hs['open'] != 'true' or 'Loading the heights' not in hs['say'] or not hs['shapes'] \
                 or fo['open'] != 'false' or fo['shapes'] or 'Loading the heights' not in fo['head'] or op['open'] != 'true' or not op['shapes'] \
                 or not ws['head'].startswith('Profile') or 'Loading the whole way' not in ws['say']:

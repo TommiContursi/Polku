@@ -1849,6 +1849,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .pick-skel i { display: block; border-radius: 8px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
   animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards, pulse 1.6s ease-in-out calc(480ms - var(--since)) infinite; }
 .pick-skel .pick-note { animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards; } /* what's asked, in words, with the shapes */
+@media (prefers-reduced-motion: reduce) { .pick-skel i { animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards; } } /* (the words say it's loading: the shapes stop breathing) */
 .pick-skel-nums { display: flex; gap: 20px; }
 .pick-skel-nums i { width: 64px; height: 40px; }
 .pick-skel-chart { height: 110px; }
