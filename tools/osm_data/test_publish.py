@@ -269,6 +269,15 @@ class PublishTests(unittest.TestCase):
         self.assertIn(ROOT + '/releases/new-release/ways.pmtiles', self.host.files)
         self.assertIn(ROOT + '/releases/previous-release/ways.pmtiles', self.host.files)
 
+    def test_rollback_still_requires_publication_approval(self):
+        publish.publish(self.release_dir)
+        saved = next(self.release_dir.glob('rollback*.json'))
+        files = dict(self.host.files)
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            with self.assertRaisesRegex(ValueError, 'approval|approved'):
+                publish.rollback(saved)
+        self.assertEqual(self.host.files, files)
+
     def test_monitor_rejects_old_data_and_invalid_public_headers(self):
         old = pointer(self.old)
         old['source']['timestamp'] = '2000-01-01T00:00:00Z'
@@ -286,6 +295,26 @@ class PublishTests(unittest.TestCase):
             publish.publish(self.release_dir)
         self.assertNotIn(ENV['OSM_FTP_USER'], str(raised.exception))
         self.assertNotIn(ENV['OSM_FTP_PASSWORD'], str(raised.exception))
+
+    def test_access_check_does_not_need_publication_approval_or_write_files(self):
+        files, dirs = dict(self.host.files), set(self.host.dirs)
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            result = publish.verify_access()
+        self.assertTrue(result['ftps_read_access'])
+        self.assertEqual(result['public_status'], 200)
+        self.assertEqual((self.host.files, self.host.dirs), (files, dirs))
+        self.assertEqual(self.host.pointer_writes, 0)
+
+    def test_access_check_reports_unpublished_http_without_changing_host(self):
+        def forbidden(request, **kwargs):
+            raise HTTPError(request.full_url, 403, 'forbidden', {}, None)
+        files = dict(self.host.files)
+        with patch.object(publish.urllib.request, 'urlopen', forbidden):
+            result = publish.verify_access()
+        self.assertTrue(result['ftps_read_access'])
+        self.assertEqual(result['public_status'], 403)
+        self.assertFalse(result['public_cors'])
+        self.assertEqual(self.host.files, files)
 
 
 if __name__ == '__main__':

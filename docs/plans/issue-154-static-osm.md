@@ -83,4 +83,4 @@ source setting remains empty. The [operations guide](../OSM_DATA.md) is the
 concrete setup/activation procedure; the [measurements](osm-data-measurements.md)
 separate local results from hosting and real-device checks still needed.
 
-Implementation and evidence are in [PR #678](https://github.com/TommiContursi/Polku/pull/678). The PR remains draft for the explicit hosting verification boundary above.
+Implementation and evidence are in [PR #678](https://github.com/TommiContursi/Polku/pull/678). The preparation can merge with publication and the app's new source disabled; the protected read-only access check then runs on `main`. Live hosting verification remains required before publication and activation.

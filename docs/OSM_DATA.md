@@ -97,6 +97,13 @@ Before merging, an approved first publication can use the same builder and
 `publish.py` locally from this branch, with the protected credentials supplied
 to that process. It still uses verified automated transfers, not manual uploads.
 
+If the deployment environment permits only `main`, merge this preparation PR
+with `OSM_PUBLISH_ENABLED` unset and the app's source setting empty. Then run
+**Finland OSM data → verify-access** first. This protected operation checks FTPS
+login and directory listing, and reports the public manifest's HTTP/CORS status.
+It writes no hosting files and does not prove upload, Range or rename capability.
+The default manual operation is this read-only check; full publication stays gated.
+
 Run **Actions → Finland OSM data → build**. Weekly builds are scheduled Monday
 at 03:17 UTC. Build checks, transformation, gzip validation, country count and
 extent gates, and full-country browser checks all run before publication.

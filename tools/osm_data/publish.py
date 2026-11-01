@@ -14,6 +14,7 @@ import posixpath
 import re
 import ssl
 import urllib.request
+from urllib.error import HTTPError
 from urllib.parse import urlsplit
 import uuid
 
@@ -71,7 +72,6 @@ def settings():
     values = [os.environ.get('OSM_' + key, '') for key in ('FTP_HOST', 'FTP_USER', 'FTP_PASSWORD', 'FTP_ROOT', 'PUBLIC_URL')]
     host, user, password, root, url = values
     require(all(values), 'Missing publication environment variables')
-    require(os.environ.get('OSM_ALLOW_PUBLISH') == 'true', 'Publication requires approved OSM_ALLOW_PUBLISH=true')
     require(re.fullmatch(r'[A-Za-z0-9.-]+', host), 'Invalid FTPS hostname')
     require(root.startswith('/') and root.endswith('/polku-osm') and root == posixpath.normpath(root)
             and '\\' not in root and not any(p in {'.', '..'} for p in root.split('/'))
@@ -219,6 +219,7 @@ def previous_pointer(ftp):
 
 
 def publish(directory):
+    require(os.environ.get('OSM_ALLOW_PUBLISH') == 'true', 'Publication requires approved OSM_ALLOW_PUBLISH=true')
     directory = Path(directory)
     raw = (directory / 'manifest.json').read_bytes()
     manifest = validate(json.loads(raw))
@@ -246,6 +247,7 @@ def publish(directory):
 
 
 def rollback(manifest_path):
+    require(os.environ.get('OSM_ALLOW_PUBLISH') == 'true', 'Publication requires approved OSM_ALLOW_PUBLISH=true')
     path = Path(manifest_path)
     target = validate(json.loads(path.read_bytes()), pointed=True)
     config = settings()
@@ -274,18 +276,39 @@ def check(url):
     probe(base, release, raw)
 
 
+def verify_access():
+    """Check protected credentials and the configured path without writing host files."""
+    config = settings()
+    with connection(config) as ftp:
+        ftp.nlst()
+    request = urllib.request.Request(config[-1] + '/current.json', method='HEAD',
+                                    headers={'Origin': 'https://polku.si'})
+    try:
+        response = urllib.request.urlopen(request, timeout=30)
+    except HTTPError as error:
+        response = error
+    with response:
+        return {'ftps_read_access': True, 'public_status': response.status,
+                'public_cors': response.headers.get('Access-Control-Allow-Origin') == '*'}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('publish').add_argument('directory', type=Path)
     commands.add_parser('rollback').add_argument('--manifest', type=Path, required=True)
     commands.add_parser('check').add_argument('url')
+    commands.add_parser('verify-access')
     args = parser.parse_args()
     try:
         if args.command == 'publish':
             publish(args.directory)
         elif args.command == 'rollback':
             rollback(args.manifest)
+        elif args.command == 'verify-access':
+            print(json.dumps(verify_access(), sort_keys=True))
+            print('Only FTPS read access checked; no files written or publication verified.')
+            return
         else:
             check(args.url)
     except Exception as error:
