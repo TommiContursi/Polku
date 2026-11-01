@@ -12,21 +12,25 @@ export const LIT_Z = 13;
 export const LIT_MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
 const RETRY = 120e3; // a failed tile is left alone for 2 minutes
 const MAX_VIEW = 12; // more tiles than this in view: zoomed out too far to load
-const LIT = /^(yes|24\/7|automatic|sunset-sunrise|limited|interval)$/;
-const UNLIT = /^(no|disused)$/;
+// Lit and unlit as `lit` values; any other value counts as no tag
+const LIT = 'yes|24/7|automatic|sunset-sunrise|limited|interval';
+const UNLIT = 'no|disused';
 
+// No tags come back (a city-centre tile with them was 5.4 MB, #638), only each way's id and shape: the lit ways, a
+// count as the marker between the sets, then the unlit ones.
 export function litQuery(x, y) {
   const [w, s, e, n] = tileBounds(x, y, LIT_Z);
-  return `[out:json][timeout:25];way[highway][lit](${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)});out tags geom qt;`;
+  const bb = `${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)}`;
+  return `[out:json][timeout:25];way[highway][lit~"^(${LIT})$"](${bb});out skel geom qt;out count;way[highway][lit~"^(${UNLIT})$"](${bb});out skel geom qt;`;
 }
 
-/** Overpass's answer as [id, 1 lit or 0 unlit, flat coordinates]; any other `lit` value counts as no tag. */
+/** litQuery()'s answer as [id, 1 lit or 0 unlit, flat coordinates]: the ways before the count are lit, after it unlit. */
 export function slimLit(json) {
-  if (json.remark && /error|timed out|out of memory/i.test(json.remark)) throw new Error(`Overpass: ${json.remark}`);
   const w = [];
+  let lit = 1;
   for (const el of json.elements || []) {
-    const v = (el.tags || {}).lit, lit = LIT.test(v) ? 1 : UNLIT.test(v) ? 0 : -1;
-    if (el.type === 'way' && el.geometry && lit >= 0) w.push([el.id, lit, el.geometry.flatMap((p) => [+p.lon.toFixed(6), +p.lat.toFixed(6)])]);
+    if (el.type === 'count') lit = 0;
+    else if (el.type === 'way' && el.geometry) w.push([el.id, lit, el.geometry.flatMap((p) => [+p.lon.toFixed(6), +p.lat.toFixed(6)])]);
   }
   return { v: 1, w };
 }

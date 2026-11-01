@@ -4624,7 +4624,9 @@ def winter(chrome):
 
 
 # Lit ways (#638). Overpass answers the lit query with the recorded Laajavuori ways (cut from the winter tile's lit
-# tags), or 504 while window.litFail is set; nothing else of Overpass is answered.
+# tags) as litQuery() asks for them: no tags, the lit ways, a count, then the unlit ones. While window.litFail is
+# 'remark' it answers 200 with a server-side timeout (#661: no data), while it's true 504; nothing else of Overpass
+# is answered.
 LIT_OVERPASS = """(() => {
   const real = window.fetch.bind(window);
   let fx = null;
@@ -4634,12 +4636,14 @@ LIT_OVERPASS = """(() => {
     const url = String(input && input.url ? input.url : input);
     if (!/overpass/.test(url)) return real(input, init);
     const q = init && init.body ? new URLSearchParams(init.body).get('data') || '' : '';
-    if (!/way\\[highway\\]\\[lit\\]/.test(q)) return new Response('', { status: 504 });
+    if (!/way\\[highway\\]\\[lit~/.test(q)) return new Response('', { status: 504 });
     window.litAsked++;
+    if (window.litFail === 'remark') return new Response(JSON.stringify({ remark: 'runtime error: Query timed out in "query" at line 1 after 26 seconds.', elements: [] }));
     if (window.litFail) return new Response('', { status: 504 });
     fx ||= await (await real(location.origin + '/tools/fixtures/lit-laajavuori.json')).json();
-    const geometry = (flat) => flat.flatMap((v, i) => (i % 2 ? [] : [{ lon: v, lat: flat[i + 1] }]));
-    return new Response(JSON.stringify({ elements: fx.data.w.map(([id, lit, flat]) => ({ type: 'way', id, tags: { highway: 'path', lit: lit ? 'yes' : 'no' }, geometry: geometry(flat) })) }));
+    const way = ([id, , flat]) => ({ type: 'way', id, nodes: flat.filter((v, i) => i % 2 === 0).map((v, i) => id * 1000 + i), geometry: flat.flatMap((v, i) => (i % 2 ? [] : [{ lat: flat[i + 1], lon: v }])) });
+    const lit = fx.data.w.filter((w) => w[1]), unlit = fx.data.w.filter((w) => !w[1]);
+    return new Response(JSON.stringify({ elements: [...lit.map(way), { type: 'count', id: 0, tags: { ways: String(lit.length) } }, ...unlit.map(way)] }));
   };
 })();"""
 
@@ -4674,19 +4678,21 @@ LIT = """(async () => {""" + LIT_HELP + """
       t.oncomplete = t.onerror = () => { db.close(); ok(); };
     };
   });
-  // what counts as lit, unlit, and saying nothing
-  const tags = ['yes', '24/7', 'automatic', 'sunset-sunrise', 'limited', 'interval', 'no', 'disused', 'maybe', undefined];
-  const slim = L.slimLit({ elements: tags.map((lit, i) => ({ type: 'way', id: i, tags: { highway: 'path', ...(lit ? { lit } : {}) }, geometry: [{ lon: 25, lat: 62 }, { lon: 25.001, lat: 62 }] })) });
-  if (slim.w.map((w) => `${w[0]}:${w[1]}`).join() !== '0:1,1:1,2:1,3:1,4:1,5:1,6:0,7:0') errs.push(`lit, unlit and no tag: ${slim.w.map((w) => `${tags[w[0]]}:${w[1]}`)}`);
-  // Overpass doesn't answer: the tile says so, and nothing looks drawn
-  window.litFail = true;
+  // what the query asks for (lit, then unlit, with no tags), and its answer split at the count
+  const q = L.litQuery(4680, 2272);
+  if (!q.includes('[lit~"^(yes|24/7|automatic|sunset-sunrise|limited|interval)$"]') || !q.includes('[lit~"^(no|disused)$"]') || !q.includes('out skel geom qt;out count;way') || q.includes('out tags')) errs.push(`the query: ${q}`);
+  const way = (id) => ({ type: 'way', id, nodes: [1, 2], geometry: [{ lat: 62, lon: 25 }, { lat: 62, lon: 25.001 }] });
+  const slim = L.slimLit({ elements: [way(1), way(2), { type: 'count', id: 0, tags: { ways: '2' } }, way(3)] });
+  if (slim.w.map((w) => `${w[0]}:${w[1]}`).join() !== '1:1,2:1,3:0') errs.push(`lit before the count, unlit after: ${slim.w.map((w) => `${w[0]}:${w[1]}`)}`);
+  // Overpass answers with a server-side timeout: no data, so the tile says so, and nothing looks drawn
+  window.litFail = 'remark';
   document.querySelector('#btn-layers').click(); await wait(250);
   qd.querySelector('.qt-tog[data-tile="lit"]').click();
   if (!S.overlays.lit) errs.push('the Lit ways tile did not turn it on');
   await until(() => small() === 'No data now');
-  if (small() !== 'No data now') errs.push(`Overpass not answering: the tile says “${small()}”`);
+  if (small() !== 'No data now') errs.push(`Overpass timing out: the tile says “${small()}”, not No data now`);
   if (!window.litAsked) errs.push('(the test) the lit ways were never asked for');
-  if (map.querySourceFeatures('litWays').length) errs.push('Overpass not answering: lit ways drawn');
+  if (map.querySourceFeatures('litWays').length) errs.push('Overpass timing out: lit ways drawn');
   // zoomed out, the tile says to zoom in; asking for nothing there
   const asked = window.litAsked;
   map.jumpTo({ zoom: 13 }); await wait(700);
@@ -16164,7 +16170,7 @@ GROUPS = [
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
     ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, an import\'s card clear of the track\'s end (#131), loops tapped on the map (mocked BRouter)'),
     ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
-    ('lit', [lit], 'lit ways (#638): the Lit ways tile draws lit and unlit ways from a recorded tile, says when Overpass doesn\'t answer or you\'re zoomed out; In the dark veils only the tiles that came in; 3:1 on the Trail map and the night map in both looks; the look and its opacity kept over a reload'),
+    ('lit', [lit], 'lit ways (#638): the Lit ways tile draws lit and unlit ways from a recorded tile, says when Overpass times out or you\'re zoomed out; In the dark veils only the tiles that came in; 3:1 on the Trail map and the night map in both looks; the look and its opacity kept over a reload'),
     ('sports', [sport_switch], 'changing the sport with a route drawn (B of #233): the route keeps its sports and style (#71), the pill asks, The whole route and its Undo, land to water'),
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
     ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),
