@@ -281,7 +281,8 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     el.style.transformOrigin = `${Math.max(0, Math.min(el.offsetWidth, r.left + r.width / 2 - el.offsetLeft))}px ${r.top + r.height / 2 < el.offsetTop ? '0' : '100%'}`;
   };
   place();
-  (el.querySelector('.menu-item[aria-checked="true"]:not(:disabled)') || el.querySelector('.menu-item:not(:disabled)'))?.focus({ preventScroll: true });
+  // (never on a dangerous item, when one leads: Enter, Enter would clear the route, #594)
+  (el.querySelector('.menu-item[aria-checked="true"]:not(:disabled)') || el.querySelector('.menu-item:not(:disabled):not(.danger)') || el.querySelector('.menu-item:not(:disabled)'))?.focus({ preventScroll: true });
   setTimeout(() => {
     if (!open) return;
     document.addEventListener('pointerdown', off, true);

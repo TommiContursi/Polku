@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, ROUTE_COLORS, RASTER_OVERLAYS, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
+  DIFF_COLORS, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
   isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
 import { warnMarkId } from './icons.js';
@@ -140,19 +140,19 @@ export function buildStyle(s, ctx) {
 
   // ---- Raster bases -------------------------------------------------------
   if (s.base === 'aerial') {
-    sources.aerial = { type: 'raster', tiles: [ESRI_IMAGERY], tileSize: 256, maxzoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' };
+    sources.aerial = { type: 'raster', tiles: [ESRI_IMAGERY], tileSize: 256 / RASTER_RATIO, maxzoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' };
     add({ id: 'aerial', type: 'raster', source: 'aerial', paint: { 'raster-fade-duration': 150 } });
   }
   if (s.base === 'ortofi') {
-    sources.ortofi = { type: 'raster', tiles: [kapsiTiles('ortokuva')], tileSize: 512, minzoom: 5, maxzoom: 19, attribution: 'Ortokuva © Maanmittauslaitos, Kapsi ry' };
+    sources.ortofi = { type: 'raster', tiles: [kapsiTiles('ortokuva', 512 * RASTER_RATIO)], tileSize: 512, minzoom: 5, maxzoom: 19, attribution: 'Ortokuva © Maanmittauslaitos, Kapsi ry' };
     add({ id: 'ortofi', type: 'raster', source: 'ortofi', paint: { 'raster-fade-duration': 150 } });
   }
   if (s.base === 'maasto') {
-    sources.maasto = { type: 'raster', tiles: [kapsiTiles('peruskartta')], tileSize: 512, minzoom: 5, maxzoom: 19, attribution: 'Maastokartta © Maanmittauslaitos, Kapsi ry' };
+    sources.maasto = { type: 'raster', tiles: [kapsiTiles('peruskartta', 1024)], tileSize: 256, minzoom: 5, maxzoom: 19, attribution: 'Maastokartta © Maanmittauslaitos, Kapsi ry' };
     add({ id: 'maasto-base', type: 'raster', source: 'maasto', paint: { 'raster-fade-duration': 150 } });
   }
   if (s.base === 'mml' && s.mmlKey) {
-    sources.mmlBase = { type: 'raster', tiles: [mmlTiles('maastokartta', s.mmlKey)], tileSize: 256, maxzoom: 16, attribution: '© Maanmittauslaitos' };
+    sources.mmlBase = { type: 'raster', tiles: [mmlTiles('maastokartta', s.mmlKey)], tileSize: 128, maxzoom: 16, attribution: '© Maanmittauslaitos' };
     add({ id: 'mml-base', type: 'raster', source: 'mmlBase' });
   }
 
