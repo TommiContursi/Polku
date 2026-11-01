@@ -13,7 +13,8 @@ export const DEM_MAXZOOM = 14;
 export const DEM_TILESIZE = 512;
 
 export const ESRI_IMAGERY =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'; // a missing tile lets MapLibre keep its parent image
+export const RASTER_RATIO = globalThis.devicePixelRatio > 1 ? 2 : 1;
 
 export const BROUTER = 'https://brouter.de/brouter';
 export const PHOTON = 'https://photon.komoot.io/api/';
@@ -32,14 +33,15 @@ export const mmlTiles = (layer, key) =>
   `https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/${layer}/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${encodeURIComponent(key)}`;
 
 // Kapsi ry mirrors the National Land Survey maps without an API key.
-export const kapsiTiles = (layer) =>
+export const kapsiTiles = (layer, size = 512) =>
   `https://tiles.kartat.kapsi.fi/${layer}?service=WMS&request=GetMap&format=image%2Fjpeg&version=1.1.1` +
-  `&srs=EPSG%3A3857&bbox={bbox-epsg-3857}&width=512&height=512&layers=${layer}`;
+  `&srs=EPSG%3A3857&bbox={bbox-epsg-3857}&width=${size}&height=${size}&layers=${layer}`;
 
 export const wmsTiles = (url, layers, styles = '') =>
   `${url}?service=WMS&request=GetMap&version=1.1.1&layers=${encodeURIComponent(layers)}` +
   `&styles=${encodeURIComponent(styles)}&srs=EPSG:3857&bbox={bbox-epsg-3857}` +
-  `&width=512&height=512&format=image/png&transparent=true`;
+  `&width=${512 * RASTER_RATIO}&height=${512 * RASTER_RATIO}&format=image/png&transparent=true` +
+  (RASTER_RATIO > 1 ? '&format_options=dpi%3A180' : ''); // keep WMS symbols and scale thresholds the same size
 
 // ---------------------------------------------------------------------------
 // Activities
@@ -273,7 +275,7 @@ export const RASTER_OVERLAYS = {
     attribution: '© Traficom nautical chart data (not for navigation)',
     tiles: [wmsTiles(TRAFICOM_WMS, 'DepthContour_L', 'syvyyskayra')],
     tileSize: 512,
-    minzoom: 11,
+    minzoom: 10,
     opacity: 0.75,
     slot: 'water',
   },
@@ -282,7 +284,7 @@ export const RASTER_OVERLAYS = {
     attribution: '© Traficom nautical chart data (not for navigation)',
     tiles: [wmsTiles(TRAFICOM_WMS, 'Sounding_P', 'Syvyyspiste_point')],
     tileSize: 512,
-    minzoom: 14,
+    minzoom: 13,
     opacity: 0.85,
     slot: 'water',
   },
@@ -352,8 +354,8 @@ export const RASTER_OVERLAYS = {
   maastoOverlay: {
     label: 'Maastokartta (MML, transparent)',
     attribution: '© Maanmittauslaitos, Kapsi ry',
-    tiles: [kapsiTiles('peruskartta')],
-    tileSize: 512,
+    tiles: [kapsiTiles('peruskartta', 1024)],
+    tileSize: 256,
     minzoom: 8,
     opacity: 0.4,
     slot: 'overlay',
@@ -362,7 +364,7 @@ export const RASTER_OVERLAYS = {
     label: 'MML terrain map (transparent)',
     attribution: '© Maanmittauslaitos',
     mml: 'maastokartta',
-    tileSize: 256,
+    tileSize: 128,
     maxzoom: 16,
     opacity: 0.35,
     slot: 'overlay',

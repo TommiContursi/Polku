@@ -7,7 +7,7 @@
   <meta name="description" content="Trail map for mountain biking, gravel, hiking and paddling in Finland, with uphill difficulty and open-water route planning.">
   <meta name="theme-color" content="#1f6f4a">
   <script>
-    // Light or dark, and more contrast, before the first paint, as applyTheme() in js/main.js decides them (#323, #547)
+    // Light or dark, more contrast and Fewer effects, before the first paint, as applyTheme() in js/main.js decides them (#323, #547, #632)
     {
       let s = {};
       try { s = JSON.parse(localStorage.getItem('polku:settings')) || {}; } catch { /* private mode */ }
@@ -15,6 +15,7 @@
         : a === 'map' ? ['aerial', 'ortofi', 'night'].includes(s.base) : matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
       document.documentElement.dataset.contrast = s.highContrast || matchMedia('(prefers-contrast: more)').matches ? 'more' : 'normal';
+      document.documentElement.dataset.glass = s.fewerEffects ? 'solid' : 'glass';
       document.querySelector('meta[name="theme-color"]').content = dark ? '#181c1a' : '#1f6f4a';
     }
   </script>
@@ -99,6 +100,7 @@
   </aside>
 
   <aside id="settings-panel" class="panel panel-settings" hidden aria-label="Settings">
+    <div class="qd-grab" aria-hidden="true"></div>
     <div class="panel-head"><h2>Settings</h2><button class="panel-close tool" type="button" aria-label="Close"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div id="settings-body" class="panel-body"></div>
   </aside>

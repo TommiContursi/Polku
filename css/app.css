@@ -121,12 +121,13 @@
   --shadow-sheet: 0 -6px 28px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
-/* The modes (#382's §7): reduced transparency and more contrast turn every glass solid. More contrast is data-contrast
+/* The modes (#382's §7): reduced transparency, more contrast and Fewer effects turn every glass solid. More contrast is data-contrast
    on <html>, from the device (prefers-contrast: more) or Settings' High contrast, set as data-theme is (index.html,
    applyTheme()); it also takes a darker grey, heavier lines and a 3:1 rim. As specific as the dark block, and after it. */
 @media (prefers-reduced-transparency: reduce) {
   :root[data-theme] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; }
 }
+:root[data-glass="solid"] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; } /* Settings' Fewer effects (#632) */
 :root[data-contrast="more"] {
   --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none;
   --muted: var(--muted-hc); --muted-glass: var(--muted-hc); --line: var(--line-hc);
@@ -332,6 +333,11 @@ body:not(.ready) .map-ctrls { display: none; }
 .top-btn:hover { background: var(--surface-solid); }
 .top-btn[aria-pressed="true"] { background: var(--accent-bg); color: #fff; }
 .top-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* desktops: Settings at the top right, over the panel it opens; the logo, the search and the sport stay at the left (#594) */
+@media (min-width: 900px) {
+  .topbar { width: min(682px, calc(100vw - 24px)); }
+  #btn-settings { position: absolute; top: 0; left: calc(100vw - 64px); } /* (the top bar starts 12 px in: 12 px from the window's right edge) */
+}
 .fab {
   width: 60px; height: 56px; border: 0; border-radius: 16px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -2018,11 +2024,6 @@ body.dropping .drop-hint { display: flex; }
   body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers and Done) */
   .wx-bar.docked { width: auto; }
   .orbit { width: 62px; height: 62px; }
-  /* above the planner's sheet, under the top bar; with too little room there it covers the sheet in its
-     place, and the top bar's menus still open over it (placePanels() in js/main.js, #240) */
-  .panel { left: 12px; right: 12px; top: auto; bottom: calc(12px + var(--sheet-h)); width: auto; max-height: min(62vh, calc(100% - 76px - var(--sheet-h))); }
-  body.panels-over .panel { left: 8px; right: 8px; bottom: 8px; max-height: calc(100% - 72px); z-index: 7; }
-  body.panels-over .topbar { z-index: 8; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
   /* the header's controls are 44 px to touch: Done, and the time that opens the departure */
@@ -2075,6 +2076,26 @@ body.dropping .drop-hint { display: flex; }
   #layers-panel::before { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 240px; background: var(--surface-solid); }
   #layers-panel.dragging, .qd.dragging { user-select: none; }
   #layers-panel .panel-head { padding-top: 2px; }
+  /* Settings is a drawer too (#634): up from the bottom as the quick drawer comes, as tall as it holds up to the top bar,
+     down by a swipe (js/sheet.js), ✕ or a tap on the map, the way it came; from the keyboard, in and out at once (.instant) */
+  #settings-panel {
+    z-index: 12; left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: calc(100% - 64px);
+    padding-bottom: env(safe-area-inset-bottom, 0px); border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2), var(--edge);
+    transition: transform 260ms var(--ease-drawer), display 180ms allow-discrete;
+  }
+  @starting-style { #settings-panel:not([hidden]) { opacity: 1; transform: translateY(100%); } }
+  #settings-panel[hidden] { transform: translateY(100%); transition: transform 180ms var(--ease-drawer), display 180ms allow-discrete; }
+  #settings-panel.instant, #settings-panel.dragging { transition: none; }
+  #settings-panel::before { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 240px; background: var(--surface-solid); }
+  #settings-panel > .qd-grab { display: block; }
+  #settings-panel .panel-head { padding-top: 2px; }
+  #settings-panel.dragging { user-select: none; }
+}
+@media (max-width: 720px) and (prefers-reduced-motion: reduce) {
+  #settings-panel, #settings-panel[hidden] { transition: opacity 150ms ease, display 150ms allow-discrete; }
+  @starting-style { #settings-panel:not([hidden]) { opacity: 0; transform: none; } }
+  #settings-panel[hidden] { opacity: 0; transform: none; }
+  #settings-panel.instant, #settings-panel.dragging { transition: none; }
 }
 /* short phones (phase 24): under 760 px high the maps, tiles and headings come closer, so the map you're
    changing stays in view (58 % of a 360 × 740 screen, 62 % of a 375 × 667 one) */
@@ -2181,7 +2202,7 @@ body.dropping .drop-hint { display: flex; }
 
 /* ---------------------------------------------------------------- the planner's toolbox (25a) */
 /* Phones: floating at the bottom left above the sheet, or docked into it as its first row. Desktops: a labelled
-   toolbar on the panel's edge, one surface with it (planner.js placeTools()). */
+   toolbar at the map's foot, rounded all round and floating 12 px from the panel in both docks (planner.js placeTools()). */
 .pl-tools { position: fixed; z-index: 5; /* over the map, under the panels (Settings, Layers) and the sheet */ display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 16px; }
 .pl-tools:not(.docked):not(.desk) { left: 8px; bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 16px); }
 .pl-tools.probe { visibility: hidden; left: 8px; bottom: 0; }
@@ -2212,11 +2233,9 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
-.pl-tools.desk.at-side { border-radius: 0 16px 16px 0; border-left: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.12), var(--edge); } /* at the map's foot (#468) */
 /* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
 @media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } }
 .pl-tools.desk.docked { position: static; height: 56px; flex-wrap: nowrap; margin: 0 8px 0 10px; padding: 0 0 4px; border-radius: 0; border-bottom: 1px solid var(--line); box-shadow: none; background: none; }
-.pl-tools.desk.at-bottom { border-radius: 16px 16px 0 0; border-bottom: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.12), var(--edge); }
 .pl-tools.desk .tbtn { width: 40px; height: 40px; }
 .tb-modes button { height: 40px; min-width: 40px; padding: 0 8px; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--text); }
 .tb-modes button .ic { color: var(--muted); }
@@ -2229,18 +2248,18 @@ body.dropping .drop-hint { display: flex; }
 .sportbtn { margin-right: 4px; height: 40px; flex: none; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .sportbtn > .ic:first-child { color: var(--accent); }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
-.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-left: 4px; }
-/* the route's view (25c): Show the whole route, More and Edit; nothing to keep apart */
-.pl-tools[data-stage="view"] .tb-sep { display: none; }
+.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594) */
+/* the route's view (25c): Edit, then Clear route kept apart by its line (#594), and More */
+.pl-tools[data-stage="view"] .tb-sep:not([data-group="clear"]) { display: none; }
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo and redo */
 .pl-tools[data-stage="folded"] .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
 .pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child) { display: none; }
-/* where room runs out, once the route's actions that don't fit are in More (planner.js FOLDS): the style's caption,
-   then the names of the modes not in use, then all of them, then the style's name shortens */
+/* where room runs out (planner.js FOLDS): first the three modes' names together (their tooltips say them), then the
+   route's actions go into More, then the style's caption, the sport's name, and the style's name shortens */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
-.pl-tools.fold2 .tb-modes button[aria-checked="false"] span, .pl-tools.fold3 .tb-modes button span { display: none; }
+.pl-tools.fold3 .tb-modes button span { display: none; }
 .pl-tools.foldS .sportbtn > span { display: none; }
-.pl-tools.fold4 .stylebtn .two span { max-width: 5em; overflow: hidden; text-overflow: ellipsis; }
+.pl-tools.fold4 .stylebtn .two span { max-width: 4.5em; overflow: hidden; text-overflow: ellipsis; }
 /* last, beside the side panel of a narrow window: a second row, growing up from the map's foot (its max-width, up to the
    map's buttons, from planner.js placeTools()) */
 .pl-tools.desk.tb-rows { height: auto; flex-wrap: wrap; padding: 8px; }

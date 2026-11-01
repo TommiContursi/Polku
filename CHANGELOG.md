@@ -11,7 +11,40 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **Opacity**, under the look, sets how strong either look is, and stays as you set it.
 - The lines show from zoom 14 and stay as you zoom out to 13. **Lit ways** can also be one of your tiles in the Layers drawer. Its tile says **Zoom in to see** further out, and **No data now** while OpenStreetMap's server doesn't answer for part of the view.
 
+### The desktop's top bar and toolbar keep their places ([#594](https://github.com/TommiContursi/Polku/issues/594), [#595](https://github.com/TommiContursi/Polku/issues/595))
+
+- On a desktop, **Settings** (⚙) is at the top right of the window, over the panel it opens. The logo, the search and the sport stay at the top left.
+- On the desktop toolbar, **Done** is now its first button, at the planner's end, where it stays as the drawing tools and the route's actions come and go. In the route's view **Edit** is in the same place.
+- The toolbar is rounded at both ends and floats 12 px from the planner, beside a side panel and above a panel at the bottom, instead of ending square against a planner that may be shorter.
+- **Show the whole route** is always under **Locate** with the map's buttons now, on a desktop too, whether the planner is open or not. It's no longer on the toolbar.
+- When the toolbar is short of room, the three drawing modes show only their icons, all together, and their tooltips say the names, before any of the route's actions goes into **⋯**. Picking another mode then moves nothing. A laptop-sized window shows every route action, and a big screen shows every name.
+
+### Clear route is one click on a desktop ([#594](https://github.com/TommiContursi/Polku/issues/594))
+
+- On a desktop, **Clear route** is a button on the toolbar just before **⋯**, while you edit and in the route's view alike. When the toolbar runs out of room it's the last of the route's actions to go into **⋯**. A note still offers **Undo**, which brings the route back for you to edit.
+- In the route's view a line sets **Clear route** apart from **Edit**.
+- **⋯** lists the same things in the same order on a phone and a desktop: **Clear route** first, farthest from the button, then the whole route's actions, then **Share link**, **Export GPX** and **Save offline**, the most used, nearest it. Where **⋯** has too little room, it opens scrolled to those three. Opened from the keyboard, it starts on the first item in sight that isn't **Clear route**.
+
+### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))
+
+- Beside a desktop's side panel, "1 to read before you go" now appears under the route's numbers, so they stay where they are when it comes. On a phone's peek and in a panel at the bottom, which grow up from their foot, it stays above them. At half and full height it still moves the numbers.
+
 ## 2026-10-31
+
+### Clearer terrain maps, aerial photos and depths ([#649](https://github.com/TommiContursi/Polku/issues/649), [#650](https://github.com/TommiContursi/Polku/issues/650), [#653](https://github.com/TommiContursi/Polku/issues/653))
+
+- **Maastokartta** and **MML WMTS** keep a more detailed terrain map when you zoom out, including their overlay versions. Aerial photos and the depth and road layers use sharper images on high-density screens, with the depth and road symbols kept at a readable size.
+- When a closer **Aerial** image is unavailable, the map keeps the available coarser image instead of showing a missing-data picture. Zooming further cannot add detail that the original photograph does not contain.
+- Depth contours appear one zoom step farther out, from level 10, and depth numbers from level 13. **Depths are for planning, not navigation, and are never used for routing.**
+
+### Settings is a sheet you swipe on phones ([#634](https://github.com/TommiContursi/Polku/issues/634))
+
+- On a phone, **Settings** now comes up from the bottom like the layer drawer. Swipe it down or tap the map to close it, as you do with Layers. It grows with the groups you open, up to the top bar, and the planner under it keeps its size.
+
+### Fewer effects, for a phone or browser that draws Polku slowly ([#632](https://github.com/TommiContursi/Polku/issues/632))
+
+- **Settings → Display → Fewer effects** now works. It turns the see-through glass over the map into solid panels. The glass is the most work for a browser to draw, so panels and the map move more smoothly without it, most of all in a slow browser. The choice stays on this device.
+- When the map or a list keeps moving slowly, Polku offers **Use fewer effects**, once on each device. It never changes the look by itself. It can't tell when a browser is only slow to show the rows of a list as you scroll, so try the switch yourself if that happens.
 
 ### Settings is in folding groups, with what's still to come ([#321](https://github.com/TommiContursi/Polku/issues/321), [#143](https://github.com/TommiContursi/Polku/issues/143))
 

@@ -3634,6 +3634,28 @@ def warnfix(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
+    # (12) a desktop's side panel hangs from its top, so the row goes under the numbers and leaves them still; a panel at the
+    # bottom grows up from its foot, so there it stays above them (#594)
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
+        fails += pg.js("""(async () => { const errs = [];""" + CHECK_ROUTE + """
+          p.setTab('go'); await wait(300); await """ + SETTLED + """;
+          const row = p.els.readRow, num = () => p.els.row.getBoundingClientRect(), shown = () => !row.hidden && !!row.offsetParent;
+          if (!shown()) return ['no row on a desktop'];
+          const rr = row.getBoundingClientRect(), n = num(), top = n.top;
+          if (rr.top < n.bottom - 1) errs.push(`beside the side panel the row (${Math.round(rr.top)}) isn't under the numbers (${Math.round(n.bottom)})`);
+          row.hidden = true; await wait(100);
+          if (Math.abs(num().top - top) > 1) errs.push(`the numbers moved from ${Math.round(top)} to ${Math.round(num().top)} px as the row came and went`);
+          p.renderReadRow();
+          p.setDock('bottom'); await wait(400); await """ + SETTLED + """;
+          const b = row.getBoundingClientRect(), nb = num();
+          if (!shown()) errs.push('no row in a panel at the bottom');
+          else if (b.bottom > nb.top + 1) errs.push(`at the bottom the row (${Math.round(b.bottom)}) isn't above the numbers (${Math.round(nb.top)})`);
+          return errs; })()""", timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the review of #416: Check's cards, row and markers" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -3824,9 +3846,8 @@ FIT_LIB = """(() => {
       await state(st);
       away();
       const mv = moved();
-      // the toolbar's on desktops, the map's column's on phones (25a); where the column let go of it (a full sheet), More's
-      // (#344, step 3 of #233)
-      let fit = p.tools.classList.contains('desk') ? p.els.fit : document.getElementById('btn-fit');
+      // the map's column's, on desktops too (#594); where the column let go of it (a full sheet), More's (#344, step 3 of #233)
+      let fit = document.getElementById('btn-fit');
       if (!fit.offsetParent && document.getElementById('map-ctrls').classList.contains('no-fit')) {
         p.els.more.click();
         await wait(300);
@@ -4070,7 +4091,7 @@ def fit_phone(chrome):
             try:
                 pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': FIT_ROUTER % (0.06, 1500)}, pg.s)
                 pg.goto(BASE + 'sw.js')
-                pg.js("localStorage.clear(); localStorage.setItem('polku:settings', '{\"activity\":\"mtb\"}'); localStorage.setItem('polku:plannerDock', '\"left\"');"
+                pg.js("localStorage.clear(); localStorage.setItem('polku:settings', '{\"activity\":\"mtb\",\"fewerOffered\":true}'); localStorage.setItem('polku:plannerDock', '\"left\"');"
                       f" localStorage.setItem('polku:sheetState', {json.dumps(json.dumps({'sheet': st}))}); true")
                 pg.goto(url)
                 pg.map_loaded()
@@ -4212,7 +4233,7 @@ DRAWER = """(async () => {
   // the header shows the route; the toolbox holds how the next leg is drawn, undo, redo and More (25a)
   for (const k of ['quickColor', 'quickSport', 'quickLoop', 'quickStyle', 'toolsRow']) if (p.els[k]) errs.push(`the header still has ${k}`);
   if (p.els.head.querySelector('select, .seg, .tbtn')) errs.push('the header still has pickers, modes or tools');
-  for (const [k, what] of [['fit', 'show all'], ['undo', 'undo'], ['redo', 'redo'], ['more', 'More']]) if (!p.els[k] || !p.tools.contains(p.els[k])) errs.push(`the toolbox lacks ${what}`);
+  for (const [k, what] of [['clearTool', 'Clear route'], ['undo', 'undo'], ['redo', 'redo'], ['more', 'More']]) if (!p.els[k] || !p.tools.contains(p.els[k])) errs.push(`the toolbox lacks ${what}`);
   if (p.tools.querySelectorAll('.tb-modes [role=radio]').length !== 3 || !p.tools.contains(p.els.modeBtn)) errs.push('the toolbox lacks the modes');
   // every section in its tab, and a jump to it opens that tab
   const where = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check', speed: 'go', depart: 'go', take: 'go' }; // (the marks are in Layers: #424's C, the tabs group)
@@ -5350,6 +5371,176 @@ def header_fit(chrome):
         fails += [f'{w}x{h} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} planner header fits" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Raster density and depth visibility (#649, #650): intercept only image services,
+# keep MapLibre's actual source selection, and observe the URLs after real controls.
+RASTER_IMAGES = """(() => {
+  const real = window.fetch.bind(window), pngs = new Map();
+  window.__rasters = [];
+  window.fetch = (input, init) => {
+    const u = new URL(String(input && input.url ? input.url : input), location.href);
+    if (!['server.arcgisonline.com', 'tiles.kartat.kapsi.fi', 'avoin-karttakuva.maanmittauslaitos.fi',
+      'julkinen.traficom.fi', 'avoinapi.vaylapilvi.fi'].includes(u.hostname)) return real(input, init);
+    const size = +(u.searchParams.get('width') || 256);
+    u.searchParams.delete('api-key');
+    window.__rasters.push(u.href);
+    const missing = u.hostname === 'server.arcgisonline.com' && +u.pathname.split('/tile/')[1].split('/')[0] >= window.__missingAerialFrom;
+    if (missing && u.searchParams.get('blankTile') === 'false') return Promise.resolve(new Response(null, { status: 404 }));
+    const cacheKey = missing ? 'missing-' + size : size;
+    if (!pngs.has(cacheKey)) {
+      const c = new OffscreenCanvas(size, size), g = c.getContext('2d');
+      g.fillStyle = missing ? '#cccccc' : '#bfd5db'; g.fillRect(0, 0, size, size);
+      g.strokeStyle = '#1f4d6b'; g.lineWidth = size / 128;
+      if (!missing) for (let p = 0; p < size; p += size / 8) { g.beginPath(); g.moveTo(p, 0); g.lineTo(p, size); g.stroke(); }
+      pngs.set(cacheKey, c.convertToBlob({ type: 'image/png' }));
+    }
+    return pngs.get(cacheKey).then((png) => new Response(png, { headers: { 'Content-Type': 'image/png' } }));
+  };
+})();"""
+
+RASTER_MAPS = """(async () => {
+  const m = polku.map, errs = [], ratio = devicePixelRatio > 1 ? 2 : 1;
+  const waitFor = (fn) => new Promise((ok, bad) => {
+    const t = performance.now(), go = () => fn() ? ok() : performance.now() - t > 15000
+      ? bad(new Error('raster request did not arrive')) : setTimeout(go, 25); go();
+  });
+  const frame = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+  const asked = (host, layer = '') => __rasters.map((s) => new URL(s)).filter((u) => u.hostname === host && (!layer || u.searchParams.get('layers') === layer));
+  const clear = () => { window.__rasters.length = 0; };
+  const checkWms = (urls, size, dpi, name) => {
+    if (!urls.length) { errs.push(`${name}: no image request`); return; }
+    for (const u of urls) {
+      if (u.searchParams.get('width') !== String(size) || u.searchParams.get('height') !== String(size)) errs.push(`${name}: image is not ${size} pixels`);
+      if (dpi && !String(u.searchParams.get('format_options')).includes(`dpi:${dpi}`)) errs.push(`${name}: missing ${dpi} DPI for readable symbols`);
+    }
+  };
+  document.querySelector('#btn-layers').click();
+  await frame();
+  document.querySelector('#quick-layers .qt-more').click();
+  await frame();
+  const baseButton = (key) => [...document.querySelectorAll('#layers-body .base-opt')].find((b) => b.querySelector('span').textContent === {
+    trail: 'Trail map', maasto: 'Maastokartta', ortofi: 'Aerial FI', aerial: 'Aerial', mml: 'MML WMTS',
+  }[key]);
+  const base = async (key, host, layer = '') => {
+    clear();
+    baseButton(key).closest('details').open = true;
+    baseButton(key).click();
+    await waitFor(() => asked(host, layer).length);
+    await waitFor(() => m.areTilesLoaded());
+    return asked(host, layer);
+  };
+  let urls = await base('maasto', 'tiles.kartat.kapsi.fi', 'peruskartta');
+  checkWms(urls, 1024, 0, 'terrain base');
+  if (!urls.some((u) => { const b = u.searchParams.get('bbox').split(',').map(Number); return b[2] - b[0] < 4892; })) errs.push('terrain base still requests the coarse zoom-12 extent');
+  urls = await base('ortofi', 'tiles.kartat.kapsi.fi', 'ortokuva');
+  checkWms(urls, 512 * ratio, 0, 'Finnish aerial');
+  urls = await base('aerial', 'server.arcgisonline.com');
+  const esriZoom = (u) => +u.pathname.split('/tile/')[1].split('/')[0];
+  if (!urls.some((u) => esriZoom(u) === (ratio === 2 ? 14 : 13))) errs.push('aerial image does not supply the expected screen density at map zoom 12');
+  clear(); m.jumpTo({ zoom: 20 });
+  await waitFor(() => asked('server.arcgisonline.com').length);
+  if (asked('server.arcgisonline.com').some((u) => esriZoom(u) > 19)) errs.push('aerial asks for unavailable imagery beyond level 19');
+  m.jumpTo({ zoom: 12 }); await waitFor(() => m.areTilesLoaded());
+  urls = await base('mml', 'avoin-karttakuva.maanmittauslaitos.fi');
+  const mmlZoom = (u) => +u.pathname.split('/').slice(-3)[0];
+  if (!urls.some((u) => mmlZoom(u) === 14)) errs.push('MML terrain loses the detailed map when zoomed out to 12');
+  clear(); m.jumpTo({ zoom: 18 });
+  await waitFor(() => asked('avoin-karttakuva.maanmittauslaitos.fi').length);
+  if (asked('avoin-karttakuva.maanmittauslaitos.fi').some((u) => mmlZoom(u) > 16)) errs.push('MML asks beyond its open-service level 16');
+  m.jumpTo({ zoom: 9 }); await waitFor(() => m.areTilesLoaded());
+  baseButton('trail').click();
+  await frame();
+  const { RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
+  const toggle = async (id) => {
+    const row = [...document.querySelectorAll('#layers-body label.tg')].find((r) => r.querySelector('.tg-text')?.firstChild.textContent.trim() === RASTER_OVERLAYS[id].label);
+    if (!row) throw new Error(`no ${id} switch`);
+    row.closest('details').open = true;
+    row.querySelector('input').click(); await frame();
+  };
+  clear(); await toggle('depthContours');
+  if (asked('julkinen.traficom.fi', 'DepthContour_L').length) errs.push('depth curves requested below their wide-view boundary');
+  clear(); m.jumpTo({ zoom: 10 });
+  await waitFor(() => asked('julkinen.traficom.fi', 'DepthContour_L').length).catch(() => {});
+  await waitFor(() => m.areTilesLoaded()); await frame();
+  urls = asked('julkinen.traficom.fi', 'DepthContour_L');
+  if (!urls.length) errs.push('depth contours are hidden at zoom 10 although the service supplies them');
+  else checkWms(urls, 512 * ratio, ratio > 1 ? 180 : 0, 'depth contours');
+  m.jumpTo({ zoom: 12 }); await waitFor(() => m.areTilesLoaded());
+  clear(); await toggle('soundings');
+  if (asked('julkinen.traficom.fi', 'Sounding_P').length) errs.push('depth numbers requested below zoom 13');
+  clear(); m.jumpTo({ zoom: 13 });
+  await waitFor(() => asked('julkinen.traficom.fi', 'Sounding_P').length).catch(() => {});
+  await waitFor(() => m.areTilesLoaded()); await frame();
+  urls = asked('julkinen.traficom.fi', 'Sounding_P');
+  if (!urls.length) errs.push('depth numbers stay hidden at zoom 13 although the service supplies them');
+  else checkWms(urls, 512 * ratio, ratio > 1 ? 180 : 0, 'depth numbers');
+  clear(); await toggle('drPaved');
+  await waitFor(() => asked('avoinapi.vaylapilvi.fi', 'dr_paallystetty_tie').length);
+  checkWms(asked('avoinapi.vaylapilvi.fi', 'dr_paallystetty_tie'), 512 * ratio, ratio > 1 ? 180 : 0, 'road overlay');
+  clear(); await toggle('maastoOverlay');
+  await waitFor(() => asked('tiles.kartat.kapsi.fi', 'peruskartta').length);
+  checkWms(asked('tiles.kartat.kapsi.fi', 'peruskartta'), 1024, 0, 'terrain overlay');
+  if (!asked('tiles.kartat.kapsi.fi', 'peruskartta').some((u) => { const b = u.searchParams.get('bbox').split(',').map(Number); return b[2] - b[0] < 2446; })) errs.push('terrain overlay does not use the detailed base extent');
+  clear(); await toggle('mmlMaastoOverlay');
+  await waitFor(() => asked('avoin-karttakuva.maanmittauslaitos.fi').length);
+  if (!asked('avoin-karttakuva.maanmittauslaitos.fi').some((u) => mmlZoom(u) === 15)) errs.push('MML overlay loses the detailed base extent');
+  return errs;
+})()"""
+
+
+def raster_maps(chrome):
+    fails = []
+    off = {k: False for k in ('lipasRoutes', 'lipasPoints', 'pois', 'depthAreas', 'depthContours', 'soundings', 'fairways', 'sfShips', 'nautical', 'seaIce')}
+    for w, h_, phone, density in ((1440, 900, False, 1), (390, 844, True, 2), (390, 844, True, 3)):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Emulation.setDeviceMetricsOverride', {'width': w, 'height': h_, 'deviceScaleFactor': density, 'mobile': phone}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': RASTER_IMAGES + WX_FIXED}, pg.s)
+        pg.open_app({'activity': 'paddle', 'mmlKey': 'raster-fixture', 'overlaysByActivity': {'paddle': off}},
+                    {'polku:winter': '"off"'}, '#12/61.515/23.85')
+        fails += [f'{density}x: {e}' for e in pg.js(RASTER_MAPS, timeout=180000)]
+        fails += [f'{density}x console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} raster map requests and depth visibility (1x, 2x and 3x screens)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+def aerial_fallback(chrome):
+    fails = []
+    for w, h_, phone in ((1440, 900, False), (390, 844, True)):
+        for start in (12, 20):
+            pg = chrome.page(w, h_, phone)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': RASTER_IMAGES + WX_FIXED + 'window.__missingAerialFrom = 18;'}, pg.s)
+            pg.open_app({'base': 'aerial', 'activity': 'run',
+                         'overlaysByActivity': {'run': {'lipasRoutes': False, 'lipasPoints': False, 'pois': False, 'sfRoadworks': False}}},
+                        {'polku:winter': '"off"'}, f'#{start}/61.515/23.85')
+            result = pg.js("""(async () => {
+              const m = polku.map;
+              for (const layer of m.getStyle().layers) if (!['background', 'aerial'].includes(layer.id)) m.setLayoutProperty(layer.id, 'visibility', 'none');
+              m.jumpTo({ zoom: 20 });
+              await new Promise((ok, bad) => {
+                const t = performance.now(), go = () => m.loaded() && m.areTilesLoaded() ? ok()
+                  : performance.now() - t > 15000 ? bad(new Error('aerial fallback did not settle')) : setTimeout(go, 25); go();
+              });
+              const pixel = await new Promise((ok) => {
+                m.once('render', () => {
+                  const gl = m.painter.context.gl, p = new Uint8Array(4);
+                  gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p);
+                  ok([...p]);
+                }); m.triggerRepaint();
+              });
+              const levels = __rasters.filter((s) => new URL(s).hostname === 'server.arcgisonline.com')
+                .map((s) => +new URL(s).pathname.split('/tile/')[1].split('/')[0]);
+              return { pixel, levels };
+            })()""")
+            if result['pixel'][2] - result['pixel'][0] < 10:
+                fails.append(f'{w}x{h_}, starting at {start}: the last available blue image became {result["pixel"]}, not a parent image')
+            if start == 20 and not any(z <= 17 for z in result['levels']):
+                fails.append(f'{w}x{h_}, cold close view: no available parent image was requested')
+            fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} missing aerial detail keeps or loads its last available image" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -7233,6 +7424,72 @@ def appearance(chrome):
     return not fails
 
 
+# Fewer effects (#632): solid panels for a browser that draws Polku slowly. SLOW_FRAMES holds every frame 40 ms while it
+# turns the map, so frames come at about 20 a second, as in a browser that can't keep up.
+SLOW_FRAMES = """(() => { window.__slow = true; const m = polku.map;
+  const f = () => { if (!window.__slow) return; const t = performance.now(); while (performance.now() - t < 40) {} m.jumpTo({ bearing: m.getBearing() + 0.3 }); requestAnimationFrame(f); };
+  requestAnimationFrame(f); return true; })()"""
+LOOK_NOW = """(() => ({ glass: document.documentElement.dataset.glass || 'none', search: getComputedStyle(document.querySelector('.search')).backdropFilter,
+  saved: JSON.parse(localStorage.getItem('polku:settings')), toast: document.querySelector('#toast:not([hidden])')?.textContent || null,
+  on: [...document.querySelectorAll('#settings-body .tg')].find((t) => t.textContent.startsWith('Fewer effects'))?.querySelector('input')?.checked ?? null }))()"""
+
+
+def fewer_effects(chrome):
+    """Frames slower than 30 a second while the map turns: Polku offers Fewer effects once, its action turns the glass
+    solid and saves it, it's set before the first paint after a reload and shows on in Settings, and Settings' switch
+    turns the glass back by touch. A page that has offered it doesn't offer it again."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        def tap(sel, name, text=None):
+            at = pg.js(f"""(() => {{ const b = [...document.querySelectorAll({json.dumps(sel)})].find((e) => !{json.dumps(text)} || e.textContent.startsWith({json.dumps(text)}));
+              if (!b) return null; b.scrollIntoView({{ block: 'nearest' }}); const r = b.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()""")
+            if not at:
+                fails.append(f'{name}: not there')
+                return False
+            pg.tap(*at)
+            time.sleep(0.5)
+            return True
+
+        pg.open_app({'activity': 'mtb', 'fewerOffered': False})
+        r = pg.js(LOOK_NOW)
+        if r['glass'] != 'glass' or r['search'] == 'none':
+            fails.append(f"at first: data-glass {r['glass']}, the search's backdrop {r['search']}")
+        pg.js(SLOW_FRAMES)
+        offered = pg.js("new Promise((ok) => { const t0 = performance.now(), f = () => { const t = document.querySelector('#toast:not([hidden])'); if (t && /slowly/.test(t.textContent)) ok(true); else if (performance.now() - t0 > 20000) ok(false); else setTimeout(f, 100); }; f(); })", timeout=25000)
+        pg.js('window.__slow = false; true')
+        if not offered:
+            fails.append('frames at about 20 a second for 20 s while the map turned: no offer of Fewer effects')
+        elif tap('#toast .toast-act', 'the offer’s action'):
+            r = pg.js(LOOK_NOW)
+            if r['glass'] != 'solid' or r['search'] != 'none' or (r['saved'].get('fewerEffects'), r['saved'].get('fewerOffered')) != (True, True):
+                fails.append(f"Use fewer effects: data-glass {r['glass']}, the search's backdrop {r['search']}, saved {r['saved'].get('fewerEffects')} offered {r['saved'].get('fewerOffered')}")
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': THEME_LOG.replace('theme', 'glass').replace('Theme', 'Glass')}, pg.s)
+        pg.reload()
+        r = pg.js(LOOK_NOW)
+        if r['glass'] != 'solid' or pg.js('window.__glassLog') != ['solid', '<body>']:
+            fails.append(f"after a reload: data-glass {r['glass']}, set {pg.js('window.__glassLog')} from the start, not solid before <body> and nothing after")
+        tap('#btn-settings', 'Settings')
+        tap('#settings-body [data-group="settings-display"] > summary', 'Display')
+        if pg.js(LOOK_NOW)['on'] is not True:
+            fails.append('after a reload: Settings’ Fewer effects is off')
+        if tap('#settings-body .tg', 'Fewer effects', 'Fewer effects'):
+            r = pg.js(LOOK_NOW)
+            if r['glass'] != 'glass' or r['search'] == 'none' or r['saved'].get('fewerEffects') is not False or r['on'] is not False:
+                fails.append(f"Fewer effects off by touch: data-glass {r['glass']}, the search's backdrop {r['search']}, saved {r['saved'].get('fewerEffects')}, the switch {r['on']}")
+        pg.js("document.querySelector('#settings-panel .panel-close').click(); true")
+        pg.js(SLOW_FRAMES)
+        time.sleep(12)
+        pg.js('window.__slow = false; true')
+        if pg.js(LOOK_NOW)['toast']:
+            fails.append(f"offered once already: slow frames brought {pg.js(LOOK_NOW)['toast']!r}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Fewer effects: offered once when frames are slow, the glass solid and saved, set before the first paint, and Settings' switch by touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Idea D: every text in these scenes of tools/shoot.py, against the solid colour behind it, at 4.5:1 (3:1 for large text),
 # in light and then in dark, measured by tools/census.py. Text over the map itself isn't measured (census.py says why).
 CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-point-card', 'desk-acts', 'desk-settings', 'desk-quick',
@@ -7572,7 +7829,7 @@ PANEL_BOX = """((id) => {
 })"""
 
 
-# Settings and all layers over the planner on a phone (#240), opened by touch with the sheet at every size:
+# Settings and all layers over the planner on a phone (#240; Settings is a drawer since #634), opened by touch with the sheet at every size:
 # the panel's top below the top bar, its heading and ✕ on screen with nothing over them, its body scrolling
 # under a finger, the ✕ closing it, and the sheet as it was. A short phone and a turned one too.
 # Holds MapLibre's load event until __col.release(), and notes where Locate and 3D are after every frame
@@ -7837,21 +8094,64 @@ def panels(chrome):
                 if after['st'] != before['st'] or abs(after['h'] - before['h']) > 1:
                     fails.append(f"{name}: the planner {after['st']} {after['h']:.0f} px after it closed, not {before['st']} {before['h']:.0f} px")
         if (w, h_, sport) == (390, 844, 'mtb'):
-            # Settings open above the sheet at half, then the sheet swiped up to full under it: Settings covers it
+            # Settings is a drawer (#634): at the screen's foot over the planner at half, a short swipe down leaves it
+            # open, a swipe down its scrolled body scrolls it back first, a long one closes it, and so does a tap on the map
             pg.js("polku.planner.setSheetState('half'); true")
             pg.js(SETTLED)
+            before = pg.js(SHEET_STATE)
+            box = lambda: pg.js(PANEL_BOX + "('#settings-panel')")
             pg.tap(*centre('#btn-settings'))
             time.sleep(0.4)
-            hd = centre('#planner .sheet-handle')
-            pg.swipe(hd[0], hd[1], 100, ms=500, hold=0.2)
+            r = box()
+            if not r['open'] or abs(r['bottom'] - h_) > 1:
+                fails.append(f"390x844, Settings: {'open' if r['open'] else 'closed'}, its bottom at {r['bottom']:.0f} px, not at the screen's foot")
+            head = centre('#settings-panel .panel-head h2')
+            pg.swipe(head[0], head[1], head[1] + 40, ms=400, hold=0.2)
             pg.js(SETTLED)
-            r = pg.js(PANEL_BOX + "('#settings-panel')")
-            st = pg.js(SHEET_STATE)['st']
-            if st != 'full' or not r['open'] or r['top'] < r['bar'] - 0.5 or not (r['xin'] and r['xfree']):
-                fails.append(f"390x844: Settings open and the sheet swiped up: the sheet {st}, Settings {'open' if r['open'] else 'closed'}, its top at {r['top']:.0f} px, its ✕ {'free' if r['xin'] and r['xfree'] else 'covered or off the screen'}")
+            r2 = box()
+            if not r2['open'] or abs(r2['top'] - r['top']) > 1:
+                fails.append(f"390x844, Settings swiped down 40 px: {'open' if r2['open'] else 'closed'}, its top {r['top']:.0f} → {r2['top']:.0f} px")
+            pg.js("document.querySelectorAll('#settings-body > .lg-group').forEach((d) => d.open = true); document.querySelector('#settings-body').scrollTop = 300; true")
+            time.sleep(0.3)
+            r = box()
+            x, top, bottom = r['body']
+            pg.swipe(x, top + 30, top + 230, ms=400, hold=0.1)
+            pg.js(SETTLED)
+            shut, back = pg.js("document.querySelector('#settings-panel').hidden"), pg.js("document.querySelector('#settings-body').scrollTop")
+            if shut or back > 150:
+                fails.append(f"390x844, Settings scrolled 300 px, a finger down its body: {'closed it' if shut else f'scrolled to {back:.0f} px'}")
+            head = centre('#settings-panel .panel-head h2')
+            pg.swipe(head[0], head[1], h_ - 10, ms=400)
+            pg.js(SETTLED)
+            time.sleep(0.4)
+            if not pg.js("document.querySelector('#settings-panel').hidden"):
+                fails.append('390x844, Settings swiped down to the screen’s foot: still open')
+            pg.tap(*centre('#btn-settings'))
+            time.sleep(0.4)
+            pg.js("document.querySelectorAll('#settings-body > .lg-group').forEach((d) => d.open = false); true")
+            time.sleep(0.3)
+            pg.tap(195, (box()['bar'] + box()['top']) / 2)  # the map above the drawer
+            time.sleep(0.4)
+            after = pg.js(SHEET_STATE)
+            if not pg.js("document.querySelector('#settings-panel').hidden && document.querySelector('#quick-scrim').hidden"):
+                fails.append('390x844, Settings open, a tap on the map above it: Settings or its scrim still there')
+            # from the keyboard it closes at once, as it opens: Escape, and Enter on its ✕
+            for key, how in (('Escape', 'Escape'), ('Enter', 'Enter on its ✕')):
+                pg.tap(*centre('#btn-settings'))
+                time.sleep(0.4)
+                if key == 'Enter':
+                    pg.js("document.querySelector('#settings-panel .panel-close').focus(); true")
+                for kind in ('keyDown', 'keyUp'):
+                    pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': key, 'code': key, 'windowsVirtualKeyCode': 27 if key == 'Escape' else 13, **({'text': '\r'} if key == 'Enter' and kind == 'keyDown' else {})}, pg.s)
+                shown = pg.js("new Promise((ok) => requestAnimationFrame(() => ok(getComputedStyle(document.querySelector('#settings-panel')).display)))")
+                if shown != 'none':
+                    fails.append(f'390x844, Settings closed by {how}: still drawn ({shown}) a frame later, not at once')
+                time.sleep(0.3)
+            if after['st'] != before['st'] or abs(after['h'] - before['h']) > 1:
+                fails.append(f"390x844, Settings swiped and tapped away: the planner {after['st']} {after['h']:.0f} px, not {before['st']} {before['h']:.0f} px")
         fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} Settings and all layers over the planner on phones" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} Settings and all layers over the planner on phones, and Settings a drawer you swipe away" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -9284,13 +9584,13 @@ def fold_desktop(chrome):
                 fails.append(f"side, ⌄: {s['st']}, the panel {s['panel']}")
             if not s['lineX']:
                 fails.append('side, folded: no ✕ at the line')
-            if not s['tools'] or abs(s['tools']['l'] - s['panel']['r']) > 1 or abs(s['tools']['b'] - s['panel']['b']) > 1:
-                fails.append(f"side, folded: the toolbar {s['tools']} not beside the line {s['panel']}")
+            if not s['tools'] or abs(s['tools']['l'] - (s['panel']['r'] + 12)) > 1 or abs(s['tools']['b'] - s['panel']['b']) > 1:  # (12 px off it, #594)
+                fails.append(f"side, folded: the toolbar {s['tools']} not beside the line {s['panel']}, 12 px from it")
             fold_click(pg, *fold_at(pg, 'polku.planner.els.foldGo'))
             fold_settled(pg, fails, 'step 27')
             if info()['st'] != 'open':
                 fails.append(f"side: a click on the line came to {info()['st']}")
-        # the bottom dock: the panel's line, the toolbar on its top edge
+        # the bottom dock: the panel's line, the toolbar 12 px above its top edge (#594)
         pg.js("polku.planner.setDock('bottom'); polku.planner.setSheetState('half'); true")
         fold_settled(pg, fails, 'step 28')
         # (with a mouse ⌄ moves one size, A of the sheet's stops: from half to the peek, then to the line)
@@ -9303,8 +9603,8 @@ def fold_desktop(chrome):
         s = info()
         if s['st'] != 'folded' or s['panel']['h'] > 64 or abs(s['panel']['b'] - 888) > 1:
             fails.append(f"bottom, ⌄: {s['st']}, the panel {s['panel']}")
-        if not s['tools'] or abs(s['tools']['b'] - s['panel']['t']) > 1:
-            fails.append(f"bottom, folded: the toolbar {s['tools']} not on the line's top edge {s['panel']}")
+        if not s['tools'] or abs(s['tools']['b'] - (s['panel']['t'] - 12)) > 1:
+            fails.append(f"bottom, folded: the toolbar {s['tools']} not 12 px above the line's top edge {s['panel']}")
         # with motion, a tap on the handle: the toolbar on the panel's edge moves with it, the map's column beside the panel
         # doesn't (#569: it moved 350 px off the screen and back)
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
@@ -10636,7 +10936,6 @@ TB_PHONE = """(async () => {
   // #241: the start, before anything is drawn: undo and redo can't do anything, nor can Show the whole route
   p.setActive(true); await wait(300); await placed();
   for (const k of ['undo', 'redo']) if (p.els[k].offsetParent && !p.els[k].disabled) errs.push(`${k} looks ready at the start`);
-  if (!p.els.fit.disabled) errs.push('Show the whole route looks ready at the start');
   if (!fit.hidden) errs.push('Show the whole route is in the map’s column with no route');
   // a route: undo is ready, redo isn't; Show the whole route is in the map's column
   if (!(await (""" + TB_ROUTE + """)(""" + json.dumps(TB_PTS) + """))) return ['no route'];
@@ -10876,13 +11175,17 @@ def toolbox(chrome):
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
     pg.js(SETTLED)
     # the toolbar at the map's foot (#468): beside the side panel 12 px up from the window's foot, however tall the
-    # panel is; on a bottom panel's top edge. The scale and the credits just above it (not under it, nor lifted twice
+    # panel is; above a bottom panel. Floating 12 px clear of the panel in both, rounded at every corner (#594, #595), and
+    # the names of the modes not in use shorten before any route action goes into More. The scale and the credits just above it (not under it, nor lifted twice
     # as far), right of a side panel; the timeline over the map clear of it, and beside the panel of the credits' ⓘ too
     ON_EDGE = """(() => { const p = polku.planner, b = p.tools.getBoundingClientRect(), r = p.panel.getBoundingClientRect(), c = document.getElementById('map-ctrls').getBoundingClientRect();
       const side = p.layout() === 'side', level = c.top < b.bottom + 8, s = document.querySelector('.maplibregl-ctrl-bottom-left').getBoundingClientRect(), wx = document.getElementById('wx-bar'), t = !wx.hidden && wx.getBoundingClientRect();
-      return { side, folds: [...p.tools.classList].filter((k) => /^fold|^tb-rows$/.test(k)), timeline: !!t, edge: side ? Math.abs(b.left - r.right) <= 1 && Math.abs(b.bottom - (innerHeight - 12)) <= 1 : Math.abs(b.bottom - r.top) <= 1 && Math.abs(b.left - r.left) <= 1,
+      return { side, folds: [...p.tools.classList].filter((k) => /^fold|^tb-rows$/.test(k)), timeline: !!t, edge: side ? Math.abs(b.left - (r.right + 12)) <= 1 && Math.abs(b.bottom - (innerHeight - 12)) <= 1 : Math.abs(b.bottom - (r.top - 12)) <= 1 && Math.abs(b.left - r.left) <= 1,
+        round: ['TopLeft', 'TopRight', 'BottomLeft', 'BottomRight'].every((c) => parseFloat(getComputedStyle(p.tools)['border' + c + 'Radius']) >= 16),
+        named: [...p.tools.querySelectorAll('.tb-modes button')].every((b) => b.getAttribute('aria-label')), // (a mode keeps its name for a screen reader where its words fold away)
+        smaller: p.tools.classList.contains('fold3') || ![...p.tools.querySelectorAll('[data-opt]')].some((o) => o.hidden),
         clear: b.right <= (level ? c.left - 12 : innerWidth - 12) + 0.5, below: b.top >= document.querySelector('.topbar').getBoundingClientRect().bottom - 0.5,
-        active: [...p.tools.querySelectorAll('.tb-modes [aria-checked=true] span')].some((s) => s.offsetParent),
+        together: ((n) => n.every((x) => x.offsetParent) || !n.some((x) => x.offsetParent))([...p.tools.querySelectorAll('.tb-modes button span')]), // (the modes' names go together, #594)
         scale: s.bottom <= b.top + 0.5 && s.bottom >= b.top - 12 && (!side || s.left >= r.right - 0.5),
         apart: !t || t.bottom <= b.top + 0.5 || t.top >= b.bottom - 0.5 || t.right <= b.left + 0.5 || t.left >= b.right - 0.5,
         credits: ((i) => { const q = i.getBoundingClientRect(), e = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return !!e && i.contains(e); })(document.querySelector('.maplibregl-ctrl-attrib-button')) }; })()"""
@@ -10893,14 +11196,24 @@ def toolbox(chrome):
         placed(pg)
         pg.js(SETTLED)  # (the scale and the timeline follow the toolbar's room, --tools-h, in 0.2 s)
         e = pg.js(ON_EDGE)
-        if not (e['edge'] and e['clear'] and e['below'] and e['active'] and e['scale'] and e['apart'] and (e['credits'] or not e['side'])) or (label == 'the side panel' and e['folds']):
+        if not (e['edge'] and e['round'] and e['smaller'] and e['named'] and e['together'] and e['clear'] and e['below'] and e['scale'] and e['apart'] and (e['credits'] or not e['side'])) or (label == 'the side panel' and set(e['folds']) - {'fold3'}):
             fails.append(f'{name} {label}: the toolbar {e}')
         if label == 'the panel at the bottom':
             d = dupes(pg, f'{name} {label}')
-            if 'Show the whole route' not in d['bar'] or 'Export GPX' not in d['bar']:
-                fails.append(f"{name} {label}: room on the toolbar, but it lacks Show the whole route or Export GPX: {', '.join(d['bar'])}")
+            if 'Clear route' not in d['bar'] or 'Export GPX' not in d['bar']:
+                fails.append(f"{name} {label}: room on the toolbar, but it lacks Clear route or Export GPX: {', '.join(d['bar'])}")
     pg.js("polku.planner.setDock('left'); true")
     placed(pg)
+    # Settings at the top right (#594): 12 px from the window's corner, last in the top bar's keyboard order, the logo, the
+    # search and the sport at the left, and its panel opens under it
+    g = pg.js("""(() => { const q = (s) => document.querySelector(s).getBoundingClientRect(), g = q('#btn-settings'), last = [...document.querySelectorAll('.topbar a, .topbar input, .topbar button')].filter((b) => b.offsetParent).at(-1);
+      return { right: innerWidth - g.right, top: g.top, bottom: g.bottom, sport: q('#activity-bar').right < g.left - 200, last: last === document.getElementById('btn-settings') }; })()""")
+    click(pg, '#btn-settings', f'{name}: Settings')
+    pg.js(SETTLED)
+    sp = pg.js("(() => { const r = document.querySelector('.panel-settings').getBoundingClientRect(); return { right: innerWidth - r.right, top: r.top }; })()")
+    click(pg, '#btn-settings', f'{name}: Settings again')
+    if abs(g['right'] - 12) > 1 or abs(g['top'] - 12) > 1 or not g['sport'] or not g['last'] or abs(sp['right'] - g['right']) > 1 or sp['top'] < g['bottom']:
+        fails.append(f'{name}: Settings at the top right: {g}, its panel {sp}')
     # #387: the panel's place button frames the route again in the map it leaves free, both ways: from the side
     # (framed beside it, above its toolbar), and from the bottom at its peek (framed wide, under where the side panel goes)
     IN_FREE = """(() => { const p = polku.planner, m = polku.map, r = p.routeBounds(), a = m.project([r[0], r[3]]), b = m.project([r[2], r[1]]);
@@ -10938,22 +11251,22 @@ def toolbox(chrome):
         if got['mode'] != mode or got['checked'] != mode:
             fails.append(f'{name}: the key {k.upper()}: {got}')
     # a tooltip on the pointer, with the name and the key, wholly on screen with the toolbar at the map's foot (#468)
-    b = at(pg, '#pl-tools [aria-label="Show the whole route"]')
+    b = at(pg, '#pl-tools [aria-label="Clear route"]')
     if b:
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': b['x'], 'y': b['y'], 'button': 'none'}, pg.s)
         time.sleep(0.9)
         tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()")
-        if 'Show the whole route' not in tip or 'F' not in tip:
-            fails.append(f'{name}: the tooltip of Show the whole route: “{tip}”')
+        if 'Clear route' not in tip or 'Undo' not in tip:
+            fails.append(f'{name}: the tooltip of Clear route: “{tip}”')
         if not pg.js(f"({TB_ON_SCREEN})('#tip')"):
-            fails.append(f"{name}: the tooltip of Show the whole route is off the screen: {pg.js('JSON.stringify(document.getElementById(`tip`).getBoundingClientRect())')} in a {pg.js('innerHeight')} px window")
+            fails.append(f"{name}: the tooltip of Clear route is off the screen: {pg.js('JSON.stringify(document.getElementById(`tip`).getBoundingClientRect())')} in a {pg.js('innerHeight')} px window")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 700, 'y': 500, 'button': 'none'}, pg.s)
         time.sleep(0.5)
         if pg.js("!document.getElementById('tip').hidden"):
             fails.append(f'{name}: the tooltip stayed after the pointer left')
-    # Show the whole route from the toolbar frames the route
+    # Show the whole route, in the map's column while planning too (#594: one place), frames the route
     pg.js("(() => { polku.map.jumpTo({ center: [25, 62.5], zoom: 9 }); return true; })()")
-    click(pg, '#pl-tools [aria-label="Show the whole route"]', f'{name}: Show the whole route')
+    click(pg, '#btn-fit', f'{name}: Show the whole route')
     time.sleep(1.2)
     if not pg.js("(() => { const b = polku.map.getBounds(), r = polku.planner.routeBounds(); return b.contains([r[0], r[1]]) && b.contains([r[2], r[3]]); })()"):
         fails.append(f'{name}: Show the whole route didn’t frame the route')
@@ -10973,12 +11286,13 @@ def toolbox(chrome):
     if click(pg, '#pl-tools .stylebtn', f'{name}: the route style') and not pg.js(f"({TB_ON_SCREEN})('.menu-pop')"):
         fails.append(f'{name}: the route style’s menu isn’t wholly on screen')
     pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true")
-    # beside the panel the map's buttons are level with the toolbar (#468): Show the whole route stays on it, and
+    # beside the panel the map's buttons are level with the toolbar (#468): Clear route stays on it (#594), Show the whole
+    # route is only in the map's column, and
     # each of the route's actions is on it or in More (the bottom dock, with room for them, is checked above)
     d = dupes(pg, name)
-    lost = [a for a in ('Show the whole route', 'Reverse', 'Back to start', 'Share link', 'Export GPX', 'Save offline', 'Clear route') if a not in d['bar'] + d['more']]
-    if 'Show the whole route' not in d['bar'] or lost:
-        fails.append(f"{name}: Show the whole route isn’t on the toolbar ({', '.join(d['bar'])}), or neither it nor More has {', '.join(lost)}")
+    lost = [a for a in ('Reverse', 'Back to start', 'Share link', 'Export GPX', 'Save offline', 'Clear route') if a not in d['bar'] + d['more']]
+    if 'Clear route' not in d['bar'] or 'Show the whole route' in d['bar'] + d['more'] or lost:
+        fails.append(f"{name}: the toolbar has {', '.join(d['bar'])} and More {', '.join(d['more'])}: Clear route on the toolbar, Show the whole route in neither, and the rest in one of them (lost: {', '.join(lost)})")
     for label, check in (('Share link', "tbCalls.includes('share')"), ('Export GPX', "tbCalls.includes('exportGpx')"), ('Save offline', "tbCalls.includes('offline')"),
                          ('Reverse', "polku.planner.points[0][0] === 23.835"), ('Back to start', "polku.planner.isLoop()"),
                          ('Round trip', "polku.planner.loop.open")):
@@ -10989,10 +11303,18 @@ def toolbox(chrome):
     pg.js("polku.planner.closeLoop(); true")
     # (the route's actions come back on the toolbar in the next frame, and Done moves along with them: #311)
     pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
-    # Done: the route's view (25c), and Show the whole route stays on the toolbar (the routeview group has the rest)
+    # Done: the route's view (25c), Clear route stays on the toolbar and Show the whole route in the map's column (#594;
+    # the routeview group has the rest).
+    # Done is the toolbar's first button, at its planner end (E of #594), and Edit lands where it was
+    placed(pg)
+    first = pg.js("(() => { const b = [...polku.planner.tools.querySelectorAll('button')].find((x) => x.offsetParent); return { name: b.textContent.trim(), left: b.getBoundingClientRect().left }; })()")
     click(pg, '#pl-tools .done', f'{name}: Done')
-    d = pg.js("({ active: polku.planner.active, view: polku.planner.inView(), tools: !!polku.planner.els.fit.offsetParent && !!polku.planner.els.toolEdit.offsetParent, fit: !document.getElementById('btn-fit').hidden })")
-    if not d['active'] or not d['view'] or not d['tools'] or d['fit']:
+    placed(pg)
+    edit_left = pg.js("polku.planner.els.toolEdit.getBoundingClientRect().left")
+    if first['name'] != 'Done' or abs(edit_left - first['left']) > 1:
+        fails.append(f"{name}: the toolbar's first button is {first['name']} at {first['left']:.0f}, and Edit lands at {edit_left:.0f} (Done first, Edit where it was)")
+    d = pg.js("({ active: polku.planner.active, view: polku.planner.inView(), tools: !!polku.planner.els.clearTool.offsetParent && !!polku.planner.els.toolEdit.offsetParent, fit: !document.getElementById('btn-fit').hidden })")
+    if not d['active'] or not d['view'] or not d['tools'] or not d['fit']:
         fails.append(f'{name}: after Done: {d}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
@@ -11010,11 +11332,11 @@ def toolbox(chrome):
             placed(pg)
             pg.js(SETTLED)
             e = pg.js(ON_EDGE)
-            if not (e['edge'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or ('fold4' in e['folds']) != short or 'tb-rows' in e['folds']:
+            if not (e['edge'] and e['round'] and e['smaller'] and e['together'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or ('fold4' in e['folds']) != short or 'tb-rows' in e['folds']:
                 fails.append(f'{name}, {style}: the toolbar {e}')
         d = dupes(pg, name)
-        if 'Show the whole route' not in d['bar'] + d['more']:
-            fails.append(f'{name}: Show the whole route is neither on the toolbar nor in More')
+        if pg.js("document.getElementById('btn-fit').hidden") or 'Show the whole route' in d['bar']:
+            fails.append(f"{name}: Show the whole route isn’t in the map’s column alone (the toolbar has {', '.join(d['bar'])})")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     # a narrower window (200 % on a 1920 px screen): fully folded, the toolbar still doesn't fit beside the panel, so it
@@ -11025,9 +11347,35 @@ def toolbox(chrome):
     placed(pg)
     pg.js(SETTLED)
     e = pg.js(ON_EDGE)
-    if not (e['edge'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' not in e['folds']:
+    if not (e['edge'] and e['round'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' not in e['folds']:
         fails.append(f'{name}: the toolbar {e}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    # a laptop's window (#594): picking another mode changes neither what's on the toolbar nor where the modes are (the
+    # modes' names fold together, not around the one picked); Over water may change the next leg's sport, and its name
+    name = '1280x800'
+    pg = page(1280, 800, False)
+    pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+    seen = []
+    for mode in ('auto', 'line', 'water', 'auto'):
+        click(pg, f'#pl-tools .tb-modes [data-mode="{mode}"]', f'{name}: the mode {mode}')
+        placed(pg)
+        seen.append(pg.js("(() => { const t = polku.planner.tools, at = (b) => Math.round(b.getBoundingClientRect().left) + '+' + Math.round(b.getBoundingClientRect().width); return [...t.querySelectorAll('.tb-modes button')].map(at).join(',') + ' ' + [...t.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent).map((b) => (b.getAttribute('aria-label') || b.textContent.trim()).replace(/^Next leg: .*/, 'Next leg')).join('|'); })()"))
+    if len(set(seen)) != 1:
+        fails.append(f'{name}: the toolbar changed as the mode changed (the modes, then what shows): ' + ' / '.join(seen))
+    fails += [f'{name} console: {x[:160]}' for x in pg.errors()]
+    pg.close()
+    # a big screen keeps the full version (#594): every name and every route action on the toolbar, none folded
+    name = '1920x1080'
+    pg = page(1920, 1080, False)
+    pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+    placed(pg)
+    pg.js(SETTLED)
+    e = pg.js(ON_EDGE)
+    full = pg.js("(() => { const t = polku.planner.tools; return { acts: [...t.querySelectorAll('[data-opt]')].filter((b) => b.hidden).length, names: [...t.querySelectorAll('.tb-modes span')].filter((s) => !s.offsetParent).length }; })()")
+    if not (e['edge'] and e['round']) or e['folds'] or full['acts'] or full['names']:
+        fails.append(f'{name}: the full version: {e}, {full}')
+    fails += [f'{name} console: {x[:160]}' for x in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the toolbox and the header (25a): phones, desktops, #241, #242, #251, #356, #387" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
@@ -11130,7 +11478,7 @@ START_LIB = """(() => {
       const c = $('#map-ctrls').getBoundingClientRect();
       T.col = `${c.left},${c.right}`; // (the sheet's height may change with the route's numbers: only sideways)
     } else {
-      for (const a of ['Reverse', 'Share link', 'Export GPX', 'Save offline', 'Clear route', ...(p.isLoop() ? [] : ['Back to start']), ...(desk ? ['Show the whole route'] : [])]) {
+      for (const a of ['Reverse', 'Share link', 'Export GPX', 'Save offline', 'Clear route', ...(p.isLoop() ? [] : ['Back to start'])]) {
         const n = on.filter((x) => x.startsWith(a)).length + more.filter((x) => x.startsWith(a)).length;
         if (n !== 1) err(`${what}: ${a} ${n ? 'twice' : 'neither on the toolbox nor in More'}`);
       }
@@ -11895,6 +12243,11 @@ def route_view(chrome):
             pg.js(SETTLED)
             time.sleep(0.4)
             press(pg, at(pg, "polku.planner.els.more"), f'{name}: More', touch)
+            # (#594: one order everywhere, Clear route first and farthest from More, Take it along last and nearest; the
+            # focus not on Clear route)
+            m = pg.js("(() => { const el = document.querySelector('.menu-pop'), b = [...el.querySelectorAll('.menu-item')], it = b.map((x) => x.textContent.trim()), a = document.activeElement, r = el.getBoundingClientRect(), q = b[b.length - 1].getBoundingClientRect(); return { first: it[0] || '', last: it[it.length - 1] || '', focus: a && a.classList.contains('menu-item') && !a.classList.contains('danger'), lastSeen: q.top >= r.top - 1 && q.bottom <= r.bottom + 1 }; })()")
+            if not m['first'].startswith('Clear route') or not m['last'].startswith('Save offline') or not m['focus'] or not m['lastSeen']:
+                fails.append(f'{name}: the route’s view’s More: {m} (Clear route first, Save offline last and in sight, the focus not on Clear route)')
             if not pg.js("(() => { const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith('Clear route')); if (b) { b.dataset.rvPick = '1'; b.scrollIntoView({ block: 'nearest' }); } return !!b; })()"):
                 fails.append(f"{name}: no Clear route in the route’s view’s More: {pg.js('[...document.querySelectorAll(`.menu-pop .menu-item`)].map((b) => b.textContent.trim())')}")
             press(pg, at(pg, "document.querySelector('.menu-pop [data-rv-pick]')"), f'{name}: Clear route', touch)
@@ -11916,10 +12269,20 @@ def route_view(chrome):
         line0 = pg.js("JSON.stringify(polku.planner.points)")
         press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done', touch)
         v = view_ok(pg, f'{name}: after Done')
-        if v['tools'] != ['Show the whole route', 'More', 'Edit']:
-            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}")
+        if v['tools'] != ['Edit', 'Clear route', 'More'] or not pg.js("!!polku.planner.tools.querySelector('.tb-sep[data-group=clear]').offsetParent"):
+            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}, a line before Clear route: {pg.js('!!polku.planner.tools.querySelector(`.tb-sep[data-group=clear]`).offsetParent')}")
+        # Clear route is one click there (#594), with its note's Undo; Undo brings the route back, in editing as from More
+        press(pg, at(pg, "polku.planner.els.clearTool"), f'{name}: Clear route', touch)
+        c = pg.js("({ n: polku.planner.points.length, editing: polku.planner.editing, note: document.getElementById('toast').textContent })")
+        if c['n'] or not c['editing'] or 'Route cleared' not in c['note']:
+            fails.append(f'{name}: Clear route on the toolbar in the route’s view: {c}')
+        press(pg, at(pg, "document.querySelector('#toast .toast-act')", settle=False), f'{name}: the note’s Undo', touch)
+        if state(pg)['n'] != s0['n']:
+            fails.append(f'{name}: Undo after Clear route on the toolbar: {state(pg)}')
+        pg.js("polku.planner.setEditing(false); true")
+        view_ok(pg, f'{name}: back in the route’s view')
         b = pg.js("({ fit: !document.getElementById('btn-fit').hidden, plan: document.getElementById('btn-plan').textContent.trim(), cursor: polku.map.getCanvas().style.cursor })")
-        if b['fit'] or b['plan'] != 'Plan route' and b['plan'] != 'Plan':
+        if not b['fit'] or b['plan'] != 'Plan route' and b['plan'] != 'Plan':  # (#594: Show the whole route in the column, one place)
             fails.append(f'{name}: the map’s column in the route’s view: {b}')
         spot = pg.js(RV_SPOT)
         if spot:
@@ -15700,6 +16063,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
     ('layers', [layers], 'the Layers panel in every sport'),
+    ('raster', [raster_maps, aerial_fallback], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
@@ -15735,12 +16099,13 @@ GROUPS = [
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a hidden Heads-up kind shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
-    ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240); desktops, the planner at the bottom, by mouse and keys (#257)'),
+    ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),

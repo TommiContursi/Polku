@@ -257,9 +257,10 @@ The weights are `--weight-regular` (400), `--weight-name` (600) and `--weight-st
 ## Layout
 
 The map is fixed behind everything (`#map`, inset 0). Over it:
-- **The top bar** sits 12 px from the top and left edges, up to 730 px wide.
+- **The top bar** sits 12 px from the top and left edges, up to 730 px wide. On a desktop 900 px wide or more it is 682 px (the logo, the search and the sport), and ⚙ stands alone 12 px from the top and right edges, over the panel it opens.
 - **The map's buttons** stand at the right edge.
-- **The planner** is a side panel on a desktop and a sheet from the bottom on a phone, with a peek, a middle and a full height. The layer drawer is a card beside the Layers button on a desktop, a sheet on a phone.
+- **The desktop's toolbar** floats at the map's foot, rounded at every corner and 12 px from the planner (above it with the planner at the bottom). **Done** and, in the route's view, **Edit** are its first button, at the planner's end, the end that doesn't move.
+- **The planner** is a side panel on a desktop and a sheet from the bottom on a phone, with a peek, a middle and a full height. The layer drawer is a card beside the Layers button on a desktop, a sheet on a phone; Settings is a panel under ⚙ on a desktop and a sheet like the drawer on a phone.
 
 The switch is at **720 px**: up to 720 px wide is the phone layout, 721 px and up the desktop one; there's a wider step at 900 px, and short screens (under 500 px or 760 px high) get a more compact sheet. Touch is decided by the pointer, not the width: `pointer: coarse` grows targets to 44 px, and hover styles apply only where `hover: hover`.
 
@@ -282,7 +283,7 @@ Depth comes from floating over the map: what floats is glass with one soft shado
 
 **The Edge Rule.** Every glass surface has the edge with its shadow (`box-shadow: var(--shadow), var(--edge)`). A ring for a chosen or open state adds to it.
 
-**The Clear Glass Rule.** When the person asks for reduced transparency (`prefers-reduced-transparency`) or more contrast (`prefers-contrast: more`, or Settings' **High contrast**), every glass turns solid (`--surface-solid`, no blur). More contrast also takes the darker grey, heavier lines and the 3:1 rim (`data-contrast` on `<html>`, set as `data-theme` is).
+**The Clear Glass Rule.** When the person asks for reduced transparency (`prefers-reduced-transparency`) or more contrast (`prefers-contrast: more`, or Settings' **High contrast**), or picks Settings' **Fewer effects** (`data-glass="solid"`), every glass turns solid (`--surface-solid`, no blur). More contrast also takes the darker grey, heavier lines and the 3:1 rim (`data-contrast` on `<html>`, set as `data-theme` is).
 
 ## Shapes
 
