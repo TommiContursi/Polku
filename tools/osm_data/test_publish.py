@@ -243,7 +243,7 @@ class PublishTests(unittest.TestCase):
     def test_host_fails_safely_when_posix_overwrite_unsupported(self):
         original_files, original_dirs = dict(self.host.files), set(self.host.dirs)
         self.host.fail_pointer = True
-        with self.assertRaisesRegex(OSError, 'POSIX rename extension unsupported'):
+        with self.assertRaisesRegex(RuntimeError, 'POSIX rename extension unsupported'):
             publish.test_host()
         self.assertEqual(self.host.files, original_files)
         self.assertEqual(self.host.dirs, original_dirs)
