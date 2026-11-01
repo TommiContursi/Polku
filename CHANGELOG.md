@@ -10,6 +10,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-01
 
+### A tap on a way shows it at once, and the line at a spot keeps out of the map's buttons ([#675](https://github.com/TommiContursi/Polku/issues/675), [#674](https://github.com/TommiContursi/Polku/issues/674))
+
+- A tap on a way now draws the piece under your finger at once, from the map's own data, while the whole way comes from OpenStreetMap. The card and, on a phone, the line above the spot say the whole way is loading. After 10 seconds they say OpenStreetMap is slow to answer, and they go on asking.
+- When OpenStreetMap doesn't answer, the piece the map knows stays drawn, the line above the spot says OpenStreetMap didn't answer, and the card has **Try again**. Try again starts the 10 seconds again.
+- On a phone, the line above a tapped spot moves left of the map's buttons where there's room beside them, so the buttons stay. Where the line is too wide to fit beside them, a narrow screen or enlarged text, it still goes over them and they step aside while it's open.
+
 ### A tap on a way picks the whole way, and its card tells everything known about it ([#574](https://github.com/TommiContursi/Polku/issues/574), [#561](https://github.com/TommiContursi/Polku/issues/561), [#562](https://github.com/TommiContursi/Polku/issues/562))
 
 - A tap or a hold on a street, a trail or a cycleway now picks what a person would call one thing, not a piece of it: the pieces that continue each other join, by the marked route they belong to, or their name, or while their kind stays the same. The pick is drawn on the map like a route, coloured along its length. A long street stops at 25 km, a loop where it began, and unnamed paths at every junction. A cycleway goes on where it goes straight on: past a side street's crossing, over a short crossing mapped as a footway, and into a piece of itself with or without its name, but never into another name or onto a street.
