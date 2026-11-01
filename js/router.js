@@ -10,7 +10,7 @@ import { CUSTOM_PROFILES } from './styles.js';
 import { dist } from './geo.js';
 import { store } from './ui.js';
 
-// Settings → Routing server: your own BRouter (no limits but your computer's), or brouter.de.
+// Settings → Routing server: your own BRouter (its own capacity), or brouter.de.
 export const routerUrl = () => (store.get('brouterUrl', '') || '').trim().replace(/\/+$/, '') || BROUTER;
 const routerSource = () => (routerUrl() === BROUTER ? 'brouter' : 'brouterOwn');
 /** Calls the router takes right now without waiting (Infinity for your own). */
@@ -78,20 +78,20 @@ const nogoParam = (nogos) => (nogos && nogos.length
 const paramStr = (params) => Object.keys(params || {}).sort().map((k) => `&profile:${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('');
 
 // Polku's own profiles go to the routing server once per session (one fixed id
-// each, so it's one file there, not one per visitor); a 500 for one of them
-// means the server has dropped it: upload again and retry, once.
+// each, so it's one file there, not one per visitor). Only the explicit
+// missing-profile error means it should be uploaded again, once.
 const uploaded = new Set();
-function ensureProfile(profile, signal, again = false) {
+function ensureProfile(profile, signal, maxWait, again = false) {
   const def = CUSTOM_PROFILES[profile];
   if (!def) return Promise.resolve();
   const k = `${routerUrl()}|${profile}`;
   if (again) uploaded.delete(k);
   if (uploaded.has(k)) return Promise.resolve();
   return shared(`profile|${k}`, async (sig) => {
-    const file = await request('polku', def.file, { signal: sig });
+    const file = await request('polku', def.file, { signal: sig, timeoutMs: 15000 });
     if (!file.ok) throw new Error(`Polku's profile didn't load (${file.status})`);
     const text = await file.text();
-    const res = await request(routerSource(), `${routerUrl()}/profile/${profile}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: text, signal: sig });
+    const res = await request(routerSource(), `${routerUrl()}/profile/${profile}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: text, signal: sig, maxWait, timeoutMs: 15000 });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || j.error || j.profileid !== profile) throw new Error(j.error || `the router didn't take Polku's profile (${res.status})`);
     uploaded.add(k);
@@ -100,13 +100,14 @@ function ensureProfile(profile, signal, again = false) {
 
 // the variables only Polku's own profiles have (a stock profile can't take them)
 const OWN_VARS = new Set(['unpaved_mainroad_factor', 'allow_private']);
+const missingProfile = (text, profile) => text.trim() === `profile ${profile.replace(/^custom_/, '')}.brf does not exist`;
 
 // alt: BRouter's alternative k (0 the first route, 1–3 other ways: #95)
 async function brouter(pts, profile, signal, nogos, maxWait, params, retried = false, alt = 0) {
   const custom = !!CUSTOM_PROFILES[profile];
   if (custom) {
     try {
-      await ensureProfile(profile, signal);
+      await ensureProfile(profile, signal, maxWait);
     } catch (e) {
       if (e.name === 'AbortError' || e.name === 'Limited') throw e;
       // can't use Polku's profile: the stock one it's made from, without Polku's own variables
@@ -120,13 +121,15 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
   // Not part of any cache key, so routes cached or saved before stay valid.
   const url = `${routerUrl()}?lonlats=${pts.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join('|')}` +
     `&profile=${profile}&alternativeidx=${alt}&format=geojson${nogoParam(nogos)}${paramStr(params)}&profile:processUnusedTags=1`;
-  // a dropped custom profile answers 500: not an outage, so no back-off for those
-  const res = await request(routerSource(), url, { signal, maxWait, ...(custom ? { backoff: false } : {}) });
-  if (custom && res.status >= 500 && !retried) {
-    await ensureProfile(profile, signal, true);
+  const res = await request(routerSource(), url, {
+    signal, maxWait, timeoutMs: 120000,
+    backoff: custom ? async (r) => !(r.status === 500 && missingProfile(await r.clone().text(), profile)) : true,
+  });
+  const text = await res.text();
+  if (custom && res.status === 500 && missingProfile(text, profile) && !retried) {
+    await ensureProfile(profile, signal, maxWait, true);
     return brouter(pts, profile, signal, nogos, maxWait, params, true, alt);
   }
-  const text = await res.text();
   if (!res.ok) throw Object.assign(new Error(explain(text) || `BRouter ${res.status}`), { busy: /killed by thread-priority-watchdog|timeout|retry later/i.test(text) });
   const gj = JSON.parse(text);
   const f = gj.features[0];
@@ -165,7 +168,12 @@ const pause = (ms, signal) => new Promise((ok, no) => {
 const legKey = (mode, profile, opts, from, to) => `${mode}|${profile}|${opts.portage}|${from.join(',')}|${to.join(',')}|${nogoParam(opts.nogos)}|${paramStr(opts.params)}|${JSON.stringify(opts.water || {})}|${routerUrl()}${opts.alt ? `|alt${opts.alt}` : ''}`;
 // a busy server drops the oldest request it's running: one more try after a moment
 const brouterRetry = (pts, profile, sig, opts) => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params, false, opts.alt || 0)
-  .catch((e) => (e.busy ? pause(2000, sig).then(() => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params, false, opts.alt || 0)) : Promise.reject(e)));
+  .catch((e) => (e.busy ? pause(2000, sig).then(() => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params, false, opts.alt || 0)) : Promise.reject(e)))
+  .catch((e) => {
+    // Reading a timed-out response body may reject with AbortError too.
+    if (e.name === 'AbortError' && !sig.aborted) throw new DOMException('The router response timed out', 'TimeoutError');
+    throw e;
+  });
 
 // When BRouter can't take the call now (a pause, a long wait for a paced slot,
 // an outage) or can't route it, Valhalla does (not for paddling, and never for
@@ -182,7 +190,7 @@ async function standIn(err, points, profile, opts, signal) {
     remember(key, legs);
     return legs;
   } catch (e) {
-    throw e.name === 'AbortError' ? e : err;
+    throw signal?.aborted ? e : err;
   }
 }
 

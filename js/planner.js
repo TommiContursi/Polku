@@ -128,10 +128,10 @@ export function changeoverMin(a, b) {
   return 5; // bike ↔ on foot
 }
 
-async function pool(jobs, n) {
+async function pool(jobs, n, signal) {
   const queue = jobs.slice();
   await Promise.all(Array.from({ length: Math.min(n, queue.length) }, async () => {
-    while (queue.length) await queue.shift()();
+    while (queue.length && !signal?.aborted) await queue.shift()();
   }));
 }
 
@@ -1315,6 +1315,8 @@ export class Planner {
 
   async routeAll() {
     const gen = ++this.gen;
+    const previous = this.routing;
+    const ctrl = this.routing = new AbortController();
     const todo = []; // legs to route: { leg, key, from, to, nogos, profile }
     this.legs.forEach((leg, i) => {
       if (leg.mode === 'fixed') { if (leg.result) leg.status = 'ok'; return; } // a LIPAS leg from a link may still be on its way
@@ -1337,11 +1339,14 @@ export class Planner {
       while (batchable(todo[j]) && e + 1 < todo.length && todo[e + 1].i === todo[e].i + 1 && batchable(todo[e + 1]) && todo[e + 1].rp.key === todo[e].rp.key && todo[e + 1].profile === todo[e].profile) e++;
       const run = todo.slice(j, e + 1);
       j = e + 1;
-      jobs.push(run.length > 1 ? () => this.routeRunOf(run) : () => this.routeOne(run[0]));
+      jobs.push(run.length > 1 ? () => this.routeRunOf(run, ctrl.signal) : () => this.routeOne(run[0], ctrl.signal));
     }
     this.drawRoute();
     this.setBusy(jobs.length > 0);
-    await pool(jobs, 3);
+    // Subscribe the new jobs before retiring the old ones, so shared fetches survive.
+    const work = pool(jobs, 3, ctrl.signal);
+    previous?.abort();
+    await work;
     if (gen !== this.gen) return;
     this.setBusy(false);
     if (this.refit && this.legs.every((l) => l.result && l.status !== 'waiting')) { this.refit = false; this.fitRoute(); }
@@ -1354,22 +1359,27 @@ export class Planner {
     await this.analysing;
   }
 
-  async routeRunOf(run) {
+  async routeRunOf(run, signal) {
     let res = null;
     try {
-      res = await routeRun({ points: [run[0].from, ...run.map((t) => t.to)], profile: run[0].profile, opts: { portage: true, nogos: [], maxWait: STAND_IN_AFTER, ...this.styleOpts(run[0]) } });
+      res = await routeRun({ points: [run[0].from, ...run.map((t) => t.to)], profile: run[0].profile, opts: { portage: true, nogos: [], maxWait: STAND_IN_AFTER, ...this.styleOpts(run[0]) } }, signal);
     } catch (e) {
+      if (signal?.aborted || e.name === 'AbortError') return;
       if (e.name === 'Limited') { for (const t of run) this.legFailed(t, e); this.drawRoute(); return; }
       // anything else: one by one, so only the leg that can't be routed is left straight
     }
+    if (signal?.aborted) return;
     if (res) { run.forEach((t, k) => this.legDone(t, res[k])); this.drawRoute(); return; }
-    await pool(run.map((t) => () => this.routeOne(t)), 2);
+    await pool(run.map((t) => () => this.routeOne(t, signal)), 2, signal);
   }
 
-  async routeOne(t) {
+  async routeOne(t, signal) {
     try {
-      this.legDone(t, await routeLeg({ from: t.from, to: t.to, mode: t.leg.mode, profile: t.profile, opts: { portage: true, nogos: t.nogos, maxWait: STAND_IN_AFTER, ...this.styleOpts(t), alt: t.alt } }));
+      const result = await routeLeg({ from: t.from, to: t.to, mode: t.leg.mode, profile: t.profile, opts: { portage: true, nogos: t.nogos, maxWait: STAND_IN_AFTER, ...this.styleOpts(t), alt: t.alt } }, signal);
+      if (signal?.aborted) return;
+      this.legDone(t, result);
     } catch (e) {
+      if (signal?.aborted) return;
       this.legFailed(t, e);
     }
     this.drawRoute();

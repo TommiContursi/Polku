@@ -9,6 +9,11 @@ function clock() {
   Date.now = () => now;
   window.setTimeout = (fn, ms = 0) => { timers.set(++id, { at: now + ms, fn }); return id; };
   window.clearTimeout = (key) => timers.delete(key);
+  AbortSignal.timeout = (ms) => {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(new DOMException('The request timed out', 'TimeoutError')), ms);
+    return ctrl.signal;
+  };
   const settle = async () => { for (let i = 0; i < 8; i++) await new Promise((ok) => real(ok, 0)); };
   return { settle, async advance(ms) {
     const end = now + ms;
@@ -50,12 +55,12 @@ export async function sharedCancellation() {
 export async function networkDeadline() {
   const c = clock(), N = await import('../js/net.js');
   N.SOURCES.brouterOwn.pace = [[1000, 1]];
-  let sent = 0, stopped = 0;
+  let sent = 0, stopped = 0, reason;
   window.fetch = async (url, init) => {
     sent++;
     if (sent === 1) return new Response('first');
     const body = new ReadableStream({ start(stream) {
-      init.signal?.addEventListener('abort', () => { stopped++; stream.error(init.signal.reason || abort()); }, { once: true });
+      init.signal?.addEventListener('abort', () => { stopped++; reason = init.signal.reason?.name; stream.error(init.signal.reason || abort()); }, { once: true });
     } });
     return new Response(body);
   };
@@ -64,7 +69,7 @@ export async function networkDeadline() {
   await c.advance(900);
   assert(sent === 1 && !result.done, 'the network deadline ran while the request waited in the queue');
   await c.advance(400);
-  assert(sent === 2 && result.error?.name === 'TimeoutError' && stopped === 1, 'a stalled response body did not meet its dispatched-request deadline');
+  assert(sent === 2 && result.error && reason === 'TimeoutError' && stopped === 1, `a stalled response body did not meet its dispatched-request deadline (${JSON.stringify({ sent, stopped, done: result.done, error: result.error?.name, reason })})`);
   assert(!N.sourceStatus('brouterOwn'), 'a request deadline imposed an outage cooldown');
   return { queueMs: 1050, requestBudgetMs: 200, sent, stopped };
 }
@@ -80,18 +85,41 @@ export async function plannerCancellation() {
   let sent = [], active = 0, peak = 0, cancelled = 0;
   window.fetch = (url, init) => new Promise((ok, no) => {
     active++; peak = Math.max(peak, active);
-    const entry = { url, finish() { active--; ok(Response.json(routeJSON(url))); } }; sent.push(entry);
-    init.signal?.addEventListener('abort', () => { active--; cancelled++; no(abort()); }, { once: true });
+    const entry = { url, done: false, finish() { if (this.done) return; this.done = true; active--; ok(Response.json(routeJSON(url))); } }; sent.push(entry);
+    init.signal?.addEventListener('abort', () => { if (entry.done) return; entry.done = true; active--; cancelled++; no(abort()); }, { once: true });
   });
   const set = (lon) => { p.points = Array.from({ length: 7 }, (_, i) => [lon + i * 0.01, 61]); p.legs = Array.from({ length: 6 }, () => ({ mode: 'auto' })); };
   set(24); const old = track(p.routeAll()); await c.settle();
   set(25); const current = track(p.routeAll()); await c.settle();
   const overlap = active;
   // Finish all calls, including any obsolete queue that starts as old calls settle.
-  for (let i = 0; i < 6; i++) { const batch = sent.splice(0); batch.filter((e) => !new URL(e.url).searchParams.get('lonlats').startsWith('24.') || !cancelled).forEach((e) => e.finish()); await c.settle(); }
+  let oldSent = 0, totalSent = 0;
+  for (let i = 0; i < 6; i++) { const batch = sent.splice(0); totalSent += batch.length; oldSent += batch.filter((e) => new URL(e.url).searchParams.get('lonlats').startsWith('24.')).length; batch.forEach((e) => e.finish()); await c.settle(); }
   assert(cancelled === 3 && overlap === 3 && peak <= 3, `rapid route edits left ${overlap} requests running (peak ${peak}, cancelled ${cancelled})`);
   assert(old.done && current.done && p.legs.every((l) => l.result?.coords[0][0] >= 25), 'old routing work replaced the current route');
-  return { overlap, peak, cancelled };
+  assert(oldSent === 3 && totalSent === 9, 'obsolete queued legs still dispatched');
+  return { overlap, peak, cancelled, obsoleteDispatched: oldSent, totalRequests: totalSent };
+}
+
+export async function plannerSharedGeneration() {
+  const c = clock(), { Planner } = await import('../js/planner.js');
+  localStorage.setItem('polku:brouterUrl', JSON.stringify('https://own.test/brouter'));
+  const p = Object.create(Planner.prototype);
+  Object.assign(p, { gen: 0, points: [[24, 61], [24.01, 61.01]], legs: [{ mode: 'auto' }], altFor: null,
+    drawRoute() {}, setBusy() {}, snapPoints: () => false, save() {}, runAnalysis: async () => {}, styleOpts: () => ({}),
+    legKey() { return { key: 'same', from: this.points[0], to: this.points[1], nogos: [], profile: 'mtb', rp: { key: 'mtb' } }; },
+  });
+  let sent = 0, cancelled = 0, release;
+  window.fetch = (url, init) => new Promise((ok, no) => {
+    sent++; release = () => ok(Response.json(routeJSON(url)));
+    init.signal?.addEventListener('abort', () => { cancelled++; no(abort()); }, { once: true });
+  });
+  const first = track(p.routeAll()); await c.settle();
+  const second = track(p.routeAll()); await c.settle();
+  assert(sent === 1 && cancelled === 0, 'an unchanged current generation lost its shared request');
+  release(); await c.settle();
+  assert(first.done && second.done && p.legs[0].result?.coords.length === 2, 'a shared generation failed to finish');
+  return { requests: sent, upstreamAborts: cancelled };
 }
 
 export async function customRefusal(status = 403) {
@@ -108,6 +136,101 @@ export async function customRefusal(status = 403) {
   assert(N.sourceStatus('brouter'), `custom profile ${status} did not pause BRouter`);
   assert(uploads === 1 && routes === 1, `custom profile ${status}: ${uploads} uploads and ${routes} route requests`);
   return { status, uploads, routes };
+}
+
+export async function missingProfile() {
+  const c = clock(), R = await import('../js/router.js'), N = await import('../js/net.js');
+  let uploads = 0, routes = 0;
+  window.fetch = async (url) => {
+    if (String(url).includes('.brf')) return new Response('profile');
+    if (String(url).includes('/profile/')) { uploads++; return Response.json({ profileid: 'custom_polku-road-1' }); }
+    routes++;
+    return routes === 1 ? new Response('profile polku-road-1.brf does not exist', { status: 500 }) : Response.json(routeJSON(url));
+  };
+  const result = track(R.routeLeg(leg('custom_polku-road-1'))); await c.settle();
+  assert(result.value?.coords.length === 2 && uploads === 2 && routes === 2, 'a positively identified missing profile did not recover once');
+  assert(!N.sourceStatus('brouter'), 'a missing profile imposed a general outage cooldown');
+  return { uploads, routes, recovered: true };
+}
+
+export async function routingDeadline() {
+  const c = clock(), R = await import('../js/router.js');
+  localStorage.setItem('polku:brouterUrl', JSON.stringify('https://own.test/brouter'));
+  let sent = 0, stopped = 0, release;
+  window.fetch = (url, init) => new Promise((ok, no) => {
+    let done = false;
+    sent++; release = () => { done = true; ok(Response.json(routeJSON(url))); };
+    init.signal?.addEventListener('abort', () => { if (done) return; done = true; stopped++; no(init.signal.reason || abort()); }, { once: true });
+  });
+  const first = track(R.routeLeg(leg()));
+  await c.advance(90000);
+  assert(!first.done && sent === 1, 'a legitimate long own-server route was cut short');
+  release(); await c.settle(); assert(first.value?.coords.length === 2, 'the long route did not finish');
+  const stalled = track(R.routeLeg({ ...leg(), to: [24.02, 61.02] }));
+  await c.advance(120100);
+  assert(stalled.error?.name === 'TimeoutError' && sent === 2 && stopped === 1, 'a stalled BRouter request did not stop at its independent deadline');
+  return { legitimateRouteMs: 90000, stalledBudgetMs: 120000, requests: sent, stopped };
+}
+
+export async function routingBodyFallback() {
+  const c = clock(), R = await import('../js/router.js');
+  let brouter = 0, valhalla = 0;
+  window.fetch = async (url, init) => {
+    if (String(url).includes('brouter')) {
+      brouter++;
+      const response = new Response('');
+      response.text = () => new Promise((ok, no) => init.signal.addEventListener('abort', () => no(abort()), { once: true }));
+      return response;
+    }
+    valhalla++;
+    return Response.json(String(url).includes('/route?') ? { trip: { legs: [{ shape: '_gjaR_ouce@o}@o}@' }] } } : { edges: [] });
+  };
+  const result = track(R.routeLeg(leg('mtb', { fallback: true })));
+  await c.advance(122000);
+  assert(result.value?.provider === 'valhalla' && brouter === 1 && valhalla === 2, 'a timed-out BRouter response body was mistaken for user cancellation');
+  return { brouter, valhalla, fallback: result.value.provider };
+}
+
+export async function customRecovery() {
+  const c = clock(), R = await import('../js/router.js');
+  let uploads = 0, routes = 0;
+  window.fetch = async (url) => {
+    if (String(url).includes('.brf')) return new Response('profile');
+    if (String(url).includes('/profile/')) { uploads++; return Response.json({ profileid: 'custom_polku-road-1' }); }
+    return ++routes === 1 ? new Response('Please, retry later!', { status: 403 }) : Response.json(routeJSON(url));
+  };
+  const first = track(R.routeLeg(leg('custom_polku-road-1'))); await c.settle();
+  assert(first.error?.name === 'Limited', 'custom-profile refusal did not pause');
+  await c.advance(61000);
+  const recovered = await R.routeLeg(leg('custom_polku-road-1'));
+  assert(recovered.coords.length === 2 && uploads === 1 && routes === 2, 'recovery re-uploaded a valid profile or failed to route');
+  return { uploads, routes, recovered: true };
+}
+
+export async function alreadyCancelledRequest() {
+  const N = await import('../js/net.js'), ctrl = new AbortController();
+  let sent = 0;
+  window.fetch = async () => { sent++; return new Response(''); };
+  ctrl.abort();
+  const result = await N.request('brouterOwn', 'https://own.test/cancelled', { signal: ctrl.signal }).then(() => null, (e) => e.name);
+  assert(result === 'AbortError' && sent === 0 && N.usage().find((u) => u.id === 'brouterOwn').session === 0, 'an already cancelled unpaced request was sent or counted');
+  return { sent, counted: 0 };
+}
+
+export async function profileQueueBudget() {
+  const c = clock(), R = await import('../js/router.js'), N = await import('../js/net.js');
+  let uploads = 0, routes = 0;
+  window.fetch = async (url) => {
+    if (String(url).includes('.brf')) return new Response('profile');
+    if (String(url).includes('/profile/')) { uploads++; return Response.json({ profileid: 'custom_polku-road-1' }); }
+    if (String(url).includes('occupy')) return new Response('');
+    routes++; return Response.json(routeJSON(url));
+  };
+  for (let i = 0; i < 5; i++) await N.request('brouter', `https://mock.invalid/occupy/${i}`);
+  const result = track(R.routeLeg(leg('custom_polku-road-1', { maxWait: 6000 })));
+  await c.advance(6100);
+  assert(result.error?.name === 'Limited' && result.error.reason === 'pacing' && uploads === 0 && routes === 0, 'a custom-profile upload ignored the route queue budget');
+  return { uploads, routes, queueBudgetMs: 6000 };
 }
 
 export async function profileSubscribers() {

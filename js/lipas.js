@@ -42,7 +42,7 @@ export function seedLipas(fn) { seeded = fn; }
 async function getJson(url, signal) {
   const fx = seeded && seeded(url);
   if (fx) return fx;
-  const res = await request('lipas', url, { signal });
+  const res = await request('lipas', url, { signal, timeoutMs: 15000 });
   if (!res.ok) throw new Error(`LIPAS ${res.status}`);
   return res.json();
 }
