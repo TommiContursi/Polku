@@ -16207,7 +16207,7 @@ def pick_card(chrome):
         spot = lambda: pg.js("""(async () => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2, ll = [f[i], f[i + 1]];
           polku.map.jumpTo({ center: ll, zoom: 16.5 }); await new Promise((r) => polku.map.once('idle', () => setTimeout(r, 400)));
           const q = polku.map.project(ll), r = polku.map.getCanvas().getBoundingClientRect(); return { x: r.left + q.x, y: r.top + q.y }; })()""")
-        line = "(() => { const b = document.querySelector('.spot-line'), r = b && b.getBoundingClientRect(), mk = b && b.closest('.maplibregl-marker'); return { still: !!mk && mk !== b && getComputedStyle(mk).transitionDuration.split(',').every((d) => !parseFloat(d)), line: b ? [...b.querySelectorAll('b, small')].map((e) => e.textContent) : null, at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height }, card: polku.planner.cards.current && polku.planner.cards.current.kind, drawn: polku.map.querySourceFeatures('pick').length }; })()"
+        line = "(() => { const b = document.querySelector('.spot-line'), r = b && b.getBoundingClientRect(), mk = b && b.closest('.maplibregl-marker'); return { still: !!mk && mk !== b && !/transform|all/.test(getComputedStyle(mk).transitionProperty), line: b ? [...b.querySelectorAll('b, small')].map((e) => e.textContent) : null, at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height }, card: polku.planner.cards.current && polku.planner.cards.current.kind, drawn: polku.map.querySourceFeatures('pick').length }; })()"
         s = spot()
         pg.quick_tap(s['x'], s['y'])
         for _ in range(40):
