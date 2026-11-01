@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card icons</title>
+<meta name="description" content="Mock-up for #574: how bikes get along, one way and a difficulty's grade as pictures beside the words in a pick's card. Today beside options A, B and C, in the app's own card on recorded ways.">
+<!--
+  #574, 2026-11-01: the package's "facts as pictures" (a difficulty as its colour; how bikes get along as traffic-sign-like
+  icons, the words beside them for screen readers), to choose before PR #623 leaves draft. Not wired to the app: nothing
+  here is loaded by Polku.
+
+  Each frame is the app itself (this checkout's index.html) on the recorded ways of tools/fixtures/ways-tampere.json, so the
+  card is today's card on real OpenStreetMap data; the page only adds the pictures to its rows. The terrain and the weather
+  are live. The frames share the app's storage on this server: a fold or a Colour by chosen here is kept there too.
+
+  ?opt=today|a|b|c  &scene=rauhaniemi|kunto|hameenkatu|trail|walkers  &look=light|dark
+-->
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #fff; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; color-scheme: light; }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; }
+* { box-sizing: border-box; }
+html { -webkit-tap-highlight-color: transparent; }
+body { margin: 0; padding: 24px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+::selection { background: color-mix(in srgb, var(--page-link) 30%, transparent); }
+button, select { font: inherit; color: inherit; }
+.cv { max-width: 1560px; margin: 0 auto; }
+.cv a { color: var(--page-link); text-underline-offset: 2px; }
+.cv h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -.01em; text-wrap: balance; }
+.cv > p { margin: 0 0 8px; max-width: 980px; }
+.bars { margin: 12px -16px 0; padding: 8px 16px; border-bottom: 1px solid rgba(128,128,128,.25); }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.bar > span { min-width: 74px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; font-weight: 600; font-size: 13px; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.sw button:focus-visible { outline: 2px solid var(--page-link); outline-offset: 2px; }
+@media (pointer: coarse) { .sw button { min-height: 44px; } }
+.about { margin: 14px 0 10px; padding: 12px 16px; border-radius: 14px; background: var(--page-card); max-width: 1100px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.about h2 { margin: 0 0 4px; font-size: 16px; }
+.about p, .about li { margin: 4px 0; max-width: 75ch; }
+.about ul { margin: 4px 0; padding-left: 20px; }
+#stage { display: grid; grid-template-columns: 390px 1fr; gap: 16px 20px; align-items: start; margin-top: 10px; }
+@media (max-width: 1000px) { #stage { grid-template-columns: 1fr; } #desk { display: none; } }
+.fr { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fr figcaption { font-size: 13px; color: var(--page-cap); }
+.fr figcaption b { color: var(--page-fg); }
+.box { position: relative; overflow: hidden; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.2); background: #ccc; }
+#phone .box { width: 390px; height: 844px; max-width: 100%; }
+#phone iframe { width: 390px; height: 844px; border: 0; display: block; }
+#desk .box { width: 100%; aspect-ratio: 1180 / 760; }
+#desk iframe { width: 1180px; height: 760px; border: 0; transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+/* every picture of the chosen option, in light and dark */
+.legend { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.lg { border-radius: 14px; padding: 12px 14px; }
+.lg.light { background: #fff; color: #141b17; }
+.lg.dark { background: #181c1a; color: #f2f5f3; }
+.lg h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.lg ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lg li { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px; }
+.lg li .big { width: 40px; height: 40px; flex: none; }
+.lg li .slot { width: 64px; flex: none; display: flex; align-items: center; }
+.lg li .none { font-size: 12px; opacity: .7; }
+/* ======================================================= the design: a picture before a fact's words (A, B and C) */
+.fi { display: inline-block; width: 20px; height: 20px; flex: none; vertical-align: -5px; margin-right: 5px; }
+.fi svg, .big svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.fi svg *, .big svg * { vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div class="cv">
+  <h1>Card icons</h1>
+  <p>How bikes get along, one way and a grade, drawn beside their words in a pick's card. The cards are the app's own, on recorded ways in Tampere (<code>tools/fixtures/ways-tampere.json</code>); only the pictures are added. For PR <a href="https://github.com/TommiContursi/Polku/pull/623">#623</a>, to choose before it leaves draft.</p>
+  <div class="bars">
+    <div class="bar"><span>Icons</span><div class="sw" id="sw-opt">
+      <button type="button" data-v="today">Today: words</button><button type="button" data-v="a">A · Signs in ink</button><button type="button" data-v="b">B · Signs in the map's colours</button><button type="button" data-v="c">C · Pictures alone</button>
+    </div></div>
+    <div class="bar"><span>Way</span><div class="sw" id="sw-scene">
+      <button type="button" data-v="rauhaniemi">Rauhaniemenreitti</button><button type="button" data-v="kunto">Kuntokolmonen</button><button type="button" data-v="hameenkatu">Hämeenkatu</button><button type="button" data-v="trail">A trail, S2 and S3</button><button type="button" data-v="walkers">For walkers, no bikes</button>
+    </div></div>
+    <div class="bar"><span>Look</span><div class="sw" id="sw-look">
+      <button type="button" data-v="light">Light</button><button type="button" data-v="dark">Dark</button>
+    </div></div>
+  </div>
+  <section class="about" id="about"></section>
+  <div id="stage">
+    <figure class="fr" id="phone"><figcaption><b>Phone</b>, 390 × 844: the card opened full, scrolled to its facts</figcaption><div class="box"><iframe title="Polku on a phone" loading="eager"></iframe></div></figure>
+    <figure class="fr" id="desk"><figcaption><b>Desktop</b>, 1180 × 760: the card at its spot, scrolled to its facts</figcaption><div class="box"><iframe title="Polku on a desktop" loading="eager"></iframe></div></figure>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const S = { opt: q.get('opt') || 'a', scene: q.get('scene') || 'rauhaniemi', look: q.get('look') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') };
+
+// ------------------------------------------------------------------ the pictures (24 px grid, strokes as the app's icons)
+const BIKE = '<circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M13 5h3l1 4"/>'; // js/ui.js's
+const WALK = '<circle cx="12" cy="3.6" r="2.1"/><path d="M12 7.6v6.4M12 14l-3.2 7M12 14l3.2 7M7.5 11.6 12 8.6l4.5 3"/>';
+const g = (body, x, y, s) => `<svg x="${x}" y="${y}" width="${s}" height="${s}" viewBox="0 0 24 24">${body}</svg>`;
+const ROUND = 'round', SQUARE = 'square', PLATE = 'plate';
+// key: [its width on the 24 px grid, the sign's shape, what's in it, the scale's colour (Colour by's, css/app.css)]. Two
+// figures sit side by side on a wider plate: stacked in a round sign, as on the road, they blur at 20 px.
+const PICS = {
+  cycleway: [24, ROUND, g(BIKE, 3.6, 3.6, 16.8), '--bikes-cycleway'],
+  shared: [36, PLATE, g(BIKE, 2.6, 3.4, 17.2) + g(WALK, 17, 3, 17.6), '--bikes-shared'],
+  separate: [36, PLATE, g(BIKE, 1.8, 3.8, 16.4) + '<path d="M18 4v16"/>' + g(WALK, 18.4, 3.6, 16.6), '--bikes-separate'],
+  lane: [36, SQUARE, g(BIKE, 2.4, 3.4, 17.2) + '<path d="M27.5 4.2v3M27.5 10.5v3M27.5 16.8v3"/>', '--bikes-lane'],
+  track: [36, SQUARE, g(BIKE, 2.4, 3.4, 17.2) + '<path d="M26 3v18M30.5 5v14"/>', '--bikes-track'],
+  beside: [36, SQUARE, g(BIKE, 2.4, 3.4, 17.2) + '<path d="M26 3v18M30.5 5v14"/>', '--bikes-beside'],
+  walk: [24, ROUND, g(WALK, 3.4, 2.8, 17.6), '--bikes-walk'],
+  no: [24, ROUND, g(BIKE, 3.6, 3.6, 16.8) + '<path d="m5.2 5.2 13.6 13.6"/>', '--bikes-no'],
+  one: [24, SQUARE, '<path d="M12 19V5M7.4 9.6 12 5l4.6 4.6"/>', '--oneway-one'],
+  cars: [36, SQUARE, '<path d="M11 19V5M6.4 9.6 11 5l4.6 4.6M25 6.6v10.8M22.4 9.2 25 6.6l2.6 2.6M22.4 14.8l2.6 2.6 2.6-2.6"/>', '--oneway-bikes'],
+};
+const NAMES = { cycleway: 'Cycleway', shared: 'Shared with walkers', separate: 'Separate from walkers', lane: 'Cycle lane', track: 'Cycle track beside it', beside: 'Cycleway alongside', walk: 'For walkers', no: 'No bikes', one: 'One way, bikes too', cars: 'One way for cars, both ways for bikes' };
+// with no picture: the ordinary case says it best in words (Colour by's quiet ones)
+const QUIET = ['On a trail', 'With traffic', 'Both ways'];
+const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+const darkWords = (hex) => { const n = parseInt(String(hex).trim().replace('#', ''), 16); return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) > 0.179; }; // js/palette.js's
+let colour = () => '#888';
+const wide = (key, px) => Math.round((px * PICS[key][0]) / 24);
+function pic(key, opt, px = 20) {
+  const [W, shape, inner, v] = PICS[key], c = colour(v), on = opt === 'b' ? (darkWords(c) ? '#000' : '#fff') : 'currentColor', w = px <= 24 ? 1.5 : 2.4;
+  const paint = opt === 'b' ? `fill="${c}" stroke="none"` : 'fill="none"';
+  const frame = opt === 'c' ? '' : shape === ROUND ? `<circle cx="12" cy="12" r="10.6" ${paint}/>` : `<rect x="1.2" y="1.2" width="${W - 2.4}" height="21.6" rx="${shape === PLATE ? 10.8 : 4.6}" ${paint}/>`;
+  return `<svg viewBox="0 0 ${W} 24" fill="none" stroke="${on}" stroke-width="${w}" aria-hidden="true">${frame}${inner}</svg>`;
+}
+
+// ------------------------------------------------------------------ a row's words with their pictures
+const PHRASES = Object.entries(NAMES).sort((a, b) => b[1].length - a[1].length);
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const RX = new RegExp(PHRASES.map(([, w]) => esc(w)).join('|'), 'gi');
+const HTML = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const GRADE = { S0: '--diff-s0', S1: '--diff-s1', S2: '--diff-s2', S3: '--diff-s3', S4: '--diff-s4', S5: '--diff-s5', S6: '--diff-s6', T1: '--diff-s0', T2: '--diff-s1', T3: '--diff-s2', T4: '--diff-s3', T5: '--diff-s4', T6: '--diff-s5' };
+function words(label, text, opt) {
+  if (opt === 'today') return HTML(text);
+  if (/^(MTB|Hiking|Uphill)/.test(label)) {
+    // a grade as its colour: the shared badge (black or white words on the scale's colour, darkWords()); an uphill grade with its ↑
+    return HTML(text).replace(/(↑?\b([ST][0-6])\b)( \S+)?/g, (m, g1, k, next) => { const c = colour(GRADE[k]); return `<span class="fw"><span class="badge${darkWords(c) ? ' ink' : ''}" style="background:${c};height:20px;min-width:28px;vertical-align:1px">${g1}</span>${next || ''}</span>`; });
+  }
+  if (!/^(Bikes|One way)/.test(label)) return HTML(text);
+  return HTML(text).replace(RX, (m) => { const key = PHRASES.find(([, w]) => w.toLowerCase() === m.toLowerCase())[0]; const [first, ...rest] = m.split(' '); return `<span class="fw"><i class="fi" style="width:${wide(key, 20)}px">${pic(key, opt)}</i>${first}</span>${rest.length ? ' ' + rest.join(' ') : ''}`; });
+}
+
+// ------------------------------------------------------------------ the frames: the app, the recorded ways, a pick
+const SCENES = {
+  rauhaniemi: { ll: [23.79166, 61.51465], say: 'Rauhaniemenreitti: a route on streets and a path shared with walkers.' },
+  kunto: { ll: [23.79179, 61.50892], say: 'Kuntokolmonen: shared with walkers, then a cycleway.' },
+  hameenkatu: { ll: [23.76314, 61.4979], say: 'Hämeenkatu: with traffic and a cycleway alongside; one way for a short stretch.' },
+  trail: { ll: [23.79534, 61.51343], say: 'A trail with MTB grades S2 and S3.' },
+  walkers: { ll: [23.77888, 61.5122], say: 'A path for walkers, with a short stretch of no bikes.' },
+};
+const frames = [...document.querySelectorAll('#stage iframe')];
+const until = async (ok, ms = 30000) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 150)); return ok(); };
+const STYLE = `.insp-row b .fw{white-space:nowrap;color:inherit}.fi{display:inline-block;width:20px;height:20px;flex:none;vertical-align:-5px;margin-right:5px}.fi svg{display:block;width:100%;height:100%;overflow:visible}.fi svg *{vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}`;
+async function ready(fr) {
+  if (fr.ready) return fr.ready;
+  fr.ready = (async () => {
+    await new Promise((r) => { fr.addEventListener('load', r, { once: true }); fr.src = `/#16.5/${SCENES[S.scene].ll[1]}/${SCENES[S.scene].ll[0]}`; });
+    const w = fr.contentWindow;
+    await until(() => w.polku && w.polku.planner && w.polku.map && w.polku.map.loaded());
+    const st = w.document.createElement('style'); st.textContent = STYLE; w.document.head.append(st);
+    const W = await w.eval(`import(location.origin + '/js/ways.js')`), fx = await (await fetch('/tools/fixtures/ways-tampere.json')).json();
+    W.holdWays();
+    for (const [k, d] of Object.entries(fx.tiles)) { const [x, y] = k.split('/').map(Number); W.seedWays(x, y, d); }
+    // the pictures follow every rebuild of the card (the heights, the weather, a fold)
+    new w.MutationObserver(() => paint(fr)).observe(w.document.body, { childList: true, subtree: true });
+  })();
+  return fr.ready;
+}
+function paint(fr) {
+  const d = fr.contentDocument;
+  if (!d) return;
+  colour = (v) => getComputedStyle(d.documentElement).getPropertyValue(v).trim() || '#888';
+  for (const row of d.querySelectorAll('.pick-facts .insp-row')) {
+    const b = row.querySelector('b'), label = row.querySelector('span').textContent;
+    if (!b || b.dataset.opt === S.opt + S.look) continue;
+    const text = b.dataset.text ?? (b.dataset.text = b.textContent);
+    b.dataset.opt = S.opt + S.look;
+    b.innerHTML = words(label, text, S.opt);
+  }
+}
+async function show(fr) {
+  await ready(fr);
+  const w = fr.contentWindow, p = w.polku.planner, m = w.polku.map, ll = SCENES[S.scene].ll, phone = fr.closest('#phone');
+  w.document.documentElement.dataset.theme = S.look;
+  p.cards.close(); p.hideLine();
+  m.jumpTo({ center: ll, zoom: 16.5 });
+  await new Promise((r) => setTimeout(r, 300));
+  p.openSpotCard(ll, { touch: !!phone });
+  if (p.picked) p.openLine();
+  await until(() => p.cards.current && p.cards.current.pick && typeof p.cards.current.pick.ways === 'object', 20000);
+  if (phone) p.setSheetState('full', { remember: false });
+  await new Promise((r) => setTimeout(r, 600));
+  paint(fr);
+  const box = p.cards.box, f = box && box.querySelector('.pick-facts');
+  if (f) box.scrollTop += f.getBoundingClientRect().top - box.getBoundingClientRect().top - 60;
+}
+
+// ------------------------------------------------------------------ the switches, the words about each option, the legend
+const ABOUT = {
+  today: ['Today: words only', 'The card as built: each fact in words, with its length where it changes along the way.'],
+  a: ['A · Signs in ink', 'The traffic signs\' shapes, drawn in the words\' own ink: round for a cycleway, a path shared with walkers or one apart from them, for walkers and no bikes; square for a lane, a track beside the road and one way. Not the signs\' blue: blue is kept for water and for where you are (DESIGN.md). Quiet in both looks, and on the glass.'],
+  b: ['B · Signs in the map\'s colours', 'The same signs, filled with Colour by\'s colour for that fact, so the card\'s picture and the way\'s colour on the map are the same. More colour on the card: the colour of a bikes fact is a scale\'s, not a meaning of its own.'],
+  c: ['C · Pictures alone', 'The bike and the walker without a sign round them: the lightest, but further from the signs people know, and a lane and a track beside the road read alike.'],
+};
+function legend() {
+  const el = document.getElementById('legend'), d = frames[0].contentDocument;
+  if (d) colour = (v) => getComputedStyle(d.documentElement).getPropertyValue(v).trim() || '#888';
+  const o = S.opt === 'today' ? 'a' : S.opt, row = (k) => `<li><span class="slot"><span class="big" style="width:${wide(k, 40)}px">${pic(k, o, 40)}</span></span><span class="slot" style="width:36px"><i class="fi" style="width:${wide(k, 20)}px">${pic(k, o)}</i></span>${NAMES[k]}</li>`;
+  const grades = Object.keys(GRADE).map((k) => { const c = colour(GRADE[k]); return `<span class="badge${darkWords(c) ? ' ink' : ''}" style="background:${c};display:inline-flex;min-width:32px;height:22px;padding:0 6px;border-radius:7px;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:${darkWords(c) ? '#000' : '#fff'}">${k}</span>`; }).join(' ');
+  const list = `<ul>${Object.keys(NAMES).map(row).join('')}<li class="none">No picture: ${QUIET.join(', ')} (the usual case, said in words)</li></ul><h3 style="margin-top:10px">Grades, as their colour</h3><p style="margin:0;display:flex;flex-wrap:wrap;gap:4px">${grades}</p>`;
+  el.innerHTML = `<section class="lg light"><h3>${S.opt === 'today' ? 'A, for comparison' : ABOUT[S.opt][0]}: light</h3>${list}</section><section class="lg dark"><h3>${S.opt === 'today' ? 'A, for comparison' : ABOUT[S.opt][0]}: dark</h3>${list}</section>`;
+}
+function sync() {
+  for (const [id, k] of [['sw-opt', 'opt'], ['sw-scene', 'scene'], ['sw-look', 'look']]) for (const b of document.querySelectorAll(`#${id} button`)) b.setAttribute('aria-pressed', String(b.dataset.v === S[k]));
+  document.documentElement.dataset.theme = S.look;
+  document.getElementById('about').innerHTML = `<h2>${ABOUT[S.opt][0]}</h2><p>${ABOUT[S.opt][1]}</p><p>${SCENES[S.scene].say} The words stay beside every picture, so a screen reader reads the fact as today, and the pictures are hidden from it (<code>aria-hidden</code>). A grade is the card's own badge (<code>badge</code>, a climb's), on the difficulty's colour.</p>`;
+  history.replaceState(null, '', `?opt=${S.opt}&scene=${S.scene}&look=${S.look}`);
+  legend();
+}
+const fit = () => { const box = document.querySelector('#desk .box'); document.querySelector('#desk iframe').style.transform = `scale(${box.clientWidth / 1180})`; };
+addEventListener('resize', fit);
+for (const [id, k] of [['sw-opt', 'opt'], ['sw-scene', 'scene'], ['sw-look', 'look']]) {
+  document.getElementById(id).addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    S[k] = b.dataset.v;
+    sync();
+    if (k === 'opt') for (const fr of frames) { if (fr.contentDocument) for (const b2 of fr.contentDocument.querySelectorAll('.pick-facts .insp-row b')) delete b2.dataset.opt; paint(fr); }
+    else if (k === 'look') for (const fr of frames) { if (fr.contentWindow && fr.contentWindow.polku) fr.contentWindow.document.documentElement.dataset.theme = S.look; paint(fr); }
+    else for (const fr of frames) if (fr.offsetParent) show(fr);
+  });
+}
+sync();
+fit();
+for (const fr of frames) if (fr.offsetParent) show(fr).then(legend);
+</script>
+</body>
+</html>

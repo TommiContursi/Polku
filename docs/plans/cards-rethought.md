@@ -10,6 +10,18 @@ The design. What's still to do, and its status, is on GitHub: [#574](https://git
 - **Built so far:** ways for every tap and the join, the pick drawn on the map, the way's card with Colour by; the line at the spot and the hover; places and the map's other things on the same card (the old popups gone); a route point's card (a tap: when, how far, the profile up to it; a hold or a right-click: its actions); a lake's and a park's card with its outline (OpenStreetMap's `is_in`), and the water's depth and Paddle from here on a pick's card. Still to build: the icons and the motion's review. LIPAS areas aren't built: Polku loads LIPAS's places and routes, not their outlines.
 - **Changed after testing on 2026-10-31:** Colour by is the route's dropdown, not chips; the card's profile is the route's own chart, which you can point at, synced with the map; the profile, Colour by and its words fold as one group, remembered, and folded the weather along the way isn't asked; while the way loads, grey shapes in the card's own shapes (/animate), and the pick is drawn as far as it has come ("long so far"); the loading says in words what it waits for, and the profile folds while it loads.
 
+## The icons (2026-11-01)
+
+The package's third change: a grade as its colour, and how bikes get along as pictures like the traffic signs, with the words beside them for screen readers. [mockups/cards-icons.html](mockups/cards-icons.html) shows them in the app's own card, on the recorded ways of `tools/fixtures/ways-tampere.json`, beside today, at 390 × 844 and on a desktop, light and dark (`?opt=today|a|b|c&scene=…&look=light|dark`).
+
+- **A grade** (MTB, hiking, uphill) is the card's `badge`, a climb's: black or white words on the difficulty's colour (`darkWords()`), before its word ("S2 medium").
+- **How bikes get along and one way**, three ways to draw them:
+  - **A, signs in ink (recommended):** the signs' shapes drawn in the words' own colour. Round for a cycleway, a path for walkers and no bikes; a rounded plate for shared with walkers or apart from them; square for a cycle lane, a cycle track or a cycleway beside the road, and one way. It keeps the card's surfaces quiet (DESIGN.md's Map Holds the Colour rule), reads the same in both looks and on the glass.
+  - **B, signs in the map's colours:** the same, filled with Colour by's colour for that fact, so the card and the drawn way match. More colour on the card, and a bikes colour is a scale's, not a meaning of its own.
+  - **C, pictures alone:** the figures without a sign round them. The lightest, but further from the signs people know.
+- **Not the signs' blue:** blue is kept for water and for where you are. **No picture** for the usual case: on a trail, with traffic, both ways.
+- **Found in the mock-up:** a bike and a walker stacked in a round sign, as on the road, blur at 20 px, so two figures sit side by side on a wider plate. A picture stays on the line of its first word, so a row never breaks between them. In the build the pictures are sized in `em`, so they grow with larger text, and hidden from screen readers (`aria-hidden`): the words say it.
+
 ## Why
 
 Today a tap on a trail opens a big card with about three facts, while the small hover says more ("Path · ↑S2 13 % · unpaved"). Which facts show depends on the sport, so in Gravel an S3 trail's card leaves its grade out (#561). The card has many buttons at once, most of them not needed most of the time. A tap on a street or a long trail doesn't show what was picked. The map's other things (road works, sea marks, the water's depth) still open an older popup with its own look (#564), and road works' dates have no year (#565).
