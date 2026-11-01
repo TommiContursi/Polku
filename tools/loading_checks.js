@@ -159,6 +159,22 @@ export async function missingProfile(failsAgain = false) {
   return { uploads, routes, recovered: !failsAgain };
 }
 
+export async function profileReuploadFails() {
+  const c = clock(), R = await import('../js/router.js');
+  let uploads = 0;
+  const routes = [];
+  window.fetch = async (url) => {
+    if (String(url).includes('.brf')) return new Response('profile');
+    if (String(url).includes('/profile/')) return ++uploads === 1 ? Response.json({ profileid: 'custom_polku-road-1' }) : Response.json({ error: 'disk full' });
+    routes.push(new URL(url).searchParams.get('profile'));
+    return routes.length === 1 ? new Response('', { status: 500 }) : Response.json(routeJSON(url));
+  };
+  const result = track(R.routeLeg(leg('custom_polku-road-1'))); await c.settle();
+  assert(result.value?.coords.length === 2 && result.value.note, `a failed re-upload did not route with the stock profile and its note (${result.error?.message || 'no note'})`);
+  assert(uploads === 2 && routes.join() === 'custom_polku-road-1,fastbike-lowtraffic', `a failed re-upload: ${uploads} uploads, routes ${routes.join(' then ')}`);
+  return { uploads, routes };
+}
+
 export async function routingDeadline() {
   const c = clock(), R = await import('../js/router.js');
   localStorage.setItem('polku:brouterUrl', JSON.stringify('https://own.test/brouter'));
