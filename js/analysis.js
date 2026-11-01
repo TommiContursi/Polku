@@ -38,7 +38,7 @@ export function wayOf(t) {
 const mtbScale = (t) => {
   const v = t && t['mtb:scale'];
   const n = v ? parseInt(v, 10) : NaN;
-  return Number.isFinite(n) ? n : -1;
+  return n >= 0 && n <= 6 ? n : -1; // (S0–S6; anything else, mtb:scale=22 say, isn't a grade)
 };
 
 /** Uphill difficulty 0–5 from average/max grade (mtb:scale:uphill style). */

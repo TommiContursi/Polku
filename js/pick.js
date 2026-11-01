@@ -57,7 +57,7 @@ export async function resolvePick(pick, changed) {
     pick.title = wayTitle(j.chain);
     pick.line = wayLine(j.chain);
   };
-  const j = await joinWay(seed, (part) => step(() => put({ ...part, side: [] }, true)));
+  const j = await joinWay(seed, pick.ll, (part) => step(() => put({ ...part, side: [] }, true)));
   if (pick.dead) return;
   step(() => put(j, false));
   try {

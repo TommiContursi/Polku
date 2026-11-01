@@ -342,7 +342,7 @@ export function wayGroups(chain, a = null) {
   const apart = chain.some(({ w }) => /separate/.test(w.tags.sidewalk || w.tags['sidewalk:both'] || ''));
   const no = [notOn((x) => x.bicycle === 'no', 'bikes'), notOn((x) => x.foot === 'no', apart ? 'walking (the pavement is mapped apart)' : 'walking'), notOn((x) => x.horse === 'no', 'horses'),
     notOn((x) => x.access === 'private' || (x.access === 'no' && !['yes', 'designated'].includes(x.bicycle) && !['yes', 'designated'].includes(x.foot)), 'marked private')].filter(Boolean);
-  const one = chain.some(({ w }) => w.tags.oneway === 'yes') ? v(oneWayOf, (k) => WAY_SCALES.oneway.items[k][0]) : null;
+  const one = chain.some(({ w }) => ['yes', '-1'].includes(w.tags.oneway)) ? v(oneWayOf, (k) => WAY_SCALES.oneway.items[k][0]) : null;
   const steepest = (() => {
     if (!a) return 0;
     let s = 0;

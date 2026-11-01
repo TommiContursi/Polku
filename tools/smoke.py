@@ -16204,10 +16204,12 @@ SPLIT_WALK = """(async (url) => {
   const [tx, ty] = W.wayTile([21.105, 60.505]), [w, s] = G.tileBounds(tx, ty, W.WAYS_Z), y = s + 0.005, x0 = w + 0.002;
   const P = [[x0, y], [x0 + 0.002, y], [x0 + 0.004, y], [x0 + 0.002, y + 0.002]].map(([u, v]) => [+u.toFixed(5), +v.toFixed(5)]);
   const f = (...ps) => ps.flat(), n = (i) => 8e12 + i, path = { highway: 'path' };
+  const ll = [(P[0][0] + P[1][0]) / 2, P[0][1]];
   W.seedWays(tx, ty, { v: 2, w: [[801, 0, path, [n(1), n(3)], f(P[0], P[1], P[2]), null]] });
+  const before = W.nearestWay(ll, 5); // (found before the next tile cuts it: a join must start from its part at the tap)
   W.seedWays(tx + 1, ty, { v: 2, w: [[801, 0, path, [n(1), n(2)], f(P[0], P[1]), null], [801, 1, path, [n(2), n(3)], f(P[1], P[2]), null], [802, 0, path, [n(2), n(4)], f(P[1], P[3]), null]] });
-  const chain = W.walk(W.nearestWay([(P[0][0] + P[1][0]) / 2, P[0][1]], 5)).chain;
-  return { ids: chain.map((x) => x.w.id), len: Math.round(chain.reduce((m, x) => m + x.w.len, 0)), half: Math.round(G.lineLength([P[0], P[1]])), ll: [(P[0][0] + P[1][0]) / 2, P[0][1]] };
+  const chain = W.walk(W.nearestWay(ll, 5)).chain, j = await W.joinWay(before, ll), sum = (c) => Math.round(c.reduce((m, x) => m + x.w.len, 0));
+  return { ids: chain.map((x) => x.w.id), len: sum(chain), joined: [j.chain.map((x) => x.w.id), sum(j.chain)], half: Math.round(G.lineLength([P[0], P[1]])), ll };
 })"""
 # the card as a person reads it, once the ways and the heights are in
 PICK_STATE = """(() => {
@@ -16272,8 +16274,16 @@ def pick_card(chrome):
         if got != [901, 902, 904, 905, 906]:
             fails.append(f'a cycleway beside a street: the pick from its first piece joins {got}, not 901, 902, 904 (a crossing), 905 and 906 (named)')
         got = pg.js(f"({SPLIT_WALK})('/js/ways.js')")
-        if got['ids'] != [801] or got['len'] != got['half']:
-            fails.append(f"a path two tiles cut differently: the pick from its first half joins {got['ids']}, {got['len']} m (801 alone, {got['half']} m: it stops where 802 meets it)")
+        if got['ids'] != [801] or got['len'] != got['half'] or got['joined'] != [[801], got['half']]:
+            fails.append(f"a path two tiles cut differently: the pick from its first half joins {got['ids']}, {got['len']} m, and from the piece found before the cut {got['joined']} (801 alone, {got['half']} m: it stops where 802 meets it)")
+        # a grade that isn't one (mtb:scale=22, way 1395501139 of the recording): not graded, and the card finishes (Codex on #623)
+        r = tap(pg, pg.js("(() => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 1395501139), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()"))
+        if (r['ways'], r['heights']) != ('in', 'in') or not r['chips'] or not r['chart']:
+            fails.append(f"a path with mtb:scale=22: ways {r['ways']}, heights {r['heights']}, Colour by {len(r['chips'])} choices, the profile {r['chart']} (the card finished)")
+        # a one-way street mapped against its drawing (oneway=-1) says it's one way (Codex on #623)
+        one = pg.js("import(location.origin + '/js/facts.js').then((F) => F.wayGroups([{ w: { tags: { highway: 'residential', oneway: '-1' }, len: 100 } }]).along.find((x) => x[0] === 'One way'))")
+        if not one or one[1] != 'One way, bikes too':
+            fails.append(f"a way with oneway=-1: its One way row {one}")
         # with no terrain there (its tiles failing): no number that isn't there, and Try again (Codex on #623: "NaN m")
         pg.js("window.__dem.mode = 'fail'; true")
         nt = pg.js(f"""(async () => {{ const p = polku.planner; p.cards.close(); polku.map.jumpTo({{ center: {json.dumps(got['ll'])}, zoom: 16.5 }}); p.openSpotCard({json.dumps(got['ll'])});
@@ -16479,6 +16489,19 @@ def pick_card(chrome):
         r = pg.js(line)
         if not before['line'] or r['line'] or r['card'] or r['drawn']:
             fails.append(f"390x844: a tap away from the line {before['line']}: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn (all gone)")
+        # the line grows as it fills in (a long name here): still whole on the screen, under the spot if there's no room above it now
+        # (Codex on #623: it was fitted only as it opened)
+        grow = pg.js("""(async () => {
+          const p = polku.planner, m = polku.map, ll = polku.map.getCenter().toArray(), b = () => document.querySelector('.spot-line'), frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          p.cards.close(); p.openSpotCard(ll, { touch: true });
+          for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
+          if (!b()) return null;
+          const top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;
+          m.panBy([0, b().getBoundingClientRect().top - top - 4], { duration: 0 }); await frame();
+          p.picked.pick.title = 'Kuntokolmosen pohjoispuolen metsäpolku, jonka nimi ei mahdu yhdelle eikä kahdelle riville'; p.renderLine(); await frame();
+          const r = b().getBoundingClientRect(); p.hideLine(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), limit: Math.round(top), h: innerHeight }; })()""")
+        if not grow or grow['top'] < grow['limit'] - 1 or grow['bottom'] > grow['h']:
+            fails.append(f"390x844: the line grown with a long name: {grow} (whole on the screen, under the top bar)")
         fails += [f'390x844 console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"390x844: raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")

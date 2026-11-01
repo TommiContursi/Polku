@@ -3779,17 +3779,21 @@ export class Planner {
     // (in a plain div: the map moves the marker by its transform, which the button's own press and entrance mustn't animate)
     this.lineMk = new maplibregl.Marker({ element: h('div', {}, this.line.el), anchor: 'bottom', offset: [0, -22] }).setLngLat(card.spot.ll).addTo(this.map);
     this.linePin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(card.spot.ll).addTo(this.map);
-    // whole on the screen for a tap by its edge (a phone at 200 %): in from the sides, and under the spot with no room above it
+    this.drawPick(card.pick);
+    this.fitLine();
+  }
+  renderLine() { if (this.line) { this.line.update(); this.fitLine(); } }
+  // As it opens and each time it grows (its heights, the weather, its name): whole on the screen for a tap by its edge (a phone
+  // at 200 %), in from the sides and under the spot with no room above it; over the map's buttons, they step aside (#435)
+  fitLine() {
+    this.lineMk.setOffset([0, -22]);
     const r = this.line.el.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;
     const dx = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8)), dy = r.top < top ? r.height + 44 : 0;
     if (dx || dy) this.lineMk.setOffset([dx, dy - 22]);
-    this.drawPick(card.pick);
-    // over the map's buttons where it meets them (a phone at 200 %): they step aside while it shows, as a card's do (#435)
     const b = this.line.el.getBoundingClientRect(), col = document.getElementById('map-ctrls').getBoundingClientRect();
-    this.lineOver = b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
-    if (this.lineOver) document.body.classList.add('card-over');
+    const over = b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
+    if (over !== !!this.lineOver) { this.lineOver = over; document.body.classList.toggle('card-over', over); }
   }
-  renderLine() { if (this.line) this.line.update(); }
   // keep: its card is opening, so the pick stays
   hideLine({ keep = false } = {}) {
     const c = this.picked;

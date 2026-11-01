@@ -244,14 +244,17 @@ function oriented(chain) {
  * The pick for a tapped piece: the chain, the other carriageway and where it stopped; the tiles its ends run into are
  * loaded first (up to six), and `grew(walk)` has the chain so far before each.
  */
-export async function joinWay(seed, grew = () => {}) {
-  let j = walk(seed);
+export async function joinWay(seed, at, grew = () => {}) {
+  // (the tapped piece as the index has it now: a tile loaded since may have cut it, index(); the part nearest the tap)
+  const near = (w) => Math.min(...w.coords.slice(1).map((c, i) => pointSegment(at, w.coords[i], c).d));
+  const again = () => { const now = ofWay.get(seed.id) || []; if (!now.includes(seed)) seed = now.reduce((b, p) => (near(p) < near(b) ? p : b)); return seed; };
+  let j = walk(again());
   for (let k = 0; k < 6; k++) {
     const out = Object.values(j.stops).filter((s) => s.why === 'end' && !waysLoaded(s.at));
     if (!out.length) break;
     grew(j);
     await Promise.all(out.map((s) => loadWays(wayTile(s.at)).catch(() => null)));
-    j = walk(seed);
+    j = walk(again());
   }
   // (an end in a tile that didn't load: the way may go on, and the card says so)
   for (const s of Object.values(j.stops)) s.unloaded = s.why === 'end' && !waysLoaded(s.at);
