@@ -557,6 +557,16 @@ TRAILS = """(async () => {
   const kinds = new Set(osm.map((f) => f.properties.w));
   if (!kinds.has(0) || !kinds.has(2)) errs.push('no narrow or no wide trail in view');
   if (!osm.some((f) => f.properties.vis >= 2)) errs.push('no faint trail in view');
+  // zoomed out the details draw nothing, and no tiles are listed: the world at zoom 1 was 0.4 s and 840 MB a move (#667)
+  {
+    const T = await import(location.origin + '/js/trails.js');
+    let bounds = 0;
+    const shown = [], far = { getZoom: () => 5, getBounds: () => { bounds++; return { getWest: () => 17, getSouth: () => 57, getEast: () => 33, getNorth: () => 72 }; }, on: () => {} };
+    const d = new T.TrailDetails(far, { onData: (ways) => shown.push(ways.features.length), onCoverage: () => {} });
+    d.enabled = true;
+    d.update();
+    if (bounds || shown.join() !== '0') errs.push(`zoomed out (zoom 5), the trail details asked the view's bounds ${bounds} times and published ${shown}`);
+  }
   m.jumpTo({ center: [25.7652, 62.2290], zoom: 17.2 });
   await wait(800); await idle();
   const pts = m.queryRenderedFeatures({ layers: ['td-points'] });
@@ -4552,6 +4562,15 @@ WINTER = """(async () => {
   W.setWinterSetting('on'); if (!W.isWinter(0, false)) errs.push('On');
   W.setWinterSetting('off'); if (W.isWinter(50, true)) errs.push('Off');
   W.setWinterSetting('on');
+  // zoomed out the winter ways draw nothing, and no tiles are listed (#667)
+  {
+    let bounds = 0;
+    const shown = [], far = { getZoom: () => 5, getBounds: () => { bounds++; return { getWest: () => 17, getSouth: () => 57, getEast: () => 33, getNorth: () => 72 }; }, on: () => {} };
+    const ww = new W.WinterWays(far, (fc) => shown.push(fc.features.length));
+    ww.on = true;
+    ww.publish();
+    if (bounds || shown.join() !== '0') errs.push(`zoomed out (zoom 5), the winter ways asked the view's bounds ${bounds} times and published ${shown}`);
+  }
   // the map in winter: the recorded tile, drawn
   W.holdWinterFetches(true);
   W.seedWinterTile(fx.x, fx.y, fx.data);
