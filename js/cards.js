@@ -611,13 +611,15 @@ export function pickCard(pl, spot) {
   };
   // (as a card, or as the line at the spot before it's opened)
   const changed = () => { const line = pl.picked === card; if (here() || line) pl.drawPick(pick); if (here()) pl.cards.refresh(); if (line) pl.renderLine(); };
-  pick.again = () => { retryTerrainTiles(); pick.ways = pick.a = pick.area = pick.depth = undefined; pl.cards.refresh(); resolvePick(pick, changed); };
+  // (the card and the line say OpenStreetMap is slow once SLOW has passed since the tap, or since Try again)
+  const asking = () => { pick.at = Date.now(); setTimeout(() => { if (!pick.dead && pick.ways === undefined) changed(); }, SLOW); };
+  pick.again = () => { retryTerrainTiles(); pick.ways = pick.a = pick.area = pick.depth = undefined; asking(); pl.cards.refresh(); resolvePick(pick, changed); };
   pick.weather = () => loadWeather(pick, changed);
   resolvePick(pick, changed);
-  // (the card and the line say OpenStreetMap is slow once 10 s have passed)
-  setTimeout(() => { if (!pick.dead && pick.ways === undefined) changed(); }, 10000);
+  asking();
   return card;
 }
+const SLOW = 10000; // ms before a pick says OpenStreetMap is slow to answer
 const PLAIN = '#374151';
 const markColour = (pick) => (pick.a && pick.a !== 'failed' && (breakdownRows(pick.a, modeOf(pick.a))[0] || [])[2]) || PLAIN;
 // The map's other things (#564): road works, an incident, road conditions, a busy road, a military area, a sea mark and its
@@ -651,7 +653,7 @@ export function pickLine(card, open) {
   const update = () => {
     const { pick, spot } = card, a = pick.a && pick.a !== 'failed' ? pick.a : null, w = pick.wx && pick.wx !== 'failed' ? pick.wx : null;
     const k = a && nearestSample(a, spot.ll), gr = a && !(a.eleGap && a.eleGap[k]) ? Math.round(a.grade[k]) || 0 : null;
-    const rows = [card.sub, pick.ways === undefined ? (Date.now() - pick.at >= 10000 ? 'OpenStreetMap is slow: still asking…' : 'Loading the whole way…') : null, gr != null ? `${Math.round(a.ele[k])} m · ${gr >= 0 ? '+' : '−'}${Math.abs(gr)} % here` : null,
+    const rows = [card.sub, pick.ways === undefined ? (Date.now() - pick.at >= SLOW ? 'OpenStreetMap is slow: still asking…' : 'Loading the whole way…') : pick.ways === 'failed' ? 'OpenStreetMap didn’t answer' : null, gr != null ? `${Math.round(a.ele[k])} m · ${gr >= 0 ? '+' : '−'}${Math.abs(gr)} % here` : null,
       w ? `Wind ${w.speed.toFixed(0)} m/s from the ${compass(w.dir)} · ${w.temp.toFixed(0)} °C · ${w.precip >= 0.1 ? `${w.temp < 0.5 ? 'snow' : 'rain'} ${w.precip.toFixed(1)} mm/h` : 'dry'}${w.stale ? ' · older forecast' : ''}` : null].filter(Boolean);
     el.setAttribute('aria-label', `${card.title}. ${rows.join('. ')}. Open its card`);
     el.replaceChildren(h('span', {}, h('b', {}, card.title), ...rows.map((r) => h('small', {}, r))), h('span', { class: 'ic', 'aria-hidden': 'true', html: icon('chevronUp', 18) }));
@@ -801,7 +803,7 @@ function pickBody(pl, card, body) {
     const stops = Object.values(w.stops);
     if (stops.some((s) => s.unloaded)) body.append(failed('It may go on: the ways beyond didn’t load.'));
     if (stops.some((s) => s.why === 'long')) body.append(failed('It goes on for more than 25 km: the card stops there.'));
-  } else if (w === undefined) body.append(skeleton(pick, Date.now() - pick.at >= 10000 ? 'OpenStreetMap is slow to answer: still asking. What shows meanwhile is the map’s own.' : 'Loading the whole way from OpenStreetMap', h('div', { class: 'pick-skel-nums', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'))), profileGroup(pl, card, null));
+  } else if (w === undefined) body.append(skeleton(pick, Date.now() - pick.at >= SLOW ? 'OpenStreetMap is slow to answer: still asking. What shows meanwhile is the map’s own.' : 'Loading the whole way from OpenStreetMap', h('div', { class: 'pick-skel-nums', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'))), profileGroup(pl, card, null));
   else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again));
   else {
     // (an area's edge only when all of it came: a big lake's outline is cut some kilometres off)

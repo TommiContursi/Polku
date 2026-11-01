@@ -16328,9 +16328,20 @@ def pick_card(chrome):
             fails.append(f"a way with no terrain: its numbers {nt['nums']}, Try again {nt['again']}, after Try again online: {nt['after']} (? for up and down, no terrain, and Try again that asks again)")
         # #562: a detail that wasn't loaded is never "not mapped": the ways failing, the card says what it has, no claim
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
-        r = tap(pg, [25.7652, 62.2289], want=('failed', None), secs=15, right=True)
-        if r['ways'] != 'failed' or re.search(r'not mapped', r['text'], re.I) or "didn’t answer" not in r['text']:
-            fails.append(f"the ways not loaded: {r['ways']}, “not mapped” in the card {bool(re.search('not mapped', r['text'], re.I))}, says it didn't answer {'didn’t answer' in r['text']}")
+        r = tap(pg, [24.93773, 60.17055], want=('failed', None), secs=15, right=True)  # (a road of the map's own under it, so the map's own piece can stay drawn)
+        if r['ways'] != 'failed' or re.search(r'not mapped', r['text'], re.I) or "didn’t answer" not in r['text'] or not r['drawn']:
+            fails.append(f"the ways not loaded: {r['ways']}, “not mapped” in the card {bool(re.search('not mapped', r['text'], re.I))}, says it didn't answer {'didn’t answer' in r['text']}, {r['drawn']} lines drawn (the map's own way stays drawn)")
+        # Try again starts the clock again (#675): 11 s after the first tap it says it's asking, not that OpenStreetMap is slow, and 10 s on (no refresh
+        # by hand: the timer) that it is slow
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, false, true); return true; })')
+        again = pg.js("""(async () => {
+          const pick = polku.planner.cards.current.pick, box = () => document.querySelector('.pl-way.card');
+          pick.at -= 11000; [...box().querySelectorAll('.pick-fail button')].find((b) => b.textContent === 'Try again').click();
+          await new Promise((r) => setTimeout(r, 400));
+          const out = { soon: box().textContent };
+          await new Promise((r) => setTimeout(r, 11000)); out.later = box().textContent; return out; })()""", timeout=30000)
+        if 'Loading the whole way' not in again['soon'] or 'OpenStreetMap is slow' in again['soon'] or 'OpenStreetMap is slow to answer' not in again['later']:
+            fails.append(f"Try again 11 s after the tap: the card says “{again['soon'][:120]}”, 10 s on “{again['later'][:120]}” (asking again, then slow after 10 s more)")
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
         # #675: the ways still coming from Overpass (here, never): the map's own way is drawn at once, and the card says it's asking, and
         # after 10 s that OpenStreetMap is slow
@@ -16338,7 +16349,8 @@ def pick_card(chrome):
         r = tap(pg, [24.93773, 60.17055], want=(None, None), secs=3)
         if r['kind'] != 'spot' or r['ways'] is not None or not r['drawn'] or 'Loading the whole way' not in r['text']:
             fails.append(f"a tap on a way while its ways come: {r['kind']} card, ways {r['ways']}, {r['drawn']} lines drawn, the card says “{r['text'][:160]}” (the map's own way drawn at once, “Loading the whole way”)")
-        slow = pg.js("(() => { polku.planner.cards.current.pick.at -= 11000; polku.planner.cards.refresh(); return document.querySelector('.pl-way.card').textContent; })()")
+        # (11 s on, nothing refreshes it by hand: the card's own timer)
+        slow = pg.js("(async () => { await new Promise((r) => setTimeout(r, 11000)); return document.querySelector('.pl-way.card').textContent; })()", timeout=30000)
         if 'OpenStreetMap is slow to answer' not in slow or 'Loading the whole way' in slow:
             fails.append(f"a tap on a way, its ways 11 s late: the card says “{slow[:160]}” (OpenStreetMap is slow to answer: still asking)")
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
@@ -16568,16 +16580,25 @@ def pick_card(chrome):
         if not beside or beside['buttons'] != 'visible' or beside['over'] or beside['crossing']:
             fails.append(f"390x844: the line at a spot by the right edge: {beside} (the map's buttons visible, the line beside them, not over)")
         # #675: the ways still coming (here, never): the line says it's asking, the map's own way is drawn, and after 10 s that OpenStreetMap is slow
-        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, false, true); return true; })')
-        wait = pg.js("""(async () => {
-          const p = polku.planner, m = polku.map, ll = [24.93773, 60.17055], b = () => document.querySelector('.spot-line'), words = () => (b() ? [...b().querySelectorAll('b, small')].map((e) => e.textContent) : null);
+        # (the line on a way of the map's own, as the phone's tap opens it)
+        on_a_way = """const p = polku.planner, m = polku.map, ll = [24.93773, 60.17055], b = () => document.querySelector('.spot-line'), words = () => (b() ? [...b().querySelectorAll('b, small')].map((e) => e.textContent) : null);
           p.cards.close(); m.jumpTo({ center: ll, zoom: 16.5 });
           const q = m.project(ll), t0 = Date.now();
           while (Date.now() - t0 < 20000 && !m.queryRenderedFeatures([[q.x - 14, q.y - 14], [q.x + 14, q.y + 14]]).some((f) => /^(path|track|cycleway|road)-/.test(f.layer.id))) await new Promise((r) => setTimeout(r, 250));
           p.openSpotCard(ll, { touch: true });
           for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
           await new Promise((r) => setTimeout(r, 400));
-          const out = { line: words(), drawn: m.querySourceFeatures('pick').length };
+          const out = { line: words(), drawn: m.querySourceFeatures('pick').length };"""
+        # the ways failed (first: a tile still coming stays asked for, a failed one is asked again): the map's own way stays drawn, and the line says OpenStreetMap didn't answer, so it never reads as finished
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
+        gone = pg.js("(async () => {" + on_a_way + """
+          await new Promise((r) => setTimeout(r, 1500)); out.line = words(); out.drawn = m.querySourceFeatures('pick').length; p.hideLine();
+          return out; })()""", timeout=40000)
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
+        if not gone['line'] or not re.search(r'OpenStreetMap didn’t answer', ' '.join(gone['line'])) or not gone['drawn']:
+            fails.append(f"390x844: a tap on a way, its ways failed: the line {gone['line']}, {gone['drawn']} lines drawn (the map's own way still drawn, and “OpenStreetMap didn’t answer”)")
+        pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, false, true); return true; })')
+        wait = pg.js("(async () => {" + on_a_way + """
           if (p.picked) { p.picked.pick.at -= 11000; p.renderLine(); out.slow = words(); p.hideLine(); }
           return out; })()""", timeout=40000)
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
