@@ -2,7 +2,7 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-10-31
+## 2026-11-01
 
 ### The desktop's top bar and toolbar keep their places ([#594](https://github.com/TommiContursi/Polku/issues/594), [#595](https://github.com/TommiContursi/Polku/issues/595))
 
@@ -21,6 +21,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))
 
 - Beside a desktop's side panel, "1 to read before you go" now appears under the route's numbers, so they stay where they are when it comes. On a phone's peek and in a panel at the bottom, which grow up from their foot, it stays above them. At half and full height it still moves the numbers.
+## 2026-10-31
+
 ### Clearer terrain maps, aerial photos and depths ([#649](https://github.com/TommiContursi/Polku/issues/649), [#650](https://github.com/TommiContursi/Polku/issues/650), [#653](https://github.com/TommiContursi/Polku/issues/653))
 
 - **Maastokartta** and **MML WMTS** keep a more detailed terrain map when you zoom out, including their overlay versions. Aerial photos and the depth and road layers use sharper images on high-density screens, with the depth and road symbols kept at a readable size.
