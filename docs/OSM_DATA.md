@@ -93,6 +93,9 @@ environments were changed by this implementation.
 
 ## Publication and activation
 
+For the first validated OVH publication, manually run **Finland OSM data → Run workflow → publish-existing** on `main`. This one-time operation downloads the already successful `finland-osm-release` from run `41350050764`, checks its local hashes and the remote upload, tests public Range/CORS and switches `current.json` only after verification. It does not start a new build or enable unattended publication. The existing protected GitHub environment still applies, and the application setting remains off until separate activation. The run artifact expires after 14 days; if it is no longer available, build a fresh release and update the pinned run ID through review before trying again.
+
+
 GitHub makes this new manual workflow available once its file is on the default
 branch ([workflow_dispatch documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)).
 Before merging, an approved first publication can use the same builder and
