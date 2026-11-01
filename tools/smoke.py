@@ -5573,7 +5573,7 @@ def loading(chrome):
               ('plannerCancellation', ''), ('plannerSharedGeneration', ''),
               ('alreadyCancelledRequest', ''), ('networkDeadline', ''),
               ('customRefusal', '403'), ('customRefusal', '429'), ('customRefusal', '500'), ('customRefusal', '503'),
-              ('missingProfile', ''), ('customRecovery', ''), ('profileQueueBudget', ''), ('routingDeadline', ''), ('routingBodyFallback', ''),
+              ('missingProfile', ''), ('missingProfile', 'true'), ('customRecovery', ''), ('profileQueueBudget', ''), ('routingDeadline', ''), ('routingBodyFallback', ''),
               ('valhallaDeadline', ''), ('valhallaCancellation', ''),
               ('terrainPool', ''), ('terrainDeadline', ''), ('terrainPendingCache', ''), ('lipasViewport', ''), ('lipasShared', ''), ('lipasLate', ''),
               ('overpassValidity', ''), ('overpassValidity', "'shape'"), ('overpassFourth', ''), ('overpassBudget', '')]

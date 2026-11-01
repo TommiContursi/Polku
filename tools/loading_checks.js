@@ -138,19 +138,25 @@ export async function customRefusal(status = 403) {
   return { status, uploads, routes };
 }
 
-export async function missingProfile() {
+export async function missingProfile(failsAgain = false) {
   const c = clock(), R = await import('../js/router.js'), N = await import('../js/net.js');
   let uploads = 0, routes = 0;
   window.fetch = async (url) => {
     if (String(url).includes('.brf')) return new Response('profile');
     if (String(url).includes('/profile/')) { uploads++; return Response.json({ profileid: 'custom_polku-road-1' }); }
     routes++;
-    return routes === 1 ? new Response('profile polku-road-1.brf does not exist', { status: 500 }) : Response.json(routeJSON(url));
+    return routes === 1 || failsAgain ? new Response('', { status: 500 }) : Response.json(routeJSON(url));
   };
   const result = track(R.routeLeg(leg('custom_polku-road-1'))); await c.settle();
-  assert(result.value?.coords.length === 2 && uploads === 2 && routes === 2, 'a positively identified missing profile did not recover once');
-  assert(!N.sourceStatus('brouter'), 'a missing profile imposed a general outage cooldown');
-  return { uploads, routes, recovered: true };
+  assert(uploads === 2 && routes === 2, `an empty custom-profile 500: ${uploads} uploads and ${routes} route requests`);
+  if (failsAgain) {
+    assert(result.error?.name === 'Limited' && N.sourceStatus('brouter'), 'a failed profile recovery did not impose normal outage cooldown');
+    await R.routeLeg({ ...leg('custom_polku-road-1'), to: [24.02, 61.02] }).catch(() => {});
+    assert(uploads === 2 && routes === 2, 'the outage cooldown allowed another profile recovery');
+  } else {
+    assert(result.value?.coords.length === 2 && !N.sourceStatus('brouter'), 'an empty missing-profile 500 did not recover without outage cooldown');
+  }
+  return { uploads, routes, recovered: !failsAgain };
 }
 
 export async function routingDeadline() {

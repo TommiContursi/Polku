@@ -78,8 +78,8 @@ const nogoParam = (nogos) => (nogos && nogos.length
 const paramStr = (params) => Object.keys(params || {}).sort().map((k) => `&profile:${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('');
 
 // Polku's own profiles go to the routing server once per session (one fixed id
-// each, so it's one file there, not one per visitor). Only the explicit
-// missing-profile error means it should be uploaded again, once.
+// each, so it's one file there, not one per visitor). A missing file returns
+// an empty 500; try one re-upload, then apply normal backoff if routing fails.
 const uploaded = new Set();
 function ensureProfile(profile, signal, maxWait, again = false) {
   const def = CUSTOM_PROFILES[profile];
@@ -100,7 +100,6 @@ function ensureProfile(profile, signal, maxWait, again = false) {
 
 // the variables only Polku's own profiles have (a stock profile can't take them)
 const OWN_VARS = new Set(['unpaved_mainroad_factor', 'allow_private']);
-const missingProfile = (text, profile) => text.trim() === `profile ${profile.replace(/^custom_/, '')}.brf does not exist`;
 
 // alt: BRouter's alternative k (0 the first route, 1–3 other ways: #95)
 async function brouter(pts, profile, signal, nogos, maxWait, params, retried = false, alt = 0) {
@@ -123,10 +122,10 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
     `&profile=${profile}&alternativeidx=${alt}&format=geojson${nogoParam(nogos)}${paramStr(params)}&profile:processUnusedTags=1`;
   const res = await request(routerSource(), url, {
     signal, maxWait, timeoutMs: 120000,
-    backoff: custom ? async (r) => !(r.status === 500 && missingProfile(await r.clone().text(), profile)) : true,
+    backoff: custom && !retried ? async (r) => !(r.status === 500 && !(await r.clone().text()).trim()) : true,
   });
   const text = await res.text();
-  if (custom && res.status === 500 && missingProfile(text, profile) && !retried) {
+  if (custom && !retried && res.status === 500 && !text.trim()) {
     await ensureProfile(profile, signal, maxWait, true);
     return brouter(pts, profile, signal, nogos, maxWait, params, true, alt);
   }
