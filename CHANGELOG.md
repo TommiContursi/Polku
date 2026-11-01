@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-01
 
+### The route style stays on the toolbar when the planner is folded
+
+- On a phone, with the planner folded to its line, the toolbar still shows how the next leg is drawn with its sport and route style, such as **Follow paths**, Run · Balanced, and **⋯** with the whole route's actions, as it does with the planner open. Before, it showed only the drawing mode's icon, **Undo** and **Redo**.
+- At 200 % zoom, where the toolbar is wider than the screen, **Undo**, **Redo** and **⋯** go to a row of their own under the route style.
+
 ### Less waiting while routes and map data load ([#659](https://github.com/TommiContursi/Polku/issues/659))
 
 - Changing a route stops land-routing requests it no longer needs, while requests still needed by the current route are shared. A busy BRouter is left to recover with Polku's own route profiles too. Polku uploads its route profile again if the server has lost it.

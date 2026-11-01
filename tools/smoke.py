@@ -9229,7 +9229,7 @@ def fold_phone(chrome):
         # (the handle a button: Safari rings a div with tabindex after a tap, and it doesn't focus a button)
         if pg.js("polku.planner.els.handle.tagName") != 'BUTTON':
             fails.append('the handle is not a button')
-        # a tap on ⌄: one line, with the numbers, a button that says so, ✕ at its end; the drawing mode, undo and redo float
+        # a tap on ⌄: one line, with the numbers, a button that says so, ✕ at its end; the drawing mode with its style, undo, redo and More float
         pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
         fold_settled(pg, fails, 'step 2')
         s = info()
@@ -9242,8 +9242,11 @@ def fold_phone(chrome):
         if not s['lineX'] or s['lineX']['w'] < 44 or s['lineX']['h'] < 44 or s['lineX']['r'] < s['panel']['r'] - 16 or s['lineX']['t'] < s['panel']['t']:
             fails.append(f"folded: ✕ not at the line's end: {s['lineX']}")
         names = [t['name'] for t in s['toolBtns']]
-        if s['stage'] != 'folded' or s['docked'] or len(names) != 3 or not names[0].startswith('Draw the next leg') or names[1:] != ['Undo', 'Redo']:
+        if s['stage'] != 'folded' or s['docked'] or len(names) != 4 or not names[0].startswith('Draw the next leg') or names[1:3] != ['Undo', 'Redo'] or not names[3].startswith('More'):
             fails.append(f"folded: the toolbox {s['stage']}, docked {s['docked']}: {names}")
+        # (the style picker keeps its words, as it has them open: not the mode's icon alone)
+        if 'Balanced' not in pg.js("polku.planner.els.modeBtn.innerText"):
+            fails.append(f"folded: the style picker says “{pg.js('polku.planner.els.modeBtn.innerText')}”, not its style")
         if any(t['w'] < 44 or t['h'] < 44 for t in s['toolBtns']):
             fails.append(f"folded: a toolbox button under 44 px: {[(t['name'][:12], round(t['w']), round(t['h'])) for t in s['toolBtns']]}")
         if s['tools'] and s['tools']['b'] > s['panel']['t'] - 8:
