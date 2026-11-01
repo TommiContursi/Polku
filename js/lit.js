@@ -92,6 +92,7 @@ export class LitWays {
     this.onFail = onFail;
     this.on = false;
     this.failing = false;
+    this.wanted = new Set(); // the tiles in view, whose failures count
     this.shown = null;
     this.timer = 0;
     map.on('moveend', () => this.schedule());
@@ -107,13 +108,14 @@ export class LitWays {
   update() {
     const z = this.map.getZoom();
     // zoomed out it draws nothing: list no tiles (Finland in view at zoom 5 is 300,000 of them, Codex's review of #641)
-    if (!this.on || z < LIT_Z) { this.publish([]); return; }
+    if (!this.on || z < LIT_Z) { this.wanted = new Set(); this.publish([]); return; }
     const b = this.map.getBounds(), want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+    this.wanted = new Set(want.map((t) => t.join('/')));
     if (z >= LIT_MIN_ZOOM && want.length <= MAX_VIEW) {
       for (const [x, y] of want) {
         if (loaded(x, y)) continue;
         litTile(x, y).catch((err) => {
-          if (err.held || !this.on) return;
+          if (err.held || !this.on || !this.wanted.has(`${x}/${y}`)) return; // (a tile of a view you've left: #671)
           this.failing = true;
           this.onFail();
         });

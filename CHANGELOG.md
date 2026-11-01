@@ -31,6 +31,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The water's card has its depth from Traficom's chart and **Paddle from here**, also on the open sea and when OpenStreetMap doesn't answer. The depth is for planning, not navigation.
 - Road works' and incidents' dates show their year when it isn't this year, so works that run over a year no longer seem to end before they begin.
 
+### Lit ways says No data now only for what's in view ([#671](https://github.com/TommiContursi/Polku/issues/671))
+
+- A part of the map you've moved away from no longer makes **Lit ways** say **No data now** when its lighting fails to load late. The tile says it only while lighting is missing from the view you're looking at.
+
 ### Lit ways on the map ([#638](https://github.com/TommiContursi/Polku/issues/638))
 
 - **Lit ways**, in **Layers → More → After dark**, shows which paths and streets OpenStreetMap says are lit after dark. A lit way has a bright yellow line, and one it says isn't lit has a thin dashed grey line. A way OpenStreetMap says nothing about has no line, so no line doesn't mean dark.
