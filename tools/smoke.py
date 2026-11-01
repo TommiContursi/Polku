@@ -4642,6 +4642,192 @@ def winter(chrome):
     return not fails
 
 
+# Lit ways (#638). Overpass answers the lit query with the recorded Laajavuori ways (cut from the winter tile's lit
+# tags) as litQuery() asks for them: no tags, the lit ways, a count, then the unlit ones. While window.litFail is
+# 'remark' it answers 200 with a server-side timeout (#661: no data), while it's true 504; nothing else of Overpass
+# is answered.
+LIT_OVERPASS = """(() => {
+  const real = window.fetch.bind(window);
+  let fx = null;
+  window.litFail = false;
+  window.litAsked = 0;
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/overpass/.test(url)) return real(input, init);
+    const q = init && init.body ? new URLSearchParams(init.body).get('data') || '' : '';
+    if (!/way\\[highway\\]\\[lit~/.test(q)) return new Response('', { status: 504 });
+    window.litAsked++;
+    if (window.litFail === 'remark') return new Response(JSON.stringify({ remark: 'runtime error: Query timed out in "query" at line 1 after 26 seconds.', elements: [] }));
+    if (window.litFail) return new Response('', { status: 504 });
+    fx ||= await (await real(location.origin + '/tools/fixtures/lit-laajavuori.json')).json();
+    const way = ([id, , flat]) => ({ type: 'way', id, nodes: flat.filter((v, i) => i % 2 === 0).map((v, i) => id * 1000 + i), geometry: flat.flatMap((v, i) => (i % 2 ? [] : [{ lat: flat[i + 1], lon: v }])) });
+    const lit = fx.data.w.filter((w) => w[1]), unlit = fx.data.w.filter((w) => !w[1]);
+    return new Response(JSON.stringify({ elements: [...lit.map(way), { type: 'count', id: 0, tags: { ways: String(lit.length) } }, ...unlit.map(way)] }));
+  };
+})();"""
+
+LIT_HELP = """
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], map = polku.map, S = polku.state;
+  const until = async (ok, ms = 10000) => { for (const t0 = Date.now(); !ok() && Date.now() - t0 < ms;) await wait(100); return ok(); };
+  const idle = () => Promise.race([wait(15000), new Promise((r) => map.once('idle', r))]);
+  const qd = document.querySelector('#quick-layers');
+  const small = () => { const s = qd.querySelector('.qt[data-id="lit"] .qt-l small'); return s && !s.hidden ? s.textContent : ''; };
+  const drawn = (id) => map.queryRenderedFeatures({ layers: [id] }).length;
+  const panel = async () => {
+    if (document.querySelector('#layers-panel').hidden) { if (!qd.classList.contains('open')) document.querySelector('#btn-layers').click(); await wait(250); qd.querySelector('.qt-more').click(); await wait(300); }
+    const g = document.querySelector('#layers-body .lg-group[data-group="dark"]');
+    if (g) g.open = true;
+    return g;
+  };
+  const look = (g) => [...g.querySelectorAll('.seg button')].find((b) => b.getAttribute('aria-pressed') === 'true')?.textContent;
+  const saved = () => JSON.parse(localStorage.getItem('polku:settings')).litLook;
+"""
+
+LIT = """(async () => {""" + LIT_HELP + """
+  const L = await import(location.origin + '/js/lit.js');
+  // no answer an earlier run cached
+  await new Promise((ok) => {
+    const r = indexedDB.open('polku');
+    r.onerror = () => ok();
+    r.onsuccess = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains('overpass')) { db.close(); ok(); return; }
+      const t = db.transaction('overpass', 'readwrite');
+      t.objectStore('overpass').delete(IDBKeyRange.bound('lit1/', 'lit1/~'));
+      t.oncomplete = t.onerror = () => { db.close(); ok(); };
+    };
+  });
+  // what the query asks for (lit, then unlit, with no tags), and its answer split at the count
+  const q = L.litQuery(4680, 2272);
+  if (!q.includes('[lit~"^(yes|24/7|automatic|sunset-sunrise|limited|interval)$"]') || !q.includes('[lit~"^(no|disused)$"]') || !q.includes('out skel geom qt;out count;way') || q.includes('out tags')) errs.push(`the query: ${q}`);
+  const way = (id) => ({ type: 'way', id, nodes: [1, 2], geometry: [{ lat: 62, lon: 25 }, { lat: 62, lon: 25.001 }] });
+  const slim = L.slimLit({ elements: [way(1), way(2), { type: 'count', id: 0, tags: { ways: '2' } }, way(3)] });
+  if (slim.w.map((w) => `${w[0]}:${w[1]}`).join() !== '1:1,2:1,3:0') errs.push(`lit before the count, unlit after: ${slim.w.map((w) => `${w[0]}:${w[1]}`)}`);
+  // zoomed out it draws nothing, and lists no tiles: Finland in view at zoom 5 is 300,000 of them (Codex's review of #641)
+  let bounds = 0;
+  const far = { getZoom: () => 5, getBounds: () => { bounds++; return { getWest: () => 17, getSouth: () => 57, getEast: () => 33, getNorth: () => 72 }; }, on: () => {} };
+  const shown = [], lw = new L.LitWays(far, { onData: (fc) => shown.push(fc.features.length), onFail: () => {} });
+  lw.on = true;
+  lw.update();
+  if (bounds || shown.join() !== '0') errs.push(`zoomed out (zoom 5), Lit ways asked the view's bounds ${bounds} times and published ${shown}`);
+  // Overpass answers with a server-side timeout: no data, so the tile says so, and nothing looks drawn
+  window.litFail = 'remark';
+  document.querySelector('#btn-layers').click(); await wait(250);
+  qd.querySelector('.qt-tog[data-tile="lit"]').click();
+  if (!S.overlays.lit) errs.push('the Lit ways tile did not turn it on');
+  await until(() => small() === 'No data now');
+  if (small() !== 'No data now') errs.push(`Overpass timing out: the tile says “${small()}”, not No data now`);
+  if (!window.litAsked) errs.push('(the test) the lit ways were never asked for');
+  if (map.querySourceFeatures('litWays').length) errs.push('Overpass timing out: lit ways drawn');
+  // zoomed out, the tile says to zoom in; asking for nothing there
+  const asked = window.litAsked;
+  map.jumpTo({ zoom: 13 }); await wait(700);
+  if (small() !== 'Zoom in to see') errs.push(`at zoom 13 the tile says “${small()}”`);
+  if (window.litAsked !== asked) errs.push(`at zoom 13 the lit ways were asked for ${window.litAsked - asked} times`);
+  // it answers again: the lines come, and the tile's status goes
+  window.litFail = false;
+  L.forgetLitFailures();
+  map.jumpTo({ zoom: 15 }); await idle();
+  await until(() => drawn('lit-line') && small() !== 'No data now');
+  if (small() === 'No data now') errs.push('Overpass back: the tile still says No data now');
+  for (const id of ['lit-line', 'lit-casing', 'lit-unlit']) if (!drawn(id)) errs.push(`${id}: nothing drawn`);
+  // the lines stand out at 3:1 from the map's ground and its forest, on the Trail map and the night map
+  const lum = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  for (const base of ['trail', 'night']) {
+    polku.set({ base }); await idle();
+    for (const [what, layer, prop] of [['the ground', 'background', 'background-color'], ['the forest', 'lc-wood', 'fill-color']]) {
+      const under = map.getPaintProperty(layer, prop);
+      for (const line of ['lit-casing', 'lit-unlit']) {
+        const c = map.getPaintProperty(line, 'line-color'), r = ratio(c, under);
+        if (r < 3) errs.push(`${base}: ${line} ${c} on ${what} ${under}, ${r.toFixed(1)}:1, under 3:1`);
+      }
+    }
+  }
+  polku.set({ base: 'trail' }); await idle();
+  // the full panel: the same switch, and its look under it
+  const g = await panel();
+  if (!g) return [...errs, 'no After dark group in Layers'];
+  const sw = g.querySelector('label.tg input');
+  if (!sw || !sw.checked || !/Lit where OpenStreetMap says so/.test(g.textContent)) errs.push('After dark: Lit ways not on, or no “Lit where OpenStreetMap says so”');
+  if (look(g) !== 'Lines') errs.push(`the look starts as ${look(g)}, not Lines`);
+  [...g.querySelectorAll('.seg button')].find((b) => b.textContent === 'In the dark').click(); await wait(200);
+  if (S.litLook !== 'dark' || saved() !== 'dark') errs.push(`In the dark: the look ${S.litLook}, saved ${saved()}`);
+  // In the dark: a veil over the tiles that came in, the lit ways glowing over it, the unlit ones still dashed
+  await until(() => drawn('lit-core') && drawn('lit-veil'));
+  for (const id of ['lit-veil', 'lit-glow', 'lit-core', 'lit-unlit']) if (!drawn(id)) errs.push(`In the dark: ${id} drawn nowhere`);
+  if (map.getLayer('lit-casing') || map.getLayer('lit-line')) errs.push('In the dark still draws the lines');
+  // where a tile didn't answer, the map isn't dimmed (missing data never looks like no lights)
+  window.litFail = true;
+  const home = map.getCenter(), asked0 = window.litAsked;
+  map.jumpTo({ center: [25.80, 62.30] }); await idle();
+  await until(() => window.litAsked > asked0); await wait(500);
+  if (window.litAsked === asked0) errs.push('(the test) the tiles away were never asked for');
+  if (drawn('lit-veil')) errs.push('In the dark: the veil over tiles that didn\\'t answer');
+  window.litFail = false;
+  map.jumpTo({ center: home }); await idle();
+  await until(() => drawn('lit-veil'));
+  // 3:1 over the veil: the lit core and the unlit dashes on the veil laid over the map's ground and forest
+  const mix = (a, b, t) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, '0')).join('');
+  for (const base of ['trail', 'night']) {
+    polku.set({ base }); await idle();
+    const veil = map.getPaintProperty('lit-veil', 'fill-color'), t = map.getPaintProperty('lit-veil', 'fill-opacity');
+    for (const [what, layer, prop] of [['the ground', 'background', 'background-color'], ['the forest', 'lc-wood', 'fill-color']]) {
+      const under = mix(map.getPaintProperty(layer, prop), veil, t);
+      for (const line of ['lit-core', 'lit-unlit']) {
+        const c = map.getPaintProperty(line, 'line-color'), r = ratio(c, under);
+        if (r < 3) errs.push(`${base}, In the dark: ${line} ${c} on ${what} under the veil ${under}, ${r.toFixed(1)}:1, under 3:1`);
+      }
+    }
+  }
+  polku.set({ base: 'trail' }); await idle();
+  // its opacity: the look's strength, kept
+  const range = (await panel()).querySelector('input[type=range]');
+  if (!range) errs.push('Lit ways has no opacity');
+  else {
+    const t0 = map.getPaintProperty('lit-veil', 'fill-opacity');
+    range.value = '50';
+    range.dispatchEvent(new Event('input', { bubbles: true }));
+    range.dispatchEvent(new Event('change', { bubbles: true }));
+    await until(() => map.getPaintProperty('lit-veil', 'fill-opacity') < t0);
+    const t1 = map.getPaintProperty('lit-veil', 'fill-opacity');
+    if (Math.abs(t1 - t0 / 2) > 0.01) errs.push(`opacity 50 %: the veil ${t0} → ${t1}`);
+    if ((JSON.parse(localStorage.getItem('polku:settings')).overlayOpacity || {}).lit !== 0.5) errs.push('the opacity was not saved');
+  }
+  return errs;
+})()"""
+
+# after a reload: the overlay and its look as they were; then Lines, kept too
+LIT_AFTER = """(async () => {""" + LIT_HELP + """
+  await until(() => drawn('lit-core') && drawn('lit-veil'));
+  if (!S.overlays.lit || !drawn('lit-core') || !drawn('lit-veil')) errs.push('Lit ways not on, or not drawn in the dark, after a reload');
+  if (S.overlayOpacity.lit !== 0.5) errs.push(`after a reload the opacity is ${S.overlayOpacity.lit}, not 0.5`);
+  const g = await panel();
+  if (!g || look(g) !== 'In the dark' || S.litLook !== 'dark') return [...errs, `after a reload the look is ${g && look(g)} (${S.litLook}), not In the dark`];
+  [...g.querySelectorAll('.seg button')].find((b) => b.textContent === 'Lines').click(); await wait(200);
+  if (S.litLook !== 'lines' || saved() !== 'lines') errs.push(`Lines: the look ${S.litLook}, saved ${saved()}`);
+  await until(() => drawn('lit-line'));
+  if (!drawn('lit-line') || map.getLayer('lit-veil')) errs.push('Lines again: no lines, or the veil stays');
+  return errs;
+})()"""
+
+
+def lit(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': LIT_OVERPASS}, pg.s)
+        pg.open_app({'activity': 'run', 'quickTiles': {'run': ['lit', 'lipasRoutes', 'sfRoadworks', 'pois', 'wx:rain']}},
+                    {'polku:plannerDock': '"left"', 'polku:winter': '"off"'}, '#15/62.26/25.685')
+        fails = pg.js(LIT, timeout=120000)
+        pg.reload()
+        fails += [f'reload: {e}' for e in pg.js(LIT_AFTER, timeout=60000)]
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} lit ways on the map" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Clicks and taps on the route: a click or a tap on the line, or on a leg's handle, opens
 # that part's menu and adds no point (its first button does); with the planner closed, a
 # click on the route opens it with that part's menu; a LIPAS route drawn over a trail is
@@ -16010,6 +16196,7 @@ GROUPS = [
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
     ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, an import\'s card clear of the track\'s end (#131), loops tapped on the map (mocked BRouter)'),
     ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
+    ('lit', [lit], 'lit ways (#638): the Lit ways tile draws lit and unlit ways from a recorded tile, says when Overpass times out or you\'re zoomed out; In the dark veils only the tiles that came in; 3:1 on the Trail map and the night map in both looks; the look and its opacity kept over a reload'),
     ('sports', [sport_switch], 'changing the sport with a route drawn (B of #233): the route keeps its sports and style (#71), the pill asks, The whole route and its Undo, land to water'),
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
     ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),

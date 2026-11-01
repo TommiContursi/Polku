@@ -5,6 +5,7 @@ import {
   DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
   QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT,
 } from './config.js';
+import { LitWays, LIT_MIN_ZOOM } from './lit.js';
 import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
 import { pointForecasts, sampleAt } from './weather.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
@@ -42,6 +43,7 @@ import { onTheme } from './palette.js';
 
 // ------------------------------------------------------------------ state
 const APPEARANCES = [['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark'], ['map', 'Match the map']];
+const LIT_LOOKS = [['lines', 'Lines'], ['dark', 'In the dark']];
 const DEFAULTS = {
   activity: 'mtb',
   base: 'trail',
@@ -67,10 +69,12 @@ const DEFAULTS = {
   overlayOpacity: {}, // raster overlay → opacity you set (0.1–1)
   quickTiles: {}, // the quick drawer's tiles you chose, per sport (#123); a sport you haven't edited has its own
   depthsBack: {}, // per sport: the depth layers the Depths tile brings back when it's turned on again
+  litLook: 'lines', // how Lit ways looks: 'lines' or 'dark' (In the dark, #638)
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
 if (!APPEARANCES.some(([k]) => k === state.appearance)) state.appearance = 'auto'; // (and a look)
+if (!LIT_LOOKS.some(([k]) => k === state.litLook)) state.litLook = 'lines';
 state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
 for (const k of ['quickTiles', 'depthsBack']) if (!state[k] || typeof state[k] !== 'object') state[k] = {};
 const shared = parseShared(new URLSearchParams(location.search));
@@ -318,6 +322,8 @@ const details = new TrailDetails(map, {
 });
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
+// (a tile that comes in may end "No data now" on the Lit ways tile)
+const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); refreshQuickSoon(); }, onFail: () => refreshQuickSoon() });
 
 // ------------------------------------------------------------------ winter
 // Winter switches itself on where there's snow (Auto), or is yours to set.
@@ -674,6 +680,7 @@ function configureLayers() {
     showPoints: !!(o.lipasPoints || o.restricted),
   });
   winterWays.setEnabled(!!(state.winterOn && o.winterWays) || state.trailColors === 'winter'); // or the Winter trail colours, any time
+  litWays.setEnabled(!!o.lit);
   safety.configure({ traffic: !!o.sfTraffic, incidents: !!o.sfIncidents, roadworks: !!o.sfRoadworks, roadcond: !!o.sfRoadcond, ships: !!o.sfShips });
   cameras.setEnabled(!!o.sfCameras);
   nautical.setEnabled(!!o.nautical);
@@ -910,8 +917,10 @@ const OVERLAY_LABEL = {
   lipasRoutes: 'Official routes (LIPAS)',
   lipasPoints: 'Lean-tos, huts, campfire & landing sites (LIPAS)',
   pois: 'OSM outdoor places',
+  lit: 'Lit ways',
 };
 const OVERLAY_NOTE = {
+  lit: `Lit where OpenStreetMap says so · zoom ${LIT_MIN_ZOOM}+`,
   nautical: 'Buoys, lights & sectors, fairways, depths, speed limits · Väylävirasto · zoom 11+',
   lipasRoutes: 'LIPAS, Finland',
   lipasPoints: 'LIPAS, Finland',
@@ -921,6 +930,7 @@ const overlayLabel = (id) => OVERLAY_LABEL[id] || (RASTER_OVERLAYS[id] && RASTER
 
 // Groups of the Layers panel (base maps sit above them; weather and terrain are state, not overlays).
 const LAYER_GROUPS = [
+  { id: 'dark', title: 'After dark', ids: ['lit'] },
   { id: 'routes', title: 'Marked routes', ids: ['lipasRoutes', 'wmtHiking', 'wmtMtb', 'wmtCycling'] },
   { id: 'places', title: 'Places', ids: ['lipasPoints', 'pois'] },
   { id: 'water', title: 'Water & nautical', ids: ['nautical', 'depthAreas', 'depthContours', 'soundings', 'fairways'] },
@@ -978,6 +988,11 @@ const KEYS = {
     keyItem(keyLine('border-top:5px dotted #ea580c'), 'Carry / portage'),
     keyItem(keyLine('border-top:4px dashed var(--route-line)'), 'Straight line'),
   ],
+  dark: () => [
+    keyItem(keyLine('background:#facc15;height:4px;box-shadow:0 0 0 1.5px #111827'), 'Lit (OpenStreetMap)'),
+    keyItem(keyLine('border-top:2px dashed #6b7280'), 'Not lit (OpenStreetMap)'),
+    h('p', { class: 'note' }, 'Lit where OpenStreetMap says so. A way with no line: it doesn’t say.'),
+  ],
   places: () => Object.values(LIPAS_TYPES).filter((t) => t.icon).map((t) => keyItem(keyDot(`background:${t.color}`), t.name)),
   water: () => [
     keyItem(keyDot('background:#dc2626;border-radius:2px'), 'Port-hand mark — keep left going in'),
@@ -1016,6 +1031,7 @@ const WX_OPACITY = {
 };
 const opacitySpec = (id) => (RASTER_OVERLAYS[id]
   ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }
+  : id === 'lit' ? { label: 'Lit ways', opacity: 1, on: () => !!state.overlays.lit } // (no layers: style.js scales its look)
   : WX_OPACITY[id]);
 const opacityOf = (id) => (state.overlayOpacity[id] != null ? state.overlayOpacity[id] : opacitySpec(id).opacity);
 const opacityRow = (id) => {
@@ -1028,7 +1044,8 @@ const opacityRow = (id) => {
         const v = +e.target.value / 100;
         state.overlayOpacity[id] = v;
         pct.textContent = `${e.target.value} %`;
-        for (const l of o.layers) if (map.getLayer(l)) map.setPaintProperty(l, 'raster-opacity', v); // live, no style rebuild
+        if (o.layers) for (const l of o.layers) { if (map.getLayer(l)) map.setPaintProperty(l, 'raster-opacity', v); } // live, no style rebuild
+        else { cancelAnimationFrame(tcFrame); tcFrame = requestAnimationFrame(() => map.setStyle(buildStyle(state, ctx), { diff: true })); } // (as the trail colours')
       },
       onchange: () => saveSettings() }), pct);
 };
@@ -1104,14 +1121,17 @@ function trailControls() {
     mapKey(...(state.trailColors === 'winter' ? KEYS.winter() : KEYS.trails())),
   ];
 }
-// one overlay's switch, with its opacity under it while it's on
+// one overlay's switch, with its opacity under it while it's on (Lit ways: its look, then its opacity)
 const overlayToggle = (id) => {
   const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
-  return withOpacity(id, toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
+  const tg = toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
     setOverlay(id, v);
     if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
-  }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || ''));
+    if (v && id === 'lit' && map.getZoom() < LIT_MIN_ZOOM) toast(`Zoom in to level ${LIT_MIN_ZOOM}+ to see the lit ways`);
+  }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
+  if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
+  return h('div', { class: 'tg-group' }, tg, seg(LIT_LOOKS, state.litLook, (v) => { state.litLook = v; applyStyle(); renderLayersPanel(); }), opacityRow(id));
 };
 // weather on the map: the same switches as on the Weather button's timeline
 const timelineToggle = () => toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
@@ -1290,6 +1310,7 @@ const rasterDown = (src) => { const t = tileTrouble[src]; return !!t && t.bad > 
 function tileZoom(id) {
   if (id === 'trailDetails') return DETAILS_ZOOM;
   if (id === 'winterWays') return WINTER_MIN_ZOOM;
+  if (id === 'lit') return LIT_MIN_ZOOM;
   if (id === 'trailColors') return state.trailColors === 'winter' ? WINTER_MIN_ZOOM : state.trailColors === 'up' || state.trailColors === 'both' ? 13 : 0;
   if (id === 'depths') return Math.min(...DEPTHS.filter((d) => state.overlays[d]).map((d) => RASTER_OVERLAYS[d].minzoom || 0));
   return (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].minzoom) || QUICK_TILE[id].zoom || 0;
@@ -1298,6 +1319,7 @@ function tileFailing(id) {
   const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d]) : RASTER_OVERLAYS[id] ? [id] : [];
   if (raster.length && raster.every((d) => rasterDown(`ov-${d}`))) return true;
   if (id === 'trailDetails') return Date.now() - detailsBusyAt < 120e3;
+  if (id === 'lit') return litWays.failing; // (Overpass is never backed off: sourceStatus() can't say)
   const src = TILE_SOURCES[id];
   return !!src && src.every((s) => sourceStatus(s));
 }
@@ -1353,6 +1375,7 @@ function setBase(k) {
 const QUICK_OPTS = {
   trailColors: trailControls,
   depths: () => [...DEPTHS.map(overlayToggle), h('p', { class: 'note' }, 'Traficom’s nautical chart data: shown, never used for routing. Not for navigation.')],
+  lit: () => [overlayToggle('lit'), mapKey(...KEYS.dark())],
   'wx:rain': () => [wxToggle('rain'), timelineToggle()],
   'wx:temp': () => [wxToggle('temp'), timelineToggle()],
 };
