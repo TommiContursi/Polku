@@ -323,7 +323,7 @@ def rollback(manifest_path):
         manifest = validate(json.loads(raw))
         require(current(manifest) == target, 'Rollback manifest differs from immutable release')
         samples = verify_remote(ftp, base, manifest, raw)
-        probe(config[-1], manifest, raw, samples)
+        probe(config[-2], manifest, raw, samples)
         promote(ftp, config[-2], manifest, previous, path.parent, samples, raw)
 
 
