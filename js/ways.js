@@ -159,8 +159,8 @@ export function nearestWay(ll, metres) {
 // have the same name; unnamed ones join while their kind stays the same, and stop at every junction. At a fork the pick
 // goes straight on. A road stops where its number changes, a loop where it began, and everything at 25 km.
 // A cycleway goes on where it goes straight on (a turn under 30°): through a junction (a side street's crossing), into a
-// piece of itself with a name or without one (never into another name), and over a short piece of another kind (a crossing
-// mapped as a footway, 50 m at most) to the cycleway beyond it.
+// piece of itself with a name or without one (never into another name), and over a crossing mapped as a footway
+// (footway=crossing, 50 m at most) to the cycleway beyond it: never over a stretch of street.
 const joinKey = (w) => (w.rel ? `r:${w.rel}` : w.tags.name ? `n:${w.tags.name}` : `k:${kindOf(w.tags)}`);
 const STRAIGHT = 30, GAP = 50;
 const cycle = (w) => !w.rel && kindOf(w.tags) === 'cycleway';
@@ -194,7 +194,7 @@ export function walk(seed) {
           const c = fwd ? w.coords : [...w.coords].reverse(), n = fwd ? w.nodes[1] : w.nodes[0], b = bearing(c[c.length - 2], c[c.length - 1]);
           return (ends.get(n) || []).some((x) => x !== w && !used.has(x) && kin(x) && turn(b, bearing(c[c.length - 1], x.nodes[0] === n ? x.coords[1] : x.coords[x.coords.length - 2])) < STRAIGHT);
         };
-        cands = here.filter((w) => !used.has(w) && !cycle(w) && w.len <= GAP).map((w) => head(w, node)).filter((c) => c.turn < STRAIGHT && beyond(c));
+        cands = here.filter((w) => !used.has(w) && !cycle(w) && w.tags.footway === 'crossing' && w.len <= GAP).map((w) => head(w, node)).filter((c) => c.turn < STRAIGHT && beyond(c));
       }
       if (!cands.length) { stops[side] = { why: junction ? 'junction' : 'end', at }; break; }
       if (total > LONG) { stops[side] = { why: 'long', at }; break; }

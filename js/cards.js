@@ -7,7 +7,7 @@ import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unm
 import { newPick, resolvePick, modesOf, modeOf, setMode, loadWeather } from './pick.js';
 import { breakdownRows, colorAt, PICK_MODES, COLOR_MODES, NO_TERRAIN, ProfileChart } from './chart.js';
 import { notRight, isHttp, thingOf } from './inspect.js';
-import { elevation } from './dem.js';
+import { elevation, retryFailed as retryTerrainTiles } from './dem.js';
 import { iconUrl } from './icons.js';
 import { darkWords } from './palette.js';
 import { ACTIVITIES, CRAFTS, LIPAS_TYPES, DIFF_COLORS, isLipasRoute } from './config.js';
@@ -611,7 +611,7 @@ export function pickCard(pl, spot) {
   };
   // (as a card, or as the line at the spot before it's opened)
   const changed = () => { const line = pl.picked === card; if (here() || line) pl.drawPick(pick); if (here()) pl.cards.refresh(); if (line) pl.renderLine(); };
-  pick.again = () => { pick.ways = pick.a = pick.area = pick.depth = undefined; pl.cards.refresh(); resolvePick(pick, changed); };
+  pick.again = () => { retryTerrainTiles(); pick.ways = pick.a = pick.area = pick.depth = undefined; pl.cards.refresh(); resolvePick(pick, changed); };
   pick.weather = () => loadWeather(pick, changed);
   resolvePick(pick, changed);
   return card;

@@ -4328,6 +4328,7 @@ export class Planner {
       peek: this.els.card,
       where: () => (this.layout() === 'sheet' && !this.sideMQ.matches ? 'peek' : 'float'),
       onChange: (card, fresh) => {
+        if (card && fresh && this.picked && card !== this.picked) this.hideLine(); // (another card: the line at the spot and its pick go)
         this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
         // the planner put away: the sheet comes for the card alone, and goes with it (#570)
         if (!this.active) {

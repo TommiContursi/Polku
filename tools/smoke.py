@@ -16211,6 +16211,15 @@ SPLIT_WALK = """(async (url) => {
   const chain = W.walk(W.nearestWay(ll, 5)).chain, j = await W.joinWay(before, ll), sum = (c) => Math.round(c.reduce((m, x) => m + x.w.len, 0));
   return { ids: chain.map((x) => x.w.id), len: sum(chain), joined: [j.chain.map((x) => x.w.id), sum(j.chain)], half: Math.round(G.lineLength([P[0], P[1]])), ll };
 })"""
+# Two cycleways straight on across 30 m of residential street (Codex on #623, 2026-11-01): the street isn't a crossing, so the pick
+# from the first stops there
+GAP_WALK = """(async (url) => {
+  const W = await import(url), G = await import('/js/geo.js');
+  const [tx, ty] = W.wayTile([21.205, 60.505]), [w, s] = G.tileBounds(tx, ty, W.WAYS_Z), y = +(s + 0.005).toFixed(5), x = (k) => +(w + 0.002 + k).toFixed(5), n = (i) => 7e12 + i;
+  W.seedWays(tx, ty, { v: 2, w: [[911, 0, { highway: 'cycleway' }, [n(1), n(2)], [x(0), y, x(0.002), y], null], [912, 0, { highway: 'residential' }, [n(2), n(3)], [x(0.002), y, x(0.00255), y], null],
+    [913, 0, { highway: 'cycleway' }, [n(3), n(4)], [x(0.00255), y, x(0.00455), y], null]] });
+  return W.walk(W.nearestWay([x(0.001), y], 5)).chain.map((c) => c.w.id);
+})"""
 # the card as a person reads it, once the ways and the heights are in
 PICK_STATE = """(() => {
   const p = polku.planner, c = p.cards.current, box = document.querySelector('.pl-way.card'), pick = c && c.pick;
@@ -16273,6 +16282,9 @@ def pick_card(chrome):
         got = pg.js(f"({CYCLE_WALK})('/js/ways.js')")
         if got != [901, 902, 904, 905, 906]:
             fails.append(f'a cycleway beside a street: the pick from its first piece joins {got}, not 901, 902, 904 (a crossing), 905 and 906 (named)')
+        got = pg.js(f"({GAP_WALK})('/js/ways.js')")
+        if got != [911]:
+            fails.append(f'two cycleways across 30 m of street: the pick from the first joins {got}, not 911 alone (a street is no crossing)')
         got = pg.js(f"({SPLIT_WALK})('/js/ways.js')")
         if got['ids'] != [801] or got['len'] != got['half'] or got['joined'] != [[801], got['half']]:
             fails.append(f"a path two tiles cut differently: the pick from its first half joins {got['ids']}, {got['len']} m, and from the piece found before the cut {got['joined']} (801 alone, {got['half']} m: it stops where 802 meets it)")
@@ -16289,10 +16301,16 @@ def pick_card(chrome):
         nt = pg.js(f"""(async () => {{ const p = polku.planner; p.cards.close(); polku.map.jumpTo({{ center: {json.dumps(got['ll'])}, zoom: 16.5 }}); p.openSpotCard({json.dumps(got['ll'])});
           const t0 = Date.now(); while (Date.now() - t0 < 20000 && !(p.cards.current && p.cards.current.pick && p.cards.current.pick.a && typeof p.cards.current.pick.a === 'object')) await new Promise((r) => setTimeout(r, 250));
           await new Promise((r) => setTimeout(r, 400)); const box = document.querySelector('.pl-way.card');
-          return {{ nums: box ? [...box.querySelectorAll('.sum-item')].map((e) => e.textContent) : [], again: !!box && [...box.querySelectorAll('.pick-fail button')].some((b) => b.textContent === 'Try again') }}; }})()""", timeout=40000)
+          const out = {{ nums: box ? [...box.querySelectorAll('.sum-item')].map((e) => e.textContent) : [], again: !!box && [...box.querySelectorAll('.pick-fail button')].some((b) => b.textContent === 'Try again') }};
+          // back online at once, Try again: the terrain is asked for again, not taken from the failures it remembers (Codex on #623)
+          window.__dem.mode = 'ok';
+          if (out.again) [...box.querySelectorAll('.pick-fail button')].find((b) => b.textContent === 'Try again').click();
+          const t1 = Date.now(), pick = p.cards.current.pick; while (Date.now() - t1 < 20000 && !(pick.a && typeof pick.a === 'object' && !pick.a.terrain)) await new Promise((r) => setTimeout(r, 250));
+          out.after = pick.a && typeof pick.a === 'object' ? (pick.a.terrain ? 'still no terrain' : 'terrain') : String(pick.a);
+          return out; }})()""", timeout=60000)
         pg.js("window.__dem.mode = 'ok'; polku.planner.cards.close(); true")
-        if any('NaN' in x for x in nt['nums']) or not any('no terrain' in x for x in nt['nums']) or not nt['again']:
-            fails.append(f"a way with no terrain: its numbers {nt['nums']}, Try again {nt['again']} (? for up and down, no terrain, and Try again)")
+        if any('NaN' in x for x in nt['nums']) or not any('no terrain' in x for x in nt['nums']) or not nt['again'] or nt['after'] != 'terrain':
+            fails.append(f"a way with no terrain: its numbers {nt['nums']}, Try again {nt['again']}, after Try again online: {nt['after']} (? for up and down, no terrain, and Try again that asks again)")
         # #562: a detail that wasn't loaded is never "not mapped": the ways failing, the card says what it has, no claim
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
         r = tap(pg, [25.7652, 62.2289], want=('failed', None), secs=15, right=True)
@@ -16489,6 +16507,14 @@ def pick_card(chrome):
         r = pg.js(line)
         if not before['line'] or r['line'] or r['card'] or r['drawn']:
             fails.append(f"390x844: a tap away from the line {before['line']}: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn (all gone)")
+        # another card opening (a point's, the route's: they open past openCard()) takes the line and its pick away (Codex on #623)
+        other = pg.js("""(async () => { const p = polku.planner, b = () => document.querySelector('.spot-line');
+          p.cards.close(); p.openSpotCard(polku.map.getCenter().toArray(), { touch: true });
+          for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
+          const had = !!b(); p.cards.open({ kind: 'note', key: 'other', title: 'Another card', build: () => {} }, { at: polku.map.getCenter().toArray() });
+          await new Promise((r) => setTimeout(r, 300)); const out = { had, line: !!b(), picked: !!p.picked }; p.cards.close(); return out; })()""")
+        if not other['had'] or other['line'] or other['picked']:
+            fails.append(f"390x844: another card opened over the line at the spot: {other} (the line and its pick gone)")
         # the line grows as it fills in (a long name here): still whole on the screen, under the spot if there's no room above it now
         # (Codex on #623: it was fitted only as it opened)
         grow = pg.js("""(async () => {
