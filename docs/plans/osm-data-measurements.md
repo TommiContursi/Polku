@@ -92,6 +92,11 @@ conservative payload bound around 40.1 MB plus directories; that scenario was
 not observed. The normal selection still stops at 25 km, junctions, changed
 names/references or loops, and says when a tile or growth budget is missing.
 
+A final run on app commit `65b01ce` also passed all six selections and emitted
+valid JSON: desktop 13.1–167.8 ms and emulated phone 198.2–1,966.5 ms. Its
+complete request/selection results are retained as `final_browser` in the raw
+evidence. This is a repeat observation, not a revised hosting claim.
+
 The full-country check exposed a real truncation: the old six growth rounds
 stopped the northern pick at 16.66 km with both ends unloaded, and another tap
 extended it to 20.74 km. The new static-only budget completes it in one pick.

@@ -91,6 +91,12 @@ environments were changed by this implementation.
 
 ## Publication and activation
 
+GitHub makes this new manual workflow available once its file is on the default
+branch ([workflow_dispatch documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)).
+Before merging, an approved first publication can use the same builder and
+`publish.py` locally from this branch, with the protected credentials supplied
+to that process. It still uses verified automated transfers, not manual uploads.
+
 Run **Actions → Finland OSM data → build**. Weekly builds are scheduled Monday
 at 03:17 UTC. Build checks, transformation, gzip validation, country count and
 extent gates, and full-country browser checks all run before publication.

@@ -58,7 +58,7 @@ previews exercise the static integration before that switch.
   coastal and northern tiles. Compare individual-file transfer cost and the
   existing Overpass request. Test desktop/mobile-sized browsers separately
   from real devices, which are not available in this session.
-- [ ] Update source inventory, installation/operations docs and developer
+- [x] Update source inventory, installation/operations docs and developer
   docs; open a PR with exact verified results and remaining hosting actions.
 
 Review focus: sparse empty tiles versus out-of-coverage data; failed release
@@ -82,3 +82,5 @@ protected FTPS credentials and verified atomic replacement. The production
 source setting remains empty. The [operations guide](../OSM_DATA.md) is the
 concrete setup/activation procedure; the [measurements](osm-data-measurements.md)
 separate local results from hosting and real-device checks still needed.
+
+Implementation and evidence are in [PR #678](https://github.com/TommiContursi/Polku/pull/678). The PR remains draft for the explicit hosting verification boundary above.
