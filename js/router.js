@@ -19,19 +19,17 @@ export const routerHeadroom = () => headroom(routerSource());
 export const routerRoomThisMinute = () => roomIn(routerSource(), 60e3);
 
 const cache = new Map();
+function remember(key, value) {
+  cache.set(key, value);
+  while (cache.size > 400) cache.delete(cache.keys().next().value);
+}
 // Requests in flight, shared: a drag's live preview and the commit that follows
 // it ask for the same leg, and that must cost one BRouter call, not two. The
 // fetch is cancelled only when everyone who asked for it has given up.
 const inflight = new Map();
 
-// wait for a request someone else made (never cancels it)
-function join(key) {
-  const e = inflight.get(key);
-  e.users++;
-  return e.promise;
-}
-
 function shared(key, run, signal) {
+  if (signal?.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
   let e = inflight.get(key);
   if (!e) {
     const ctrl = new AbortController();
@@ -42,7 +40,7 @@ function shared(key, run, signal) {
   e.users++;
   if (!signal) return e.promise;
   return new Promise((ok, fail) => {
-    const quit = () => { if (--e.users === 0) { e.ctrl.abort(); inflight.delete(key); } fail(new DOMException('Aborted', 'AbortError')); };
+    const quit = () => { if (--e.users === 0) { e.ctrl.abort(); if (inflight.get(key) === e) inflight.delete(key); } fail(new DOMException('Aborted', 'AbortError')); };
     if (signal.aborted) { quit(); return; }
     signal.addEventListener('abort', quit, { once: true });
     e.promise.then(ok, fail).finally(() => signal.removeEventListener('abort', quit));
@@ -82,21 +80,22 @@ const paramStr = (params) => Object.keys(params || {}).sort().map((k) => `&profi
 // Polku's own profiles go to the routing server once per session (one fixed id
 // each, so it's one file there, not one per visitor); a 500 for one of them
 // means the server has dropped it: upload again and retry, once.
-const uploaded = new Map();
+const uploaded = new Set();
 function ensureProfile(profile, signal, again = false) {
   const def = CUSTOM_PROFILES[profile];
   if (!def) return Promise.resolve();
   const k = `${routerUrl()}|${profile}`;
   if (again) uploaded.delete(k);
-  if (!uploaded.has(k)) {
-    uploaded.set(k, (async () => {
-      const text = await (await fetch(def.file)).text(); // Polku's own file, next to the app
-      const res = await request(routerSource(), `${routerUrl()}/profile/${profile}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: text, signal });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || j.error || j.profileid !== profile) throw new Error(j.error || `the router didn't take Polku's profile (${res.status})`);
-    })().catch((e) => { uploaded.delete(k); throw e; }));
-  }
-  return uploaded.get(k);
+  if (uploaded.has(k)) return Promise.resolve();
+  return shared(`profile|${k}`, async (sig) => {
+    const file = await request('polku', def.file, { signal: sig });
+    if (!file.ok) throw new Error(`Polku's profile didn't load (${file.status})`);
+    const text = await file.text();
+    const res = await request(routerSource(), `${routerUrl()}/profile/${profile}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: text, signal: sig });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j.error || j.profileid !== profile) throw new Error(j.error || `the router didn't take Polku's profile (${res.status})`);
+    uploaded.add(k);
+  }, signal);
 }
 
 // the variables only Polku's own profiles have (a stock profile can't take them)
@@ -180,7 +179,7 @@ async function standIn(err, points, profile, opts, signal) {
   if (cache.has(key)) return cache.get(key);
   try {
     const legs = await shared(key, (sig) => valhallaRoute(points, base, sig, opts.nogos, opts.valhalla), signal);
-    cache.set(key, legs);
+    remember(key, legs);
     return legs;
   } catch (e) {
     throw e.name === 'AbortError' ? e : err;
@@ -212,8 +211,7 @@ export async function routeLeg({ from, to, mode, profile, opts = {} }, signal) {
     result = { ...r, portage: [] };
     if (r.note) { cache.delete(key); return result; } // a fallback: ask again next time
   }
-  cache.set(key, result);
-  if (cache.size > 400) cache.delete(cache.keys().next().value);
+  remember(key, result);
   return result;
 }
 
@@ -228,7 +226,7 @@ export async function routeRun({ points, profile, opts = {} }, signal) {
   const keys = points.slice(1).map((to, i) => legKey('auto', profile, opts, points[i], to));
   // all known already, or on their way (a drag's preview asked for them): no new call
   if (keys.every((k) => cache.has(k) || inflight.has(k))) {
-    return Promise.all(keys.map((k) => (cache.has(k) ? cache.get(k) : join(k).then((r) => ({ ...r, portage: [] })))));
+    return Promise.all(keys.map((k) => (cache.has(k) ? cache.get(k) : shared(k, null, signal).then((r) => ({ ...r, portage: [] })))));
   }
   let r;
   try {
@@ -250,10 +248,9 @@ export async function routeRun({ points, profile, opts = {} }, signal) {
     const res = b > a
       ? { coords: c.slice(a, b + 1), tags: r.tags.slice(a, b), portage: [] }
       : { coords: [c[a], c[a]], tags: [r.tags[Math.max(0, a - 1)] || {}], portage: [] };
-    if (r.note) { if (k === 0) res.note = r.note; } else cache.set(key, res); // a fallback isn't kept: ask again next time
+    if (r.note) { if (k === 0) res.note = r.note; } else remember(key, res); // a fallback isn't kept: ask again next time
     return res;
   });
-  while (cache.size > 400) cache.delete(cache.keys().next().value);
   return legs;
 }
 
@@ -274,6 +271,6 @@ export async function routeLoop({ points, profile, opts = {} }, signal) {
     const legs = await standIn(e, points, profile, opts, signal);
     r = { coords: legs.flatMap((l, i) => (i ? l.coords.slice(1) : l.coords)), tags: legs.flatMap((l) => l.tags), provider: 'valhalla' };
   }
-  if (!r.note) cache.set(key, r);
+  if (!r.note) remember(key, r);
   return r;
 }
