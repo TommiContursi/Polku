@@ -95,6 +95,23 @@ environments were changed by this implementation.
 
 For the first validated OVH publication, manually run **Finland OSM data → Run workflow → publish-existing** on `main`. This one-time operation downloads the already successful `finland-osm-release` from run `41350050764`, checks its local hashes and the remote upload, tests public Range/CORS and switches `current.json` only after verification. It does not start a new build or enable unattended publication. The existing protected GitHub environment still applies, and the application setting remains off until separate activation. The run artifact expires after 14 days; if it is no longer available, build a fresh release and update the pinned run ID through review before trying again.
 
+If this operation is interrupted, do not start another full upload. Run
+**inspect-existing** on `main` first: it downloads the same artifact and reports
+the exact release's staging/final file sizes without changing the host. Metadata
+alone does not prove integrity. Then **resume-existing** reuses the immutable
+release if already renamed, or requires exactly one matching staging directory.
+It rejects symlinks, unexpected files, oversized files and mismatching partial
+prefixes. Complete files are not uploaded again; partial files are read and
+compared with the local artifact before only their missing suffix is sent.
+Every file still passes full remote SHA-256 verification before rename, public
+probes and pointer promotion. A corrupt complete file or ambiguous staging
+fails for inspection instead of silently overwriting data or starting over.
+Neither recovery operation deletes files or changes hosting configuration.
+
+SFTP writes are pipelined and reads prefetch at most 64 concurrent requests,
+avoiding a network round trip for every 32 KiB packet. Logs show transfer
+phases and byte progress every 64 MiB; the 90-minute job limit is unchanged.
+
 
 GitHub makes this new manual workflow available once its file is on the default
 branch ([workflow_dispatch documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_dispatch)).

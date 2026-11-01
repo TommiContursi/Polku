@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import posixpath
 import re
+import stat
 import urllib.request
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
@@ -98,24 +99,47 @@ class SFTPFiles:
     def size(self, path):
         return self.sftp.stat(path).st_size
 
+    def kind(self, path):
+        mode = self.sftp.lstat(path).st_mode
+        return 'directory' if stat.S_ISDIR(mode) else 'file' if stat.S_ISREG(mode) else 'other'
+
     def remove(self, path):
         return self.sftp.remove(path)
 
     def rmd(self, path):
         return self.sftp.rmdir(path)
 
-    def storbinary(self, command, body):
+    def storbinary(self, command, body, rest=None):
         require(command.startswith('STOR '), 'Invalid upload command')
-        with self.sftp.open(command[5:], 'wb') as output:
+        path = command[5:]
+        if rest is not None:
+            require(self.kind(path) == 'file' and self.size(path) == rest, 'Resume offset or regular file changed')
+        print(f'Upload {path} from byte {rest or 0}', flush=True)
+        seen = rest or 0
+        with self.sftp.open(path, 'r+b' if rest is not None else 'wb') as output:
+            output.set_pipelined(True)
+            if rest is not None:
+                output.seek(rest)
             while chunk := body.read(1024 * 1024):
                 output.write(chunk)
+                seen += len(chunk)
+                if seen // (64 * 1024 * 1024) != (seen - len(chunk)) // (64 * 1024 * 1024):
+                    print(f'Uploaded {path}: {seen} bytes', flush=True)
             output.flush()
+        print(f'Upload closed {path}: {seen} bytes', flush=True)
 
     def retrbinary(self, command, callback):
         require(command.startswith('RETR '), 'Invalid download command')
+        print(f'Read back {command[5:]}', flush=True)
+        seen = 0
         with self.sftp.open(command[5:], 'rb') as source:
+            source.prefetch(file_size=source.stat().st_size, max_concurrent_requests=64)
             while chunk := source.read(1024 * 1024):
                 callback(chunk)
+                seen += len(chunk)
+                if seen // (64 * 1024 * 1024) != (seen - len(chunk)) // (64 * 1024 * 1024):
+                    print(f'Read back {command[5:]}: {seen} bytes', flush=True)
+        print(f'Read back complete {command[5:]}: {seen} bytes', flush=True)
 
     def rename(self, old, new):
         # Immutable directory moves never overwrite an existing release.
@@ -196,6 +220,7 @@ def verify_remote(ftp, base, manifest, raw):
     samples = {}
     for f in manifest['files']:
         path, size = base + '/' + f['path'], f['bytes']
+        print(f'Verify full SHA-256 {path}', flush=True)
         require(ftp.size(path) == size, 'Uploaded file size differs')
         sha, seen = hashlib.sha256(), 0
         chunks = {s: bytearray() for s, _ in offsets(size)}
@@ -296,31 +321,115 @@ def previous_pointer(ftp):
     return raw
 
 
-def publish(directory):
-    require(os.environ.get('OSM_ALLOW_PUBLISH') == 'true', 'Publication requires approved OSM_ALLOW_PUBLISH=true')
-    directory = Path(directory)
+def local_release(directory):
     raw = (directory / 'manifest.json').read_bytes()
     manifest = validate(json.loads(raw))
     for f in manifest['files']:
         path = directory / f['path']
         require(path.is_file() and not path.is_symlink() and path.stat().st_size == f['bytes']
                 and digest_file(path) == f['sha256'], 'Local file integrity differs')
+    return raw, manifest
+
+
+def recovery_candidates(ftp, release):
+    names = {posixpath.basename(p) for p in ftp.nlst()}
+    stages = sorted(p for p in names if re.fullmatch(r'\.upload-' + re.escape(release) + r'-[a-f0-9]{32}', p))
+    final = f'releases/{release}'
+    if 'releases' in names:
+        require(ftp.kind('releases') == 'directory', 'Releases needs a real directory')
+        if release in {posixpath.basename(p) for p in ftp.nlst('releases')}:
+            stages.append(final)
+    return stages
+
+
+def inspect_release(directory):
+    """Report the interrupted release's metadata without modifying the host."""
+    raw, manifest = local_release(Path(directory))
+    expected = {f['path']: f['bytes'] for f in manifest['files']} | {'manifest.json': len(raw)}
+    result = {'release': manifest['release'], 'candidates': []}
+    with connection(settings()) as ftp:
+        for base in recovery_candidates(ftp, manifest['release']):
+            entry = {'path': base, 'kind': ftp.kind(base), 'files': {}}
+            if entry['kind'] == 'directory':
+                names = {posixpath.basename(p) for p in ftp.nlst(base)}
+                for name, size in expected.items():
+                    path = base + '/' + name
+                    kind = ftp.kind(path) if name in names else 'missing'
+                    entry['files'][name] = {'kind': kind, 'expected': size,
+                                            'actual': ftp.size(path) if kind == 'file' else None}
+            result['candidates'].append(entry)
+    return result
+
+
+def resume_upload(ftp, base, directory, manifest, raw):
+    require(ftp.kind(base) == 'directory', 'Resume needs a real directory, not a symlink')
+    names = {posixpath.basename(p) for p in ftp.nlst(base)}
+    expected = {f['path']: f['bytes'] for f in manifest['files']} | {'manifest.json': len(raw)}
+    require(names <= expected.keys(), 'Unexpected files in staging directory')
+    sizes = {}
+    # Check every partial prefix before writing anything; complete files get full hash verification below.
+    for name, size in expected.items():
+        path = base + '/' + name
+        if name not in names:
+            continue
+        require(ftp.kind(path) == 'file', 'Resume needs regular files, not symlinks')
+        actual = sizes[name] = ftp.size(path)
+        require(actual <= size, 'Staged file is larger than local file')
+        if actual < size:
+            with (directory / name).open('rb') as body:
+                def compare(chunk):
+                    require(body.read(len(chunk)) == chunk, 'Staged file prefix differs')
+                ftp.retrbinary('RETR ' + path, compare)
+                require(body.tell() == actual, 'Staged file prefix size changed')
+    for name, size in expected.items():
+        actual = sizes.get(name)
+        if actual == size:
+            print(f'Reuse complete {base}/{name}: {size} bytes; full hash verification follows', flush=True)
+            continue
+        with (directory / name).open('rb') as body:
+            body.seek(actual or 0)
+            ftp.storbinary('STOR ' + base + '/' + name, body, rest=actual)
+
+
+def publish(directory, resume=False):
+    require(os.environ.get('OSM_ALLOW_PUBLISH') == 'true', 'Publication requires approved OSM_ALLOW_PUBLISH=true')
+    directory = Path(directory)
+    raw, manifest = local_release(directory)
     config = settings()
     with connection(config) as ftp:
         previous = previous_pointer(ftp)
-        if 'releases' not in {posixpath.basename(p) for p in ftp.nlst()}:
-            ftp.mkd('releases')
         release = manifest['release']
-        require(release not in {posixpath.basename(p) for p in ftp.nlst('releases')}, 'Immutable release already exists')
-        stage, final = f'.upload-{release}-{uuid.uuid4().hex}', f'releases/{release}'
-        ftp.mkd(stage)
-        for f in manifest['files']:
-            with (directory / f['path']).open('rb') as body:
-                ftp.storbinary('STOR ' + stage + '/' + f['path'], body)
-        ftp.storbinary('STOR ' + stage + '/manifest.json', io.BytesIO(raw))
+        final = f'releases/{release}'
+        if resume:
+            candidates = recovery_candidates(ftp, release)
+            if final in candidates:
+                stage = final
+                require(ftp.kind(final) == 'directory', 'Release needs a real directory')
+                require(all(ftp.kind(final + '/' + f['path']) == 'file' for f in manifest['files'])
+                        and ftp.kind(final + '/manifest.json') == 'file', 'Release needs regular files')
+            else:
+                require(len(candidates) == 1, 'Resume needs exactly one existing stage; inspect before proceeding')
+                stage = candidates[0]
+                resume_upload(ftp, stage, directory, manifest, raw)
+        else:
+            if 'releases' not in {posixpath.basename(p) for p in ftp.nlst()}:
+                ftp.mkd('releases')
+            require(release not in {posixpath.basename(p) for p in ftp.nlst('releases')}, 'Immutable release already exists')
+            stage = f'.upload-{release}-{uuid.uuid4().hex}'
+            ftp.mkd(stage)
+            for f in manifest['files']:
+                with (directory / f['path']).open('rb') as body:
+                    ftp.storbinary('STOR ' + stage + '/' + f['path'], body)
+            ftp.storbinary('STOR ' + stage + '/manifest.json', io.BytesIO(raw))
         samples = verify_remote(ftp, stage, manifest, raw)
-        ftp.rename(stage, final)
+        if stage != final:
+            if 'releases' not in {posixpath.basename(p) for p in ftp.nlst()}:
+                ftp.mkd('releases')
+            print(f'Rename verified {stage} to {final}', flush=True)
+            ftp.rename(stage, final)
+        print('Verify public immutable release before pointer promotion', flush=True)
         probe(config[-2], manifest, raw, samples)
+        print('Promote current.json and verify public pointer', flush=True)
         promote(ftp, config[-2], manifest, previous, directory, samples, raw)
 
 
@@ -415,7 +524,10 @@ def verify_access():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
-    commands.add_parser('publish').add_argument('directory', type=Path)
+    publication = commands.add_parser('publish')
+    publication.add_argument('directory', type=Path)
+    publication.add_argument('--resume', action='store_true', help='Reuse the existing stage or immutable release; never start a new upload')
+    commands.add_parser('inspect').add_argument('directory', type=Path)
     commands.add_parser('rollback').add_argument('--manifest', type=Path, required=True)
     commands.add_parser('check').add_argument('url')
     commands.add_parser('verify-access')
@@ -423,7 +535,11 @@ def main():
     args = parser.parse_args()
     try:
         if args.command == 'publish':
-            publish(args.directory)
+            publish(args.directory, resume=args.resume)
+        elif args.command == 'inspect':
+            print(json.dumps(inspect_release(args.directory), sort_keys=True))
+            print('Metadata only; no remote files changed or hashes verified.')
+            return
         elif args.command == 'rollback':
             rollback(args.manifest)
         elif args.command == 'test-host':
