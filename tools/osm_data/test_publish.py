@@ -16,6 +16,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 
 from tools.osm_data import publish
+from tools.osm_data.publish import open_sftp as real_open_sftp
 
 
 ROOT = '/home/example/www/polku-osm'
@@ -338,7 +339,7 @@ class PublishTests(unittest.TestCase):
         transport = Transport()
         with patch.object(publish.paramiko, 'Transport', return_value=transport):
             with self.assertRaisesRegex(ValueError, 'host key differs'):
-                publish.open_sftp('ftp.example', 'user', 'secret', ENV['OSM_SFTP_HOST_KEY_SHA256'])
+                real_open_sftp('ftp.example', 'user', 'secret', ENV['OSM_SFTP_HOST_KEY_SHA256'])
         self.assertFalse(transport.authenticated)
         self.assertTrue(transport.closed)
 
