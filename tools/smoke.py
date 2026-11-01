@@ -16551,7 +16551,24 @@ def pick_card(chrome):
     return not fails
 
 
+def osm_data(chrome):
+    failures = []
+    for width, height, phone in [(1440, 900, False), (390, 844, True)]:
+        pg = chrome.page(width, height, phone)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
+            pg.open_app({'activity': 'mtb', 'layers': {'wx': False, 'uphill': False, 'trails': False}})
+            result = pg.js("import('/tools/osm_data/smoke_checks.js').then((m) => m.checkStaticOSM())")
+            failures.extend(f'{width}x{height}: {message}' for message in result)
+            failures.extend(pg.errors())
+        finally:
+            pg.close()
+    print('FAIL osmdata: ' + '; '.join(failures) if failures else 'ok osmdata: whole ways, Range decoding, cache and offline failures')
+    return not failures
+
+
 GROUPS = [
+    ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
