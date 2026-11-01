@@ -70,7 +70,7 @@ export async function valhallaRoute(points, profile, signal, nogos = [], style =
   // the route style's nearest equivalents (styles.js) over the sport's defaults
   const base = { costing, costing_options: { [costing]: { ...options, ...style } }, ...(nogos.length ? { exclude_polygons: excludes(nogos) } : {}) };
   const body = { ...base, locations: points.map(([lon, lat]) => ({ lon, lat })), directions_type: 'none', shape_format: 'polyline6' };
-  const res = await request('valhalla', `${VALHALLA}/route?json=${encodeURIComponent(JSON.stringify(body))}`, { signal });
+  const res = await request('valhalla', `${VALHALLA}/route?json=${encodeURIComponent(JSON.stringify(body))}`, { signal, timeoutMs: 60000 });
   const d = await res.json().catch(() => ({}));
   if (!res.ok || !d.trip) throw new Error(d.error || `Valhalla ${res.status}`);
   const legs = d.trip.legs.map((l) => decode6(l.shape));
@@ -79,9 +79,15 @@ export async function valhallaRoute(points, profile, signal, nogos = [], style =
   const all = [], off = [];
   legs.forEach((c, k) => { off.push(Math.max(0, all.length - 1)); all.push(...(k ? c.slice(1) : c)); });
   const seg = new Array(Math.max(0, all.length - 1)).fill(null);
+  // Optional details have a total budget, including the wait for a public-server slot.
+  const details = new AbortController();
+  const cancel = () => details.abort();
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  signal?.addEventListener('abort', cancel, { once: true });
+  const timer = setTimeout(cancel, 5000);
   try {
     const ta = await request('valhalla', `${VALHALLA}/trace_attributes`, {
-      method: 'POST', signal, headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, // a "simple" request: no preflight
+      method: 'POST', signal: details.signal, headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, // a "simple" request: no preflight
       body: JSON.stringify({
         ...base, shape: all.map(([lon, lat]) => ({ lon, lat })), shape_match: 'edge_walk',
         filters: { attributes: ['edge.use', 'edge.road_class', 'edge.surface', 'edge.names', 'edge.sac_scale', 'edge.begin_shape_index', 'edge.end_shape_index'], action: 'include' },
@@ -93,7 +99,10 @@ export async function valhallaRoute(points, profile, signal, nogos = [], style =
       for (let j = e.begin_shape_index; j < e.end_shape_index && j < seg.length; j++) seg[j] = t;
     }
   } catch (e) {
-    if (e.name === 'AbortError') throw e; // otherwise: the route without way tags
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError'); // otherwise: the route without way tags
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
   }
   return legs.map((c, k) => ({
     coords: c.length > 1 ? c : [c[0], c[0]],

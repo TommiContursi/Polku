@@ -10,6 +10,13 @@ const RETRY_MS = 15000;
 const FAILED = Object.freeze({ failed: true });
 const cache = new Map(); // "z/x/y" -> { p: Promise<{w,h,el}|null|FAILED>, failed: when it failed, or 0 }
 
+function trimTiles() {
+  for (const [key, tile] of cache) {
+    if (cache.size <= MAX_TILES) break;
+    if (tile.done) cache.delete(key);
+  }
+}
+
 function decode(img) {
   const w = img.width, h = img.height;
   const canvas = typeof OffscreenCanvas !== 'undefined'
@@ -36,18 +43,21 @@ function loadTile(z, x, y) {
     return hit.p;
   }
   const url = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-  const entry = { failed: 0 };
-  entry.p = fetch(url)
+  const entry = { failed: 0, done: false };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  entry.p = fetch(url, { signal: ctrl.signal })
     .then((r) => {
       if (r.status === 404) return null;
       if (!r.ok) throw new Error(`terrain tile: HTTP ${r.status}`);
       return r.blob();
     })
     .then((b) => (b ? createImageBitmap(b).then(decode) : null))
-    .catch(() => { entry.failed = Date.now(); return FAILED; });
+    .catch(() => { entry.failed = Date.now(); return FAILED; })
+    .finally(() => { clearTimeout(timer); entry.done = true; trimTiles(); });
   cache.delete(key);
   cache.set(key, entry);
-  while (cache.size > MAX_TILES) cache.delete(cache.keys().next().value);
+  trimTiles();
   return entry.p;
 }
 
@@ -89,22 +99,22 @@ export async function elevations(points, z = DEM_MAXZOOM) {
     const next = [];
     const keys = [...groups.keys()];
     // Bounded parallelism keeps the tile server happy on long routes.
-    for (let k = 0; k < keys.length; k += 8) {
-      await Promise.all(
-        keys.slice(k, k + 8).map(async (key) => {
-          const [x, y] = key.split('/').map(Number);
-          const tile = await loadTile(zz, x, y);
-          for (const i of groups.get(key)) {
-            if (tile === FAILED) failed[i] = 1;
-            if (!tile || tile === FAILED) { next.push(i); continue; }
-            const [tx, ty] = lonLatToTile(points[i][0], points[i][1], zz);
-            const v = sample(tile, tx - x, ty - y);
-            if (Number.isFinite(v) && v > -500) out[i] = v;
-            else next.push(i);
-          }
-        }),
-      );
-    }
+    let cursor = 0;
+    await Promise.all(Array.from({ length: Math.min(8, keys.length) }, async () => {
+      while (cursor < keys.length) {
+        const key = keys[cursor++];
+        const [x, y] = key.split('/').map(Number);
+        const tile = await loadTile(zz, x, y);
+        for (const i of groups.get(key)) {
+          if (tile === FAILED) failed[i] = 1;
+          if (!tile || tile === FAILED) { next.push(i); continue; }
+          const [tx, ty] = lonLatToTile(points[i][0], points[i][1], zz);
+          const v = sample(tile, tx - x, ty - y);
+          if (Number.isFinite(v) && v > -500) out[i] = v;
+          else next.push(i);
+        }
+      }
+    }));
     pending = next;
   }
   out.failed = pending.filter((i) => failed[i]).length;

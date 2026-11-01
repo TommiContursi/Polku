@@ -42,12 +42,13 @@ export function seedLipas(fn) { seeded = fn; }
 async function getJson(url, signal) {
   const fx = seeded && seeded(url);
   if (fx) return fx;
-  const res = await request('lipas', url, { signal });
+  const res = await request('lipas', url, { signal, timeoutMs: 15000 });
   if (!res.ok) throw new Error(`LIPAS ${res.status}`);
   return res.json();
 }
 
 const Z = 9; // cache granularity (≈ 60 km tiles at 61°N)
+const MAX_TILES = 64;
 
 export class LipasLayer {
   constructor(map, onData) {
@@ -58,6 +59,9 @@ export class LipasLayer {
     this.showRoutes = false;
     this.showPoints = false;
     this.tiles = new Map(); // "type/x/y" -> {features}|Promise
+    this.view = new Set();
+    this.published = null;
+    this.publishTimer = 0;
     this.timer = 0;
     map.on('moveend', () => this.schedule());
   }
@@ -83,28 +87,49 @@ export class LipasLayer {
 
   update() {
     const zoom = this.map.getZoom();
-    if (!this.inFinland() || zoom < 8) return;
+    const wanted = new Set();
     const types = [
       ...(this.showRoutes ? this.routeTypes : []),
       ...(this.showPoints && zoom >= 9.5 ? this.pointTypes : []),
     ];
-    if (!types.length) return;
     const b = this.map.getBounds();
     const [x0, y0] = lonLatToTile(b.getWest(), b.getNorth(), Z).map(Math.floor);
     const [x1, y1] = lonLatToTile(b.getEast(), b.getSouth(), Z).map(Math.floor);
-    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 9) return;
-    for (const type of types) {
+    if (this.inFinland() && zoom >= 8 && (x1 - x0 + 1) * (y1 - y0 + 1) <= 9) for (const type of types) {
       for (let x = x0; x <= x1; x++) {
         for (let y = y0; y <= y1; y++) {
           const key = `${type}/${x}/${y}`;
-          if (this.tiles.has(key)) continue;
-          const p = this.fetchTile(type, x, y)
-            .then((features) => { this.tiles.set(key, { features }); this.publish(); })
-            .catch(() => this.tiles.delete(key));
-          this.tiles.set(key, p);
+          wanted.add(key);
+          this.tile(type, x, y).catch(() => {}); // the next move retries a failed tile
         }
       }
     }
+    this.view = wanted;
+    this.trim();
+    this.publish();
+  }
+
+  trim() {
+    // Pending requests are shared with Marked routes; its callers retain their resolved tiles.
+    for (const [key, tile] of this.tiles) {
+      if (this.tiles.size <= MAX_TILES) break;
+      if (tile.features && !this.view.has(key)) this.tiles.delete(key);
+    }
+  }
+
+  tile(type, x, y) {
+    const key = `${type}/${x}/${y}`;
+    const hit = this.tiles.get(key);
+    if (hit) { this.tiles.delete(key); this.tiles.set(key, hit); return Promise.resolve(hit); }
+    const p = this.fetchTile(type, x, y).then((features) => {
+      const tile = { features };
+      this.tiles.set(key, tile);
+      this.trim();
+      this.publish();
+      return tile;
+    }).catch((e) => { this.tiles.delete(key); throw e; });
+    this.tiles.set(key, p);
+    return p;
   }
 
   async fetchTile(type, x, y) {
@@ -132,26 +157,21 @@ export class LipasLayer {
     const [x0, y0] = lonLatToTile(w, n, Z).map(Math.floor);
     const [x1, y1] = lonLatToTile(e, s, Z).map(Math.floor);
     if ((x1 - x0 + 1) * (y1 - y0 + 1) > 9) throw Object.assign(new Error('Zoom in to list them'), { name: 'Wide' });
-    const keys = [];
+    const loads = [];
     for (const type of types) {
       for (let x = x0; x <= x1; x++) {
         for (let y = y0; y <= y1; y++) {
-          const key = `${type}/${x}/${y}`;
-          keys.push(key);
-          if (this.tiles.has(key)) continue;
-          const p = this.fetchTile(type, x, y).then((features) => { this.tiles.set(key, { features }); this.publish(); });
-          p.catch(() => this.tiles.delete(key));
-          this.tiles.set(key, p);
+          loads.push(this.tile(type, x, y));
         }
       }
     }
-    await Promise.allSettled(keys.map((k) => Promise.resolve(this.tiles.get(k))));
-    const failed = keys.filter((k) => !(this.tiles.get(k) || {}).features).length; // (a tile that failed is asked for again next time)
+    const loaded = await Promise.allSettled(loads);
+    const failed = loaded.filter((v) => v.status === 'rejected').length;
     const inView = (c) => c[0] >= w && c[0] <= e && c[1] >= s && c[1] <= n;
     const linesOf = (g) => (g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : []);
     const by = new Map(), seen = new Set();
-    for (const k of keys) {
-      const v = this.tiles.get(k);
+    for (const tile of loaded) {
+      const v = tile.value;
       if (!v || !v.features) continue;
       for (const f of v.features) {
         if (seen.has(f.id)) continue;
@@ -173,20 +193,30 @@ export class LipasLayer {
   }
 
   publish() {
+    clearTimeout(this.publishTimer);
+    this.publishTimer = setTimeout(() => this.publishNow(), 0);
+  }
+
+  publishNow() {
     const routes = [];
     const points = [];
     const seen = new Set();
-    for (const [key, v] of this.tiles) {
-      if (!v || !v.features) continue;
+    const visible = [];
+    for (const key of this.view) {
+      const v = this.tiles.get(key);
+      if (!v?.features) continue;
       const type = +key.split('/')[0];
       const isRoute = isLipasRoute(type);
       if (isRoute ? !(this.showRoutes && this.routeTypes.includes(type)) : !(this.showPoints && this.pointTypes.includes(type))) continue;
+      visible.push(v);
       for (const f of v.features) {
         if (seen.has(f.id)) continue;
         seen.add(f.id);
         (isRoute ? routes : points).push(f);
       }
     }
+    if (this.published && visible.length === this.published.length && visible.every((v, i) => v === this.published[i])) return;
+    this.published = visible;
     this.onData({ type: 'FeatureCollection', features: routes }, { type: 'FeatureCollection', features: points });
   }
 }
