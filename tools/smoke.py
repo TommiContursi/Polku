@@ -15757,6 +15757,8 @@ def pick_card(chrome):
                 fails.append(f"Rauhaniemenreitti's profile folded: {f}; opened again: {back}")
         # while the heights come (2026-10-31: the profile's arrow wasn't there, and only grey shapes): the profile says so in words and
         # folds by its head, then opens again; while the ways come, the same. (Set back on Rauhaniemenreitti's own pick after.)
+        # (with motion: the check pages run with reduced motion, tools/cdp.py)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'light'}, {'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         load = pg.js("""(async () => {
           const pick = polku.planner.cards.current.pick, kept = { a: pick.a, ways: pick.ways }, card = () => document.querySelector('.pl-way.card');
           const look = () => { const hd = card().querySelector('.sec-head'), sh = card().querySelector('.pick-skel-chart'); return { head: hd ? hd.textContent : '', open: hd && hd.getAttribute('aria-expanded'), say: card().querySelector('.pick-skel .pick-note')?.textContent || '', shapes: !!sh, moves: sh ? getComputedStyle(sh).animationName : '' }; };
@@ -15769,9 +15771,8 @@ def pick_card(chrome):
           return out; })()""")
         hs, fo, op, ws = load['heights'], load['folded'], load['opened'], load['ways']
         # with reduced motion the shapes only fade in: the words say it's loading, so they don't breathe
-        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'light'}, {'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         calm = pg.js("(() => { const pick = polku.planner.cards.current.pick, a = pick.a; pick.a = undefined; polku.planner.cards.refresh(); const sh = document.querySelector('.pl-way.card .pick-skel-chart'), m = sh ? getComputedStyle(sh).animationName : ''; pick.a = a; polku.planner.cards.refresh(); return m; })()")
-        pg.c.send('Emulation.setEmulatedMedia', {'features': []}, pg.s)
         if 'pulse' not in hs['moves'] or calm != 'bar-in':
             fails.append(f"the profile's shapes while it loads: {hs['moves']}, with reduced motion {calm} (they breathe; with reduced motion they only fade in)")
         if not hs['head'].startswith('Profile') or hs['open'] != 'true' or 'Loading the heights' not in hs['say'] or not hs['shapes'] \
