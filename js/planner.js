@@ -3776,7 +3776,8 @@ export class Planner {
     this.hideLine();
     this.picked = card;
     this.line = pickLine(card, () => this.openLine());
-    this.lineMk = new maplibregl.Marker({ element: this.line.el, anchor: 'bottom', offset: [0, -22] }).setLngLat(card.spot.ll).addTo(this.map);
+    // (in a plain div: the map moves the marker by its transform, which the button's own press and entrance mustn't animate)
+    this.lineMk = new maplibregl.Marker({ element: h('div', {}, this.line.el), anchor: 'bottom', offset: [0, -22] }).setLngLat(card.spot.ll).addTo(this.map);
     this.linePin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(card.spot.ll).addTo(this.map);
     // whole on the screen for a tap by its edge (a phone at 200 %): in from the sides, and under the spot with no room above it
     const r = this.line.el.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;

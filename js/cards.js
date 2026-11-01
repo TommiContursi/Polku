@@ -644,7 +644,7 @@ export function thingCard(pl, f, ll) {
 // the hover does: its name, how you get along it, its height and grade where you tapped, the weather. A tap on it opens the
 // card. `update()` says it again as the pick fills in.
 export function pickLine(card, open) {
-  const el = h('button', { type: 'button', class: 'pick-line', onclick: open });
+  const el = h('button', { type: 'button', class: 'spot-line', onclick: open });
   for (const ev of ['mousedown', 'touchstart', 'pointerdown', 'click', 'dblclick']) el.addEventListener(ev, (e) => e.stopPropagation()); // (the map's, not a tap on it)
   const update = () => {
     const { pick, spot } = card, a = pick.a && pick.a !== 'failed' ? pick.a : null, w = pick.wx && pick.wx !== 'failed' ? pick.wx : null;

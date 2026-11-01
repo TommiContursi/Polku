@@ -720,7 +720,7 @@ def trail_card(chrome):
             fails.append(f'{name}: no trail from the recorded tile on the screen')
         else:
             pg.quick_tap(*at)  # (a tap by the touch's own times: pg.tap() on a busy page can be a hold, and the spot's menu)
-            line = pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const b = document.querySelector('.pick-line'), r = b && b.getBoundingClientRect(); r || Date.now() - t0 > 5000 ? ok(r && [r.left + r.width / 2, r.top + r.height / 2]) : setTimeout(go, 100); }; go(); })")
+            line = pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const b = document.querySelector('.spot-line'), r = b && b.getBoundingClientRect(); r || Date.now() - t0 > 5000 ? ok(r && [r.left + r.width / 2, r.top + r.height / 2]) : setTimeout(go, 100); }; go(); })")
             if line:
                 pg.quick_tap(*line)  # (the line at the spot first, its card from a tap on it: #574)
             r = pg.js(f"({CARD_FIT})('.sheet .pl-way.card', true)")  # (the way's card on the planner's card, 25d part 6, in the sheet: #570)
@@ -15250,7 +15250,8 @@ LV_JS = """(() => { window.LV = {
     const note = r.closest('.pick-leave')?.querySelector('.pick-note:not([hidden])');
     return { label: r.querySelector('b').textContent, line: line && box(line) ? line.textContent : '', val: val ? val.textContent : '', type: input && input.type, min: input ? input.min : '',
       now: n ? { inside: n.top >= R.top - 1 && n.bottom <= R.bottom + 1, x: n.left + n.width / 2, y: n.top + n.height / 2, h: Math.round(n.height) } : null,
-      valLines: v ? Math.round(v.height / parseFloat(getComputedStyle(val).lineHeight)) : 0, over: !!input && top === input, note: note ? note.textContent.trim() : '' };
+      valLines: v ? Math.round(v.height / parseFloat(getComputedStyle(val).lineHeight)) : 0, over: !!input && top === input, note: note ? note.textContent.trim() : '',
+      boxed: !!line && getComputedStyle(line).boxShadow !== 'none' };
   },
   set(where, value) { const i = LV.row(where).querySelector('input'); i.value = value; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); return true; },
   // where to press it, in sight as a person scrolls to it (the card, or the sheet's body, never the page, which the app
@@ -15490,7 +15491,8 @@ def leave(chrome):
         pg.js("LV.set('card', LV.iso(LV.at(1, 7, 30)))")
         time.sleep(0.5)
         r = pg.js("({ ...LV.read('card'), start: polku.planner.startSec(), want: LV.at(1, 7, 30), day: 'Tomorrow, ' + LV.day(LV.at(1, 7, 30)), clock: LV.clock(LV.at(1, 7, 30)) })")
-        if r['start'] != r['want'] or r['line'] != r['day'] or r['val'] != r['clock'] or not r['now'] or not r['now']['inside'] or r['valLines'] != 1:
+        # (its line plain, not the map's line at a spot: #574 gave that one the same class)
+        if r['start'] != r['want'] or r['line'] != r['day'] or r['val'] != r['clock'] or not r['now'] or not r['now']['inside'] or r['valLines'] != 1 or r['boxed']:
             fails.append(f"{name}: Leave set for tomorrow, 07:30: {r}")
         # Go has the same row, in step; within two days the timeline and the safety layers keep the same time
         pg.js("polku.planner.cards.close(); polku.planner.reveal('speed'); true")
@@ -16205,7 +16207,7 @@ def pick_card(chrome):
         spot = lambda: pg.js("""(async () => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2, ll = [f[i], f[i + 1]];
           polku.map.jumpTo({ center: ll, zoom: 16.5 }); await new Promise((r) => polku.map.once('idle', () => setTimeout(r, 400)));
           const q = polku.map.project(ll), r = polku.map.getCanvas().getBoundingClientRect(); return { x: r.left + q.x, y: r.top + q.y }; })()""")
-        line = "(() => { const b = document.querySelector('.pick-line'), r = b && b.getBoundingClientRect(); return { line: b ? [...b.querySelectorAll('b, small')].map((e) => e.textContent) : null, at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height }, card: polku.planner.cards.current && polku.planner.cards.current.kind, drawn: polku.map.querySourceFeatures('pick').length }; })()"
+        line = "(() => { const b = document.querySelector('.spot-line'), r = b && b.getBoundingClientRect(), mk = b && b.closest('.maplibregl-marker'); return { still: !!mk && mk !== b && getComputedStyle(mk).transitionDuration.split(',').every((d) => !parseFloat(d)), line: b ? [...b.querySelectorAll('b, small')].map((e) => e.textContent) : null, at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height }, card: polku.planner.cards.current && polku.planner.cards.current.kind, drawn: polku.map.querySourceFeatures('pick').length }; })()"
         s = spot()
         pg.quick_tap(s['x'], s['y'])
         for _ in range(40):
@@ -16213,8 +16215,9 @@ def pick_card(chrome):
             r = pg.js(line)
             if r['line'] and re.search(r'% here', ' '.join(r['line'])):
                 break
-        if not r['line'] or r['card'] or not r['drawn'] or not re.search(r'dirt', ' '.join(r['line']), re.I) or not re.search(r'% here', ' '.join(r['line'])) or r['at']['h'] < 44:
-            fails.append(f"390x844: a tap on the path: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn (its name, how you get along it, the grade here; no card yet; 44 px at least)")
+        # (its marker a plain div that never animates: the map moves it by its transform, review of 2026-11-01)
+        if not r['line'] or r['card'] or not r['drawn'] or not re.search(r'dirt', ' '.join(r['line']), re.I) or not re.search(r'% here', ' '.join(r['line'])) or r['at']['h'] < 44 or not r['still']:
+            fails.append(f"390x844: a tap on the path: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn, its marker still {r['still']} (its name, how you get along it, the grade here; no card yet; 44 px at least; a marker that never animates)")
         else:
             pg.quick_tap(r['at']['x'], r['at']['y'])
             time.sleep(1)
