@@ -14,7 +14,6 @@ import os
 from pathlib import Path
 import posixpath
 import re
-import paramiko
 import urllib.request
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
@@ -136,6 +135,7 @@ class SFTPFiles:
 
 def open_sftp(host, user, password, expected_fingerprint):
     """Verify the server key *before* sending credentials, with no TOFU fallback."""
+    import paramiko
     transport = paramiko.Transport((host, 22))
     try:
         transport.start_client(timeout=30)
@@ -226,6 +226,10 @@ def get(url, byte_range=None, immutable=False, encoding='gzip, br'):
         h = response.headers
         require(h.get('Access-Control-Allow-Origin') == '*', 'Public response needs wildcard CORS')
         require(not h.get('Content-Encoding'), 'Public data must not use HTTP Content-Encoding')
+        if urlsplit(url).path.endswith('/current.json'):
+            directives = {value.strip().lower() for value in h.get('Cache-Control', '').split(',')}
+            require('immutable' not in directives and directives & {'no-cache', 'no-store', 'max-age=0'},
+                    'current.json must disable caching or require revalidation')
         if immutable:
             cache = h.get('Cache-Control', '').lower()
             require('immutable' in cache and 'max-age=31536000' in cache, 'Release needs immutable cache headers')
