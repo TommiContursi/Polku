@@ -2,9 +2,10 @@
 // and a park open on the planner's card (25d part 6: openSpot()), and so do road works, sea marks and the map's other things
 // (#564: openThing(), with thingOf() here); ships and cameras keep their own live card and modal.
 
-import { TRAFICOM_WMS, isLipasRoute } from './config.js';
+import { TRAFICOM_WMS, isLipasRoute, OSM_DATA_MANIFEST } from './config.js';
 import { overpass } from './osm.js';
-import { dist, pointSegment } from './geo.js';
+import { hostedTile } from './osm-data.js';
+import { dist, pointSegment, lonLatToTile } from './geo.js';
 import { NAV_TEXT } from './nautical.js';
 import { WINTER_TEXT } from './winter.js';
 import { request } from './net.js';
@@ -161,20 +162,41 @@ export function overColumn(popup, on) {
 }
 
 
+async function inspectionAt([lon,lat], metres, dataset = 'inspection') {
+  const dy = metres / 111000, dx = dy / Math.cos(lat*Math.PI/180);
+  const [x0,y0] = lonLatToTile(lon-dx,lat+dy,14).map(Math.floor), [x1,y1] = lonLatToTile(lon+dx,lat-dy,14).map(Math.floor);
+  const reads = [];
+  for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++) reads.push(hostedTile(OSM_DATA_MANIFEST,dataset,14,[x,y],()=>{throw new Error('Hosted inspection unavailable');}));
+  const tiles = await Promise.all(reads), unique = new Map();
+  for (const tile of tiles) for (const e of tile.elements) unique.set(`${e.type}/${e.id}`,e);
+  return {elements:[...unique.values()],source:tiles[0]?.source,nearby_complete:tiles.every(t=>t.nearby_complete!==false)};
+}
+
 // OpenStreetMap's way at a spot, asked once (Overpass): the way given (a trail drawn from OSM knows its own), else the
 // nearest one with a highway tag within 12 m. { id, tags, len } or null.
 export async function wayNear(ll, osm = null) {
   const q = osm ? `[out:json][timeout:15];way(${osm});out tags geom;` : `[out:json][timeout:15];way(around:12,${ll[1]},${ll[0]})[highway];out tags geom;`;
-  const json = await overpass(q, { race: true });
-  const ways = (json.elements || []).filter((w) => w.geometry);
+  let json;
+  try {
+    json = await inspectionAt(ll,12);
+    if (osm && !json.elements.some(e=>e.type==='way' && e.id===+osm)) throw new Error('Object not in hosted inspection');
+  } catch {
+    // The original ways product already has full tags for a known selected way.
+    try {
+      if (!osm) throw new Error('Nearest highway requires the complete inspection product');
+      json = await inspectionAt(ll,12,'ways');
+      if (!json.elements.some(e=>e.type==='way' && e.id===+osm)) throw new Error('Object absent');
+    } catch { json = await overpass(q, {race:true,oneRound:true,timeoutMs:15000}); }
+  }
+  const ways = (json.elements || []).filter(w=>w.type==='way' && w.geometry && (osm ? w.id===+osm : w.tags?.highway));
   if (!ways.length) return null;
   const near = ways.map((w) => {
     const g = w.geometry.map((c) => [c.lon, c.lat]);
     let d = Infinity;
     for (let i = 1; i < g.length; i++) d = Math.min(d, pointSegment(ll, g[i - 1], g[i]).d);
-    return { id: w.id, tags: w.tags || {}, d, len: g.reduce((s, c, i) => (i ? s + dist(g[i - 1], c) : 0), 0) };
+    return { id: w.id, tags: w.tags || {}, source:json.source, d, len: g.reduce((s, c, i) => (i ? s + dist(g[i - 1], c) : 0), 0) };
   }).sort((a, b) => a.d - b.d)[0];
-  return near;
+  return near && (osm || near.d<=12) ? near : null;
 }
 
 // OpenStreetMap's own data for a way or a place (25d part 6), asked when you press All OpenStreetMap details: the object
@@ -182,16 +204,34 @@ export async function wayNear(ll, osm = null) {
 // 40 m at most, with a tag of its kind. { type, id, tags, len } or null when there's none
 export async function osmDetails({ type = 'way', id = null, ll }) {
   if (type === 'way') { const w = await wayNear(ll, id); return w && { type: 'way', ...w }; }
+  try {
+    const json = await inspectionAt(ll,40);
+    if (id) {
+      const e = json.elements.find(e=>e.type===type && e.id===+id);
+      if (!e) throw new Error('Object not in hosted inspection');
+      return {type:e.type,id:e.id,tags:e.tags,len:0,source:json.source};
+    }
+    if (!json.nearby_complete) throw new Error('Nearby relation geometry incomplete');
+    const keys = ['amenity','tourism','leisure','natural','barrier','ford','man_made','historic'];
+    const at = e=>e.center ? [e.center.lon,e.center.lat] : [e.lon,e.lat];
+    const candidates = json.elements.filter(e=>keys.some(k=>e.tags?.[k]));
+    const known = candidates.filter(e=>e.type==='node' ? dist(at(e),ll)<=40 : e.type==='way' && e.geometry.some((p,i,g)=>i && pointSegment(ll,[g[i-1].lon,g[i-1].lat],[p.lon,p.lat]).d<=40))
+      .sort((a,b)=>dist(at(a),ll)-dist(at(b),ll));
+    const near = known[0];
+    // A relation's centre cannot establish that one of its members is within 40 m.
+    if (candidates.some(e=>e.type==='relation' && (!near || dist(at(e),ll)<dist(at(near),ll)))) throw new Error('Nearby relation needs member geometry');
+    return near ? {type:near.type,id:near.id,tags:near.tags,len:0,source:json.source} : null;
+  } catch { /* the existing bounded query also covers objects outside the extracted classes */ }
   // the object the card is about, by its own number (another may be nearer, or at the same spot)
   if (id && (type === 'node' || type === 'relation')) {
-    const json = await overpass(`[out:json][timeout:15];${type}(${+id});out tags center;`, { race: true });
+    const json = await overpass(`[out:json][timeout:15];${type}(${+id});out tags center;`, { race: true, oneRound: true, timeoutMs: 15000 });
     const x = (json.elements || []).find((e) => e.type === type && e.id === +id);
-    return x ? { type, id: x.id, tags: x.tags || {}, len: 0 } : null;
+    return x ? { type, id: x.id, tags: x.tags || {}, len: 0, source:json.source } : null;
   }
-  const json = await overpass(`[out:json][timeout:15];nwr(around:40,${ll[1]},${ll[0]})[~"^(amenity|tourism|leisure|natural|barrier|ford|man_made|historic)$"~"."];out tags center;`, { race: true });
+  const json = await overpass(`[out:json][timeout:15];nwr(around:40,${ll[1]},${ll[0]})[~"^(amenity|tourism|leisure|natural|barrier|ford|man_made|historic)$"~"."];out tags center;`, { race: true, oneRound: true, timeoutMs: 15000 });
   const at = (x) => (x.center ? [x.center.lon, x.center.lat] : [x.lon, x.lat]);
   const near = (json.elements || []).filter((x) => x.tags && Number.isFinite(at(x)[0])).sort((a, b) => dist(at(a), ll) - dist(at(b), ll))[0];
-  return near ? { type: near.type, id: near.id, tags: near.tags, len: 0 } : null;
+  return near ? { type: near.type, id: near.id, tags: near.tags, len: 0, source:json.source } : null;
 }
 
 // a date and a time, with the year when it isn't this year (#565: long works seemed to end before they began)

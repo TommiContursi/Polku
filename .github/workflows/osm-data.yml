@@ -25,7 +25,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: osm-data
+  group: ${{ github.event_name == 'pull_request' && format('osm-data-pr-{0}', github.event.pull_request.number) || 'osm-data' }}
   cancel-in-progress: false
 
 jobs:

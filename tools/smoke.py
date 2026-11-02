@@ -14495,6 +14495,8 @@ def facts(chrome):
         pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#16.5/61.51128/23.81742')
         pg.js(PICK_SEED)
         pg.js(FA_HELP)
+        # This group exercises the public fallback; osmdata covers healthy hosted inspection.
+        pg.js("import('/js/osm-data.js').then(({StaticOSM}) => { const tile=StaticOSM.prototype.tile; StaticOSM.prototype.tile=function(...args) { return ['inspection','ways'].includes(this.dataset) ? Promise.reject(new Error('Hosted source unavailable in fallback fixture')) : tile.apply(this,args); }; return true; })")
         pg.js("polku.planner.setActive(false); true")
         path = pg.js("(() => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()")
         # ---- the same facts in every sport, and no What's here
@@ -14510,15 +14512,15 @@ def facts(chrome):
             fails.append(f'the facts differ by sport: MTB {mtb}, Hike {hike}')
         pg.js("polku.set({ activity: 'mtb' }); new Promise((r) => setTimeout(r, 600))")
         # ---- All OpenStreetMap details with a hold: one Overpass request, its tags on the card, a second press asks nothing
-        way = {'type': 'way', 'id': 123456789, 'tags': {'highway': 'path', 'surface': 'dirt', 'mtb:scale': '1', 'check_date': '2024-06-12'},
+        way = {'type': 'way', 'id': 1063593742, 'tags': {'highway': 'path', 'surface': 'dirt', 'mtb:scale': '1', 'check_date': '2024-06-12'},
                'geometry': [{'lat': 61.5113, 'lon': 23.8174}, {'lat': 61.5114, 'lon': 23.8176}]}
         pg.js(f"fa.answer = () => ({json.dumps({'elements': [way]})}); fa.asked.length = 0; true")
         hold(path)
         btn('All OpenStreetMap details')
         time.sleep(1.5)
         s = st()
-        if len(pg.js('fa.asked')) != 1 or 'way 123456789' not in s['text'] or has('All OpenStreetMap details'):
-            fails.append(f"All OpenStreetMap details: {len(pg.js('fa.asked'))} requests, “way 123456789” {'in' if 'way 123456789' in s['text'] else 'not in'} the card, its button {'still there' if has('All OpenStreetMap details') else 'gone'}")
+        if len(pg.js('fa.asked')) != 1 or 'way 1063593742' not in s['text'] or has('All OpenStreetMap details'):
+            fails.append(f"All OpenStreetMap details: {len(pg.js('fa.asked'))} requests, “way 1063593742” {'in' if 'way 1063593742' in s['text'] else 'not in'} the card, its button {'still there' if has('All OpenStreetMap details') else 'gone'}")
         pg.js("polku.planner.osmOnCard(polku.planner.cards.current, polku.planner.cards.current.key); true")
         time.sleep(0.5)
         if len(pg.js('fa.asked')) != 1:
@@ -14526,7 +14528,7 @@ def facts(chrome):
         # Not right? for the way: its editor by the id OpenStreetMap's details came with, and the note at the spot
         btn('Not right?')
         time.sleep(0.4)
-        if not any(re.match(r'https://www\.openstreetmap\.org/note/new#map=19/61\.\d+/23\.\d+$', x) for x in links()) or 'https://www.openstreetmap.org/edit?way=123456789' not in links():
+        if not any(re.match(r'https://www\.openstreetmap\.org/note/new#map=19/61\.\d+/23\.\d+$', x) for x in links()) or 'https://www.openstreetmap.org/edit?way=1063593742' not in links():
             fails.append(f'Not right? for a way: {links()}')
         # ---- a failure says so and keeps the button; an answer after the card closed changes nothing
         pg.js("fa.answer = () => 503; fa.asked.length = 0; true")
@@ -16757,7 +16759,7 @@ def osm_data(chrome):
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
             pg.open_app({'activity': 'mtb', 'layers': {'wx': False, 'uphill': False, 'trails': False}})
-            result = pg.js("import('/tools/osm_data/smoke_checks.js').then((m) => m.checkStaticOSM().then(async (first) => first.concat(await m.checkHostedConsumers())))")
+            result = pg.js("import('/tools/osm_data/smoke_checks.js').then((m) => m.checkStaticOSM().then(async (first) => first.concat(await m.checkHostedConsumers(),await m.checkHostedInspection())))")
             failures.extend(f'{width}x{height}: {message}' for message in result)
             failures.extend(pg.errors())
         finally:

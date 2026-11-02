@@ -1,0 +1,149 @@
+{
+  "seconds": 99.17679370800033,
+  "areas": 192674,
+  "largest": [
+    {
+      "type": "relation",
+      "id": 7379046,
+      "name": "Saimaa",
+      "points": 654393,
+      "raw": 15499852,
+      "gzip": 4674607,
+      "bbox_z12_tiles": 1287
+    },
+    {
+      "type": "relation",
+      "id": 402543,
+      "name": "Inarij\u00e4rvi",
+      "points": 209980,
+      "raw": 4964215,
+      "gzip": 1472221,
+      "bbox_z12_tiles": 440
+    },
+    {
+      "type": "relation",
+      "id": 899112,
+      "name": "Pihlajavesi",
+      "points": 146522,
+      "raw": 3484687,
+      "gzip": 1061138,
+      "bbox_z12_tiles": 180
+    },
+    {
+      "type": "relation",
+      "id": 1239779,
+      "name": "P\u00e4ij\u00e4nne",
+      "points": 107104,
+      "raw": 2523759,
+      "gzip": 754404,
+      "bbox_z12_tiles": 270
+    },
+    {
+      "type": "relation",
+      "id": 405813,
+      "name": "Orivesi",
+      "points": 86348,
+      "raw": 2053128,
+      "gzip": 614342,
+      "bbox_z12_tiles": 150
+    },
+    {
+      "type": "relation",
+      "id": 451890,
+      "name": "Pielinen",
+      "points": 81782,
+      "raw": 1945363,
+      "gzip": 591475,
+      "bbox_z12_tiles": 252
+    },
+    {
+      "type": "relation",
+      "id": 444641,
+      "name": "Kivij\u00e4rvi",
+      "points": 71350,
+      "raw": 1697493,
+      "gzip": 497045,
+      "bbox_z12_tiles": 72
+    },
+    {
+      "type": "relation",
+      "id": 900368,
+      "name": "Kallavesi",
+      "points": 55552,
+      "raw": 1298152,
+      "gzip": 382240,
+      "bbox_z12_tiles": 120
+    },
+    {
+      "type": "relation",
+      "id": 406008,
+      "name": "Pyh\u00e4j\u00e4rvi / \u041f\u044e\u0445\u044f\u044f\u0440\u0432\u0438",
+      "points": 51483,
+      "raw": 1223289,
+      "gzip": 362800,
+      "bbox_z12_tiles": 60
+    },
+    {
+      "type": "relation",
+      "id": 2665335,
+      "name": "Haukivesi",
+      "points": 52494,
+      "raw": 1215689,
+      "gzip": 360315,
+      "bbox_z12_tiles": 169
+    },
+    {
+      "type": "relation",
+      "id": 3892923,
+      "name": "Sk\u00e4rg\u00e5rdshavets nationalpark",
+      "points": 49577,
+      "raw": 1178052,
+      "gzip": 342692,
+      "bbox_z12_tiles": 252
+    },
+    {
+      "type": "relation",
+      "id": 2666075,
+      "name": "Pyh\u00e4selk\u00e4",
+      "points": 48243,
+      "raw": 1147363,
+      "gzip": 338296,
+      "bbox_z12_tiles": 54
+    },
+    {
+      "type": "relation",
+      "id": 1716772,
+      "name": "Larsmosj\u00f6n",
+      "points": 40906,
+      "raw": 973550,
+      "gzip": 284367,
+      "bbox_z12_tiles": 15
+    },
+    {
+      "type": "relation",
+      "id": 445537,
+      "name": "Viinij\u00e4rvi",
+      "points": 40533,
+      "raw": 964831,
+      "gzip": 281225,
+      "bbox_z12_tiles": 30
+    },
+    {
+      "type": "relation",
+      "id": 445540,
+      "name": "H\u00f6yti\u00e4inen",
+      "points": 36641,
+      "raw": 866435,
+      "gzip": 255663,
+      "bbox_z12_tiles": 60
+    }
+  ],
+  "sum_bbox_gzip_bytes": 8358616483,
+  "source": {
+    "url": "https://download.geofabrik.de/europe/finland-latest.osm.pbf",
+    "bytes": 774468258,
+    "sha256": "6e4ba0730c8fa4f71c35aa91a5cb3b9ce7f163daa84d886cd94f9b522dd3f80f",
+    "timestamp": "2026-10-31T21:23:06Z"
+  },
+  "note": "Geometry-only probe. Repetition sum is the sum of standalone area gzip size times bounding-box tile count, not a built archive size. Original node IDs/tags/member references are excluded."
+}

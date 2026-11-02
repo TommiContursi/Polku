@@ -132,7 +132,7 @@ export async function areaAt(ll) {
   const [lat, lon] = [ll[1].toFixed(4), ll[0].toFixed(4)], key = `${lat}/${lon}`;
   const box = [+lat - 0.045, +lon - 0.09, +lat + 0.045, +lon + 0.09];
   const json = areas.get(key) || (held ? (heldFail ? Promise.reject(new Error('Overpass')) : { elements: [] })
-    : cachedOverpass(`area/${key}`, `[out:json][timeout:25];is_in(${lat},${lon})->.a;(way(pivot.a)${AREA};rel(pivot.a)${AREA};)->.x;.x out tags bb;.x out skel geom(${box.map((v) => v.toFixed(4)).join(',')});`, (j) => j, { race: true }));
+    : cachedOverpass(`area/${key}`, `[out:json][timeout:25];is_in(${lat},${lon})->.a;(way(pivot.a)${AREA};rel(pivot.a)${AREA};)->.x;.x out tags bb;.x out skel geom(${box.map((v) => v.toFixed(4)).join(',')});`, (j) => j, { race: true, oneRound: true, timeoutMs: 15000 }));
   const els = new Map();
   // (twice each: its tags with the whole area's bounds, then its outline with only that part's: the first bounds stay)
   for (const e of (await json).elements || []) els.set(`${e.type}/${e.id}`, { ...e, ...els.get(`${e.type}/${e.id}`) });
