@@ -107,7 +107,13 @@ The whole-polygon model was measured against the complete retained Finland PBF. 
    The 25 GiB disk preflight guards measured staging. The reviewed publication
    target is proposed as 41509553858 / nordic-osm-release, still owner-controlled.
    Negative country-coverage inheritance checks pass in Node and browser; final
-   checks are 58 Python / 20 Node plus named focused groups and actionlint.
+   checks are 60 Python / 20 Node plus named focused groups; the workflow passes CI.
    Published coverage is not claimed: actual host quota, bulk publication, >2 GiB
    public Range and live pointer verification remain behind approval. Border
    union/merge is measured follow-up #699; area/nearby relation geometry is #696.
+4. Review repaired the builder's named-sample gate and registered both regressions
+   through `tools/smoke.py osmdata`. They fail against the original builder and pass
+   with the fix. Independent candidate recheck 41533288819 validated all 14 required
+   road locations and repeated the 32 covered consumer cases and border controls;
+   zero Overpass and zero extra selected-way tag requests. The candidate remains
+   immutable; the extra evidence replaces the missing original sample measurements.

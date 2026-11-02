@@ -2,6 +2,39 @@
   "measured_on": "2026-11-02",
   "build_run": "https://github.com/TommiContursi/Polku/actions/runs/41509553858",
   "verification_run": "https://github.com/TommiContursi/Polku/actions/runs/41525059421",
+  "sample_and_consumer_reverification": {
+    "run": "https://github.com/TommiContursi/Polku/actions/runs/41533288819",
+    "code_commit": "c6aea6a755c5665a372c8e53a248a2701104bb2d",
+    "required_locations": 14,
+    "covered_consumer_cases": 32,
+    "overpass_requests": 0,
+    "extra_selected_way_tag_requests": 0,
+    "sample_road_counts": {
+      "finland": {
+        "Helsinki": 4685,
+        "Rural central Finland": 40,
+        "Nuuksio forest": 50,
+        "Turku coast": 1910,
+        "Kilpisjarvi north": 70
+      },
+      "sweden": {
+        "Stockholm": 1695,
+        "Kiruna": 262,
+        "Gothenburg": 1265
+      },
+      "norway": {
+        "Oslo": 2543,
+        "Bergen": 1930,
+        "Tromso": 956
+      },
+      "estonia": {
+        "Tallinn": 2186,
+        "Tartu": 1324,
+        "Narva": 561
+      }
+    },
+    "note": "The original candidate predated the repaired sample gate and recorded empty sample results. This independent recheck supplies every required road sample without changing the immutable archives. The later smoke-registration commit changes no builder/reader/archive payload code."
+  },
   "candidate": {
     "release": "20261101T212136Z-four-d5f8341920573573",
     "artifact": "nordic-osm-release",

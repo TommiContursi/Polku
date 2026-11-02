@@ -333,6 +333,14 @@ among 20,766,245 unique represented objects match their original content.
 `docs/measurements/osm-four-country-2026-11-02.json` records source hashes,
 archive sizes, tile distributions, complete OS time/RSS and browser transfers.
 
+The original candidate predates the repaired named-sample gate and contains empty
+sample measurements. Independent verification 41533288819 passed the fixed archive
+checks and all 14 required road samples across the four countries, then repeated
+32 covered desktop/phone-emulated consumer cases and border controls. Every
+required sample has roads; normal consumers made zero Overpass or extra selected-way
+tag requests. The two gate regressions also run through `tools/smoke.py osmdata`.
+The candidate archives and hashes remain unchanged.
+
 Complete country times were FI 52.53, SE 60.50, NO 84.20 and EE 6.41 minutes.
 Maximum process RSS was 6.64 GB; maximum allocated staging at archive completion
 was 18.17 GB. Actual standard runners had 85 GB free. Since this exceeds the
