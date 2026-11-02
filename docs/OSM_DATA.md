@@ -1,7 +1,7 @@
 # Operating Finland's static OSM data
 
-The #154 implementation builds Finland's roads and paths outside the web host
-and serves complete features through a static PMTiles archive. The app source
+The #154 implementation builds Finland's roads, paths and lighting outside the
+web host and serves complete features through static PMTiles archives. The app source
 is selected by `OSM_DATA_MANIFEST` in `js/config.js`. Data publication is separate
 from app activation; changing the app URL does not upload data or change OVH.
 
@@ -37,9 +37,10 @@ POLKU_URL=http://127.0.0.1:8796/ python tools/osm_data/measure_browser.py > osm-
 ```
 
 `osmdata` checks exact archive decoding, concurrent/repeated reads, complete
-ways across a boundary, route memberships, IndexedDB reuse and missing offline
-data. When the preview configures a real archive, it also checks that the
-northern selection completes beyond the old six-round Overpass budget.
+ways across a boundary, route memberships, coverage in nearby countries,
+host failure/fallback, the six-round public growth budget, lighting meanings,
+IndexedDB reuse and missing offline data. The real-archive check also exercises
+a long northern selection.
 The measurement script asserts complete/stable picks in six named places.
 
 ## Prepare OVH after owner approval
@@ -156,7 +157,8 @@ particular historical snapshot must remain reproducible after that retention.
 With publication enabled, the publisher first checks every local file's SHA-256
 and size. It uploads into a unique staging directory, reads every file back
 through encrypted SFTP to verify its entire hash, then renames the directory to
-`releases/<release>/`. Release IDs include both source and archive digests, so
+`releases/<release>/`. Release IDs include the source digest and a digest of all
+dataset records and coverage, so
 changed extraction code can publish the same upstream snapshot safely.
 
 Before switching `current.json`, it checks the public immutable manifest and
@@ -174,15 +176,25 @@ Staging and orphan releases are retained for inspection, never deleted blindly.
 
 After live publication and browser verification from `https://polku.si`, set
 `OSM_DATA_MANIFEST` in `js/config.js` to the verified absolute `current.json`
-URL in a small activation PR, merged only with owner approval. With a static
-source configured, migrated road/path requests never fall back to public
-Overpass; failure keeps the existing card's unavailable-data message. Other
-Overpass consumers still use their current sources.
+URL in a small activation PR, merged only with owner approval. Road/path and
+lighting tiles prefer the configured snapshot; missing datasets, failures and
+uncovered tiles use the existing cached Overpass pool. All four addresses stay
+configured; Kumi and Private Coffee advertise the same service, so the bounded
+interactive round does not query that service twice. If both sources fail,
+the existing unavailable-data message remains. Other Overpass consumers keep
+their current sources.
+
+Full-country manifests embed Geofabrik's attributed Finland clipping polygon,
+not just its rectangular extent. Uncached tiles must fit entirely inside it;
+border tiles use Overpass. The first published release uses the same polygon
+from the app's small `data/finland-coverage.geojson` asset. Cached tiles can be
+used without loading that asset offline. A valid covered empty tile does not
+trigger an Overpass query.
 
 Readers pin a release for a page session. Full ways, tags and ordered node IDs
 stay intact in the archive; the existing card adapter keeps its displayed tag
 subset and coordinate precision. Static selection allows 64 loading rounds
-(Overpass keeps six) and retains the existing 25 km, junction, name and route
+(a selection using Overpass keeps six) and retains the existing 25 km, junction, name and route
 rules. A selection hitting a limit or failed tile keeps the existing incomplete
 selection message. Unnamed paths can still be short; #676's rule decision is
 separate. Data changes neither route calculation nor basemap rendering.

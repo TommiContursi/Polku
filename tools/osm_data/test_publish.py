@@ -248,6 +248,28 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(self.host.files[ROOT + '/releases/new-release/LICENSE.txt'], LICENSE)
         self.assertFalse(any(p.endswith('.htaccess') for p in self.host.files))
 
+    def test_publication_and_monitor_verify_the_lighting_archive_too(self):
+        data = b'PMTiles lighting' + bytes(range(256)) * 5
+        digest = hashlib.sha256(data).hexdigest()
+        self.new['datasets']['lit'] = {'url': 'lit.pmtiles', 'bytes': len(data), 'sha256': digest}
+        self.new['files'].append({'path': 'lit.pmtiles', 'bytes': len(data), 'sha256': digest})
+        (self.release_dir / 'lit.pmtiles').write_bytes(data)
+        (self.release_dir / 'manifest.json').write_bytes(encoded(self.new))
+        publish.publish(self.release_dir)
+        current = json.loads(self.host.files[ROOT + '/current.json'])
+        self.assertEqual(current['datasets']['lit']['url'], 'releases/new-release/lit.pmtiles')
+        self.assertEqual(self.host.files[ROOT + '/releases/new-release/lit.pmtiles'], data)
+        publish.check(PUBLIC + '/current.json')
+        http = self.host.http
+        def fail_lighting(req, **kwargs):
+            response = http(req, **kwargs)
+            if req.full_url.endswith('/lit.pmtiles'):
+                response.status = 200
+            return response
+        with patch.object(publish.urllib.request, 'urlopen', fail_lighting):
+            with self.assertRaisesRegex(ValueError, 'Range'):
+                publish.check(PUBLIC + '/current.json')
+
     def stage(self, files):
         stage = '.upload-new-release-' + 'a' * 32
         self.host.dirs.add(ROOT + '/' + stage)

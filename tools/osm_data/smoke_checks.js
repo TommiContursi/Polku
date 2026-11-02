@@ -11,7 +11,7 @@ export async function checkStaticOSM() {
   const real = window.fetch, calls = [], fails = [];
   // The weekly full-country preview exercises a long northern way beyond the old six-round limit.
   if (OSM_DATA_MANIFEST) {
-    const ll = [20.8, 69.05];
+    const ll = [27.3921157, 68.3992993]; // Rovaniementie: a long interior road, away from border tiles requiring fallback
     await W.loadWays(W.wayTile(ll));
     const seed = W.nearestWay(ll, 2000);
     if (!seed) fails.push('northern sample has no way');
@@ -33,12 +33,12 @@ export async function checkStaticOSM() {
   };
   try {
     const data = new StaticOSM(url);
-    const [a, b] = await Promise.all([data.ways([8192, 8192]), data.ways([8192, 8192])]);
+    const [a, b] = await Promise.all([data.tile([8192, 8192]), data.tile([8192, 8192])]);
     if (JSON.stringify(a) !== JSON.stringify(b) || a.elements[0].nodes.join() !== '1,2') fails.push('complete way or shared concurrent request lost');
     const count = calls.length;
-    await data.ways([8192, 8192]);
+    await data.tile([8192, 8192]);
     if (count !== calls.length) fails.push('repeat selection downloads data again');
-    const across = await data.ways([8193, 8192]);
+    const across = await data.tile([8193, 8192]);
     if (JSON.stringify(across.elements[0]) !== JSON.stringify(a.elements[0])) fails.push('tile boundary clips the complete way');
     const slim = W.slimWays({ elements: [...a.elements,
       { type: 'relation', id: 1, tags: { type: 'restriction', name: 'Not a route' }, members: [{ type: 'way', ref: 10 }] },
@@ -47,11 +47,88 @@ export async function checkStaticOSM() {
     const store = idb('overpass'), key = `static/${root}ways.pmtiles/fixture/14/8192/8192`;
     const saved = await store.get(key);
     if (!saved) fails.push('selected tile was not saved for reuse');
-    offline = true;
-    const cached = await new StaticOSM(url).ways([8192, 8192]);
+    offline = false;
+    const { lonLatToTile } = await import('/js/geo.js');
+    manifest.coverage = await (await real('/data/finland-coverage.geojson')).json();
+    manifest.bounds = [19, 59, 32, 71];
+    const global = new StaticOSM(root + 'global/current.json');
+    for (const ll of [[24.7536, 59.437], [18.0686, 59.3293], [10.7522, 59.9139], [20.225, 67.855]]) {
+      try { await global.tile(lonLatToTile(...ll, 14).map(Math.floor)); fails.push(`Finland extract claims ${ll}`); }
+      catch (err) { if (!/coverage/.test(err.message)) fails.push(String(err)); }
+    }    offline = true;
+    const cached = await new StaticOSM(url).tile([8192, 8192]);
     if (JSON.stringify(cached) !== JSON.stringify(a)) fails.push('offline selection lost its cached way');
-    try { await new StaticOSM(url).ways([8194, 8192]); fails.push('missing offline tile looks complete'); } catch { /* unavailable, not empty */ }
+    try { await new StaticOSM(url).tile([8194, 8192]); fails.push('missing offline tile looks complete'); } catch { /* unavailable, not empty */ }
+
   } catch (err) { fails.push(String(err)); }
   finally { window.fetch = real; }
+  // Exercise the adapters/cache/pool without sending fixture queries to public services.
+  {
+    const { StaticOSM } = await import('/js/osm-data.js');
+    const { OSM_DATA_MANIFEST, OVERPASS } = await import('/js/config.js');
+    const { lonLatToTile, tileBounds } = await import('/js/geo.js');
+    const { idb } = await import('/js/idb.js');
+    const L = await import('/js/lit.js');
+    if (!OSM_DATA_MANIFEST) return fails;
+    const real = window.fetch, original = StaticOSM.prototype.tile;
+    const store = idb('overpass'), keys = [], requests = [];
+    let unavailable = false, grow = false, answer = { schema: 1, elements: [] };
+    StaticOSM.prototype.tile = async () => { if (unavailable) throw new Error('Hosted source unavailable'); return answer; };
+    window.fetch = async (input, init) => {
+      if (!OVERPASS.includes(String(input))) return real(input, init);
+      const query = init.body.get('data');
+      requests.push(query);
+      if (grow) {
+        const [, s, w, n, e] = query.match(/\(([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+)\)->/).map(Number);
+        const [x] = lonLatToTile((w + e) / 2, (s + n) / 2, 14).map(Math.floor);
+        const lon = (i) => (i + 0.5) / 2 ** 14 * 360 - 180;
+        return Response.json({ elements: [{ type: 'way', id: 9000000 + x, tags: { highway: 'residential', name: 'Fixture road' },
+          nodes: [x, x + 1], geometry: [{ lon: lon(x), lat: 69.05 }, { lon: lon(x + 1), lat: 69.05 }] }] });
+      }
+      return Response.json({ elements: [] });
+    };
+    try {
+      const run = async (ll, fail, label) => {
+        const xy = lonLatToTile(...ll, 14).map(Math.floor), key = `ways2/14/${xy.join('/')}`;
+        keys.push(key); await store.del(key);
+        unavailable = fail; requests.length = 0;
+        const W = await import(`/js/ways.js?fallback=${label}-${Date.now()}`);
+        await W.loadWays(xy);
+        if (!!requests.length !== fail) fails.push(`${label}: wrong ways source`);
+        const count = requests.length;
+        await W.loadWays(xy);
+        if (requests.length !== count) fails.push(`${label}: repeat ways downloads again`);
+      };
+      await run([25.76, 62.23], false, 'healthy');
+      await run([25.8, 62.23], true, 'host-failure');
+      for (const [label, ll] of [['Tallinn', [24.7536, 59.437]], ['Stockholm', [18.0686, 59.3293]], ['Oslo', [10.7522, 59.9139]], ['Kiruna', [20.225, 67.855]]]) {
+        await run(ll, true, label);
+      }
+      grow = true; requests.length = 0;
+      const W = await import(`/js/ways.js?growth=${Date.now()}`), ll = [25, 69.05], xy = W.wayTile(ll);
+      for (let dx = 0; dx <= 8; dx++) { const k = `ways2/14/${xy[0] + dx}/${xy[1]}`; keys.push(k); await store.del(k); }
+      await W.loadWays(xy);
+      const [w, , e] = tileBounds(...xy, 14), tap = [(w + e) / 2 + 0.001, ll[1]];
+      const seed = W.nearestWay(tap, 100);
+      const pick = seed && await W.joinWay(seed, tap);
+      if (!pick || pick.chain.length !== 7 || new Set(requests).size !== 7) fails.push('public fallback does not retain its six growth rounds');
+      grow = false;
+      const geometry = [{ lon: 25.76, lat: 62.23 }, { lon: 25.77, lat: 62.23 }];
+      const values = ['yes', '24/7', 'automatic', 'sunset-sunrise', 'limited', 'interval', 'no', 'disused', 'unknown'];
+      answer = { schema: 1, elements: values.map((lit, i) => ({ type: 'way', id: i + 1, tags: { highway: 'motorway', lit }, geometry })) };
+      unavailable = false; requests.length = 0;
+      const lit = await L.litTile(4600, 2200);
+      if (lit.w.map((w) => w[1]).join() !== '1,1,1,1,1,1,0,0' || requests.length) fails.push('hosted lighting changes meanings or queries Overpass');
+      unavailable = true;
+      const key = 'lit1/13/4601/2200'; keys.push(key); await store.del(key);
+      requests.length = 0;
+      await L.litTile(4601, 2200);
+      if (!requests.length) fails.push('unavailable lighting did not fall back');
+    } catch (err) { fails.push(String(err)); }
+    finally {
+      StaticOSM.prototype.tile = original; window.fetch = real;
+      await Promise.all(keys.map((k) => store.del(k)));
+    }
+  }
   return fails;
 }

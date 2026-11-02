@@ -27,13 +27,14 @@ disk-backed node-location index are created beside the output and removed after
 success or failure. Keep several times the source size free for staging. No
 network requests or publication happen in the builder.
 
-The output has `ways.pmtiles`, `manifest.json`, `measurements.json` and
+The output has `ways.pmtiles`, `lit.pmtiles`, `manifest.json`, `measurements.json` and
 `LICENSE.txt`. The manifest identifies the exact source and checksums every
 deployable file except itself. Its local dataset URL is relative to this
 immutable release directory. The publication tool gives `current.json` a URL
 under `releases/<release>/`; it does not modify this release's manifest.
-Release IDs contain the source timestamp, source digest and archive digest, so
-a new extraction can be published for an unchanged source snapshot.
+Release IDs contain the source timestamp, source digest and a digest of every
+dataset record plus coverage. Lighting-only changes can therefore be published
+for an unchanged source snapshot. Timing measurements do not affect identity.
 
 `ways.pmtiles` is PMTiles v3, unknown tile type, gzip tile compression, z14.
 Each uncompressed tile is `{ "schema": 1, "elements": [...] }`. Complete
@@ -41,6 +42,13 @@ intersecting ways have Overpass-shaped `type`, `id`, `tags`, ordered `nodes`
 and `geometry: [{lon, lat}, ...]`. Coordinates retain OSM's seven decimal
 places. Every tag is retained. Geometry is neither clipped nor simplified;
 segments crossing a tile are included even when neither endpoint lies in it.
+
+`lit.pmtiles` uses the same complete way format at z13, without relations. It
+includes every highway with an original `lit` tag, including motorways excluded
+from selection. The app keeps the existing lit/unlit classifications; other
+values remain unknown. Fixtures without any lighting omit the optional dataset;
+a full Finland release requires it. Measurements include lighting counts, tile
+sizes and sample tiles. No hosting change is needed to serve the second archive.
 
 Route and restriction relations carry their original tags and ID. Their
 `members` include only eligible ways in this tile; each member has `type`,
@@ -57,7 +65,9 @@ build time/resource measurements and the manifest's build time vary.
 
 Empty tiles are omitted. Bounds are the extent of complete eligible source
 ways, not a country polygon or a promise of coverage beyond the buffered Finland
-extract. The archive metadata and licence repeat this limit.
+extract. Full-country manifests also embed the attributed extract clipping
+polygon from `data/finland-coverage.geojson`, used to decide when the global
+Overpass fallback is required. The archive metadata and licence repeat this limit.
 
 Measurements include source node/way/relation counts, eligible way counts and
 node references, membership and way duplication, raw/gzip tile percentiles and

@@ -17,12 +17,12 @@ SAMPLES = {
     'Rural central Finland': [25.5, 62.2],
     'Nuuksio forest': [24.5, 60.3],
     'Turku coast': [22.25, 60.45],
-    'Kilpisjarvi north': [20.8, 69.05],
+    'Rovaniementie north': [27.3921157, 68.3992993],
     'Tykkikallio Jyvaskyla': [25.7656, 62.2306],
 }
 
 SCRIPT = """(async () => {
- const W = await import('/js/ways.js'), G = await import('/js/geo.js'), calls = [], real = window.fetch;
+ const W = await import('/js/ways.js'), L = await import('/js/lit.js'), G = await import('/js/geo.js'), calls = [], real = window.fetch;
  const { OSM_DATA_MANIFEST } = await import('/js/config.js'), dataRoot = new URL('.', OSM_DATA_MANIFEST).href;
  window.fetch = async (input, init) => {
    const url = String(input);
@@ -52,7 +52,14 @@ SCRIPT = """(async () => {
      at = performance.now(); begin = calls.length;
      const again = await select(), repeat_ms = performance.now()-at;
      if (JSON.stringify(pick) !== JSON.stringify(again) || calls.length !== begin) throw new Error(JSON.stringify({name,pick,again,newCalls:calls.slice(begin)}));
-     out.push({name,ll,tapped,cold_ms,repeat_ms,requests:network.length,bytes:network.reduce((s,r)=>s+r.bytes,0),network,...pick});
+     const xy = G.lonLatToTile(...ll, L.LIT_Z).map(Math.floor);
+     at = performance.now(); begin = calls.length;
+     const lit = await L.litTile(...xy), lit_ms = performance.now()-at, litNetwork = calls.slice(begin);
+     at = performance.now(); begin = calls.length;
+     const litAgain = await L.litTile(...xy), lit_repeat_ms = performance.now()-at;
+     if (JSON.stringify(lit) !== JSON.stringify(litAgain) || calls.length !== begin) throw new Error(name + ': repeat lighting downloads again');
+     out.push({name,ll,tapped,cold_ms,repeat_ms,requests:network.length,bytes:network.reduce((s,r)=>s+r.bytes,0),network,...pick,
+       lighting:{cold_ms:lit_ms,repeat_ms:lit_repeat_ms,ways:lit.w.length,requests:litNetwork.length,bytes:litNetwork.reduce((s,r)=>s+r.bytes,0),network:litNetwork}});
    }
    return out;
  } finally { window.fetch = real; }

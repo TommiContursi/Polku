@@ -2,7 +2,7 @@
 // and the trail details (js/trails.js) only load trails, so a tap asks Overpass for all the ways of a z14 tile (about
 // 1.2 km here) once, cached a week as the trail details' z13 tiles are (js/osm.js), and joins the pieces that continue
 // each other into one pick. A tile's ways are cut at every junction, so a walk can stop at one.
-// With OSM_DATA_MANIFEST configured, complete static ways replace these Overpass tile queries (#154).
+// Hosted complete ways are preferred; unavailable/uncovered tiles use the same cached Overpass pool (#154).
 
 import { cachedOverpass } from './osm.js';
 import { OSM_DATA_MANIFEST } from './config.js';
@@ -104,9 +104,12 @@ export function loadWays([x, y], { force = false } = {}) {
   const key = `${x}/${y}`, t = tiles.get(key);
   if (t && (t.ok === true || (!force && (t.ok !== false || Date.now() - t.at < RETRY)))) return t.promise;
   const entry = { at: Date.now(), ok: null };
+  const fallback = () => {
+    entry.overpass = true;
+    return cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, oneRound: true, timeoutMs: TIMEOUT });
+  };
   entry.promise = (held ? (heldFail ? Promise.reject(new Error('OSM ways')) : heldWait ? new Promise(() => {}) : Promise.resolve({ v: 2, w: [] }))
-    : staticOSM ? staticOSM.ways([x, y], { force }).then(slimWays)
-      : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, oneRound: true, timeoutMs: TIMEOUT }))
+    : staticOSM ? staticOSM.tile([x, y], { force }).then(slimWays).catch(fallback) : fallback())
     .then((d) => { if (tiles.get(key) === entry) index(x, y, d); entry.ok = true; return d; }, (err) => { entry.ok = false; throw err; });
   tiles.set(key, entry);
   return entry.promise;
@@ -256,11 +259,13 @@ export async function joinWay(seed, at, grew = () => {}) {
   const near = (w) => Math.min(...w.coords.slice(1).map((c, i) => pointSegment(at, w.coords[i], c).d));
   const again = () => { const now = ofWay.get(seed.id) || []; if (!now.includes(seed)) seed = now.reduce((b, p) => (near(p) < near(b) ? p : b)); return seed; };
   let j = walk(again());
-  for (let k = 0; k < (staticOSM ? 64 : 6); k++) {
+  let rounds = staticOSM && !tiles.get(wayTile(at).join('/'))?.overpass ? 64 : 6;
+  for (let k = 0; k < rounds; k++) {
     const out = Object.values(j.stops).filter((s) => s.why === 'end' && !waysLoaded(s.at));
     if (!out.length) break;
     grew(j);
     await Promise.all(out.map((s) => loadWays(wayTile(s.at)).catch(() => null)));
+    if (out.some((s) => tiles.get(wayTile(s.at).join('/'))?.overpass)) rounds = 6;
     j = walk(again());
   }
   // (an end in a tile that didn't load: the way may go on, and the card says so)
