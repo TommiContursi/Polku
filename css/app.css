@@ -301,7 +301,7 @@ button { font: inherit; color: inherit; }
   color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer;
 }
 .zoom-hint:hover { color: var(--text); }
-.lit-status { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-8); max-width: 100%; padding: var(--space-8) var(--space-12); border-radius: var(--radius); font-size: var(--font-body); font-weight: var(--weight-name); }
+.lit-status { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-8); max-width: min(100%, calc(100vw - var(--pl-left) - 88px)); padding: var(--space-8) var(--space-12); border-radius: var(--radius); font-size: var(--font-body); font-weight: var(--weight-name); }
 .lit-status span { overflow-wrap: anywhere; }
 .lit-status .btn, #lit-load-status .btn { min-height: var(--target); }
 

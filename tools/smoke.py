@@ -4878,6 +4878,13 @@ LIT_LOADING = """(async () => {""" + LIT_HELP + """
   const rect = retry.getBoundingClientRect(), box = badge().getBoundingClientRect();
   const target = matchMedia('(pointer: coarse)').matches ? 44 : 24;
   if (rect.width < target || rect.height < target || box.left < 0 || box.right > innerWidth) errs.push('lighting retry is too small or outside the viewport');
+  if (innerWidth < 500) {
+    const span = badge().querySelector('span'), text = span.textContent;
+    document.documentElement.style.fontSize = '200%';
+    span.textContent = 'Valaistustietojen lataaminen on kesken · 1 alue ladattu neljästä';
+    if (badge().getBoundingClientRect().right > innerWidth - 64) errs.push('enlarged lighting text reaches the map controls');
+    document.documentElement.style.fontSize = ''; span.textContent = text;
+  }
   window.litFail = false; retry.click();
   await until(() => !visible());
   if (visible() || small() === 'No data now') errs.push('lighting does not recover after Try again');
