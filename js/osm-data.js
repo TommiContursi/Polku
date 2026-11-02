@@ -118,6 +118,7 @@ export class StaticOSM {
         if (manifest?.schema !== 1 || !manifest.release || !Number.isFinite(Date.parse(manifest.source?.timestamp))
           || !Array.isArray(manifest.bounds) || manifest.bounds.length !== 4 || !manifest.bounds.every(Number.isFinite)
           || !manifest.datasets) throw new Error('Unsupported OSM manifest schema');
+        if (manifest.country && !manifest.coverage) throw new Error('Missing country OSM coverage');
         if (fetched) cache.set(key, { at: Date.now(), json: manifest }).catch(() => {});
         return manifest;
       }).catch((err) => { entry.failedAt = Date.now(); throw err; });
@@ -129,6 +130,7 @@ export class StaticOSM {
     let selected;
     for (const d of records) {
       if (d?.format!=='pmtiles-json' || d.schema!==1 || d.zoom!==this.zoom || !Number.isSafeInteger(d.bytes) || d.bytes<127) throw new Error('Unsupported OSM dataset');
+      if (d.kind && (!d.coverage || !Number.isFinite(Date.parse(d.source?.timestamp)))) throw new Error('Incomplete country OSM metadata');
       const effective = {...manifest,bounds:d.bounds || manifest.bounds,coverage:d.coverage || manifest.coverage,source:d.source || manifest.source};
       if (xy && records.length>1) {
         const bounds=tileBounds(...xy,this.zoom);

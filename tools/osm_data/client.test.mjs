@@ -244,3 +244,14 @@ test('an archive at the wrong zoom cannot become a valid empty hazard tile', asy
   try { await assert.rejects(new StaticOSM('https://data.example/wrong-archive-zoom/current.json','hazards',11).tile([1024,1024]),/archive zoom/); }
   finally {delete manifest.datasets.hazards;}
 });
+
+test('missing country coverage cannot inherit another country or its rectangle', async () => {
+  const real=globalThis.fetch, base=structuredClone(manifest);
+  base.datasets={'sweden-ways':{...base.datasets.ways,kind:'ways',country:'sweden',source:base.source},...base.datasets};
+  globalThis.fetch=(url,init)=>String(url).endsWith('current.json') ? Promise.resolve(Response.json(base)) : real(url,init);
+  try {
+    await assert.rejects(new StaticOSM('https://data.example/missing-country-coverage/current.json').tile([8192,8192]),/country.*metadata/);
+    base.datasets={ways:base.datasets.ways};base.country='sweden';
+    await assert.rejects(new StaticOSM('https://data.example/missing-root-coverage/current.json').tile([8192,8192]),/country.*coverage/);
+  } finally {globalThis.fetch=real;}
+});

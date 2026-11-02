@@ -49,6 +49,11 @@ export async function checkStaticOSM() {
     try { await new StaticOSM(root+'wrong-zoom/current.json','ways',13).tile([4096,4096]); fails.push('wrong archive zoom looks like an empty successful tile'); }
     catch (e) { if (!/archive zoom/.test(e.message)) fails.push(String(e)); }
     finally { manifest.datasets.ways.zoom = 14; }
+    const originalDatasets=manifest.datasets;
+    manifest.datasets={'foreign-ways':{...originalDatasets.ways,kind:'ways',country:'sweden',source:manifest.source},...originalDatasets};
+    try { await new StaticOSM(root+'missing-country/current.json').tile([8192,8192]); fails.push('missing country coverage inherits another source and looks complete'); }
+    catch(e) { if (!/country.*metadata/.test(e.message)) fails.push(String(e)); }
+    finally { manifest.datasets=originalDatasets; }
     const store = idb('overpass'), key = `static/${root}ways.pmtiles/fixture/14/8192/8192`;
     const saved = await store.get(key);
     if (!saved) fails.push('selected tile was not saved for reuse');
