@@ -181,6 +181,53 @@ test('failed manifest reads cool down across tiles instead of repeating the requ
   } finally { globalThis.fetch = real; }
 });
 
+for (const action of ['force', 'reset']) test(`explicit ${action} recovers a failed manifest without discarding a healthy release`, async () => {
+  const real = globalThis.fetch, url = `https://data.example/retry-${action}/current.json`;
+  let healthy = false, manifests = 0;
+  globalThis.fetch = async (at, init) => {
+    if (String(at) === url) { manifests++; if (!healthy) return new Response('', {status:503}); }
+    return real(at, init);
+  };
+  try {
+    mode = 'ok';
+    const data = new StaticOSM(url);
+    await assert.rejects(data.tile([8192,8192]), /isn't responding/);
+    const failedAttempts = manifests;
+    healthy = true;
+    await assert.rejects(data.tile([8193,8192]), /isn't responding/);
+    assert.equal(manifests, failedAttempts, 'ordinary reads retain the failure cooldown');
+    const { forgetHostedFailures } = await import('../../js/osm-data.js');
+    if (action === 'reset') forgetHostedFailures(url);
+    const values = await Promise.all([data.tile([8192,8192], {force: action === 'force'}),
+      new StaticOSM(url).tile([8193,8192], {force: action === 'force'})]);
+    assert.ok(values.every(value => value.elements[0].id === 10));
+    assert.equal(manifests, failedAttempts + 1, 'concurrent consumers share the replacement manifest');
+    if (action === 'reset') forgetHostedFailures(url);
+    await data.tile([8192,8192], {force: true});
+    assert.equal(manifests, failedAttempts + 1, 'a healthy pinned manifest is retained');
+  } finally { globalThis.fetch = real; }
+});
+
+test('explicit hosted retry still respects a provider rate-limit pause', async () => {
+  const real = globalThis.fetch, url = 'https://data.example/retry-limited/current.json';
+  const { request } = await import('../../js/net.js');
+  let limited = true, manifests = 0;
+  globalThis.fetch = (at, init) => {
+    if (String(at) === url) { manifests++; if (limited) return Promise.resolve(new Response('', {status:429,headers:{'Retry-After':'1'}})); }
+    return real(at, init);
+  };
+  try {
+    const data = new StaticOSM(url);
+    await assert.rejects(data.tile([8192,8192]), /limiting requests/);
+    await assert.rejects(data.tile([8192,8192], {force:true}), /limiting requests/);
+    assert.equal(manifests, 1, 'manual retry cannot bypass a provider limit');
+  } finally {
+    limited = false;
+    await request('osmdata', url, {backoff:false});
+    globalThis.fetch = real;
+  }
+});
+
 test('a stalled manifest body terminates within the hosted attempt budget', async () => {
   const real = globalThis.fetch;
   globalThis.fetch = async () => ({ok:true,json:() => new Promise(() => {})});

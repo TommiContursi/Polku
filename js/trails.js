@@ -12,7 +12,7 @@
 
 import { lonLatToTile, tileBounds, pointSegment, dist } from './geo.js';
 import { cachedOverpass } from './osm.js';
-import { hostedTile } from './osm-data.js';
+import { hostedTile, forgetHostedFailures } from './osm-data.js';
 import { OSM_DATA_MANIFEST } from './config.js';
 
 export const TILE_Z = 13;
@@ -70,7 +70,7 @@ let fetching = true, failing = false;
  * with `fail`, as if Overpass didn't answer). */
 export function holdFetches(on = true, fail = false) { fetching = !on; failing = on && fail; }
 /** Retry: ask again now for the tiles that failed, not in a couple of minutes. */
-export function forgetFailures() { failed.clear(); }
+export function forgetFailures() { failed.clear(); forgetHostedFailures(OSM_DATA_MANIFEST); }
 const arrived = (key) => { for (const fn of listeners) fn(key); };
 export const onTile = (fn) => listeners.add(fn);
 

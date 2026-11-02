@@ -14,7 +14,7 @@
 
 import { lonLatToTile, tileBounds, dist } from './geo.js';
 import { cachedOverpass } from './osm.js';
-import { hostedTile } from './osm-data.js';
+import { hostedTile, forgetHostedFailures } from './osm-data.js';
 import { OSM_DATA_MANIFEST } from './config.js';
 import { request } from './net.js';
 import { store } from './ui.js';
@@ -158,7 +158,7 @@ let fetching = true, failing = false;
 /** Tests and screenshots: never ask Overpass (seed tiles instead; with `fail`, as if it didn't answer). */
 export function holdWinterFetches(on = true, fail = false) { fetching = !on; failing = on && fail; }
 /** Retry: ask again now for the tiles that failed. */
-export function forgetWinterFailures() { failed.clear(); }
+export function forgetWinterFailures() { failed.clear(); forgetHostedFailures(OSM_DATA_MANIFEST); }
 export const onWinterTile = (fn) => listeners.add(fn);
 
 export function winterTile(x, y) {
