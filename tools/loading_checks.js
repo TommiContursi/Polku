@@ -35,7 +35,7 @@ export async function hoverFeedback() {
   const c = clock(), canvas = document.createElement('canvas');
   document.body.append(canvas);
   const layers = ['road-main', 'path-ground', 'lipas-route', 'lipas-point', 'route-casing', 'heads-icon'];
-  let hit = 'road-main', planning = false, asked = 0, terrain = 0;
+  let hit = 'road-main', planning = false, viewing = false, asked = 0, terrain = 0;
   const realFetch = window.fetch;
   window.fetch = async () => { terrain++; return new Response('', { status: 404 }); };
   const map = {
@@ -44,7 +44,7 @@ export async function hoverFeedback() {
     queryRenderedFeatures: (box, { layers: wanted }) => hit && wanted.includes(hit) ? [{ layer: { id: hit },
       properties: { class: hit === 'path-ground' ? 'path' : 'residential', name: 'Test way', kind: 'leg' }, geometry: { type: 'LineString', coordinates: [[25, 62], [25.001, 62]] } }] : [],
   };
-  const hover = H.initHover(map, { enabled: () => true, isPlanning: () => planning, activity: () => 'hike', headAt: () => null,
+  const hover = H.initHover(map, { enabled: () => true, isPlanning: () => planning, isDrawing: () => planning && !viewing, activity: () => 'hike', headAt: () => null,
     hoverRoute: () => {}, hoverPick: () => {}, wayUnder: () => { asked++; return null; } });
   const tip = document.querySelector('.hover-tip:last-of-type');
   const move = async () => { canvas.dispatchEvent(new PointerEvent('pointermove', { pointerType: 'mouse', clientX: 10, clientY: 10 })); await new Promise(requestAnimationFrame); };
@@ -67,7 +67,9 @@ export async function hoverFeedback() {
   const count = asked;
   await c.advance(300);
   assert(tip.hidden && asked === count, 'moving/pressing before enrichment still asks for OSM');
-  planning = true; canvas.style.cursor = 'crosshair'; await move();
+  planning = viewing = true; await move();
+  assert(canvas.style.cursor === 'pointer', 'route viewing loses the clickable-feature cursor');
+  viewing = false; canvas.style.cursor = 'crosshair'; await move();
   assert(canvas.style.cursor === 'crosshair', 'browsing cursor overwrites the editing cursor');
   hover.hide(); canvas.remove(); tip.remove(); window.fetch = realFetch;
   return { enrichmentRequests: asked, terrainRequests: terrain };

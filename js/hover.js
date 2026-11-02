@@ -22,7 +22,7 @@ const DRIFT = 16; // px the pointer may move before a shown tooltip hides
 
 export const hoverCapable = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-/** app: { enabled(), isPlanning(), hoverRoute(props | null), headAt(point, touch) } */
+/** app: { enabled(), isPlanning(), isDrawing(), hoverRoute(props | null), headAt(point, touch) } */
 export function initHover(map, app) {
   const canvas = map.getCanvas();
   const tip = h('div', { class: 'hover-tip', 'aria-hidden': 'true', hidden: true });
@@ -122,7 +122,7 @@ export function initHover(map, app) {
   // (MapLibre's per-layer mouseenter/leave would run one per layer per move). The box is the click's (hitBox).
   const cursor = () => {
     frame = 0;
-    if (!at || app.isPlanning()) { pointer = false; light(null); return; }
+    if (!at || app.isDrawing()) { pointer = false; light(null); return; }
     // what a click picks first is what's lit: your route's line and a place's icon win over a LIPAS route (inspect.js)
     const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon'].filter((id) => map.getLayer(id))];
     const feats = map.queryRenderedFeatures(hitBox({ x: at[0], y: at[1] }, false), { layers });

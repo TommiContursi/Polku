@@ -493,7 +493,7 @@ const inspector = initInspector(map, {
   openCamera: (id, name) => cameras.open(id, name),
 });
 const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => planner.hoverPick(coords),
-  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
+  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
