@@ -3719,7 +3719,10 @@ export class Planner {
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
     // (the water or a park the map draws there: what OpenStreetMap says it is, where no way is in reach; the line waits for the ways)
     const area = areaUnder(this.map, p);
-    const card = spotCard(this, { ll, pin, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
+    // (the tile joins ways of one kind into one feature: the line of them nearest the tap, drawn while the ways come)
+    const lines = feats.filter((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)).flatMap((x) => (x.geometry.type === 'LineString' ? [x.geometry.coordinates] : x.geometry.type === 'MultiLineString' ? x.geometry.coordinates : []));
+    const near = lines.map((c) => [nearestOnLine(ll, c).d, c]).sort((a, b) => a[0] - b[0])[0];
+    const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch, area });
     // a phone's tap while browsing: the line at the spot first (#574); a hold, a click and the rest: the card
@@ -3784,14 +3787,22 @@ export class Planner {
   }
   renderLine() { if (this.line) { this.line.update(); this.fitLine(); } }
   // As it opens and each time it grows (its heights, the weather, its name): whole on the screen for a tap by its edge (a phone
-  // at 200 %), in from the sides and under the spot with no room above it; over the map's buttons, they step aside (#435)
+  // at 200 %), in from the sides and under the spot with no room above it; left of the map's buttons, or, where it can't fit
+  // beside them (200 %), over them, and they step aside (#435, #674)
   fitLine() {
     this.lineMk.setOffset([0, -22]);
     const r = this.line.el.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;
-    const dx = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8)), dy = r.top < top ? r.height + 44 : 0;
+    const dx = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8));
+    const dy = r.top < top ? r.height + 44 : 0, col = document.getElementById('map-ctrls').getBoundingClientRect();
     if (dx || dy) this.lineMk.setOffset([dx, dy - 22]);
-    const b = this.line.el.getBoundingClientRect(), col = document.getElementById('map-ctrls').getBoundingClientRect();
-    const over = b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
+    const hits = (b) => b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
+    let b = this.line.el.getBoundingClientRect();
+    const aside = b.right - (col.left - 8);
+    if (hits(b) && b.left - aside >= 8) {
+      this.lineMk.setOffset([dx - aside, dy - 22]);
+      b = this.line.el.getBoundingClientRect();
+    }
+    const over = hits(b);
     if (over !== !!this.lineOver) { this.lineOver = over; document.body.classList.toggle('card-over', over); }
   }
   // keep: its card is opening, so the pick stays
@@ -4329,6 +4340,7 @@ export class Planner {
       where: () => (this.layout() === 'sheet' && !this.sideMQ.matches ? 'peek' : 'float'),
       onChange: (card, fresh) => {
         if (card && fresh && this.picked && card !== this.picked) this.hideLine(); // (another card: the line at the spot and its pick go)
+        if (fresh && card?.pick) this.drawPick(card.pick);
         this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
         // the planner put away: the sheet comes for the card alone, and goes with it (#570)
         if (!this.active) {

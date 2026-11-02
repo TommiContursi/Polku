@@ -31,15 +31,24 @@ async function ask(i, query, signal, timeoutMs) {
   }
 }
 
-export async function overpass(query, { race = false, timeoutMs = race ? 25000 : 20000 } = {}) {
-  const order = OVERPASS.map((_, k) => (preferred + k) % OVERPASS.length);
-  if (race) {
+export async function overpass(query, { race = false, oneRound = false, timeoutMs = race ? 25000 : 20000 } = {}) {
+  let order = OVERPASS.map((_, k) => (preferred + k) % OVERPASS.length);
+  if (oneRound) {
+    // Kumi advertises the Private Coffee service; do not query it twice in one round.
+    const seen = new Set();
+    order = order.filter((i) => {
+      const service = OVERPASS[i].replace('overpass.kumi.systems', 'overpass.private.coffee');
+      if (seen.has(service)) return false;
+      seen.add(service); return true;
+    });
+  }
+  if (race || oneRound) {
     const stop = new AbortController();
     try {
       try {
-        return await Promise.any(order.slice(0, 3).map((i) => ask(i, query, stop.signal, timeoutMs)));
+        return await Promise.any((oneRound ? order : order.slice(0, 3)).map((i) => ask(i, query, stop.signal, timeoutMs)));
       } catch (err) {
-        for (const i of order.slice(3)) {
+        for (const i of oneRound ? [] : order.slice(3)) {
           try { return await ask(i, query, stop.signal, timeoutMs); } catch (e) { err = e; }
         }
         throw err;

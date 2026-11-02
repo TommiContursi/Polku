@@ -31,13 +31,16 @@ export const newPick = (spot, { hold = false, sport, sec, zoom, touch = false } 
 
 /** Asks for the pick's ways and what follows; `changed()` after each answer. A closed pick (`dead`) stops. */
 export async function resolvePick(pick, changed) {
-  const step = (fn) => { if (!pick.dead) { fn(); changed(); } };
+  const attempt = pick.attempt = (pick.attempt || 0) + 1;
+  const current = () => !pick.dead && pick.attempt === attempt;
+  const step = (fn) => { if (current()) { fn(); changed(); } };
   // the weather here and the places at the spot don't wait for the ways
   // (an older forecast, where Open-Meteo couldn't be reached, says so: `stale`, `from`)
   pointForecasts([pick.ll]).then((list) => ({ ...sampleAt(list[0], pick.sec), stale: !!list.stale, from: list.from || null }), () => 'failed').then((w) => step(() => { pick.wx = w; }));
   nearPlaces(pick.ll).then((p) => step(() => { pick.places = p; }), () => step(() => { pick.places = 'failed'; }));
   if (pick.spot.area === 'water') depthAt(pick.ll).then((d) => step(() => { pick.depth = d; }), () => step(() => { pick.depth = null; }));
   try { await loadWays(wayTile(pick.ll), { force: true }); } catch { step(() => { pick.ways = 'failed'; }); return; }
+  if (!current()) return;
   const seed = nearestWay(pick.ll, (pick.touch ? 18 : 9) * metresPerPixel(pick.ll, pick.zoom));
   if (!seed) {
     step(() => { pick.ways = 'none'; });
@@ -58,12 +61,13 @@ export async function resolvePick(pick, changed) {
     pick.line = wayLine(j.chain);
   };
   const j = await joinWay(seed, pick.ll, (part) => step(() => put({ ...part, side: [] }, true)));
-  if (pick.dead) return;
+  if (!current()) return;
   step(() => put(j, false));
   try {
-    pick.a = await analyse(pick.ways.geo, { activity: pick.sport });
-  } catch { pick.a = 'failed'; }
-  step(() => {});
+    const a = await analyse(pick.ways.geo, { activity: pick.sport });
+    step(() => { pick.a = a; });
+  } catch { step(() => { pick.a = 'failed'; }); }
+  if (!current()) return;
   if (pick.a !== 'failed' && store.get('pickProfile', true)) await loadWeather(pick, changed); // (folded, not asked: js/cards.js)
 }
 
@@ -109,6 +113,8 @@ export const setMode = (mode) => store.set('pickColour', mode);
 export function pickData(pick) {
   const w = pick.ways, a = pick.a, ar = pick.area;
   if (ar && typeof ar === 'object') return { pick: EMPTY, side: EMPTY, area: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: ar.lines } }] } };
+  // (the ways still coming, or not answering: the map's own line under the tap, plain)
+  if ((w === undefined || w === 'failed') && pick.spot.geom) return { pick: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: PLAIN }, geometry: pick.spot.geom }] }, side: EMPTY, area: EMPTY };
   if (!w || typeof w === 'string') return { pick: EMPTY, side: EMPTY, area: EMPTY };
   const line = (color, coords) => ({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: coords } });
   const feats = [];
