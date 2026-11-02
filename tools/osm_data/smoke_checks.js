@@ -62,76 +62,73 @@ export async function checkStaticOSM() {
 
   } catch (err) { fails.push(String(err)); }
   finally { window.fetch = real; }
-  fails.push(...await checkFallbacks());
-  return fails;
-}
-
-// Exercise the real adapters/cache/pool, without sending fixture queries to public services.
-async function checkFallbacks() {
-  const { StaticOSM } = await import('/js/osm-data.js');
-  const { OSM_DATA_MANIFEST, OVERPASS } = await import('/js/config.js');
-  const { lonLatToTile, tileBounds } = await import('/js/geo.js');
-  const { idb } = await import('/js/idb.js');
-  const L = await import('/js/lit.js');
-  if (!OSM_DATA_MANIFEST) return [];
-  const fails = [], real = window.fetch, original = StaticOSM.prototype.tile;
-  const store = idb('overpass'), keys = [], requests = [];
-  let unavailable = false, grow = false, answer = { schema: 1, elements: [] };
-  StaticOSM.prototype.tile = async () => { if (unavailable) throw new Error('Hosted source unavailable'); return answer; };
-  window.fetch = async (input, init) => {
-    if (!OVERPASS.includes(String(input))) return real(input, init);
-    const query = init.body.get('data');
-    requests.push(query);
-    if (grow) {
-      const [, s, w, n, e] = query.match(/\(([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+)\)->/).map(Number);
-      const [x] = lonLatToTile((w + e) / 2, (s + n) / 2, 14).map(Math.floor);
-      const lon = (i) => (i + 0.5) / 2 ** 14 * 360 - 180;
-      return Response.json({ elements: [{ type: 'way', id: 9000000 + x, tags: { highway: 'residential', name: 'Fixture road' },
-        nodes: [x, x + 1], geometry: [{ lon: lon(x), lat: 69.05 }, { lon: lon(x + 1), lat: 69.05 }] }] });
-    }
-    return Response.json({ elements: [] });
-  };
-  try {
-    const run = async (ll, fail, label) => {
-      const xy = lonLatToTile(...ll, 14).map(Math.floor), key = `ways2/14/${xy.join('/')}`;
-      keys.push(key); await store.del(key);
-      unavailable = fail; requests.length = 0;
-      const W = await import(`/js/ways.js?fallback=${label}-${Date.now()}`);
-      await W.loadWays(xy);
-      if (!!requests.length !== fail) fails.push(`${label}: wrong ways source`);
-      const count = requests.length;
-      await W.loadWays(xy);
-      if (requests.length !== count) fails.push(`${label}: repeat ways downloads again`);
+  // Exercise the adapters/cache/pool without sending fixture queries to public services.
+  {
+    const { StaticOSM } = await import('/js/osm-data.js');
+    const { OSM_DATA_MANIFEST, OVERPASS } = await import('/js/config.js');
+    const { lonLatToTile, tileBounds } = await import('/js/geo.js');
+    const { idb } = await import('/js/idb.js');
+    const L = await import('/js/lit.js');
+    if (!OSM_DATA_MANIFEST) return fails;
+    const real = window.fetch, original = StaticOSM.prototype.tile;
+    const store = idb('overpass'), keys = [], requests = [];
+    let unavailable = false, grow = false, answer = { schema: 1, elements: [] };
+    StaticOSM.prototype.tile = async () => { if (unavailable) throw new Error('Hosted source unavailable'); return answer; };
+    window.fetch = async (input, init) => {
+      if (!OVERPASS.includes(String(input))) return real(input, init);
+      const query = init.body.get('data');
+      requests.push(query);
+      if (grow) {
+        const [, s, w, n, e] = query.match(/\(([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+)\)->/).map(Number);
+        const [x] = lonLatToTile((w + e) / 2, (s + n) / 2, 14).map(Math.floor);
+        const lon = (i) => (i + 0.5) / 2 ** 14 * 360 - 180;
+        return Response.json({ elements: [{ type: 'way', id: 9000000 + x, tags: { highway: 'residential', name: 'Fixture road' },
+          nodes: [x, x + 1], geometry: [{ lon: lon(x), lat: 69.05 }, { lon: lon(x + 1), lat: 69.05 }] }] });
+      }
+      return Response.json({ elements: [] });
     };
-    await run([25.76, 62.23], false, 'healthy');
-    await run([25.8, 62.23], true, 'host-failure');
-    for (const [label, ll] of [['Tallinn', [24.7536, 59.437]], ['Stockholm', [18.0686, 59.3293]], ['Oslo', [10.7522, 59.9139]], ['Kiruna', [20.225, 67.855]]]) {
-      await run(ll, true, label);
+    try {
+      const run = async (ll, fail, label) => {
+        const xy = lonLatToTile(...ll, 14).map(Math.floor), key = `ways2/14/${xy.join('/')}`;
+        keys.push(key); await store.del(key);
+        unavailable = fail; requests.length = 0;
+        const W = await import(`/js/ways.js?fallback=${label}-${Date.now()}`);
+        await W.loadWays(xy);
+        if (!!requests.length !== fail) fails.push(`${label}: wrong ways source`);
+        const count = requests.length;
+        await W.loadWays(xy);
+        if (requests.length !== count) fails.push(`${label}: repeat ways downloads again`);
+      };
+      await run([25.76, 62.23], false, 'healthy');
+      await run([25.8, 62.23], true, 'host-failure');
+      for (const [label, ll] of [['Tallinn', [24.7536, 59.437]], ['Stockholm', [18.0686, 59.3293]], ['Oslo', [10.7522, 59.9139]], ['Kiruna', [20.225, 67.855]]]) {
+        await run(ll, true, label);
+      }
+      grow = true; requests.length = 0;
+      const W = await import(`/js/ways.js?growth=${Date.now()}`), ll = [25, 69.05], xy = W.wayTile(ll);
+      for (let dx = 0; dx <= 8; dx++) { const k = `ways2/14/${xy[0] + dx}/${xy[1]}`; keys.push(k); await store.del(k); }
+      await W.loadWays(xy);
+      const [w, , e] = tileBounds(...xy, 14), tap = [(w + e) / 2 + 0.001, ll[1]];
+      const seed = W.nearestWay(tap, 100);
+      const pick = seed && await W.joinWay(seed, tap);
+      if (!pick || pick.chain.length !== 7 || new Set(requests).size !== 7) fails.push('public fallback does not retain its six growth rounds');
+      grow = false;
+      const geometry = [{ lon: 25.76, lat: 62.23 }, { lon: 25.77, lat: 62.23 }];
+      const values = ['yes', '24/7', 'automatic', 'sunset-sunrise', 'limited', 'interval', 'no', 'disused', 'unknown'];
+      answer = { schema: 1, elements: values.map((lit, i) => ({ type: 'way', id: i + 1, tags: { highway: 'motorway', lit }, geometry })) };
+      unavailable = false; requests.length = 0;
+      const lit = await L.litTile(4600, 2200);
+      if (lit.w.map((w) => w[1]).join() !== '1,1,1,1,1,1,0,0' || requests.length) fails.push('hosted lighting changes meanings or queries Overpass');
+      unavailable = true;
+      const key = 'lit1/13/4601/2200'; keys.push(key); await store.del(key);
+      requests.length = 0;
+      await L.litTile(4601, 2200);
+      if (!requests.length) fails.push('unavailable lighting did not fall back');
+    } catch (err) { fails.push(String(err)); }
+    finally {
+      StaticOSM.prototype.tile = original; window.fetch = real;
+      await Promise.all(keys.map((k) => store.del(k)));
     }
-    grow = true; requests.length = 0;
-    const W = await import(`/js/ways.js?growth=${Date.now()}`), ll = [25, 69.05], xy = W.wayTile(ll);
-    for (let dx = 0; dx <= 8; dx++) { const k = `ways2/14/${xy[0] + dx}/${xy[1]}`; keys.push(k); await store.del(k); }
-    await W.loadWays(xy);
-    const [w, , e] = tileBounds(...xy, 14), tap = [(w + e) / 2 + 0.001, ll[1]];
-    const seed = W.nearestWay(tap, 100);
-    const pick = seed && await W.joinWay(seed, tap);
-    if (!pick || pick.chain.length !== 7 || new Set(requests).size !== 7) fails.push('public fallback does not retain its six growth rounds');
-    grow = false;
-    const geometry = [{ lon: 25.76, lat: 62.23 }, { lon: 25.77, lat: 62.23 }];
-    const values = ['yes', '24/7', 'automatic', 'sunset-sunrise', 'limited', 'interval', 'no', 'disused', 'unknown'];
-    answer = { schema: 1, elements: values.map((lit, i) => ({ type: 'way', id: i + 1, tags: { highway: 'motorway', lit }, geometry })) };
-    unavailable = false; requests.length = 0;
-    const lit = await L.litTile(4600, 2200);
-    if (lit.w.map((w) => w[1]).join() !== '1,1,1,1,1,1,0,0' || requests.length) fails.push('hosted lighting changes meanings or queries Overpass');
-    unavailable = true;
-    const key = 'lit1/13/4601/2200'; keys.push(key); await store.del(key);
-    requests.length = 0;
-    await L.litTile(4601, 2200);
-    if (!requests.length) fails.push('unavailable lighting did not fall back');
-  } catch (err) { fails.push(String(err)); }
-  finally {
-    StaticOSM.prototype.tile = original; window.fetch = real;
-    await Promise.all(keys.map((k) => store.del(k)));
   }
   return fails;
 }
