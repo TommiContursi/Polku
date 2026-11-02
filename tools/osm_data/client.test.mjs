@@ -55,3 +55,29 @@ test('outside the extract extent is unavailable rather than an empty mapped tile
     await assert.rejects(new StaticOSM('https://data.example/outside/current.json').ways([0, 0]), /coverage/);
   } finally { manifest.bounds = bounds; }
 });
+
+test('forced retry replaces a pending archive read and a late failure cannot evict its replacement', async () => {
+  const real = globalThis.fetch;
+  let release, started;
+  const sent = new Promise((ok) => { started = ok; });
+  let first = true;
+  globalThis.fetch = (url, init) => {
+    if (String(url).endsWith('/ways.pmtiles') && first) {
+      first = false; started();
+      return new Promise((ok, no) => { release = () => no(new DOMException('Old attempt', 'AbortError')); });
+    }
+    return real(url, init);
+  };
+  try {
+    const data = new StaticOSM('https://data.example/pending/current.json');
+    const old = data.ways([8192, 8192]);
+    const failed = assert.rejects(old, /Old attempt/);
+    await sent;
+    const fresh = await data.ways([8192, 8192], { force: true });
+    assert.equal(fresh.elements[0].id, 10);
+    release(); await failed;
+    const count = calls.length;
+    assert.deepEqual(await data.ways([8192, 8192]), fresh);
+    assert.equal(calls.length, count, 'old failure does not evict the replacement');
+  } finally { globalThis.fetch = real; }
+});

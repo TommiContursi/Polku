@@ -39,12 +39,13 @@ export class StaticOSM {
     return this.release;
   }
 
-  async ways([x, y]) {
+  async ways([x, y], { force = false } = {}) {
     if (![x, y].every((v) => Number.isInteger(v) && v >= 0 && v < 2 ** 14)) throw new Error('Invalid OSM tile');
     const { manifest, url, bytes } = await this.ready();
     const [w, s, e, n] = tileBounds(x, y, 14), [west, south, east, north] = manifest.bounds;
     if (e < west || w > east || n < south || s > north) throw new Error('Outside static OSM coverage');
     const key = `static/${url}/${manifest.release}/14/${x}/${y}`;
+    if (force) { this.tiles.delete(key); this.reader = null; }
     if (this.tiles.has(key)) return this.tiles.get(key);
     const promise = (async () => {
       const hit = await cache.get(key).catch(() => null);
@@ -74,7 +75,7 @@ export class StaticOSM {
         || !w.nodes.every(Number.isSafeInteger) || !w.geometry.every((p) => Number.isFinite(p.lon) && Number.isFinite(p.lat)))) throw new Error('Incomplete OSM way geometry');
       cache.set(key, { at: Date.now(), json }).catch(() => {});
       return json;
-    })().catch((err) => { this.tiles.delete(key); this.reader = null; throw err; });
+    })().catch((err) => { if (this.tiles.get(key) === promise) { this.tiles.delete(key); this.reader = null; } throw err; });
     this.tiles.set(key, promise);
     if (this.tiles.size > 64) this.tiles.delete(this.tiles.keys().next().value);
     return promise;

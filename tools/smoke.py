@@ -16353,6 +16353,25 @@ def pick_card(chrome):
         slow = pg.js("(async () => { await new Promise((r) => setTimeout(r, 11000)); return document.querySelector('.pl-way.card').textContent; })()", timeout=30000)
         if 'OpenStreetMap is slow to answer' not in slow or 'Loading the whole way' in slow or 'Try again' not in slow:
             fails.append(f"a tap on a way, its ways 11 s late: the card says “{slow[:160]}” (OpenStreetMap is slow to answer: still asking)")
+        retried = pg.js("""(async () => {
+          const W = await import('/js/ways.js'), p = polku.planner;
+          W.holdWays();
+          [...document.querySelectorAll('.pl-way.card .pick-fail button')].find((b) => b.textContent === 'Try again').click();
+          await new Promise((r) => setTimeout(r, 400));
+          return p.cards.current.pick.ways;
+        })()""")
+        if retried != 'none':
+            fails.append(f"Try again while pending reuses the stalled request: {retried} (the fresh held answer is empty)")
+        immediate = pg.js("""(async () => {
+          const W = await import('/js/ways.js'), p = polku.planner;
+          W.holdWays(true, false, true); p.cards.close();
+          const draw = p.drawPick; let initial = false;
+          p.drawPick = function(pick) { if (pick?.spot.geom) initial = true; return draw.call(this, pick); };
+          try { p.openSpotCard([24.93773, 60.17055]); return initial; }
+          finally { p.drawPick = draw; }
+        })()""")
+        if not immediate:
+            fails.append('opening the desktop card does not synchronously draw its initial map piece')
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
         # the path of #562 (way 1063593743), the ways in: its width and visibility are read from OpenStreetMap
         r = tap(pg, pg.js("(() => { const w = __fx.tiles[Object.keys(__fx.tiles).find((k) => __fx.tiles[k].w.some((x) => x[0] === 1063593743))].w.find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()"))

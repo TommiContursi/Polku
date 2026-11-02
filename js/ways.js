@@ -102,12 +102,12 @@ function index(x, y, d) {
 /** The ways of a z14 tile, as a promise; one that failed is asked again after 2 minutes, or at once with `force` (a tap). */
 export function loadWays([x, y], { force = false } = {}) {
   const key = `${x}/${y}`, t = tiles.get(key);
-  if (t && (t.ok !== false || (!force && Date.now() - t.at < RETRY))) return t.promise;
+  if (t && (t.ok === true || (!force && (t.ok !== false || Date.now() - t.at < RETRY)))) return t.promise;
   const entry = { at: Date.now(), ok: null };
   entry.promise = (held ? (heldFail ? Promise.reject(new Error('OSM ways')) : heldWait ? new Promise(() => {}) : Promise.resolve({ v: 2, w: [] }))
-    : staticOSM ? staticOSM.ways([x, y]).then(slimWays)
+    : staticOSM ? staticOSM.ways([x, y], { force }).then(slimWays)
       : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, oneRound: true, timeoutMs: TIMEOUT }))
-    .then((d) => { index(x, y, d); entry.ok = true; return d; }, (err) => { entry.ok = false; throw err; });
+    .then((d) => { if (tiles.get(key) === entry) index(x, y, d); entry.ok = true; return d; }, (err) => { entry.ok = false; throw err; });
   tiles.set(key, entry);
   return entry.promise;
 }
