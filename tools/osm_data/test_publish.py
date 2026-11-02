@@ -11,6 +11,7 @@ import importlib.util
 import json
 from pathlib import Path
 import posixpath
+from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -70,6 +71,8 @@ class Host:
         self.denied_login = False
         self.connections = self.pointer_writes = 0
         self.pointer_cache = 'no-cache'
+        self.uploads = []
+        self.unsafe = set()
         self.release_headers = {'Access-Control-Allow-Origin': '*',
                                 'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
                                 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable'}
@@ -139,6 +142,9 @@ class Host:
                 if path not in host.files:
                     raise ftplib.error_perm('550 missing')
                 return len(host.files[path])
+            def kind(self, path):
+                path = self.abs(path)
+                return 'other' if path in host.unsafe else 'directory' if path in host.dirs else 'file'
             def voidcmd(self, cmd):
                 return '200 OK'
             def storbinary(self, cmd, body, *args, **kwargs):
@@ -146,6 +152,12 @@ class Host:
                 if host.fail_upload and name.endswith('ways.pmtiles'):
                     raise OSError('upload failed')
                 data = body.read()
+                offset = kwargs.get('rest')
+                host.uploads.append((name, offset, len(data)))
+                if offset is not None:
+                    if len(host.files[name]) != offset:
+                        raise OSError('Resume offset changed')
+                    data = host.files[name] + data
                 host.files[name] = data[:-1] + b'!' if host.corrupt_upload and name.endswith('ways.pmtiles') else data
             def retrbinary(self, cmd, callback, *args, **kwargs):
                 name = self.abs(cmd.removeprefix('RETR '))
@@ -235,6 +247,115 @@ class PublishTests(unittest.TestCase):
         self.assertTrue(any(p.read_bytes() == self.previous for p in self.release_dir.glob('rollback*.json')))
         self.assertEqual(self.host.files[ROOT + '/releases/new-release/LICENSE.txt'], LICENSE)
         self.assertFalse(any(p.endswith('.htaccess') for p in self.host.files))
+
+    def stage(self, files):
+        stage = '.upload-new-release-' + 'a' * 32
+        self.host.dirs.add(ROOT + '/' + stage)
+        self.host.files.update({ROOT + '/' + stage + '/' + name: data for name, data in files.items()})
+        return stage
+
+    def test_inspection_reports_partial_bytes_without_writes_or_approval(self):
+        stage = self.stage({'ways.pmtiles': ARCHIVE[:4000]})
+        before = dict(self.host.files), set(self.host.dirs)
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            result = publish.inspect_release(self.release_dir)
+        self.assertEqual(result['candidates'][0]['path'], stage)
+        self.assertEqual(result['candidates'][0]['files']['ways.pmtiles']['actual'], 4000)
+        self.assertEqual((self.host.files, self.host.dirs), before)
+        self.assertEqual(self.host.uploads, [])
+
+    def test_resume_complete_stage_does_not_reupload_payload(self):
+        self.stage({'ways.pmtiles': ARCHIVE, 'LICENSE.txt': LICENSE, 'manifest.json': encoded(self.new)})
+        publish.publish(self.release_dir, resume=True)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), pointer(self.new))
+        self.assertTrue(all('/current.' in name for name, _, _ in self.host.uploads))
+
+    def test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix(self):
+        stage = self.stage({'ways.pmtiles': ARCHIVE[:4000]})
+        publish.publish(self.release_dir, resume=True)
+        self.assertIn((ROOT + '/' + stage + '/ways.pmtiles', 4000, len(ARCHIVE) - 4000), self.host.uploads)
+        self.assertEqual(self.host.files[ROOT + '/releases/new-release/ways.pmtiles'], ARCHIVE)
+
+    def test_resume_rejects_corrupt_or_oversized_prefix_without_writing(self):
+        for data in (b'wrong prefix', ARCHIVE + b'!'):
+            with self.subTest(length=len(data)):
+                self.stage({'ways.pmtiles': data})
+                before = dict(self.host.files)
+                with self.assertRaisesRegex(RuntimeError, 'prefix|larger'):
+                    publish.publish(self.release_dir, resume=True)
+                self.assertEqual(self.host.files, before)
+                self.assertEqual(self.host.uploads, [])
+
+    def test_resume_still_checks_complete_file_hash_before_promotion(self):
+        self.stage({'ways.pmtiles': b'!' + ARCHIVE[1:], 'LICENSE.txt': LICENSE, 'manifest.json': encoded(self.new)})
+        with self.assertRaisesRegex(RuntimeError, 'SHA-256'):
+            publish.publish(self.release_dir, resume=True)
+        self.assertEqual(self.host.files[ROOT + '/current.json'], self.previous)
+        self.assertEqual(self.host.uploads, [])
+
+    def test_resume_existing_immutable_release_verifies_without_payload_writes(self):
+        self.host.add_release(self.new)
+        publish.publish(self.release_dir, resume=True)
+        self.assertTrue(all('/current.' in name for name, _, _ in self.host.uploads))
+
+    def test_resume_refuses_missing_ambiguous_or_unsafe_staging(self):
+        with self.assertRaisesRegex(RuntimeError, 'exactly one'):
+            publish.publish(self.release_dir, resume=True)
+        stage = self.stage({'ways.pmtiles': ARCHIVE[:4000]})
+        other = ROOT + '/.upload-new-release-' + 'b' * 32
+        self.host.dirs.add(other)
+        with self.assertRaisesRegex(RuntimeError, 'exactly one'):
+            publish.publish(self.release_dir, resume=True)
+        self.host.dirs.remove(other)
+        for unsafe in (ROOT + '/' + stage, ROOT + '/' + stage + '/ways.pmtiles'):
+            self.host.unsafe = {unsafe}
+            with self.assertRaisesRegex(RuntimeError, 'regular|directory'):
+                publish.publish(self.release_dir, resume=True)
+        self.assertEqual(self.host.uploads, [])
+
+    def test_sftp_pipelines_writes_and_bounds_read_prefetch(self):
+        events = []
+        class File(io.BytesIO):
+            def set_pipelined(self, enabled):
+                events.append(('pipeline', enabled))
+            def stat(self):
+                return SimpleNamespace(st_size=len(ARCHIVE))
+            def prefetch(self, file_size, max_concurrent_requests):
+                events.append(('prefetch', file_size, max_concurrent_requests))
+        class SFTP:
+            def open(self, path, mode):
+                return File(ARCHIVE if mode == 'rb' else b'')
+        remote = publish.SFTPFiles(None, SFTP())
+        remote.storbinary('STOR sample', io.BytesIO(ARCHIVE))
+        chunks = []
+        remote.retrbinary('RETR sample', chunks.append)
+        self.assertIn(('pipeline', True), events)
+        self.assertIn(('prefetch', len(ARCHIVE), 64), events)
+        self.assertEqual(b''.join(chunks), ARCHIVE)
+
+    def test_sftp_resume_uses_nontruncating_seek_and_surfaces_close_errors(self):
+        events = []
+        class File(io.BytesIO):
+            def set_pipelined(self, enabled):
+                pass
+            def close(self):
+                events.append(('body', self.getvalue()))
+                super().close()
+                raise OSError('deferred write error')
+        class SFTP:
+            def lstat(self, path):
+                return SimpleNamespace(st_mode=0o100600)
+            def stat(self, path):
+                return SimpleNamespace(st_size=4)
+            def open(self, path, mode):
+                events.append(('open', mode))
+                return File(b'abcd')
+        remote = publish.SFTPFiles(None, SFTP())
+        with self.assertRaisesRegex(OSError, 'deferred write error'):
+            remote.storbinary('STOR sample', io.BytesIO(b'efgh'), rest=4)
+        self.assertEqual(events, [('open', 'r+b'), ('body', b'abcdefgh')])
+        with self.assertRaisesRegex(ValueError, 'offset'):
+            remote.storbinary('STOR sample', io.BytesIO(b'efgh'), rest=3)
 
     def test_host_checks_disposable_files_without_touching_release_or_pointer(self):
         original_files, original_dirs = dict(self.host.files), set(self.host.dirs)
