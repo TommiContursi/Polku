@@ -157,11 +157,17 @@ separate. Data changes neither route calculation nor basemap rendering.
 ## Monitoring, rollback and retention
 
 The workflow checks the public manifest and Range access daily at 07:17 UTC
-after publication is enabled. Source age over 14 days, changed manifests and
+when `OSM_PUBLIC_URL` is configured, independently of unattended publication.
+Source age over 14 days, changed manifests and
 broken browser headers fail the job. A failed weekly build also fails its run
 without publishing. Enable GitHub Actions failure notifications for the owner;
 the implementation does not send email or create a separate notification
 service. Inspect the run summary and uploaded browser evidence.
+
+The manual **check** operation also works while unattended publication is off.
+It needs only Python's standard library. It rejects a `current.json` response
+that is immutable or can remain fresh without revalidation; release files keep
+their immutable caching policy.
 
 Run the **rollback** workflow with an existing release ID. It retrieves the
 immutable manifest, verifies the existing files through SFTP and public HTTP,
