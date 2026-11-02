@@ -148,6 +148,7 @@ jobs:
         run: |
           mkdir -p osm-build
           df -h .
+          python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "Complete OSM country builds require 25 GiB free disk"'
           curl --fail --location --retry 3 --connect-timeout 30 --max-time 900 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf
           curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf.md5" -o osm-build/source.md5
           curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY.poly" -o osm-build/coverage.poly
@@ -222,6 +223,8 @@ jobs:
         with:
           python-version: '3.14.3'
       - run: python -m pip install -r tools/osm_data/requirements.txt
+      - name: Check measured assembly disk budget
+        run: python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "OSM candidate assembly requires 25 GiB free disk"'
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: osm-*-release
@@ -275,7 +278,9 @@ jobs:
       - name: Require an explicit candidate run
         env:
           CANDIDATE_RUN: ${{ inputs.release }}
-        run: python -c 'import os; assert os.environ["CANDIDATE_RUN"].isdigit(), "A numeric successful build run ID is required"'
+        run: |
+          python -c 'import os; assert os.environ["CANDIDATE_RUN"].isdigit(), "A numeric successful build run ID is required"'
+          python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "OSM candidate verification requires 25 GiB free disk"'
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           name: nordic-osm-release
