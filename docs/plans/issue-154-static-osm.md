@@ -84,3 +84,17 @@ concrete setup/activation procedure; the [measurements](osm-data-measurements.md
 separate local results from hosting and real-device checks still needed.
 
 Implementation and evidence are in [PR #678](https://github.com/TommiContursi/Polku/pull/678). The preparation can merge with publication and the app's new source disabled; the protected read-only access check then runs on `main`. Live hosting verification remains required before publication and activation.
+
+
+## Live publication, 2026-11-02
+
+SFTP hosting, atomic rename, Range/CORS and caching are now verified.
+[Recovery publication](https://github.com/TommiContursi/Polku/actions/runs/41387631098)
+reused the timed-out upload and passed full hashes and public checks. The
+[existing monitor](https://github.com/TommiContursi/Polku/actions/runs/41388087711)
+passed. [Activation PR #683](https://github.com/TommiContursi/Polku/pull/683)
+sets only the configured source; the joining rules and other consumers stay
+unchanged. [Live measurements](osm-data-measurements.md#live-ovh-verification-2026-11-02)
+cover real-host geometry selection, cold-network phone emulation, touch cards,
+app-origin CORS and desktop Safari. Physical devices remain unverified. Owner
+approval is still required for activation; unattended publication stays off.

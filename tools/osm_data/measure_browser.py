@@ -71,6 +71,7 @@ def main():
                     chrome.send('Storage.clearDataForOrigin', {'origin': BASE.rstrip('/'), 'storageTypes': 'indexeddb,cache_storage'}, page.s)
                     chrome.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, page.s)
                     page.open_app({'activity': 'mtb', 'layers': {'trails': False, 'uphill': False, 'wx': False}})
+                    chrome.send('Network.setCacheDisabled', {'cacheDisabled': True}, page.s)
                     if phone:
                         chrome.send('Emulation.setCPUThrottlingRate', {'rate': 4}, page.s)
                         chrome.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 80,

@@ -93,7 +93,23 @@ environments were changed by this implementation.
 
 ## Publication and activation
 
-For the first validated OVH publication, manually run **Finland OSM data → Run workflow → publish-existing** on `main`. This one-time operation downloads the already successful `finland-osm-release` from run `41350050764`, checks its local hashes and the remote upload, tests public Range/CORS and switches `current.json` only after verification. It does not start a new build or enable unattended publication. The existing protected GitHub environment still applies, and the application setting remains off until separate activation. The run artifact expires after 14 days; if it is no longer available, build a fresh release and update the pinned run ID through review before trying again.
+The first release was published successfully in
+[run 41387631098](https://github.com/TommiContursi/Polku/actions/runs/41387631098)
+on 2026-11-02, reusing the complete stage left by the timed-out first attempt.
+Full remote hashes, public probes and atomic pointer promotion passed; the
+archive was not uploaded again. The existing
+[monitor](https://github.com/TommiContursi/Polku/actions/runs/41388087711) passed.
+See the [live measurements](plans/osm-data-measurements.md#live-ovh-verification-2026-11-02)
+before considering app activation. Do not republish this immutable release.
+
+The bootstrap **publish-existing** operation on `main` downloads the successful
+`finland-osm-release` from pinned run `41350050764`, checks local and remote
+hashes, tests public Range/CORS and switches `current.json` only after
+verification. It does not rebuild or enable unattended publication. Artifacts
+expire after 14 days. While `OSM_PUBLISH_ENABLED` remains off, weekly builds
+produce candidate artifacts only: review a successful fresh build and update
+the pinned artifact run ID through a PR before manually publishing that next
+release. The protected environment still applies; app activation is separate.
 
 If this operation is interrupted, do not start another full upload. Run
 **inspect-existing** on `main` first: it downloads the same artifact and reports
