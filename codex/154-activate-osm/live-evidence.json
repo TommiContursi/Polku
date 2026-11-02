@@ -1295,5 +1295,12 @@
     "Named-road Chrome interaction checks use fixed DEM and weather; OSM geometry comes from the real host.",
     "Selection timings exclude application startup and elevation/weather analysis.",
     "No scheduled workflow run has yet been observed; the workflow is active and manual monitoring passed."
-  ]
+  ],
+  "offline": {
+    "elements": 827,
+    "controlled": true,
+    "cachedGeometryMatches": true,
+    "missingTileUnavailable": true,
+    "navigatorOnline": false
+  }
 }
