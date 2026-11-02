@@ -8,37 +8,6 @@ const TIMEOUT = 8000;
 const releases = new Map(); // one release per URL/page, shared by the ways and lighting readers
 let finlandCoverage;
 
-// Corners alone miss a hole or a concave border passing through a tile. Any border contact uses Overpass.
-function covers(geometry, [w, s, e, n]) {
-  const polygons = geometry?.type === 'Polygon' ? [geometry.coordinates] : geometry?.type === 'MultiPolygon' ? geometry.coordinates : null;
-  if (!Array.isArray(polygons) || !polygons.length || !polygons.every((rings) => Array.isArray(rings) && rings.length && rings.every((r) => Array.isArray(r) && r.length >= 4
-    && r.every((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90)
-    && r[0][0] === r.at(-1)[0] && r[0][1] === r.at(-1)[1]))) throw new Error('Invalid OSM coverage');
-  const inside = ([x, y], ring) => {
-    let yes = false;
-    for (let i = 1; i < ring.length; i++) {
-      const [a, b] = ring[i - 1], [c, d] = ring[i];
-      if ((b > y) !== (d > y) && x < (c - a) * (y - b) / (d - b) + a) yes = !yes;
-    }
-    return yes;
-  };
-  const crosses = (a, b) => {
-    let lo = 0, hi = 1;
-    for (const [axis, min, max] of [[0, w, e], [1, s, n]]) {
-      const delta = b[axis] - a[axis];
-      if (!delta) { if (a[axis] < min || a[axis] > max) return false; }
-      else {
-        const t = [(min - a[axis]) / delta, (max - a[axis]) / delta].sort((x, y) => x - y);
-        lo = Math.max(lo, t[0]); hi = Math.min(hi, t[1]);
-        if (lo > hi) return false;
-      }
-    }
-    return true;
-  };
-  return polygons.some((rings) => [[w, s], [e, s], [e, n], [w, n]].every((p) => inside(p, rings[0]) && !rings.slice(1).some((r) => inside(p, r)))
-    && !rings.some((r) => r.slice(1).some((p, i) => crosses(r[i], p))));
-}
-
 export class StaticOSM {
   constructor(url, dataset = 'ways', zoom = 14) {
     this.url = url;
@@ -93,7 +62,41 @@ export class StaticOSM {
           .catch((err) => { finlandCoverage = null; throw err; });
         coverage = await finlandCoverage;
       }
-      if (coverage && !covers(coverage, bounds)) throw new Error('Outside static OSM coverage');
+      if (coverage) {
+        const polygons = coverage.type === 'Polygon' ? [coverage.coordinates] : coverage.type === 'MultiPolygon' ? coverage.coordinates : null;
+        if (!Array.isArray(polygons) || !polygons.length || !polygons.every((rings) => Array.isArray(rings) && rings.length && rings.every((r) => Array.isArray(r) && r.length >= 4
+          && r.every((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90)
+          && r[0][0] === r.at(-1)[0] && r[0][1] === r.at(-1)[1]))) throw new Error('Invalid OSM coverage');
+        // Corners alone miss a hole or concave border through the tile; any border contact uses Overpass.
+        const covered = polygons.some((rings) => {
+          const corners = [[w, s], [e, s], [e, n], [w, n]].every(([x, y]) => {
+            const inside = rings.map((ring) => {
+              let yes = false;
+              for (let i = 1; i < ring.length; i++) {
+                const [a, b] = ring[i - 1], [c, d] = ring[i];
+                if ((b > y) !== (d > y) && x < (c - a) * (y - b) / (d - b) + a) yes = !yes;
+              }
+              return yes;
+            });
+            return inside[0] && !inside.slice(1).some(Boolean);
+          });
+          return corners && !rings.some((r) => r.slice(1).some((b, i) => {
+            const a = r[i];
+            let lo = 0, hi = 1;
+            for (const [axis, min, max] of [[0, w, e], [1, s, n]]) {
+              const delta = b[axis] - a[axis];
+              if (!delta) { if (a[axis] < min || a[axis] > max) return false; }
+              else {
+                const t = [(min - a[axis]) / delta, (max - a[axis]) / delta].sort((x, y) => x - y);
+                lo = Math.max(lo, t[0]); hi = Math.min(hi, t[1]);
+                if (lo > hi) return false;
+              }
+            }
+            return true;
+          }));
+        });
+        if (!covered) throw new Error('Outside static OSM coverage');
+      }
       const { PMTiles } = await import('./vendor/pmtiles-4.5.0.js');
       if (!this.reader) this.reader = new PMTiles({
         getKey: () => url,
