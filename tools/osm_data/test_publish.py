@@ -223,6 +223,27 @@ class Host:
 
 
 class PublishTests(unittest.TestCase):
+    def test_manual_rollback_eligibility_is_independent_of_scheduled_publication(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        job = workflow.split('\n  rollback:\n', 1)[1]
+        condition = next(line.split('if:', 1)[1].strip() for line in job.splitlines() if line.strip().startswith('if:'))
+        self.assertIn('\n    environment: osm-data-production\n', job)
+        for event, ref, operation, enabled, expected in [
+            ('workflow_dispatch', 'refs/heads/main', 'rollback', '', True),
+            ('workflow_dispatch', 'refs/heads/main', 'rollback', 'false', True),
+            ('workflow_dispatch', 'refs/heads/main', 'rollback', 'true', True),
+            ('workflow_dispatch', 'refs/heads/feature', 'rollback', 'true', False),
+            ('schedule', 'refs/heads/main', 'rollback', 'true', False),
+            ('push', 'refs/heads/main', 'rollback', 'true', False),
+            ('workflow_dispatch', 'refs/heads/main', 'check', 'true', False),
+        ]:
+            with self.subTest(event=event, ref=ref, operation=operation, enabled=enabled):
+                expression = condition
+                for name, value in [('github.event_name', event), ('github.ref', ref),
+                                    ('inputs.operation', operation), ('vars.OSM_PUBLISH_ENABLED', enabled)]:
+                    expression = expression.replace(name, repr(value))
+                self.assertEqual(eval(expression.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

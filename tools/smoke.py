@@ -16740,6 +16740,9 @@ def osm_data(chrome):
     import subprocess
     from pathlib import Path
     checks = ('test_monitor_runs_without_the_sftp_dependency',
+              'test_manual_rollback_eligibility_is_independent_of_scheduled_publication',
+              'test_saved_rollback_roundtrip_keeps_both_releases',
+              'test_rollback_still_requires_publication_approval',
               'test_monitor_rejects_an_immutable_or_freshly_cached_current_pointer',
               'test_sftp_pipelines_writes_and_bounds_read_prefetch',
               'test_sftp_resume_uses_nontruncating_seek_and_surfaces_close_errors',

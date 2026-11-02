@@ -215,7 +215,9 @@ It needs only Python's standard library. It rejects a `current.json` response
 that is immutable or can remain fresh without revalidation; release files keep
 their immutable caching policy.
 
-Run the **rollback** workflow with an existing release ID. It retrieves the
+Run the protected **rollback** workflow on `main` with an existing release ID.
+This explicit operation works while `OSM_PUBLISH_ENABLED` is unset or false;
+it does not enable scheduled publication. It retrieves the
 immutable manifest, verifies the existing files through SFTP and public HTTP,
 and switches the pointer through the same guarded path. It does not rebuild or
 overwrite release files. The equivalent approved local commands are:
