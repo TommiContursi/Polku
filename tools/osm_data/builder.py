@@ -643,16 +643,11 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
             lit['sample_tiles'] = validate_archive(stage / 'lit.pmtiles', lit['tiles'], 13, samples=samples)
         if full_country and any(not row['ways'] for row in stats['sample_tiles'].values()):
             raise ValueError(f'Complete-{country} archive is missing sample roads')
-        stats['build_seconds'] = round(time.monotonic() - started, 3)
-        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        stats['peak_rss_bytes'] = peak if sys.platform == 'darwin' else peak * 1024
         stats['individual_gzip_json'] = {
             'files': stats['tiles'], 'total_bytes': stats['tile_gzip_bytes']['total'],
             'archive_bytes': (stage / 'ways.pmtiles').stat().st_size,
             'note': 'Same tile payloads; one file/upload per non-empty tile instead of one archive.',
         }
-        (stage / 'measurements.json').write_bytes(json_bytes(stats) + b'\n')
-        (stage / 'LICENSE.txt').write_text(LICENSE_TEXT, encoding='utf-8')
         datasets = {}
         for name, zoom in [('ways', ZOOM), ('lit', 13)]:
             if not (stage / f'{name}.pmtiles').exists():
@@ -670,6 +665,11 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
                               'tiles': product['tiles'], 'features': product['features']}
             if name == 'inspection':
                 datasets[name]['nearby_complete'] = product['incomplete_relations'] == 0
+        stats['build_seconds'] = round(time.monotonic() - started, 3)
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        stats['peak_rss_bytes'] = peak if sys.platform == 'darwin' else peak * 1024
+        (stage / 'measurements.json').write_bytes(json_bytes(stats) + b'\n')
+        (stage / 'LICENSE.txt').write_text(LICENSE_TEXT, encoding='utf-8')
         if coverage is None and full_country:
             coverage = json.loads((Path(__file__).resolve().parents[2] / f'data/{country}-coverage.geojson').read_bytes())
         content_hash = hashlib.sha256(json_bytes({'datasets': datasets, 'coverage': coverage})).hexdigest()
