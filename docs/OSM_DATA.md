@@ -295,7 +295,7 @@ conservatively falls back, rather than promising coverage from a rectangle.
 
 Release order: #695 adds detailed products/consumers; #697 adds full-tag objects;
 the country PR follows both. Each app step works with the old published manifest.
-The reviewed `publish-existing` artifact remains pinned to run 41423123110 and
+The independently releasable Finland `publish-existing` candidate is pinned to successful run 41502174378 and
 `finland-osm-release`. Change that pin/name to the reviewed successful combined
 candidate in a separate approval PR; do not publish the old artifact expecting
 four-country products. `OSM_PUBLISH_ENABLED` was unset at inspection, and no
