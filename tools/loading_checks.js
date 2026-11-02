@@ -35,7 +35,7 @@ export async function hoverFeedback() {
   const c = clock(), canvas = document.createElement('canvas');
   document.body.append(canvas);
   const layers = ['road-main', 'path-ground', 'lipas-route', 'lipas-point', 'route-casing', 'heads-icon'];
-  let hit = 'road-main', planning = false, viewing = false, asked = 0, terrain = 0;
+  let hit = 'road-main', planning = false, viewing = false, asked = 0, terrain = 0, outlined = false;
   const realFetch = window.fetch;
   window.fetch = async () => { terrain++; return new Response('', { status: 404 }); };
   const map = {
@@ -45,7 +45,8 @@ export async function hoverFeedback() {
       properties: { class: hit === 'path-ground' ? 'path' : 'residential', name: 'Test way', kind: 'leg' }, geometry: { type: 'LineString', coordinates: [[25, 62], [25.001, 62]] } }] : [],
   };
   const hover = H.initHover(map, { enabled: () => true, isPlanning: () => planning, isDrawing: () => planning && !viewing, activity: () => 'hike', headAt: () => null,
-    hoverRoute: () => {}, hoverPick: () => {}, wayUnder: () => { asked++; return null; } });
+    hoverRoute: () => {}, hoverPick: (coords) => { outlined = !!coords; },
+    wayUnder: () => { asked++; return { title: 'Resolved way', line: 'Full details', coords: [[25, 62], [25.001, 62]] }; } });
   const tip = document.querySelector('.hover-tip:last-of-type');
   const move = async () => { canvas.dispatchEvent(new PointerEvent('pointermove', { pointerType: 'mouse', clientX: 10, clientY: 10 })); await new Promise(requestAnimationFrame); };
   await move(); await c.advance(190);
@@ -55,6 +56,8 @@ export async function hoverFeedback() {
   assert(asked === 0 && terrain === 0, 'a brief map-only tooltip warms the OSM/terrain timer early');
   await c.advance(160);
   assert(asked === 1 && terrain > 0, 'the original 260 ms OSM/terrain enrichment no longer runs');
+  await move(); await c.advance(70);
+  assert(tip.textContent.includes('Resolved way') && outlined, 'a small move drops the enriched name and outline before refreshing it');
   for (hit of layers) {
     await move();
     assert(canvas.style.cursor === 'pointer', `${hit}: clickable feature has no pointing-hand cursor`);

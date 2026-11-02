@@ -150,7 +150,7 @@ export function initHover(map, app) {
     clearTimeout(timer);
     clearTimeout(detailTimer);
     const cold = tip.hidden && performance.now() - hiddenAt > 600;
-    timer = setTimeout(() => probe(), cold ? FIRST : WARM);
+    if (!enriched) timer = setTimeout(() => probe(), cold ? FIRST : WARM);
     const detailCold = !enriched && performance.now() - detailHiddenAt > 600;
     detailTimer = setTimeout(() => probe(true), detailCold ? DETAIL_FIRST : DETAIL_WARM);
   });
