@@ -19,6 +19,7 @@ const KEEP = ['highway', 'name', 'ref', 'surface', 'smoothness', 'tracktype', 'l
   'junction', 'service', 'footway', 'informal', 'check_date', 'survey:date'];
 const LONG = 25000; // m: a pick stops here at the longest
 const RETRY = 120e3; // a tile that didn't answer is left alone for 2 minutes (a tap asks again at once)
+const TIMEOUT = 15000; // one interactive Overpass round, including its response body
 const staticOSM = OSM_DATA_MANIFEST ? new StaticOSM(OSM_DATA_MANIFEST) : null;
 
 export const wayTile = ([lon, lat]) => lonLatToTile(lon, lat, WAYS_Z).map(Math.floor);
@@ -26,7 +27,7 @@ export const wayTile = ([lon, lat]) => lonLatToTile(lon, lat, WAYS_Z).map(Math.f
 // ------------------------------------------------------------------ the tiles
 const waysQuery = (x, y) => {
   const [w, s, e, n] = tileBounds(x, y, WAYS_Z);
-  return `[out:json][timeout:40];way[highway~"${KINDS}"](${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)})->.w;.w out body geom qt;`
+  return `[out:json][timeout:${TIMEOUT / 1000}];way[highway~"${KINDS}"](${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)})->.w;.w out body geom qt;`
     + `rel(bw.w)[type=route][route~"${ROUTES}"][name];out body;`;
 };
 
@@ -105,7 +106,7 @@ export function loadWays([x, y], { force = false } = {}) {
   const entry = { at: Date.now(), ok: null };
   entry.promise = (held ? (heldFail ? Promise.reject(new Error('OSM ways')) : heldWait ? new Promise(() => {}) : Promise.resolve({ v: 2, w: [] }))
     : staticOSM ? staticOSM.ways([x, y]).then(slimWays)
-      : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, timeoutMs: 40000 }))
+      : cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, oneRound: true, timeoutMs: TIMEOUT }))
     .then((d) => { index(x, y, d); entry.ok = true; return d; }, (err) => { entry.ok = false; throw err; });
   tiles.set(key, entry);
   return entry.promise;

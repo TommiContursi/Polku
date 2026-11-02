@@ -301,6 +301,25 @@ export async function overpassBudget() {
   return { sentAtMs: sent, stopped, mirrorBudgetMs: 75 };
 }
 
+export async function overpassOneRound(rotate = false) {
+  const c = clock(), O = await import('../js/osm.js'), { OVERPASS } = await import('../js/config.js');
+  if (rotate) {
+    window.fetch = async (url) => String(url) === OVERPASS[1] ? Response.json({ elements: [] }) : new Response('bad', { status: 400 });
+    await O.overpass('mock', { race: true, oneRound: true });
+  }
+  const sent = [], started = Date.now();
+  let stopped = 0;
+  window.fetch = (url, init) => new Promise((ok, no) => {
+    sent.push(OVERPASS.indexOf(String(url)));
+    init.signal.addEventListener('abort', () => { stopped++; no(abort()); }, { once: true });
+  });
+  const result = track(O.overpass('mock', { race: true, oneRound: true, timeoutMs: 75 }));
+  await c.advance(76);
+  assert(result.error && result.at - started === 75, 'interactive Overpass started a second timeout round');
+  assert(sent.join() === (rotate ? '1,2,0' : '0,1,2') && stopped === 3, 'interactive round duplicated Private Coffee through its Kumi alias');
+  return { sent, stopped, totalBudgetMs: result.at - started };
+}
+
 export async function profileSubscribers() {
   const c = clock(), R = await import('../js/router.js');
   let uploads = 0, stopped = 0, release;

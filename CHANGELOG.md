@@ -8,13 +8,16 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - Picking a road or path in Finland loads its geometry from a hosted OpenStreetMap snapshot instead of waiting for public Overpass servers. The joining rules and card details stay the same; missing data is still shown as unavailable. Routing, map tiles and other detailed map features keep their existing sources.
 
-## 2026-11-01
-
 ### A tap on a way shows it at once, and the line at a spot keeps out of the map's buttons ([#675](https://github.com/TommiContursi/Polku/issues/675), [#674](https://github.com/TommiContursi/Polku/issues/674))
 
-- A tap on a way now draws the piece under your finger at once, from the map's own data, while the whole way comes from OpenStreetMap. The card and, on a phone, the line above the spot say the whole way is loading. After 10 seconds they say OpenStreetMap is slow to answer, and they go on asking.
+- A tap on a way now draws the piece under your finger at once, from the map's own data, while the whole way comes from OpenStreetMap. The card and, on a phone, the line above the spot say the whole way is loading. After 10 seconds they say OpenStreetMap is slow to answer and offer **Try again** while still asking.
 - When OpenStreetMap doesn't answer, the piece the map knows stays drawn, the line above the spot says OpenStreetMap didn't answer, and the card has **Try again**. Try again starts the 10 seconds again.
+- An interactive Overpass query uses one 15-second round across independent providers, rather than waiting another full round on the Kumi address for the same Private Coffee service. Other Overpass consumers keep their existing failover.
 - On a phone, the line above a tapped spot moves left of the map's buttons where there's room beside them, so the buttons stay. Where the line is too wide to fit beside them, a narrow screen or enlarged text, it still goes over them and they step aside while it's open.
+
+
+## 2026-11-01
+
 
 ### A tap on a way picks the whole way, and its card tells everything known about it ([#574](https://github.com/TommiContursi/Polku/issues/574), [#561](https://github.com/TommiContursi/Polku/issues/561), [#562](https://github.com/TommiContursi/Polku/issues/562))
 

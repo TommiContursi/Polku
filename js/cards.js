@@ -803,7 +803,12 @@ function pickBody(pl, card, body) {
     const stops = Object.values(w.stops);
     if (stops.some((s) => s.unloaded)) body.append(failed('It may go on: the ways beyond didn’t load.'));
     if (stops.some((s) => s.why === 'long')) body.append(failed('It goes on for more than 25 km: the card stops there.'));
-  } else if (w === undefined) body.append(skeleton(pick, Date.now() - pick.at >= SLOW ? 'OpenStreetMap is slow to answer: still asking. What shows meanwhile is the map’s own.' : 'Loading the whole way from OpenStreetMap', h('div', { class: 'pick-skel-nums', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'))), profileGroup(pl, card, null));
+  } else if (w === undefined) {
+    const slow = Date.now() - pick.at >= SLOW;
+    body.append(skeleton(pick, slow ? 'OpenStreetMap is slow to answer: still asking. What shows meanwhile is the map’s own.' : 'Loading the whole way from OpenStreetMap', h('div', { class: 'pick-skel-nums', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'))));
+    if (slow) body.append(failed('', pick.again));
+    body.append(profileGroup(pl, card, null));
+  }
   else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again));
   else {
     // (an area's edge only when all of it came: a big lake's outline is cut some kilometres off)

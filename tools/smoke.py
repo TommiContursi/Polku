@@ -5794,7 +5794,7 @@ def loading(chrome):
               ('missingProfile', ''), ('missingProfile', 'true'), ('profileReuploadFails', ''), ('customRecovery', ''), ('profileQueueBudget', ''), ('routingDeadline', ''), ('routingBodyFallback', ''),
               ('valhallaDeadline', ''), ('valhallaCancellation', ''),
               ('terrainPool', ''), ('terrainDeadline', ''), ('terrainPendingCache', ''), ('lipasViewport', ''), ('lipasShared', ''), ('lipasLate', ''),
-              ('overpassValidity', ''), ('overpassValidity', "'shape'"), ('overpassFourth', ''), ('overpassBudget', '')]
+              ('overpassValidity', ''), ('overpassValidity', "'shape'"), ('overpassFourth', ''), ('overpassBudget', ''), ('overpassOneRound', ''), ('overpassOneRound', 'true')]
     for name, args in checks:
         pg = chrome.page(1440, 900)
         try:
@@ -16340,7 +16340,7 @@ def pick_card(chrome):
           await new Promise((r) => setTimeout(r, 400));
           const out = { soon: box().textContent };
           await new Promise((r) => setTimeout(r, 11000)); out.later = box().textContent; return out; })()""", timeout=30000)
-        if 'Loading the whole way' not in again['soon'] or 'OpenStreetMap is slow' in again['soon'] or 'OpenStreetMap is slow to answer' not in again['later']:
+        if 'Loading the whole way' not in again['soon'] or 'OpenStreetMap is slow' in again['soon'] or 'OpenStreetMap is slow to answer' not in again['later'] or 'Try again' not in again['later']:
             fails.append(f"Try again 11 s after the tap: the card says “{again['soon'][:120]}”, 10 s on “{again['later'][:120]}” (asking again, then slow after 10 s more)")
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
         # #675: the ways still coming from Overpass (here, never): the map's own way is drawn at once, and the card says it's asking, and
@@ -16351,7 +16351,7 @@ def pick_card(chrome):
             fails.append(f"a tap on a way while its ways come: {r['kind']} card, ways {r['ways']}, {r['drawn']} lines drawn, the card says “{r['text'][:160]}” (the map's own way drawn at once, “Loading the whole way”)")
         # (11 s on, nothing refreshes it by hand: the card's own timer)
         slow = pg.js("(async () => { await new Promise((r) => setTimeout(r, 11000)); return document.querySelector('.pl-way.card').textContent; })()", timeout=30000)
-        if 'OpenStreetMap is slow to answer' not in slow or 'Loading the whole way' in slow:
+        if 'OpenStreetMap is slow to answer' not in slow or 'Loading the whole way' in slow or 'Try again' not in slow:
             fails.append(f"a tap on a way, its ways 11 s late: the card says “{slow[:160]}” (OpenStreetMap is slow to answer: still asking)")
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
         # the path of #562 (way 1063593743), the ways in: its width and visibility are read from OpenStreetMap
