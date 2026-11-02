@@ -23,11 +23,12 @@ SAMPLES = {
 
 SCRIPT = """(async () => {
  const W = await import('/js/ways.js'), G = await import('/js/geo.js'), calls = [], real = window.fetch;
+ const { OSM_DATA_MANIFEST } = await import('/js/config.js'), dataRoot = new URL('.', OSM_DATA_MANIFEST).href;
  window.fetch = async (input, init) => {
    const url = String(input);
    if (/overpass|maps.mail.ru/.test(url)) throw new Error('Selection tried public Overpass');
    const res = await real(input, init);
-   if (url.includes('/__osm/')) calls.push({url, range:init?.headers?.Range, bytes:+res.headers.get('Content-Length')});
+   if (url.startsWith(dataRoot)) calls.push({url, range:init?.headers?.Range, bytes:+res.headers.get('Content-Length')});
    return res;
  };
  const out = [];
@@ -70,12 +71,14 @@ def main():
                     chrome.send('Storage.clearDataForOrigin', {'origin': BASE.rstrip('/'), 'storageTypes': 'indexeddb,cache_storage'}, page.s)
                     chrome.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, page.s)
                     page.open_app({'activity': 'mtb', 'layers': {'trails': False, 'uphill': False, 'wx': False}})
+                    chrome.send('Network.setCacheDisabled', {'cacheDisabled': True}, page.s)
                     if phone:
                         chrome.send('Emulation.setCPUThrottlingRate', {'rate': 4}, page.s)
                         chrome.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 80,
                                     'downloadThroughput': 1250000, 'uploadThroughput': 625000}, page.s)
                     data = page.js(SCRIPT.replace('SAMPLES', json.dumps(SAMPLES)), timeout=180000)
                     assert len(data) == len(SAMPLES) and all(row['pieces'] and row['metres'] > 0 for row in data)
+                    assert data[0]['requests'] > 0 and data[0]['bytes'] > 0, 'cold source requests were not measured'
                     assert all(not stop.get('unloaded') for row in data for stop in row['stops'].values()), 'selection ended on missing data'
                     result['cases'][label] = data
                 finally:
