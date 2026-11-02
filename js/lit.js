@@ -14,6 +14,7 @@ export const LIT_Z = 13;
 export const LIT_MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
 const RETRY = 120e3; // a failed tile is left alone for 2 minutes
 const MAX_VIEW = 12; // more tiles than this in view: zoomed out too far to load
+const SLOW = 10000;
 // Lit and unlit as `lit` values; any other value counts as no tag
 const LIT = 'yes|24/7|automatic|sunset-sunrise|limited|interval';
 const UNLIT = 'no|disused';
@@ -55,7 +56,10 @@ export function litTile(x, y) {
   const key = `${x}/${y}`;
   const have = tiles.get(key);
   if (have && (have.data || fetching)) return have.promise; // (held, one on its way counts as held)
-  if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true }));
+  if (!fetching) {
+    if (failing) failed.set(key, Date.now() + RETRY);
+    return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true }));
+  }
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
   const fallback = () => cachedOverpass(`lit1/${LIT_Z}/${key}`, litQuery(x, y), slimLit, { timeoutMs: 30000 });
@@ -92,45 +96,61 @@ export function litFeatures(list) {
   return { type: 'FeatureCollection', features };
 }
 
-/** Keeps the lit ways of the view loaded and published while on; `failing` while a tile in view didn't answer. */
+/** Keeps the visible lighting loaded, publishing only covered areas and reporting progress for this view. */
 export class LitWays {
-  constructor(map, { onData, onFail }) {
+  constructor(map, { onData, onStatus }) {
     this.map = map;
     this.onData = onData;
-    this.onFail = onFail;
+    this.onStatus = onStatus;
     this.on = false;
-    this.failing = false;
+    this.progress = { loaded: 0, total: 0, pending: 0, failed: 0, limited: false, slow: false };
     this.wanted = new Set(); // the tiles in view, whose failures count
     this.shown = null;
     this.timer = 0;
+    this.slowTimer = 0;
+    this.view = '';
+    this.since = 0;
     map.on('moveend', () => this.schedule());
     listeners.add(() => this.schedule(60));
   }
   setEnabled(on) {
     if (on === this.on) return;
     this.on = on;
-    this.failing = false;
     this.schedule(0);
   }
+  retry() { forgetLitFailures(); this.since = Date.now(); this.schedule(0); }
   schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => this.update(), ms); }
   update() {
     const z = this.map.getZoom();
     // zoomed out it draws nothing: list no tiles (Finland in view at zoom 5 is 300,000 of them, Codex's review of #641)
-    if (!this.on || z < LIT_Z) { this.wanted = new Set(); this.publish([]); return; }
-    const b = this.map.getBounds(), want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+    let want = [];
+    if (this.on && z >= LIT_Z) {
+      const b = this.map.getBounds();
+      want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+    }
     this.wanted = new Set(want.map((t) => t.join('/')));
-    if (z >= LIT_MIN_ZOOM && want.length <= MAX_VIEW) {
+    const view = [...this.wanted].join(';'), limited = this.on && (z < LIT_MIN_ZOOM || want.length > MAX_VIEW);
+    if (view !== this.view) { this.view = view; this.since = Date.now(); }
+    if (this.on && !limited) {
       for (const [x, y] of want) {
-        if (loaded(x, y)) continue;
+        if (loaded(x, y) || (failed.get(`${x}/${y}`) || 0) > Date.now()) continue;
         litTile(x, y).catch((err) => {
           if (err.held || !this.on || !this.wanted.has(`${x}/${y}`)) return; // (a tile of a view you've left: #671)
-          this.failing = true;
-          this.onFail();
+          this.schedule(0);
         });
       }
-      if (want.every(([x, y]) => loaded(x, y))) this.failing = false;
     }
-    this.publish(want.filter(([x, y]) => loaded(x, y)));
+    const done = want.filter(([x, y]) => loaded(x, y));
+    const errors = want.filter(([x, y]) => !loaded(x, y) && (failed.get(`${x}/${y}`) || 0) > Date.now()).length;
+    const pending = limited ? 0 : want.length - done.length - errors;
+    const slow = pending > 0 && Date.now() - this.since >= SLOW;
+    clearTimeout(this.slowTimer);
+    if (pending && !slow) this.slowTimer = setTimeout(() => this.update(), SLOW - (Date.now() - this.since));
+    const progress = { loaded: done.length, total: want.length, pending, failed: errors, limited, slow };
+    const changed = Object.keys(progress).some((key) => progress[key] !== this.progress[key]);
+    this.progress = progress;
+    this.publish(done);
+    if (changed) this.onStatus();
   }
   publish(list) {
     const key = list.map((t) => t.join('/')).join(';');
