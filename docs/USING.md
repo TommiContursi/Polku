@@ -72,6 +72,8 @@ On a desktop, **⌄** in the planner's header folds it down to its line at the f
 
 ## Read the map
 
+With editing off, a pointing-hand cursor shows roads, paths, routes and other map features you can click. Empty map space keeps the grab cursor. Rest the pointer briefly for a hint; fuller map details can follow after it appears.
+
 The terrain maps keep more detail when you zoom out, and aerial photos use sharper images on high-density screens. Close-up detail still depends on the original photography. If a closer **Aerial** image is unavailable, the map enlarges the available coarser image. **Depth contours** appear from zoom level 10 and **Depth soundings** from level 13; the depths are displayed for planning, not navigation, and never used for routing.
 
 **Layers** opens a quick drawer: the base maps as pictures, and five tiles for your sport (MTB's are trail colours, trail details, official routes, Waymarked MTB and rain radar). A tap on a map or a tile changes the map at once. A tile with **›** has more settings (the kind of trail colours, the opacity), one step in; **‹** comes back. A tile says **Zoom in to see** while its layer doesn't show at this zoom, and **No data now** while its source isn't answering. **Edit** changes the five tiles for that sport to any layer in the full panel; **Reset** puts back the sport's own. **Settings → Speeds and tiles by sport** lists each sport's tiles and opens the same Edit for that sport, whatever sport the map has. **More** opens every layer and the map keys, and says how many other layers are on. On a phone the drawer is a sheet: swipe it down or tap the map to close it (that tap adds no point to a route), swipe it up for every layer. On a desktop it stays open beside the button while you use the map.

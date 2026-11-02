@@ -2,23 +2,23 @@
 // from features already drawn on the map. Never calls an API (the incline may
 // read a terrain tile); the click popup keeps the full details (OSM tags, depth…).
 //
-// Cost: one queryRenderedFeatures per pointer rest (~0.3 ms flat, ~10 ms in
-// tilted 3D), none while the pointer or the map is moving.
+// The cursor is checked once per frame; tooltips only when the pointer rests.
+// Map text appears first; OSM/terrain enrichment keeps its original delay.
 
 import { DIFF_COLORS, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
-import { inspectLayers, overRoutes, pickFeature, hitBox, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
+import { inspectLayers, pickFeature, hitBox, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
 import { obstacleText, detailBits } from './trails.js';
 import { h, escapeHtml } from './ui.js';
 
-const FIRST = 260; // ms the pointer rests before the first tooltip
-const WARM = 90; // …and when moving on from one that was just shown
+const FIRST = 150; // ms before showing details already drawn on the map
+const WARM = 60;
+const DETAIL_FIRST = 260, DETAIL_WARM = 90; // unchanged: a brief hover starts no extra OSM/terrain request
 const RADIUS = 5; // px around the pointer
 const DRIFT = 16; // px the pointer may move before a shown tooltip hides
-const OPENS = ['cameras', 'sf-ships', 'nm-marks', 'sf-points', 'lipas-route']; // pointer cursor: these open a card
 
 export const hoverCapable = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 
@@ -32,8 +32,10 @@ export function initHover(map, app) {
   let shownAt = null;
   let size = [0, 0];
   let timer = 0;
+  let detailTimer = 0;
   let frame = 0;
   let hiddenAt = 0;
+  let detailHiddenAt = 0, enriched = false;
   let pointer = false;
   let route = false; // showing the planner's route readout
   let current = null; // what the tooltip shows
@@ -42,7 +44,9 @@ export function initHover(map, app) {
   let drawn = false; // the way under the pointer drawn on the map (#574)
   const hide = () => {
     clearTimeout(timer);
+    clearTimeout(detailTimer);
     timer = 0;
+    if (enriched) { detailHiddenAt = performance.now(); enriched = false; }
     if (drawn) { drawn = false; app.hoverPick(null); }
     if (glowing && app.hoverLeg) { app.hoverLeg(null); glowing = false; }
     route = false;
@@ -60,8 +64,8 @@ export function initHover(map, app) {
     tip.style.transform = `translate(${Math.max(4, Math.round(x))}px, ${Math.max(4, Math.round(y))}px)`;
   };
 
-  const probe = () => {
-    timer = 0;
+  const probe = (enrich = false) => {
+    if (enrich) detailTimer = 0; else timer = 0;
     if (!at || !app.enabled() || map.isMoving() || map.getContainer().querySelector('.polku-popup')) return;
     const planning = app.isPlanning();
     const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
@@ -80,13 +84,14 @@ export function initHover(map, app) {
       const ng = feats.find((f) => f.layer.id === 'nogo-fill');
       if (ng) d = { title: ng.properties.label || 'Avoided place', bits: ['Routes go around it · click to change'] };
     }
-    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false, planning }); }
+    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false, planning, terrain: enrich }); }
     if (!d) { hide(); return; }
     // a way: as its pick says it, from OpenStreetMap's own ways once its tile is in, with what only the map draws after
     // it (the uphill grade, access, a bridge, the trail details, winter), and the way drawn under the pointer (#574)
-    const w = d.said && app.wayUnder && app.wayUnder(map.unproject(at).toArray(), () => { if (at && !route && app.enabled()) probe(); });
+    const w = enrich && d.said && app.wayUnder && app.wayUnder(map.unproject(at).toArray(), () => { if (at && !route && app.enabled()) probe(true); });
     if (w) d = { title: w.title, bits: [escapeHtml(w.line), ...d.bits.filter((b) => !d.said.includes(b))], upAt: 1, pending: d.pending, coords: w.coords };
     render(d);
+    if (enrich) enriched = true;
     // the incline from the DEM arrives a moment later
     if (d.pending) {
       d.pending.then((bit) => {
@@ -119,23 +124,23 @@ export function initHover(map, app) {
     frame = 0;
     if (!at || app.isPlanning()) { pointer = false; light(null); return; }
     // what a click picks first is what's lit: your route's line and a place's icon win over a LIPAS route (inspect.js)
-    const layers = [...overRoutes(map), 'lipas-route', 'route-casing'].filter((id) => map.getLayer(id));
+    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon'].filter((id) => map.getLayer(id))];
     const feats = map.queryRenderedFeatures(hitBox({ x: at[0], y: at[1] }, false), { layers });
-    const hit = feats.some((f) => OPENS.includes(f.layer.id));
-    if (hit !== pointer) { pointer = hit; canvas.style.cursor = hit ? 'pointer' : ''; }
+    const hit = feats.some((f) => f.layer.id !== 'route-casing' || f.properties.kind !== 'gap');
+    pointer = hit; canvas.style.cursor = hit ? 'pointer' : '';
     const top = pickFeature(feats), leg = feats.some((f) => f.layer.id === 'route-casing' && f.properties.kind === 'leg');
     // (a warning marker's hit area is wider than the box, and wins over the route: asked only when the route would light)
     const lights = top && top.layer.id === 'lipas-route' && !leg && !app.headAt({ x: at[0], y: at[1] }, false);
     light(lights ? top.properties : null);
   };
-  const press = () => { hide(); light(null); };
+  const press = () => { hide(); light(null); if (pointer) { pointer = false; canvas.style.cursor = ''; } };
 
   canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return;
     const r = canvas.getBoundingClientRect();
     at = [e.clientX - r.left, e.clientY - r.top];
     client = [e.clientX, e.clientY];
-    if (e.buttons || map.isMoving()) { hide(); return; }
+    if (e.buttons || map.isMoving()) { press(); return; }
     if (!frame) frame = requestAnimationFrame(cursor);
     if (!app.enabled()) { hide(); return; }
     if (!tip.hidden && !route) {
@@ -143,7 +148,11 @@ export function initHover(map, app) {
       else place();
     }
     clearTimeout(timer);
-    timer = setTimeout(probe, tip.hidden && performance.now() - hiddenAt > 600 ? FIRST : WARM);
+    clearTimeout(detailTimer);
+    const cold = tip.hidden && performance.now() - hiddenAt > 600;
+    timer = setTimeout(() => probe(), cold ? FIRST : WARM);
+    const detailCold = !enriched && performance.now() - detailHiddenAt > 600;
+    detailTimer = setTimeout(() => probe(true), detailCold ? DETAIL_FIRST : DETAIL_WARM);
   });
   canvas.addEventListener('pointerleave', () => { at = null; press(); });
   canvas.addEventListener('pointerdown', press);
@@ -160,6 +169,7 @@ export function initHover(map, app) {
       at = [ev.clientX - r.left, ev.clientY - r.top];
       client = [ev.clientX, ev.clientY];
       clearTimeout(timer);
+      clearTimeout(detailTimer);
       timer = 0;
       route = true;
       render(d);
@@ -250,7 +260,7 @@ function way(feats, ctx) {
   if (win) bits.push(win.beside ? '❄ a ski track beside it' : `❄ ${e(WINTER_TEXT[win.cls].toLowerCase())}`);
   const d = { title, bits, upAt, said };
   // uphill layer off (or not computed here): work out the incline on the spot
-  if (!up && w && ctx) {
+  if (!up && w && ctx && ctx.terrain !== false) {
     const trail = /^(path|track|cycleway)-/.test(w.f.layer.id);
     d.pending = gradeHere(w.f, ctx.ll).then((r) => r && (ctx.mtb && trail
       ? `${dot(DIFF_COLORS[r.cls])}${UPHILL_TEXT[r.cls].split(' ')[0]} ${r.grade} %`
