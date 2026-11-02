@@ -1,0 +1,107 @@
+{
+  "source": {
+    "bytes": 774468258,
+    "sha256": "6e4ba0730c8fa4f71c35aa91a5cb3b9ce7f163daa84d886cd94f9b522dd3f80f",
+    "timestamp": "2026-10-31T21:23:06Z",
+    "url": "https://download.geofabrik.de/europe/finland-latest.osm.pbf"
+  },
+  "cases": [
+    {
+      "case": "Helsinki",
+      "raw_bytes": 1859560,
+      "1": {
+        "gzip_bytes": 404842,
+        "ms": 8.353750000242144
+      },
+      "6": {
+        "gzip_bytes": 318430,
+        "ms": 25.820774998283014
+      },
+      "9": {
+        "gzip_bytes": 310682,
+        "ms": 58.237633196404204
+      }
+    },
+    {
+      "case": "Rural central Finland",
+      "raw_bytes": 22019,
+      "1": {
+        "gzip_bytes": 6144,
+        "ms": 0.11402500094845891
+      },
+      "6": {
+        "gzip_bytes": 5144,
+        "ms": 0.30341679812408984
+      },
+      "9": {
+        "gzip_bytes": 5089,
+        "ms": 0.4905331996269524
+      }
+    },
+    {
+      "case": "Nuuksio forest",
+      "raw_bytes": 41904,
+      "1": {
+        "gzip_bytes": 10765,
+        "ms": 0.17618340207263827
+      },
+      "6": {
+        "gzip_bytes": 8813,
+        "ms": 0.6008583994116634
+      },
+      "9": {
+        "gzip_bytes": 8710,
+        "ms": 1.2281999981496483
+      }
+    },
+    {
+      "case": "Turku coast",
+      "raw_bytes": 780794,
+      "1": {
+        "gzip_bytes": 176056,
+        "ms": 3.5294416011311114
+      },
+      "6": {
+        "gzip_bytes": 139109,
+        "ms": 11.367766803596169
+      },
+      "9": {
+        "gzip_bytes": 136122,
+        "ms": 25.752016599290073
+      }
+    },
+    {
+      "case": "Kilpisjarvi north",
+      "raw_bytes": 39441,
+      "1": {
+        "gzip_bytes": 9422,
+        "ms": 0.18059999565593898
+      },
+      "6": {
+        "gzip_bytes": 7522,
+        "ms": 0.49584159860387444
+      },
+      "9": {
+        "gzip_bytes": 7396,
+        "ms": 0.8485833997838199
+      }
+    },
+    {
+      "case": "largest",
+      "raw_bytes": 1859560,
+      "1": {
+        "gzip_bytes": 404842,
+        "ms": 8.264883200172335
+      },
+      "6": {
+        "gzip_bytes": 318430,
+        "ms": 26.032433402724564
+      },
+      "9": {
+        "gzip_bytes": 310682,
+        "ms": 57.82774160034023
+      }
+    }
+  ],
+  "note": "Five actual sample tiles; largest repeats Helsinki. Each level is averaged over five encodes on the local machine, not a full-build speedup guarantee."
+}

@@ -36,7 +36,7 @@
 | PR | Independently useful deliverable | Gate before ready / publication |
 |---|---|---|
 | 1 | Trail/barrier, winter, hazard and overnight datasets plus their existing consumers; shared source policy. | Fixture extraction parity, empty/failure/cached/offline behavior, focused `osmdata trails winter water stops pickcard lit` checks. Current live manifest remains usable and falls back for missing optional products. Finland full build measured before publishing these products. |
-| 2, after 1 | Full-tag inspection and lake/park/protected-area source, sharing extracted objects. | Exact-ID/nearby queries, containment/holes/complete-vs-cut outline tests, `osmdata facts spotcard routecard pickcard`. Large/incomplete area payloads retain a specific fallback reason. |
+| 2, after 1 | Full-tag inspection; measured lake/park/protected-area representation follow-up #696. | Exact-ID/nearby and concurrent raw/adapted reads; `osmdata facts spotcard routecard pickcard`. Large/incomplete areas retain bounded public fallback with the measured obstacle documented. |
 | 3, after 2 | Four-country build matrix, manifest packaging/reader selection and complete measured candidates. | All four complete builds, source/coverage checks, border/conflict fixtures, browser cold/repeat transfer/latency with Overpass forbidden, archive/disk/RSS/time/artifact/hosting budget report. Owner reviews artifact and merges, then separately approves protected publication. Fresh live-manifest/Range/browser verification required before claiming published coverage. |
 
 Each PR includes its factual DEVELOPING/README/release-note updates; no new controls or motion. PRs may ship in this order without waiting for later parts. A failed new build never promotes a pointer; retain predecessor and rollback artifacts. Do not change the reviewed publish-existing artifact pin until the candidate actually passes.
@@ -86,3 +86,34 @@ Each PR includes its factual DEVELOPING/README/release-note updates; no new cont
 ## Area representation decision, 2026-11-02
 
 The whole-polygon model was measured against the complete retained Finland PBF. Among 192,674 supported areas, Saimaa alone has 654,393 ring points (15,499,852 raw / 4,674,607 gzip bytes of compact geometry before nodes/tags/members), across 1,287 z12 bounding-box tiles. Repeating complete polygons would make a small local request heavy; indexing only perimeter tiles would miss containment. The necessary clipped containment and nearby-outline representation is tracked in #696, with holes, original topology and border/incomplete-geometry acceptance. Task 2 ships full-tag inspection and bounds the existing area query to one 15-second mirror round; it does not advertise hosted area coverage. Evidence is in `docs/measurements/osm-areas-2026-11-02.json`. The remaining migration and four-country work continue independently.
+
+
+## Execution checkpoints
+
+1. #695: extraction/consumers and shared policy pass focused groups and full Finland
+   candidate 41502174378. It proposes this explicit passed artifact as the protected
+   manual publication target, so Finland details can ship independently. Application
+   code 4ad5253 is unchanged by the pin-only commit 4b39e8c.
+2. #697: exact full tags and broad inspection pass extraction, reader and card checks.
+   The review reproduced concurrent raw/adapted response sharing; 3db8063 separates
+   adapters while sharing transport. The regression fails before and passes after
+   in both browser sizes; 17 Node checks and all named card groups pass. Area
+   representation is the measured follow-up #696, not advertised as hosted.
+3. #698: all four complete builds passed in run 41509553858; assembly compared
+   20,766,245 unique represented objects and 142,922 identical duplicate copies.
+   Final consumer/cache/border verification 41525059421 passed 32 covered cases
+   with zero Overpass and zero additional selected-way full-tag requests. Complete
+   data total 11.224 GB; max OS RSS 6.64 GB; longest country build 84.20 min.
+   The 25 GiB disk preflight guards measured staging. The reviewed publication
+   target is proposed as 41509553858 / nordic-osm-release, still owner-controlled.
+   Negative country-coverage inheritance checks pass in Node and browser; final
+   checks are 60 Python / 20 Node plus named focused groups; the workflow passes CI.
+   Published coverage is not claimed: actual host quota, bulk publication, >2 GiB
+   public Range and live pointer verification remain behind approval. Border
+   union/merge is measured follow-up #699; area/nearby relation geometry is #696.
+4. Review repaired the builder's named-sample gate and registered both regressions
+   through `tools/smoke.py osmdata`. They fail against the original builder and pass
+   with the fix. Independent candidate recheck 41533288819 validated all 14 required
+   road locations and repeated the 32 covered consumer cases and border controls;
+   zero Overpass and zero extra selected-way tag requests. The candidate remains
+   immutable; the extra evidence replaces the missing original sample measurements.

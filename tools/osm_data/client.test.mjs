@@ -212,3 +212,46 @@ test('dataset completeness metadata survives a raw tile read', async () => {
     assert.equal(d.nearby_complete,false);
   } finally { delete manifest.datasets.ways.nearby_complete; }
 });
+
+test('country archives use actual clipping polygons, including overlapping border coverage', async () => {
+  const {lonLatToTile}=await import('../../js/geo.js');
+  const real=globalThis.fetch, base=structuredClone(manifest);
+  base.bounds=[19,59,32,71];
+  base.coverage=JSON.parse(await readFile(new URL('../../data/finland-coverage.geojson',import.meta.url)));
+  base.source.url='https://download.geofabrik.de/europe/finland-latest.osm.pbf';
+  for (const country of ['sweden','norway','estonia']) base.datasets[`${country}-ways`]={...base.datasets.ways,kind:'ways',country,url:`${country}-ways.pmtiles`,bounds:[-180,-85,180,85],coverage:JSON.parse(await readFile(new URL(`../../data/${country}-coverage.geojson`,import.meta.url))),source:{timestamp:base.source.timestamp,url:`https://download.geofabrik.de/europe/${country}-latest.osm.pbf`}};
+  const urls=[];
+  globalThis.fetch=async (url,init={})=>{
+    if(String(url).endsWith('current.json'))return Response.json(base);
+    urls.push(String(url));
+    const [start,end]=init.headers.Range.slice(6).split('-').map(Number);
+    return new Response(archive.subarray(start,end+1),{status:206,headers:{'Content-Range':`bytes ${start}-${end}/${archive.length}`}});
+  };
+  try {
+    const data=new StaticOSM('https://data.example/countries/current.json');
+    for(const [country,ll] of [['finland',[24.9384,60.1699]],['sweden',[18.0686,59.3293]],['norway',[10.7522,59.9139]],['estonia',[24.7536,59.437]],['sweden',[20.225,67.855]]]) {
+      const result=await data.tile(lonLatToTile(...ll,14).map(Math.floor));
+      assert.equal(result.source.url,`https://download.geofabrik.de/europe/${country}-latest.osm.pbf`);
+    }
+    await data.tile(lonLatToTile(24.1466,65.8481,14).map(Math.floor));
+    assert.ok(urls.some(u=>u.endsWith('sweden-ways.pmtiles')) && urls.some(u=>u.endsWith('norway-ways.pmtiles')));
+    await assert.rejects(data.tile(lonLatToTile(30,58,14).map(Math.floor)),/coverage/);
+  } finally {globalThis.fetch=real;}
+});
+
+test('an archive at the wrong zoom cannot become a valid empty hazard tile', async () => {
+  manifest.datasets.hazards={...manifest.datasets.ways,zoom:11};
+  try { await assert.rejects(new StaticOSM('https://data.example/wrong-archive-zoom/current.json','hazards',11).tile([1024,1024]),/archive zoom/); }
+  finally {delete manifest.datasets.hazards;}
+});
+
+test('missing country coverage cannot inherit another country or its rectangle', async () => {
+  const real=globalThis.fetch, base=structuredClone(manifest);
+  base.datasets={'sweden-ways':{...base.datasets.ways,kind:'ways',country:'sweden',source:base.source},...base.datasets};
+  globalThis.fetch=(url,init)=>String(url).endsWith('current.json') ? Promise.resolve(Response.json(base)) : real(url,init);
+  try {
+    await assert.rejects(new StaticOSM('https://data.example/missing-country-coverage/current.json').tile([8192,8192]),/country.*metadata/);
+    base.datasets={ways:base.datasets.ways};base.country='sweden';
+    await assert.rejects(new StaticOSM('https://data.example/missing-root-coverage/current.json').tile([8192,8192]),/country.*coverage/);
+  } finally {globalThis.fetch=real;}
+});

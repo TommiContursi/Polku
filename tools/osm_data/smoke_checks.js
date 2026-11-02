@@ -10,7 +10,8 @@ export async function checkStaticOSM() {
     datasets: { ways: { format: 'pmtiles-json', schema: 1, zoom: 14, url: 'ways.pmtiles', bytes: archive.byteLength } } };
   const real = window.fetch, calls = [], fails = [];
   // The weekly full-country preview exercises a long northern way beyond the old six-round limit.
-  if (OSM_DATA_MANIFEST) {
+  const country = OSM_DATA_MANIFEST ? (await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.country : null;
+  if (OSM_DATA_MANIFEST && (!country || country === 'finland')) {
     const ll = [27.3921157, 68.3992993]; // Rovaniementie: a long interior road, away from border tiles requiring fallback
     await W.loadWays(W.wayTile(ll));
     const seed = W.nearestWay(ll, 2000);
@@ -44,6 +45,15 @@ export async function checkStaticOSM() {
       { type: 'relation', id: 1, tags: { type: 'restriction', name: 'Not a route' }, members: [{ type: 'way', ref: 10 }] },
       { type: 'relation', id: 2, tags: { type: 'route', route: 'hiking', name: 'The route' }, members: [{ type: 'way', ref: 10 }] }] });
     if (slim.w[0][5] !== 'The route' || slim.w[0][4].at(-2) !== 0.06) fails.push('card adapter loses geometry or uses a restriction as a route name');
+    manifest.datasets.ways.zoom = 13;
+    try { await new StaticOSM(root+'wrong-zoom/current.json','ways',13).tile([4096,4096]); fails.push('wrong archive zoom looks like an empty successful tile'); }
+    catch (e) { if (!/archive zoom/.test(e.message)) fails.push(String(e)); }
+    finally { manifest.datasets.ways.zoom = 14; }
+    const originalDatasets=manifest.datasets;
+    manifest.datasets={'foreign-ways':{...originalDatasets.ways,kind:'ways',country:'sweden',source:manifest.source},...originalDatasets};
+    try { await new StaticOSM(root+'missing-country/current.json').tile([8192,8192]); fails.push('missing country coverage inherits another source and looks complete'); }
+    catch(e) { if (!/country.*metadata/.test(e.message)) fails.push(String(e)); }
+    finally { manifest.datasets=originalDatasets; }
     const store = idb('overpass'), key = `static/${root}ways.pmtiles/fixture/14/8192/8192`;
     const saved = await store.get(key);
     if (!saved) fails.push('selected tile was not saved for reuse');
@@ -172,6 +182,8 @@ export async function checkHostedConsumers() {
     if (W.winterClass(winter.w[0]?.[1] || {}) !== 'ski') fails.push('hosted ski-only way missing');
     const water = await H.waterInputs([ll[0]-.001,ll[1]-.001,ll[0]+.001,ll[1]+.001],{hazards:true});
     if (!water.hazards.features.some(f=>f.properties.src==='osm' && f.properties.kind==='reef') || water.missing.includes('OpenStreetMap')) fails.push('hosted water hazard is missing or marked unavailable');
+    const broad = await H.waterInputs([ll[0]-1,ll[1]-1,ll[0]+1,ll[1]+1],{hazards:true});
+    if (!broad.missing.includes('OpenStreetMap')) fails.push('an uncheckable large water area looks like a complete empty hazard result');
     const stays = await S.staysNear(ll,0.1);
     if (!stays.some(p=>p.name==='Hosted campsite')) fails.push('hosted overnight relation missing');
     if (publicCalls.length) fails.push('healthy hosted consumers queried public Overpass');
@@ -186,11 +198,11 @@ export async function checkHostedInspection() {
   const ll = [25.22,62.22], geometry = [{lon:25.219,lat:62.22005},{lon:25.221,lat:62.22005}];
   const elements = [
     {type:'way',id:81001,nodes:[1,2],geometry,tags:{highway:'motorway','custom:tag':'original way'}},
-    {type:'way',id:81002,nodes:[3,4],geometry:[{lon:25.219,lat:62.22},{lon:25.221,lat:62.22}],tags:{highway:'path'}},
+    {type:'way',id:81002,nodes:[3,4],geometry:[{lon:25.219,lat:62.22},{lon:25.221,lat:62.22}],tags:{highway:'path','custom:tag':'original path'}},
     {type:'node',id:81001,lon:25.22,lat:62.22,tags:{amenity:'toilets','custom:tag':'original node'}},
     {type:'relation',id:81001,members:[{type:'way',ref:81001,role:'outer'}],center:{lon:25.22,lat:62.22},tags:{tourism:'camp_site','custom:tag':'original relation'}},
   ];
-  StaticOSM.prototype.tile = async function() { return {schema:1,elements,nearby_complete:true,source:{provider:'Polku OSM data',timestamp:'2026-11-01T00:00:00Z'}}; };
+  StaticOSM.prototype.tile = async function() { return {schema:1,elements:this.dataset==='ways' ? elements.filter(e=>e.type==='way' && e.tags.highway!=='motorway') : elements,nearby_complete:true,source:{provider:'Polku OSM data',timestamp:'2026-11-01T00:00:00Z'}}; };
   window.fetch = async (url,init) => { if (/overpass|maps.mail.ru/.test(String(url))) throw new DOMException('Unexpected public query','AbortError'); return real(url,init); };
   try {
     for (const type of ['way','node','relation']) {
@@ -206,8 +218,15 @@ export async function checkHostedInspection() {
       if (this.dataset!=='ways') throw new Error('New inspection product not published');
       return {schema:1,elements:elements.filter(e=>e.type==='way'),source:{provider:'Polku OSM data'}};
     };
-    const existing = await I.wayNear(ll,81001);
-    if (existing?.tags['custom:tag']!=='original way') fails.push('exact full tags do not reuse the already published ways product');
+    const existing = await I.wayNear(ll,81002);
+    if (existing?.tags['custom:tag']!=='original path') fails.push('exact full tags do not reuse the already published ways product');
+    let inspectionOpened = false;
+    StaticOSM.prototype.tile = async function() {
+      if (this.dataset==='inspection') inspectionOpened=true;
+      return {schema:1,elements,source:{provider:'Polku OSM data'}};
+    };
+    await I.wayNear(ll,81002);
+    if (inspectionOpened) fails.push('known way tags opened another archive instead of reusing raw ways');
     const W = await import('/js/ways.js');
     let started, release;
     const requested = new Promise(yes=>{started=yes;});

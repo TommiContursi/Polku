@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-02
 
+### Hosted OSM coverage can expand by country ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- The reader can use separately published Finland, Sweden, Norway and Estonia products with their own source dates and coverage. It downloads local tiles; uncovered border areas and unavailable data keep the existing bounded public fallback. Publication remains separate from this app update.
+
 ### Full OpenStreetMap tags can reuse the hosted data ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
 - **All OpenStreetMap details** reuses original hosted tags for known selected ways and uses the broader object archive where published. Exact node, way and relation IDs stay distinct; unsupported objects and uncertain nearby relation geometry keep a bounded public fallback.

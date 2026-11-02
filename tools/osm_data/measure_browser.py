@@ -3,6 +3,7 @@
 POLKU_URL=http://127.0.0.1:8796/ python tools/osm_data/measure_browser.py > measurements.json
 The phone case is Chrome emulation: 4x CPU, 80 ms latency, 10 Mbit/s download.
 """
+import argparse
 from contextlib import redirect_stdout
 import json
 from pathlib import Path
@@ -21,18 +22,29 @@ SAMPLES = {
     'Tykkikallio Jyvaskyla': [25.7656, 62.2306],
 }
 
+COUNTRY_SAMPLES = {
+    'finland': SAMPLES,
+    'sweden': {'Stockholm':[18.0686,59.3293],'Gothenburg coast':[11.9746,57.7089],'Kiruna north':[20.225,67.855]},
+    'norway': {'Oslo':[10.7522,59.9139],'Bergen coast':[5.3221,60.393],'Tromso north':[18.9553,69.6492],'Oslomarka forest':[10.68,60.0]},
+    'estonia': {'Tallinn':[24.7536,59.437],'Tartu':[26.7251,58.3776],'Lahemaa forest':[25.97,59.57]},
+}
+
 SCRIPT = """(async () => {
  const W = await import('/js/ways.js'), L = await import('/js/lit.js'), G = await import('/js/geo.js'), calls = [], real = window.fetch;
+ const I = await import('/js/inspect.js'), T = await import('/js/trails.js'), V = await import('/js/winter.js'), H = await import('/js/waterdata.js'), S = await import('/js/stops.js');
+ T.holdFetches(false); V.holdWinterFetches(false); H.seedWater(null);
+ let publicCalls=0;
  const { OSM_DATA_MANIFEST } = await import('/js/config.js'), dataRoot = new URL('.', OSM_DATA_MANIFEST).href;
  window.fetch = async (input, init) => {
    const url = String(input);
-   if (/overpass|maps.mail.ru/.test(url)) throw new Error('Selection tried public Overpass');
+   if (/overpass|maps.mail.ru/.test(url)) { publicCalls++; throw new DOMException('Unexpected public Overpass','AbortError'); }
+   if (/lipas|vayla|kartta.liikennevirasto/.test(url)) throw new DOMException('Independent provider excluded from OSM measurement','AbortError');
    const res = await real(input, init);
    if (url.startsWith(dataRoot)) calls.push({url, range:init?.headers?.Range, bytes:+res.headers.get('Content-Length')});
    return res;
  };
  const { StaticOSM } = await import('/js/osm-data.js');
- const products = Object.entries({trails:13,winter:12,hazards:11,places:12}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
+ const products = Object.entries({trails:13,winter:12,hazards:11,places:12,inspection:14}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
  const out = [];
  try {
    for (const [name,ll] of Object.entries(SAMPLES)) {
@@ -54,6 +66,10 @@ SCRIPT = """(async () => {
      at = performance.now(); begin = calls.length;
      const again = await select(), repeat_ms = performance.now()-at;
      if (JSON.stringify(pick) !== JSON.stringify(again) || calls.length !== begin) throw new Error(JSON.stringify({name,pick,again,newCalls:calls.slice(begin)}));
+     at=performance.now(); begin=calls.length;
+     const tags=await I.osmDetails({type:'way',id:pick.seed,ll:tapped});
+     if (tags?.id!==pick.seed || !tags.tags.highway || calls.slice(begin).some(c=>c.url.includes('inspection.pmtiles'))) throw new Error(name+': selected-way tags did not reuse raw ways');
+     const full_tags={ms:performance.now()-at,requests:calls.length-begin,bytes:calls.slice(begin).reduce((s,r)=>s+r.bytes,0)};
      const xy = G.lonLatToTile(...ll, L.LIT_Z).map(Math.floor);
      at = performance.now(); begin = calls.length;
      const lit = await L.litTile(...xy), lit_ms = performance.now()-at, litNetwork = calls.slice(begin);
@@ -70,19 +86,43 @@ SCRIPT = """(async () => {
        if (JSON.stringify(first)!==JSON.stringify(repeat) || calls.length!==begin) throw new Error(name+': '+product+' cache not reused');
        details[product]={cold_ms:ms,repeat_ms,elements:first.elements.length,requests:requests.length,bytes:requests.reduce((s,r)=>s+r.bytes,0),network:requests};
      }
-     out.push({details,name,ll,tapped,cold_ms,repeat_ms,requests:network.length,bytes:network.reduce((s,r)=>s+r.bytes,0),network,...pick,
+     const trail=await T.trailTile(...G.lonLatToTile(...ll,13).map(Math.floor)), winter=await V.winterTile(...G.lonLatToTile(...ll,12).map(Math.floor));
+     const water=await H.waterInputs([ll[0]-.0001,ll[1]-.0001,ll[0]+.0001,ll[1]+.0001],{hazards:true}), stays=await S.staysNear(ll,0.1);
+     if ([trail,winter].some(j=>j.source?.provider!=='Polku OSM data') || water.missing.includes('OpenStreetMap') || publicCalls) throw new Error(name+': a real consumer did not use hosted data');
+     const consumers={trail_ways:trail.w.length,winter_ways:winter.w.length,hazards:water.hazards.features.length,stays:stays.length,overpass_requests:publicCalls};
+     out.push({full_tags,consumers,details,name,ll,tapped,cold_ms,repeat_ms,requests:network.length,bytes:network.reduce((s,r)=>s+r.bytes,0),network,...pick,
        lighting:{cold_ms:lit_ms,repeat_ms:lit_repeat_ms,ways:lit.w.length,requests:litNetwork.length,bytes:litNetwork.reduce((s,r)=>s+r.bytes,0),network:litNetwork}});
    }
    return out;
  } finally { window.fetch = real; }
 })()"""
 
+BORDER_SCRIPT = """(async()=>{
+ const {StaticOSM}=await import('/js/osm-data.js'), {OSM_DATA_MANIFEST}=await import('/js/config.js'), {lonLatToTile}=await import('/js/geo.js');
+ const readers=Object.entries({ways:14,lit:13,trails:13,winter:12,hazards:11,places:12,inspection:14}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
+ const out={};
+ for(const [name,ll] of Object.entries({'Tornio-Haparanda':[24.14,65.84],'Kilpisjarvi':[20.7945,69.045],'Svinesund':[11.22,59.10],'Narva':[28.1903,59.3772],'Outside control':[30,58]})) {
+  const row={};
+  for(const {name:kind,z,reader} of readers) {
+   try { const j=await reader.tile(lonLatToTile(...ll,z).map(Math.floor)); row[kind]={hosted:true,elements:j.elements.length,source:j.source}; }
+   catch(e) { if(!/Outside static OSM coverage/.test(e.message)) throw e; row[kind]={hosted:false,fallback:'coverage'}; }
+  }
+  out[name]=row;
+ }
+ if(!out['Tornio-Haparanda'].ways.hosted || Object.values(out['Outside control']).some(r=>r.hosted)) throw new Error('Border coverage controls failed');
+ return out;
+})()"""
+
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--country',choices=[*COUNTRY_SAMPLES,'all'],default='finland')
+    args=parser.parse_args()
+    samples=COUNTRY_SAMPLES[args.country] if args.country!='all' else {name:ll for cases in COUNTRY_SAMPLES.values() for name,ll in cases.items()}
     output = sys.stdout
     with redirect_stdout(sys.stderr):
         chrome = Chrome()
-        result = {'browser': chrome.send('Browser.getVersion'), 'origin': BASE, 'cases': {}}
+        result = {'browser': chrome.send('Browser.getVersion'), 'origin': BASE, 'cases': {}, 'border_checks': {}}
         try:
             for label, width, height, phone in [('desktop', 1440, 900, False), ('phone_emulated', 390, 844, True)]:
                 page = chrome.page(width, height, phone)
@@ -95,11 +135,13 @@ def main():
                         chrome.send('Emulation.setCPUThrottlingRate', {'rate': 4}, page.s)
                         chrome.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 80,
                                     'downloadThroughput': 1250000, 'uploadThroughput': 625000}, page.s)
-                    data = page.js(SCRIPT.replace('SAMPLES', json.dumps(SAMPLES)), timeout=180000)
-                    assert len(data) == len(SAMPLES) and all(row['pieces'] and row['metres'] > 0 for row in data)
+                    data = page.js(SCRIPT.replace('SAMPLES', json.dumps(samples)), timeout=180000)
+                    assert len(data) == len(samples) and all(row['pieces'] and row['metres'] > 0 for row in data)
                     assert data[0]['requests'] > 0 and data[0]['bytes'] > 0, 'cold source requests were not measured'
                     assert all(not stop.get('unloaded') for row in data for stop in row['stops'].values()), 'selection ended on missing data'
                     result['cases'][label] = data
+                    if args.country=='all':
+                        result['border_checks'][label]=page.js(BORDER_SCRIPT,timeout=180000)
                 finally:
                     page.close()
         finally:

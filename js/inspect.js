@@ -178,13 +178,13 @@ export async function wayNear(ll, osm = null) {
   const q = osm ? `[out:json][timeout:15];way(${osm});out tags geom;` : `[out:json][timeout:15];way(around:12,${ll[1]},${ll[0]})[highway];out tags geom;`;
   let json;
   try {
-    json = await inspectionAt(ll,12);
+    // A selected way already has full tags in the original, usually cached ways product.
+    json = await inspectionAt(ll,12,osm ? 'ways' : 'inspection');
     if (osm && !json.elements.some(e=>e.type==='way' && e.id===+osm)) throw new Error('Object not in hosted inspection');
   } catch {
-    // The original ways product already has full tags for a known selected way.
     try {
       if (!osm) throw new Error('Nearest highway requires the complete inspection product');
-      json = await inspectionAt(ll,12,'ways');
+      json = await inspectionAt(ll,12);
       if (!json.elements.some(e=>e.type==='way' && e.id===+osm)) throw new Error('Object absent');
     } catch { json = await overpass(q, {race:true,oneRound:true,timeoutMs:15000}); }
   }

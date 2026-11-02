@@ -91,3 +91,10 @@ class ProductTests(unittest.TestCase):
         e = next(e for e in self.tile(out,'inspection',14) if e['id']==210)
         self.assertTrue(e['incomplete'])
         self.assertEqual(e['members'][1]['ref'],999)
+
+    def test_untagged_node_members_still_locate_overnight_relations(self):
+        rel='<relation id="220"><member type="node" ref="1" role=""/><tag k="tourism" v="camp_site"/></relation>'
+        out,_=self.build(OSM.replace('</osm>',rel+'</osm>'))
+        from pmtiles.reader import all_tiles
+        els=[e for _,data in all_tiles(MemorySource((out/'places.pmtiles').read_bytes())) for e in json.loads(gzip.decompress(data))['elements']]
+        self.assertEqual(els[0]['center'],{'lon':-0.01,'lat':-0.01})
