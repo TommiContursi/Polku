@@ -31,6 +31,8 @@ SCRIPT = """(async () => {
    if (url.startsWith(dataRoot)) calls.push({url, range:init?.headers?.Range, bytes:+res.headers.get('Content-Length')});
    return res;
  };
+ const { StaticOSM } = await import('/js/osm-data.js');
+ const products = Object.entries({trails:13,winter:12,hazards:11,places:12}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
  const out = [];
  try {
    for (const [name,ll] of Object.entries(SAMPLES)) {
@@ -58,7 +60,17 @@ SCRIPT = """(async () => {
      at = performance.now(); begin = calls.length;
      const litAgain = await L.litTile(...xy), lit_repeat_ms = performance.now()-at;
      if (JSON.stringify(lit) !== JSON.stringify(litAgain) || calls.length !== begin) throw new Error(name + ': repeat lighting downloads again');
-     out.push({name,ll,tapped,cold_ms,repeat_ms,requests:network.length,bytes:network.reduce((s,r)=>s+r.bytes,0),network,...pick,
+     const details = {};
+     for (const {name:product,z,reader} of products) {
+       const tile = G.lonLatToTile(...ll,z).map(Math.floor);
+       at = performance.now(); begin = calls.length;
+       const first = await reader.tile(tile), ms = performance.now()-at, requests = calls.slice(begin);
+       at = performance.now(); begin = calls.length;
+       const repeat = await reader.tile(tile), repeat_ms = performance.now()-at;
+       if (JSON.stringify(first)!==JSON.stringify(repeat) || calls.length!==begin) throw new Error(name+': '+product+' cache not reused');
+       details[product]={cold_ms:ms,repeat_ms,elements:first.elements.length,requests:requests.length,bytes:requests.reduce((s,r)=>s+r.bytes,0),network:requests};
+     }
+     out.push({details,name,ll,tapped,cold_ms,repeat_ms,requests:network.length,bytes:network.reduce((s,r)=>s+r.bytes,0),network,...pick,
        lighting:{cold_ms:lit_ms,repeat_ms:lit_repeat_ms,ways:lit.w.length,requests:litNetwork.length,bytes:litNetwork.reduce((s,r)=>s+r.bytes,0),network:litNetwork}});
    }
    return out;

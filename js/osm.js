@@ -25,7 +25,7 @@ async function ask(i, query, signal, timeoutMs) {
     const json = await res.json();
     if (!json || json.remark || !Array.isArray(json.elements)) throw new Error(json?.remark || 'Overpass returned incomplete data');
     preferred = i;
-    return json;
+    return { ...json, source: { provider: 'Overpass', timestamp: json.osm3s?.timestamp_osm_base || null, attribution: '© OpenStreetMap contributors' } };
   } finally {
     clearTimeout(t);
   }
@@ -70,7 +70,8 @@ export async function cachedOverpass(key, query, slim = (json) => json, opts = {
   try { hit = await cache.get(key); } catch { /* storage blocked */ }
   if (hit && Date.now() - hit.at < OSM_TTL) return hit.json;
   try {
-    const small = slim(await overpass(query, opts));
+    const json = await overpass(query, opts);
+    const small = { ...slim(json), source: json.source };
     cache.set(key, { at: Date.now(), json: small }).catch(() => {});
     return small;
   } catch (err) {

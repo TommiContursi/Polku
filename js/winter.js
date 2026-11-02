@@ -14,6 +14,8 @@
 
 import { lonLatToTile, tileBounds, dist } from './geo.js';
 import { cachedOverpass } from './osm.js';
+import { hostedTile } from './osm-data.js';
+import { OSM_DATA_MANIFEST } from './config.js';
 import { request } from './net.js';
 import { store } from './ui.js';
 
@@ -166,7 +168,8 @@ export function winterTile(x, y) {
   if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true })); // (held: whatever it did before, as a test asks)
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
-  entry.promise = cachedOverpass(`winter1/${WINTER_Z}/${key}`, winterQuery(x, y), slimWinter, { timeoutMs: 30000 })
+  entry.promise = hostedTile(OSM_DATA_MANIFEST, 'winter', WINTER_Z, [x, y],
+    () => cachedOverpass(`winter1/${WINTER_Z}/${key}`, winterQuery(x, y), slimWinter, { oneRound: true, timeoutMs: 30000 }), { slim: slimWinter })
     .then((data) => { entry.data = data; for (const fn of listeners) fn(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
   tiles.set(key, entry);

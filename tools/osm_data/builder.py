@@ -41,7 +41,71 @@ LICENSE = {
     'name': 'Open Database License 1.0',
     'url': 'https://opendatacommons.org/licenses/odbl/1-0/',
 }
-LICENSE_TEXT = '''Polku Finland roads, paths and lighting
+PRODUCT_ZOOMS = {'trails': 13, 'winter': 12, 'hazards': 11, 'places': 12}
+BARRIERS = set(('gate lift_gate swing_gate sliding_gate wicket_gate hampshire_gate bump_gate chain rope bar block '
+                'stile kissing_gate turnstile horse_stile full-height_turnstile cycle_barrier motorcycle_barrier '
+                'log fallen_tree windfall debris').split())
+
+
+def is_stay(tags):
+    return (tags.get('tourism') in {'camp_site', 'wilderness_hut', 'alpine_hut'} or
+            tags.get('amenity') == 'shelter' and tags.get('shelter_type') in {'lean_to', 'basic_hut'})
+
+
+def products(kind, tags):
+    result = []
+    h = tags.get('highway')
+    if kind == 'node':
+        trail = (tags.get('barrier') in BARRIERS or 'obstacle' in tags or
+                 'ford' in tags and tags['ford'] != 'no')
+        hazard = tags.get('seamark:type') in {'rock', 'obstruction', 'wreck'} or tags.get('natural') in {'rock', 'reef', 'shoal'}
+    else:
+        trail = (h in {'path', 'bridleway', 'steps'} or
+                 h in {'footway', 'track', 'cycleway'} and
+                 (h == 'footway' and 'mtb:scale' in tags or
+                  any(tags.get(k) for k in ['obstacle', 'ford', 'mtb:scale:uphill']) or
+                  tags.get('surface') == 'mud' or h == 'track' and 'trail_visibility' in tags) or
+                 tags.get('barrier') in {'fence', 'wall', 'hedge', 'city_wall'})
+        hazard = tags.get('natural') in {'reef', 'shoal'} or tags.get('seamark:type') in {'rock', 'obstruction'}
+        if ('mtb:winter' in tags or any(tags.get(k) for k in ['snowplowing', 'winter_service', 'bicycle:winter', 'foot:winter']) or
+                tags.get('seasonal') == 'winter' or tags.get('piste:type') == 'nordic'):
+            result.append('winter')
+    if trail:
+        result.append('trails')
+    if hazard:
+        result.append('hazards')
+    if is_stay(tags):
+        result.append('places')
+    return result
+
+
+class PlaceRelations(osmium.SimpleHandler):
+    """Find the small set of member geometries needed for overnight relation centres."""
+    def __init__(self):
+        super().__init__()
+        self.relations = {}
+
+    def relation(self, rel):
+        self.relations[rel.id] = (dict(rel.tags) if is_stay(rel.tags) else None,
+                                  [(m.type, m.ref, m.role) for m in rel.members])
+
+    def wanted(self):
+        needed = set()
+        def visit(ref):
+            if ('r', ref) in needed:
+                return
+            needed.add(('r', ref))
+            for kind, child, _ in self.relations.get(ref, (None, []))[1]:
+                if kind == 'r':
+                    visit(child)
+                else:
+                    needed.add((kind, child))
+        for ref, (tags, _) in self.relations.items():
+            if tags is not None:
+                visit(ref)
+        self.relations = {ref: value for ref, value in self.relations.items() if ('r', ref) in needed}
+        return needed
+LICENSE_TEXT = '''Polku OSM roads, paths, lighting and outdoor details
 
 © OpenStreetMap contributors. Source: Geofabrik's complete Finland extract.
 https://www.openstreetmap.org/copyright
@@ -57,7 +121,7 @@ The archive preserves complete eligible ways without clipping or geometric
 simplification. Its rectangular bounds describe the extract's extent; they
 do not promise coverage outside the buffered Finland extract.
 
-Relations contain only the eligible way members present in each tile.
+Road/path relation records contain only the eligible way members present in each tile. Overnight place records retain their original member references and roles.
 member_count is the original relation member count; each member's index is
 its zero-based position in that original list. Roles are unchanged. Node
 members (including restriction via-nodes), relation members and off-tile way
@@ -105,7 +169,7 @@ def segment_tiles(a, b):
 
 
 class Stager(osmium.SimpleHandler):
-    def __init__(self, db):
+    def __init__(self, db, places):
         super().__init__()
         self.db = db
         self.source_nodes = 0
@@ -116,15 +180,42 @@ class Stager(osmium.SimpleHandler):
         self.node_references = 0
         self.bounds = [180.0, 90.0, -180.0, -90.0]
         self.tile_ids = {}
+        self.places = places
+        self.needed = places.wanted()
+        self.member_bounds = {}
+
+    def product(self, names, element, xy_tiles):
+        if not names:
+            return
+        self.db.execute('INSERT INTO features VALUES (?, ?, ?)',
+                        (element['type'], element['id'], json_bytes(element)))
+        for name in names:
+            zoom = PRODUCT_ZOOMS[name]
+            factor = 2 ** (ZOOM - zoom)
+            self.db.executemany('INSERT INTO tile_features VALUES (?, ?, ?, ?)',
+                [(name, zxy_to_tileid(zoom, x, y), element['type'], element['id'])
+                 for x, y in {(x // factor, y // factor) for x, y in xy_tiles}])
 
     def node(self, node):
         self.source_nodes += 1
+        names = products('node', node.tags)
+        if not names and ('n', node.id) not in self.needed:
+            return
+        if not node.location.valid():
+            raise ValueError(f'Missing geometry: node {node.id}')
+        lon, lat = round(node.lon, 7), round(node.lat, 7)
+        if ('n', node.id) in self.needed:
+            self.member_bounds['n', node.id] = [lon, lat, lon, lat]
+        xy = tile_point(lon, lat)
+        self.product(names, {'type': 'node', 'id': node.id, 'lon': lon, 'lat': lat, 'tags': dict(node.tags)},
+                     segment_tiles(xy, xy))
 
     def way(self, way):
         self.source_ways += 1
         primary = bool(KINDS.fullmatch(way.tags.get('highway', '')))
         lighting = bool(way.tags.get('highway')) and 'lit' in way.tags
-        if not primary and not lighting:
+        names = products('way', way.tags)
+        if not primary and not lighting and not names and ('w', way.id) not in self.needed:
             return
         nodes, geometry, projected = [], [], []
         for node in way.nodes:
@@ -142,10 +233,23 @@ class Stager(osmium.SimpleHandler):
             raise ValueError(f'Incomplete geometry: way {way.id} has fewer than two nodes')
         body = json_bytes({'type': 'way', 'id': way.id,
                            'tags': dict(way.tags), 'nodes': nodes, 'geometry': geometry})
-        self.db.execute('INSERT INTO ways VALUES (?, ?, ?)', (way.id, body, int(primary)))
+        if primary or lighting:
+            self.db.execute('INSERT INTO ways VALUES (?, ?, ?)', (way.id, body, int(primary)))
         tiles = set()
         for a, b in zip(projected, projected[1:]):
             tiles.update(segment_tiles(a, b))
+        if ('w', way.id) in self.needed or 'places' in names:
+            bounds = [min(p['lon'] for p in geometry), min(p['lat'] for p in geometry),
+                      max(p['lon'] for p in geometry), max(p['lat'] for p in geometry)]
+            if ('w', way.id) in self.needed:
+                self.member_bounds['w', way.id] = bounds
+        element = json.loads(body)
+        if 'places' in names:
+            element['center'] = {'lon': round((bounds[0] + bounds[2]) / 2, 7), 'lat': round((bounds[1] + bounds[3]) / 2, 7)}
+            # A way's centre can be away from its edges; nearby searches index both.
+            p = tile_point(element['center']['lon'], element['center']['lat'])
+            tiles.update(segment_tiles(p, p))
+        self.product(names, element, tiles)
         for enabled, table, zoom in [(primary, 'tile_ways', ZOOM), (lighting, 'tile_lit', 13)]:
             if not enabled:
                 continue
@@ -180,6 +284,28 @@ class Stager(osmium.SimpleHandler):
                         (relation.id, json_bytes(dict(relation.tags)), len(relation.members)))
         self.db.executemany('INSERT INTO members VALUES (?, ?, ?, ?)', members)
 
+    def finish_places(self):
+        def bounds_of(kind, ref, stack):
+            if kind != 'r':
+                return self.member_bounds.get((kind, ref))
+            if ref in stack or ref not in self.places.relations:
+                return None
+            parts = [bounds_of(k, r, stack | {ref}) for k, r, _ in self.places.relations[ref][1]]
+            if not parts or any(p is None for p in parts):
+                return None
+            return [min(p[0] for p in parts), min(p[1] for p in parts), max(p[2] for p in parts), max(p[3] for p in parts)]
+        for ref, (tags, members) in self.places.relations.items():
+            if tags is None:
+                continue
+            bounds = bounds_of('r', ref, set())
+            if bounds is None:
+                raise ValueError(f'Incomplete overnight place relation {ref}')
+            center = {'lon': round((bounds[0] + bounds[2]) / 2, 7), 'lat': round((bounds[1] + bounds[3]) / 2, 7)}
+            point = tile_point(center['lon'], center['lat'])
+            self.product(['places'], {'type': 'relation', 'id': ref, 'tags': tags, 'center': center,
+                         'members': [{'type': {'n': 'node', 'w': 'way', 'r': 'relation'}[k], 'ref': r, 'role': role}
+                                     for k, r, role in members]}, segment_tiles(point, point))
+
 
 def stage_source(source, db, index_path):
     db.executescript('''
@@ -188,6 +314,9 @@ def stage_source(source, db, index_path):
         PRAGMA cache_size=-65536;
         PRAGMA temp_store=FILE;
         CREATE TABLE ways (id INTEGER PRIMARY KEY, body BLOB NOT NULL, primary_way INTEGER NOT NULL);
+        CREATE TABLE features (type TEXT, id INTEGER, body BLOB NOT NULL, PRIMARY KEY(type,id)) WITHOUT ROWID;
+        CREATE TABLE tile_features (dataset TEXT, tile INTEGER, type TEXT, id INTEGER,
+            PRIMARY KEY(dataset,tile,type,id)) WITHOUT ROWID;
         CREATE TABLE tile_ways (tile INTEGER, way INTEGER,
             PRIMARY KEY (tile, way)) WITHOUT ROWID;
         CREATE TABLE tile_lit (tile INTEGER, way INTEGER,
@@ -197,9 +326,12 @@ def stage_source(source, db, index_path):
         CREATE TABLE members (way INTEGER, relation INTEGER, position INTEGER,
             role TEXT NOT NULL, PRIMARY KEY (way, relation, position)) WITHOUT ROWID;
     ''')
-    handler = Stager(db)
+    places = PlaceRelations()
+    places.apply_file(str(source))
+    handler = Stager(db, places)
     handler.apply_file(str(source), locations=True,
                        idx=f'sparse_file_array,{index_path}')
+    handler.finish_places()
     db.commit()
     if not handler.ways:
         raise ValueError('Source has no eligible ways')
@@ -302,6 +434,40 @@ def validate_archive(path, expected_tiles, zoom=ZOOM):
     return samples
 
 
+def archive_product(db, output, name, source_info, bounds):
+    sizes, raw_sizes = [], []
+    features = db.execute('SELECT count(DISTINCT type || "/" || id) FROM tile_features WHERE dataset=?', (name,)).fetchone()[0]
+    max_bytes, max_tile = -1, None
+    with output.open('wb') as stream:
+        writer = Writer(stream)
+        rows = iter(db.execute('''SELECT t.tile, f.body FROM tile_features t JOIN features f
+            ON f.type=t.type AND f.id=t.id WHERE t.dataset=? ORDER BY t.tile,t.type,t.id''', (name,)))
+        pending = next(rows, None)
+        while pending is not None or not sizes:
+            # The PMTiles writer requires one entry for an empty product; all other absent tiles decode as empty.
+            tile = pending[0] if pending else zxy_to_tileid(PRODUCT_ZOOMS[name], 0, 0)
+            elements = []
+            while pending is not None and pending[0] == tile:
+                elements.append(pending[1])
+                pending = next(rows, None)
+            raw = b'{"schema":1,"elements":[' + b','.join(elements) + b']}'
+            data = gzip.compress(raw, compresslevel=9, mtime=0)
+            if len(data) > 8 * 1024 * 1024 or len(raw) > 32 * 1024 * 1024:
+                raise ValueError(f'{name} tile exceeds browser transfer/decode limit: {tileid_to_zxy(tile)}')
+            writer.write_tile(tile, data)
+            sizes.append(len(data))
+            raw_sizes.append(len(raw))
+            if len(data) > max_bytes:
+                max_bytes, max_tile = len(data), list(tileid_to_zxy(tile))
+        writer.finalize({'tile_type': TileType.UNKNOWN, 'tile_compression': Compression.GZIP,
+                         'min_lon_e7': round(bounds[0]*1e7), 'min_lat_e7': round(bounds[1]*1e7),
+                         'max_lon_e7': round(bounds[2]*1e7), 'max_lat_e7': round(bounds[3]*1e7)},
+                        {'name': f'Polku OSM {name}', 'format': 'json', 'schema': 1,
+                         'attribution': ATTRIBUTION, 'license': LICENSE, 'source': source_info})
+    return {'features': features, 'tiles': len(sizes), 'tile_gzip_bytes': distribution(sizes),
+            'tile_raw_bytes': distribution(raw_sizes), 'max_tile': max_tile}
+
+
 def file_record(path):
     digest = hashlib.sha256()
     with path.open('rb') as stream:
@@ -344,6 +510,8 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
                 stats['lighting']['ways'] = handler.lit_ways
             elif full_country:
                 raise ValueError('Complete-Finland source has no lighting ways')
+            stats['products'] = {name: archive_product(db, stage / f'{name}.pmtiles', name, source_info, handler.bounds)
+                                 for name in PRODUCT_ZOOMS}
             stats.update({
                 'source_nodes': handler.source_nodes, 'source_ways': handler.source_ways,
                 'source_relations': handler.source_relations, 'ways': handler.ways,
@@ -377,6 +545,13 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
             datasets[name] = {'format': 'pmtiles-json', 'schema': 1, 'zoom': zoom,
                               'url': record['path'], 'bytes': record['bytes'], 'sha256': record['sha256'],
                               'tiles': stats['tiles'] if name == 'ways' else stats['lighting']['tiles']}
+        for name, zoom in PRODUCT_ZOOMS.items():
+            product = stats['products'][name]
+            validate_archive(stage / f'{name}.pmtiles', product['tiles'], zoom)
+            record = file_record(stage / f'{name}.pmtiles')
+            datasets[name] = {'format': 'pmtiles-json', 'schema': 1, 'zoom': zoom, 'url': record['path'],
+                              'bytes': record['bytes'], 'sha256': record['sha256'],
+                              'tiles': product['tiles'], 'features': product['features']}
         coverage = json.loads((Path(__file__).resolve().parents[2] / 'data/finland-coverage.geojson').read_bytes()) if full_country else None
         content_hash = hashlib.sha256(json_bytes({'datasets': datasets, 'coverage': coverage})).hexdigest()
         files = [file_record(stage / name) for name in

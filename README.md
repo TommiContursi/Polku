@@ -100,7 +100,7 @@ Geofabrik, served by ducksoft.fi; lighting uses its lighting archive when
 published. Unavailable or uncovered tiles fall back to cached Overpass data
 and public providers, including outside Finland. Only needed areas are
 downloaded; routing and map tiles keep their existing sources. Other detailed
-OSM features still use Overpass. The [operations guide](docs/OSM_DATA.md) covers source freshness,
+OSM trail/barrier details, mapped winter ways, water hazards and overnight searches also prefer their hosted tiles when published. Full-tag and area inspection still use Overpass. The [operations guide](docs/OSM_DATA.md) covers source freshness,
 updates, rollback, data licensing and the host's logging requirements.
 
 Polku's original application code is proprietary: © 2026 Tommi Contursi, all rights reserved. Using the free service does not grant permission to reuse its code in another product. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); third-party code and data retain their own licences.

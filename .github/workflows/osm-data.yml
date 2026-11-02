@@ -3,9 +3,8 @@ name: Finland OSM data
 on:
   pull_request:
     paths:
-      - 'tools/osm_data/publish.py'
-      - 'tools/osm_data/test_publish.py'
-      - 'tools/osm_data/sftp-requirements.txt'
+      - 'tools/osm_data/**'
+      - 'js/osm-data.js'
       - '.github/workflows/osm-data.yml'
   schedule:
     - cron: '17 3 * * 1'
@@ -41,10 +40,12 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.14.3'
-      - name: Install pinned SFTP dependency
-        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
-      - name: Test publishing boundaries without credentials
-        run: python -m unittest tools.osm_data.test_publish -v
+      - name: Install pinned data dependencies
+        run: python -m pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
+      - name: Test extraction, reading and publishing without credentials
+        run: |
+          python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
+          node --test tools/osm_data/client.test.mjs
 
   verify-access:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'verify-access'
@@ -223,7 +224,7 @@ jobs:
           name: finland-osm-release
           path: osm-build/release
           github-token: ${{ github.token }}
-          run-id: 41423123110
+          run-id: 41502174378
       - name: Install pinned SFTP dependency
         run: python -m pip install -r tools/osm_data/sftp-requirements.txt
       - name: Inspect, resume or publish the verified OSM release

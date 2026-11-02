@@ -6,7 +6,7 @@
 
 import { cachedOverpass } from './osm.js';
 import { OSM_DATA_MANIFEST } from './config.js';
-import { StaticOSM } from './osm-data.js';
+import { hostedTile } from './osm-data.js';
 import { lonLatToTile, tileBounds, pointSegment, lineLength, bearing } from './geo.js';
 import { kindOf } from './facts.js';
 
@@ -20,7 +20,7 @@ const KEEP = ['highway', 'name', 'ref', 'surface', 'smoothness', 'tracktype', 'l
 const LONG = 25000; // m: a pick stops here at the longest
 const RETRY = 120e3; // a tile that didn't answer is left alone for 2 minutes (a tap asks again at once)
 const TIMEOUT = 15000; // one interactive Overpass round, including its response body
-const staticOSM = OSM_DATA_MANIFEST ? new StaticOSM(OSM_DATA_MANIFEST) : null;
+const staticOSM = !!OSM_DATA_MANIFEST;
 
 export const wayTile = ([lon, lat]) => lonLatToTile(lon, lat, WAYS_Z).map(Math.floor);
 
@@ -109,7 +109,7 @@ export function loadWays([x, y], { force = false } = {}) {
     return cachedOverpass(`ways2/${WAYS_Z}/${key}`, waysQuery(x, y), slimWays, { race: true, oneRound: true, timeoutMs: TIMEOUT });
   };
   entry.promise = (held ? (heldFail ? Promise.reject(new Error('OSM ways')) : heldWait ? new Promise(() => {}) : Promise.resolve({ v: 2, w: [] }))
-    : staticOSM ? staticOSM.tile([x, y], { force }).then(slimWays).catch(fallback) : fallback())
+    : hostedTile(OSM_DATA_MANIFEST, 'ways', WAYS_Z, [x, y], fallback, { force, slim: slimWays }))
     .then((d) => { if (tiles.get(key) === entry) index(x, y, d); entry.ok = true; return d; }, (err) => { entry.ok = false; throw err; });
   tiles.set(key, entry);
   return entry.promise;

@@ -47,6 +47,11 @@ export async function checkStaticOSM() {
     const store = idb('overpass'), key = `static/${root}ways.pmtiles/fixture/14/8192/8192`;
     const saved = await store.get(key);
     if (!saved) fails.push('selected tile was not saved for reuse');
+    const cachedURL = root + 'cached-manifest/current.json', manifestKey = `static/manifest/${cachedURL}`, cachedAt = Date.now() - 10000;
+    await store.set(manifestKey, { at: cachedAt, json: manifest });
+    await new StaticOSM(cachedURL).ready();
+    if ((await store.get(manifestKey)).at !== cachedAt) fails.push('using a cached manifest resets its freshness clock');
+    await store.del(manifestKey);
     offline = false;
     const { lonLatToTile } = await import('/js/geo.js');
     manifest.coverage = await (await real('/data/finland-coverage.geojson')).json();
@@ -130,5 +135,47 @@ export async function checkStaticOSM() {
       await Promise.all(keys.map((k) => store.del(k)));
     }
   }
+  return fails;
+}
+
+/** Exercise the real consumers with hosted transport and public-provider failures. */
+export async function checkHostedConsumers() {
+  const { StaticOSM } = await import('/js/osm-data.js');
+  const T = await import('/js/trails.js'), W = await import('/js/winter.js');
+  const H = await import('/js/waterdata.js'), S = await import('/js/stops.js');
+  const { lonLatToTile } = await import('/js/geo.js');
+  const original = StaticOSM.prototype.tile, real = window.fetch, fails = [], publicCalls = [];
+  const ll = [25.12345, 62.12345], xy = (z) => lonLatToTile(...ll,z).map(Math.floor);
+  const geometry = [{lon:ll[0],lat:ll[1]},{lon:ll[0]+0.001,lat:ll[1]}];
+  const answers = {
+    trails: [{type:'way',id:70001,tags:{highway:'path',width:'0.4'},nodes:[1,2],geometry},
+      {type:'node',id:70002,lon:ll[0],lat:ll[1],tags:{barrier:'gate',locked:'yes'}}],
+    winter: [{type:'way',id:70003,tags:{'piste:type':'nordic'},nodes:[1,2],geometry}],
+    hazards: [{type:'node',id:70004,lon:ll[0],lat:ll[1],tags:{natural:'reef'}}],
+    places: [{type:'relation',id:70005,center:{lon:ll[0],lat:ll[1]},tags:{tourism:'camp_site',name:'Hosted campsite'}}],
+  };
+  StaticOSM.prototype.tile = async function() {
+    return {schema:1,elements:answers[this.dataset] || [],source:{provider:'Polku OSM data',timestamp:'2026-11-01T00:00:00Z'}};
+  };
+  window.fetch = async (url,init) => {
+    if (/overpass|maps.mail.ru/.test(String(url))) { publicCalls.push(String(url)); throw new DOMException('Public provider unavailable','AbortError'); }
+    // The independent LIPAS/Väylä providers do not establish success for OSM in this check.
+    if (/lipas|vayla|kartta.liikennevirasto/.test(String(url))) throw new DOMException('Other provider unavailable','AbortError');
+    return real(url,init);
+  };
+  T.holdFetches(false); W.holdWinterFetches(false); H.seedWater(null);
+  try {
+    const trail = await T.trailTile(...xy(13));
+    if (trail.w[0]?.[0] !== 70001 || trail.n[0]?.[3]?.locked !== 'yes') fails.push('hosted trail/gate details missing');
+    if (trail.source?.timestamp !== '2026-11-01T00:00:00Z') fails.push('trail source timestamp lost');
+    const winter = await W.winterTile(...xy(12));
+    if (W.winterClass(winter.w[0]?.[1] || {}) !== 'ski') fails.push('hosted ski-only way missing');
+    const water = await H.waterInputs([ll[0]-.001,ll[1]-.001,ll[0]+.001,ll[1]+.001],{hazards:true});
+    if (!water.hazards.features.some(f=>f.properties.src==='osm' && f.properties.kind==='reef') || water.missing.includes('OpenStreetMap')) fails.push('hosted water hazard is missing or marked unavailable');
+    const stays = await S.staysNear(ll,0.1);
+    if (!stays.some(p=>p.name==='Hosted campsite')) fails.push('hosted overnight relation missing');
+    if (publicCalls.length) fails.push('healthy hosted consumers queried public Overpass');
+  } catch(e) { fails.push(String(e)); }
+  finally { StaticOSM.prototype.tile = original; window.fetch = real; }
   return fails;
 }

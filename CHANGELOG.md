@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-02
 
+### Detailed OSM checks can use the same hosted source ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- Trail details and barriers, winter ways, water hazards and nearby overnight places use hosted tiles where those datasets are published. Missing coverage or a failed hosted source keeps the public Overpass fallback; if both fail, the existing missing-data and retry messages remain.
+- Hosted requests have an eight-second total deadline, and public fallback uses one bounded provider round. Repeated tile reads share cached data and retain its source date.
+
 ### Lighting says what is still loading ([#693](https://github.com/TommiContursi/Polku/issues/693))
 
 - With **Lit ways** on, a message on the map shows how many areas have loaded, says when the wait is taking longer, and offers **Try again** if some failed. It stays visible after Layers closes and disappears when loading finishes.

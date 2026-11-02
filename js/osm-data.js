@@ -7,6 +7,43 @@ const cache = idb('overpass');
 const TIMEOUT = 8000;
 const releases = new Map(); // one release per URL/page, shared by the ways and lighting readers
 let finlandCoverage;
+const readers = new Map(), pending = new Map();
+
+function deadline(run) {
+  const ctrl = new AbortController();
+  let timer;
+  const expired = new Promise((_, no) => { timer = setTimeout(() => {
+    ctrl.abort(); no(new Error('Hosted OSM request timed out'));
+  }, TIMEOUT); });
+  return Promise.race([run(ctrl.signal), expired]).finally(() => clearTimeout(timer));
+}
+
+/** Share source selection as well as archive reads; fallback keeps its existing public cache. */
+export function hostedTile(url, dataset, zoom, xy, fallback, { force = false, slim = (j) => j } = {}) {
+  const key = `${url}/${dataset}/${zoom}/${xy.join('/')}`;
+  if (!force && pending.has(key)) return pending.get(key);
+  const readerKey = `${url}/${dataset}/${zoom}`;
+  if (!readers.has(readerKey)) readers.set(readerKey, new StaticOSM(url, dataset, zoom));
+  const promise = (url ? readers.get(readerKey).tile(xy, { force })
+    .then((json) => ({ ...slim(json), source: json.source })).catch(fallback) : fallback())
+    .finally(() => { if (pending.get(key) === promise) pending.delete(key); });
+  pending.set(key, promise);
+  return promise;
+}
+
+function validateTile(json) {
+  if (json?.schema !== 1 || !Array.isArray(json.elements)) throw new Error('Invalid OSM tile schema');
+  const point = (p) => p && Number.isFinite(p.lon) && Number.isFinite(p.lat) && Math.abs(p.lon) <= 180 && Math.abs(p.lat) <= 90;
+  for (const e of json.elements) {
+    if (!Number.isSafeInteger(e?.id) || !e.tags || typeof e.tags !== 'object') throw new Error('Invalid OSM object');
+    if (e.type === 'way' && (!Array.isArray(e.nodes) || e.nodes.length < 2 || e.nodes.length !== e.geometry?.length
+      || !e.nodes.every(Number.isSafeInteger) || !e.geometry.every(point))) throw new Error('Incomplete OSM way geometry');
+    if (e.type === 'node' && !point(e)) throw new Error('Incomplete OSM node geometry');
+    if (e.type === 'relation' && (!Array.isArray(e.members) || e.center && !point(e.center))) throw new Error('Incomplete OSM relation');
+    if (!['node', 'way', 'relation'].includes(e.type)) throw new Error('Invalid OSM object type');
+  }
+  return json;
+}
 
 export class StaticOSM {
   constructor(url, dataset = 'ways', zoom = 14) {
@@ -18,32 +55,44 @@ export class StaticOSM {
   }
 
   async ready() {
-    if (!releases.has(this.url)) releases.set(this.url, (async () => {
-      const key = `static/manifest/${this.url}`;
-      const hit = await cache.get(key).catch(() => null);
-      let manifest;
-      try {
-        const res = await request('osmdata', this.url, { timeoutMs: TIMEOUT, cache: 'no-store', credentials: 'omit' });
-        if (!res.ok) throw new Error(`OSM manifest: HTTP ${res.status}`);
-        manifest = await res.json();
-      } catch (err) {
-        if (!hit) throw err;
-        manifest = hit.json;
-      }
-      if (manifest?.schema !== 1 || !manifest.release || !Number.isFinite(Date.parse(manifest.source?.timestamp))
-        || !Array.isArray(manifest.bounds) || manifest.bounds.length !== 4 || !manifest.bounds.every(Number.isFinite)
-        || !manifest.datasets) throw new Error('Unsupported OSM manifest schema');
-      cache.set(key, { at: Date.now(), json: manifest }).catch(() => {});
-      return manifest;
-    })().catch((err) => { releases.delete(this.url); throw err; }));
-    const manifest = await releases.get(this.url), d = manifest.datasets[this.dataset];
+    const old = releases.get(this.url);
+    if (old?.failedAt && Date.now() - old.failedAt >= 120e3) releases.delete(this.url);
+    if (!releases.has(this.url)) {
+      const entry = {};
+      entry.promise = deadline(async (signal) => {
+        const key = `static/manifest/${this.url}`;
+        const hit = await cache.get(key).catch(() => null);
+        let manifest, fetched = false;
+        try {
+          if (hit && Date.now() - hit.at < 3600e3) manifest = hit.json;
+          else {
+            const res = await request('osmdata', this.url, { signal, timeoutMs: TIMEOUT, cache: 'no-store', credentials: 'omit' });
+            if (!res.ok) throw new Error(`OSM manifest: HTTP ${res.status}`);
+            manifest = await res.json();
+            fetched = true;
+          }
+        } catch (err) {
+          if (!hit) throw err;
+          manifest = hit.json;
+        }
+        if (manifest?.schema !== 1 || !manifest.release || !Number.isFinite(Date.parse(manifest.source?.timestamp))
+          || !Array.isArray(manifest.bounds) || manifest.bounds.length !== 4 || !manifest.bounds.every(Number.isFinite)
+          || !manifest.datasets) throw new Error('Unsupported OSM manifest schema');
+        if (fetched) cache.set(key, { at: Date.now(), json: manifest }).catch(() => {});
+        return manifest;
+      }).catch((err) => { entry.failedAt = Date.now(); throw err; });
+      releases.set(this.url, entry);
+    }
+    const manifest = await releases.get(this.url).promise, d = manifest.datasets[this.dataset];
     if (d?.format !== 'pmtiles-json' || d.schema !== 1 || d.zoom !== this.zoom || !Number.isSafeInteger(d.bytes) || d.bytes < 127) throw new Error('Unsupported OSM dataset');
     const url = new URL(d.url, this.url), base = new URL(this.url);
     if (url.origin !== base.origin || !['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid OSM archive URL');
     return { manifest, url: url.href, bytes: d.bytes };
   }
 
-  async tile([x, y], { force = false } = {}) {
+  tile(xy, options = {}) { return deadline((signal) => this.readTile(xy, options, signal)); }
+
+  async readTile([x, y], { force = false }, signal) {
     if (![x, y].every((v) => Number.isInteger(v) && v >= 0 && v < 2 ** this.zoom)) throw new Error('Invalid OSM tile');
     const { manifest, url, bytes } = await this.ready();
     const bounds = tileBounds(x, y, this.zoom), [w, s, e, n] = bounds, [west, south, east, north] = manifest.bounds;
@@ -53,7 +102,8 @@ export class StaticOSM {
     if (this.tiles.has(key)) return this.tiles.get(key);
     const promise = (async () => {
       const hit = await cache.get(key).catch(() => null);
-      if (hit) return hit.json;
+      if (hit) return { ...validateTile(hit.json), source: { ...manifest.source, provider: 'Polku OSM data', attribution: manifest.attribution } };
+      signal.throwIfAborted();
       let coverage = manifest.coverage;
       if (!coverage && manifest.source.url === 'https://download.geofabrik.de/europe/finland-latest.osm.pbf') {
         // The first published release predates embedded coverage; cached tiles still work without this asset.
@@ -97,13 +147,14 @@ export class StaticOSM {
         });
         if (!covered) throw new Error('Outside static OSM coverage');
       }
+      signal.throwIfAborted();
       const { PMTiles } = await import('./vendor/pmtiles-4.5.0.js');
       if (!this.reader) this.reader = new PMTiles({
         getKey: () => url,
-        getBytes: async (offset, length, signal) => {
+        getBytes: async (offset, length, rangeSignal) => {
           const end = Math.min(bytes, offset + length) - 1;
           if (offset < 0 || end < offset || length > 8 * 1024 * 1024) throw new Error('Invalid OSM Range');
-          const res = await request('osmdata', url, { headers: { Range: `bytes=${offset}-${end}` }, signal, timeoutMs: TIMEOUT, credentials: 'omit' });
+          const res = await request('osmdata', url, { headers: { Range: `bytes=${offset}-${end}` }, signal: rangeSignal, timeoutMs: TIMEOUT, credentials: 'omit' });
           if (res.status !== 206 || res.headers.get('Content-Range') !== `bytes ${offset}-${end}/${bytes}` || res.headers.get('Content-Encoding')) {
             await res.body?.cancel();
             throw new Error('OSM hosting needs exact HTTP Range responses without HTTP compression');
@@ -113,16 +164,18 @@ export class StaticOSM {
           return { data };
         },
       });
-      const tile = await this.reader.getZxy(this.zoom, x, y);
+      const tile = await this.reader.getZxy(this.zoom, x, y, signal);
       if (tile && tile.data.byteLength > 32 * 1024 * 1024) throw new Error('OSM tile too large');
       const json = tile ? JSON.parse(new TextDecoder().decode(tile.data)) : { schema: 1, elements: [] };
-      if (json.schema !== 1 || !Array.isArray(json.elements)) throw new Error('Invalid OSM tile schema');
-      for (const w of json.elements) if (w.type === 'way' && (!Number.isSafeInteger(w.id) || !w.tags
-        || !Array.isArray(w.nodes) || w.nodes.length < 2 || w.nodes.length !== w.geometry?.length
-        || !w.nodes.every(Number.isSafeInteger) || !w.geometry.every((p) => Number.isFinite(p.lon) && Number.isFinite(p.lat)))) throw new Error('Incomplete OSM way geometry');
+      validateTile(json);
+      signal.throwIfAborted();
+      json.source = { ...manifest.source, provider: 'Polku OSM data', attribution: manifest.attribution };
       cache.set(key, { at: Date.now(), json }).catch(() => {});
       return json;
     })().catch((err) => { if (this.tiles.get(key) === promise) { this.tiles.delete(key); this.reader = null; } throw err; });
+    signal.addEventListener('abort', () => {
+      if (this.tiles.get(key) === promise) { this.tiles.delete(key); this.reader = null; }
+    }, { once: true });
     this.tiles.set(key, promise);
     if (this.tiles.size > 64) this.tiles.delete(this.tiles.keys().next().value);
     return promise;

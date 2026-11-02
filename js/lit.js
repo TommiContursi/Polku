@@ -8,7 +8,7 @@ import { tileBounds } from './geo.js';
 import { cachedOverpass } from './osm.js';
 import { tilesIn } from './trails.js';
 import { OSM_DATA_MANIFEST } from './config.js';
-import { StaticOSM } from './osm-data.js';
+import { hostedTile } from './osm-data.js';
 
 export const LIT_Z = 13;
 export const LIT_MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
@@ -18,7 +18,6 @@ const SLOW = 10000;
 // Lit and unlit as `lit` values; any other value counts as no tag
 const LIT = 'yes|24/7|automatic|sunset-sunrise|limited|interval';
 const UNLIT = 'no|disused';
-const staticOSM = OSM_DATA_MANIFEST ? new StaticOSM(OSM_DATA_MANIFEST, 'lit', LIT_Z) : null;
 
 // No tags come back (a city-centre tile with them was 5.4 MB, #638), only each way's id and shape: the lit ways, a
 // count as the marker between the sets, then the unlit ones.
@@ -62,8 +61,8 @@ export function litTile(x, y) {
   }
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
-  const fallback = () => cachedOverpass(`lit1/${LIT_Z}/${key}`, litQuery(x, y), slimLit, { timeoutMs: 30000 });
-  entry.promise = (staticOSM ? staticOSM.tile([x, y]).then(slimLit).catch(fallback) : fallback())
+  const fallback = () => cachedOverpass(`lit1/${LIT_Z}/${key}`, litQuery(x, y), slimLit, { oneRound: true, timeoutMs: 30000 });
+  entry.promise = hostedTile(OSM_DATA_MANIFEST, 'lit', LIT_Z, [x, y], fallback, { slim: slimLit })
     .then((data) => { entry.data = data; for (const fn of listeners) fn(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
   tiles.set(key, entry);
