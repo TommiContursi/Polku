@@ -293,6 +293,15 @@ compatible with old clients. Each added record identifies its country, kind,
 coverage and source timestamp. A tile requiring a union of border polygons
 conservatively falls back, rather than promising coverage from a rectangle.
 
+After a complete candidate exists, `verify-candidate` with its numeric build run
+ID in `release` reuses `nordic-osm-release` without rebuilding or publishing.
+It checks file hashes, current consumers in all four countries, cached selected-way
+tags, real border tiles and an outside-coverage control. Every normal covered OSM
+consumer forbids Overpass; independent LIPAS/Väylä requests are excluded from these
+OSM measurements. The small `osm-candidate-verification` artifact records the
+desktop/phone-emulated results. This read-only job has no production environment
+or credentials and cannot promote a pointer.
+
 Release order: #695 adds detailed products/consumers; #697 adds full-tag objects;
 the country PR follows both. Each app step works with the old published manifest.
 The independently releasable Finland `publish-existing` candidate is pinned to successful run 41502174378 and

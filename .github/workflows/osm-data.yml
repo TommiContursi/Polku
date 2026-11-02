@@ -14,10 +14,10 @@ on:
       operation:
         description: Verify access, build, inspect or resume a verified build, publish, monitor, or roll back
         type: choice
-        options: [verify-access, test-host, build, publish-existing, inspect-existing, resume-existing, check, rollback]
+        options: [verify-access, test-host, build, verify-candidate, publish-existing, inspect-existing, resume-existing, check, rollback]
         default: verify-access
       release:
-        description: Existing release ID for rollback
+        description: Existing release ID for rollback, or successful build run ID for verify-candidate
         type: string
 
 permissions:
@@ -260,6 +260,52 @@ jobs:
           compression-level: 0
           retention-days: 14
           if-no-files-found: error
+
+  verify-candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'verify-candidate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Require an explicit candidate run
+        env:
+          CANDIDATE_RUN: ${{ inputs.release }}
+        run: python -c 'import os; assert os.environ["CANDIDATE_RUN"].isdigit(), "A numeric successful build run ID is required"'
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: nordic-osm-release
+          path: osm-build/release
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.release }}
+      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - name: Verify the immutable candidate with current consumers and border checks
+        env:
+          POLKU_URL: http://127.0.0.1:8765/
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-chrome
+        run: |
+          python -c 'from pathlib import Path; from tools.osm_data.publish import local_release; local_release(Path("osm-build/release"))'
+          python tools/osm_data/preview.py --release osm-build/release --port 8765 > osm-build/preview.log 2>&1 &
+          for i in $(seq 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8765/index.html; then break; fi
+            sleep 1
+          done
+          python tools/smoke.py osmdata
+          python tools/osm_data/measure_browser.py --country all > osm-build/browser-measurements.json
+          df -h .
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-candidate-verification
+          path: |
+            osm-build/browser-measurements.json
+            osm-build/preview.log
+          retention-days: 14
 
   publish:
     needs: bundle
