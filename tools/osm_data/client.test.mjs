@@ -128,3 +128,63 @@ test('forced retry replaces a pending archive read and a late failure cannot evi
     assert.equal(calls.length, count, 'old failure does not evict the replacement');
   } finally { globalThis.fetch = real; }
 });
+
+test('hosted source choice coalesces consumers and preserves full source metadata', async () => {
+  const { hostedTile } = await import('../../js/osm-data.js');
+  assert.equal(typeof hostedTile, 'function');
+  calls = []; mode = 'ok';
+  let publicCalls = 0;
+  const fallback = async () => { publicCalls++; return { elements: [] }; };
+  const [a,b] = await Promise.all([hostedTile('https://data.example/shared/current.json', 'ways', 14, [8192,8192], fallback), hostedTile('https://data.example/shared/current.json', 'ways', 14, [8192,8192], fallback)]);
+  assert.deepEqual(a,b);
+  assert.equal(a.source.timestamp, '2026-11-01T00:00:00Z');
+  assert.equal(a.source.provider, 'Polku OSM data');
+  assert.equal(publicCalls, 0);
+  assert.equal(calls.filter(c => c.url.endsWith('current.json')).length, 1);
+});
+
+test('concurrent missing hosted products share one fallback and do not become valid empty data', async () => {
+  const { hostedTile } = await import('../../js/osm-data.js');
+  assert.equal(typeof hostedTile, 'function');
+  let publicCalls = 0;
+  const fallback = async () => { publicCalls++; throw new Error('public source unavailable'); };
+  const results = await Promise.allSettled([hostedTile('https://data.example/shared/current.json', 'missing',12,[2048,2048],fallback), hostedTile('https://data.example/shared/current.json', 'missing',12,[2048,2048],fallback)]);
+  assert.ok(results.every(r => r.status === 'rejected' && /public source unavailable/.test(r.reason.message)));
+  assert.equal(publicCalls, 1);
+});
+
+test('failed manifest reads cool down across tiles instead of repeating the request', async () => {
+  const real = globalThis.fetch;
+  let attempts = 0;
+  globalThis.fetch = async () => { attempts++; throw new Error('host down'); };
+  try {
+    const data = new StaticOSM('https://data.example/cooldown/current.json');
+    await assert.rejects(data.tile([8192,8192]), /host down/);
+    await assert.rejects(data.tile([8193,8192]), /host down/);
+    assert.equal(attempts, 1);
+  } finally { globalThis.fetch = real; }
+});
+
+test('a stalled manifest body terminates within the hosted attempt budget', async () => {
+  const real = globalThis.fetch;
+  globalThis.fetch = async () => ({ok:true,json:() => new Promise(() => {})});
+  let timer;
+  try {
+    await assert.rejects(Promise.race([
+      new StaticOSM('https://data.example/hung/current.json').tile([8192,8192]),
+      new Promise((_,no) => { timer = setTimeout(() => no(new Error('deadline exceeded')), 9000); }),
+    ]), /OSM.*timed out/);
+  } finally { clearTimeout(timer); globalThis.fetch = real; }
+});
+
+test('a malformed obstacle node is incomplete data rather than a successful empty tile', async () => {
+  const bad = await readFile(new URL('../fixtures/osm-invalid-node.pmtiles',import.meta.url));
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url, init={}) => {
+    if (String(url).endsWith('current.json')) return Response.json({...manifest,datasets:{ways:{...manifest.datasets.ways,bytes:bad.length}}});
+    const [start,end]=init.headers.Range.slice(6).split('-').map(Number);
+    return new Response(bad.subarray(start,end+1),{status:206,headers:{'Content-Range':`bytes ${start}-${end}/${bad.length}`}});
+  };
+  try { await assert.rejects(new StaticOSM('https://data.example/bad-node/current.json').tile([8192,8192]), /Incomplete OSM node/); }
+  finally { globalThis.fetch=real; }
+});

@@ -104,7 +104,7 @@ See the [live measurements](plans/osm-data-measurements.md#live-ovh-verification
 before considering app activation. Do not republish this immutable release.
 
 The bootstrap **publish-existing** operation on `main` downloads the successful
-`finland-osm-release` from pinned run `41350050764`, checks local and remote
+`finland-osm-release` from pinned run `41423123110`, checks local and remote
 hashes, tests public Range/CORS and switches `current.json` only after
 verification. It does not rebuild or enable unattended publication. Artifacts
 expire after 14 days. While `OSM_PUBLISH_ENABLED` remains off, weekly builds
@@ -252,3 +252,9 @@ retain source identification and attribution, and provide the database as
 required. Polku's source-code licence remains separate. The map already credits
 OSM; Geofabrik is recorded as the extract provider. Build dependencies and the
 browser reader keep their own notices in `THIRD_PARTY_NOTICES.md`.
+
+## Expanded detail/check datasets
+
+The builder also emits `trails.pmtiles` (z13), `winter.pmtiles` (z12), `hazards.pmtiles` (z11) and `places.pmtiles` (z12), with all original tags and complete ways. Gates/fords and other supported point obstacles survive independently of highways. Overnight relation centres require complete referenced member bounds; an incomplete relation fails the build instead of becoming an empty search. Empty products have one empty sentinel tile because the existing PMTiles writer requires an entry; missing tiles within declared coverage are valid empty results.
+
+Consumers prefer these optional products through the same reader and fall back while the live manifest lacks them. This session has not published them. The migration plan records separate PR/release gates for full-tag/area inspection and four-country coverage. Whole hosted operations stop after eight seconds; fallback uses one bounded public-provider round. Existing lighting semantics and the manual publisher/rollback/monitor remain.

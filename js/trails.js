@@ -12,6 +12,8 @@
 
 import { lonLatToTile, tileBounds, pointSegment, dist } from './geo.js';
 import { cachedOverpass } from './osm.js';
+import { hostedTile } from './osm-data.js';
+import { OSM_DATA_MANIFEST } from './config.js';
 
 export const TILE_Z = 13;
 export const MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
@@ -80,7 +82,8 @@ export function trailTile(x, y) {
   if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true })); // (held: whatever it did before, as a test asks)
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
-  entry.promise = cachedOverpass(`trails2/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { timeoutMs: 30000 })
+  entry.promise = hostedTile(OSM_DATA_MANIFEST, 'trails', TILE_Z, [x, y],
+    () => cachedOverpass(`trails2/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }), { slim: slimTile })
     .then((data) => { entry.data = data; arrived(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
   tiles.set(key, entry);

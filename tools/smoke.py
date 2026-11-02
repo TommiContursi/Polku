@@ -4645,6 +4645,13 @@ def winter(chrome):
 # 'remark' it answers 200 with a server-side timeout (#661: no data), while it's true 504; nothing else of Overpass
 # is answered.
 LIT_OVERPASS = """(() => {
+  window.litHostedFallback = import('/js/osm-data.js').then(({ StaticOSM }) => {
+    const ready = StaticOSM.prototype.ready;
+    StaticOSM.prototype.ready = function(...args) {
+      if (this.dataset === 'lit') return Promise.reject(new Error('Lighting dataset absent in fallback fixture'));
+      return ready.apply(this, args);
+    };
+  });
   const real = window.fetch.bind(window);
   let fx = null;
   window.litFail = false;
@@ -4691,6 +4698,7 @@ LIT_HELP = """
 """
 
 LIT = """(async () => {""" + LIT_HELP + """
+  await window.litHostedFallback;
   const L = await import(location.origin + '/js/lit.js');
   // no answer an earlier run cached
   await new Promise((ok) => {
@@ -4820,6 +4828,7 @@ LIT = """(async () => {""" + LIT_HELP + """
 
 # after a reload: the overlay and its look as they were; then Lines, kept too
 LIT_AFTER = """(async () => {""" + LIT_HELP + """
+  await window.litHostedFallback;
   await until(() => drawn('lit-core') && drawn('lit-veil'));
   if (!S.overlays.lit || !drawn('lit-core') || !drawn('lit-veil')) errs.push('Lit ways not on, or not drawn in the dark, after a reload');
   if (S.overlayOpacity.lit !== 0.5) errs.push(`after a reload the opacity is ${S.overlayOpacity.lit}, not 0.5`);
@@ -16748,7 +16757,7 @@ def osm_data(chrome):
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
             pg.open_app({'activity': 'mtb', 'layers': {'wx': False, 'uphill': False, 'trails': False}})
-            result = pg.js("import('/tools/osm_data/smoke_checks.js').then((m) => m.checkStaticOSM())")
+            result = pg.js("import('/tools/osm_data/smoke_checks.js').then((m) => m.checkStaticOSM().then(async (first) => first.concat(await m.checkHostedConsumers())))")
             failures.extend(f'{width}x{height}: {message}' for message in result)
             failures.extend(pg.errors())
         finally:

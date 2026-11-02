@@ -6704,11 +6704,11 @@ export class Planner {
     if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents and road conditions on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
     if (a.trailError) {
       const sum = a.trailError.reduce((t, [, len]) => t + len, 0), whole = sum >= end - 20;
-      out.push({ key: 'trail', by: 'OpenStreetMap, through Overpass', who: 'Overpass (OpenStreetMap)', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
-        note: 'Overpass didn’t answer: fallen trees, fords, gates and how wide or wet the way is aren’t known there.', ...place(whole ? null : a.trailError),
+      out.push({ key: 'trail', by: 'OpenStreetMap', who: 'OpenStreetMap', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
+        note: 'OpenStreetMap data didn’t load: fallen trees, fords, gates and how wide or wet the way is aren’t known there.', ...place(whole ? null : a.trailError),
         retry: ask('trail', () => { forgetTrailFailures(); return this.loadTrail(a); }) });
     }
-    if (a.winterError) out.push({ key: 'winter', by: 'OpenStreetMap, through Overpass', who: 'Overpass (OpenStreetMap)', text: 'Winter ways didn’t load', note: 'Overpass didn’t answer: ski tracks, and ways closed or not ploughed in winter, aren’t known.', ranges: null, retry: ask('winter', () => { forgetWinterFailures(); return this.loadWinterAlong(a); }) });
+    if (a.winterError) out.push({ key: 'winter', by: 'OpenStreetMap', who: 'OpenStreetMap', text: 'Winter ways didn’t load', note: 'OpenStreetMap data didn’t load: ski tracks, and ways closed or not ploughed in winter, aren’t known.', ranges: null, retry: ask('winter', () => { forgetWinterFailures(); return this.loadWinterAlong(a); }) });
     if (a.windError) out.push({ key: 'weather', by: 'Open-Meteo', text: 'The forecast didn’t answer', note: `${typeof a.windError === 'string' ? `${a.windError}. ` : ''}The wind, the rain and the cold on the way aren’t known, and the time is without the wind.`, ranges: null, retry: ask('weather', () => this.loadWind(a)) });
     // past the forecast's reach (10 days, #465): its last hour isn't used, so wind, rain and waves aren't known there
     const w = a.wind;

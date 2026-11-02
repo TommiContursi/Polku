@@ -16,6 +16,8 @@
 
 import { waterwaysIn } from './nautical.js';
 import { cachedOverpass } from './osm.js';
+import { hostedTile } from './osm-data.js';
+import { OSM_DATA_MANIFEST } from './config.js';
 import { pointForecasts, sampleAt } from './weather.js';
 import { lonLatToTile, tileBounds } from './geo.js';
 
@@ -56,7 +58,7 @@ node["natural"~"^(rock|reef|shoal)$"](${bb});
 way["natural"~"^(reef|shoal)$"](${bb});
 way["seamark:type"~"^(rock|obstruction)$"](${bb});
 );out geom;`;
-  const p = cachedOverpass(`waterhaz/${HZ}/${id}`, q, (json) => {
+  const slim = (json) => {
     const points = [], areas = [];
     for (const el of json.elements || []) {
       const t = el.tags || {};
@@ -65,7 +67,9 @@ way["seamark:type"~"^(rock|obstruction)$"](${bb});
       else if (el.geometry && el.geometry.length > 1) areas.push({ kind, coords: el.geometry.map((g) => [+g.lon.toFixed(6), +g.lat.toFixed(6)]) });
     }
     return { points, areas };
-  }, { race: true });
+  };
+  const p = hostedTile(OSM_DATA_MANIFEST, 'hazards', HZ, [x, y],
+    () => cachedOverpass(`waterhaz/${HZ}/${id}`, q, slim, { race: true, oneRound: true, timeoutMs: 15000 }), { slim });
   p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) hazTiles.delete(id); failedHaz.delete(id); }, 120e3); }); // ask again in a couple of minutes
   hazTiles.set(id, p);
   return p;
