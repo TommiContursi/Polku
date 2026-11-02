@@ -18,17 +18,20 @@ function deadline(run) {
   return Promise.race([run(ctrl.signal), expired]).finally(() => clearTimeout(timer));
 }
 
-/** Share source selection as well as archive reads; fallback keeps its existing public cache. */
+/** Share raw reads; each caller keeps its adapter and public fallback shape. */
 export function hostedTile(url, dataset, zoom, xy, fallback, { force = false, slim = (j) => j } = {}) {
   const key = `${url}/${dataset}/${zoom}/${xy.join('/')}`;
-  if (!force && pending.has(key)) return pending.get(key);
-  const readerKey = `${url}/${dataset}/${zoom}`;
-  if (!readers.has(readerKey)) readers.set(readerKey, new StaticOSM(url, dataset, zoom));
-  const promise = (url ? readers.get(readerKey).tile(xy, { force })
-    .then((json) => ({ ...slim(json), source: json.source })).catch(fallback) : fallback())
-    .finally(() => { if (pending.get(key) === promise) pending.delete(key); });
-  pending.set(key, promise);
-  return promise;
+  let entry = !force && pending.get(key);
+  if (!entry) {
+    const readerKey = `${url}/${dataset}/${zoom}`;
+    if (!readers.has(readerKey)) readers.set(readerKey, new StaticOSM(url, dataset, zoom));
+    entry = { raw: url ? readers.get(readerKey).tile(xy, { force }) : Promise.reject(new Error('Hosted OSM unavailable')), fallbacks: new Map() };
+    pending.set(key, entry);
+  }
+  return entry.raw.then((json) => ({ ...slim(json), source: json.source })).catch((err) => {
+    if (!entry.fallbacks.has(fallback)) entry.fallbacks.set(fallback, Promise.resolve().then(() => fallback(err)));
+    return entry.fallbacks.get(fallback);
+  }).finally(() => { if (pending.get(key) === entry) pending.delete(key); });
 }
 
 function validateTile(json) {

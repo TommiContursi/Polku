@@ -153,6 +153,22 @@ test('concurrent missing hosted products share one fallback and do not become va
   assert.equal(publicCalls, 1);
 });
 
+test('concurrent raw inspection and adapted selection keep their own result shapes', async () => {
+  const { hostedTile } = await import('../../js/osm-data.js');
+  mode='ok';calls=[];
+  const args=['https://data.example/adapters/current.json','ways',14,[8192,8192]];
+  const fallback=()=>{throw new Error('unexpected public query');};
+  const [raw,adapted]=await Promise.all([hostedTile(...args,fallback),
+    hostedTile(...args,fallback,{slim:j=>({w:j.elements.filter(e=>e.type==='way').map(e=>e.id)})})]);
+  assert.ok(raw.elements);
+  assert.deepEqual(adapted.w,[10]);
+  assert.equal(adapted.elements,undefined);
+  assert.equal(calls.filter(c=>c.url.endsWith('ways.pmtiles')).length,1);
+  const missing=[args[0],'absent',12,[2048,2048]];
+  const [a,b]=await Promise.all([hostedTile(...missing,()=>({elements:[]})),hostedTile(...missing,()=>({w:[]}))]);
+  assert.deepEqual(a,{elements:[]});assert.deepEqual(b,{w:[]});
+});
+
 test('failed manifest reads cool down across tiles instead of repeating the request', async () => {
   const real = globalThis.fetch;
   let attempts = 0;

@@ -208,6 +208,20 @@ export async function checkHostedInspection() {
     };
     const existing = await I.wayNear(ll,81001);
     if (existing?.tags['custom:tag']!=='original way') fails.push('exact full tags do not reuse the already published ways product');
+    const W = await import('/js/ways.js');
+    let started, release;
+    const requested = new Promise(yes=>{started=yes;});
+    StaticOSM.prototype.tile = function() {
+      if (this.dataset!=='ways') return Promise.reject(new Error('Inspection not published'));
+      started();
+      return new Promise(yes=>{release=()=>yes({schema:1,elements,source:{provider:'Polku OSM data'}});});
+    };
+    const raw = I.wayNear(ll,81002);
+    await requested;
+    const indexed = W.loadWays(W.wayTile(ll));
+    release();
+    await Promise.all([raw,indexed]);
+    if (W.nearestWay(ll,100)?.id!==81002) fails.push('concurrent raw inspection broke the adapted ways index');
   } catch(e) { fails.push(String(e)); }
   finally { StaticOSM.prototype.tile=original;window.fetch=real; }
   return fails;
