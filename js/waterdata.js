@@ -90,7 +90,7 @@ function hazTilesIn([w, s, e, n], max) {
 }
 async function osmHazards(box) {
   const tiles = hazTilesIn(box, 16); // a very long leg: skip rather than ask for half a province
-  if (!tiles) return null;
+  if (!tiles) throw new Error('Water hazard area exceeds the OSM tile budget');
   const all = Promise.all(tiles);
   try {
     const got = await waitFor('osm', all);

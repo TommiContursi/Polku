@@ -177,6 +177,8 @@ export async function checkHostedConsumers() {
     if (W.winterClass(winter.w[0]?.[1] || {}) !== 'ski') fails.push('hosted ski-only way missing');
     const water = await H.waterInputs([ll[0]-.001,ll[1]-.001,ll[0]+.001,ll[1]+.001],{hazards:true});
     if (!water.hazards.features.some(f=>f.properties.src==='osm' && f.properties.kind==='reef') || water.missing.includes('OpenStreetMap')) fails.push('hosted water hazard is missing or marked unavailable');
+    const broad = await H.waterInputs([ll[0]-1,ll[1]-1,ll[0]+1,ll[1]+1],{hazards:true});
+    if (!broad.missing.includes('OpenStreetMap')) fails.push('an uncheckable large water area looks like a complete empty hazard result');
     const stays = await S.staysNear(ll,0.1);
     if (!stays.some(p=>p.name==='Hosted campsite')) fails.push('hosted overnight relation missing');
     if (publicCalls.length) fails.push('healthy hosted consumers queried public Overpass');
