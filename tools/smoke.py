@@ -16748,10 +16748,12 @@ def osm_data(chrome):
               'test_resume_rejects_corrupt_or_oversized_prefix_without_writing')
     result = subprocess.run([sys.executable, '-m', 'unittest',
                              *(f'tools.osm_data.test_publish.PublishTests.{name}' for name in checks),
+                             'tools.osm_data.test_builder.BuilderTests.test_sample_validation_reads_locations_without_overwriting_them',
+                             'tools.osm_data.test_builder.BuilderTests.test_full_country_rejects_missing_required_sample_roads',
                              'tools.osm_data.test_preview.PreviewTests.test_preview_overrides_an_already_configured_live_source_in_response_only'],
                             cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True, timeout=30)
     if result.returncode:
-        print('FAIL osmdata: publishing regressions\n' + result.stderr, flush=True)
+        print('FAIL osmdata: builder/publishing regressions\n' + result.stderr, flush=True)
         return False
     failures = []
     for width, height, phone in [(1440, 900, False), (390, 844, True)]:
