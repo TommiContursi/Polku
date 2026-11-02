@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build immutable Finland road/path and lighting archives from the full Geofabrik PBF."""
+"""Build immutable OSM feature archives from complete Geofabrik country PBFs."""
 
 import argparse
 from contextlib import closing

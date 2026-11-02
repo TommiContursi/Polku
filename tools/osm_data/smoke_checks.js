@@ -10,7 +10,8 @@ export async function checkStaticOSM() {
     datasets: { ways: { format: 'pmtiles-json', schema: 1, zoom: 14, url: 'ways.pmtiles', bytes: archive.byteLength } } };
   const real = window.fetch, calls = [], fails = [];
   // The weekly full-country preview exercises a long northern way beyond the old six-round limit.
-  if (OSM_DATA_MANIFEST) {
+  const country = OSM_DATA_MANIFEST ? (await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.country : null;
+  if (OSM_DATA_MANIFEST && (!country || country === 'finland')) {
     const ll = [27.3921157, 68.3992993]; // Rovaniementie: a long interior road, away from border tiles requiring fallback
     await W.loadWays(W.wayTile(ll));
     const seed = W.nearestWay(ll, 2000);
