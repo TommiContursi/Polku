@@ -163,7 +163,7 @@ test('concurrent raw inspection and adapted selection keep their own result shap
   assert.ok(raw.elements);
   assert.deepEqual(adapted.w,[10]);
   assert.equal(adapted.elements,undefined);
-  assert.equal(calls.filter(c=>c.url.endsWith('ways.pmtiles')).length,1);
+  assert.equal(calls.filter(c=>c.url.endsWith('ways.pmtiles')).length,2,'one header and one payload range, shared by both adapters');
   const missing=[args[0],'absent',12,[2048,2048]];
   const [a,b]=await Promise.all([hostedTile(...missing,()=>({elements:[]})),hostedTile(...missing,()=>({w:[]}))]);
   assert.deepEqual(a,{elements:[]});assert.deepEqual(b,{w:[]});
