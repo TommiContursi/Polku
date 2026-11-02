@@ -4651,6 +4651,11 @@ LIT_OVERPASS = """(() => {
   window.litAsked = 0;
   window.fetch = async (input, init) => {
     const url = String(input && input.url ? input.url : input);
+    if (url.endsWith('/current.json')) {
+      const manifest = await (await real(input, init)).json();
+      delete manifest.datasets.lit; // exercise the public fallback, even with a full hosted preview configured
+      return Response.json(manifest);
+    }
     if (!/overpass/.test(url)) return real(input, init);
     const q = init && init.body ? new URLSearchParams(init.body).get('data') || '' : '';
     if (!/way\\[highway\\]\\[lit~/.test(q)) return new Response('', { status: 504 });

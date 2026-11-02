@@ -37,33 +37,33 @@ owned by #676; additional lighting meanings/sources remain owned by #657.
 Files: `js/osm-data.js`, `js/ways.js`, small attributed coverage data,
 `tools/osm_data/client.test.mjs`, `tools/osm_data/smoke_checks.js` and smoke hooks.
 
-- [ ] Add failing checks for hosted success without Overpass, failed-host
+- [x] Add failing checks for hosted success without Overpass, failed-host
   fallback, out-of-coverage global selection, cached offline reuse and the
   public growth limit.
-- [ ] Let `StaticOSM` select a named dataset and expected zoom; preserve all
+- [x] Let `StaticOSM` select a named dataset and expected zoom; preserve all
   response/schema/geometry/range checks. Cache the page's manifest even when a
   requested optional dataset is absent. Update callers together.
-- [ ] Validate polygon coverage, including holes/concavities, before fetching
+- [x] Validate polygon coverage, including holes/concavities, before fetching
   uncached tiles. For the already published Finland manifest, use the small
   attributed clipping asset; new full-country manifests carry coverage.
-- [ ] Fall back through `cachedOverpass()` only on unavailable hosted data or
+- [x] Fall back through `cachedOverpass()` only on unavailable hosted data or
   uncovered tiles. Preserve held-source test behavior and valid empty tiles.
-- [ ] Run the relevant JS/unit and OSM/loading smoke checks; commit.
+- [x] Run the relevant JS/unit and OSM/card smoke checks; commit.
 
 ## 2. Finland lighting build
 
 Files: `tools/osm_data/builder.py`, `test_builder.py`, schema/operations docs
 and the existing workflow's reviewed build-artifact pin when available.
 
-- [ ] Add failing tests for original lit values, motorway coverage, deterministic
+- [x] Add failing tests for original lit values, motorway coverage, deterministic
   output and release identity when lighting changes independently of ways.
-- [ ] Stage lit highways alongside the existing road product; write z13
+- [x] Stage lit highways alongside the existing road product; write z13
   `lit.pmtiles` without clipping geometry. Keep primary-way counts/relations
   accurate and retain the complete source PBF for future products.
-- [ ] Add the lighting dataset/file metadata and extract coverage to full
+- [x] Add the lighting dataset/file metadata and extract coverage to full
   releases. Derive release identity from all dataset content, excluding timing
   measurements. Preserve existing publication/rollback verification.
-- [ ] Run builder and publication checks, then build/measure the real Finland
+- [x] Run builder and publication checks, then build/measure the real Finland
   source. Compare size and latency with the existing ways archive; commit.
 
 ## 3. Lighting integration and review
@@ -71,15 +71,36 @@ and the existing workflow's reviewed build-artifact pin when available.
 Files: `js/lit.js`, source descriptions, lighting/OSM smoke checks, docs and
 CHANGELOG. Reuse the existing binary overlay result format and UI.
 
-- [ ] Test lit/unlit/unknown values, healthy static transport without Overpass,
+- [x] Test lit/unlit/unknown values, healthy static transport without Overpass,
   missing optional dataset, hosted failure and non-Finland fallback.
-- [ ] Read z13 lighting tiles from the shared source; fall back to the existing
+- [x] Read z13 lighting tiles from the shared source; fall back to the existing
   query and `slimLit()` path when necessary. Do not change #657's semantics.
 - [ ] Verify live-like local preview, cold-cache performance, mobile behavior
   and failure handling. Build an Actions artifact without publishing; record
   the exact run for reviewed manual publication after merge.
 - [ ] Open/update the PR with actual results and activation boundaries; wait
   for owner merge/publication approval where required.
+
+## Local verification, 2026-11-02
+
+- Full source timestamp: 2026-10-31T21:23:06Z. Build took 607.786 s and
+  1,863,221,248 bytes peak RSS; no source download or publication was needed.
+- Selection: 2,214,266 ways; 233,335 tiles; 679,838,796 bytes. Archive SHA-256
+  remains `11398e5b9ab9ccfa2ee7fd553345385bed3dfc8a248ecaff72cae163243b0b3e`.
+- Lighting: 272,147 highways; 11,980 tiles; 46,531,673 bytes. Archive SHA-256
+  is `603f7943ea3cc54b93c1a8ecafe626224db8fccd7f69ceb4b0ae0c1ce7748b38`.
+- Ten reader checks and 44 builder/publication/preview checks pass. The added
+  publication check verifies both archives and rejects broken lighting ranges.
+- Desktop/390×844 Chrome smoke groups `osmdata`, `pickcard`, `changelog`, and
+  the lighting UI/fallback group pass. The lighting failure fixture deliberately
+  omits the optional hosted dataset so it still exercises the public fallback.
+- Cold lighting reads in six locations: desktop 5–81 ms; phone emulation
+  (4× CPU, 80 ms, 10 Mbit/s) 98–1,122 ms. Repeats made no network requests.
+  These are local Range-server measurements, not OVH or physical-phone results.
+- The former Kilpisjärvi growth sample reaches a border tile; the correct
+  behavior now requires fallback there. The interior Rovaniementie sample
+  completes 25.1 km with no public query or unloaded end.
+- Joining diagnostics remain on #676; Settings failure visibility is #687.
 
 ## Follow-on work already requested
 
