@@ -188,3 +188,11 @@ test('a malformed obstacle node is incomplete data rather than a successful empt
   try { await assert.rejects(new StaticOSM('https://data.example/bad-node/current.json').tile([8192,8192]), /Incomplete OSM node/); }
   finally { globalThis.fetch=real; }
 });
+
+test('dataset completeness metadata survives a raw tile read', async () => {
+  manifest.datasets.ways.nearby_complete = false;
+  try {
+    const d = await new StaticOSM('https://data.example/partial-inspection/current.json').tile([8192,8192]);
+    assert.equal(d.nearby_complete,false);
+  } finally { delete manifest.datasets.ways.nearby_complete; }
+});

@@ -41,7 +41,7 @@ LICENSE = {
     'name': 'Open Database License 1.0',
     'url': 'https://opendatacommons.org/licenses/odbl/1-0/',
 }
-PRODUCT_ZOOMS = {'trails': 13, 'winter': 12, 'hazards': 11, 'places': 12}
+PRODUCT_ZOOMS = {'trails': 13, 'winter': 12, 'hazards': 11, 'places': 12, 'inspection': 14}
 BARRIERS = set(('gate lift_gate swing_gate sliding_gate wicket_gate hampshire_gate bump_gate chain rope bar block '
                 'stile kissing_gate turnstile horse_stile full-height_turnstile cycle_barrier motorcycle_barrier '
                 'log fallen_tree windfall debris').split())
@@ -51,6 +51,11 @@ def is_stay(tags):
     return (tags.get('tourism') in {'camp_site', 'wilderness_hut', 'alpine_hut'} or
             tags.get('amenity') == 'shelter' and tags.get('shelter_type') in {'lean_to', 'basic_hut'})
 
+
+INSPECT_KEYS = {'amenity', 'tourism', 'leisure', 'natural', 'barrier', 'ford', 'man_made', 'historic'}
+
+def inspectable(tags):
+    return any(tags.get(k) for k in INSPECT_KEYS)
 
 def products(kind, tags):
     result = []
@@ -76,6 +81,8 @@ def products(kind, tags):
         result.append('hazards')
     if is_stay(tags):
         result.append('places')
+    if h or inspectable(tags) or result:
+        result.append('inspection')
     return result
 
 
@@ -84,8 +91,11 @@ class PlaceRelations(osmium.SimpleHandler):
     def __init__(self):
         super().__init__()
         self.relations = {}
+        self.inspection = {}
 
     def relation(self, rel):
+        if inspectable(rel.tags):
+            self.inspection[rel.id] = dict(rel.tags)
         self.relations[rel.id] = (dict(rel.tags) if is_stay(rel.tags) else None,
                                   [(m.type, m.ref, m.role) for m in rel.members])
 
@@ -101,7 +111,7 @@ class PlaceRelations(osmium.SimpleHandler):
                 else:
                     needed.add((kind, child))
         for ref, (tags, _) in self.relations.items():
-            if tags is not None:
+            if tags is not None or ref in self.inspection:
                 visit(ref)
         self.relations = {ref: value for ref, value in self.relations.items() if ('r', ref) in needed}
         return needed
@@ -183,6 +193,7 @@ class Stager(osmium.SimpleHandler):
         self.places = places
         self.needed = places.wanted()
         self.member_bounds = {}
+        self.incomplete_inspection = 0
 
     def product(self, names, element, xy_tiles):
         if not names:
@@ -238,13 +249,13 @@ class Stager(osmium.SimpleHandler):
         tiles = set()
         for a, b in zip(projected, projected[1:]):
             tiles.update(segment_tiles(a, b))
-        if ('w', way.id) in self.needed or 'places' in names:
+        if ('w', way.id) in self.needed or 'places' in names or 'inspection' in names:
             bounds = [min(p['lon'] for p in geometry), min(p['lat'] for p in geometry),
                       max(p['lon'] for p in geometry), max(p['lat'] for p in geometry)]
             if ('w', way.id) in self.needed:
                 self.member_bounds['w', way.id] = bounds
         element = json.loads(body)
-        if 'places' in names:
+        if 'places' in names or 'inspection' in names:
             element['center'] = {'lon': round((bounds[0] + bounds[2]) / 2, 7), 'lat': round((bounds[1] + bounds[3]) / 2, 7)}
             # A way's centre can be away from its edges; nearby searches index both.
             p = tile_point(element['center']['lon'], element['center']['lat'])
@@ -295,16 +306,33 @@ class Stager(osmium.SimpleHandler):
                 return None
             return [min(p[0] for p in parts), min(p[1] for p in parts), max(p[2] for p in parts), max(p[3] for p in parts)]
         for ref, (tags, members) in self.places.relations.items():
-            if tags is None:
+            inspection = self.places.inspection.get(ref)
+            if tags is None and inspection is None:
                 continue
             bounds = bounds_of('r', ref, set())
-            if bounds is None:
+            if bounds is None and tags is not None:
                 raise ValueError(f'Incomplete overnight place relation {ref}')
+            incomplete = bounds is None
+            if incomplete:
+                self.incomplete_inspection += 1
+                known = [self.member_bounds.get((k,r)) for k,r,_ in members if k != 'r']
+                known = [p for p in known if p]
+                if not known:
+                    continue
+                bounds = [min(p[0] for p in known), min(p[1] for p in known), max(p[2] for p in known), max(p[3] for p in known)]
             center = {'lon': round((bounds[0] + bounds[2]) / 2, 7), 'lat': round((bounds[1] + bounds[3]) / 2, 7)}
             point = tile_point(center['lon'], center['lat'])
-            self.product(['places'], {'type': 'relation', 'id': ref, 'tags': tags, 'center': center,
+            names = (['places'] if tags is not None else []) + (['inspection'] if inspection is not None else [])
+            tiles = segment_tiles(point, point)
+            if inspection is not None:
+                # Exact relation inspection can start on any member or in its interior, far from its centre.
+                a, b = tile_point(bounds[0],bounds[3]), tile_point(bounds[2],bounds[1])
+                tiles.update((x,y) for x in range(math.floor(a[0]),math.floor(b[0])+1)
+                             for y in range(math.floor(a[1]),math.floor(b[1])+1))
+            self.product(names, {'type': 'relation', 'id': ref, 'tags': tags or inspection, 'center': center,
+                         'incomplete': incomplete,
                          'members': [{'type': {'n': 'node', 'w': 'way', 'r': 'relation'}[k], 'ref': r, 'role': role}
-                                     for k, r, role in members]}, segment_tiles(point, point))
+                                     for k, r, role in members]}, tiles)
 
 
 def stage_source(source, db, index_path):
@@ -512,6 +540,7 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
                 raise ValueError('Complete-Finland source has no lighting ways')
             stats['products'] = {name: archive_product(db, stage / f'{name}.pmtiles', name, source_info, handler.bounds)
                                  for name in PRODUCT_ZOOMS}
+            stats['products']['inspection']['incomplete_relations'] = handler.incomplete_inspection
             stats.update({
                 'source_nodes': handler.source_nodes, 'source_ways': handler.source_ways,
                 'source_relations': handler.source_relations, 'ways': handler.ways,
@@ -552,6 +581,8 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
             datasets[name] = {'format': 'pmtiles-json', 'schema': 1, 'zoom': zoom, 'url': record['path'],
                               'bytes': record['bytes'], 'sha256': record['sha256'],
                               'tiles': product['tiles'], 'features': product['features']}
+            if name == 'inspection':
+                datasets[name]['nearby_complete'] = product['incomplete_relations'] == 0
         coverage = json.loads((Path(__file__).resolve().parents[2] / 'data/finland-coverage.geojson').read_bytes()) if full_country else None
         content_hash = hashlib.sha256(json_bytes({'datasets': datasets, 'coverage': coverage})).hexdigest()
         files = [file_record(stage / name) for name in

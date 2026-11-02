@@ -14495,6 +14495,8 @@ def facts(chrome):
         pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#16.5/61.51128/23.81742')
         pg.js(PICK_SEED)
         pg.js(FA_HELP)
+        # This group exercises the public fallback; osmdata covers healthy hosted inspection.
+        pg.js("import('/js/osm-data.js').then(({StaticOSM}) => { const tile=StaticOSM.prototype.tile; StaticOSM.prototype.tile=function(...args) { return ['inspection','ways'].includes(this.dataset) ? Promise.reject(new Error('Hosted source unavailable in fallback fixture')) : tile.apply(this,args); }; return true; })")
         pg.js("polku.planner.setActive(false); true")
         path = pg.js("(() => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2; return [f[i], f[i + 1]]; })()")
         # ---- the same facts in every sport, and no What's here
@@ -16757,7 +16759,7 @@ def osm_data(chrome):
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
             pg.open_app({'activity': 'mtb', 'layers': {'wx': False, 'uphill': False, 'trails': False}})
-            result = pg.js("import('/tools/osm_data/smoke_checks.js').then((m) => m.checkStaticOSM().then(async (first) => first.concat(await m.checkHostedConsumers())))")
+            result = pg.js("import('/tools/osm_data/smoke_checks.js').then((m) => m.checkStaticOSM().then(async (first) => first.concat(await m.checkHostedConsumers(),await m.checkHostedInspection())))")
             failures.extend(f'{width}x{height}: {message}' for message in result)
             failures.extend(pg.errors())
         finally:

@@ -87,14 +87,14 @@ export class StaticOSM {
     if (d?.format !== 'pmtiles-json' || d.schema !== 1 || d.zoom !== this.zoom || !Number.isSafeInteger(d.bytes) || d.bytes < 127) throw new Error('Unsupported OSM dataset');
     const url = new URL(d.url, this.url), base = new URL(this.url);
     if (url.origin !== base.origin || !['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid OSM archive URL');
-    return { manifest, url: url.href, bytes: d.bytes };
+    return { manifest, url: url.href, bytes: d.bytes, nearby_complete: d.nearby_complete };
   }
 
   tile(xy, options = {}) { return deadline((signal) => this.readTile(xy, options, signal)); }
 
   async readTile([x, y], { force = false }, signal) {
     if (![x, y].every((v) => Number.isInteger(v) && v >= 0 && v < 2 ** this.zoom)) throw new Error('Invalid OSM tile');
-    const { manifest, url, bytes } = await this.ready();
+    const { manifest, url, bytes, nearby_complete } = await this.ready();
     const bounds = tileBounds(x, y, this.zoom), [w, s, e, n] = bounds, [west, south, east, north] = manifest.bounds;
     if (e < west || w > east || n < south || s > north) throw new Error('Outside static OSM coverage');
     const key = `static/${url}/${manifest.release}/${this.zoom}/${x}/${y}`;
@@ -102,7 +102,7 @@ export class StaticOSM {
     if (this.tiles.has(key)) return this.tiles.get(key);
     const promise = (async () => {
       const hit = await cache.get(key).catch(() => null);
-      if (hit) return { ...validateTile(hit.json), source: { ...manifest.source, provider: 'Polku OSM data', attribution: manifest.attribution } };
+      if (hit) return { ...validateTile(hit.json), nearby_complete, source: { ...manifest.source, provider: 'Polku OSM data', attribution: manifest.attribution } };
       signal.throwIfAborted();
       let coverage = manifest.coverage;
       if (!coverage && manifest.source.url === 'https://download.geofabrik.de/europe/finland-latest.osm.pbf') {
@@ -169,6 +169,7 @@ export class StaticOSM {
       const json = tile ? JSON.parse(new TextDecoder().decode(tile.data)) : { schema: 1, elements: [] };
       validateTile(json);
       signal.throwIfAborted();
+      json.nearby_complete = nearby_complete;
       json.source = { ...manifest.source, provider: 'Polku OSM data', attribution: manifest.attribution };
       cache.set(key, { at: Date.now(), json }).catch(() => {});
       return json;

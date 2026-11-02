@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-02
 
+### Full OpenStreetMap tags can reuse the hosted data ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- **All OpenStreetMap details** reuses original hosted tags for known selected ways and uses the broader object archive where published. Exact node, way and relation IDs stay distinct; unsupported objects and uncertain nearby relation geometry keep a bounded public fallback.
+
 ### Detailed OSM checks can use the same hosted source ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
 - Trail details and barriers, winter ways, water hazards and nearby overnight places use hosted tiles where those datasets are published. Missing coverage or a failed hosted source keeps the public Overpass fallback; if both fail, the existing missing-data and retry messages remain.

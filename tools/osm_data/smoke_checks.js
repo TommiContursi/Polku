@@ -179,3 +179,36 @@ export async function checkHostedConsumers() {
   finally { StaticOSM.prototype.tile = original; window.fetch = real; }
   return fails;
 }
+
+export async function checkHostedInspection() {
+  const { StaticOSM } = await import('/js/osm-data.js'), I = await import('/js/inspect.js');
+  const original = StaticOSM.prototype.tile, real = window.fetch, fails = [];
+  const ll = [25.22,62.22], geometry = [{lon:25.219,lat:62.22005},{lon:25.221,lat:62.22005}];
+  const elements = [
+    {type:'way',id:81001,nodes:[1,2],geometry,tags:{highway:'motorway','custom:tag':'original way'}},
+    {type:'way',id:81002,nodes:[3,4],geometry:[{lon:25.219,lat:62.22},{lon:25.221,lat:62.22}],tags:{highway:'path'}},
+    {type:'node',id:81001,lon:25.22,lat:62.22,tags:{amenity:'toilets','custom:tag':'original node'}},
+    {type:'relation',id:81001,members:[{type:'way',ref:81001,role:'outer'}],center:{lon:25.22,lat:62.22},tags:{tourism:'camp_site','custom:tag':'original relation'}},
+  ];
+  StaticOSM.prototype.tile = async function() { return {schema:1,elements,nearby_complete:true,source:{provider:'Polku OSM data',timestamp:'2026-11-01T00:00:00Z'}}; };
+  window.fetch = async (url,init) => { if (/overpass|maps.mail.ru/.test(String(url))) throw new DOMException('Unexpected public query','AbortError'); return real(url,init); };
+  try {
+    for (const type of ['way','node','relation']) {
+      const d = await I.osmDetails({type,id:81001,ll});
+      if (d?.type!==type || d.tags['custom:tag']!==`original ${type}`) fails.push(`hosted full tags lost ${type} identity`);
+    }
+    const nearest = await I.wayNear(ll);
+    if (nearest?.id!==81002 || nearest.tags.highway!=='path') fails.push('hosted inspection omits a highway outside the pick subset');
+    try { await I.osmDetails({type:'way',id:999999,ll}); fails.push('unknown exact ID became the nearest way'); } catch { /* unsupported object and failed public fallback stay unavailable */ }
+    const place = await I.osmDetails({type:'node',ll});
+    if (place?.type!=='node' || place.tags.amenity!=='toilets') fails.push('hosted nearby inspection loses the closest place');
+    StaticOSM.prototype.tile = async function() {
+      if (this.dataset!=='ways') throw new Error('New inspection product not published');
+      return {schema:1,elements:elements.filter(e=>e.type==='way'),source:{provider:'Polku OSM data'}};
+    };
+    const existing = await I.wayNear(ll,81001);
+    if (existing?.tags['custom:tag']!=='original way') fails.push('exact full tags do not reuse the already published ways product');
+  } catch(e) { fails.push(String(e)); }
+  finally { StaticOSM.prototype.tile=original;window.fetch=real; }
+  return fails;
+}

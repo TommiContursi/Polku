@@ -71,3 +71,23 @@ class ProductTests(unittest.TestCase):
     def test_missing_place_member_fails_instead_of_becoming_an_empty_search(self):
         with self.assertRaisesRegex(ValueError, 'Incomplete.*place'):
             self.build(OSM.replace('</osm>', REL.replace('ref="23"', 'ref="999"') + '</osm>'))
+
+    def test_inspection_keeps_all_highways_and_full_place_tags(self):
+        node = '<node id="9" lon="0.005" lat="-0.005"><tag k="amenity" v="toilets"/><tag k="custom:tag" v="original"/></node>'
+        rel = '<relation id="210"><member type="way" ref="10" role="outer"/><tag k="boundary" v="protected_area"/><tag k="leisure" v="nature_reserve"/></relation>'
+        out, manifest = self.build(OSM.replace('  <way id="10">', node+'  <way id="10">').replace('</osm>',rel+'</osm>'))
+        self.assertIn('inspection',manifest['datasets'])
+        els = self.tile(out,'inspection',14)
+        self.assertEqual(sorted(e['id'] for e in els),[9,10,12,210])
+        self.assertEqual(next(e for e in els if e['id']==9)['tags']['custom:tag'],'original')
+        self.assertEqual(next(e for e in els if e['id']==12)['tags']['highway'],'motorway')
+        self.assertTrue(manifest['datasets']['inspection']['nearby_complete'])
+
+    def test_partial_inspection_relation_keeps_exact_tags_but_does_not_claim_nearby_completeness(self):
+        rel = '<relation id="210"><member type="way" ref="10" role="outer"/><member type="way" ref="999" role="outer"/><tag k="leisure" v="nature_reserve"/></relation>'
+        out, manifest = self.build(OSM.replace('</osm>',rel+'</osm>'))
+        self.assertIn('inspection',manifest['datasets'])
+        self.assertFalse(manifest['datasets']['inspection']['nearby_complete'])
+        e = next(e for e in self.tile(out,'inspection',14) if e['id']==210)
+        self.assertTrue(e['incomplete'])
+        self.assertEqual(e['members'][1]['ref'],999)
