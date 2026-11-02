@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from pmtiles.reader import MemorySource, Reader, all_tiles
 
@@ -46,6 +47,24 @@ OSM = '''<?xml version="1.0" encoding="UTF-8"?>
 
 
 class BuilderTests(unittest.TestCase):
+    def test_sample_validation_reads_locations_without_overwriting_them(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source=Path(tmp)/'source.osm';source.write_text(OSM);out=Path(tmp)/'release'
+            m=builder.build_dataset(source,out,self.source_info(source))
+            locations={'Known road':(0.025,-0.01),'Missing road':(10,10)}
+            result=builder.validate_archive(out/'ways.pmtiles',m['datasets']['ways']['tiles'],samples=locations)
+            self.assertEqual(set(result),set(locations))
+            self.assertEqual(result['Known road']['ways'],1)
+            self.assertEqual(result['Missing road']['ways'],0)
+            self.assertEqual(locations,{'Known road':(0.025,-0.01),'Missing road':(10,10)})
+
+    def test_full_country_rejects_missing_required_sample_roads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source=Path(tmp)/'source.osm'
+            source.write_text(OSM.replace('<tag k="highway" v="path"/>','<tag k="highway" v="path"/><tag k="lit" v="yes"/>'))
+            with patch.object(builder,'check_finland'),self.assertRaisesRegex(ValueError,'missing sample roads'):
+                builder.build_dataset(source,Path(tmp)/'release',self.source_info(source),full_country=True)
+
     def test_supercover_keeps_segment_interiors_and_corner_neighbors(self):
         self.assertEqual(
             builder.segment_tiles((8191.5, 8192.5), (8194.5, 8192.5)),

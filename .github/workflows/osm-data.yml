@@ -294,7 +294,24 @@ jobs:
           POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
           POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-chrome
         run: |
-          python -c 'from pathlib import Path; from tools.osm_data.publish import local_release; local_release(Path("osm-build/release"))'
+          python - <<'PY' > osm-build/sample-validation.json
+          import json
+          from pathlib import Path
+          from tools.osm_data.builder import COUNTRIES, COUNTRY_SAMPLES, validate_archive
+          from tools.osm_data.publish import local_release
+          root = Path('osm-build/release')
+          _, manifest = local_release(root)
+          results = {}
+          for country in COUNTRIES:
+              records = [d for d in manifest['datasets'].values() if d.get('country') == country and d.get('kind') == 'ways']
+              assert len(records) == 1, f'Missing or duplicate ways archive for {country}'
+              dataset = records[0]
+              samples = COUNTRY_SAMPLES[country]
+              rows = validate_archive(root / dataset['url'], dataset['tiles'], samples=samples)
+              assert rows and set(rows) == set(samples) and all(row['ways'] for row in rows.values()), f'Missing sample roads for {country}'
+              results[country] = rows
+          print(json.dumps(results, indent=2))
+          PY
           python tools/osm_data/preview.py --release osm-build/release --port 8765 > osm-build/preview.log 2>&1 &
           for i in $(seq 30); do
             if curl -sf -o /dev/null http://127.0.0.1:8765/index.html; then break; fi
@@ -308,6 +325,7 @@ jobs:
         with:
           name: osm-candidate-verification
           path: |
+            osm-build/sample-validation.json
             osm-build/browser-measurements.json
             osm-build/preview.log
           retention-days: 14

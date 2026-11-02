@@ -499,7 +499,7 @@ def archive(db, output, source_info, bounds, *, lighting=False):
 
 
 def validate_archive(path, expected_tiles, zoom=ZOOM, samples=SAMPLES):
-    samples = {}
+    results = {}
     with path.open('rb') as stream:
         source = MmapSource(stream)
         reader = Reader(source)
@@ -520,12 +520,12 @@ def validate_archive(path, expected_tiles, zoom=ZOOM, samples=SAMPLES):
             x, y = [math.floor(v / 2 ** (ZOOM - zoom)) for v in tile_point(lon, lat)]
             data = reader.get(zoom, x, y)
             elements = json.loads(gzip.decompress(data))['elements'] if data else []
-            samples[name] = {'lon': lon, 'lat': lat, 'tile': [zoom, x, y],
+            results[name] = {'lon': lon, 'lat': lat, 'tile': [zoom, x, y],
                              'gzip_bytes': len(data) if data else 0,
                              'raw_bytes': len(gzip.decompress(data)) if data else 0,
                              'ways': sum(e['type'] == 'way' for e in elements),
                              'relations': sum(e['type'] == 'relation' for e in elements)}
-    return samples
+    return results
 
 
 def archive_product(db, output, name, source_info, bounds):
@@ -641,7 +641,8 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
         if 'lighting' in stats:
             lit = stats['lighting']
             lit['sample_tiles'] = validate_archive(stage / 'lit.pmtiles', lit['tiles'], 13, samples=samples)
-        if full_country and any(not row['ways'] for row in stats['sample_tiles'].values()):
+        if full_country and (not stats['sample_tiles'] or set(stats['sample_tiles']) != set(samples) or
+                             any(not row['ways'] for row in stats['sample_tiles'].values())):
             raise ValueError(f'Complete-{country} archive is missing sample roads')
         stats['individual_gzip_json'] = {
             'files': stats['tiles'], 'total_bytes': stats['tile_gzip_bytes']['total'],
