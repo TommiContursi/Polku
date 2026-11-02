@@ -62,6 +62,7 @@ class CountryTests(unittest.TestCase):
             self.assertEqual(m['datasets']['sweden-ways']['coverage'],COVERAGE)
             self.assertEqual(len(m['sources']),4)
             self.assertEqual(m['overlap']['duplicates'],3)
+            self.assertEqual(module.bundle(paths,root/'second-bundle')['release'],m['release'],'assembly timing does not change immutable data identity')
             self.assertFalse(any(f['path'].endswith('jsonl.gz') for f in m['files']),'identity reports are build evidence, not browser downloads')
             from tools.osm_data.publish import local_release,current,validate
             local_release(out);validate(current(m),pointed=True)

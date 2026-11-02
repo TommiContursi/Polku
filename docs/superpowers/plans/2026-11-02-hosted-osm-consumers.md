@@ -99,9 +99,15 @@ The whole-polygon model was measured against the complete retained Finland PBF. 
    adapters while sharing transport. The regression fails before and passes after
    in both browser sizes; 17 Node checks and all named card groups pass. Area
    representation is the measured follow-up #696, not advertised as hosted.
-3. #698: country extraction, synchronized dated sources, actual polygons, overlap
-   evidence, assembly and reader selection implemented. 58 Python/19 Node tests
-   pass. Complete matrix candidate 41509553858 is still running; Estonia passed
-   all seven products with Overpass forbidden. Final country/assembly/hosting
-   budget evidence remains a readiness gate. Later JS/test/pin changes do not
-   change this candidate's extraction payloads. No publication performed.
+3. #698: all four complete builds passed in run 41509553858; assembly compared
+   20,766,245 unique represented objects and 142,922 identical duplicate copies.
+   Final consumer/cache/border verification 41525059421 passed 32 covered cases
+   with zero Overpass and zero additional selected-way full-tag requests. Complete
+   data total 11.224 GB; max OS RSS 6.64 GB; longest country build 84.20 min.
+   The 25 GiB disk preflight guards measured staging. The reviewed publication
+   target is proposed as 41509553858 / nordic-osm-release, still owner-controlled.
+   Negative country-coverage inheritance checks pass in Node and browser; final
+   checks are 58 Python / 20 Node plus named focused groups and actionlint.
+   Published coverage is not claimed: actual host quota, bulk publication, >2 GiB
+   public Range and live pointer verification remain behind approval. Border
+   union/merge is measured follow-up #699; area/nearby relation geometry is #696.

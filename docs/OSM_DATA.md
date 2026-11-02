@@ -103,8 +103,8 @@ archive was not uploaded again. The existing
 See the [live measurements](plans/osm-data-measurements.md#live-ovh-verification-2026-11-02)
 before considering app activation. Do not republish this immutable release.
 
-The bootstrap **publish-existing** operation on `main` downloads the successful
-`finland-osm-release` from pinned successful run `41502174378`, checks local and remote
+The protected **publish-existing** operation on `main` downloads the reviewed successful
+`nordic-osm-release` from pinned successful run `41509553858`, checks local and remote
 hashes, tests public Range/CORS and switches `current.json` only after
 verification. It does not rebuild or enable unattended publication. Artifacts
 expire after 14 days. While `OSM_PUBLISH_ENABLED` remains off, weekly builds
@@ -304,10 +304,10 @@ or credentials and cannot promote a pointer.
 
 Release order: #695 adds detailed products/consumers; #697 adds full-tag objects;
 the country PR follows both. Each app step works with the old published manifest.
-The independently releasable Finland `publish-existing` candidate is pinned to successful run 41502174378 and
-`finland-osm-release`. Change that pin/name to the reviewed successful combined
-candidate in a separate approval PR; do not publish the old artifact expecting
-four-country products. `OSM_PUBLISH_ENABLED` was unset at inspection, and no
+The first Finland candidate (41502174378 / `finland-osm-release`) was proposed as an
+independent approval target in #695. This PR proposes the complete successful
+four-country candidate 41509553858 / `nordic-osm-release` as the new protected
+manual target; it is not published by merging app code. `OSM_PUBLISH_ENABLED` was unset at inspection, and no
 publication is performed by this migration. Existing atomic promotion, full
 SFTP readback, Range probes, rollback pointers and daily monitoring stay intact.
 
@@ -321,3 +321,45 @@ check all seven products in each country with normal covered requests making no
 Overpass calls, then exercise failure/rollback monitoring. Client support and
 candidate artifacts are not evidence that coverage is published. This session's
 live pointer re-read was blocked by the environment's network policy.
+
+
+## Completed candidate evidence, 2026-11-02
+
+Build 41509553858 and final consumer verification 41525059421 passed. Candidate
+`20261101T212136Z-four-d5f8341920573573` has 28 products / 11,224,332,376 archive
+bytes. The common source epoch is 2026-11-01T21:21:36Z; 142,922 duplicate copies
+among 20,766,245 unique represented objects match their original content.
+`docs/measurements/osm-four-country-2026-11-02.json` records source hashes,
+archive sizes, tile distributions, complete OS time/RSS and browser transfers.
+
+Complete country times were FI 52.53, SE 60.50, NO 84.20 and EE 6.41 minutes.
+Maximum process RSS was 6.64 GB; maximum allocated staging at archive completion
+was 18.17 GB. Actual standard runners had 85 GB free. Since this exceeds the
+nominal documented 14 GB disk allowance, all full country/assembly/verification
+jobs require 25 GiB free before downloading. No larger paid runner is configured.
+The earlier candidate's internal FI/SE memory counter preceded final validation;
+the committed report uses complete OS measurements, and the counter is corrected.
+
+The immutable combined ZIP is 11,224,486,691 bytes (artifact 13178219451, expires
+2026-11-16T21:03:12Z). One full download took 8 min 24 s. Current consumers passed
+32 covered desktop/phone-emulated cases with zero Overpass; selected-way tags
+added zero network. Large-offset client/preview reads reached byte 3,298,798,068.
+The largest PMTiles archive is 3.38 GB; production >2 GiB Range support still must
+pass the existing pre-promotion probes. Full SFTP publication duration and actual
+OVH free space remain approval/preflight checks. Three full releases use 33.67 GB;
+five use 56.12 GB, or 67.35 GB with a sixth candidate, excluding other files.
+Existing manual retention and rollback rules remain; no automatic deletion.
+
+Border probes deliberately preserve coverage fallback: Tornio/Haparanda,
+Svinesund and Narva serve z14 ways/inspection but fall back for coarser products;
+Kilpisjärvi falls back for z11 hazards. A correct joint-coverage proof and local
+merge are the measured follow-up #699. These limits must not be reported as a
+host outage or a complete empty result. The outside control fails coverage for
+all products. Missing country metadata is rejected rather than inheriting another
+country's footprint. Area/ambiguous nearby-relation geometry remains #696.
+
+The owner approves this artifact target through the PR and separately authorizes
+protected publication. No new data has been published by this task. Last confirmed
+public evidence remains Finland ways/lighting; the live manifest re-read is blocked
+in this environment. After publication, re-read current.json and run the existing
+monitor/Range checks before claiming expanded published coverage.

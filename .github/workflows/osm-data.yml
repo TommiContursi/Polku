@@ -351,7 +351,7 @@ jobs:
           retention-days: 90
 
   publish-existing:
-    # Explicitly inspect, resume or publish the previously verified Finland build.
+    # Explicitly inspect, resume or publish the reviewed complete four-country build.
     # Does not enable unattended publication or rebuild the archive.
     if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'publish-existing' || inputs.operation == 'inspect-existing' || inputs.operation == 'resume-existing') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -364,13 +364,13 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.14.3'
-      - name: Download the successful full-Finland build
+      - name: Download the reviewed successful four-country build
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
-          name: finland-osm-release
+          name: nordic-osm-release
           path: osm-build/release
           github-token: ${{ github.token }}
-          run-id: 41502174378
+          run-id: 41509553858
       - name: Install pinned SFTP dependency
         run: python -m pip install -r tools/osm_data/sftp-requirements.txt
       - name: Inspect, resume or publish the verified OSM release
