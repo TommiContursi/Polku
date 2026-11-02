@@ -5789,6 +5789,21 @@ def pacing(chrome):
     return not fails
 
 
+def hover_feedback(chrome):
+    pg = chrome.page(1440, 900)
+    try:
+        pg.goto(BASE + 'sw.js')
+        pg.js("new Promise(ok => { const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/css/app.css'; css.onload = () => ok(true); document.head.append(css); })")
+        result = pg.js("import('/tools/loading_checks.js').then(async T => { try { return {pass: true, metrics: await T.hoverFeedback()}; } catch(e) { return {pass: false, error: e.message}; } })")
+        errors = pg.errors()
+        if errors:
+            result.update({'pass': False, 'console': errors})
+        print(f"{'ok  ' if result['pass'] else 'FAIL'} hover feedback {json.dumps(result)}", flush=True)
+        return result['pass']
+    finally:
+        pg.close()
+
+
 def loading(chrome):
     """Routing cancellation, service refusal/deadlines, terrain and LIPAS, with controlled answers."""
     passed = True
@@ -16669,6 +16684,7 @@ def osm_data(chrome):
 
 
 GROUPS = [
+    ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),

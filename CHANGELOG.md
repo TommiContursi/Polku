@@ -9,6 +9,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Road and path selections use cached Overpass data and public providers when the hosted snapshot is unavailable or outside its coverage, including outside Finland.
 - Lit ways uses the hosted lighting snapshot when one is published, with the same Overpass fallback elsewhere. Its lighting meanings and appearance stay the same; unknown lighting still gets no line.
 
+### The map gives quicker hints about what you can click ([#689](https://github.com/TommiContursi/Polku/issues/689))
+
+- With editing off, the pointer changes to a pointing hand over roads, paths, routes and other map features you can open. Empty map space keeps the grab cursor, and dragging keeps its drag cursor.
+- Hover hints show the map's own details sooner. Fuller OpenStreetMap and terrain details keep their previous waiting time, so briefly passing over something starts no extra data request.
+
 ### Roads and paths load from Finland's map snapshot ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
 - Picking a road or path in Finland loads its geometry from a hosted OpenStreetMap snapshot instead of waiting for public Overpass servers. The joining rules and card details stay the same; missing data is still shown as unavailable. Routing, map tiles and other detailed map features keep their existing sources.
