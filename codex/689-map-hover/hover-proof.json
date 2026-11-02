@@ -1,0 +1,13 @@
+{
+  "virtual_time_ms": 190,
+  "before": {
+    "visible": false,
+    "cursor": "",
+    "text": ""
+  },
+  "after": {
+    "visible": true,
+    "cursor": "pointer",
+    "text": "Cyclewaypaved"
+  }
+}
