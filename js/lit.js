@@ -1,12 +1,14 @@
 // Lit ways: which ways OpenStreetMap says are lit after dark (lit=yes and the
 // like), and which it says aren't (lit=no). A way it says nothing about gets no
 // line: unknown isn't unlit. OpenFreeMap's tiles don't carry `lit`, so it comes
-// from Overpass, one query per z13 tile (the trail details' grid, about 2.3 km
-// here), cached a week, and only while the overlay is on (#638).
+// from the hosted snapshot where covered, otherwise cached Overpass, on the
+// z13 grid (about 2.3 km here), only while the overlay is on (#638, #154).
 
 import { tileBounds } from './geo.js';
 import { cachedOverpass } from './osm.js';
 import { tilesIn } from './trails.js';
+import { OSM_DATA_MANIFEST } from './config.js';
+import { StaticOSM } from './osm-data.js';
 
 export const LIT_Z = 13;
 export const LIT_MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
@@ -15,6 +17,7 @@ const MAX_VIEW = 12; // more tiles than this in view: zoomed out too far to load
 // Lit and unlit as `lit` values; any other value counts as no tag
 const LIT = 'yes|24/7|automatic|sunset-sunrise|limited|interval';
 const UNLIT = 'no|disused';
+const staticOSM = OSM_DATA_MANIFEST ? new StaticOSM(OSM_DATA_MANIFEST, 'lit', LIT_Z) : null;
 
 // No tags come back (a city-centre tile with them was 5.4 MB, #638), only each way's id and shape: the lit ways, a
 // count as the marker between the sets, then the unlit ones.
@@ -24,13 +27,17 @@ export function litQuery(x, y) {
   return `[out:json][timeout:25];way[highway][lit~"^(${LIT})$"](${bb});out skel geom qt;out count;way[highway][lit~"^(${UNLIT})$"](${bb});out skel geom qt;`;
 }
 
-/** litQuery()'s answer as [id, 1 lit or 0 unlit, flat coordinates]: the ways before the count are lit, after it unlit. */
+/** [id, 1 lit or 0 unlit, flat coordinates]: original hosted tags, or the two Overpass sets separated by a count. */
 export function slimLit(json) {
   const w = [];
   let lit = 1;
   for (const el of json.elements || []) {
     if (el.type === 'count') lit = 0;
-    else if (el.type === 'way' && el.geometry) w.push([el.id, lit, el.geometry.flatMap((p) => [+p.lon.toFixed(6), +p.lat.toFixed(6)])]);
+    else if (el.type === 'way' && el.geometry) {
+      const value = el.tags?.lit;
+      const state = el.tags ? LIT.split('|').includes(value) ? 1 : UNLIT.split('|').includes(value) ? 0 : null : lit;
+      if (state != null) w.push([el.id, state, el.geometry.flatMap((p) => [+p.lon.toFixed(6), +p.lat.toFixed(6)])]);
+    }
   }
   return { v: 1, w };
 }
@@ -51,7 +58,8 @@ export function litTile(x, y) {
   if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true }));
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
-  entry.promise = cachedOverpass(`lit1/${LIT_Z}/${key}`, litQuery(x, y), slimLit, { timeoutMs: 30000 })
+  const fallback = () => cachedOverpass(`lit1/${LIT_Z}/${key}`, litQuery(x, y), slimLit, { timeoutMs: 30000 });
+  entry.promise = (staticOSM ? staticOSM.tile([x, y]).then(slimLit).catch(fallback) : fallback())
     .then((data) => { entry.data = data; for (const fn of listeners) fn(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
   tiles.set(key, entry);

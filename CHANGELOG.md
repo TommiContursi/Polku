@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-02
 
+### Road, path and lighting data keep another way to load ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- Road and path selections use cached Overpass data and public providers when the hosted snapshot is unavailable or outside its coverage, including outside Finland.
+- Lit ways uses the hosted lighting snapshot when one is published, with the same Overpass fallback elsewhere. Its lighting meanings and appearance stay the same; unknown lighting still gets no line.
+
 ### Roads and paths load from Finland's map snapshot ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
 - Picking a road or path in Finland loads its geometry from a hosted OpenStreetMap snapshot instead of waiting for public Overpass servers. The joining rules and card details stay the same; missing data is still shown as unavailable. Routing, map tiles and other detailed map features keep their existing sources.

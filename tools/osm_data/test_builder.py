@@ -98,8 +98,6 @@ class BuilderTests(unittest.TestCase):
             self.assertEqual(manifest['datasets']['ways']['tiles'], 4)
             self.assertEqual(manifest['datasets']['ways']['sha256'],
                              hashlib.sha256((out / 'ways.pmtiles').read_bytes()).hexdigest())
-            self.assertTrue(manifest['release'].endswith(manifest['datasets']['ways']['sha256'][:12]),
-                            'a changed builder must be publishable for the same source snapshot')
             self.assertIn('OpenStreetMap', (out / 'LICENSE.txt').read_text())
 
     def test_archive_is_deterministic_and_existing_release_is_not_overwritten(self):
@@ -115,6 +113,33 @@ class BuilderTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 builder.build_dataset(source, one, self.source_info(source))
             self.assertEqual((one / 'ways.pmtiles').read_bytes(), before)
+
+    def test_lighting_keeps_motorways_and_original_values_and_changes_release_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / 'source.osm'
+            original = OSM.replace('<tag k="highway" v="motorway"/>',
+                                   '<tag k="highway" v="motorway"/><tag k="lit" v="automatic"/>')
+            source.write_text(original)
+            info = self.source_info(source)
+            one, two, changed = [Path(tmp) / p for p in ('one', 'two', 'changed')]
+            a = builder.build_dataset(source, one, info)
+            b = builder.build_dataset(source, two, info)
+            self.assertEqual(a['release'], b['release'])
+            self.assertEqual((one / 'lit.pmtiles').read_bytes(), (two / 'lit.pmtiles').read_bytes())
+            reader = Reader(MemorySource((one / 'lit.pmtiles').read_bytes()))
+            self.assertEqual(reader.header()['min_zoom'], 13)
+            self.assertEqual(reader.header()['max_zoom'], 13)
+            tiles = [json.loads(gzip.decompress(data)) for _, data in all_tiles(MemorySource((one / 'lit.pmtiles').read_bytes()))]
+            way = tiles[0]['elements'][0]
+            self.assertEqual(way['id'], 12)
+            self.assertEqual(way['nodes'], [1, 3])
+            self.assertEqual(way['tags'], {'highway': 'motorway', 'lit': 'automatic'})
+            self.assertEqual(a['datasets']['lit']['zoom'], 13)
+            self.assertEqual(json.loads((one / 'measurements.json').read_bytes())['ways'], 2)
+            source.write_text(original.replace('v="automatic"', 'v="no"'))
+            c = builder.build_dataset(source, changed, info)
+            self.assertEqual((one / 'ways.pmtiles').read_bytes(), (changed / 'ways.pmtiles').read_bytes())
+            self.assertNotEqual(a['release'], c['release'], 'lighting-only changes need a new immutable release')
 
     def test_missing_geometry_refuses_release_and_cleans_staging(self):
         with tempfile.TemporaryDirectory() as tmp:

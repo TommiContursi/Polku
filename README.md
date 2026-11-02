@@ -95,9 +95,11 @@ Polku brings together open data and free public services. Each source keeps its 
 Requests are paced, cached and counted; see **Settings → Data sources**. Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
 
 Road and path selections in Finland use a hosted OpenStreetMap snapshot from
-Geofabrik, served by ducksoft.fi. Only the needed areas are downloaded; routing
-and map tiles keep their existing sources. Other detailed OSM features still
-use Overpass. The [operations guide](docs/OSM_DATA.md) covers source freshness,
+Geofabrik, served by ducksoft.fi; lighting uses its lighting archive when
+published. Unavailable or uncovered tiles fall back to cached Overpass data
+and public providers, including outside Finland. Only needed areas are
+downloaded; routing and map tiles keep their existing sources. Other detailed
+OSM features still use Overpass. The [operations guide](docs/OSM_DATA.md) covers source freshness,
 updates, rollback, data licensing and the host's logging requirements.
 
 Polku's original application code is proprietary: © 2026 Tommi Contursi, all rights reserved. Using the free service does not grant permission to reuse its code in another product. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); third-party code and data retain their own licences.

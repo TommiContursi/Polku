@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build an immutable Finland roads/path release from the full Geofabrik PBF."""
+"""Build immutable Finland road/path and lighting archives from the full Geofabrik PBF."""
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -41,7 +41,7 @@ LICENSE = {
     'name': 'Open Database License 1.0',
     'url': 'https://opendatacommons.org/licenses/odbl/1-0/',
 }
-LICENSE_TEXT = '''Polku Finland roads and paths
+LICENSE_TEXT = '''Polku Finland roads, paths and lighting
 
 © OpenStreetMap contributors. Source: Geofabrik's complete Finland extract.
 https://www.openstreetmap.org/copyright
@@ -112,6 +112,7 @@ class Stager(osmium.SimpleHandler):
         self.source_ways = 0
         self.source_relations = 0
         self.ways = 0
+        self.lit_ways = 0
         self.node_references = 0
         self.bounds = [180.0, 90.0, -180.0, -90.0]
         self.tile_ids = {}
@@ -121,7 +122,9 @@ class Stager(osmium.SimpleHandler):
 
     def way(self, way):
         self.source_ways += 1
-        if not KINDS.fullmatch(way.tags.get('highway', '')):
+        primary = bool(KINDS.fullmatch(way.tags.get('highway', '')))
+        lighting = bool(way.tags.get('highway')) and 'lit' in way.tags
+        if not primary and not lighting:
             return
         nodes, geometry, projected = [], [], []
         for node in way.nodes:
@@ -139,19 +142,26 @@ class Stager(osmium.SimpleHandler):
             raise ValueError(f'Incomplete geometry: way {way.id} has fewer than two nodes')
         body = json_bytes({'type': 'way', 'id': way.id,
                            'tags': dict(way.tags), 'nodes': nodes, 'geometry': geometry})
-        self.db.execute('INSERT INTO ways VALUES (?, ?)', (way.id, body))
+        self.db.execute('INSERT INTO ways VALUES (?, ?, ?)', (way.id, body, int(primary)))
         tiles = set()
         for a, b in zip(projected, projected[1:]):
             tiles.update(segment_tiles(a, b))
-        records = []
-        for xy in tiles:
-            if xy not in self.tile_ids:
-                self.tile_ids[xy] = zxy_to_tileid(ZOOM, *xy)
-            records.append((self.tile_ids[xy], way.id))
-        self.db.executemany('INSERT INTO tile_ways VALUES (?, ?)', records)
-        self.ways += 1
-        self.node_references += len(nodes)
-        if self.ways % 10000 == 0:
+        for enabled, table, zoom in [(primary, 'tile_ways', ZOOM), (lighting, 'tile_lit', 13)]:
+            if not enabled:
+                continue
+            xy_tiles = tiles if zoom == ZOOM else {(x // 2, y // 2) for x, y in tiles}
+            records = []
+            for x, y in xy_tiles:
+                key = (zoom, x, y)
+                if key not in self.tile_ids:
+                    self.tile_ids[key] = zxy_to_tileid(*key)
+                records.append((self.tile_ids[key], way.id))
+            self.db.executemany(f'INSERT INTO {table} VALUES (?, ?)', records)
+        self.lit_ways += int(lighting)
+        if primary:
+            self.ways += 1
+            self.node_references += len(nodes)
+        if self.source_ways % 10000 == 0:
             self.db.commit()
             if self.ways % 100000 == 0:
                 print(f'Staged {self.ways:,} eligible ways', flush=True)
@@ -177,8 +187,10 @@ def stage_source(source, db, index_path):
         PRAGMA synchronous=OFF;
         PRAGMA cache_size=-65536;
         PRAGMA temp_store=FILE;
-        CREATE TABLE ways (id INTEGER PRIMARY KEY, body BLOB NOT NULL);
+        CREATE TABLE ways (id INTEGER PRIMARY KEY, body BLOB NOT NULL, primary_way INTEGER NOT NULL);
         CREATE TABLE tile_ways (tile INTEGER, way INTEGER,
+            PRIMARY KEY (tile, way)) WITHOUT ROWID;
+        CREATE TABLE tile_lit (tile INTEGER, way INTEGER,
             PRIMARY KEY (tile, way)) WITHOUT ROWID;
         CREATE TABLE relations (id INTEGER PRIMARY KEY, tags BLOB NOT NULL,
             member_count INTEGER NOT NULL);
@@ -217,20 +229,21 @@ def distribution(values):
                for p in (50, 95, 99)}, 'max': values[-1], 'total': sum(values)}
 
 
-def archive(db, output, source_info, bounds):
+def archive(db, output, source_info, bounds, *, lighting=False):
     sizes, raw_sizes, max_tile, max_bytes = [], [], None, -1
     relation_refs = 0
     with output.open('wb') as stream:
         writer = Writer(stream)
-        rows = iter(db.execute('''SELECT tw.tile, w.body FROM tile_ways tw
-                                  JOIN ways w ON w.id=tw.way ORDER BY tw.tile, tw.way'''))
+        table = 'tile_lit' if lighting else 'tile_ways'
+        rows = iter(db.execute(f'''SELECT tw.tile, w.body FROM {table} tw
+                                   JOIN ways w ON w.id=tw.way ORDER BY tw.tile, tw.way'''))
         pending = next(rows, None)
         while pending is not None:
             tile, ways = pending[0], []
             while pending is not None and pending[0] == tile:
                 ways.append(pending[1])
                 pending = next(rows, None)
-            relations = tile_relations(db, tile)
+            relations = [] if lighting else tile_relations(db, tile)
             relation_refs += len(relations)
             elements = ways + [json_bytes(relation) for relation in relations]
             raw = b'{"schema":1,"elements":[' + b','.join(elements) + b']}'
@@ -247,7 +260,7 @@ def archive(db, output, source_info, bounds):
             'max_lon_e7': round(bounds[2] * 1e7),
             'max_lat_e7': round(bounds[3] * 1e7),
         }, {
-            'name': 'Polku Finland roads and paths', 'format': 'json', 'schema': 1,
+            'name': 'Polku Finland lighting' if lighting else 'Polku Finland roads and paths', 'format': 'json', 'schema': 1,
             'attribution': ATTRIBUTION, 'license': LICENSE,
             'source': source_info, 'bounds': bounds,
             'coverage': 'Complete intersecting ways from the buffered Finland extract; bounds are extent only.',
@@ -259,7 +272,7 @@ def archive(db, output, source_info, bounds):
             'relation_tile_references': relation_refs}
 
 
-def validate_archive(path, expected_tiles):
+def validate_archive(path, expected_tiles, zoom=ZOOM):
     samples = {}
     with path.open('rb') as stream:
         source = MmapSource(stream)
@@ -278,10 +291,10 @@ def validate_archive(path, expected_tiles):
         if count != expected_tiles:
             raise ValueError('Archive tile count validation failed')
         for name, (lon, lat) in SAMPLES.items():
-            x, y = map(math.floor, tile_point(lon, lat))
-            data = reader.get(ZOOM, x, y)
+            x, y = [math.floor(v / 2 ** (ZOOM - zoom)) for v in tile_point(lon, lat)]
+            data = reader.get(zoom, x, y)
             elements = json.loads(gzip.decompress(data))['elements'] if data else []
-            samples[name] = {'lon': lon, 'lat': lat, 'tile': [ZOOM, x, y],
+            samples[name] = {'lon': lon, 'lat': lat, 'tile': [zoom, x, y],
                              'gzip_bytes': len(data) if data else 0,
                              'raw_bytes': len(gzip.decompress(data)) if data else 0,
                              'ways': sum(e['type'] == 'way' for e in elements),
@@ -300,7 +313,7 @@ def file_record(path):
 def check_finland(handler, source_info, db):
     west, south, east, north = handler.bounds
     relations = db.execute('''SELECT count(DISTINCT m.relation) FROM members m
-                             JOIN ways w ON w.id=m.way''').fetchone()[0]
+                             JOIN ways w ON w.id=m.way WHERE w.primary_way=1''').fetchone()[0]
     tiles = db.execute('SELECT count(DISTINCT tile) FROM tile_ways').fetchone()[0]
     if (source_info['bytes'] < 100_000_000 or handler.source_nodes < 10_000_000 or
             handler.ways < 300_000 or relations < 100 or tiles < 20_000 or
@@ -326,16 +339,24 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
             if full_country:
                 check_finland(handler, source_info, db)
             stats = archive(db, stage / 'ways.pmtiles', source_info, handler.bounds)
+            if handler.lit_ways:
+                stats['lighting'] = archive(db, stage / 'lit.pmtiles', source_info, handler.bounds, lighting=True)
+                stats['lighting']['ways'] = handler.lit_ways
+            elif full_country:
+                raise ValueError('Complete-Finland source has no lighting ways')
             stats.update({
                 'source_nodes': handler.source_nodes, 'source_ways': handler.source_ways,
                 'source_relations': handler.source_relations, 'ways': handler.ways,
                 'eligible_node_references': handler.node_references,
                 'relations': db.execute('''SELECT count(DISTINCT m.relation) FROM members m
-                                          JOIN ways w ON w.id=m.way''').fetchone()[0],
+                                          JOIN ways w ON w.id=m.way WHERE w.primary_way=1''').fetchone()[0],
                 'way_tile_references': db.execute('SELECT count(*) FROM tile_ways').fetchone()[0],
             })
         stats['way_duplication_factor'] = stats['way_tile_references'] / stats['ways']
         stats['sample_tiles'] = validate_archive(stage / 'ways.pmtiles', stats['tiles'])
+        if 'lighting' in stats:
+            lit = stats['lighting']
+            lit['sample_tiles'] = validate_archive(stage / 'lit.pmtiles', lit['tiles'], 13)
         if full_country and not stats['sample_tiles']['Helsinki']['ways']:
             raise ValueError('Complete-Finland archive is missing Helsinki sample roads')
         stats['build_seconds'] = round(time.monotonic() - started, 3)
@@ -348,20 +369,29 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
         }
         (stage / 'measurements.json').write_bytes(json_bytes(stats) + b'\n')
         (stage / 'LICENSE.txt').write_text(LICENSE_TEXT, encoding='utf-8')
-        files = [file_record(stage / name)
-                 for name in ('ways.pmtiles', 'LICENSE.txt', 'measurements.json')]
-        archive_record = files[0]
+        datasets = {}
+        for name, zoom in [('ways', ZOOM), ('lit', 13)]:
+            if not (stage / f'{name}.pmtiles').exists():
+                continue
+            record = file_record(stage / f'{name}.pmtiles')
+            datasets[name] = {'format': 'pmtiles-json', 'schema': 1, 'zoom': zoom,
+                              'url': record['path'], 'bytes': record['bytes'], 'sha256': record['sha256'],
+                              'tiles': stats['tiles'] if name == 'ways' else stats['lighting']['tiles']}
+        coverage = json.loads((Path(__file__).resolve().parents[2] / 'data/finland-coverage.geojson').read_bytes()) if full_country else None
+        content_hash = hashlib.sha256(json_bytes({'datasets': datasets, 'coverage': coverage})).hexdigest()
+        files = [file_record(stage / name) for name in
+                 [*(d['url'] for d in datasets.values()), 'LICENSE.txt', 'measurements.json']]
         release = (source_info['timestamp'].replace('-', '').replace(':', '')
-                   + '-' + source_info['sha256'][:12] + '-' + archive_record['sha256'][:12])
+                   + '-' + source_info['sha256'][:12] + '-' + content_hash[:12])
         manifest = {
             'schema': 1, 'release': release,
             'built_at': datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z'),
             'source': source_info, 'bounds': handler.bounds,
-            'datasets': {'ways': {'format': 'pmtiles-json', 'schema': 1, 'zoom': ZOOM,
-                                   'url': 'ways.pmtiles', 'bytes': archive_record['bytes'],
-                                   'sha256': archive_record['sha256'], 'tiles': stats['tiles']}},
+            'datasets': datasets,
             'files': files, 'attribution': ATTRIBUTION, 'license': LICENSE,
         }
+        if coverage:
+            manifest['coverage'] = coverage
         (stage / 'manifest.json').write_bytes(json_bytes(manifest) + b'\n')
         if output.exists():
             raise FileExistsError(f'Release already exists: {output}')
