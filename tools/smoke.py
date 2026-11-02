@@ -14512,15 +14512,15 @@ def facts(chrome):
             fails.append(f'the facts differ by sport: MTB {mtb}, Hike {hike}')
         pg.js("polku.set({ activity: 'mtb' }); new Promise((r) => setTimeout(r, 600))")
         # ---- All OpenStreetMap details with a hold: one Overpass request, its tags on the card, a second press asks nothing
-        way = {'type': 'way', 'id': 123456789, 'tags': {'highway': 'path', 'surface': 'dirt', 'mtb:scale': '1', 'check_date': '2024-06-12'},
+        way = {'type': 'way', 'id': 1063593742, 'tags': {'highway': 'path', 'surface': 'dirt', 'mtb:scale': '1', 'check_date': '2024-06-12'},
                'geometry': [{'lat': 61.5113, 'lon': 23.8174}, {'lat': 61.5114, 'lon': 23.8176}]}
         pg.js(f"fa.answer = () => ({json.dumps({'elements': [way]})}); fa.asked.length = 0; true")
         hold(path)
         btn('All OpenStreetMap details')
         time.sleep(1.5)
         s = st()
-        if len(pg.js('fa.asked')) != 1 or 'way 123456789' not in s['text'] or has('All OpenStreetMap details'):
-            fails.append(f"All OpenStreetMap details: {len(pg.js('fa.asked'))} requests, “way 123456789” {'in' if 'way 123456789' in s['text'] else 'not in'} the card, its button {'still there' if has('All OpenStreetMap details') else 'gone'}")
+        if len(pg.js('fa.asked')) != 1 or 'way 1063593742' not in s['text'] or has('All OpenStreetMap details'):
+            fails.append(f"All OpenStreetMap details: {len(pg.js('fa.asked'))} requests, “way 1063593742” {'in' if 'way 1063593742' in s['text'] else 'not in'} the card, its button {'still there' if has('All OpenStreetMap details') else 'gone'}")
         pg.js("polku.planner.osmOnCard(polku.planner.cards.current, polku.planner.cards.current.key); true")
         time.sleep(0.5)
         if len(pg.js('fa.asked')) != 1:
@@ -14528,7 +14528,7 @@ def facts(chrome):
         # Not right? for the way: its editor by the id OpenStreetMap's details came with, and the note at the spot
         btn('Not right?')
         time.sleep(0.4)
-        if not any(re.match(r'https://www\.openstreetmap\.org/note/new#map=19/61\.\d+/23\.\d+$', x) for x in links()) or 'https://www.openstreetmap.org/edit?way=123456789' not in links():
+        if not any(re.match(r'https://www\.openstreetmap\.org/note/new#map=19/61\.\d+/23\.\d+$', x) for x in links()) or 'https://www.openstreetmap.org/edit?way=1063593742' not in links():
             fails.append(f'Not right? for a way: {links()}')
         # ---- a failure says so and keeps the button; an answer after the card closed changes nothing
         pg.js("fa.answer = () => 503; fa.asked.length = 0; true")
