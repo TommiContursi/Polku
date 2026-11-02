@@ -75,10 +75,10 @@ CHANGELOG. Reuse the existing binary overlay result format and UI.
   missing optional dataset, hosted failure and non-Finland fallback.
 - [x] Read z13 lighting tiles from the shared source; fall back to the existing
   query and `slimLit()` path when necessary. Do not change #657's semantics.
-- [ ] Verify live-like local preview, cold-cache performance, mobile behavior
+- [x] Verify live-like local preview, cold-cache performance, mobile behavior
   and failure handling. Build an Actions artifact without publishing; record
   the exact run for reviewed manual publication after merge.
-- [ ] Open/update the PR with actual results and activation boundaries; wait
+- [x] Open/update the PR with actual results and activation boundaries; wait
   for owner merge/publication approval where required.
 
 ## Local verification, 2026-11-02
@@ -101,6 +101,17 @@ CHANGELOG. Reuse the existing binary overlay result format and UI.
   behavior now requires fallback there. The interior Rovaniementie sample
   completes 25.1 km with no public query or unloaded end.
 - Joining diagnostics remain on #676; Settings failure visibility is #687.
+- Actions build [41423123110](https://github.com/TommiContursi/Polku/actions/runs/41423123110)
+  passed 44 Python checks, ten reader checks, full-country browser checks and
+  six desktop/phone measurements, then retained the source and release artifacts.
+  It used the next upstream snapshot, 2026-11-01T21:21:36Z; release
+  `20261101T212136Z-be6fdbc1839f-09c08f6d8465`. Local figures above describe
+  the 2026-10-31 source, not this newer artifact. The reviewed manual-publication
+  pin now names that successful run. Nothing has been published.
+- The existing production monitor passed again. A live Tallinn attempt exhausted
+  its Overpass round; fallback restores the global path but cannot guarantee
+  public-provider availability. Nearby-country transport/coverage checks remain
+  controlled so they do not depend on a healthy public server.
 
 ## Follow-on work already requested
 

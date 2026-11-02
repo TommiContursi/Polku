@@ -223,7 +223,7 @@ jobs:
           name: finland-osm-release
           path: osm-build/release
           github-token: ${{ github.token }}
-          run-id: 41350050764
+          run-id: 41423123110
       - name: Install pinned SFTP dependency
         run: python -m pip install -r tools/osm_data/sftp-requirements.txt
       - name: Inspect, resume or publish the verified OSM release
