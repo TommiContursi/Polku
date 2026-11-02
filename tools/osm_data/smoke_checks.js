@@ -44,6 +44,10 @@ export async function checkStaticOSM() {
       { type: 'relation', id: 1, tags: { type: 'restriction', name: 'Not a route' }, members: [{ type: 'way', ref: 10 }] },
       { type: 'relation', id: 2, tags: { type: 'route', route: 'hiking', name: 'The route' }, members: [{ type: 'way', ref: 10 }] }] });
     if (slim.w[0][5] !== 'The route' || slim.w[0][4].at(-2) !== 0.06) fails.push('card adapter loses geometry or uses a restriction as a route name');
+    manifest.datasets.ways.zoom = 13;
+    try { await new StaticOSM(root+'wrong-zoom/current.json','ways',13).tile([4096,4096]); fails.push('wrong archive zoom looks like an empty successful tile'); }
+    catch (e) { if (!/archive zoom/.test(e.message)) fails.push(String(e)); }
+    finally { manifest.datasets.ways.zoom = 14; }
     const store = idb('overpass'), key = `static/${root}ways.pmtiles/fixture/14/8192/8192`;
     const saved = await store.get(key);
     if (!saved) fails.push('selected tile was not saved for reuse');

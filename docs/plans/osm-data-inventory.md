@@ -80,3 +80,14 @@ This audit read the consumers, plans and relevant issue bodies; it did not measu
 Current main d84fd6a already includes hosted ways and lighting; the original inventory above predates both publication and the lighting integration. The builder preserves all way tags, so highway full-tag inspection can reuse raw hosted data rather than assuming it holds only KEEP. The current implementation plan is `../superpowers/plans/2026-11-02-hosted-osm-consumers.md`. Its first PR adds optional trail/barrier, winter, hazard and overnight datasets and their readers together. These are client/build changes until an approved artifact is actually published. Full-tag/area inspection and four-country coverage are subsequent independently testable PRs; this checkpoint does not advertise additional live coverage.
 
 The inspection PR reuses full raw ways for exact selected-way tags and adds the broader z14 inspection product for all highways and existing place classes. Exact IDs retain node/way/relation namespaces. Ambiguous nearby relation geometry stays on bounded fallback. Area migration was measured rather than assumed: see #696 and `../measurements/osm-areas-2026-11-02.json` for the large-ring transfer constraint and required clipped containment/outline follow-up.
+
+
+The four-country candidate adds FI/SE/NO/EE archives for all seven products
+(ways, lit, trails, winter, hazards, places, inspection), retaining original
+Finland manifest keys for compatibility. Clipping polygons decide tile coverage;
+rectangles do not. Equal-epoch original objects are compared across overlaps,
+including node/way/relation namespaces and original ordered topology. A tile
+requiring a polygon union conservatively falls back. Published coverage must be
+verified from the promoted manifest, independently of these client/build changes.
+Large area containment/outlines remain #696; incomplete/ambiguous nearby relation
+inspection also retains fallback rather than using a misleading centre distance.

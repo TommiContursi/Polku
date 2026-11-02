@@ -1,4 +1,4 @@
-name: Finland OSM data
+name: Polku OSM data
 
 on:
   pull_request:
@@ -95,10 +95,40 @@ jobs:
           OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
         run: python tools/osm_data/publish.py test-host
 
+  snapshot:
+    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      stamp: ${{ steps.snapshot.outputs.stamp }}
+    steps:
+      - id: snapshot
+        name: Pick a completed dated export shared by every country
+        run: |
+          for osm_days in 1 2; do
+            osm_stamp=$(date -u -d "$osm_days days ago" +%y%m%d)
+            osm_ready=true
+            for osm_country in finland sweden norway estonia; do
+              curl --head --fail --silent --location --max-time 20 "https://download.geofabrik.de/europe/$osm_country-$osm_stamp.osm.pbf.md5" -o /dev/null || osm_ready=false
+            done
+            if $osm_ready; then
+              echo "stamp=$osm_stamp" >> "$GITHUB_OUTPUT"
+              echo "Shared dated snapshot: $osm_stamp" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo 'No completed common country snapshot within two days' >&2
+          exit 1
+
   build:
+    needs: snapshot
     if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        country: [finland, sweden, norway, estonia]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -111,14 +141,96 @@ jobs:
           python -m pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
           python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
           node --test tools/osm_data/client.test.mjs
-      - name: Download complete Finland source and checksum
+      - name: Download one complete country, checksum and clipping polygon
+        env:
+          COUNTRY: ${{ matrix.country }}
+          SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
         run: |
           mkdir -p osm-build
-          curl --fail --location --retry 3 https://download.geofabrik.de/europe/finland-latest.osm.pbf -o osm-build/finland.osm.pbf
-          curl --fail --location --retry 3 https://download.geofabrik.de/europe/finland-latest.osm.pbf.md5 -o osm-build/finland.osm.pbf.md5
+          df -h .
+          curl --fail --location --retry 3 --connect-timeout 30 --max-time 900 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf
+          curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf.md5" -o osm-build/source.md5
+          curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY.poly" -o osm-build/coverage.poly
       - name: Transform, validate and measure
-        run: python tools/osm_data/builder.py osm-build/finland.osm.pbf osm-build/release --md5 osm-build/finland.osm.pbf.md5
-      - name: Browser selection and mobile emulation against the full archive
+        env:
+          COUNTRY: ${{ matrix.country }}
+          SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
+        run: |
+          /usr/bin/time -v python tools/osm_data/builder.py osm-build/source.osm.pbf osm-build/release --md5 osm-build/source.md5 --country "$COUNTRY" --coverage osm-build/coverage.poly --snapshot "$SNAPSHOT"
+          df -h .
+      - name: Measure complete-country browser transfers with Overpass forbidden
+        env:
+          COUNTRY: ${{ matrix.country }}
+          POLKU_URL: http://127.0.0.1:8765/
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-chrome
+        run: |
+          python tools/osm_data/preview.py --release osm-build/release --port 8765 > osm-build/preview.log 2>&1 &
+          for i in $(seq 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8765/index.html; then break; fi
+            sleep 1
+          done
+          if [ "$COUNTRY" = finland ]; then python tools/smoke.py osmdata; fi
+          python tools/osm_data/measure_browser.py --country "$COUNTRY" > osm-build/browser-measurements.json
+      - name: Build measurements
+        if: always()
+        run: |
+          if test -f osm-build/release/measurements.json; then
+            echo '### Country OSM build' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat osm-build/release/measurements.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Retain small measurements and manifest independently of archives
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-evidence
+          path: |
+            osm-build/browser-measurements.json
+            osm-build/preview.log
+            osm-build/release/measurements.json
+            osm-build/release/manifest.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-release
+          path: osm-build/release/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-source
+          path: |
+            osm-build/source.osm.pbf
+            osm-build/source.md5
+            osm-build/coverage.poly
+          compression-level: 0
+          retention-days: 14
+
+  bundle:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          pattern: osm-*-release
+          path: osm-build/countries
+      - name: Validate source epoch and all overlapping original object identities
+        run: |
+          python -m tools.osm_data.bundle osm-build/release osm-build/countries/osm-finland-release osm-build/countries/osm-sweden-release osm-build/countries/osm-norway-release osm-build/countries/osm-estonia-release
+          df -h .
+      - name: Verify the combined reader and browser transfers
         env:
           POLKU_URL: http://127.0.0.1:8765/
           POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
@@ -130,44 +242,27 @@ jobs:
             sleep 1
           done
           python tools/smoke.py osmdata
-          python tools/osm_data/measure_browser.py > osm-build/browser-measurements.json
-      - name: Build measurements
+          python tools/osm_data/measure_browser.py --country all > osm-build/browser-measurements.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
-        run: |
-          if test -f osm-build/release/measurements.json; then
-            echo '### Finland-wide OSM build' >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            cat osm-build/release/measurements.json >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          fi
-      - name: Browser evidence
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: finland-osm-browser-evidence
+          name: osm-four-country-evidence
           path: |
+            osm-build/release/manifest.json
+            osm-build/release/measurements.json
             osm-build/browser-measurements.json
             osm-build/preview.log
-          if-no-files-found: ignore
           retention-days: 14
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: finland-osm-release
+          name: nordic-osm-release
           path: osm-build/release/
           compression-level: 0
           retention-days: 14
           if-no-files-found: error
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: finland-osm-source
-          path: |
-            osm-build/finland.osm.pbf
-            osm-build/finland.osm.pbf.md5
-          compression-level: 0
-          retention-days: 14
 
   publish:
-    needs: build
+    needs: bundle
     if: vars.OSM_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -181,7 +276,7 @@ jobs:
           python-version: '3.14.3'
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
-          name: finland-osm-release
+          name: nordic-osm-release
           path: osm-build/release
       - name: Install pinned SFTP dependency
         run: python -m pip install -r tools/osm_data/sftp-requirements.txt

@@ -423,3 +423,13 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 - **Impeccable** ([impeccable.style](https://impeccable.style)) is installed per user, not here. Its hooks and local settings are in `.gitignore`; what it writes about Polku is committed: [PRODUCT.md](../PRODUCT.md), and [DESIGN.md](../DESIGN.md) with the tokens (colours, type, shapes, spacing, depth and motion) from `css/app.css`. DESIGN.md leaves the controls to "Shared controls" above, and `css/app.css` stays the source: when a token changes there, run `/impeccable document` again (or edit DESIGN.md to match) in the same PR. `tools/smoke.py values` fails when a colour in DESIGN.md's frontmatter isn't the CSS's.
 
 `inspectionAt()` in `js/inspect.js` reads z14 hosted raw objects in the requested 12/40 m neighbourhood, deduplicating by type/ID. `wayNear()` filters by an exact ID before measuring; an absent ID cannot become a nearer substitute. If the optional inspection product is unavailable, an exact way can reuse the original ways archive's full tags. Nearby way selection needs the all-highway inspection dataset. Node/relation exact tags and unambiguous nearby places use the same object archive; unsupported or ambiguous objects retain one 15-second Overpass round. `areaAt()` retains the same bounded round pending #696's clipped area representation.
+
+
+Four-country OSM candidates keep separate archives per country. Each manifest dataset
+record has `kind`, `country`, `coverage` and source provenance; original Finland keys
+remain readable by old clients. `StaticOSM.ready(xy)` chooses an archive only when
+its clipping polygon wholly covers that tile. Readers share manifests and archive
+indices, validate PMTiles zoom/type/compression and never fetch entire countries.
+`bundle.py` refuses conflicting overlapping original IDs or mismatched epochs.
+Run the focused OSM tests and the candidate workflow before changing the reviewed
+publication pin. See `docs/OSM_DATA.md`; no candidate implies live publication.

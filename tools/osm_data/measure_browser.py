@@ -3,6 +3,7 @@
 POLKU_URL=http://127.0.0.1:8796/ python tools/osm_data/measure_browser.py > measurements.json
 The phone case is Chrome emulation: 4x CPU, 80 ms latency, 10 Mbit/s download.
 """
+import argparse
 from contextlib import redirect_stdout
 import json
 from pathlib import Path
@@ -21,6 +22,13 @@ SAMPLES = {
     'Tykkikallio Jyvaskyla': [25.7656, 62.2306],
 }
 
+COUNTRY_SAMPLES = {
+    'finland': SAMPLES,
+    'sweden': {'Stockholm':[18.0686,59.3293],'Gothenburg coast':[11.9746,57.7089],'Kiruna north':[20.225,67.855]},
+    'norway': {'Oslo':[10.7522,59.9139],'Bergen coast':[5.3221,60.393],'Tromso north':[18.9553,69.6492],'Oslomarka forest':[10.68,60.0]},
+    'estonia': {'Tallinn':[24.7536,59.437],'Tartu':[26.7251,58.3776],'Lahemaa forest':[25.97,59.57]},
+}
+
 SCRIPT = """(async () => {
  const W = await import('/js/ways.js'), L = await import('/js/lit.js'), G = await import('/js/geo.js'), calls = [], real = window.fetch;
  const { OSM_DATA_MANIFEST } = await import('/js/config.js'), dataRoot = new URL('.', OSM_DATA_MANIFEST).href;
@@ -32,7 +40,7 @@ SCRIPT = """(async () => {
    return res;
  };
  const { StaticOSM } = await import('/js/osm-data.js');
- const products = Object.entries({trails:13,winter:12,hazards:11,places:12}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
+ const products = Object.entries({trails:13,winter:12,hazards:11,places:12,inspection:14}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
  const out = [];
  try {
    for (const [name,ll] of Object.entries(SAMPLES)) {
@@ -79,6 +87,10 @@ SCRIPT = """(async () => {
 
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--country',choices=[*COUNTRY_SAMPLES,'all'],default='finland')
+    args=parser.parse_args()
+    samples=COUNTRY_SAMPLES[args.country] if args.country!='all' else {name:ll for cases in COUNTRY_SAMPLES.values() for name,ll in cases.items()}
     output = sys.stdout
     with redirect_stdout(sys.stderr):
         chrome = Chrome()
@@ -95,8 +107,8 @@ def main():
                         chrome.send('Emulation.setCPUThrottlingRate', {'rate': 4}, page.s)
                         chrome.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 80,
                                     'downloadThroughput': 1250000, 'uploadThroughput': 625000}, page.s)
-                    data = page.js(SCRIPT.replace('SAMPLES', json.dumps(SAMPLES)), timeout=180000)
-                    assert len(data) == len(SAMPLES) and all(row['pieces'] and row['metres'] > 0 for row in data)
+                    data = page.js(SCRIPT.replace('SAMPLES', json.dumps(samples)), timeout=180000)
+                    assert len(data) == len(samples) and all(row['pieces'] and row['metres'] > 0 for row in data)
                     assert data[0]['requests'] > 0 and data[0]['bytes'] > 0, 'cold source requests were not measured'
                     assert all(not stop.get('unloaded') for row in data for stop in row['stops'].values()), 'selection ended on missing data'
                     result['cases'][label] = data

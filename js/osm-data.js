@@ -48,16 +48,53 @@ function validateTile(json) {
   return json;
 }
 
+function coversTile(coverage, bounds) {
+  const [w,s,e,n] = bounds;
+  const polygons = coverage.type === 'Polygon' ? [coverage.coordinates] : coverage.type === 'MultiPolygon' ? coverage.coordinates : null;
+  if (!Array.isArray(polygons) || !polygons.length || !polygons.every((rings) => Array.isArray(rings) && rings.length && rings.every((r) => Array.isArray(r) && r.length >= 4
+    && r.every((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90)
+    && r[0][0] === r.at(-1)[0] && r[0][1] === r.at(-1)[1]))) throw new Error('Invalid OSM coverage');
+  // Corners alone miss a hole or concave border through the tile; any border contact uses Overpass.
+  const covered = polygons.some((rings) => {
+    const corners = [[w, s], [e, s], [e, n], [w, n]].every(([x, y]) => {
+      const inside = rings.map((ring) => {
+        let yes = false;
+        for (let i = 1; i < ring.length; i++) {
+          const [a, b] = ring[i - 1], [c, d] = ring[i];
+          if ((b > y) !== (d > y) && x < (c - a) * (y - b) / (d - b) + a) yes = !yes;
+        }
+        return yes;
+      });
+      return inside[0] && !inside.slice(1).some(Boolean);
+    });
+    return corners && !rings.some((r) => r.slice(1).some((b, i) => {
+      const a = r[i];
+      let lo = 0, hi = 1;
+      for (const [axis, min, max] of [[0, w, e], [1, s, n]]) {
+        const delta = b[axis] - a[axis];
+        if (!delta) { if (a[axis] < min || a[axis] > max) return false; }
+        else {
+          const t = [(min - a[axis]) / delta, (max - a[axis]) / delta].sort((x, y) => x - y);
+          lo = Math.max(lo, t[0]); hi = Math.min(hi, t[1]);
+          if (lo > hi) return false;
+        }
+      }
+      return true;
+    }));
+  });
+  return covered;
+}
+
 export class StaticOSM {
   constructor(url, dataset = 'ways', zoom = 14) {
     this.url = url;
     this.dataset = dataset;
     this.zoom = zoom;
-    this.reader = null;
+    this.readers = new Map();
     this.tiles = new Map();
   }
 
-  async ready() {
+  async ready(xy = null) {
     const old = releases.get(this.url);
     if (old?.failedAt && Date.now() - old.failedAt >= 120e3) releases.delete(this.url);
     if (!releases.has(this.url)) {
@@ -86,22 +123,35 @@ export class StaticOSM {
       }).catch((err) => { entry.failedAt = Date.now(); throw err; });
       releases.set(this.url, entry);
     }
-    const manifest = await releases.get(this.url).promise, d = manifest.datasets[this.dataset];
-    if (d?.format !== 'pmtiles-json' || d.schema !== 1 || d.zoom !== this.zoom || !Number.isSafeInteger(d.bytes) || d.bytes < 127) throw new Error('Unsupported OSM dataset');
-    const url = new URL(d.url, this.url), base = new URL(this.url);
-    if (url.origin !== base.origin || !['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid OSM archive URL');
-    return { manifest, url: url.href, bytes: d.bytes, nearby_complete: d.nearby_complete };
+    const manifest = await releases.get(this.url).promise;
+    const records = Object.entries(manifest.datasets).filter(([name,d])=>name===this.dataset || d.kind===this.dataset).map(([,d])=>d);
+    if (!records.length) throw new Error('Unsupported OSM dataset');
+    let selected;
+    for (const d of records) {
+      if (d?.format!=='pmtiles-json' || d.schema!==1 || d.zoom!==this.zoom || !Number.isSafeInteger(d.bytes) || d.bytes<127) throw new Error('Unsupported OSM dataset');
+      const effective = {...manifest,bounds:d.bounds || manifest.bounds,coverage:d.coverage || manifest.coverage,source:d.source || manifest.source};
+      if (xy && records.length>1) {
+        const bounds=tileBounds(...xy,this.zoom);
+        if (effective.coverage ? !coversTile(effective.coverage,bounds) : bounds[2]<effective.bounds[0] || bounds[0]>effective.bounds[2] || bounds[3]<effective.bounds[1] || bounds[1]>effective.bounds[3]) continue;
+      }
+      selected={d,effective};break;
+    }
+    if (!selected) throw new Error('Outside static OSM coverage');
+    const {d,effective}=selected;
+    const url = new URL(d.url,this.url), base = new URL(this.url);
+    if (url.origin!==base.origin || !['https:','http:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid OSM archive URL');
+    return {manifest:effective,url:url.href,bytes:d.bytes,nearby_complete:d.nearby_complete};
   }
 
   tile(xy, options = {}) { return deadline((signal) => this.readTile(xy, options, signal)); }
 
   async readTile([x, y], { force = false }, signal) {
     if (![x, y].every((v) => Number.isInteger(v) && v >= 0 && v < 2 ** this.zoom)) throw new Error('Invalid OSM tile');
-    const { manifest, url, bytes, nearby_complete } = await this.ready();
+    const { manifest, url, bytes, nearby_complete } = await this.ready([x,y]);
     const bounds = tileBounds(x, y, this.zoom), [w, s, e, n] = bounds, [west, south, east, north] = manifest.bounds;
-    if (e < west || w > east || n < south || s > north) throw new Error('Outside static OSM coverage');
+    if (!manifest.coverage && (e < west || w > east || n < south || s > north)) throw new Error('Outside static OSM coverage');
     const key = `static/${url}/${manifest.release}/${this.zoom}/${x}/${y}`;
-    if (force) { this.tiles.delete(key); this.reader = null; }
+    if (force) { this.tiles.delete(key); this.readers.delete(url); }
     if (this.tiles.has(key)) return this.tiles.get(key);
     const promise = (async () => {
       const hit = await cache.get(key).catch(() => null);
@@ -115,44 +165,10 @@ export class StaticOSM {
           .catch((err) => { finlandCoverage = null; throw err; });
         coverage = await finlandCoverage;
       }
-      if (coverage) {
-        const polygons = coverage.type === 'Polygon' ? [coverage.coordinates] : coverage.type === 'MultiPolygon' ? coverage.coordinates : null;
-        if (!Array.isArray(polygons) || !polygons.length || !polygons.every((rings) => Array.isArray(rings) && rings.length && rings.every((r) => Array.isArray(r) && r.length >= 4
-          && r.every((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90)
-          && r[0][0] === r.at(-1)[0] && r[0][1] === r.at(-1)[1]))) throw new Error('Invalid OSM coverage');
-        // Corners alone miss a hole or concave border through the tile; any border contact uses Overpass.
-        const covered = polygons.some((rings) => {
-          const corners = [[w, s], [e, s], [e, n], [w, n]].every(([x, y]) => {
-            const inside = rings.map((ring) => {
-              let yes = false;
-              for (let i = 1; i < ring.length; i++) {
-                const [a, b] = ring[i - 1], [c, d] = ring[i];
-                if ((b > y) !== (d > y) && x < (c - a) * (y - b) / (d - b) + a) yes = !yes;
-              }
-              return yes;
-            });
-            return inside[0] && !inside.slice(1).some(Boolean);
-          });
-          return corners && !rings.some((r) => r.slice(1).some((b, i) => {
-            const a = r[i];
-            let lo = 0, hi = 1;
-            for (const [axis, min, max] of [[0, w, e], [1, s, n]]) {
-              const delta = b[axis] - a[axis];
-              if (!delta) { if (a[axis] < min || a[axis] > max) return false; }
-              else {
-                const t = [(min - a[axis]) / delta, (max - a[axis]) / delta].sort((x, y) => x - y);
-                lo = Math.max(lo, t[0]); hi = Math.min(hi, t[1]);
-                if (lo > hi) return false;
-              }
-            }
-            return true;
-          }));
-        });
-        if (!covered) throw new Error('Outside static OSM coverage');
-      }
+      if (coverage && !coversTile(coverage,bounds)) throw new Error('Outside static OSM coverage');
       signal.throwIfAborted();
       const { PMTiles } = await import('./vendor/pmtiles-4.5.0.js');
-      if (!this.reader) this.reader = new PMTiles({
+      if (!this.readers.has(url)) this.readers.set(url,new PMTiles({
         getKey: () => url,
         getBytes: async (offset, length, rangeSignal) => {
           const end = Math.min(bytes, offset + length) - 1;
@@ -166,8 +182,10 @@ export class StaticOSM {
           if (data.byteLength !== end - offset + 1) throw new Error('Incomplete OSM Range');
           return { data };
         },
-      });
-      const tile = await this.reader.getZxy(this.zoom, x, y, signal);
+      }));
+      const header = await this.readers.get(url).getHeader();
+      if (header.minZoom!==this.zoom || header.maxZoom!==this.zoom || header.tileType!==0 || header.tileCompression!==2) throw new Error('Unsupported OSM archive zoom or format');
+      const tile = await this.readers.get(url).getZxy(this.zoom, x, y, signal);
       if (tile && tile.data.byteLength > 32 * 1024 * 1024) throw new Error('OSM tile too large');
       const json = tile ? JSON.parse(new TextDecoder().decode(tile.data)) : { schema: 1, elements: [] };
       validateTile(json);
@@ -176,9 +194,9 @@ export class StaticOSM {
       json.source = { ...manifest.source, provider: 'Polku OSM data', attribution: manifest.attribution };
       cache.set(key, { at: Date.now(), json }).catch(() => {});
       return json;
-    })().catch((err) => { if (this.tiles.get(key) === promise) { this.tiles.delete(key); this.reader = null; } throw err; });
+    })().catch((err) => { if (this.tiles.get(key) === promise) { this.tiles.delete(key); this.readers.delete(url); } throw err; });
     signal.addEventListener('abort', () => {
-      if (this.tiles.get(key) === promise) { this.tiles.delete(key); this.reader = null; }
+      if (this.tiles.get(key) === promise) { this.tiles.delete(key); this.readers.delete(url); }
     }, { once: true });
     this.tiles.set(key, promise);
     if (this.tiles.size > 64) this.tiles.delete(this.tiles.keys().next().value);

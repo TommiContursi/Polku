@@ -1,6 +1,6 @@
-# Operating Finland's static OSM data
+# Operating static OSM data
 
-The #154 implementation builds Finland's roads, paths and lighting outside the
+The #154 pipeline builds roads, paths, lighting and existing outdoor details outside the
 web host and serves complete features through static PMTiles archives. The app source
 is selected by `OSM_DATA_MANIFEST` in `js/config.js`. Data publication is separate
 from app activation; changing the app URL does not upload data or change OVH.
@@ -139,14 +139,14 @@ to that process. It still uses verified automated transfers, not manual uploads.
 If the deployment environment permits only `main`, merge the SFTP fix
 with `OSM_PUBLISH_ENABLED` unset and the app's source setting empty. Add the
 verified `OSM_SFTP_HOST_KEY_SHA256` environment secret. Then run
-**Finland OSM data → verify-access** first. This protected operation checks pinned-host-key SFTP
+**Polku OSM data → verify-access** first. This protected operation checks pinned-host-key SFTP
 login and directory listing, and reports the public manifest's HTTP/CORS status.
 It writes no hosting files and does not prove upload, Range or rename capability.
 The default manual operation is this read-only check; full publication stays gated.
 
-Run **Finland OSM data → test-host** first. This writes only tiny disposable files into a unique `host-test-*` subdirectory of `polku-osm`, checks SFTP upload/readback, POSIX rename-over-existing, directory rename and public HTTP Range/CORS/cache, then removes its test folder. It never touches the real `current.json`, and it works without enabling publication.
+Run **Polku OSM data → test-host** first. This writes only tiny disposable files into a unique `host-test-*` subdirectory of `polku-osm`, checks SFTP upload/readback, POSIX rename-over-existing, directory rename and public HTTP Range/CORS/cache, then removes its test folder. It never touches the real `current.json`, and it works without enabling publication.
 
-Run **Actions → Finland OSM data → build**. Weekly builds are scheduled Monday
+Run **Actions → Polku OSM data → build**. Weekly builds are scheduled Monday
 at 03:17 UTC. Build checks, transformation, gzip validation, country count and
 extent gates, and full-country browser checks all run before publication.
 The source must be at most 14 days old. The workflow retains source and release
@@ -181,8 +181,9 @@ lighting tiles prefer the configured snapshot; missing datasets, failures and
 uncovered tiles use the existing cached Overpass pool. All four addresses stay
 configured; Kumi and Private Coffee advertise the same service, so the bounded
 interactive round does not query that service twice. If both sources fail,
-the existing unavailable-data message remains. Other Overpass consumers keep
-their current sources.
+the existing unavailable-data message remains. Trail/barrier, winter, hazard,
+overnight and supported full-tag consumers use the same optional products when
+published. Area selection and ambiguous nearby relations retain bounded public queries.
 
 Full-country manifests embed Geofabrik's attributed Finland clipping polygon,
 not just its rectangular extent. Uncached tiles must fit entirely inside it;
@@ -227,8 +228,9 @@ python tools/osm_data/publish.py check https://ducksoft.fi/polku-osm/current.jso
 
 Keep the current release, its predecessor and at least four weeks of releases
 for cached clients. There is no automatic deletion or website-wide cleanup.
-The measured archive uses about 0.68 GB per release; current + previous + next
-use about 2.04 GB before source backups and other files. The reported 97 GB
+The original ways-only archive used about 0.68 GB. Expanded country products
+require the current candidate measurements below; do not budget from that old
+number. Current + previous + next must all fit before promotion. The reported 97 GB
 free is owner-provided, not a verified account quota. Monitor actual storage,
 traffic and artifact costs; an upload that exhausts quota fails before promotion.
 
@@ -264,3 +266,49 @@ Consumers prefer these optional products through the same reader and fall back w
 `inspection.pmtiles` (z14) includes all highways, existing point/place tag classes and supported detail objects, retaining original tags and way geometry. Complete referenced relation bounds supply centres; original member identities and roles remain. Incomplete generic relations retain exact tags but set dataset `nearby_complete:false`, so nearby queries fall back rather than claiming completeness. A relation centre alone cannot prove its members are within a 40 m search; an ambiguous closer relation uses the public query. Exact selected ways can already reuse the published ways product.
 
 Area selection remains on one 15-second public round. Its different data representation is tracked in [#696](https://github.com/TommiContursi/Polku/issues/696). The actual Finland geometry probe is in `docs/measurements/osm-areas-2026-11-02.json`: Saimaa's compact geometry alone is 4.67 MB gzip and has 654,393 points. Correct local transfers require clipped containment and nearby original outlines, with holes and incomplete relation geometry preserved. Whole-polygon repetition is not being shipped as a substitute.
+
+
+## Four-country rollout and limits
+
+The country matrix builds Finland, Sweden, Norway and Estonia separately on
+standard public `ubuntu-24.04` runners (4 CPU, 16 GB RAM, 14 GB SSD;
+[GitHub runner documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job)).
+No paid larger runner or account setting is introduced. The 120-minute country
+and 30-minute bundle deadlines, archive size guards, full hash validation and
+browser checks must pass before treating four-country coverage as available.
+CI logs record free disk; staging allocation and peak RSS are also in measurements.
+Artifact account allowance and current OVH free space remain operator checks.
+14-day source/country/bundle retention duplicates some bytes deliberately for
+reproducibility; daily monitoring does not rebuild or upload these artifacts.
+
+The workflow first chooses one completed dated Geofabrik export shared by all
+four countries. Country sources must have identical replication timestamps.
+Their actual clipping polygons and hashes are retained; overlapping original
+objects are compared by type/ID and canonical content. A conflict fails assembly.
+Country archives preserve whole ways and original relation references, while
+browser reads remain local Range requests. Assembly hard-links the country
+files on one filesystem and adds a manifest; it does not duplicate country data
+inside a shared archive. Finland's original dataset names/root coverage remain
+compatible with old clients. Each added record identifies its country, kind,
+coverage and source timestamp. A tile requiring a union of border polygons
+conservatively falls back, rather than promising coverage from a rectangle.
+
+Release order: #695 adds detailed products/consumers; #697 adds full-tag objects;
+the country PR follows both. Each app step works with the old published manifest.
+The reviewed `publish-existing` artifact remains pinned to run 41423123110 and
+`finland-osm-release`. Change that pin/name to the reviewed successful combined
+candidate in a separate approval PR; do not publish the old artifact expecting
+four-country products. `OSM_PUBLISH_ENABLED` was unset at inspection, and no
+publication is performed by this migration. Existing atomic promotion, full
+SFTP readback, Range probes, rollback pointers and daily monitoring stay intact.
+
+Before approval, read the candidate evidence (all country measurements, combined
+identity checks, desktop/phone-emulated transfer sizes and zero-repeat network),
+check free host space for current + previous + next, and compare measured transfer
+size with the protected 90-minute publication budget. Files above 2/4 GiB need
+the existing large-offset public probes; those capabilities cannot be inferred
+from smaller files. After owner-approved publication, re-read live `current.json`,
+check all seven products in each country with normal covered requests making no
+Overpass calls, then exercise failure/rollback monitoring. Client support and
+candidate artifacts are not evidence that coverage is published. This session's
+live pointer re-read was blocked by the environment's network policy.
