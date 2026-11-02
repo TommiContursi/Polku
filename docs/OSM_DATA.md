@@ -104,7 +104,7 @@ See the [live measurements](plans/osm-data-measurements.md#live-ovh-verification
 before considering app activation. Do not republish this immutable release.
 
 The bootstrap **publish-existing** operation on `main` downloads the successful
-`finland-osm-release` from pinned run `41423123110`, checks local and remote
+`finland-osm-release` from pinned successful run `41502174378`, checks local and remote
 hashes, tests public Range/CORS and switches `current.json` only after
 verification. It does not rebuild or enable unattended publication. Artifacts
 expire after 14 days. While `OSM_PUBLISH_ENABLED` remains off, weekly builds
