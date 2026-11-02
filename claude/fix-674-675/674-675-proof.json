@@ -1,0 +1,17 @@
+{
+  "before": {
+    "buttons": "hidden",
+    "over": true,
+    "crossing": true
+  },
+  "after": {
+    "buttons": "visible",
+    "over": false,
+    "crossing": false
+  },
+  "pending": {
+    "slow": true,
+    "retry": true,
+    "drawn": 2
+  }
+}
