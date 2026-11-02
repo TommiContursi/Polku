@@ -324,7 +324,8 @@ const details = new TrailDetails(map, {
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
 // (a tile that comes in may end "No data now" on the Lit ways tile)
-const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); refreshQuickSoon(); }, onFail: () => refreshQuickSoon() });
+const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); }, onStatus: refreshLitStatus });
+$('#lit-status button').addEventListener('click', () => litWays.retry());
 
 // ------------------------------------------------------------------ winter
 // Winter switches itself on where there's snow (Auto), or is yours to set.
@@ -1231,6 +1232,7 @@ function renderLayersPanel() {
 
   for (const g of LAYER_GROUPS) {
     const kids = g.ids.map(overlayToggle);
+    if (g.id === 'dark') kids.push(h('div', { id: 'lit-load-status', class: 'note', hidden: true }, h('span'), h('button', { class: 'btn', type: 'button', onclick: () => litWays.retry(), hidden: true }, 'Try again')));
     if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up in Check, each with Avoid it on its card.'));
     if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
     p.append(layerGroup(g.id, g.title, g.ids.filter((id) => state.overlays[id]).length, ...kids));
@@ -1240,6 +1242,7 @@ function renderLayersPanel() {
   p.append(layerGroup('weather', 'Weather on the map', wx.length + (state.timeline ? 1 : 0),
     timelineToggle(), wxToggle('wind'), wxToggle('temp'), wxToggle('rain'), wxToggle('snow'),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
+  refreshLitStatus();
   settle();
 }
 
@@ -1313,7 +1316,7 @@ function tileFailing(id) {
   const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d]) : RASTER_OVERLAYS[id] ? [id] : [];
   if (raster.length && raster.every((d) => rasterDown(`ov-${d}`))) return true;
   if (id === 'trailDetails') return Date.now() - detailsBusyAt < 120e3;
-  if (id === 'lit') return litWays.failing; // (Overpass is never backed off: sourceStatus() can't say)
+  if (id === 'lit') return litWays.progress.failed > 0; // Overpass deliberately has no global backoff status
   const src = TILE_SOURCES[id];
   return !!src && src.every((s) => sourceStatus(s));
 }
@@ -1321,12 +1324,37 @@ function tileStatus(id) {
   if (!tileOn(id)) return '';
   if (QUICK_TILE[id].winter && !state.winterOn) return 'Shows in winter';
   if (map.getZoom() < tileZoom(id)) return 'Zoom in to see';
+  if (id === 'lit') return litStatus().tile;
   return tileFailing(id) ? 'No data now' : '';
 }
 function tileSmall(id) {
   const status = tileStatus(id), note = id === 'trailColors' ? COLOR_KIND[state.trailColors] : QUICK_TILE[id].note;
   if (id === 'depths') return { text: status ? `${status} · not for navigation` : note, warn: status === 'No data now' };
-  return { text: status || note || '', warn: status === 'No data now' };
+  return { text: status || note || '', warn: status === 'No data now' || (id === 'lit' && tileFailing(id)) };
+}
+function litStatus() {
+  const { loaded, total, pending, failed, limited, slow } = litWays.progress;
+  if (!state.overlays.lit || (total && loaded === total)) return { tile: '', map: '' };
+  if (limited) return { tile: 'Zoom in to load', map: 'Zoom in to load lighting' };
+  const count = `${loaded} of ${total} areas loaded`;
+  if (pending) return { tile: slow ? 'Taking longer…' : `Loading ${loaded}/${total}`,
+    map: `${slow ? 'Lighting is taking longer' : 'Loading lighting'} · ${count}${failed ? `; ${failed} failed` : ''}` };
+  if (failed) return { tile: loaded ? `Partly loaded ${loaded}/${total}` : 'No data now',
+    map: loaded ? `Lighting incomplete · ${count}` : 'Lighting did not load' };
+  return { tile: '', map: '' };
+}
+function refreshLitStatus() {
+  const text = litStatus().map, p = litWays.progress, complete = p.total > 0 && p.loaded === p.total;
+  for (const id of ['lit-status', 'lit-load-status']) {
+    const box = $(`#${id}`);
+    if (!box) continue;
+    const announce = id === 'lit-status' && complete;
+    box.hidden = !state.overlays.lit || (!text && !announce);
+    box.classList.toggle('sr-only', announce);
+    box.querySelector('span').textContent = announce ? 'Lighting loaded' : text;
+    box.querySelector('button').hidden = p.failed === 0;
+  }
+  refreshQuickSoon();
 }
 // in place, on the tiles that show: a zoom, a source failing or coming back
 function refreshQuickStatus() {

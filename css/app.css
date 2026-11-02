@@ -178,7 +178,7 @@ button { font: inherit; color: inherit; }
 /* What you read sits on the reading glass (the card at a point on a desktop too), the map's buttons on theirs; menus,
    popups and dialogs stay solid. Each glass surface has the edge, and its grey, green and red take the glass's (words, icons, lines and rings
    alike: they're read over the map too). */
-.brand, .search, .top-btn, .zoom-hint, .wx-bar, .panel, .qd, .sheet, .track-card, .pl-tools, .polku-popup.card-float .maplibregl-popup-content, .card-beside {
+.brand, .search, .top-btn, .zoom-hint, .lit-status, .wx-bar, .panel, .qd, .sheet, .track-card, .pl-tools, .polku-popup.card-float .maplibregl-popup-content, .card-beside {
   background: var(--glass-read); -webkit-backdrop-filter: var(--glass-read-filter); backdrop-filter: var(--glass-read-filter);
   box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); --bad: var(--bad-glass);
 }
@@ -291,11 +291,19 @@ button { font: inherit; color: inherit; }
 .base-opt[aria-pressed="true"] { color: var(--text); }
 .base-opt[aria-pressed="true"] img { border-color: var(--accent); }
 
+.map-hints {
+  position: absolute; top: 62px; left: calc(12px + var(--pl-left)); z-index: 3;
+  max-width: calc(100% - var(--pl-left) - 24px); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); pointer-events: none;
+}
+.map-hints > * { pointer-events: auto; }
 .zoom-hint {
-  position: absolute; top: 62px; left: calc(12px + var(--pl-left)); z-index: 3; height: 30px; padding: 0 12px; border: 0; border-radius: 999px;
+  height: 30px; padding: 0 12px; border: 0; border-radius: 999px;
   color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer;
 }
 .zoom-hint:hover { color: var(--text); }
+.lit-status { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-8); max-width: min(100%, calc(100vw - var(--pl-left) - 88px)); padding: var(--space-8) var(--space-12); border-radius: var(--radius); font-size: var(--font-body); font-weight: var(--weight-name); }
+.lit-status span { overflow-wrap: anywhere; }
+.lit-status .btn, #lit-load-status .btn { min-height: var(--target); }
 
 /* ---------------------------------------------------------------- map controls */
 /* One column, bottom right, at every screen size: compass, locate, zoom and 3D
@@ -2045,7 +2053,6 @@ body.dropping .drop-hint { display: flex; }
   body:not(.planning) .wx-bar { bottom: 44px; }
   body:not(.planning) .track-card { bottom: calc(var(--wx-h, 0px) + 48px); }
   body:not(.planning) .toast { bottom: calc(var(--wx-h, 0px) + 56px); }
-  .zoom-hint { top: 62px; }
   .fab { width: 54px; height: 52px; border-radius: 14px; font-size: 10px; }
   .view3d { padding: 8px 6px 6px; }
   .wx-bar { width: calc(100% - 24px); bottom: calc(var(--sheet-h) + 40px); }

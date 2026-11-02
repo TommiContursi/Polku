@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-02
 
+### Lighting says what is still loading ([#693](https://github.com/TommiContursi/Polku/issues/693))
+
+- With **Lit ways** on, a message on the map shows how many areas have loaded, says when the wait is taking longer, and offers **Try again** if some failed. It stays visible after Layers closes and disappears when loading finishes.
+- The dark veil still covers only areas whose lighting arrived. An empty successful answer counts as loaded; missing data never looks like a complete view.
+
 ### Road, path and lighting data keep another way to load ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
 - Road and path selections use cached Overpass data and public providers when the hosted snapshot is unavailable or outside its coverage, including outside Finland.

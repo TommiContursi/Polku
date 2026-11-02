@@ -4649,6 +4649,7 @@ LIT_OVERPASS = """(() => {
   let fx = null;
   window.litFail = false;
   window.litAsked = 0;
+  window.litWaiting = {};
   window.fetch = async (input, init) => {
     const url = String(input && input.url ? input.url : input);
     if (url.endsWith('/current.json')) {
@@ -4660,9 +4661,11 @@ LIT_OVERPASS = """(() => {
     const q = init && init.body ? new URLSearchParams(init.body).get('data') || '' : '';
     if (!/way\\[highway\\]\\[lit~/.test(q)) return new Response('', { status: 504 });
     window.litAsked++;
+    if (window.litHold) await new Promise((ok) => { (window.litWaiting[q] ||= []).push(ok); });
     if (window.litGate) await window.litGate; // (held, as a slow server would)
     if (window.litFail === 'remark') return new Response(JSON.stringify({ remark: 'runtime error: Query timed out in "query" at line 1 after 26 seconds.', elements: [] }));
     if (window.litFail) return new Response('', { status: 504 });
+    if (window.litEmpty) return Response.json({ elements: [] });
     fx ||= await (await real(location.origin + '/tools/fixtures/lit-laajavuori.json')).json();
     const way = ([id, , flat]) => ({ type: 'way', id, nodes: flat.filter((v, i) => i % 2 === 0).map((v, i) => id * 1000 + i), geometry: flat.flatMap((v, i) => (i % 2 ? [] : [{ lat: flat[i + 1], lon: v }])) });
     const lit = fx.data.w.filter((w) => w[1]), unlit = fx.data.w.filter((w) => !w[1]);
@@ -4710,7 +4713,7 @@ LIT = """(async () => {""" + LIT_HELP + """
   // zoomed out it draws nothing, and lists no tiles: Finland in view at zoom 5 is 300,000 of them (Codex's review of #641)
   let bounds = 0;
   const far = { getZoom: () => 5, getBounds: () => { bounds++; return { getWest: () => 17, getSouth: () => 57, getEast: () => 33, getNorth: () => 72 }; }, on: () => {} };
-  const shown = [], lw = new L.LitWays(far, { onData: (fc) => shown.push(fc.features.length), onFail: () => {} });
+  const shown = [], lw = new L.LitWays(far, { onData: (fc) => shown.push(fc.features.length), onStatus: () => {} });
   lw.on = true;
   lw.update();
   if (bounds || shown.join() !== '0') errs.push(`zoomed out (zoom 5), Lit ways asked the view's bounds ${bounds} times and published ${shown}`);
@@ -4844,6 +4847,77 @@ def lit(chrome):
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} lit ways on the map" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
+
+
+LIT_LOADING = """(async () => {""" + LIT_HELP + """
+  const badge = () => document.querySelector('#lit-status');
+  const visible = () => badge() && !badge().hidden && !badge().classList.contains('sr-only');
+  const words = () => badge()?.querySelector('span')?.textContent || '';
+  const G = await import('/js/geo.js'), at = map.getCenter(), xy = G.lonLatToTile(at.lng, at.lat, 13).map(Math.floor), bounds = G.tileBounds(...xy, 13);
+  map.jumpTo({center:[bounds[2],bounds[3]]}); await idle();
+  window.litHold = true;
+  document.querySelector('#btn-layers').click(); await wait(250);
+  qd.querySelector('.qt-tog[data-tile="lit"]').click();
+  await until(() => Object.keys(window.litWaiting).length > 1);
+  document.querySelector('#btn-layers').click(); await wait(300); // the feedback must survive closing Layers
+  if (!visible() || !/Loading lighting/i.test(words()) || !/0 of \\d+ areas/.test(words())) errs.push(`no map-visible initial lighting progress: ${words()}`);
+  if (badge()?.getAttribute('role') !== 'status') errs.push('lighting progress is not an accessible status');
+  if (errs.length) { window.litHold = false; Object.values(window.litWaiting).flat().forEach((ok) => ok()); return errs; }
+  const first = Object.keys(window.litWaiting)[0]; window.litWaiting[first].splice(0).forEach((ok) => ok());
+  await until(() => /1 of \\d+ areas/.test(words()));
+  if (!visible() || !/1 of \\d+ areas/.test(words())) errs.push(`partial lighting looks complete: ${words()}`);
+  const cover = map.getSource('litCover').serialize().data.features[0];
+  if (cover?.geometry.coordinates.length !== 1) errs.push('partial lighting dims areas that have not loaded');
+  await wait(11000);
+  if (!/taking longer/i.test(words())) errs.push(`no long-wait feedback: ${words()}`);
+  window.litFail = 'remark'; window.litHold = false;
+  Object.values(window.litWaiting).flat().forEach((ok) => ok());
+  await until(() => /incomplete/i.test(words()));
+  const retry = badge().querySelector('button');
+  if (!visible() || !/incomplete/i.test(words()) || retry.hidden) errs.push(`missing partial/failure retry: ${words()}`);
+  const rect = retry.getBoundingClientRect(), box = badge().getBoundingClientRect();
+  const target = matchMedia('(pointer: coarse)').matches ? 44 : 24;
+  if (rect.width < target || rect.height < target || box.left < 0 || box.right > innerWidth) errs.push('lighting retry is too small or outside the viewport');
+  if (innerWidth < 500) {
+    const span = badge().querySelector('span'), text = span.textContent;
+    document.documentElement.style.fontSize = '200%';
+    span.textContent = 'Valaistustietojen lataaminen on kesken · 1 alue ladattu neljästä';
+    if (badge().getBoundingClientRect().right > innerWidth - 64) errs.push('enlarged lighting text reaches the map controls');
+    document.documentElement.style.fontSize = ''; span.textContent = text;
+  }
+  window.litFail = false; retry.click();
+  await until(() => !visible());
+  if (visible() || small() === 'No data now') errs.push('lighting does not recover after Try again');
+  if (words() !== 'Lighting loaded') errs.push('lighting completion is not announced');
+  window.litEmpty = true;
+  map.jumpTo({center:[25.85,62.30]}); await idle(); await wait(600);
+  if (visible() || map.getSource('litWays').serialize().data.features.length) errs.push('an empty successful lighting answer is treated as still loading or old data');
+  window.litHold = true; window.litEmpty = false; window.litWaiting = {};
+  map.jumpTo({center:[25.95,62.30]}); await idle();
+  await until(() => Object.keys(window.litWaiting).length > 0);
+  polku.set({overlays:{...S.overlays,lit:false}}); await wait(400);
+  if (visible()) errs.push('lighting loading status stays after the overlay is off');
+  window.litHold = false; window.litFail = true; Object.values(window.litWaiting).flat().forEach((ok) => ok());
+  await wait(400);
+  if (visible()) errs.push('a late response revives the disabled lighting status');
+  return errs;
+})()"""
+
+
+def lit_loading(chrome):
+    failures = []
+    for width, height, phone in [(1440, 900, False), (390, 844, True)]:
+        pg = chrome.page(width, height, phone)
+        try:
+            chrome.send('Storage.clearDataForOrigin', {'origin': BASE.rstrip('/'), 'storageTypes': 'indexeddb'}, pg.s)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + LIT_OVERPASS}, pg.s)
+            pg.open_app({'activity': 'run', 'quickTiles': {'run': ['lit']}}, {'polku:winter': '"off"'}, '#15/62.26/25.685')
+            failures.extend(f'{width}x{height}: {message}' for message in pg.js(LIT_LOADING, timeout=90000))
+            failures.extend(pg.errors())
+        finally:
+            pg.close()
+    print('FAIL lighting loading: ' + '; '.join(failures) if failures else 'ok lighting loading: visible progress, slow/partial states, retry, empty success and off', flush=True)
+    return not failures
 
 
 # Clicks and taps on the route: a click or a tap on the line, or on a leg's handle, opens
@@ -16717,7 +16791,7 @@ GROUPS = [
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
     ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, an import\'s card clear of the track\'s end (#131), loops tapped on the map (mocked BRouter)'),
     ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
-    ('lit', [lit], 'lit ways (#638): the Lit ways tile draws lit and unlit ways from a recorded tile, says when Overpass times out or you\'re zoomed out; In the dark veils only the tiles that came in; 3:1 on the Trail map and the night map in both looks; the look and its opacity kept over a reload'),
+    ('lit', [lit, lit_loading], 'lit ways: rendering, visible loading/partial/slow/failure states, retry, empty success, contrast and reload'),
     ('sports', [sport_switch], 'changing the sport with a route drawn (B of #233): the route keeps its sports and style (#71), the pill asks, The whole route and its Undo, land to water'),
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
     ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),
