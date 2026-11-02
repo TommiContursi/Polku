@@ -1,0 +1,1299 @@
+{
+  "publication": {
+    "run": 41387631098,
+    "main": "ba13d41",
+    "archive_reuploaded": false,
+    "full_remote_sha256_verified": true,
+    "archive_readback_seconds": 89.15
+  },
+  "monitor": {
+    "run": 41388087711,
+    "conclusion": "success"
+  },
+  "http": {
+    "release": "20261031T212306Z-6e4ba0730c8f-11398e5b9ab9",
+    "source_timestamp": "2026-10-31T21:23:06Z",
+    "archive_sha256": "11398e5b9ab9ccfa2ee7fd553345385bed3dfc8a248ecaff72cae163243b0b3e",
+    "archive_bytes": 679838796,
+    "pointer": {
+      "url": "https://ducksoft.fi/polku-osm/current.json",
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Content-Type": "application/json",
+        "Content-Length": "1123",
+        "Accept-Ranges": "bytes",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Expose-Headers": "ETag, Content-Length, Content-Range, Accept-Ranges",
+        "Last-Modified": "Mon, 02 Nov 2026 04:19:44 GMT"
+      }
+    },
+    "immutable_manifest": {
+      "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/manifest.json",
+      "status": 200,
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Type": "application/json",
+        "Content-Length": "1068",
+        "Accept-Ranges": "bytes",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Expose-Headers": "ETag, Content-Length, Content-Range, Accept-Ranges",
+        "Last-Modified": "Sun, 01 Nov 2026 22:48:41 GMT"
+      }
+    },
+    "ranges": [
+      {
+        "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+        "status": 206,
+        "headers": {
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": "application/vnd.pmtiles",
+          "Content-Length": "4096",
+          "Content-Range": "bytes 0-4095/679838796",
+          "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "ETag, Content-Length, Content-Range, Accept-Ranges",
+          "Last-Modified": "Sun, 01 Nov 2026 22:48:39 GMT"
+        },
+        "encoding": "identity",
+        "sha256": "f708fec10ac99f0c81c3642860effbe4af9dae2ee4b1fa0f7ef84db4a9fac6c0"
+      },
+      {
+        "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+        "status": 206,
+        "headers": {
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": "application/vnd.pmtiles",
+          "Content-Length": "4096",
+          "Content-Range": "bytes 0-4095/679838796",
+          "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "ETag, Content-Length, Content-Range, Accept-Ranges",
+          "Last-Modified": "Sun, 01 Nov 2026 22:48:39 GMT"
+        },
+        "encoding": "gzip, br",
+        "sha256": "f708fec10ac99f0c81c3642860effbe4af9dae2ee4b1fa0f7ef84db4a9fac6c0"
+      },
+      {
+        "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+        "status": 206,
+        "headers": {
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": "application/vnd.pmtiles",
+          "Content-Length": "4096",
+          "Content-Range": "bytes 339917350-339921445/679838796",
+          "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "ETag, Content-Length, Content-Range, Accept-Ranges",
+          "Last-Modified": "Sun, 01 Nov 2026 22:48:39 GMT"
+        },
+        "encoding": "identity",
+        "sha256": "4cd87f2dfc92435f858dfdc86c51041a9918fb43af332f096d5b441fafa7bae1"
+      },
+      {
+        "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+        "status": 206,
+        "headers": {
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": "application/vnd.pmtiles",
+          "Content-Length": "4096",
+          "Content-Range": "bytes 339917350-339921445/679838796",
+          "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "ETag, Content-Length, Content-Range, Accept-Ranges",
+          "Last-Modified": "Sun, 01 Nov 2026 22:48:39 GMT"
+        },
+        "encoding": "gzip, br",
+        "sha256": "4cd87f2dfc92435f858dfdc86c51041a9918fb43af332f096d5b441fafa7bae1"
+      },
+      {
+        "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+        "status": 206,
+        "headers": {
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": "application/vnd.pmtiles",
+          "Content-Length": "4096",
+          "Content-Range": "bytes 679834700-679838795/679838796",
+          "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "ETag, Content-Length, Content-Range, Accept-Ranges",
+          "Last-Modified": "Sun, 01 Nov 2026 22:48:39 GMT"
+        },
+        "encoding": "identity",
+        "sha256": "d4562233c1e2df20f0176b234a879531a97544df117021e010f20c8e3b2ef4ae"
+      },
+      {
+        "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+        "status": 206,
+        "headers": {
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": "application/vnd.pmtiles",
+          "Content-Length": "4096",
+          "Content-Range": "bytes 679834700-679838795/679838796",
+          "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "ETag, Content-Length, Content-Range, Accept-Ranges",
+          "Last-Modified": "Sun, 01 Nov 2026 22:48:39 GMT"
+        },
+        "encoding": "gzip, br",
+        "sha256": "d4562233c1e2df20f0176b234a879531a97544df117021e010f20c8e3b2ef4ae"
+      }
+    ]
+  },
+  "browser": {
+    "cases": {
+      "desktop": {
+        "picks": [
+          {
+            "name": "Tykkikalliontie",
+            "ll": [
+              25.76530235,
+              62.23041655
+            ],
+            "tapped": [
+              25.7653,
+              62.230415
+            ],
+            "cold_ms": 473.69999998807907,
+            "repeat_ms": 0.10000002384185791,
+            "requests": 4,
+            "bytes": 94245,
+            "network": [
+              {
+                "url": "https://ducksoft.fi/polku-osm/current.json",
+                "bytes": 1123
+              },
+              {
+                "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+                "range": "bytes=0-16383",
+                "bytes": 16384
+              },
+              {
+                "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+                "range": "bytes=227174-235792",
+                "bytes": 8619
+              },
+              {
+                "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+                "range": "bytes=277188097-277256215",
+                "bytes": 68119
+              }
+            ],
+            "selected_name": "Tykkikalliontie",
+            "highway": "residential",
+            "seed": 15805713,
+            "pieces": 7,
+            "metres": 173.44173393884873,
+            "stops": {
+              "end": {
+                "why": "end",
+                "at": [
+                  25.76688,
+                  62.23032
+                ],
+                "unloaded": false
+              },
+              "start": {
+                "why": "end",
+                "at": [
+                  25.7638,
+                  62.23004
+                ],
+                "unloaded": false
+              }
+            }
+          },
+          {
+            "name": "Survontie",
+            "ll": [
+              25.76443645,
+              62.2309717
+            ],
+            "tapped": [
+              25.76444,
+              62.230975
+            ],
+            "cold_ms": 0.5,
+            "repeat_ms": 0,
+            "requests": 0,
+            "bytes": 0,
+            "network": [],
+            "selected_name": "Survontie",
+            "highway": "secondary",
+            "seed": 15805709,
+            "pieces": 23,
+            "metres": 607.3678824150763,
+            "stops": {
+              "end": {
+                "why": "end",
+                "at": [
+                  25.76847,
+                  62.23109
+                ],
+                "unloaded": false
+              },
+              "start": {
+                "why": "end",
+                "at": [
+                  25.75905,
+                  62.22853
+                ],
+                "unloaded": false
+              }
+            }
+          },
+          {
+            "name": "Nuuksio trail",
+            "ll": [
+              24.5,
+              60.3
+            ],
+            "tapped": [
+              24.49998,
+              60.297205
+            ],
+            "cold_ms": 220.2999999821186,
+            "repeat_ms": 0.10000002384185791,
+            "requests": 3,
+            "bytes": 25304,
+            "network": [
+              {
+                "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+                "range": "bytes=367777-376377",
+                "bytes": 8601
+              },
+              {
+                "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+                "range": "bytes=464441051-464449760",
+                "bytes": 8710
+              },
+              {
+                "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+                "range": "bytes=464433058-464441050",
+                "bytes": 7993
+              }
+            ],
+            "selected_name": null,
+            "highway": "path",
+            "seed": 80995733,
+            "pieces": 1,
+            "metres": 89.39516536425032,
+            "stops": {
+              "end": {
+                "why": "end",
+                "at": [
+                  24.49937,
+                  60.29747
+                ],
+                "unloaded": false
+              },
+              "start": {
+                "why": "junction",
+                "at": [
+                  24.50059,
+                  60.29694
+                ],
+                "unloaded": false
+              }
+            }
+          }
+        ],
+        "card": {
+          "title": "Tykkikalliontie",
+          "ways": "in",
+          "heights": "in",
+          "nums": [
+            "173 mlong",
+            "0 mup",
+            "0 mdown"
+          ],
+          "drawn": 4
+        },
+        "touch_line": null
+      },
+      "phone": {
+        "picks": [
+          {
+            "name": "Tykkikalliontie",
+            "ll": [
+              25.76530235,
+              62.23041655
+            ],
+            "tapped": [
+              25.7653,
+              62.230415
+            ],
+            "cold_ms": 87.7999999821186,
+            "repeat_ms": 0,
+            "requests": 1,
+            "bytes": 1123,
+            "network": [
+              {
+                "url": "https://ducksoft.fi/polku-osm/current.json",
+                "bytes": 1123
+              }
+            ],
+            "selected_name": "Tykkikalliontie",
+            "highway": "residential",
+            "seed": 15805713,
+            "pieces": 7,
+            "metres": 173.44173393884873,
+            "stops": {
+              "end": {
+                "why": "end",
+                "at": [
+                  25.76688,
+                  62.23032
+                ],
+                "unloaded": false
+              },
+              "start": {
+                "why": "end",
+                "at": [
+                  25.7638,
+                  62.23004
+                ],
+                "unloaded": false
+              }
+            }
+          },
+          {
+            "name": "Survontie",
+            "ll": [
+              25.76443645,
+              62.2309717
+            ],
+            "tapped": [
+              25.76444,
+              62.230975
+            ],
+            "cold_ms": 0.29999998211860657,
+            "repeat_ms": 0.20000001788139343,
+            "requests": 0,
+            "bytes": 0,
+            "network": [],
+            "selected_name": "Survontie",
+            "highway": "secondary",
+            "seed": 15805709,
+            "pieces": 23,
+            "metres": 607.3678824150763,
+            "stops": {
+              "end": {
+                "why": "end",
+                "at": [
+                  25.76847,
+                  62.23109
+                ],
+                "unloaded": false
+              },
+              "start": {
+                "why": "end",
+                "at": [
+                  25.75905,
+                  62.22853
+                ],
+                "unloaded": false
+              }
+            }
+          },
+          {
+            "name": "Nuuksio trail",
+            "ll": [
+              24.5,
+              60.3
+            ],
+            "tapped": [
+              24.49998,
+              60.297205
+            ],
+            "cold_ms": 3.0999999940395355,
+            "repeat_ms": 0,
+            "requests": 0,
+            "bytes": 0,
+            "network": [],
+            "selected_name": null,
+            "highway": "path",
+            "seed": 80995733,
+            "pieces": 1,
+            "metres": 89.39516536425032,
+            "stops": {
+              "end": {
+                "why": "end",
+                "at": [
+                  24.49937,
+                  60.29747
+                ],
+                "unloaded": false
+              },
+              "start": {
+                "why": "junction",
+                "at": [
+                  24.50059,
+                  60.29694
+                ],
+                "unloaded": false
+              }
+            }
+          }
+        ],
+        "card": {
+          "title": "Tykkikalliontie",
+          "ways": "in",
+          "heights": "in",
+          "nums": [
+            "173 mlong",
+            "0 mup",
+            "0 mdown"
+          ],
+          "drawn": 4
+        },
+        "touch_line": {
+          "text": "TykkikalliontieCycling: bike path beside the road \u00b7 asphalt \u00b7 lit",
+          "x": 195,
+          "y": 373,
+          "height": 54
+        }
+      }
+    },
+    "app_origin": {
+      "origin": "https://polku.si",
+      "release": "20261031T212306Z-6e4ba0730c8f-11398e5b9ab9",
+      "cache": "no-cache",
+      "ranges": [
+        {
+          "status": 206,
+          "type": "cors",
+          "range": "bytes 0-4095/679838796",
+          "bytes": 4096
+        },
+        {
+          "status": 206,
+          "type": "cors",
+          "range": "bytes 339917350-339921445/679838796",
+          "bytes": 4096
+        },
+        {
+          "status": 206,
+          "type": "cors",
+          "range": "bytes 679834700-679838795/679838796",
+          "bytes": 4096
+        }
+      ],
+      "decompressionStream": true
+    }
+  },
+  "measurements": {
+    "browser": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/156.0.8078.74",
+      "revision": "@d331de35ca8ab1358c7a17e4bd41627d55eaef51",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "jsVersion": "15.6.75.25"
+    },
+    "origin": "http://127.0.0.1:8806/",
+    "cases": {
+      "desktop": [
+        {
+          "name": "Helsinki",
+          "ll": [
+            24.9384,
+            60.1699
+          ],
+          "tapped": [
+            24.938344999999998,
+            60.169885
+          ],
+          "cold_ms": 729.3000000119209,
+          "repeat_ms": 0.699999988079071,
+          "requests": 5,
+          "bytes": 630431,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/current.json",
+              "bytes": 1123
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=0-16383",
+              "bytes": 16384
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=409800-418798",
+              "bytes": 8999
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=581632768-581943449",
+              "bytes": 310682
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=581339525-581632767",
+              "bytes": 293243
+            }
+          ],
+          "seed": 29689101,
+          "pieces": 19,
+          "metres": 382.99972031442564,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                24.93828,
+                60.16986
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                24.94475,
+                60.17068
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Rural central Finland",
+          "ll": [
+            25.5,
+            62.2
+          ],
+          "tapped": [
+            25.500115,
+            62.1999
+          ],
+          "cold_ms": 94.60000002384186,
+          "repeat_ms": 0,
+          "requests": 2,
+          "bytes": 13708,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=227174-235792",
+              "bytes": 8619
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=275672826-275677914",
+              "bytes": 5089
+            }
+          ],
+          "seed": 799203557,
+          "pieces": 2,
+          "metres": 299.3825191272199,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                25.50107,
+                62.20167
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                25.49901,
+                62.19925
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Nuuksio forest",
+          "ll": [
+            24.5,
+            60.3
+          ],
+          "tapped": [
+            24.49998,
+            60.297205
+          ],
+          "cold_ms": 144.39999997615814,
+          "repeat_ms": 0.10000002384185791,
+          "requests": 3,
+          "bytes": 25304,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=367777-376377",
+              "bytes": 8601
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=464441051-464449760",
+              "bytes": 8710
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=464433058-464441050",
+              "bytes": 7993
+            }
+          ],
+          "seed": 80995733,
+          "pieces": 1,
+          "metres": 89.39516536425032,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                24.49937,
+                60.29747
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                24.50059,
+                60.29694
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Turku coast",
+          "ll": [
+            22.25,
+            60.45
+          ],
+          "tapped": [
+            22.249615,
+            60.449855
+          ],
+          "cold_ms": 121.59999999403954,
+          "repeat_ms": 0,
+          "requests": 2,
+          "bytes": 145138,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=991-10006",
+              "bytes": 9016
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=13265683-13401804",
+              "bytes": 136122
+            }
+          ],
+          "seed": 943377512,
+          "pieces": 1,
+          "metres": 130.33030876581248,
+          "stops": {
+            "end": {
+              "why": "junction",
+              "at": [
+                22.24864,
+                60.44952
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                22.25059,
+                60.45019
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Kilpisjarvi north",
+          "ll": [
+            20.8,
+            69.05
+          ],
+          "tapped": [
+            20.7988,
+            69.04989499999999
+          ],
+          "cold_ms": 608.0999999940395,
+          "repeat_ms": 0.09999999403953552,
+          "requests": 20,
+          "bytes": 110038,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=537358-545822",
+              "bytes": 8465
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679441156-679448551",
+              "bytes": 7396
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679468947-679477611",
+              "bytes": 8665
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679435601-679437880",
+              "bytes": 2280
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679102343-679105063",
+              "bytes": 2721
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679450372-679453554",
+              "bytes": 3183
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679456853-679464214",
+              "bytes": 7362
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679109559-679112035",
+              "bytes": 2477
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679066039-679069033",
+              "bytes": 2995
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679106191-679109558",
+              "bytes": 3368
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679162671-679169619",
+              "bytes": 6949
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679059013-679062909",
+              "bytes": 3897
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679120172-679129741",
+              "bytes": 9570
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679051970-679055534",
+              "bytes": 3565
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679142477-679157344",
+              "bytes": 14868
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679050379-679051969",
+              "bytes": 1591
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679129742-679139620",
+              "bytes": 9879
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679048664-679050378",
+              "bytes": 1715
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679074371-679076370",
+              "bytes": 2000
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679090674-679097765",
+              "bytes": 7092
+            }
+          ],
+          "seed": 1316356398,
+          "pieces": 102,
+          "metres": 20735.392362497587,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                20.9104,
+                69.0197
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                20.55122,
+                69.05987
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Tykkikallio Jyvaskyla",
+          "ll": [
+            25.7656,
+            62.2306
+          ],
+          "tapped": [
+            25.765504999999997,
+            62.230565
+          ],
+          "cold_ms": 57.599999994039536,
+          "repeat_ms": 0,
+          "requests": 1,
+          "bytes": 68119,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=277188097-277256215",
+              "bytes": 68119
+            }
+          ],
+          "seed": 195373633,
+          "pieces": 1,
+          "metres": 23.494205135176205,
+          "stops": {
+            "end": {
+              "why": "junction",
+              "at": [
+                25.76548,
+                62.23067
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                25.76553,
+                62.23046
+              ],
+              "unloaded": false
+            }
+          }
+        }
+      ],
+      "phone_emulated": [
+        {
+          "name": "Helsinki",
+          "ll": [
+            24.9384,
+            60.1699
+          ],
+          "tapped": [
+            24.938344999999998,
+            60.169885
+          ],
+          "cold_ms": 1568,
+          "repeat_ms": 4.700000017881393,
+          "requests": 5,
+          "bytes": 630431,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/current.json",
+              "bytes": 1123
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=0-16383",
+              "bytes": 16384
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=409800-418798",
+              "bytes": 8999
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=581632768-581943449",
+              "bytes": 310682
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=581339525-581632767",
+              "bytes": 293243
+            }
+          ],
+          "seed": 29689101,
+          "pieces": 19,
+          "metres": 382.99972031442564,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                24.93828,
+                60.16986
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                24.94475,
+                60.17068
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Rural central Finland",
+          "ll": [
+            25.5,
+            62.2
+          ],
+          "tapped": [
+            25.500115,
+            62.1999
+          ],
+          "cold_ms": 214.40000000596046,
+          "repeat_ms": 0.09999999403953552,
+          "requests": 2,
+          "bytes": 13708,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=227174-235792",
+              "bytes": 8619
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=275672826-275677914",
+              "bytes": 5089
+            }
+          ],
+          "seed": 799203557,
+          "pieces": 2,
+          "metres": 299.3825191272199,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                25.50107,
+                62.20167
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                25.49901,
+                62.19925
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Nuuksio forest",
+          "ll": [
+            24.5,
+            60.3
+          ],
+          "tapped": [
+            24.49998,
+            60.297205
+          ],
+          "cold_ms": 307.19999998807907,
+          "repeat_ms": 0,
+          "requests": 3,
+          "bytes": 25304,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=367777-376377",
+              "bytes": 8601
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=464441051-464449760",
+              "bytes": 8710
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=464433058-464441050",
+              "bytes": 7993
+            }
+          ],
+          "seed": 80995733,
+          "pieces": 1,
+          "metres": 89.39516536425032,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                24.49937,
+                60.29747
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                24.50059,
+                60.29694
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Turku coast",
+          "ll": [
+            22.25,
+            60.45
+          ],
+          "tapped": [
+            22.249615,
+            60.449855
+          ],
+          "cold_ms": 391.60000002384186,
+          "repeat_ms": 0,
+          "requests": 2,
+          "bytes": 145138,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=991-10006",
+              "bytes": 9016
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=13265683-13401804",
+              "bytes": 136122
+            }
+          ],
+          "seed": 943377512,
+          "pieces": 1,
+          "metres": 130.33030876581248,
+          "stops": {
+            "end": {
+              "why": "junction",
+              "at": [
+                22.24864,
+                60.44952
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                22.25059,
+                60.45019
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Kilpisjarvi north",
+          "ll": [
+            20.8,
+            69.05
+          ],
+          "tapped": [
+            20.7988,
+            69.04989499999999
+          ],
+          "cold_ms": 1254.3999999761581,
+          "repeat_ms": 0.800000011920929,
+          "requests": 20,
+          "bytes": 110038,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=537358-545822",
+              "bytes": 8465
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679441156-679448551",
+              "bytes": 7396
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679435601-679437880",
+              "bytes": 2280
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679468947-679477611",
+              "bytes": 8665
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679102343-679105063",
+              "bytes": 2721
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679450372-679453554",
+              "bytes": 3183
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679109559-679112035",
+              "bytes": 2477
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679456853-679464214",
+              "bytes": 7362
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679106191-679109558",
+              "bytes": 3368
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679066039-679069033",
+              "bytes": 2995
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679162671-679169619",
+              "bytes": 6949
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679059013-679062909",
+              "bytes": 3897
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679120172-679129741",
+              "bytes": 9570
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679051970-679055534",
+              "bytes": 3565
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679050379-679051969",
+              "bytes": 1591
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679142477-679157344",
+              "bytes": 14868
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679129742-679139620",
+              "bytes": 9879
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679048664-679050378",
+              "bytes": 1715
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679074371-679076370",
+              "bytes": 2000
+            },
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=679090674-679097765",
+              "bytes": 7092
+            }
+          ],
+          "seed": 1316356398,
+          "pieces": 102,
+          "metres": 20735.392362497587,
+          "stops": {
+            "end": {
+              "why": "end",
+              "at": [
+                20.9104,
+                69.0197
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "end",
+              "at": [
+                20.55122,
+                69.05987
+              ],
+              "unloaded": false
+            }
+          }
+        },
+        {
+          "name": "Tykkikallio Jyvaskyla",
+          "ll": [
+            25.7656,
+            62.2306
+          ],
+          "tapped": [
+            25.765504999999997,
+            62.230565
+          ],
+          "cold_ms": 185.7000000178814,
+          "repeat_ms": 0,
+          "requests": 1,
+          "bytes": 68119,
+          "network": [
+            {
+              "url": "https://ducksoft.fi/polku-osm/releases/20261031T212306Z-6e4ba0730c8f-11398e5b9ab9/ways.pmtiles",
+              "range": "bytes=277188097-277256215",
+              "bytes": 68119
+            }
+          ],
+          "seed": 195373633,
+          "pieces": 1,
+          "metres": 23.494205135176205,
+          "stops": {
+            "end": {
+              "why": "junction",
+              "at": [
+                25.76548,
+                62.23067
+              ],
+              "unloaded": false
+            },
+            "start": {
+              "why": "junction",
+              "at": [
+                25.76553,
+                62.23046
+              ],
+              "unloaded": false
+            }
+          }
+        }
+      ]
+    }
+  },
+  "safari": {
+    "version": "26.6.2",
+    "test": "ordinary native Safari tab on the local activation candidate, using actual hosted OSM and actual terrain",
+    "road": "Tykkikalliontie",
+    "length_metres": 173,
+    "profile": "108 to 113 m",
+    "settings_changed": false
+  },
+  "limits": [
+    "Phone is Chrome emulation, not a physical device.",
+    "Named-road Chrome interaction checks use fixed DEM and weather; OSM geometry comes from the real host.",
+    "Selection timings exclude application startup and elevation/weather analysis.",
+    "No scheduled workflow run has yet been observed; the workflow is active and manual monitoring passed."
+  ]
+}
