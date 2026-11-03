@@ -15607,6 +15607,98 @@ CT_NAME = r"""(async () => {""" + CT_HELP + r"""
 })()"""
 
 
+# On a phone, outside the planner (#235, #208): what a finger lands on is 44 px each way through its middle, what's
+# read is 11 px or more (the map's buttons' labels 12), nothing flashes when tapped, no hover sticks after a tap
+# (every :hover in css/app.css is behind (hover: hover)), and a switch answers while it's held.
+TG_LOOK = """(() => {
+  const fails = [];
+  // the points on a line through the control's middle, 1 px apart, that a finger there would press it with
+  const reach = (e, dx, dy) => {
+    const r = e.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let n = 0;
+    for (const s of [1, -1]) for (let i = s > 0 ? 0 : 1; i < 40; i++) {
+      const t = document.elementFromPoint(cx + s * i * dx, cy + s * i * dy);
+      if (!t || !e.contains(t)) break;
+      n++;
+    }
+    return n;
+  };
+  const hit = (what, e) => {
+    const w = reach(e, 1, 0), h = reach(e, 0, 1);
+    if (w < 43 || h < 43) fails.push(`${what}: a finger finds it ${w} × ${h} px, not 44 × 44`);
+  };
+  const map = polku.map, pop = new maplibregl.Popup({ className: 'polku-popup', closeButton: true }).setLngLat(map.getCenter()).setHTML('<p>An avoided place</p>').addTo(map);
+  for (const [what, sel] of [['the search', '#search-input'], ['the sport pill', '#activity-bar .act-current'], ['Settings', '#btn-settings'],
+    ['the Polku mark', '.topbar .brand'], ['Zoom in to see every trail', '#zoom-hint'], ["the credits' (i)", '.maplibregl-ctrl-attrib-button'],
+    ['the compass', '.ctrl-compass button'], ['Locate', '#btn-locate'], ['3D', '.ctrl-3d'], ['Weather', '#btn-time'], ['Layers', '#btn-layers'],
+    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
+    ["a map popup's ✕", '.polku-popup .maplibregl-popup-close-button']]) {
+    const e = document.querySelector(sel);
+    if (!e || !e.getClientRects().length) fails.push(`${what} isn't there (${sel})`); else hit(what, e);
+  }
+  const chips = [...document.querySelectorAll('#wx-bar .tl-layers .chip')];
+  if (chips.length !== 4) fails.push(`the timeline has ${chips.length} layer chips, not 4`);
+  for (const e of chips) hit(`the timeline's ${e.textContent.trim()}`, e);
+  pop.remove();
+  // words: 11 px or more, outside the planner; the map's buttons' labels 12
+  const small = new Map(), walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n; (n = walk.nextNode());) {
+    const e = n.parentElement;
+    if (!n.textContent.trim() || !e.getClientRects().length || e.closest('.sheet, #planner')) continue;
+    const px = parseFloat(getComputedStyle(e).fontSize), want = e.closest('.fab, .plan-btn') ? 12 : 11;
+    if (px < want) small.set(`"${n.textContent.trim().slice(0, 24)}" (${e.tagName.toLowerCase()}.${[...e.classList].join('.')})`, `${px} px, not ${want}`);
+  }
+  const drag = document.body.appendChild(Object.assign(document.createElement('span'), { className: 'orbit-label', textContent: 'Drag' }));
+  if (parseFloat(getComputedStyle(drag).fontSize) < 11) small.set("3D's Drag", `${getComputedStyle(drag).fontSize}, not 11`);
+  drag.remove();
+  fails.push(...[...small].map(([k, v]) => `${k} is ${v}`));
+  // no tap flash on anything that can be tapped
+  const flash = new Set();
+  for (const e of document.querySelectorAll('button, a[href], input, select, summary, label, [role=button], [tabindex]'))
+    if (getComputedStyle(e).webkitTapHighlightColor !== 'rgba(0, 0, 0, 0)') flash.add(`${e.tagName.toLowerCase()}.${[...e.classList].join('.')}`);
+  if (flash.size) fails.push(`a tap flashes on ${[...flash].slice(0, 8).join(', ')}${flash.size > 8 ? ` and ${flash.size - 8} more` : ''}`);
+  // hover only with a mouse: a tap leaves a phone's button :hover until the next tap elsewhere
+  const sticky = [], look = (rules, mouse) => {
+    for (const r of rules) {
+      if (r.cssRules && !(r instanceof CSSStyleRule)) look(r.cssRules, mouse || (r.conditionText || r.media?.mediaText || '').includes('hover: hover'));
+      else if (r.selectorText?.includes(':hover') && !mouse) sticky.push(r.selectorText);
+    }
+  };
+  look([...document.styleSheets].find((s) => /\\/css\\/app\\.css/.test(s.href || '')).cssRules, false);
+  if (sticky.length) fails.push(`${sticky.length} :hover rules in css/app.css stick on a phone: ${sticky.slice(0, 6).join(' | ')}${sticky.length > 6 ? ' …' : ''}`);
+  return fails;
+})()"""
+
+
+def targets(chrome):
+    fails = []
+    for w, h_ in ((390, 844), (360, 740)):
+        name = f'{w}x{h_}'
+        pg = chrome.page(w, h_, True)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
+            pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'wind': True}}, {'polku:winter': '"off"'}, '#12/61.514/23.822')
+            pg.js(SETTLED)
+            fails += [f'{name}: {f}' for f in pg.js(TG_LOOK)]
+            # a switch in Settings answers while it's held: its track darkens (pressed by a mouse: the browser's touch here sets no :active)
+            pg.js("document.querySelector('#btn-settings').click(), true")
+            pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('.panel-settings .tg') || Date.now() - t0 > 5000 ? ok(true) : setTimeout(go, 50); go(); })")
+            x, y, before = pg.js("(async () => { const e = document.querySelector('.panel-settings .tg:not(.off)'); e.closest('details').open = true; e.scrollIntoView({ block: 'center' });"
+                                 " await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))); const r = e.getBoundingClientRect();"
+                                 " return [r.left + 20, r.top + r.height / 2, getComputedStyle(e.querySelector('.tg-ui')).filter]; })()")
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': x, 'y': y, 'button': 'left', 'buttons': 1, 'clickCount': 1}, pg.s)
+            held = pg.js("(() => { const e = document.querySelector('.tg:active .tg-ui'); return e ? getComputedStyle(e).filter : 'not :active'; })()")
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': w - 4, 'y': 4, 'button': 'left', 'buttons': 1}, pg.s)
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': w - 4, 'y': 4, 'button': 'left', 'buttons': 0, 'clickCount': 1}, pg.s)
+            if held in (before, 'not :active'):
+                fails.append(f"{name}: a Settings switch held down looks as it did ({held})")
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} phones: 44 px targets, 11 px words, no tap flash or sticky hover outside the planner (#235, #208)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def controls(chrome):
     fails = []
 
@@ -17098,6 +17190,7 @@ GROUPS = [
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
     ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),

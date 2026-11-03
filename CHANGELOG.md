@@ -9,6 +9,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - While you draw, a tap or click that lands just beside your route opens the route's card, as one on the line does, instead of adding a point at the route's end and turning it back on itself. It reaches about 24 px from the line by touch and 16 px with a mouse; farther away, a tap still adds a point.
 - With a mouse, the route lights up and its readout shows as far out as a click takes it. The line itself is still where you drag to reshape it.
 
+### Easier to tap and read on a phone ([#235](https://github.com/TommiContursi/Polku/issues/235), [#208](https://github.com/TommiContursi/Polku/issues/208))
+
+- On a phone, the search, the sport pill, **Settings**, the **Zoom in** note, the map's credits (ⓘ) and the timeline's layer chips, **Play**, ✕ and time slider each take a finger's 44 px, and they look as they did. The timeline's two rows of chips sit a little further apart for it.
+- The labels on **Weather**, **Layers** and **Plan** are larger, and so are the scale bar, the timeline's place and 3D's **Drag**.
+- A tap no longer flashes grey or blue, and a button you tapped doesn't stay grey or dark afterwards. A switch's track darkens while it's held, and a menu's row turns grey under your finger.
+
 ### The folded planner keeps ⋯
 
 - On a phone, with the planner folded to its line, the toolbar keeps **⋯** with the whole route's actions beside the drawing mode's icon, **Undo** and **Redo**. Before, folding the planner hid it. The icon still opens the drawing modes, the sport and the route style.
