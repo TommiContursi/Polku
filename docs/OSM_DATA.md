@@ -441,20 +441,28 @@ Independent production health
 verified that exact release at 15:31:45 UTC: all 32 cases and 28 current archives,
 zero normal Overpass and extra selected-way tag requests. Protected resume
 [41666085199](https://github.com/TommiContursi/Polku/actions/runs/41666085199)
-is completing the same immutable release without rebuilding. #738 retains the
-original predecessor when resuming an already-promoted release.
+completed the same immutable release without rebuilding or uploading archive
+payload again. The 37m45s job downloaded its input in 13m21s and fully read back
+the existing data in 17m47s. All public checks and 32 post-publication browser
+cases passed at 16:16:50 UTC, verifying all 28 current archive URLs. #738's
+checkpoint matches the original predecessor byte for byte.
 
 Disposable host retention [41585081185](https://github.com/TommiContursi/Polku/actions/runs/41585081185)
 deleted two eligible test entries and preserved current/predecessor. Production
 read-only preview [41625459351](https://github.com/TommiContursi/Polku/actions/runs/41625459351)
 preserved all 23,853,122,100 bytes, proposed no deletion and recognized the
 recoverable pending receipt with both releases protected.
+Final read-only preview
+[41668769375](https://github.com/TommiContursi/Polku/actions/runs/41668769375)
+confirmed the completed receipt, no pending intent, the original predecessor and
+23,853,120,774 retained bytes, with no deletion proposed.
 
 Bot incident #728 proved real health failure, owner assignment, GitHub inbox
 delivery, email delivery and automatic recovery. Actual update timeout #736
 also reached the owner's email; successful health correctly left that separate
-update incident open pending completed publication recovery. Device push is
-unverified. The first post-activation weekly cron has not yet occurred; manual
+update incident open until completed publication recovery. The bot then closed
+#736 at 16:17:22 UTC and the recovery email arrived at 16:17:43 UTC. Device push
+is unverified. The first post-activation weekly cron has not yet occurred; manual
 main build uses the same automatic build/publication gates.
 
 The [compact receipt](measurements/osm-maintenance-2026-11-03.json) records source

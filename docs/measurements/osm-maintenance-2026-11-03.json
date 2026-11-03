@@ -1,5 +1,5 @@
 {
-  "state": "live verified; interrupted publication recovery running",
+  "state": "complete: live publication, verified same-release recovery and alerts",
   "release": "20261102T212126Z-four-a730845df91e58bc",
   "source_timestamp": "2026-11-02T21:21:26Z",
   "manifest_sha256": "0ee9b3380dfc545e81513b82f45011aba38b57812b4811ec709289db565cf085",
@@ -11,7 +11,8 @@
     "delta_updates": false,
     "publication_minutes": 120,
     "browser_seconds": 180,
-    "standalone_rollback_minutes": 90
+    "standalone_rollback_minutes": 90,
+    "enabled_reverified_at": "2026-11-03T16:22:36.695432+00:00"
   },
   "build": {
     "run": 41617739415,
@@ -45,9 +46,9 @@
     "postchecks_finished": false
   },
   "live_health": {
-    "run": 41664173639,
+    "run": 41666085199,
     "browser_cases": 32,
-    "checked_at": "2026-11-03T15:31:45.319918+00:00",
+    "checked_at": "2026-11-03T16:16:50.937429+00:00",
     "release": "20261102T212126Z-four-a730845df91e58bc",
     "normal_overpass_requests": 0,
     "extra_selected_way_tag_requests": 0
@@ -55,23 +56,38 @@
   "recovery": {
     "run": 41666085199,
     "code": "bd21699206b134b318f4e30cc4af1ce146827f9c",
-    "state": "running",
+    "state": "success",
     "verified_source_run": 41617739415,
     "no_rebuild": true,
-    "original_predecessor": "20261101T212136Z-four-d5f8341920573573"
+    "original_predecessor": "20261101T212136Z-four-d5f8341920573573",
+    "started_at": "2026-11-03T15:39:13Z",
+    "completed_at": "2026-11-03T16:16:58Z",
+    "job_seconds": 2265,
+    "artifact_download_seconds": 800.933,
+    "full_readback_seconds": 1066.915,
+    "all_payload_hashes_and_manifest_verified": true,
+    "archive_payload_bytes_uploaded": 0,
+    "all_public_checks_passed": true,
+    "post_publication_browser_cases": 32,
+    "all_current_archive_urls_verified": 28,
+    "rollback_checkpoint_matches_original_bytes": true,
+    "original_checkpoint_sha256": "4031ffd824f57cfb420d34dd07e0af9b359423ae3d802e91210cfc59b31480f6"
   },
   "retention": {
     "host_test_run": 41585081185,
     "disposable_deletions": 2,
     "read_only_preview_run": 41625459351,
-    "bytes": 23853122100,
+    "bytes": 23853120774,
     "delete": [],
     "current_and_original_predecessor_protected": true,
-    "pending_receipt_recoverable": true,
     "dedicated_root_budget_bytes": 85899345920,
     "successful_publication_days": 28,
     "owned_staging_days": 7,
-    "unmanaged_files_never_deleted": true
+    "unmanaged_files_never_deleted": true,
+    "interrupted_receipt_was_recoverable": true,
+    "final_read_only_preview_run": 41668769375,
+    "previous_release": "20261101T212136Z-four-d5f8341920573573",
+    "pending_receipt_remaining": false
   },
   "alerts": {
     "test_issue": 724,
@@ -82,8 +98,12 @@
     "failure_and_recovery_email_delivery_verified": true,
     "update_timeout_email_received_at": "2026-11-03T12:46:17Z",
     "successful_health_left_update_incident_open": true,
-    "update_recovery_pending": true,
-    "device_push_verified": false
+    "update_recovery_pending": false,
+    "device_push_verified": false,
+    "update_issue_automatically_closed_at": "2026-11-03T16:17:22Z",
+    "update_recovery_run": 41666085199,
+    "update_recovery_email_received_at": "2026-11-03T16:17:43Z",
+    "update_recovery_email_verified": true
   },
   "countries": {
     "finland": {
@@ -234,5 +254,29 @@
     704,
     727,
     730
-  ]
+  ],
+  "independent_live_health": {
+    "run": 41664173639,
+    "browser_cases": 32,
+    "checked_at": "2026-11-03T15:31:45.319918+00:00",
+    "release": "20261102T212126Z-four-a730845df91e58bc",
+    "normal_overpass_requests": 0,
+    "extra_selected_way_tag_requests": 0
+  },
+  "live_browser_transfer": {
+    "selection_bytes": [
+      13764,
+      773200
+    ],
+    "selection_ms": {
+      "desktop": [
+        164.3,
+        2261.7
+      ],
+      "phone_emulated": [
+        295.1,
+        2464.8
+      ]
+    }
+  }
 }
