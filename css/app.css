@@ -2294,15 +2294,11 @@ body.dropping .drop-hint { display: flex; }
 /* the planner folded on a phone floats it, as it has no row to dock into: where it's wider than the window (200 %), More goes to a row of its own */
 .pl-tools[data-stage="folded"] { flex-wrap: wrap; max-width: calc(100vw - 16px); }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
-/* the planner's own bar on a phone (#745): at its own width at the left, no wider than the sheet (planner.js), or its first
-   row at full; Done, the drawing button, undo and redo at their own widths from its start, More at its end, nothing
-   stretched; where it's still too narrow there's less room around Done's and the drawing button's words (360 px keeps them
-   whole), then the drawing button loses its second line, shortens its name, shows only its icon, as on the line, and only
-   then does the bar take a second row (200 %) */
-.pl-tools.wide { justify-content: flex-start; }
-.pl-tools.wide .modebtn { flex: none; margin-right: 0; }
-.pl-tools.wide .tb-more { margin-left: auto; }
-.pl-tools.docked .btn.edit { margin-right: auto; } /* after Done, the sheet's first row at full: Edit at its start, More at its end */
+/* floating, no wider than the window; where even without the route's actions it's wider (360 px, 200 %, #745): less room
+   around Done's and the drawing button's words, then the drawing button loses its second line, shortens its name, shows
+   only its icon, as on the line, and only then does it take a second row (planner.js PHONE_FITS) */
+.pl-tools:not(.docked):not(.desk):not(.probe) { max-width: calc(100vw - 16px); } /* (the copy measures how wide it would be) */
+.pl-tools.docked .btn.edit { margin-right: auto; } /* after Done, a row of its own at full (200 %): Edit at its start, as Done is */
 .pl-tools.tb-tight .btn.done { padding-inline: 10px; margin-right: 0; }
 .pl-tools.tb-tight .modebtn { gap: 4px; padding: 0 4px 0 8px; }
 .pl-tools.tb-short .modebtn .two small { display: none; }
