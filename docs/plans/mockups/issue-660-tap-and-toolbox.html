@@ -220,6 +220,10 @@ body.single .fr .screen { --k: 1 !important; border-radius: 0; box-shadow: none;
 .tb .tool { flex: none; }
 /* (a): the sheet's own first row, at every size */
 .tb.rowa { padding: 6px 6px 4px; border-bottom: 1px solid var(--line); }
+/* (a): the sheet's foot, the one row of a bottom sheet that never moves; its line just above it */
+.tb-foot { flex: none; border-top: 1px solid var(--line); }
+.tb-foot .pl-hint { margin: 6px 12px 0; }
+.tb.rowa.foot { border-bottom: 0; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
 .tb.rowa.two { flex-wrap: wrap; row-gap: 4px; }
 .tb.rowa.two .tb2.mode { flex: 1 1 0; }
 .tb.rowa.two > span { flex-basis: 100%; justify-content: flex-end; }
@@ -333,7 +337,7 @@ const SHOTS = `https://raw.githubusercontent.com/TommiContursi/Polku/${PIN}/clau
 const Q = new URLSearchParams(location.search);
 const pick = (k, list, d) => (list.includes(Q.get(k)) ? Q.get(k) : d);
 const G = {
-  v: pick('v', ['today', 'v1', 'v2'], 'v1'), place: pick('place', ['a', 'b'], 'a'), desk: pick('desk', ['foot', 'top'], 'top'),
+  v: pick('v', ['today', 'v1', 'v2'], 'v1'), place: pick('place', ['a', 'b', 'r'], 'a'), desk: pick('desk', ['foot', 'top'], 'top'),
   adv: pick('adv', ['more', 'context'], 'more'), lang: pick('lang', ['en', 'fi'], 'en'), worst: Q.get('worst') === '1',
   size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390',
 };
@@ -497,7 +501,7 @@ class Frame {
   // ------------------------------------------------------------ the log the flows count
   note(kind, what) { this.log.push({ kind, what, at: Date.now() }); window.mock?.onLog?.(this); this.renderMeter(); }
   pressed(el) {
-    const k = el.dataset.k; if (!k) return;
+    const k = { edit: 'done' }[el.dataset.k] || el.dataset.k; if (!k) return;
     const r = el.getBoundingClientRect(), s = this.screen.getBoundingClientRect(), z = parseFloat(getComputedStyle(this.screen).zoom) || 1;
     const rect = [(r.left - s.left) / z, (r.top - s.top) / z, r.width / z, r.height / z].map(Math.round);
     const was = this.lastRect[k];
@@ -549,9 +553,9 @@ class Frame {
     this.menu = null;
     const h = this.hitAt(sx, sy), mode = this.tapMode;
     if (mode === 'none') return;
-    if (mode === 'move') { const i = this.moving; this.commit(); const q = this.snap(this.toWorld(sx, sy)); this.pts[i].x = q[0]; this.pts[i].y = q[1]; this.rebuildLegs(i); this.moving = null; this.note('tap', `moved point ${i + 1}`); this.render(); return; }
+    if (mode === 'move') { const i = this.moving; this.commit(); const q = this.snap(this.toWorld(sx, sy)); this.pts[i].x = q[0]; this.pts[i].y = q[1]; this.rebuildLegs(i); this.moving = null; this.sheet = this.sheetBeforeMove || 'peek'; this.note('tap', `moved point ${i + 1}`); this.render(); return; }
     if (hold) { this.note('hold', h.kind); this.openCard({ kind: h.kind === 'route' ? 'stretch-edit' : h.kind === 'point' ? 'point' : h.kind === 'place' ? 'place' : 'pick', hit: h, hold: true }); return; }
-    if (this.cards.length && this.dev === 'phone' && (h.kind === 'nothing' || h.kind === 'way' || h.kind === 'lipas') && mode === 'add' && this.v === 'today') { this.closeCards(); this.note('tap', 'closed the card'); return; }
+    if (this.cards.length && this.dev === 'phone' && (h.kind === 'nothing' || h.kind === 'way' || h.kind === 'lipas')) { this.closeCards(); this.note('tap', 'closed the card'); return; }
     if (h.kind === 'alt') { this.takeAlt(); this.note('tap', 'took the other way'); return; }
     if (h.kind === 'point') { this.note('tap', `point ${h.i + 1}`); return this.openCard({ kind: 'point', i: h.i, hit: h }); }
     if (h.kind === 'hazard') { this.note('tap', 'the ford'); return this.openCard({ kind: 'warn', w: 'ford' }); }
@@ -559,11 +563,11 @@ class Frame {
     if (h.kind === 'route') { this.note('tap', 'the route'); return this.openCard({ kind: 'route', hit: h }); }
     // a way, a marked route or nothing
     if (mode === 'add') {
-      if (h.nearRoute != null && h.nearRoute < 30 && this.pts.length > 1) this.note('near', `a tap ${Math.round(h.nearRoute)} px from the route's middle added a point at the end`);
+      if (h.nearRoute != null && h.nearRoute < TOL[this.touch ? "touch" : "mouse"].route + 8 && this.pts.length > 1) this.note('near', `a tap ${Math.round(h.nearRoute)} px from the route's middle added a point at the end`);
       this.addPoint(h.at, h.way);
       return;
     }
-    if (this.v === 'v2' && this.look) { this.look = false; this.note('mode', 'Look used'); }
+    if (this.v === 'v2' && this.look) { this.look = false; this.note('auto', 'Look used: the next tap adds again'); }
     this.note('tap', h.kind === 'nothing' ? 'nothing here' : h.kind);
     this.openCard({ kind: h.kind === 'lipas' ? 'lipas' : 'pick', hit: h });
   }
@@ -610,10 +614,21 @@ class Frame {
   openCard(c, quiet = false) {
     if (this.dev === 'phone' && this.cards.length === 0) this.cardS = this.cardS0 || 'peek';
     if (c.from === undefined && this.cards.length && !c.stack) this.cards = [];
+    if (c.hit && c.hit.way && !c.chain) c.chain = this.joinWay(c.hit.way);
     this.cards.push(c); this.menu = null;
     if (c.kind === 'route' && this.v === 'today' && this.editing && this.dev === 'phone') this.pill = c.hit.at; else this.pill = null;
     if (!quiet) this.note('card', c.kind);
     this.render();
+  }
+  // a way's pieces, cut at the tiles' edges, joined again (as #623's card joins a way's pieces)
+  joinWay(w) {
+    const L = this.Wd.lines.filter((l) => l[0] === w.k && l[1] === w.name && l[2] === w.cls), ends = (l) => [l[0], l[l.length - 1]];
+    const close = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 2.5, chain = [w.line], used = new Set([w.line]);
+    for (let grew = true; grew && chain.length < 30;) {
+      grew = false;
+      for (const l of L) if (!used.has(l[3]) && chain.some((c) => ends(c).some((e) => ends(l[3]).some((f) => close(e, f))))) { chain.push(l[3]); used.add(l[3]); grew = true; }
+    }
+    return chain;
   }
   closeCards() { this.cards = []; this.pill = null; this.render(); }
   // ------------------------------------------------------------ actions (buttons with data-k)
@@ -645,7 +660,8 @@ class Frame {
       case 'card-x': this.closeCards(); this.note('tap', 'closed the card'); return;
       case 'card-back': this.cards.pop(); this.note('tap', 'Back'); break;
       case 'card-size': this.cardS = this.cardS === 'peek' ? 'half' : this.cardS === 'half' ? 'full' : 'peek'; break;
-      case 'move': this.moving = this.cards[this.cards.length - 1].i; this.cards = []; this.note('tap', 'Move'); break;
+      case 'move': this.moving = this.cards[this.cards.length - 1].i; this.cards = []; this.sheetBeforeMove = this.sheet; this.sheet = 'folded'; this.note('tap', 'Move'); break; // (as pickOnMap(): folded to its words, with Cancel)
+      case 'move-x': this.moving = null; this.sheet = this.sheetBeforeMove || 'peek'; this.note('tap', 'Cancel'); break;
       case 'remove': this.note('tap', 'Remove'); this.removePoint(this.cards[this.cards.length - 1].i); return;
       case 'next-stretch': { const c = this.cards[this.cards.length - 1]; this.cards.push({ kind: 'stretch', li: Math.min(c.i, this.legs.length - 1), from: 1 }); this.note('tap', 'Next stretch'); break; }
       case 'this-stretch': { const c = this.cards[this.cards.length - 1]; this.cards.push({ kind: 'stretch', li: c.hit.li, from: 1 }); this.note('tap', 'This stretch'); break; }
@@ -697,18 +713,22 @@ class Frame {
     S.style.setProperty('--z', this.z);
     if (this.z === 2) S.style.zoom = `calc(2 * var(--k, .62))`; else S.style.zoom = '';
     if (this.ox == null) this.frameRoute();
+    if (this.toast && !this.toast.timer) { const x = this.toast; x.timer = setTimeout(() => { if (this.toast === x) { this.toast = null; this.render(); } }, x.undo || x.open ? 7000 : 4000); } // (as the app's notes)
     S.innerHTML = this.mapHTML() + this.chromeHTML();
     if (this.dev === 'phone') this.sizeSheet();
     this.renderMeter();
   }
   sizeSheet() {
     const sh = this.screen.querySelector('.sheet'); if (!sh) return;
+    if (this.planPeek == null && this.cards.length && this.cardS === 'peek') { const c = this.cards; this.cards = []; const s0 = this.sheet; this.sheet = 'peek'; this.render(); this.cards = c; this.sheet = s0; this.render(); return; }
     const full = this.fullTop();
     const s = this.cards.length ? this.cardS : this.sheet;
     if (s === 'half') sh.style.height = `${Math.round(this.h * 0.5)}px`;
     else if (s === 'full') sh.style.height = `${this.h - full - 8}px`;
+    else if (s === 'peek' && this.cards.length && this.planPeek) sh.style.height = `${this.planPeek}px`;
     else sh.style.height = '';
-    sh.style.maxHeight = `${this.h - full - 8}px`;
+    sh.style.maxHeight = `${s === 'peek' && this.cards.length ? Math.round(this.h * 0.52) : this.h - full - 8}px`;
+    if (s === 'peek' && !this.cards.length && this.stage === 'route' && this.pts.length > 1) this.planPeek = sh.offsetHeight;
     // today's floating toolbox sits on the sheet's edge
     const tb = this.screen.querySelector('.tb.today:not(.dock)');
     if (tb) { const top = sh.offsetTop; tb.style.top = `${Math.max(64, top - tb.offsetHeight - 8)}px`; }
@@ -729,7 +749,8 @@ class Frame {
   fitColumn(top) {
     // the map's column keeps what fits between the top bar and the sheet (today's fitColumn(): the compass first, then 3D)
     const col = this.screen.querySelector('.map-ctrls'); if (!col) return;
-    for (const k of ['compass', '3d', 'fitroute', 'locate']) { const b = col.querySelector(`[data-c="${k}"]`); if (b && col.offsetTop < 64) b.hidden = true; }
+    for (const k of ['compass', '3d', 'fitroute', 'locate', 'weather', 'layers']) { const b = col.querySelector(`[data-c="${k}"]`); if (b && col.offsetTop < 64) b.hidden = true; }
+    col.hidden = col.offsetTop < 64;
   }
   mapHTML() {
     const W = this.Wd, s = W.s, [iw, ih] = W.size;
@@ -737,7 +758,7 @@ class Frame {
     const legs = this.legs.map((l, i) => `<polyline points="${line(l)}" fill="none" stroke="#fff" stroke-width="${9.5 / s}" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${line(l)}" fill="none" stroke="${this.flash === 'dark' ? '#111' : 'var(--route)'}" stroke-width="${5 / s}" stroke-linecap="round" stroke-linejoin="round" ${this.cards.some((c) => (c.kind === 'stretch' && c.li === i) || (c.kind === 'route' && c.hit.li === i)) ? 'stroke-dasharray="none" opacity="1"' : ''}/>`).join('');
     const lit = this.lit ? W.lines.filter((l) => (l[0] === 'road' || l[0] === 'cycleway') && ['minor', 'tertiary', 'secondary', 'cycleway'].includes(l[2] || l[0])).slice(0, 260).map((l) => `<polyline points="${line(l[3])}" fill="none" stroke="var(--lit)" stroke-width="${4 / s}" stroke-linecap="round" opacity=".9"/>`).join('') : '';
     const alt = this.alt ? `<polyline points="${line(this.alt.line)}" fill="none" stroke="#fff" stroke-width="${9 / s}" stroke-linecap="round"/><polyline points="${line(this.alt.line)}" fill="none" stroke="#2563eb" stroke-width="${5 / s}" stroke-linecap="round"/>` : '';
-    const picked = this.cards.map((c) => c.hit && c.hit.way).filter(Boolean).map((w) => `<polyline points="${line(w.line)}" fill="none" stroke="#374151" stroke-width="${7 / s}" stroke-linecap="round" opacity=".85"/>`).join('');
+    const picked = this.cards.flatMap((c) => c.chain || []).map((l) => `<polyline points="${line(l)}" fill="none" stroke="#374151" stroke-width="${7 / s}" stroke-linecap="round" opacity=".85"/>`).join('');
     const ford = this.pts.length > 1 && this.total() > 2300 && this.spotAt(2300);
     const pts = this.pts.map((p, i) => {
       const n = this.pts.length, cls = i === 0 ? 'start' : i === n - 1 && n > 1 ? 'end' : 'via';
@@ -797,9 +818,9 @@ class Frame {
   }
   phoneHTML() {
     const v = this.v, n = this.nums(), carded = this.cards.length > 0, s = carded ? this.cardS : this.sheet;
-    let o = `<div class="scale" style="bottom: 200px">500 m</div>`;
+    let o = `<div class="scale" style="bottom: 200px;${this.v !== 'today' && this.place === 'b' && this.open ? 'left: 80px' : ''}">500 m</div>`;
     if (this.sheet !== 'folded' && !carded && this.open && this.stage === 'route') o += `<div class="zoomnote" style="${this.v !== 'today' && this.place === 'b' ? 'left: 80px' : ''}">${t('zoomNote')}</div>`;
-    const col = `<div class="map-ctrls" style="bottom: 200px"><button type="button" class="ctrl-btn" data-c="compass" aria-label="Compass">${ic('compass', 20)}</button><button type="button" class="ctrl-btn" data-c="locate" aria-label="Locate">${ic('locate', 20)}</button>${this.pts.length > 1 ? `<button type="button" class="ctrl-btn" data-c="fitroute" data-k="fitroute" aria-label="Show the whole route">${ic('fit', 20)}</button>` : ''}<button type="button" class="ctrl-btn" data-c="3d">3D</button><button type="button" class="ctrl-btn word">${ic('cloudSun', 20)}Weather</button><button type="button" class="ctrl-btn word layers">${ic('layers', 18)}Layers</button>${this.away ? `<button type="button" class="ctrl-btn word plan" data-k="plan">${ic('route', 20)}${t('plan')}</button>` : ''}</div>`;
+    const col = `<div class="map-ctrls" style="bottom: 200px"><button type="button" class="ctrl-btn" data-c="compass" aria-label="Compass">${ic('compass', 20)}</button><button type="button" class="ctrl-btn" data-c="locate" aria-label="Locate">${ic('locate', 20)}</button>${this.pts.length > 1 ? `<button type="button" class="ctrl-btn" data-c="fitroute" data-k="fitroute" aria-label="Show the whole route">${ic('fit', 20)}</button>` : ''}<button type="button" class="ctrl-btn" data-c="3d">3D</button><button type="button" class="ctrl-btn word" data-c="weather">${ic('cloudSun', 20)}Weather</button><button type="button" class="ctrl-btn word layers" data-c="layers">${ic('layers', 18)}Layers</button>${this.away ? `<button type="button" class="ctrl-btn word plan" data-k="plan">${ic('route', 20)}${t('plan')}</button>` : ''}</div>`;
     o += col;
     if (!this.open) return o;
     // (b): the column, fixed, whatever the sheet does
@@ -818,19 +839,21 @@ class Frame {
       if (inner && !viewFull) todayTb = `<div class="tb today${todayDock ? ' dock' : ''}" role="toolbar" aria-label="Drawing tools">${inner}</div>`;
       if (inner && !todayDock && !viewFull) o += todayTb;
     }
-    const rowa = v !== 'today' && this.place === 'a' && this.stage !== 'start' ? `<div class="tb rowa${this.z === 2 || (this.w < 340 && G.lang === 'fi') ? ' two' : ''}" role="toolbar" aria-label="Drawing tools">${this.slots('rowa')}</div>` : '';
+    const bar = v !== 'today' && this.place !== 'b' && this.stage !== 'start' ? `<div class="tb rowa${this.place === 'a' ? ' foot' : ''}${this.z === 2 || (this.w < 340 && G.lang === 'fi') ? ' two' : ''}" role="toolbar" aria-label="Drawing tools">${this.slots('rowa')}</div>` : '';
+    const rowa = this.place === 'r' ? bar : '', foot = this.place === 'a' && bar ? `<div class="tb-foot">${this.hint()}${bar}</div>` : '';
     o += `<div class="sheet" data-s="${s}" data-k="sheet">`;
     if (this.sheet === 'folded' && !carded) {
       const w = this.warnings().filter((x) => x.tier === 'read').length;
+      if (this.moving != null) { o += `<div class="fold-line"><span class="fold-go" style="font-size:15px">${t('hintMove')}</span><button type="button" class="btn quiet" data-k="move-x">Cancel</button></div>`; return o + foot.replace(/<p class="pl-hint[^>]*>.*?<\/p>/, '') + '</div>'; }
       o += rowa + `<div class="fold-line"><button type="button" class="fold-go" data-k="unfold">${w ? `<span class="fw">${ic('warn', 16)}${w}</span>` : ''}<span>${n.km}</span><span>${n.min}</span><span>↑${n.up} ↓${n.down} m</span></button><button type="button" class="tool" data-k="close" aria-label="Close the planner">${ic('close', 20)}</button></div>`;
-      return o + '</div>';
+      return o + foot.replace(/<p class="pl-hint[^>]*>.*?<\/p>/, '') + '</div>';
     }
     const viewMore = v === 'today' && this.inView() && s === 'full' && !carded ? `<button type="button" class="tool" data-k="more" aria-label="${t('more')}">${ic('more', 20)}</button>` : '<span></span>';
     o += `<div class="sheet-top">${viewMore}<button type="button" class="sheet-handle" data-k="handle" aria-label="Sheet size"></button><button type="button" class="tool" data-k="${carded ? 'card-size' : 'fold'}" aria-label="Fold">${ic('down', 20)}</button></div>`;
     o += rowa;
     if (todayDock) o += todayTb;
-    if (carded) { o += `<div class="sheet-in"><div class="sheet-body" style="display:block">${this.cardHTML(s === 'peek')}</div></div>`; return o + '</div>'; }
-    o += `<div class="sheet-in"><div class="sheet-head">${this.hint()}${this.headHTML()}</div><div class="sheet-body">${this.bodyHTML()}</div></div></div>`;
+    if (carded) { o += `<div class="sheet-in"><div class="sheet-body" style="display:block">${this.cardHTML(s === 'peek')}</div></div>${foot}`; return o + '</div>'; }
+    o += `<div class="sheet-in"><div class="sheet-head">${this.place === 'a' ? '' : this.hint()}${this.headHTML()}</div><div class="sheet-body">${this.bodyHTML()}</div></div>${foot}</div>`;
     return o;
   }
   headHTML() {
@@ -930,9 +953,10 @@ class Frame {
     // a pick: a way, a marked route, a place or nothing (#623's card; its actions on a tap now, not only on a hold)
     const h = c.hit || {}, way = h.way, lipas = c.kind === 'lipas', place = c.kind === 'place';
     const title = place ? h.name : lipas ? (way.name || 'Marked route') : way ? (way.name || KIND_WORD[way.k]) : 'Nothing is mapped right here';
-    const sub = place ? 'Campfire site · LIPAS' : lipas ? 'MTB route · LIPAS' : way ? `${KIND_WORD[way.k]}${way.k === 'road' ? ' · asphalt' : way.k === 'path' ? ' · MTB S1' : ''}` : '';
+    const sub = place ? 'Campfire site · LIPAS' : lipas ? 'MTB route · LIPAS' : way ? `${way.name ? `${KIND_WORD[way.k]} · ` : ''}${{ road: 'asphalt · lit', cycleway: 'asphalt · lit · bikes and walking', path: 'MTB S1 · ground', track: 'gravel' }[way.k]}` : '';
+    const wayLen = c.chain ? c.chain.reduce((m, l) => m + this.Wd.len(l), 0) * this.Wd.mpp : 0;
     o += head(`<span class="pick-mark" style="display:block;width:22px;height:6px;border-radius:3px;background:${lipas ? '#7c3aed' : '#374151'}"></span>`, title, sub);
-    if (way || lipas) o += nums([[fmtKm(way ? this.Wd.len(way.line) * this.Wd.mpp : 0), 'long'], [this.wxLate ? '–' : '12 m', 'up', this.wxLate], [this.wxLate ? '–' : '9 m', 'down', this.wxLate]]);
+    if (way || lipas) o += nums([[fmtKm(wayLen), c.chain && c.chain.length > 1 ? `long, ${c.chain.length} pieces` : 'long'], [this.wxLate ? '–' : '12 m', 'up', this.wxLate], [this.wxLate ? '–' : '9 m', 'down', this.wxLate]]);
     else if (place) o += nums([['96 m', 'height']]);
     const yours = actions || this.tapMode === 'look' && !today;
     const acts = this.pts.length ? [['add-route', 'plus', 'Add to my route', 'In your route, where it fits'], ['starthere2', 'flag', 'Start here', 'Adds a new start point'], ['endhere2', 'flagend', 'End here', 'Adds a new end point'], ['loop', 'roundtrip', 'Round trip from here', 'Loops of the length you choose, from here'], ['avoid', 'avoid', 'Avoid this spot', 'The route goes around it, 40 m']] : [['add-route', 'plus', 'Start a route here', '']];
@@ -1012,7 +1036,7 @@ class Frame {
       return `<button type="button" class="tb2" data-k="done"><b>${t('done')}</b></button>${sep}${mode('route', t('follow'), true)}${mode('pass', 'Straight line')}${mode('water', 'Over water')}${sep}<button type="button" class="tb2">${ic('bike', 18)}<span><small>Next leg</small><b style="font-size:13px">MTB</b></span></button><button type="button" class="tb2"><span><small>Route style</small><b style="font-size:13px">Balanced</b></span></button>${sep}${undo}${this.w > 1200 ? `${sep}<button type="button" class="tool" aria-label="Reverse">${ic('reverse', 18)}</button><button type="button" class="tool" aria-label="Back to start">${ic('loop', 18)}</button><button type="button" class="tool" data-k="share" aria-label="Share link">${ic('share', 18)}</button><button type="button" class="tool" aria-label="Export GPX">${ic('download', 18)}</button><button type="button" class="tool" aria-label="Save offline">${ic('offline', 18)}</button>` : ''}${sep}<button type="button" class="tool" aria-label="Clear route">${ic('trash', 18)}</button>${more}`;
     }
     const on = v === 'v1' ? this.addOn : this.look;
-    return `<button type="button" class="tb2 toolk" data-k="tool" aria-pressed="${on}">${ic(v === 'v1' ? 'addpt' : 'eye', 18)}<b>${v === 'v1' ? t('add') : t('look')}</b></button><button type="button" class="tb2 mode" data-k="modebtn">${ic('route', 18)}<span><b style="font-size:14px">${t('follow')}</b><small>${esc(t('style'))}</small></span>${ic('down', 14)}</button>${undo}${more}`;
+    return `<button type="button" class="tb2 toolk" data-k="tool" aria-pressed="${on}">${ic(v === 'v1' ? 'addpt' : 'eye', 18)}<b>${v === 'v1' ? t('add') : t('look')}</b></button><button type="button" class="tb2 mode" data-k="modebtn">${ic('route', 18)}<span><b style="font-size:14px">${t('follow')}</b><small>${esc(t(top ? 'styleShort' : 'style'))}</small></span>${ic('down', 14)}</button>${undo}${more}`;
   }
   menuHTML() {
     const desk = this.dev === 'desk', adv = G.adv === 'more';
@@ -1126,7 +1150,7 @@ function build() {
 }
 function bars() {
   const sw = (label, key, opts) => `<div class="bar"><span>${label}</span><div class="sw" role="group" aria-label="${label}">${opts.map(([v, w]) => `<button type="button" data-g="${key}" data-v="${v}" aria-pressed="${G[key] === v}">${w}</button>`).join('')}</div></div>`;
-  document.getElementById('bars').innerHTML = sw('Version', 'v', [['today', 'Today'], ['v1', '1: Add points'], ['v2', '2: Look']]) + sw('Toolbox', 'place', [['a', '(a) the sheet’s row'], ['b', '(b) a left column']]) + sw('Desktop', 'desk', [['foot', 'Toolbar at the foot'], ['top', 'In the panel']])
+  document.getElementById('bars').innerHTML = sw('Version', 'v', [['today', 'Today'], ['v1', '1: Add points'], ['v2', '2: Look']]) + sw('Toolbox', 'place', [['a', '(a) the sheet’s foot'], ['b', '(b) a left column'], ['r', 'Earlier: its first row']]) + sw('Desktop', 'desk', [['foot', 'Toolbar at the foot'], ['top', 'In the panel']])
     + sw('Size', 'size', [['390', '390 × 844'], ['360', '360 × 740'], ['200', '200 %']]) + sw('Words', 'lang', [['en', 'English'], ['fi', 'Suomi']]) + sw('Advanced', 'adv', [['more', 'In ⋯'], ['context', 'In context']]) + sw('Worst case', 'worst', [[false, 'Off'], [true, 'On']]);
   document.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => { const k = b.dataset.g; G[k] = b.dataset.v === 'true' ? true : b.dataset.v === 'false' ? false : b.dataset.v; const u = new URL(location); u.searchParams.set(k === 'size' ? 'z' : k, k === 'size' ? (G.size === '200' ? 2 : '') : String(G[k])); if (k === 'size') { u.searchParams.delete('z'); if (G.size === '360') { u.searchParams.set('w', 360); u.searchParams.set('h', 740); } else { u.searchParams.delete('w'); u.searchParams.delete('h'); if (G.size === '200') u.searchParams.set('z', 2); } } history.replaceState(null, '', u); bars(); build(); tapsTable(); }; });
 }
