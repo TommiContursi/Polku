@@ -102,7 +102,8 @@ Estonia, from Geofabrik and served by ducksoft.fi. Full-tag inspection uses the
 same original objects; selected-way tags reuse the already loaded ways.
 Only local tiles are downloaded. Valid hosted cache comes first, followed by
 covered hosted tiles and bounded cached/public Overpass fallback. Actual extract
-polygons determine coverage; uncertain border tiles, unsupported objects,
+polygons determine coverage, including their proven union at shared borders;
+genuine coverage gaps, unsupported objects,
 ambiguous nearby relations and lake/park area selection retain public fallback.
 Missing data remains unknown. Routing and map tiles keep their existing sources.
 Weekly full rebuilds publish automatically after integrity, coverage and browser
