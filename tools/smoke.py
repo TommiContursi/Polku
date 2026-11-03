@@ -9354,6 +9354,20 @@ def button3d(chrome, phones=False):
             b = expect(pg, f'{name}, a click', True)
             if b['color'] != 'rgb(255, 255, 255)' or b['bg'] == pg.js("getComputedStyle(document.querySelector('#btn-locate')).backgroundColor"):
                 fails.append(f"{name}: pressed, the button is {b['color']} on {b['bg']}, not white on the accent")
+            # a smooth-scrolling mouse's small steps zoom in 3D, as after a tilt by hand, and never tilt (#734)
+            at = pg.js("(() => { const r = polku.map.getCanvas().getBoundingClientRect(), x = r.left + r.width * 0.75, y = r.top + r.height * 0.4;"
+                       " return document.elementFromPoint(x, y) === polku.map.getCanvas() ? [x, y] : null; })()")
+            if not at:
+                fails.append(f'{name}: no bare map to scroll over')
+            else:
+                v0 = pg.js("({ z: polku.map.getZoom(), p: polku.map.getPitch() })")
+                for _ in range(4):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseWheel', 'x': at[0], 'y': at[1], 'deltaX': 0, 'deltaY': -12}, pg.s)
+                    time.sleep(0.04)
+                time.sleep(0.8)
+                v1 = pg.js("({ z: polku.map.getZoom(), p: polku.map.getPitch() })")
+                if v1['z'] <= v0['z'] + 0.01 or abs(v1['p'] - v0['p']) > 0.5:
+                    fails.append(f"{name}: in 3D the mouse wheel took the zoom {v0['z']:.2f} → {v1['z']:.2f} and the tilt {v0['p']:.0f}° → {v1['p']:.0f}°, not a zoom in")
             mouse_click(pg, aim(pg, f'{name}, a second click'))
             expect(pg, f'{name}, a second click', False)
             # Layers' switch turns the same 3D, and the button follows it; both kept after a reload
