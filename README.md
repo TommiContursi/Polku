@@ -86,7 +86,7 @@ Polku brings together open data and free public services. Each source keeps its 
 | Terrain and base maps | [Mapterhorn](https://mapterhorn.com); Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0); Esri World Imagery |
 | Routes and outdoor places | [LIPAS](https://lipas.fi), University of Jyväskylä (CC BY 4.0); [Waymarked Trails](https://waymarkedtrails.org) |
 | Routing on land | [BRouter](https://brouter.de); [Valhalla](https://valhalla.github.io/valhalla/) on [FOSSGIS](https://www.fossgis.de) servers as a fallback |
-| Search and detailed map features | [Photon](https://photon.komoot.io); [Overpass API](https://overpass-api.de) |
+| Search and detailed map features | [Photon](https://photon.komoot.io); hosted OSM extracts from [Geofabrik](https://download.geofabrik.de/) on ducksoft.fi; [Overpass API](https://overpass-api.de) fallback |
 | Fairways and navigation marks | Väylävirasto (CC BY 4.0) |
 | Displayed water depths | Traficom: not for navigation; its licence excludes route planning |
 | Traffic and road conditions | Fintraffic [Digitraffic](https://www.digitraffic.fi/en/) and Digiroad (CC BY 4.0) |
