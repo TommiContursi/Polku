@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### Easier to tap and read on a phone ([#235](https://github.com/TommiContursi/Polku/issues/235), [#208](https://github.com/TommiContursi/Polku/issues/208))
+
+- On a phone, the search, the sport pill, **Settings**, the **Zoom in** note, the map's credits (ⓘ) and the timeline's layer chips, **Play**, ✕ and time slider each take a finger's 44 px, and they look as they did. The timeline's two rows of chips sit a little further apart for it.
+- The labels on **Weather**, **Layers** and **Plan** are larger, and so are the scale bar, the timeline's place and 3D's **Drag**.
+- A tap no longer flashes grey or blue, and a button you tapped doesn't stay grey or dark afterwards. A switch's track darkens while it's held, and a menu's row turns grey under your finger.
+
 ### Hosted OSM data now covers four countries ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
 - Roads and paths, trail details and barriers, mapped winter maintenance/access, OSM water hazards, overnight places, lighting and supported full OpenStreetMap details now use Polku's hosted data in Finland, Sweden, Norway and Estonia. Only the needed local tiles download; uncovered border tiles, unsupported objects and unavailable data keep the bounded public fallback. Lake and park outlines still use the public source.
