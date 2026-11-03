@@ -228,6 +228,7 @@ class PublishTests(unittest.TestCase):
         job = workflow.split('\n  rollback:\n', 1)[1]
         condition = next(line.split('if:', 1)[1].strip() for line in job.splitlines() if line.strip().startswith('if:'))
         self.assertIn('\n    environment: osm-data-production\n', job)
+        self.assertIn('\n    timeout-minutes: 90\n', job)
         for event, ref, operation, enabled, expected in [
             ('workflow_dispatch', 'refs/heads/main', 'rollback', '', True),
             ('workflow_dispatch', 'refs/heads/main', 'rollback', 'false', True),
@@ -243,6 +244,20 @@ class PublishTests(unittest.TestCase):
                                     ('inputs.operation', operation), ('vars.OSM_PUBLISH_ENABLED', enabled)]:
                     expression = expression.replace(name, repr(value))
                 self.assertEqual(eval(expression.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
+
+        automatic = workflow.split('\n  publish:\n', 1)[1].split('\n  publish-existing:', 1)[0]
+        condition = next(line.split('if:',1)[1].strip() for line in automatic.splitlines() if line.strip().startswith('if:'))
+        for event,ref,operation,enabled,expected in [
+            ('schedule','refs/heads/main','','true',True),
+            ('workflow_dispatch','refs/heads/main','build','true',True),
+            ('workflow_dispatch','refs/heads/feature','build','true',False),
+            ('workflow_dispatch','refs/heads/main','build','',False),
+            ('workflow_dispatch','refs/heads/main','rollback','true',False),
+            ('pull_request','refs/heads/main','build','true',False)]:
+            expression=condition
+            for name,value in [('github.event_name',event),('github.ref',ref),('inputs.operation',operation),('vars.OSM_PUBLISH_ENABLED',enabled)]:
+                expression=expression.replace(name,repr(value))
+            self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected)
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -540,6 +555,14 @@ class PublishTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'approval|approved'):
                 publish.rollback(saved)
         self.assertEqual(self.host.files, files)
+
+    def test_automatic_rollback_does_not_replace_another_live_release(self):
+        saved = self.release_dir / 'rollback-own.json'
+        saved.write_bytes(self.previous)
+        before = dict(self.host.files)
+        with self.assertRaisesRegex(RuntimeError, 'changed'):
+            publish.rollback(saved, expected_current='different')
+        self.assertEqual(self.host.files, before)
 
     def test_monitor_rejects_old_data_and_invalid_public_headers(self):
         old = pointer(self.old)
