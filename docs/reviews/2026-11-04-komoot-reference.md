@@ -44,6 +44,21 @@ What Komoot's web planner does well, pattern by pattern, with what Polku has tod
 | **Hover on the chart** gives After, Elevation, Incline, Surface and Way type at that point, and the map marks the spot. | The hover on the profile with the marker on the map, synced. | Nothing new; the tooltip's five facts as the stretch card's first line. |
 | **Surfaces** as one bar (Paved 51 %, Unpaved 49 %, Unknown 1 %) with Show on route and Show details; **Way types** as one bar with the lengths listed. | Eleven breakdowns in Check › On the route, each with Use colours. | Two bars at most in the panel; the rest in the chart. |
 
+## Why it feels smooth: the rules under the patterns
+
+The tables say what; this says why, so the lessons carry over without copying the screens.
+
+1. **The waypoints are the route.** Everything else is derived from them: the line, the numbers, the chart, the alert. There is no editing mode, because there is nothing to protect: a click asks what you mean (a popup with two actions), and undo covers the rest. Polku's Edit and Done exist because a bare tap draws; the popup is the other way to make a tap safe.
+2. **Four surfaces, each with a fixed size and one job.** The panel (the route and its totals, scrolling), the bar (the numbers, never moving), the chart (everything along the route, expands by a chevron and the bar stays), the popup (one spot, five facts, one or two actions). Settings open in popovers and close. Nothing resizes under the pointer, and nothing about weather or time appears where the route is edited. Polku has the same four surfaces (the sheet, the numbers row, the profile, the cards) with the jobs mixed: the sheet holds the numbers, the chart and the settings, the cards hold facts and actions behind a hold, and Go holds what the chart should.
+3. **Totals in the panel, distribution on the chart.** Surfaces are one bar with three percentages; way types one bar with lengths; the chart shows where each is. Polku shows the distribution eleven times as bars and once on the chart.
+4. **A new state replaces the panel's content instead of adding to it.** Alerts, search, a waypoint's details each take the panel over with Back at the top; the map and the bar don't change. Polku opens cards over the sheet and tabs inside it, so two or three things show at once.
+5. **One shape for every popup.** A spot, a waypoint, a highlight: the same card, the same order (title, coordinates, facts, actions), the same place. Learned once.
+6. **Labels, not instructions.** "1 alert for this route · See details", "Set as new start", "Add to route". A question mark only where a term needs it (Technical, Rough terrain, Difficulty). No line tells you how to tap.
+7. **Defaults you can read.** "Best (default)" is selected; the speed says "Moderate: 11.0 km/h ✎"; the difficulty is a tag. A setting shows its value where it applies, and the control is the value.
+8. **The destructive action sits on the thing it destroys.** Round trip is on the start's popup; Remove on the waypoint's. The toolbar holds undo, redo and tools that act on the map, and Save apart.
+
+**Not tested:** Komoot's phone app (only the web planner at the browser pane's width), dragging the route line to insert a waypoint, keyboard use, screen readers, a route with many waypoints, and the paid weather colourings. The benchmark is one MTB route in Tampere on 2026-11-04, about twenty minutes, plus the user's screenshots from Jyväskylä.
+
 ## What Polku has that Komoot doesn't
 
 Keep these in sight; they're the reason to plan in Polku.
