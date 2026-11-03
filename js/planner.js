@@ -2894,8 +2894,9 @@ export class Planner {
     box.replaceChildren();
     box.classList.toggle('reorder', !!this.reordering);
     if (n >= 2 && !ro) {
-      top.append(h('p', { class: 'wpl-hint' }, this.reordering ? 'Drag a point, or move it earlier or later.' : 'Tap a point or a stretch to change it.'),
-        h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); top.querySelector('.btn')?.focus(); },
+      // (the rows' chevrons say a tap opens them; Reorder's grips need their words, #764)
+      if (this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a point, or move it earlier or later.'));
+      top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); top.querySelector('.btn')?.focus(); },
           html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder'));
     }
     if (this.reordering) this.reorderRows(box);
@@ -2952,8 +2953,9 @@ export class Planner {
         onclick: () => { if (open) this.wxOpen.delete(id); else this.wxOpen.add(id); this.renderWaypoints(); }, html: icon('cloudSun', 15) }, `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`) : null;
       const at = open && w >= 0 ? this.atSample(w) : null;
       const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 20) }), h('b', {}, title));
-      const line = h('div', { class: 'sec2-nums' }, h('span', {}, nums(sec)), wx);
-      const more = open && w >= 0 && !nofc ? h('p', { class: 'sec2-wx-at' }, `At its end${at ? `, ${this.clockOf(at)}` : ''}: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s from the ${compass(a.wind.dir ? a.wind.dir[w] : 0)}`) : null;
+      // (a route of one section has its numbers in the numbers row above, #764)
+      const line = secs.length > 1 ? h('div', { class: 'sec2-nums' }, h('span', {}, nums(sec)), wx) : null;
+      const more = line && open && w >= 0 && !nofc ? h('p', { class: 'sec2-wx-at' }, `At its end${at ? `, ${this.clockOf(at)}` : ''}: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s from the ${compass(a.wind.dir ? a.wind.dir[w] : 0)}`) : null;
       const rows = h('div', { class: 'rows', role: 'group', 'aria-label': title });
       if (k === 0) rows.append(this.pointRow(sec.from, ro));
       for (const s of sec.stretches) {
@@ -2991,13 +2993,14 @@ export class Planner {
   pointRow(i, ro, shape = false) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), arrive = i > 0 && this.analysisFits() ? this.arriveAt(i) : null;
-    const sub = shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `there at ${this.clockOf(arrive)}` : '', fmtDist(i ? this.lengthTo(i) : 0), name === lab ? '' : lab, loop ? 'back at the start' : ''];
+    // (Start and End without their distance: 0 m and the route's length, which the numbers row says, #764)
+    const sub = (shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `There at ${this.clockOf(arrive)}` : '', i && !last ? fmtDist(this.lengthTo(i)) : '', name === lab ? '' : lab, loop ? 'back at the start' : '']).filter(Boolean).join(' · ');
     const stop = this.stopAt(i), ch = this.changeAt(i);
     const extra = stop ? (isNight(stop) ? `${nightsWord(stop)} · go on at ${hhmm(stop.on)}` : `Stop · ${stop.min} min`) : ch ? `${ACTIVITIES[ch.to].label} from here · changeover ${ch.min} min` : '';
     // (a row as the cards' rows: its mark, its name, its lines, ›; Revision 5's list)
     const b = h('button', { type: 'button', class: `row wpl-point${shape ? ' shape' : ''}`, 'data-i': String(i), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
       h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i))),
-      h('span', {}, h('b', { class: 'wpl-name' }, name), extra ? h('small', { class: 'wpl-tag', html: `${icon(stop ? (isNight(stop) ? 'moon' : 'pause') : this.sportIcon(ch.to), 15)}<span>${escapeHtml(extra)}</span>` }) : null, h('small', {}, sub.filter(Boolean).join(' · '))),
+      h('span', {}, h('b', { class: 'wpl-name' }, name), extra ? h('small', { class: 'wpl-tag', html: `${icon(stop ? (isNight(stop) ? 'moon' : 'pause') : this.sportIcon(ch.to), 15)}<span>${escapeHtml(extra)}</span>` }) : null, sub ? h('small', {}, sub) : null),
       h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });

@@ -16529,6 +16529,16 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
     const first = [...TB.pane().children].find(vis), head = first?.querySelector('.sec-head') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect();
     return { first: first ? first.dataset.sec || first.className : '', seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
   },
+  // the route's list said once (#764): no hint, no numbers line under a one-part route's heading, Start and End without
+  // their distance, and the Start row in sight from the list's top
+  list() {
+    const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
+    const L = p.els.points, rows = [...L.querySelectorAll('.wpl-point')], start = rows[0], end = rows[rows.length - 1], r = start?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect(), v = s.getBoundingClientRect();
+    return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis(document.querySelector('.wpl-top .btn')), warn: vis(L.querySelector('.warn-row')),
+      start: start?.querySelector('small')?.textContent === `Leave ${p.leaveWords()}` || start?.querySelector('small')?.textContent,
+      end: end?.querySelector('small')?.textContent === `There at ${p.clockOf(p.arriveAt(p.points.length - 1))}` || end?.querySelector('small')?.textContent,
+      seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1 }; // (the sheet's own foot: the body runs on under it)
+  },
   // How you go ›, then Back: the focus on its row, and the row in sight under the list (#740)
   async back() {
     const p = polku.planner, frames = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
@@ -16592,6 +16602,12 @@ def tabs(chrome):
             r = pg.js("TB.back()")
             if r != {'focus': 'how-mtb', 'seen': True}:
                 fails.append(f"{name}: Back from How you go, {where}: {r} (want the focus on its row, in sight)")
+        if phone:
+            # the route's list at half says things once (#764), leaving at 10:00 so no "In the dark" row comes between
+            r = pg.js("""(async () => { const p = polku.planner, ten = new Date(); ten.setHours(10, 0, 0, 0); if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
+              p.setLeave(ten / 1000); p.setTab('route'); p.setSheetState('half'); await new Promise((ok) => setTimeout(ok, 800)); const r = TB.list(); p.setLeave(null); return r; })()""")
+            if r != {'hint': False, 'nums': False, 'reorder': True, 'warn': False, 'start': True, 'end': True, 'seen': True}:
+                fails.append(f"{name}: the route's list at half: {r} (want no hint, no numbers line, Start and End without their distance, Start in sight)")
         pg.js("(async () => { const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('left'); p.setSheetState(p.layout() === 'side' ? 'open' : 'full'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()")
         # How you go ›: the route style alone, with Back to Route; a preset there changes the row's value
         press(pg, at(pg, "TB.row('route', 'How you go')"), f'{name}: How you go', touch)
@@ -16803,8 +16819,11 @@ PF_JS = """(async () => {
   if (!tag || !tag.getClientRects().length || tag.textContent !== 'No forecast yet') errs.push(`the profile's cut: ${tag ? tag.textContent : 'none'}`);
   p.showMode('grade');
   p.reveal('points'); await wait(300);
-  const chip = document.querySelector('.wpl .sec2-wx');
+  // (on a route of two sections, a stop at via 1: a route of one has its numbers in the numbers row, #764)
+  p.setStop(1, { min: 10 }); clearTimeout(p.retimeTimer);
+  const chip = [...document.querySelectorAll('.wpl .sec2-wx')].pop();
   if (!chip || !/^No forecast yet$/.test(chip.textContent.trim())) errs.push(`the section's weather past the forecast: ${chip ? chip.textContent : 'none'}`);
+  p.setStop(1, null); clearTimeout(p.retimeTimer);
   // paddling: its wind as far as it reaches, and from where it isn't known
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
   const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
