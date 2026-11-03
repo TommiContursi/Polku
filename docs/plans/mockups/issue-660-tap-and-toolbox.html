@@ -350,14 +350,22 @@ const PIN = '420074b14c667e3b90c4facd8a427bcc17dee485';
 const BG = `https://raw.githubusercontent.com/TommiContursi/Polku/${PIN}/claude/660-tap-toolbox/bg/`;
 const SHOTS = `https://raw.githubusercontent.com/TommiContursi/Polku/${PIN}/claude/660-tap-toolbox/today/`;
 // the switches: in the hash (#frame=try&v=v1), so the page also works where it's shown through a viewer with a query of its own; ?… too
-const Q = new URLSearchParams(location.hash.length > 1 ? location.hash.slice(1) : location.search.slice(location.search.lastIndexOf('?') + 1));
-addEventListener('hashchange', () => location.reload());
+// (or a plain token, #try~v2~a: a frame, a version, a place, which is all some viewers pass on, an Artifact's among them)
+function params() {
+  const hs = location.hash.slice(1), m = hs.match(/^([a-z0-9-]+)(?:~(today|v1|v2))?(?:~(a|b|r))?$/);
+  if (m) return new URLSearchParams({ frame: m[1], ...(m[2] ? { v: m[2] } : {}), ...(m[3] ? { place: m[3] } : {}) });
+  return new URLSearchParams(hs.includes('=') ? hs : location.search.slice(location.search.lastIndexOf('?') + 1));
+}
+let Q = params();
+addEventListener('hashchange', () => { Q = params(); readG(); document.body.classList.remove('single'); document.querySelectorAll('.solo, .only').forEach((e) => e.classList.remove('solo', 'only')); document.querySelectorAll('.stage').forEach((s) => { s.style.display = ''; s.style.margin = ''; }); bars(); build(); tapsTable(); scrollTo(0, 0); });
 const pick = (k, list, d) => (list.includes(Q.get(k)) ? Q.get(k) : d);
-const G = {
+const G = {};
+const readG = () => Object.assign(G, {
   v: pick('v', ['today', 'v1', 'v2'], 'v1'), place: pick('place', ['a', 'b', 'r'], 'a'), desk: pick('desk', ['foot', 'top'], 'top'),
   adv: pick('adv', ['more', 'context'], 'more'), lang: pick('lang', ['en', 'fi'], 'en'), worst: Q.get('worst') === '1',
   size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390',
-};
+});
+readG();
 const SIZES = { 390: [390, 844, 1], 360: [360, 740, 1], 200: [195, 422, 2] };
 
 // ---------------------------------------------------------------- words (the app's where it has them)
@@ -1118,7 +1126,7 @@ class Frame {
 const FRAMES = [];
 const frame = (where, id, st, cap, cls = '') => {
   const f = document.createElement('figure'); f.className = `fr ${st.dev === 'desk' ? 'desk' : 'phone'} ${cls}`; f.id = id;
-  f.innerHTML = `<figcaption>${cap} <a class="open" href="#frame=${id}&v=${G.v}&place=${G.place}&desk=${G.desk}${G.lang === 'fi' ? '&lang=fi' : ''}${G.worst ? '&worst=1' : ''}">Open</a></figcaption>${cls.includes('big') ? '<div class="meter"></div>' : ''}`;
+  f.innerHTML = `<figcaption>${cap} <a class="open" href="${G.lang === 'en' && !G.worst && G.desk === 'top' ? `#${id}~${G.v}~${G.place}` : `#frame=${id}&v=${G.v}&place=${G.place}&desk=${G.desk}${G.lang === 'fi' ? '&lang=fi' : ''}${G.worst ? '&worst=1' : ''}`}">Open</a></figcaption>${cls.includes('big') ? '<div class="meter"></div>' : ''}`;
   document.getElementById(where).append(f);
   FRAMES.push({ f, st });
 };
