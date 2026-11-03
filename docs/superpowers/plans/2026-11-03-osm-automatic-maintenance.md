@@ -71,3 +71,11 @@ Recovery checkpoint: remove the bootstrap run pin from manual inspect/resume,
 using the existing release input and tested trusted-main bundle checks. This
 allows an interrupted automatic update to resume without rebuilding or a pin PR.
 No consumer, extraction, publication integrity or rollback gate changes.
+
+Measured publication-budget correction (#732): the enabled run's artifact
+download exceeded 32 minutes. Previously measured upload/readback/probes plus
+the unchanged browser deadline and a possible full-readback rollback need over
+103 minutes. Give future automatic/manual publication 120 minutes; retain the
+180-second browser deadline and independent 90-minute rollback. The current run
+is unchanged. The registered publication guard must fail on the old envelopes
+and pass on the new ones before review and merge.

@@ -336,7 +336,7 @@ jobs:
     needs: bundle
     if: vars.OSM_PUBLISH_ENABLED == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     environment: osm-data-production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -394,7 +394,7 @@ jobs:
     # Does not enable unattended publication or rebuild the archive.
     if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'publish-existing' || inputs.operation == 'inspect-existing' || inputs.operation == 'resume-existing') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     environment: osm-data-production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

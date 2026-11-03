@@ -455,3 +455,7 @@ release input. `publish.recovery_source()` checks completed trusted-main metadat
 successful snapshot/four-country/bundle jobs and a unique unexpired artifact before
 download. A failed publish can reuse its successful bundle; rollback by release ID
 is independent of artifact expiry.
+
+Publication jobs allow 120 minutes for the observed slow artifact download,
+full upload/readback and possible guarded rollback. Browser verification still
+has its separate 180-second deadline; standalone rollback remains 90 minutes.

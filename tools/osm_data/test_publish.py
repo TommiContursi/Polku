@@ -266,6 +266,9 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(classify(event,'TommiContursi/Polku')['kind'],'rollback')
         recovery=workflow.split('\n  publish-existing:\n',1)[1].split('\n  monitor:',1)[0]
         self.assertIn('run-id: ${{ steps.source.outputs.run_id }}',recovery)
+        for publication in (automatic,recovery):
+            self.assertIn('\n    timeout-minutes: 120\n',publication,
+                          'Slow artifact download must leave time for full verification and guarded recovery')
 
     def test_recovery_source_accepts_failed_publication_with_verified_main_bundle(self):
         run={'id':123,'status':'completed','conclusion':'failure','head_branch':'main',

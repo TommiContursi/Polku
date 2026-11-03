@@ -166,7 +166,11 @@ Neither recovery operation deletes files or changes hosting configuration.
 
 SFTP writes are pipelined and reads prefetch at most 64 concurrent requests,
 avoiding a network round trip for every 32 KiB packet. Logs show transfer
-phases and byte progress every 64 MiB; the 90-minute job limit is unchanged.
+phases and byte progress every 64 MiB. Automatic and manual publication jobs
+allow 120 minutes, including artifact download, full verification and guarded
+recovery. The observed artifact download exceeded 32 minutes; with the measured
+upload/readback and possible rollback, 90 minutes no longer leaves enough room.
+The browser deadline remains 180 seconds and standalone rollback allows 90 minutes.
 
 
 All production write operations run on `main` through the protected
@@ -394,7 +398,8 @@ scheduled-publication flag; #703 repairs explicit retry after manifest failure.
 
 Before any next publication, review the new candidate's country/resource and
 consumer evidence, check current + previous + next storage, and compare transfer
-time with the protected 90-minute budget. After promotion, re-read the live
+time with the protected 120-minute publication budget, including recovery time.
+After promotion, re-read the live
 pointer and exercise actual consumers and monitoring. Client support and
 candidate artifacts alone do not prove publication.
 
