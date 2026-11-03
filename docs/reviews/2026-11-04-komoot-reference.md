@@ -59,6 +59,16 @@ The tables say what; this says why, so the lessons carry over without copying th
 
 **Not tested:** Komoot's phone app (only the web planner at the browser pane's width), dragging the route line to insert a waypoint, keyboard use, screen readers, a route with many waypoints, and the paid weather colourings. The benchmark is one MTB route in Tampere on 2026-11-04, about twenty minutes, plus the user's screenshots from Jyväskylä.
 
+## The small details, filed
+
+The user's point on 2026-11-04: a better backend isn't enough if the planner isn't easy to understand, and the difference is in details like these. Each is small and has an issue.
+
+- **The speed beside the numbers,** with its setting behind the value: #755.
+- **Avoid as a round area you can resize** on the map, with a handle and a toolbar button: #708.
+- **Hide the route for a moment,** an eye on the toolbar, to see the map under it: #756.
+- **Rename from the popup's title,** a pencil beside it: part of the cards' pieces in the plan (#749's audit).
+- **Suggestions when adding a point:** current location and saved places from the list: the plan's "Ideas to test".
+
 ## What Polku has that Komoot doesn't
 
 Keep these in sight; they're the reason to plan in Polku.
