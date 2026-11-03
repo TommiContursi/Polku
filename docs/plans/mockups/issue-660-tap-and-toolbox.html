@@ -248,7 +248,8 @@ body.single .fr .screen { --k: 1 !important; border-radius: 0; box-shadow: none;
 /* today's toolbox: floating above the sheet where it clears the map's buttons, else docked into it */
 .tb.today { position: absolute; left: 8px; z-index: 5; padding: 3px; border-radius: 16px; background: var(--surface); backdrop-filter: blur(14px); box-shadow: var(--shadow); }
 .tb.today.dock { position: static; padding: 6px 8px 4px; border-radius: 0; background: none; box-shadow: none; backdrop-filter: none; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.tb.today .tb2.mode { flex: 0 1 auto; }
+.tb.today .tb2.mode { flex: 0 1 auto; container-type: normal; } /* (today's box is as wide as its content) */
+.tb.today .tb2 b, .tb.today .tb2 small { white-space: nowrap; }
 
 /* ---- a card (phones: in the sheet; desktops: at the spot) ---- */
 .card-head { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0 6px; }
