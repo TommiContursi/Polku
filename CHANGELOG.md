@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### One planner header, drawing or not ([#751](https://github.com/TommiContursi/Polku/issues/751))
+
+- After **Done**, the planner's header is the same as while you draw: the route's numbers, with no row of the route's name above them, so the planner covers no more of the map than while you draw. On a desktop **✕** is at the end of the numbers' row; on a phone, fold the planner to its line and its **✕** puts it away.
+- A route's own name, from a GPX or KML file or a picked loop, heads the route's list in **Route**, as in "MTB · Pyynikki loop".
+- The line of drawing tips at the foot of **Route** is gone: the first point's own words and the toolbar's tooltips say the same.
+
 ### Edit and Done in one place, and the cards work in both ([#745](https://github.com/TommiContursi/Polku/issues/745))
 
 - On a phone, **Done** is the planner's toolbar's first button, as on a desktop, instead of beside the route's numbers. Where that makes the toolbar too wide to sit beside the map's buttons, they rise above it, and it still shows the route's actions that fit.
