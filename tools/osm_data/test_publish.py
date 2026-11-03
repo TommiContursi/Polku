@@ -2,7 +2,7 @@
 
 import copy
 from contextlib import ExitStack
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.message import Message
 import ftplib
 import hashlib
@@ -165,7 +165,7 @@ class Host:
                     raise ftplib.error_perm('550 missing')
                 callback(host.files[name])
             def replace(self, old, new):
-                if new.endswith('/pointer.json'):
+                if new.endswith('/pointer.json') or new.startswith('maintenance/'):
                     old, new = self.abs(old), self.abs(new)
                     if host.fail_pointer:
                         raise OSError('POSIX rename extension unsupported')
@@ -311,13 +311,21 @@ class PublishTests(unittest.TestCase):
         self.stage({'ways.pmtiles': ARCHIVE, 'LICENSE.txt': LICENSE, 'manifest.json': encoded(self.new)})
         publish.publish(self.release_dir, resume=True)
         self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), pointer(self.new))
-        self.assertTrue(all('/current.' in name for name, _, _ in self.host.uploads))
+        self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name
+                            for name, _, _ in self.host.uploads))
 
     def test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix(self):
         stage = self.stage({'ways.pmtiles': ARCHIVE[:4000]})
         publish.publish(self.release_dir, resume=True)
         self.assertIn((ROOT + '/' + stage + '/ways.pmtiles', 4000, len(ARCHIVE) - 4000), self.host.uploads)
         self.assertEqual(self.host.files[ROOT + '/releases/new-release/ways.pmtiles'], ARCHIVE)
+
+    def test_resume_accounts_for_missing_payload_before_storage_budget(self):
+        self.stage({'ways.pmtiles': ARCHIVE[:100]})
+        with patch.object(publish.maintenance, 'usage', return_value=publish.maintenance.BUDGET-5000):
+            with self.assertRaisesRegex(RuntimeError, 'budget'):
+                publish.publish(self.release_dir, resume=True)
+        self.assertEqual(self.host.uploads, [])
 
     def test_resume_rejects_corrupt_or_oversized_prefix_without_writing(self):
         for data in (b'wrong prefix', ARCHIVE + b'!'):
@@ -339,7 +347,8 @@ class PublishTests(unittest.TestCase):
     def test_resume_existing_immutable_release_verifies_without_payload_writes(self):
         self.host.add_release(self.new)
         publish.publish(self.release_dir, resume=True)
-        self.assertTrue(all('/current.' in name for name, _, _ in self.host.uploads))
+        self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name
+                            for name, _, _ in self.host.uploads))
 
     def test_resume_refuses_missing_ambiguous_or_unsafe_staging(self):
         with self.assertRaisesRegex(RuntimeError, 'exactly one'):
@@ -407,6 +416,7 @@ class PublishTests(unittest.TestCase):
         self.assertTrue(result['sftp_write_and_rename'])
         self.assertTrue(result['posix_overwrite'])
         self.assertTrue(result['http_range_cors_and_cache'])
+        self.assertEqual(result['retention']['deleted_entries'], 2)
         self.assertEqual(self.host.files, original_files)
         self.assertEqual(self.host.dirs, original_dirs)
         self.assertEqual(self.host.pointer_writes, 0)
@@ -490,6 +500,13 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), json.loads(self.previous))
         self.assertIn(ROOT + '/releases/new-release/ways.pmtiles', self.host.files)
         self.assertIn(ROOT + '/releases/previous-release/ways.pmtiles', self.host.files)
+        # This regression is also exercised by tools/smoke.py osmdata.
+        with publish.connection(publish.settings()) as ftp:
+            plan = publish.maintenance.prune(ftp, apply=True,
+                       now=datetime.now(timezone.utc) + timedelta(days=40))
+        self.assertEqual(plan['delete'], [])
+        record = json.loads(self.host.files[ROOT + '/maintenance/r-previous-release.json'])
+        self.assertEqual(record['previous_release'], 'new-release')
 
     def test_rollback_still_requires_publication_approval(self):
         publish.publish(self.release_dir)

@@ -248,7 +248,26 @@ python tools/osm_data/publish.py check https://ducksoft.fi/polku-osm/current.jso
 ```
 
 Keep the current release, its predecessor and at least four weeks of releases
-for cached clients. There is no automatic deletion or website-wide cleanup.
+for cached clients. Before an approved publication, `maintenance.py` previews and
+applies retention only to publisher-owned records: current/predecessor and the
+latest two recorded releases are protected regardless of age; successful
+publications stay at least 28 days. Interrupted owned root staging expires
+after seven days, and owned unrecorded final directories after 35 days.
+Pre-upgrade unmarked releases and unknown files are never deleted. This does
+not clean other website content. Publication receipts live in `maintenance/`;
+archive/manifest bytes remain immutable. A resume protects its active target.
+
+The complete deletion plan must validate before any removal. Unsafe paths,
+symlinks, unexpected files, changed pointers or corrupt ownership metadata
+stop maintenance. Interrupted payload deletion retains its manifest/ownership
+until last, so it can finish safely on the next attempt. A conservative 80 GiB
+byte budget includes the dedicated directory's retained/unmanaged files and
+missing incoming payload, stopping before upload when it would be exceeded.
+It reserves headroom within the existing 100 GB host; it is not a live account
+quota reading. The protected `inspect-retention` operation prints a read-only
+plan. `test-host` exercises preview, expired-release/staging deletion and live/
+predecessor protection inside its disposable test directory.
+
 The original ways-only archive used about 0.68 GB. Expanded country products
 require the current candidate measurements below; do not budget from that old
 number. Current + previous + next must all fit before promotion. The verified
