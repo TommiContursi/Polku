@@ -12641,11 +12641,11 @@ def route_view(chrome):
             pg.js(SETTLED)
             time.sleep(0.4)
             press(pg, at(pg, "polku.planner.els.more"), f'{name}: More', touch)
-            # (#594: one order everywhere, Clear route first and farthest from More, Take it along last and nearest; the
-            # focus not on Clear route)
+            # (#745: one order everywhere, the whole route, Take it along, then Round trip, Import and Clear route, Clear route
+            # last and in sight; the focus not on Clear route)
             m = pg.js("(() => { const el = document.querySelector('.menu-pop'), b = [...el.querySelectorAll('.menu-item')], it = b.map((x) => x.textContent.trim()), a = document.activeElement, r = el.getBoundingClientRect(), q = b[b.length - 1].getBoundingClientRect(); return { first: it[0] || '', last: it[it.length - 1] || '', focus: a && a.classList.contains('menu-item') && !a.classList.contains('danger'), lastSeen: q.top >= r.top - 1 && q.bottom <= r.bottom + 1 }; })()")
-            if not m['first'].startswith('Clear route') or not m['last'].startswith('Save offline') or not m['focus'] or not m['lastSeen']:
-                fails.append(f'{name}: the route’s view’s More: {m} (Clear route first, Save offline last and in sight, the focus not on Clear route)')
+            if not m['first'].startswith('Reverse') or not m['last'].startswith('Clear route') or not m['focus'] or not m['lastSeen']:
+                fails.append(f'{name}: the route’s view’s More: {m} (Reverse first, Clear route last and in sight, the focus not on Clear route)')
             if not pg.js("(() => { const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith('Clear route')); if (b) { b.dataset.rvPick = '1'; b.scrollIntoView({ block: 'nearest' }); } return !!b; })()"):
                 fails.append(f"{name}: no Clear route in the route’s view’s More: {pg.js('[...document.querySelectorAll(`.menu-pop .menu-item`)].map((b) => b.textContent.trim())')}")
             press(pg, at(pg, "document.querySelector('.menu-pop [data-rv-pick]')"), f'{name}: Clear route', touch)
@@ -12667,16 +12667,19 @@ def route_view(chrome):
         line0 = pg.js("JSON.stringify(polku.planner.points)")
         press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done', touch)
         v = view_ok(pg, f'{name}: after Done')
-        if v['tools'] != ['Edit', 'Clear route', 'More'] or not pg.js("!!polku.planner.tools.querySelector('.tb-sep[data-group=clear]').offsetParent"):
-            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}, a line before Clear route: {pg.js('!!polku.planner.tools.querySelector(`.tb-sep[data-group=clear]`).offsetParent')}")
-        # Clear route is one click there (#594), with its note's Undo; Undo brings the route back, in editing as from More
-        press(pg, at(pg, "polku.planner.els.clearTool"), f'{name}: Clear route', touch)
+        if v['tools'] != ['Edit', 'More']:
+            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}, not Edit and More (#745)")
+        # Clear route is in More there (#745), with its note's Undo; Undo brings the route back, in editing
+        press(pg, at(pg, "polku.planner.els.more"), f'{name}: More', touch)
+        if not pg.js("(() => { const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith('Clear route')); if (b) b.dataset.rvPick = '1'; return !!b; })()"):
+            fails.append(f'{name}: no Clear route in the route’s view’s More')
+        press(pg, at(pg, "document.querySelector('.menu-pop [data-rv-pick]')"), f'{name}: Clear route', touch)
         c = pg.js("({ n: polku.planner.points.length, editing: polku.planner.editing, note: document.getElementById('toast').textContent })")
         if c['n'] or not c['editing'] or 'Route cleared' not in c['note']:
-            fails.append(f'{name}: Clear route on the toolbar in the route’s view: {c}')
+            fails.append(f'{name}: Clear route from More in the route’s view: {c}')
         press(pg, at(pg, "document.querySelector('#toast .toast-act')", settle=False), f'{name}: the note’s Undo', touch)
         if state(pg)['n'] != s0['n']:
-            fails.append(f'{name}: Undo after Clear route on the toolbar: {state(pg)}')
+            fails.append(f'{name}: Undo after Clear route from More: {state(pg)}')
         pg.js("polku.planner.setEditing(false); true")
         view_ok(pg, f'{name}: back in the route’s view')
         b = pg.js("({ fit: !document.getElementById('btn-fit').hidden, plan: document.getElementById('btn-plan').textContent.trim(), cursor: polku.map.getCanvas().style.cursor })")
