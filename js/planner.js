@@ -4464,8 +4464,6 @@ export class Planner {
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
       route: pane('route',
-        // How you go › and Your speed ›, each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
-        this.els.howRows = h('div', { class: 'rows how-rows' }),
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
         // the route's view (25c): the list and the map stay as they are, until Edit
@@ -4474,6 +4472,8 @@ export class Planner {
           h('button', { type: 'button', class: 'btn small', onclick: () => this.setEditing(true), html: `${icon('pencil', 16)}<span>Edit</span>` })),
         this.section('points', 'Waypoints', this.els.pointsTop = h('div', { class: 'wpl-top' }),
           this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
+        // How you go › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
+        this.els.howRows = h('div', { class: 'rows how-rows' }),
         // how you go: which ways the router prefers, and how fast the time is counted (shown in a start step's
         // Fine-tune too, the same elements: borrowHow())
         this.section('style', 'How you go', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap),
@@ -6273,7 +6273,8 @@ export class Planner {
     } else {
       delete pane.dataset.step;
       if (this.styleSport) { this.styleSport = null; this.renderStyle(); }
-      if (was) requestAnimationFrame(() => this.els.howRows.querySelector(`[data-k="${row}"]`)?.focus({ preventScroll: true }));
+      // (the row is under the route's list: brought into sight first, #740)
+      if (was) requestAnimationFrame(() => { const el = this.els.howRows.querySelector(`[data-k="${row}"]`); if (el) { el.scrollIntoView({ block: 'nearest' }); el.focus({ preventScroll: true }); } });
     }
   }
 

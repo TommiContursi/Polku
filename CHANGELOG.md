@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### The route comes first in Route ([#740](https://github.com/TommiContursi/Polku/issues/740))
+
+- The **Route** tab starts with your route's list (the start, its stretches and the end), and **How you go** and **Your speed** follow it, so the route you're drawing is in sight at half on a phone and in either desktop panel without scrolling.
+
 ### The mouse wheel zooms in 3D ([#734](https://github.com/TommiContursi/Polku/issues/734))
 
 - The mouse wheel zooms the map in 3D, whether you turned 3D on with its button or tilted the map by hand. Before, after the **3D** button, a smooth-scrolling mouse tilted the map instead.
