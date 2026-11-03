@@ -6574,11 +6574,11 @@ def quick_swipe(chrome):
     pg.js(PLAN_TWO)
     pg.js(SETTLED)
     head = pg.js("(() => { const b = document.querySelector('#planner .sheet-sum').getBoundingClientRect(); return [b.left + 30, b.top + b.height / 2]; })()")
-    pg.swipe(head[0], head[1], head[1] - 300, ms=700, hold=0.2)  # slowly up from peek: the nearest size
+    pg.swipe(head[0], head[1], head[1] - 200, ms=700, hold=0.2)  # slowly up from peek: the nearest size (200 px: the peek has the toolbox's row, #745)
     pg.js(SETTLED)
     s1 = st()
     if s1['st'] != 'half':
-        fails.append(f'planner: a slow drag up 300 px from peek came to {s1["st"]}, not half')
+        fails.append(f'planner: a slow drag up 200 px from peek came to {s1["st"]}, not half')
     if pg.js("document.querySelector('#planner').classList.contains('dragging') || !!document.querySelector('#planner').style.transform"):
         fails.append('planner: still dragging after it came to rest')
     sheet_h = pg.js("parseFloat(document.documentElement.style.getPropertyValue('--sheet-h'))")
@@ -11425,8 +11425,9 @@ def toolbox(chrome):
         t = pg.js("""(() => { const p = polku.planner, b = p.tools.getBoundingClientRect(), c = document.getElementById('map-ctrls').getBoundingClientRect();
           const small = [...document.querySelectorAll('#pl-tools button, #planner .sheet-head button')].filter((e) => e.offsetParent && (e.offsetWidth < 44 || e.offsetHeight < 44)).map((e) => e.getAttribute('aria-label') || e.textContent.trim());
           return { docked: p.tools.classList.contains('docked'), right: b.right, colLeft: c.left, small }; })()""")
-        if t['docked'] or t['right'] + 8 > t['colLeft']:
-            fails.append(f"{name}: the toolbox {'docked' if t['docked'] else 'floats under the map’s buttons'} on a 390 px phone (right {t['right']:.0f}, the buttons at {t['colLeft']:.0f})")
+        # (#745: with Done first there's no room for it above the sheet beside the map's buttons, so it's the sheet's first row)
+        if not t['docked']:
+            fails.append(f"{name}: the toolbox floats on a 390 px phone (right {t['right']:.0f}, the buttons at {t['colLeft']:.0f}), with Done in it")
         if t['small']:
             fails.append(f"{name}: under 44 px to touch: {', '.join(t['small'])}")
         # the mode's menu: only the next leg changes

@@ -881,7 +881,7 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .sum-time:focus-visible small { color: var(--text); }
 @media (hover: hover) { .sum-time:hover small { color: var(--text); } }
 .sum-time:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.btn.done { flex: none; gap: 6px; min-height: 34px; padding-inline: 14px; } /* ✓ Done and ✎ Edit: the state in an icon too, not only the word (#745) */
+.btn.done { flex: none; gap: 6px; min-height: 34px; padding-inline: 14px; }
 /* The route's view (25c): a row above the numbers with the route's name (it wraps, never cut), its sports and
    "Kept on this device", and ✕ */
 .pl-title { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 2px; }

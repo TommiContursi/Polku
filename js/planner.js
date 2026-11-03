@@ -5632,7 +5632,7 @@ export class Planner {
     this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.more.setAttribute('aria-expanded', 'false');
     // first on the toolbar, phones and desktops alike (#745): the planner's end (E of #594), the end that doesn't move
-    this.els.toolDone = h('button', { type: 'button', class: 'btn done', 'aria-keyshortcuts': 'E', onclick: () => this.done(), html: `${icon('check', 18)}<span>Done</span>` });
+    this.els.toolDone = h('button', { type: 'button', class: 'btn done', 'aria-keyshortcuts': 'E', onclick: () => this.done() }, 'Done');
     // the route's view (25c): Edit where Done was
     this.els.toolEdit = h('button', { type: 'button', class: 'btn done edit', 'aria-keyshortcuts': 'E', onclick: () => this.setEditing(true), html: `${icon('pencil', 18)}<span>Edit</span>` });
     const gsep = (group) => { const el = sep(); el.dataset.group = group; return el; };
