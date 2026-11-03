@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 import hmac
 import hashlib
-import errno
 import io
 import json
 import os
@@ -15,11 +14,15 @@ from pathlib import Path
 import posixpath
 import re
 import stat
+import sys
 import urllib.request
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 import uuid
 
+if not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from tools.osm_data import maintenance
 
 NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,120}\Z')
 BLOCK = 4096
@@ -298,6 +301,7 @@ def promote(ftp, url, manifest, previous, directory, samples, release_raw):
     if previous is not None:
         (directory / f'rollback-{uuid.uuid4().hex}.json').write_bytes(previous)
     raw = json.dumps(current(manifest), sort_keys=True, separators=(',', ':')).encode()
+    maintenance.prepare_publication(ftp, manifest, release_raw, previous)
     replace_pointer(ftp, raw)
     try:
         require(get(url + '/current.json') == raw, 'Promoted pointer differs')
@@ -365,7 +369,10 @@ def resume_upload(ftp, base, directory, manifest, raw):
     require(ftp.kind(base) == 'directory', 'Resume needs a real directory, not a symlink')
     names = {posixpath.basename(p) for p in ftp.nlst(base)}
     expected = {f['path']: f['bytes'] for f in manifest['files']} | {'manifest.json': len(raw)}
-    require(names <= expected.keys(), 'Unexpected files in staging directory')
+    require(names <= expected.keys() | {maintenance.UPLOAD}, 'Unexpected files in staging directory')
+    if maintenance.UPLOAD in names:
+        marker, _ = maintenance.upload_record(ftp, base, manifest['release'], datetime.now(timezone.utc))
+        require(marker['files'] == expected, 'Upload receipt differs from local release')
     sizes = {}
     # Check every partial prefix before writing anything; complete files get full hash verification below.
     for name, size in expected.items():
@@ -400,16 +407,26 @@ def publish(directory, resume=False):
         previous = previous_pointer(ftp)
         release = manifest['release']
         final = f'releases/{release}'
+        expected = {f['path']: f['bytes'] for f in manifest['files']} | {'manifest.json': len(raw)}
+        incoming = sum(expected.values())
         if resume:
             candidates = recovery_candidates(ftp, release)
-            if final in candidates:
-                stage = final
-                require(ftp.kind(final) == 'directory', 'Release needs a real directory')
+            require(final in candidates or len(candidates) == 1, 'Resume needs exactly one existing stage; inspect before proceeding')
+            stage = final if final in candidates else candidates[0]
+            require(ftp.kind(stage) == 'directory', 'Resume needs a real directory')
+            names = maintenance.children(ftp, stage)
+            require(all(ftp.kind(stage + '/' + name) == 'file' for name in names), 'Resume needs regular files')
+            incoming = sum(max(0, size - ftp.size(stage + '/' + name)) if name in names else size
+                           for name, size in expected.items())
+        if previous is not None:
+            print(json.dumps(maintenance.prune(ftp, apply=True, incoming_bytes=incoming, incoming_release=release), sort_keys=True), flush=True)
+        else:
+            require(maintenance.usage(ftp) + incoming + 4096 <= maintenance.BUDGET, 'OSM storage budget exceeded')
+        if resume:
+            if stage == final:
                 require(all(ftp.kind(final + '/' + f['path']) == 'file' for f in manifest['files'])
                         and ftp.kind(final + '/manifest.json') == 'file', 'Release needs regular files')
             else:
-                require(len(candidates) == 1, 'Resume needs exactly one existing stage; inspect before proceeding')
-                stage = candidates[0]
                 resume_upload(ftp, stage, directory, manifest, raw)
         else:
             if 'releases' not in {posixpath.basename(p) for p in ftp.nlst()}:
@@ -417,6 +434,7 @@ def publish(directory, resume=False):
             require(release not in {posixpath.basename(p) for p in ftp.nlst('releases')}, 'Immutable release already exists')
             stage = f'.upload-{release}-{uuid.uuid4().hex}'
             ftp.mkd(stage)
+            maintenance.mark_upload(ftp, stage, manifest, raw)
             for f in manifest['files']:
                 with (directory / f['path']).open('rb') as body:
                     ftp.storbinary('STOR ' + stage + '/' + f['path'], body)
@@ -431,6 +449,9 @@ def publish(directory, resume=False):
         probe(config[-2], manifest, raw, samples)
         print('Promote current.json and verify public pointer', flush=True)
         promote(ftp, config[-2], manifest, previous, directory, samples, raw)
+        maintenance.record_publication(ftp, manifest, raw, previous)
+        if maintenance.UPLOAD in maintenance.children(ftp, final):
+            ftp.remove(final + '/' + maintenance.UPLOAD)
 
 
 def rollback(manifest_path):
@@ -447,6 +468,7 @@ def rollback(manifest_path):
         samples = verify_remote(ftp, base, manifest, raw)
         probe(config[-2], manifest, raw, samples)
         promote(ftp, config[-2], manifest, previous, path.parent, samples, raw)
+        maintenance.record_publication(ftp, manifest, raw, previous)
 
 
 def check(url):
@@ -491,18 +513,27 @@ def test_host():
             sample = get(config[-2] + '/' + active + '/sample.pmtiles',
                          (0, 10, len(body)), immutable=True)
             require(sample == body[:10], 'OVH HTTP Range bytes differ from SFTP upload')
+            ftp.cwd(active)
+            try:
+                retention = maintenance.test_retention(ftp)
+            finally:
+                ftp.cwd('..')
             return {'sftp_write_and_rename': True, 'posix_overwrite': True,
-                    'http_range_cors_and_cache': True, 'test_cleanup': 'complete'}
+                    'http_range_cors_and_cache': True, 'test_cleanup': 'complete', 'retention': retention}
         finally:
             if active is not None:
-                # Only remove files in the uniquely named temporary test folder.
-                for name in ('sample.pmtiles', 'pointer.tmp', 'pointer.json'):
-                    try:
-                        ftp.remove(active + '/' + name)
-                    except OSError as error:
-                        if error.errno != errno.ENOENT:
-                            raise
-                ftp.rmd(active)
+                # Only descend into this invocation's uniquely named disposable test folder.
+                def remove_test_tree(base):
+                    for name in maintenance.children(ftp, base):
+                        path = base + '/' + name
+                        kind = ftp.kind(path)
+                        require(kind in {'file', 'directory'}, 'Unexpected disposable test file')
+                        if kind == 'directory':
+                            remove_test_tree(path)
+                        else:
+                            ftp.remove(path)
+                    ftp.rmd(base)
+                remove_test_tree(active)
 
 
 def verify_access():
@@ -528,6 +559,7 @@ def main():
     publication.add_argument('directory', type=Path)
     publication.add_argument('--resume', action='store_true', help='Reuse the existing stage or immutable release; never start a new upload')
     commands.add_parser('inspect').add_argument('directory', type=Path)
+    commands.add_parser('inspect-retention')
     commands.add_parser('rollback').add_argument('--manifest', type=Path, required=True)
     commands.add_parser('check').add_argument('url')
     commands.add_parser('verify-access')
@@ -536,6 +568,10 @@ def main():
     try:
         if args.command == 'publish':
             publish(args.directory, resume=args.resume)
+        elif args.command == 'inspect-retention':
+            with connection(settings()) as ftp:
+                print(json.dumps(maintenance.prune(ftp), sort_keys=True))
+            return
         elif args.command == 'inspect':
             print(json.dumps(inspect_release(args.directory), sort_keys=True))
             print('Metadata only; no remote files changed or hashes verified.')

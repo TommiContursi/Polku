@@ -275,6 +275,8 @@ An explicit path or trail/winter/water/lighting retry resets only a failed share
 
 The data build adds exact existing query subsets: non-highway barrier ways and standalone obstacle/ford nodes, ski-only and mapped maintenance ways, water hazard points/ways, and overnight nodes/ways/relations. Place centres are indexed for nearby searches; incomplete referenced place geometry fails the candidate build. New datasets do not appear in production merely because a reader supports them: publication remains a separately approved operation described in OSM_DATA.md.
 
+`tools/osm_data/maintenance.py` tracks publisher-owned retention metadata separately from immutable archives. Approved publication protects live/predecessor/latest-two releases and 28 days of successful publications, prunes only validated old owned files, and checks the 80 GiB service budget before upload. Resume targets remain protected. The registered rollback smoke check covers retention pins; full retention tests run in the existing OSM Python CI discovery, and `test-host` exercises the pruner inside its disposable directory.
+
 ## Known limits
 
 How Polku works where data or services fall short, with nothing planned to change. Anything that could be changed is an issue (`idea` or `watch`).
