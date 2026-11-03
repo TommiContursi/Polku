@@ -5802,7 +5802,9 @@ export class Planner {
       // the map's buttons only count where they're level with the toolbar
       const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
       const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
-      const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 : box.getBoundingClientRect().right > limit);
+      // (docked, the row is right-aligned: what doesn't fit runs out at its left, which scrollWidth doesn't count)
+      const first = () => [...box.querySelectorAll('button')].find((e) => !e.hidden && e.offsetParent);
+      const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 || first().getBoundingClientRect().left < box.getBoundingClientRect().left - 1 : box.getBoundingClientRect().right > limit);
       // in turn: the three modes' names together (their tooltips and labels say them; picking another mode then moves
       // nothing, #594), the route's actions from the last, the style's caption, the sport's name (its icon stays), Clear
       // route (the action kept longest), then the style's name shortens; last, beside the side panel of a narrow window,
