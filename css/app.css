@@ -2290,7 +2290,7 @@ body.dropping .drop-hint { display: flex; }
 /* the planner folded on a phone floats it, as it has no row to dock into: where it's wider than the window (200 %), More goes to a row of its own */
 .pl-tools[data-stage="folded"] { flex-wrap: wrap; max-width: calc(100vw - 16px); }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
-.pl-tools.docked .btn.done.edit { margin-right: auto; } /* the route's view: Edit where Done was, at the row's start (#745) */
+.pl-tools.docked .btn.done { margin-right: auto; } /* Done, and Edit where Done was, at the row's start, alone on it too (200 %, #745) */
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
 /* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
