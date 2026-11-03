@@ -9628,15 +9628,14 @@ def fold_phone(chrome):
             if info()['st'] != want or not info()['active']:
                 fails.append(f"the handle's {k}: {info()['st']}, open {info()['active']} (wanted {want})")
                 break
-        # the route's view at full: Edit and More join ⌄'s row at its left (#745, where ⋯ was), the grip in the middle; the
-        # title's ✕ stays a row below
+        # the route's view at full: Edit and More join ⌄'s row at its left (#745, where ⋯ was), the grip in the middle
         pg.js("polku.planner.setEditing(false); polku.planner.setSheetState('full'); true")
         fold_settled(pg, fails, 'step 11b')
         s = info()
-        x, row, grip = pg.js("[((r) => r.top + r.height / 2)(polku.planner.els.title.querySelector('.way-x').getBoundingClientRect()), polku.planner.els.top.getBoundingClientRect().bottom, ((r, p) => Math.abs(r.left + r.width / 2 - (p.left + p.width / 2)))(polku.planner.els.handle.getBoundingClientRect(), polku.planner.panel.getBoundingClientRect())]")
+        row, grip = pg.js("[polku.planner.els.top.getBoundingClientRect().bottom, ((r, p) => Math.abs(r.left + r.width / 2 - (p.left + p.width / 2)))(polku.planner.els.handle.getBoundingClientRect(), polku.planner.panel.getBoundingClientRect())]")
         b = s['toolBtns'] or []
-        if s['toolsIn'] != 'top' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or any((t['t'] + t['b']) / 2 > row for t in b) or b[0]['l'] > s['panel']['l'] + 16 or x < row or grip > 1:
-            fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f}, the grip {grip:.0f} px off the middle (Edit and More at the left of ⌄'s row, #745)")
+        if s['toolsIn'] != 'top' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or any((t['t'] + t['b']) / 2 > row for t in b) or b[0]['l'] > s['panel']['l'] + 16 or grip > 1:
+            fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the grip {grip:.0f} px off the middle (Edit and More at the left of ⌄'s row, #745)")
         pg.js("polku.planner.setEditing(true); true")
         # the map's buttons don't chase the sheet (#540): with motion, a fold changes their place once, and they go with the
         # sheet there in one move (#569), so their place in the layout (their bottom, the move left out) changes once
@@ -12438,18 +12437,16 @@ RV_LINE = """(() => {
     if (document.elementFromPoint(x, y) === map.getCanvas() && !(p.headAt && p.headAt(q, 24))) return { x, y };
   }
   return null; })()"""
-# what's on screen in the route's view, and whether it's what the plan says
+# what's on screen in the route's view, and whether it's what the plan says: one header in both modes, the numbers row with
+# ✕ at its end on wider screens (on a phone the folded line's), and no drawing hint (#751)
 RV_VIEW = """(() => {
   const p = polku.planner, el = (e) => !!e && !e.hidden && !!e.offsetParent, out = [];
   const tools = [...p.tools.querySelectorAll('button')].filter(el).map((b) => (b.getAttribute('aria-label') || b.textContent).trim().split(':')[0]);
-  const t = p.els.title, x = t.querySelector('.way-x'), tr = t.getBoundingClientRect();
+  const wide = matchMedia('(min-width: 721px)').matches, x = p.els.row.querySelector('.way-x');
   if (!p.inView()) out.push('not the route’s view');
-  if (!el(t)) out.push('no title row');
-  else {
-    if (p.els.titleName.textContent !== p.routeTitle()) out.push(`its title “${p.els.titleName.textContent}”, not “${p.routeTitle()}”`);
-    if (!/Kept on this device/.test(p.els.titleSub.textContent)) out.push(`its line “${p.els.titleSub.textContent}”`);
-    if (!el(x)) out.push('no ✕');
-  }
+  if (document.querySelector('#planner .pl-title')) out.push('a title row above the numbers (#751)');
+  if (document.querySelector('#planner p.hint')) out.push('the drawing hint (#751)');
+  if (wide && !el(x)) out.push('no ✕ at the header row’s end');
   const edit = p.els.toolEdit, done = p.els.toolDone; // (the toolbar's, phones too: #745)
   if (!el(edit) || el(done)) out.push(`Edit ${el(edit) ? 'with' : 'without'} Done${el(done) ? '' : ' gone'}`);
   if (p.ghosts.length) out.push(`${p.ghosts.length} handles on the line`);
@@ -12457,23 +12454,19 @@ RV_VIEW = """(() => {
   if (document.querySelector('#planner .pl-viewnote:not(.card-banner)')) out.push('a “You’re not editing” note (#745)');
   if (p.els.points.querySelector('.wpl-grip, .wpl-tools, input.wpl-name')) out.push('Route’s list has its controls');
   if (p.map.getCanvas().style.cursor === 'crosshair') out.push('the crosshair');
-  return { out, tools, small: [x, edit].filter((b) => el(b) && (b.offsetWidth < 44 || b.offsetHeight < 44) && matchMedia('(pointer: coarse)').matches).map((b) => b.getAttribute('aria-label') || b.textContent.trim()) }; })()"""
-# The route's view's header at a small size: the name wraps (never cut), ✕ and Edit a finger's size and on screen, nothing over another
+  return { out, tools, small: [wide ? x : null, edit].filter((b) => el(b) && (b.offsetWidth < 44 || b.offsetHeight < 44) && matchMedia('(pointer: coarse)').matches).map((b) => b.getAttribute('aria-label') || b.textContent.trim()) }; })()"""
+# The route's view at a small size with a long name of its own: the name in Route's list's first row ("MTB · …"), whole
+# (it wraps, never cut); Edit a finger's size and on screen, clear of the numbers; the sheet below the top bar (#751)
 RV_FIT = """(() => {
-  const p = polku.planner, r = (e) => e.getBoundingClientRect(), out = [], n = p.els.titleName, x = p.els.title.querySelector('.way-x'), e = p.els.toolEdit, pl = r(p.panel);
-  if (n.scrollWidth > n.clientWidth + 1 || getComputedStyle(n).textOverflow === 'ellipsis') out.push('the name is cut');
-  for (const [b, k] of [[x, '✕'], [e, 'Edit']]) {
-    const a = r(b);
-    if (a.width < 44 || a.height < 44) out.push(`${k} ${Math.round(a.width)} × ${Math.round(a.height)} px`);
-    if (a.left < 0 || a.right > innerWidth || a.top < 0 || a.bottom > innerHeight) out.push(`${k} off the screen`);
-  }
-  const nr = r(n), xr = r(x), tr = r(p.els.title); // (the name may scroll in its row: what shows of it is the row's)
-  if (nr.right > xr.left && nr.bottom > xr.top && nr.top < xr.bottom) out.push('the name under ✕');
-  const sum = [...p.els.sum.querySelectorAll('.sum-item b')].map(r), er = r(e);
-  sum.forEach((a, i) => { if (a.right > er.left && a.bottom > er.top && a.top < er.bottom) out.push(`number ${i} under Edit`); if (a.top < tr.bottom - 1) out.push(`number ${i} under the name`); });
+  const p = polku.planner, r = (e) => e.getBoundingClientRect(), out = [], e = p.els.toolEdit, pl = r(p.panel);
+  const n = p.els.points.querySelector('.sec2-head b');
+  if (!n || !n.textContent.endsWith(` · ${p.routeName}`)) out.push(`Route’s first row “${n ? n.textContent : ''}”, not the route’s name`);
+  else if (n.scrollWidth > n.clientWidth + 1 || getComputedStyle(n).textOverflow === 'ellipsis') out.push('the name is cut');
+  const a = r(e);
+  if (a.width < 44 || a.height < 44) out.push(`Edit ${Math.round(a.width)} × ${Math.round(a.height)} px`);
+  if (a.left < 0 || a.right > innerWidth || a.top < 0 || a.bottom > innerHeight) out.push('Edit off the screen');
+  [...p.els.sum.querySelectorAll('.sum-item b')].map(r).forEach((b, i) => { if (b.right > a.left && b.bottom > a.top && b.top < a.bottom) out.push(`number ${i} under Edit`); });
   if (pl.top < document.querySelector('.topbar').getBoundingClientRect().bottom) out.push('the sheet under the top bar');
-  const sub = r(p.els.titleSub);
-  if (sub.top < tr.top - 1 || sub.bottom > tr.bottom + 1) out.push('its sports and Kept on this device out of sight');
   return out; })()"""
 
 
@@ -12536,6 +12529,10 @@ def route_view(chrome):
         time.sleep(0.8)
         return True
 
+    def away(pg, name):  # (a phone: ⌄ folds it to its line, whose ✕ puts it away)
+        press(pg, at(pg, "polku.planner.els.foldBtn"), f'{name}: ⌄', True)
+        press(pg, at(pg, "polku.planner.els.foldX"), name, True)
+
     def view_ok(pg, name):
         placed(pg)  # (the route's view's toolbox, a frame after Done)
         v = pg.js(RV_VIEW)
@@ -12554,8 +12551,14 @@ def route_view(chrome):
         pg.js(SETTLED)
         s0 = state(pg)
         line0 = pg.js("JSON.stringify(polku.planner.points)")
+        if pg.js("!!document.querySelector('#planner p.hint')"):
+            fails.append(f'{name}: the drawing hint while editing (#751)')
+        peek0 = pg.js("polku.planner.peekBare")
         press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done', touch)
         v = view_ok(pg, f'{name}: after Done')
+        peek1 = pg.js("polku.planner.peekBare")
+        if abs(peek1 - peek0) > 1:  # (one header in both modes: Done changes the toolbox, not the peek, #751)
+            fails.append(f'{name}: the peek {peek1} px after Done, {peek0} px while editing (#751)')
         if v['tools'] != ['Edit', 'More']:
             fails.append(f"{name}: the toolbox in the route’s view: {', '.join(v['tools']) or 'nothing'}, not Edit and More (#745)")
         if pg.js("document.getElementById('btn-fit').hidden"):
@@ -12604,7 +12607,7 @@ def route_view(chrome):
             time.sleep(0.5)
         # ✕ puts it away with a note; the route stays on the map; Open brings it back as it was
         press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done again', touch)
-        press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕', touch)
+        away(pg, f'{name}: ✕')
         pg.js(SETTLED)  # (the planner put away: its note's Open is measured once, then tapped while the note shows)
         c = pg.js("""(() => { const p = polku.planner, t = document.getElementById('toast'), b = t.querySelector('.toast-act'), col = document.getElementById('map-ctrls').getBoundingClientRect();
           return { active: p.active, legs: p.legs.length, drawn: polku.map.queryRenderedFeatures({ layers: ['route-casing'] }).length > 0, text: t.hidden ? '' : t.firstChild.textContent.trim(), open: b && b.textContent,
@@ -12618,7 +12621,7 @@ def route_view(chrome):
         if not s['active'] or not s['view'] or s['sheet'] != s0['sheet']:
             fails.append(f"{name}: Open: {s} (it was the route’s view at {s0['sheet']})")
         # Plan in the map's column, then a reload: as it was left (#238)
-        press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕ again', touch)
+        away(pg, f'{name}: ✕ again')
         press(pg, at(pg, "document.getElementById('btn-plan')"), f'{name}: Plan', touch)
         if not state(pg)['view']:
             fails.append(f'{name}: Plan opened {state(pg)}, not the route’s view')
@@ -12713,7 +12716,7 @@ def route_view(chrome):
         key(pg, 'r', 'KeyR', 82)
         if not pg.js("polku.planner.active && polku.planner.inView()"):
             fails.append(f'{name}: R twice: {state(pg)}')
-        press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕', touch)
+        press(pg, at(pg, "polku.planner.els.row.querySelector('.way-x')"), f'{name}: ✕', touch)
         if pg.js("polku.planner.active") or 'Planner closed' not in pg.js("document.getElementById('toast').textContent"):
             fails.append(f'{name}: ✕: {state(pg)}')
         # a shared route opens in the route's view, to read it first
@@ -12732,7 +12735,7 @@ def route_view(chrome):
         name = f'{w}x{h_}'
         pg = page(w, h_, True)
         if ready(pg, name):
-            pg.js(f"(() => {{ const p = polku.planner; p.routeName = {json.dumps(LONG_NAME)}; p.setSheetState('peek'); p.setEditing(false); return true; }})()")
+            pg.js(f"(() => {{ const p = polku.planner; p.routeName = {json.dumps(LONG_NAME)}; p.setSheetState('peek'); p.setEditing(false); p.renderWaypoints(); return true; }})()")
             pg.js(SETTLED)
             view_ok(pg, name)
             out = pg.js(RV_FIT)
@@ -12740,7 +12743,7 @@ def route_view(chrome):
                 fails.append(f"{name}: the route’s view’s header: {', '.join(out)}")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} Done and the route’s view (25c): taps, ✕ and its note, reopening as left (#238)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} Done and the route’s view (25c): taps, ✕ and its note, reopening as left (#238), one header (#751)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

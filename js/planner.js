@@ -1049,26 +1049,14 @@ export class Planner {
   // open or put away, and editing or the route's view, for the next visit (#238; main.js opens it again)
   remember() { store.set('plannerOpen', { open: this.active, view: !this.editing }); }
 
-  // What editing and the route's view change around the panel: its title row, the markers (they
-  // stay put in the view), the leg's handles, the pointer
+  // What editing and the route's view change around the panel: the markers (they stay put in the view), the leg's
+  // handles, the pointer; the header is the same in both (#751)
   renderState() {
     const view = this.inView();
-    this.panel.classList.toggle('viewing', view);
     this.panel.setAttribute('aria-label', view ? 'Route planner: your route' : 'Route planner');
     this.map.getCanvas().style.cursor = this.active && !view ? 'crosshair' : '';
     for (const m of this.markers) m.setDraggable(!view);
     this.renderGhosts();
-    this.renderTitle();
-  }
-  // The route's view's top row: the route's name, its sports and that it's kept on this device, and ✕
-  renderTitle() {
-    if (!this.els || !this.els.title) return;
-    this.renderTopSum(); // (the names come with the map's tiles)
-    const view = this.inView();
-    this.els.title.hidden = !view;
-    if (!view) return;
-    this.els.titleName.textContent = this.routeTitle();
-    this.els.titleSub.innerHTML = `${escapeHtml(this.sportsLabel())} · ${icon('check', 13)}<span>Kept on this device</span>`;
   }
 
   // ---------------------------------------------------------------- routing
@@ -2887,10 +2875,9 @@ export class Planner {
     const n = this.points.length;
     this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
     this.setSection('points', { count: n || '', empty: !n, summary: n > 1 ? `${this.nameOf(0)} → ${this.nameOf(n - 1)}` : '' });
-    this.renderTitle(); // (the route's view's title: the names come with the map's tiles)
+    this.renderTopSum(); // (the route's name: the names come with the map's tiles)
     // the route's view (25c): the same sections, without Reorder; a point's card still edits it (#745)
     const ro = this.inView();
-    this.els.hint.hidden = ro;
     if (ro || n < 2) this.reordering = false;
     const loops = roundTripSports.includes(this.app.activity());
     this.els.pointsFoot.replaceChildren(...[
@@ -2954,7 +2941,8 @@ export class Planner {
     const nums = (s) => { const x = this.stretchNums(s); return x ? [fmtDist(x.len), fmtDuration(x.sec), x.up == null ? '' : `↑${Math.round(x.up)} m`].filter(Boolean).join(' · ') : fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from)); };
     let day = 1;
     secs.forEach((sec, k) => {
-      const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label} · ${this.nameOf(sec.from)} → ${this.nameOf(sec.to)}`;
+      // (the route's own name, an import's or a picked loop's, in the first row of a route of one section, #751)
+      const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label} · ${this.routeName && secs.length === 1 ? this.routeName : `${this.nameOf(sec.from)} → ${this.nameOf(sec.to)}`}`;
       if (sec.ends === 'night') day += this.stopAt(sec.to).n || 1;
       // a short forecast for its end; a tap says the rest under it [kf2-multi-tap]
       const w = fits && a.wind && a.wind.temp ? this.sampleAtM(this.lengthTo(sec.to)) : -1, id = this.pidOf(this.points[sec.from]), open = this.wxOpen.has(id);
@@ -4323,14 +4311,11 @@ export class Planner {
     this.els.topSum = h('div', { class: 'top-sum', 'aria-hidden': 'true' }); // (D: the numbers in the top row, renderTopSum())
     this.els.dockBtn = tool('panelBottom', 'Move to the bottom', () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), 'sheet-dock');
     this.els.handle = h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
-    // The header shows the route: its numbers, and in the route's view (25c) its name and ✕ a row above them
-    // (renderTitle()). Done or Edit, how the next leg is drawn, undo, redo and More are in the toolbox (buildTools(),
-    // #745). Before there's a route, and while a round trip is open, it holds the start instead (renderStart(), A with 25b).
-    // (wider screens: ✕ at the header row's end while editing, as the mock-up of step 3 has it; the route's view has its own)
+    // The header shows the route's numbers, the same while editing and in the route's view (#751). Done or Edit, how
+    // the next leg is drawn, undo, redo and More are in the toolbox (buildTools(), #745). Before there's a route, and
+    // while a round trip is open, it holds the start instead (renderStart(), A with 25b).
+    // (wider screens: ✕ at the header row's end, as the mock-up of step 3 has it; phones: the folded line's)
     this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX());
-    this.els.titleName = h('b');
-    this.els.titleSub = h('small');
-    this.els.title = h('div', { class: 'pl-title', hidden: true }, h('h2', { class: 'pl-ttl' }, this.els.titleName, this.els.titleSub), this.closeX());
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
     this.els.card = h('div', { class: 'card-peek', hidden: true });
@@ -4338,7 +4323,7 @@ export class Planner {
     this.els.readRow = h('div', { class: 'warn-row pl-readrow', hidden: true });
     // key facts (#471's A2): what stands out on this route, under its numbers
     this.els.facts = h('div', { class: 'kf', role: 'group', 'aria-label': 'Key facts', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.readRow, this.els.row, this.els.facts, this.els.way), this.els.said);
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.readRow, this.els.row, this.els.facts, this.els.way), this.els.said);
     // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, the
     // planner put away too, at its spot elsewhere (js/card.js, 25d)
     this.cards = new CardHost(this.map, {
@@ -4422,9 +4407,6 @@ export class Planner {
     this.els.climbs = h('div', { class: 'list climbs' });
     this.els.warnings = h('div', { class: 'list warnings' });
     this.els.wind = h('div', { class: 'list wind' });
-    this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
-      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point to see it, hold it for options · tap the line for options · hold the map for more'
-      : 'Click the map to add points · drag a point or the line to reshape · click a point to see it, right-click it for options · click the line for options · right-click the map for more');
     this.els.dock = h('div', { class: 'dock' }); // (the timeline stays over the map while planning: #225)
 
     // The profile, one, under the header: always in sight (but at the summary size), with the
@@ -4467,8 +4449,7 @@ export class Planner {
         this.els.howRows = h('div', { class: 'rows how-rows' }),
         // how you go: which ways the router prefers, and how fast the time is counted (shown in a start step's
         // Fine-tune too, the same elements: borrowHow())
-        this.section('style', 'How you go', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap),
-        this.els.hint),
+        this.section('style', 'How you go', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap)),
       check: pane('check',
         this.els.checkEmpty = h('p', { class: 'note pl-empty' }, 'Draw a route to see what’s on the way: heads-up, climbs, the ground.'),
         this.els.stats,
@@ -5260,10 +5241,6 @@ export class Planner {
       // the start's view as tall as it is, not as tall as the sheet let it be: it scrolls inside only once the
       // sheet stops below the top bar (css/app.css .way-only)
       const grow = w && !w.hidden ? w.scrollHeight - w.clientHeight : 0;
-      // the route's view on a short screen (200 %, a long name): the name scrolls in its place, whole, so the sheet stops
-      // below the top bar as the start's views do, and its sports and "Kept on this device" stay in sight (25c)
-      const t = this.els.title, n = this.els.titleName;
-      if (n) n.style.maxHeight = '';
       // the toolbox in it as the peek has it, whatever size the sheet is at (docked into a full sheet but floating over the
       // peek, or floating over the line and docked into the peek), so a swipe lands where the sheet rests (#586); its room
       // as it was last docked (placeToolsNow() says whether the peek docks it)
@@ -5294,9 +5271,6 @@ export class Planner {
         this.peekBare += card;
         h += card;
       }
-      const over = t && !t.hidden && this.layout() === 'sheet' ? h - (dvh() - 76) : 0;
-      if (over > 0) { const nh = n.offsetHeight, to = Math.max(38, nh - over); n.style.maxHeight = `${to}px`; h -= nh - to; }
-      if (n) n.classList.toggle('scrolls', over > 0);
       // never under the top bar (a phone on its side at 200 %, ⌄'s row too): the peek stops below it, and scrolls as one
       this.peekCut = this.layout() === 'sheet' && h > dvh() - 76;
       if (this.peekCut) h = Math.floor(dvh() - 76);
@@ -6398,12 +6372,10 @@ export class Planner {
       this.els.climbs.innerHTML = '';
       this.els.warnings.innerHTML = '';
       this.els.wind.innerHTML = '';
-      this.els.hint.hidden = false;
       this.drawColored(); // no route: its colours and wind arrows go from the map too
       if (this.app.onAnalysis) this.app.onAnalysis(null);
       return;
     }
-    this.els.hint.hidden = this.points.length > 2 || this.inView(); // (it asks for taps that add points: not in the route's view, #745)
     const paddle = isWater(act);
     const waitSec = (a.waits || []).reduce((t, w) => t + w.sec, 0);
     const nights = (a.waits || []).reduce((c, w) => c + (isNight(w.stop) ? w.stop.n || 1 : 0), 0);

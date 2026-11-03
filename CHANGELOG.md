@@ -2,6 +2,14 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-04
+
+### One planner header, drawing or not ([#751](https://github.com/TommiContursi/Polku/issues/751))
+
+- After **Done**, the planner's header is the same as while you draw: the route's numbers, with no row of the route's name above them, so the planner covers no more of the map than while you draw. On a desktop **✕** is at the end of the numbers' row; on a phone, fold the planner to its line and its **✕** puts it away.
+- A route's own name, from a GPX or KML file or a picked loop, heads the route's list in **Route**, as in "MTB · Pyynikki loop", while the whole route is one sport with no stops or nights.
+- The line of drawing tips at the foot of **Route** is gone: the first point's own words and the toolbar's tooltips say the same.
+
 ## 2026-11-03
 
 ### Edit and Done in one place, and the cards work in both ([#745](https://github.com/TommiContursi/Polku/issues/745))
