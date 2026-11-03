@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### Screen readers hear the profile and the tabs ([#386](https://github.com/TommiContursi/Polku/issues/386))
+
+- The elevation profile has a name for screen readers that says the route's distance, climbing and descent, and it changes with the route. Where terrain is missing, the name says so.
+- The **Check** and **Go** tabs say their count and time in words, such as "Go: arrive 11:04", instead of running them into the tab's name.
+- The planner's and All layers' headings now go one level at a time, so moving by heading finds each section in order.
+
 ### Hosted OSM data now covers four countries ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
 - Roads and paths, trail details and barriers, mapped winter maintenance/access, OSM water hazards, overnight places, lighting and supported full OpenStreetMap details now use Polku's hosted data in Finland, Sweden, Norway and Estonia. Only the needed local tiles download; uncovered border tiles, unsupported objects and unavailable data keep the bounded public fallback. Lake and park outlines still use the public source.

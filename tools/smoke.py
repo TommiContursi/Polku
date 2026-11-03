@@ -16180,6 +16180,82 @@ def tabs(chrome):
     return not fails
 
 
+# What a screen reader hears (#386), from Chrome's own accessibility tree: the profile is an image named by what it shows,
+# its numbers changing with the route; the tabs say their count and time in words ("Check: 1 worth a look", "Go: arrive
+# 11:04"), not run into the name; and the headings go one level at a time, in the planner's Route, Check and Go and in All
+# layers with the trails' Map key open. At 390 × 844 by touch and 1440 × 900
+TN_HEADS = """((root) => { const out = []; let was = 1;
+  for (const e of root.querySelectorAll('h1, h2, h3, h4, h5, h6, [role=heading]')) {
+    if (!e.checkVisibility()) continue;
+    const l = +(e.getAttribute('aria-level') || e.tagName[1]);
+    if (l > was + 1) out.push(`h${l} ${e.textContent.trim().slice(0, 30)} after h${was}`);
+    was = l;
+  }
+  return out; })"""
+
+
+def tabs_names(chrome):
+    fails = []
+
+    def names(pg):
+        pg.c.send('Accessibility.enable', {}, pg.s)
+        out = {}
+        for n in pg.c.send('Accessibility.getFullAXTree', {}, pg.s)['nodes']:
+            if not n.get('ignored'):
+                out.setdefault(n.get('role', {}).get('value'), []).append(n.get('name', {}).get('value', ''))
+        return out
+
+    def one(w, h_, phone):
+        name = f'{w}x{h_}'
+        pg = chrome.page(w, h_, phone)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            if not pg.js(PC_ROUTE, timeout=30000):
+                fails.append(f'{name}: no route')
+                return
+            pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
+            pg.js(SETTLED)
+            want = """(async () => { const p = polku.planner, a = p.analysis, d = (await import(location.origin + '/js/geo.js')).fmtDist(a.total);
+              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${p.els.tabBtn.go.querySelector('.pl-tab-t').textContent}` }; })()"""
+            for step in ('drawn', 'a point added'):
+                ax, w_ = names(pg), pg.js(want)
+                tabs = ax.get('tab', [])
+                if w_['prof'] not in ax.get('image', []):
+                    fails.append(f"{name}: the profile, {step}: images named {ax.get('image', [])} (want {w_['prof']!r})")
+                if len(tabs) != 3 or tabs[0] != 'Route' or not tabs[1].startswith('Check') or tabs[1][5:6] not in ('', ':') or tabs[2] != w_['go']:
+                    fails.append(f"{name}: the tabs' names, {step}: {tabs} (Route, Check: …, {w_['go']!r})")
+                if step == 'drawn':
+                    pg.js("(async () => { const p = polku.planner, a = p.analysis; p.addPoint([23.86, 61.52]); for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; })()", timeout=30000)
+                    pg.js(SETTLED)
+            # the headings: Route (and its How you go), Check and Go, one level at a time
+            for tab, js in (('Route', "polku.planner.setTab('route')"), ('How you go', "polku.planner.openStep('how')"), ('Check', "polku.planner.openStep(null); polku.planner.setTab('check')"), ('Go', "polku.planner.setTab('go')")):
+                pg.js(f"{js}; true")
+                time.sleep(0.4)
+                skips = pg.js(f"({TN_HEADS})(polku.planner.panel)")
+                if skips:
+                    fails.append(f"{name}: the planner's {tab}: headings skip a level: {skips}")
+            # All layers, the trails' Map key open
+            r = pg.js(f"""(async () => {{ document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click();
+              await new Promise((ok) => setTimeout(ok, 500));
+              const key = [...document.querySelectorAll('#layers-panel details.lg-key')].find((d) => d.textContent.includes('Ways'));
+              if (!key) return null;
+              key.open = true;
+              return ({TN_HEADS})(document.querySelector('#layers-panel')); }})()""")
+            if r is None:
+                fails.append(f"{name}: All layers: no Map key with the ways")
+            elif r:
+                fails.append(f"{name}: All layers with the trails' Map key open: headings skip a level: {r}")
+            fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+        finally:
+            pg.close()
+
+    one(390, 844, True)
+    one(1440, 900, False)
+    print(f"{'ok  ' if not fails else 'FAIL'} what a screen reader hears of the profile, the tabs and the headings" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Past the forecast (25d, #465 [tabs-c-days, tabs-c-days-go, tabs-c-days-check, tabs-c-far-check]): where Open-Meteo's
 # hours run out, the time leaves the wind out, the profile goes grey in the weather's colours with No forecast yet at the
 # cut, Check's Not checked says from where, the wind-, rain- and cold-based checks look only at the forecast's part, a
@@ -16844,7 +16920,7 @@ GROUPS = [
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
-    ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
+    ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
