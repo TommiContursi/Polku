@@ -2292,11 +2292,19 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools[data-stage="folded"] { flex-wrap: wrap; max-width: calc(100vw - 16px); }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
 .pl-tools.docked .btn.done { margin-right: auto; } /* Done, and Edit where Done was, at the row's start, alone on it too (200 %, #745) */
-/* the planner's own bar on a phone (#745): across the sheet's width (planner.js sets its left and right), Done or Edit at its
-   start and More at its end; where it's still too narrow the drawing button loses its second line, then shortens its name,
-   then shows only its icon, as on the line, and only then does it take a second row (200 %) */
+/* the planner's own bar on a phone (#745): across the sheet's width (planner.js sets its left and right), or its first row at
+   full, the drawing button as wide as its words either way; Done or Edit at its
+   start and More at its end; where it's still too narrow there's less room around Done's and the drawing button's words
+   (360 px keeps them whole), then the drawing button loses its second line, shortens its name, shows only its icon, as on
+   the line, and only then does the bar take a second row (200 %) */
 .pl-tools.wide .modebtn { flex: none; margin-right: auto; }
+/* …the desktop's look where it fits in one row: the modes by name, the sport, the route style and the lines, undo onwards at its end */
+.pl-tools.tb-full .tb-desk { display: flex; }
+.pl-tools.tb-full .tb-phone { display: none; }
+.pl-tools.wide.tb-full .tb-sep.tb-hist { margin-left: auto; }
 .pl-tools.wide[data-stage="view"] .btn.done { margin-right: auto; }
+.pl-tools.tb-tight .btn.done { padding-inline: 10px; margin-right: 0; }
+.pl-tools.tb-tight .modebtn { gap: 4px; padding: 0 4px 0 8px; }
 .pl-tools.tb-short .modebtn .two small { display: none; }
 .pl-tools.tb-shorter { flex-wrap: nowrap; } /* (one row while it shortens: a row that may wrap doesn't shrink what's on it) */
 .pl-tools.tb-shorter .modebtn { flex: 0 1 auto; min-width: 44px; }
@@ -2321,8 +2329,8 @@ body.dropping .drop-hint { display: flex; }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
 .pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594; phones too, #745) */
 .pl-tools:not(.desk) .btn.done { min-height: 44px; }
-/* the route's view (25c): Edit, then Clear route kept apart by its line (#594), and More */
-.pl-tools[data-stage="view"] .tb-sep:not([data-group="clear"]) { display: none; }
+/* More where everything it would hold is on the toolbar (#745) */
+.pl-tools .tb-gone { display: none; }
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo, redo and More */
 .pl-tools[data-stage="folded"] .modebtn, .pl-tools.tb-wrap .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
 .pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child), .pl-tools.tb-wrap .modebtn > :not(.ic:first-child) { display: none; } /* (and the planner's bar at 200 %, before it takes a second row: #745) */
