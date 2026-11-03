@@ -6,7 +6,7 @@
 //
 // A card is built from the app's own controls, with their classes (DEVELOPING, "Shared controls"): the start's top
 // row and heading (way-bar, way-head, way-hint), the route's numbers (sheet-sum, sum-item), the ⋯ menu's headings
-// (menu-h), the one main action (btn primary big) and the "You're not editing" note (pl-viewnote). New for the cards:
+// (menu-h), the one main action (btn primary big) and the planner's note (pl-viewnote, Move's banner). New for the cards:
 // card-mark (the thing's own mark), row (a plain row in a list of rows), seg icons (a switch with icons), sum-item
 // miss (a number the map doesn't have) and card-pill (the action at the spot, on a phone).
 import { icon, h } from './ui.js';
@@ -93,13 +93,6 @@ export function pickRow({ icon: ic, label, type, set, now = null }) {
 // The card's one main action, as Make 3 loops
 export function mainButton(label, ic, onclick) {
   return h('button', { type: 'button', class: 'btn primary big', onclick, html: icon(ic, 20) }, h('span', {}, label));
-}
-
-// The route's view: the planner's own note, with Edit (25c)
-export function lockNote(text, onEdit) {
-  return h('div', { class: 'pl-viewnote', role: 'note' },
-    h('span', { html: icon('info', 18), 'aria-hidden': 'true' }), h('span', {}, text),
-    h('button', { type: 'button', class: 'btn small', onclick: onEdit, html: `${icon('pencil', 16)}<span>Edit</span>` }));
 }
 
 // A switch whose choices have icons over (or beside) their words; the chosen one has aria-checked. The arrow keys

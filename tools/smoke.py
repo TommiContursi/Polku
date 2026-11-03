@@ -9628,13 +9628,15 @@ def fold_phone(chrome):
             if info()['st'] != want or not info()['active']:
                 fails.append(f"the handle's {k}: {info()['st']}, open {info()['active']} (wanted {want})")
                 break
-        # the route's view at full: More (⋯), a single button, joins ⌄'s row at its left; the title's ✕ stays a row below
+        # the route's view at full: Edit and More join ⌄'s row at its left (#745, where ⋯ was), the grip in the middle; the
+        # title's ✕ stays a row below
         pg.js("polku.planner.setEditing(false); polku.planner.setSheetState('full'); true")
         fold_settled(pg, fails, 'step 11b')
         s = info()
-        x, row = pg.js("[((r) => r.top + r.height / 2)(polku.planner.els.title.querySelector('.way-x').getBoundingClientRect()), polku.planner.els.top.getBoundingClientRect().bottom]")
-        if s['toolsIn'] != 'top' or not s['toolBtns'] or len(s['toolBtns']) != 1 or (s['toolBtns'][0]['t'] + s['toolBtns'][0]['b']) / 2 > row or s['toolBtns'][0]['l'] > s['panel']['l'] + 16 or x < row:
-            fails.append(f"the route's view at full: the toolbox {s['toolBtns']} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f} (⋯ at the left of ⌄'s row)")
+        x, row, grip = pg.js("[((r) => r.top + r.height / 2)(polku.planner.els.title.querySelector('.way-x').getBoundingClientRect()), polku.planner.els.top.getBoundingClientRect().bottom, ((r, p) => Math.abs(r.left + r.width / 2 - (p.left + p.width / 2)))(polku.planner.els.handle.getBoundingClientRect(), polku.planner.panel.getBoundingClientRect())]")
+        b = s['toolBtns'] or []
+        if s['toolsIn'] != 'top' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or any((t['t'] + t['b']) / 2 > row for t in b) or b[0]['l'] > s['panel']['l'] + 16 or x < row or grip > 1:
+            fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f}, the grip {grip:.0f} px off the middle (Edit and More at the left of ⌄'s row, #745)")
         pg.js("polku.planner.setEditing(true); true")
         # the map's buttons don't chase the sheet (#540): with motion, a fold changes their place once, and they go with the
         # sheet there in one move (#569), so their place in the layout (their bottom, the move left out) changes once
@@ -11424,9 +11426,12 @@ def toolbox(chrome):
         pg.js(SETTLED)
         t = pg.js("""(() => { const p = polku.planner, b = p.tools.getBoundingClientRect(), c = document.getElementById('map-ctrls').getBoundingClientRect();
           const small = [...document.querySelectorAll('#pl-tools button, #planner .sheet-head button')].filter((e) => e.offsetParent && (e.offsetWidth < 44 || e.offsetHeight < 44)).map((e) => e.getAttribute('aria-label') || e.textContent.trim());
-          return { docked: p.tools.classList.contains('docked'), right: b.right, colLeft: c.left, small }; })()""")
-        if t['docked'] or t['right'] + 8 > t['colLeft']:
-            fails.append(f"{name}: the toolbox {'docked' if t['docked'] else 'floats under the map’s buttons'} on a 390 px phone (right {t['right']:.0f}, the buttons at {t['colLeft']:.0f})")
+          const s = p.panel.getBoundingClientRect();
+          return { docked: p.tools.classList.contains('docked'), left: b.left, right: b.right, top: b.top, bottom: b.bottom, sheetL: s.left, sheetR: s.right, sheetT: s.top, colB: c.bottom, small,
+            wx: parseFloat(document.documentElement.style.getPropertyValue('--wx-h')) || 0 }; })()""")  # (an open timeline between them)
+        # (#745: at its own width from the sheet's left edge, just above it, under the map's buttons)
+        if t['docked'] or abs(t['left'] - t['sheetL']) > 1 or t['right'] > t['sheetR'] + 1 or not 0 <= t['sheetT'] - t['wx'] - t['bottom'] <= 20 or t['colB'] > t['top']:
+            fails.append(f"{name}: the toolbox on a 390 px phone: {t} (from the sheet's left edge, above it, the map's buttons above it)")
         if t['small']:
             fails.append(f"{name}: under 44 px to touch: {', '.join(t['small'])}")
         # the mode's menu: only the next leg changes
@@ -11508,7 +11513,7 @@ def toolbox(chrome):
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
-    # #242: a long route's numbers apart, and the toolbox docked, at 360 px and at 200 % (a 390 phone's 195 x 422)
+    # #242: a long route's numbers apart, at 360 px and at 200 % (a 390 phone's 195 x 422)
     LONG = [[23.0 + 0.25 * i, 61.0 + 0.05 * (i % 2)] for i in range(10)]
     for w, h_ in ((360, 740), (195, 422)):
         name = f'{w}x{h_}'
@@ -11516,12 +11521,11 @@ def toolbox(chrome):
         pg.js(f"({TB_ROUTE})({json.dumps(LONG)})", timeout=60000)
         pg.js("polku.planner.setSheetState('peek'); true")
         pg.js(SETTLED)
-        r = pg.js("""(() => { const p = polku.planner, head = p.els.head.getBoundingClientRect(), done = p.els.head.querySelector('.done').getBoundingClientRect();
+        r = pg.js("""(() => { const p = polku.planner, head = p.els.head.getBoundingClientRect(), done = p.els.toolDone.getBoundingClientRect();
           const items = [...p.els.sum.querySelectorAll('.sum-item')].map((e) => e.querySelector('b').getBoundingClientRect()), out = [];
           items.forEach((a, i) => { if (a.right > head.right + 0.5 || a.left < head.left - 0.5) out.push(`item ${i} outside the header`);
             if (a.right > done.left && a.bottom > done.top && a.top < done.bottom) out.push(`item ${i} under Done`);
             items.slice(i + 1).forEach((b, j) => { if (Math.abs(a.top - b.top) < 4 && b.left - a.right < 8) out.push(`items ${i} and ${i + j + 1} ${Math.round(b.left - a.right)} px apart`); }); });
-          if (!p.tools.classList.contains('docked')) out.push('the toolbox floats');
           return { out, km: p.analysis && Math.round(p.analysis.total / 1000), text: p.els.sum.textContent }; })()""")
         if r['out']:
             fails.append(f"{name}: a {r['km']} km route ({r['text']}): {', '.join(r['out'])} (#242)")
@@ -11534,7 +11538,7 @@ def toolbox(chrome):
                 pg.js(f"(() => {{ const t = {json.dumps(labels)}; polku.planner.els.sum.querySelectorAll('.sum-item small').forEach((s, i) => {{ s.textContent = t[i]; }}); return true; }})()")
             pg.js(SETTLED)
             r = pg.js("""(() => { const p = polku.planner, head = p.els.head.getBoundingClientRect(), sheet = p.panel.getBoundingClientRect(), out = [];
-              const done = p.els.head.querySelector('.done').getBoundingClientRect(), items = [...p.els.sum.querySelectorAll('.sum-item')];
+              const done = p.els.toolDone.getBoundingClientRect(), items = [...p.els.sum.querySelectorAll('.sum-item')];
               const box = (it) => { const r = [...it.children].map((e) => e.getBoundingClientRect());
                 return { left: Math.min(...r.map((q) => q.left)), right: Math.max(...r.map((q) => q.right)), top: Math.min(...r.map((q) => q.top)), bottom: Math.max(...r.map((q) => q.bottom)) }; };
               const boxes = items.map(box);
@@ -11696,7 +11700,7 @@ def toolbox(chrome):
     pg.js("polku.planner.closeLoop(); true")
     # (the route's actions come back on the toolbar in the next frame, and Done moves along with them: #311)
     pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
-    # Done: the route's view (25c), Clear route stays on the toolbar and Show the whole route in the map's column (#594;
+    # Done: the route's view (25c), Edit and More on the toolbar (#745) and Show the whole route in the map's column (#594;
     # the routeview group has the rest).
     # Done is the toolbar's first button, at its planner end (E of #594), and Edit lands where it was
     placed(pg)
@@ -11706,7 +11710,7 @@ def toolbox(chrome):
     edit_left = pg.js("polku.planner.els.toolEdit.getBoundingClientRect().left")
     if first['name'] != 'Done' or abs(edit_left - first['left']) > 1:
         fails.append(f"{name}: the toolbar's first button is {first['name']} at {first['left']:.0f}, and Edit lands at {edit_left:.0f} (Done first, Edit where it was)")
-    d = pg.js("({ active: polku.planner.active, view: polku.planner.inView(), tools: !!polku.planner.els.clearTool.offsetParent && !!polku.planner.els.toolEdit.offsetParent, fit: !document.getElementById('btn-fit').hidden })")
+    d = pg.js("({ active: polku.planner.active, view: polku.planner.inView(), tools: !polku.planner.els.clearTool.offsetParent && !!polku.planner.els.toolEdit.offsetParent, fit: !document.getElementById('btn-fit').hidden })")  # (#745: Edit and More, Clear route in More)
     if not d['active'] or not d['view'] or not d['tools'] or not d['fit']:
         fails.append(f'{name}: after Done: {d}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
@@ -12446,17 +12450,17 @@ RV_VIEW = """(() => {
     if (!/Kept on this device/.test(p.els.titleSub.textContent)) out.push(`its line “${p.els.titleSub.textContent}”`);
     if (!el(x)) out.push('no ✕');
   }
-  const edit = p.sideMQ.matches ? p.els.toolEdit : p.els.edit, done = p.sideMQ.matches ? p.els.toolDone : p.els.done;
+  const edit = p.els.toolEdit, done = p.els.toolDone; // (the toolbar's, phones too: #745)
   if (!el(edit) || el(done)) out.push(`Edit ${el(edit) ? 'with' : 'without'} Done${el(done) ? '' : ' gone'}`);
   if (p.ghosts.length) out.push(`${p.ghosts.length} handles on the line`);
   if (p.markers.some((m) => m.isDraggable())) out.push('the markers can be dragged');
-  if (!el(p.els.viewNote) && p.panel.dataset.state !== 'peek' && p.tab === 'route') out.push('no “You’re not editing” on Route');
+  if (document.querySelector('#planner .pl-viewnote:not(.card-banner)')) out.push('a “You’re not editing” note (#745)');
   if (p.els.points.querySelector('.wpl-grip, .wpl-tools, input.wpl-name')) out.push('Route’s list has its controls');
   if (p.map.getCanvas().style.cursor === 'crosshair') out.push('the crosshair');
   return { out, tools, small: [x, edit].filter((b) => el(b) && (b.offsetWidth < 44 || b.offsetHeight < 44) && matchMedia('(pointer: coarse)').matches).map((b) => b.getAttribute('aria-label') || b.textContent.trim()) }; })()"""
 # The route's view's header at a small size: the name wraps (never cut), ✕ and Edit a finger's size and on screen, nothing over another
 RV_FIT = """(() => {
-  const p = polku.planner, r = (e) => e.getBoundingClientRect(), out = [], n = p.els.titleName, x = p.els.title.querySelector('.way-x'), e = p.els.edit, pl = r(p.panel);
+  const p = polku.planner, r = (e) => e.getBoundingClientRect(), out = [], n = p.els.titleName, x = p.els.title.querySelector('.way-x'), e = p.els.toolEdit, pl = r(p.panel);
   if (n.scrollWidth > n.clientWidth + 1 || getComputedStyle(n).textOverflow === 'ellipsis') out.push('the name is cut');
   for (const [b, k] of [[x, '✕'], [e, 'Edit']]) {
     const a = r(b);
@@ -12550,10 +12554,10 @@ def route_view(chrome):
         pg.js(SETTLED)
         s0 = state(pg)
         line0 = pg.js("JSON.stringify(polku.planner.points)")
-        press(pg, at(pg, "polku.planner.els.done"), f'{name}: Done', touch)
+        press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done', touch)
         v = view_ok(pg, f'{name}: after Done')
-        if v['tools'] != ['More']:
-            fails.append(f"{name}: the toolbox in the route’s view: {', '.join(v['tools']) or 'nothing'}, not only More")
+        if v['tools'] != ['Edit', 'More']:
+            fails.append(f"{name}: the toolbox in the route’s view: {', '.join(v['tools']) or 'nothing'}, not Edit and More (#745)")
         if pg.js("document.getElementById('btn-fit').hidden"):
             fails.append(f'{name}: no Show the whole route in the map’s column in the route’s view')
         # a tap on the map shows what's there and adds nothing; on the line, that part's menu
@@ -12570,8 +12574,8 @@ def route_view(chrome):
         time.sleep(0.6)
         press(pg, pg.js(RV_LINE), f'{name}: the line', touch)
         s = state(pg)
-        if s['n'] != s0['n'] or s['card'] != 'route' or s['pill']:
-            fails.append(f"{name}: a tap on the line in the route’s view: {s['n'] - s0['n']} points added, {s['card'] or 'no'} card{', with Add a point here' if s['pill'] else ''} (25d's 1b)")
+        if s['n'] != s0['n'] or s['card'] != 'route' or not s['pill']:
+            fails.append(f"{name}: a tap on the line in the route’s view: {s['n'] - s0['n']} points added, {s['card'] or 'no'} card{'' if s['pill'] else ', without Add a point here'} (25d's 1b, #745)")
         shut(pg)
         # the markers stay put
         drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
@@ -12587,9 +12591,9 @@ def route_view(chrome):
         if pg.js("!!polku.planner.cards.current"):
             fails.append(f'{name}: the point’s card’s ✕ left it open')
         # Edit: the drawing tools are back, with undo as it was; a tap adds a point again
-        press(pg, at(pg, "polku.planner.els.edit"), f'{name}: Edit', touch)
+        press(pg, at(pg, "polku.planner.els.toolEdit"), f'{name}: Edit', touch)
         placed(pg)  # (the drawing tools are back in the toolbox a frame later)
-        e = pg.js("(() => { const p = polku.planner; return { view: p.inView(), mode: !!p.els.modeBtn.offsetParent, undo: !p.els.undo.disabled && !!p.els.undo.offsetParent, past: p.past.length, done: !!p.els.done.offsetParent, ghosts: p.ghosts.length }; })()")
+        e = pg.js("(() => { const p = polku.planner; return { view: p.inView(), mode: !!p.els.modeBtn.offsetParent, undo: !p.els.undo.disabled && !!p.els.undo.offsetParent, past: p.past.length, done: !!p.els.toolDone.offsetParent, ghosts: p.ghosts.length }; })()")
         if e['view'] or not e['mode'] or not e['undo'] or e['past'] != s0['past'] or not e['done'] or not e['ghosts']:
             fails.append(f'{name}: after Edit: {e} (undo steps before Done: {s0["past"]})')
         if spot:
@@ -12599,7 +12603,7 @@ def route_view(chrome):
             pg.js("polku.planner.undo(); true")
             time.sleep(0.5)
         # ✕ puts it away with a note; the route stays on the map; Open brings it back as it was
-        press(pg, at(pg, "polku.planner.els.done"), f'{name}: Done again', touch)
+        press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done again', touch)
         press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕', touch)
         pg.js(SETTLED)  # (the planner put away: its note's Open is measured once, then tapped while the note shows)
         c = pg.js("""(() => { const p = polku.planner, t = document.getElementById('toast'), b = t.querySelector('.toast-act'), col = document.getElementById('map-ctrls').getBoundingClientRect();
@@ -12636,11 +12640,11 @@ def route_view(chrome):
             pg.js(SETTLED)
             time.sleep(0.4)
             press(pg, at(pg, "polku.planner.els.more"), f'{name}: More', touch)
-            # (#594: one order everywhere, Clear route first and farthest from More, Take it along last and nearest; the
-            # focus not on Clear route)
+            # (#745: one order everywhere, the whole route, Take it along, then Round trip, Import and Clear route, Clear route
+            # last and in sight; the focus not on Clear route)
             m = pg.js("(() => { const el = document.querySelector('.menu-pop'), b = [...el.querySelectorAll('.menu-item')], it = b.map((x) => x.textContent.trim()), a = document.activeElement, r = el.getBoundingClientRect(), q = b[b.length - 1].getBoundingClientRect(); return { first: it[0] || '', last: it[it.length - 1] || '', focus: a && a.classList.contains('menu-item') && !a.classList.contains('danger'), lastSeen: q.top >= r.top - 1 && q.bottom <= r.bottom + 1 }; })()")
-            if not m['first'].startswith('Clear route') or not m['last'].startswith('Save offline') or not m['focus'] or not m['lastSeen']:
-                fails.append(f'{name}: the route’s view’s More: {m} (Clear route first, Save offline last and in sight, the focus not on Clear route)')
+            if not m['first'].startswith('Reverse') or not m['last'].startswith('Clear route') or not m['focus'] or not m['lastSeen']:
+                fails.append(f'{name}: the route’s view’s More: {m} (Reverse first, Clear route last and in sight, the focus not on Clear route)')
             if not pg.js("(() => { const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith('Clear route')); if (b) { b.dataset.rvPick = '1'; b.scrollIntoView({ block: 'nearest' }); } return !!b; })()"):
                 fails.append(f"{name}: no Clear route in the route’s view’s More: {pg.js('[...document.querySelectorAll(`.menu-pop .menu-item`)].map((b) => b.textContent.trim())')}")
             press(pg, at(pg, "document.querySelector('.menu-pop [data-rv-pick]')"), f'{name}: Clear route', touch)
@@ -12662,16 +12666,19 @@ def route_view(chrome):
         line0 = pg.js("JSON.stringify(polku.planner.points)")
         press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done', touch)
         v = view_ok(pg, f'{name}: after Done')
-        if v['tools'] != ['Edit', 'Clear route', 'More'] or not pg.js("!!polku.planner.tools.querySelector('.tb-sep[data-group=clear]').offsetParent"):
-            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}, a line before Clear route: {pg.js('!!polku.planner.tools.querySelector(`.tb-sep[data-group=clear]`).offsetParent')}")
-        # Clear route is one click there (#594), with its note's Undo; Undo brings the route back, in editing as from More
-        press(pg, at(pg, "polku.planner.els.clearTool"), f'{name}: Clear route', touch)
+        if v['tools'] != ['Edit', 'More']:
+            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}, not Edit and More (#745)")
+        # Clear route is in More there (#745), with its note's Undo; Undo brings the route back, in editing
+        press(pg, at(pg, "polku.planner.els.more"), f'{name}: More', touch)
+        if not pg.js("(() => { const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith('Clear route')); if (b) b.dataset.rvPick = '1'; return !!b; })()"):
+            fails.append(f'{name}: no Clear route in the route’s view’s More')
+        press(pg, at(pg, "document.querySelector('.menu-pop [data-rv-pick]')"), f'{name}: Clear route', touch)
         c = pg.js("({ n: polku.planner.points.length, editing: polku.planner.editing, note: document.getElementById('toast').textContent })")
         if c['n'] or not c['editing'] or 'Route cleared' not in c['note']:
-            fails.append(f'{name}: Clear route on the toolbar in the route’s view: {c}')
+            fails.append(f'{name}: Clear route from More in the route’s view: {c}')
         press(pg, at(pg, "document.querySelector('#toast .toast-act')", settle=False), f'{name}: the note’s Undo', touch)
         if state(pg)['n'] != s0['n']:
-            fails.append(f'{name}: Undo after Clear route on the toolbar: {state(pg)}')
+            fails.append(f'{name}: Undo after Clear route from More: {state(pg)}')
         pg.js("polku.planner.setEditing(false); true")
         view_ok(pg, f'{name}: back in the route’s view')
         b = pg.js("({ fit: !document.getElementById('btn-fit').hidden, plan: document.getElementById('btn-plan').textContent.trim(), cursor: polku.map.getCanvas().style.cursor })")
@@ -12689,7 +12696,7 @@ def route_view(chrome):
         pg.js("polku.planner.fitRoute({ animate: false }); true")
         time.sleep(0.6)
         press(pg, pg.js(RV_LINE), f'{name}: the line', touch)
-        if state(pg)['card'] != 'route' or state(pg)['pill']:
+        if state(pg)['card'] != 'route' or not state(pg)['pill']:  # (Add a point here, the card's first button on a desktop: #745)
             fails.append(f'{name}: a click on the line in the route’s view: {state(pg)}')
         shut(pg)
         drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
@@ -12734,6 +12741,138 @@ def route_view(chrome):
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} Done and the route’s view (25c): taps, ✕ and its note, reopening as left (#238)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #745: Edit and Done in one place on a phone, the toolbox's first button, just above the sheet at the peek and at half,
+# editing and not; and
+# after Done the cards still edit the route (Move and Remove on a point's, Edit this stretch on a stretch's) while a tap on
+# the map adds nothing. By touch at 390 × 844, a four-point MTB route with straight legs.
+def edit_done(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    if not pg.js(PC_ROUTE, timeout=30000):
+        fails.append('no route')
+    still = lambda x: (pg.js(SETTLED), pg.js(f"({PC_STILL})(() => ({x}))"))[1]
+    st = lambda: pg.js("(() => { const p = polku.planner; return { n: p.points.length, past: p.past.length, view: p.inView(), card: p.cards.current ? p.cards.current.kind : '', pts: JSON.stringify(p.points) }; })()")
+
+    def tap(at, what):
+        if not at:
+            fails.append(f'{what}: not on screen')
+            return False
+        pg.quick_tap(at['x'], at['y'])
+        time.sleep(0.6)
+        return True
+
+    # where Done or Edit is: on screen, the toolbox's first button, its left edge; and the toolbox at the sheet's left edge,
+    # no wider than it, just above it
+    def place(what):
+        placed(pg)
+        return pg.js("""(() => { const p = polku.planner, b = p.inView() ? p.els.toolEdit : p.els.toolDone;
+          if (!b.offsetParent) return null;
+          const first = [...p.tools.querySelectorAll('button')].find((x) => x.offsetParent), t = p.tools.getBoundingClientRect(), s = p.panel.getBoundingClientRect();
+          const above = !p.tools.classList.contains('docked') && Math.abs(t.left - s.left) < 1 && t.right <= s.right + 1 && t.bottom <= s.top && s.top - t.bottom <= 20;
+          return { left: Math.round(b.getBoundingClientRect().left), first: first === b, above, word: b.textContent.trim() }; })()""")
+
+    def free(i, dx, dy):  # a spot on the map clear of everything and away from the line, beside point i
+        return pg.js(f"""(() => {{ const R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project(polku.planner.points[{i}]);
+          const x = Math.round(R.left + q.x + {dx}), y = Math.round(R.top + q.y + {dy});
+          return document.elementFromPoint(x, y) === polku.map.getCanvas() && polku.planner.lineAt({{ x: x - R.left, y: y - R.top }}, 40) == null
+            && y > 120 && y < polku.planner.panel.getBoundingClientRect().top - 90 ? {{ x, y }} : null; }})()""")
+
+    def spot_by(i):  # the route in view, then a free spot near point i
+        pg.js("polku.planner.fitRoute({ animate: false }); true")
+        placed(pg)
+        return next((x for x in (free(i, dx, dy) for dx, dy in ((-60, -120), (60, 120), (-60, 120), (0, -160), (0, 160), (-120, 0))) if x), None)
+
+    def hold(i):
+        pg.js(f"polku.map.jumpTo({{ center: polku.planner.points[{i}] }}); true")
+        a = still(f"polku.planner.markers[{i}]?.getElement().querySelector('.wp')")
+        if not a:
+            fails.append(f'point {i}: not on screen')
+            return
+        t0 = time.time()
+        pg.touch('start', a['x'], a['y'], t0)
+        time.sleep(0.7)
+        pg.touch('end', at=t0 + 0.7)
+        time.sleep(0.6)
+
+    row = lambda k: f"document.querySelector('.pl-way.card .row[data-k=\"{k}\"]')"
+    places = {}
+    for sheet in ('peek', 'half'):
+        pg.js(f"polku.planner.setSheetState('{sheet}'); true")
+        places[f'Done at {sheet}'] = place(f'Done at {sheet}')
+    tap(still("polku.planner.els.toolDone"), 'Done')
+    if not pg.js("polku.planner.inView()"):
+        fails.append('Done in the toolbox didn’t end editing')
+    for sheet in ('half', 'peek'):
+        pg.js(f"polku.planner.setSheetState('{sheet}'); true")
+        places[f'Edit at {sheet}'] = place(f'Edit at {sheet}')
+    lefts = {k: v and v['left'] for k, v in places.items()}
+    if not all(places.values()) or not all(v['first'] and v['above'] for v in places.values()) or len(set(lefts.values())) != 1:
+        fails.append(f'Done and Edit not the first button of a toolbox above the sheet, in one place: {places}')
+
+    # after Done: a tap on the map adds nothing
+    s0 = st()
+    tap(spot_by(0), 'a tap on the map')
+    pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
+    if st()['n'] != s0['n']:
+        fails.append(f"a tap on the map after Done added {st()['n'] - s0['n']} points")
+    # a drag on a point's marker moves nothing: only the cards change the route after Done
+    pg.js("polku.map.jumpTo({ center: polku.planner.points[1] }); true")
+    a = still("polku.planner.markers[1]?.getElement().querySelector('.wp')")
+    if a:
+        pg.swipe(a['x'], a['y'], a['y'] - 60, ms=400)
+        time.sleep(0.6)
+    if not a or st()['pts'] != s0['pts']:
+        fails.append(f"a drag on point 1 after Done: {'moved it' if a else 'point 1 not on screen'}")
+    pg.js("polku.planner.cards.close(); true")
+    # Move on point 1's card, then a tap where it goes
+    hold(1)
+    tap(still(row('move')), 'Move on point 1’s card')
+    to = free(1, 0, -100) or free(1, 60, -100)
+    tap(to, 'where point 1 goes')
+    s = st()
+    if s['n'] != s0['n'] or s['pts'] == s0['pts'] or s['past'] != s0['past'] + 1 or not s['view']:
+        fails.append(f"Move after Done: {s['n']} points, {'moved' if s['pts'] != s0['pts'] else 'not moved'}, {s['past'] - s0['past']} undo steps, {'still' if s['view'] else 'not'} the route’s view")
+    pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
+    # with no undo on the toolbar after Done, Ctrl+Z still takes it back
+    for kind in ('rawKeyDown', 'keyUp'):
+        pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': 'z', 'code': 'KeyZ', 'windowsVirtualKeyCode': 90, 'modifiers': 2}, pg.s)
+    time.sleep(0.5)
+    s = st()
+    if s['pts'] != s0['pts'] or not s['view']:
+        fails.append(f"Ctrl+Z after Move, after Done: {'not ' if s['pts'] != s0['pts'] else ''}back, {'still' if s['view'] else 'not'} the route’s view")
+    # Remove on point 2's card, and its note's Undo
+    hold(2)
+    tap(still(row('remove')), 'Remove on point 2’s card')
+    s = st()
+    if s['n'] != s0['n'] - 1 or not s['view']:
+        fails.append(f"Remove after Done: {s['n']} points of {s0['n']}, {'still' if s['view'] else 'not'} the route’s view")
+    tap(pg.js(f"({TB_AT})(document.querySelector('#toast .toast-act'))"), 'the note’s Undo after Remove')
+    s = st()
+    if s['n'] != s0['n'] or not s['view']:
+        fails.append(f"the note’s Undo after Remove, after Done: {s['n']} points of {s0['n']}, {'still' if s['view'] else 'not'} the route’s view")
+    # Edit this stretch on a stretch's card
+    pg.js("polku.planner.cards.close(); polku.planner.openStretchCard(polku.planner.stretchAt(0)); true")
+    tap(still("[...document.querySelectorAll('.pl-way.card .btn.primary.big')].find((b) => b.textContent.trim() === 'Edit this stretch')"), 'Edit this stretch')
+    s = st()
+    if s['card'] != 'edit' or not s['view']:
+        fails.append(f"Edit this stretch after Done: {s['card'] or 'no'} card, {'still' if s['view'] else 'not'} the route’s view")
+    if pg.js("!!document.querySelector('.pl-viewnote')"):
+        fails.append('a “You’re not editing” note')
+    pg.js("polku.planner.cards.close(); true")
+    # and Edit: a tap on the map adds a point again
+    tap(still("polku.planner.els.toolEdit"), 'Edit')
+    n = st()['n']
+    tap(spot_by(0), 'a tap on the map while editing')
+    if st()['n'] != n + 1:
+        fails.append(f"a tap on the map after Edit added {st()['n'] - n} points, not 1 ({st()['card'] or 'no'} card)")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Edit and Done in one place, the cards in both modes (#745)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -13366,22 +13505,18 @@ def point_card(chrome):
                 fails.append(f'{name}: Back from a card opened from the list: {now}, it was {was}')
             pg.js("polku.planner.setSheetState('peek'); true")
             pg.js(SETTLED)
-        # the route's view: the switch works and stays in the view; nothing that needs editing; the note's Edit
+        # the route's view: the card's actions as while editing, no note (#745); the switch works and stays in the view
         pg.js("polku.planner.setEditing(false); true")
         time.sleep(0.3)
         s = tap_marker(pg, 1, name, touch)
-        left = [x for x in ('Move', 'Rename', 'Start here', 'End here', 'Sport from here', 'Remove') if x in s['rows']]
-        if left or "You’re not editing" not in s['text']:
-            fails.append(f"{name}: the route’s view: {', '.join(left) or 'nothing that needs editing'}, {'with' if 'You’re not editing' in s['text'] else 'no'} note")
+        gone = [x for x in ('Move', 'Rename', 'Start here', 'End here', 'Sport from here', 'Remove') if x not in s['rows']]
+        if gone or "You’re not editing" in s['text']:
+            fails.append(f"{name}: the route’s view: {', '.join(gone) or 'nothing'} missing, {'with' if 'You’re not editing' in s['text'] else 'no'} note")
         tap_seg(pg, 'Stop', name, touch)
         r = pg.js("({ view: polku.planner.inView(), stop: !!polku.planner.stopAt(1), kind: polku.planner.cards.current && polku.planner.cards.current.kind })")
         if not r['view'] or not r['stop'] or r['kind'] != 'point':
             fails.append(f'{name}: Stop in the route’s view: {r}')
-        press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .pl-viewnote .btn')].find((b) => b.textContent.trim() === 'Edit')"), f'{name}: the note’s Edit', touch)
-        s = st(pg)
-        if s['view'] or 'Move' not in s['rows']:
-            fails.append(f"{name}: the note’s Edit: {'still the view' if s['view'] else 'editing'}, rows {s['rows']}")
-        pg.js("polku.planner.cards.close(); true")
+        pg.js("polku.planner.cards.close(); polku.planner.setEditing(true); true")
         # the pill: above the spot on a phone, the card's first button on a desktop (1b and 5 give cards one)
         r = pg.js("""(() => { const p = polku.planner, at = p.points[2]; let hit = 0;
           p.cards.open({ kind: 'test', key: 'pill', title: 'A spot', sub: '', build: (b) => b.append('…'.slice(1)), pill: { label: 'Add a point here', icon: 'plus', fn: () => { hit++; } } }, { at });
@@ -13784,14 +13919,15 @@ def route_card(chrome):
         close(pg)
         keeps_view(pg, name, touch)
         keeps_view(pg, name, touch, 20.5)
-        # the route's view: the same card, without the pill, Edit this stretch or Avoid this spot, and the note with Edit
+        # the route's view: the same card, with Add a point here, Edit this stretch and Avoid this spot, and no note (#745)
         pg.js("polku.planner.done(); true")
         time.sleep(0.6)
         s0 = st(pg)
         press(pg, on_line(pg, 1, 0.3), f'{name}: the line in the route’s view', touch)
         s = st(pg)
-        if s['kind'] != 'route' or s['pill'] or s['pin'] or 'Edit this stretch' in s['rows'] or 'Avoid this spot' in s['rows'] or not s['note'] or s['n'] != s0['n'] or not s['view']:
-            fails.append(f"{name}: the route's view: {s['kind']} card, pill {bool(s['pill'])}, rows {s['rows']}, note {s['note']}, {s['n'] - s0['n']} points added")
+        add = bool(s['pill']) or (s['first'] or {}).get('text') == 'Add a point here'
+        if s['kind'] != 'route' or not add or 'Edit this stretch' not in s['rows'] or 'Avoid this spot' not in s['rows'] or s['note'] or s['n'] != s0['n'] or not s['view']:
+            fails.append(f"{name}: the route's view: {s['kind']} card, Add a point here {add}, rows {s['rows']}, note {s['note']}, {s['n'] - s0['n']} points added")
         close(pg)
         # the planner put away: a tap on the route opens it, at the route's card
         pg.js("polku.planner.setActive(false); true")
@@ -14437,14 +14573,22 @@ def spot_card(chrome):
         if st(pg)['kind'] != 'route':
             fails.append(f"{name}: a 0.2 s tap on the line: {st(pg)['kind'] or 'no'} card, not the route's")
         pg.js('polku.planner.cards.close(); true')
-        # the route's view: no pill, only What's here, the planner's note with Edit
+        # the route's view: Your route as while editing, no note, and Add to my route stays in the view (#745)
         pg.js("polku.planner.setEditing(false); polku.map.jumpTo({ center: [23.815, 61.514], zoom: 14 }); new Promise((r) => setTimeout(r, 800))")
         pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
+        n = st(pg)['n']
         hold(pg, s, 0.65)
         c = st(pg)
-        if c['kind'] != 'spot' or c['pill'] or c['rows'] or not c['note']:
-            fails.append(f"{name}: held in the route's view: {c['kind']} card, pill {bool(c['pill'])}, rows {c['rows']}, the note {c['note']}")
+        if c['kind'] != 'spot' or c['rows'][:1] != ['Add to my route'] or c['note']:
+            fails.append(f"{name}: held in the route's view: {c['kind']} card, rows {c['rows']}, the note {c['note']}")
+        else:
+            press(pg, at(pg, row('Add to my route')), f'{name}: Add to my route in the route’s view', True)
+            r = st(pg)
+            if r['n'] != n + 1 or not r['view']:
+                fails.append(f"{name}: Add to my route in the route's view: {r['n'] - n} points added, {'still' if r['view'] else 'not'} the route's view")
+            pg.js('polku.planner.undo(); true')
+            time.sleep(0.6)
         pg.js('polku.planner.cards.close(); polku.planner.setEditing(true); true')
         # the planner put away: the card in the sheet, as while planning (#570)
         pg.js("polku.planner.setActive(false); new Promise((r) => setTimeout(r, 600))")
@@ -17251,7 +17395,7 @@ GROUPS = [
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
-    ('routeview', [route_view], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %'),
+    ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),

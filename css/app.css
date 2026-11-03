@@ -799,11 +799,12 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 /* its touch area is a finger's size, over the sheet's top edge; it still looks 18 px (step 3 of #233) */
 .sheet-handle::after { content: ""; position: absolute; left: -16px; right: -16px; top: -13px; bottom: -13px; }
 /* Fold, then away (step 3 of #233): the sheet's top row, the handle and, on phones, ⌄ at its right, for the planner and
-   every card; the route's view's ⋯ at its left (planner.js dockTools()) */
-.sheet-top { flex: none; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 18px; }
+   every card; after Done at full, Edit and More at its left, both sides as wide as them so the grip stays in the middle
+   (planner.js dockTools(), #745) */
+.sheet-top { flex: none; display: grid; grid-template-columns: max(44px, var(--top-side, 0px)) 1fr max(44px, var(--top-side, 0px)); align-items: center; height: 18px; }
+.sheet-top .pl-tools.docked { flex-wrap: nowrap; margin: 0; padding: 0 0 0 6px; border: 0; } /* (off the sheet's rounded corner) */
 .sheet-top-end { display: flex; justify-content: flex-end; }
 .sheet-top-end .tool { display: none; width: 44px; height: 44px; }
-.sheet-top .pl-tools.docked { margin: 0; padding: 0; border: 0; }
 .sheet[data-layout="side"] .sheet-top { display: none; }
 @media (max-width: 720px) {
   .sheet.foldable .sheet-top { height: 40px; }
@@ -882,9 +883,9 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .sum-time:focus-visible small { color: var(--text); }
 @media (hover: hover) { .sum-time:hover small { color: var(--text); } }
 .sum-time:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.btn.done { flex: none; min-height: 34px; padding-inline: 14px; }
+.btn.done { flex: none; gap: 6px; min-height: 34px; padding-inline: 14px; }
 /* The route's view (25c): a row above the numbers with the route's name (it wraps, never cut), its sports and
-   "Kept on this device", and ✕; Edit where Done was */
+   "Kept on this device", and ✕ */
 .pl-title { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 2px; }
 .pl-ttl { flex: 1; min-width: 0; display: grid; gap: 1px; margin: 5px 0 0; font: inherit; }
 .pl-ttl b { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
@@ -893,8 +894,7 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .pl-ttl small { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
 .pl-ttl small .ic { color: var(--accent); }
 .pl-title .way-x { width: 44px; height: 44px; margin: -4px -6px 0 0; }
-.btn.edit { gap: 6px; }
-/* Route's list in the view: the points without their controls, and Edit */
+/* a note in the planner's own look: Move's banner on a card (js/card.js) */
 .pl-viewnote { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; }
 .pl-viewnote > span:first-child { flex: none; display: grid; color: var(--muted); }
 .pl-viewnote > span:nth-child(2) { flex: 1; min-width: 0; }
@@ -903,8 +903,6 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet-min { display: none; }
 .sheet-row > .way-x { display: none; }
 @media (min-width: 721px) { .sheet:not(.viewing) .sheet-row > .way-x { display: inline-flex; } }
-/* desktops: Done is at the toolbar's end */
-@media (min-width: 900px) { .sheet-head .done { display: none; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 /* the routing bar, on the sheet's top edge (js/planner.js setBusy()), a child of the sheet so folding doesn't hide it: it waits
@@ -922,7 +920,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet-up-min { display: none; }
 @media (hover: hover) and (pointer: fine) and (max-width: 720px) {
   .sheet.foldable:not(.carded) .sheet-up { display: inline-flex; }
-  .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: 88px 1fr 88px; }
+  .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: max(88px, var(--top-side, 0px)) 1fr max(88px, var(--top-side, 0px)); }
   .sheet.foldable:not(.carded) .top-sum { right: 96px; }
 }
 @media (hover: hover) and (pointer: fine) and (max-width: 359px) { .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: auto minmax(0, 1fr) auto; } .sheet.foldable:not(.carded) .sheet-handle { max-width: 100%; } }
@@ -1512,8 +1510,8 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 /* ---------------------------------------------------------------- cards (js/card.js, 25d, Revision 4 of #355)
    A card is the planner's step container (.pl-way) holding the app's own controls: the start's top row (way-bar,
    way-back, way-x) and heading (way-head, way-hint), the route's numbers (sheet-sum, sum-item), the ⋯ menu's
-   headings (menu-h) and line (hr), the round trip's stepper (rt-step), a toggle (tg) and the "You're not editing"
-   note (pl-viewnote). New for the cards: card-mark, row (in rows), seg icons, name-field, sum-item miss, card-pill.
+   headings (menu-h) and line (hr), the round trip's stepper (rt-step), a toggle (tg) and the planner's note
+   (pl-viewnote, Move's banner). New for the cards: card-mark, row (in rows), seg icons, name-field, sum-item miss, card-pill.
    Where a card sits: card-peek (a phone's peek), card-float (at its spot), card-banner (Move's "Tap where it goes"). */
 .pl-way.card { container: card / inline-size; overflow-y: auto; overscroll-behavior: contain; margin-inline: -8px; padding-inline: 8px; } /* (room for the rows' hover, inside the card) */
 .card h3.way-hint { margin: 0; padding-top: 3px; font: inherit; } /* (a heading for screen readers; its line regular, as the start's) */
@@ -1739,9 +1737,9 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
    over --t-press, the handle's bar moving up into the row's top padding with them */
 .top-sum { display: none; }
 @media (max-width: 720px) {
+  .sheet.foldable:has(> .sheet-top .pl-tools.docked) .top-sum { left: calc(var(--top-side) + 12px); }
   .sheet.foldable .top-sum { display: flex; position: absolute; top: 0; left: 14px; right: 52px; height: 40px; flex-wrap: wrap; align-items: center; column-gap: 6px; overflow: hidden;
     pointer-events: none; opacity: 0; transition: opacity var(--t-press) var(--ease-out); font-variant-numeric: tabular-nums; }
-  .sheet.foldable:has(> .sheet-top .pl-tools.docked) .top-sum { left: 56px; }
   .sheet.sum-on .top-sum { opacity: 1; transition-duration: var(--t-open); }
   .sheet-handle::before { transition: transform var(--t-press) var(--ease-out); }
   .sheet.sum-on .sheet-handle::before { transform: translateY(-13px); transition-duration: var(--t-open); }
@@ -2085,13 +2083,12 @@ body.dropping .drop-hint { display: flex; }
   .tl-note { display: none; }
   .wx-time { width: auto; flex: 0 1 auto; }
   body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */
-  body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers and Done) */
+  body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers) */
   .wx-bar.docked { width: auto; }
   .orbit { width: 62px; height: 62px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
-  /* the header's controls are 44 px to touch: Done, and the time that opens the departure */
-  .sheet-head .btn.done { min-height: 44px; }
+  .sheet-row { min-height: 44px; } /* (the numbers' row as tall as Done made it before #745: the peek doesn't change when they come) */
   .pl-viewnote .btn { min-height: 44px; }
   /* a note with the planner closed stays left of the map's buttons, so it never covers Layers or Plan (25c) */
   body:not(.planning) .toast { left: 12px; right: 78px; max-width: none; transform: none; }
@@ -2297,6 +2294,18 @@ body.dropping .drop-hint { display: flex; }
 /* the planner folded on a phone floats it, as it has no row to dock into: where it's wider than the window (200 %), More goes to a row of its own */
 .pl-tools[data-stage="folded"] { flex-wrap: wrap; max-width: calc(100vw - 16px); }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
+/* floating, no wider than the window; where even without the route's actions it's wider (360 px, 200 %, #745): less room
+   around Done's and the drawing button's words, then the drawing button loses its second line, shortens its name, shows
+   only its icon, as on the line, and only then does it take a second row (planner.js PHONE_FITS) */
+.pl-tools:not(.docked):not(.desk):not(.probe) { max-width: calc(100vw - 16px); } /* (the copy measures how wide it would be) */
+.pl-tools.docked .btn.edit { margin-right: auto; } /* after Done, a row of its own at full (200 %): Edit at its start, as Done is */
+.pl-tools.tb-tight .btn.done { padding-inline: 10px; margin-right: 0; }
+.pl-tools.tb-tight .modebtn { gap: 4px; padding: 0 4px 0 8px; }
+.pl-tools.tb-short .modebtn .two small { display: none; }
+.pl-tools.tb-shorter { flex-wrap: nowrap; } /* (one row while it shortens: a row that may wrap doesn't shrink what's on it) */
+.pl-tools.tb-shorter .modebtn { flex: 0 1 auto; min-width: 44px; }
+.pl-tools.tb-shorter .modebtn .two b { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pl-tools.tb-wrap { flex-wrap: wrap; }
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
 /* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
@@ -2314,12 +2323,12 @@ body.dropping .drop-hint { display: flex; }
 .sportbtn { margin-right: 4px; height: 40px; flex: none; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .sportbtn > .ic:first-child { color: var(--accent); }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
-.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594) */
-/* the route's view (25c): Edit, then Clear route kept apart by its line (#594), and More */
-.pl-tools[data-stage="view"] .tb-sep:not([data-group="clear"]) { display: none; }
+.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594; phones too, #745) */
+.pl-tools:not(.desk) .btn.done { min-height: 44px; }
+.pl-tools .btn.done:disabled { opacity: .7; color: var(--muted); cursor: default; } /* (a first point: no route to read yet, as undo with nothing to undo) */
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo, redo and More */
-.pl-tools[data-stage="folded"] .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
-.pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child) { display: none; }
+.pl-tools[data-stage="folded"] .modebtn, .pl-tools.tb-wrap .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
+.pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child), .pl-tools.tb-wrap .modebtn > :not(.ic:first-child) { display: none; } /* (and the planner's bar at 200 %, before it takes a second row: #745) */
 /* where room runs out (planner.js FOLDS): first the three modes' names together (their tooltips say them), then the
    route's actions go into More, then the style's caption, the sport's name, and the style's name shortens */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
