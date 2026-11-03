@@ -124,6 +124,10 @@ export async function checkStaticOSM() {
     } catch (err) {if (!/Public source unavailable too/.test(err.message)) fails.push(String(err));}
     if (fallback!==1) fails.push('failed border contributor does not reach the existing fallback once');
     unavailableArchive = null;
+    const hole = [[.2,s-1],[.5,s-1],[.8,s-1],[.8,n+1],[.5,n+1],[.2,n+1],[.2,s-1]].map(([x,y])=>[w+x*(e-w),y]);
+    manifest.datasets = {ways:{...originalDatasets.ways,coverage:{type:'Polygon',coordinates:[coverage(w-1,e+1).coordinates[0],hole]}}};
+    try {await new StaticOSM(root+'outside-vertices/current.json').tile([8192,8192]);fails.push('off-tile vertices erase a genuine coverage hole');}
+    catch (err) {if(!/coverage/.test(err.message)) fails.push(String(err));}
     manifest.datasets = originalDatasets;
     const { lonLatToTile } = await import('/js/geo.js');
     manifest.coverage = await (await real('/data/finland-coverage.geojson')).json();

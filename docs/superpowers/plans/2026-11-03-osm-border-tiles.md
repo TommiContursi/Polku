@@ -142,3 +142,14 @@ and provenance evidence is condensed in the committed border receipt.
 
 PR #746 is the single reader release; actual deployed verification follows CI
 and automatic code review. Existing archives/schema/pointer are unchanged.
+
+### Review correction before merge
+
+The first automatic review of d662bd3 found a real P1 coverage hole: a
+collinear vertex outside the tile can share a slab midpoint x without being
+a local sweep event. Strict endpoint tests dropped both incident edges. The
+literal reported geometry failed the new Node and registered browser checks
+before correction (both browser sizes accepted the hole). Half-open endpoint
+crossings count that vertex once and preserve the genuine gap. The correction
+changes one predicate and keeps its regression; no unreviewed data was published.
+Final verification and the receipt use the corrected reader bytes.

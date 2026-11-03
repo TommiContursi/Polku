@@ -343,6 +343,7 @@ test('union proof preserves holes, concavities, disconnected components and arbi
   const shapes=[
     {name:'filled hole',parts:[holed,rectangle(.3,.3,.7,.7)],covered:true},
     {name:'unfilled hole',parts:[holed,rectangle(.3,.3,.6,.7)],covered:false},
+    {name:'hole vertices outside tile at slab midpoint',parts:[{type:'Polygon',coordinates:[outer,ring([[.2,-1],[.5,-1],[.8,-1],[.8,2],[.5,2],[.2,2],[.2,-1]])]},rectangle(3,3,4,4)],covered:false},
     {name:'thin seam gap',parts:[rectangle(-1,-1,.5,2),rectangle(.500000001,-1,2,2)],covered:false},
     {name:'concave notch',parts:[{type:'Polygon',coordinates:[ring([[-1,-1],[2,-1],[2,2],[.7,2],[.7,.3],[.3,.3],[.3,2],[-1,2],[-1,-1]])]},rectangle(.3,.4,.7,2)],covered:false},
     {name:'disconnected islands',parts:[{type:'MultiPolygon',coordinates:[rectangle(-1,-1,.4,2).coordinates,rectangle(.6,-1,2,2).coordinates]},rectangle(.4,.3,.6,.7)],covered:false},

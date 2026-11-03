@@ -95,7 +95,8 @@ function coversTile(coverages, [w,s,e,n]) {
     const x=xs[i-1]+(xs[i]-xs[i-1])/2;
     if (!(x>xs[i-1] && x<xs[i])) return false;
     const intervals=polygons.flatMap((edges) => {
-      const ys=edges.filter(([a,b])=>a[0]<x && x<b[0]).map(([a,b])=>a[1]+(x-a[0])*(b[1]-a[1])/(b[0]-a[0])).sort((a,b)=>a-b);
+      // Half-open endpoints count off-tile vertices once even when they share the sample x.
+      const ys=edges.filter(([a,b])=>a[0]<=x && x<b[0]).map(([a,b])=>a[1]+(x-a[0])*(b[1]-a[1])/(b[0]-a[0])).sort((a,b)=>a-b);
       if (ys.length%2) throw new Error('Invalid OSM coverage crossings');
       return ys.flatMap((y,i)=>i%2 ? [] : [[y,ys[i+1]]]);
     }).sort((a,b)=>a[0]-b[0]);
