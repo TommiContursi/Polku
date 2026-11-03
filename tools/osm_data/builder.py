@@ -23,7 +23,7 @@ from pmtiles.tile import Compression, TileType, tileid_to_zxy, zxy_to_tileid
 from pmtiles.writer import Writer
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from tools.osm_data.geometry import inspectable, encoded as json_bytes
+from tools.osm_data.geometry import area_tags, inspectable, encoded as json_bytes
 
 
 ZOOM = 14
@@ -246,6 +246,10 @@ class Stager(osmium.SimpleHandler):
         self.db.execute('INSERT INTO identities VALUES (?, ?, ?)',
                         (element['type'], element['id'], hashlib.sha256(json_bytes(element)).hexdigest()))
 
+    def geometry_root(self, kind, ref, area, inspection):
+        if area or inspection:
+            self.db.execute('INSERT INTO geometry_roots VALUES (?,?,?,?)',(kind,ref,int(area),int(inspection)))
+
     def product(self, names, element, xy_tiles):
         if not names:
             return
@@ -273,6 +277,7 @@ class Stager(osmium.SimpleHandler):
         xy = tile_point(lon, lat)
         element = {'type':'node','id':node.id,'lon':lon,'lat':lat,'tags':dict(node.tags)}
         self.identity(element)
+        self.geometry_root('node',node.id,False,inspectable(node.tags))
         self.product(names, element, segment_tiles(xy,xy))
 
     def way(self, way):
@@ -280,7 +285,8 @@ class Stager(osmium.SimpleHandler):
         primary = bool(KINDS.fullmatch(way.tags.get('highway', '')))
         lighting = bool(way.tags.get('highway')) and 'lit' in way.tags
         names = products('way', way.tags)
-        if not primary and not lighting and not names and ('w', way.id) not in self.needed:
+        area = area_tags(way.tags) and len(way.nodes)>=4 and way.is_closed()
+        if not area and not primary and not lighting and not names and ('w', way.id) not in self.needed:
             return
         nodes, geometry, projected = [], [], []
         for node in way.nodes:
@@ -299,6 +305,7 @@ class Stager(osmium.SimpleHandler):
         body = json_bytes({'type': 'way', 'id': way.id,
                            'tags': dict(way.tags), 'nodes': nodes, 'geometry': geometry})
         self.identity(json.loads(body))
+        self.geometry_root('way',way.id,area,inspectable(way.tags))
         if primary or lighting:
             self.db.execute('INSERT INTO ways VALUES (?, ?, ?)', (way.id, body, int(primary)))
         tiles = set()
@@ -339,7 +346,10 @@ class Stager(osmium.SimpleHandler):
     def relation(self, relation):
         self.source_relations += 1
         kind = relation.tags.get('type')
-        if ('r',relation.id) in self.needed or kind == 'restriction' or kind == 'route' and relation.tags.get('route') in ROUTES:
+        area = (area_tags(relation.tags) and kind in {'multipolygon','boundary'} and
+                any(m.type in {'w','r'} and m.role in {'','outer','inner'} for m in relation.members))
+        self.geometry_root('relation',relation.id,area,inspectable(relation.tags))
+        if area or ('r',relation.id) in self.needed or kind == 'restriction' or kind == 'route' and relation.tags.get('route') in ROUTES:
             self.identity({'type':'relation','id':relation.id,'tags':dict(relation.tags),
                            'members':[{'type':{'n':'node','w':'way','r':'relation'}[m.type],'ref':m.ref,'role':m.role} for m in relation.members]})
         if not (kind == 'restriction' or
@@ -400,6 +410,7 @@ def stage_source(source, db, index_path):
         PRAGMA cache_size=-65536;
         PRAGMA temp_store=FILE;
         CREATE TABLE identities (type TEXT, id INTEGER, sha256 TEXT NOT NULL, PRIMARY KEY(type,id)) WITHOUT ROWID;
+        CREATE TABLE geometry_roots (type TEXT, id INTEGER, area INTEGER, inspection INTEGER, PRIMARY KEY(type,id)) WITHOUT ROWID;
         CREATE TABLE ways (id INTEGER PRIMARY KEY, body BLOB NOT NULL, primary_way INTEGER NOT NULL);
         CREATE TABLE features (type TEXT, id INTEGER, body BLOB NOT NULL, PRIMARY KEY(type,id)) WITHOUT ROWID;
         CREATE TABLE tile_features (dataset TEXT, tile INTEGER, type TEXT, id INTEGER,
@@ -620,6 +631,10 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
                 stats['products'][name] = archive_product(db, stage / f'{name}.pmtiles', name, source_info, handler.bounds)
             stats['products']['inspection']['incomplete_relations'] = handler.incomplete_inspection
             write_identities(db, stage / 'identities.jsonl.gz')
+            with (stage/'geometry-roots.jsonl.gz').open('wb') as raw, gzip.GzipFile(filename='',mode='wb',fileobj=raw,mtime=0) as out:
+                for kind,ref,area,inspection,sha in db.execute('''SELECT r.type,r.id,r.area,r.inspection,i.sha256
+                        FROM geometry_roots r JOIN identities i ON i.type=r.type AND i.id=r.id ORDER BY r.type,r.id'''):
+                    out.write(json_bytes([kind,ref,bool(area),bool(inspection),sha])+b'\n')
             stats['staging_allocated_bytes'] = sum(p.stat().st_blocks*512 for p in tmp.rglob('*') if p.is_file())
             stats.update({
                 'source_nodes': handler.source_nodes, 'source_ways': handler.source_ways,
@@ -668,7 +683,7 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
             coverage = json.loads((Path(__file__).resolve().parents[2] / f'data/{country}-coverage.geojson').read_bytes())
         content_hash = hashlib.sha256(json_bytes({'datasets': datasets, 'coverage': coverage})).hexdigest()
         files = [file_record(stage / name) for name in
-                 [*(d['url'] for d in datasets.values()), 'LICENSE.txt', 'measurements.json', 'identities.jsonl.gz']]
+                 [*(d['url'] for d in datasets.values()), 'LICENSE.txt', 'measurements.json', 'identities.jsonl.gz', 'geometry-roots.jsonl.gz']]
         release = (source_info['timestamp'].replace('-', '').replace(':', '')
                    + '-' + source_info['sha256'][:12] + '-' + content_hash[:12])
         manifest = {
