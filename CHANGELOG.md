@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### Screen readers hear the profile and the tabs ([#386](https://github.com/TommiContursi/Polku/issues/386))
+
+- The elevation profile has a name for screen readers that says the route's distance, climbing and descent, and it changes with the route. Where terrain is missing, the name says so.
+- The **Go** tab says its time in words, such as "Go: arrive 11:04", instead of running it into the tab's name, as **Check** already says its count.
+- The planner's and All layers' headings now go one level at a time, so moving by heading finds each section in order.
+
 ### A card opened from a card keeps its size ([#692](https://github.com/TommiContursi/Polku/issues/692))
 
 - On a phone, a card opened from another card at half or full, such as **Next stretch**, opens at that size, and **Back** keeps it too. A card shorter than that size opens at its own height. The first card from the map still opens at its peek, and closing the cards still puts the planner back as it was.
