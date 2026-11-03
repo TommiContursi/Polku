@@ -226,7 +226,8 @@ body.single .fr .screen { --k: 1 !important; border-radius: 0; box-shadow: none;
 .tb.rowa.foot { border-bottom: 0; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
 .tb.rowa.two { flex-wrap: wrap; row-gap: 4px; }
 .tb.rowa.two .tb2.mode { flex: 1 1 0; }
-.tb.rowa.two > span { flex-basis: 100%; justify-content: flex-end; }
+.tb.rowa.two > span { flex-basis: 100%; }
+.tb.rowa.two .tb2.mode > .ic:first-child { display: none; } /* (200 %: the mode's name keeps its words whole) */
 /* (b): a fixed column at the map's left, the map column's mirror */
 .tb.colb { position: absolute; left: 12px; top: 68px; z-index: 6; flex-direction: column; gap: 8px; }
 .tb.colb .ctrl-btn { width: 56px; height: auto; min-height: 44px; padding: 6px 2px; font-size: 10px; text-align: center; line-height: 1.1; }
@@ -280,6 +281,8 @@ body.single .fr .screen { --k: 1 !important; border-radius: 0; box-shadow: none;
 /* worst case and 200 %: nothing is cut */
 .screen.w200 .sheet-sum { gap: 2px 10px; }
 .screen.w200 .tabs button { font-size: 13px; }
+.screen.w200 .sheet-in { overflow: auto; overscroll-behavior: contain; } /* (#453: at 200 % the sheet scrolls as one, above its foot) */
+.screen.w200 .sheet-in .sheet-body { overflow: visible; }
 @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } :is(.btn, .tool, .chip, .ctrl-btn, .tb-btn, .row, .tb2, .fold-go, .leave-chip):active { transform: none; } }
 </style>
 </head>
@@ -450,8 +453,8 @@ class Frame {
     this.legs = st.empty ? [] : W.legs.map((l) => l.map((q) => [...q]));
     this.past = []; this.future = [];
     this.stage = st.empty ? 'start' : 'route';
-    this.sheet = st.sheet || 'peek'; this.away = !!st.away; this.cardS = st.cardS || 'peek';
-    this.editing = st.view ? false : true; this.addOn = st.addOff ? false : true; this.look = false; this.moving = null;
+    this.sheet = st.sheet || 'peek'; this.away = !!st.away; this.cardS = this.cardS0 = st.cardS || 'peek';
+    this.editing = st.view ? false : true; this.addOn = st.addOff ? false : true; this.look = !!st.look; this.moving = null;
     this.cards = []; this.menu = null; this.tab = st.tab || 'route'; this.toast = null; this.alt = null; this.pill = null;
     this.leave = st.leave || 'eve'; this.lit = false; this.minimised = !!st.min;
     this.wxLate = !!st.late; if (st.late) setTimeout(() => { this.wxLate = false; this.render(); }, 6000);
@@ -612,7 +615,7 @@ class Frame {
   takeAlt() { this.commit(); this.legs[this.alt.li] = this.alt.line.map((q) => [...q]); this.alt = null; this.render(); }
   // ------------------------------------------------------------ cards
   openCard(c, quiet = false) {
-    if (this.dev === 'phone' && this.cards.length === 0) this.cardS = this.cardS0 || 'peek';
+    if (this.dev === 'phone' && this.cards.length === 0) this.cardS = quiet ? this.cardS0 : 'peek';
     if (c.from === undefined && this.cards.length && !c.stack) this.cards = [];
     if (c.hit && c.hit.way && !c.chain) c.chain = this.joinWay(c.hit.way);
     this.cards.push(c); this.menu = null;
@@ -803,7 +806,7 @@ class Frame {
     }
     const tool = `<button type="button" class="tb2 toolk" data-k="tool" aria-pressed="${toolOn}">${ic(toolIc, 18)}<b>${esc(toolWord)}</b></button>`;
     const mode = `<button type="button" class="tb2 mode" data-k="modebtn" aria-label="${t('follow')}, ${t('style')}">${ic('route', 20)}<span><b>${t('follow')}</b><small>${esc(t('styleShort'))}</small></span>${ic('down', 14)}</button>`;
-    return two && where === 'rowa' ? `${tool}${mode}<span style="display:flex;gap:2px;margin-left:auto">${undo}${redo}${more}</span>` : `${tool}${mode}${undo}${redo}${more}`;
+    return two && where === 'rowa' ? `${tool}${mode}<span style="display:flex;gap:2px">${undo}${redo}${more}</span>` : `${tool}${mode}${undo}${redo}${more}`;
   }
   todayTools(folded, carded) {
     // today's: the drawing mode, undo and redo, More; in the view only More; folded the mode's icon, undo, redo; with a card undo and redo
@@ -1119,6 +1122,7 @@ function build() {
   frame(P, 'p-late', { late: true }, '<b>The weather late</b>It answers 6 s after the frame is drawn: watch the line under the numbers.');
   if (G.v === 'today') frame(P, 'p-view', { view: true }, '<b>Today: the route’s view</b>After Done: the title row, Edit, a lone ⋯.');
   if (G.v === 'v1') frame(P, 'p-off', { addOff: true }, '<b>Add points off</b>Nothing else changes: the same rows, the same tools.');
+  if (G.v === 'v2') frame(P, 'p-look', { look: true }, '<b>Look, pressed</b>The next tap opens what’s there, then a tap adds again.');
   const D = 's-desk';
   frame(D, 'd-side', { dev: 'desk' }, '<b>1440 × 900, the panel at the side</b>');
   frame(D, 'd-card', { dev: 'desk', card: { kind: 'point', i: 1 } }, '<b>A point’s card</b>');
