@@ -2964,7 +2964,10 @@ export class Planner {
         if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, true));
         rows.append(this.pointRow(s.to, ro));
       }
-      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, head, line, more, this.sectionWarn(sec), rows));
+      // (a route of one section, while editing: its heading beside Reorder, where the hint was, #764)
+      const beside = secs.length === 1 && !ro;
+      if (beside) this.els.pointsTop.prepend(head);
+      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, beside ? null : head, line, more, this.sectionWarn(sec), rows));
     });
   }
 
