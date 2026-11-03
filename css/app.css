@@ -799,11 +799,10 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 /* its touch area is a finger's size, over the sheet's top edge; it still looks 18 px (step 3 of #233) */
 .sheet-handle::after { content: ""; position: absolute; left: -16px; right: -16px; top: -13px; bottom: -13px; }
 /* Fold, then away (step 3 of #233): the sheet's top row, the handle and, on phones, ⌄ at its right, for the planner and
-   every card; the route's view's ⋯ at its left (planner.js dockTools()) */
+   every card */
 .sheet-top { flex: none; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 18px; }
 .sheet-top-end { display: flex; justify-content: flex-end; }
 .sheet-top-end .tool { display: none; width: 44px; height: 44px; }
-.sheet-top .pl-tools.docked { margin: 0; padding: 0; border: 0; }
 .sheet[data-layout="side"] .sheet-top { display: none; }
 @media (max-width: 720px) {
   .sheet.foldable .sheet-top { height: 40px; }
@@ -882,7 +881,7 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .sum-time:focus-visible small { color: var(--text); }
 @media (hover: hover) { .sum-time:hover small { color: var(--text); } }
 .sum-time:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.btn.done { flex: none; min-height: 34px; padding-inline: 14px; }
+.btn.done { flex: none; gap: 6px; min-height: 34px; padding-inline: 14px; } /* ✓ Done and ✎ Edit: the state in an icon too, not only the word (#745) */
 /* The route's view (25c): a row above the numbers with the route's name (it wraps, never cut), its sports and
    "Kept on this device", and ✕ */
 .pl-title { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 2px; }
@@ -893,7 +892,6 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .pl-ttl small { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
 .pl-ttl small .ic { color: var(--accent); }
 .pl-title .way-x { width: 44px; height: 44px; margin: -4px -6px 0 0; }
-.btn.edit { gap: 6px; }
 /* a note in the planner's own look: Move's banner on a card (js/card.js) */
 .pl-viewnote { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; }
 .pl-viewnote > span:first-child { flex: none; display: grid; color: var(--muted); }
@@ -1739,7 +1737,6 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 @media (max-width: 720px) {
   .sheet.foldable .top-sum { display: flex; position: absolute; top: 0; left: 14px; right: 52px; height: 40px; flex-wrap: wrap; align-items: center; column-gap: 6px; overflow: hidden;
     pointer-events: none; opacity: 0; transition: opacity var(--t-press) var(--ease-out); font-variant-numeric: tabular-nums; }
-  .sheet.foldable:has(> .sheet-top .pl-tools.docked) .top-sum { left: 56px; }
   .sheet.sum-on .top-sum { opacity: 1; transition-duration: var(--t-open); }
   .sheet-handle::before { transition: transform var(--t-press) var(--ease-out); }
   .sheet.sum-on .sheet-handle::before { transform: translateY(-13px); transition-duration: var(--t-open); }
@@ -2293,6 +2290,7 @@ body.dropping .drop-hint { display: flex; }
 /* the planner folded on a phone floats it, as it has no row to dock into: where it's wider than the window (200 %), More goes to a row of its own */
 .pl-tools[data-stage="folded"] { flex-wrap: wrap; max-width: calc(100vw - 16px); }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
+.pl-tools.docked .btn.done.edit { margin-right: auto; } /* the route's view: Edit where Done was, at the row's start (#745) */
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
 /* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */

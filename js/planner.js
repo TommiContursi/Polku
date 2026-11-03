@@ -61,7 +61,7 @@ const TIPS = {
   offline: { name: 'Save offline', text: 'Saves the map and terrain along the route, for no signal.' },
   clear: { name: 'Clear route', text: 'Takes the route off the map. Undo brings it back.' },
   more: { name: 'More', text: 'The whole route’s actions that aren’t on the toolbar: a round trip, import and the rest.' },
-  done: { name: 'Done', keys: 'E', text: 'Ends editing: the route stays open to read, check and take along.' },
+  done: { name: 'Done', keys: 'E', text: 'Ends drawing: a click on the map shows what’s there. The cards still change the route.' },
   edit: { name: 'Edit', keys: 'E', text: 'Back to drawing: a click on the map adds a point.' },
 };
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
@@ -5632,7 +5632,7 @@ export class Planner {
     this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.more.setAttribute('aria-expanded', 'false');
     // first on the toolbar, phones and desktops alike (#745): the planner's end (E of #594), the end that doesn't move
-    this.els.toolDone = h('button', { type: 'button', class: 'btn done', 'aria-keyshortcuts': 'E', onclick: () => this.done() }, 'Done');
+    this.els.toolDone = h('button', { type: 'button', class: 'btn done', 'aria-keyshortcuts': 'E', onclick: () => this.done(), html: `${icon('check', 18)}<span>Done</span>` });
     // the route's view (25c): Edit where Done was
     this.els.toolEdit = h('button', { type: 'button', class: 'btn done edit', 'aria-keyshortcuts': 'E', onclick: () => this.setEditing(true), html: `${icon('pencil', 18)}<span>Edit</span>` });
     const gsep = (group) => { const el = sep(); el.dataset.group = group; return el; };
@@ -5819,6 +5819,8 @@ export class Planner {
     const probe = box.cloneNode(true);
     probe.classList.remove('docked');
     probe.classList.add('probe');
+    // the route's view docks where editing does, so Edit is where Done was (#745): measured with editing's tools
+    if (view && !folded) for (const el of probe.querySelectorAll('.modebtn, .tb-hist, .btn.done')) el.hidden = el.classList.contains('edit');
     document.body.append(probe);
     let n = opts.length;
     setOpts(probe, n);
@@ -5853,8 +5855,8 @@ export class Planner {
 
   dockTools(on) {
     const box = this.tools;
-    // a single button, the route's view's ⋯, joins ⌄'s row at its left (step 3 of #233); the whole toolbox gets a row
-    const where = !on ? document.body : this.inView() && this.els.top.offsetHeight > 18 ? this.els.top.firstElementChild : this.panel;
+    // the sheet's first row, editing and in the route's view alike (#745)
+    const where = on ? this.panel : document.body;
     if (box.classList.contains('docked') === on && box.parentElement === where) return;
     box.classList.toggle('docked', on);
     if (where === this.panel) this.panel.insertBefore(box, this.els.head);
