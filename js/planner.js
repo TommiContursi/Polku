@@ -1038,9 +1038,9 @@ export class Planner {
   }
   // the route's view: the planner open, a route, not editing
   inView() { return this.active && !this.editing && this.points.length > 1; }
-  // Done (the toolbar's, E): the route's view; with only a first point there's
-  // nothing to view yet, and Done puts the planner away, as ✕ does
-  done() { if (this.points.length > 1) this.setEditing(false); else this.close(); }
+  // Done (the toolbar's, E): the route's view; with only a first point there's nothing to view yet, so it's dimmed and ✕
+  // puts the planner away (#745: one thing, whatever the route)
+  done() { this.setEditing(false); }
   // ✕: the planner put away, with a note that offers it back as it was; the route stays on the map
   close() {
     this.setActive(false);
@@ -5717,6 +5717,7 @@ export class Planner {
     for (const k of ['share', 'gpx', 'offline']) this.els[k].disabled = n < 2;
     this.els.clearTool.disabled = !n;
     this.els.toolDone.hidden = !n || loop || view || folded; // no Done before the first point (Back is the way out of a start step, A), nor in a round trip
+    this.els.toolDone.disabled = n < 2; // (a first point has no route to read yet: dimmed in its place, so nothing moves when the route comes, #745)
     this.els.toolEdit.hidden = !view;
     // Show the whole route in the map's column whenever a route is on the map: one place, planning or not (#594)
     const col = document.getElementById('btn-fit');
@@ -5762,10 +5763,10 @@ export class Planner {
     if (!box || !this.sideMQ) return;
     // no toolbox until there's something it can do: a point, or something to undo or redo
     const desk = this.sideMQ.matches;
-    // (a card in a phone's peek keeps undo and redo here, or in its own top row when it's narrow; none in the route's view, 25d,
-    // nor with the planner folded there)
+    // (a card in a phone's peek keeps undo and redo here, or in its own top row when it's narrow; none in the route's view, 25d;
+    // the route's view folded keeps Edit and More, #745)
     const carded = this.cards.place === 'peek' && !desk, folded = !desk && this.panel.dataset.state === 'folded';
-    const show = (this.active || this.panel.classList.contains('leaving')) && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(carded && ((this.cards.narrow && !folded) || this.inView())) && !(folded && this.inView());
+    const show = (this.active || this.panel.classList.contains('leaving')) && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(carded && ((this.cards.narrow && !folded) || this.inView()));
     box.hidden = !show;
     box.classList.toggle('desk', desk);
     if (!show) this.dockTools(false);
@@ -6402,7 +6403,7 @@ export class Planner {
       if (this.app.onAnalysis) this.app.onAnalysis(null);
       return;
     }
-    this.els.hint.hidden = this.points.length > 2;
+    this.els.hint.hidden = this.points.length > 2 || this.inView(); // (it asks for taps that add points: not in the route's view, #745)
     const paddle = isWater(act);
     const waitSec = (a.waits || []).reduce((t, w) => t + w.sec, 0);
     const nights = (a.waits || []).reduce((c, w) => c + (isNight(w.stop) ? w.stop.n || 1 : 0), 0);

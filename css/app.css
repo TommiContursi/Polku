@@ -2325,6 +2325,7 @@ body.dropping .drop-hint { display: flex; }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
 .pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594; phones too, #745) */
 .pl-tools:not(.desk) .btn.done { min-height: 44px; }
+.pl-tools .btn.done:disabled { opacity: .7; color: var(--muted); cursor: default; } /* (a first point: no route to read yet, as undo with nothing to undo) */
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo, redo and More */
 .pl-tools[data-stage="folded"] .modebtn, .pl-tools.tb-wrap .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
 .pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child), .pl-tools.tb-wrap .modebtn > :not(.ic:first-child) { display: none; } /* (and the planner's bar at 200 %, before it takes a second row: #745) */

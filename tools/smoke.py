@@ -12839,12 +12839,23 @@ def edit_done(chrome):
     if s['n'] != s0['n'] or s['pts'] == s0['pts'] or s['past'] != s0['past'] + 1 or not s['view']:
         fails.append(f"Move after Done: {s['n']} points, {'moved' if s['pts'] != s0['pts'] else 'not moved'}, {s['past'] - s0['past']} undo steps, {'still' if s['view'] else 'not'} the route’s view")
     pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
-    # Remove on point 2's card
+    # with no undo on the toolbar after Done, Ctrl+Z still takes it back
+    for kind in ('rawKeyDown', 'keyUp'):
+        pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': 'z', 'code': 'KeyZ', 'windowsVirtualKeyCode': 90, 'modifiers': 2}, pg.s)
+    time.sleep(0.5)
+    s = st()
+    if s['pts'] != s0['pts'] or not s['view']:
+        fails.append(f"Ctrl+Z after Move, after Done: {'not ' if s['pts'] != s0['pts'] else ''}back, {'still' if s['view'] else 'not'} the route’s view")
+    # Remove on point 2's card, and its note's Undo
     hold(2)
     tap(still(row('remove')), 'Remove on point 2’s card')
     s = st()
     if s['n'] != s0['n'] - 1 or not s['view']:
         fails.append(f"Remove after Done: {s['n']} points of {s0['n']}, {'still' if s['view'] else 'not'} the route’s view")
+    tap(pg.js(f"({TB_AT})(document.querySelector('#toast .toast-act'))"), 'the note’s Undo after Remove')
+    s = st()
+    if s['n'] != s0['n'] or not s['view']:
+        fails.append(f"the note’s Undo after Remove, after Done: {s['n']} points of {s0['n']}, {'still' if s['view'] else 'not'} the route’s view")
     # Edit this stretch on a stretch's card
     pg.js("polku.planner.cards.close(); polku.planner.openStretchCard(polku.planner.stretchAt(0)); true")
     tap(still("[...document.querySelectorAll('.pl-way.card .btn.primary.big')].find((b) => b.textContent.trim() === 'Edit this stretch')"), 'Edit this stretch')
