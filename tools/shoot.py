@@ -480,6 +480,10 @@ SCENES = {
     'phone-closed': dict(PHONE, timeline=True),
     'phone-planner': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half'),
     'phone-peek': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek'),
+    # the route's view after Done: Edit where Done was, and a point's card with its actions (#745)
+    'phone-view-peek': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="polku.planner.setEditing(false); true"),
+    'phone-view-card': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="polku.planner.setEditing(false); polku.planner.openPointCard(polku.planner.points[1]); true"),
+    'desk-view': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js="polku.planner.setEditing(false); polku.planner.openPointCard(polku.planner.points[1]); true"),
     # the Route tab's first content, without the timeline over it (#740)
     'phone-route-tab': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js="polku.planner.setTab('route'); true"),
     'desk-route-tab': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE, js="polku.planner.setTab('route'); true"),
