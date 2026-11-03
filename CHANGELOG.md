@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### A tap just beside your route opens its card ([#725](https://github.com/TommiContursi/Polku/issues/725))
+
+- While you draw, a tap or click that lands just beside your route opens the route's card, as one on the line does, instead of adding a point at the route's end and turning it back on itself. It reaches about 24 px from the line by touch and 16 px with a mouse; farther away, a tap still adds a point.
+- With a mouse, the route lights up and its readout shows as far out as a click takes it. The line itself is still where you drag to reshape it.
+
 ### Easier to tap and read on a phone ([#235](https://github.com/TommiContursi/Polku/issues/235), [#208](https://github.com/TommiContursi/Polku/issues/208))
 
 - On a phone, the search, the sport pill, **Settings**, the **Zoom in** note, the map's credits (ⓘ) and the timeline's layer chips, **Play**, ✕ and time slider each take a finger's 44 px, and they look as they did. The timeline's two rows of chips sit a little further apart for it.

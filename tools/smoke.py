@@ -13976,6 +13976,71 @@ def route_card(chrome):
     print(f"{'ok  ' if not fails else 'FAIL'} the route's card and a stretch's (25d 1b): a tap on the route, Add a point here, This stretch, What's here, Edit this stretch, the whole route, the start's Back to start, End" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
+# A tap just beside the route while drawing (#725): 17 px from the line's middle by touch, 12 px by mouse, opens the
+# route's card and adds nothing; 30 px off adds a point at the end, as before. A level line at z14 (its casing 9.5 px
+# wide), so the old box (12 px by touch, 6 by mouse) misses both by a hair: only the wider guard takes them. By touch
+# 22 px off too (some 50 m at z14, past legNear()'s 40 m): its card's Add a point here adds one on the line.
+NL_SPOT = """(async (off) => {
+  const p = polku.planner, m = polku.map, c = p.legs[0].result.coords, a = c[0], b = c[c.length - 1], ll = [a[0] + (b[0] - a[0]) * 0.25, a[1]];
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
+  const v = p.viewPadding(0);
+  m.jumpTo({ center: ll, zoom: 14, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] });
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const R = m.getCanvas().getBoundingClientRect(), q = m.project(ll), pt = { x: q.x, y: q.y - off }, touch = innerWidth < 600;
+  // (in the old box, or on the leg's handle, the check would pass on main for the wrong reason)
+  const old = p.lineAt(pt, touch ? 12 : 6) != null, ghost = p.ghosts.some((g) => { const r = g.getElement().getBoundingClientRect(); return r.width && Math.hypot(r.left + r.width / 2 - R.left - pt.x, r.top + r.height / 2 - R.top - pt.y) < 40; });
+  return { x: Math.round(R.left + pt.x), y: Math.round(R.top + pt.y), old, ghost, n: p.points.length, end: p.points[p.points.length - 1] };
+})"""
+
+
+def near_line(chrome):
+    fails = []
+    for name, w, h_, touch, off in (('390x844', 390, 844, True, 17), ('1440x900', 1440, 900, False, 12)):
+        pg = chrome.page(w, h_, touch)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#14/61.514/23.81')
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            pg.js(RC_ROUTER)
+            if not pg.js(f"({RC_ROUTE})({json.dumps({'pts': [[23.800, 61.514], [23.812, 61.514]]})})", timeout=60000):
+                fails.append(f'{name}: the route wasn’t routed')
+            how = 'tap' if touch else 'click'
+            for d, card in ((off, True), (30, False)) + (((22, 'pill'),) if touch else ()):
+                pg.js("polku.planner.cards.close(); true")
+                s = pg.js(f"({NL_SPOT})({d})")
+                if s['old'] or s['ghost']:
+                    fails.append(f"{name}: {d} px off the line is {'in the old box' if s['old'] else 'on the leg’s handle'}: the check proves nothing there")
+                    continue
+                if touch:
+                    pg.quick_tap(s['x'], s['y'])
+                else:
+                    for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                        pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': s['x'], 'y': s['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                              'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                time.sleep(0.6)
+                r = pg.js("(() => { const p = polku.planner; return { kind: p.cards.current && p.cards.current.kind, n: p.points.length, end: p.points[p.points.length - 1] }; })()")
+                if card == 'pill' and r['kind'] == 'route':
+                    time.sleep(1)  # (the card's own look for its spot)
+                    b = pg.js("(() => { const r = document.querySelector('.card-pill')?.getBoundingClientRect(); return r && r.width ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : null; })()")
+                    if b:
+                        pg.quick_tap(b['x'], b['y'])
+                        time.sleep(0.6)
+                    a = pg.js("(() => { const p = polku.planner; return { n: p.points.length, end: p.points[p.points.length - 1], off: p.nearLine(p.points[1]).d }; })()")
+                    if not b or a['n'] != s['n'] + 1 or a['end'] != s['end'] or a['off'] > 2:
+                        fails.append(f"{name}: Add a point here on the card from a tap {d} px beside the line: {'no pill' if not b else str(a['n'] - s['n']) + ' points added'}, the end {'moved' if a['end'] != s['end'] else 'kept'}, {round(a['off'])} m off the line")
+                    r = a
+                elif card and (r['kind'] != 'route' or r['n'] != s['n'] or r['end'] != s['end']):
+                    fails.append(f"{name}: a {how} {d} px beside the line: {r['kind'] or 'no'} card, {r['n'] - s['n']} points added, the end {'moved' if r['end'] != s['end'] else 'kept'} (#725)")
+                if not card and (r['n'] != s['n'] + 1 or r['kind'] == 'route'):
+                    fails.append(f"{name}: a {how} {d} px from the line: {r['n'] - s['n']} points added, {r['kind'] or 'no'} card")
+                if r['n'] > s['n']:
+                    pg.js("polku.planner.undo(); true")
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        except Exception as e:
+            fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a tap just beside the route while drawing: its card, no point at the end (#725); farther off, a point" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 
 # Hold the map to see what's there (25d part 5): a finger held still 0.5 s, or a right-click, opens the spot's card; a
 # shorter press is a tap, a move or a second finger the map's own; a ring fills under the finger meanwhile. The card's
@@ -17154,7 +17219,7 @@ GROUPS = [
     ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap shows when you\'re there and the profile up to it, a hold or a right-click opens it with its actions in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
-    ('routecard', [route_card], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
+    ('routecard', [route_card, near_line], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('pickcard', [pick_card], 'a pick (#574): road works on the same card with their years (#564, #565), the line at the spot on a phone, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
     ('spotcard', [spot_card, spot_card_foot], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
