@@ -42,8 +42,8 @@ const MODE_KEY = { auto: 'P', line: 'S', water: 'W' };
 // the modes not in use, then all the modes' names, then the style's name (the longest beside a 1024 px window's panel);
 // last, beside the side panel, a second row
 const FOLDS = ['fold1', 'foldS', 'fold3', 'fold4', 'tb-rows'];
-// how a phone's bar fits (#745): the desktop's look, or less room around the words, then the drawing button shortened
-const PHONE_FITS = ['wide', 'tb-full', 'tb-tight', 'tb-short', 'tb-shorter', 'tb-wrap'];
+// how a phone's bar fits (#745): less room around its words, then the drawing button shortened
+const PHONE_FITS = ['wide', 'tb-tight', 'tb-short', 'tb-shorter', 'tb-wrap'];
 // how a sport goes along a line, for "MTB legs can't be paddled on the same line"
 const VERB = { mtb: 'ridden', gravel: 'ridden', road: 'ridden', hike: 'walked', trailrun: 'run', run: 'run', paddle: 'paddled', swim: 'swum' };
 const MODE_DESC = { auto: 'Along paths and roads, in the route style', line: 'Straight: off the trail, or across a gap', water: 'Polku’s water router: round land and marked hazards' };
@@ -60,8 +60,6 @@ const TIPS = {
   backToStart: { name: 'Back to start', text: 'A leg from the end back to where you started.' },
   share: { name: 'Share link', text: 'Copies a link to this route.' },
   gpx: { name: 'Export GPX', text: 'A file of the route for a GPS watch or another app.' },
-  loopTool: { name: 'Round trip from the start', text: 'Loops of the length you choose, from your start.' },
-  importTool: { name: 'Import GPX or KML', text: 'Shows a file’s track, to plan on.' },
   offline: { name: 'Save offline', text: 'Saves the map and terrain along the route, for no signal.' },
   clear: { name: 'Clear route', text: 'Takes the route off the map. Undo brings it back.' },
   more: { name: 'More', text: 'The whole route’s actions that aren’t on the toolbar: a round trip, import and the rest.' },
@@ -5160,7 +5158,8 @@ export class Planner {
     this.measureSheet?.();
     return this.peekTooTall() ? 'folded' : 'peek';
   }
-  peekTooTall() { return this.foldable() && !this.cards.current && (parseFloat(this.panel.style.getPropertyValue('--peek-h')) || 0) > dvh() / 2; }
+  // (with the phone's bar over it, which covers the map as much: #745)
+  peekTooTall() { return this.foldable() && !this.cards.current && (parseFloat(this.panel.style.getPropertyValue('--peek-h')) || 0) + (this.barH || 0) > dvh() / 2; }
 
   // Fold, then away (step 3 of #233): what folds to a line is the planner with a route (the start's views keep their
   // peek) and a card in the peek, over them too. ⌄ or a swipe down folds it; the line opens it as it was; ✕ at the line, or a second
@@ -5251,6 +5250,9 @@ export class Planner {
     // presses a button on keyup), until what they changed has been drawn (its sizes are measured again in that frame)
     for (const t of ['keydown', 'keyup']) addEventListener(t, () => { this.keyed = true; cancelAnimationFrame(this.keyedOff); this.keyedOff = requestAnimationFrame(() => { this.keyedOff = requestAnimationFrame(() => { this.keyed = false; }); }); }, true);
     this.sideMQ.addEventListener('change', () => { this.setSheetState(store.get('sheetState', {})[this.layout()]); this.renderReadRow(); });
+    // the desktop's toolbar wherever the planner is a desktop's panel, from 721 px: the phone's bar only on phones (#745)
+    this.toolsMQ = matchMedia('(min-width: 721px)');
+    this.toolsMQ.addEventListener('change', () => this.renderTools());
     // the summary rows are always visible: the peek height is theirs,
     // under the peek's last row, 14 px (the header's padding and 6 px more). With ⌄'s row (40 px, the handle's alone is 18),
     // none under a row with room of its own, the key facts' line or a card (whose header has none, css/app.css), so the row
@@ -5271,14 +5273,17 @@ export class Planner {
       const box = this.tools, shown = !!box && !box.hidden, take = shown && box.parentElement === this.panel ? hd.offsetTop - this.els.top.offsetHeight : 0;
       if (take) this.dockTake = take;
       // …and the row of what to read, which goes above the peek while Check or the list says it (renderReadRow()): shown
-      // for the measure, with nothing drawn in between; not the count beside the numbers (narrow or short), which adds none
-      const rr = this.els.readRow, readRow = rr && rr.hidden && this.panel.dataset.state !== 'peek' && !this.narrowMQ.matches && !this.shortMQ.matches
-        && this.readRowWanted() && !this.checkInSight('peek') && !this.listInSight('peek');
+      // for the measure, with nothing drawn in between; at 200 % the count beside the numbers too, as it narrows them (Done
+      // did, before #745); not the count in the numbers' line (short), which adds none
+      const rr = this.els.readRow, readRow = rr && rr.hidden && this.panel.dataset.state !== 'peek' && !this.shortMQ.matches
+        && this.readRowWanted() && !this.checkInSight('peek') && !this.listInSight('peek'), count = readRow && this.narrowMQ.matches;
       if (readRow) rr.hidden = false;
+      if (count) this.els.row.classList.add('with-count');
       // (a card is measured from what it holds, as it fills the sheet at half and full: its peek is the same at every size)
       const c = this.cards.place === 'peek' && this.cards.box, cardAt = c ? c.getBoundingClientRect().top - hd.getBoundingClientRect().top : 0;
       this.peekBare = Math.ceil(hd.offsetTop - take + (c ? cardAt : hd.offsetHeight + grow) + under());
       if (readRow) rr.hidden = true;
+      if (count) this.els.row.classList.remove('with-count');
       let h = this.peekBare + (this.panel.dataset.state === 'peek' ? take : shown && this.peekDocks ? this.dockTake || 0 : 0);
       // a card's peek is no taller than the planner's own with a route, nor than 52 % of the window: the rest of it is a swipe
       // up, at half (#603). It always has the card's name and numbers, as the planner's has its route's: where the planner's
@@ -5628,14 +5633,11 @@ export class Planner {
     const opt = (b, k, group) => { b.dataset.opt = k; b.dataset.group = group; return b; };
     this.els.reverse = opt(tb('reverse', 'Reverse', () => this.reverse()), 1, 'nav');
     this.els.backToStart = opt(tb('loop', 'Back to start', () => this.backToStart()), 2, 'nav');
-    // (the least used, and the first to go into More: where everything fits, More goes, #745)
-    this.els.loopTool = opt(tb('roundtrip', 'Round trip from the start', () => this.openLoop()), 7, 'nav');
-    this.els.importTool = opt(tb('upload', 'Import GPX or KML…', () => $('#file-input').click()), 8, 'nav');
     this.els.share = opt(tb('link', 'Share link', () => this.share()), 3, 'take');
     this.els.gpx = opt(tb('download', 'Export GPX', () => this.exportGpx()), 4, 'take');
     this.els.offline = opt(tb('offline', 'Save offline…', () => this.app.saveOffline()), 5, 'take');
     this.els.clearTool = opt(tb('trash', 'Clear route', () => this.clear(), 'danger'), 6, 'clear');
-    this.els.more = tb('more', 'More: the whole route’s actions', () => this.toggleMore());
+    this.els.more = tb('more', 'More: the whole route’s actions', () => this.toggleMore(), 'tb-more');
     this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.more.setAttribute('aria-expanded', 'false');
     // first on the toolbar, phones and desktops alike (#745): the planner's end (E of #594), the end that doesn't move
@@ -5644,10 +5646,10 @@ export class Planner {
     this.els.toolEdit = h('button', { type: 'button', class: 'btn done edit', 'aria-keyshortcuts': 'E', onclick: () => this.setEditing(true), html: `${icon('pencil', 18)}<span>Edit</span>` });
     const gsep = (group) => { const el = sep(); el.dataset.group = group; return el; };
     box.append(this.els.toolDone, this.els.toolEdit, this.els.modeBtn, this.els.modeSeg, sep(), this.els.sportBtn, this.els.styleBtn, sep('tb-hist'), this.els.undo, this.els.redo,
-      gsep('nav'), this.els.reverse, this.els.backToStart, this.els.loopTool, this.els.importTool, gsep('take'), this.els.share, this.els.gpx, this.els.offline,
-      gsep('clear'), this.els.clearTool, this.els.moreSep = sep(), this.els.more);
+      gsep('nav'), this.els.reverse, this.els.backToStart, gsep('take'), this.els.share, this.els.gpx, this.els.offline,
+      gsep('clear'), this.els.clearTool, sep(), this.els.more);
     for (const b of this.els.modeSeg.children) tooltip(b, TIPS[b.dataset.mode]);
-    for (const k of ['undo', 'redo', 'reverse', 'backToStart', 'loopTool', 'importTool', 'share', 'gpx', 'offline', 'more']) tooltip(this.els[k], TIPS[k]);
+    for (const k of ['undo', 'redo', 'reverse', 'backToStart', 'share', 'gpx', 'offline', 'more']) tooltip(this.els[k], TIPS[k]);
     tooltip(this.els.clearTool, TIPS.clear);
     tooltip(this.els.styleBtn, TIPS.style);
     tooltip(this.els.sportBtn, TIPS.sport);
@@ -5703,8 +5705,8 @@ export class Planner {
     // A card in a phone's peek: only undo and redo too, until it closes (25d)
     // The planner folded on a phone: how the next leg is drawn (its icon) beside undo and redo, since a tap on the map
     // still adds a point (step 3 of #233), and More, with the route's actions; Done or Edit first wherever else it shows (#745)
-    const carded = this.cards.place === 'peek' && !this.sideMQ?.matches, loop = this.loop.open || carded, view = this.inView();
-    const folded = this.panel.dataset.state === 'folded' && !this.sideMQ?.matches && !loop;
+    const carded = this.cards.place === 'peek' && !this.toolsMQ?.matches, loop = this.loop.open || carded, view = this.inView();
+    const folded = this.panel.dataset.state === 'folded' && !this.toolsMQ?.matches && !loop;
     this.tools.dataset.stage = view ? 'view' : carded ? 'card' : loop ? 'loop' : folded ? 'folded' : String(Math.min(n, 2));
     this.tools.setAttribute('aria-label', view ? 'Your route' : 'Drawing tools');
     this.els.modeBtn.hidden = !n || loop || view;
@@ -5760,9 +5762,9 @@ export class Planner {
 
   placeToolsNow() {
     const box = this.tools;
-    if (!box || !this.sideMQ) return;
+    if (!box || !this.toolsMQ) return;
     // no toolbox until there's something it can do: a point, or something to undo or redo
-    const desk = this.sideMQ.matches;
+    const desk = this.toolsMQ.matches;
     // (a card in a phone's peek keeps undo and redo here, or in its own top row when it's narrow; none in the route's view, 25d,
     // nor with the planner folded there)
     const carded = this.cards.place === 'peek' && !desk, folded = !desk && this.panel.dataset.state === 'folded';
@@ -5777,13 +5779,8 @@ export class Planner {
     if (!show) { toolsH(0); return; }
     const colLeft = $('#map-ctrls').getBoundingClientRect().left;
     // the route's actions once there's a leg (Back to start not on a loop); in turn, as far as there's room
-    // (in the route's view too: the cards and the toolbar change the route in both, #745)
-    const can = (b) => this.points.length > 1 && !this.loop.open && !carded && !folded && !(b === this.els.backToStart && this.isLoop())
-      && !(b === this.els.loopTool && !roundTripSports.includes(this.app.activity()));
-    // More goes where all it would hold is on the toolbar (#745): every action, and Show the whole route in the map's column
-    const moreGone = () => opts.length && opts.every((b) => !b.hidden) && !$('#map-ctrls').classList.contains('no-fit');
-    const gone = (on) => { for (const el of [this.els.more, this.els.moreSep]) el.classList.toggle('tb-gone', on); };
-    gone(false);
+    // (the route's view: Edit and More only, on phones and desktops alike, #745)
+    const can = (b) => this.points.length > 1 && !this.loop.open && !carded && !folded && !(b === this.els.backToStart && this.isLoop()) && !this.inView();
     for (const b of box.querySelectorAll('[data-opt]')) if (!can(b)) b.hidden = true;
     // on desktops Clear route stays longest, just before More in editing and in the route's view alike (#594)
     const rank = (b) => (desk && b === this.els.clearTool ? -1 : +b.dataset.opt);
@@ -5792,14 +5789,6 @@ export class Planner {
     const setOpts = (root, n) => {
       opts.forEach((b, i) => { (root === box ? b : root.querySelector(`[data-opt="${b.dataset.opt}"]`)).hidden = i >= n; });
       for (const g of root.querySelectorAll('.tb-sep[data-group]')) g.hidden = !root.querySelector(`button[data-group="${g.dataset.group}"]:not([hidden])`);
-    };
-    // in turn: the three modes' names together (their tooltips and labels say them; picking another mode then moves
-    // nothing, #594), the route's actions from the last, the style's caption, the sport's name (its icon stays), Clear
-    // route (the action kept longest on desktops), then the style's name shortens
-    const folds = () => {
-      const steps = [() => box.classList.add('fold3')];
-      for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
-      return [...steps, () => box.classList.add('fold1'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold4')];
     };
     if (desk) {
       const r = this.panel.getBoundingClientRect(), side = this.layout() === 'side';
@@ -5814,16 +5803,20 @@ export class Planner {
       const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
       const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
       const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 : box.getBoundingClientRect().right > limit);
-      // folds() in turn; last, beside the side panel of a narrow window, a second row above the first
+      // in turn: the three modes' names together (their tooltips and labels say them; picking another mode then moves
+      // nothing, #594), the route's actions from the last, the style's caption, the sport's name (its icon stays), Clear
+      // route (the action kept longest), then the style's name shortens; last, beside the side panel of a narrow window,
+      // a second row above the first
       box.classList.remove(...FOLDS, ...PHONE_FITS);
       setOpts(box, opts.length);
-      const steps = folds();
+      const steps = [() => box.classList.add('fold3')];
+      for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
+      steps.push(() => box.classList.add('fold1'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold4'));
       if (side) steps.push(() => { box.classList.add('tb-rows'); box.style.maxWidth = `${limit - r.right - 12}px`; });
       for (const step of steps) {
         if (!over()) break;
         step();
       }
-      gone(moreGone());
       // (a bottom panel's own height is --sheet-h already)
       const tb = box.getBoundingClientRect();
       toolsH(inPanel ? 0 : Math.round(side ? innerHeight - tb.top : innerHeight - r.bottom + tb.height + 12));
@@ -5874,28 +5867,14 @@ export class Planner {
     const shown = () => [...box.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent);
     const over = () => { const b = shown(); return box.scrollWidth > box.clientWidth + 1 || (b.length > 1 && (b.at(-1).offsetTop > b[0].offsetTop + 1 || b[0].getBoundingClientRect().left < box.getBoundingClientRect().left - 1)); };
     if (wide) {
-      // where the desktop's toolbar fits in one row, its look: the three modes by name, the sport, the route style, the
-      // route's actions and its lines, folding as a desktop's does (a wide phone, a narrow window)
-      box.classList.add('tb-full');
-      setOpts(box, opts.length);
-      for (const step of folds()) { if (!over()) break; step(); }
-      if (over()) {
-        // …else the drawing button: first less room around Done's and its words (360 px keeps them whole), then without its
-        // second line, its name shortened, its icon alone, and only then a second row (200 %); the route's actions that fit
-        // once all that is whole
-        box.classList.remove('tb-full', ...FOLDS);
-        setOpts(box, 0);
-        for (const cls of ['tb-tight', 'tb-short', 'tb-shorter', 'tb-wrap']) if (over()) box.classList.add(cls);
-        if (!box.classList.contains('tb-tight')) {
-          let k = 0;
-          while (k < opts.length) { setOpts(box, k + 1); if (over()) break; k++; }
-          setOpts(box, k);
-        }
-      }
-      gone(moreGone());
+      // where one row is too narrow for them at their own widths: first less room around Done's and the drawing button's
+      // words (360 px keeps them whole), then the drawing button without its second line, its name shortened, its icon
+      // alone, and only then a second row (200 %)
+      for (const cls of ['tb-tight', 'tb-short', 'tb-shorter', 'tb-wrap']) if (over()) box.classList.add(cls);
       if (dock) this.measureSheet?.();
     }
     const tH = wide && !dock ? box.offsetHeight : th;
+    if (wide && !dock) this.barH = 16 + tH; // (the bar over the peek, for peekTooTall())
     toolsH(dock ? 0 : 16 + tH); // from the sheet (and an open timeline) to the toolbox's top
     // the map's buttons ride above the planner's bar, and above the line's toolbox where it doesn't clear them (200 %)
     const lift = `${!dock && (wide || 8 + w + 8 > Math.min(colLeft, innerWidth - 66)) ? tH + 8 : 0}px`; // (66: the column's widest button, whatever it shows now)
@@ -6002,7 +5981,7 @@ export class Planner {
   toggleMore() {
     if (this.moreMenu) { this.moreMenu.close(); return; }
     this.modesMenu?.close();
-    const n = this.points.length, none = n < 2;
+    const n = this.points.length, none = n < 2, view = this.inView();
     const desk = this.tools.classList.contains('desk');
     // what's on the toolbar isn't repeated here
     const off = (el) => (el && !el.hidden && el.offsetParent !== null ? null : true);
@@ -6012,20 +5991,22 @@ export class Planner {
       !none && off(this.els.gpx) && { icon: 'download', label: 'Export GPX', desc: 'For a GPS watch or another app', fn: () => this.exportGpx() },
       !none && off(this.els.offline) && { icon: 'offline', label: 'Save offline…', desc: 'The map and terrain, for no signal', fn: () => this.app.saveOffline() },
     ]);
+    const loop = roundTripSports.includes(this.app.activity()) ? { icon: 'roundtrip', label: n ? 'Round trip from the start' : 'Round trip', fn: () => this.openLoop() } : null;
+    const file = { icon: 'upload', label: 'Import GPX or KML…', desc: 'Shows a file’s track, to plan on', fn: () => $('#file-input').click() };
     const whole = group('The whole route', [
       $('#map-ctrls').classList.contains('no-fit') && !none && { icon: 'fit', label: 'Show the whole route', fn: () => this.fitRoute() }, // (where the map's column let go of it, #344)
-      roundTripSports.includes(this.app.activity()) && off(this.els.loopTool) ? { icon: 'roundtrip', label: n ? 'Round trip from the start' : 'Round trip', fn: () => this.openLoop() } : null,
+      view ? null : loop,
       !none && off(this.els.reverse) && { icon: 'reverse', label: 'Reverse', fn: () => this.reverse() },
       !none && !this.isLoop() && off(this.els.backToStart) && { icon: 'loop', label: 'Back to start', fn: () => this.backToStart() },
-      off(this.els.importTool) && { icon: 'upload', label: 'Import GPX or KML…', desc: 'Shows a file’s track, to plan on', fn: () => $('#file-input').click() },
+      view ? null : file,
     ]);
     const clear = off(this.els.clearTool) && { icon: 'trash', label: 'Clear route', desc: 'Undo brings it back', fn: () => this.clear(), cls: 'danger menu-apart', disabled: !n };
-    // one order everywhere, chosen 2026-10-31 (#594): it opens up from More at the map's foot, so Clear route is the
-    // farthest from it and Take it along, the most used, the nearest (popMenu() doesn't put the focus on Clear route)
-    this.moreMenu = popMenu(this.els.more, [
-      n ? { head: this.routeTitle(), sub: 'Kept on this device' } : null,
-      clear, clear ? 'hr' : null, whole, take ? 'hr' : null, take,
-    ], { label: 'More', maxRight: desk ? null : $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
+    // while editing, one order everywhere, chosen 2026-10-31 (#594): it opens up from More at the map's foot, so Clear route
+    // is the farthest from it and Take it along, the most used, the nearest (popMenu() doesn't put the focus on Clear route);
+    // in the route's view a round trip, an import and Clear route go together in the last group, Clear route last (#745)
+    const head = n ? { head: this.routeTitle(), sub: 'Kept on this device' } : null;
+    this.moreMenu = popMenu(this.els.more, view ? [head, whole, take ? 'hr' : null, take, 'hr', loop, file, clear]
+      : [head, clear, clear ? 'hr' : null, whole, take ? 'hr' : null, take], { label: 'More', maxRight: desk ? null : $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
       onClose: () => { this.moreMenu = null; this.els.more.setAttribute('aria-expanded', 'false'); } });
     this.els.more.setAttribute('aria-expanded', 'true');
     // with too little room for all of it: its end in sight, Take it along, the most used (by More when it opens upward,

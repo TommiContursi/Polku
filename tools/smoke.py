@@ -11427,9 +11427,10 @@ def toolbox(chrome):
         t = pg.js("""(() => { const p = polku.planner, b = p.tools.getBoundingClientRect(), c = document.getElementById('map-ctrls').getBoundingClientRect();
           const small = [...document.querySelectorAll('#pl-tools button, #planner .sheet-head button')].filter((e) => e.offsetParent && (e.offsetWidth < 44 || e.offsetHeight < 44)).map((e) => e.getAttribute('aria-label') || e.textContent.trim());
           const s = p.panel.getBoundingClientRect();
-          return { docked: p.tools.classList.contains('docked'), left: b.left, right: b.right, top: b.top, bottom: b.bottom, sheetL: s.left, sheetR: s.right, sheetT: s.top, colB: c.bottom, small }; })()""")
+          return { docked: p.tools.classList.contains('docked'), left: b.left, right: b.right, top: b.top, bottom: b.bottom, sheetL: s.left, sheetR: s.right, sheetT: s.top, colB: c.bottom, small,
+            wx: parseFloat(document.documentElement.style.getPropertyValue('--wx-h')) || 0 }; })()""")  # (an open timeline between them)
         # (#745: a bar of its own across the sheet's width, just above it, under the map's buttons)
-        if t['docked'] or abs(t['left'] - t['sheetL']) > 1 or abs(t['right'] - t['sheetR']) > 1 or not 0 <= t['sheetT'] - t['bottom'] <= 20 or t['colB'] > t['top']:
+        if t['docked'] or abs(t['left'] - t['sheetL']) > 1 or abs(t['right'] - t['sheetR']) > 1 or not 0 <= t['sheetT'] - t['wx'] - t['bottom'] <= 20 or t['colB'] > t['top']:
             fails.append(f"{name}: the toolbox on a 390 px phone: {t} (a bar of its own across the sheet, above it, the map's buttons above it)")
         if t['small']:
             fails.append(f"{name}: under 44 px to touch: {', '.join(t['small'])}")
@@ -11512,7 +11513,7 @@ def toolbox(chrome):
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
-    # #242: a long route's numbers apart, and the toolbox docked with Done in it (#745), at 360 px and at 200 % (a 390 phone's 195 x 422)
+    # #242: a long route's numbers apart, and the toolbox a bar above the sheet (#745), at 360 px and at 200 % (a 390 phone's 195 x 422)
     LONG = [[23.0 + 0.25 * i, 61.0 + 0.05 * (i % 2)] for i in range(10)]
     for w, h_ in ((360, 740), (195, 422)):
         name = f'{w}x{h_}'
@@ -11525,7 +11526,7 @@ def toolbox(chrome):
           items.forEach((a, i) => { if (a.right > head.right + 0.5 || a.left < head.left - 0.5) out.push(`item ${i} outside the header`);
             if (a.right > done.left && a.bottom > done.top && a.top < done.bottom) out.push(`item ${i} under Done`);
             items.slice(i + 1).forEach((b, j) => { if (Math.abs(a.top - b.top) < 4 && b.left - a.right < 8) out.push(`items ${i} and ${i + j + 1} ${Math.round(b.left - a.right)} px apart`); }); });
-          if (!p.tools.classList.contains('docked')) out.push('the toolbox floats');
+          if (p.tools.classList.contains('docked')) out.push('the toolbox docked at the peek (#745: a bar above the sheet)');
           return { out, km: p.analysis && Math.round(p.analysis.total / 1000), text: p.els.sum.textContent }; })()""")
         if r['out']:
             fails.append(f"{name}: a {r['km']} km route ({r['text']}): {', '.join(r['out'])} (#242)")
