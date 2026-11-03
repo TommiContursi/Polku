@@ -11513,7 +11513,7 @@ def toolbox(chrome):
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
-    # #242: a long route's numbers apart, and the toolbox a bar above the sheet (#745), at 360 px and at 200 % (a 390 phone's 195 x 422)
+    # #242: a long route's numbers apart, at 360 px and at 200 % (a 390 phone's 195 x 422)
     LONG = [[23.0 + 0.25 * i, 61.0 + 0.05 * (i % 2)] for i in range(10)]
     for w, h_ in ((360, 740), (195, 422)):
         name = f'{w}x{h_}'
@@ -11526,7 +11526,6 @@ def toolbox(chrome):
           items.forEach((a, i) => { if (a.right > head.right + 0.5 || a.left < head.left - 0.5) out.push(`item ${i} outside the header`);
             if (a.right > done.left && a.bottom > done.top && a.top < done.bottom) out.push(`item ${i} under Done`);
             items.slice(i + 1).forEach((b, j) => { if (Math.abs(a.top - b.top) < 4 && b.left - a.right < 8) out.push(`items ${i} and ${i + j + 1} ${Math.round(b.left - a.right)} px apart`); }); });
-          if (p.tools.classList.contains('docked')) out.push('the toolbox docked at the peek (#745: a bar above the sheet)');
           return { out, km: p.analysis && Math.round(p.analysis.total / 1000), text: p.els.sum.textContent }; })()""")
         if r['out']:
             fails.append(f"{name}: a {r['km']} km route ({r['text']}): {', '.join(r['out'])} (#242)")
@@ -11701,7 +11700,7 @@ def toolbox(chrome):
     pg.js("polku.planner.closeLoop(); true")
     # (the route's actions come back on the toolbar in the next frame, and Done moves along with them: #311)
     pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
-    # Done: the route's view (25c), Clear route stays on the toolbar and Show the whole route in the map's column (#594;
+    # Done: the route's view (25c), Edit and More on the toolbar (#745) and Show the whole route in the map's column (#594;
     # the routeview group has the rest).
     # Done is the toolbar's first button, at its planner end (E of #594), and Edit lands where it was
     placed(pg)
@@ -11711,7 +11710,7 @@ def toolbox(chrome):
     edit_left = pg.js("polku.planner.els.toolEdit.getBoundingClientRect().left")
     if first['name'] != 'Done' or abs(edit_left - first['left']) > 1:
         fails.append(f"{name}: the toolbar's first button is {first['name']} at {first['left']:.0f}, and Edit lands at {edit_left:.0f} (Done first, Edit where it was)")
-    d = pg.js("({ active: polku.planner.active, view: polku.planner.inView(), tools: !!polku.planner.els.clearTool.offsetParent && !!polku.planner.els.toolEdit.offsetParent, fit: !document.getElementById('btn-fit').hidden })")
+    d = pg.js("({ active: polku.planner.active, view: polku.planner.inView(), tools: !polku.planner.els.clearTool.offsetParent && !!polku.planner.els.toolEdit.offsetParent, fit: !document.getElementById('btn-fit').hidden })")  # (#745: Edit and More, Clear route in More)
     if not d['active'] or not d['view'] or not d['tools'] or not d['fit']:
         fails.append(f'{name}: after Done: {d}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
