@@ -1,4 +1,5 @@
 {
+  "measurement_scope": "Historical candidate/CI-preview evidence before publication. Current live status and measurements: osm-live-2026-11-03.json",
   "measured_on": "2026-11-02",
   "build_run": "https://github.com/TommiContursi/Polku/actions/runs/41509553858",
   "verification_run": "https://github.com/TommiContursi/Polku/actions/runs/41525059421",

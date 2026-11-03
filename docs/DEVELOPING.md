@@ -281,7 +281,7 @@ How Polku works where data or services fall short, with nothing planned to chang
 
 - **Where the terrain is missing, the route's heights are a guess** (found while fixing #72, 2026-10-15): when no zoom of a terrain tile loads, the height runs in a straight line across the gap, so the climb from one side to the other counts but the hills in between don't, and a gap at the start or end is taken as level. Check, the summary and the dashed line in the profile say so, and Polku keeps trying.
 - **Aerial close-up detail is limited by the original photographs.** MML's national orthophoto has 0.5 m pixels. Esri's cached detail varies by place; requesting a higher level does not establish that imagery exists there. The map enlarges the last available image when closer tiles are missing.
-- **Trail details along every route cost Overpass calls** (bug sweep, 2026-10-15): they load for every route on land, gravel and road too (up to 40 tiles a route, cached a week), not only with the map's layer on. Watch the Overpass counter in Settings; a long road route over 40 tiles skips them.
+- **Trail details have a route budget:** they load on land, gravel and road routes too, even with the layer off. Up to 40 tiles are checked per route; longer routes skip them. Covered tiles prefer hosted data and only use Overpass when that source is unavailable or uncovered.
 
 ## The free services: limits and quirks
 

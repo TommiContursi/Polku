@@ -95,13 +95,18 @@ Polku brings together open data and free public services. Each source keeps its 
 
 Requests are paced, cached and counted; see **Settings → Data sources**. Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
 
-Road and path selections in Finland use a hosted OpenStreetMap snapshot from
-Geofabrik, served by ducksoft.fi; lighting uses its lighting archive when
-published. Unavailable or uncovered tiles fall back to cached Overpass data
-and public providers, including outside Finland. Only needed areas are
-downloaded; routing and map tiles keep their existing sources. Other detailed
-Country-specific hosted archives support Finland, Sweden, Norway and Estonia when those products are published. Only local tiles are downloaded; actual extract polygons determine coverage, and uncertain border tiles retain public fallback. OSM trail/barrier details, mapped winter ways, water hazards and overnight searches also prefer their hosted tiles when published. Full-tag inspection prefers the hosted object data; exact selected-way tags can reuse the original ways archive. Objects outside the extracted classes, ambiguous nearby relation geometry and lake/park area selection retain bounded Overpass queries. The [operations guide](docs/OSM_DATA.md) covers source freshness,
-updates, rollback, data licensing and the host's logging requirements.
+Road/path selections and their route memberships, trail details and barriers,
+mapped winter maintenance/access, OSM water hazards, overnight places and
+lighting use hosted OpenStreetMap snapshots for Finland, Sweden, Norway and
+Estonia, from Geofabrik and served by ducksoft.fi. Full-tag inspection uses the
+same original objects; selected-way tags reuse the already loaded ways.
+Only local tiles are downloaded. Valid hosted cache comes first, followed by
+covered hosted tiles and bounded cached/public Overpass fallback. Actual extract
+polygons determine coverage; uncertain border tiles, unsupported objects,
+ambiguous nearby relations and lake/park area selection retain public fallback.
+Missing data remains unknown. Routing and map tiles keep their existing sources.
+The [operations guide](docs/OSM_DATA.md) covers publication, source freshness,
+rollback, data licensing and the host's logging requirements.
 
 Polku's original application code is proprietary: © 2026 Tommi Contursi, all rights reserved. Using the free service does not grant permission to reuse its code in another product. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); third-party code and data retain their own licences.
 
