@@ -849,7 +849,7 @@ export class Planner {
         this.splitLeg(1, null, alongAt(this.legs[1].result.coords, L / 3));
       }
     }
-    this.setActive(true, { edit: true });
+    this.setActive(true, { edit: end ? null : true }); // (added from a card, it stays as it was: #745)
     this.update();
     this.frame(bbox(this.legs.flatMap((l, i) => (l.result ? l.result.coords : [this.points[i], this.points[i + 1]]))), { maxZoom: 15, duration: 700 });
     const km = fmtDist(ride.km * 1000);
@@ -2671,7 +2671,7 @@ export class Planner {
   onMapClick(e) {
     if (!this.active || Date.now() < this.noClickUntil) return; // the click that ends a drag or a long-press
     // Move on a card asked where: this is the answer
-    if (this.picking) { this.popupAtPress = false; this.picking.done([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]); return; }
+    if (this.picking) { if (this.inView()) this.tookClick = e.originalEvent; this.popupAtPress = false; this.picking.done([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]); return; }
     // a menu or card was open: this click (a tap beside it) closes it, and adds nothing
     if (this.popupAtPress) { this.popupAtPress = false; this.cards.close(); return; }
     const touch = this.isTouch();
@@ -2889,9 +2889,8 @@ export class Planner {
     this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
     this.setSection('points', { count: n || '', empty: !n, summary: n > 1 ? `${this.nameOf(0)} → ${this.nameOf(n - 1)}` : '' });
     this.renderTitle(); // (the route's view's title: the names come with the map's tiles)
-    // the route's view (25c): the same sections, without Reorder; a card shows what works there
+    // the route's view (25c): the same sections, without Reorder; a point's card still edits it (#745)
     const ro = this.inView();
-    this.els.viewNote.hidden = !ro;
     this.els.hint.hidden = ro;
     if (ro || n < 2) this.reordering = false;
     const loops = roundTripSports.includes(this.app.activity());
@@ -3894,7 +3893,7 @@ export class Planner {
   // fits (bestInsert()), its two new legs routed. One step of Undo; the note names the point it follows.
   addWhereItFits(ll) {
     this.cards.close();
-    if (!this.active || !this.editing) this.setActive(true, { edit: true });
+    if (!this.active) this.setActive(true); // (editing or the route's view as it was: a card's edit doesn't switch drawing on, #745)
     const near = this.nearLine(ll), on = near && near.d <= NEAR_LINE, k = on ? near.li : this.bestInsert(ll).after;
     const name = this.nameOf(k);
     if (on) this.insertPoint(k, ll);
@@ -3912,7 +3911,7 @@ export class Planner {
   // Start here on a spot: a new start before the old one, which is Via 1 now; nothing is removed
   startFrom(ll) {
     this.cards.close();
-    if (!this.active || !this.editing) this.setActive(true, { edit: true });
+    if (!this.active) this.setActive(true);
     this.commit();
     this.points.unshift(ll);
     this.legs.unshift({ mode: this.mode, sport: this.legs[0] ? this.legs[0].sport : this.next || undefined });
@@ -3921,7 +3920,7 @@ export class Planner {
   }
   // End here on a spot: a new end after the old one
   endAt(ll) {
-    if (!this.active || !this.editing) this.setActive(true, { edit: true });
+    if (!this.active) this.setActive(true);
     this.addPoint(ll);
   }
 
@@ -4466,10 +4465,6 @@ export class Planner {
       route: pane('route',
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
-        // the route's view (25c): the list and the map stay as they are, until Edit
-        this.els.viewNote = h('div', { class: 'pl-viewnote', hidden: true },
-          h('span', { html: icon('info', 18), 'aria-hidden': 'true' }), h('span', {}, 'You’re not editing: the list and the map stay as they are.'),
-          h('button', { type: 'button', class: 'btn small', onclick: () => this.setEditing(true), html: `${icon('pencil', 16)}<span>Edit</span>` })),
         this.section('points', 'Waypoints', this.els.pointsTop = h('div', { class: 'wpl-top' }),
           this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // How you go › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
@@ -7109,21 +7104,20 @@ export class Planner {
     this.unfocusRange();
   }
 
-  // What an item's card offers: its one main action (Avoid it, Short cut, Use BRouter or Retry; `edits` when it changes
-  // the route), and the rest of what its ⋯ offered (hide this kind, correct the map)
+  // What an item's card offers: its one main action (Avoid it, Short cut, Use BRouter or Retry), and the rest of what its ⋯ offered (hide this kind, correct the map)
   itemActions({ g, w }) {
     const a = this.analysis;
     let main = null;
-    if (w.retry) main = { label: 'Retry', icon: 'retry', fn: () => w.retry(), edits: g !== 'not' };
-    else if (w.useBrouter) main = { label: 'Use BRouter', icon: 'route', fn: () => w.useBrouter(), edits: true };
-    else if (w.cutLeg != null) main = { label: 'Short cut', icon: 'straight', fn: () => this.useShortCut(w.cutLeg, w.picks), edits: true, line: 'Lets this leg take the short cut: only where you may go' };
+    if (w.retry) main = { label: 'Retry', icon: 'retry', fn: () => w.retry() };
+    else if (w.useBrouter) main = { label: 'Use BRouter', icon: 'route', fn: () => w.useBrouter() };
+    else if (w.cutLeg != null) main = { label: 'Short cut', icon: 'straight', fn: () => this.useShortCut(w.cutLeg, w.picks), line: 'Lets this leg take the short cut: only where you may go' };
     else if (this.legs.some((l) => l.mode === 'auto' || l.mode === 'water')) {
       // anything with a place can be avoided: a circle over it (each of them, for a group)
       const [i0, i1] = this.itemSpan(w);
       const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
         : w.avoid ? [{ ...w.avoid, label: w.text }]
           : w.noAvoid || /^(Straight line|Carry)/.test(w.text) || w.ranges === null ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
-      if (avoid) main = { label: avoid.length > 1 ? `Avoid all ${avoid.length}` : 'Avoid it', icon: 'avoid', fn: () => this.addNogos(avoid), edits: true };
+      if (avoid) main = { label: avoid.length > 1 ? `Avoid all ${avoid.length}` : 'Avoid it', icon: 'avoid', fn: () => this.addNogos(avoid) };
     }
     const kind = g === 'not' ? null : hideKind(w), more = [];
     if (kind) more.push({ icon: 'eyeOff', label: `Hide “${kind.label}” in Check`, line: 'Listed at the end of Check, to show again', fn: () => this.hideWarnKind(kind) });

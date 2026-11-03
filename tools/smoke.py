@@ -12737,6 +12737,110 @@ def route_view(chrome):
     return not fails
 
 
+# #745: Edit and Done in one place on a phone, the toolbox's first button at the peek and at half, editing and not; and
+# after Done the cards still edit the route (Move and Remove on a point's, Edit this stretch on a stretch's) while a tap on
+# the map adds nothing. By touch at 390 × 844, a four-point MTB route with straight legs.
+def edit_done(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    if not pg.js(PC_ROUTE, timeout=30000):
+        fails.append('no route')
+    still = lambda x: (pg.js(SETTLED), pg.js(f"({PC_STILL})(() => ({x}))"))[1]
+    st = lambda: pg.js("(() => { const p = polku.planner; return { n: p.points.length, past: p.past.length, view: p.inView(), card: p.cards.current ? p.cards.current.kind : '', pts: JSON.stringify(p.points) }; })()")
+
+    def tap(at, what):
+        if not at:
+            fails.append(f'{what}: not on screen')
+            return False
+        pg.quick_tap(at['x'], at['y'])
+        time.sleep(0.6)
+        return True
+
+    # where Done or Edit is: on screen, the toolbox's first button, its left edge
+    def place(what):
+        placed(pg)
+        return pg.js("""(() => { const p = polku.planner, b = p.inView() ? p.els.toolEdit : p.els.toolDone;
+          if (!b.offsetParent) return null;
+          const first = [...p.tools.querySelectorAll('button')].find((x) => x.offsetParent);
+          return { left: Math.round(b.getBoundingClientRect().left), first: first === b, word: b.textContent.trim() }; })()""")
+
+    def free(i, dx, dy):  # a spot on the map clear of everything, beside point i
+        return pg.js(f"""(() => {{ const R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project(polku.planner.points[{i}]);
+          const x = Math.round(R.left + q.x + {dx}), y = Math.round(R.top + q.y + {dy});
+          return document.elementFromPoint(x, y) === polku.map.getCanvas() && y > 120 && y < polku.planner.panel.getBoundingClientRect().top - 90 ? {{ x, y }} : null; }})()""")
+
+    def hold(i):
+        pg.js(f"polku.map.jumpTo({{ center: polku.planner.points[{i}] }}); true")
+        a = still(f"polku.planner.markers[{i}]?.getElement().querySelector('.wp')")
+        if not a:
+            fails.append(f'point {i}: not on screen')
+            return
+        t0 = time.time()
+        pg.touch('start', a['x'], a['y'], t0)
+        time.sleep(0.7)
+        pg.touch('end', at=t0 + 0.7)
+        time.sleep(0.6)
+
+    row = lambda k: f"document.querySelector('.pl-way.card .row[data-k=\"{k}\"]')"
+    places = {}
+    for sheet in ('peek', 'half'):
+        pg.js(f"polku.planner.setSheetState('{sheet}'); true")
+        places[f'Done at {sheet}'] = place(f'Done at {sheet}')
+    tap(still("polku.planner.els.toolDone"), 'Done')
+    if not pg.js("polku.planner.inView()"):
+        fails.append('Done in the toolbox didn’t end editing')
+    for sheet in ('half', 'peek'):
+        pg.js(f"polku.planner.setSheetState('{sheet}'); true")
+        places[f'Edit at {sheet}'] = place(f'Edit at {sheet}')
+    lefts = {k: v and v['left'] for k, v in places.items()}
+    if not all(places.values()) or not all(v['first'] for v in places.values()) or len(set(lefts.values())) != 1:
+        fails.append(f'Done and Edit not the toolbox’s first button in one place: {places}')
+
+    # after Done: a tap on the map adds nothing
+    s0 = st()
+    spot = free(0, -60, -120) or free(0, 60, -120)
+    tap(spot, 'a tap on the map')
+    pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
+    if st()['n'] != s0['n']:
+        fails.append(f"a tap on the map after Done added {st()['n'] - s0['n']} points")
+    # Move on point 1's card, then a tap where it goes
+    hold(1)
+    tap(still(row('move')), 'Move on point 1’s card')
+    to = free(1, 0, -100) or free(1, 60, -100)
+    tap(to, 'where point 1 goes')
+    s = st()
+    if s['n'] != s0['n'] or s['pts'] == s0['pts'] or s['past'] != s0['past'] + 1 or not s['view']:
+        fails.append(f"Move after Done: {s['n']} points, {'moved' if s['pts'] != s0['pts'] else 'not moved'}, {s['past'] - s0['past']} undo steps, {'still' if s['view'] else 'not'} the route’s view")
+    pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
+    # Remove on point 2's card
+    hold(2)
+    tap(still(row('remove')), 'Remove on point 2’s card')
+    s = st()
+    if s['n'] != s0['n'] - 1 or not s['view']:
+        fails.append(f"Remove after Done: {s['n']} points of {s0['n']}, {'still' if s['view'] else 'not'} the route’s view")
+    # Edit this stretch on a stretch's card
+    pg.js("polku.planner.cards.close(); polku.planner.openStretchCard(polku.planner.stretchAt(0)); true")
+    tap(still("[...document.querySelectorAll('.pl-way.card .btn.primary.big')].find((b) => b.textContent.trim() === 'Edit this stretch')"), 'Edit this stretch')
+    s = st()
+    if s['card'] != 'edit' or not s['view']:
+        fails.append(f"Edit this stretch after Done: {s['card'] or 'no'} card, {'still' if s['view'] else 'not'} the route’s view")
+    if pg.js("!!document.querySelector('.pl-viewnote')"):
+        fails.append('a “You’re not editing” note')
+    pg.js("polku.planner.cards.close(); true")
+    # and Edit: a tap on the map adds a point again
+    tap(still("polku.planner.els.toolEdit"), 'Edit')
+    n = st()['n']
+    tap(free(0, -60, -120) or free(0, 60, -120), 'a tap on the map while editing')
+    if st()['n'] != n + 1:
+        fails.append(f"a tap on the map after Edit added {st()['n'] - n} points, not 1")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Edit and Done in one place, the cards in both modes (#745)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 
 # A point's card (25d part 1a, Revision 4 of #355): a tap on a point opens it, in the peek on a phone and at the point
 # on a desktop. Straight legs (no routing). Each step is what a person does: a real tap or click on the marker and the
@@ -17251,7 +17355,7 @@ GROUPS = [
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
-    ('routeview', [route_view], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %'),
+    ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),

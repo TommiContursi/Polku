@@ -894,7 +894,7 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .pl-ttl small .ic { color: var(--accent); }
 .pl-title .way-x { width: 44px; height: 44px; margin: -4px -6px 0 0; }
 .btn.edit { gap: 6px; }
-/* Route's list in the view: the points without their controls, and Edit */
+/* a note in the planner's own look: Move's banner on a card (js/card.js) */
 .pl-viewnote { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; }
 .pl-viewnote > span:first-child { flex: none; display: grid; color: var(--muted); }
 .pl-viewnote > span:nth-child(2) { flex: 1; min-width: 0; }
@@ -1512,8 +1512,8 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 /* ---------------------------------------------------------------- cards (js/card.js, 25d, Revision 4 of #355)
    A card is the planner's step container (.pl-way) holding the app's own controls: the start's top row (way-bar,
    way-back, way-x) and heading (way-head, way-hint), the route's numbers (sheet-sum, sum-item), the ⋯ menu's
-   headings (menu-h) and line (hr), the round trip's stepper (rt-step), a toggle (tg) and the "You're not editing"
-   note (pl-viewnote). New for the cards: card-mark, row (in rows), seg icons, name-field, sum-item miss, card-pill.
+   headings (menu-h) and line (hr), the round trip's stepper (rt-step), a toggle (tg) and the planner's note
+   (pl-viewnote, Move's banner). New for the cards: card-mark, row (in rows), seg icons, name-field, sum-item miss, card-pill.
    Where a card sits: card-peek (a phone's peek), card-float (at its spot), card-banner (Move's "Tap where it goes"). */
 .pl-way.card { container: card / inline-size; overflow-y: auto; overscroll-behavior: contain; margin-inline: -8px; padding-inline: 8px; } /* (room for the rows' hover, inside the card) */
 .card h3.way-hint { margin: 0; padding-top: 3px; font: inherit; } /* (a heading for screen readers; its line regular, as the start's) */
