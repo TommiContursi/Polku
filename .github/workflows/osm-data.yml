@@ -1,4 +1,5 @@
 name: Polku OSM data
+run-name: OSM data / ${{ github.event_name == 'workflow_dispatch' && inputs.operation || github.event.schedule == '17 3 * * 1' && 'build' || 'check' }}
 
 on:
   pull_request:
@@ -17,7 +18,7 @@ on:
         options: [verify-access, inspect-retention, test-host, build, verify-candidate, publish-existing, inspect-existing, resume-existing, check, rollback]
         default: verify-access
       release:
-        description: Existing release ID for rollback, or successful build run ID for verify-candidate
+        description: Release ID for rollback; numeric source build run ID for candidate verification or recovery
         type: string
 
 permissions:
@@ -333,7 +334,7 @@ jobs:
 
   publish:
     needs: bundle
-    if: vars.OSM_PUBLISH_ENABLED == 'true'
+    if: vars.OSM_PUBLISH_ENABLED == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build'))
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment: osm-data-production
@@ -360,6 +361,25 @@ jobs:
           OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
           OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
         run: python tools/osm_data/publish.py publish osm-build/release
+      - name: Verify live consumers and restore predecessor on failure
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-health-chrome
+        run: python -m tools.osm_data.health osm-health --release-dir osm-build/release
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-published-health-${{ github.run_id }}
+          path: osm-health/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Preserve the previous pointer for rollback
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -370,7 +390,7 @@ jobs:
           retention-days: 90
 
   publish-existing:
-    # Explicitly inspect, resume or publish the reviewed complete four-country build.
+    # Explicit recovery selects a verified main build, including a later publication failure.
     # Does not enable unattended publication or rebuild the archive.
     if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'publish-existing' || inputs.operation == 'inspect-existing' || inputs.operation == 'resume-existing') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -383,13 +403,31 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.14.3'
-      - name: Download the reviewed successful four-country build
+      - name: Validate the selected recovery build before downloading
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.release }}
+        run: |
+          python - <<'PY'
+          import json, os, re, subprocess
+          from tools.osm_data.publish import recovery_source, require
+          source, repo = os.environ['SOURCE_RUN'], os.environ['GITHUB_REPOSITORY']
+          require(re.fullmatch('[0-9]+', source), 'Enter the numeric source build run ID from Actions')
+          def read(path):
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + repo + '/actions/runs/' + source + path]))
+          selected = recovery_source(repo, read(''), read('/jobs?filter=all&per_page=100')['jobs'], read('/artifacts?per_page=100')['artifacts'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('run_id=' + selected + '\n')
+          print('Verified recovery source: main build ' + selected)
+          PY
+      - name: Download the verified main four-country build
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
           name: nordic-osm-release
           path: osm-build/release
           github-token: ${{ github.token }}
-          run-id: 41509553858
+          run-id: ${{ steps.source.outputs.run_id }}
       - name: Install pinned SFTP dependency
         run: python -m pip install -r tools/osm_data/sftp-requirements.txt
       - name: Inspect, resume or publish the verified OSM release
@@ -409,6 +447,26 @@ jobs:
             publish-existing) python tools/osm_data/publish.py publish osm-build/release ;;
             *) exit 1 ;;
           esac
+      - name: Verify live consumers and restore predecessor on failure
+        if: inputs.operation != 'inspect-existing'
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-health-chrome
+        run: python -m tools.osm_data.health osm-health --release-dir osm-build/release
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-manual-health-${{ github.run_id }}
+          path: osm-health/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Preserve previous pointer for rollback
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -432,12 +490,21 @@ jobs:
       - name: Freshness, integrity metadata and browser access
         env:
           OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
-        run: python tools/osm_data/publish.py check "$OSM_PUBLIC_URL/current.json"
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-health-chrome
+        run: python -m tools.osm_data.health osm-health
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-daily-health-${{ github.run_id }}
+          path: osm-health/
+          if-no-files-found: ignore
+          retention-days: 14
 
   rollback:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'rollback' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 90
     environment: osm-data-production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -228,6 +228,7 @@ class PublishTests(unittest.TestCase):
         job = workflow.split('\n  rollback:\n', 1)[1]
         condition = next(line.split('if:', 1)[1].strip() for line in job.splitlines() if line.strip().startswith('if:'))
         self.assertIn('\n    environment: osm-data-production\n', job)
+        self.assertIn('\n    timeout-minutes: 90\n', job)
         for event, ref, operation, enabled, expected in [
             ('workflow_dispatch', 'refs/heads/main', 'rollback', '', True),
             ('workflow_dispatch', 'refs/heads/main', 'rollback', 'false', True),
@@ -243,6 +244,47 @@ class PublishTests(unittest.TestCase):
                                     ('inputs.operation', operation), ('vars.OSM_PUBLISH_ENABLED', enabled)]:
                     expression = expression.replace(name, repr(value))
                 self.assertEqual(eval(expression.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
+
+        automatic = workflow.split('\n  publish:\n', 1)[1].split('\n  publish-existing:', 1)[0]
+        condition = next(line.split('if:',1)[1].strip() for line in automatic.splitlines() if line.strip().startswith('if:'))
+        for event,ref,operation,enabled,expected in [
+            ('schedule','refs/heads/main','','true',True),
+            ('workflow_dispatch','refs/heads/main','build','true',True),
+            ('workflow_dispatch','refs/heads/feature','build','true',False),
+            ('workflow_dispatch','refs/heads/main','build','',False),
+            ('workflow_dispatch','refs/heads/main','rollback','true',False),
+            ('pull_request','refs/heads/main','build','true',False)]:
+            expression=condition
+            for name,value in [('github.event_name',event),('github.ref',ref),('inputs.operation',operation),('vars.OSM_PUBLISH_ENABLED',enabled)]:
+                expression=expression.replace(name,repr(value))
+            self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected)
+        # The registered smoke guard also covers GitHub's dynamic run-name metadata.
+        from tools.osm_data.alerts import classify
+        event={'workflow':{'path':'.github/workflows/osm-data.yml'},'workflow_run':{
+            'name':'OSM data / rollback','head_branch':'main','head_repository':{'full_name':'TommiContursi/Polku'},
+            'event':'workflow_dispatch','conclusion':'failure','html_url':'https://github.com/TommiContursi/Polku/actions/runs/123'}}
+        self.assertEqual(classify(event,'TommiContursi/Polku')['kind'],'rollback')
+        recovery=workflow.split('\n  publish-existing:\n',1)[1].split('\n  monitor:',1)[0]
+        self.assertIn('run-id: ${{ steps.source.outputs.run_id }}',recovery)
+
+    def test_recovery_source_accepts_failed_publication_with_verified_main_bundle(self):
+        run={'id':123,'status':'completed','conclusion':'failure','head_branch':'main',
+             'head_repository':{'full_name':'TommiContursi/Polku'},'event':'workflow_dispatch','path':'.github/workflows/osm-data.yml'}
+        jobs=[{'name':name,'conclusion':'success'} for name in ['snapshot','bundle',
+              'build (finland)','build (sweden)','build (norway)','build (estonia)']]
+        artifact={'name':'nordic-osm-release','expired':False,'size_in_bytes':100}
+        self.assertEqual(publish.recovery_source('TommiContursi/Polku',run,jobs,[artifact]),'123')
+        for change in [dict(head_branch='feature'),dict(head_repository={'full_name':'attacker/Polku'}),
+                       dict(status='in_progress'),dict(event='pull_request'),dict(path='.github/workflows/other.yml')]:
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/Polku',dict(run,**change),jobs,[artifact])
+        for artifacts in [[],[dict(artifact,expired=True)],[artifact,artifact]]:
+            with self.subTest(artifacts=artifacts),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/Polku',run,jobs,artifacts)
+        for failed in range(len(jobs)):
+            partial=copy.deepcopy(jobs);partial[failed]['conclusion']='failure'
+            with self.subTest(job=jobs[failed]['name']),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/Polku',run,partial,[artifact])
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -540,6 +582,14 @@ class PublishTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'approval|approved'):
                 publish.rollback(saved)
         self.assertEqual(self.host.files, files)
+
+    def test_automatic_rollback_does_not_replace_another_live_release(self):
+        saved = self.release_dir / 'rollback-own.json'
+        saved.write_bytes(self.previous)
+        before = dict(self.host.files)
+        with self.assertRaisesRegex(RuntimeError, 'changed'):
+            publish.rollback(saved, expected_current='different')
+        self.assertEqual(self.host.files, before)
 
     def test_monitor_rejects_old_data_and_invalid_public_headers(self):
         old = pointer(self.old)

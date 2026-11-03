@@ -34,11 +34,13 @@ passed on 2026-11-03 at 04:24 UTC. Live polku.si browser measurements passed
 zero repeat downloads and zero extra selected-way tag requests. See the
 [compact live receipt](measurements/osm-live-2026-11-03.json).
 
-Scheduled publication remains disabled (`OSM_PUBLISH_ENABLED` unset). No
-hosting settings or secrets changed. This immutable release is already
-published: do not upload it again. Future snapshots require review of a new
-successful build, a PR updating the pinned target, and explicit manual
-publication. Monitoring and protected manual rollback work with that flag off.
+At this publication checkpoint scheduled publication was disabled. The #706
+maintenance rollout adds unattended publication, guarded retention and tested
+alerts. Once `OSM_PUBLISH_ENABLED=true` is activated, each successful weekly
+four-country build publishes automatically after all existing gates; a human
+does not inspect or pin every snapshot. No hosting plan or secret change is
+needed. The existing immutable release is already published: do not upload it
+again. Manual verified-build recovery and rollback remain available with the flag off.
 
 ## Build and preview
 
@@ -132,17 +134,25 @@ archive was not uploaded again. The existing
 See the [live measurements](plans/osm-data-measurements.md#live-ovh-verification-2026-11-02)
 for that earlier release. App activation is already on main; do not republish an immutable release.
 
-The protected **publish-existing** operation on `main` currently downloads the already-published, reviewed successful
-`nordic-osm-release` from pinned successful run `41509553858`, checks local and remote
-hashes, tests public Range/CORS and switches `current.json` only after
-verification. It does not rebuild or enable unattended publication. Artifacts
-expire after 14 days. While `OSM_PUBLISH_ENABLED` remains off, weekly builds
-produce candidate artifacts only: review a successful fresh build and update
-the pinned artifact run ID through a PR before manually publishing that next
-release. The protected environment still applies; app activation is separate.
+The protected **publish-existing**, **inspect-existing** and **resume-existing**
+operations on `main` require the numeric source build run ID in the **release**
+input. Before downloading, they require a completed same-repository main OSM run,
+successful snapshot, all four country builds and bundle, and exactly one unexpired
+`nordic-osm-release` artifact. A later publication failure does not invalidate a
+successful bundle. Feature branches, forks, incomplete builds and expired artifacts
+are rejected before host access. Artifacts expire after 14 days.
+
+Publication checks local and remote hashes, tests public Range/CORS and switches
+`current.json` only after verification. It does not rebuild or enable unattended
+publication. Weekly builds publish their own successful bundle when
+`OSM_PUBLISH_ENABLED=true`; no new pin PR is needed for each automatic update.
+With the flag off they produce candidates only. Recovery selects the exact failed
+update's verified bundle without a pin PR. Protected main-only writes and app
+activation remain separate.
 
 If this operation is interrupted, do not start another full upload. Run
-**inspect-existing** on `main` first: it downloads the same artifact and reports
+**inspect-existing** on `main` with the interrupted build's numeric run ID first:
+it downloads the same artifact and reports
 the exact release's staging/final file sizes without changing the host. Metadata
 alone does not prove integrity. Then **resume-existing** reuses the immutable
 release if already renamed, or requires exactly one matching staging directory.
@@ -223,11 +233,32 @@ separate. Data changes neither route calculation nor basemap rendering.
 
 The workflow checks the public manifest and Range access daily at 07:17 UTC
 when `OSM_PUBLIC_URL` is configured, independently of unattended publication.
-Source age over 14 days, changed manifests and
-broken browser headers fail the job. A failed weekly build also fails its run
-without publishing. Enable GitHub Actions failure notifications for the owner;
-the implementation does not send email or create a separate notification
-service. Inspect the run summary and uploaded browser evidence.
+Source age over 14 days, changed manifests and broken browser headers fail the
+job. It also exercises the actual deployed selection/detail consumers at 16
+locations in two browser profiles, forbidding normal covered Overpass calls
+and checking all 28 current archives. Browser work stops after 180 seconds;
+the monitor job has a ten-minute limit. Synthetic public sample coordinates
+are used; no saved user routes or positions are read.
+
+The same browser checks run after publication. If they fail, the saved distinct
+predecessor is restored through existing full-hash/public verification. Recovery
+checks the expected current release and rechecks the pointer before promotion;
+it cannot overwrite another publication. The run stays failed even if recovery
+succeeds. Diagnostic browser/health/recovery artifacts are retained for 14 days.
+A failed build/transfer never promotes its candidate.
+
+`osm-data-alerts.yml` handles only same-repository main scheduled/manual runs,
+checks out trusted main and uses a narrowly scoped issue-write token. It opens
+an owner-assigned `watch` issue for failed updates, health checks or rollback,
+updates that issue without repeated comment spam, and closes it on corresponding
+recovery. A healthy old release does not close a failed-update incident; a build
+that skips publication is not a successful update. Healthy runs without an
+incident remain quiet. Alert API errors fail visibly in the alert workflow.
+Classification identifies the workflow file path and reads the operation from
+the dynamic run title/name. The run's `name` is not the fixed workflow label.
+No new email service, account or dependency is introduced. GitHub's inbox and
+email/push preferences control delivery; use the isolated failure-test and
+recovery-test operations to prove the actual inbox path before activation.
 
 The manual **check** operation also works while unattended publication is off.
 It needs only Python's standard library. It rejects a `current.json` response
