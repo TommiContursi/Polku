@@ -9550,7 +9550,7 @@ def fold_phone(chrome):
         # (the handle a button: Safari rings a div with tabindex after a tap, and it doesn't focus a button)
         if pg.js("polku.planner.els.handle.tagName") != 'BUTTON':
             fails.append('the handle is not a button')
-        # a tap on ⌄: one line, with the numbers, a button that says so, ✕ at its end; the drawing mode, undo and redo float
+        # a tap on ⌄: one line, with the numbers, a button that says so, ✕ at its end; the toolbox floats (fold_tools)
         pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
         fold_settled(pg, fails, 'step 2')
         s = info()
@@ -9562,11 +9562,6 @@ def fold_phone(chrome):
             fails.append(f"folded: the line says “{s['lineText']}”, its name “{s['lineLabel']}”")
         if not s['lineX'] or s['lineX']['w'] < 44 or s['lineX']['h'] < 44 or s['lineX']['r'] < s['panel']['r'] - 16 or s['lineX']['t'] < s['panel']['t']:
             fails.append(f"folded: ✕ not at the line's end: {s['lineX']}")
-        names = [t['name'] for t in s['toolBtns']]
-        if s['stage'] != 'folded' or s['docked'] or len(names) != 3 or not names[0].startswith('Draw the next leg') or names[1:] != ['Undo', 'Redo']:
-            fails.append(f"folded: the toolbox {s['stage']}, docked {s['docked']}: {names}")
-        if any(t['w'] < 44 or t['h'] < 44 for t in s['toolBtns']):
-            fails.append(f"folded: a toolbox button under 44 px: {[(t['name'][:12], round(t['w']), round(t['h'])) for t in s['toolBtns']]}")
         if s['tools'] and s['tools']['b'] > s['panel']['t'] - 8:
             fails.append(f"folded: the toolbox's foot at {s['tools']['b']:.0f}, the sheet's top at {s['panel']['t']:.0f}")
         # a tap on the line, even where its handle is drawn: as it was
@@ -10339,8 +10334,58 @@ def fold_away_card(chrome):
     return fails
 
 
+# Folded on a phone the toolbox is the drawing mode's icon, Undo, Redo and More (#669): each 44 px and on the screen,
+# More on a row of its own where they don't fit (200 %),
+# the icon opening the modes' menu with its whole name, More its menu, and Undo taking a point back
+def fold_tools(chrome):
+    fails = []
+    for w, h, name in ((390, 844, '390x844'), (360, 740, '360x740'), (195, 422, '195x422 (200 %)'), (180, 370, '180x370 (360 at 200 %)')):
+        pg = chrome.page(w, h, True)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            pg.js("polku.planner.setSheetState('folded'); true")
+            fold_settled(pg, fails, f'{name}: folded')
+            s = pg.js(FOLD_INFO)
+            names = [t['name'] for t in s['toolBtns']]
+            label = names[0] if names else ''
+            if s['stage'] != 'folded' or len(names) != 4 or names[1:3] != ['Undo', 'Redo'] or not names[3].startswith('More') \
+                    or not label.startswith('Draw the next leg') or 'MTB' not in label or 'route style' not in label:
+                fails.append(f"{name}: the toolbox {s['stage']}: {names}")
+            if pg.js("polku.planner.els.modeBtn.innerText.trim()"):
+                fails.append(f"{name}: the mode's button says “{pg.js('polku.planner.els.modeBtn.innerText.trim()')}”, not its icon alone")
+            if any(round(t['w']) != 44 or round(t['h']) != 44 or t['l'] < 0 or t['t'] < 0 or t['r'] > w or t['b'] > h for t in s['toolBtns']):
+                fails.append(f"{name}: not 44 px each inside the screen: {[(t['name'][:12], round(t['l']), round(t['t']), round(t['w']), round(t['h'])) for t in s['toolBtns']]}")
+            if not s['tools'] or s['tools']['l'] < 0 or s['tools']['r'] > w or s['tools']['b'] > s['panel']['t'] - 8:
+                fails.append(f"{name}: the toolbox {s['tools']} off the screen or on the sheet at {s['panel']['t']:.0f}")
+            elif any(c['l'] < s['tools']['r'] and c['r'] > s['tools']['l'] and c['b'] > s['tools']['t'] and c['t'] < s['tools']['b'] for c in s['col']):
+                fails.append(f"{name}: the map's buttons over the toolbox: {[c['id'] for c in s['col']]}")
+            # (the icon and More open their menus; a tap on the map closes each)
+            for sel, want in (('polku.planner.els.modeBtn', 'Follow paths'), ('polku.planner.els.more', 'Export GPX')):
+                at = fold_at(pg, sel)
+                if not at:
+                    continue  # (not shown: the toolbox's names say so above)
+                pg.tap(*at)
+                time.sleep(0.4)
+                m = pg.js("(() => { const m = document.querySelector('.menu-pop'); return m ? m.innerText : ''; })()")
+                if want not in m:
+                    fails.append(f"{name}: a tap on {sel.split('.')[-1]} showed “{m[:60]}”, not its menu")
+                pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true")
+                time.sleep(0.3)
+            n = pg.js("polku.planner.points.length")
+            pg.tap(*fold_at(pg, 'polku.planner.els.undo'))
+            time.sleep(0.5)
+            a = pg.js("({ n: polku.planner.points.length, st: polku.planner.panel.dataset.state })")
+            if a['n'] != n - 1 or a['st'] != 'folded':
+                fails.append(f"{name}: Undo folded: {n} → {a['n']} points, the planner {a['st']}")
+            fails += [f'{name}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    return fails
+
+
 def fold(chrome):
-    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + [f'800x844, by mouse: {f}' for f in fold_mouse(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)] + [f'390x844, its motion: {f}' for f in fold_motion(chrome)] + [f'390x844, a card with the planner put away: {f}' for f in fold_away_card(chrome)]
+    fails = fold_tools(chrome) + [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + [f'800x844, by mouse: {f}' for f in fold_mouse(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)] + [f'390x844, its motion: {f}' for f in fold_motion(chrome)] + [f'390x844, a card with the planner put away: {f}' for f in fold_away_card(chrome)]
     print(f"{'ok  ' if not fails else 'FAIL'} fold, then away: the planner and the cards" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
