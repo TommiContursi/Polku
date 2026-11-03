@@ -105,8 +105,9 @@ covered hosted tiles and bounded cached/public Overpass fallback. Actual extract
 polygons determine coverage; uncertain border tiles, unsupported objects,
 ambiguous nearby relations and lake/park area selection retain public fallback.
 Missing data remains unknown. Routing and map tiles keep their existing sources.
-Weekly rebuilds can publish automatically after integrity, coverage and browser
-checks, with daily live checks and assigned GitHub failure alerts. The
+Weekly full rebuilds publish automatically after integrity, coverage and browser
+checks, with daily live checks and assigned GitHub failure alerts. Inbox and email
+delivery have been verified. The
 [operations guide](docs/OSM_DATA.md) covers activation, publication, source freshness,
 rollback, data licensing and the host's logging requirements.
 

@@ -1,0 +1,238 @@
+{
+  "state": "live verified; interrupted publication recovery running",
+  "release": "20261102T212126Z-four-a730845df91e58bc",
+  "source_timestamp": "2026-11-02T21:21:26Z",
+  "manifest_sha256": "0ee9b3380dfc545e81513b82f45011aba38b57812b4811ec709289db565cf085",
+  "activation": {
+    "enabled_at": "2026-11-03T10:15:25Z",
+    "weekly_build_cron_utc": "17 3 * * 1",
+    "daily_health_cron_utc": "17 7 * * *",
+    "full_rebuilds": true,
+    "delta_updates": false,
+    "publication_minutes": 120,
+    "browser_seconds": 180,
+    "standalone_rollback_minutes": 90
+  },
+  "build": {
+    "run": 41617739415,
+    "code": "5e8b017056a694524837dc150b0e74693c3a6e49",
+    "archives": 28,
+    "archive_bytes": 11221997780,
+    "zip_bytes": 11222159138,
+    "artifact_id": 13224764699,
+    "artifact_sha256": "89c1701c9a18f36b11644c039ad68128b60c2b19e6c8ab4fd2d071e526b775f2",
+    "bundle_seconds": 117.95979459300003,
+    "overlap": {
+      "duplicates": 142923,
+      "pairs": {
+        "estonia/finland": 20,
+        "estonia/sweden": 1,
+        "finland/norway": 38799,
+        "finland/sweden": 33697,
+        "norway/sweden": 70406
+      },
+      "unique": 20737815
+    },
+    "preview_cases": 32,
+    "normal_overpass_requests": 0
+  },
+  "initial_publication": {
+    "conclusion": "cancelled at original90-minute job limit after promotion",
+    "artifact_download_seconds": 2521.889,
+    "all_payload_hashes_and_manifest_verified": true,
+    "public_prechecks_passed": true,
+    "pointer_promoted_at": "2026-11-03T12:45:01Z",
+    "postchecks_finished": false
+  },
+  "live_health": {
+    "run": 41664173639,
+    "browser_cases": 32,
+    "checked_at": "2026-11-03T15:31:45.319918+00:00",
+    "release": "20261102T212126Z-four-a730845df91e58bc",
+    "normal_overpass_requests": 0,
+    "extra_selected_way_tag_requests": 0
+  },
+  "recovery": {
+    "run": 41666085199,
+    "code": "bd21699206b134b318f4e30cc4af1ce146827f9c",
+    "state": "running",
+    "verified_source_run": 41617739415,
+    "no_rebuild": true,
+    "original_predecessor": "20261101T212136Z-four-d5f8341920573573"
+  },
+  "retention": {
+    "host_test_run": 41585081185,
+    "disposable_deletions": 2,
+    "read_only_preview_run": 41625459351,
+    "bytes": 23853122100,
+    "delete": [],
+    "current_and_original_predecessor_protected": true,
+    "pending_receipt_recoverable": true,
+    "dedicated_root_budget_bytes": 85899345920,
+    "successful_publication_days": 28,
+    "owned_staging_days": 7,
+    "unmanaged_files_never_deleted": true
+  },
+  "alerts": {
+    "test_issue": 724,
+    "real_health_issue": 728,
+    "health_automatic_recovery_run": 41617124899,
+    "real_update_issue": 736,
+    "github_inbox_delivery_verified": true,
+    "failure_and_recovery_email_delivery_verified": true,
+    "update_timeout_email_received_at": "2026-11-03T12:46:17Z",
+    "successful_health_left_update_incident_open": true,
+    "update_recovery_pending": true,
+    "device_push_verified": false
+  },
+  "countries": {
+    "finland": {
+      "wall_seconds": 2346.16,
+      "peak_rss_bytes": 4052344832,
+      "os_elapsed": "39:06.16",
+      "runner_disk": [
+        "/dev/root       145G   60G   85G  42% /",
+        "/dev/root       145G   65G   80G  45% /"
+      ],
+      "source": {
+        "bytes": 774704265,
+        "coverage": {
+          "sha256": "c7d7dce360d2ef3d9b78658b76647410ca59219d6eaa85fa111c638655d8c4e8",
+          "url": "https://download.geofabrik.de/europe/finland.poly"
+        },
+        "sha256": "89fe715f199b7dce3e3e953a8e094f0cffd40e6691675e9468a0f09401acd457",
+        "timestamp": "2026-11-02T21:21:26Z",
+        "url": "https://download.geofabrik.de/europe/finland-261102.osm.pbf"
+      },
+      "archive_bytes": 4214918846,
+      "archive_bytes_by_kind": {
+        "hazards": 865502,
+        "inspection": 3382447198,
+        "lit": 47123861,
+        "places": 1020119,
+        "trails": 77028179,
+        "ways": 691065160,
+        "winter": 15368827
+      },
+      "allocated_staging_bytes_at_archive_completion": 14265540608
+    },
+    "sweden": {
+      "wall_seconds": 2650.92,
+      "peak_rss_bytes": 4407189504,
+      "os_elapsed": "44:10.92",
+      "runner_disk": [
+        "/dev/root       145G   60G   85G  42% /",
+        "/dev/root       145G   65G   81G  45% /"
+      ],
+      "source": {
+        "bytes": 947225779,
+        "coverage": {
+          "sha256": "e43c9b349c79aefc5b561dea6f591118cf78a2e890945fa27f5122d03417d3d1",
+          "url": "https://download.geofabrik.de/europe/sweden.poly"
+        },
+        "sha256": "805a09fa239a9e601bc4a8bc1b96c0b06e505ba4286d8858f4643dd0215dc873",
+        "timestamp": "2026-11-02T21:21:26Z",
+        "url": "https://download.geofabrik.de/europe/sweden-261102.osm.pbf"
+      },
+      "archive_bytes": 3586372693,
+      "archive_bytes_by_kind": {
+        "hazards": 317561,
+        "inspection": 2655254907,
+        "lit": 30555393,
+        "places": 1199702,
+        "trails": 93983368,
+        "ways": 801459169,
+        "winter": 3602593
+      },
+      "allocated_staging_bytes_at_archive_completion": 15099568128
+    },
+    "norway": {
+      "wall_seconds": 2666.15,
+      "peak_rss_bytes": 6640078848,
+      "os_elapsed": "44:26.15",
+      "runner_disk": [
+        "/dev/root       145G   60G   85G  42% /",
+        "/dev/root       145G   65G   81G  45% /"
+      ],
+      "source": {
+        "bytes": 1378299142,
+        "coverage": {
+          "sha256": "bf08b7f9f070e62d1b64b8950c05dbefaa77bba7c0637394acecb4a959d493b4",
+          "url": "https://download.geofabrik.de/europe/norway.poly"
+        },
+        "sha256": "02c77b07d128b7a611034a333a39a64880a93c0d7dd849fec02ccbba4dc89bc3",
+        "timestamp": "2026-11-02T21:21:26Z",
+        "url": "https://download.geofabrik.de/europe/norway-261102.osm.pbf"
+      },
+      "archive_bytes": 3095855257,
+      "archive_bytes_by_kind": {
+        "hazards": 1925107,
+        "inspection": 2245307047,
+        "lit": 19421224,
+        "places": 990644,
+        "trails": 131208635,
+        "ways": 671675498,
+        "winter": 25327102
+      },
+      "allocated_staging_bytes_at_archive_completion": 18173399040
+    },
+    "estonia": {
+      "wall_seconds": 389.95,
+      "peak_rss_bytes": 518860800,
+      "os_elapsed": "6:29.95",
+      "runner_disk": [
+        "/dev/root       145G   60G   85G  42% /",
+        "/dev/root       145G   61G   85G  42% /"
+      ],
+      "source": {
+        "bytes": 124254265,
+        "coverage": {
+          "sha256": "b3b3cd600b60c5321b1fd2090ecd3266f7a9002e5ec3f3ff9281b9759d71d6ca",
+          "url": "https://download.geofabrik.de/europe/estonia.poly"
+        },
+        "sha256": "53c462dda235e00f0198274c4c2af7adfc00af54194489adf0870b71da35befa",
+        "timestamp": "2026-11-02T21:21:26Z",
+        "url": "https://download.geofabrik.de/europe/estonia-261102.osm.pbf"
+      },
+      "archive_bytes": 324850984,
+      "archive_bytes_by_kind": {
+        "hazards": 33966,
+        "inspection": 234441637,
+        "lit": 5569105,
+        "places": 126839,
+        "trails": 7936267,
+        "ways": 76532743,
+        "winter": 210427
+      },
+      "allocated_staging_bytes_at_archive_completion": 1621708800
+    }
+  },
+  "implementation_prs": [
+    707,
+    711,
+    726,
+    729,
+    733,
+    738
+  ],
+  "tests": {
+    "python": 97,
+    "node": 24,
+    "ci": 41665548140,
+    "focused_osmdata": "passed committed a2a7b77, desktop and phone-emulated",
+    "automatic_review": "no findings on a2a7b77"
+  },
+  "not_verified": [
+    "Physical phone",
+    "Actual production rollback switch",
+    "Device push",
+    "Scheduled trigger after activation"
+  ],
+  "separate_followups": [
+    696,
+    699,
+    704,
+    727,
+    730
+  ]
+}
