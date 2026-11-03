@@ -454,19 +454,23 @@ def publish(directory, resume=False):
             ftp.remove(final + '/' + maintenance.UPLOAD)
 
 
-def rollback(manifest_path):
+def rollback(manifest_path, expected_current=None):
     require(os.environ.get('OSM_ALLOW_PUBLISH') == 'true', 'Publication requires approved OSM_ALLOW_PUBLISH=true')
     path = Path(manifest_path)
     target = validate(json.loads(path.read_bytes()), pointed=True)
     config = settings()
     with connection(config) as ftp:
         previous = previous_pointer(ftp)
+        if expected_current is not None:
+            require(previous and json.loads(previous)['release'] == expected_current,
+                    'Live release changed; do not roll back another publication')
         base = f"releases/{target['release']}"
         raw = retrieve(ftp, base + '/manifest.json')
         manifest = validate(json.loads(raw))
         require(current(manifest) == target, 'Rollback manifest differs from immutable release')
         samples = verify_remote(ftp, base, manifest, raw)
         probe(config[-2], manifest, raw, samples)
+        require(previous_pointer(ftp) == previous, 'Live pointer changed during rollback')
         promote(ftp, config[-2], manifest, previous, path.parent, samples, raw)
         maintenance.record_publication(ftp, manifest, raw, previous)
 
@@ -483,6 +487,7 @@ def check(url):
     release = validate(json.loads(raw))
     require(current(release) == manifest, 'Current pointer differs from immutable manifest')
     probe(base, release, raw)
+    return manifest
 
 
 def test_host():

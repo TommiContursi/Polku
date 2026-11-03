@@ -105,7 +105,9 @@ covered hosted tiles and bounded cached/public Overpass fallback. Actual extract
 polygons determine coverage; uncertain border tiles, unsupported objects,
 ambiguous nearby relations and lake/park area selection retain public fallback.
 Missing data remains unknown. Routing and map tiles keep their existing sources.
-The [operations guide](docs/OSM_DATA.md) covers publication, source freshness,
+Weekly rebuilds can publish automatically after integrity, coverage and browser
+checks, with daily live checks and assigned GitHub failure alerts. The
+[operations guide](docs/OSM_DATA.md) covers activation, publication, source freshness,
 rollback, data licensing and the host's logging requirements.
 
 Polku's original application code is proprietary: © 2026 Tommi Contursi, all rights reserved. Using the free service does not grant permission to reuse its code in another product. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); third-party code and data retain their own licences.

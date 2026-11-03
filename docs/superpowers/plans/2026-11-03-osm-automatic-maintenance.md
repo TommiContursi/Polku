@@ -45,8 +45,16 @@ Files: .github/workflows/osm-data.yml; new .github/workflows/osm-data-alerts.yml
 
 Interfaces: alerts.classify(event) -> category/outcome/run URL or None; alerts.update_incident(client, category, outcome, run) -> issue state. REST uses GITHUB_TOKEN, bounded requests and no token logging. Only trusted same-repository main schedule/manual runs are considered. An explicit alert-test/recovery path uses an isolated test category.
 
-- [ ] Write failing guard/incident tests: main-only enabled build, failure/cancellation, untrusted PR/fork ignored, deduplication, separate health/update recovery and API failure visibility.
-- [ ] Add the separate workflow_run notification workflow, minimal issue-write permissions, assigned incidents and test operation. Add real four-country browser checks to daily monitoring and post-publication; preserve diagnostic artifacts and restore the previous pointer if post-publication consumer checks fail.
+- [x] Write failing guard/incident tests: main-only enabled build, failure/cancellation, untrusted PR/fork ignored, deduplication, separate health/update recovery and API failure visibility.
+- [x] Add the separate workflow_run notification workflow, minimal issue-write permissions, assigned incidents and test operation. Add real four-country browser checks to daily monitoring and post-publication; preserve diagnostic artifacts and restore the previous pointer if post-publication consumer checks fail.
 - [ ] Run unit/focused checks and automatic review; merge. Execute alert test and prove the owner inbox entry, then recover it. Test live daily browser/HTTP monitoring.
 - [ ] Enable the publication flag and run one full main build/update through the same automatic gates. Verify promoted manifest, all four countries/consumers, retained predecessor/metadata, notification/recovery behavior and storage plan. Do not claim a scheduled trigger itself ran before its date.
 - [ ] Update operating docs/report with exact run IDs, checks, current automation and remaining material limits. Close #706 and release the claim only after the real update path is verified.
+
+
+Retention review checkpoint: #707 2ce6db8 now records a verified pending intent
+before pointer promotion. Its registered rollback case reproduced the stale
+predecessor after an interrupted rollback; preview stays read-only, applied
+retention repairs the matching receipt, and same-current retry preserves the
+true predecessor. 75 Python / 24 Node and focused osmdata pass. Notification
+and browser-health work is stacked on that parent in codex/osm-unattended-updates.

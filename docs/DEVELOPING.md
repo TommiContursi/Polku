@@ -273,7 +273,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 
 An explicit path or trail/winter/water/lighting retry resets only a failed shared manifest entry and coalesces one new attempt. That attempt passes `retryDown:true` to `request()`, exempting an existing network-down pause while retaining provider limits and accounting for new responses, including 429/Retry-After. Healthy release pins and cached tiles remain; background cooldowns and other callers keep their existing behavior.
 
-The data build adds exact existing query subsets: non-highway barrier ways and standalone obstacle/ford nodes, ski-only and mapped maintenance ways, water hazard points/ways, and overnight nodes/ways/relations. Place centres are indexed for nearby searches; incomplete referenced place geometry fails the candidate build. New datasets do not appear in production merely because a reader supports them: publication remains a separately approved operation described in OSM_DATA.md.
+The data build adds exact existing query subsets: non-highway barrier ways and standalone obstacle/ford nodes, ski-only and mapped maintenance ways, water hazard points/ways, and overnight nodes/ways/relations. Place centres are indexed for nearby searches; incomplete referenced place geometry fails the candidate build. New datasets do not appear in production merely because a reader supports them: publication remains separately guarded by the protected workflow described in OSM_DATA.md.
 
 `tools/osm_data/maintenance.py` tracks publisher-owned retention metadata separately from immutable archives. Approved publication protects live/predecessor/latest-two releases and 28 days of successful publications, prunes only validated old owned files, and checks the 80 GiB service budget before upload. Resume targets remain protected. The registered rollback smoke check covers retention pins; full retention tests run in the existing OSM Python CI discovery, and `test-host` exercises the pruner inside its disposable directory.
 
@@ -437,3 +437,14 @@ indices, validate PMTiles zoom/type/compression and never fetch entire countries
 `bundle.py` refuses conflicting overlapping original IDs or mismatched epochs.
 Run the focused OSM tests and the candidate workflow before changing the reviewed
 publication pin. See `docs/OSM_DATA.md`; no candidate implies live publication.
+
+
+OSM maintenance uses `health.py` for actual live four-country consumer checks in
+addition to HTTP probes; post-publication failure restores only its saved,
+expected-current predecessor and remains a failed run. `alerts.py` separates
+update, health and rollback incidents, assigns them to the repository owner,
+and deduplicates failure/recovery. The notification workflow runs trusted main
+only; PR/fork data never selects checked-out code or gains issue-write access.
+The existing registered publication guard test covers main-only automatic
+writes; all helper tests run in OSM CI discovery. See OSM_DATA.md for activation
+and the delivery-test operations.
