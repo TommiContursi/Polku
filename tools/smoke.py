@@ -16373,8 +16373,21 @@ def keyfacts(chrome):
 TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; window.TB = {
   pane: () => document.getElementById('pl-pane-route'),
   route() {
-    const pane = TB.pane(), first = [...pane.children].find(vis), rows = first ? [...first.querySelectorAll(':scope > .row')] : [];
-    return { first: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
+    const pane = TB.pane(), first = [...pane.children].find(vis), rows = [...pane.querySelectorAll('.how-rows > .row')];
+    return { first: first ? first.dataset.sec || first.className : '', rows: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
+  },
+  // the Route tab's first content, from its top: what it is and whether its heading is in sight in the body (#740)
+  top() {
+    const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
+    const first = [...TB.pane().children].find(vis), head = first?.querySelector('.sec-head') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect();
+    return { first: first ? first.dataset.sec || first.className : '', seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
+  },
+  // How you go ›, then Back: the focus on its row, and the row in sight under the list (#740)
+  async back() {
+    const p = polku.planner, frames = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+    p.openStep('how'); await frames(); p.els.stepHead.querySelector('.way-back').click(); await frames();
+    const f = document.activeElement, r = f.getBoundingClientRect(), b = p.els.body.getBoundingClientRect();
+    return { focus: f.dataset.k || f.className, seen: r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
   },
   step() {
     const pane = TB.pane(), back = pane.querySelector('.step-head .way-back');
@@ -16402,9 +16415,9 @@ def tabs(chrome):
         time.sleep(0.6)
         return True
 
-    # (the sheet's body scrolled to it, as a person scrolls; never the page)
-    at = lambda pg, expr: (pg.js(SETTLED), pg.js(f"""(async () => {{ const el = {expr}; if (!el) return null; const b = polku.planner.els.body, r = el.getBoundingClientRect(), s = b.getBoundingClientRect();
-      if (r.bottom > s.bottom) b.scrollTop += r.bottom - s.bottom + 8; else if (r.top < s.top) b.scrollTop -= s.top - r.top + 8;
+    # (the sheet's body scrolled to it, or the sheet where it scrolls as one, as a person scrolls; never the page)
+    at = lambda pg, expr: (pg.js(SETTLED), pg.js(f"""(async () => {{ const el = {expr}; if (!el) return null; const p = polku.planner, b = p.listScroller(), r = el.getBoundingClientRect(), s = p.els.body.getBoundingClientRect(), bottom = Math.min(s.bottom, innerHeight);
+      if (r.bottom > bottom) b.scrollTop += r.bottom - bottom + 8; else if (r.top < s.top) b.scrollTop -= s.top - r.top + 8;
       await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))); const q = el.getBoundingClientRect(); return {{ x: q.left + Math.min(60, q.width / 3), y: q.top + q.height / 2 }}; }})()"""))[1]
 
     def one(w, h_, phone):
@@ -16419,10 +16432,20 @@ def tabs(chrome):
         pg.js(TB_JS)
         pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
         r = pg.js("TB.route()")
-        if r['first'] != ['How you go · Balanced', 'Your speed · Normal'] or not r['list'] or r['step']:
+        if r['first'] != 'points' or r['rows'] != ['How you go · Balanced', 'Your speed · Normal'] or not r['list'] or r['step']:
             fails.append(f"{name}: Route opens with {r}")
             pg.close()
             return
+        # the route's list first, then the settings (#740): at the phone's half, in the side dock and at the bottom dock's half
+        for dock, state in ((('left', 'half'),) if phone else (('left', 'open'), ('bottom', 'half'))):
+            r = pg.js(f"(async () => {{ const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('{dock}'); p.setTab('route'); p.setSheetState('{state}'); await new Promise((ok) => setTimeout(ok, 600)); return TB.top(); }})()")
+            where = f"{'phone' if phone else dock + ' dock'} at {state}"
+            if r != {'first': 'points', 'seen': True}:
+                fails.append(f"{name}: Route's first content, {where}: {r} (want the route's list, its heading in sight)")
+            r = pg.js("TB.back()")
+            if r != {'focus': 'how-mtb', 'seen': True}:
+                fails.append(f"{name}: Back from How you go, {where}: {r} (want the focus on its row, in sight)")
+        pg.js("(async () => { const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('left'); p.setSheetState(p.layout() === 'side' ? 'open' : 'full'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()")
         # How you go ›: the route style alone, with Back to Route; a preset there changes the row's value
         press(pg, at(pg, "TB.row('route', 'How you go')"), f'{name}: How you go', touch)
         s = pg.js("TB.step()")
@@ -16432,7 +16455,7 @@ def tabs(chrome):
         style = pg.js("polku.planner.styleOf('mtb').p")
         press(pg, at(pg, "document.querySelector('#pl-pane-route .step-head .way-back')"), f'{name}: Back', touch)
         r = pg.js("TB.route()")
-        if r['step'] or not r['list'] or style == 'balanced' or r['first'][0] == 'How you go · Balanced':
+        if r['step'] or not r['list'] or style == 'balanced' or r['rows'][0] == 'How you go · Balanced':
             fails.append(f"{name}: Back from How you go after a style ({style}): {r}")
         # Your speed ›: the speeds alone
         press(pg, at(pg, "TB.row('route', 'Your speed')"), f'{name}: Your speed', touch)
@@ -16458,7 +16481,7 @@ def tabs(chrome):
         # a multisport route: How you go has a row for each sport, and Paddle's styles the paddle legs, not the MTB ones
         pg.js("polku.planner.setTab('route'); polku.planner.setSportFrom(2, 'paddle'); true")
         time.sleep(0.6)
-        r = pg.js("TB.route()")['first']
+        r = pg.js("TB.route()")['rows']
         if [x.split(' · ')[0] for x in r] != ['How you go', 'How you go', 'Your speed']:
             fails.append(f"{name}: Route's rows on a multisport route: {r}")
         else:
@@ -17242,7 +17265,7 @@ GROUPS = [
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
-    ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
+    ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),

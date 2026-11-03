@@ -480,6 +480,10 @@ SCENES = {
     'phone-closed': dict(PHONE, timeline=True),
     'phone-planner': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half'),
     'phone-peek': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek'),
+    # the Route tab's first content, without the timeline over it (#740)
+    'phone-route-tab': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js="polku.planner.setTab('route'); true"),
+    'desk-route-tab': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE, js="polku.planner.setTab('route'); true"),
+    'desk-bottom-route-tab': dict(DESK, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}, js="polku.planner.setTab('route'); true"),
     'phone-full': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full'),
     'desk-paddle': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]]),
     'phone-paddle': dict(PHONE, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='half'),
