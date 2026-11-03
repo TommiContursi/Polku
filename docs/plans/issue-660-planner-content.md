@@ -24,16 +24,32 @@ The direction chosen on 2026-11-03, from a brainstorm on the planner's content a
 
 The route's list (Start with Leave now, each stretch with its length, time, climb and how it's drawn, the end with the arrival time) is the content the cards' style belongs on, and it's the hardest to reach. Check's row above the numbers moves them when it arrives. The profile is in sight only at half.
 
-## The steps
+## The steps: the PR queue (2026-11-04)
 
-Each is one PR, tried on a phone and in both docks before the next step's details are decided.
+The order chosen on 2026-11-04 after step A (#743) and the Edit and Done step (#750, #745) were built and tried, the cards audit (#749), the Komoot reference (#754), the text review (#763) and the user's review of them. One PR each, tried on the phone before the next starts; each is visible on the first screen, and none touches the toolbar again. Findings from the audit and the text review are slotted after these, not into them. The Project's Now column holds the same order; this list is the record.
 
-- **A. The route before its settings (#740).** The Route tab's order becomes the route's list, then How you go and Your speed, then the hint. Nothing else moves. The PR tries a route of 30–50 points and decides from that whether the list folds to Start, the newest or selected stretch and the end, with one row for the rest.
-  *Built (#743):* the list, then How you go and Your speed (beside the list in the wide bottom dock), then the hint; Back from a step brings its row into sight under the list. No fold: a 40-point MTB route around Tampere (14.5 km, local BRouter) still shows three rows, Start, one stretch "via 38 shaping points" and the end, 499 px at the phone's half as with four points, since the shaping points already fold under their stretch (25d part 4). The whole list (41 rows, 2576 px) shows only after **Show the 38 shaping points**. A tap on the map adds a shaping point too. The list grows with the points you see: with 10 of the 40 named it was 23 rows, 1532 px, about two screens at half; names, stops, nights, a change of sport and a change of how a leg is drawn each make a point a row. Those are rows the person chose, so they stay. Not tried: many stops or nights, each a section of its own.
-- **A2. Edit and Done in one place, and the cards work in both modes (#745).** Edit and Done get the same stable place on phones as on desktops, in the toolbar as it is, with the editing state shown; they decide only whether a tap on the map adds a point, so Move, Remove, Edit this stretch and the other actions work from a card in either mode and the "You're not editing" notes go. Clear route's place in the phone's More menu is checked against the desktop's. Not a toolbar redesign.
-  *Built (#750):* the toolbar is main's, with Done (or Edit, in the same place) as the phone's toolbox's first button, as on desktops. Where that makes the toolbox too wide to sit beside the map's buttons (390 and 430 px), they rise above it, as over the line at 200 %, and it still shows the route's actions that fit in the window's width; it docks at full as on main. After Done the toolbar is Edit and More only, on phones and desktops; on a phone at full they're at the left of ⌄'s row. More has one order: the whole route, Take it along, then Round trip, Import and Clear route, Clear route last; Round trip and Import are never on the toolbar. Where even without the route's actions the toolbox is wider than the window (360 px, 200 %), there's less room around its words first, then the drawing button shortens, and only then does it take a second row. The numbers' row keeps Done's 44 px, so the peek changes once when Check's row arrives. Every card has the same actions in both states, an edit from a card keeps the state, Move's answering tap no longer opens the map's card too, the lock notes are gone, and drags stay editing-only. Built after several rounds of trying other toolbars on the phone (a docked toolbox, a bar across the width, the desktop's toolbar from 721 px), which read worse than main's (2026-11-03).
-- **B. A state line at the peek that never moves (#741).** One fixed row under the numbers says what Check knows: "Checking the route…", "Nothing to read before you go", "3 to read before you go ›". It replaces the row above the numbers; the groups, the markers and the ‹ › row stay.
-- **C. A compact profile at the peek (#742).** The Hardest climb row becomes a strip of the route's shape with the climbs' markers and the hardest climb as its caption; a tap opens the profile at half.
+| # | PR | Issue | What a person sees |
+|---|---|---|---|
+| 1 | One header in both modes | #751 | no title row after Done, no editing hint |
+| 2 | The route's list says things once | #764 | no hint, no second numbers line; Start and the first stretch in sight at half |
+| 3 | A warning takes the key fact's slot, in every layout | #741 | the line under the numbers says the warning, both docks too; nothing moves when Check answers |
+| 4 | The speed beside the numbers | #755 | "Normal · 16 km/h" in the numbers row, tap to change |
+| 5 | Hide the route for a moment | #756 | an eye on the toolbar |
+| 6 | Check said once | #765 | what it found first, the verdict with nothing to read, the sources folded when all answered |
+| 7 | One chart: Check's bars become the profile's legend | #758 | Colour by with lengths; On the route gone or two bars, one Selected |
+| 8 | A compact profile at the peek | #742 | the route's shape where Hardest climb was |
+| 9 | Go, folded | #766 | the time with its table behind a ›, the weather for the trip, "after dark" with the time |
+| 10 | One chart: Go's weather on the profile | #759 | the weather along the route on the chart; Go as leave, arrive, one line, take it along |
+| 11 | A spot's popup: five facts, one action | #760 | the same small card for a spot and a point, every action in sight |
+| 12 | The route's list, rethought | #761 | a brainstorm first, then its PRs |
+
+Beside the queue, as Fix PRs in the month's milestone whenever a session is free: #767 (sentence-case headings, nothing under 12 px), #753 with the toolbar's tooltips, #752 (the sports line's climbing). The text review that found them is `docs/reviews/2026-11-04-planner-text.md` (#763).
+
+Built so far, before the queue:
+- **A. The route before its settings (#740, PR #743, merged 2026-11-03).** The route's list first; no fold needed: shaping points already fold under their stretch.
+- **A2. Edit and Done in one place (#745, PR #750).** Main's toolbar with Done or Edit as its first button on phones, the map's buttons rising above it where it's wide; after Done, Edit and ⋯ only; the cards work in both modes; the lock notes gone; drags stay put after Done; Round trip, Import and Clear last in ⋯. Three toolbar designs were built and rejected on sight before this one (a docked row, a bar across the width, a pill): the lesson of #623 again, recorded in the retro when the milestone closes.
+
+Later, with their own design: Avoid as a resizable circle (#708), Look around here (#757), the settings' home, More's order, the desktop docks, the profile's whole-screen mode.
 
 ## Later pieces, one at a time, each its own brainstorm
 
