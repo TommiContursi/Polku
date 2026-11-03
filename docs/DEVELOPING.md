@@ -341,7 +341,7 @@ js/speeds.js        your speeds per sport
 js/names.js         road and path names near a point, from the loaded tiles
 js/idb.js           IndexedDB key–value stores
 js/dem.js           DEM tile sampler
-js/gestures.js      pinch / wheel over the UI → map zoom, trackpad tilt; the keyboard's crosshair
+js/gestures.js      pinch / wheel over the UI → map zoom, Shift+scroll tilt, trackpad rotate; the keyboard's crosshair
 js/view3d.js        tilt and rotate pad
 js/locate.js        where you are: the dot, its accuracy circle and cone, Follow me (the GPS watched here, never stored or sent)
 js/heading.js       which way you face: the compass standing, the GPS's course moving

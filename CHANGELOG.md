@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### The mouse wheel zooms in 3D ([#734](https://github.com/TommiContursi/Polku/issues/734))
+
+- The mouse wheel zooms the map in 3D, whether you turned 3D on with its button or tilted the map by hand. Before, after the **3D** button, a smooth-scrolling mouse tilted the map instead.
+- A two-finger trackpad scroll up or down zooms in 3D too, as it does in 2D. To tilt, use **Shift** and scroll, right-drag, Ctrl+drag or the 3D pad. A sideways trackpad scroll still rotates the map, and the Settings switch for it is now called **Trackpad rotates**.
+
 ### A tap just beside your route opens its card ([#725](https://github.com/TommiContursi/Polku/issues/725))
 
 - While you draw, a tap or click that lands just beside your route opens the route's card, as one on the line does, instead of adding a point at the route's end and turning it back on itself. It reaches about 24 px from the line by touch and 16 px with a mouse; farther away, a tap still adds a point.

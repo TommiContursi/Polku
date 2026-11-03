@@ -6,10 +6,10 @@
 //    pinch would zoom the whole page instead. We never let the page zoom and
 //    hand those gestures to the map — except over panels (planner, Layers,
 //    dialogs, timeline), which keep their gestures to themselves.
-// 2. Trackpad tilt & rotate. A sideways two-finger scroll on a trackpad
-//    rotates; in 3D mode up/down tilts too, while pinch keeps zooming.
-//    Shift + two-finger scroll tilts in any mode; Safari's rotate gesture
-//    rotates. A real mouse wheel always zooms.
+// 2. Tilt and rotate by scrolling. A sideways two-finger scroll on a trackpad
+//    rotates, while up/down and pinch keep zooming, in 2D and 3D alike (a
+//    smooth-scrolling mouse sends the same steps as a trackpad, #734).
+//    Shift + scroll tilts; Safari's rotate gesture rotates.
 
 import { h } from './ui.js';
 
@@ -39,7 +39,7 @@ function looksLikeTrackpad(e) {
   return true;
 }
 
-export function initGestures(map, { trackpadTilt = () => false, trackpadRotate = () => false } = {}) {
+export function initGestures(map, { trackpadRotate = () => false } = {}) {
   const canvas = map.getCanvas();
   let lastCtrlWheel = 0;
   let tiltUntil = 0;
@@ -53,8 +53,8 @@ export function initGestures(map, { trackpadTilt = () => false, trackpadRotate =
       // trackpad tilt / rotate on the map itself
       const now = performance.now();
       const pad = looksLikeTrackpad(e);
-      const tilt = !e.ctrlKey && (e.shiftKey || (trackpadTilt() && (pad || now < tiltUntil)));
-      // 2D: a mostly sideways two-finger scroll rotates; up/down keeps zooming
+      const tilt = !e.ctrlKey && (e.shiftKey || now < tiltUntil);
+      // a mostly sideways two-finger scroll rotates; up/down keeps zooming
       if (!tilt && !e.ctrlKey && trackpadRotate() && pad && (now < turnUntil || Math.abs(e.deltaX) > 2 * Math.abs(e.deltaY) + 1)) {
         e.preventDefault();
         e.stopImmediatePropagation();
