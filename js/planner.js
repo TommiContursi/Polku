@@ -4355,11 +4355,14 @@ export class Planner {
           this.els.card.hidden = false;
           this.panel.classList.add('carded');
         }
+        const swap = !!this.cardSeen; // (a card in the peek before this one: opened from it, Back to it, or another pick)
         this.cardSeen = this.cards.place === 'peek' ? this.cards.box : null;
         // a card opens at its own size; tapped on the map while the sheet is folded, it opens folded (its line), so the map
-        // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had
+        // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had. One that takes
+        // the place of a card at half or full keeps that size, or its tallest under it (#692)
         const st = this.panel.dataset.state, entry = this.cards.stack[this.cards.stack.length - 1];
-        if (card && fresh && this.cards.place === 'peek' && (!this.active || (st !== 'peek' && !(st === 'folded' && entry.from === 'map')))) this.setSheetState('peek', { remember: false });
+        const keep = card && fresh && this.cards.place === 'peek' && swap && ['half', 'full'].includes(st);
+        if (!keep && card && fresh && this.cards.place === 'peek' && (!this.active || (st !== 'peek' && !(st === 'folded' && entry.from === 'map')))) this.setSheetState('peek', { remember: false });
         // (opened on the line, the line opens it at its own size: the planner's comes back with the planner, restore())
         else if (card && fresh && this.cards.place === 'peek' && st === 'folded') this.unfoldTo = null;
         // the card's point ringed on the map, while its card (or Move's banner) is open
@@ -4377,6 +4380,13 @@ export class Planner {
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.renderFold();
         this.measureSheet?.();
+        // (each size's stops measured at that size: a full sheet docks the toolbox, so a short card has a half there)
+        if (keep) {
+          for (const to of st === 'full' ? ['full', 'half', 'peek'] : ['half', 'peek']) {
+            if (to !== this.panel.dataset.state) this.setSheetState(to, { remember: false });
+            if (to === 'peek' || this.stops().some((z) => z.name === to)) break;
+          }
+        }
       },
       onPop: () => this.keepView(),
       pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
