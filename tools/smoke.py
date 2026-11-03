@@ -16533,8 +16533,8 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
   // Start and End without their distance, and from the list's top the Start row in sight and the first stretch's title
   list() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
-    // (a row's line: its time first, then its label at most, never a distance)
-    const line = (row, first) => { const t = row?.querySelector('small')?.textContent || ''; return (t.startsWith(first) && !/\\d (k?m)\\b/.test(t)) || t; };
+    // (a row's line: its time first, then the weather and its label at most, never a distance)
+    const line = (row, first) => { const t = row?.querySelector('small')?.textContent || ''; return (t.startsWith(first) && !/\\d k?m\\b(?!\\/)/.test(t)) || t; };
     const L = p.els.points, rows = [...L.querySelectorAll('.wpl-point')], start = rows[0], end = rows[rows.length - 1], b = p.els.body.getBoundingClientRect(), v = s.getBoundingClientRect();
     const seen = (e) => { const r = e?.getBoundingClientRect(); return !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1; }; // (the sheet's own foot: the body runs on under it)
     return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis(document.querySelector('.wpl-top .btn')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), warn: vis(L.querySelector('.warn-row')),
@@ -16821,6 +16821,9 @@ PF_JS = """(async () => {
   if (!tag || !tag.getClientRects().length || tag.textContent !== 'No forecast yet') errs.push(`the profile's cut: ${tag ? tag.textContent : 'none'}`);
   p.showMode('grade');
   p.reveal('points'); await wait(300);
+  // a route of one section: the weather as you leave on Start's row, and none yet on End's (#764)
+  const wxRow = (i) => p.els.points.querySelector(`.wpl-point[data-i="${i}"] small`)?.textContent || '';
+  if (!wxRow(0).startsWith(`Leave ${p.leaveWords()} · 5° · 8 m/s`) || !/^There at [^·]+ · No forecast yet/.test(wxRow(p.points.length - 1))) errs.push(`the start's and the end's weather: ${wxRow(0)} / ${wxRow(p.points.length - 1)}`);
   // (on a route of two sections, a stop at via 1: a route of one has its numbers in the numbers row, #764)
   p.setStop(1, { min: 10 }); clearTimeout(p.retimeTimer);
   const chip = [...document.querySelectorAll('.wpl .sec2-wx')].pop();

@@ -2940,32 +2940,35 @@ export class Planner {
   sectionRows(box, ro) {
     const secs = this.sections(), days = secs.some((s) => s.ends === 'night'), a = this.analysis, fits = this.analysisFits();
     const nums = (s) => { const x = this.stretchNums(s); return x ? [fmtDist(x.len), fmtDuration(x.sec), x.up == null ? '' : `↑${Math.round(x.up)} m`].filter(Boolean).join(' · ') : fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from)); };
+    // the forecast m metres along: its sample, and in words; past its reach none yet, never its last hour's (#465) [tabs-c-days]
+    const wAt = (m) => (fits && a.wind && a.wind.temp ? this.sampleAtM(m) : -1), past = (w) => w >= 0 && a.wind.beyond >= 0 && w >= a.wind.beyond;
+    const words = (w) => (w < 0 ? '' : past(w) ? 'No forecast yet' : `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`);
+    // (a route of one section: the weather as you leave and when you're there on Start's and End's rows, #764)
+    const one = secs.length === 1, wxOf = (i) => (one ? words(wAt(this.lengthTo(i))) : '');
     let day = 1;
     secs.forEach((sec, k) => {
       // (the route's own name, an import's or a picked loop's, in the first row of a route of one section, #751)
       const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label} · ${this.routeName && secs.length === 1 ? this.routeName : `${this.nameOf(sec.from)} → ${this.nameOf(sec.to)}`}`;
       if (sec.ends === 'night') day += this.stopAt(sec.to).n || 1;
       // a short forecast for its end; a tap says the rest under it [kf2-multi-tap]
-      const w = fits && a.wind && a.wind.temp ? this.sampleAtM(this.lengthTo(sec.to)) : -1, id = this.pidOf(this.points[sec.from]), open = this.wxOpen.has(id);
-      // (past the forecast's reach: none yet, never its last hour's, #465) [tabs-c-days]
-      const nofc = w >= 0 && a.wind.beyond >= 0 && w >= a.wind.beyond;
-      const wx = nofc ? h('span', { class: 'btn small quiet sec2-wx', html: icon('cloudSun', 15) }, 'No forecast yet') : w >= 0 ? h('button', { type: 'button', class: 'btn small quiet sec2-wx', 'aria-expanded': String(open), 'aria-label': `The weather at its end: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s`,
-        onclick: () => { if (open) this.wxOpen.delete(id); else this.wxOpen.add(id); this.renderWaypoints(); }, html: icon('cloudSun', 15) }, `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`) : null;
+      const w = wAt(this.lengthTo(sec.to)), id = this.pidOf(this.points[sec.from]), open = this.wxOpen.has(id), nofc = past(w);
+      const wx = nofc ? h('span', { class: 'btn small quiet sec2-wx', html: icon('cloudSun', 15) }, words(w)) : w >= 0 ? h('button', { type: 'button', class: 'btn small quiet sec2-wx', 'aria-expanded': String(open), 'aria-label': `The weather at its end: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s`,
+        onclick: () => { if (open) this.wxOpen.delete(id); else this.wxOpen.add(id); this.renderWaypoints(); }, html: icon('cloudSun', 15) }, words(w)) : null;
       const at = open && w >= 0 ? this.atSample(w) : null;
       const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 20) }), h('b', {}, title));
       // (a route of one section has its numbers in the numbers row above, #764)
       const line = secs.length > 1 ? h('div', { class: 'sec2-nums' }, h('span', {}, nums(sec)), wx) : null;
       const more = line && open && w >= 0 && !nofc ? h('p', { class: 'sec2-wx-at' }, `At its end${at ? `, ${this.clockOf(at)}` : ''}: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s from the ${compass(a.wind.dir ? a.wind.dir[w] : 0)}`) : null;
       const rows = h('div', { class: 'rows', role: 'group', 'aria-label': title });
-      if (k === 0) rows.append(this.pointRow(sec.from, ro));
+      if (k === 0) rows.append(this.pointRow(sec.from, ro, false, wxOf(sec.from)));
       for (const s of sec.stretches) {
         rows.append(this.stretchRow(s, ro));
         const pid = this.pidOf(this.points[s.from]);
         if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, true));
-        rows.append(this.pointRow(s.to, ro));
+        rows.append(this.pointRow(s.to, ro, false, s.to === sec.to ? wxOf(s.to) : ''));
       }
       // (a route of one section, while editing: its heading beside Reorder, where the hint was, #764)
-      const beside = secs.length === 1 && !ro;
+      const beside = one && !ro;
       if (beside) this.els.pointsTop.prepend(head);
       box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, beside ? null : head, line, more, this.sectionWarn(sec), rows));
     });
@@ -2992,12 +2995,12 @@ export class Planner {
     return box;
   }
 
-  // a point's row: its marker, its name, there at · how far · Via n; a stop, a night or a change of sport under it
-  pointRow(i, ro, shape = false) {
+  // a point's row: its marker, its name, there at · the weather · how far · Via n; a stop, a night or a change of sport under it
+  pointRow(i, ro, shape = false, wx = '') {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), arrive = i > 0 && this.analysisFits() ? this.arriveAt(i) : null;
     // (Start and End without their distance: 0 m and the route's length, which the numbers row says, #764)
-    const sub = (shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `There at ${this.clockOf(arrive)}` : '', i && !last ? fmtDist(this.lengthTo(i)) : '', name === lab ? '' : lab, loop ? 'back at the start' : '']).filter(Boolean).join(' · ');
+    const sub = (shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `There at ${this.clockOf(arrive)}` : '', wx, i && !last ? fmtDist(this.lengthTo(i)) : '', name === lab ? '' : lab, loop ? 'back at the start' : '']).filter(Boolean).join(' · ');
     const stop = this.stopAt(i), ch = this.changeAt(i);
     const extra = stop ? (isNight(stop) ? `${nightsWord(stop)} · go on at ${hhmm(stop.on)}` : `Stop · ${stop.min} min`) : ch ? `${ACTIVITIES[ch.to].label} from here · changeover ${ch.min} min` : '';
     // (a row as the cards' rows: its mark, its name, its lines, ›; Revision 5's list)
