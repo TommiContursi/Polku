@@ -12570,8 +12570,8 @@ def route_view(chrome):
         time.sleep(0.6)
         press(pg, pg.js(RV_LINE), f'{name}: the line', touch)
         s = state(pg)
-        if s['n'] != s0['n'] or s['card'] != 'route' or s['pill']:
-            fails.append(f"{name}: a tap on the line in the route’s view: {s['n'] - s0['n']} points added, {s['card'] or 'no'} card{', with Add a point here' if s['pill'] else ''} (25d's 1b)")
+        if s['n'] != s0['n'] or s['card'] != 'route' or not s['pill']:
+            fails.append(f"{name}: a tap on the line in the route’s view: {s['n'] - s0['n']} points added, {s['card'] or 'no'} card{'' if s['pill'] else ', without Add a point here'} (25d's 1b, #745)")
         shut(pg)
         # the markers stay put
         drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
@@ -12689,7 +12689,7 @@ def route_view(chrome):
         pg.js("polku.planner.fitRoute({ animate: false }); true")
         time.sleep(0.6)
         press(pg, pg.js(RV_LINE), f'{name}: the line', touch)
-        if state(pg)['card'] != 'route' or state(pg)['pill']:
+        if state(pg)['card'] != 'route' or not state(pg)['pill']:  # (Add a point here, the card's first button on a desktop: #745)
             fails.append(f'{name}: a click on the line in the route’s view: {state(pg)}')
         shut(pg)
         drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
@@ -13470,22 +13470,18 @@ def point_card(chrome):
                 fails.append(f'{name}: Back from a card opened from the list: {now}, it was {was}')
             pg.js("polku.planner.setSheetState('peek'); true")
             pg.js(SETTLED)
-        # the route's view: the switch works and stays in the view; nothing that needs editing; the note's Edit
+        # the route's view: the card's actions as while editing, no note (#745); the switch works and stays in the view
         pg.js("polku.planner.setEditing(false); true")
         time.sleep(0.3)
         s = tap_marker(pg, 1, name, touch)
-        left = [x for x in ('Move', 'Rename', 'Start here', 'End here', 'Sport from here', 'Remove') if x in s['rows']]
-        if left or "You’re not editing" not in s['text']:
-            fails.append(f"{name}: the route’s view: {', '.join(left) or 'nothing that needs editing'}, {'with' if 'You’re not editing' in s['text'] else 'no'} note")
+        gone = [x for x in ('Move', 'Rename', 'Start here', 'End here', 'Sport from here', 'Remove') if x not in s['rows']]
+        if gone or "You’re not editing" in s['text']:
+            fails.append(f"{name}: the route’s view: {', '.join(gone) or 'nothing'} missing, {'with' if 'You’re not editing' in s['text'] else 'no'} note")
         tap_seg(pg, 'Stop', name, touch)
         r = pg.js("({ view: polku.planner.inView(), stop: !!polku.planner.stopAt(1), kind: polku.planner.cards.current && polku.planner.cards.current.kind })")
         if not r['view'] or not r['stop'] or r['kind'] != 'point':
             fails.append(f'{name}: Stop in the route’s view: {r}')
-        press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .pl-viewnote .btn')].find((b) => b.textContent.trim() === 'Edit')"), f'{name}: the note’s Edit', touch)
-        s = st(pg)
-        if s['view'] or 'Move' not in s['rows']:
-            fails.append(f"{name}: the note’s Edit: {'still the view' if s['view'] else 'editing'}, rows {s['rows']}")
-        pg.js("polku.planner.cards.close(); true")
+        pg.js("polku.planner.cards.close(); polku.planner.setEditing(true); true")
         # the pill: above the spot on a phone, the card's first button on a desktop (1b and 5 give cards one)
         r = pg.js("""(() => { const p = polku.planner, at = p.points[2]; let hit = 0;
           p.cards.open({ kind: 'test', key: 'pill', title: 'A spot', sub: '', build: (b) => b.append('…'.slice(1)), pill: { label: 'Add a point here', icon: 'plus', fn: () => { hit++; } } }, { at });
@@ -13888,14 +13884,15 @@ def route_card(chrome):
         close(pg)
         keeps_view(pg, name, touch)
         keeps_view(pg, name, touch, 20.5)
-        # the route's view: the same card, without the pill, Edit this stretch or Avoid this spot, and the note with Edit
+        # the route's view: the same card, with Add a point here, Edit this stretch and Avoid this spot, and no note (#745)
         pg.js("polku.planner.done(); true")
         time.sleep(0.6)
         s0 = st(pg)
         press(pg, on_line(pg, 1, 0.3), f'{name}: the line in the route’s view', touch)
         s = st(pg)
-        if s['kind'] != 'route' or s['pill'] or s['pin'] or 'Edit this stretch' in s['rows'] or 'Avoid this spot' in s['rows'] or not s['note'] or s['n'] != s0['n'] or not s['view']:
-            fails.append(f"{name}: the route's view: {s['kind']} card, pill {bool(s['pill'])}, rows {s['rows']}, note {s['note']}, {s['n'] - s0['n']} points added")
+        add = bool(s['pill']) or (s['first'] or {}).get('text') == 'Add a point here'
+        if s['kind'] != 'route' or not add or 'Edit this stretch' not in s['rows'] or 'Avoid this spot' not in s['rows'] or s['note'] or s['n'] != s0['n'] or not s['view']:
+            fails.append(f"{name}: the route's view: {s['kind']} card, Add a point here {add}, rows {s['rows']}, note {s['note']}, {s['n'] - s0['n']} points added")
         close(pg)
         # the planner put away: a tap on the route opens it, at the route's card
         pg.js("polku.planner.setActive(false); true")
@@ -14541,14 +14538,22 @@ def spot_card(chrome):
         if st(pg)['kind'] != 'route':
             fails.append(f"{name}: a 0.2 s tap on the line: {st(pg)['kind'] or 'no'} card, not the route's")
         pg.js('polku.planner.cards.close(); true')
-        # the route's view: no pill, only What's here, the planner's note with Edit
+        # the route's view: Your route as while editing, no note, and Add to my route stays in the view (#745)
         pg.js("polku.planner.setEditing(false); polku.map.jumpTo({ center: [23.815, 61.514], zoom: 14 }); new Promise((r) => setTimeout(r, 800))")
         pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
+        n = st(pg)['n']
         hold(pg, s, 0.65)
         c = st(pg)
-        if c['kind'] != 'spot' or c['pill'] or c['rows'] or not c['note']:
-            fails.append(f"{name}: held in the route's view: {c['kind']} card, pill {bool(c['pill'])}, rows {c['rows']}, the note {c['note']}")
+        if c['kind'] != 'spot' or c['rows'][:1] != ['Add to my route'] or c['note']:
+            fails.append(f"{name}: held in the route's view: {c['kind']} card, rows {c['rows']}, the note {c['note']}")
+        else:
+            press(pg, at(pg, row('Add to my route')), f'{name}: Add to my route in the route’s view', True)
+            r = st(pg)
+            if r['n'] != n + 1 or not r['view']:
+                fails.append(f"{name}: Add to my route in the route's view: {r['n'] - n} points added, {'still' if r['view'] else 'not'} the route's view")
+            pg.js('polku.planner.undo(); true')
+            time.sleep(0.6)
         pg.js('polku.planner.cards.close(); polku.planner.setEditing(true); true')
         # the planner put away: the card in the sheet, as while planning (#570)
         pg.js("polku.planner.setActive(false); new Promise((r) => setTimeout(r, 600))")

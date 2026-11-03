@@ -1017,13 +1017,13 @@ export class Planner {
     if (on && this.points.length && !this.routeInView()) requestAnimationFrame(() => this.fitRoute());
   }
 
-  // Done and Edit (25c): Done ends editing for the route's view, to read, check and take along. The drawing tools go
-  // (More stays), the markers stay put, and a tap on the map shows what's there (the map's own cards) instead of
-  // adding a point. Edit goes back, where Done was. Nothing is lost: the route is kept on this device all along,
-  // and undo outlives both.
+  // Done and Edit (25c), the toolbar's first button on phones and desktops alike (#745): Done ends editing for the
+  // route's view, to read, check and take along. The drawing tools go (More stays), the markers stay put, and a tap on
+  // the map shows what's there (the map's own cards) instead of adding a point; the cards still change the route.
+  // Edit goes back, where Done was. Nothing is lost: the route is kept on this device all along, and undo outlives both.
   setEditing(on) {
     if ((!on && this.points.length < 2) || this.editing === on) return;
-    const had = [this.els.done, this.els.edit, this.els.toolDone, this.els.toolEdit].indexOf(document.activeElement);
+    const had = [this.els.toolDone, this.els.toolEdit].indexOf(document.activeElement);
     this.editing = on;
     this.remember();
     if (!on) { if (this.menu) this.menu.remove(); this.cards.close(); this.stopPicking(); this.modesMenu?.close(); this.closeMore(); this.clearAlts(); clearTimeout(this.altTimer); }
@@ -1032,11 +1032,11 @@ export class Planner {
     this.renderTools();
     this.els.said.textContent = on ? 'Editing: a tap on the map adds a point.' : 'Done editing: a tap on the map shows what’s there.';
     // the keyboard's focus stays where it was: on Edit where Done was, and back
-    if (had >= 0) [this.els.edit, this.els.done, this.els.toolEdit, this.els.toolDone][had].focus();
+    if (had >= 0) [this.els.toolEdit, this.els.toolDone][had].focus();
   }
   // the route's view: the planner open, a route, not editing
   inView() { return this.active && !this.editing && this.points.length > 1; }
-  // Done (the route's numbers on phones, the toolbar on desktops, E): the route's view; with only a first point there's
+  // Done (the toolbar's, E): the route's view; with only a first point there's
   // nothing to view yet, and Done puts the planner away, as ✕ does
   done() { if (this.points.length > 1) this.setEditing(false); else this.close(); }
   // ✕: the planner put away, with a note that offers it back as it was; the route stays on the map
@@ -1047,7 +1047,7 @@ export class Planner {
   // open or put away, and editing or the route's view, for the next visit (#238; main.js opens it again)
   remember() { store.set('plannerOpen', { open: this.active, view: !this.editing }); }
 
-  // What editing and the route's view change around the panel: its title row and Done or Edit, the markers (they
+  // What editing and the route's view change around the panel: its title row, the markers (they
   // stay put in the view), the leg's handles, the pointer
   renderState() {
     const view = this.inView();
@@ -1058,15 +1058,12 @@ export class Planner {
     this.renderGhosts();
     this.renderTitle();
   }
-  // The route's view's top row: the route's name, its sports and that it's kept on this device, and ✕; and Edit in
-  // Done's place (the toolbar's on desktops)
+  // The route's view's top row: the route's name, its sports and that it's kept on this device, and ✕
   renderTitle() {
     if (!this.els || !this.els.title) return;
     this.renderTopSum(); // (the names come with the map's tiles)
     const view = this.inView();
     this.els.title.hidden = !view;
-    this.els.done.hidden = view;
-    this.els.edit.hidden = !view;
     if (!view) return;
     this.els.titleName.textContent = this.routeTitle();
     this.els.titleSub.innerHTML = `${escapeHtml(this.sportsLabel())} · ${icon('check', 13)}<span>Kept on this device</span>`;
@@ -4324,14 +4321,11 @@ export class Planner {
     this.els.topSum = h('div', { class: 'top-sum', 'aria-hidden': 'true' }); // (D: the numbers in the top row, renderTopSum())
     this.els.dockBtn = tool('panelBottom', 'Move to the bottom', () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), 'sheet-dock');
     this.els.handle = h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
-    // The header shows the route: its numbers, and on phones Done at their right, at the thumb (25a), Edit in the
-    // route's view (25c), whose name and ✕ are a row above them (renderTitle()). How the next leg is drawn, undo,
-    // redo and More are in the toolbox (buildTools()). Before there's a route, and while a round trip is open,
-    // it holds the start instead (renderStart(), A with 25b).
-    this.els.done = h('button', { type: 'button', class: 'btn done', title: 'Done editing (E): the route stays open to read and take along', onclick: () => this.done() }, 'Done');
-    this.els.edit = h('button', { type: 'button', class: 'btn done edit', title: 'Edit the route (E)', onclick: () => this.setEditing(true), hidden: true }, 'Edit');
+    // The header shows the route: its numbers, and in the route's view (25c) its name and ✕ a row above them
+    // (renderTitle()). Done or Edit, how the next leg is drawn, undo, redo and More are in the toolbox (buildTools(),
+    // #745). Before there's a route, and while a round trip is open, it holds the start instead (renderStart(), A with 25b).
     // (wider screens: ✕ at the header row's end while editing, as the mock-up of step 3 has it; the route's view has its own)
-    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.upMin, this.els.min, this.els.done, this.els.edit, this.closeX());
+    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX());
     this.els.titleName = h('b');
     this.els.titleSub = h('small');
     this.els.title = h('div', { class: 'pl-title', hidden: true }, h('h2', { class: 'pl-ttl' }, this.els.titleName, this.els.titleSub), this.closeX());
@@ -5637,9 +5631,10 @@ export class Planner {
     this.els.more = tb('more', 'More: the whole route’s actions', () => this.toggleMore());
     this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.more.setAttribute('aria-expanded', 'false');
-    this.els.toolDone = h('button', { type: 'button', class: 'btn done tb-desk', 'aria-keyshortcuts': 'E', onclick: () => this.done() }, 'Done');
-    // the route's view (25c): Edit where Done was, at the toolbar's planner end (E of #594), the end that doesn't move
-    this.els.toolEdit = h('button', { type: 'button', class: 'btn done edit tb-desk', 'aria-keyshortcuts': 'E', onclick: () => this.setEditing(true), html: `${icon('pencil', 18)}<span>Edit</span>` });
+    // first on the toolbar, phones and desktops alike (#745): the planner's end (E of #594), the end that doesn't move
+    this.els.toolDone = h('button', { type: 'button', class: 'btn done', 'aria-keyshortcuts': 'E', onclick: () => this.done() }, 'Done');
+    // the route's view (25c): Edit where Done was
+    this.els.toolEdit = h('button', { type: 'button', class: 'btn done edit', 'aria-keyshortcuts': 'E', onclick: () => this.setEditing(true), html: `${icon('pencil', 18)}<span>Edit</span>` });
     const gsep = (group) => { const el = sep(); el.dataset.group = group; return el; };
     box.append(this.els.toolDone, this.els.toolEdit, this.els.modeBtn, this.els.modeSeg, sep(), this.els.sportBtn, this.els.styleBtn, sep('tb-hist'), this.els.undo, this.els.redo,
       gsep('nav'), this.els.reverse, this.els.backToStart, gsep('take'), this.els.share, this.els.gpx, this.els.offline,
@@ -5700,7 +5695,7 @@ export class Planner {
     // In the route's view nothing is drawn (25c): phones keep only More, desktops Edit, Clear route and More (#594)
     // A card in a phone's peek: only undo and redo too, until it closes (25d)
     // The planner folded on a phone: how the next leg is drawn (its icon) beside undo and redo, since a tap on the map
-    // still adds a point (step 3 of #233), and More, with the route's actions
+    // still adds a point (step 3 of #233), and More, with the route's actions; Done or Edit first wherever else it shows (#745)
     const carded = this.cards.place === 'peek' && !this.sideMQ?.matches, loop = this.loop.open || carded, view = this.inView();
     const folded = this.panel.dataset.state === 'folded' && !this.sideMQ?.matches && !loop;
     this.tools.dataset.stage = view ? 'view' : carded ? 'card' : loop ? 'loop' : folded ? 'folded' : String(Math.min(n, 2));

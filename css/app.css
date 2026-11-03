@@ -884,7 +884,7 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .sum-time:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .btn.done { flex: none; min-height: 34px; padding-inline: 14px; }
 /* The route's view (25c): a row above the numbers with the route's name (it wraps, never cut), its sports and
-   "Kept on this device", and ✕; Edit where Done was */
+   "Kept on this device", and ✕ */
 .pl-title { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 2px; }
 .pl-ttl { flex: 1; min-width: 0; display: grid; gap: 1px; margin: 5px 0 0; font: inherit; }
 .pl-ttl b { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
@@ -903,8 +903,6 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet-min { display: none; }
 .sheet-row > .way-x { display: none; }
 @media (min-width: 721px) { .sheet:not(.viewing) .sheet-row > .way-x { display: inline-flex; } }
-/* desktops: Done is at the toolbar's end */
-@media (min-width: 900px) { .sheet-head .done { display: none; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 /* the routing bar, on the sheet's top edge (js/planner.js setBusy()), a child of the sheet so folding doesn't hide it: it waits
@@ -2085,13 +2083,11 @@ body.dropping .drop-hint { display: flex; }
   .tl-note { display: none; }
   .wx-time { width: auto; flex: 0 1 auto; }
   body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */
-  body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers and Done) */
+  body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers) */
   .wx-bar.docked { width: auto; }
   .orbit { width: 62px; height: 62px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
-  /* the header's controls are 44 px to touch: Done, and the time that opens the departure */
-  .sheet-head .btn.done { min-height: 44px; }
   .pl-viewnote .btn { min-height: 44px; }
   /* a note with the planner closed stays left of the map's buttons, so it never covers Layers or Plan (25c) */
   body:not(.planning) .toast { left: 12px; right: 78px; max-width: none; transform: none; }
@@ -2314,7 +2310,8 @@ body.dropping .drop-hint { display: flex; }
 .sportbtn { margin-right: 4px; height: 40px; flex: none; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .sportbtn > .ic:first-child { color: var(--accent); }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
-.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594) */
+.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594; phones too, #745) */
+.pl-tools:not(.desk) .btn.done { min-height: 44px; }
 /* the route's view (25c): Edit, then Clear route kept apart by its line (#594), and More */
 .pl-tools[data-stage="view"] .tb-sep:not([data-group="clear"]) { display: none; }
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo, redo and More */
