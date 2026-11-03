@@ -115,3 +115,50 @@ bytes, stage/build duration, peak RSS and allocated staging blocks. CI separatel
 records runner free disk and browser cold/cache transfers in every country.
 `measure_browser.py --country all` exercises the combined release with Overpass
 forbidden. Phone measurements are Chrome emulation, not real-device evidence.
+
+## Local geometry format
+
+`geometry.compile_geometry()` compiles a reference-complete source subset and
+selected original roots into one z13 PMTiles product. This build-only API is
+separate from the seven country products. Its dataset descriptor is schema 2;
+the enclosing release manifest remains schema 1. Publishing and consumer
+activation are separate steps; a compiler test is not evidence of live coverage.
+The delivery sequence and acceptance criteria are in
+[the implementation plan](../../docs/superpowers/plans/2026-11-04-hosted-area-geometry.md).
+
+A tile is `{schema:2,tile:[13,x,y],elements:[...]}`. Each element retains its
+original type/ID/tags/content SHA256, generic complete bounds (or `null` when
+incomplete), an inspection-purpose flag and local original fragments. Way
+fragments carry original ordered node IDs/coordinates, full original node count,
+original starting position and original content digest. Their nested membership
+path entries are `[parentRelationID, originalIndex, type, ref, role, memberCount]`.
+Primitive roots have an empty path. Neither coordinates nor topology are simplified.
+
+Area metadata has independent source completeness and full outline bounds;
+label members do not enlarge those bounds. A tile-local polygon has a stable
+outer-node-cycle key, inside intervals on its east edge and `[fragmentIndex,
+segmentOffset, inner]` pointers to actual original segments. `containsArea()`
+uses ray parity from those intervals. An interior tile can have a containing
+area and no boundary fragments. Intervals are never drawn as shoreline.
+
+Native osmium assembly is checked against original outline edges. Missing
+references cannot prove full bounds or a complete negative result. Invalid rings
+with fully known bounds remain local incomplete candidates. Assembly may remove
+doubled spurs/shared borders only when the removed graph has no cycle; losing a
+closed cycle is rejected. Original fragments still preserve those source nodes.
+Unknown area bounds set `areas_complete:false`; unknown generic geometry sets
+`nearby_complete:false`. These flags are distinct from a successful empty tile.
+
+The compiler uses disk-backed primitive/tile staging and node locations. It
+rejects original identity conflicts, existing outputs and tiles above the
+8 MiB compressed/32 MiB decoded browser limits, and exposes the archive only on
+success. Its receipt records output sizes, time, peak process RSS and allocated
+staging blocks. The caller supplies actual coverage polygons and verified source
+provenance; bounding rectangles limit indexing and never certify coverage.
+
+Run `python -m unittest tools.osm_data.test_geometry -v` and
+`node --test tools/osm_data/client.test.mjs`. The checked JSON fixture is decoded
+from real compiler output and compared byte-for-content by the Python test;
+Node and the registered `osmdata` browser check exercise the same local predicate.
+The retained Inari/Saimaa sample measurements are in
+[the geometry measurement](../../docs/measurements/osm-local-geometry-2026-11-04.json).

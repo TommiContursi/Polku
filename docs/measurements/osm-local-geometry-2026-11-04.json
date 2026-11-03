@@ -1,0 +1,303 @@
+{
+  "dataset": {
+    "kind": "geometry",
+    "schema": 2,
+    "zoom": 13,
+    "areas_complete": true,
+    "nearby_complete": true
+  },
+  "staging_allocated_bytes": 94576640,
+  "peak_rss_bytes": 1030848512,
+  "seconds": 39.64114525000332,
+  "archive_bytes": 13845855,
+  "tiles": 2390,
+  "max_tile_gzip_bytes": 53414,
+  "max_tile_raw_bytes": 213199,
+  "samples": {
+    "Inari interior": {
+      "ll": [
+        27.7,
+        68.95
+      ],
+      "tile": [
+        13,
+        4726,
+        1901
+      ],
+      "gzip_bytes": 568,
+      "raw_bytes": 986,
+      "objects": 1,
+      "inside": [
+        402543
+      ],
+      "original_fragments": 0
+    },
+    "Saimaa probe outside/island": {
+      "ll": [
+        28.4,
+        61.12
+      ],
+      "tile": [
+        13,
+        4742,
+        2327
+      ],
+      "gzip_bytes": 0,
+      "raw_bytes": 0,
+      "objects": 0,
+      "inside": [],
+      "original_fragments": 0
+    }
+  },
+  "date": "2026-11-04",
+  "scope": "Two reference-complete retained-source lake relations only; not a country build or browser transfer measurement.",
+  "source": {
+    "url": "https://download.geofabrik.de/europe/finland-latest.osm.pbf",
+    "timestamp": "2026-10-31T21:23:06Z",
+    "bytes": 774468258,
+    "sha256": "6e4ba0730c8fa4f71c35aa91a5cb3b9ce7f163daa84d886cd94f9b522dd3f80f"
+  },
+  "subset": {
+    "bytes": 5123013,
+    "sha256": "a42a734d75fc23d406989d0db02a42cf31351c157f94d4b01b3c8eb210ce9b55",
+    "method": "osmium.IdTracker, roots relation/402543 and relation/7379046, complete_backward_references(relation_depth=10), original tags retained",
+    "seconds": 6.792098166944925
+  },
+  "environment": {
+    "os": "Darwin",
+    "architecture": "arm64",
+    "python": "3.14.3"
+  },
+  "archive_sha256": "12bc2262573b7dcc9209bc0907ac1f4ac305a8acd23d30b500545144fdec54e8",
+  "independent_original_ring_checks": [
+    {
+      "id": 402543,
+      "point": [
+        27.7,
+        68.95
+      ],
+      "inside": true,
+      "tile": [
+        13,
+        4726,
+        1901
+      ],
+      "gzip_bytes": 568,
+      "raw_bytes": 986,
+      "fragments": 0
+    },
+    {
+      "id": 402543,
+      "point": [
+        27.014765500000003,
+        68.90993964999998
+      ],
+      "inside": false,
+      "tile": [
+        13,
+        4710,
+        1904
+      ],
+      "gzip_bytes": 3627,
+      "raw_bytes": 12422,
+      "fragments": 6
+    },
+    {
+      "id": 402543,
+      "point": [
+        27.0148055,
+        68.90997965
+      ],
+      "inside": true,
+      "tile": [
+        13,
+        4710,
+        1904
+      ],
+      "gzip_bytes": 3627,
+      "raw_bytes": 12422,
+      "fragments": 6
+    },
+    {
+      "id": 402543,
+      "point": [
+        27.8554933,
+        68.7630676
+      ],
+      "inside": true,
+      "tile": [
+        13,
+        4729,
+        1913
+      ],
+      "gzip_bytes": 9893,
+      "raw_bytes": 36772,
+      "fragments": 6
+    },
+    {
+      "id": 402543,
+      "point": [
+        27.855533299999998,
+        68.76310760000001
+      ],
+      "inside": false,
+      "tile": [
+        13,
+        4729,
+        1913
+      ],
+      "gzip_bytes": 9893,
+      "raw_bytes": 36772,
+      "fragments": 6
+    },
+    {
+      "id": 402543,
+      "point": [
+        28.43420115,
+        69.16866049999999
+      ],
+      "inside": false,
+      "tile": [
+        13,
+        4743,
+        1887
+      ],
+      "gzip_bytes": 9656,
+      "raw_bytes": 35856,
+      "fragments": 25
+    },
+    {
+      "id": 402543,
+      "point": [
+        28.43424115,
+        69.1687005
+      ],
+      "inside": true,
+      "tile": [
+        13,
+        4743,
+        1887
+      ],
+      "gzip_bytes": 9656,
+      "raw_bytes": 35856,
+      "fragments": 25
+    },
+    {
+      "id": 7379046,
+      "point": [
+        28.4,
+        61.12
+      ],
+      "inside": false,
+      "tile": [
+        13,
+        4742,
+        2327
+      ],
+      "gzip_bytes": 0,
+      "raw_bytes": 0,
+      "fragments": 0
+    },
+    {
+      "id": 7379046,
+      "point": [
+        27.23951435,
+        61.507549399999995
+      ],
+      "inside": false,
+      "tile": [
+        13,
+        4715,
+        2308
+      ],
+      "gzip_bytes": 2452,
+      "raw_bytes": 8105,
+      "fragments": 1
+    },
+    {
+      "id": 7379046,
+      "point": [
+        27.23955435,
+        61.50758939999999
+      ],
+      "inside": true,
+      "tile": [
+        13,
+        4715,
+        2308
+      ],
+      "gzip_bytes": 2452,
+      "raw_bytes": 8105,
+      "fragments": 1
+    },
+    {
+      "id": 7379046,
+      "point": [
+        28.3640878,
+        61.3703935
+      ],
+      "inside": false,
+      "tile": [
+        13,
+        4741,
+        2315
+      ],
+      "gzip_bytes": 5634,
+      "raw_bytes": 20070,
+      "fragments": 5
+    },
+    {
+      "id": 7379046,
+      "point": [
+        28.3641278,
+        61.3704335
+      ],
+      "inside": true,
+      "tile": [
+        13,
+        4741,
+        2315
+      ],
+      "gzip_bytes": 5634,
+      "raw_bytes": 20070,
+      "fragments": 5
+    },
+    {
+      "id": 7379046,
+      "point": [
+        29.83569345,
+        62.47917065
+      ],
+      "inside": true,
+      "tile": [
+        13,
+        4774,
+        2261
+      ],
+      "gzip_bytes": 2291,
+      "raw_bytes": 7493,
+      "fragments": 3
+    },
+    {
+      "id": 7379046,
+      "point": [
+        29.83573345,
+        62.47921065
+      ],
+      "inside": false,
+      "tile": [
+        13,
+        4774,
+        2261
+      ],
+      "gzip_bytes": 2291,
+      "raw_bytes": 7493,
+      "fragments": 3
+    }
+  ],
+  "limits": [
+    "Payload bytes exclude HTTP ranges/header/directory and cold manifest overhead; actual browser transfers are measured during reader/consumer integration.",
+    "No Europe download, complete four-country build, hosting-limit validation, data publication or physical-phone check has run for this format.",
+    "Saimaa point [28.4,61.12] is outside the lake/on an island, correctly empty; water/shore checks use the other recorded locations."
+  ]
+}
