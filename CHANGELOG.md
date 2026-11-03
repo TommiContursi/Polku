@@ -7,7 +7,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### Screen readers hear the profile and the tabs ([#386](https://github.com/TommiContursi/Polku/issues/386))
 
 - The elevation profile has a name for screen readers that says the route's distance, climbing and descent, and it changes with the route. Where terrain is missing, the name says so.
-- The **Check** and **Go** tabs say their count and time in words, such as "Go: arrive 11:04", instead of running them into the tab's name.
+- The **Go** tab says its time in words, such as "Go: arrive 11:04", instead of running it into the tab's name, as **Check** already says its count.
 - The planner's and All layers' headings now go one level at a time, so moving by heading finds each section in order.
 
 ### Hosted OSM data now covers four countries ([#154](https://github.com/TommiContursi/Polku/issues/154))
