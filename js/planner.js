@@ -5854,7 +5854,7 @@ export class Planner {
     const dock = !folded && (own ? st === 'full' : (st === 'full' && !carded) || docks(sheetH));
     // after Done at full, Edit and More go into the handle's row at its left, as main's ⋯ did, where they fit with the grip
     // in the middle (both sides as wide as them); else a row of their own (200 %)
-    this.dockTools(dock, dock && own && !wide && this.els.top.offsetHeight > 18 && 2 * w + 48 <= this.els.top.clientWidth ? w - 6 : 0);
+    this.dockTools(dock, dock && own && !wide && this.els.top.offsetHeight > 18 && 2 * w + 48 <= this.els.top.clientWidth ? w : 0);
     if (dock && !own) {
       // as many as fit without another row (the sheet's size follows once, below)
       setOpts(box, 0);

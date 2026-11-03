@@ -802,7 +802,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
    every card; after Done at full, Edit and More at its left, both sides as wide as them so the grip stays in the middle
    (planner.js dockTools(), #745) */
 .sheet-top { flex: none; display: grid; grid-template-columns: var(--top-side, 44px) 1fr var(--top-side, 44px); align-items: center; height: 18px; }
-.sheet-top .pl-tools.docked { flex-wrap: nowrap; margin: 0; padding: 0; border: 0; }
+.sheet-top .pl-tools.docked { flex-wrap: nowrap; margin: 0; padding: 0 0 0 6px; border: 0; } /* (off the sheet's rounded corner) */
 .sheet-top-end { display: flex; justify-content: flex-end; }
 .sheet-top-end .tool { display: none; width: 44px; height: 44px; }
 .sheet[data-layout="side"] .sheet-top { display: none; }
