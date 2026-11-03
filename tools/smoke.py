@@ -16490,7 +16490,7 @@ def keyfacts(chrome):
             want = 'Day ' + pg.js("KF.read().line[0]").split(' ')[1]
             if r['tab'] != 'route' or r['lit'] != [want] or not r['seen']:
                 fails.append(f"{name}: a tap on the hardest day: {r}, not {want}")
-            # two sports: a row each, its distance and its own fact; a tap lights the paddle's part, its weather open
+            # two sports: a row each, its distance and its own fact; a tap lights the paddle's part, the weather on its last row
             r = pg.js("""(async () => { const p = polku.planner; p.setStop(1, null); p.setLegSport(2, 'paddle');
               for (let k = 0; k < 60 && !(p.analysis && p.analysis.attr.some((x) => x && x.sport === 'paddle') && p.analysis.wind); k++) await new Promise((r) => setTimeout(r, 200));
               return KF.read(); })()""")
@@ -16501,7 +16501,7 @@ def keyfacts(chrome):
                 press(pg, pg.js("KF.at(1)"), f'{name}: Paddle', touch)
                 pg.js(SETTLED)
                 r = pg.js("""(() => { const p = polku.planner, lit = [...document.querySelectorAll('.wpl .sec2.lit')];
-                  return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: !!lit[0]?.querySelector('.sec2-wx-at') }; })()""")
+                  return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /There at [^·]+ · (-?\\d+° · \\d+ m\\/s|No forecast yet)/.test([...(lit[0]?.querySelectorAll('.wpl-point') || [])].pop()?.textContent || '') }; })()""")
                 if r != {'tab': 'route', 'lit': ['Paddle'], 'wx': True}:
                     fails.append(f"{name}: a tap on Paddle: {r}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
@@ -16824,10 +16824,13 @@ PF_JS = """(async () => {
   // a route of one section: the weather as you leave on Start's row, and none yet on End's (#764)
   const wxRow = (i) => p.els.points.querySelector(`.wpl-point[data-i="${i}"] small`)?.textContent || '';
   if (!wxRow(0).startsWith(`Leave ${p.leaveWords()} · 5° · 8 m/s`) || !/^There at [^·]+ · No forecast yet/.test(wxRow(p.points.length - 1))) errs.push(`the start's and the end's weather: ${wxRow(0)} / ${wxRow(p.points.length - 1)}`);
-  // (on a route of two sections, a stop at via 1: a route of one has its numbers in the numbers row, #764)
-  p.setStop(1, { min: 10 }); clearTimeout(p.retimeTimer);
-  const chip = [...document.querySelectorAll('.wpl .sec2-wx')].pop();
-  if (!chip || !/^No forecast yet$/.test(chip.textContent.trim())) errs.push(`the section's weather past the forecast: ${chip ? chip.textContent : 'none'}`);
+  // a night at via 1: its row says the weather as you get there, its tag the morning's (the point's own sample, timed as
+  // you go on), 9° there and 5° everywhere else, the forecast reaching the end (#764)
+  p.setStop(1, { on: 480 }); clearTimeout(p.retimeTimer);
+  const j = p.sampleAtM(p.lengthTo(1)), t9 = fill(5); t9[j] = 9;
+  set(t9); a.wind.beyond = -1; p.renderAnalysis();
+  const night = p.els.points.querySelector('.wpl-point[data-i="1"]')?.textContent || '';
+  if (!/There at [^·]+ · 5° · 8 m\\/s/.test(night) || !/go on at \\d\\d:\\d\\d · 9° · 8 m\\/s/.test(night)) errs.push(`a night's weather, as you get there and in the morning: ${night}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
   // paddling: its wind as far as it reaches, and from where it isn't known
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
