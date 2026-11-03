@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### A tap just beside your route opens its card ([#725](https://github.com/TommiContursi/Polku/issues/725))
+
+- While you draw, a tap or click that lands just beside your route opens the route's card, as one on the line does, instead of adding a point at the route's end and turning it back on itself. It reaches about 24 px from the line by touch and 16 px with a mouse; farther away, a tap still adds a point.
+- With a mouse, the route lights up and its readout shows as far out as a click takes it. The line itself is still where you drag to reshape it.
+
 ### Screen readers hear the profile and the tabs ([#386](https://github.com/TommiContursi/Polku/issues/386))
 
 - The elevation profile has a name for screen readers that says the route's distance, climbing and descent, and it changes with the route. Where terrain is missing, the name says so.
