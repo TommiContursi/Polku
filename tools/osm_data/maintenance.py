@@ -34,16 +34,46 @@ def write_record(ftp, path, record):
     ftp.replace(temporary, path)
 
 
-def record_publication(ftp, manifest, raw, previous, now=None):
+def prepare_publication(ftp, manifest, raw, previous, now=None):
     old = p.validate(json.loads(previous), pointed=True)['release'] if previous else None
     if old == manifest['release']:
         return  # Rechecking the live release must not erase its rollback predecessor.
     if 'maintenance' not in children(ftp):
         ftp.mkd('maintenance')
     p.require(ftp.kind('maintenance')=='directory', 'Maintenance needs a real directory')
-    write_record(ftp, 'maintenance/r-'+manifest['release']+'.json', {
+    write_record(ftp, 'maintenance/p-'+manifest['release']+'.json', {
         'version':1, 'release':manifest['release'], 'manifest_sha256':hashlib.sha256(raw).hexdigest(),
         'published_at':(now or datetime.now(timezone.utc)).isoformat(), 'previous_release':old})
+
+
+def pending_publication(ftp, manifest, raw, now):
+    name='p-'+manifest['release']+'.json'
+    if 'maintenance' not in children(ftp): return None
+    p.require(ftp.kind('maintenance')=='directory','Maintenance needs a real directory')
+    if name not in children(ftp,'maintenance'): return None
+    p.require(ftp.kind('maintenance/'+name)=='file','Pending intent needs a regular file')
+    record=json.loads(p.retrieve(ftp,'maintenance/'+name))
+    p.require(record.get('version')==1 and record.get('release')==manifest['release']
+              and record.get('manifest_sha256')==hashlib.sha256(raw).hexdigest(),'Pending intent manifest differs')
+    previous=record.get('previous_release')
+    p.require(previous is None or isinstance(previous,str) and p.NAME.fullmatch(previous)
+              and previous!=manifest['release'],'Invalid pending predecessor')
+    p.require(timestamp(record['published_at'])<=now,'Pending publication is in the future')
+    return record
+
+
+def record_publication(ftp, manifest, raw, previous, now=None):
+    now=now or datetime.now(timezone.utc)
+    record=pending_publication(ftp,manifest,raw,now)
+    if record is None:
+        p.require(previous and json.loads(previous)['release']==manifest['release'],
+                  'Missing recoverable publication intent')
+        return
+    p.require(p.validate(json.loads(p.retrieve(ftp,'current.json')),pointed=True)==p.current(manifest),
+              'Live pointer differs before publication receipt')
+    record['published_at']=now.isoformat()
+    write_record(ftp,'maintenance/r-'+manifest['release']+'.json',record)
+    ftp.remove('maintenance/p-'+manifest['release']+'.json')
 
 
 def mark_upload(ftp, stage, manifest, raw, now=None):
@@ -101,6 +131,7 @@ def prune(ftp, apply=False, incoming_bytes=0, now=None, incoming_release=None):
               and ftp.kind('releases/'+live['release']+'/manifest.json')=='file','Live release needs regular files')
     raw=p.retrieve(ftp,'releases/'+live['release']+'/manifest.json')
     p.require(p.current(p.validate(json.loads(raw)))==live,'Live manifest differs before retention')
+    pending=pending_publication(ftp,json.loads(raw),raw,now)
     records={}; manifests={}; keep={}; remove={}
     if 'maintenance' in root:
         p.require(ftp.kind('maintenance')=='directory','Maintenance needs a real directory')
@@ -109,6 +140,7 @@ def prune(ftp, apply=False, incoming_bytes=0, now=None, incoming_release=None):
             release=name[2:-5]
             p.require(p.NAME.fullmatch(release),'Unsafe receipt release')
             if release not in releases: continue
+            if release==live['release'] and pending: continue
             p.require(ftp.kind('maintenance/'+name)=='file','Receipt needs a regular file')
             record=json.loads(p.retrieve(ftp,'maintenance/'+name))
             p.require(record.get('version')==1 and record.get('release')==release,'Invalid publication receipt')
@@ -123,6 +155,9 @@ def prune(ftp, apply=False, incoming_bytes=0, now=None, incoming_release=None):
             m=p.validate(json.loads(body))
             p.require(m['release']==release and hashlib.sha256(body).hexdigest()==record.get('manifest_sha256'),'Receipt manifest differs')
             records[release]=(record,stamp);manifests[release]=(m,body)
+    if pending:
+        records[live['release']]=(pending,timestamp(pending['published_at']))
+        manifests[live['release']]=(json.loads(raw),raw)
     protected={live['release']}
     if incoming_release: protected.add(incoming_release)
     if live['release'] in records:
@@ -165,9 +200,11 @@ def prune(ftp, apply=False, incoming_bytes=0, now=None, incoming_release=None):
     used=usage(ftp)
     after=used-sum(remove.values())
     p.require(after+incoming_bytes+4096<=BUDGET,'OSM storage budget exceeded (80 GiB); retain live data and inspect storage')
-    result={'delete':sorted(remove),'keep':keep,'bytes_before':used,'bytes_after':after,'incoming_bytes':incoming_bytes,'applied':apply}
+    result={'delete':sorted(remove),'keep':keep,'bytes_before':used,'bytes_after':after,'incoming_bytes':incoming_bytes,
+            'applied':apply,'recover_receipt':live['release'] if pending else None}
     if apply:
         p.require(p.retrieve(ftp,'current.json')==before,'Live pointer changed before retention')
+        if pending: record_publication(ftp,json.loads(raw),raw,None,now=now)
         for base in result['delete']:
             p.require(p.retrieve(ftp,'current.json')==before,'Live pointer changed during retention')
             # Keep ownership metadata until payload deletion finishes, so interruption is recoverable.
@@ -191,6 +228,8 @@ def test_retention(ftp):
         for name,body in content.items(): ftp.storbinary('STOR '+base+'/'+name,io.BytesIO(body))
         ftp.storbinary('STOR '+base+'/manifest.json',io.BytesIO(raw))
         previous=json.dumps(p.current(dict(m,release='previous'))).encode() if release=='live' else None
+        prepare_publication(ftp,m,raw,previous,now=now-timedelta(days=days))
+        ftp.storbinary('STOR current.json',io.BytesIO(json.dumps(p.current(m),sort_keys=True).encode()))
         record_publication(ftp,m,raw,previous,now=now-timedelta(days=days))
         if release=='live':
             pointer=json.dumps(p.current(m),sort_keys=True).encode()

@@ -121,6 +121,7 @@ class MaintenanceTests(unittest.TestCase):
 
     def test_publication_record_is_updated_on_rollback(self):
         m=self.release('old',80,current=True)
+        maintenance.prepare_publication(self.ftp,m,encoded(m),encoded(pointer(manifest('new'))),now=NOW)
         maintenance.record_publication(self.ftp,m,encoded(m),encoded(pointer(manifest('new'))),now=NOW)
         record=json.loads(self.host.files[ROOT+'/maintenance/r-old.json'])
         self.assertEqual(record['previous_release'],'new')

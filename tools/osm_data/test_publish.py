@@ -311,7 +311,7 @@ class PublishTests(unittest.TestCase):
         self.stage({'ways.pmtiles': ARCHIVE, 'LICENSE.txt': LICENSE, 'manifest.json': encoded(self.new)})
         publish.publish(self.release_dir, resume=True)
         self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), pointer(self.new))
-        self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name
+        self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name or '/maintenance/p-new-release.json.' in name
                             for name, _, _ in self.host.uploads))
 
     def test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix(self):
@@ -347,7 +347,7 @@ class PublishTests(unittest.TestCase):
     def test_resume_existing_immutable_release_verifies_without_payload_writes(self):
         self.host.add_release(self.new)
         publish.publish(self.release_dir, resume=True)
-        self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name
+        self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name or '/maintenance/p-new-release.json.' in name
                             for name, _, _ in self.host.uploads))
 
     def test_resume_refuses_missing_ambiguous_or_unsafe_staging(self):
@@ -507,6 +507,30 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(plan['delete'], [])
         record = json.loads(self.host.files[ROOT + '/maintenance/r-previous-release.json'])
         self.assertEqual(record['previous_release'], 'new-release')
+
+        # An interrupted second round trip must retain the true, pre-switch predecessor too.
+        self.host.dirs.add(ROOT + '/maintenance')
+        self.host.files[ROOT + '/maintenance/r-previous-release.json'] = encoded({
+            'version': 1, 'release': 'previous-release', 'previous_release': 'already-pruned',
+            'published_at': (datetime.now(timezone.utc)-timedelta(days=50)).isoformat(),
+            'manifest_sha256': hashlib.sha256(encoded(self.old)).hexdigest()})
+        self.host.add_release(self.new, current=True)
+        saved = self.release_dir / 'rollback-interrupted.json'
+        saved.write_bytes(self.previous)
+        with patch.object(publish.maintenance, 'record_publication', side_effect=OSError('interrupted after promotion')):
+            with self.assertRaisesRegex(RuntimeError, 'interrupted'):
+                publish.rollback(saved)
+        before = dict(self.host.files)
+        with publish.connection(publish.settings()) as ftp:
+            plan = publish.maintenance.prune(ftp)
+        self.assertEqual(plan['recover_receipt'], 'previous-release')
+        self.assertEqual(self.host.files, before)
+        with publish.connection(publish.settings()) as ftp:
+            self.assertEqual(publish.maintenance.prune(ftp, apply=True)['delete'], [])
+        receipt = json.loads(self.host.files[ROOT + '/maintenance/r-previous-release.json'])
+        self.assertEqual(receipt['previous_release'], 'new-release')
+        publish.rollback(saved)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/maintenance/r-previous-release.json'])['previous_release'], 'new-release')
 
     def test_rollback_still_requires_publication_approval(self):
         publish.publish(self.release_dir)

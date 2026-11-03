@@ -301,6 +301,7 @@ def promote(ftp, url, manifest, previous, directory, samples, release_raw):
     if previous is not None:
         (directory / f'rollback-{uuid.uuid4().hex}.json').write_bytes(previous)
     raw = json.dumps(current(manifest), sort_keys=True, separators=(',', ':')).encode()
+    maintenance.prepare_publication(ftp, manifest, release_raw, previous)
     replace_pointer(ftp, raw)
     try:
         require(get(url + '/current.json') == raw, 'Promoted pointer differs')

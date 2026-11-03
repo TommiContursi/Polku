@@ -256,6 +256,10 @@ after seven days, and owned unrecorded final directories after 35 days.
 Pre-upgrade unmarked releases and unknown files are never deleted. This does
 not clean other website content. Publication receipts live in `maintenance/`;
 archive/manifest bytes remain immutable. A resume protects its active target.
+Before switching the pointer, a read-back-verified pending receipt records its
+true predecessor. Healthy promotion finalizes it. A same-current retry or
+applied retention repairs a matching interrupted receipt; preview reports the
+repair without writing. Stale receipt history cannot replace that predecessor.
 
 The complete deletion plan must validate before any removal. Unsafe paths,
 symlinks, unexpected files, changed pointers or corrupt ownership metadata
