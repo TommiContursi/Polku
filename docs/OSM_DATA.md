@@ -263,6 +263,11 @@ The builder also emits `trails.pmtiles` (z13), `winter.pmtiles` (z12), `hazards.
 
 Consumers prefer these optional products through the same reader and fall back while the live manifest lacks them. This session has not published them. The migration plan records separate PR/release gates for full-tag/area inspection and four-country coverage. Whole hosted operations stop after eight seconds; fallback uses one bounded public-provider round. Existing lighting semantics and the manual publisher/rollback/monitor remain.
 
+Failed manifest reads cool down for 120 seconds during normal/background use.
+An explicit path or trail/winter/water/lighting retry resets only that failed
+entry and shares one new manifest attempt, bypassing a network-down pause while
+honoring provider rate limits. Healthy pinned releases and cached tiles remain.
+
 ## Full-tag inspection and area follow-up
 
 `inspection.pmtiles` (z14) includes all highways, existing point/place tag classes and supported detail objects, retaining original tags and way geometry. Complete referenced relation bounds supply centres; original member identities and roles remain. Incomplete generic relations retain exact tags but set dataset `nearby_complete:false`, so nearby queries fall back rather than claiming completeness. A relation centre alone cannot prove its members are within a 40 m search; an ambiguous closer relation uses the public query. Exact selected ways can already reuse the published ways product.

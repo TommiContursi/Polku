@@ -1,6 +1,6 @@
 // Real PMTiles decoding and IndexedDB, with only the transport answered from a tiny synthetic archive.
 export async function checkStaticOSM() {
-  const { StaticOSM } = await import('/js/osm-data.js');
+  const { StaticOSM, forgetHostedFailures } = await import('/js/osm-data.js');
   const W = await import('/js/ways.js');
   const { OSM_DATA_MANIFEST } = await import('/js/config.js');
   const { idb } = await import('/js/idb.js');
@@ -21,12 +21,13 @@ export async function checkStaticOSM() {
       if (Object.values(pick.stops).some((s) => s.unloaded)) fails.push('static northern selection stops at the tile loading limit');
     }
   }
-  let offline = false;
+  let offline = false, limitedManifest = null;
   window.fetch = async (input, init) => {
     const at = String(input);
     if (!at.startsWith(root)) return real(input, init);
     calls.push(at);
     if (offline) throw new TypeError('Offline fixture');
+    if (at === limitedManifest) return new Response('', {status:429,headers:{'Retry-After':'1'}});
     if (at.endsWith('current.json')) return Response.json(manifest);
     const [start, end] = init.headers.Range.slice(6).split('-').map(Number);
     return new Response(archive.slice(start, end + 1), { status: 206,
@@ -62,6 +63,39 @@ export async function checkStaticOSM() {
     await new StaticOSM(cachedURL).ready();
     if ((await store.get(manifestKey)).at !== cachedAt) fails.push('using a cached manifest resets its freshness clock');
     await store.del(manifestKey);
+    for (const action of ['force', 'reset']) {
+      const retryURL = root + action + '-retry/current.json', retry = new StaticOSM(retryURL);
+      try {
+        offline = true;
+        try { await retry.tile([8192,8192]); fails.push(`${action}: offline manifest looks successful`); } catch { /* expected failure */ }
+        const failedAttempts = calls.filter(at => at === retryURL).length;
+        offline = false;
+        try { await retry.tile([8193,8192]); fails.push(`${action}: background read bypasses cooldown`); } catch { /* ordinary reads remain cooled down */ }
+        if (action === 'reset') forgetHostedFailures(retryURL);
+        const recovered = await Promise.all([retry.tile([8192,8192], {force: action === 'force'}),
+          new StaticOSM(retryURL).tile([8193,8192], {force: action === 'force'})]);
+        if (recovered.some(j => j.elements[0]?.id !== 10) || calls.filter(at => at === retryURL).length !== failedAttempts + 1) fails.push(`${action}: recovered manifest is not shared`);
+        if (action === 'reset') forgetHostedFailures(retryURL);
+        await retry.tile([8192,8192], {force:true});
+        if (calls.filter(at => at === retryURL).length !== failedAttempts + 1) fails.push(`${action}: retry discards a healthy manifest`);
+      } catch (err) { fails.push(`${action}: manual hosted retry failed: ${err}`); }
+      finally { offline = false; }
+    }
+    const limitedURL = root + 'new-limit/current.json', limited = new StaticOSM(limitedURL);
+    const { request, sourceStatus } = await import('/js/net.js');
+    try {
+      offline = true;
+      try { await limited.tile([8192,8192]); } catch { /* initial network failure */ }
+      offline = false; limitedManifest = limitedURL;
+      try { await limited.tile([8192,8192], {force:true}); } catch { /* retry receives 429 */ }
+      if (sourceStatus('osmdata')?.reason !== 'limit') fails.push('manual retry does not record a new provider rate limit');
+      const count = calls.length;
+      try { await limited.tile([8192,8192], {force:true}); fails.push('manual retry bypasses a new provider limit'); } catch { /* provider pause must remain */ }
+      if (calls.length !== count) fails.push('a provider rate-limit pause makes another request');
+    } finally {
+      offline = false; limitedManifest = null;
+      await request('osmdata', limitedURL, {backoff:false});
+    }
     offline = false;
     const { lonLatToTile } = await import('/js/geo.js');
     manifest.coverage = await (await real('/data/finland-coverage.geojson')).json();

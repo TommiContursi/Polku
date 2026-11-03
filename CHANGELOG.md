@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-03
+
+### Retry reaches a recovered OSM source ([#702](https://github.com/TommiContursi/Polku/issues/702))
+
+- **Retry** can ask the hosted OSM source again as soon as it recovers. Ordinary background reads still pause after a failure, and provider rate-limit pauses remain in force.
+
 ## 2026-11-02
 
 ### Hosted OSM coverage can expand by country ([#154](https://github.com/TommiContursi/Polku/issues/154))

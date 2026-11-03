@@ -69,16 +69,18 @@ const emit = (source, s) => { for (const fn of listeners) fn(source, s); };
  * opts.backoff: false to only count, or a response predicate to exempt expected 5xx errors;
  * opts.maxWait: ms this call may wait for a paced slot, else Limited ('pacing').
  * opts.timeoutMs: a separate deadline per dispatched attempt, including its response body.
+ * opts.retryDown: an explicit retry may ignore a down pause; new responses still set limits.
  */
 export async function request(source, url, opts = {}) {
-  const { weight = 1, backoff = true, maxWait = Infinity, timeoutMs = 0, ...init } = opts;
+  const { weight = 1, backoff = true, maxWait = Infinity, timeoutMs = 0, retryDown = false, ...init } = opts;
   if (init.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  if (backoff && sourceStatus(source)) { const s = status.get(source); throw new Limited(source, s.until, s.reason); }
+  const paused = sourceStatus(source);
+  if (backoff && paused && (!retryDown || paused.reason !== 'down')) throw new Limited(source, paused.until, paused.reason);
   // runs the moment the call may go: a back-off that began while it waited stops it, else it's counted
   let s;
   const take = () => {
     s = status.get(source);
-    if (backoff && s && s.until > Date.now()) throw new Limited(source, s.until, s.reason);
+    if (backoff && s && s.until > Date.now() && (!retryDown || s.reason !== 'down')) throw new Limited(source, s.until, s.reason);
     count(source, weight);
   };
   await slot(source, init.signal, maxWait, take);

@@ -16,7 +16,7 @@
 
 import { waterwaysIn } from './nautical.js';
 import { cachedOverpass } from './osm.js';
-import { hostedTile } from './osm-data.js';
+import { hostedTile, forgetHostedFailures } from './osm-data.js';
 import { OSM_DATA_MANIFEST } from './config.js';
 import { pointForecasts, sampleAt } from './weather.js';
 import { lonLatToTile, tileBounds } from './geo.js';
@@ -76,6 +76,7 @@ way["seamark:type"~"^(rock|obstruction)$"](${bb});
 }
 /** Retry: ask again now for what didn't answer, and wait for it as long as the first time. */
 export function forgetWaterFailures() {
+  forgetHostedFailures(OSM_DATA_MANIFEST);
   for (const id of failedHaz) hazTiles.delete(id);
   failedHaz.clear();
   for (const k of Object.keys(slowUntil)) delete slowUntil[k];

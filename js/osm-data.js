@@ -9,6 +9,11 @@ const releases = new Map(); // one release per URL/page, shared by the ways and 
 let finlandCoverage;
 const readers = new Map(), pending = new Map();
 
+/** An explicit retry resets failed source state, keeping healthy releases pinned. */
+export function forgetHostedFailures(url) {
+  if (releases.get(url)?.failedAt) releases.set(url, { retry: true });
+}
+
 function deadline(run) {
   const ctrl = new AbortController();
   let timer;
@@ -97,7 +102,8 @@ export class StaticOSM {
   async ready(xy = null) {
     const old = releases.get(this.url);
     if (old?.failedAt && Date.now() - old.failedAt >= 120e3) releases.delete(this.url);
-    if (!releases.has(this.url)) {
+    if (!releases.get(this.url)?.promise) {
+      const retry = releases.get(this.url)?.retry;
       const entry = {};
       entry.promise = deadline(async (signal) => {
         const key = `static/manifest/${this.url}`;
@@ -106,7 +112,8 @@ export class StaticOSM {
         try {
           if (hit && Date.now() - hit.at < 3600e3) manifest = hit.json;
           else {
-            const res = await request('osmdata', this.url, { signal, timeoutMs: TIMEOUT, cache: 'no-store', credentials: 'omit' });
+            const res = await request('osmdata', this.url, { signal, timeoutMs: TIMEOUT, cache: 'no-store', credentials: 'omit',
+              retryDown: retry === true });
             if (!res.ok) throw new Error(`OSM manifest: HTTP ${res.status}`);
             manifest = await res.json();
             fetched = true;
@@ -145,7 +152,10 @@ export class StaticOSM {
     return {manifest:effective,url:url.href,bytes:d.bytes,nearby_complete:d.nearby_complete};
   }
 
-  tile(xy, options = {}) { return deadline((signal) => this.readTile(xy, options, signal)); }
+  tile(xy, options = {}) {
+    if (options.force) forgetHostedFailures(this.url);
+    return deadline((signal) => this.readTile(xy, options, signal));
+  }
 
   async readTile([x, y], { force = false }, signal) {
     if (![x, y].every((v) => Number.isInteger(v) && v >= 0 && v < 2 ** this.zoom)) throw new Error('Invalid OSM tile');

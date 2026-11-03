@@ -8,7 +8,7 @@ import { tileBounds } from './geo.js';
 import { cachedOverpass } from './osm.js';
 import { tilesIn } from './trails.js';
 import { OSM_DATA_MANIFEST } from './config.js';
-import { hostedTile } from './osm-data.js';
+import { hostedTile, forgetHostedFailures } from './osm-data.js';
 
 export const LIT_Z = 13;
 export const LIT_MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
@@ -49,7 +49,7 @@ let fetching = true, failing = false;
 /** Tests and screenshots: never ask Overpass (seed tiles instead; with `fail`, as if it didn't answer). */
 export function holdLitFetches(on = true, fail = false) { fetching = !on; failing = on && fail; }
 /** Retry: ask again now for the tiles that failed. */
-export function forgetLitFailures() { failed.clear(); }
+export function forgetLitFailures() { failed.clear(); forgetHostedFailures(OSM_DATA_MANIFEST); }
 
 export function litTile(x, y) {
   const key = `${x}/${y}`;
