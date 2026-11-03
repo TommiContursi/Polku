@@ -4,6 +4,7 @@ The direction chosen on 2026-11-03, from a brainstorm on the planner's content a
 
 ## The direction
 
+- **Many features, offered when they're needed** (PRODUCT.md's principle 2, recorded on 2026-11-03). The depth stays; the planner, the cards and the state line offer each thing at the moment it's useful, and leave the rest a step away.
 - **Content first.** The planner shows the route, its points and stretches, the facts that matter now and the findings you can act on. Detail lives in the cards. What the planner shows should follow what you're doing (building, refining, exploring, checking, preparing), and a late answer (Check, the weather, routing) may change words but never moves the controls or rearranges the planner.
 - **Less at once.** The main problem is how much the planner shows at the same time, not only the order. Settings already made (the route style, your speed) aren't repeated prominently in Route: their home is the toolbar and the menus, with a way in from the context when needed. Small grey instructions that explain what should be obvious go; labels get better instead. Safety notes stay.
 - **The profile matters while drawing**, not only afterwards. It should be compact when not needed and easy to open, eventually to the whole screen for exploring. The profile sheet stop removed on 2026-10-30 isn't brought back without evidence.
@@ -43,7 +44,8 @@ Not designed here; listed so they aren't lost. Each starts from the app as it is
 - The phone's toolbar across the planner's width under the map's buttons, as an alternative to moving it.
 - The desktop side dock anchored at the bottom, or full height with fixed controls and a scrolling middle; the bottom dock's content in columns.
 - The profile's own step: compact, half, whole screen; the map following a finger on it.
-- Check's verdict and Go's first screen (Leave now ▾ in the numbers row); the stretches with the cards' facts (#690).
+- Check's verdict and Go's first screen (Leave now ▾ in the numbers row).
+- The cards, in small pieces, keeping what works (decided on 2026-11-03, after the route view cards): the quick preview (the line at the spot) kept and then the card, tried for the route's points and stretches too; the step from preview to card without extra taps or hidden actions; points and stretches editable from their cards while drawing is off; the hold and the right click as shortcuts, never the only way (#690); the cards' hierarchy, sizes, explanatory text and their relationship to the planner; the stretches' cards built from the road cards' components, not apart; #574's selections 5, 7 and 10 re-decided from the app, since some of #574's choices were the mock-up's defaults rather than final decisions.
 - The instructions: which grey lines go, which labels replace them.
 
 ## Ideas to test on the way

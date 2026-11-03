@@ -107,10 +107,11 @@ What Polku does that its neighbours don't do together:
 ## Product Principles
 
 1. **Complex things made intuitive, not removed.** Depth stays; it's arranged so that what's needed now is near and the rest is a step away.
-2. **The moment decides, not the device.** Planning at home, a quick check, on the way, afterwards: each gets the controls and information it needs. Phone and desktop may differ in how, never in what's possible.
-3. **Trust on a real trip.** Estimates say they're estimates, missing data says it's missing, and the limits are said plainly where they apply.
-4. **One app, not a toolbox.** Finding, planning, going, recording and looking back lead into each other.
-5. **Free, private and light.** No account needed, nothing sent that isn't needed, local first, easy on the battery and a bad network.
+2. **Many features, offered when they're needed.** Polku's advantage is how much it knows, and the judgment to offer each thing at the moment it's useful: lit ways when the route runs into the evening, the wind when it's strong, the carries where a lake is crossed, the profile where the climb is. What isn't needed now stays a step away, never gone.
+3. **The moment decides, not the device.** Planning at home, a quick check, on the way, afterwards: each gets the controls and information it needs. Phone and desktop may differ in how, never in what's possible.
+4. **Trust on a real trip.** Estimates say they're estimates, missing data says it's missing, and the limits are said plainly where they apply.
+5. **One app, not a toolbox.** Finding, planning, going, recording and looking back lead into each other.
+6. **Free, private and light.** No account needed, nothing sent that isn't needed, local first, easy on the battery and a bad network.
 
 ## Accessibility & Inclusion
 
