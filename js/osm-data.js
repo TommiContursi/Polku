@@ -1,5 +1,5 @@
 // Immutable OSM releases: only the selected tiles are downloaded, through the app's network door.
-import { request, sourceStatus } from './net.js';
+import { request } from './net.js';
 import { idb } from './idb.js';
 import { tileBounds } from './geo.js';
 
@@ -113,7 +113,7 @@ export class StaticOSM {
           if (hit && Date.now() - hit.at < 3600e3) manifest = hit.json;
           else {
             const res = await request('osmdata', this.url, { signal, timeoutMs: TIMEOUT, cache: 'no-store', credentials: 'omit',
-              backoff: !retry || sourceStatus('osmdata')?.reason === 'limit' });
+              retryDown: retry === true });
             if (!res.ok) throw new Error(`OSM manifest: HTTP ${res.status}`);
             manifest = await res.json();
             fetched = true;

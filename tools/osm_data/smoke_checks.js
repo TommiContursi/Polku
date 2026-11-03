@@ -21,12 +21,13 @@ export async function checkStaticOSM() {
       if (Object.values(pick.stops).some((s) => s.unloaded)) fails.push('static northern selection stops at the tile loading limit');
     }
   }
-  let offline = false;
+  let offline = false, limitedManifest = null;
   window.fetch = async (input, init) => {
     const at = String(input);
     if (!at.startsWith(root)) return real(input, init);
     calls.push(at);
     if (offline) throw new TypeError('Offline fixture');
+    if (at === limitedManifest) return new Response('', {status:429,headers:{'Retry-After':'1'}});
     if (at.endsWith('current.json')) return Response.json(manifest);
     const [start, end] = init.headers.Range.slice(6).split('-').map(Number);
     return new Response(archive.slice(start, end + 1), { status: 206,
@@ -79,6 +80,21 @@ export async function checkStaticOSM() {
         if (calls.filter(at => at === retryURL).length !== failedAttempts + 1) fails.push(`${action}: retry discards a healthy manifest`);
       } catch (err) { fails.push(`${action}: manual hosted retry failed: ${err}`); }
       finally { offline = false; }
+    }
+    const limitedURL = root + 'new-limit/current.json', limited = new StaticOSM(limitedURL);
+    const { request, sourceStatus } = await import('/js/net.js');
+    try {
+      offline = true;
+      try { await limited.tile([8192,8192]); } catch { /* initial network failure */ }
+      offline = false; limitedManifest = limitedURL;
+      try { await limited.tile([8192,8192], {force:true}); } catch { /* retry receives 429 */ }
+      if (sourceStatus('osmdata')?.reason !== 'limit') fails.push('manual retry does not record a new provider rate limit');
+      const count = calls.length;
+      try { await limited.tile([8192,8192], {force:true}); fails.push('manual retry bypasses a new provider limit'); } catch { /* provider pause must remain */ }
+      if (calls.length !== count) fails.push('a provider rate-limit pause makes another request');
+    } finally {
+      offline = false; limitedManifest = null;
+      await request('osmdata', limitedURL, {backoff:false});
     }
     offline = false;
     const { lonLatToTile } = await import('/js/geo.js');

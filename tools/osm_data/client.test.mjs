@@ -208,21 +208,24 @@ for (const action of ['force', 'reset']) test(`explicit ${action} recovers a fai
   } finally { globalThis.fetch = real; }
 });
 
-test('explicit hosted retry still respects a provider rate-limit pause', async () => {
-  const real = globalThis.fetch, url = 'https://data.example/retry-limited/current.json';
-  const { request } = await import('../../js/net.js');
-  let limited = true, manifests = 0;
+for (const initial of [429,503]) test(`explicit hosted retry respects a provider rate limit after ${initial}`, async () => {
+  const real = globalThis.fetch, url = `https://data.example/retry-limited-${initial}/current.json`;
+  const { request, sourceStatus } = await import('../../js/net.js');
+  let status = initial, manifests = 0;
   globalThis.fetch = (at, init) => {
-    if (String(at) === url) { manifests++; if (limited) return Promise.resolve(new Response('', {status:429,headers:{'Retry-After':'1'}})); }
+    if (String(at) === url) { manifests++; if (status !== 200) return Promise.resolve(new Response('', {status,headers:{'Retry-After':'1'}})); }
     return real(at, init);
   };
   try {
     const data = new StaticOSM(url);
-    await assert.rejects(data.tile([8192,8192]), /limiting requests/);
+    await assert.rejects(data.tile([8192,8192]), /limiting requests|isn't responding/);
+    status = 429;
+    if (initial === 503) await assert.rejects(data.tile([8192,8192], {force:true}), /429|limiting requests/);
+    assert.equal(sourceStatus('osmdata')?.reason, 'limit', 'a new provider limit is recorded');
     await assert.rejects(data.tile([8192,8192], {force:true}), /limiting requests/);
-    assert.equal(manifests, 1, 'manual retry cannot bypass a provider limit');
+    assert.equal(manifests, initial === 503 ? 2 : 1, 'manual retry cannot bypass a provider limit');
   } finally {
-    limited = false;
+    status = 200;
     await request('osmdata', url, {backoff:false});
     globalThis.fetch = real;
   }
