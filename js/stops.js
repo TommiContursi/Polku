@@ -8,10 +8,11 @@
 // more than one (#364). Nights depend on the clock, so the planner times them as
 // it goes along the route (planner.timed).
 
-import { LIPAS_TYPES } from './config.js';
-import { dist } from './geo.js';
+import { LIPAS_TYPES, OSM_DATA_MANIFEST } from './config.js';
+import { dist, lonLatToTile } from './geo.js';
 import { lipasNear } from './lipas.js';
 import { cachedOverpass } from './osm.js';
+import { hostedTile } from './osm-data.js';
 
 export const isNight = (s) => !!s && s.on != null;
 export const DEFAULT_BREAK = 30;
@@ -194,9 +195,22 @@ async function osmStays([lon, lat], km) {
   const r = Math.round(km * 1000);
   const q = `[out:json][timeout:20];(nwr(around:${r},${lat},${lon})[tourism~"^(camp_site|wilderness_hut|alpine_hut)$"];nwr(around:${r},${lat},${lon})[amenity=shelter][shelter_type~"^(lean_to|basic_hut)$"];);out center tags 40;`;
   const key = `stays/${lon.toFixed(3)}/${lat.toFixed(3)}/${r}`;
-  const json = await cachedOverpass(key, q, (j) => ({ elements: (j.elements || []).map((e) => ({ lat: e.lat ?? (e.center && e.center.lat), lon: e.lon ?? (e.center && e.center.lon), tags: e.tags || {} })) }), { race: true });
+  const slim = (j) => ({ elements: (j.elements || []).map((e) => ({ ...e, lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon, tags: e.tags || {} })) });
+  const fallback = () => cachedOverpass(key, q, slim, { race: true, oneRound: true, timeoutMs: 15000 });
+  const dy = r / 111000, dx = dy / Math.cos(lat * Math.PI / 180), z = 12;
+  const [x0, y0] = lonLatToTile(lon - dx, lat + dy, z).map(Math.floor);
+  const [x1, y1] = lonLatToTile(lon + dx, lat - dy, z).map(Math.floor);
+  let json;
+  try {
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 64) throw new Error('Overnight search exceeds hosted tile budget');
+    const reads = [];
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) reads.push(hostedTile(OSM_DATA_MANIFEST, 'places', z, [x,y], () => { throw new Error('Hosted places unavailable'); }));
+    const tiles = await Promise.all(reads), unique = new Map();
+    for (const tile of tiles) for (const e of tile.elements) unique.set(`${e.type}/${e.id}`, e);
+    json = { ...slim({ elements: [...unique.values()] }), source: tiles[0]?.source };
+  } catch { json = await fallback(); }
   return (json.elements || []).filter((e) => Number.isFinite(e.lat)).map((e) => {
     const t = e.tags, kind = OSM_STAY[t.tourism] || OSM_STAY[t.shelter_type] || 'Shelter';
-    return { src: 'OpenStreetMap', name: t.name || kind, kind, icon: `lipas-${t.tourism === 'camp_site' ? 'tent' : kind === 'Lean-to' ? 'laavu' : 'hut'}`, at: [+e.lon.toFixed(6), +e.lat.toFixed(6)] };
+    return { src: 'OpenStreetMap', source: json.source, name: t.name || kind, kind, icon: `lipas-${t.tourism === 'camp_site' ? 'tent' : kind === 'Lean-to' ? 'laavu' : 'hut'}`, at: [+e.lon.toFixed(6), +e.lat.toFixed(6)] };
   });
 }

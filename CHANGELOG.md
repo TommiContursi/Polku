@@ -2,12 +2,105 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-03
+
+### The folded planner keeps ⋯
+
+- On a phone, with the planner folded to its line, the toolbar keeps **⋯** with the whole route's actions beside the drawing mode's icon, **Undo** and **Redo**. Before, folding the planner hid it. The icon still opens the drawing modes, the sport and the route style.
+
+### Hosted OSM data now covers four countries ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- Roads and paths, trail details and barriers, mapped winter maintenance/access, OSM water hazards, overnight places, lighting and supported full OpenStreetMap details now use Polku's hosted data in Finland, Sweden, Norway and Estonia. Only the needed local tiles download; uncovered border tiles, unsupported objects and unavailable data keep the bounded public fallback. Lake and park outlines still use the public source.
+
+### Retry reaches a recovered OSM source ([#702](https://github.com/TommiContursi/Polku/issues/702))
+
+- **Retry** can ask the hosted OSM source again as soon as it recovers. Ordinary background reads still pause after a failure, and provider rate-limit pauses remain in force.
+
+## 2026-11-02
+
+### Hosted OSM coverage can expand by country ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- The reader can use separately published Finland, Sweden, Norway and Estonia products with their own source dates and coverage. It downloads local tiles; uncovered border areas and unavailable data keep the existing bounded public fallback. Publication remains separate from this app update.
+
+### Full OpenStreetMap tags can reuse the hosted data ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- **All OpenStreetMap details** reuses original hosted tags for known selected ways and uses the broader object archive where published. Exact node, way and relation IDs stay distinct; unsupported objects and uncertain nearby relation geometry keep a bounded public fallback.
+
+### Detailed OSM checks can use the same hosted source ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- Trail details and barriers, winter ways, water hazards and nearby overnight places use hosted tiles where those datasets are published. Missing coverage or a failed hosted source keeps the public Overpass fallback; if both fail, the existing missing-data and retry messages remain.
+- Hosted requests have an eight-second total deadline, and public fallback uses one bounded provider round. Repeated tile reads share cached data and retain its source date.
+
+### Lighting says what is still loading ([#693](https://github.com/TommiContursi/Polku/issues/693))
+
+- With **Lit ways** on, a message on the map shows how many areas have loaded, says when the wait is taking longer, and offers **Try again** if some failed. It stays visible after Layers closes and disappears when loading finishes.
+- The dark veil still covers only areas whose lighting arrived. An empty successful answer counts as loaded; missing data never looks like a complete view.
+
+### Road, path and lighting data keep another way to load ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- Road and path selections use cached Overpass data and public providers when the hosted snapshot is unavailable or outside its coverage, including outside Finland.
+- Lit ways uses the hosted lighting snapshot when one is published, with the same Overpass fallback elsewhere. Its lighting meanings and appearance stay the same; unknown lighting still gets no line.
+
+### The map gives quicker hints about what you can click ([#689](https://github.com/TommiContursi/Polku/issues/689))
+
+- With editing off, the pointer changes to a pointing hand over roads, paths, routes and other map features you can open. Empty map space keeps the grab cursor, and dragging keeps its drag cursor.
+- Hover hints show the map's own details sooner. Fuller OpenStreetMap and terrain details keep their previous waiting time, so briefly passing over something starts no extra data request.
+
+### Roads and paths load from Finland's map snapshot ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- Picking a road or path in Finland loads its geometry from a hosted OpenStreetMap snapshot instead of waiting for public Overpass servers. The joining rules and card details stay the same; missing data is still shown as unavailable. Routing, map tiles and other detailed map features keep their existing sources.
+
+### A tap on a way shows it at once, and the line at a spot keeps out of the map's buttons ([#675](https://github.com/TommiContursi/Polku/issues/675), [#674](https://github.com/TommiContursi/Polku/issues/674))
+
+- A tap on a way now draws the piece under your finger at once, from the map's own data, while the whole way comes from OpenStreetMap. The card and, on a phone, the line above the spot say the whole way is loading. After 10 seconds they say OpenStreetMap is slow to answer and offer **Try again** while still asking.
+- When OpenStreetMap doesn't answer, the piece the map knows stays drawn, the line above the spot says OpenStreetMap didn't answer, and the card has **Try again**. Try again starts the 10 seconds again.
+- An interactive Overpass query uses one 15-second round across independent providers, rather than waiting another full round on the Kumi address for the same Private Coffee service. Other Overpass consumers keep their existing failover.
+- On a phone, the line above a tapped spot moves left of the map's buttons where there's room beside them, so the buttons stay. Where the line is too wide to fit beside them, a narrow screen or enlarged text, it still goes over them and they step aside while it's open.
+
+
 ## 2026-11-01
 
-### The route style stays on the toolbar when the planner is folded
+### A tap on a way picks the whole way, and its card tells everything known about it ([#574](https://github.com/TommiContursi/Polku/issues/574), [#561](https://github.com/TommiContursi/Polku/issues/561), [#562](https://github.com/TommiContursi/Polku/issues/562))
 
-- On a phone, with the planner folded to its line, the toolbar still shows how the next leg is drawn with its sport and route style, such as **Follow paths**, Run · Balanced, and **⋯** with the whole route's actions, as it does with the planner open. Before, it showed only the drawing mode's icon, **Undo** and **Redo**.
-- At 200 % zoom, where the toolbar is wider than the screen, **Undo**, **Redo** and **⋯** go to a row of their own under the route style.
+- A tap or a hold on a street, a trail or a cycleway now picks what a person would call one thing, not a piece of it: the pieces that continue each other join, by the marked route they belong to, or their name, or while their kind stays the same. The pick is drawn on the map like a route, coloured along its length. A long street stops at 25 km, a loop where it began, and unnamed paths at every junction. A cycleway goes on where it goes straight on: past a side street's crossing, over a short crossing mapped as a footway, and into a piece of itself with or without its name, but never into another name or onto a street.
+- The card says the same for every sport. It has the way's length, up and down, its height profile coloured like the map, and the facts in groups: **The way**, **Surface**, **Difficulty** and **Weather here now**, then the places at the spot. A way's MTB grade and the grade where you tapped are on it in every sport, not only in MTB.
+- A way's line says what each fact is about: **Cycling: shared with walkers**, **MTB: easy path**. On the card, **Cycling** and **One way** have a small sign before each value, shaped like the road sign, and a grade is a badge in its difficulty's colour.
+- MTB grades have names wherever they're shown: S0 easy path, S1 intermediate, S2 difficult, S3 very difficult, S4 extremely difficult, S5 almost impossible and S6 unridable. Uphill grades too: ↑S0 easy uphill, then moderate, challenging, difficult, very difficult and extremely difficult.
+- Point at the profile, or run a finger along it, and it says how far along you are, how high and how steep, with the spot shown on the map. The pointer on the drawn way shows its place on the profile. **Profile** folds with its arrow and stays folded until you open it; folded, the weather along the way isn't asked for.
+- **Colour by**, a list under the profile, offers every fact that changes along the way, where it has the data, grouped like the route's: gradient, uphill difficulty, MTB and hiking difficulty, surface, way type, smoothness, winter care, width, visibility, wind, temperature, rain, cycling, one way, lit and speed limit. The words of each colour and their lengths are under it. Your last choice is kept.
+- While the way loads, the card says what it is waiting for (the whole way from OpenStreetMap, then the heights for its profile), and grey shapes hold the places of its numbers and profile. **Profile** folds by its arrow then too. The way is drawn and measured as far as it has come, its length **long so far**, and it grows as the rest comes.
+- A tap on a lake or a park, where no way is near, picks the lake or the park: its outline is drawn on the map, and its card has its name, what it is, its height, how far round its edge, and what OpenStreetMap says of it. A big lake's outline is drawn only for some kilometres around the spot, and its card then leaves out the length round its edge.
+- What OpenStreetMap doesn't have is one quiet line, **Not mapped: …**, with **Not right?**. A detail that wasn't loaded is never said to be not mapped: while the ways come, or when OpenStreetMap doesn't answer, the card shows what the map's own tile knows and says so. Without the terrain, up and down say so, and an older forecast says it's older.
+- On a phone, a tap on a way while you're not drawing a route shows a line above the spot first: its name, how you get along it, its height and grade there and the weather. A tap on the line opens the card; a tap elsewhere or Escape takes it away. A hold still opens the card at once, with **Your route**.
+- On a desktop, resting the pointer on a way says the same as its card's line and draws the whole way plainly, before a click. To know the whole way, the hover asks OpenStreetMap once for the ways of the map's tile under the pointer (about 1.2 km), as a tap does.
+- The wind colours are for going along the way in the direction the card names (its west end to its east end, as drawn). The weather is the hour the map's weather shows: now, unless you've picked another.
+
+### A place's facts are on its card, and your route's actions come with a hold ([#574](https://github.com/TommiContursi/Polku/issues/574))
+
+- A place's card (a shelter, a campfire site, a toilet, an obstacle, a LIPAS place) now shows its height and all its facts in groups, and a LIPAS route's card its facts and pages. **What's here ›** has gone, as everything it said is on the card.
+- A tap on a point of your route shows when you'd be there, how far along and how high, and the route's profile up to it, with **On the profile**. Hold the point, or right-click it, for its card with everything you can do there: **Pass by**, **Stop** or **Night**, **Sport from here**, **Move**, **Rename**, **Start here**, **End here** and **Remove**. Its row in Route's list opens that card at once.
+- **Add to my route**, **Start here**, **End here**, **Round trip from here** and **Avoid this spot** are on a card you open by holding the map (or a right-click on a desktop), with **All OpenStreetMap details** and **Copy** for the spot's coordinates. A tap opens the card to read. A LIPAS route's card keeps **Follow this route**, **Add to my route** and **Start a route here**; **The trail under it** has gone: tap the trail itself.
+
+### Road works, sea marks and the water open the same card ([#564](https://github.com/TommiContursi/Polku/issues/564), [#565](https://github.com/TommiContursi/Polku/issues/565))
+
+- Road works, traffic incidents, road conditions, busy roads, military areas, sea marks and their lights, faults and signs, navigation lines, fairways, restriction areas and light sectors now open the same card as a trail, not the old popup. The thing is ringed or drawn on the map, the card says where its facts come from, and its last row has **Share**, **Weather here ›** and, for road works, **Fintraffic traffic situation**. Hold the map there for **Your route**.
+- The water's card has its depth from Traficom's chart and **Paddle from here**, also on the open sea and when OpenStreetMap doesn't answer. The depth is for planning, not navigation.
+- Road works' and incidents' dates show their year when it isn't this year, so works that run over a year no longer seem to end before they begin.
+
+### Lit ways says No data now only for what's in view ([#671](https://github.com/TommiContursi/Polku/issues/671))
+
+- A part of the map you've moved away from no longer makes **Lit ways** say **No data now** when its lighting fails to load late. The tile says it only while lighting is missing from the view you're looking at.
+
+### Lit ways on the map ([#638](https://github.com/TommiContursi/Polku/issues/638))
+
+- **Lit ways**, in **Layers → More → After dark**, shows which paths and streets OpenStreetMap says are lit after dark. A lit way has a bright yellow line, and one it says isn't lit has a thin dashed grey line. A way OpenStreetMap says nothing about has no line, so no line doesn't mean dark.
+- **In the dark**, under its switch, dims the map under a navy veil and lets the lit ways glow warm white over it. Ways that aren't lit stay a dashed line. The veil covers only the part of the map whose lighting has come in, so a part that didn't load is never dark as if nothing there were lit.
+- **Opacity**, under the look, sets how strong either look is, and stays as you set it.
+- The lines show from zoom 14 and stay as you zoom out to 13. **Lit ways** can also be one of your tiles in the Layers drawer. Its tile says **Zoom in to see** further out, and **No data now** while OpenStreetMap's server doesn't answer for part of the view.
+
+### The map stays smooth zoomed far out ([#667](https://github.com/TommiContursi/Polku/issues/667))
+
+- With **Trail details** on, as MTB, Hike and Trail run have them, moving the map while zoomed far out no longer holds it up. At the whole world it took up to half a second on each move and hundreds of megabytes of a phone's memory. The details still show from zoom 13, and winter ways from zoom 11.
 
 ### Less waiting while routes and map data load ([#659](https://github.com/TommiContursi/Polku/issues/659))
 
@@ -34,6 +127,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### A warning no longer pushes the route's numbers down ([#594](https://github.com/TommiContursi/Polku/issues/594))
 
 - Beside a desktop's side panel, "1 to read before you go" now appears under the route's numbers, so they stay where they are when it comes. On a phone's peek and in a panel at the bottom, which grow up from their foot, it stays above them. At half and full height it still moves the numbers.
+
 ## 2026-10-31
 
 ### Clearer terrain maps, aerial photos and depths ([#649](https://github.com/TommiContursi/Polku/issues/649), [#650](https://github.com/TommiContursi/Polku/issues/650), [#653](https://github.com/TommiContursi/Polku/issues/653))

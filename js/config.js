@@ -18,6 +18,7 @@ export const RASTER_RATIO = globalThis.devicePixelRatio > 1 ? 2 : 1;
 
 export const BROUTER = 'https://brouter.de/brouter';
 export const PHOTON = 'https://photon.komoot.io/api/';
+export const OSM_DATA_MANIFEST = 'https://ducksoft.fi/polku-osm/current.json';
 export const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
@@ -144,14 +145,15 @@ export const CRAFTS = { paddle: CRAFT };
 
 export const DIFF_COLORS = fromCss(['--diff-s0', '--diff-s1', '--diff-s2', '--diff-s3', '--diff-s4', '--diff-s5', '--diff-s6']);
 
+// the grades' names, as on the user's MTB trail map (MTB-TrailMap-JOSM-Style); a short code alone only where it's clear
 export const MTB_SCALE_TEXT = [
-  'S0 · Easy: firm surface, no obstacles',
-  'S1 · Small obstacles, roots and stones',
-  'S2 · Larger roots and rocks, steps',
-  'S3 · Blocky, tight switchbacks, steep',
-  'S4 · Very steep, technical, rock gardens',
-  'S5 · Extreme: drops, boulders',
-  'S6 · Barely rideable',
+  'S0 · Easy path',
+  'S1 · Intermediate path',
+  'S2 · Difficult path',
+  'S3 · Very difficult path',
+  'S4 · Extremely difficult path',
+  'S5 · Almost impossible path',
+  'S6 · Unridable path',
 ];
 
 // What each MTB grade (mtb:scale) means for a rider, as Heads-up says it: from the MTB-TrailMap JOSM style's guide
@@ -166,12 +168,12 @@ export const MTB_MEANS = [
 ];
 
 export const UPHILL_TEXT = [
-  '↑S0 · Under 10 %, good grip',
-  '↑S1 · Under 15 %, few obstacles',
-  '↑S2 · Under 20 %, loose stones or roots',
-  '↑S3 · Under 25 %, varying surface',
-  '↑S4 · Under 30 %, mostly pushing',
-  '↑S5 · Over 30 %, carry the bike',
+  '↑S0 · Easy uphill, under 10 %',
+  '↑S1 · Moderate uphill, under 15 %',
+  '↑S2 · Challenging uphill, under 20 %',
+  '↑S3 · Difficult uphill, under 25 %',
+  '↑S4 · Very difficult uphill, under 30 %',
+  '↑S5 · Extremely difficult uphill, over 30 %',
 ];
 
 // Grade bands for the profile and route-colour mode. [min grade %, colour, label]
@@ -441,6 +443,7 @@ export const QUICK_TILE = {
   lipasWinter: { group: 'Winter', label: 'Ski tracks & snow­mobile routes', icon: 'flake', winter: true },
   seaIce: { group: 'Winter', label: 'Sea ice', icon: 'flake', winter: true },
   'wx:snow': { group: 'Winter', label: 'Snow depth', icon: 'snow' },
+  lit: { group: 'After dark', label: 'Lit ways', icon: 'moon', opts: true, note: 'OpenStreetMap' },
   lipasRoutes: { group: 'Marked routes', label: 'Official routes', icon: 'flag', note: 'LIPAS', zoom: 8 },
   wmtHiking: { group: 'Marked routes', label: 'Waymarked hiking', icon: 'sign' },
   wmtMtb: { group: 'Marked routes', label: 'Waymarked MTB', icon: 'sign' },

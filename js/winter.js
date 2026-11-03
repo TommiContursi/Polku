@@ -14,6 +14,8 @@
 
 import { lonLatToTile, tileBounds, dist } from './geo.js';
 import { cachedOverpass } from './osm.js';
+import { hostedTile, forgetHostedFailures } from './osm-data.js';
+import { OSM_DATA_MANIFEST } from './config.js';
 import { request } from './net.js';
 import { store } from './ui.js';
 
@@ -156,7 +158,7 @@ let fetching = true, failing = false;
 /** Tests and screenshots: never ask Overpass (seed tiles instead; with `fail`, as if it didn't answer). */
 export function holdWinterFetches(on = true, fail = false) { fetching = !on; failing = on && fail; }
 /** Retry: ask again now for the tiles that failed. */
-export function forgetWinterFailures() { failed.clear(); }
+export function forgetWinterFailures() { failed.clear(); forgetHostedFailures(OSM_DATA_MANIFEST); }
 export const onWinterTile = (fn) => listeners.add(fn);
 
 export function winterTile(x, y) {
@@ -166,7 +168,8 @@ export function winterTile(x, y) {
   if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true })); // (held: whatever it did before, as a test asks)
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
-  entry.promise = cachedOverpass(`winter1/${WINTER_Z}/${key}`, winterQuery(x, y), slimWinter, { timeoutMs: 30000 })
+  entry.promise = hostedTile(OSM_DATA_MANIFEST, 'winter', WINTER_Z, [x, y],
+    () => cachedOverpass(`winter1/${WINTER_Z}/${key}`, winterQuery(x, y), slimWinter, { oneRound: true, timeoutMs: 30000 }), { slim: slimWinter })
     .then((data) => { entry.data = data; for (const fn of listeners) fn(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
   tiles.set(key, entry);
@@ -231,7 +234,8 @@ export class WinterWays {
     for (const k of keys) { const [x, y] = k.split('/').map(Number); winterTile(x, y).catch(() => {}); }
     this.publish();
   }
-  publish() { this.onData(this.on ? winterFeatures(this.on ? this.keys() : []) : { type: 'FeatureCollection', features: [] }); }
+  // (below the zoom where they draw, no tiles are listed: zoomed far out, that's millions, #667)
+  publish() { this.onData(this.on && this.map.getZoom() >= WINTER_MIN_ZOOM ? winterFeatures(this.keys()) : { type: 'FeatureCollection', features: [] }); }
 }
 
 // ---------------------------------------------------------------- sea ice

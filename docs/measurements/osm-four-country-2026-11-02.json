@@ -1,0 +1,399 @@
+{
+  "measurement_scope": "Historical candidate/CI-preview evidence before publication. Current live status and measurements: osm-live-2026-11-03.json",
+  "measured_on": "2026-11-02",
+  "build_run": "https://github.com/TommiContursi/Polku/actions/runs/41509553858",
+  "verification_run": "https://github.com/TommiContursi/Polku/actions/runs/41525059421",
+  "sample_and_consumer_reverification": {
+    "run": "https://github.com/TommiContursi/Polku/actions/runs/41533288819",
+    "code_commit": "c6aea6a755c5665a372c8e53a248a2701104bb2d",
+    "required_locations": 14,
+    "covered_consumer_cases": 32,
+    "overpass_requests": 0,
+    "extra_selected_way_tag_requests": 0,
+    "sample_road_counts": {
+      "finland": {
+        "Helsinki": 4685,
+        "Rural central Finland": 40,
+        "Nuuksio forest": 50,
+        "Turku coast": 1910,
+        "Kilpisjarvi north": 70
+      },
+      "sweden": {
+        "Stockholm": 1695,
+        "Kiruna": 262,
+        "Gothenburg": 1265
+      },
+      "norway": {
+        "Oslo": 2543,
+        "Bergen": 1930,
+        "Tromso": 956
+      },
+      "estonia": {
+        "Tallinn": 2186,
+        "Tartu": 1324,
+        "Narva": 561
+      }
+    },
+    "note": "The original candidate predated the repaired sample gate and recorded empty sample results. This independent recheck supplies every required road sample without changing the immutable archives. The later smoke-registration commit changes no builder/reader/archive payload code."
+  },
+  "candidate": {
+    "release": "20261101T212136Z-four-d5f8341920573573",
+    "artifact": "nordic-osm-release",
+    "artifact_id": 13178219451,
+    "zip_bytes": 11224486691,
+    "zip_sha256": "0e2702628fa77697f7d2e3840542b15aa06540161096feaa572dc5966c2c19f3",
+    "expires_at": "2026-11-16T21:03:12Z",
+    "archive_bytes": 11224332376,
+    "datasets": 28
+  },
+  "overlap": {
+    "duplicates": 142922,
+    "pairs": {
+      "estonia/finland": 20,
+      "estonia/sweden": 1,
+      "finland/norway": 38799,
+      "finland/sweden": 33696,
+      "norway/sweden": 70406
+    },
+    "unique": 20766245
+  },
+  "assembly_seconds": 116.64749523,
+  "limits": {
+    "ci_free_disk_preflight_bytes": 26843545600,
+    "observed_runner_free_before": "85 GB",
+    "public_host_quota_live_verified": false,
+    "full_bulk_publication_time_measured": false,
+    "expanded_data_published_by_this_task": false,
+    "live_manifest_read": "blocked in this environment",
+    "normal_browser_measurement": "Local CI preview; phone is Chrome emulation, 4x CPU, 80 ms, 10 Mbit/s"
+  },
+  "followups": {
+    "area_and_nearby_relation_geometry": "https://github.com/TommiContursi/Polku/issues/696",
+    "joint_border_tile_coverage": "https://github.com/TommiContursi/Polku/issues/699"
+  },
+  "measurement_note": "The original candidate sampled builder RSS/time before final product validation. This report uses complete OS /usr/bin/time -v figures; the builder counter was corrected after this candidate. Archive payloads are unchanged.",
+  "countries": {
+    "finland": {
+      "source": {
+        "bytes": 774598718,
+        "coverage": {
+          "sha256": "c7d7dce360d2ef3d9b78658b76647410ca59219d6eaa85fa111c638655d8c4e8",
+          "url": "https://download.geofabrik.de/europe/finland.poly"
+        },
+        "sha256": "be6fdbc1839f55021e5f5208a52f044ab55b361d5fe608f7cd6eb9a27b0485be",
+        "timestamp": "2026-11-01T21:21:36Z",
+        "url": "https://download.geofabrik.de/europe/finland-261101.osm.pbf"
+      },
+      "archive_bytes": 4214763072,
+      "archive_bytes_by_product": {
+        "hazards": 865505,
+        "inspection": 3382346346,
+        "lit": 47116947,
+        "places": 1019730,
+        "trails": 77014744,
+        "ways": 691031169,
+        "winter": 15368631
+      },
+      "full_wall_seconds": 3151.63,
+      "full_peak_rss_bytes": 4061556736,
+      "allocated_staging_bytes_at_archive_completion": 14264422400,
+      "tile_gzip_bytes_p50_p95_p99_max": {
+        "ways": [2125, 7787, 17360, 318512],
+        "lit": [1704, 9720, 57690, 689300],
+        "hazards": [367, 7703, 18005, 43604],
+        "inspection": [9667, 38103, 58315, 672324],
+        "places": [216, 644, 1121, 2024],
+        "trails": [948, 8003, 27364, 239224],
+        "winter": [2055, 16714, 80818, 727297]
+      },
+      "browser": {
+        "desktop": {
+          "locations": ["Helsinki", "Rural central Finland", "Nuuksio forest", "Turku coast", "Rovaniementie north", "Tykkikallio Jyvaskyla"],
+          "selection_bytes_min_max": [13763, 771756],
+          "selection_ms_min_max": [29.1, 567],
+          "selected_way_full_tags_ms_max": 9.3,
+          "selected_way_full_tag_requests": 0,
+          "overpass_requests": 0,
+          "max_detail_transfer_bytes": {
+            "trails": 238866,
+            "winter": 586508,
+            "hazards": 25593,
+            "places": 16384,
+            "inspection": 682344
+          }
+        },
+        "phone_emulated": {
+          "locations": ["Helsinki", "Rural central Finland", "Nuuksio forest", "Turku coast", "Rovaniementie north", "Tykkikallio Jyvaskyla"],
+          "selection_bytes_min_max": [13763, 771756],
+          "selection_ms_min_max": [240, 2185.6],
+          "selected_way_full_tags_ms_max": 19.1,
+          "selected_way_full_tag_requests": 0,
+          "overpass_requests": 0,
+          "max_detail_transfer_bytes": {
+            "trails": 238866,
+            "winter": 586508,
+            "hazards": 25593,
+            "places": 16384,
+            "inspection": 682344
+          }
+        }
+      }
+    },
+    "sweden": {
+      "source": {
+        "bytes": 948102331,
+        "coverage": {
+          "sha256": "e43c9b349c79aefc5b561dea6f591118cf78a2e890945fa27f5122d03417d3d1",
+          "url": "https://download.geofabrik.de/europe/sweden.poly"
+        },
+        "sha256": "71a06a73a37045d525076f0e6d641a6039509d5a6a47a2b8ffc7e430f05d44f0",
+        "timestamp": "2026-11-01T21:21:36Z",
+        "url": "https://download.geofabrik.de/europe/sweden-261101.osm.pbf"
+      },
+      "archive_bytes": 3588665170,
+      "archive_bytes_by_product": {
+        "hazards": 317561,
+        "inspection": 2657602204,
+        "lit": 30555452,
+        "places": 1199467,
+        "trails": 93975713,
+        "ways": 801412179,
+        "winter": 3602594
+      },
+      "full_wall_seconds": 3630.0,
+      "full_peak_rss_bytes": 4413030400,
+      "allocated_staging_bytes_at_archive_completion": 15122198528,
+      "tile_gzip_bytes_p50_p95_p99_max": {
+        "ways": [2236, 8538, 19592, 248846],
+        "lit": [1558, 13043, 50490, 428661],
+        "hazards": [262, 2213, 5829, 13642],
+        "inspection": [4861, 15552, 25813, 708924],
+        "places": [289, 862, 1463, 4203],
+        "trails": [888, 10086, 30064, 208748],
+        "winter": [1944, 11237, 21122, 56555]
+      },
+      "browser": {
+        "desktop": {
+          "locations": ["Stockholm", "Gothenburg coast", "Kiruna north"],
+          "selection_bytes_min_max": [42424, 160560],
+          "selection_ms_min_max": [77, 101.9],
+          "selected_way_full_tags_ms_max": 2,
+          "selected_way_full_tag_requests": 0,
+          "overpass_requests": 0,
+          "max_detail_transfer_bytes": {
+            "trails": 130975,
+            "winter": 30056,
+            "hazards": 16839,
+            "places": 16653,
+            "inspection": 317526
+          }
+        },
+        "phone_emulated": {
+          "locations": ["Stockholm", "Gothenburg coast", "Kiruna north"],
+          "selection_bytes_min_max": [42424, 160560],
+          "selection_ms_min_max": [309.3, 688.1],
+          "selected_way_full_tags_ms_max": 8.4,
+          "selected_way_full_tag_requests": 0,
+          "overpass_requests": 0,
+          "max_detail_transfer_bytes": {
+            "trails": 130975,
+            "winter": 30056,
+            "hazards": 16839,
+            "places": 16653,
+            "inspection": 317526
+          }
+        }
+      }
+    },
+    "norway": {
+      "source": {
+        "bytes": 1378279146,
+        "coverage": {
+          "sha256": "bf08b7f9f070e62d1b64b8950c05dbefaa77bba7c0637394acecb4a959d493b4",
+          "url": "https://download.geofabrik.de/europe/norway.poly"
+        },
+        "sha256": "7a20ab587df023d583126cd8e807d215f1faac51ae23c508c08a87e6053f9c1b",
+        "timestamp": "2026-11-01T21:21:36Z",
+        "url": "https://download.geofabrik.de/europe/norway-261101.osm.pbf"
+      },
+      "archive_bytes": 3096193855,
+      "archive_bytes_by_product": {
+        "hazards": 1925109,
+        "inspection": 2245685858,
+        "lit": 19420840,
+        "places": 990647,
+        "trails": 131197929,
+        "ways": 671648251,
+        "winter": 25325221
+      },
+      "full_wall_seconds": 5052.0,
+      "full_peak_rss_bytes": 6635323392,
+      "allocated_staging_bytes_at_archive_completion": 18172796928,
+      "tile_gzip_bytes_p50_p95_p99_max": {
+        "ways": [3179, 12611, 26890, 213150],
+        "lit": [1574, 9365, 36355, 320607],
+        "hazards": [410, 3557, 7885, 44901],
+        "inspection": [510, 11637, 22264, 600859],
+        "places": [275, 759, 1271, 2410],
+        "trails": [1845, 12625, 30417, 278057],
+        "winter": [3927, 15965, 30302, 141869]
+      },
+      "browser": {
+        "desktop": {
+          "locations": ["Oslo", "Bergen coast", "Tromso north", "Oslomarka forest"],
+          "selection_bytes_min_max": [22707, 238720],
+          "selection_ms_min_max": [22.5, 197.4],
+          "selected_way_full_tags_ms_max": 4.1,
+          "selected_way_full_tag_requests": 0,
+          "overpass_requests": 0,
+          "max_detail_transfer_bytes": {
+            "trails": 120362,
+            "winter": 141869,
+            "hazards": 16773,
+            "places": 17331,
+            "inspection": 504206
+          }
+        },
+        "phone_emulated": {
+          "locations": ["Oslo", "Bergen coast", "Tromso north", "Oslomarka forest"],
+          "selection_bytes_min_max": [22707, 238720],
+          "selection_ms_min_max": [147.5, 941.2],
+          "selected_way_full_tags_ms_max": 13.4,
+          "selected_way_full_tag_requests": 0,
+          "overpass_requests": 0,
+          "max_detail_transfer_bytes": {
+            "trails": 120362,
+            "winter": 141869,
+            "hazards": 16773,
+            "places": 17331,
+            "inspection": 504206
+          }
+        }
+      }
+    },
+    "estonia": {
+      "source": {
+        "bytes": 124211622,
+        "coverage": {
+          "sha256": "b3b3cd600b60c5321b1fd2090ecd3266f7a9002e5ec3f3ff9281b9759d71d6ca",
+          "url": "https://download.geofabrik.de/europe/estonia.poly"
+        },
+        "sha256": "c41d0a14b0436ad81a13ffe37651ad473211ef66e396f346b457bc2f63f0f888",
+        "timestamp": "2026-11-01T21:21:36Z",
+        "url": "https://download.geofabrik.de/europe/estonia-261101.osm.pbf"
+      },
+      "archive_bytes": 324710279,
+      "archive_bytes_by_product": {
+        "hazards": 33966,
+        "inspection": 234313511,
+        "lit": 5568785,
+        "places": 126839,
+        "trails": 7934410,
+        "ways": 76522341,
+        "winter": 210427
+      },
+      "full_wall_seconds": 384.88,
+      "full_peak_rss_bytes": 502628352,
+      "allocated_staging_bytes_at_archive_completion": 1603764224,
+      "tile_gzip_bytes_p50_p95_p99_max": {
+        "ways": [2003, 7467, 19001, 171112],
+        "lit": [1327, 9594, 65134, 349388],
+        "hazards": [199, 923, 1431, 4032],
+        "inspection": [9011, 14980, 26570, 542476],
+        "places": [325, 785, 1054, 1391],
+        "trails": [578, 5713, 20267, 257135],
+        "winter": [1601, 7779, 16965, 16965]
+      },
+      "browser": {
+        "desktop": {
+          "locations": ["Tallinn", "Tartu", "Lahemaa forest"],
+          "selection_bytes_min_max": [68520, 196458],
+          "selection_ms_min_max": [73.3, 164.9],
+          "selected_way_full_tags_ms_max": 2.7,
+          "selected_way_full_tag_requests": 0,
+          "overpass_requests": 0,
+          "max_detail_transfer_bytes": {
+            "trails": 137614,
+            "winter": 16781,
+            "hazards": 16903,
+            "places": 16384,
+            "inspection": 561442
+          }
+        },
+        "phone_emulated": {
+          "locations": ["Tallinn", "Tartu", "Lahemaa forest"],
+          "selection_bytes_min_max": [68520, 196458],
+          "selection_ms_min_max": [512.4, 1323.5],
+          "selected_way_full_tags_ms_max": 23.6,
+          "selected_way_full_tag_requests": 0,
+          "overpass_requests": 0,
+          "max_detail_transfer_bytes": {
+            "trails": 137614,
+            "winter": 16781,
+            "hazards": 16903,
+            "places": 16384,
+            "inspection": 561442
+          }
+        }
+      }
+    }
+  },
+  "browser_checks": {
+    "covered_cases": 32,
+    "all_repeat_reads_zero_network": true,
+    "all_selected_way_tags_zero_network": true,
+    "all_normal_consumers_zero_overpass": true,
+    "max_observed_range_start": 3298798068,
+    "artifact_download_seconds": 504,
+    "consumer_and_border_check_seconds": 118,
+    "border_results": {
+      "Tornio-Haparanda": {
+        "ways": "hosted",
+        "lit": "coverage-fallback",
+        "trails": "coverage-fallback",
+        "winter": "coverage-fallback",
+        "hazards": "coverage-fallback",
+        "places": "coverage-fallback",
+        "inspection": "hosted"
+      },
+      "Kilpisjarvi": {
+        "ways": "hosted",
+        "lit": "hosted",
+        "trails": "hosted",
+        "winter": "hosted",
+        "hazards": "coverage-fallback",
+        "places": "hosted",
+        "inspection": "hosted"
+      },
+      "Svinesund": {
+        "ways": "hosted",
+        "lit": "coverage-fallback",
+        "trails": "coverage-fallback",
+        "winter": "coverage-fallback",
+        "hazards": "coverage-fallback",
+        "places": "coverage-fallback",
+        "inspection": "hosted"
+      },
+      "Narva": {
+        "ways": "hosted",
+        "lit": "coverage-fallback",
+        "trails": "coverage-fallback",
+        "winter": "coverage-fallback",
+        "hazards": "coverage-fallback",
+        "places": "coverage-fallback",
+        "inspection": "hosted"
+      },
+      "Outside control": {
+        "ways": "coverage-fallback",
+        "lit": "coverage-fallback",
+        "trails": "coverage-fallback",
+        "winter": "coverage-fallback",
+        "hazards": "coverage-fallback",
+        "places": "coverage-fallback",
+        "inspection": "coverage-fallback"
+      }
+    },
+    "border_profiles_match": true
+  },
+  "overlap_note": "Pairs count adjacent duplicate comparisons, not every possible country pair. All duplicate copies were checked."
+}

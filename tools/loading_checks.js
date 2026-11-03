@@ -29,6 +29,55 @@ function clock() {
 const routeJSON = (url) => ({ features: [{ geometry: { coordinates: new URL(url).searchParams.get('lonlats').split('|').map((s) => s.split(',').map(Number)) }, properties: {} }] });
 const leg = (profile = 'mtb', opts = {}) => ({ from: [24, 61], to: [24.01, 61.01], mode: 'auto', profile, opts: { fallback: false, ...opts } });
 
+export async function hoverFeedback() {
+  const H = await import('../js/hover.js');
+  await new Promise((ok) => setTimeout(ok, 650)); // the cold-tooltip window, before the controlled clock
+  const c = clock(), canvas = document.createElement('canvas');
+  document.body.append(canvas);
+  const layers = ['road-main', 'path-ground', 'lipas-route', 'lipas-point', 'route-casing', 'heads-icon'];
+  let hit = 'road-main', planning = false, viewing = false, asked = 0, terrain = 0, outlined = false;
+  const realFetch = window.fetch;
+  window.fetch = async () => { terrain++; return new Response('', { status: 404 }); };
+  const map = {
+    getCanvas: () => canvas, getContainer: () => canvas, isMoving: () => false, on: () => {},
+    getLayersOrder: () => layers, getLayer: (id) => layers.includes(id), unproject: () => ({ toArray: () => [25, 62] }),
+    queryRenderedFeatures: (box, { layers: wanted }) => hit && wanted.includes(hit) ? [{ layer: { id: hit },
+      properties: { class: hit === 'path-ground' ? 'path' : 'residential', name: 'Test way', kind: 'leg' }, geometry: { type: 'LineString', coordinates: [[25, 62], [25.001, 62]] } }] : [],
+  };
+  const hover = H.initHover(map, { enabled: () => true, isPlanning: () => planning, isDrawing: () => planning && !viewing, activity: () => 'hike', headAt: () => null,
+    hoverRoute: () => {}, hoverPick: (coords) => { outlined = !!coords; },
+    wayUnder: () => { asked++; return { title: 'Resolved way', line: 'Full details', coords: [[25, 62], [25.001, 62]] }; } });
+  const tip = document.querySelector('.hover-tip:last-of-type');
+  const move = async () => { canvas.dispatchEvent(new PointerEvent('pointermove', { pointerType: 'mouse', clientX: 10, clientY: 10 })); await new Promise(requestAnimationFrame); };
+  await move(); await c.advance(190);
+  assert(!tip.hidden, 'the first map tooltip still waits longer than 190 ms');
+  assert(asked === 0 && terrain === 0, 'the faster tooltip starts OSM/terrain enrichment early');
+  hit = 'path-ground'; await move(); await c.advance(100);
+  assert(asked === 0 && terrain === 0, 'a brief map-only tooltip warms the OSM/terrain timer early');
+  await c.advance(160);
+  assert(asked === 1 && terrain > 0, 'the original 260 ms OSM/terrain enrichment no longer runs');
+  await move(); await c.advance(70);
+  assert(tip.textContent.includes('Resolved way') && outlined, 'a small move drops the enriched name and outline before refreshing it');
+  for (hit of layers) {
+    await move();
+    assert(canvas.style.cursor === 'pointer', `${hit}: clickable feature has no pointing-hand cursor`);
+  }
+  hit = ''; await move();
+  assert(canvas.style.cursor === '', 'empty map space keeps the pointing-hand cursor');
+  hit = 'path-ground'; await move();
+  canvas.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'mouse', buttons: 1 }));
+  assert(canvas.style.cursor === '', 'dragging keeps the pointing-hand cursor');
+  const count = asked;
+  await c.advance(300);
+  assert(tip.hidden && asked === count, 'moving/pressing before enrichment still asks for OSM');
+  planning = viewing = true; await move();
+  assert(canvas.style.cursor === 'pointer', 'route viewing loses the clickable-feature cursor');
+  viewing = false; canvas.style.cursor = 'crosshair'; await move();
+  assert(canvas.style.cursor === 'crosshair', 'browsing cursor overwrites the editing cursor');
+  hover.hide(); canvas.remove(); tip.remove(); window.fetch = realFetch;
+  return { enrichmentRequests: asked, terrainRequests: terrain };
+}
+
 export async function sharedCancellation() {
   const c = clock(), R = await import('../js/router.js');
   let sent = 0, cancelled = 0;
@@ -299,6 +348,25 @@ export async function overpassBudget() {
   await c.advance(77);
   assert(result.error && sent.join() === '0,0,0,75' && stopped === 4, 'the mirror race ignored its supplied per-request deadline');
   return { sentAtMs: sent, stopped, mirrorBudgetMs: 75 };
+}
+
+export async function overpassOneRound(rotate = false) {
+  const c = clock(), O = await import('../js/osm.js'), { OVERPASS } = await import('../js/config.js');
+  if (rotate) {
+    window.fetch = async (url) => String(url) === OVERPASS[1] ? Response.json({ elements: [] }) : new Response('bad', { status: 400 });
+    await O.overpass('mock', { race: true, oneRound: true });
+  }
+  const sent = [], started = Date.now();
+  let stopped = 0;
+  window.fetch = (url, init) => new Promise((ok, no) => {
+    sent.push(OVERPASS.indexOf(String(url)));
+    init.signal.addEventListener('abort', () => { stopped++; no(abort()); }, { once: true });
+  });
+  const result = track(O.overpass('mock', { race: true, oneRound: true, timeoutMs: 75 }));
+  await c.advance(76);
+  assert(result.error && result.at - started === 75, 'interactive Overpass started a second timeout round');
+  assert(sent.join() === (rotate ? '1,2,0' : '0,1,2') && stopped === 3, 'interactive round duplicated Private Coffee through its Kumi alias');
+  return { sent, stopped, totalBudgetMs: result.at - started };
 }
 
 export async function profileSubscribers() {

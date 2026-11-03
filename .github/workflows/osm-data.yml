@@ -1,0 +1,476 @@
+name: Polku OSM data
+
+on:
+  pull_request:
+    paths:
+      - 'tools/osm_data/**'
+      - 'js/osm-data.js'
+      - '.github/workflows/osm-data.yml'
+  schedule:
+    - cron: '17 3 * * 1'
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Verify access, build, inspect or resume a verified build, publish, monitor, or roll back
+        type: choice
+        options: [verify-access, inspect-retention, test-host, build, verify-candidate, publish-existing, inspect-existing, resume-existing, check, rollback]
+        default: verify-access
+      release:
+        description: Existing release ID for rollback, or successful build run ID for verify-candidate
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('osm-data-pr-{0}', github.event.pull_request.number) || 'osm-data' }}
+  cancel-in-progress: false
+
+jobs:
+  test-sftp:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned data dependencies
+        run: python -m pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
+      - name: Test extraction, reading and publishing without credentials
+        run: |
+          python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
+          node --test tools/osm_data/client.test.mjs
+
+  verify-access:
+    if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'verify-access' || inputs.operation == 'inspect-retention')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Verify credentials and directory without uploading
+        env:
+          OSM_OPERATION: ${{ inputs.operation }}
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py "$OSM_OPERATION"
+
+  test-host:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'test-host'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Check disposable SFTP transfer, overwrite, rename and public HTTP
+        env:
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py test-host
+
+  snapshot:
+    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      stamp: ${{ steps.snapshot.outputs.stamp }}
+    steps:
+      - id: snapshot
+        name: Pick a completed dated export shared by every country
+        run: |
+          for osm_days in 1 2; do
+            osm_stamp=$(date -u -d "$osm_days days ago" +%y%m%d)
+            osm_ready=true
+            for osm_country in finland sweden norway estonia; do
+              curl --head --fail --silent --location --max-time 20 "https://download.geofabrik.de/europe/$osm_country-$osm_stamp.osm.pbf.md5" -o /dev/null || osm_ready=false
+            done
+            if $osm_ready; then
+              echo "stamp=$osm_stamp" >> "$GITHUB_OUTPUT"
+              echo "Shared dated snapshot: $osm_stamp" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo 'No completed common country snapshot within two days' >&2
+          exit 1
+
+  build:
+    needs: snapshot
+    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        country: [finland, sweden, norway, estonia]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14.3'
+      - name: Build dependencies and checks
+        run: |
+          python -m pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
+          python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
+          node --test tools/osm_data/client.test.mjs
+      - name: Download one complete country, checksum and clipping polygon
+        env:
+          COUNTRY: ${{ matrix.country }}
+          SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
+        run: |
+          mkdir -p osm-build
+          df -h .
+          python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "Complete OSM country builds require 25 GiB free disk"'
+          curl --fail --location --retry 3 --connect-timeout 30 --max-time 900 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf
+          curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf.md5" -o osm-build/source.md5
+          curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY.poly" -o osm-build/coverage.poly
+      - name: Transform, validate and measure
+        env:
+          COUNTRY: ${{ matrix.country }}
+          SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
+        run: |
+          /usr/bin/time -v python tools/osm_data/builder.py osm-build/source.osm.pbf osm-build/release --md5 osm-build/source.md5 --country "$COUNTRY" --coverage osm-build/coverage.poly --snapshot "$SNAPSHOT"
+          df -h .
+      - name: Measure complete-country browser transfers with Overpass forbidden
+        env:
+          COUNTRY: ${{ matrix.country }}
+          POLKU_URL: http://127.0.0.1:8765/
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-chrome
+        run: |
+          python tools/osm_data/preview.py --release osm-build/release --port 8765 > osm-build/preview.log 2>&1 &
+          for i in $(seq 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8765/index.html; then break; fi
+            sleep 1
+          done
+          if [ "$COUNTRY" = finland ]; then python tools/smoke.py osmdata; fi
+          python tools/osm_data/measure_browser.py --country "$COUNTRY" > osm-build/browser-measurements.json
+      - name: Build measurements
+        if: always()
+        run: |
+          if test -f osm-build/release/measurements.json; then
+            echo '### Country OSM build' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat osm-build/release/measurements.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Retain small measurements and manifest independently of archives
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-evidence
+          path: |
+            osm-build/browser-measurements.json
+            osm-build/preview.log
+            osm-build/release/measurements.json
+            osm-build/release/manifest.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-release
+          path: osm-build/release/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-source
+          path: |
+            osm-build/source.osm.pbf
+            osm-build/source.md5
+            osm-build/coverage.poly
+          compression-level: 0
+          retention-days: 14
+
+  bundle:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - name: Check measured assembly disk budget
+        run: python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "OSM candidate assembly requires 25 GiB free disk"'
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          pattern: osm-*-release
+          path: osm-build/countries
+      - name: Validate source epoch and all overlapping original object identities
+        run: |
+          python -m tools.osm_data.bundle osm-build/release osm-build/countries/osm-finland-release osm-build/countries/osm-sweden-release osm-build/countries/osm-norway-release osm-build/countries/osm-estonia-release
+          df -h .
+      - name: Verify the combined reader and browser transfers
+        env:
+          POLKU_URL: http://127.0.0.1:8765/
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-chrome
+        run: |
+          python tools/osm_data/preview.py --release osm-build/release --port 8765 > osm-build/preview.log 2>&1 &
+          for i in $(seq 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8765/index.html; then break; fi
+            sleep 1
+          done
+          python tools/smoke.py osmdata
+          python tools/osm_data/measure_browser.py --country all > osm-build/browser-measurements.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-four-country-evidence
+          path: |
+            osm-build/release/manifest.json
+            osm-build/release/measurements.json
+            osm-build/browser-measurements.json
+            osm-build/preview.log
+          retention-days: 14
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: nordic-osm-release
+          path: osm-build/release/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+
+  verify-candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'verify-candidate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Require an explicit candidate run
+        env:
+          CANDIDATE_RUN: ${{ inputs.release }}
+        run: |
+          python -c 'import os; assert os.environ["CANDIDATE_RUN"].isdigit(), "A numeric successful build run ID is required"'
+          python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "OSM candidate verification requires 25 GiB free disk"'
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: nordic-osm-release
+          path: osm-build/release
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.release }}
+      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - name: Verify the immutable candidate with current consumers and border checks
+        env:
+          POLKU_URL: http://127.0.0.1:8765/
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-chrome
+        run: |
+          python - <<'PY' > osm-build/sample-validation.json
+          import json
+          from pathlib import Path
+          from tools.osm_data.builder import COUNTRIES, COUNTRY_SAMPLES, validate_archive
+          from tools.osm_data.publish import local_release
+          root = Path('osm-build/release')
+          _, manifest = local_release(root)
+          results = {}
+          for country in COUNTRIES:
+              records = [d for d in manifest['datasets'].values() if d.get('country') == country and d.get('kind') == 'ways']
+              assert len(records) == 1, f'Missing or duplicate ways archive for {country}'
+              dataset = records[0]
+              samples = COUNTRY_SAMPLES[country]
+              rows = validate_archive(root / dataset['url'], dataset['tiles'], samples=samples)
+              assert rows and set(rows) == set(samples) and all(row['ways'] for row in rows.values()), f'Missing sample roads for {country}'
+              results[country] = rows
+          print(json.dumps(results, indent=2))
+          PY
+          python tools/osm_data/preview.py --release osm-build/release --port 8765 > osm-build/preview.log 2>&1 &
+          for i in $(seq 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8765/index.html; then break; fi
+            sleep 1
+          done
+          python tools/smoke.py osmdata
+          python tools/osm_data/measure_browser.py --country all > osm-build/browser-measurements.json
+          df -h .
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-candidate-verification
+          path: |
+            osm-build/sample-validation.json
+            osm-build/browser-measurements.json
+            osm-build/preview.log
+          retention-days: 14
+
+  publish:
+    needs: bundle
+    if: vars.OSM_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: nordic-osm-release
+          path: osm-build/release
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Verify and publish to the dedicated directory
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py publish osm-build/release
+      - name: Preserve the previous pointer for rollback
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-rollback-${{ github.run_id }}
+          path: osm-build/release/rollback-*.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+  publish-existing:
+    # Explicitly inspect, resume or publish the reviewed complete four-country build.
+    # Does not enable unattended publication or rebuild the archive.
+    if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'publish-existing' || inputs.operation == 'inspect-existing' || inputs.operation == 'resume-existing') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Download the reviewed successful four-country build
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: nordic-osm-release
+          path: osm-build/release
+          github-token: ${{ github.token }}
+          run-id: 41509553858
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Inspect, resume or publish the verified OSM release
+        env:
+          OSM_ALLOW_PUBLISH: ${{ inputs.operation == 'inspect-existing' && 'false' || 'true' }}
+          OSM_OPERATION: ${{ inputs.operation }}
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: |
+          case "$OSM_OPERATION" in
+            inspect-existing) python tools/osm_data/publish.py inspect osm-build/release ;;
+            resume-existing) python tools/osm_data/publish.py publish osm-build/release --resume ;;
+            publish-existing) python tools/osm_data/publish.py publish osm-build/release ;;
+            *) exit 1 ;;
+          esac
+      - name: Preserve previous pointer for rollback
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-rollback-${{ github.run_id }}
+          path: osm-build/release/rollback-*.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+  monitor:
+    if: (github.event.schedule == '17 7 * * *' && vars.OSM_PUBLIC_URL != '') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'check')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Freshness, integrity metadata and browser access
+        env:
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py check "$OSM_PUBLIC_URL/current.json"
+
+  rollback:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'rollback' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Read the immutable release requested for rollback
+        env:
+          RELEASE: ${{ inputs.release }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from tools.osm_data.publish import NAME, current, get, public_url, require, validate
+          release = os.environ['RELEASE']
+          require(NAME.fullmatch(release), 'Invalid release ID')
+          raw = get(public_url(os.environ['OSM_PUBLIC_URL']) + '/releases/' + release + '/manifest.json', immutable=True)
+          manifest = validate(json.loads(raw))
+          require(manifest['release'] == release, 'Release ID differs')
+          Path('rollback.json').write_text(json.dumps(current(manifest)))
+          PY
+      - name: Verify existing release before switching the pointer
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py rollback --manifest rollback.json

@@ -3,13 +3,13 @@
   "shards": [
     ["changelog", "trails", "lipas", "marked", "backtostart", "shortcut", "sports", "colours", "toolbox", "390x844"],
     ["layers", "raster", "header", "routebits", "detour", "winterroute", "previews", "quick", "contrast", "sportmenu", "1440x900"],
-    ["water", "editing", "routemenu", "avoid", "flow", "winter", "sweep", "drawer", "heading", "panels", "column", "tilefail", "controls"],
-    ["radar", "weather", "pacing", "loading", "multi", "terrain", "stops", "access", "otherways", "loops", "fit", "marks", "runner", "1024x768", "360x740"],
+    ["water", "editing", "routemenu", "avoid", "flow", "winter", "sweep", "drawer", "heading", "panels", "column", "tilefail", "controls", "lit"],
+    ["radar", "weather", "pacing", "loading", "hover", "multi", "terrain", "stops", "access", "otherways", "loops", "fit", "marks", "runner", "1024x768", "360x740"],
     ["button3d"],
     ["button3dphone"],
     ["routeview", "pointcard", "heads", "onroute", "warnfix", "sections"],
     ["values", "glass", "appearance", "effects", "start", "nextleg", "routecard"],
     ["leave", "keyfacts", "tabs", "pastforecast", "fold"],
-    ["spotcard", "crosshair", "facts", "sharespot", "sheetstops", "settings"]
+    ["spotcard", "pickcard", "crosshair", "facts", "sharespot", "sheetstops", "settings", "osmdata"]
   ]
 }

@@ -15,7 +15,7 @@ import { keepInView, overColumn } from './inspect.js';
 // ------------------------------------------------------------------ the parts
 
 // Three numbers, each with what it is under it ("10:09", "there at"); a missing one dashed, saying so; a grade with its
-// one word on a line of its own ("S1", "fairly easy", "difficulty")
+// one word on a line of its own ("S1", "intermediate path", "difficulty")
 export function nums(list) {
   return h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map(({ value, word, label, missing, wait }) =>
     h('span', { class: `sum-item${missing ? ' miss' : wait ? ' wait' : ''}`, 'aria-busy': wait ? 'true' : null }, h('b', {}, value), word ? h('em', {}, word) : null, h('small', {}, label))));
@@ -318,8 +318,9 @@ export class CardHost {
       const t = box.querySelector('.way-hint');
       if (t) t.focus({ preventScroll: true });
       if (where === 'peek' && at) this.inSight(at);
-      // a desktop's card with no room between the top bar and the map's foot opens folded to its title (step 3 of #233)
-      if (where !== 'peek' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
+      // a desktop's card with no room between the top bar and the map's foot opens folded to its title (step 3 of #233); not a
+      // pick's (#574): long by design, scrolling inside, and measured here while it still loads
+      if (where !== 'peek' && card.kind !== 'spot' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
     }
   }
 

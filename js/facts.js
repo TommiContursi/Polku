@@ -1,10 +1,11 @@
 // The facts a card shows (25d). Pure: read from the route's analysis and what the planner says of a point, so a
 // missing one says so in its place, in the same words on every card. 1b adds the route's, by sport.
 import { fmtDist, fmtDuration } from './geo.js';
-import { OFFROAD_BIKE, isWater, ACTIVITIES, UPHILL_TEXT } from './config.js';
-import { WINTER_TEXT } from './winter.js';
+import { OFFROAD_BIKE, isWater, ACTIVITIES, UPHILL_TEXT, MTB_SCALE_TEXT } from './config.js';
 import { surfaceClass } from './analysis.js';
+import { VIS_TEXT, visClass } from './trails.js';
 import { forecastKnown } from './weather.js';
+import { fromCss } from './palette.js';
 
 // ------------------------------------------------------------------ the route's facts, by sport (1b)
 // The three numbers a tap on the route shows, your sport's first: when you'd be there, how steep, and what the sport
@@ -12,7 +13,7 @@ import { forecastKnown } from './weather.js';
 export const SPORT_FACTS = { mtb: ['clock', 'grade', 'mtb'], gravel: ['clock', 'grade', 'surface'], road: ['clock', 'grade', 'surface'], hike: ['clock', 'grade', 'sac'], trailrun: ['clock', 'grade', 'sac'], run: ['clock', 'grade', 'surface'], paddle: ['clock', 'wind', 'temp'], swim: ['clock', 'wind', 'temp'] };
 
 // one short word a grade, on its own line under it
-const MTB_WORDS = ['easy', 'fairly easy', 'medium', 'hard', 'very hard', 'extreme', 'extreme'];
+const MTB_WORDS = MTB_SCALE_TEXT.map((t) => t.split(' · ')[1].toLowerCase()); // "easy path", "intermediate path"…
 const SAC = { hiking: ['T1', 'easy'], mountain_hiking: ['T2', 'medium'], demanding_mountain_hiking: ['T3', 'hard'], alpine_hiking: ['T4', 'alpine'], demanding_alpine_hiking: ['T5', 'alpine'], difficult_alpine_hiking: ['T6', 'alpine'] };
 // a way's MTB grade (mtb:scale, or the uphill one), as "S1" and its word; null when it isn't mapped
 export function mtbGrade(tags, key = 'mtb:scale') {
@@ -25,7 +26,7 @@ export function sacGrade(tags) {
   return g ? { value: g[0], word: g[1] } : null;
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-const plain = (v) => String(v).replace(/_/g, ' ');
+const plain = (v) => String(v).replace(/_/g, ' ').replace(/;/g, ', ');
 
 // The route's three numbers at analysis sample i, for `sport`: [{ key, value, word, label, missing }]. `when`: the time
 // you'd be there (seconds), `clock(sec)` the planner's clock.
@@ -204,44 +205,8 @@ export function spotNums({ fromRoute, ele, tags, sport }) {
   ].filter(Boolean);
 }
 
-// A place's facts, as plain lines: three at most, from what the map has (a tile's properties, OpenStreetMap's tags once
-// they're asked for, LIPAS's)
-const PLACE_FACTS = [
-  (t) => (t.fee === 'no' ? 'Free' : t.fee === 'yes' ? 'A fee' : null),
-  (t) => (t.opening_hours ? (t.opening_hours === '24/7' ? 'Open all the time' : `Open ${t.opening_hours}`) : null),
-  (t) => (t.toilets === 'yes' || t.wc === 'true' ? 'A toilet' : null),
-  (t) => (t.fireplace === 'yes' || ['firepit', 'bbq'].includes(t.subclass) ? 'A fireplace' : null),
-  (t) => (t.drinking_water === 'yes' ? 'Drinking water' : null),
-  (t) => (t.wheelchair === 'yes' ? 'Wheelchair access' : t.wheelchair === 'no' ? 'No wheelchair access' : null),
-  (t) => (t.ele ? `${Math.round(t.ele)} m high` : null),
-  (t) => (t.length ? `${t.length} km long` : null),
-  (t) => (t.surface ? cap(plain(t.surface)) : null),
-];
-export const placeFacts = (tags) => PLACE_FACTS.map((f) => f(tags || {})).filter(Boolean).slice(0, 3);
-
-// ------------------------------------------------------------------ What's here, in levels (part 6)
-// What the map draws about a way beyond its tags: its winter (winterAt()), the uphill layer's grade, its access, a bridge
-// or boardwalk, what the trail details found on it. { extra: [{ group, label, value }], closed }: closed says why routes
-// keep off it for your sport ('no walking', 'private or no access'), or null.
-export function wayExtras(p, { winter = null, uphill = null, bike = false }) {
-  const own = bike ? 'bicycle' : 'foot';
-  const access = [p.access === 'no' ? 'private or no access' : '', ...['bicycle', 'foot', 'horse'].filter((k) => p[k]).map((k) => `${k} ${p[k]}`)].filter(Boolean).join(', ');
-  const issues = [p.veg && 'overgrown', p.mud && 'wet or muddy', p.tree && 'fallen trees', p.wayford && 'a ford'].filter(Boolean).join(', ');
-  return {
-    extra: [
-      winter ? { group: 'In winter', label: winter.beside ? 'Beside it' : 'On the map', value: winter.beside ? 'A ski track: keep off it on foot and by bike' : WINTER_TEXT[winter.cls] } : null,
-      uphill ? { group: 'The way', label: 'Uphill', value: `${UPHILL_TEXT[uphill.properties.cls]}, ${uphill.properties.grade} %` } : null,
-      access ? { group: 'The way', label: 'Access', value: cap(access) } : null,
-      p.brunnel ? { group: 'The way', label: 'Structure', value: p.boardwalk ? 'Boardwalk (pitkospuut)' : cap(p.brunnel) } : null,
-      issues ? { group: 'The way', label: 'On the way', value: cap(issues) } : null,
-      p.informal ? { group: 'The way', label: 'Path', value: 'Informal, not an official trail' } : null,
-    ].filter(Boolean),
-    closed: own === 'foot' && p.foot === 'no' ? 'no walking' : p.access === 'no' && !['yes', 'designated', 'permissive'].includes(p[own]) ? 'private or no access' : null,
-  };
-}
-
-// A place's What's here [p-placemore]: at the site, getting there, when it's open, when it was last checked, as far as
-// the map knows. `known`: OpenStreetMap's tags are in (All OpenStreetMap details), so what a place of its kind would have
+// A place's facts on its card (#574; What's here's before): at the site, getting there, when it's open, when it was last
+// checked, as far as the map knows. `known`: OpenStreetMap's tags are in (All OpenStreetMap details), so what a place of its kind would have
 // and doesn't says "not mapped"; before that, only what's there shows. [{ group, label, value, missing }]
 const YES = (v) => (v === 'yes' ? 'Yes' : v === 'no' ? 'No' : v && cap(plain(v)));
 const PLACE_ROWS = [
@@ -265,4 +230,133 @@ export function placeGroups(tags, kind, { known = false } = {}) {
     const v = get(t);
     return v ? [{ group, label, value: v }] : key && wants.has(key) ? [{ group, label, value: 'not mapped', missing: true }] : [];
   });
+}
+
+// ------------------------------------------------------------------ one pick: a way joined from its pieces (#574)
+// What a person would call one thing, as the pieces' tags say it. Each fact that changes along a way is also a scale
+// (`WAY_SCALES`): the class of a piece, its words and its colour, so the card's facts, its Colour by, the profile and the
+// map's line say the same thing.
+export const KIND_NAME = { path: 'Path', footway: 'Footpath', cycleway: 'Cycleway', track: 'Track', steps: 'Steps', street: 'Street', road: 'Road', bridleway: 'Bridleway', pedestrian: 'Pedestrian street' };
+const bikeOn = (t) => ['designated', 'yes'].includes(t.bicycle);
+export function kindOf(t) {
+  const hw = String(t.highway || '').replace(/_link$/, '');
+  if (hw === 'path') return 'path';
+  if (hw === 'footway' || hw === 'pedestrian') return bikeOn(t) ? 'cycleway' : hw === 'pedestrian' ? 'pedestrian' : 'footway';
+  if (['cycleway', 'track', 'steps', 'bridleway'].includes(hw)) return hw;
+  if (['residential', 'living_street', 'unclassified', 'service'].includes(hw)) return 'street';
+  return 'road';
+}
+function bikesOf(t) {
+  const hw = String(t.highway || '').replace(/_link$/, '');
+  if (t.bicycle === 'no' || t.bicycle === 'dismount') return 'no';
+  if (hw === 'cycleway' || (['footway', 'path', 'pedestrian'].includes(hw) && t.bicycle === 'designated')) return t.segregated === 'yes' ? 'separate' : t.segregated === 'no' ? 'shared' : 'cycleway';
+  const sides = [t.cycleway, t['cycleway:both'], t['cycleway:left'], t['cycleway:right']];
+  if (sides.includes('lane') || sides.includes('exclusive')) return 'lane';
+  if (sides.includes('track')) return 'track';
+  if (sides.includes('separate')) return 'beside';
+  if (['path', 'track', 'bridleway'].includes(hw)) return 'trail';
+  if (['footway', 'steps', 'pedestrian'].includes(hw)) return 'walk';
+  return 'traffic';
+}
+const SAC_KEY = { hiking: 'T1', mountain_hiking: 'T2', demanding_mountain_hiking: 'T3', alpine_hiking: 'T4', demanding_alpine_hiking: 'T5', difficult_alpine_hiking: 'T6' };
+const SMOOTH_KEY = { excellent: 'excellent', good: 'good', intermediate: 'intermediate', bad: 'bad', very_bad: 'very_bad', horrible: 'horrible', very_horrible: 'horrible', impassable: 'horrible' };
+const speedOf = (t) => { const n = parseInt(t.maxspeed, 10); return n > 0 ? String(n <= 20 ? 20 : n <= 30 ? 30 : n <= 40 ? 40 : n <= 50 ? 50 : n <= 60 ? 60 : 70) : null; };
+const oneWayOf = (t) => (['yes', '-1'].includes(t.oneway) ? (t['oneway:bicycle'] === 'no' ? 'cars' : 'one') : t.oneway === 'no' ? 'both' : null);
+const winterOf = (t) => (t['piste:type'] === 'nordic' ? 'ski' : /no @ \(winter\)/.test(t['bicycle:conditional'] || '') ? 'nobikes'
+  : t.snowplowing === 'yes' || t.winter_service === 'yes' ? 'ploughed' : t.snowplowing === 'no' || t.winter_service === 'no' ? 'not' : null);
+// the legend's order; `of(tags)` is the class (null: not mapped), items [words, colour]; the smoothness, speed and
+// hiking grades take the difficulty scale's colours
+export const WAY_SCALES = fromCss({
+  hiking: { of: (t) => SAC_KEY[t.sac_scale] || null, items: { T1: ['T1 easy', '--diff-s0'], T2: ['T2 medium', '--diff-s1'], T3: ['T3 hard', '--diff-s2'], T4: ['T4 alpine', '--diff-s3'], T5: ['T5 alpine', '--diff-s4'], T6: ['T6 alpine', '--diff-s5'] } },
+  // (words that follow "Cycling": the card's row and Colour by say it, and the way's line starts "Cycling: …", wayLine())
+  bikes: { of: bikesOf, quiet: ['trail', 'walk', 'traffic'], items: { separate: ['Separated from walkers', '--bikes-separate'], shared: ['Shared with walkers', '--bikes-shared'], cycleway: ['Bike path', '--bikes-cycleway'],
+    lane: ['Bicycle lane', '--bikes-lane'], track: ['Protected bicycle lane', '--bikes-track'], beside: ['Bike path beside the road', '--bikes-beside'], trail: ['On a path or trail', '--bikes-trail'], walk: ['Footway, for walking', '--bikes-walk'],
+    traffic: ['With traffic, no bicycle lane', '--bikes-traffic'], no: ['Not allowed', '--bikes-no'] } },
+  oneway: { of: oneWayOf, quiet: ['both'], items: { one: ['One way, bikes too', '--oneway-one'], cars: ['One way for cars, both ways for bikes', '--oneway-bikes'], both: ['Both ways', '--oneway-both'] } },
+  lit: { of: (t) => (t.lit === 'no' ? 'no' : t.lit ? 'yes' : null), items: { yes: ['Lit', '--lit-yes'], no: ['Not lit', '--lit-no'] } },
+  speed: { of: speedOf, items: { 20: ['20 km/h or less', '--diff-s0'], 30: ['30 km/h', '--diff-s1'], 40: ['40 km/h', '--diff-s2'], 50: ['50 km/h', '--diff-s3'], 60: ['60 km/h', '--diff-s4'], 70: ['70 km/h or more', '--diff-s5'] } },
+  smooth: { of: (t) => SMOOTH_KEY[t.smoothness] || null, items: { excellent: ['Excellent', '--diff-s0'], good: ['Good', '--diff-s1'], intermediate: ['Intermediate', '--diff-s2'], bad: ['Bad', '--diff-s3'], very_bad: ['Very bad', '--diff-s4'], horrible: ['Horrible or worse', '--diff-s5'] } },
+  winter: { of: winterOf, items: { ploughed: ['Ploughed', '--winter-ploughed'], not: ['Not ploughed', '--winter-not'], nobikes: ['No bikes in winter', '--winter-nobikes'], ski: ['Ski track', '--winter-ski'] } },
+});
+export const NOT_MAPPED = '#d6dde3';
+const SMOOTH_TEXT = { excellent: 'Excellent: thin road tyres', good: 'Good: road tyres', intermediate: 'Intermediate: city bikes', bad: 'Bad: sturdy tyres', very_bad: 'Very bad: a mountain bike', horrible: 'Horrible: off-road', very_horrible: 'Very horrible', impassable: 'Impassable' };
+
+// length by value along a chain: [[value, metres]], the most first (null: not mapped)
+export function byLen(chain, fn) {
+  const m = new Map();
+  for (const { w } of chain) { const v = fn(w.tags); m.set(v, (m.get(v) || 0) + w.len); }
+  return [...m].sort((a, b) => b[1] - a[1]);
+}
+// a fact's value: one value, or how much of each; what isn't mapped, said as much. `parts`: [value, its words] each, for a
+// picture before each (js/cards.js)
+function valueOf(list, words = plain) {
+  const known = list.filter(([v]) => v != null);
+  if (!known.length) return null;
+  const total = list.reduce((s, [, m]) => s + m, 0), unknown = total - known.reduce((s, [, m]) => s + m, 0);
+  const parts = known.length === 1 ? [[known[0][0], words(known[0][0])]] : known.map(([v, m]) => [v, `${words(v)} ${fmtDist(m)}`]);
+  parts[0][1] = cap(parts[0][1]);
+  return { value: parts.map(([, t]) => t).join(', '), parts, note: unknown > 20 ? `Not mapped for ${fmtDist(unknown)} of ${fmtDist(total)}` : '' };
+}
+const first = (chain, fn) => (byLen(chain, fn).find(([v]) => v) || [])[0];
+export const wayKind = (chain) => byLen(chain, kindOf)[0][0];
+export const wayTitle = (chain) => (chain.find((x) => x.w.rel) || {}).w?.rel || (chain.find((x) => x.w.tags.name) || {}).w?.tags.name || KIND_NAME[wayKind(chain)] || 'Way';
+
+// the way's line, at the spot and under the card's name: "Cycling: shared with walkers · S0 · fine gravel · 3 m wide · lit"
+export function wayLine(chain) {
+  const bits = [], kind = wayKind(chain), bikes = byLen(chain, bikesOf)[0][0];
+  // (said what it's about: the bare words, first in the line, read as the way's name or kind)
+  if (bikes && !['trail', 'traffic'].includes(bikes) || kind === 'road') bits.push(`Cycling: ${WAY_SCALES.bikes.items[bikes][0].toLowerCase()}`);
+  // (a grade with its topic: a bare "S0" says nothing here)
+  const mtb = first(chain, (t) => (mtbGrade(t) || {}).word || null), sac = !mtb && first(chain, (t) => (sacGrade(t) ? `${sacGrade(t).value} ${sacGrade(t).word}` : null));
+  if (mtb || sac) bits.push(mtb ? `MTB: ${mtb}` : `Hiking: ${sac}`);
+  const surface = first(chain, (t) => t.surface || null), width = first(chain, (t) => t.width || null), lit = first(chain, WAY_SCALES.lit.of);
+  if (surface) bits.push(plain(surface));
+  if (width && ['path', 'track', 'cycleway'].includes(kind)) bits.push(`${width}\u00a0m wide`);
+  if (lit) bits.push(lit === 'yes' ? 'lit' : 'not lit');
+  return bits.length ? cap(bits.join(' · ')) : 'Little is mapped about it';
+}
+
+// What a way of its kind would have, and this one doesn't: the card's quiet "Not mapped" line
+const WANT = { path: [['surface', 'surface'], ['width', 'width'], ['mtb:scale', 'MTB grade'], ['trail_visibility', 'visibility']], track: [['surface', 'surface'], ['width', 'width'], ['tracktype', 'track grade']],
+  cycleway: [['surface', 'surface'], ['width', 'width'], ['lit', 'lit'], ['segregated', 'whether bikes and walkers are separated'], ['smoothness', 'smoothness']], footway: [['surface', 'surface'], ['width', 'width'], ['lit', 'lit']],
+  street: [['surface', 'surface'], ['lit', 'lit'], ['maxspeed', 'speed limit']], road: [['surface', 'surface'], ['lit', 'lit'], ['maxspeed', 'speed limit'], ['cycleway', 'bicycle lane']] };
+export const unmapped = (chain) => (WANT[wayKind(chain)] || [['surface', 'surface']]).filter(([k]) => !chain.some(({ w }) => w.tags[k] != null || (k === 'cycleway' && Object.keys(w.tags).some((x) => x.startsWith('cycleway'))))).map(([, word]) => word);
+
+// ------------------------------------------------------------------ an area (#574: a lake, a park): its name or kind, its own facts
+const AREA_KIND = { lake: 'Lake', pond: 'Pond', reservoir: 'Reservoir', river: 'River', oxbow: 'Oxbow lake', lagoon: 'Lagoon', park: 'Park', nature_reserve: 'Nature reserve', recreation_ground: 'Recreation ground', protected_area: 'Protected area' };
+export const areaKind = (t) => (t.natural === 'water' ? AREA_KIND[t.water] || 'Water' : t.boundary === 'national_park' ? 'National park' : AREA_KIND[t.leisure] || AREA_KIND[t.boundary] || 'Area');
+export const areaTitle = (t) => t.name || areaKind(t);
+/** Its facts as rows, and what an area of its kind would have and this one doesn't. */
+export function areaFacts(t) {
+  const rows = [t.access ? ['Access', cap(plain(t.access))] : null, t.operator ? ['Run by', t.operator] : null, t.opening_hours ? ['Open', t.opening_hours] : null, t.salt === 'yes' ? ['Water', 'Salt'] : null].filter(Boolean);
+  return { rows, missing: (t.natural === 'water' ? [['access', 'access']] : [['access', 'access'], ['operator', 'who runs it']]).filter(([k]) => !t[k]).map(([, word]) => word) };
+}
+
+// The card's facts in groups, by length along the way (a fact that changes says how much of each), the same for every
+// sport: The way, Surface, Difficulty. [label, value, note, parts] rows (`parts` where each value has its picture: valueOf());
+// `a` is the pick's analysis, once it's in.
+export function wayGroups(chain, a = null) {
+  const total = chain.reduce((s, { w }) => s + w.len, 0), v = (fn, words) => valueOf(byLen(chain, fn), words);
+  const row = (label, x) => (x ? [label, x.value, x.note, x.parts] : null);
+  const notOn = (fn, word) => { const m = chain.reduce((s, { w }) => s + (fn(w.tags) ? w.len : 0), 0); return m ? (m > total - 20 ? word : `${word} on ${fmtDist(m)}`) : null; };
+  const apart = chain.some(({ w }) => /separate/.test(w.tags.sidewalk || w.tags['sidewalk:both'] || ''));
+  const no = [notOn((x) => x.bicycle === 'no', 'bikes'), notOn((x) => x.foot === 'no', apart ? 'walking (the pavement is mapped apart)' : 'walking'), notOn((x) => x.horse === 'no', 'horses'),
+    notOn((x) => x.access === 'private' || (x.access === 'no' && !['yes', 'designated'].includes(x.bicycle) && !['yes', 'designated'].includes(x.foot)), 'marked private')].filter(Boolean);
+  const one = chain.some(({ w }) => ['yes', '-1'].includes(w.tags.oneway)) ? v(oneWayOf, (k) => WAY_SCALES.oneway.items[k][0]) : null;
+  const steepest = (() => {
+    if (!a) return 0;
+    let s = 0;
+    for (let i = 0, j = 0; i < a.pts.length; i++) { while (j < a.pts.length - 1 && a.along[j] - a.along[i] < 50) j++; const d = a.along[j] - a.along[i]; if (d >= 30) s = Math.max(s, Math.abs(((a.ele[j] - a.ele[i]) / d) * 100)); }
+    return s;
+  })();
+  const upCls = a ? Math.max(-1, ...a.upCls) : -1, up = upCls >= 0 && UPHILL_TEXT[upCls].split(/ · |, /); // ["↑S0", "Easy uphill", …]
+  const winter = v(winterOf, (k) => ({ ski: 'a ski track: keep off on foot and by bike', nobikes: 'no bikes in winter', ploughed: 'ploughed', not: 'not ploughed' }[k]));
+  return {
+    along: [row('Cycling', v(bikesOf, (k) => WAY_SCALES.bikes.items[k][0].toLowerCase())), one ? ['One way', one.value, '', one.parts] : null, row('Width', v((x) => x.width || null, (x) => `${x}\u00a0m`)), row('Lit', v(WAY_SCALES.lit.of, (k) => (k === 'yes' ? 'yes' : 'no'))),
+      row('Speed limit', v((x) => x.maxspeed || null, (x) => `${x} km/h`)), no.length ? ['Not allowed', cap(no.join(', ')), ''] : null].filter(Boolean),
+    surface: [row('Surface', v((x) => x.surface || null)), row('Smoothness', v((x) => x.smoothness || null, (x) => SMOOTH_TEXT[x] || plain(x))), row('Winter care', winter)].filter(Boolean),
+    diff: [row('MTB', v((x) => (mtbGrade(x) ? `${mtbGrade(x).value} ${mtbGrade(x).word}` : null), String)),
+      up ? ['Uphill', `${up[0]} ${up[1]}`, `Steepest ${Math.round(steepest)} % over 50 m, worked out from the terrain`, [[up[0], `${up[0]} ${up[1]}`]]] : steepest >= 3 ? ['Steepest', `${Math.round(steepest)} % over 50 m`, ''] : null,
+      row('Hiking', v((x) => (sacGrade(x) ? `${sacGrade(x).value} ${sacGrade(x).word}` : null), String)), row('Visibility', v((x) => (x.trail_visibility ? VIS_TEXT[visClass(x)] : null), String))].filter(Boolean),
+  };
 }

@@ -16,3 +16,6 @@ __pycache__/
 # worktrees they make stay out of commits.
 .superpowers/
 .worktrees/
+
+# Generated OSM releases and build intermediates never belong in app history.
+osm-build/

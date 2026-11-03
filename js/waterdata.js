@@ -16,6 +16,8 @@
 
 import { waterwaysIn } from './nautical.js';
 import { cachedOverpass } from './osm.js';
+import { hostedTile, forgetHostedFailures } from './osm-data.js';
+import { OSM_DATA_MANIFEST } from './config.js';
 import { pointForecasts, sampleAt } from './weather.js';
 import { lonLatToTile, tileBounds } from './geo.js';
 
@@ -56,7 +58,7 @@ node["natural"~"^(rock|reef|shoal)$"](${bb});
 way["natural"~"^(reef|shoal)$"](${bb});
 way["seamark:type"~"^(rock|obstruction)$"](${bb});
 );out geom;`;
-  const p = cachedOverpass(`waterhaz/${HZ}/${id}`, q, (json) => {
+  const slim = (json) => {
     const points = [], areas = [];
     for (const el of json.elements || []) {
       const t = el.tags || {};
@@ -65,13 +67,16 @@ way["seamark:type"~"^(rock|obstruction)$"](${bb});
       else if (el.geometry && el.geometry.length > 1) areas.push({ kind, coords: el.geometry.map((g) => [+g.lon.toFixed(6), +g.lat.toFixed(6)]) });
     }
     return { points, areas };
-  }, { race: true });
+  };
+  const p = hostedTile(OSM_DATA_MANIFEST, 'hazards', HZ, [x, y],
+    () => cachedOverpass(`waterhaz/${HZ}/${id}`, q, slim, { race: true, oneRound: true, timeoutMs: 15000 }), { slim });
   p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) hazTiles.delete(id); failedHaz.delete(id); }, 120e3); }); // ask again in a couple of minutes
   hazTiles.set(id, p);
   return p;
 }
 /** Retry: ask again now for what didn't answer, and wait for it as long as the first time. */
 export function forgetWaterFailures() {
+  forgetHostedFailures(OSM_DATA_MANIFEST);
   for (const id of failedHaz) hazTiles.delete(id);
   failedHaz.clear();
   for (const k of Object.keys(slowUntil)) delete slowUntil[k];
@@ -86,7 +91,7 @@ function hazTilesIn([w, s, e, n], max) {
 }
 async function osmHazards(box) {
   const tiles = hazTilesIn(box, 16); // a very long leg: skip rather than ask for half a province
-  if (!tiles) return null;
+  if (!tiles) throw new Error('Water hazard area exceeds the OSM tile budget');
   const all = Promise.all(tiles);
   try {
     const got = await waitFor('osm', all);

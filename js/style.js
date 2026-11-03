@@ -96,6 +96,11 @@ export function buildStyle(s, ctx) {
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
     routePreview: { type: 'geojson', data: ctx.data.routePreview || EMPTY }, // a breakdown category, while hovered or keyboard-previewed
     routeLit: { type: 'geojson', data: ctx.data.routeLit || EMPTY }, // the leg you open or point at in the waypoint list
+    // what a tap picked (#574), drawn like a route: its colours along it, the street's other side, an area's outline, a ring
+    pick: { type: 'geojson', data: ctx.data.pick || EMPTY },
+    pickSide: { type: 'geojson', data: ctx.data.pickSide || EMPTY },
+    pickArea: { type: 'geojson', data: ctx.data.pickArea || EMPTY },
+    pickRing: { type: 'geojson', data: ctx.data.pickRing || EMPTY },
     // Check's items on the route (25d part 3): close ones merged, keeping the most serious one's sign (sev: 3 read before
     // you go, 2 not checked, 1 worth a look); the open one apart, with its obstacle's own icon (#85); the stretches a
     // source didn't cover
@@ -111,6 +116,8 @@ export function buildStyle(s, ctx) {
     trailPoints: { type: 'geojson', data: ctx.data.trailPoints || EMPTY },
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS', promoteId: 'lipasId' }, // the LIPAS id as the feature id: the route under the mouse is lit by its feature state
     winterWays: { type: 'geojson', data: ctx.data.winterWays || EMPTY }, // OSM's winter tags (js/winter.js)
+    litWays: { type: 'geojson', data: ctx.data.litWays || EMPTY }, // OSM's lit and unlit ways (js/lit.js)
+    litCover: { type: 'geojson', data: ctx.data.litCover || EMPTY }, // the lit tiles that came in: In the dark's veil
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
     lipasPick: { type: 'geojson', data: ctx.data.lipasPick || EMPTY }, // a route picked in search, while its card is open
@@ -312,6 +319,28 @@ export function buildStyle(s, ctx) {
     // ski tracks from OSM: the double line in pink (LIPAS's in its own blue-violet)
     add({ id: 'winter-ski', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('ski'), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#f472b6', 'line-width': zi(11, 2.4, 14, 4.4, 18, 7) } });
     add({ id: 'winter-ski-gap', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('ski'), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(11, 0.8, 14, 1.6, 18, 2.6) } });
+  }
+
+  // ---- Lit ways (OSM: js/lit.js) ------------------------------------------
+  // Lines: lit a bright line with an edge that stands out on the map (as the route's: dark on the light maps, white on
+  // the night map and the aerial photos); unlit a thin dashed grey line, so the two don't differ by colour alone; no tag:
+  // none. In the dark (#638's look A): a navy veil over the lit tiles that came in, so where none did the map isn't
+  // dimmed and missing data never looks like no lights, lit ways glowing warm white over it, unlit still dashed. Your
+  // opacity scales either look; no transitions, so nothing fades.
+  if (s.overlays.lit) {
+    const darkMap = aerialBase || s.base === 'night', dark = s.litLook === 'dark';
+    const k = s.overlayOpacity && s.overlayOpacity.lit != null ? s.overlayOpacity.lit : 1;
+    const lit = (v) => ['==', ['get', 'lit'], v];
+    const still = { duration: 0, delay: 0 };
+    if (dark) add({ id: 'lit-veil', type: 'fill', source: 'litCover', minzoom: 13, paint: { 'fill-color': '#0b1a33', 'fill-opacity': k * (s.base === 'night' ? 0.45 : darkMap ? 0.55 : 0.7), 'fill-opacity-transition': still, 'fill-antialias': false } });
+    add({ id: 'lit-unlit', type: 'line', source: 'litWays', minzoom: 13, filter: lit(0), layout: { 'line-join': 'round' }, paint: { 'line-color': dark ? '#cbd5e1' : darkMap ? '#9ca3af' : '#6b7280', 'line-width': zi(13, 1.2, 16, 2.2, 18, 3), 'line-dasharray': ['literal', [2, 1.5]], 'line-opacity': k, 'line-opacity-transition': still } });
+    if (dark) {
+      add({ id: 'lit-glow', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffe6a8', 'line-width': zi(13, 8, 16, 18, 18, 28), 'line-blur': zi(13, 4, 16, 10, 18, 16), 'line-opacity': k * 0.6, 'line-opacity-transition': still } });
+      add({ id: 'lit-core', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#fffaf0', 'line-width': zi(13, 1.2, 16, 2.4, 18, 3.5), 'line-opacity': k, 'line-opacity-transition': still } });
+    } else {
+      add({ id: 'lit-casing', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': darkMap ? '#ffffff' : '#111827', 'line-width': zi(13, 3, 16, 5.5, 18, 8), 'line-opacity': k, 'line-opacity-transition': still } });
+      add({ id: 'lit-line', type: 'line', source: 'litWays', minzoom: 13, filter: lit(1), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#facc15', 'line-width': zi(13, 1.6, 16, 3.2, 18, 5), 'line-opacity': k, 'line-opacity-transition': still } });
+    }
   }
 
   // ---- Uphill difficulty (computed overlay) -----------------------------
@@ -525,6 +554,16 @@ export function buildStyle(s, ctx) {
   add({ id: 'route-unchecked', type: 'line', source: 'headsGaps', layout: { 'line-cap': 'butt' }, paint: { 'line-color': WARN_COLORS.unk, 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [1.2, 1.2] } });
   add({ id: 'route-preview-casing', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': edge, 'line-width': zi(8, 9, 16, 15) } });
   add({ id: 'route-preview', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 5, 16, 9) } });
+  // what a tap picked (#574): a soft dark shadow, a white casing and its colours, so it reads apart from the red route
+  add({ id: 'pick-area-fill', type: 'fill', source: 'pickArea', paint: { 'fill-color': '#111827', 'fill-opacity': 0.06 } });
+  add({ id: 'pick-area-casing', type: 'line', source: 'pickArea', layout: { 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.9 } });
+  add({ id: 'pick-area-line', type: 'line', source: 'pickArea', layout: { 'line-join': 'round' }, paint: { 'line-color': '#111827', 'line-width': 2.5 } });
+  for (const [src, w] of [['pickSide', 0.75], ['pick', 1]]) {
+    add({ id: `${src}-shadow`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#0b1220', 'line-width': zi(10, 9 * w, 16, 20 * w), 'line-blur': zi(10, 3, 16, 6), 'line-opacity': 0.35 } });
+    add({ id: `${src}-casing`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(10, 6 * w, 16, 13 * w) } });
+    add({ id: `${src}-line`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'color'], '#374151'], 'line-width': zi(10, 3.5 * w, 16, 7.5 * w) } });
+  }
+  add({ id: 'pick-ring', type: 'circle', source: 'pickRing', paint: { 'circle-radius': 13, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#111827', 'circle-stroke-width': 3 } });
   // static arrows: hidden while the moving chevrons show the way instead (js/routeflow.js, ctx.flowMoving)
   add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['all', ['!', ['get', 'loading']], ['!=', ['get', 'kind'], 'gap']], layout: { visibility: ctx.flowMoving ? 'none' : 'visible', 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
   add({

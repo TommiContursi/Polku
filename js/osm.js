@@ -25,21 +25,30 @@ async function ask(i, query, signal, timeoutMs) {
     const json = await res.json();
     if (!json || json.remark || !Array.isArray(json.elements)) throw new Error(json?.remark || 'Overpass returned incomplete data');
     preferred = i;
-    return json;
+    return { ...json, source: { provider: 'Overpass', timestamp: json.osm3s?.timestamp_osm_base || null, attribution: '© OpenStreetMap contributors' } };
   } finally {
     clearTimeout(t);
   }
 }
 
-export async function overpass(query, { race = false, timeoutMs = race ? 25000 : 20000 } = {}) {
-  const order = OVERPASS.map((_, k) => (preferred + k) % OVERPASS.length);
-  if (race) {
+export async function overpass(query, { race = false, oneRound = false, timeoutMs = race ? 25000 : 20000 } = {}) {
+  let order = OVERPASS.map((_, k) => (preferred + k) % OVERPASS.length);
+  if (oneRound) {
+    // Kumi advertises the Private Coffee service; do not query it twice in one round.
+    const seen = new Set();
+    order = order.filter((i) => {
+      const service = OVERPASS[i].replace('overpass.kumi.systems', 'overpass.private.coffee');
+      if (seen.has(service)) return false;
+      seen.add(service); return true;
+    });
+  }
+  if (race || oneRound) {
     const stop = new AbortController();
     try {
       try {
-        return await Promise.any(order.slice(0, 3).map((i) => ask(i, query, stop.signal, timeoutMs)));
+        return await Promise.any((oneRound ? order : order.slice(0, 3)).map((i) => ask(i, query, stop.signal, timeoutMs)));
       } catch (err) {
-        for (const i of order.slice(3)) {
+        for (const i of oneRound ? [] : order.slice(3)) {
           try { return await ask(i, query, stop.signal, timeoutMs); } catch (e) { err = e; }
         }
         throw err;
@@ -61,7 +70,8 @@ export async function cachedOverpass(key, query, slim = (json) => json, opts = {
   try { hit = await cache.get(key); } catch { /* storage blocked */ }
   if (hit && Date.now() - hit.at < OSM_TTL) return hit.json;
   try {
-    const small = slim(await overpass(query, opts));
+    const json = await overpass(query, opts);
+    const small = { ...slim(json), source: json.source };
     cache.set(key, { at: Date.now(), json: small }).catch(() => {});
     return small;
   } catch (err) {

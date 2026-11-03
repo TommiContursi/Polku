@@ -12,6 +12,8 @@
 
 import { lonLatToTile, tileBounds, pointSegment, dist } from './geo.js';
 import { cachedOverpass } from './osm.js';
+import { hostedTile, forgetHostedFailures } from './osm-data.js';
+import { OSM_DATA_MANIFEST } from './config.js';
 
 export const TILE_Z = 13;
 export const MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
@@ -68,7 +70,7 @@ let fetching = true, failing = false;
  * with `fail`, as if Overpass didn't answer). */
 export function holdFetches(on = true, fail = false) { fetching = !on; failing = on && fail; }
 /** Retry: ask again now for the tiles that failed, not in a couple of minutes. */
-export function forgetFailures() { failed.clear(); }
+export function forgetFailures() { failed.clear(); forgetHostedFailures(OSM_DATA_MANIFEST); }
 const arrived = (key) => { for (const fn of listeners) fn(key); };
 export const onTile = (fn) => listeners.add(fn);
 
@@ -80,7 +82,8 @@ export function trailTile(x, y) {
   if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true })); // (held: whatever it did before, as a test asks)
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
-  entry.promise = cachedOverpass(`trails2/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { timeoutMs: 30000 })
+  entry.promise = hostedTile(OSM_DATA_MANIFEST, 'trails', TILE_Z, [x, y],
+    () => cachedOverpass(`trails2/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }), { slim: slimTile })
     .then((data) => { entry.data = data; arrived(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
   tiles.set(key, entry);
@@ -235,6 +238,9 @@ export class TrailDetails {
     if (!this.enabled) return;
     const map = this.map;
     const z = map.getZoom();
+    // below zoom 13 the details don't show anyway: the map's own trails are enough there. And no tiles are listed:
+    // the world on a phone at zoom 1 is millions, 0.4 s and 840 MB on every move (#667)
+    if (z < 13) { this.publish([]); return; }
     const b = map.getBounds();
     const want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
     if (z >= MIN_ZOOM && want.length <= MAX_VIEW) {
@@ -242,8 +248,7 @@ export class TrailDetails {
         if (!loadedTile(x, y)) trailTile(x, y).catch((err) => { if (!err.held && this.app.onBusy) this.app.onBusy(); });
       }
     }
-    // below zoom 13 the details don't show anyway: the map's own trails are enough there
-    this.publish(z >= 13 ? want.filter(([x, y]) => loadedTile(x, y)).slice(0, 24) : []);
+    this.publish(want.filter(([x, y]) => loadedTile(x, y)).slice(0, 24));
   }
 
   publish(list) {
