@@ -13978,7 +13978,8 @@ def route_card(chrome):
 
 # A tap just beside the route while drawing (#725): 17 px from the line's middle by touch, 12 px by mouse, opens the
 # route's card and adds nothing; 30 px off adds a point at the end, as before. A level line at z14 (its casing 9.5 px
-# wide), so the old box (12 px by touch, 6 by mouse) misses both by a hair: only the wider guard takes them.
+# wide), so the old box (12 px by touch, 6 by mouse) misses both by a hair: only the wider guard takes them. By touch
+# 22 px off too (some 50 m at z14, past legNear()'s 40 m): its card's Add a point here adds one on the line.
 NL_SPOT = """(async (off) => {
   const p = polku.planner, m = polku.map, c = p.legs[0].result.coords, a = c[0], b = c[c.length - 1], ll = [a[0] + (b[0] - a[0]) * 0.25, a[1]];
   for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
@@ -14003,7 +14004,7 @@ def near_line(chrome):
             if not pg.js(f"({RC_ROUTE})({json.dumps({'pts': [[23.800, 61.514], [23.812, 61.514]]})})", timeout=60000):
                 fails.append(f'{name}: the route wasn’t routed')
             how = 'tap' if touch else 'click'
-            for d, card in ((off, True), (30, False)):
+            for d, card in ((off, True), (30, False)) + (((22, 'pill'),) if touch else ()):
                 pg.js("polku.planner.cards.close(); true")
                 s = pg.js(f"({NL_SPOT})({d})")
                 if s['old'] or s['ghost']:
@@ -14017,7 +14018,17 @@ def near_line(chrome):
                                                               'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
                 time.sleep(0.6)
                 r = pg.js("(() => { const p = polku.planner; return { kind: p.cards.current && p.cards.current.kind, n: p.points.length, end: p.points[p.points.length - 1] }; })()")
-                if card and (r['kind'] != 'route' or r['n'] != s['n'] or r['end'] != s['end']):
+                if card == 'pill' and r['kind'] == 'route':
+                    time.sleep(1)  # (the card's own look for its spot)
+                    b = pg.js("(() => { const r = document.querySelector('.card-pill')?.getBoundingClientRect(); return r && r.width ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : null; })()")
+                    if b:
+                        pg.quick_tap(b['x'], b['y'])
+                        time.sleep(0.6)
+                    a = pg.js("(() => { const p = polku.planner; return { n: p.points.length, end: p.points[p.points.length - 1], off: p.nearLine(p.points[1]).d }; })()")
+                    if not b or a['n'] != s['n'] + 1 or a['end'] != s['end'] or a['off'] > 2:
+                        fails.append(f"{name}: Add a point here on the card from a tap {d} px beside the line: {'no pill' if not b else str(a['n'] - s['n']) + ' points added'}, the end {'moved' if a['end'] != s['end'] else 'kept'}, {round(a['off'])} m off the line")
+                    r = a
+                elif card and (r['kind'] != 'route' or r['n'] != s['n'] or r['end'] != s['end']):
                     fails.append(f"{name}: a {how} {d} px beside the line: {r['kind'] or 'no'} card, {r['n'] - s['n']} points added, the end {'moved' if r['end'] != s['end'] else 'kept'} (#725)")
                 if not card and (r['n'] != s['n'] + 1 or r['kind'] == 'route'):
                     fails.append(f"{name}: a {how} {d} px from the line: {r['n'] - s['n']} points added, {r['kind'] or 'no'} card")
