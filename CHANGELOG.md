@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### Hosted OSM data now covers four countries ([#154](https://github.com/TommiContursi/Polku/issues/154))
+
+- Roads and paths, trail details and barriers, mapped winter maintenance/access, OSM water hazards, overnight places, lighting and supported full OpenStreetMap details now use Polku's hosted data in Finland, Sweden, Norway and Estonia. Only the needed local tiles download; uncovered border tiles, unsupported objects and unavailable data keep the bounded public fallback. Lake and park outlines still use the public source.
+
 ### Retry reaches a recovered OSM source ([#702](https://github.com/TommiContursi/Polku/issues/702))
 
 - **Retry** can ask the hosted OSM source again as soon as it recovers. Ordinary background reads still pause after a failure, and provider rate-limit pauses remain in force.

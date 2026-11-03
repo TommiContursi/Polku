@@ -1,0 +1,431 @@
+{
+  "measured_on": "2026-11-03T04:46:21.971697+00:00",
+  "publication": {
+    "release": "20261101T212136Z-four-d5f8341920573573",
+    "source_timestamp": "2026-11-01T21:21:36Z",
+    "publication_run": "https://github.com/TommiContursi/Polku/actions/runs/41536808345",
+    "publication_code": "533ce4044fe061ac3697b4c7ad7832f94f0ff493",
+    "monitor_run": "https://github.com/TommiContursi/Polku/actions/runs/41577858145",
+    "archive_bytes": 11224332376,
+    "archives": 28,
+    "files_including_manifest": 35,
+    "transferred_release_bytes": 11224481359,
+    "upload_started_at": "2026-11-02T22:34:43.505177+00:00",
+    "upload_finished_at": "2026-11-02T22:59:51.409409+00:00",
+    "upload_seconds": 1507.904232,
+    "full_readback_started_at": "2026-11-02T22:59:51.409472+00:00",
+    "full_readback_finished_at": "2026-11-02T23:20:07.166367+00:00",
+    "full_readback_seconds": 1215.756895,
+    "public_probes_before_promotion_seconds": 76.910584,
+    "promotion_and_postcheck_seconds": 78.898061,
+    "verified_at": "2026-11-02T23:22:43.130872+00:00",
+    "job_seconds": 3572.0,
+    "all_remote_sha256_verified": true,
+    "all_archive_public_range_cors_cache_checks_passed": true,
+    "production_over_2gib_ranges_verified": true,
+    "production_over_4gib_ranges_verified": false,
+    "previous_pointer_saved": true,
+    "rollback_receipt": "rollback-c1084958cdbe4ac0a02adb31a8725b4c.json",
+    "hosting_capacity": {
+      "checked_at": "2026-11-02T22:23:07.475353+00:00",
+      "source": "OVHcloud hosting control panel, ducksoft.fi, refreshed General information",
+      "service_status": "Active",
+      "used_gb_displayed": 4.5,
+      "quota_gb_displayed": 100,
+      "available_gb_from_display": 95.5,
+      "candidate_archive_bytes": 11224332376,
+      "method": "Read-only browser DOM observation; no account settings changed"
+    }
+  },
+  "live_browser": {
+    "origin": "https://polku.si/",
+    "app_commit": "b632464d3243c9b0ad28c89f85eb9a1041855f34",
+    "app_deployment_run": "https://github.com/TommiContursi/Polku/actions/runs/41579833007",
+    "tool_commit": "9de0b55a2e0a0a2bf777ebf4b913411b70bb7e00",
+    "command": "POLKU_URL=https://polku.si/ python tools/osm_data/measure_browser.py --country all",
+    "browser": "Chrome/156.0.8078.80",
+    "phone_emulation": {
+      "width": 390,
+      "height": 844,
+      "cpu_slowdown": 4,
+      "latency_ms": 80,
+      "download_bits_per_second": 10000000
+    },
+    "note": "Per-location reads share page-level manifest/archive caches; zero-byte products may already be cached. HTTP cache disabled. Repeats assert zero additional fetches. Independent LIPAS/Vayla calls excluded; no routing requests. Physical phones not tested.",
+    "profiles": {
+      "desktop": {
+        "cases": 16,
+        "overpass_requests": 0,
+        "extra_selected_way_tag_requests": 0,
+        "repeat_requests": 0,
+        "selection_bytes_range": [
+          13763,
+          773103
+        ],
+        "selection_ms_range": [
+          48.8,
+          862.5
+        ],
+        "countries": {
+          "finland": {
+            "locations": [
+              "Helsinki",
+              "Rural central Finland",
+              "Nuuksio forest",
+              "Turku coast",
+              "Rovaniementie north",
+              "Tykkikallio Jyvaskyla"
+            ],
+            "selection_bytes_range": [
+              13763,
+              773103
+            ],
+            "selection_ms_range": [
+              56.5,
+              862.5
+            ]
+          },
+          "sweden": {
+            "locations": [
+              "Stockholm",
+              "Gothenburg coast",
+              "Kiruna north"
+            ],
+            "selection_bytes_range": [
+              42424,
+              160560
+            ],
+            "selection_ms_range": [
+              95.8,
+              160.4
+            ]
+          },
+          "norway": {
+            "locations": [
+              "Oslo",
+              "Bergen coast",
+              "Tromso north",
+              "Oslomarka forest"
+            ],
+            "selection_bytes_range": [
+              22707,
+              238720
+            ],
+            "selection_ms_range": [
+              48.8,
+              178.2
+            ]
+          },
+          "estonia": {
+            "locations": [
+              "Tallinn",
+              "Tartu",
+              "Lahemaa forest"
+            ],
+            "selection_bytes_range": [
+              68520,
+              196458
+            ],
+            "selection_ms_range": [
+              111.2,
+              482.6
+            ]
+          }
+        },
+        "products": {
+          "lit": {
+            "bytes_range": [
+              1603,
+              714371
+            ],
+            "ms_range": [
+              46.4,
+              239
+            ]
+          },
+          "trails": {
+            "bytes_range": [
+              1774,
+              238866
+            ],
+            "ms_range": [
+              48.4,
+              169.9
+            ]
+          },
+          "winter": {
+            "bytes_range": [
+              0,
+              586508
+            ],
+            "ms_range": [
+              0.4,
+              137.2
+            ]
+          },
+          "hazards": {
+            "bytes_range": [
+              0,
+              25593
+            ],
+            "ms_range": [
+              0.2,
+              98.3
+            ]
+          },
+          "places": {
+            "bytes_range": [
+              0,
+              17331
+            ],
+            "ms_range": [
+              0.2,
+              97.2
+            ]
+          },
+          "inspection": {
+            "bytes_range": [
+              20690,
+              682344
+            ],
+            "ms_range": [
+              50.3,
+              198.4
+            ]
+          }
+        }
+      },
+      "phone_emulated": {
+        "cases": 16,
+        "overpass_requests": 0,
+        "extra_selected_way_tag_requests": 0,
+        "repeat_requests": 0,
+        "selection_bytes_range": [
+          13763,
+          773103
+        ],
+        "selection_ms_range": [
+          121.4,
+          1709.9
+        ],
+        "countries": {
+          "finland": {
+            "locations": [
+              "Helsinki",
+              "Rural central Finland",
+              "Nuuksio forest",
+              "Turku coast",
+              "Rovaniementie north",
+              "Tykkikallio Jyvaskyla"
+            ],
+            "selection_bytes_range": [
+              13763,
+              773103
+            ],
+            "selection_ms_range": [
+              193.7,
+              1709.9
+            ]
+          },
+          "sweden": {
+            "locations": [
+              "Stockholm",
+              "Gothenburg coast",
+              "Kiruna north"
+            ],
+            "selection_bytes_range": [
+              42424,
+              160560
+            ],
+            "selection_ms_range": [
+              241.3,
+              496.8
+            ]
+          },
+          "norway": {
+            "locations": [
+              "Oslo",
+              "Bergen coast",
+              "Tromso north",
+              "Oslomarka forest"
+            ],
+            "selection_bytes_range": [
+              22707,
+              238720
+            ],
+            "selection_ms_range": [
+              121.4,
+              597.4
+            ]
+          },
+          "estonia": {
+            "locations": [
+              "Tallinn",
+              "Tartu",
+              "Lahemaa forest"
+            ],
+            "selection_bytes_range": [
+              68520,
+              196458
+            ],
+            "selection_ms_range": [
+              334.8,
+              1020.3
+            ]
+          }
+        },
+        "products": {
+          "lit": {
+            "bytes_range": [
+              1603,
+              714371
+            ],
+            "ms_range": [
+              99,
+              1049.6
+            ]
+          },
+          "trails": {
+            "bytes_range": [
+              1774,
+              238866
+            ],
+            "ms_range": [
+              95.3,
+              534.3
+            ]
+          },
+          "winter": {
+            "bytes_range": [
+              0,
+              586508
+            ],
+            "ms_range": [
+              1.2,
+              794.5
+            ]
+          },
+          "hazards": {
+            "bytes_range": [
+              0,
+              25593
+            ],
+            "ms_range": [
+              0.9,
+              218.6
+            ]
+          },
+          "places": {
+            "bytes_range": [
+              0,
+              17331
+            ],
+            "ms_range": [
+              0.7,
+              202.1
+            ]
+          },
+          "inspection": {
+            "bytes_range": [
+              20690,
+              682344
+            ],
+            "ms_range": [
+              134.8,
+              992.8
+            ]
+          }
+        }
+      }
+    },
+    "border_hosted": {
+      "Tornio-Haparanda": {
+        "ways": true,
+        "lit": false,
+        "trails": false,
+        "winter": false,
+        "hazards": false,
+        "places": false,
+        "inspection": true
+      },
+      "Kilpisjarvi": {
+        "ways": true,
+        "lit": true,
+        "trails": true,
+        "winter": true,
+        "hazards": false,
+        "places": true,
+        "inspection": true
+      },
+      "Svinesund": {
+        "ways": true,
+        "lit": false,
+        "trails": false,
+        "winter": false,
+        "hazards": false,
+        "places": false,
+        "inspection": true
+      },
+      "Narva": {
+        "ways": true,
+        "lit": false,
+        "trails": false,
+        "winter": false,
+        "hazards": false,
+        "places": false,
+        "inspection": true
+      },
+      "Outside control": {
+        "ways": false,
+        "lit": false,
+        "trails": false,
+        "winter": false,
+        "hazards": false,
+        "places": false,
+        "inspection": false
+      }
+    },
+    "border_profiles_agree": true
+  },
+  "archives": [
+    {"bytes": 33966, "country": "estonia", "kind": "hazards", "sha256": "fa7bfb4873def948fe5da5c34fb57bd02afaad7fbca39e1c6ff605a8b6b8387b", "url": "estonia-hazards.pmtiles", "zoom": 11},
+    {"bytes": 234313511, "country": "estonia", "kind": "inspection", "sha256": "aafd4291f7374e864bb98490ea8730e5aa93d9db4597f50de56badb9c77e06f0", "url": "estonia-inspection.pmtiles", "zoom": 14},
+    {"bytes": 5568785, "country": "estonia", "kind": "lit", "sha256": "cc921b0352fb5ae8d2511d032fcddbee4fb2d891727bfd92b69c52093688f584", "url": "estonia-lit.pmtiles", "zoom": 13},
+    {"bytes": 126839, "country": "estonia", "kind": "places", "sha256": "7e0777f40ae91f96e3c9f93b34df0139cec7bf1c47ac5a8bed740c0588830457", "url": "estonia-places.pmtiles", "zoom": 12},
+    {"bytes": 7934410, "country": "estonia", "kind": "trails", "sha256": "38feac7a57f5eead24582aaa893b5d54fb2d78cea605f2b0fd22e7ee04c4926d", "url": "estonia-trails.pmtiles", "zoom": 13},
+    {"bytes": 76522341, "country": "estonia", "kind": "ways", "sha256": "7c1d32ed2e1004a972e25522e993f16f320238771ddfd6a43537fea3ed756a17", "url": "estonia-ways.pmtiles", "zoom": 14},
+    {"bytes": 210427, "country": "estonia", "kind": "winter", "sha256": "d04d585779fdd8d54bbc37ed0b7662593e1c1fdce732e0a4f2355f4729841f2b", "url": "estonia-winter.pmtiles", "zoom": 12},
+    {"bytes": 865505, "country": "finland", "kind": "hazards", "sha256": "45e529d765fc93ea7ed4c682e894876c6d90088812843906722a79f60996cc14", "url": "finland-hazards.pmtiles", "zoom": 11},
+    {"bytes": 3382346346, "country": "finland", "kind": "inspection", "sha256": "d4313c7d5ae89926b03ab1f4e1993538b8f3f6d477394faf0a20fa183d868487", "url": "finland-inspection.pmtiles", "zoom": 14},
+    {"bytes": 47116947, "country": "finland", "kind": "lit", "sha256": "b8c563760796322c3c6e63d84b4e400a3d2a7e78ace2c63bd9ccc085c874a3b0", "url": "finland-lit.pmtiles", "zoom": 13},
+    {"bytes": 1925109, "country": "norway", "kind": "hazards", "sha256": "848b9700e0ce9831571cbae6d608734808efa0be8a43921553ce93d096b56c51", "url": "norway-hazards.pmtiles", "zoom": 11},
+    {"bytes": 2245685858, "country": "norway", "kind": "inspection", "sha256": "122164360152477757d005dc0a9309555d443a3bdbfbef439f2b233907861798", "url": "norway-inspection.pmtiles", "zoom": 14},
+    {"bytes": 19420840, "country": "norway", "kind": "lit", "sha256": "7fca67dc5011a9883bca63a09821dcba4e4d8dc9f1c84c2ad44e191da7c188d1", "url": "norway-lit.pmtiles", "zoom": 13},
+    {"bytes": 990647, "country": "norway", "kind": "places", "sha256": "97bb02a48d9e6b14026518e736dce6987dc71be5c1330049188c61e65889dc60", "url": "norway-places.pmtiles", "zoom": 12},
+    {"bytes": 131197929, "country": "norway", "kind": "trails", "sha256": "be3225496051d4c620b250558c53d22ec4bd1cee6fd90c0d4e339f2dbcbad9c6", "url": "norway-trails.pmtiles", "zoom": 13},
+    {"bytes": 671648251, "country": "norway", "kind": "ways", "sha256": "b82aecf15890f5bce5113ba74ee4f2ac5634fac48986ec852d9834a8df23816f", "url": "norway-ways.pmtiles", "zoom": 14},
+    {"bytes": 25325221, "country": "norway", "kind": "winter", "sha256": "0a3f6ac57018e10c4489539c508a045e8429a7838eff341b9991f0ada4f21b34", "url": "norway-winter.pmtiles", "zoom": 12},
+    {"bytes": 1019730, "country": "finland", "kind": "places", "sha256": "c74b5c96a855dad491447d79c7c5974390b83f8b2576731f7638acb5f3d5d12d", "url": "finland-places.pmtiles", "zoom": 12},
+    {"bytes": 317561, "country": "sweden", "kind": "hazards", "sha256": "51506dab5de63d6d950802037f679354043068a8620961aa10dfe965f04dbb2e", "url": "sweden-hazards.pmtiles", "zoom": 11},
+    {"bytes": 2657602204, "country": "sweden", "kind": "inspection", "sha256": "876ae319bb94d62d6a2c9fbe130958a603e1251adca444f32bcc55b9c25ae56e", "url": "sweden-inspection.pmtiles", "zoom": 14},
+    {"bytes": 30555452, "country": "sweden", "kind": "lit", "sha256": "d7e237a0797ba00ec42f9f6703165aefb913e8224125cdfaf401fa9d54c85b85", "url": "sweden-lit.pmtiles", "zoom": 13},
+    {"bytes": 1199467, "country": "sweden", "kind": "places", "sha256": "35c04d0635e5b41f656a9a13312fe9feba9193351c7372b56dfcdaf3b0aaa762", "url": "sweden-places.pmtiles", "zoom": 12},
+    {"bytes": 93975713, "country": "sweden", "kind": "trails", "sha256": "271d7c1e4be7a9abf3efd37d5231a171df5750bfa54015722d1928e5944c3615", "url": "sweden-trails.pmtiles", "zoom": 13},
+    {"bytes": 801412179, "country": "sweden", "kind": "ways", "sha256": "c16511e18ce6d60a30837e826adcf637e8ab90bf349c945a54f2d5b9dd81580e", "url": "sweden-ways.pmtiles", "zoom": 14},
+    {"bytes": 3602594, "country": "sweden", "kind": "winter", "sha256": "cfab148949c6e42c4797cdbdd618e7235bced6b7f5d3dc4dd12988a1a983c607", "url": "sweden-winter.pmtiles", "zoom": 12},
+    {"bytes": 77014744, "country": "finland", "kind": "trails", "sha256": "871097c43f59dd47551796ceb8bd9266c721c58cd47ab46f5aa6ae6607d5356b", "url": "finland-trails.pmtiles", "zoom": 13},
+    {"bytes": 691031169, "country": "finland", "kind": "ways", "sha256": "6a4eb6363fa65ec71defca13667af9608e2d1ca6d51d081df02fcfda24a614de", "url": "finland-ways.pmtiles", "zoom": 14},
+    {"bytes": 15368631, "country": "finland", "kind": "winter", "sha256": "e52fa3d9f3552b3eee421a594c4178de73a4f0a8a07c61003b66a7a4d8e965e3", "url": "finland-winter.pmtiles", "zoom": 12}
+  ],
+  "remaining": {
+    "area_and_ambiguous_nearby_relation_geometry": "https://github.com/TommiContursi/Polku/issues/696",
+    "joint_border_coverage_and_merge": "https://github.com/TommiContursi/Polku/issues/699",
+    "sporadic_pre_css_fixture_warning": "https://github.com/TommiContursi/Polku/issues/704"
+  },
+  "not_exercised": [
+    "physical phones",
+    "whole local app suite",
+    "actual production rollback",
+    "HTTP offsets above 4 GiB (no current archive that large)"
+  ]
+}

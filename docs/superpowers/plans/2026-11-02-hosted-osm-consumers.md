@@ -4,7 +4,7 @@
 
 **Goal:** Serve existing OSM selection, details and checks locally by tile from ducksoft.fi across Finland, Sweden, Norway and Estonia, retaining bounded public mirror fallback.
 
-**Architecture:** Extend the existing Python/osmium → SQLite → gzip JSON PMTiles pipeline and `StaticOSM` reader. Add optional named datasets without replacing the existing ways/lighting schema, publish immutable releases through the guarded SFTP publisher, and migrate consumers through one shared hosted-first entry point. Country archives are a provisional choice pending complete-build measurements; country jobs bound peak disk/memory and avoid a 35 GB Europe input.
+**Architecture:** Extend the existing Python/osmium → SQLite → gzip JSON PMTiles pipeline and `StaticOSM` reader. Add optional named datasets without replacing the existing ways/lighting schema, publish immutable releases through the guarded SFTP publisher, and migrate consumers through one shared hosted-first entry point. Country archives were finalized from complete-build and local-transfer measurements; country jobs bound peak disk/memory and avoid a 35 GB Europe input.
 
 **Tech Stack:** Plain browser ES modules, existing vendored PMTiles, IndexedDB, Python 3.14.3, osmium 4.3.2, pmtiles 3.7.0, existing GitHub Actions/SFTP publication.
 
@@ -47,10 +47,10 @@ Each PR includes its factual DEVELOPING/README/release-note updates; no new cont
 
 **Interfaces:** retain `StaticOSM(url, dataset='ways', zoom=14).tile([x,y], {force}) -> {schema:1,elements,source}`. Add `hostedTile(url, dataset, zoom, [x,y], fallback, options={}) -> Promise<Overpass-shaped JSON>` in `js/osm-data.js`; caller's existing slim adapter runs after source choice. Datasets: `trails` z13, `winter` z12, `hazards` z11, `places` z12. Existing `ways` z14 and `lit` z13 remain byte-compatible. Places retain type/ID/tags and centre, deduplicated across requested tiles.
 
-- [ ] Write builder fixtures with a gate/ford node, fence, tagged track, ski-only way, reef and campsite node/way/relation. Assert literal IDs, original tags/nodes/geometry, z13/12/11 membership, relation centre and deterministic archives. Write transport tests for optional datasets, cached/empty reads, concurrent failures and bounded fallback; run to demonstrate missing products/policy.
-- [ ] Generalize the current staging/archive selection to include these exact existing query predicates. Reuse `segment_tiles`; retain source feature records once in staging. Relation centres need all available members and must be marked incomplete when unavailable. Empty products still have a valid empty archive/metadata.
-- [ ] Implement shared hosted policy, finite manifest failure cooldown and whole-read deadline without losing Range/body/schema validation. Keep old manifests valid. Route all seven existing consumers through it, retain existing slim outputs, retry/listener/late-water behavior and seven-day fallback caches. Use one public round (15 seconds interactive, at most 30 seconds background). Preserve provenance in cached tile results and correct source-specific failure wording.
-- [ ] Run Python builder/publisher/preview tests, Node reader/source tests and the named focused smoke groups; failures caused by the environment are recorded separately. Commit PR 1; push/open draft, mark ready only after its checks pass. Record exact commit/evidence in #154.
+- [x] Write builder fixtures with a gate/ford node, fence, tagged track, ski-only way, reef and campsite node/way/relation. Assert literal IDs, original tags/nodes/geometry, z13/12/11 membership, relation centre and deterministic archives. Write transport tests for optional datasets, cached/empty reads, concurrent failures and bounded fallback; run to demonstrate missing products/policy.
+- [x] Generalize the current staging/archive selection to include these exact existing query predicates. Reuse `segment_tiles`; retain source feature records once in staging. Relation centres need all available members and must be marked incomplete when unavailable. Empty products still have a valid empty archive/metadata.
+- [x] Implement shared hosted policy, finite manifest failure cooldown and whole-read deadline without losing Range/body/schema validation. Keep old manifests valid. Route all seven existing consumers through it, retain existing slim outputs, retry/listener/late-water behavior and seven-day fallback caches. Use one public round (15 seconds interactive, at most 30 seconds background). Preserve provenance in cached tile results and correct source-specific failure wording.
+- [x] Run Python builder/publisher/preview tests, Node reader/source tests and the named focused smoke groups; failures caused by the environment are recorded separately. Commit PR 1; push/open draft, mark ready only after its checks pass. Record exact commit/evidence in #154.
 
 ### Task 2: Inspection and areas
 
@@ -58,10 +58,10 @@ Each PR includes its factual DEVELOPING/README/release-note updates; no new cont
 
 **Interfaces:** `hostedTile` from Task 1; `inspection` z14 contains all highways plus objects matching existing nearby-place tag keys, full tags and centre/geometry; `areas` z12 contains supported water/leisure/boundary polygons, original identity/tags/bounds and outer/inner rings. Keep `wayNear(ll,id)`, `osmDetails({type,id,ll})` and `areaAt(ll)` return shapes unchanged. Full-tag requests outside the extracted object classes must use fallback, never return a false absent object.
 
-- [ ] Add failing fixtures for exact ID distinct from nearest, mixed object types with identical IDs, motorway tags, a shelter relation, multipolygon outer/inner rings, point in a hole, area wholly containing a tile, open/incomplete ring and an area whose whole extent exceeds the display box.
-- [ ] Reuse osmium's existing area assembly to build valid supported polygons, index interiors as well as edges, and retain original rings/identity. Measure largest tile and refuse oversized/incomplete tiles explicitly; do not silently omit objects. If real area sizes require a separate clipped-containment representation beyond the existing payload limits, document the exact measured case and a bounded follow-up rather than shipping incorrect polygons.
-- [ ] Implement area containment and existing ~5 km outline presentation with whole/cut distinction. Reuse raw hosted ways and inspection tiles for full tags, searching the local query radius across tile boundaries and deduplicating by type/ID. Unsupported exact objects retain bounded Overpass.
-- [ ] Run builder/client tests and focused inspection/pick smoke groups. Commit/push PR 2 based on PR 1, update #154 with implemented and measured limits.
+- [x] Add failing object fixtures for exact ID distinct from nearest, mixed object types with identical IDs, motorway tags and a shelter relation. Area containment/outline fixtures belong to measured follow-up #696: outer/inner rings, holes, wholly containing areas, incomplete rings and display-box clipping.
+- [x] Measure the existing osmium area representation and document the exact constraint: Saimaa alone is 4.67 MB gzip before topology. Whole-polygon repetition cannot meet local-transfer requirements. Correct clipped containment and nearby original outlines are tracked in #696 with holes and incomplete states preserved.
+- [x] Reuse raw hosted ways and inspection tiles for full tags, searching the local radius across tile boundaries and deduplicating by type/ID. Unsupported exact objects retain bounded Overpass. Area containment and ~5 km whole/cut outline presentation remain #696; the existing area query is bounded to one 15-second round.
+- [x] Run builder/client tests and focused inspection/pick smoke groups. Commit/push PR 2 based on PR 1, update #154 with implemented and measured limits.
 
 ### Task 3: Four-country coverage and release candidates
 
@@ -108,8 +108,8 @@ The whole-polygon model was measured against the complete retained Finland PBF. 
    target is proposed as 41509553858 / nordic-osm-release, still owner-controlled.
    Negative country-coverage inheritance checks pass in Node and browser; final
    checks are 60 Python / 20 Node plus named focused groups; the workflow passes CI.
-   Published coverage is not claimed: actual host quota, bulk publication, >2 GiB
-   public Range and live pointer verification remain behind approval. Border
+   At this checkpoint publication awaited approval and actual host quota, bulk
+   transfer, >2 GiB public Range and live pointer verification (completed below). Border
    union/merge is measured follow-up #699; area/nearby relation geometry is #696.
 4. Review repaired the builder's named-sample gate and registered both regressions
    through `tools/smoke.py osmdata`. They fail against the original builder and pass
@@ -117,3 +117,15 @@ The whole-polygon model was measured against the complete retained Finland PBF. 
    road locations and repeated the 32 covered consumer cases and border controls;
    zero Overpass and zero extra selected-way tag requests. The candidate remains
    immutable; the extra evidence replaces the missing original sample measurements.
+
+5. Owner-authorized delivery: #695/#697/#698 are merged. Protected publication
+   41536808345 promoted `20261101T212136Z-four-d5f8341920573573` after full remote
+   hashes and public Range/header checks, completing 2026-11-02 at 23:22 UTC.
+   All 28 archives / 11.224 GB are live; >2 GiB probes passed. Actual preflight
+   found about 95.5 GB free of 100 GB, and publication took 59 min 32 s.
+   Independent monitor 41577858145 and actual polku.si consumer checks passed:
+   32 covered cases, zero Overpass, no repeat or selected-way tag transfers.
+   #701 preserves manual rollback with scheduled publication off; #703 repairs
+   failed-manifest retry while honoring new provider limits. See
+   `docs/measurements/osm-live-2026-11-03.json`. #696/#699 remain the measured
+   geometry/border follow-ups, with explicit bounded fallback.
