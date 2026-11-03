@@ -67,6 +67,9 @@ const TIPS = {
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
 const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points'];
 const NEAR_LINE = 30;
+// a tap just beside the route is still the route's, not a point at the end (#725): the box around the spot, which with
+// half the line's casing (9.5–11 px wide at z14–16) reaches about 24 px from its middle by touch and 16 px by mouse
+const BESIDE_LINE = { touch: 19, mouse: 11 };
 // a leg waits this long for a BRouter slot before Valhalla routes it instead (router.js)
 const STAND_IN_AFTER = 6000;
 // round trips: lengths to pick from per sport, the candidates' colours, and how many calls they may take
@@ -2696,15 +2699,18 @@ export class Planner {
     // The route's view (25c): the rest is the map's, its own cards (initInspector(), js/main.js), and a tap on the
     // route that part's menu, as with the planner put away. Nothing is added or moved.
     if (this.inView()) return;
-    const hit = this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     const ll = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
     // the line itself: a click or a tap shows the route's card there, mouse and finger alike (a point added by mistake
     // is easy, and most taps on the route are to check something); "Add a point here" is at the spot, and a drag still
     // reshapes the route (25d's 1b)
-    if (hit && !hit.properties.loading) { this.openRouteCard(hit.properties.leg, e.lngLat); return; }
+    const hit = this.lineAt(e.point, r);
+    if (hit != null) { this.openRouteCard(hit, e.lngLat); return; }
     // a place's icon (a campfire site, a toilet, a lean-to, a LIPAS place, an obstacle): its card, not a point (part 5)
     const place = this.placeAt(e.point, touch);
     if (place) { this.openPlaceCard(place, ll); return; }
+    // just beside the line, the route's card too: not a point at the end, the route doubling back (#725)
+    const near = this.lineAt(e.point, touch ? BESIDE_LINE.touch : BESIDE_LINE.mouse);
+    if (near != null) { this.openRouteCard(near, e.lngLat); return; }
     else {
       const wet = this.points.length > 0 && this.onOpenWater(e.point); // (a first point has no leg to get there by)
       this.addPoint(ll); // (the first point's peek offers a round trip from it: #232)
@@ -2819,11 +2825,13 @@ export class Planner {
     const a = this.analysis;
     const glow = (leg) => this.app.hoverLeg && this.app.hoverLeg(leg); // the leg under the pointer glows brighter (#198)
     if (!a || this.panel.hidden || this.edit) { glow(null); return; }
-    const over = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-casing'] }).find((f) => f.properties.kind !== 'gap');
+    const view = this.inView();
+    const line = (r) => this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-casing'] }).find((f) => f.properties.kind !== 'gap');
+    // while drawing, the route is lit and read as far beside it as a click takes it (#725); only the line itself is dragged
+    const over = line(view ? 5 : BESIDE_LINE.mouse), grab = !view && !!over && !!line(5);
     const hit = !!over;
     glow(over ? over.properties.leg : null);
-    const view = this.inView();
-    this.map.getCanvas().style.cursor = hit ? (view ? 'pointer' : 'grab') : (view ? '' : 'crosshair'); // the line can be dragged (not in the route's view)
+    this.map.getCanvas().style.cursor = hit ? (grab ? 'grab' : 'pointer') : (view ? '' : 'crosshair'); // the line can be dragged (not in the route's view)
     if (!hit) { this.mapUnhover(); return; }
     // the leg under the pointer lit, as a click lights it (#83)
     const li = over.properties.leg, s = { from: li, to: li + 1 }, l = this.litSpan;
@@ -2838,7 +2846,7 @@ export class Planner {
     }
     this.mapHover = true;
     const d = routeReadout(a, best, this.roadAt(best));
-    d.lines.push(`<i class="tip-hint">${view ? 'Click for options' : 'Click for options · drag to reshape'}</i>`);
+    d.lines.push(`<i class="tip-hint">${grab ? 'Click for options · drag to reshape' : 'Click for options'}</i>`);
     const onMap = this.app.routeTip(e.originalEvent, d);
     this.chart.setHover(best, !onMap);
     this.hoverAt(best, true);
@@ -3449,7 +3457,10 @@ export class Planner {
     if (!this.legs[li]) return;
     if (this.menu) this.menu.remove();
     this.stopPicking();
-    const at = Array.isArray(ll) ? ll : [+ll.lng.toFixed(6), +ll.lat.toFixed(6)];
+    // the spot on the line nearest the tap, which may be just beside it (#725): what the card shows and adds is there
+    const p = Array.isArray(ll) ? ll : [ll.lng, ll.lat], c = this.legs[li].result ? this.legs[li].result.coords : [this.points[li], this.points[li + 1]];
+    const q = nearestOnLine(p, c), a = c[q.i], b = c[q.i + 1] || a;
+    const at = [+(a[0] + (b[0] - a[0]) * q.t).toFixed(6), +(a[1] + (b[1] - a[1]) * q.t).toFixed(6)];
     this.cards.open(routeCard(this, li, at), { at, from });
   }
   // a stretch's card (from a point's Next stretch, the list); `edit`: straight to Edit this stretch
