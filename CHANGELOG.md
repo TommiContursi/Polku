@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### A card opened from a card keeps its size ([#692](https://github.com/TommiContursi/Polku/issues/692))
+
+- On a phone, a card opened from another card at half or full, such as **Next stretch**, opens at that size, and **Back** keeps it too. A card shorter than that size opens at its own height. The first card from the map still opens at its peek, and closing the cards still puts the planner back as it was.
+
 ### Hosted OSM data now covers four countries ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
 - Roads and paths, trail details and barriers, mapped winter maintenance/access, OSM water hazards, overnight places, lighting and supported full OpenStreetMap details now use Polku's hosted data in Finland, Sweden, Norway and Estonia. Only the needed local tiles download; uncovered border tiles, unsupported objects and unavailable data keep the bounded public fallback. Lake and park outlines still use the public source.

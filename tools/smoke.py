@@ -10832,6 +10832,111 @@ def stops_card(chrome):
     return fails
 
 
+# A card opened from a card, and Back, keep its size (#692): a point's card swiped to half, Next stretch opens the stretch's
+# card at half; Back, the point's at half; at full the same, where the card it opens has that stop (else its tallest under
+# it); a short card from it its own height alone. ✕ puts the planner back as it was, and the first card from the map still
+# opens at its peek; with the planner put away, a card from a spot's card at half, and Back, at half. By touch (the spot's raised by ↑) at 390 × 844 and 360 × 740
+def stops_card_swap(chrome):
+    fails = []
+    for w, h in ((390, 844), (360, 740)):
+        tag = f'{w}x{h}'
+        pg = chrome.page(w, h, True)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            info = lambda: pg.js("""(() => { const p = polku.planner; return { st: p.panel.dataset.state, card: p.cards.current ? p.cards.current.kind : null,
+              stops: p.stops().map((z) => z.name), bar: !!p.cards.box?.querySelector('.way-head .way-hint') }; })()""")
+            body = lambda: pg.js("(() => { const r = polku.planner.cards.box.getBoundingClientRect(); return [r.left + r.width / 2, r.top + Math.min(r.height - 12, 90)]; })()")
+            key = lambda k, code: [pg.c.send('Input.dispatchKeyEvent', {'type': e, 'key': k, 'code': k, 'windowsVirtualKeyCode': code}, pg.s) for e in ('rawKeyDown', 'keyUp')]
+            # the size a card keeps: the one it had, or its tallest stop under it
+            kept = lambda st, stops: st if st in stops else 'half' if 'half' in stops else 'peek'
+
+            def tap_el(js, name):
+                if not pg.js(f"(() => {{ const b = {js}; if (b) b.scrollIntoView({{ block: 'nearest' }}); return !!b; }})()"):
+                    fails.append(f'{tag}: {name} not in the card')
+                    return
+                time.sleep(0.3)
+                pg.tap(*pg.js(f"(() => {{ const r = {js}.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()"))
+                time.sleep(0.6)
+                fold_settled(pg, fails, f'{tag} {name}')
+            next_stretch = "[...polku.planner.cards.box.querySelectorAll('.row')].find((b) => b.textContent.startsWith('Next stretch'))"
+
+            pg.js("polku.planner.setSheetState('peek', { remember: false }); true")
+            fold_settled(pg, fails, f'{tag} the planner at its peek')
+            pg.js("(() => { const p = polku.planner; p.openPointCard(p.points[1]); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a point's card")
+            x, y = body()
+            pg.swipe(x, y, y - 150, ms=500, steps=20, hold=0.2)
+            fold_settled(pg, fails, f'{tag} the card swiped up')
+            for size in ('half', 'full'):
+                if size == 'full':
+                    pg.js("polku.planner.els.handle.focus(); true")
+                    key('ArrowUp', 38)
+                    fold_settled(pg, fails, f'{tag} ↑ on the card')
+                s = info()
+                if s['card'] != 'point' or s['st'] != size:
+                    fails.append(f"{tag}: a point's card raised to {size}: {s['card']} at {s['st']}")
+                    break
+                tap_el(next_stretch, f'Next stretch at {size}')
+                s = info()
+                if s['card'] != 'stretch' or s['st'] != kept(size, s['stops']) or not s['bar']:
+                    fails.append(f"{tag}: Next stretch from a point's card at {size}: {s['card']} at {s['st']} (its stops {s['stops']}), its title row {s['bar']}")
+                # Back: the browser's at half, the card's own at full
+                if size == 'half':
+                    pg.js("history.back(); true")
+                    time.sleep(0.6)
+                    fold_settled(pg, fails, f'{tag} Back')
+                else:
+                    tap_el("polku.planner.cards.box.querySelector('.way-back')", 'the card\'s Back')
+                s = info()
+                if s['card'] != 'point' or s['st'] != size:
+                    fails.append(f"{tag}: Back from the stretch's card at {size}: {s['card']} at {s['st']} ({size})")
+            # a short card from it: its own height alone
+            pg.js("(() => { const p = polku.planner; p.cards.open({ kind: 'note', key: 'short', title: 'A short card', build: () => {} }, { at: p.points[1], from: p.cards.current }); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f'{tag} a short card from the point\'s')
+            s = info()
+            if s['card'] != 'note' or s['st'] != 'peek' or s['stops'] != ['folded', 'peek']:
+                fails.append(f"{tag}: a short card from a point's card at full: {s['card']} at {s['st']}, its stops {s['stops']} (its peek alone)")
+            # ✕: the planner as it was; the first card from the map at its peek
+            tap_el("polku.planner.cards.box.querySelector('.way-x:not([hidden])')", '✕')
+            if pg.js("(() => { const p = polku.planner; return [p.cards.current ? p.cards.current.kind : null, p.panel.dataset.state]; })()") != [None, 'peek']:
+                fails.append(f"{tag}: ✕ on the cards: the planner not back at its peek")
+            pg.js("polku.planner.setSheetState('half', { remember: false }); true")
+            fold_settled(pg, fails, f'{tag} the planner at half')
+            pg.js("(() => { const p = polku.planner; p.openPointCard(p.points[1]); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a point's card over the planner at half")
+            s = info()
+            if s['card'] != 'point' or s['st'] != 'peek':
+                fails.append(f"{tag}: the first card from the map, over the planner at half: {s['card']} at {s['st']} (its peek)")
+            # the planner put away: a spot's card raised to half, a long card from it at half, and Back to the spot's at half
+            pg.js("(() => { const p = polku.planner; p.cards.close(); p.close(); return true; })()")
+            time.sleep(0.6)
+            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a spot's card, the planner put away")
+            pg.js("polku.planner.els.handle.focus(); true")
+            key('ArrowUp', 38)
+            fold_settled(pg, fails, f"{tag} ↑ on the spot's card")
+            pg.js("""(() => { const p = polku.planner; p.cards.open({ kind: 'note', key: 'long', title: 'A long card', build: (b) => { for (let i = 0; i < 40; i++) b.append(Object.assign(document.createElement('p'), { textContent: `Line ${i}` })); } },
+              { at: p.map.getCenter(), from: p.cards.current }); return true; })()""")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a long card from the spot's")
+            got = [info()['card'], info()['st']]
+            pg.js("history.back(); true")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} Back to the spot's card")
+            got += [info()['card'], info()['st'], pg.js('polku.planner.active')]
+            if got != ['note', 'half', 'spot', 'half', False]:
+                fails.append(f"{tag}: the planner put away, a long card from a spot's card at half, then Back: {got} (note at half, spot at half, the planner still away)")
+            fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    return fails
+
+
 # A scrolled card (#603's motion review): dragged from half by its top row, it keeps its height and scroll, so its content
 # doesn't jump as the finger starts (it went 120 px down: the card grew to its whole height); let go, it scrolls back with
 # the spring, to its top at the peek; ↓ to the peek brings it to its top too. With motion on at 390 × 844, and reduced
@@ -10900,7 +11005,7 @@ def stops_card_scroll(chrome):
 
 
 def sheet_stops(chrome):
-    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)] + stops_scroll(chrome) + stops_unscroll(chrome) + stops_side(chrome) + stops_arrows(chrome) + stops_card(chrome) + stops_card_scroll(chrome)
+    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)] + stops_scroll(chrome) + stops_unscroll(chrome) + stops_side(chrome) + stops_arrows(chrome) + stops_card(chrome) + stops_card_swap(chrome) + stops_card_scroll(chrome)
     print(f"{'ok  ' if not fails else 'FAIL'} the sheet's stops" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -16846,7 +16951,7 @@ GROUPS = [
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
-    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
+    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
