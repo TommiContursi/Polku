@@ -474,7 +474,7 @@ class Frame {
     this.render();
     if (st.card && st.card.kind === 'pick' && !st.card.hit.way) {
       const area = this.mapArea(), inView = (q) => { const [x, y] = this.toScreen(...q); return x > area.l && x < area.r && y > area.t && y < area.b; };
-      const L = W.lines.find((l) => l[0] === 'cycleway' && inView(l[3][0])) || W.lines.find((l) => l[0] === 'road' && inView(l[3][0]));
+      const L = W.lines.find((l) => l[0] === 'cycleway' && inView(l[3][0])) || W.lines.find((l) => l[0] === 'road' && inView(l[3][0])) || W.lines.find((l) => l[0] === 'cycleway');
       if (L) st.card = { kind: 'pick', hit: { kind: 'way', way: { k: L[0], name: L[1], cls: L[2], line: L[3], q: L[3][0] }, at: L[3][0] } };
     }
     if (st.card) this.openCard(st.card, true);
@@ -784,7 +784,7 @@ class Frame {
     }).join('');
     const label = this.alt ? (() => { const [x, y] = this.alt.label; return `<g transform="translate(${x},${y}) scale(${1 / s})"><rect x="-58" y="-34" width="116" height="34" rx="8" fill="#fff" stroke="#2563eb" stroke-width="1.5"/><text x="0" y="-19" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1d4ed8">Other way</text><text x="0" y="-6" text-anchor="middle" font-size="11" fill="#1c2420">+${fmtKm(Math.max(10, this.alt.plus))} · 60 % trails</text></g>`; })() : '';
     const hz = ford ? `<g transform="translate(${ford[0]},${ford[1]}) scale(${1 / s})"><circle r="11" fill="#fbf4e2" stroke="#8a5a00" stroke-width="2"/><path d="M-6 3c2 1.4 4 1.4 6 0s4-1.4 6 0" stroke="#8a5a00" stroke-width="1.8" fill="none"/><path d="M0-6v4.5" stroke="#8a5a00" stroke-width="2" stroke-linecap="round"/></g>` : '';
-    const pin = this.cards.length && this.cards[this.cards.length - 1].hit && ['pick', 'lipas'].includes(this.cards[this.cards.length - 1].kind) ? (() => { const [x, y] = this.cards[this.cards.length - 1].hit.at; return `<g transform="translate(${x},${y}) scale(${1 / s})"><circle r="7" fill="#111" stroke="#fff" stroke-width="3"/></g>`; })() : '';
+    const pin = this.cards.length && this.cards[this.cards.length - 1].hit?.at && ['pick', 'lipas'].includes(this.cards[this.cards.length - 1].kind) ? (() => { const [x, y] = this.cards[this.cards.length - 1].hit.at; return `<g transform="translate(${x},${y}) scale(${1 / s})"><circle r="7" fill="#111" stroke="#fff" stroke-width="3"/></g>`; })() : '';
     const cur = this.tapMode === 'add' ? 'add' : this.tapMode === 'move' ? 'move' : this.look ? 'look' : 'pointer';
     const pillXY = this.pill ? this.toScreen(...this.pill) : null;
     return `<div class="map" data-cursor="${cur}"><svg width="${iw}" height="${ih}" viewBox="0 0 ${iw} ${ih}" style="transform: translate(${this.ox}px, ${this.oy}px) scale(${s}); transform-origin: 0 0"><image href="${W.img}" width="${iw}" height="${ih}"/>${lit}${picked}${alt}${legs}${hz}${pts}${label}${pin}</svg></div>`
