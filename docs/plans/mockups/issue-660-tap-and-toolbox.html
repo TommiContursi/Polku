@@ -14,7 +14,7 @@
 
   ?v=today | v1 | v2      the tap model          &place=a | b      the toolbox's place on phones (a: the sheet's first row, b: a left column)
   &desk=foot | top        the desktop toolbar    &adv=more | context   where the advanced controls live
-  ?frame=<id>             one frame at full size; on a phone it fills the screen (&w=&h= for a size of your own)
+  #frame=<id>             one frame at full size (the switches work in the hash or the query); on a phone it fills the screen (&w=&h= for a size of your own)
   &w=360&h=740 · &z=2 (200 %) · &lang=fi · &worst=1
   window.mock.frames      each frame's state and its log of taps, swipes and mode changes (the flows in the plan were run on them)
 -->
@@ -349,7 +349,9 @@ const GEO = {"phone":{"size":[1100,1300],"zoom":13.1,"mpp":4.252,"origin":[23.77
 const PIN = '420074b14c667e3b90c4facd8a427bcc17dee485';
 const BG = `https://raw.githubusercontent.com/TommiContursi/Polku/${PIN}/claude/660-tap-toolbox/bg/`;
 const SHOTS = `https://raw.githubusercontent.com/TommiContursi/Polku/${PIN}/claude/660-tap-toolbox/today/`;
-const Q = new URLSearchParams(location.search);
+// the switches: in the hash (#frame=try&v=v1), so the page also works where it's shown through a viewer with a query of its own; ?… too
+const Q = new URLSearchParams(location.hash.length > 1 ? location.hash.slice(1) : location.search.slice(location.search.lastIndexOf('?') + 1));
+addEventListener('hashchange', () => location.reload());
 const pick = (k, list, d) => (list.includes(Q.get(k)) ? Q.get(k) : d);
 const G = {
   v: pick('v', ['today', 'v1', 'v2'], 'v1'), place: pick('place', ['a', 'b', 'r'], 'a'), desk: pick('desk', ['foot', 'top'], 'top'),
@@ -1116,7 +1118,7 @@ class Frame {
 const FRAMES = [];
 const frame = (where, id, st, cap, cls = '') => {
   const f = document.createElement('figure'); f.className = `fr ${st.dev === 'desk' ? 'desk' : 'phone'} ${cls}`; f.id = id;
-  f.innerHTML = `<figcaption>${cap} <a class="open" href="?frame=${id}&v=${G.v}&place=${G.place}&desk=${G.desk}${G.lang === 'fi' ? '&lang=fi' : ''}${G.worst ? '&worst=1' : ''}">Open</a></figcaption>${cls.includes('big') ? '<div class="meter"></div>' : ''}`;
+  f.innerHTML = `<figcaption>${cap} <a class="open" href="#frame=${id}&v=${G.v}&place=${G.place}&desk=${G.desk}${G.lang === 'fi' ? '&lang=fi' : ''}${G.worst ? '&worst=1' : ''}">Open</a></figcaption>${cls.includes('big') ? '<div class="meter"></div>' : ''}`;
   document.getElementById(where).append(f);
   FRAMES.push({ f, st });
 };
@@ -1174,7 +1176,7 @@ function bars() {
   const sw = (label, key, opts) => `<div class="bar"><span>${label}</span><div class="sw" role="group" aria-label="${label}">${opts.map(([v, w]) => `<button type="button" data-g="${key}" data-v="${v}" aria-pressed="${G[key] === v}">${w}</button>`).join('')}</div></div>`;
   document.getElementById('bars').innerHTML = sw('Version', 'v', [['today', 'Today'], ['v1', '1: Add points'], ['v2', '2: Look']]) + sw('Toolbox', 'place', [['a', '(a) the sheet’s foot'], ['b', '(b) a left column'], ['r', 'Earlier: its first row']]) + sw('Desktop', 'desk', [['foot', 'Toolbar at the foot'], ['top', 'In the panel']])
     + sw('Size', 'size', [['390', '390 × 844'], ['360', '360 × 740'], ['200', '200 %']]) + sw('Words', 'lang', [['en', 'English'], ['fi', 'Suomi']]) + sw('Advanced', 'adv', [['more', 'In ⋯'], ['context', 'In context']]) + sw('Worst case', 'worst', [[false, 'Off'], [true, 'On']]);
-  document.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => { const k = b.dataset.g; G[k] = b.dataset.v === 'true' ? true : b.dataset.v === 'false' ? false : b.dataset.v; const u = new URL(location); u.searchParams.set(k === 'size' ? 'z' : k, k === 'size' ? (G.size === '200' ? 2 : '') : String(G[k])); if (k === 'size') { u.searchParams.delete('z'); if (G.size === '360') { u.searchParams.set('w', 360); u.searchParams.set('h', 740); } else { u.searchParams.delete('w'); u.searchParams.delete('h'); if (G.size === '200') u.searchParams.set('z', 2); } } history.replaceState(null, '', u); bars(); build(); tapsTable(); }; });
+  document.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => { const k = b.dataset.g; G[k] = b.dataset.v === 'true' ? true : b.dataset.v === 'false' ? false : b.dataset.v; const u = new URLSearchParams(Q); u.set(k === 'size' ? 'z' : k, k === 'size' ? (G.size === '200' ? 2 : '') : String(G[k])); if (k === 'size') { u.delete('z'); if (G.size === '360') { u.set('w', 360); u.set('h', 740); } else { u.delete('w'); u.delete('h'); if (G.size === '200') u.set('z', 2); } } for (const [a, b] of [...u]) Q.set(a, b); for (const a of [...Q.keys()]) if (!u.has(a)) Q.delete(a); history.replaceState(null, '', `#${u}`); bars(); build(); tapsTable(); }; });
 }
 function tapsTable() {
   const rows = [
