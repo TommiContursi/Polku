@@ -164,6 +164,12 @@ probes and pointer promotion. A corrupt complete file or ambiguous staging
 fails for inspection instead of silently overwriting data or starting over.
 Neither recovery operation deletes files or changes hosting configuration.
 
+If the candidate was already promoted before interruption, resume uses the
+validated retention receipt's original predecessor for its rollback checkpoint.
+It requires that predecessor's regular, matching immutable manifest. A later
+browser failure can restore the original release instead of attempting a
+rollback to the resumed release itself. Payload reuse and full readback remain.
+
 SFTP writes are pipelined and reads prefetch at most 64 concurrent requests,
 avoiding a network round trip for every 32 KiB packet. Logs show transfer
 phases and byte progress every 64 MiB. Automatic and manual publication jobs

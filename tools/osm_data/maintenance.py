@@ -159,12 +159,13 @@ def prune(ftp, apply=False, incoming_bytes=0, now=None, incoming_release=None):
         records[live['release']]=(pending,timestamp(pending['published_at']))
         manifests[live['release']]=(json.loads(raw),raw)
     protected={live['release']}
+    predecessor=None
     if incoming_release: protected.add(incoming_release)
     if live['release'] in records:
-        previous=records[live['release']][0].get('previous_release')
-        if previous:
-            p.require(previous in releases,'Recorded predecessor is missing')
-            protected.add(previous)
+        predecessor=records[live['release']][0].get('previous_release')
+        if predecessor:
+            p.require(predecessor in releases,'Recorded predecessor is missing')
+            protected.add(predecessor)
         protected.update(sorted(records,key=lambda key:records[key][1],reverse=True)[:2])
     for release in releases:
         base='releases/'+release
@@ -201,7 +202,7 @@ def prune(ftp, apply=False, incoming_bytes=0, now=None, incoming_release=None):
     after=used-sum(remove.values())
     p.require(after+incoming_bytes+4096<=BUDGET,'OSM storage budget exceeded (80 GiB); retain live data and inspect storage')
     result={'delete':sorted(remove),'keep':keep,'bytes_before':used,'bytes_after':after,'incoming_bytes':incoming_bytes,
-            'applied':apply,'recover_receipt':live['release'] if pending else None}
+            'applied':apply,'recover_receipt':live['release'] if pending else None,'previous_release':predecessor}
     if apply:
         p.require(p.retrieve(ftp,'current.json')==before,'Live pointer changed before retention')
         if pending: record_publication(ftp,json.loads(raw),raw,None,now=now)

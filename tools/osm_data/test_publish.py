@@ -358,6 +358,28 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), pointer(self.new))
         self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name or '/maintenance/p-new-release.json.' in name
                             for name, _, _ in self.host.uploads))
+        # A fresh runner resuming after promotion must keep the original predecessor.
+        for saved in self.release_dir.glob('rollback-*.json'):
+            saved.unlink()
+        receipt = ROOT + '/maintenance/r-new-release.json'
+        self.host.files[ROOT + '/maintenance/p-new-release.json'] = self.host.files.pop(receipt)
+        self.host.uploads.clear()
+        name = ROOT + '/releases/previous-release/manifest.json'
+        original = self.host.files[name]
+        self.host.files[name] = encoded(manifest('different-release'))
+        with self.assertRaisesRegex(RuntimeError, 'predecessor manifest differs'):
+            publish.publish(self.release_dir, resume=True)
+        self.host.files[name] = original
+        self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), pointer(self.new))
+        publish.publish(self.release_dir, resume=True)
+        saved, = self.release_dir.glob('rollback-*.json')
+        self.assertEqual(json.loads(saved.read_bytes()), json.loads(self.previous))
+        self.assertTrue(all('/current.' in name or '/maintenance/' in name for name, _, _ in self.host.uploads))
+        from tools.osm_data import health
+        with patch.object(health.subprocess, 'run', side_effect=RuntimeError('browser failed')):
+            with self.assertRaisesRegex(RuntimeError, 'browser failed'):
+                health.verify(Path(self.tmp.name) / 'health', self.release_dir)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), json.loads(self.previous))
 
     def test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix(self):
         stage = self.stage({'ways.pmtiles': ARCHIVE[:4000]})

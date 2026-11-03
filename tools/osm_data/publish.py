@@ -435,7 +435,14 @@ def publish(directory, resume=False):
             incoming = sum(max(0, size - ftp.size(stage + '/' + name)) if name in names else size
                            for name, size in expected.items())
         if previous is not None:
-            print(json.dumps(maintenance.prune(ftp, apply=True, incoming_bytes=incoming, incoming_release=release), sort_keys=True), flush=True)
+            retention = maintenance.prune(ftp, apply=True, incoming_bytes=incoming, incoming_release=release)
+            print(json.dumps(retention, sort_keys=True), flush=True)
+            if resume and json.loads(previous)['release'] == release and retention['previous_release']:
+                name = 'releases/' + retention['previous_release'] + '/manifest.json'
+                require(ftp.kind(name) == 'file', 'Retained predecessor needs a regular manifest')
+                predecessor = validate(json.loads(retrieve(ftp, name)))
+                require(predecessor['release'] == retention['previous_release'], 'Retained predecessor manifest differs')
+                previous = json.dumps(current(predecessor), sort_keys=True, separators=(',', ':')).encode()
         else:
             require(maintenance.usage(ftp) + incoming + 4096 <= maintenance.BUDGET, 'OSM storage budget exceeded')
         if resume:
