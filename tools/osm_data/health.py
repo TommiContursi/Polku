@@ -46,7 +46,10 @@ def verify(output,release_dir=None):
                 p.require(len(files)==1,'Expected exactly one retained rollback pointer')
                 p.require(json.loads(files[0].read_text())['release']!=expected['release'],
                           'No distinct predecessor was saved for this recheck')
-                p.rollback(files[0],expected_current=expected['release'])
+                # Recovery writes its own checkpoint; keep it separate from the publication's saved predecessor.
+                recovery=output/'recovery';recovery.mkdir(exist_ok=True)
+                saved=recovery/'previous.json';saved.write_bytes(files[0].read_bytes())
+                p.rollback(saved,expected_current=expected['release'])
                 (output/'rollback.json').write_text(json.dumps({'restored':json.loads(files[0].read_text())['release']})+'\n')
             except Exception as error:
                 raise RuntimeError('Live OSM verification failed; rollback also failed: '+str(error)) from None

@@ -26,7 +26,9 @@ class HealthTests(unittest.TestCase):
     def test_post_publish_failure_rolls_back_and_remains_a_failed_run(self):
         with patch.object(health.p,'get',return_value=encoded(pointer(self.m))),patch.object(health.subprocess,'run',side_effect=subprocess.TimeoutExpired('browser',180)),patch.object(health.p,'rollback') as rollback:
             with self.assertRaises(subprocess.TimeoutExpired): health.verify(self.root/'out',self.release)
-        rollback.assert_called_once_with(self.saved, expected_current='new')
+        copied=self.root/'out'/'recovery'/'previous.json'
+        rollback.assert_called_once_with(copied, expected_current='new')
+        self.assertEqual(copied.read_bytes(),self.saved.read_bytes())
         self.assertTrue((self.root/'out'/'rollback.json').exists())
 
     def test_changed_live_release_fails_before_browser_and_restores_previous(self):
@@ -45,6 +47,19 @@ class HealthTests(unittest.TestCase):
         with patch.object(health.p,'get',side_effect=RuntimeError('host failed')),patch.object(health.p,'rollback') as rollback:
             with self.assertRaisesRegex(RuntimeError,'distinct predecessor'): health.verify(self.root/'out',self.release)
         rollback.assert_not_called()
+
+    def test_failed_recovery_can_retry_without_mixing_its_own_checkpoint(self):
+        calls=[];original=self.saved.read_bytes()
+        def interrupted(path,**kwargs):
+            calls.append(path)
+            (Path(path).parent/'rollback-recovery.json').write_bytes(encoded(pointer(self.m)))
+            raise RuntimeError('interrupted recovery')
+        with patch.object(health.p,'get',return_value=encoded(pointer(self.m))),patch.object(health.subprocess,'run',side_effect=RuntimeError('browser failed')),patch.object(health.p,'rollback',side_effect=interrupted):
+            for attempt in range(2):
+                with self.assertRaisesRegex(RuntimeError,'rollback also failed'): health.verify(self.root/'out',self.release)
+        self.assertEqual(len(calls),2)
+        self.assertEqual(list(self.release.glob('rollback-*.json')),[self.saved])
+        self.assertEqual(self.saved.read_bytes(),original)
 
     def test_rollback_failure_is_not_reported_as_success(self):
         with patch.object(health.p,'get',side_effect=RuntimeError('host failed')),patch.object(health.p,'rollback',side_effect=RuntimeError('rollback failed')):
