@@ -5824,10 +5824,11 @@ export class Planner {
     }
     box.classList.remove(...FOLDS, ...PHONE_FITS);
     Object.assign(box.style, { left: '', right: '', top: '', bottom: '', maxWidth: '' });
-    // The planner's own toolbox (Done or Edit, how the next leg is drawn, undo, redo, More) is a bar of its own across the
-    // sheet's width, above it at the peek and at half, under the map's buttons, which ride above it; the route's actions
-    // that fit in its one row are on it, More has the rest (#745). A card's or a round trip's (undo and redo) and the line's (step 3 of #233) float at the left.
-    const wide = !folded && !carded && !this.loop.open;
+    // The planner's own toolbox while editing (Done, how the next leg is drawn, undo, redo, More) is a bar of its own across
+    // the sheet's width, above it at the peek and at half, under the map's buttons, which ride above it; the route's actions
+    // are in More (#745). After Done, Edit and More, and a card's or a round trip's (undo and redo) and the line's (step 3
+    // of #233), float at the left at their own width: Edit where Done was.
+    const own = !folded && !carded && !this.loop.open, wide = own && !this.inView();
     // measured as it would float: a copy, so the sheet's size doesn't change while measuring
     const probe = box.cloneNode(true);
     probe.classList.remove('docked');
@@ -5877,7 +5878,8 @@ export class Planner {
     if (wide && !dock) this.barH = 16 + tH; // (the bar over the peek, for peekTooTall())
     toolsH(dock ? 0 : 16 + tH); // from the sheet (and an open timeline) to the toolbox's top
     // the map's buttons ride above the planner's bar, and above the line's toolbox where it doesn't clear them (200 %)
-    const lift = `${!dock && (wide || 8 + w + 8 > Math.min(colLeft, innerWidth - 66)) ? tH + 8 : 0}px`; // (66: the column's widest button, whatever it shows now)
+    // (after Done too, so Done and Edit don't move them)
+    const lift = `${!dock && (own || 8 + w + 8 > Math.min(colLeft, innerWidth - 66)) ? tH + 8 : 0}px`; // (66: the column's widest button, whatever it shows now)
     if (document.documentElement.style.getPropertyValue('--col-lift') !== lift) { document.documentElement.style.setProperty('--col-lift', lift); requestAnimationFrame(() => this.app.fitColumn?.()); }
   }
 

@@ -482,6 +482,15 @@ SCENES = {
     'phone-peek': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek'),
     # the route's view after Done: Edit where Done was, and a point's card with its actions (#745)
     'phone-peek-360': dict(PHONE, w=360, h=740, timeline=False, route='route-kauppi-mtb.json', state='peek'),
+    # the toolbar while editing and after Done, in both docks and at every size (#745)
+    'desk-side-edit': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE),
+    'desk-side-done': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE, js="polku.planner.setEditing(false); true"),
+    'desk-bottom-edit': dict(DESK, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}),
+    'desk-bottom-done': dict(DESK, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}, js="polku.planner.setEditing(false); true"),
+    'mid-bottom-edit': dict(DESK, w=810, h=800, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}),
+    'phone-half-edit': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half'),
+    'phone430-peek': dict(PHONE, w=430, h=932, timeline=False, route='route-kauppi-mtb.json', state='peek'),
+    'phone430-half': dict(PHONE, w=430, h=932, timeline=False, route='route-kauppi-mtb.json', state='half'),
     'phone-view-peek': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="polku.planner.setEditing(false); true"),
     'phone-view-card': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="polku.planner.setEditing(false); polku.planner.openPointCard(polku.planner.points[1]); true"),
     'desk-view': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js="polku.planner.setEditing(false); polku.planner.openPointCard(polku.planner.points[1]); true"),
