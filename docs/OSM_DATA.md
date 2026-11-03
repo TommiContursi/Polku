@@ -34,13 +34,14 @@ passed on 2026-11-03 at 04:24 UTC. Live polku.si browser measurements passed
 zero repeat downloads and zero extra selected-way tag requests. See the
 [compact live receipt](measurements/osm-live-2026-11-03.json).
 
-At this publication checkpoint scheduled publication was disabled. The #706
-maintenance rollout adds unattended publication, guarded retention and tested
-alerts. Once `OSM_PUBLISH_ENABLED=true` is activated, each successful weekly
-four-country build publishes automatically after all existing gates; a human
-does not inspect or pin every snapshot. No hosting plan or secret change is
-needed. The existing immutable release is already published: do not upload it
-again. Manual verified-build recovery and rollback remain available with the flag off.
+Scheduled publication was disabled at that initial publication checkpoint.
+`OSM_PUBLISH_ENABLED=true` was activated on 2026-11-03 at 10:15:25 UTC after
+retention, actual inbox/email delivery and live health checks passed. Weekly
+four-country full builds now publish after the automated gates; a human does
+not inspect or pin every snapshot. GitHub runs the builds; OVH serves immutable
+archives. No hosting plan or secret changed. Manual verified-build recovery and
+rollback remain available with the flag off. See the maintenance verification
+below for the actual new release and the first update's interrupted recovery.
 
 ## Build and preview
 
@@ -402,12 +403,72 @@ Existing atomic promotion, full SFTP readback, Range probes, rollback pointers
 and daily monitoring remain. #701 makes manual rollback independent of the
 scheduled-publication flag; #703 repairs explicit retry after manifest failure.
 
-Before any next publication, review the new candidate's country/resource and
-consumer evidence, check current + previous + next storage, and compare transfer
-time with the protected 120-minute publication budget, including recovery time.
-After promotion, re-read the live
-pointer and exercise actual consumers and monitoring. Client support and
-candidate artifacts alone do not prove publication.
+Weekly builds enforce country, source, geometry, resource and consumer gates,
+and publication checks retained + incoming storage automatically. When changing
+the builder or capacity, compare measured transfer and recovery time with the
+protected 120-minute publication budget. After promotion the pipeline re-reads
+the live pointer and exercises deployed consumers. Client support and candidate
+artifacts alone do not prove publication.
+
+## Automatic maintenance verification, 2026-11-03
+
+Full main build [41617739415](https://github.com/TommiContursi/Polku/actions/runs/41617739415)
+passed all four country builds, common epoch, duplicate-identity checks and 32
+combined browser cases with zero normal Overpass. Its 28 archives total
+11,221,997,780 bytes; source epoch is 2026-11-02T21:21:26Z. Assembly compared
+20,737,815 unique objects and 142,923 matching duplicate copies in 117.96 seconds.
+
+| Country | Complete OS build minutes | Peak RSS GB | Allocated staging GB | Whole job |
+|---|---:|---:|---:|---:|
+| Finland | 39.10 | 4.052 | 14.266 | 45m44s |
+| Sweden | 44.18 | 4.407 | 15.100 | 50m45s |
+| Norway | 44.44 | 6.640 | 18.173 | 53m00s |
+| Estonia | 6.50 | 0.519 | 1.622 | 8m57s |
+
+GB is decimal; allocated staging is measured at archive completion, not a peak
+disk trace. Actual standard runners began with 85 GB free; preflight requires
+25 GiB. No paid runner or dependency was added.
+
+The artifact download took 42m02, compared with the first publication's 8m24.
+All payload hashes/readback and pre-promotion public probes passed, and the
+pointer changed to `20261102T212126Z-four-a730845df91e58bc`. Its original
+90-minute job ended during post-promotion verification. This was a real failed
+attempt, not an entirely unattended first-pass success. #733 gives future
+publication 120 minutes, including recovery; browser verification stays 180 seconds.
+
+Independent production health
+[41664173639](https://github.com/TommiContursi/Polku/actions/runs/41664173639)
+verified that exact release at 15:31:45 UTC: all 32 cases and 28 current archives,
+zero normal Overpass and extra selected-way tag requests. Protected resume
+[41666085199](https://github.com/TommiContursi/Polku/actions/runs/41666085199)
+completed the same immutable release without rebuilding or uploading archive
+payload again. The 37m45s job downloaded its input in 13m21s and fully read back
+the existing data in 17m47s. All public checks and 32 post-publication browser
+cases passed at 16:16:50 UTC, verifying all 28 current archive URLs. #738's
+checkpoint matches the original predecessor byte for byte.
+
+Disposable host retention [41585081185](https://github.com/TommiContursi/Polku/actions/runs/41585081185)
+deleted two eligible test entries and preserved current/predecessor. Production
+read-only preview [41625459351](https://github.com/TommiContursi/Polku/actions/runs/41625459351)
+preserved all 23,853,122,100 bytes, proposed no deletion and recognized the
+recoverable pending receipt with both releases protected.
+Final read-only preview
+[41668769375](https://github.com/TommiContursi/Polku/actions/runs/41668769375)
+confirmed the completed receipt, no pending intent, the original predecessor and
+23,853,120,774 retained bytes, with no deletion proposed.
+
+Bot incident #728 proved real health failure, owner assignment, GitHub inbox
+delivery, email delivery and automatic recovery. Actual update timeout #736
+also reached the owner's email; successful health correctly left that separate
+update incident open until completed publication recovery. The bot then closed
+#736 at 16:17:22 UTC and the recovery email arrived at 16:17:43 UTC. Device push
+is unverified. The first post-activation weekly cron has not yet occurred; manual
+main build uses the same automatic build/publication gates.
+
+The [compact receipt](measurements/osm-maintenance-2026-11-03.json) records source
+hashes, country resources, run IDs and limits. #727's single unexplained live
+browser deadline and #730's local promise rejection remain explicit watches;
+subsequent checks passed without weakening assertions or browser deadlines.
 
 
 ## Completed candidate evidence, 2026-11-02
@@ -443,7 +504,9 @@ The largest PMTiles archive is 3.38 GB. Production >2 GiB Range probes, full
 SFTP publication/readback and actual OVH preflight have since passed; see the
 published-release receipt above. Three full releases use 33.67 GB;
 five use 56.12 GB, or 67.35 GB with a sixth candidate, excluding other files.
-Existing manual retention and rollback rules remain; no automatic deletion.
+Those initial storage estimates predate automatic retention. The current rules
+above preserve current/predecessor and unmarked legacy files while expiring only
+recognized old publisher-owned data.
 
 Border probes deliberately preserve coverage fallback: Tornio/Haparanda,
 Svinesund and Narva serve z14 ways/inspection but fall back for coarser products;

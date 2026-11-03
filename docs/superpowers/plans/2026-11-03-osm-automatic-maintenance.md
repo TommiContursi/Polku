@@ -48,8 +48,8 @@ Interfaces: alerts.classify(event) -> category/outcome/run URL or None; alerts.u
 - [x] Write failing guard/incident tests: main-only enabled build, failure/cancellation, untrusted PR/fork ignored, deduplication, separate health/update recovery and API failure visibility.
 - [x] Add the separate workflow_run notification workflow, minimal issue-write permissions, assigned incidents and test operation. Add real four-country browser checks to daily monitoring and post-publication; preserve diagnostic artifacts and restore the previous pointer if post-publication consumer checks fail.
 - [x] Run unit/focused checks and automatic review; merge. Execute alert test and prove the owner inbox entry, then recover it. Test live daily browser/HTTP monitoring.
-- [ ] Enable the publication flag and run one full main build/update through the same automatic gates. Verify promoted manifest, all four countries/consumers, retained predecessor/metadata, notification/recovery behavior and storage plan. Do not claim a scheduled trigger itself ran before its date.
-- [ ] Update operating docs/report with exact run IDs, checks, current automation and remaining material limits. Close #706 and release the claim only after the real update path is verified.
+- [x] Enable the publication flag and run one full main build/update through the same automatic gates. Verify promoted manifest, all four countries/consumers, retained predecessor/metadata, notification/recovery behavior and storage plan. Do not claim a scheduled trigger itself ran before its date.
+- [x] Update operating docs/report with exact run IDs, checks, current automation and remaining material limits. Close #706 and release the claim only after the real update path is verified.
 
 
 Retention review checkpoint: #707 2ce6db8 now records a verified pending intent
@@ -88,3 +88,17 @@ own rollback target. Reuse the validated retention predecessor, reject a
 mismatched immutable manifest, and prove an actual fake-host browser-failure
 rollback without payload re-upload. Run independent live health before completing
 the immutable release's receipt and final publication evidence.
+
+Final acceptance, 2026-11-03: first enabled build 41617739415 passed all four
+builds, assembly and browser gates, uploaded and fully verified all data, then
+reached its old 90-minute limit after promotion. This was not a zero-intervention
+first-pass success. #733 and #738 passed 97 Python / 24 Node, committed osmdata
+and clean reviews. Verified same-release resume 41666085199 completed in 37m45s
+with no payload upload; all public checks and 32 deployed browser cases / 28
+archive URLs passed at 16:16:50 UTC. Its original-predecessor checkpoint matches
+the first attempt's saved bytes. Read-only retention 41668769375 found a finalized
+receipt, no pending intent, both releases protected and 23,853,120,774 bytes.
+Actual update incident #736 stayed open after successful health, then closed
+automatically after resume; failure and recovery emails reached the owner.
+Publication remains enabled. The operating record preserves the cancelled first
+attempt, successful recovery, unchanged browser limit and unobserved future cron.
