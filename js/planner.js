@@ -4355,11 +4355,14 @@ export class Planner {
           this.els.card.hidden = false;
           this.panel.classList.add('carded');
         }
+        const swap = !!this.cardSeen; // (a card in the peek before this one: opened from it, Back to it, or another pick)
         this.cardSeen = this.cards.place === 'peek' ? this.cards.box : null;
         // a card opens at its own size; tapped on the map while the sheet is folded, it opens folded (its line), so the map
-        // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had
+        // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had. One that takes
+        // the place of a card at half or full keeps that size, or its tallest under it (#692)
         const st = this.panel.dataset.state, entry = this.cards.stack[this.cards.stack.length - 1];
-        if (card && fresh && this.cards.place === 'peek' && (!this.active || (st !== 'peek' && !(st === 'folded' && entry.from === 'map')))) this.setSheetState('peek', { remember: false });
+        const keep = card && fresh && this.cards.place === 'peek' && swap && ['half', 'full'].includes(st);
+        if (!keep && card && fresh && this.cards.place === 'peek' && (!this.active || (st !== 'peek' && !(st === 'folded' && entry.from === 'map')))) this.setSheetState('peek', { remember: false });
         // (opened on the line, the line opens it at its own size: the planner's comes back with the planner, restore())
         else if (card && fresh && this.cards.place === 'peek' && st === 'folded') this.unfoldTo = null;
         // the card's point ringed on the map, while its card (or Move's banner) is open
@@ -4377,6 +4380,13 @@ export class Planner {
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.renderFold();
         this.measureSheet?.();
+        // (each size's stops measured at that size: a full sheet docks the toolbox, so a short card has a half there)
+        if (keep) {
+          for (const to of st === 'full' ? ['full', 'half', 'peek'] : ['half', 'peek']) {
+            if (to !== this.panel.dataset.state) this.setSheetState(to, { remember: false });
+            if (to === 'peek' || this.stops().some((z) => z.name === to)) break;
+          }
+        }
       },
       onPop: () => this.keepView(),
       pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
@@ -4418,7 +4428,7 @@ export class Planner {
     const profTitle = h('span', { class: 'sr-only' }, 'Profile');
     this.els.profZone = h('section', { class: `pl-profile${this.profCompact ? ' compact' : ''}`, 'data-sec': 'profile', 'aria-label': 'Profile' },
       h('div', { class: 'profile-top' }, profTitle, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow, this.els.profSize),
-      h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })));
+      h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas', role: 'img' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })));
     this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
     this.renderProfileSize();
 
@@ -4483,7 +4493,8 @@ export class Planner {
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
     this.els.top = h('div', { class: 'sheet-top' }, h('span'), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.up, this.els.foldBtn), this.els.topSum);
     this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
-    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.tabs, this.els.body, this.els.bar);
+    // (the tabs' headings, h3, under one of the planner's own: its title row has the route's name only in the route's view)
+    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, h('h2', { class: 'sr-only' }, 'Planner'), this.els.tabs, this.els.body, this.els.bar);
     p.after(this.els.grip); // (beside the panel, not in it: the side panel scrolls as one, which would clip it and scroll it away)
     this.setTab(this.tab);
     this.els.leave.put();
@@ -6093,6 +6104,7 @@ export class Planner {
     if (!t) return;
     t.textContent = a ? this.clockOf(this.startSec() + (a.timeWind || a.time)) : '';
     this.els.tabBtn.go.title = a ? `When and how long: back at ${t.textContent} · the weather, taking it along` : TABS[2].title;
+    if (a) this.els.tabBtn.go.setAttribute('aria-label', `Go: arrive ${t.textContent}`); else this.els.tabBtn.go.removeAttribute('aria-label'); // (not "Go09:41")
   }
 
   // A multisport route: each sport's distance and time, then the changeovers.
@@ -6355,6 +6367,7 @@ export class Planner {
         this.points.length === 1 && !this.loop.open ? h('small', {}, tap === 'tap' ? 'Hold the map to see what’s there.' : 'Right-click the map to see what’s there.') : null));
 
       this.chart.setData(null);
+      this.chart.canvas.removeAttribute('aria-label');
       this.renderBreakdown();
       this.renderSpeed(); // your speeds for the sport, before there's a route and after Clear (#87)
       this.els.climbs.innerHTML = '';
@@ -6438,6 +6451,9 @@ export class Planner {
     const last = this.points.length - 1;
     this.chart.setPoints(this.points.map((_, i) => ({ d: this.lengthTo(i), kind: i === 0 ? 'start' : i === last ? 'end' : 'via', n: i })));
     this.chart.setData(a, this.colorMode, paddle ? 'conditions' : 'elevation');
+    // its name says what it shows, as the weather timeline's does (#386)
+    this.chart.canvas.setAttribute('aria-label', paddle ? `Wind along the route, ${fmtDist(a.total)}` : a.terrain && a.terrain.all ? `Elevation profile, ${fmtDist(a.total)}: ${terrainTitle(a.terrain).toLowerCase()}`
+      : `Elevation profile, ${fmtDist(a.total)}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m${a.terrain ? ', part estimated' : ''}`);
     this.setSection('profile', { title: paddle ? 'Conditions' : 'Profile', summary: this.profileSummary() });
     this.renderBreakdown();
     this.renderClimbs();
@@ -6804,7 +6820,7 @@ export class Planner {
     // what was looked at, from where, and what that doesn't mean
     const SAY = { ok: ['check', 'Checked'], bad: ['unk', 'Not checked'], wait: ['clock', 'Being asked'], na: ['minus', 'Not used'] };
     box.append(h('div', { class: 'looked' },
-      h('h4', { class: 'looked-h' }, 'What Polku looked at'),
+      h('h3', { class: 'looked-h' }, 'What Polku looked at'),
       h('ul', {}, ...this.lookedAt(a).map((r) => h('li', { class: r.state },
         h('span', { 'aria-hidden': 'true', html: icon(SAY[r.state][0], 16) }), h('span', {}, h('span', { class: 'sr-only' }, `${SAY[r.state][1]}: `), r.what), h('small', {}, r.by)))),
       h('p', {}, 'Nothing listed doesn’t mean a way is open, safe or allowed. Polku checks only what its sources know; signs on the ground win.')));
@@ -7181,7 +7197,7 @@ export class Planner {
     // departure → back, for the section summary
     const start = this.startSec();
     const when = `Depart ${this.leaveWords()} → ${this.isLoop() ? 'back' : 'there'} ${this.clockOf(start + (a.timeWind || a.time))}`;
-    box.append(h('h4', { class: 'wind-title' }, isWater(act) ? 'Weather on the water' : 'Weather on the route'));
+    box.append(h('h3', { class: 'wind-title' }, isWater(act) ? 'Weather on the water' : 'Weather on the route'));
     const sun = this.sunLine();
     if (sun) box.append(h('p', { class: 'sun-line', html: `${icon('sun', 15)} ${escapeHtml(sun)}` }));
     const days = this.daysList(a); // with nights: day by day (each day's weather once it's in)

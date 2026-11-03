@@ -1,0 +1,54 @@
+name: Polku OSM alerts
+
+on:
+  workflow_run:
+    workflows: [Polku OSM data]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Exercise delivery or recovery of the isolated test alert
+        type: choice
+        options: [failure-test, recovery-test]
+        required: true
+        default: failure-test
+
+permissions:
+  contents: read
+
+concurrency:
+  group: osm-data-alerts
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'schedule' || github.event.workflow_run.event == 'workflow_dispatch'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Report trusted failures or corresponding recovery
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OSM_ALERT_TEST: ${{ inputs.operation }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            if [ "$OSM_ALERT_TEST" = failure-test ]; then
+              python -m tools.osm_data.alerts --test failure
+            else
+              python -m tools.osm_data.alerts --test recovery
+            fi
+          else
+            python -m tools.osm_data.alerts
+          fi

@@ -954,11 +954,11 @@ const KEYS = {
   ],
   trails: () => [
     ...(state.trailColors === 'down' || state.trailColors === 'both'
-      ? [h('h4', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
+      ? [h('h3', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
     ...(state.trailColors === 'up' || state.trailColors === 'both'
-      ? [h('h4', {}, state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty'), ...UPHILL_TEXT.map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)), keyItem(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')] : []),
+      ? [h('h3', {}, state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty'), ...UPHILL_TEXT.map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)), keyItem(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')] : []),
     ...(state.trailDetails ? [
-      h('h4', {}, 'Trail details (OpenStreetMap, where mapped)'),
+      h('h3', {}, 'Trail details (OpenStreetMap, where mapped)'),
       keyItem(keyLine('background:#feb13e;height:4px;box-shadow:inset 0 0 0 1.5px #feb13e'), 'Narrow, under 0.6 m (thinner)'),
       keyItem(keyLine('background:#feb13e;height:11px'), 'Wide, 0.9 m or more (thicker)'),
       keyItem(keyLine('height:7px;background:repeating-linear-gradient(90deg,#1f1f1f 0 2px,transparent 2px 5px) center/100% 2px no-repeat,#feb13e'), 'Faint on the ground (dotted)'),
@@ -969,7 +969,7 @@ const KEYS = {
       ...[['td-tree', 'Fallen tree or log across'], ['td-gate', 'Gate or barrier'], ['td-gate-no', 'Gate, no access'], ['td-stile', 'Stile or kissing gate'], ['td-cycle', 'Cycle barrier'], ['td-ford', 'Ford (no bridge)']]
         .map(([id, label]) => keyItem(h('img', { class: 'lg-icon', src: iconUrl(id), alt: '' }), label)),
     ] : []),
-    h('h4', {}, 'Ways'),
+    h('h3', {}, 'Ways'),
     keyItem(keyLine('border-top:2px dashed #1f1f1f'), 'Path / trail'),
     keyItem(keyLine('border-top:2px dashed #6b4f2a;border-image:repeating-linear-gradient(90deg,#6b4f2a 0 12px,transparent 12px 15px) 1'), 'Forest road / track'),
     keyItem(keyLine('background:#5b7fa8;height:2px'), 'Cycleway (paved)'),
@@ -977,7 +977,7 @@ const KEYS = {
     keyItem(keyLine('border-top:3px dotted #7c3aed'), 'Marked private or no access for your sport (beside the way): routes keep off it'),
     state.activity === 'gravel' || state.activity === 'road' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
     keyItem(keyLine('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary'),
-    h('h4', {}, 'Your route'),
+    h('h3', {}, 'Your route'),
     keyItem(keyLine('background:var(--route);height:5px'), 'Follows paths'),
     keyItem(keyLine('background:var(--route-water);height:5px'), 'Over water'),
     keyItem(keyLine('border-top:5px dotted #ea580c'), 'Carry / portage'),

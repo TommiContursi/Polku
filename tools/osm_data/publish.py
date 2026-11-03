@@ -335,6 +335,22 @@ def local_release(directory):
     return raw, manifest
 
 
+def recovery_source(repository, run, jobs, artifacts):
+    require(type(run.get('id')) is int and run['id'] > 0 and run.get('status') == 'completed'
+            and run.get('head_branch') == 'main' and run.get('head_repository', {}).get('full_name') == repository
+            and run.get('event') in {'schedule', 'workflow_dispatch'}
+            and run.get('path') == '.github/workflows/osm-data.yml',
+            'Recovery needs a completed main OSM build from this repository')
+    required = {'snapshot', 'bundle', *(f'build ({country})' for country in ('finland', 'sweden', 'norway', 'estonia'))}
+    passed = {job['name'] for job in jobs if job.get('conclusion') == 'success'}
+    require(required <= passed, 'All four country builds and bundle must have passed')
+    candidates = [artifact for artifact in artifacts if artifact.get('name') == 'nordic-osm-release']
+    require(len(candidates) == 1 and candidates[0].get('expired') is False
+            and type(candidates[0].get('size_in_bytes')) is int and candidates[0]['size_in_bytes'] > 0,
+            'Recovery needs one unexpired four-country release artifact')
+    return str(run['id'])
+
+
 def recovery_candidates(ftp, release):
     names = {posixpath.basename(p) for p in ftp.nlst()}
     stages = sorted(p for p in names if re.fullmatch(r'\.upload-' + re.escape(release) + r'-[a-f0-9]{32}', p))
@@ -454,19 +470,23 @@ def publish(directory, resume=False):
             ftp.remove(final + '/' + maintenance.UPLOAD)
 
 
-def rollback(manifest_path):
+def rollback(manifest_path, expected_current=None):
     require(os.environ.get('OSM_ALLOW_PUBLISH') == 'true', 'Publication requires approved OSM_ALLOW_PUBLISH=true')
     path = Path(manifest_path)
     target = validate(json.loads(path.read_bytes()), pointed=True)
     config = settings()
     with connection(config) as ftp:
         previous = previous_pointer(ftp)
+        if expected_current is not None:
+            require(previous and json.loads(previous)['release'] == expected_current,
+                    'Live release changed; do not roll back another publication')
         base = f"releases/{target['release']}"
         raw = retrieve(ftp, base + '/manifest.json')
         manifest = validate(json.loads(raw))
         require(current(manifest) == target, 'Rollback manifest differs from immutable release')
         samples = verify_remote(ftp, base, manifest, raw)
         probe(config[-2], manifest, raw, samples)
+        require(previous_pointer(ftp) == previous, 'Live pointer changed during rollback')
         promote(ftp, config[-2], manifest, previous, path.parent, samples, raw)
         maintenance.record_publication(ftp, manifest, raw, previous)
 
@@ -483,6 +503,7 @@ def check(url):
     release = validate(json.loads(raw))
     require(current(release) == manifest, 'Current pointer differs from immutable manifest')
     probe(base, release, raw)
+    return manifest
 
 
 def test_host():

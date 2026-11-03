@@ -553,7 +553,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .lg-group > :last-child { margin-bottom: 10px; }
 .lg-key { margin-top: 6px; font-size: 12px; }
 .lg-key > summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 4px 0; }
-.lg-key h4 { margin: 8px 0 2px; font-size: 11px; color: var(--muted); font-weight: 700; }
+.lg-key h3 { margin: 8px 0 2px; font-size: 11px; color: var(--muted); font-weight: 700; }
 .note a { color: var(--accent); }
 
 .tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
