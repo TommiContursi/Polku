@@ -8,7 +8,7 @@ Inventory for [#154](https://github.com/TommiContursi/Polku/issues/154), updated
 
 Valid hosted cache is preferred, then covered hosted tiles, then the existing public cache/mirrors when coverage is absent or the hosted source fails. Static operations have an eight-second whole-operation deadline. Fallback is one bounded independent-provider round: 15 seconds for interactive/hazard/place queries and 30 seconds for background layers. All mirror addresses remain configured; Kumi/Private Coffee is one service and is not queried twice per round. Public caches retain their seven-day freshness and stale-on-error rules. A valid empty tile differs from absent coverage, incomplete geometry and failed requests. Source timestamps and attribution survive the adapters and caches.
 
-All seven products below are published for Finland, Sweden, Norway and Estonia. A requested tile must fit one actual extract polygon; national bounding rectangles do not establish coverage. Some coarse border tiles conservatively use fallback ([#699](https://github.com/TommiContursi/Polku/issues/699)).
+All seven products below are published for Finland, Sweden, Norway and Estonia. A requested tile must fit one actual extract polygon or its proved union with other hosted countries; national bounding rectangles do not establish coverage. Jointly covered border tiles combine only contributing local ranges, preserving original typed objects and indexed route memberships ([#699](https://github.com/TommiContursi/Polku/issues/699)). Genuine gaps retain bounded fallback; see [border measurements](../measurements/osm-border-2026-11-03.json).
 
 | Consumer and entry point | Hosted product and retained data | Fallback or limit |
 |---|---|---|

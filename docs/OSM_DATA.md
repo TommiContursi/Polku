@@ -13,10 +13,19 @@ See the [dependency inventory](plans/osm-data-inventory.md),
 
 ## Published release, verified 2026-11-03
 
-Release `20261101T212136Z-four-d5f8341920573573` is live at ducksoft.fi, with
+Current verified release: `20261102T212126Z-four-a730845df91e58bc`, source epoch
+`2026-11-02T21:21:26Z`, 28 archives / 11,221,997,780 bytes. The successful
+[recovery/publication check 41666085199](https://github.com/TommiContursi/Polku/actions/runs/41666085199)
+verified every existing payload and actual deployed consumers after promotion.
+See the automatic-maintenance evidence below for the initial interrupted attempt
+and its guarded recovery.
+
+### First four-country publication (historical)
+
+Release `20261101T212136Z-four-d5f8341920573573` was initially published with
 all seven products in Finland, Sweden, Norway and Estonia (28 archives,
 11,224,332,376 bytes). Source epoch: 2026-11-01T21:21:36Z. Actual extract
-polygons determine coverage; uncertain coarse border tiles retain fallback.
+polygons determine coverage; at that checkpoint coarse border unions retained fallback.
 
 [Publication 41536808345](https://github.com/TommiContursi/Polku/actions/runs/41536808345)
 verified all remote hashes and public archive Range/CORS/cache headers before
@@ -227,7 +236,17 @@ classes and ambiguous nearby relations retain bounded public queries.
 
 Full-country manifests embed each dataset's attributed Geofabrik clipping
 polygon, not just its rectangular extent. An uncached tile must fit wholly
-inside one extract; tiles requiring an unproven union use Overpass. The historical
+inside one extract or a proved union of contributing equal-epoch extract polygons.
+The reader checks boundary-event slabs, including holes, concave boundaries and
+edge intersections; corners and rectangles cannot prove coverage. It prefers one
+covering archive and otherwise removes redundant contributors. Only their local
+Range tiles download, in parallel under the same eight-second hosted deadline.
+Duplicate nodes/ways/full relations must agree by original type/ID and complete
+content. Tile-local road route members merge by original index with matching
+tags, original counts and overlapping members/roles; cached country objects are
+not mutated. A source-epoch conflict or any failed/incomplete required part
+fails the whole result into the existing bounded fallback. Provenance records
+every contributing country/source in `source.sources`. Genuine gaps use Overpass. The historical
 Finland-only manifest also uses `data/finland-coverage.geojson`. Cached tiles can be
 used without loading that asset offline. A valid covered empty tile does not
 trigger an Overpass query.
@@ -382,8 +401,9 @@ browser reads remain local Range requests. Assembly hard-links the country
 files on one filesystem and adds a manifest; it does not duplicate country data
 inside a shared archive. Finland's original dataset names/root coverage remain
 compatible with old clients. Each added record identifies its country, kind,
-coverage and source timestamp. A tile requiring a union of border polygons
-conservatively falls back, rather than promising coverage from a rectangle.
+coverage and source timestamp. The reader can prove a union of their actual
+polygons and combine local tiles without changing these existing archives.
+A genuine union gap retains fallback; rectangles never establish coverage.
 
 After a complete candidate exists, `verify-candidate` with its numeric build run
 ID in `release` reuses `nordic-osm-release` without rebuilding or publishing.
@@ -508,10 +528,10 @@ Those initial storage estimates predate automatic retention. The current rules
 above preserve current/predecessor and unmarked legacy files while expiring only
 recognized old publisher-owned data.
 
-Border probes deliberately preserve coverage fallback: Tornio/Haparanda,
+Historical pre-#699 border probes deliberately preserved coverage fallback: Tornio/Haparanda,
 Svinesund and Narva serve z14 ways/inspection but fall back for coarser products;
-Kilpisjärvi falls back for z11 hazards. A correct joint-coverage proof and local
-merge are the measured follow-up #699. These limits must not be reported as a
+Kilpisjärvi falls back for z11 hazards. The separately measured reader change #699 adds joint coverage and local
+merging; see its current verification below. These limits must not be reported as a
 host outage or a complete empty result. The outside control fails coverage for
 all products. Missing country metadata is rejected rather than inheriting another
 country's footprint. Area/ambiguous nearby-relation geometry remains #696.
@@ -521,3 +541,31 @@ products. Live consumer measurements are separate from the CI preview timings
 above. Physical phones, an actual production rollback and the whole local app
 suite were not exercised; focused failure/rollback checks passed. A sporadic
 pre-CSS test setup warning is tracked in #704, with no product failure reproduced.
+
+## Shared border reader (#699), verified against published data 2026-11-03
+
+The reader change uses the existing published release above, with no data rebuild,
+archive/schema change, storage increase or publication-pointer switch. All seven
+products are hosted at Tornio–Haparanda and Svinesund when the full tile is covered
+by the country-polygon union; Kilpisjärvi hazards also become covered. Narva's
+unhosted side still leaves coarse lighting/trail/winter/place/hazard tiles
+uncovered, while z14 ways/inspection remain hosted. The outside control remains
+uncovered for every product. These are coverage outcomes, not service failures.
+
+The [compact measurement](measurements/osm-border-2026-11-03.json) records actual
+published archive URLs, local Range transfer, cold/repeat latency and provenance
+in desktop1440×900 and phone390×844 emulation (4×CPU,80ms,10Mbit/s). The existing
+32 four-country cases plus real border consumers assert zero normal Overpass,
+zero repeat transfers and zero additional selected-way tag requests. Border
+requests reuse the page's manifest and archive directory caches, so the numbers
+measure additional local tile transfers, not a fresh archive-header download
+for every product. Physical-phone performance remains unmeasured.
+
+The existing source order and failure reporting are unchanged. Node/browser
+regressions cover adjacent/overlapping polygons, filled/unfilled holes,
+concavities, disconnected pieces, exact edge contact, narrow/crossing gaps,
+conflicting typed objects and original ordered topology/membership, mixed
+epochs, valid empty unions, stalled/failed contributors and fresh-reader
+IndexedDB reuse offline. Area and ambiguous nearby-relation geometry remains
+the separate #696 scope. The app-only change can be rolled back independently
+of the existing immutable data releases.

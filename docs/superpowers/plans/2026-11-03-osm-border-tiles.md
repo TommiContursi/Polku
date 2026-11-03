@@ -126,3 +126,19 @@ relation member subsets versus full ordered lists; cache mutation during merge;
 failed contributors and aborts; redundant or mixed-epoch sources; and honest
 post-deployment coverage claims. Physical phones remain a stated verification
 limit, never described as tested by Chrome emulation.
+
+## Implementation checkpoint (2026-11-03)
+
+Tasks1/2 are implemented in fcb3a18; their overlapping reader work was committed
+together so no independently usable commit loses complementary route members.
+Task3 preview measurements pass against the actually published release
+`20261102T212126Z-four-a730845df91e58bc`:32 country cases/all28 archive URLs,
+all7 products and real selection/tag/detail consumers at Tornio/Svinesund in
+both profiles. Narva coarse gaps and the outside control remain uncovered.
+The existing registered browser check fails both sizes with the unchanged
+241b3a7 reader and passes with the new reader. Node39/39, Python97/97; the
+stalled-contributor check reaches fallback at8001ms. Complete raw timing/Range
+and provenance evidence is condensed in the committed border receipt.
+
+PR #746 is the single reader release; actual deployed verification follows CI
+and automatic code review. Existing archives/schema/pointer are unchanged.

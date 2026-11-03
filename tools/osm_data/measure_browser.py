@@ -124,11 +124,16 @@ BORDER_SCRIPT = """(async()=>{
   }
   if(['Tornio-Haparanda','Svinesund'].includes(name)) {
    if(Object.values(row).some(r=>!r.hosted)) throw new Error(name+': a jointly covered product still falls back');
-   const T=await import('/js/trails.js'), V=await import('/js/winter.js'), L=await import('/js/lit.js'), H=await import('/js/waterdata.js'), S=await import('/js/stops.js');
+   const T=await import('/js/trails.js'), V=await import('/js/winter.js'), L=await import('/js/lit.js'), H=await import('/js/waterdata.js'), S=await import('/js/stops.js'), W=await import('/js/ways.js'), I=await import('/js/inspect.js');
+   await W.loadWays(W.wayTile(ll));
+   const seed=W.nearestWay(ll,2000);
+   if(!seed) throw new Error(name+': no selectable border way');
+   const pick=await W.joinWay(seed,ll), atTags=calls.length, tags=await I.osmDetails({type:'way',id:seed.id,ll}), tagRequests=calls.length-atTags;
+   if(Object.values(pick.stops).some(s=>s.unloaded) || tags?.id!==seed.id || tagRequests) throw new Error(name+': border selection/tag reuse incomplete');
    const trail=await T.trailTile(...lonLatToTile(...ll,13).map(Math.floor)), winter=await V.winterTile(...lonLatToTile(...ll,12).map(Math.floor)), lit=await L.litTile(...lonLatToTile(...ll,13).map(Math.floor));
    const water=await H.waterInputs([ll[0]-.0001,ll[1]-.0001,ll[0]+.0001,ll[1]+.0001],{hazards:true}), stays=await S.staysNear(ll,.1);
    if([trail,winter,lit].some(j=>j.source?.provider!=='Polku OSM data') || water.missing.includes('OpenStreetMap') || publicCalls) throw new Error(name+': real border consumer did not use hosted data');
-   row.consumers={trail_ways:trail.w.length,winter_ways:winter.w.length,lit_ways:lit.w.length,hazards:water.hazards.features.length,stays:stays.length,overpass_requests:publicCalls};
+   row.consumers={selected_way:seed.id,selected_pieces:pick.chain.length,tag_requests:tagRequests,trail_ways:trail.w.length,winter_ways:winter.w.length,lit_ways:lit.w.length,hazards:water.hazards.features.length,stays:stays.length,overpass_requests:publicCalls};
   }
   out[name]=row;
  }

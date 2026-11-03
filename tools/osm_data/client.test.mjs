@@ -440,3 +440,17 @@ test('missing, incomplete, mixed-epoch and partial border answers stay unavailab
   const partial=await decodedUnion('partial',[[],[]],{complete:[true,false]});assert.equal(partial.nearby_complete,false);
   await assert.rejects(decodedUnion('bad-index',[[route([{...firstMember,index:4}])],[route([secondMember])]]),/Incomplete OSM relation/);
 });
+
+test('a stalled contributing archive still reaches fallback within one hosted deadline',async()=>{
+  const {hostedTile}=await import('../../js/osm-data.js');
+  const real=globalThis.fetch, base=borderManifest([rectangle(-1,-1,.6,2),rectangle(.4,-1,2,2)]);
+  const url='https://data.example/union-stall/current.json';
+  let fallback=0, timer;
+  globalThis.fetch=(at,init)=>String(at)===url ? Promise.resolve(Response.json(base))
+    : String(at).includes('country1/') ? Promise.resolve({status:206,headers:new Headers({'Content-Range':`bytes 0-${archive.length-1}/${archive.length}`}),arrayBuffer:()=>new Promise(()=>{})}) : real(at,init);
+  try {
+    const result=await Promise.race([hostedTile(url,'ways',14,[8192,8192],err=>{fallback++;assert.match(err.message,/timed out/);return {missing:true};}),
+      new Promise((_,no)=>{timer=setTimeout(()=>no(new Error('deadline exceeded')),9000);})]);
+    assert.deepEqual(result,{missing:true});assert.equal(fallback,1);
+  } finally {clearTimeout(timer);globalThis.fetch=real;}
+});
