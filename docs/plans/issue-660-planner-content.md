@@ -26,19 +26,24 @@ The route's list (Start with Leave now, each stretch with its length, time, clim
 
 ## The steps: the PR queue (2026-11-04)
 
-The order chosen on 2026-11-04 after step A (#743) and the Edit and Done step (#750, #745) were built and tried, the cards audit (#749), the Komoot reference (#754) and the user's review of them. One PR each, tried on the phone before the next starts; each is visible on the first screen, and none touches the toolbar again. Findings from the audit and the text review are slotted after these, not into them. The Project's Now column holds the same order; this list is the record.
+The order chosen on 2026-11-04 after step A (#743) and the Edit and Done step (#750, #745) were built and tried, the cards audit (#749), the Komoot reference (#754), the text review (#763) and the user's review of them. One PR each, tried on the phone before the next starts; each is visible on the first screen, and none touches the toolbar again. Findings from the audit and the text review are slotted after these, not into them. The Project's Now column holds the same order; this list is the record.
 
 | # | PR | Issue | What a person sees |
 |---|---|---|---|
 | 1 | One header in both modes | #751 | no title row after Done, no editing hint |
-| 2 | A warning takes the key fact's slot | #741 | the line under the numbers says the warning; nothing moves when Check answers |
-| 3 | The speed beside the numbers | #755 | "Normal · 16 km/h" in the numbers row, tap to change |
-| 4 | Hide the route for a moment | #756 | an eye on the toolbar |
-| 5 | One chart: Check's bars become the profile's legend | #758 | Colour by with lengths; On the route gone or two bars |
-| 6 | A compact profile at the peek | #742 | the route's shape where Hardest climb was |
-| 7 | One chart: Go's weather on the profile | #759 | Go as leave, arrive, one weather line, take it along |
-| 8 | A spot's popup: five facts, one action | #760 | the same small card for a spot and a point, every action in sight |
-| 9 | The route's list, rethought | #761 | a brainstorm first, then its PRs |
+| 2 | The route's list says things once | #764 | no hint, no second numbers line; Start and the first stretch in sight at half |
+| 3 | A warning takes the key fact's slot, in every layout | #741 | the line under the numbers says the warning, both docks too; nothing moves when Check answers |
+| 4 | The speed beside the numbers | #755 | "Normal · 16 km/h" in the numbers row, tap to change |
+| 5 | Hide the route for a moment | #756 | an eye on the toolbar |
+| 6 | Check said once | #765 | what it found first, the verdict with nothing to read, the sources folded when all answered |
+| 7 | One chart: Check's bars become the profile's legend | #758 | Colour by with lengths; On the route gone or two bars, one Selected |
+| 8 | A compact profile at the peek | #742 | the route's shape where Hardest climb was |
+| 9 | Go, folded | #766 | the time with its table behind a ›, the weather for the trip, "after dark" with the time |
+| 10 | One chart: Go's weather on the profile | #759 | the weather along the route on the chart; Go as leave, arrive, one line, take it along |
+| 11 | A spot's popup: five facts, one action | #760 | the same small card for a spot and a point, every action in sight |
+| 12 | The route's list, rethought | #761 | a brainstorm first, then its PRs |
+
+Beside the queue, as Fix PRs in the month's milestone whenever a session is free: #767 (sentence-case headings, nothing under 12 px), #753 with the toolbar's tooltips, #752 (the sports line's climbing). The text review that found them is `docs/reviews/2026-11-04-planner-text.md` (#763).
 
 Built so far, before the queue:
 - **A. The route before its settings (#740, PR #743, merged 2026-11-03).** The route's list first; no fold needed: shaping points already fold under their stretch.
