@@ -113,7 +113,7 @@ Shortcuts work when you are not typing in an input field.
 
 ## Map gestures
 
-Pinching, or Ctrl+scrolling, over a panel zooms the map. In 3D, a two-finger trackpad scroll tilts and rotates; Shift+scroll tilts anywhere. You can also use the orbit pad, right-drag or a two-finger touch gesture.
+Pinching, or Ctrl+scrolling, over a panel zooms the map. The mouse wheel and a two-finger trackpad scroll up or down zoom, in 2D and 3D alike; a sideways trackpad scroll rotates, and Shift+scroll tilts. You can also use the orbit pad, right-drag or a two-finger touch gesture.
 
 ## Before going offline
 

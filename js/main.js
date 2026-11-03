@@ -148,7 +148,7 @@ const map = new maplibregl.Map({
   cooperativeGestures: false,
 });
 installIcons(map);
-initGestures(map, { trackpadTilt: () => state.terrain3d && state.trackpadTilt, trackpadRotate: () => state.trackpadTilt });
+initGestures(map, { trackpadRotate: () => state.trackpadTilt });
 bindCrosshair(map);
 const view3d = initView3d(map, $('#view3d'));
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
@@ -1679,7 +1679,7 @@ function renderSettingsPanel() {
     heightRange(),
     h('p', { class: 'note' }, 'How tall the hills stand in 3D. Layers turns 3D on and off, and has this too.'),
     hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
-    hoverCapable() ? toggle('Trackpad rotates & tilts', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms') : null,
+    hoverCapable() ? toggle('Trackpad rotates', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates. Up/down and pinch zoom; Shift+scroll tilts') : null,
     comingToggle('Turn the map with two fingers', 'Off keeps north up; a pinch only zooms', true),
     comingChoice('When Polku opens', ['Where you left off', 'A fresh start']),
     comingToggle('Keep the screen on while following', 'Only while Follow me is on'),
