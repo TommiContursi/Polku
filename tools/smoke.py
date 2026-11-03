@@ -16533,10 +16533,11 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
   // their distance, and the Start row in sight from the list's top
   list() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
+    // (a row's line: its time first, then its label at most, never a distance)
+    const line = (row, first) => { const t = row?.querySelector('small')?.textContent || ''; return (t.startsWith(first) && !/\\d (k?m)\\b/.test(t)) || t; };
     const L = p.els.points, rows = [...L.querySelectorAll('.wpl-point')], start = rows[0], end = rows[rows.length - 1], r = start?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect(), v = s.getBoundingClientRect();
     return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis(document.querySelector('.wpl-top .btn')), warn: vis(L.querySelector('.warn-row')),
-      start: start?.querySelector('small')?.textContent === `Leave ${p.leaveWords()}` || start?.querySelector('small')?.textContent,
-      end: end?.querySelector('small')?.textContent === `There at ${p.clockOf(p.arriveAt(p.points.length - 1))}` || end?.querySelector('small')?.textContent,
+      start: line(start, `Leave ${p.leaveWords()}`), end: line(end, `There at ${p.clockOf(p.arriveAt(p.points.length - 1))}`),
       seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1 }; // (the sheet's own foot: the body runs on under it)
   },
   // How you go ›, then Back: the focus on its row, and the row in sight under the list (#740)
