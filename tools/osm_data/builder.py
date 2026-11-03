@@ -22,6 +22,9 @@ from pmtiles.reader import MmapSource, Reader, all_tiles
 from pmtiles.tile import Compression, TileType, tileid_to_zxy, zxy_to_tileid
 from pmtiles.writer import Writer
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from tools.osm_data.geometry import inspectable, encoded as json_bytes
+
 
 ZOOM = 14
 SIDE = 1 << ZOOM
@@ -106,11 +109,6 @@ def is_stay(tags):
             tags.get('amenity') == 'shelter' and tags.get('shelter_type') in {'lean_to', 'basic_hut'})
 
 
-INSPECT_KEYS = {'amenity', 'tourism', 'leisure', 'natural', 'barrier', 'ford', 'man_made', 'historic'}
-
-def inspectable(tags):
-    return any(tags.get(k) for k in INSPECT_KEYS)
-
 def products(kind, tags):
     result = []
     h = tags.get('highway')
@@ -192,11 +190,6 @@ members (including restriction via-nodes), relation members and off-tile way
 members are omitted. The original source PBF retains the complete relations.
 These memberships are descriptive data, not a routing restriction engine.
 '''
-
-
-def json_bytes(value):
-    return json.dumps(value, ensure_ascii=False, sort_keys=True,
-                      separators=(',', ':'), allow_nan=False).encode('utf-8')
 
 
 def tile_point(lon, lat):

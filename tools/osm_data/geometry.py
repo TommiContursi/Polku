@@ -19,12 +19,7 @@ from pmtiles.writer import Writer
 ZOOM = 13
 SIDE = 1 << ZOOM
 KINDS = {'n':'node', 'w':'way', 'r':'relation'}
-AREA_VALUES = {'water', 'park', 'nature_reserve', 'recreation_ground', 'national_park', 'protected_area'}
 INSPECT_KEYS = {'amenity', 'tourism', 'leisure', 'natural', 'barrier', 'ford', 'man_made', 'historic'}
-
-
-def area_tags(tags):
-    return any(tags.get(k) in AREA_VALUES for k in ('natural', 'leisure', 'boundary'))
 
 
 def inspectable(tags):
