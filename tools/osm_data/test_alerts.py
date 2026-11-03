@@ -10,7 +10,7 @@ REPO='TommiContursi/Polku'
 
 
 def event(operation='build',conclusion='failure',branch='main'):
-    return {'repository':{'full_name':REPO},'workflow_run':{'name':'Polku OSM data','head_branch':branch,
+    return {'repository':{'full_name':REPO},'workflow':{'path':'.github/workflows/osm-data.yml'},'workflow_run':{'name':'OSM data / '+operation,'path':'.github/workflows/osm-data.yml','head_branch':branch,
         'head_repository':{'full_name':REPO},'event':'workflow_dispatch','display_title':'OSM data / '+operation,
         'id':123,'html_url':'https://github.com/'+REPO+'/actions/runs/123','conclusion':conclusion}}
 
@@ -52,9 +52,14 @@ class AlertTests(unittest.TestCase):
 
     def test_only_trusted_main_operations_are_classified(self):
         self.assertEqual(alerts.classify(event(),REPO)['kind'],'update')
-        for patch in [dict(head_branch='feature'),dict(event='pull_request'),dict(head_repository={'full_name':'attacker/Polku'}),dict(name='Other workflow')]:
+        for patch in [dict(head_branch='feature'),dict(event='pull_request'),dict(head_repository={'full_name':'attacker/Polku'}),dict(path='.github/workflows/other.yml')]:
             data=event();data['workflow_run'].update(patch);self.assertIsNone(alerts.classify(data,REPO))
         self.assertIsNone(alerts.classify(event('inspect-existing'),REPO))
+
+    def test_webhook_uses_dynamic_run_name_and_workflow_path(self):
+        data=event('check');del data['workflow_run']['display_title'];del data['workflow_run']['path']
+        incident=alerts.classify(data,REPO)
+        self.assertEqual(incident['kind'],'health');self.assertTrue(incident['failed'])
 
     def test_successful_build_without_publication_is_not_a_recovery(self):
         result=alerts.classify(event(conclusion='success'),REPO,jobs=[{'name':'publish','conclusion':'skipped'}])
