@@ -13,10 +13,11 @@ TITLES={'update':'OSM data update failed','health':'OSM data health check failed
 
 def classify(event,repository,jobs=None):
     run=event.get('workflow_run',{})
-    if (run.get('name')!='Polku OSM data' or run.get('head_branch')!='main'
+    path=run.get('path') or event.get('workflow',{}).get('path')
+    if (path!='.github/workflows/osm-data.yml' or run.get('head_branch')!='main'
         or run.get('head_repository',{}).get('full_name')!=repository
         or run.get('event') not in {'schedule','workflow_dispatch'}): return None
-    title=run.get('display_title','')
+    title=run.get('display_title') or run.get('name','')
     if not title.startswith('OSM data / '): return None
     operation=title.removeprefix('OSM data / ')
     if operation not in OPERATIONS or run.get('conclusion') in {'neutral','skipped'}: return None

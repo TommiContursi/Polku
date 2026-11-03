@@ -258,6 +258,12 @@ class PublishTests(unittest.TestCase):
             for name,value in [('github.event_name',event),('github.ref',ref),('inputs.operation',operation),('vars.OSM_PUBLISH_ENABLED',enabled)]:
                 expression=expression.replace(name,repr(value))
             self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected)
+        # The registered smoke guard also covers GitHub's dynamic run-name metadata.
+        from tools.osm_data.alerts import classify
+        event={'workflow':{'path':'.github/workflows/osm-data.yml'},'workflow_run':{
+            'name':'OSM data / rollback','head_branch':'main','head_repository':{'full_name':'TommiContursi/Polku'},
+            'event':'workflow_dispatch','conclusion':'failure','html_url':'https://github.com/TommiContursi/Polku/actions/runs/123'}}
+        self.assertEqual(classify(event,'TommiContursi/Polku')['kind'],'rollback')
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

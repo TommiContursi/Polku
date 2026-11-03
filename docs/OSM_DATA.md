@@ -247,6 +247,8 @@ updates that issue without repeated comment spam, and closes it on corresponding
 recovery. A healthy old release does not close a failed-update incident; a build
 that skips publication is not a successful update. Healthy runs without an
 incident remain quiet. Alert API errors fail visibly in the alert workflow.
+Classification identifies the workflow file path and reads the operation from
+the dynamic run title/name. The run's `name` is not the fixed workflow label.
 No new email service, account or dependency is introduced. GitHub's inbox and
 email/push preferences control delivery; use the isolated failure-test and
 recovery-test operations to prove the actual inbox path before activation.

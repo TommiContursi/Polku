@@ -121,15 +121,19 @@ def main():
     samples=COUNTRY_SAMPLES[args.country] if args.country!='all' else {name:ll for cases in COUNTRY_SAMPLES.values() for name,ll in cases.items()}
     output = sys.stdout
     with redirect_stdout(sys.stderr):
+        print('OSM measurement: starting Chrome', flush=True)
         chrome = Chrome()
         result = {'browser': chrome.send('Browser.getVersion'), 'origin': BASE, 'cases': {}, 'border_checks': {}}
         try:
             for label, width, height, phone in [('desktop', 1440, 900, False), ('phone_emulated', 390, 844, True)]:
+                print(f'OSM measurement: {label} starting', flush=True)
                 page = chrome.page(width, height, phone)
                 try:
                     chrome.send('Storage.clearDataForOrigin', {'origin': BASE.rstrip('/'), 'storageTypes': 'indexeddb,cache_storage'}, page.s)
                     chrome.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, page.s)
+                    print(f'OSM measurement: {label} opening app', flush=True)
                     page.open_app({'activity': 'mtb', 'layers': {'trails': False, 'uphill': False, 'wx': False}})
+                    print(f'OSM measurement: {label} app ready; querying consumers', flush=True)
                     chrome.send('Network.setCacheDisabled', {'cacheDisabled': True}, page.s)
                     if phone:
                         chrome.send('Emulation.setCPUThrottlingRate', {'rate': 4}, page.s)
@@ -140,8 +144,10 @@ def main():
                     assert data[0]['requests'] > 0 and data[0]['bytes'] > 0, 'cold source requests were not measured'
                     assert all(not stop.get('unloaded') for row in data for stop in row['stops'].values()), 'selection ended on missing data'
                     result['cases'][label] = data
+                    print(f'OSM measurement: {label} {len(data)} covered locations complete', flush=True)
                     if args.country=='all':
                         result['border_checks'][label]=page.js(BORDER_SCRIPT,timeout=180000)
+                        print(f'OSM measurement: {label} border controls complete', flush=True)
                 finally:
                     page.close()
         finally:
