@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-04
 
+### The route's list says things once ([#764](https://github.com/TommiContursi/Polku/issues/764))
+
+- The route's list in **Route** starts with the route's sport and ends, then the start, without the "Tap a point or a stretch" line: the rows' arrows say they open. **Reorder** is where it was.
+- A route of one sport with no stops or nights no longer repeats its length, time, climb and the weather at its end under the list's heading: the route's numbers above say them. A route in several parts keeps each part's numbers and its weather.
+- The start's row says when you leave ("Leave now") and the end's when you're there ("There at 21:55"), without 0 m and the route's whole length.
+
 ### One planner header, drawing or not ([#751](https://github.com/TommiContursi/Polku/issues/751))
 
 - After **Done**, the planner's header is the same as while you draw: the route's numbers, with no row of the route's name above them, so the planner covers no more of the map than while you draw. On a desktop **✕** is at the end of the numbers' row; on a phone, fold the planner to its line and its **✕** puts it away.
