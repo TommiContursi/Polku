@@ -8,7 +8,7 @@ export async function checkStaticOSM() {
   const root = `${location.origin}/__test_osm_${Date.now()}/`, url = root + 'current.json';
   const manifest = { schema: 1, release: 'fixture', bounds: [-180, -85.05112878, 180, 85.05112878], source: { timestamp: '2026-11-01T00:00:00Z' },
     datasets: { ways: { format: 'pmtiles-json', schema: 1, zoom: 14, url: 'ways.pmtiles', bytes: archive.byteLength } } };
-  const real = window.fetch, calls = [], fails = [];
+  const real = window.fetch, calls = [], fails = await checkLocalGeometry();
   // The weekly full-country preview exercises a long northern way beyond the old six-round limit.
   const country = OSM_DATA_MANIFEST ? (await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.country : null;
   if (OSM_DATA_MANIFEST && (!country || country === 'finland')) {
@@ -309,5 +309,24 @@ export async function checkHostedInspection() {
     if (W.nearestWay(ll,100)?.id!==81002) fails.push('concurrent raw inspection broke the adapted ways index');
   } catch(e) { fails.push(String(e)); }
   finally { StaticOSM.prototype.tile=original;window.fetch=real; }
+  return fails;
+}
+
+
+async function checkLocalGeometry() {
+  const { validateGeometry, containsArea } = await import('/js/osm-geometry.js');
+  const cases = await (await fetch('/tools/fixtures/osm-geometry.json')).json(), fails = [];
+  for (const { json, point, inside } of cases) {
+    validateGeometry(json, json.tile);
+    const lake = json.elements.find(e => e.type === 'relation' && e.id === 100);
+    if ((lake ? containsArea(lake, json.tile, point) : false) !== inside) fails.push(`local area containment lost at ${point}`);
+  }
+  const cut = structuredClone(cases[0].json);
+  cut.elements[0].area.complete = false; cut.elements[0].area.polygons = [];
+  try { containsArea(cut.elements[0], cut.tile, cases[0].point); fails.push('incomplete area looked complete'); }
+  catch (e) { if (!/Incomplete/.test(e.message)) fails.push(String(e)); }
+  cut.tile[1]++;
+  try { validateGeometry(cut, cases[0].json.tile); fails.push('geometry from a different tile was accepted'); }
+  catch (e) { if (!/geometry/.test(e.message)) fails.push(String(e)); }
   return fails;
 }
