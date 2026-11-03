@@ -305,3 +305,138 @@ test('missing country coverage cannot inherit another country or its rectangle',
     await assert.rejects(new StaticOSM('https://data.example/missing-root-coverage/current.json').tile([8192,8192]),/country.*coverage/);
   } finally {globalThis.fetch=real;}
 });
+
+const { tileBounds, lonLatToTile } = await import('../../js/geo.js');
+const borderBounds = tileBounds(8192,8192,14);
+const ring = (points) => points.map(([x,y]) => [borderBounds[0]+x*(borderBounds[2]-borderBounds[0]),borderBounds[1]+y*(borderBounds[3]-borderBounds[1])]);
+const rectangle = (w,s,e,n) => ({type:'Polygon',coordinates:[ring([[w,s],[e,s],[e,n],[w,n],[w,s]])]});
+function borderManifest(coverages) {
+  return {...manifest,datasets:Object.fromEntries(coverages.map((coverage,i)=>[`country${i}-ways`,{
+    ...manifest.datasets.ways,kind:'ways',country:`country${i}`,url:`country${i}/ways.pmtiles`,coverage,source:manifest.source,
+  }]))};
+}
+
+test('joint country polygons cover touching and overlapping borders without fetching irrelevant archives', async () => {
+  const real=globalThis.fetch;
+  let base;
+  globalThis.fetch=(url,init)=>String(url).endsWith('current.json') ? Promise.resolve(Response.json(base)) : real(url,init);
+  try {
+    for (const [i,seam] of [0.5,0.6].entries()) {
+      base=borderManifest([rectangle(-1,-1,seam,2),rectangle(.5,-1,2,2),rectangle(3,3,4,4)]);
+      calls=[];
+      const data=new StaticOSM(`https://data.example/union${i}/current.json`);
+      const result=await data.tile([8192,8192]);
+      assert.equal(result.elements[0].id,10);
+      assert.ok(calls.some(c=>c.url.includes('country0/ways.pmtiles')));
+      assert.ok(calls.some(c=>c.url.includes('country1/ways.pmtiles')));
+      assert.ok(!calls.some(c=>c.url.includes('country2/ways.pmtiles')));
+    }
+  } finally {globalThis.fetch=real;}
+});
+
+test('union proof preserves holes, concavities, disconnected components and arbitrarily narrow gaps', async () => {
+  const real=globalThis.fetch;
+  let base;
+  globalThis.fetch=(url,init)=>String(url).endsWith('current.json') ? Promise.resolve(Response.json(base)) : real(url,init);
+  const outer=rectangle(-1,-1,2,2).coordinates[0], hole=rectangle(.3,.3,.7,.7).coordinates[0];
+  const holed={type:'Polygon',coordinates:[outer,hole]};
+  const shapes=[
+    {name:'filled hole',parts:[holed,rectangle(.3,.3,.7,.7)],covered:true},
+    {name:'unfilled hole',parts:[holed,rectangle(.3,.3,.6,.7)],covered:false},
+    {name:'thin seam gap',parts:[rectangle(-1,-1,.5,2),rectangle(.500000001,-1,2,2)],covered:false},
+    {name:'concave notch',parts:[{type:'Polygon',coordinates:[ring([[-1,-1],[2,-1],[2,2],[.7,2],[.7,.3],[.3,.3],[.3,2],[-1,2],[-1,-1]])]},rectangle(.3,.4,.7,2)],covered:false},
+    {name:'disconnected islands',parts:[{type:'MultiPolygon',coordinates:[rectangle(-1,-1,.4,2).coordinates,rectangle(.6,-1,2,2).coordinates]},rectangle(.4,.3,.6,.7)],covered:false},
+    {name:'diagonal seam',parts:[{type:'Polygon',coordinates:[ring([[-1,-1],[2,-1],[-1,2],[-1,-1]])]},{type:'Polygon',coordinates:[ring([[2,-1],[2,2],[-1,2],[2,-1]])]}],covered:true},
+    {name:'crossing boundary gap',parts:[{type:'Polygon',coordinates:[ring([[-1,-1],[2,-1],[2,.6],[-1,.4],[-1,-1]])]},{type:'Polygon',coordinates:[ring([[-1,.6],[2,.4],[2,2],[-1,2],[-1,.6]])]}],covered:false},
+    {name:'edge contact only',parts:[rectangle(-1,-1,0,2),rectangle(1,-1,2,2)],covered:false},
+  ];
+  try {
+    for (const [i,{name,parts,covered}] of shapes.entries()) {
+      base=borderManifest(parts);
+      const data=new StaticOSM(`https://data.example/geometry-union${i}/current.json`);
+      if(covered) assert.equal((await data.tile([8192,8192])).elements[0].id,10,name);
+      else await assert.rejects(data.tile([8192,8192]),/coverage/,name);
+    }
+  } finally {globalThis.fetch=real;}
+});
+
+test('published clipping polygons jointly cover coarse Tornio and Svinesund tiles but retain genuine gaps', async () => {
+  const real=globalThis.fetch, shapes=await Promise.all(['finland','sweden','norway','estonia'].map(async c=>JSON.parse(await readFile(new URL(`../../data/${c}-coverage.geojson`,import.meta.url)))));
+  let base;
+  globalThis.fetch=(url,init)=>String(url).endsWith('current.json') ? Promise.resolve(Response.json(base)) : real(url,init);
+  try {
+    for (const z of [11,12,13,14]) {
+      base=borderManifest(shapes);
+      for(const d of Object.values(base.datasets)) d.zoom=z;
+      const data=new StaticOSM(`https://data.example/real-border${z}/current.json`,'ways',z);
+      for (const ll of [[24.14,65.84],[11.22,59.10]]) await data.ready(lonLatToTile(...ll,z).map(Math.floor));
+      await assert.rejects(data.ready(lonLatToTile(30,58,z).map(Math.floor)),/coverage/);
+      if(z<14) await assert.rejects(data.ready(lonLatToTile(28.1903,59.3772,z).map(Math.floor)),/coverage/);
+    }
+  } finally {globalThis.fetch=real;}
+});
+
+// The cached PMTiles decoding boundary supplies arbitrary original objects; real decoding/ranges are tested above.
+async function decodedUnion(label,parts,{epochs=[],complete=[],error=-1,run}={}) {
+  const real=globalThis.fetch, base=borderManifest([rectangle(-1,-1,.6,2),rectangle(.4,-1,2,2)]);
+  for(const [i,d] of Object.values(base.datasets).entries()) {d.source={...manifest.source,timestamp:epochs[i] || manifest.source.timestamp};d.nearby_complete=complete[i];}
+  const url=`https://data.example/objects-${label}/current.json`, data=new StaticOSM(url);
+  globalThis.fetch=(at,init)=>String(at)===url ? Promise.resolve(Response.json(base)) : real(at,init);
+  for(const [i,elements] of parts.entries()) data.readers.set(new URL(`country${i}/ways.pmtiles`,url).href,{
+    getHeader:async()=>({minZoom:14,maxZoom:14,tileType:0,tileCompression:2}),
+    getZxy:async()=>{if(i===error)throw new Error('required archive down');return {data:new TextEncoder().encode(JSON.stringify({schema:1,elements}))};},
+  });
+  try {return await (run ? run(data) : data.tile([8192,8192]));}
+  finally {globalThis.fetch=real;}
+}
+const route=(members)=>({type:'relation',id:100,tags:{type:'route',route:'hiking',name:'Across the border'},member_count:4,members});
+const firstMember={type:'way',ref:10,role:'forward',index:0}, secondMember={type:'way',ref:11,role:'backward',index:2};
+const obstacle={type:'node',id:10,lon:.01,lat:-.01,tags:{barrier:'gate',access:'private'}};
+const fullRelation={type:'relation',id:101,tags:{tourism:'camp_site'},members:[{type:'node',ref:10,role:'entrance'},{type:'way',ref:10,role:'outer'}]};
+
+test('country union preserves typed identity, full tags/topology and original ordered relation subsets', async()=>{
+  const way={type:'way',id:10,tags:{highway:'path',surface:'gravel'},nodes:[1,2],geometry:[{lon:0,lat:0},{lon:.02,lat:-.01}]};
+  const result=await decodedUnion('members',[[way,obstacle,route([firstMember]),fullRelation],[structuredClone(way),route([secondMember,firstMember]),fullRelation]]);
+  assert.deepEqual(result.elements.filter(e=>e.id===10).map(e=>e.type),['way','node']);
+  assert.deepEqual(result.elements.find(e=>e.type==='way'),way);
+  assert.deepEqual(result.elements.find(e=>e.id===100).members,[firstMember,secondMember]);
+  assert.deepEqual(result.elements.find(e=>e.id===101),fullRelation);
+  assert.deepEqual(result.source.sources.map(s=>s.country),['country0','country1']);
+  assert.equal(result.source.timestamp,manifest.source.timestamp);
+});
+
+test('one-country payloads stay immutable when a union expands a relation membership', async()=>{
+  const cached=route([firstMember]);
+  await decodedUnion('immutable',[[cached],[route([secondMember])]],{run:async data=>{
+    const result=await data.tile([8192,8192]);
+    assert.equal(result.elements[0].members.length,2);
+    const key=[...data.tiles.keys()].find(k=>k.includes('country0'));
+    assert.deepEqual((await data.tiles.get(key)).elements[0].members,[firstMember]);
+  }});
+});
+
+for (const [label,left,right] of [
+  ['tags',obstacle,{...obstacle,tags:{barrier:'gate',access:'yes'}}],
+  ['geometry',{type:'way',id:10,tags:{},nodes:[1,2],geometry:[{lon:0,lat:0},{lon:1,lat:1}]},{type:'way',id:10,tags:{},nodes:[1,2],geometry:[{lon:0,lat:0},{lon:2,lat:1}]}],
+  ['node order',{type:'way',id:10,tags:{},nodes:[1,2],geometry:[{lon:0,lat:0},{lon:1,lat:1}]},{type:'way',id:10,tags:{},nodes:[2,1],geometry:[{lon:0,lat:0},{lon:1,lat:1}]}],
+  ['role',route([firstMember]),route([{...firstMember,role:'backward'}])],
+  ['member ref',route([firstMember]),route([{...firstMember,ref:11}])],
+  ['member count',route([firstMember]),{...route([firstMember]),member_count:5}],
+  ['full member order',fullRelation,{...fullRelation,members:[...fullRelation.members].reverse()}],
+]) test(`conflicting ${label} cannot become a complete border answer`,async()=>{
+  await assert.rejects(decodedUnion(label.replaceAll(' ','-'),[[left],[right]]),/Conflicting OSM object/);
+});
+
+test('key order does not make identical originals conflict',async()=>{
+  const result=await decodedUnion('key-order',[[obstacle],[{tags:{access:'private',barrier:'gate'},lat:-.01,lon:.01,id:10,type:'node'}]]);
+  assert.equal(result.elements.length,1);
+});
+
+test('missing, incomplete, mixed-epoch and partial border answers stay unavailable while covered empty succeeds',async()=>{
+  await assert.rejects(decodedUnion('down',[[],[]],{error:1}),/required archive down/);
+  await assert.rejects(decodedUnion('incomplete',[[obstacle],[{type:'way',id:11,tags:{},nodes:[1,2],geometry:[{lon:0,lat:0}]}]]),/Incomplete OSM way/);
+  await assert.rejects(decodedUnion('epoch',[[],[]],{epochs:[manifest.source.timestamp,'2026-11-02T00:00:00Z']}),/epochs/);
+  const empty=await decodedUnion('empty',[[],[]]);assert.deepEqual(empty.elements,[]);
+  const partial=await decodedUnion('partial',[[],[]],{complete:[true,false]});assert.equal(partial.nearby_complete,false);
+  await assert.rejects(decodedUnion('bad-index',[[route([{...firstMember,index:4}])],[route([secondMember])]]),/Incomplete OSM relation/);
+});

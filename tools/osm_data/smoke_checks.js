@@ -21,12 +21,13 @@ export async function checkStaticOSM() {
       if (Object.values(pick.stops).some((s) => s.unloaded)) fails.push('static northern selection stops at the tile loading limit');
     }
   }
-  let offline = false, limitedManifest = null;
+  let offline = false, limitedManifest = null, unavailableArchive = null;
   window.fetch = async (input, init) => {
     const at = String(input);
     if (!at.startsWith(root)) return real(input, init);
     calls.push(at);
     if (offline) throw new TypeError('Offline fixture');
+    if (at === unavailableArchive) throw new DOMException('Required border archive unavailable', 'AbortError');
     if (at === limitedManifest) return new Response('', {status:429,headers:{'Retry-After':'1'}});
     if (at.endsWith('current.json')) return Response.json(manifest);
     const [start, end] = init.headers.Range.slice(6).split('-').map(Number);
@@ -97,6 +98,33 @@ export async function checkStaticOSM() {
       await request('osmdata', limitedURL, {backoff:false});
     }
     offline = false;
+    const { tileBounds } = await import('/js/geo.js');
+    const [w,s,e,n] = tileBounds(8192,8192,14), middle = (w+e)/2;
+    const coverage = (west,east) => ({type:'Polygon',coordinates:[[[west,s-1],[east,s-1],[east,n+1],[west,n+1],[west,s-1]]]});
+    manifest.datasets = Object.fromEntries([coverage(w-1,middle),coverage(middle,e+1)].map((shape,i)=>[`part${i}-ways`,{
+      ...originalDatasets.ways,kind:'ways',country:`part${i}`,coverage:shape,source:manifest.source,url:`part${i}/ways.pmtiles`,
+    }]));
+    const borderURL = root+'border/current.json', border = new StaticOSM(borderURL), begin = calls.length;
+    const union = await border.tile([8192,8192]);
+    if (union.elements.length !== a.elements.length || union.source.sources?.length !== 2) fails.push('border union loses identity, deduplication or source provenance');
+    for (const part of ['part0','part1']) if (!calls.slice(begin).some(at=>at.includes(`${part}/ways.pmtiles`))) fails.push(`border union omits required ${part}`);
+    const {idb:openCache} = await import('/js/idb.js');
+    for (const key of border.tiles.keys()) await openCache('overpass').get(key);
+    offline = true;
+    const beforeOffline = calls.length, offlineUnion = await new StaticOSM(borderURL).tile([8192,8192]);
+    if (JSON.stringify(offlineUnion)!==JSON.stringify(union) || calls.length!==beforeOffline) fails.push('fresh offline border reader does not reuse every IndexedDB contributor');
+    offline = false;
+    const failedURL = root+'border-down/current.json';
+    unavailableArchive = root+'border-down/part1/ways.pmtiles';
+    const {hostedTile} = await import('/js/osm-data.js');
+    let fallback = 0;
+    try {
+      await hostedTile(failedURL,'ways',14,[8192,8192],()=>{fallback++;throw new Error('Public source unavailable too');});
+      fails.push('failed border contributor became a complete or empty answer');
+    } catch (err) {if (!/Public source unavailable too/.test(err.message)) fails.push(String(err));}
+    if (fallback!==1) fails.push('failed border contributor does not reach the existing fallback once');
+    unavailableArchive = null;
+    manifest.datasets = originalDatasets;
     const { lonLatToTile } = await import('/js/geo.js');
     manifest.coverage = await (await real('/data/finland-coverage.geojson')).json();
     manifest.bounds = [19, 59, 32, 71];

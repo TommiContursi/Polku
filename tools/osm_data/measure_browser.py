@@ -100,17 +100,41 @@ SCRIPT = """(async () => {
 BORDER_SCRIPT = """(async()=>{
  const {StaticOSM}=await import('/js/osm-data.js'), {OSM_DATA_MANIFEST}=await import('/js/config.js'), {lonLatToTile}=await import('/js/geo.js');
  const readers=Object.entries({ways:14,lit:13,trails:13,winter:12,hazards:11,places:12,inspection:14}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
- const out={};
+ const out={}, calls=[], real=window.fetch, root=new URL('.',OSM_DATA_MANIFEST).href;
+ let publicCalls=0;
+ window.fetch=async(input,init)=>{
+  const url=String(input);
+  if (/overpass|maps.mail.ru/.test(url)) {publicCalls++;throw new DOMException('Unexpected border Overpass','AbortError');}
+  const res=await real(input,init);
+  if(url.startsWith(root)) calls.push({url,range:init?.headers?.Range,bytes:+res.headers.get('Content-Length')});
+  return res;
+ };
+ try {
  for(const [name,ll] of Object.entries({'Tornio-Haparanda':[24.14,65.84],'Kilpisjarvi':[20.7945,69.045],'Svinesund':[11.22,59.10],'Narva':[28.1903,59.3772],'Outside control':[30,58]})) {
   const row={};
   for(const {name:kind,z,reader} of readers) {
-   try { const j=await reader.tile(lonLatToTile(...ll,z).map(Math.floor)); row[kind]={hosted:true,elements:j.elements.length,source:j.source}; }
+   const xy=lonLatToTile(...ll,z).map(Math.floor), start=performance.now(), begin=calls.length;
+   try {
+    const j=await reader.tile(xy), cold_ms=performance.now()-start, network=calls.slice(begin), at=performance.now(), count=calls.length;
+    const again=await reader.tile(xy), repeat_ms=performance.now()-at;
+    if(JSON.stringify(j)!==JSON.stringify(again) || calls.length!==count) throw new Error(name+': repeated border tile changed/downloaded again');
+    row[kind]={hosted:true,elements:j.elements.length,source:j.source,cold_ms,repeat_ms,bytes:network.reduce((s,r)=>s+r.bytes,0),network};
+   }
    catch(e) { if(!/Outside static OSM coverage/.test(e.message)) throw e; row[kind]={hosted:false,fallback:'coverage'}; }
+  }
+  if(['Tornio-Haparanda','Svinesund'].includes(name)) {
+   if(Object.values(row).some(r=>!r.hosted)) throw new Error(name+': a jointly covered product still falls back');
+   const T=await import('/js/trails.js'), V=await import('/js/winter.js'), L=await import('/js/lit.js'), H=await import('/js/waterdata.js'), S=await import('/js/stops.js');
+   const trail=await T.trailTile(...lonLatToTile(...ll,13).map(Math.floor)), winter=await V.winterTile(...lonLatToTile(...ll,12).map(Math.floor)), lit=await L.litTile(...lonLatToTile(...ll,13).map(Math.floor));
+   const water=await H.waterInputs([ll[0]-.0001,ll[1]-.0001,ll[0]+.0001,ll[1]+.0001],{hazards:true}), stays=await S.staysNear(ll,.1);
+   if([trail,winter,lit].some(j=>j.source?.provider!=='Polku OSM data') || water.missing.includes('OpenStreetMap') || publicCalls) throw new Error(name+': real border consumer did not use hosted data');
+   row.consumers={trail_ways:trail.w.length,winter_ways:winter.w.length,lit_ways:lit.w.length,hazards:water.hazards.features.length,stays:stays.length,overpass_requests:publicCalls};
   }
   out[name]=row;
  }
- if(!out['Tornio-Haparanda'].ways.hosted || Object.values(out['Outside control']).some(r=>r.hosted)) throw new Error('Border coverage controls failed');
+ if(Object.values(out['Outside control']).some(r=>r.hosted) || ['lit','trails','winter','hazards','places'].some(k=>out.Narva[k].hosted)) throw new Error('Genuine border gap claimed as covered');
  return out;
+ } finally {window.fetch=real;}
 })()"""
 
 
