@@ -7,8 +7,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### The route's list says things once ([#764](https://github.com/TommiContursi/Polku/issues/764))
 
 - The "Tap a point or a stretch" line at the top of the route's list in **Route** is gone: the rows' arrows say they open. A route of one sport with no stops or nights has its heading there instead, beside **Reorder**, so at half on a phone the start and the first stretch are in sight.
-- That heading no longer has the route's length, time, climb and the weather at its end under it: the route's numbers above say them. A route in several parts keeps each part's numbers and its weather.
-- The start's row says when you leave ("Leave now") and the end's when you're there ("There at 21:55"), without 0 m and the route's whole length.
+- That heading no longer has the route's length, time and climb under it: the route's numbers above say them. A route in several parts keeps each part's numbers and the weather at its end.
+- The start's row says when you leave and the weather then ("Leave now · 2° · 4 m/s"), and the end's when you're there and the weather there ("There at 21:55 · 1° · 3 m/s"), without 0 m and the route's whole length. Past the forecast's reach a row says "No forecast yet". The wind's direction is in the profile's wind colours and in **Go**.
 
 ### One planner header, drawing or not ([#751](https://github.com/TommiContursi/Polku/issues/751))
 
