@@ -220,6 +220,14 @@ body.single .fr .screen { --k: 1 !important; border-radius: 0; box-shadow: none;
 .tb2.toolk b { font-size: 11px; font-weight: 700; line-height: 1.1; }
 .tb2.toolk[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent-bg); color: #fff; }
 .tb2.toolk[aria-pressed="true"] small { color: #fff; }
+.tb2.toolk { position: relative; }
+.tb2.toolk[aria-pressed="true"]::after { content: "✓"; position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 9px; background: #fff; color: var(--accent); font-size: 12px; font-weight: 800; box-shadow: 0 0 0 1.5px var(--accent); } /* (on is said by its tick and its fill, never colour alone) */
+.ctrl-btn[data-k="tool"] { position: relative; }
+.ctrl-btn[data-k="tool"][aria-pressed="true"]::after { content: "✓"; position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 9px; background: #fff; color: var(--accent); font-size: 12px; font-weight: 800; box-shadow: 0 0 0 1.5px var(--accent); }
+/* when a tap won't add a point, the map says so itself, over the map (it moves nothing) */
+.map-hint { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 7; max-width: calc(100% - 24px); padding: 8px 14px; border-radius: 18px; background: var(--accent-bg); color: #fff; font-size: 13.5px; font-weight: 600; box-shadow: var(--shadow); text-align: center; }
+.map-hint b { color: #fff; }
+.screen.desk .map-hint { left: calc(404px + (100% - 404px) / 2); }
 .tb .tool { flex: none; }
 /* (a): the sheet's own first row, at every size */
 .tb.rowa { padding: 6px 6px 4px; border-bottom: 1px solid var(--line); }
@@ -296,7 +304,7 @@ body.single .fr .screen { --k: 1 !important; border-radius: 0; box-shadow: none;
   <div class="bars" id="bars"></div>
 
   <section class="cv-q" id="what">
-    <p><b>Today</b> is the app on <code>main</code> (f121d64): Edit and Done decide what a tap does, and the toolbox has five shapes for one route. <b>Version 1</b> makes that state one named tool, <b>Add points</b>, and changes nothing else when it's off. <b>Version 2</b> has no state: while the planner is open a tap on the map or a way adds a point, and <b>Look</b> makes the next tap open a card. The toolbox is the same five slots in every state, <b>[the tool] [how the next leg is drawn · style] [undo] [redo] [⋯]</b>, in one of two places: <b>(a)</b> the sheet's own first row, at every size, or <b>(b)</b> a fixed column at the map's left.</p>
+    <p><b>Today</b> is the app on <code>main</code> (f121d64): Edit and Done decide what a tap does, and the toolbox has six shapes for one route. <b>Version 1</b> makes that state one named tool, <b>Add points</b>, and changes nothing else when it's off. <b>Version 2</b> has no state: while the planner is open a tap on the map or a way adds a point, and <b>Look</b> makes the next tap open a card. The toolbox is the same five slots in every state, <b>[the tool] [how the next leg is drawn · style] [undo] [redo] [⋯]</b>, in one of two places: <b>(a)</b> the sheet's foot, its last row at every size, or <b>(b)</b> a fixed column at the map's left. (The sheet's first row was tried first and is kept behind the switch: it rode up and down with every change of the sheet's height.) In both versions a tap within 24 px of the route by touch (16 px by mouse) opens the route's card and never adds a point at the end.</p>
     <table id="taps"></table>
   </section>
 
@@ -540,7 +548,9 @@ class Frame {
     if (this.alt) { const [d] = lineDist(p, this.alt.line); if (d <= W(tol.route)) return { kind: 'alt' }; }
     let best = { d: 1e9 };
     this.legs.forEach((l, li) => { const [d, q] = lineDist(p, l); if (d < best.d) best = { d, q, li }; });
-    if (best.d <= W(tol.route)) return { kind: 'route', li: best.li, at: best.q };
+    // Version 1 and 2: a wider route, so a tap meant for it never adds a point at the route's end (Today: the app's 12 / 6 px box)
+    const guard = this.v === 'today' ? 0 : this.touch ? 24 - tol.route : 16 - tol.route;
+    if (best.d <= W(tol.route + guard)) return { kind: 'route', li: best.li, at: best.q };
     const way = this.wayAt(p, W(tol.way));
     if (way) return { kind: way.k === 'lipas' ? 'lipas' : 'way', way, at: way.q, nearRoute: best.d * s };
     return { kind: 'nothing', at: p, nearRoute: best.d * s };
@@ -788,6 +798,7 @@ class Frame {
     if (this.menu) o += this.menuHTML();
     return o;
   }
+  mapHint() { const x = this.hint(); return x ? x.replace('<p class="pl-hint armed">', '<p class="map-hint" role="status">') : ''; }
   hint() {
     if (this.moving != null) return `<p class="pl-hint armed">${t('hintMove')}</p>`;
     if (this.v === 'today' || this.stage === 'start') return '';
@@ -826,7 +837,7 @@ class Frame {
   phoneHTML() {
     const v = this.v, n = this.nums(), carded = this.cards.length > 0, s = carded ? this.cardS : this.sheet;
     let o = `<div class="scale" style="bottom: 200px;${this.v !== 'today' && this.place === 'b' && this.open ? 'left: 80px' : ''}">500 m</div>`;
-    if (this.sheet !== 'folded' && !carded && this.open && this.stage === 'route') o += `<div class="zoomnote" style="${this.v !== 'today' && this.place === 'b' ? 'left: 80px' : ''}">${t('zoomNote')}</div>`;
+    if (this.sheet !== 'folded' && !carded && this.open && this.stage === 'route' && !this.hint()) o += `<div class="zoomnote" style="${this.v !== 'today' && this.place === 'b' ? 'left: 80px' : ''}">${t('zoomNote')}</div>`;
     const col = `<div class="map-ctrls" style="bottom: 200px"><button type="button" class="ctrl-btn" data-c="compass" aria-label="Compass">${ic('compass', 20)}</button><button type="button" class="ctrl-btn" data-c="locate" aria-label="Locate">${ic('locate', 20)}</button>${this.pts.length > 1 ? `<button type="button" class="ctrl-btn" data-c="fitroute" data-k="fitroute" aria-label="Show the whole route">${ic('fit', 20)}</button>` : ''}<button type="button" class="ctrl-btn" data-c="3d">3D</button><button type="button" class="ctrl-btn word" data-c="weather">${ic('cloudSun', 20)}Weather</button><button type="button" class="ctrl-btn word layers" data-c="layers">${ic('layers', 18)}Layers</button>${this.away ? `<button type="button" class="ctrl-btn word plan" data-k="plan">${ic('route', 20)}${t('plan')}</button>` : ''}</div>`;
     o += col;
     if (!this.open) return o;
@@ -847,7 +858,8 @@ class Frame {
       if (inner && !todayDock && !viewFull) o += todayTb;
     }
     const bar = v !== 'today' && this.place !== 'b' && this.stage !== 'start' ? `<div class="tb rowa${this.place === 'a' ? ' foot' : ''}${this.z === 2 || (this.w < 340 && G.lang === 'fi') ? ' two' : ''}" role="toolbar" aria-label="Drawing tools">${this.slots('rowa')}</div>` : '';
-    const rowa = this.place === 'r' ? bar : '', foot = this.place === 'a' && bar ? `<div class="tb-foot">${this.hint()}${bar}</div>` : '';
+    const rowa = this.place === 'r' ? bar : '', foot = this.place === 'a' && bar ? `<div class="tb-foot">${bar}</div>` : '';
+    if (v !== 'today' && this.stage === 'route' && this.moving == null) o += this.mapHint();
     o += `<div class="sheet" data-s="${s}" data-k="sheet">`;
     if (this.sheet === 'folded' && !carded) {
       const w = this.warnings().filter((x) => x.tier === 'read').length;
@@ -860,7 +872,7 @@ class Frame {
     o += rowa;
     if (todayDock) o += todayTb;
     if (carded) { o += `<div class="sheet-in"><div class="sheet-body" style="display:block">${this.cardHTML(s === 'peek')}</div></div>${foot}`; return o + '</div>'; }
-    o += `<div class="sheet-in"><div class="sheet-head">${this.place === 'a' ? '' : this.hint()}${this.headHTML()}</div><div class="sheet-body">${this.bodyHTML()}</div></div>${foot}</div>`;
+    o += `<div class="sheet-in"><div class="sheet-head">${this.headHTML()}</div><div class="sheet-body">${this.bodyHTML()}</div></div>${foot}</div>`;
     return o;
   }
   headHTML() {
@@ -1012,7 +1024,8 @@ class Frame {
     o += `<div class="panel" style="left:${panel.l}px;top:${this.minimised && !side ? H - 120 : panel.t}px;width:${panel.w}px;height:${ph}">`;
     o += `<div class="sheet-row" style="justify-content:flex-end;padding:4px 4px 0"><button type="button" class="tool" data-k="dock" aria-label="Move the panel">${ic('layers', 18)}</button><button type="button" class="tool" data-k="min" aria-label="Minimise">${ic(this.minimised ? 'up' : 'down', 18)}</button>${view || v !== 'today' ? `<button type="button" class="tool" data-k="close" aria-label="Close">${ic('close', 18)}</button>` : ''}</div>`;
     if (top) o += `<div class="dtb top" role="toolbar" aria-label="Drawing tools">${tb}</div>`;
-    o += `<div class="sheet-head" style="padding-top:4px">${this.hint()}${view ? `<div class="titlerow"><div><b>Start → End</b><small>MTB · ✓ Kept on this device</small></div></div>` : ''}`;
+    if (v !== 'today') o += this.mapHint();
+    o += `<div class="sheet-head" style="padding-top:4px">${view ? `<div class="titlerow"><div><b>Start → End</b><small>MTB · ✓ Kept on this device</small></div></div>` : ''}`;
     const time = v === 'today' ? `<span class="sum-item"><b>${n.min}</b><button type="button" class="link" data-k="leave">${this.leave === 'tom' ? 'from 09:00 tomorrow' : 'from 17:30'}</button></span>` : `<button type="button" class="sum-item leave-chip" data-k="leave" style="border:0;background:none;padding:0;text-align:left"><b>${n.min}</b><span class="chip" style="min-height:24px;padding:0 8px;margin-top:2px;font-size:12.5px">${ic('clock', 14)}${esc(this.leaveWords())} ${ic('down', 12)}</span></button>`;
     o += `<div class="sheet-row"><div class="sheet-sum"><span class="sum-item"><b>${n.km}</b><small>${t('dist')}</small></span>${time}<span class="sum-item"><b>↑${n.up} ↓${n.down} m</b><small>${t('updown')}</small></span></div></div>`;
     o += this.wxLate ? `<div class="kf miss"><span>${ic('cloudSun', 16)}</span><span>${t('weather')}: <b>${t('wxWait')}</b></span></div>` : `<div class="kf"><span>${ic('mountain', 16)}</span><span>${t('hardest')}</span></div>`;
@@ -1171,7 +1184,7 @@ function tapsTable() {
     ['A tap on a marked (LIPAS) route', 'adds a point (editing); its card (the view)', 'on: adds a point · off: its card, with Follow', 'adds a point · after Look: its card'],
     ['A hold or a right-click', 'facts with actions', 'the same card as a tap', 'the same card as a tap'],
     ['The cursor (desktop)', 'crosshair editing, the hand in the view', 'crosshair on, the arrow off', 'crosshair; the arrow with a ? after Look'],
-    ['The line above the toolbox', 'none (a long hint at the foot of Route’s list)', 'on: none · off: “Add points is off: a tap shows what’s there.”', 'none · after Look: “Tap what you want to see. Nothing is added.”'],
+    ['The words on the map', 'none (a long hint at the foot of Route’s list)', 'on: none · off: “Add points is off: a tap shows what’s there.”', 'none · after Look: “Tap what you want to see. Nothing is added.”'],
     ['What changes with the state', 'the title row, the toolbar, Done/Edit, the cards’ notes, the markers’ drag', 'the tool’s own look and the line under it', 'Look’s look, for one tap'],
   ];
   document.getElementById('taps').innerHTML = `<tr><th></th><th>Today</th><th>Version 1</th><th>Version 2</th></tr>${rows.map((r) => `<tr>${r.map((c, i) => (i ? `<td>${c}</td>` : `<th>${c}</th>`)).join('')}</tr>`).join('')}`;
