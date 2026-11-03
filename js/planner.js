@@ -5813,16 +5813,18 @@ export class Planner {
       toolsH(inPanel ? 0 : Math.round(side ? innerHeight - tb.top : innerHeight - r.bottom + tb.height + 12));
       return;
     }
-    box.classList.remove(...FOLDS);
-    Object.assign(box.style, { left: '', top: '', bottom: '', maxWidth: '' });
+    box.classList.remove(...FOLDS, 'wide', 'tb-short', 'tb-shorter', 'tb-wrap');
+    Object.assign(box.style, { left: '', right: '', top: '', bottom: '', maxWidth: '' });
+    // The planner's own toolbox (Done or Edit, how the next leg is drawn, undo, redo, More) is a bar of its own across the
+    // sheet's width, above it at the peek and at half, under the map's buttons, which ride above it; the route's actions
+    // stay in More (#745). A card's or a round trip's (undo and redo) and the line's (step 3 of #233) float at the left.
+    const wide = !folded && !carded && !this.loop.open;
     // measured as it would float: a copy, so the sheet's size doesn't change while measuring
     const probe = box.cloneNode(true);
     probe.classList.remove('docked');
     probe.classList.add('probe');
-    // the route's view docks where editing does, so Edit is where Done was (#745): measured with editing's tools
-    if (view && !folded) for (const el of probe.querySelectorAll('.modebtn, .tb-hist, .btn.done')) el.hidden = el.classList.contains('edit');
     document.body.append(probe);
-    let n = opts.length;
+    let n = wide ? 0 : opts.length;
     setOpts(probe, n);
     while (n > 0 && 8 + probe.offsetWidth + 8 > colLeft) setOpts(probe, --n);
     const w = probe.offsetWidth, th = probe.offsetHeight;
@@ -5834,22 +5836,35 @@ export class Planner {
     const sheetH = { folded: px('--fold-h'), peek: this.peekBare, half: carded ? px('--card-half') : innerHeight * 0.5, full: carded ? px('--card-full') : innerHeight - 76 }[st] ?? this.panel.offsetHeight;
     const wxH = parseFloat(document.documentElement.style.getPropertyValue('--wx-h')) || 0; // an open timeline under it
     const topBar = $('.topbar').getBoundingClientRect().bottom, docks = (sh) => 8 + w + 8 > colLeft || innerHeight - sh - wxH - 16 - th < topBar + 8;
-    if (!folded) this.peekDocks = docks(this.peekBare); // (at any size but the line, whose toolbox is smaller: the peek is measured with it there or not, #586)
-    // (folded, it floats: the line has no room for it; a card swiped up is as tall as it is, so it floats while there's room)
-    const dock = !folded && ((st === 'full' && !carded) || docks(sheetH));
+    if (!folded) this.peekDocks = !wide && docks(this.peekBare); // (at any size but the line, whose toolbox is smaller: the peek is measured with it there or not, #586)
+    // (folded, it floats: the line has no room for it; a card swiped up is as tall as it is, so it floats while there's room;
+    // the planner's own docks only at full, where there's no map above the sheet: #745)
+    const dock = !folded && (wide ? st === 'full' : (st === 'full' && !carded) || docks(sheetH));
     this.dockTools(dock);
-    if (dock) {
+    if (dock && !wide) {
       // as many as fit without another row (the sheet's size follows once, below)
       setOpts(box, 0);
       const rows = box.offsetHeight;
       let k = 0;
       while (k < opts.length) { setOpts(box, k + 1); if (box.offsetHeight > rows + 1) break; k++; }
       setOpts(box, k);
-      this.measureSheet?.();
     } else setOpts(box, n);
-    toolsH(dock ? 0 : 16 + th); // from the sheet (and an open timeline) to the toolbox's top
-    // folded on a narrow screen (200 %) it floats where it doesn't clear the map's buttons: they rise above its row
-    const lift = `${!dock && 8 + w + 8 > Math.min(colLeft, innerWidth - 66) ? th + 8 : 0}px`; // (66: the column's widest button, whatever it shows now)
+    if (dock) this.measureSheet?.();
+    if (wide && !dock) {
+      const r = this.panel.getBoundingClientRect();
+      Object.assign(box.style, { left: `${r.left}px`, right: `${innerWidth - r.right}px` });
+      box.classList.add('wide');
+    }
+    // where one row is still too narrow for it (360 px, 200 %): the drawing button without its second line, then its name
+    // shortened, then its icon alone; only then a second row (200 %)
+    const shown = () => [...box.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent);
+    const over = () => { const b = shown(); return box.scrollWidth > box.clientWidth + 1 || (b.length > 1 && (b.at(-1).offsetTop > b[0].offsetTop + 1 || b[0].getBoundingClientRect().left < box.getBoundingClientRect().left - 1)); };
+    for (const cls of ['tb-short', 'tb-shorter', 'tb-wrap']) if (wide && over()) box.classList.add(cls);
+    if (dock && box.classList.contains('tb-short')) this.measureSheet?.();
+    const tH = wide && !dock ? box.offsetHeight : th;
+    toolsH(dock ? 0 : 16 + tH); // from the sheet (and an open timeline) to the toolbox's top
+    // the map's buttons ride above the planner's bar, and above the line's toolbox where it doesn't clear them (200 %)
+    const lift = `${!dock && (wide || 8 + w + 8 > Math.min(colLeft, innerWidth - 66)) ? tH + 8 : 0}px`; // (66: the column's widest button, whatever it shows now)
     if (document.documentElement.style.getPropertyValue('--col-lift') !== lift) { document.documentElement.style.setProperty('--col-lift', lift); requestAnimationFrame(() => this.app.fitColumn?.()); }
   }
 

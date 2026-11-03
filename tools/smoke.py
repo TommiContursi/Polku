@@ -6574,11 +6574,11 @@ def quick_swipe(chrome):
     pg.js(PLAN_TWO)
     pg.js(SETTLED)
     head = pg.js("(() => { const b = document.querySelector('#planner .sheet-sum').getBoundingClientRect(); return [b.left + 30, b.top + b.height / 2]; })()")
-    pg.swipe(head[0], head[1], head[1] - 200, ms=700, hold=0.2)  # slowly up from peek: the nearest size (200 px: the peek has the toolbox's row, #745)
+    pg.swipe(head[0], head[1], head[1] - 300, ms=700, hold=0.2)  # slowly up from peek: the nearest size
     pg.js(SETTLED)
     s1 = st()
     if s1['st'] != 'half':
-        fails.append(f'planner: a slow drag up 200 px from peek came to {s1["st"]}, not half')
+        fails.append(f'planner: a slow drag up 300 px from peek came to {s1["st"]}, not half')
     if pg.js("document.querySelector('#planner').classList.contains('dragging') || !!document.querySelector('#planner').style.transform"):
         fails.append('planner: still dragging after it came to rest')
     sheet_h = pg.js("parseFloat(document.documentElement.style.getPropertyValue('--sheet-h'))")
@@ -9628,13 +9628,15 @@ def fold_phone(chrome):
             if info()['st'] != want or not info()['active']:
                 fails.append(f"the handle's {k}: {info()['st']}, open {info()['active']} (wanted {want})")
                 break
-        # the route's view at full: More (⋯), a single button, joins ⌄'s row at its left; the title's ✕ stays a row below
+        # the route's view at full: Edit and More are the sheet's first row, under ⌄'s row, Edit at its start (#745); the
+        # title's ✕ a row below them
         pg.js("polku.planner.setEditing(false); polku.planner.setSheetState('full'); true")
         fold_settled(pg, fails, 'step 11b')
         s = info()
         x, row = pg.js("[((r) => r.top + r.height / 2)(polku.planner.els.title.querySelector('.way-x').getBoundingClientRect()), polku.planner.els.top.getBoundingClientRect().bottom]")
-        if s['toolsIn'] != 'top' or not s['toolBtns'] or len(s['toolBtns']) != 1 or (s['toolBtns'][0]['t'] + s['toolBtns'][0]['b']) / 2 > row or s['toolBtns'][0]['l'] > s['panel']['l'] + 16 or x < row:
-            fails.append(f"the route's view at full: the toolbox {s['toolBtns']} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f} (⋯ at the left of ⌄'s row)")
+        b = s['toolBtns'] or []
+        if s['toolsIn'] != 'row' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or b[0]['t'] < row - 1 or b[0]['l'] > s['panel']['l'] + 16 or x < b[0]['b']:
+            fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f} (Edit and More the sheet's first row, #745)")
         pg.js("polku.planner.setEditing(true); true")
         # the map's buttons don't chase the sheet (#540): with motion, a fold changes their place once, and they go with the
         # sheet there in one move (#569), so their place in the layout (their bottom, the move left out) changes once
@@ -11424,10 +11426,11 @@ def toolbox(chrome):
         pg.js(SETTLED)
         t = pg.js("""(() => { const p = polku.planner, b = p.tools.getBoundingClientRect(), c = document.getElementById('map-ctrls').getBoundingClientRect();
           const small = [...document.querySelectorAll('#pl-tools button, #planner .sheet-head button')].filter((e) => e.offsetParent && (e.offsetWidth < 44 || e.offsetHeight < 44)).map((e) => e.getAttribute('aria-label') || e.textContent.trim());
-          return { docked: p.tools.classList.contains('docked'), right: b.right, colLeft: c.left, small }; })()""")
-        # (#745: with Done first there's no room for it above the sheet beside the map's buttons, so it's the sheet's first row)
-        if not t['docked']:
-            fails.append(f"{name}: the toolbox floats on a 390 px phone (right {t['right']:.0f}, the buttons at {t['colLeft']:.0f}), with Done in it")
+          const s = p.panel.getBoundingClientRect();
+          return { docked: p.tools.classList.contains('docked'), left: b.left, right: b.right, top: b.top, bottom: b.bottom, sheetL: s.left, sheetR: s.right, sheetT: s.top, colB: c.bottom, small }; })()""")
+        # (#745: a bar of its own across the sheet's width, just above it, under the map's buttons)
+        if t['docked'] or abs(t['left'] - t['sheetL']) > 1 or abs(t['right'] - t['sheetR']) > 1 or not 0 <= t['sheetT'] - t['bottom'] <= 20 or t['colB'] > t['top']:
+            fails.append(f"{name}: the toolbox on a 390 px phone: {t} (a bar of its own across the sheet, above it, the map's buttons above it)")
         if t['small']:
             fails.append(f"{name}: under 44 px to touch: {', '.join(t['small'])}")
         # the mode's menu: only the next leg changes
@@ -12738,7 +12741,8 @@ def route_view(chrome):
     return not fails
 
 
-# #745: Edit and Done in one place on a phone, the toolbox's first button at the peek and at half, editing and not; and
+# #745: Edit and Done in one place on a phone, the first button of the toolbox's bar above the sheet at the peek and at
+# half, editing and not; and
 # after Done the cards still edit the route (Move and Remove on a point's, Edit this stretch on a stretch's) while a tap on
 # the map adds nothing. By touch at 390 × 844, a four-point MTB route with straight legs.
 def edit_done(chrome):
@@ -12759,13 +12763,15 @@ def edit_done(chrome):
         time.sleep(0.6)
         return True
 
-    # where Done or Edit is: on screen, the toolbox's first button, its left edge
+    # where Done or Edit is: on screen, the toolbox's first button, its left edge; and the toolbox a bar of its own across the
+    # sheet's width, just above it
     def place(what):
         placed(pg)
         return pg.js("""(() => { const p = polku.planner, b = p.inView() ? p.els.toolEdit : p.els.toolDone;
           if (!b.offsetParent) return null;
-          const first = [...p.tools.querySelectorAll('button')].find((x) => x.offsetParent);
-          return { left: Math.round(b.getBoundingClientRect().left), first: first === b, word: b.textContent.trim() }; })()""")
+          const first = [...p.tools.querySelectorAll('button')].find((x) => x.offsetParent), t = p.tools.getBoundingClientRect(), s = p.panel.getBoundingClientRect();
+          const above = !p.tools.classList.contains('docked') && Math.abs(t.left - s.left) < 1 && Math.abs(t.right - s.right) < 1 && t.bottom <= s.top && s.top - t.bottom <= 20;
+          return { left: Math.round(b.getBoundingClientRect().left), first: first === b, above, word: b.textContent.trim() }; })()""")
 
     def free(i, dx, dy):  # a spot on the map clear of everything and away from the line, beside point i
         return pg.js(f"""(() => {{ const R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project(polku.planner.points[{i}]);
@@ -12802,8 +12808,8 @@ def edit_done(chrome):
         pg.js(f"polku.planner.setSheetState('{sheet}'); true")
         places[f'Edit at {sheet}'] = place(f'Edit at {sheet}')
     lefts = {k: v and v['left'] for k, v in places.items()}
-    if not all(places.values()) or not all(v['first'] for v in places.values()) or len(set(lefts.values())) != 1:
-        fails.append(f'Done and Edit not the toolbox’s first button in one place: {places}')
+    if not all(places.values()) or not all(v['first'] and v['above'] for v in places.values()) or len(set(lefts.values())) != 1:
+        fails.append(f'Done and Edit not the first button of a toolbox above the sheet, in one place: {places}')
 
     # after Done: a tap on the map adds nothing
     s0 = st()

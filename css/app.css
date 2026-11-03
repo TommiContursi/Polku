@@ -2085,6 +2085,7 @@ body.dropping .drop-hint { display: flex; }
   .orbit { width: 62px; height: 62px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
+  .sheet-row { min-height: 44px; } /* (the numbers' row as tall as Done made it before #745: the peek doesn't change when they come) */
   .pl-viewnote .btn { min-height: 44px; }
   /* a note with the planner closed stays left of the map's buttons, so it never covers Layers or Plan (25c) */
   body:not(.planning) .toast { left: 12px; right: 78px; max-width: none; transform: none; }
@@ -2291,6 +2292,16 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools[data-stage="folded"] { flex-wrap: wrap; max-width: calc(100vw - 16px); }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
 .pl-tools.docked .btn.done { margin-right: auto; } /* Done, and Edit where Done was, at the row's start, alone on it too (200 %, #745) */
+/* the planner's own bar on a phone (#745): across the sheet's width (planner.js sets its left and right), Done or Edit at its
+   start and More at its end; where it's still too narrow the drawing button loses its second line, then shortens its name,
+   then shows only its icon, as on the line, and only then does it take a second row (200 %) */
+.pl-tools.wide .modebtn { flex: none; margin-right: auto; }
+.pl-tools.wide[data-stage="view"] .btn.done { margin-right: auto; }
+.pl-tools.tb-short .modebtn .two small { display: none; }
+.pl-tools.tb-shorter { flex-wrap: nowrap; } /* (one row while it shortens: a row that may wrap doesn't shrink what's on it) */
+.pl-tools.tb-shorter .modebtn { flex: 0 1 auto; min-width: 44px; }
+.pl-tools.tb-shorter .modebtn .two b { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pl-tools.tb-wrap { flex-wrap: wrap; }
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
 /* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
@@ -2313,8 +2324,8 @@ body.dropping .drop-hint { display: flex; }
 /* the route's view (25c): Edit, then Clear route kept apart by its line (#594), and More */
 .pl-tools[data-stage="view"] .tb-sep:not([data-group="clear"]) { display: none; }
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo, redo and More */
-.pl-tools[data-stage="folded"] .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
-.pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child) { display: none; }
+.pl-tools[data-stage="folded"] .modebtn, .pl-tools.tb-wrap .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
+.pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child), .pl-tools.tb-wrap .modebtn > :not(.ic:first-child) { display: none; } /* (and the planner's bar at 200 %, before it takes a second row: #745) */
 /* where room runs out (planner.js FOLDS): first the three modes' names together (their tooltips say them), then the
    route's actions go into More, then the style's caption, the sport's name, and the style's name shortens */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
