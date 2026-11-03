@@ -5824,10 +5824,10 @@ export class Planner {
     }
     box.classList.remove(...FOLDS, ...PHONE_FITS);
     Object.assign(box.style, { left: '', right: '', top: '', bottom: '', maxWidth: '' });
-    // The planner's own toolbox while editing (Done, how the next leg is drawn, undo, redo, More) is a bar of its own across
-    // the sheet's width, above it at the peek and at half, under the map's buttons, which ride above it; the route's actions
-    // are in More (#745). After Done, Edit and More, and a card's or a round trip's (undo and redo) and the line's (step 3
-    // of #233), float at the left at their own width: Edit where Done was.
+    // The planner's own toolbox while editing (Done, how the next leg is drawn, undo, redo, More) floats at the left at its
+    // own width, no wider than the sheet, above it at the peek and at half, under the map's buttons, which ride above it;
+    // the route's actions are in More (#745). After Done, Edit and More, and a card's or a round trip's (undo and redo) and
+    // the line's (step 3 of #233), float there too: Edit where Done was.
     const own = !folded && !carded && !this.loop.open, wide = own && !this.inView();
     // measured as it would float: a copy, so the sheet's size doesn't change while measuring
     const probe = box.cloneNode(true);
@@ -5846,12 +5846,12 @@ export class Planner {
     const sheetH = { folded: px('--fold-h'), peek: this.peekBare, half: carded ? px('--card-half') : innerHeight * 0.5, full: carded ? px('--card-full') : innerHeight - 76 }[st] ?? this.panel.offsetHeight;
     const wxH = parseFloat(document.documentElement.style.getPropertyValue('--wx-h')) || 0; // an open timeline under it
     const topBar = $('.topbar').getBoundingClientRect().bottom, docks = (sh) => 8 + w + 8 > colLeft || innerHeight - sh - wxH - 16 - th < topBar + 8;
-    if (!folded) this.peekDocks = !wide && docks(this.peekBare); // (at any size but the line, whose toolbox is smaller: the peek is measured with it there or not, #586)
+    if (!folded) this.peekDocks = !own && docks(this.peekBare); // (at any size but the line, whose toolbox is smaller: the peek is measured with it there or not, #586)
     // (folded, it floats: the line has no room for it; a card swiped up is as tall as it is, so it floats while there's room;
     // the planner's own docks only at full, where there's no map above the sheet: #745)
-    const dock = !folded && (wide ? st === 'full' : (st === 'full' && !carded) || docks(sheetH));
+    const dock = !folded && (own ? st === 'full' : (st === 'full' && !carded) || docks(sheetH));
     this.dockTools(dock);
-    if (dock && !wide) {
+    if (dock && !own) {
       // as many as fit without another row (the sheet's size follows once, below)
       setOpts(box, 0);
       const rows = box.offsetHeight;
@@ -5861,10 +5861,7 @@ export class Planner {
     } else setOpts(box, n);
     if (dock) this.measureSheet?.();
     box.classList.toggle('wide', wide);
-    if (wide && !dock) {
-      const r = this.panel.getBoundingClientRect();
-      Object.assign(box.style, { left: `${r.left}px`, right: `${innerWidth - r.right}px` });
-    }
+    if (own && !dock) box.style.maxWidth = `${this.panel.getBoundingClientRect().width}px`;
     const shown = () => [...box.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent);
     const over = () => { const b = shown(); return box.scrollWidth > box.clientWidth + 1 || (b.length > 1 && (b.at(-1).offsetTop > b[0].offsetTop + 1 || b[0].getBoundingClientRect().left < box.getBoundingClientRect().left - 1)); };
     if (wide) {
@@ -5874,12 +5871,13 @@ export class Planner {
       for (const cls of ['tb-tight', 'tb-short', 'tb-shorter', 'tb-wrap']) if (over()) box.classList.add(cls);
       if (dock) this.measureSheet?.();
     }
-    const tH = wide && !dock ? box.offsetHeight : th;
-    if (wide && !dock) this.barH = 16 + tH; // (the bar over the peek, for peekTooTall())
+    const tH = own && !dock ? box.offsetHeight : th;
+    if (wide && !dock) { this.barH = 16 + tH; this.barW = box.offsetWidth; } // (the bar over the peek, for peekTooTall(); its width, below)
     toolsH(dock ? 0 : 16 + tH); // from the sheet (and an open timeline) to the toolbox's top
-    // the map's buttons ride above the planner's bar, and above the line's toolbox where it doesn't clear them (200 %)
-    // (after Done too, so Done and Edit don't move them)
-    const lift = `${!dock && (own || 8 + w + 8 > Math.min(colLeft, innerWidth - 66)) ? tH + 8 : 0}px`; // (66: the column's widest button, whatever it shows now)
+    // the map's buttons ride above it where it doesn't clear them (a phone, 200 %); after Done as far as the bar while editing
+    // needs, so Done and Edit don't move them
+    const under = (bw) => 8 + bw + 8 > Math.min(colLeft, innerWidth - 66); // (66: the column's widest button, whatever it shows now)
+    const lift = `${!dock && under(!own ? w : wide ? box.offsetWidth : Math.max(w, this.barW || 0)) ? tH + 8 : 0}px`;
     if (document.documentElement.style.getPropertyValue('--col-lift') !== lift) { document.documentElement.style.setProperty('--col-lift', lift); requestAnimationFrame(() => this.app.fitColumn?.()); }
   }
 

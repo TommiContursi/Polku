@@ -11429,9 +11429,9 @@ def toolbox(chrome):
           const s = p.panel.getBoundingClientRect();
           return { docked: p.tools.classList.contains('docked'), left: b.left, right: b.right, top: b.top, bottom: b.bottom, sheetL: s.left, sheetR: s.right, sheetT: s.top, colB: c.bottom, small,
             wx: parseFloat(document.documentElement.style.getPropertyValue('--wx-h')) || 0 }; })()""")  # (an open timeline between them)
-        # (#745: a bar of its own across the sheet's width, just above it, under the map's buttons)
-        if t['docked'] or abs(t['left'] - t['sheetL']) > 1 or abs(t['right'] - t['sheetR']) > 1 or not 0 <= t['sheetT'] - t['wx'] - t['bottom'] <= 20 or t['colB'] > t['top']:
-            fails.append(f"{name}: the toolbox on a 390 px phone: {t} (a bar of its own across the sheet, above it, the map's buttons above it)")
+        # (#745: at its own width from the sheet's left edge, just above it, under the map's buttons)
+        if t['docked'] or abs(t['left'] - t['sheetL']) > 1 or t['right'] > t['sheetR'] + 1 or not 0 <= t['sheetT'] - t['wx'] - t['bottom'] <= 20 or t['colB'] > t['top']:
+            fails.append(f"{name}: the toolbox on a 390 px phone: {t} (from the sheet's left edge, above it, the map's buttons above it)")
         if t['small']:
             fails.append(f"{name}: under 44 px to touch: {', '.join(t['small'])}")
         # the mode's menu: only the next leg changes
@@ -12742,8 +12742,8 @@ def route_view(chrome):
     return not fails
 
 
-# #745: Edit and Done in one place on a phone, the first button of the toolbox's bar above the sheet at the peek and at
-# half, editing and not; and
+# #745: Edit and Done in one place on a phone, the toolbox's first button, just above the sheet at the peek and at half,
+# editing and not; and
 # after Done the cards still edit the route (Move and Remove on a point's, Edit this stretch on a stretch's) while a tap on
 # the map adds nothing. By touch at 390 × 844, a four-point MTB route with straight legs.
 def edit_done(chrome):
@@ -12764,14 +12764,14 @@ def edit_done(chrome):
         time.sleep(0.6)
         return True
 
-    # where Done or Edit is: on screen, the toolbox's first button, its left edge; and the toolbox a bar of its own across the
-    # sheet's width, just above it
+    # where Done or Edit is: on screen, the toolbox's first button, its left edge; and the toolbox at the sheet's left edge,
+    # no wider than it, just above it
     def place(what):
         placed(pg)
         return pg.js("""(() => { const p = polku.planner, b = p.inView() ? p.els.toolEdit : p.els.toolDone;
           if (!b.offsetParent) return null;
           const first = [...p.tools.querySelectorAll('button')].find((x) => x.offsetParent), t = p.tools.getBoundingClientRect(), s = p.panel.getBoundingClientRect();
-          const above = !p.tools.classList.contains('docked') && Math.abs(t.left - s.left) < 1 && Math.abs(t.right - s.right) < 1 && t.bottom <= s.top && s.top - t.bottom <= 20;
+          const above = !p.tools.classList.contains('docked') && Math.abs(t.left - s.left) < 1 && t.right <= s.right + 1 && t.bottom <= s.top && s.top - t.bottom <= 20;
           return { left: Math.round(b.getBoundingClientRect().left), first: first === b, above, word: b.textContent.trim() }; })()""")
 
     def free(i, dx, dy):  # a spot on the map clear of everything and away from the line, beside point i

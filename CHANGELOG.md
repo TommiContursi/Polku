@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Edit and Done in one place, and the cards work in both ([#745](https://github.com/TommiContursi/Polku/issues/745))
 
-- On a phone, while you edit, the planner's toolbar is a bar across the planner's width, just above it, with the map's buttons above it: **Done** first, as on a desktop, then how the next leg is drawn, undo and redo, and **More** at its end. With the planner raised all the way, the bar is its first row. The route's actions are in **More**.
+- On a phone, while you edit, the planner's toolbar floats at the planner's left edge, just above it, with the map's buttons above it where it would run under them: **Done** first, as on a desktop, then how the next leg is drawn, undo and redo, and **More** at its end. With the planner raised all the way, the bar is its first row. The route's actions are in **More**.
 - After **Done**, the toolbar is **Edit** and **More** alone, on a phone and a desktop alike, with **Edit** where **Done** was. **More** then ends with **Round trip from the start**, **Import GPX or KML…** and **Clear route**.
 - In a window between 721 and 899 px wide, the planner has the desktop's toolbar.
 - **Done** and **Edit** now decide one thing: whether a tap on the map adds a point. After **Done**, a point's card still has **Move**, **Rename**, **Remove**, **Sport from here** and the rest, and the route's card has **Add a point here**, **Edit this stretch** and **Avoid this spot**. They work at once, and the planner stays as it was. The "You're not editing" notes are gone.
