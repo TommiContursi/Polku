@@ -9628,15 +9628,15 @@ def fold_phone(chrome):
             if info()['st'] != want or not info()['active']:
                 fails.append(f"the handle's {k}: {info()['st']}, open {info()['active']} (wanted {want})")
                 break
-        # the route's view at full: Edit and More are the sheet's first row, under ⌄'s row, Edit at its start (#745); the
-        # title's ✕ a row below them
+        # the route's view at full: Edit and More join ⌄'s row at its left (#745, where ⋯ was), the grip in the middle; the
+        # title's ✕ stays a row below
         pg.js("polku.planner.setEditing(false); polku.planner.setSheetState('full'); true")
         fold_settled(pg, fails, 'step 11b')
         s = info()
-        x, row = pg.js("[((r) => r.top + r.height / 2)(polku.planner.els.title.querySelector('.way-x').getBoundingClientRect()), polku.planner.els.top.getBoundingClientRect().bottom]")
+        x, row, grip = pg.js("[((r) => r.top + r.height / 2)(polku.planner.els.title.querySelector('.way-x').getBoundingClientRect()), polku.planner.els.top.getBoundingClientRect().bottom, ((r, p) => Math.abs(r.left + r.width / 2 - (p.left + p.width / 2)))(polku.planner.els.handle.getBoundingClientRect(), polku.planner.panel.getBoundingClientRect())]")
         b = s['toolBtns'] or []
-        if s['toolsIn'] != 'row' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or b[0]['t'] < row - 1 or b[0]['l'] > s['panel']['l'] + 16 or x < b[0]['b']:
-            fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f} (Edit and More the sheet's first row, #745)")
+        if s['toolsIn'] != 'top' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or any((t['t'] + t['b']) / 2 > row for t in b) or b[0]['l'] > s['panel']['l'] + 16 or x < row or grip > 1:
+            fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f}, the grip {grip:.0f} px off the middle (Edit and More at the left of ⌄'s row, #745)")
         pg.js("polku.planner.setEditing(true); true")
         # the map's buttons don't chase the sheet (#540): with motion, a fold changes their place once, and they go with the
         # sheet there in one move (#569), so their place in the layout (their bottom, the move left out) changes once
