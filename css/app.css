@@ -884,16 +884,6 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 @media (hover: hover) { .sum-time:hover small { color: var(--text); } }
 .sum-time:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .btn.done { flex: none; gap: 6px; min-height: 34px; padding-inline: 14px; }
-/* The route's view (25c): a row above the numbers with the route's name (it wraps, never cut), its sports and
-   "Kept on this device", and ✕ */
-.pl-title { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 2px; }
-.pl-ttl { flex: 1; min-width: 0; display: grid; gap: 1px; margin: 5px 0 0; font: inherit; }
-.pl-ttl b { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
-/* (a short screen, 200 % and a long name: the name scrolls in its place, whole, so the sheet stops below the top bar) */
-.pl-ttl b.scrolls { overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
-.pl-ttl small { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
-.pl-ttl small .ic { color: var(--accent); }
-.pl-title .way-x { width: 44px; height: 44px; margin: -4px -6px 0 0; }
 /* a note in the planner's own look: Move's banner on a card (js/card.js) */
 .pl-viewnote { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; }
 .pl-viewnote > span:first-child { flex: none; display: grid; color: var(--muted); }
@@ -902,7 +892,7 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere; }
 .sheet-min { display: none; }
 .sheet-row > .way-x { display: none; }
-@media (min-width: 721px) { .sheet:not(.viewing) .sheet-row > .way-x { display: inline-flex; } }
+@media (min-width: 721px) { .sheet-row > .way-x { display: inline-flex; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 /* the routing bar, on the sheet's top edge (js/planner.js setBusy()), a child of the sheet so folding doesn't hide it: it waits
@@ -1324,7 +1314,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .badge { flex: none; min-width: 32px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
 /* black words where white doesn't read on the colour (#376: js/palette.js darkWords()) */
 .badge.ink, .loop-dot.ink { color: var(--ink); text-shadow: none; }
-.hint { margin: 10px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
 
 .wind-body { font-size: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
