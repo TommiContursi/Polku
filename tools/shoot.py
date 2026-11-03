@@ -493,6 +493,7 @@ SCENES = {
     'w720-edit': dict(PHONE, w=720, h=900, timeline=False, route='route-kauppi-mtb.json', state='half'),
     'w1024-side-edit': dict(DESK, w=1024, h=768, timeline=False, route='route-kauppi-mtb.json', storage=SIDE),
     'w1024-bottom-edit': dict(DESK, w=1024, h=768, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}),
+    'phone-done-full': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='full', js="polku.planner.setEditing(false); true"),
     'phone430-done': dict(PHONE, w=430, h=932, timeline=False, route='route-kauppi-mtb.json', state='peek', js="polku.planner.setEditing(false); true"),
     'phone-half-edit': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half'),
     'phone430-peek': dict(PHONE, w=430, h=932, timeline=False, route='route-kauppi-mtb.json', state='peek'),

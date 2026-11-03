@@ -799,8 +799,10 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 /* its touch area is a finger's size, over the sheet's top edge; it still looks 18 px (step 3 of #233) */
 .sheet-handle::after { content: ""; position: absolute; left: -16px; right: -16px; top: -13px; bottom: -13px; }
 /* Fold, then away (step 3 of #233): the sheet's top row, the handle and, on phones, ⌄ at its right, for the planner and
-   every card */
-.sheet-top { flex: none; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 18px; }
+   every card; after Done at full, Edit and More at its left, both sides as wide as them so the grip stays in the middle
+   (planner.js dockTools(), #745) */
+.sheet-top { flex: none; display: grid; grid-template-columns: var(--top-side, 44px) 1fr var(--top-side, 44px); align-items: center; height: 18px; }
+.sheet-top .pl-tools.docked { flex-wrap: nowrap; margin: 0; padding: 0; border: 0; }
 .sheet-top-end { display: flex; justify-content: flex-end; }
 .sheet-top-end .tool { display: none; width: 44px; height: 44px; }
 .sheet[data-layout="side"] .sheet-top { display: none; }
@@ -1735,6 +1737,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
    over --t-press, the handle's bar moving up into the row's top padding with them */
 .top-sum { display: none; }
 @media (max-width: 720px) {
+  .sheet.foldable:has(> .sheet-top .pl-tools.docked) .top-sum { left: calc(var(--top-side) + 12px); }
   .sheet.foldable .top-sum { display: flex; position: absolute; top: 0; left: 14px; right: 52px; height: 40px; flex-wrap: wrap; align-items: center; column-gap: 6px; overflow: hidden;
     pointer-events: none; opacity: 0; transition: opacity var(--t-press) var(--ease-out); font-variant-numeric: tabular-nums; }
   .sheet.sum-on .top-sum { opacity: 1; transition-duration: var(--t-open); }

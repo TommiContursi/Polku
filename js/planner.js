@@ -5852,7 +5852,9 @@ export class Planner {
     // (folded, it floats: the line has no room for it; a card swiped up is as tall as it is, so it floats while there's room;
     // the planner's own docks only at full, where there's no map above the sheet: #745)
     const dock = !folded && (own ? st === 'full' : (st === 'full' && !carded) || docks(sheetH));
-    this.dockTools(dock);
+    // after Done at full, Edit and More go into the handle's row at its left, as main's ⋯ did, where they fit with the grip
+    // in the middle (both sides as wide as them); else a row of their own (200 %)
+    this.dockTools(dock, dock && own && !wide && this.els.top.offsetHeight > 18 && 2 * w + 48 <= this.els.top.clientWidth ? w - 6 : 0);
     if (dock && !own) {
       // as many as fit without another row (the sheet's size follows once, below)
       setOpts(box, 0);
@@ -5883,10 +5885,12 @@ export class Planner {
     if (document.documentElement.style.getPropertyValue('--col-lift') !== lift) { document.documentElement.style.setProperty('--col-lift', lift); requestAnimationFrame(() => this.app.fitColumn?.()); }
   }
 
-  dockTools(on) {
+  // on: docked, as the sheet's first row, or (side: their width, after Done at full) Edit and More in the handle's row
+  dockTools(on, side = 0) {
     const box = this.tools;
-    // the sheet's first row, editing and in the route's view alike (#745)
-    const where = on ? this.panel : document.body;
+    const where = !on ? document.body : side ? this.els.top.firstElementChild : this.panel;
+    if (side) this.els.top.style.setProperty('--top-side', `${side}px`);
+    else this.els.top.style.removeProperty('--top-side');
     if (box.classList.contains('docked') === on && box.parentElement === where) return;
     box.classList.toggle('docked', on);
     if (where === this.panel) this.panel.insertBefore(box, this.els.head);
