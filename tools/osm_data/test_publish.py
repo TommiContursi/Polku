@@ -264,6 +264,27 @@ class PublishTests(unittest.TestCase):
             'name':'OSM data / rollback','head_branch':'main','head_repository':{'full_name':'TommiContursi/Polku'},
             'event':'workflow_dispatch','conclusion':'failure','html_url':'https://github.com/TommiContursi/Polku/actions/runs/123'}}
         self.assertEqual(classify(event,'TommiContursi/Polku')['kind'],'rollback')
+        recovery=workflow.split('\n  publish-existing:\n',1)[1].split('\n  monitor:',1)[0]
+        self.assertIn('run-id: ${{ steps.source.outputs.run_id }}',recovery)
+
+    def test_recovery_source_accepts_failed_publication_with_verified_main_bundle(self):
+        run={'id':123,'status':'completed','conclusion':'failure','head_branch':'main',
+             'head_repository':{'full_name':'TommiContursi/Polku'},'event':'workflow_dispatch','path':'.github/workflows/osm-data.yml'}
+        jobs=[{'name':name,'conclusion':'success'} for name in ['snapshot','bundle',
+              'build (finland)','build (sweden)','build (norway)','build (estonia)']]
+        artifact={'name':'nordic-osm-release','expired':False,'size_in_bytes':100}
+        self.assertEqual(publish.recovery_source('TommiContursi/Polku',run,jobs,[artifact]),'123')
+        for change in [dict(head_branch='feature'),dict(head_repository={'full_name':'attacker/Polku'}),
+                       dict(status='in_progress'),dict(event='pull_request'),dict(path='.github/workflows/other.yml')]:
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/Polku',dict(run,**change),jobs,[artifact])
+        for artifacts in [[],[dict(artifact,expired=True)],[artifact,artifact]]:
+            with self.subTest(artifacts=artifacts),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/Polku',run,jobs,artifacts)
+        for failed in range(len(jobs)):
+            partial=copy.deepcopy(jobs);partial[failed]['conclusion']='failure'
+            with self.subTest(job=jobs[failed]['name']),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/Polku',run,partial,[artifact])
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

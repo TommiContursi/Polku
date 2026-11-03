@@ -435,8 +435,8 @@ remain readable by old clients. `StaticOSM.ready(xy)` chooses an archive only wh
 its clipping polygon wholly covers that tile. Readers share manifests and archive
 indices, validate PMTiles zoom/type/compression and never fetch entire countries.
 `bundle.py` refuses conflicting overlapping original IDs or mismatched epochs.
-Run the focused OSM tests and the candidate workflow before changing the reviewed
-publication pin. See `docs/OSM_DATA.md`; no candidate implies live publication.
+Run the focused OSM tests and the candidate workflow before changing publication.
+See `docs/OSM_DATA.md`; a candidate alone does not imply live publication.
 
 
 OSM maintenance uses `health.py` for actual live four-country consumer checks in
@@ -448,3 +448,9 @@ only; PR/fork data never selects checked-out code or gains issue-write access.
 The existing registered publication guard test covers main-only automatic
 writes; all helper tests run in OSM CI discovery. See OSM_DATA.md for activation
 and the delivery-test operations.
+
+Manual publication recovery takes a numeric main build run ID in the existing
+release input. `publish.recovery_source()` checks completed trusted-main metadata,
+successful snapshot/four-country/bundle jobs and a unique unexpired artifact before
+download. A failed publish can reuse its successful bundle; rollback by release ID
+is independent of artifact expiry.
