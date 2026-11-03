@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-03
 
+### The folded planner keeps ⋯
+
+- On a phone, with the planner folded to its line, the toolbar keeps **⋯** with the whole route's actions beside the drawing mode's icon, **Undo** and **Redo**. Before, folding the planner hid it. The icon still opens the drawing modes, the sport and the route style.
+- At 200 % zoom, where the four don't fit side by side, **⋯** goes to a row of its own under the others.
+
 ### Screen readers hear the profile and the tabs ([#386](https://github.com/TommiContursi/Polku/issues/386))
 
 - The elevation profile has a name for screen readers that says the route's distance, climbing and descent, and it changes with the route. Where terrain is missing, the name says so.
@@ -65,7 +70,6 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 
 ## 2026-11-01
-
 
 ### A tap on a way picks the whole way, and its card tells everything known about it ([#574](https://github.com/TommiContursi/Polku/issues/574), [#561](https://github.com/TommiContursi/Polku/issues/561), [#562](https://github.com/TommiContursi/Polku/issues/562))
 

@@ -5694,14 +5694,14 @@ export class Planner {
     // In the route's view nothing is drawn (25c): phones keep only More, desktops Edit, Clear route and More (#594)
     // A card in a phone's peek: only undo and redo too, until it closes (25d)
     // The planner folded on a phone: how the next leg is drawn (its icon) beside undo and redo, since a tap on the map
-    // still adds a point (step 3 of #233)
+    // still adds a point (step 3 of #233), and More, with the route's actions
     const carded = this.cards.place === 'peek' && !this.sideMQ?.matches, loop = this.loop.open || carded, view = this.inView();
     const folded = this.panel.dataset.state === 'folded' && !this.sideMQ?.matches && !loop;
     this.tools.dataset.stage = view ? 'view' : carded ? 'card' : loop ? 'loop' : folded ? 'folded' : String(Math.min(n, 2));
     this.tools.setAttribute('aria-label', view ? 'Your route' : 'Drawing tools');
     this.els.modeBtn.hidden = !n || loop || view;
     for (const el of [this.els.sportBtn, this.els.modeSeg, this.els.styleBtn, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n || loop || view || folded;
-    this.els.more.hidden = !n || loop || folded;
+    this.els.more.hidden = !n || loop;
     for (const el of this.tools.querySelectorAll('.tbtn.tb-hist')) el.hidden = !(hist || n) || view;
     this.els.undo.disabled = !this.past.length;
     this.els.redo.disabled = !this.future.length;
