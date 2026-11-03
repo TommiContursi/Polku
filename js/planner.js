@@ -5798,7 +5798,7 @@ export class Planner {
       this.dockTools(inPanel);
       // beside a side panel at the map's foot, however tall the panel is (#468), and floating 12 px from the panel in
       // both docks, like the other floating surfaces (#594, #595)
-      Object.assign(box.style, { maxWidth: '' }, inPanel ? { left: '', top: '', bottom: '' } : side ? { left: `${r.right + 12}px`, top: '', bottom: '12px' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top + 12}px` });
+      Object.assign(box.style, { maxWidth: '', right: '' }, inPanel ? { left: '', top: '', bottom: '' } : side ? { left: `${r.right + 12}px`, top: '', bottom: '12px' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top + 12}px` });
       // the map's buttons only count where they're level with the toolbar
       const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
       const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
