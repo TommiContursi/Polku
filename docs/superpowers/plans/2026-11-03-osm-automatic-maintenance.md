@@ -79,3 +79,12 @@ the unchanged browser deadline and a possible full-readback rollback need over
 180-second browser deadline and independent 90-minute rollback. The current run
 is unchanged. The registered publication guard must fail on the old envelopes
 and pass on the new ones before review and merge.
+
+Interrupted-publication recovery (#737): the first enabled update reached its
+old 90-minute limit after pointer promotion. Its complete archives were verified
+and read-only retention preserved the pending original predecessor. A registered
+resume regression reproduced a fresh runner saving the current release as its
+own rollback target. Reuse the validated retention predecessor, reject a
+mismatched immutable manifest, and prove an actual fake-host browser-failure
+rollback without payload re-upload. Run independent live health before completing
+the immutable release's receipt and final publication evidence.

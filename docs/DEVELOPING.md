@@ -456,6 +456,10 @@ successful snapshot/four-country/bundle jobs and a unique unexpired artifact bef
 download. A failed publish can reuse its successful bundle; rollback by release ID
 is independent of artifact expiry.
 
+Retention exposes its validated `previous_release` to same-current publication
+resume. The publisher checks that immutable predecessor's manifest and retains
+its pointer for post-publication health recovery, including interrupted receipts.
+
 Publication jobs allow 120 minutes for the observed slow artifact download,
 full upload/readback and possible guarded rollback. Browser verification still
 has its separate 180-second deadline; standalone rollback remains 90 minutes.
