@@ -5682,8 +5682,8 @@ export class Planner {
     // While a round trip is open nothing is drawn: only undo and redo stay, until a loop is taken or the form closes (#311)
     // In the route's view nothing is drawn (25c): phones keep only More, desktops Edit, Clear route and More (#594)
     // A card in a phone's peek: only undo and redo too, until it closes (25d)
-    // The planner folded on a phone: how the next leg is drawn (its mode and style), undo, redo and More stay, since a tap
-    // on the map still adds a point (step 3 of #233); the route's actions are in More
+    // The planner folded on a phone: how the next leg is drawn (its icon) beside undo and redo, since a tap on the map
+    // still adds a point (step 3 of #233), and More, with the route's actions
     const carded = this.cards.place === 'peek' && !this.sideMQ?.matches, loop = this.loop.open || carded, view = this.inView();
     const folded = this.panel.dataset.state === 'folded' && !this.sideMQ?.matches && !loop;
     this.tools.dataset.stage = view ? 'view' : carded ? 'card' : loop ? 'loop' : folded ? 'folded' : String(Math.min(n, 2));

@@ -7,6 +7,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### The folded planner keeps ⋯
 
 - On a phone, with the planner folded to its line, the toolbar keeps **⋯** with the whole route's actions beside the drawing mode's icon, **Undo** and **Redo**. Before, folding the planner hid it. The icon still opens the drawing modes, the sport and the route style.
+- At 200 % zoom, where the four don't fit side by side, **⋯** goes to a row of its own under the others.
 
 ### Hosted OSM data now covers four countries ([#154](https://github.com/TommiContursi/Polku/issues/154))
 
