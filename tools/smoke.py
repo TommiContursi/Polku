@@ -12811,6 +12811,15 @@ def edit_done(chrome):
     pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
     if st()['n'] != s0['n']:
         fails.append(f"a tap on the map after Done added {st()['n'] - s0['n']} points")
+    # a drag on a point's marker moves nothing: only the cards change the route after Done
+    pg.js("polku.map.jumpTo({ center: polku.planner.points[1] }); true")
+    a = still("polku.planner.markers[1]?.getElement().querySelector('.wp')")
+    if a:
+        pg.swipe(a['x'], a['y'], a['y'] - 60, ms=400)
+        time.sleep(0.6)
+    if not a or st()['pts'] != s0['pts']:
+        fails.append(f"a drag on point 1 after Done: {'moved it' if a else 'point 1 not on screen'}")
+    pg.js("polku.planner.cards.close(); true")
     # Move on point 1's card, then a tap where it goes
     hold(1)
     tap(still(row('move')), 'Move on point 1’s card')
