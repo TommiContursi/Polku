@@ -78,7 +78,8 @@ button { font: inherit; color: inherit; }
 .today figure.wide { width: 560px; }
 .today img { display: block; width: 100%; height: auto; border-radius: 12px; box-shadow: 0 0 0 1px rgba(16,24,20,.18), 0 8px 22px rgba(16,24,20,.16); background: #e8eee6; }
 .today figcaption { margin-top: 6px; font-size: 12.5px; color: var(--page-cap); }
-body.single { padding: 0; background: #000; }
+body.single { padding: 0; background: #000; overscroll-behavior: none; } /* (no pull-to-refresh while the map is panned on a phone) */
+html:has(body.single) { overscroll-behavior: none; }
 body.single .cv > :not(.solo) { display: none; }
 body.single .solo { display: block; }
 body.single .solo .fr figcaption, body.single .solo .meter { display: none; }
@@ -185,7 +186,8 @@ body.single .fr .screen { --k: 1 !important; border-radius: 0; box-shadow: none;
 .sheet-in { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .sheet-head { flex: none; padding: 0 10px 8px 12px; }
 .sheet-row { display: flex; align-items: center; gap: 8px; }
-.sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 12px 12px; }
+.sheet-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 12px 12px; }
+.sheet-body, .fcard, .menu-pop, .screen.w200 .sheet-in { touch-action: pan-y; } /* (the screen takes every touch for the map; its lists still scroll by finger) */
 .sheet[data-s="peek"] .sheet-body, .sheet[data-s="folded"] .sheet-body { display: none; }
 .sheet[data-s="folded"] .sheet-top, .sheet[data-s="folded"] .sheet-head { display: none; }
 .titlerow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
@@ -211,7 +213,8 @@ body.single .fr .screen { --k: 1 !important; border-radius: 0; box-shadow: none;
 .tb2 { display: flex; align-items: center; gap: 8px; min-height: 44px; min-width: 44px; padding: 2px 10px; border: 0; border-radius: 12px; background: var(--surface-2); text-align: left; }
 .tb2 b { display: block; font-size: 15px; line-height: 1.15; }
 .tb2 small { display: block; font-size: 12px; color: var(--muted); }
-.tb2.mode { flex: 1 1 auto; min-width: 0; gap: 6px; padding: 2px 6px 2px 8px; }
+.tb2.mode { flex: 1 1 auto; min-width: 0; gap: 6px; padding: 2px 6px 2px 8px; container-type: inline-size; }
+@container (max-width: 160px) { .tb2.mode small { display: none; } } /* (the style's caption goes first, never broken mid-word: #233 §1's fold order) */
 .tb2.mode > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: break-word; } /* (its words wrap, never cut: §8 of #233) */
 .tb2.toolk { flex: none; flex-direction: column; justify-content: center; gap: 1px; width: 60px; padding: 3px 2px; background: none; border: 1.5px solid var(--line); text-align: center; }
 .tb2.toolk b { font-size: 11px; font-weight: 700; line-height: 1.1; }
@@ -788,8 +791,9 @@ class Frame {
   hint() {
     if (this.moving != null) return `<p class="pl-hint armed">${t('hintMove')}</p>`;
     if (this.v === 'today' || this.stage === 'start') return '';
-    if (this.v === 'v1') return `<p class="pl-hint">${this.addOn ? t('hintOn') : t('hintOff')}</p>`;
-    return this.look ? `<p class="pl-hint armed">${t('hintLook')}</p>` : `<p class="pl-hint">${t('hint2')}</p>`;
+    // (only when a tap doesn't add a point: adding is what the pressed tool, or the planner being open, already says)
+    if (this.v === 'v1') return this.addOn ? '' : `<p class="pl-hint armed">${t('hintOff')}</p>`;
+    return this.look ? `<p class="pl-hint armed">${t('hintLook')}</p>` : '';
   }
   // the five slots, drawn for a place: 'rowa' (the sheet's first row), 'colb' (the left column) or the desktop's toolbar
   slots(where) {
@@ -1167,7 +1171,7 @@ function tapsTable() {
     ['A tap on a marked (LIPAS) route', 'adds a point (editing); its card (the view)', 'on: adds a point · off: its card, with Follow', 'adds a point · after Look: its card'],
     ['A hold or a right-click', 'facts with actions', 'the same card as a tap', 'the same card as a tap'],
     ['The cursor (desktop)', 'crosshair editing, the hand in the view', 'crosshair on, the arrow off', 'crosshair; the arrow with a ? after Look'],
-    ['The sheet’s one line', 'none (a long hint at the foot of Route’s list)', 'on: “A tap on the map adds a point.” · off: “Add points is off: a tap shows what’s there.”', '“A tap adds a point. Look, then a tap, shows what’s there.” · after Look: “Tap what you want to see. Nothing is added.”'],
+    ['The line above the toolbox', 'none (a long hint at the foot of Route’s list)', 'on: none · off: “Add points is off: a tap shows what’s there.”', 'none · after Look: “Tap what you want to see. Nothing is added.”'],
     ['What changes with the state', 'the title row, the toolbar, Done/Edit, the cards’ notes, the markers’ drag', 'the tool’s own look and the line under it', 'Look’s look, for one tap'],
   ];
   document.getElementById('taps').innerHTML = `<tr><th></th><th>Today</th><th>Version 1</th><th>Version 2</th></tr>${rows.map((r) => `<tr>${r.map((c, i) => (i ? `<td>${c}</td>` : `<th>${c}</th>`)).join('')}</tr>`).join('')}`;
