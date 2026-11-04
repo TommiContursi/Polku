@@ -18,6 +18,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
   - **The sky's icon** uses the forecast's cloud cover, now carried along the route, by the timeline's own rule (`skyKind()`).
   - **The tooltips** are the app's own `tooltip()`, in words, so the weather is in words there, not icons.
   - **Unfolded waypoints** say the warnings on the way to them, as a stretch does, so a warning shows where it is (from testing, 2026-11-04). A stretch no longer counts one that ends where it begins.
+  - **Worth a look** is counted too, and twilight said as the dark is: "300 m after sunset", "before sunrise", with their icons.
 - **Next:** PR 4, the words: waypoints, Waypoint n and Freehand.
 
 ## What the user asked for (2026-11-04)
@@ -147,7 +148,7 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
 
 **Open questions:**
 - ~~Which word for a straight stretch?~~ **Freehand**, chosen on 2026-11-04.
-- "Worth a look" in the list, or only in Check? Asked again from testing on 2026-11-04. Much of it the list already says its own way: Freehand's straight line, the gear left at a changeover, a short night; the stretch's card lists it all under Look out for.
+- ~~"Worth a look" in the list, or only in Check?~~ **In the list** (chosen on 2026-11-04, from testing), Check's quieter third, but for what the list says its own way: a straight line and a carry, the gear left at a changeover, a short night, and twilight, said as the dark is ("300 m after sunset"), so a route at dusk doesn't mark every stretch.
 - Waits as parts of their own (Parts 2), or a point's tag (Parts)? Each part's start: under its heading (Parts 3), or its own row (Parts 4)?
 
 Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).

@@ -15386,6 +15386,10 @@ def sections_list(chrome):
           const a0 = p.lengthTo(1); p.analysis.darkWarn = [{ at: a0 + 20, len: 250, kind: 'dark', text: 'In the dark for 250 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
           const st1 = L.querySelector('.wpl-stretch[data-from="1"]'), dark = st1?.querySelector('.wpl-warns .dark')?.textContent || '';
           if (!/250 m in the dark/.test(dark) || !st1?.querySelector('.wpl-line .moon')) out.push(`a stretch in the dark: ${dark || 'nothing'} said, ${st1?.querySelector('.wpl-line .moon') ? 'a' : 'no'} moon on its line`);
+          // (twilight said as the dark is, after sunset with the sunset's icon, not as worth a look)
+          p.analysis.darkWarn = [{ at: a0 + 20, len: 300, kind: 'dark', twilight: true, evening: true, text: 'After sunset (16:02) for 300 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
+          const dusk = [...L.querySelectorAll('.wpl-stretch[data-from="1"] .wpl-warns > .dark')].map((x) => `${x.className}:${x.textContent}:${x.querySelectorAll('svg').length}`);
+          if (dusk.join() !== 'dark:300 m after sunset:1') out.push(`a stretch after sunset says ${dusk.join(' / ') || 'nothing'}`);
           p.analysis.darkWarn = []; p.renderWaypoints();
           return out; })()""")
         fails.extend(f"{name}: {x}" for x in r)
@@ -15560,24 +15564,31 @@ def sections_list(chrome):
             if not re.search(want, tip or ''):
                 fails.append(f"{name}: the tooltip of {sel.split('querySelector(')[1][:-1]}: {tip!r}")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
-        # (#761) unfolded, a waypoint says the warnings on the way to it, as a stretch does: one between via 3 and via 4 is
-        # on via 4's row, in its label too, and on none of the others; with via 4 named, the stretch after it doesn't count it
-        pg.js("window.rcTags = (q) => (Math.abs(q[0] - 23.808) < 0.001 ? 'highway=footway bicycle=no surface=paved' : 'highway=path surface=dirt mtb:scale=1'); true")
+        # (#761) unfolded, a waypoint says the warnings on the way to it, as a stretch does: one to read between via 3 and
+        # via 4 is on via 4's row, in its label too, one worth a look between via 1 and via 2 on via 2's, and on none of the
+        # others; with via 4 named, the stretch after it doesn't count the one before it. (Leaving at 10:00, in daylight.)
+        pg.js("window.rcTags = (q) => (Math.abs(q[0] - 23.808) < 0.001 ? 'highway=footway bicycle=no surface=paved' : Math.abs(q[0] - 23.796) < 0.001 ? 'highway=path surface=dirt mtb:scale=3' : 'highway=path surface=dirt mtb:scale=1'); "
+              "const d = new Date(); d.setHours(10, 0, 0, 0); if (d < Date.now()) d.setDate(d.getDate() + 1); polku.planner.setLeave(d / 1000); true")
         route(pg, name, {'mode': 'auto', 'pts': PTS})
         WARNS = "JSON.stringify([...polku.planner.els.points.querySelectorAll('.wpl-point, .wpl-stretch')].map((x) => `${x.dataset.i ?? `${x.dataset.from}-${x.dataset.to}`}:${x.querySelector('.wpl-warns')?.textContent || ''}`).filter((x) => !x.endsWith(':')))"
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').click(); true")
         got, lab = json.loads(pg.js(WARNS)), pg.js("polku.planner.els.points.querySelector('.wpl-point[data-i=\"4\"]')?.getAttribute('aria-label') || ''")
-        if got != ['0-6:1 to read', '4:1 to read'] or '1 to read' not in lab:
+        if got != ['0-6:1 to read 1 worth a look', '2:1 worth a look', '4:1 to read'] or '1 to read' not in lab:
             fails.append(f"{name}: unfolded, the warnings on the stretch and its waypoints: {got}, via 4's label {lab!r} (#761)")
         pg.js("polku.planner.setName(4, 'Kivikko'); true")
         time.sleep(0.8)
         pg.js(SETTLED)
         got = json.loads(pg.js(WARNS))
-        if got != ['0-4:1 to read', '4:1 to read']:
+        if got != ['0-4:1 to read 1 worth a look', '2:1 worth a look', '4:1 to read']:
             fails.append(f"{name}: with via 4 named, the warnings: {got} (#761)")
+        pg.js("polku.planner.setLeave(null); true")
         # a mouse drags a row by its grip: via 2 to place 4 (Reorder)
         pg.js("window.rcTags = 'highway=path surface=dirt mtb:scale=1'; true")
         route(pg, name, {'pts': PTS, 'names': [[1, 'Kaupintie'], [2, 'Sorila'], [3, 'Lielahti']]})  # (named: points you see, with rows)
+        # (straight stretches: Check's "Straight line" is worth a look, but the list says it in the stretch's words, not as one)
+        n = pg.js("[polku.planner.itemsAlong().filter((x) => /^Straight line/.test(x.w.text)).length, polku.planner.els.points.querySelectorAll('.wpl-warns .look').length]")
+        if not n[0] or n[1]:
+            fails.append(f"{name}: straight stretches: Check's Straight line items {n[0]}, worth a look in the list {n[1]} (want some, none, #761)")
         press(pg, at(pg, top('Reorder')), f'{name}: Reorder', touch)
         before = json.loads(pg.js("JSON.stringify(polku.planner.points)"))
         g = at(pg, "polku.planner.els.points.querySelector('.wpl-row[data-i=\"2\"] .wpl-grip')")

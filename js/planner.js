@@ -2303,7 +2303,7 @@ export class Planner {
       for (let k = i + 1; k <= j; k++) if (((a.attr[k] || {}).tags || {}).lit === 'yes') litM += a.along[k] - a.along[k - 1];
       const lit = x.kind === 'dark' ? (litM >= 50 ? ` · ${fmtDist(litM)} of it lit` : ' · none of it lit, as far as OpenStreetMap says') : '';
       out.push(x.kind === 'twilight'
-        ? { at: a.along[i], len, kind: 'dark', twilight: true, noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light', tier: 'look', src }
+        ? { at: a.along[i], len, kind: 'dark', twilight: true, evening, noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light', tier: 'look', src }
         : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${lit}${water ? ' · on the water a light is required after dark' : ' · take a light'}`, tier: 'read', src });
     }
     return out;
@@ -3071,9 +3071,8 @@ export class Planner {
   // a stretch: the line between two points (#761), its distance, time and climb in bold, how it's drawn under them (a
   // carry on it too, #779), and the points that only shape it: beads on its line, their count by ⌄, which unfolds them.
   // One drawn otherwise than along paths (a straight line, over water, its own line) has its word in the text's weight,
-  // a straight one its line dashed. Under them Check's warnings on it, as Check says them (what's to read and what isn't
-  // checked, unread: as the key fact counts them, #741), and how much of it is in the dark, with a moon on its line where
-  // that begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
+  // a straight one its line dashed. Under them Check's warnings on it and the dark (`warnsOn()`), with a moon on its line
+  // where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
   stretchRow(s, ro) {
     const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
     const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).join(' · ');
@@ -3105,16 +3104,21 @@ export class Planner {
       onclick: () => { if (open) this.unfolded.delete(pid); else this.unfolded.add(pid); this.renderWaypoints(); } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
     return h('div', { class: 'wpl-strow' }, b, fold);
   }
-  // Check's warnings on the way from point s.from to s.to, as Check says them (unread, what's to read and what isn't
-  // checked, as the key fact counts them, #741), and how much of it is in the dark: the words' HTML, and where along the
-  // route the dark begins (or 0)
+  // Check's warnings on the way from point s.from to s.to, as Check says them, unread: what's to read, what isn't
+  // checked and what's worth a look, but for what the list says its own way (a straight line and a carry in a stretch's
+  // words, the gear left and a short night on their wait, twilight as the dark is). Then how much of it is in the dark,
+  // after sunset or before sunrise, in the order you'd go through them. The words' HTML, and where along the route the
+  // dark begins (or 0).
   warnsOn(s) {
-    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), its = this.itemsOn(s).filter((it) => it.g !== 'look' && !this.isRead(it));
-    const nRead = its.filter((it) => it.g === 'read').length, nNot = its.length - nRead;
-    const dark = ((this.analysis && this.analysis.darkWarn) || []).filter((x) => !x.twilight && x.at < a1 && x.at + x.len > a0);
-    const darkM = dark.reduce((m, x) => m + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
-    const warns = [nRead ? `<span class="read">${icon('warnf', 14)}${nRead} to read</span>` : '', nNot ? `<span class="unk">${icon('unk', 14)}${nNot} not checked</span>` : '',
-      darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : ''].filter(Boolean);
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
+    const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Straight line|Carry \/ portage)/.test(w.text);
+    const its = this.itemsOn(s).filter((it) => !this.isRead(it) && !(it.g === 'look' && own(it.w))), n = (g) => its.filter((it) => it.g === g).length;
+    const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
+    const dark = on((x) => !x.twilight), darkM = m(dark), dusk = m(on((x) => x.twilight && x.evening)), dawn = m(on((x) => x.twilight && !x.evening));
+    const warns = [n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
+      n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : '',
+      dusk >= 50 ? `<span class="dark">${icon('sunset', 14)}${fmtDist(dusk)} after sunset</span>` : '', darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : '',
+      dawn >= 50 ? `<span class="dark">${icon('sunrise', 14)}${fmtDist(dawn)} before sunrise</span>` : ''].filter(Boolean);
     return { warns, dark: darkM >= 50 ? dark[0].at : 0 };
   }
   // a stretch under the mouse in the list: lit on the map, as a leg's row was
