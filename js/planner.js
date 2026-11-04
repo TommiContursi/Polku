@@ -1564,7 +1564,7 @@ export class Planner {
       // on the water: from the water nearest the start (a click on the shore, a beach, a car park by the lake)
       const from = wet ? nearestWater(L.start, water, 1000) : L.start;
       if (!from) {
-        L.note = 'That start is over a kilometre from the water: click a shore, a beach or a landing for the loops to start from.';
+        L.note = `That start is over a kilometre from the water: ${this.coarse() ? 'tap' : 'click'} a shore, a beach or a landing for the loops to start from.`;
         return;
       }
       let direction = L.dir;
@@ -1649,7 +1649,7 @@ export class Planner {
       L.calls = (L.calls || 0) + calls;
       L.on = ok.length ? n0 : L.on;
       L.note = !ok.length ? (limited ? limited.err.message : more ? 'No more loops worked out here — try another length or start.'
-        : wet ? 'No loop worked out on the water here — try another length, or a start on a bigger lake or the sea.' : 'No loop worked out here — try another length or start, or click the map nearer to paths.') : '';
+        : wet ? 'No loop worked out on the water here — try another length, or a start on a bigger lake or the sea.' : `No loop worked out here — try another length or start, or ${this.coarse() ? 'tap' : 'click'} the map nearer to paths.`) : '';
       this.drawLoops();
       if (ok.length) this.frame(bbox(L.results.flatMap((r) => r.line.coords)), { duration: 600, maxZoom: 15 });
     } finally {
@@ -7311,7 +7311,7 @@ export class Planner {
   /** Frame the whole route in the part of the map the planner leaves free. */
   fitRoute({ animate = true } = {}) {
     const b = this.routeBounds();
-    if (!b) { toast('No route yet — click the map to start one'); return; }
+    if (!b) { toast(`No route yet — ${this.coarse() ? 'tap' : 'click'} the map to start one`); return; }
     this.frame(b, { duration: animate ? 700 : 0 });
     this.fitAt = { t: Date.now(), peek: this.panel.style.getPropertyValue('--peek-h') };
   }

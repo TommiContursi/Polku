@@ -7,6 +7,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### Paddle from here on a phone ([#656](https://github.com/TommiContursi/Polku/issues/656))
 
 - On a phone, **Paddle from here** says to tap where you want to go, not click.
+- On a phone, the other notes that ask you to click the map now say tap: the one when **Show the whole route** has no route to show, and the round trip notes about a start far from the water or no loop found.
 
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
