@@ -208,6 +208,7 @@ export class Planner {
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
     this.unfolded = new Set(); // Route's list: the stretches whose waypoints are unfolded (their first point's pid), in memory only
+    this.renamingRow = null; // Route's list on a desktop: the row whose name is a field (its point's pid, and whether it's a part's start row)
     this.reordering = false; // Route's list in Reorder
     this.roads = initNames(map); // road and path names from the loaded tiles
     this.styles = {}; // the route's own style per sport, else yours for it (styleOf()); a leg may have its own (leg.style)
@@ -2886,6 +2887,7 @@ export class Planner {
     const box = this.els && this.els.points;
     if (!box) return;
     this.cards.refresh(); // an open card follows its point, or closes when it's gone
+    if (this.renamingRow && box.contains(document.activeElement) && document.activeElement.matches('input.name-field')) return; // (not the name you're typing)
     const n = this.points.length;
     this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
     this.setSection('points', { count: n || '', empty: !n, summary: n > 1 ? `${this.nameOf(0)} → ${this.nameOf(n - 1)}` : '' });
@@ -3010,6 +3012,9 @@ export class Planner {
   // the mark says them. `leave`: a part's first row after a changeover or a night, the point you set off from again.
   // Its line is dashed beside a straight leg, dotted below it where its part ends or at a stop (`brk`), none below the end.
   // `warns`: in a stretch unfolded, the warnings on the way to it from the point before, as a stretch has its own.
+  // On a desktop, while drawing, its tools where › is (#761), shown while a mouse is over the row or it has the focus:
+  // Rename (its name a field in the row), Remove (with Undo in the note) and the grip, which drags it along the list.
+  // A phone's row opens its card, and Reorder moves it.
   pointRow(i, ro, { shape = false, w = null, leave = false, brk = false, warns = false } = {}) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), at = this.timesAt(i), out = i === 0 || leave;
@@ -3018,17 +3023,43 @@ export class Planner {
     const bits = [when ? h('span', {}, `${out ? 'Leave' : 'Arrive'} ${when}`) : null, ...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
     const ws = warns && i > 0 ? this.warnsOn({ from: i - 1, to: i }).lines : [];
     const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', last && !leave ? 'last' : '', brk ? 'brk' : '', !leave && line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
-    const b = h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
-      h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i))),
-      // (the bits apart by the line's gap: the spaces between them only for the words read out, not drawn)
-      h('span', {}, h('b', { class: 'wpl-name' }, name), bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null,
-        ...ws.map((x) => h('small', { class: 'wpl-warns', html: x }))),
-      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
-    b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
-    b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
+    const tools = !ro && !this.coarse(), key = `${this.pidOf(p)}|${leave}`, naming = tools && this.renamingRow === key;
+    const mark = h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i)));
+    // (the bits apart by the line's gap: the spaces between them only for the words read out, not drawn)
+    const more = [bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null, ...ws.map((x) => h('small', { class: 'wpl-warns', html: x }))];
+    // (renaming, the row is no button: its name is a field, Enter or leaving it keeps the name, Escape doesn't)
+    const b = naming
+      ? h('div', { class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i) }, mark,
+        h('span', {}, h('input', { class: 'name-field', type: 'text', value: this.pname.get(p) || '', placeholder: this.autoName(i) || lab, maxlength: 60, spellcheck: 'false', 'aria-label': `The name of ${name}`,
+          onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), ...more))
+      : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), ...more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+    const tool = (ic, label, fn, cls = '') => h('button', { type: 'button', class: `tool${cls}`, 'aria-label': `${label} ${name}`, title: label, onclick: fn, html: icon(ic, 16) });
+    const wrap = tools ? h('div', { class: 'wpl-ptrow', 'data-i': String(i) }, b, h('span', { class: 'wpl-tools' },
+      naming ? null : tool('pencil', 'Rename', () => { this.renamingRow = key; this.renderWaypoints(); const f = this.els.points.querySelector('input.name-field'); f?.focus(); f?.select(); }),
+      tool('trash', 'Remove', () => this.removeWithUndo(i), ' danger'),
+      h('span', { class: 'wpl-grip', title: 'Drag to move it', 'aria-hidden': 'true', html: icon('grip', 16), onpointerdown: (e) => { if (e.pointerType === 'mouse') this.dragRow(e, wrap, i, { rows: this.listRows() }); } }))) : null;
+    const el = wrap || b;
+    el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
+    el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     // (on a desktop, its distance from the start, its times and the weather, as the map's tooltip has them)
-    if (at) tooltip(b, { beside: true, name: `${fmtDist(this.lengthTo(i))} from the start`, text: [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `leave ${this.clockOf(at.leave)}` : '', ...sky.map((x) => x.text)].filter(Boolean).join(' · ') });
-    return b;
+    if (at && !naming) tooltip(b, { beside: true, name: `${fmtDist(this.lengthTo(i))} from the start`, text: [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `leave ${this.clockOf(at.leave)}` : '', ...sky.map((x) => x.text)].filter(Boolean).join(' · ') });
+    return el;
+  }
+  // the end of a rename in a row of the list: the name kept (Enter, or the field left) or not (Escape); the focus back
+  // on the row
+  endRowRename(keep) {
+    if (!this.renamingRow) return;
+    const pid = this.renamingRow.split('|')[0], f = this.els.points.querySelector('input.name-field'), i = this.points.findIndex((q) => String(this.pidOf(q)) === pid);
+    this.renamingRow = null;
+    if (keep && i >= 0) this.setName(i, f ? f.value : '');
+    this.renderWaypoints(); // (setName draws it again only for a new name)
+    this.els.points.querySelector(`.wpl-point[data-i="${i}"]`)?.focus({ preventScroll: true });
+  }
+  // the waypoints' rows the list shows, each once, in order, for a drag by a grip: [{ el, i }]
+  listRows() {
+    const seen = new Set();
+    return [...this.els.points.querySelectorAll('.wpl-ptrow')].map((el) => ({ el, i: +el.dataset.i })).filter((r) => !seen.has(r.i) && seen.add(r.i));
   }
 
   // when you'd get to point i and go on from it (epoch seconds, after a changeover, a stop or a night there), or null
@@ -3173,12 +3204,12 @@ export class Planner {
     row.addEventListener('touchmove', still, { passive: false });
   }
 
-  // Drag a row of Reorder (by its grip, or by a finger held on it); the gap it would drop into is marked, and the drop is
-  // one step of Undo. While a finger drags, the list doesn't scroll under it.
-  dragRow(e, row, i, { touch = false } = {}) {
+  // Drag a row of Reorder (by its grip, or by a finger held on it), or of the list by its grip (`rows`: the rows it can
+  // drop between, with their points, some folded away); the gap it would drop into is marked, and the drop is one step
+  // of Undo. While a finger drags, the list doesn't scroll under it.
+  dragRow(e, row, i, { touch = false, rows = [...this.els.points.querySelectorAll('.wpl-row')].map((el, j) => ({ el, i: j })) } = {}) {
     e.preventDefault();
     e.stopPropagation();
-    const box = this.els.points, rows = [...box.querySelectorAll('.wpl-row')];
     const y0 = e.clientY;
     let to = i;
     row.classList.add('dragging');
@@ -3187,9 +3218,11 @@ export class Planner {
     if (touch) row.addEventListener('touchmove', still, { passive: false });
     const move = (ev) => {
       row.style.transform = `translateY(${ev.clientY - y0}px)`;
-      // its new place: how many of the other rows have their middle above the pointer
-      to = rows.filter((r, j) => { if (j === i) return false; const b = r.getBoundingClientRect(); return ev.clientY > b.top + b.height / 2; }).length;
-      rows.forEach((r, j) => { r.classList.toggle('drop-before', j === to && to < i); r.classList.toggle('drop-after', j === to && to > i); });
+      // its new place: after the last of the other rows with its middle above the pointer
+      const others = rows.filter((r) => r.i !== i), above = others.filter((r) => { const b = r.el.getBoundingClientRect(); return ev.clientY > b.top + b.height / 2; });
+      const k = above.length ? above[above.length - 1].i : -1;
+      to = k < i ? k + 1 : k;
+      others.forEach((r) => { r.el.classList.toggle('drop-after', r === above[above.length - 1] && to !== i); r.el.classList.toggle('drop-before', !above.length && r === others[0] && to !== i); });
     };
     const up = () => {
       row.removeEventListener('pointermove', move);
@@ -3198,7 +3231,7 @@ export class Planner {
       row.removeEventListener('touchmove', still);
       row.classList.remove('dragging');
       row.style.transform = '';
-      rows.forEach((r) => r.classList.remove('drop-before', 'drop-after'));
+      rows.forEach((r) => r.el.classList.remove('drop-before', 'drop-after'));
       if (to !== i) this.movePointTo(i, to);
     };
     row.addEventListener('pointermove', move);
@@ -4093,8 +4126,8 @@ export class Planner {
   stopPicking() { if (this.picking) this.picking.done(null); }
 
   // Remove, with Undo in its note
-  removeOnCard(card) {
-    const i = this.points.indexOf(card.key);
+  // Remove point i, with Undo in the note (the card's Remove and a desktop's in the list's row)
+  removeWithUndo(i) {
     if (i < 0) return;
     const name = this.nameOf(i);
     this.removePoint(i);

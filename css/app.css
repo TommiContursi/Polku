@@ -1434,6 +1434,25 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-point.in-dash > span:first-child::before, .wpl-point.out-dash > span:first-child::after, .wpl-stretch.straight .wpl-line::before { background: repeating-linear-gradient(to bottom, var(--part) 0 6px, transparent 6px 10px); }
 .wpl-point.brk > span:first-child::after { left: calc(50% - 1.5px); width: 3px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 3px / 3px 6px repeat-y; }
 .wpl-point.shape b { font-weight: var(--weight-regular); }
+/* a desktop's tools on a waypoint's row (#761): Rename, Remove and the grip at the far end, where › is, while a mouse is
+   over the row or it has the focus; its words keep their room, so nothing moves under the pointer. No motion: they're
+   there at once, and a drag follows the pointer as Reorder's does. */
+.wpl-ptrow { position: relative; }
+.wpl-ptrow > .row { width: 100%; }
+.wpl-ptrow > .row > span:nth-child(2) { padding-right: 76px; }
+.wpl-tools { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: none; align-items: center; gap: 2px; }
+.wpl-tools .tool { width: 32px; height: 32px; }
+.wpl-tools .tool.danger { color: var(--danger); }
+.wpl-tools .wpl-grip { width: 28px; justify-content: center; }
+@media (hover: hover) and (pointer: fine) {
+  .wpl-ptrow:hover > .wpl-tools, .wpl-ptrow:focus-within > .wpl-tools { display: flex; }
+  .wpl-ptrow:hover > .row .way-chev, .wpl-ptrow:focus-within > .row .way-chev { visibility: hidden; }
+  .wpl-ptrow:hover > .row { background: var(--surface-2); }
+}
+.wpl-ptrow.dragging { z-index: 2; border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow); cursor: grabbing; }
+.wpl-ptrow.drop-before::before, .wpl-ptrow.drop-after::after { content: ""; position: absolute; left: 0; right: 0; height: 2px; background: var(--accent); border-radius: 2px; }
+.wpl-ptrow.drop-before::before { top: -1px; }
+.wpl-ptrow.drop-after::after { bottom: -1px; }
 .wpl-tag { display: flex; align-items: center; gap: 4px; color: var(--text); font-weight: 600; }
 .wpl-tag svg { flex: none; }
 /* a stretch: the line between two points (#761), its numbers in bold, how it's drawn under them; one that isn't drawn
@@ -1876,7 +1895,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 @media (hover: hover) { .card-float .rows.acts > .row:hover { background: var(--surface-2); } .card-float .rows.acts > .row.danger:hover { background: color-mix(in srgb, var(--bad) 10%, transparent); } }
 /* the point's row in the planner's list: no hairline, the stretch's line is between two points (#761); lit while its
    card is open */
-.wpl .rows > .row.wpl-point { box-shadow: none; border-radius: 12px; }
+.wpl .rows .row.wpl-point { box-shadow: none; border-radius: 12px; }
 .wpl-point[aria-current="true"], .wpl-stretch[aria-current="true"] { background: var(--accent-soft); }
 .wpl-point[aria-current="true"] .wp-mini { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-bg); }
 .card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; }
