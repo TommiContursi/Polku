@@ -5,13 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>The route's list</title>
-<meta name="description" content="Mock-up for #761: the route's list as it is on main (2026-11-04) beside Rows, where a point is a row with its name, a plain stretch a line between two points, the sport's row carries its style and speed, a desktop edits in the row, and one button sits under the list.">
+<meta name="description" content="Mock-up for #761: the route's list as it was on main (2026-11-04) beside Rows, and Line, the second round: one line through every waypoint, the stretch's numbers to read, and how each stretch is drawn. Rows:  a point is a row with its name, a plain stretch a line between two points, the sport's row carries its style and speed, a desktop edits in the row, and one button sits under the list.">
 <!--
   #761, 2026-11-04: today's list beside the proposal. The plan: docs/plans/issue-761-route-list.md. Not wired to the
   app: nothing here is loaded by Polku. The controls are css/app.css's own, by their class names (the rows, the marks,
   the buttons, the section's head, the warning); what Rows adds is in the marked block below.
 
-  ?v=today|rows  &frame=390|360|side|bottom  &route=one|two|fi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
+  ?v=today|rows|line  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
+  &how=every|differs (Line: how every stretch is drawn, or only one that differs)
+
+  Line (the second round, 2026-11-04) is main at 3db83e6, drawn with the app's own classes, plus the block marked "new
+  in Line"; Today and Rows stay as they were drawn.
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
@@ -120,17 +124,52 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wpl-foot.foot2 { flex-direction: column; align-items: flex-start; }
 .wpl-foot .foot-l { display: flex; flex-wrap: wrap; gap: 6px; }
 .wpl-foot .btn.danger { color: var(--bad); }
+
+/* ======================================================= new in Line (the second round, 2026-11-04): main's list (#780)
+   with one line from the start to the end through every mark, the stretch's numbers to read, how every stretch is
+   drawn, and waypoints in the words. Everything else is css/app.css's own, by its class names. */
+.wpl.lined { --rail: #858f8a; }
+:root[data-theme="dark"] .wpl.lined { --rail: #7d8882; }
+/* the line: through each point's mark (its halves the stretches' colours), along each stretch, and through the
+   heading of each sport after the first, whose icon sits on it as a node where the sport changes */
+.lined .wpl-point > span:first-child { position: relative; align-self: stretch; }
+.lined .wpl-point > span:first-child::before, .lined .wpl-point > span:first-child::after { content: ""; position: absolute; left: 10px; width: 2px; background: var(--rail); }
+.lined .wpl-point > span:first-child::before { top: -6px; bottom: 50%; }
+.lined .wpl-point > span:first-child::after { top: 50%; bottom: -6px; }
+.lined .wpl-point.in-diff > span:first-child::before, .lined .wpl-point.out-diff > span:first-child::after { background: var(--accent); }
+.lined .wpl-point:has(.wp-start) > span:first-child::before, .lined .wpl-point:has(.wp-end) > span:first-child::after { display: none; }
+.lined .wpl-point .wp-mini { position: relative; z-index: 1; } /* (on the line, not under it) */
+.lined .wpl-strow > .row > .wpl-line { position: relative; }
+.lined .wpl-line::before { position: absolute; left: 10px; top: -3px; bottom: -3px; height: auto; min-height: 0; border-radius: 0; background: var(--rail); }
+.lined .wpl-stretch.differs .wpl-line::before { background: var(--accent); }
+.lined .sec2-head { padding-left: 10px; gap: 12px; }
+.lined .sec2-head > span { width: 22px; place-items: center; }
+.lined .sec2-nums { padding-left: 44px; }
+.wpl.lined .sec2 + .sec2 { position: relative; box-shadow: none; }
+.wpl.lined .sec2 + .sec2::after { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: 1px; background: var(--line); }
+.lined .sec2-head.node > span { position: relative; margin-top: -1px; align-self: stretch; place-items: start center; } /* (as tall as its heading, so the line goes on past a title of two lines) */
+.lined .sec2-head.node > span::before { content: ""; position: absolute; left: 10px; width: 2px; top: -22px; bottom: -6px; background: var(--rail); }
+.lined .sec2-head.node > span > .ic { position: relative; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--rail); }
+.lined .sec2 + .sec2 > .sec2-nums { position: relative; }
+.lined .sec2 + .sec2 > .sec2-nums::before { content: ""; position: absolute; left: 20px; width: 2px; top: -1px; bottom: -6px; background: var(--rail); }
+.lined .sec2.diff-in > .sec2-head.node > span::before, .lined .sec2.diff-in > .sec2-nums::before { background: var(--accent); } /* (the stretch it leads to isn't along paths) */
+/* the stretch: its numbers first, to read; under them how it's drawn, with its icon (green where it isn't along
+   paths), and the waypoints it folds */
+.lined .wpl-stretch .wpl-nums { font-size: 14px; font-variant-numeric: tabular-nums; }
+.lined .wpl-stretch small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; }
+.lined .wpl-stretch.differs small .how { color: var(--accent); font-weight: var(--weight-name); }
 </style>
 </head>
 <body class="mk">
 <div class="cv">
   <h1>The route's list</h1>
-  <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
+  <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. <b>Line</b> is the second round (2026-11-04), from trying the first PR: the list as it is on <code>main</code> now, with one line from the start to the end through every waypoint, the stretch's numbers to read, how every stretch is drawn, and waypoints in the words. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
   <div class="bars">
-    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button></div></div>
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button></div>
+      <span>Stretch</span><div class="sw" data-k="how"><button data-v="every">How every stretch is drawn</button><button data-v="differs">Only where it differs</button></div></div>
     <div class="bar"><span>Frame</span><div class="sw" data-k="frame"><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button><button data-v="side">Side dock</button><button data-v="bottom">Bottom dock</button></div>
       <span>Zoom</span><div class="sw" data-k="zoom"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
-    <div class="bar"><span>Route</span><div class="sw" data-k="route"><button data-v="one">One sport</button><button data-v="two">Two sports</button><button data-v="fi">Long names</button></div>
+    <div class="bar"><span>Route</span><div class="sw" data-k="route"><button data-v="one">One sport</button><button data-v="two">Two sports</button><button data-v="fi">Long names</button><button data-v="multi">Four sports</button></div>
       <span>Foot</span><div class="sw" data-k="foot"><button data-v="reverse">Reverse</button><button data-v="clear">Reverse + Clear route</button></div>
       <span>Add row</span><div class="sw" data-k="add"><button data-v="off">Off</button><button data-v="on">On</button></div>
       <span>Hover</span><div class="sw" data-k="hover"><button data-v="off">Off</button><button data-v="on">Row 2 hovered</button></div>
@@ -148,10 +187,19 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li><b>Under the list:</b> Reverse, and Clear route at the other end (chosen on 2026-11-04; the switch shows Reverse alone). Round trip, Back to start and Import are ways to begin or route actions: ⋯ and the start's card keep them.</li>
       <li><b>The warning</b> is in the key fact's slot under the numbers (#741), not a box in the list.</li>
     </ul>
+    <h2>What Line changes (the second round)</h2>
+    <ul>
+      <li><b>One line</b> runs from the start to the end through every waypoint's mark, as Komoot's does: each stretch is the line between two marks, green where it isn't along paths. Where the sport changes, the next sport's icon sits on the line as a node in its heading, so the parts read as one route.</li>
+      <li><b>The stretch's numbers</b> are its first line, in bold, as before #780: "11.8 km · 38 min · ↑71 m". Under them, small: how it's drawn, with its icon, and the waypoints it folds.</li>
+      <li><b>How it's drawn</b> on every stretch, "Follow paths" too, so a stretch along paths doesn't look like one with something missing; the ones that aren't along paths are green. The switch shows it only where it differs, as #780 does.</li>
+      <li><b>Said once:</b> a part of one stretch has no numbers under its heading, as its stretch says them (PR 2 rebuilds the heading).</li>
+      <li><b>Waypoints:</b> the points a stretch folds are "3 waypoints", never "shaping points". The list's other words that say "point" are in the plan.</li>
+    </ul>
     <h2>Left out</h2>
     <ul>
       <li>The map, the toolbar and the profile are stand-ins; the numbers are made up for a 5.8 km route.</li>
       <li>The cards and the popup (#760), Reorder's own view, a night's row and a long route's folding (#350): not drawn.</li>
+      <li>Line keeps main's foot, How you go and Your speed, and the bottom dock's one column: the earlier PRs of the plan change those. Its unfolded waypoints aren't drawn; on the line they're marks like the others.</li>
       <li>The first inline list (2026-10-13 to 2026-10-25) had a name field, five tools, the leg's settings and Depart on every row; its lessons are in the plan.</li>
     </ul>
   </div>
@@ -160,20 +208,32 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 import { icon, h } from '../../../js/ui.js';
 
 const q = new URLSearchParams(location.search);
-const S = { v: q.get('v') || 'rows', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
+const S = { v: q.get('v') || 'line', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
 
 // the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
 const ROUTES = {
   one: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h' }],
     points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu' }, { name: 'End', sub: 'There at 06:53 · 5° · 3 m/s' }],
     legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.4 km · 8 min · ↑16 m', shaping: 2 }, { n: '1.3 km · 4 min · ↑4 m' }], total: '5.75 km · 19 min · ↑32 m' },
-  two: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h', to: 2 }, { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 2 }],
+  two: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h', to: 2, nums: '4.25 km · 13 min · ↑10 m' }, { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 2, nums: '1.51 km · 24 min · ↑32 m' }],
     points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu', sub: 'There at 06:48 · 3° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' } }, { name: 'End', sub: 'There at 07:11 · 5° · 3 m/s' }],
     legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.2 km · 6 min · ↑13 m', shaping: 1 }, { n: '1.5 km · 18 min · ↑32 m', how: 'Straight line', icon: 'straight', differs: true }], total: '5.76 km · 37 min · ↑35 m' },
   fi: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h' }],
     points: [{ name: 'Pyhä-Häkin kansallispuiston pysäköintialue', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Rautavaaran Metsäkartanon laavu' }, { name: 'Saarijärven kirkonkylän kuntoportaat' }, { name: 'Isojärven kansallispuiston Heretty', sub: 'There at 06:53 · 5° · 3 m/s' }],
     legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.4 km · 8 min · ↑16 m', shaping: 2 }, { n: '1.3 km · 4 min · ↑4 m' }], total: '5.75 km · 19 min · ↑32 m' },
+  // four sports, as a route tried on 2026-11-04: water with folded waypoints, a straight line, three changeovers
+  multi: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h', to: 1, nums: '2.56 km · 14 min · ↑75 m' },
+      { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 1, to: 2, nums: '1.78 km · 21 min · ↑11 m' },
+      { k: 'paddle', label: 'Paddle', icon: 'paddle', style: 'Balanced', speed: 'Sea kayak, 6.5 km/h', from: 2, to: 3, nums: '874 m · 11 min · ↑16 m' },
+      { k: 'trailrun', label: 'Trail run', icon: 'trailrun', style: 'Balanced', speed: 'Normal, 9 km/h', from: 3, nums: '984 m · 9 min · ↑39 m' }],
+    points: [{ name: 'Survontie', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Kylmänorontie', sub: 'There at 10:01 · 2° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' } },
+      { name: 'Rantatie', sub: 'There at 10:27 · 2° · 3 m/s', tag: { icon: 'paddle', text: 'Paddle from here · changeover 10 min' } }, { name: 'Saunalahden laituri', sub: 'There at 10:48 · 2° · 3 m/s', tag: { icon: 'trailrun', text: 'Trail run from here · changeover 10 min' } },
+      { name: 'Kuusikko', sub: 'There at 11:05' }, { name: 'Päätekuja', sub: 'There at 11:07 · 2° · 3 m/s' }],
+    legs: [{ n: '2.56 km · 14 min · ↑75 m', shaping: 5 }, { n: '1.78 km · 21 min · ↑11 m', shaping: 2 }, { n: '874 m · 11 min · ↑16 m', shaping: 2, how: 'Over water', icon: 'water', differs: true },
+      { n: '724 m · 7 min · ↑32 m', shaping: 1 }, { n: '260 m · 2 min · ↑7 m', how: 'Straight line', icon: 'straight', differs: true }], total: '6.37 km · 1 h 21 min · ↑144 m' },
 };
+// a route's sections, a sport each
+const sections = (R) => R.sports.map((sp) => ({ sport: sp, from: sp.from ?? 0, to: sp.to ?? R.points.length - 1 }));
 
 const mark = (i, n) => h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : i === n - 1 ? 'wp-end' : 'wp-via'}`, 'aria-hidden': 'true' }, i === 0 || i === n - 1 ? '' : String(i));
 const chev = (s = 18) => h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', s) });
@@ -193,7 +253,7 @@ function head(R, rows) {
 // ---------- Today: main's list (js/planner.js sectionRows, pointRow, stretchRow at d326952)
 function today(R, frame) {
   const n = R.points.length, bottom = frame === 'bottom';
-  const secs = R.sports.length === 1 ? [{ sport: R.sports[0], from: 0, to: n - 1 }] : [{ sport: R.sports[0], from: 0, to: 2 }, { sport: R.sports[1], from: 2, to: 3 }];
+  const secs = sections(R);
   const one = secs.length === 1;
   const body = [];
   body.push(h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(n)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) })));
@@ -215,21 +275,24 @@ function today(R, frame) {
     if (si === 0) rows.append(pointRow(0, true));
     for (let k = sec.from; k < sec.to; k++) { rows.append(stretchRow(k)); rows.append(pointRow(k + 1, k + 1 === sec.to)); }
     const warn = si === 0 ? h('button', { type: 'button', class: 'warn-row danger' }, h('span', { 'aria-hidden': 'true', html: icon('warnf', 20) }), h('span', {}, h('b', {}, '5 to read before you go'), h('small', {}, 'In the dark for 5.75 km and 4 more')), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) })) : null;
-    list.append(h('li', { class: 'sec2' }, one ? null : headOf(sec), one ? null : h('div', { class: 'sec2-nums' }, `${sec.sport.k === 'mtb' ? '4.25 km · 13 min · ↑10 m' : '1.51 km · 24 min · ↑32 m'}`), warn, rows));
+    list.append(h('li', { class: 'sec2' }, one ? null : headOf(sec), one ? null : h('div', { class: 'sec2-nums' }, sec.sport.nums), warn, rows));
   });
-  body.push(list);
-  body.push(h('div', { class: 'wpl-foot' }, h('button', { type: 'button', class: 'btn', html: `${icon('roundtrip', 16)} Round trip` }), h('button', { type: 'button', class: 'btn', html: `${icon('reverse', 16)} Reverse` }), h('button', { type: 'button', class: 'btn', html: `${icon('loop', 16)} Back to start` }), h('button', { type: 'button', class: 'btn', html: `${icon('upload', 16)} Import` })));
+  body.push(list, ...mainFoot(R, bottom));
+  return body;
+}
+// main's foot (Round trip, Reverse, Back to start, Import), then How you go and Your speed
+function mainFoot(R, bottom) {
+  const foot = h('div', { class: 'wpl-foot' }, h('button', { type: 'button', class: 'btn', html: `${icon('roundtrip', 16)} Round trip` }), h('button', { type: 'button', class: 'btn', html: `${icon('reverse', 16)} Reverse` }), h('button', { type: 'button', class: 'btn', html: `${icon('loop', 16)} Back to start` }), h('button', { type: 'button', class: 'btn', html: `${icon('upload', 16)} Import` }));
   const how = h('div', { class: 'rows how-rows' + (bottom ? '' : ' wide') });
   for (const sp of R.sports) how.append(h('button', { type: 'button', class: 'row' }, h('span', { html: icon('sliders', 20) }), h('span', {}, h('b', {}, 'How you go'), h('small', {}, `The ways Polku picks for ${sp.label}`)), h('span', { class: 'val' }, sp.style), chev()));
   how.append(h('button', { type: 'button', class: 'row' }, h('span', { html: icon('gauge', 20) }), h('span', {}, h('b', {}, 'Your speed'), h('small', {}, R.sports.map((sp) => `${sp.label}: ${sp.speed.replace(', ', ' · ')}`).join('; ') + ' · 600 m/h up')), h('span', { class: 'val' }, 'Normal'), chev()));
-  body.push(how);
-  return body;
+  return [foot, how];
 }
 
 // ---------- Rows: the proposal
 function rows(R, frame, S) {
   const n = R.points.length, bottom = frame === 'bottom';
-  const secs = R.sports.length === 1 ? [{ sport: R.sports[0], from: 0, to: n - 1 }] : [{ sport: R.sports[0], from: 0, to: 2 }, { sport: R.sports[1], from: 2, to: 3 }];
+  const secs = sections(R);
   const body = [];
   body.push(h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(n)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) })));
   const list = h('ul', { class: 'wpl rows2' });
@@ -266,6 +329,40 @@ function rows(R, frame, S) {
   return body;
 }
 
+// ---------- Line: main at 3db83e6 (js/planner.js sectionRows, pointRow, stretchRow), with the second round's changes
+function line(R, frame, S) {
+  const n = R.points.length, secs = sections(R), one = secs.length === 1;
+  const body = [h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(n)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }))];
+  // (a sport's heading: after the first, its icon is a node on the line, where the sport changes)
+  const headOf = (sec, k) => h('div', { class: 'sec2-head' + (k ? ' node' : '') }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, k ? 16 : 20) }), h('b', {}, `${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}`));
+  const top = h('div', { class: 'wpl-top' });
+  if (one) top.append(headOf(secs[0], 0));
+  top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }));
+  body.push(top);
+  const differs = (k) => !!(R.legs[k] && R.legs[k].differs);
+  const pointRow = (i) => { const p = R.points[i], lab = i === 0 ? 'Start' : i === n - 1 ? 'End' : `Via ${i}`;
+    return h('button', { type: 'button', class: `row wpl-point${i > 0 && differs(i - 1) ? ' in-diff' : ''}${differs(i) ? ' out-diff' : ''}` },
+      h('span', { 'aria-hidden': 'true' }, mark(i, n)),
+      h('span', {}, h('b', { class: 'wpl-name' }, p.name), p.tag ? h('small', { class: 'wpl-tag', html: `${icon(p.tag.icon, 15)}<span>${p.tag.text}</span>` }) : null, h('small', {}, [sub(p, i), lab].join(' · '))),
+      chev()); };
+  const stretchRow = (k) => { const L = R.legs[k], how = L.how || 'Follow paths', more = L.shaping ? `${L.shaping} waypoint${L.shaping > 1 ? 's' : ''}` : '';
+    const says = [L.differs || S.how === 'every' ? `${icon(L.icon || 'auto', 14)}<span class="how">${how}</span>` : '', more].filter(Boolean).join(' · ');
+    return h('div', { class: 'wpl-strow' }, h('button', { type: 'button', class: `row wpl-stretch${L.differs ? ' differs' : ''}`, 'aria-label': [L.n, how, more].filter(Boolean).join(', ') },
+        h('span', { class: 'wpl-line', 'aria-hidden': 'true' }),
+        h('span', {}, h('b', { class: 'wpl-nums' }, L.n), says ? h('small', { html: says }) : null)),
+      L.shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'aria-expanded': 'false', 'aria-label': `Show the ${more}`, html: icon('chevronDown', 18) }) : null); };
+  const list = h('ul', { class: 'wpl lined' });
+  secs.forEach((sec, k) => {
+    const rows = h('div', { class: 'rows', role: 'group' });
+    if (k === 0) rows.append(pointRow(0));
+    for (let j = sec.from; j < sec.to; j++) rows.append(stretchRow(j), pointRow(j + 1));
+    // (a part of one stretch: the stretch says its numbers, not its heading too)
+    list.append(h('li', { class: `sec2${differs(sec.from) ? ' diff-in' : ''}` }, one ? null : headOf(sec, k), one || sec.to - sec.from < 2 ? null : h('div', { class: 'sec2-nums' }, sec.sport.nums), rows));
+  });
+  body.push(list, ...mainFoot(R, frame === 'bottom'));
+  return body;
+}
+
 function draw() {
   const stage = document.getElementById('stage');
   stage.replaceChildren();
@@ -274,12 +371,12 @@ function draw() {
   frame.append(h('div', { class: 'mapline', style: 'top: 30%' }), h('div', { class: 'mapline', style: 'top: 55%; transform: rotate(12deg)' }));
   const sheet = h('section', { class: 'sheet', 'data-layout': phone ? 'sheet' : S.frame === 'side' ? 'left' : 'bottom', 'data-state': 'full', 'aria-label': 'Route planner' });
   if (phone) sheet.append(h('div', { class: 'sheet-handle' }), h('div', { class: 'pl-tools-row' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` })));
-  sheet.append(head(R, S.v === 'rows'));
+  sheet.append(head(R, S.v !== 'today'));
   const body = h('div', { class: 'sheet-body' });
-  body.append(...(S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
+  body.append(...(S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
   sheet.append(body);
   frame.append(sheet);
-  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.' }[S.v];
+  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.' }[S.v];
   stage.append(h('div', {}, frame, h('p', { class: 'cap' }, cap)));
   for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[sw.dataset.k] === b.dataset.v));
   const u = new URL(location); for (const k in S) u.searchParams.set(k, S[k]); history.replaceState(null, '', u);

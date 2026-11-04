@@ -7,7 +7,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
 - **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
-- **Waiting:** a second design round, from testing PR 1 (below); PR 2 waits on it, since it rebuilds the section heads the line runs through.
+- **Waiting:** the user's choice on the second round, **Line** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
 - **Next:** PR 2, the sport's row with its values.
 
 ## What the user asked for (2026-11-04)
@@ -32,6 +32,39 @@ The list edited in place from fc13027: a name field on every row, a grip, Earlie
 ## Checked in the mock-up (2026-11-04)
 
 With the design skills (Emil Kowalski's and Apple's rules, break-ui's worst cases): at 390 and 360 px a long Finnish name wraps to two lines and the row grows to 75 px, nothing leaves the sheet; at 200 % on a 390 phone the list's rows stay inside (the toolbar and the tabs are stand-ins and aren't drawn at 200 %), but the changeover's tag "Hike from here · changeover 5 min" takes four lines, as it does on main today; the tools are 32 px, which is right for a pointer and never shown to a finger; the sport's row wraps its values under its name at 360 px beside Reorder. Not checked: a night's row, a route of twenty points, Reorder's own view, dark and light side by side (the mock-up follows the system's scheme), the real cards.
+
+## The second round (2026-11-04)
+
+From trying PR 1 on a route of four sports (ideas from testing, 2026-11-04, on #761):
+
+- The stretch's numbers were hard to read in one small grey line.
+- Over water and Straight line said how they're drawn but a stretch along paths didn't.
+- "Shaping points" should go, and Polku's points should be waypoints, as in Komoot.
+- How the points and the route's parts connect was less clear than Komoot's one line through every waypoint.
+
+The mock-up's **Line** (`?v=line&route=multi`) is main at 3db83e6 with this round:
+
+- **One line through every waypoint.** It runs from the start to the end through every waypoint's mark (`--rail`, 3:1 against the sheet in both themes). Each stretch is the line between two marks, green where it isn't along paths, and the halves of a mark take its stretches' colours. Where the sport changes, the next sport's icon sits on the line as a node in its heading. The rule between two parts starts after the line, so it doesn't cut it.
+- **The stretch's numbers to read.** They're its first line, in bold, as before #780. Under them, small: how it's drawn, with its icon, and the waypoints it folds ("Follow paths · 5 waypoints").
+- **How every stretch is drawn.** "Follow paths" too, in the muted colour; a stretch that isn't along paths has its word and icon in green. The mock-up's switch shows the other way, as #780 does: only where it differs.
+- **Said once:** a part of one stretch has no numbers under its heading, since its stretch says them.
+- **Waypoints in the words.** The fold is "3 waypoints" and "Show the 3 waypoints". Elsewhere in the planner a point of the route is a waypoint too:
+  - Reorder's hint, "Drag a waypoint, or move it earlier or later";
+  - the map's "Add a waypoint here", "This waypoint is on the water…", "Waypoint added after…";
+  - "Add at least two waypoints first", "Add another waypoint to make a route";
+  - the cards' title "Waypoint".
+
+  "High point" stays: it's the profile's. The checks in `tools/smoke.py` that read these words change with them.
+
+**Open questions:**
+- Does an unnamed waypoint stay "Via 4", or become "Waypoint 4" as in Komoot?
+- How every stretch is drawn, or only where it differs?
+
+**The PRs, if Line is chosen:** each tried on the phone before the next, ahead of PR 2.
+1. The line and the stretch's words: `pointRow()`, `stretchRow()`, `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`; `sections`.
+2. Waypoints in the words, across the planner, with their checks.
+
+Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).
 
 ## The PRs after the decision
 
