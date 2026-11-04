@@ -15521,6 +15521,8 @@ def sections_list(chrome):
         ln = pg.js(SE_LINE)
         if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(3, '6')]:
             fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want 3 beads and 6 by ⌄)")
+        # (headless Chrome asks for reduced motion; a person usually doesn't)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         press(pg, at(pg, "polku.planner.els.points.querySelector('.wpl-unfold')"), f'{name}: unfold', touch)
         s = st(pg)
         if s['shapes'] != 6:
@@ -15546,6 +15548,12 @@ def sections_list(chrome):
         r = [st(pg)['shapes'], pg.js(IN)]
         if r != [6, '']:
             fails.append(f"{name}: unfolded from the keyboard: {r} (want six rows, none coming in, #761)")
+        # with reduced motion, they only fade in
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+        r = pg.js(f"""(async () => {{ const p = polku.planner; p.unfolded.clear(); p.renderWaypoints();
+          p.els.points.querySelector('.wpl-unfold').dispatchEvent(new MouseEvent('click', {{ bubbles: true, detail: 1 }})); return {IN}; }})()""")
+        if r != 'qd-fade 0ms, qd-fade 40ms, qd-fade 80ms, qd-fade 120ms, qd-fade 120ms, qd-fade 120ms':
+            fails.append(f"{name}: six waypoints unfolded by a tap with reduced motion: {r!r} (want a fade, #761)")
         press(pg, at(pg, point(3)), f'{name}: via 3’s row', touch)
         scroll0 = pg.js("polku.planner.cards.saved && polku.planner.cards.saved.scroll")
         if st(pg)['kind'] != 'point':
