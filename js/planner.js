@@ -3150,8 +3150,19 @@ export class Planner {
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
-      // (unfolded by a tap or a click, they come in; from the keyboard, and folding, at once: Layers' groups do the same)
-      onclick: (e) => { if (open) this.unfolded.delete(pid); else { this.unfolded.add(pid); this.unfoldIn = e.detail ? pid : null; } this.renderWaypoints(); } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
+      // (by a tap or a click they come in, as Layers' groups' rows do, and leave the way they came, faster: their marks and
+      // words fade back up off the line together, then the list closes up. From the keyboard, at once)
+      onclick: (e) => {
+        if (!open) { this.unfolded.add(pid); this.unfoldIn = e.detail ? pid : null; this.renderWaypoints(); return; }
+        if (this.foldingOut === pid) return;
+        const rows = e.detail ? [...this.els.points.querySelectorAll('.wpl-point.shape')].filter((x) => +x.dataset.i > s.from && +x.dataset.i < s.to) : [];
+        const out = rows.flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]);
+        const done = () => { this.foldingOut = null; this.unfolded.delete(pid); this.renderWaypoints(); };
+        if (!out.length) { done(); return; }
+        this.foldingOut = pid;
+        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }];
+        out.map((x) => x.animate(frames, { duration: token('--t-press'), easing: cssVar('--ease-out'), fill: 'forwards' }))[0].finished.then(done, done); // (cancelled by a redraw, it folds all the same)
+      } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
     const row = h('div', { class: 'wpl-strow' }, b, fold);
     if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)
     return row;
