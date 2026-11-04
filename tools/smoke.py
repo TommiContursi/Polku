@@ -3168,6 +3168,7 @@ def onroute(chrome):
           p.reveal('warnings');
           await wait(400);
           for (const g of ['read', 'not']) document.querySelector(`[data-sec=warnings] .tier-${g} .tier-all`)?.click();
+          p.setTab('route'); p.setSheetState('peek'); // (Worth a look's markers only while Check is in sight)
           await wait(300);
           if (line()) errs.push(`the line after All read: "${line().textContent}"`);
           if (!/1 marked read: they stay in Check and on the map/.test(note())) errs.push(`the note after All read: ${note()}`);
@@ -16342,7 +16343,9 @@ def leave(chrome):
 # time, unpaved on a road bike, a water leg's wind), else the sport's usual fact, with the weather said when it isn't known;
 # a row a sport on a route of two; a trip's hardest day; a tap opens where it's told; Check's top keeps every fact. Climbs:
 # one measure a sport, the Hardest tag in a column of one width, the heading naming it (straight legs, set values)
-KF_JS = """(() => { window.KF = {
+KF_JS = """(() => {
+  polku.planner.readSays = () => null; // (what Check finds, as the dark at this hour, would take the line's place: warn_slot's, #741)
+  window.KF = {
   // the route's numbers as a case needs them, and the line and Check's top as they are then
   set(o = {}) {
     const p = polku.planner, a = p.analysis, n = a.along.length, fill = (v) => new Float32Array(n).fill(v);
@@ -16353,7 +16356,6 @@ KF_JS = """(() => { window.KF = {
     a.wind = o.failed ? null : { ...KF.base, startSec: p.startSec(), head: fill(o.head || 0), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(0), temp: fill(8), precip: fill(o.rain || 0) };
     if (o.surf) a.surf = a.surf.map(() => o.surf);
     a.waits = o.waits || []; p.renderAnalysis();
-    p.markRead([...p.unread(p.heads, 'read'), ...p.unread(p.heads, 'not')]); // (what Check found takes the line's place: warn_slot's)
     return KF.read();
   },
   read() {
