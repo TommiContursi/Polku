@@ -20,6 +20,7 @@
   /* words on the glass: a darker grey (every glass surface sets --muted to it), green and red, for 4.5:1 over the map */
   --muted-glass: #3b4741; --accent-glass: #165a3a; --bad-glass: #9b1f27;
   --line: rgba(28, 36, 32, 0.14);
+  --rail: #858f8a; /* the route's line in the route's list where it has no sport's colour, and its dotted breaks: 3:1 on the sheet (#761) */
   /* more contrast (prefers-contrast: more, or Settings' High contrast): a darker grey, heavier lines and a 3:1 rim */
   --muted-hc: #46514b; --line-hc: rgba(28, 36, 32, 0.35); --hc-border: rgba(16, 24, 20, 0.7); --hc-inner: rgba(255, 255, 255, 0.8);
   --shadow: 0 8px 28px rgba(16, 24, 20, 0.18), 0 1px 3px rgba(16, 24, 20, 0.1);
@@ -108,6 +109,7 @@
   --muted: #9aa69f;
   --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffa3a3;
   --line: rgba(232, 236, 233, 0.16);
+  --rail: #7d8882;
   --muted-hc: #c3ccc6; --line-hc: rgba(232, 236, 233, 0.32); --hc-border: rgba(0, 0, 0, 0.8); --hc-inner: rgba(255, 255, 255, 0.4);
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
   --chart-ink: #e8ece9;
@@ -134,7 +136,7 @@
 :root[data-glass="solid"] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; } /* Settings' Fewer effects (#632) */
 :root[data-contrast="more"] {
   --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none;
-  --muted: var(--muted-hc); --muted-glass: var(--muted-hc); --line: var(--line-hc);
+  --muted: var(--muted-hc); --muted-glass: var(--muted-hc); --line: var(--line-hc); --rail: var(--muted-hc);
   --edge: inset 0 0 0 1px var(--hc-inner), 0 0 0 1px var(--hc-border);
 }
 
@@ -1397,31 +1399,49 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-top:empty { display: none; }
 .wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
 .wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
-.wpl .sec2 + .sec2 { box-shadow: inset 0 1px 0 var(--line); }
+.wpl .sec2 + .sec2 { position: relative; box-shadow: none; }
+.wpl .sec2 + .sec2::after { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: 1px; background: var(--line); } /* (the rule between two parts starts after the line, so it doesn't cut it) */
 .wpl .sec2.lit { margin: 0 -8px; padding-inline: 8px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent); } /* (the part a key fact opened) */
-.sec2-head { display: flex; align-items: flex-start; gap: 8px; }
-.sec2-head > span { flex: none; display: grid; margin-top: 1px; }
+/* a part's heading (#761): its sport's icon in a ring of its colour, on the route's line in the marks' column, then its
+   sport (and day) and its totals beside it, in the text's colour, bolder than a point's line */
+.sec2-head { display: flex; align-items: flex-start; gap: 12px; padding-left: 10px; }
+.sec2-head > span { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
+.sec2-head > span > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
+.sec2-head > span::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
+.wpl .sec2 + .sec2 > .sec2-head > span::before { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; top: -20px; height: 20px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
+.sec2-t { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 12px; }
 .sec2-head b { font-size: var(--font-row); font-weight: var(--weight-strong); line-height: 1.3; overflow-wrap: anywhere; }
-.sec2-nums { padding-left: 28px; font-size: 13px; color: var(--muted); }
+.sec2-t small { font-size: 13.5px; font-weight: var(--weight-name); color: var(--text); font-variant-numeric: tabular-nums; }
 .wpl-top .btn { min-height: var(--target); margin-left: auto; }
-.wpl-top > .sec2-head { flex: 1 1 12em; } /* (a route of one section's, beside Reorder, #764; Reorder under it where 12em don't fit) */
-.wpl-top:has(> .sec2-head) + .wpl > .sec2 { padding-top: 0; } /* (its rows 6 px under it, as under a heading in its section) */
 .wpl .rows { margin: 0; } /* (inside the list: no room for a hover past its edge, as a card has) */
-.wpl-point > span:first-child { width: 22px; place-items: center; }
+.wpl-point > span:first-child { position: relative; width: 22px; align-self: stretch; place-items: center; }
+/* the route's line (#761): through every point's mark, in its part's colour (--part: its sport's, set on its part), 3 px;
+   none below the end; dashed by a straight leg; dotted below a point where its part ends, to the next part's heading */
+.wpl { --w: 3px; }
+.wpl .sec2 { --part: var(--rail); }
+:root[data-theme="dark"] .wpl { --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; } /* (the map's are for the map: some are under 3:1 on the dark glass) */
+.wpl-point > span:first-child::before, .wpl-point > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); background: var(--part); }
+.wpl-point > span:first-child::before { top: -6px; bottom: 50%; }
+.wpl-point > span:first-child::after { top: 50%; bottom: -6px; }
+.wpl-point.last > span:first-child::after { display: none; }
+.wpl-point .wp-mini { position: relative; z-index: 1; }
+.wpl-point.in-dash > span:first-child::before, .wpl-point.out-dash > span:first-child::after, .wpl-stretch.straight .wpl-line::before { background: repeating-linear-gradient(to bottom, var(--part) 0 6px, transparent 6px 10px); }
+.wpl-point.brk > span:first-child::after { left: calc(50% - 1.5px); width: 3px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 3px / 3px 6px repeat-y; }
 .wpl-point.shape b { font-weight: var(--weight-regular); }
 .wpl-tag { display: flex; align-items: center; gap: 4px; color: var(--text); font-weight: 600; }
 .wpl-tag svg { flex: none; }
-/* a stretch: the line between two points, in the marks' column, its numbers in small type; one that isn't drawn along
-   paths says how first, its icon, words and line in the accent colour (#761). Thin to look at, a target to touch. */
+/* a stretch: the line between two points (#761), its numbers in bold, how it's drawn under them; one that isn't drawn
+   along paths has its word in the text's colour and weight; the points it folds are beads on its line and a count by ⌄ */
 .wpl-strow { display: flex; align-items: center; }
 .wpl-strow > .row { flex: 1; min-width: 0; min-height: var(--target); padding-block: 3px; }
-.wpl-strow > .row > .wpl-line { align-self: stretch; width: 22px; place-items: center; }
-.wpl-line::before { content: ""; width: 2px; height: 100%; min-height: 26px; border-radius: 1px; background: var(--line); }
+.wpl-strow > .row > .wpl-line { position: relative; align-self: stretch; width: 22px; }
+.wpl-line::before { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: -3px; bottom: -3px; background: var(--part); }
+.wpl-line .bead { position: absolute; z-index: 1; left: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--surface-solid); box-shadow: inset 0 0 0 2px var(--part); }
+.wpl-stretch .wpl-nums { font-size: 14px; font-variant-numeric: tabular-nums; }
 .wpl-stretch small { font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.wpl-stretch.differs .wpl-line::before { background: var(--accent); }
-.wpl-stretch.differs small b { font-size: inherit; color: var(--accent); }
-.wpl-stretch.differs small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; color: var(--accent); }
-.wpl-unfold { flex: none; min-width: var(--target); min-height: var(--target); }
+.wpl-stretch small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; }
+.wpl-stretch.differs small .ic, .wpl-stretch.differs small .how { color: var(--text); font-weight: var(--weight-name); }
+.wpl-unfold { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 1px; width: auto; min-width: var(--target); min-height: var(--target); padding: 0 4px 0 8px; font-size: 13px; font-weight: var(--weight-name); color: var(--muted); }
 @media (pointer: coarse) { .wpl .row { min-height: 44px; } }
 /* Reorder [jd-reorder]: every point with its grip, Earlier and Later; a finger held 0.45 s drags */
 .wpl.reorder .wpl-row { min-height: var(--target); touch-action: pan-y; }
