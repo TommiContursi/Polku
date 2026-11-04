@@ -11,7 +11,7 @@
   app: nothing here is loaded by Polku. The controls are css/app.css's own, by their class names (the rows, the marks,
   the buttons, the section's head, the warning); what Rows adds is in the marked block below.
 
-  ?v=today|rows|line|parts|parts2|parts3|parts4  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
+  ?v=today|rows|line|parts|parts2|parts3|parts4|parts5  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
   &how=every|differs (Line and Parts: how every stretch is drawn, or only one that differs)
   &word=straight|offpaths|freehand  &look=on (Parts 2: the word for a straight stretch; Worth a look in the list too)
   &route=days (two days with a stop and a night)
@@ -19,7 +19,8 @@
   Line (the second round, 2026-11-04) is main at 3db83e6, drawn with the app's own classes, plus the block marked "new
   in Line"; Parts (the third round, the same day) is Line with the block marked "new in Parts"; Parts 2 (the fourth)
   is Parts with the block marked "new in Parts 2"; Parts 3 and Parts 4 are Parts 2 with the block marked "new in Parts 3"
-  or "new in Parts 4". Every round is a version of its own, and the earlier ones stay as they were drawn.
+  or "new in Parts 4"; Parts 5 has its own function and the block marked "new in Parts 5". Every round is a version of its
+  own, and the earlier ones stay as they were drawn.
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
@@ -29,6 +30,7 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; --map: #26302a; --map-2: #1f2824; --water: #1f3038; } }
 :root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; --map: #26302a; --map-2: #1f2824; --water: #1f3038; }
 * { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; } /* (app.css holds the app's page still; this page scrolls) */
 body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
 .cv { max-width: 1500px; margin: 0 auto; }
 .cv a { color: var(--page-link); }
@@ -234,6 +236,19 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 /* the tooltip on a desktop: the app's own (tooltip(), .tip), placed by hand here */
 .frame .tip.mk-tip { position: absolute; }
 .parts2 .wpl-stretch.hovered { background: var(--surface-2); } /* (the switch Hover: the mouse on it) */
+
+/* ======================================================= new in Parts 5 (the seventh round, 2026-11-04): less text. A
+   point's line is when you arrive or leave and the weather then, with icons, and no Start, End or Waypoint n (its mark
+   says it); a wait's times under its name; a night's sunset and sunrise with their icons; a stretch's folded waypoints
+   a count by its ⌄; a part's heading its sport, its numbers under it; on a desktop the weather in the tooltips of a
+   stretch and a point. */
+.parts5 .wx-line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; }
+.parts5 .wx-line > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.parts5 .wx-line .ic { flex: none; }
+.parts5 .wpl-unfold.n { display: inline-flex; align-items: center; justify-content: center; gap: 1px; width: auto; min-width: var(--target); padding: 0 4px 0 8px; font-size: 13px; font-weight: var(--weight-name); color: var(--muted); }
+.parts5 .wpl-point.hovered { background: var(--surface-2); }
+.frame .tip .tip-wx { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 3px; }
+.frame .tip .tip-wx > span { display: inline-flex; align-items: center; gap: 4px; }
 </style>
 </head>
 <body class="mk">
@@ -241,15 +256,16 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
   <h1>The route's list</h1>
   <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. <b>Line</b> is the second round (2026-11-04), from trying the first PR: the list as it is on <code>main</code> now, with one line from the start to the end through every waypoint, the stretch's numbers to read, how every stretch is drawn, and waypoints in the words. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
   <div class="bars">
-    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button></div>
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button><button data-v="parts5">Parts 5</button></div>
       <span>Stretch</span><div class="sw" data-k="how"><button data-v="every">How every stretch is drawn</button><button data-v="differs">Only where it differs</button></div></div>
     <div class="bar"><span>Frame</span><div class="sw" data-k="frame"><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button><button data-v="side">Side dock</button><button data-v="bottom">Bottom dock</button></div>
       <span>Zoom</span><div class="sw" data-k="zoom"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
     <div class="bar"><span>Route</span><div class="sw" data-k="route"><button data-v="one">One sport</button><button data-v="two">Two sports</button><button data-v="fi">Long names</button><button data-v="multi">Four sports</button><button data-v="days">Two days</button></div>
       <span>Foot</span><div class="sw" data-k="foot"><button data-v="reverse">Reverse</button><button data-v="clear">Reverse + Clear route</button></div>
       <span>Add row</span><div class="sw" data-k="add"><button data-v="off">Off</button><button data-v="on">On</button></div>
-      <span>Hover</span><div class="sw" data-k="hover"><button data-v="off">Off</button><button data-v="on">Row 2 hovered</button></div>
+      <span>Hover</span><div class="sw" data-k="hover"><button data-v="off">Off</button><button data-v="on">Row 2 hovered</button><button data-v="point">A point hovered</button></div>
       <span>Straight</span><div class="sw" data-k="word"><button data-v="straight">Straight line</button><button data-v="offpaths">Off paths</button><button data-v="freehand">Freehand</button></div>
+      <span>Sun times</span><div class="sw" data-k="sun"><button data-v="horizon">Horizon icons</button><button data-v="sunmoon">Sun and moon</button></div>
       <span>Worth a look</span><div class="sw" data-k="look"><button data-v="off">Not in the list</button><button data-v="on">In the list</button></div>
       <span>Reorder</span><div class="sw" data-k="reorder"><button data-v="top">Beside the sport</button><button data-v="foot">Under the list</button></div></div>
   </div>
@@ -299,6 +315,14 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li><b>A wait says its times:</b> "Changeover · 5 min (10:01–10:06)", "Stop · 15 min (11:05–11:20)", "Night · 13 h (19:00–08:00)", read at a glance. A night has sunset and sunrise under it ("Sunset 16:12 · sunrise 07:58"), the times Go and Check already work out (no service).</li>
       <li><b>Freehand</b> for a stretch Polku doesn't route (chosen on 2026-11-04), beside Follow paths.</li>
     </ul>
+    <h2>What Parts 5 changes (the seventh round)</h2>
+    <ul>
+      <li><b>A point's line, at a glance:</b> "Arrive 10:27", "Leave 10:06", "Leave now", then the weather then as icons, the sky and the wind ("☁ 2°  ≋ 3 m/s"), in place of "There at 10:27 · 2° · 3 m/s · Waypoint 9". Start, End and Waypoint n leave the line, since the mark says them; a screen reader still hears them.</li>
+      <li><b>A wait's times under its name,</b> in the grey line, as a point's are: "Changeover · 5 min" over "10:01–10:06". A night has sunset and sunrise with their own icons ("19:00–08:00  ↓ 16:12  ↑ 07:58"); the two icons are new, drawn in the app's icons' stroke. The switch Sun times shows the app's moon and sun in their place; the moon is also a clear night's sky on a point's line and the night's own icon, so there it means three things.</li>
+      <li><b>A stretch's folded waypoints</b> are a count by its ⌄ ("5 ⌄") and beads on the line; their numbers are in the button's label, not the stretch's words.</li>
+      <li><b>A part's heading is its sport</b> (and its day), its numbers under it where it has more than one stretch: its first and last rows already name its two ends.</li>
+      <li><b>On a desktop the tooltips</b> of a stretch and of a point have the weather there too, with the distance and the time: the switch Hover shows a stretch's (Row 2) or a point's.</li>
+    </ul>
     <h2>Left out</h2>
     <ul>
       <li>The map, the toolbar and the profile are stand-ins; the numbers are made up for a 5.8 km route.</li>
@@ -312,7 +336,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 import { icon, h } from '../../../js/ui.js';
 
 const q = new URLSearchParams(location.search);
-const S = { v: q.get('v') || 'parts4', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : (q.get('v') || 'parts4') === 'parts4' ? 'freehand' : 'straight', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
+const S = { v: q.get('v') || 'parts5', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : ['parts4', 'parts5'].includes(q.get('v') || 'parts5') ? 'freehand' : 'straight', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: ['on', 'point'].includes(q.get('hover')) ? q.get('hover') : 'off', sun: q.get('sun') === 'sunmoon' ? 'sunmoon' : 'horizon', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
 
 // the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
 const ROUTES = {
@@ -326,21 +350,21 @@ const ROUTES = {
     points: [{ name: 'Pyhä-Häkin kansallispuiston pysäköintialue', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Rautavaaran Metsäkartanon laavu' }, { name: 'Saarijärven kirkonkylän kuntoportaat' }, { name: 'Isojärven kansallispuiston Heretty', sub: 'There at 06:53 · 5° · 3 m/s' }],
     legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.4 km · 8 min · ↑16 m', shaping: 2 }, { n: '1.3 km · 4 min · ↑4 m' }], total: '5.75 km · 19 min · ↑32 m' },
   // four sports, as a route tried on 2026-11-04: water with folded waypoints, a straight line, three changeovers
-  multi: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h', to: 1, nums: '2.56 km · 14 min · ↑75 m' },
+  multi: { sky: 'cloudSun', tipAt: 2, sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h', to: 1, nums: '2.56 km · 14 min · ↑75 m' },
       { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 1, to: 2, nums: '1.78 km · 21 min · ↑11 m' },
       { k: 'paddle', label: 'Paddle', icon: 'paddle', style: 'Balanced', speed: 'Sea kayak, 6.5 km/h', from: 2, to: 3, nums: '874 m · 11 min · ↑16 m' },
       { k: 'trailrun', label: 'Trail run', icon: 'trailrun', style: 'Balanced', speed: 'Normal, 9 km/h', from: 3, nums: '984 m · 9 min · ↑39 m' }],
     points: [{ name: 'Survontie', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Kylmänorontie', sub: 'There at 10:01 · 2° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', span: '10:01–10:06', gear: 'Your bike stays here', go: 'Go on at 10:06 · 2° · 3 m/s' } },
-      { name: 'Rantatie', sub: 'There at 10:27 · 2° · 3 m/s', tag: { icon: 'paddle', text: 'Paddle from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', span: '10:27–10:37', s2: 'Go on at 10:37', go: 'Go on at 10:37 · 2° · 3 m/s' } }, { name: 'Saunalahden laituri', sub: 'There at 10:48 · 2° · 3 m/s', tag: { icon: 'trailrun', text: 'Trail run from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', span: '10:48–10:58', gear: 'Your sea kayak stays here', go: 'Go on at 10:58 · 2° · 3 m/s' } },
+      { name: 'Rantatie', sub: 'There at 10:27 · 2° · 3 m/s', tip: ['4.34 km from the start', 'Arrive 10:27 · leave 10:37'], tag: { icon: 'paddle', text: 'Paddle from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', span: '10:27–10:37', s2: 'Go on at 10:37', go: 'Go on at 10:37 · 2° · 3 m/s' } }, { name: 'Saunalahden laituri', sub: 'There at 10:48 · 2° · 3 m/s', tag: { icon: 'trailrun', text: 'Trail run from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', span: '10:48–10:58', gear: 'Your sea kayak stays here', go: 'Go on at 10:58 · 2° · 3 m/s' } },
       { name: 'Kuusikko', sub: 'There at 11:05', wait: { kind: 'stop', b: 'Stop · 15 min', span: '11:05–11:20', s2: 'Go on at 11:20', s3: 'Go on at 11:20' } }, { name: 'Päätekuja', sub: 'There at 11:22 · 2° · 3 m/s' }],
-    legs: [{ n: '2.56 km · 14 min · ↑75 m', shaping: 5, warn: { read: 2 }, tip: ['0 → 2.56 km from the start', '10:00 → 10:01'] }, { n: '1.78 km · 21 min · ↑11 m', shaping: 2, warn: { look: 2 }, tip: ['2.56 → 4.34 km from the start', '10:06 → 10:27'] }, { n: '874 m · 11 min · ↑16 m', shaping: 2, how: 'Over water', icon: 'water', differs: true, warn: { read: 1, unk: 1 } },
+    legs: [{ n: '2.56 km · 14 min · ↑75 m', shaping: 5, warn: { read: 2 }, tip: ['0 → 2.56 km from the start', '10:00 → 10:01'] }, { n: '1.78 km · 21 min · ↑11 m', shaping: 2, warn: { look: 2 }, tip: ['2.56 → 4.34 km from the start', '10:06 → 10:27'], tipWx: { temp: '2°', wind: '3–4 m/s' } }, { n: '874 m · 11 min · ↑16 m', shaping: 2, how: 'Over water', icon: 'water', differs: true, warn: { read: 1, unk: 1 } },
       { n: '724 m · 7 min · ↑32 m', shaping: 1 }, { n: '260 m · 2 min · ↑7 m', how: 'Straight line', icon: 'straight', differs: true, warn: { read: 2, look: 1 } }], total: '6.37 km · 1 h 21 min · ↑144 m' },
   // two days on foot: a stop for lunch, a night at a lean-to, and a straight stretch at the end
   days: { sports: [{ k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 4.5 km/h' }],
     secNums: ['10.3 km · 2 h 40 min · ↑230 m', '5.94 km · 1 h 35 min · ↑130 m'],
-    points: [{ name: 'Haukkalammentien pysäköintialue', sub: 'Leave 16:00 · 6° · 3 m/s' }, { name: 'Kattilan laavu', sub: 'There at 17:35 · 5° · 2 m/s', wait: { kind: 'stop', b: 'Stop · 20 min', span: '17:35–17:55', s2: 'Go on at 17:55', s3: 'Go on at 17:55' } },
-      { name: 'Haukankallion laavu', sub: 'There at 19:00 · 3° · 2 m/s', night: true, wait: { kind: 'night', b2: 'Night · go on at 08:00', s2: '4° · 2 m/s in the morning', b: 'Night · 13 h', span: '19:00–08:00', sun: 'Sunset 16:12 · sunrise 07:58', warn: { look: 1, text: 'Sunrise 08:12' }, go: 'Go on at 08:00 · 4° · 2 m/s' } },
-      { name: 'Mustalampi', sub: 'There at 09:20' }, { name: 'Nuuksionpään pysäköintialue', sub: 'There at 09:35 · 6° · 3 m/s' }],
+    points: [{ name: 'Haukkalammentien pysäköintialue', sub: 'Leave 16:00 · 6° · 3 m/s', sky: 'cloudSun' }, { name: 'Kattilan laavu', sub: 'There at 17:35 · 5° · 2 m/s', sky: 'moon', wait: { kind: 'stop', b: 'Stop · 20 min', span: '17:35–17:55', s2: 'Go on at 17:55', s3: 'Go on at 17:55' } },
+      { name: 'Haukankallion laavu', sub: 'There at 19:00 · 3° · 2 m/s', sky: 'moon', night: true, wait: { kind: 'night', b2: 'Night · go on at 08:00', s2: '4° · 2 m/s in the morning', b: 'Night · 13 h', span: '19:00–08:00', sun: 'Sunset 16:12 · sunrise 07:58', set: '16:12', rise: '07:58', goSky: 'cloud', warn: { look: 1, text: 'Sunrise 08:12' }, go: 'Go on at 08:00 · 4° · 2 m/s' } },
+      { name: 'Mustalampi', sub: 'There at 09:20' }, { name: 'Nuuksionpään pysäköintialue', sub: 'There at 09:35 · 6° · 3 m/s', sky: 'cloudSun' }],
     legs: [{ n: '6.2 km · 1 h 35 min · ↑140 m', shaping: 2 }, { n: '4.1 km · 1 h 05 min · ↑90 m', warn: { look: 1 } }, { n: '5.3 km · 1 h 20 min · ↑110 m', shaping: 1, warn: { read: 1 } }, { n: '640 m · 15 min · ↑20 m', how: 'Straight line', icon: 'straight', differs: true }], total: '16.2 km · 17 h 35 min · ↑360 m' },
 };
 // a route's sections, a sport each
@@ -586,6 +610,90 @@ function parts2(R, frame, S, round = 2) {
   return body;
 }
 
+// ---------- Parts 5: Parts 4 with far less text. A point's line: Arrive or Leave, its time, and the weather then with
+// icons, no Start, End or Waypoint n (its mark says it, its label too); a wait's times under its name, a night's sunset
+// and sunrise with icons; a stretch's folded waypoints a count by its ⌄; a part's heading its sport and its numbers; on
+// a desktop the weather in the tooltips of a stretch and a point.
+// sunrise and sunset, in the app's icons' stroke (new icons, proposed)
+const SUN_PATHS = { sunset: '<path d="M2 20h20"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0"/><path d="M3.5 15.5 5 16.5M20.5 15.5 19 16.5"/><path d="M12 2.5V9M9 6l3 3 3-3"/>', sunrise: '<path d="M2 20h20"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0"/><path d="M3.5 15.5 5 16.5M20.5 15.5 19 16.5"/><path d="M12 9V2.5M9 5.5l3-3 3 3"/>' };
+const sunIcon = (k, size) => icon('sun', size).replace(/(<svg[^>]*>)[\s\S]*(<\/svg>)/, `$1${SUN_PATHS[k]}$2`);
+// a point's time and weather, from its line as the earlier versions write it
+const when = (txt) => { const m = /^(Leave now|Leave ([\d:]+)|There at ([\d:]+)|Go on at ([\d:]+))(?: · (-?\d+)° · (\d+) m\/s)?/.exec(txt) || [];
+  return { verb: m[3] ? 'Arrive' : 'Leave', time: m[1] === 'Leave now' ? 'now' : m[2] || m[3] || m[4] || '', temp: m[5], wind: m[6] }; };
+const wxParts = (temp, wind, sky) => [temp != null ? h('span', { html: `${icon(sky, 14)}${temp}${/°/.test(temp) ? '' : '°'}` }) : null, wind != null ? h('span', { html: `${icon('wind', 14)}${wind}${/m\/s/.test(wind) ? '' : ' m/s'}` }) : null];
+function parts5(R, frame, S) {
+  const n = R.points.length, desk = frame === 'side' || frame === 'bottom';
+  const cuts = new Set([...R.sports.map((sp) => sp.from).filter((x) => x), ...R.points.map((p, i) => (p.night ? i : 0)).filter((x) => x)]);
+  const secs = [];
+  for (let from = 0, i = 1; i < n; i++) if (cuts.has(i) || i === n - 1) { secs.push({ from, to: i }); from = i; }
+  const sportAt = (i) => R.sports.find((sp) => (sp.from ?? 0) <= i && i < (sp.to ?? n - 1)) || R.sports[0];
+  secs.forEach((sec, k) => { sec.sport = sportAt(sec.from); sec.nums = R.secNums ? R.secNums[k] : sec.sport.nums; });
+  const one = secs.length === 1, days = R.points.some((p) => p.night);
+  const at = [0];
+  R.legs.forEach((L, k) => at.push(at[k] + (L.shaping || 0) + 1));
+  const markOf = (i) => h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : i === n - 1 ? 'wp-end' : 'wp-via'}`, 'aria-hidden': 'true' }, i === 0 || i === n - 1 ? '' : String(at[i]));
+  const body = [h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(at[n - 1] + 1)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }))];
+  // a part's heading: its sport (and its day), its numbers under it where it has more than one stretch; a route of one
+  // sport keeps its ends, as the route's name
+  const headOf = (sec, k) => { const title = h('b', {}, one ? `${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}` : `${days ? `Day ${k + 1} · ` : ''}${sec.sport.label}`), nums = !one && sec.to - sec.from > 1 ? h('small', {}, sec.nums) : null;
+    return h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, one ? 20 : 16) }), nums ? h('div', { class: 'sec2-t' }, title, nums) : title); };
+  const top = h('div', { class: 'wpl-top' });
+  if (one) top.append(headOf(secs[0], 0));
+  top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }));
+  body.push(top);
+  const word = { straight: 'Straight line', offpaths: 'Off paths', freehand: 'Freehand' }[S.word];
+  const straight = (k) => !!(R.legs[k] && R.legs[k].icon === 'straight');
+  const warns = (w) => { if (!w) return null; const out = [];
+    if (w.read) out.push(h('span', { class: 'read', html: `${icon('warnf', 14)}${w.read} to read` }));
+    if (w.unk) out.push(h('span', { class: 'unk', html: `${icon('unk', 14)}${w.unk} not checked` }));
+    if (w.look && S.look === 'on') out.push(h('span', { class: 'look', html: `${icon('eye', 14)}${w.text || `${w.look} worth a look`}` }));
+    return out.length ? h('span', { class: 'wpl-warns' }, ...out) : null; };
+  // a point's row: its name, then Arrive or Leave and the weather with icons; Start, End, Waypoint n in its label only
+  const pointRow = (i, start = false) => { const p = R.points[i], lab = i === 0 ? 'Start' : i === n - 1 ? 'End' : `Waypoint ${at[i]}`;
+    const w = when(start ? p.wait.go : sub(p, i)), sky = (start ? p.wait.goSky : p.sky) || R.sky || 'cloud';
+    const cls = ['row', 'wpl-point', one && i === 0 ? 'first' : '', i === n - 1 ? 'last' : '', p.wait && !start ? 'to-wait' : '', !start && straight(i - 1) ? 'in-dash' : '', (start || !p.wait) && straight(i) ? 'out-dash' : '', S.hover === 'point' && desk && !start && i === R.tipAt ? 'hovered' : ''].filter(Boolean).join(' ');
+    const row = h('button', { type: 'button', class: cls, 'aria-label': [p.name, lab, `${w.verb} ${w.time}`, w.temp != null ? `${w.temp}°` : '', w.wind != null ? `wind ${w.wind} m/s` : ''].filter(Boolean).join(', ') },
+      h('span', { 'aria-hidden': 'true' }, markOf(i)),
+      h('span', {}, h('b', { class: 'wpl-name' }, p.name), h('small', { class: 'wx-line' }, h('span', {}, `${w.verb} ${w.time}`), ...wxParts(w.temp, w.wind, sky))),
+      chev());
+    if (p.tip) row.mkTip = [p.tip[0], p.tip[1], h('span', { class: 'tip-wx' }, ...wxParts(w.temp, w.wind, sky))];
+    return row; };
+  // a wait: its name and length, its times under it; a night's sunset and sunrise with their icons
+  const waitRow = (i) => { const w = R.points[i].wait, ic = { change: 'clock', stop: 'pause', night: 'moon' }[w.kind], night = w.kind === 'night';
+    const small = night ? h('small', { class: 'wx-line' }, h('span', {}, w.span), h('span', { html: `${S.sun === 'sunmoon' ? icon('moon', 14) : sunIcon('sunset', 16)}${w.set}` }), h('span', { html: `${S.sun === 'sunmoon' ? icon('sun', 14) : sunIcon('sunrise', 16)}${w.rise}` })) : h('small', {}, w.span);
+    const gear = w.gear ? h('span', { class: 'wpl-warns' }, h('span', { class: 'look', html: `${icon('eye', 14)}${w.gear}` })) : null;
+    return h('button', { type: 'button', class: 'row wpl-wait', 'aria-label': [w.b, w.span, `at ${R.points[i].name}`, night ? `sunset ${w.set}, sunrise ${w.rise}` : '', w.gear || ''].filter(Boolean).join(', ') },
+      h('span', { 'aria-hidden': 'true', html: icon(ic, 18) }),
+      h('span', {}, h('b', {}, w.b), small, gear),
+      chev()); };
+  // a stretch: its numbers, how it's drawn; its folded waypoints a count by its ⌄ (their numbers in its label)
+  const stretchRow = (k) => { const L = R.legs[k], how = L.icon === 'straight' ? word : L.how || 'Follow paths', m = L.shaping || 0, a = at[k] + 1;
+    const more = m > 1 ? `waypoints ${a} to ${a + m - 1}` : m ? `waypoint ${a}` : '';
+    const says = L.differs || S.how === 'every' ? `${icon(L.icon || 'auto', 14)}<span class="how">${how}</span>` : '';
+    const beads = []; for (let j = 0, b = Math.min(m, 3); j < b; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (b + 1)}%` }));
+    const w = L.warn ? [L.warn.read && `${L.warn.read} to read`, L.warn.unk && `${L.warn.unk} not checked`, S.look === 'on' && L.warn.look && `${L.warn.look} worth a look`].filter(Boolean) : [];
+    const b = h('button', { type: 'button', class: `row wpl-stretch${L.differs ? ' differs' : ''}${straight(k) ? ' straight' : ''}${S.hover === 'on' && desk && k === 1 ? ' hovered' : ''}`, 'data-k': String(k), 'aria-label': [L.n, how, m ? `through ${more}` : '', ...w].filter(Boolean).join(', ') },
+      h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
+      h('span', {}, h('b', { class: 'wpl-nums' }, L.n), says ? h('small', { html: says }) : null, warns(L.warn)));
+    if (L.tip) b.mkTip = [L.tip[0], L.tip[1], L.tipWx ? h('span', { class: 'tip-wx' }, ...wxParts(L.tipWx.temp, L.tipWx.wind, R.sky || 'cloud')) : null];
+    return h('div', { class: 'wpl-strow' }, b,
+      m ? h('button', { type: 'button', class: 'tool wpl-unfold n', 'aria-expanded': 'false', 'aria-label': `Show ${more}` }, h('span', { 'aria-hidden': 'true' }, String(m)), h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) })) : null); };
+  const list = h('ul', { class: 'wpl parts parts2 parts5' });
+  secs.forEach((sec, k) => {
+    const rows = h('div', { class: 'rows', role: 'group' });
+    if (k === 0) rows.append(pointRow(0));
+    else if (R.points[sec.from].wait) rows.append(pointRow(sec.from, true));
+    for (let j = sec.from; j < sec.to; j++) {
+      rows.append(stretchRow(j), pointRow(j + 1));
+      if (j + 1 < sec.to && R.points[j + 1].wait) rows.append(waitRow(j + 1));
+    }
+    list.append(h('li', { class: 'sec2', style: one ? null : `--part: var(--sport-${sec.sport.k})` }, one ? null : headOf(sec, k), rows));
+    if (k < secs.length - 1 && R.points[sec.to].wait) list.append(h('li', { class: 'wait' }, waitRow(sec.to)));
+  });
+  body.push(list, ...mainFoot(R, frame === 'bottom'));
+  return body;
+}
+
 function draw() {
   const stage = document.getElementById('stage');
   stage.replaceChildren();
@@ -596,17 +704,20 @@ function draw() {
   if (phone) sheet.append(h('div', { class: 'sheet-handle' }), h('div', { class: 'pl-tools-row' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` })));
   sheet.append(head(R, S.v !== 'today'));
   const body = h('div', { class: 'sheet-body' });
-  body.append(...(S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
+  body.append(...(S.v === 'parts5' ? parts5(R, S.frame, S) : S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
   sheet.append(body);
   frame.append(sheet);
-  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.', parts3: 'Parts 3: Parts 2, with a part after a changeover or a night saying when it starts under its heading.', parts4: 'Parts 4: Parts 2, with a part after a changeover or a night starting with its point’s row, as the route’s start does; each wait with its times, a night with sunset and sunrise; Freehand.' }[S.v];
+  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.', parts3: 'Parts 3: Parts 2, with a part after a changeover or a night saying when it starts under its heading.', parts4: 'Parts 4: Parts 2, with a part after a changeover or a night starting with its point’s row, as the route’s start does; each wait with its times, a night with sunset and sunrise; Freehand.', parts5: 'Parts 5: Parts 4 with far less text: Arrive and Leave with the weather as icons, no Start, End or Waypoint n on a point’s line, a wait’s times under it, sunset and sunrise with icons, folded waypoints a count by ⌄, a part’s heading its sport; on a desktop the weather in the tooltips.' }[S.v];
   stage.append(h('div', {}, frame, h('p', { class: 'cap' }, cap)));
-  const hov = frame.querySelector('.wpl-stretch.hovered'), L = hov && R.legs[+hov.dataset.k];
-  if (L && L.tip) {
-    const sb = frame.querySelector('.sheet-body');
+  const hov = frame.querySelector('.wpl-stretch.hovered, .wpl-point.hovered'), T = hov && (hov.mkTip || (hov.dataset.k != null && R.legs[+hov.dataset.k].tip));
+  if (T) {
+    const sb = frame.querySelector('.sheet-body'), z = S.zoom === '200' ? 2 : 1;
     sb.scrollTop += hov.getBoundingClientRect().top - sb.getBoundingClientRect().top - 160; // (the hovered stretch in sight)
-    const f = frame.getBoundingClientRect(), r = hov.getBoundingClientRect(), z = S.zoom === '200' ? 2 : 1;
-    frame.append(h('div', { class: 'tip mk-tip', role: 'tooltip', style: `left: ${(r.right - f.left) / z - 40}px; top: ${(r.bottom - f.top) / z + 4}px` }, h('b', {}, L.tip[0]), L.tip[1]));
+    const tip = h('div', { class: 'tip mk-tip', role: 'tooltip' }, h('b', {}, T[0]), T[1], T[2] || null);
+    const place = () => { const f = frame.getBoundingClientRect(), r = hov.getBoundingClientRect(); tip.style.left = `${(r.right - f.left) / z - 40}px`; tip.style.top = `${(r.bottom - f.top) / z + 4}px`; };
+    frame.append(tip);
+    place();
+    sb.addEventListener('scroll', place);
   }
   for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[sw.dataset.k] === b.dataset.v));
   const u = new URL(location); for (const k in S) u.searchParams.set(k, S[k]); history.replaceState(null, '', u);

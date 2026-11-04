@@ -7,7 +7,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
 - **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
-- **Waiting:** the user's choice on the rounds after PR 1, **Line** to **Parts 4** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
+- **Waiting:** the user's choice on the rounds after PR 1, **Line** to **Parts 5** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
 - **Next:** PR 2, the sport's row with its values.
 
 ## What the user asked for (2026-11-04)
@@ -93,6 +93,16 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
   - **Freehand**, chosen on 2026-11-04.
 
 "Leave now" stays, though it could be clearer (an idea from testing, 2026-11-04).
+
+**Parts 5, the seventh round** (`?v=parts5`). From looking at Parts 4: far too much text; the times belong in the grey line, in plain words (arrive, leave); icons should make a point's line and a night's times quicker to read; the weather belongs in a desktop's tooltips too.
+- **A point's line, at a glance.** "Arrive 10:27", "Leave 10:06" or "Leave now", then the sky and the temperature, then the wind, each with its icon ("☁ 2°", "≋ 3 m/s"). It replaces "There at 10:27 · 2° · 3 m/s · Waypoint 9". The sky's icon is the forecast's own: sun, sun and cloud, cloud, rain, snow, or the moon after dark.
+- **No Start, End or Waypoint n on the line:** the mark says them, and the row's label keeps them for a screen reader.
+- **A wait's times in the grey line,** under its name and length: "Changeover · 5 min" over "10:01–10:06".
+- **Sunset and sunrise under a night,** each with an icon: "19:00–08:00 ↓16:12 ↑07:58". The two icons are new, a sun on the horizon with an arrow, drawn in the app's icons' stroke. The switch Sun times shows the app's moon and sun instead, but the moon is also a clear night's sky on a point's line and the night's own icon, so there it means three things.
+- **A stretch's folded waypoints** are a count by its ⌄ ("5 ⌄") and beads on the line. Their numbers are in the button's label, not the stretch's words.
+- **A part's heading is its sport,** and its day, with its numbers under it when it has more than one stretch. Its first and last rows already name its ends. A route of one sport keeps its "A → B", the route's name.
+- **A desktop's tooltips have the weather too.** A stretch's: "2.56 → 4.34 km from the start", "10:06 → 10:27", "☁ 2° ≋ 3–4 m/s". A point's: "4.34 km from the start", "Arrive 10:27 · leave 10:37", and the weather then. The switch Hover shows one or the other.
+- **The page itself scrolls now.** app.css holds the app's page still, and the mock-up had taken that over.
 - **Check's warnings on each stretch,** in its row, with Check's own words, shapes and colours: "2 to read", "1 not checked". A switch adds "1 worth a look", which marks almost every stretch on a route at dawn. They stay out of the line's column, which already has beads, dashes and dots.
   - This undoes #741's "a section's warnings aren't in the list", so the build changes DEVELOPING's line on it and `sections`' "a warning once" check.
 - **Waypoint n.**
@@ -123,9 +133,9 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
 - "Worth a look" in the list, or only in Check?
 - Waits as parts of their own (Parts 2), or a point's tag (Parts)? Each part's start: under its heading (Parts 3), or its own row (Parts 4)?
 
-**The PRs, if Parts 4 is chosen:** each tried on the phone before the next, ahead of PR 2.
+**The PRs, if Parts 5 is chosen:** each tried on the phone before the next, ahead of PR 2.
 1. The line, the parts' colours and the stretch's words: `pointRow()`, `stretchRow()` (the beads, the numbers as on the map), `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`, the dark list's sport colours; `sections` and `multi`.
-2. The waits as parts of their own, with their times and a night's sunset and sunrise, each part's start row, and Check's warnings on the stretches: `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
+2. The waits as parts of their own, with their times and a night's sunset and sunrise (two new icons), each part's start row, the points' lines with Arrive, Leave and the weather's icons, the tooltips' weather, and Check's warnings on the stretches: `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
 3. Waypoints in the words, Waypoint n and Freehand, across the planner, with their checks.
 
 Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).
