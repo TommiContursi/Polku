@@ -7,7 +7,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
 - **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
-- **Waiting:** the user's choice on the rounds after PR 1, **Line**, **Parts** and **Parts 2** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
+- **Waiting:** the user's choice on the rounds after PR 1, **Line** to **Parts 4** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
 - **Next:** PR 2, the sport's row with its values.
 
 ## What the user asked for (2026-11-04)
@@ -81,7 +81,18 @@ Colour is never alone: the heading has the sport's icon and name, the changeover
   - the gear left there: "Your bike stays here", Check's item, in its colour.
 
   A tap opens its point's card there. A changeover and a night sit between two parts, and the next part's heading names the sport, so the point's row loses its tag. A stop stays inside its part, which goes on in its colour after it. Main starts a new section at a stop; Parts 2 doesn't, so the sport isn't said twice.
-- **Every part says when it starts.** The first part's start row says "Leave now · 2° · 3 m/s". A part after a changeover or a night says the same under its heading: "Go on at 10:06 · 2° · 3 m/s", or "Go on at 08:00 · 4° · 2 m/s" on Day 2. Its wait then says only how long it lasts ("Changeover · 5 min", "Night · 13 h"). A stop has no heading after it, so its own row says when you go on. "Leave now" stays, though it could be clearer (an idea from testing, 2026-11-04).
+
+**Parts 3 and Parts 4, the fifth and sixth rounds** (`?v=parts3`, `?v=parts4`). Every round is a version of its own in the mock-up, so the rounds can be compared. Parts 2 is as it was first shown.
+
+From looking at Parts 2: the first part starts with a row, the start's ("Leave now · 2° · 3 m/s"), but a part after a changeover or a night didn't say when it starts.
+- **Parts 3:** a part after a changeover or a night says when you set off, and the weather then, under its heading: "Go on at 10:06 · 2° · 3 m/s". Its wait says only how long it lasts.
+- **Parts 4**, from looking at Parts 3: the heading's line didn't feel like a step.
+  - **Its own start row.** A part after a changeover or a night starts with its first point's row, as the route does with its start's: the point where the last part ended, its mark, its name and "Go on at 08:00 · 4° · 2 m/s · Waypoint 4". The point is in the list twice, as you get there and as you set off, as a timetable has it.
+  - **A wait says its times,** to be read without scanning: "Changeover · 5 min (10:01–10:06)", "Stop · 15 min (11:05–11:20)", "Night · 13 h (19:00–08:00)".
+  - **A night has sunset and sunrise under it** ("Sunset 16:12 · sunrise 07:58"), the times Go and Check already work out on the device (`sun.js`).
+  - **Freehand**, chosen on 2026-11-04.
+
+"Leave now" stays, though it could be clearer (an idea from testing, 2026-11-04).
 - **Check's warnings on each stretch,** in its row, with Check's own words, shapes and colours: "2 to read", "1 not checked". A switch adds "1 worth a look", which marks almost every stretch on a route at dawn. They stay out of the line's column, which already has beads, dashes and dots.
   - This undoes #741's "a section's warnings aren't in the list", so the build changes DEVELOPING's line on it and `sections`' "a warning once" check.
 - **Waypoint n.**
@@ -95,7 +106,8 @@ Colour is never alone: the heading has the sport's icon and name, the changeover
 - a mark's tooltip, its distance and time from the start;
 - the stretches walked in the dark marked on the line, as Check's "In the dark for 5.75 km" counts them;
 - On the way (23b) filling the line up to where you are;
-- the map's changeover badge (`wp-sport`, green today) in the next sport's colour.
+- the map's changeover badge (`wp-sport`, green today) in the next sport's colour;
+- sunset and sunrise in the weather timeline over the map, and the dark hours shaded there, so a route's night or dusk shows where its time is read (an idea from testing, 2026-11-04: not decided whether they belong there).
 
 **The word for a straight stretch, elsewhere (looked up on 2026-11-04):** no planner's word is a standard. Most have a mode that follows the network, and its opposite:
 - **Komoot:** "Follow ways", and with it off, an "off-grid" waypoint.
@@ -107,14 +119,14 @@ Colour is never alone: the heading has the sport's icon and name, the changeover
 "Straight line" is the most common, and true of each leg; "Freehand" says that you draw it and Polku doesn't route it, true too of a stretch with folded waypoints. "Off paths" would say something about the ground that may not be so, as when a straight leg runs along a path the router doesn't know. The proposal: **Freehand**, beside **Follow paths**.
 
 **Open questions:**
-- Which word for a straight stretch? Freehand is proposed.
+- ~~Which word for a straight stretch?~~ **Freehand**, chosen on 2026-11-04.
 - "Worth a look" in the list, or only in Check?
-- Waits as parts of their own (Parts 2), or a point's tag (Parts)?
+- Waits as parts of their own (Parts 2), or a point's tag (Parts)? Each part's start: under its heading (Parts 3), or its own row (Parts 4)?
 
-**The PRs, if Parts 2 is chosen:** each tried on the phone before the next, ahead of PR 2.
+**The PRs, if Parts 4 is chosen:** each tried on the phone before the next, ahead of PR 2.
 1. The line, the parts' colours and the stretch's words: `pointRow()`, `stretchRow()` (the beads, the numbers as on the map), `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`, the dark list's sport colours; `sections` and `multi`.
-2. The waits as parts of their own and Check's warnings on the stretches: `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
-3. Waypoints in the words, Waypoint n and the straight stretch's word, across the planner, with their checks.
+2. The waits as parts of their own, with their times and a night's sunset and sunrise, each part's start row, and Check's warnings on the stretches: `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
+3. Waypoints in the words, Waypoint n and Freehand, across the planner, with their checks.
 
 Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).
 

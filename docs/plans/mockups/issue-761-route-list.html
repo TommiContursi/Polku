@@ -11,14 +11,15 @@
   app: nothing here is loaded by Polku. The controls are css/app.css's own, by their class names (the rows, the marks,
   the buttons, the section's head, the warning); what Rows adds is in the marked block below.
 
-  ?v=today|rows|line|parts|parts2  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
+  ?v=today|rows|line|parts|parts2|parts3|parts4  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
   &how=every|differs (Line and Parts: how every stretch is drawn, or only one that differs)
   &word=straight|offpaths|freehand  &look=on (Parts 2: the word for a straight stretch; Worth a look in the list too)
   &route=days (two days with a stop and a night)
 
   Line (the second round, 2026-11-04) is main at 3db83e6, drawn with the app's own classes, plus the block marked "new
   in Line"; Parts (the third round, the same day) is Line with the block marked "new in Parts"; Parts 2 (the fourth)
-  is Parts with the block marked "new in Parts 2". Today and Rows stay as they were drawn.
+  is Parts with the block marked "new in Parts 2"; Parts 3 and Parts 4 are Parts 2 with the block marked "new in Parts 3"
+  or "new in Parts 4". Every round is a version of its own, and the earlier ones stay as they were drawn.
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
@@ -240,7 +241,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
   <h1>The route's list</h1>
   <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. <b>Line</b> is the second round (2026-11-04), from trying the first PR: the list as it is on <code>main</code> now, with one line from the start to the end through every waypoint, the stretch's numbers to read, how every stretch is drawn, and waypoints in the words. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
   <div class="bars">
-    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button></div>
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button></div>
       <span>Stretch</span><div class="sw" data-k="how"><button data-v="every">How every stretch is drawn</button><button data-v="differs">Only where it differs</button></div></div>
     <div class="bar"><span>Frame</span><div class="sw" data-k="frame"><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button><button data-v="side">Side dock</button><button data-v="bottom">Bottom dock</button></div>
       <span>Zoom</span><div class="sw" data-k="zoom"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
@@ -282,11 +283,21 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
     </ul>
     <h2>What Parts 2 changes (the fourth round)</h2>
     <ul>
-      <li><b>A wait is a part of its own:</b> a changeover, a stop or a night has its own row, dotted on the line with its icon (a clock, a pause, a moon) and its time: "Changeover · 5 min", "Stop · 20 min", "Night · go on at 08:00". A tap opens its point's card there. The point's row no longer says "Hike from here": the next part's heading does, and under it when you set off and the weather then ("Go on at 10:06 · 2° · 3 m/s"), as the start's row says it for the first part. A changeover and a night sit between two parts; a stop stays in its part, which goes on in its colour after it, and its own row says when you go on.</li>
+      <li><b>A wait is a part of its own:</b> a changeover, a stop or a night has its own row, dotted on the line with its icon (a clock, a pause, a moon) and its time: "Changeover · 5 min", "Stop · 20 min", "Night · go on at 08:00". A tap opens its point's card there. The point's row no longer says "Hike from here": the next part's heading does. A changeover and a night sit between two parts; a stop stays in its part, which goes on in its colour after it.</li>
       <li><b>Check's warnings on each stretch,</b> as Check says them, with its shapes and colours: "2 to read", "1 not checked", and with the switch "1 worth a look" too. The gear left at a changeover is on its wait ("Your bike stays here").</li>
       <li><b>Waypoint n</b> for a waypoint with no name of its own, in place of Via n.</li>
       <li><b>The word for a straight stretch</b> is a switch: Straight line, Off paths or Freehand. It's the toolbar's mode too.</li>
       <li><b>On a desktop the stretch's tooltip</b> (the app's own) says where it starts and ends along the route and when you're there: the switch Hover shows one.</li>
+    </ul>
+    <h2>What Parts 3 changes (the fifth round)</h2>
+    <ul>
+      <li><b>Every part says when it starts:</b> under the heading of a part after a changeover or a night, when you set off and the weather then ("Go on at 10:06 · 2° · 3 m/s"), as the start's row says it for the first part. The wait says only how long it lasts ("Changeover · 5 min", "Night · 13 h").</li>
+    </ul>
+    <h2>What Parts 4 changes (the sixth round)</h2>
+    <ul>
+      <li><b>Every part starts with a row:</b> a part after a changeover or a night starts with its first point's row, the point where the last part ended, as the route starts with its start's row: its mark, its name, and when you set off and the weather then ("Go on at 08:00 · 4° · 2 m/s · Waypoint 4"). The point is in the list twice, as you get there and as you set off, as a timetable has it.</li>
+      <li><b>A wait says its times:</b> "Changeover · 5 min (10:01–10:06)", "Stop · 15 min (11:05–11:20)", "Night · 13 h (19:00–08:00)", read at a glance. A night has sunset and sunrise under it ("Sunset 16:12 · sunrise 07:58"), the times Go and Check already work out (no service).</li>
+      <li><b>Freehand</b> for a stretch Polku doesn't route (chosen on 2026-11-04), beside Follow paths.</li>
     </ul>
     <h2>Left out</h2>
     <ul>
@@ -301,7 +312,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 import { icon, h } from '../../../js/ui.js';
 
 const q = new URLSearchParams(location.search);
-const S = { v: q.get('v') || 'parts2', word: ['offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : 'straight', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
+const S = { v: q.get('v') || 'parts4', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : (q.get('v') || 'parts4') === 'parts4' ? 'freehand' : 'straight', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
 
 // the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
 const ROUTES = {
@@ -309,7 +320,7 @@ const ROUTES = {
     points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu' }, { name: 'End', sub: 'There at 06:53 · 5° · 3 m/s' }],
     legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.4 km · 8 min · ↑16 m', shaping: 2 }, { n: '1.3 km · 4 min · ↑4 m' }], total: '5.75 km · 19 min · ↑32 m' },
   two: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h', to: 2, nums: '4.25 km · 13 min · ↑10 m' }, { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 2, nums: '1.51 km · 24 min · ↑32 m' }],
-    points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu', sub: 'There at 06:48 · 3° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', gear: 'Your bike stays here', go: 'Go on at 06:53 · 3° · 3 m/s' } }, { name: 'End', sub: 'There at 07:11 · 5° · 3 m/s' }],
+    points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu', sub: 'There at 06:48 · 3° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', span: '06:48–06:53', gear: 'Your bike stays here', go: 'Go on at 06:53 · 3° · 3 m/s' } }, { name: 'End', sub: 'There at 07:11 · 5° · 3 m/s' }],
     legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.2 km · 6 min · ↑13 m', shaping: 1 }, { n: '1.5 km · 18 min · ↑32 m', how: 'Straight line', icon: 'straight', differs: true }], total: '5.76 km · 37 min · ↑35 m' },
   fi: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h' }],
     points: [{ name: 'Pyhä-Häkin kansallispuiston pysäköintialue', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Rautavaaran Metsäkartanon laavu' }, { name: 'Saarijärven kirkonkylän kuntoportaat' }, { name: 'Isojärven kansallispuiston Heretty', sub: 'There at 06:53 · 5° · 3 m/s' }],
@@ -319,16 +330,16 @@ const ROUTES = {
       { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 1, to: 2, nums: '1.78 km · 21 min · ↑11 m' },
       { k: 'paddle', label: 'Paddle', icon: 'paddle', style: 'Balanced', speed: 'Sea kayak, 6.5 km/h', from: 2, to: 3, nums: '874 m · 11 min · ↑16 m' },
       { k: 'trailrun', label: 'Trail run', icon: 'trailrun', style: 'Balanced', speed: 'Normal, 9 km/h', from: 3, nums: '984 m · 9 min · ↑39 m' }],
-    points: [{ name: 'Survontie', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Kylmänorontie', sub: 'There at 10:01 · 2° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', gear: 'Your bike stays here', go: 'Go on at 10:06 · 2° · 3 m/s' } },
-      { name: 'Rantatie', sub: 'There at 10:27 · 2° · 3 m/s', tag: { icon: 'paddle', text: 'Paddle from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', go: 'Go on at 10:37 · 2° · 3 m/s' } }, { name: 'Saunalahden laituri', sub: 'There at 10:48 · 2° · 3 m/s', tag: { icon: 'trailrun', text: 'Trail run from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', gear: 'Your sea kayak stays here', go: 'Go on at 10:58 · 2° · 3 m/s' } },
-      { name: 'Kuusikko', sub: 'There at 11:05', wait: { kind: 'stop', b: 'Stop · 15 min', small: 'Go on at 11:20' } }, { name: 'Päätekuja', sub: 'There at 11:22 · 2° · 3 m/s' }],
+    points: [{ name: 'Survontie', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Kylmänorontie', sub: 'There at 10:01 · 2° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', span: '10:01–10:06', gear: 'Your bike stays here', go: 'Go on at 10:06 · 2° · 3 m/s' } },
+      { name: 'Rantatie', sub: 'There at 10:27 · 2° · 3 m/s', tag: { icon: 'paddle', text: 'Paddle from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', span: '10:27–10:37', s2: 'Go on at 10:37', go: 'Go on at 10:37 · 2° · 3 m/s' } }, { name: 'Saunalahden laituri', sub: 'There at 10:48 · 2° · 3 m/s', tag: { icon: 'trailrun', text: 'Trail run from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', span: '10:48–10:58', gear: 'Your sea kayak stays here', go: 'Go on at 10:58 · 2° · 3 m/s' } },
+      { name: 'Kuusikko', sub: 'There at 11:05', wait: { kind: 'stop', b: 'Stop · 15 min', span: '11:05–11:20', s2: 'Go on at 11:20', s3: 'Go on at 11:20' } }, { name: 'Päätekuja', sub: 'There at 11:22 · 2° · 3 m/s' }],
     legs: [{ n: '2.56 km · 14 min · ↑75 m', shaping: 5, warn: { read: 2 }, tip: ['0 → 2.56 km from the start', '10:00 → 10:01'] }, { n: '1.78 km · 21 min · ↑11 m', shaping: 2, warn: { look: 2 }, tip: ['2.56 → 4.34 km from the start', '10:06 → 10:27'] }, { n: '874 m · 11 min · ↑16 m', shaping: 2, how: 'Over water', icon: 'water', differs: true, warn: { read: 1, unk: 1 } },
       { n: '724 m · 7 min · ↑32 m', shaping: 1 }, { n: '260 m · 2 min · ↑7 m', how: 'Straight line', icon: 'straight', differs: true, warn: { read: 2, look: 1 } }], total: '6.37 km · 1 h 21 min · ↑144 m' },
   // two days on foot: a stop for lunch, a night at a lean-to, and a straight stretch at the end
   days: { sports: [{ k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 4.5 km/h' }],
     secNums: ['10.3 km · 2 h 40 min · ↑230 m', '5.94 km · 1 h 35 min · ↑130 m'],
-    points: [{ name: 'Haukkalammentien pysäköintialue', sub: 'Leave 16:00 · 6° · 3 m/s' }, { name: 'Kattilan laavu', sub: 'There at 17:35 · 5° · 2 m/s', wait: { kind: 'stop', b: 'Stop · 20 min', small: 'Go on at 17:55' } },
-      { name: 'Haukankallion laavu', sub: 'There at 19:00 · 3° · 2 m/s', night: true, wait: { kind: 'night', b: 'Night · 13 h', warn: { look: 1, text: 'Sunrise 08:12' }, go: 'Go on at 08:00 · 4° · 2 m/s' } },
+    points: [{ name: 'Haukkalammentien pysäköintialue', sub: 'Leave 16:00 · 6° · 3 m/s' }, { name: 'Kattilan laavu', sub: 'There at 17:35 · 5° · 2 m/s', wait: { kind: 'stop', b: 'Stop · 20 min', span: '17:35–17:55', s2: 'Go on at 17:55', s3: 'Go on at 17:55' } },
+      { name: 'Haukankallion laavu', sub: 'There at 19:00 · 3° · 2 m/s', night: true, wait: { kind: 'night', b2: 'Night · go on at 08:00', s2: '4° · 2 m/s in the morning', b: 'Night · 13 h', span: '19:00–08:00', sun: 'Sunset 16:12 · sunrise 07:58', warn: { look: 1, text: 'Sunrise 08:12' }, go: 'Go on at 08:00 · 4° · 2 m/s' } },
       { name: 'Mustalampi', sub: 'There at 09:20' }, { name: 'Nuuksionpään pysäköintialue', sub: 'There at 09:35 · 6° · 3 m/s' }],
     legs: [{ n: '6.2 km · 1 h 35 min · ↑140 m', shaping: 2 }, { n: '4.1 km · 1 h 05 min · ↑90 m', warn: { look: 1 } }, { n: '5.3 km · 1 h 20 min · ↑110 m', shaping: 1, warn: { read: 1 } }, { n: '640 m · 15 min · ↑20 m', how: 'Straight line', icon: 'straight', differs: true }], total: '16.2 km · 17 h 35 min · ↑360 m' },
 };
@@ -504,8 +515,9 @@ function parts(R, frame, S) {
 }
 
 // ---------- Parts 2: Parts, with a wait as a part of its own, Check's warnings on each stretch, Waypoint n, and the
-// stretch's tooltip on a desktop
-function parts2(R, frame, S) {
+// stretch's tooltip on a desktop. Parts 3 (round 3): a part after a wait says when it starts under its heading. Parts 4
+// (round 4): a part after a wait starts with its first point's row, as the route's start does; a wait says its times.
+function parts2(R, frame, S, round = 2) {
   const n = R.points.length, desk = frame === 'side' || frame === 'bottom';
   // the parts: a new one where the sport changes or after a night; a stop stays in its part
   const cuts = new Set([...R.sports.map((sp) => sp.from).filter((x) => x), ...R.points.map((p, i) => (p.night ? i : 0)).filter((x) => x)]);
@@ -518,8 +530,8 @@ function parts2(R, frame, S) {
   R.legs.forEach((L, k) => at.push(at[k] + (L.shaping || 0) + 1));
   const markOf = (i) => h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : i === n - 1 ? 'wp-end' : 'wp-via'}`, 'aria-hidden': 'true' }, i === 0 || i === n - 1 ? '' : String(at[i]));
   const body = [h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(at[n - 1] + 1)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }))];
-  // (a part after a changeover or a night: when you set off and the weather then, under its title, as on the start's row)
-  const headOf = (sec, k) => { const go = k && R.points[sec.from].wait && R.points[sec.from].wait.go, title = h('b', {}, `${days ? `Day ${k + 1} · ` : ''}${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}`);
+  // (Parts 3: a part after a changeover or a night says when you set off and the weather then under its title)
+  const headOf = (sec, k) => { const go = round === 3 && k && R.points[sec.from].wait && R.points[sec.from].wait.go, title = h('b', {}, `${days ? `Day ${k + 1} · ` : ''}${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}`);
     return h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, one ? 20 : 16) }), go ? h('div', { class: 'sec2-t' }, title, h('small', {}, go)) : title); };
   const top = h('div', { class: 'wpl-top' });
   if (one) top.append(headOf(secs[0], 0));
@@ -533,17 +545,20 @@ function parts2(R, frame, S) {
     if (w.unk) out.push(h('span', { class: 'unk', html: `${icon('unk', 14)}${w.unk} not checked` }));
     if (w.look && S.look === 'on') out.push(h('span', { class: 'look', html: `${icon('eye', 14)}${w.text || `${w.look} worth a look`}` }));
     return out.length ? h('span', { class: 'wpl-warns' }, ...out) : null; };
-  const pointRow = (i) => { const p = R.points[i], lab = i === 0 ? 'Start' : i === n - 1 ? 'End' : `Waypoint\u00a0${at[i]}`; // (its number never on a line of its own)
-    const cls = ['row', 'wpl-point', one && i === 0 ? 'first' : '', i === n - 1 ? 'last' : '', p.wait ? 'to-wait' : '', straight(i - 1) ? 'in-dash' : '', !p.wait && straight(i) ? 'out-dash' : ''].filter(Boolean).join(' ');
+  // (start: Parts 4's first row of a part after a wait, the same point again, as you set off from it)
+  const pointRow = (i, start = false) => { const p = R.points[i], lab = i === 0 ? 'Start' : i === n - 1 ? 'End' : `Waypoint\u00a0${at[i]}`; // (its number never on a line of its own)
+    const cls = ['row', 'wpl-point', one && i === 0 ? 'first' : '', i === n - 1 ? 'last' : '', p.wait && !start ? 'to-wait' : '', !start && straight(i - 1) ? 'in-dash' : '', (start || !p.wait) && straight(i) ? 'out-dash' : ''].filter(Boolean).join(' ');
     return h('button', { type: 'button', class: cls },
       h('span', { 'aria-hidden': 'true' }, markOf(i)),
-      h('span', {}, h('b', { class: 'wpl-name' }, p.name), h('small', {}, [sub(p, i), lab].join(' · '))),
+      h('span', {}, h('b', { class: 'wpl-name' }, p.name), h('small', {}, [start ? p.wait.go : sub(p, i), lab].join(' · '))),
       chev()); };
+  // a wait's words: Parts 2 as drawn; Parts 3 its length; Parts 4 its length and its times, and a night's sunset and sunrise
   const waitRow = (i) => { const w = R.points[i].wait, ic = { change: 'clock', stop: 'pause', night: 'moon' }[w.kind];
+    const b = round === 2 && w.b2 ? w.b2 : round === 4 ? `${w.b} (${w.span})` : w.b, small = round === 2 ? w.s2 : round === 3 ? w.s3 : w.sun;
     const gear = w.gear ? h('span', { class: 'wpl-warns' }, h('span', { class: 'look', html: `${icon('eye', 14)}${w.gear}` })) : null;
-    return h('button', { type: 'button', class: 'row wpl-wait', 'aria-label': [w.b, `at ${R.points[i].name}`, w.gear || w.small || ''].filter(Boolean).join(', ') },
+    return h('button', { type: 'button', class: 'row wpl-wait', 'aria-label': [b, `at ${R.points[i].name}`, w.gear || small || ''].filter(Boolean).join(', ') },
       h('span', { 'aria-hidden': 'true', html: icon(ic, 18) }),
-      h('span', {}, h('b', {}, w.b), w.small ? h('small', {}, w.small) : null, gear || warns(w.warn)),
+      h('span', {}, h('b', {}, b), small ? h('small', {}, small) : null, gear || (round < 4 ? warns(w.warn) : null)),
       chev()); };
   const stretchRow = (k) => { const L = R.legs[k], how = L.icon === 'straight' ? word : L.how || 'Follow paths', m = L.shaping || 0, a = at[k] + 1;
     const more = m > 1 ? `waypoints ${a}–${a + m - 1}` : m ? `waypoint ${a}` : '';
@@ -558,6 +573,7 @@ function parts2(R, frame, S) {
   secs.forEach((sec, k) => {
     const rows = h('div', { class: 'rows', role: 'group' });
     if (k === 0) rows.append(pointRow(0));
+    else if (round === 4 && R.points[sec.from].wait) rows.append(pointRow(sec.from, true));
     for (let j = sec.from; j < sec.to; j++) {
       rows.append(stretchRow(j), pointRow(j + 1));
       if (j + 1 < sec.to && R.points[j + 1].wait) rows.append(waitRow(j + 1)); // (a stop: in its part)
@@ -580,10 +596,10 @@ function draw() {
   if (phone) sheet.append(h('div', { class: 'sheet-handle' }), h('div', { class: 'pl-tools-row' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` })));
   sheet.append(head(R, S.v !== 'today'));
   const body = h('div', { class: 'sheet-body' });
-  body.append(...(S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
+  body.append(...(S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
   sheet.append(body);
   frame.append(sheet);
-  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.' }[S.v];
+  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.', parts3: 'Parts 3: Parts 2, with a part after a changeover or a night saying when it starts under its heading.', parts4: 'Parts 4: Parts 2, with a part after a changeover or a night starting with its point’s row, as the route’s start does; each wait with its times, a night with sunset and sunrise; Freehand.' }[S.v];
   stage.append(h('div', {}, frame, h('p', { class: 'cap' }, cap)));
   const hov = frame.querySelector('.wpl-stretch.hovered'), L = hov && R.legs[+hov.dataset.k];
   if (L && L.tip) {
