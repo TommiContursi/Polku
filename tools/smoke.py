@@ -15258,7 +15258,7 @@ SE_STATE = """(() => {
   const p = polku.planner, L = p.els.points, vis = (e) => !!e && e.getClientRects().length > 0, r = (e) => e.getBoundingClientRect();
   const secs = [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', from: +s.dataset.from, to: +s.dataset.to, warn: !!s.querySelector('.warn-row'),
     rows: [...s.querySelectorAll('.wpl-point, .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch') ? `~${b.textContent}` : `${b.dataset.i}:${b.textContent}`)) }));
-  return { secs, reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn')].filter(vis).map((b) => b.textContent.trim()),
+  return { secs, reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn, .wpl-foot .btn[aria-pressed]')].filter(vis).map((b) => b.textContent.trim()), // (Reorder's own button, Done while reordering, #761)
     rows: [...L.querySelectorAll('.wpl-row')].map((x) => x.dataset.i), shapes: [...L.querySelectorAll('.wpl-point.shape')].filter(vis).length,
     list: [...L.querySelectorAll('.wpl-point:not(.shape), .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch')
       ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '', differs: b.classList.contains('differs') }
