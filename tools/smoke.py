@@ -15449,12 +15449,14 @@ def sections_list(chrome):
                     fails.append(f"{name}: {what}: stretch ~{x['at']}: {x}, label {lab!r} (want its numbers, then {want}, its line MTB's {ln['mtb']}{', dashed' if straight_one else ''}, its label starting with its numbers)")
             if straight and len({x['weight'] for x in ln['stretches']}) > 1:
                 fails.append(f"{name}: {what}: how the stretches are drawn, in weights {[(x['how'], x['weight']) for x in ln['stretches']]} (want Follow paths as Freehand, #761)")
-        # (#761) a point's line: when you leave or arrive and the weather with its icons, no Start or End in it (its label
-        # says them); and a stretch in the dark says how much, with a moon on its line where that begins
+        # (#761) a point's line: the weather with its icons, no Start or End in it (its label says them); its column (#761,
+        # Phase 1) how far and how long from the start, the clock's time in its label; and a stretch in the dark says how much,
+        # with a moon on its line where that begins
         r = pg.js("""(() => { const p = polku.planner, L = p.els.points, row = (i) => L.querySelector(`.wpl-point[data-i="${i}"]`);
           const line = (i) => row(i)?.querySelector('.wx-line'), out = [];
-          if (!/^Leave /.test(line(0)?.textContent || '') || /Start/.test(line(0)?.textContent || '') || !/Start/.test(row(0)?.getAttribute('aria-label') || '')) out.push(`the start's line ${line(0)?.textContent}, its label ${row(0)?.getAttribute('aria-label')}`);
-          if (!/^Arrive /.test(line(3)?.textContent || '') || /End/.test(line(3)?.textContent || '')) out.push(`the end's line ${line(3)?.textContent}`);
+          const col = (i) => row(i)?.querySelector('.wpl-when')?.textContent || '';
+          if (/Leave|Start/.test(line(0)?.textContent || '') || !/Start.*Leave /.test(row(0)?.getAttribute('aria-label') || '') || !/^0 m(0 min)?$/.test(col(0))) out.push(`the start's line ${line(0)?.textContent}, its column ${col(0)}, its label ${row(0)?.getAttribute('aria-label')}`);
+          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\d.]+ k?m\d+ (h \d+ )?min$/.test(col(3)) || !/Arrive \d\d:\d\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
           if (p.analysis.wind && !(line(0)?.querySelectorAll('svg').length >= 2)) out.push('no icons for the weather on the start\u2019s line');
           const a0 = p.lengthTo(1); p.analysis.darkWarn = [{ at: a0 + 20, len: 250, kind: 'dark', text: 'In the dark for 250 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
           const st1 = L.querySelector('.wpl-stretch[data-from="1"]'), dark = st1?.querySelector('.wpl-warns .dark')?.textContent || '';
@@ -15489,9 +15491,11 @@ def sections_list(chrome):
             fails.append(f"{name}: MTB then Paddle: the stretches' lines {[(x['at'], x['line'], x['want']) for x in ln['stretches']]} (Paddle {ln['paddle']})")
         if ln['badges'] != [ln['paddle']]:
             fails.append(f"{name}: the map's changeover badge {ln['badges']}, not Paddle's {ln['paddle']}")
-        # (#761: the changeover a wait of its own, with its times; Paddle's part starts with via 3's row, as you leave it)
+        # (#761: the changeover a wait of its own, with its times; Paddle's part starts with via 3's row, as you leave it: its
+        # label says when, its column how far and how long from the start)
+        labs = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-point')].map((x) => `${x.dataset.i}:${x.getAttribute('aria-label') || ''}`)")
         if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–\d\d:\d\d', w) for w in s['waits'])
-                                    or not s['secs'][1]['rows'] or not s['secs'][1]['rows'][0].startswith('3:') or 'Leave ' not in s['secs'][1]['rows'][0]):
+                                    or not s['secs'][1]['rows'] or not s['secs'][1]['rows'][0].startswith('3:') or not any(x.startswith('3:') and 'Leave ' in x for x in labs)):
             fails.append(f"{name}: the change of sport: waits {s['waits']}, Paddle's rows {s['secs'][1]['rows'][:1]}")
         if s['short']:
             fails.append(f"{name}: rows under 44 px: {s['short']}")
@@ -15512,7 +15516,8 @@ def sections_list(chrome):
         pg.js("polku.planner.setStop(5, { on: 420 }); true")
         time.sleep(0.8)
         s = st(pg)
-        if not s['secs'] or not s['secs'][0]['title'].startswith('Day 1') or not any(w.startswith('5:night:Night · ') for w in s['waits']) or not any(r.startswith('5:') and re.search(r'Leave (\w+ )?07:00', r) for x in s['secs'] for r in x['rows']):
+        labs = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-point')].map((x) => `${x.dataset.i}:${x.getAttribute('aria-label') || ''}`)")
+        if not s['secs'] or not s['secs'][0]['title'].startswith('Day 1') or not any(w.startswith('5:night:Night · ') for w in s['waits']) or not any(x.startswith('5:') and re.search(r'Leave (\w+ )?07:00', x) for x in labs):
             fails.append(f"{name}: a night at via 5: sections {[x['title'] for x in s['secs']]}, waits {s['waits']}, rows {[r for x in s['secs'] for r in x['rows']]}")
         # six points that only shape the line: one stretch row, folded; unfolded six rows; a card and Back keep it so
         route(pg, name, {'pts': [[23.790 + 0.004 * k, 61.512 + 0.0008 * (k % 2)] for k in range(8)]})
@@ -15542,6 +15547,7 @@ def sections_list(chrome):
           const folding = turn();
           await new Promise((r) => setTimeout(r, 400)); // (on time, even where the browser draws no frames, as this one may not)
           const after = p.els.points.querySelectorAll('.wpl-point.shape').length;
+          document.activeElement?.blur(); // (a finger's tap leaves no keyboard focus; a synthetic one after a redraw would)
           tap(p.els.points.querySelector('.wpl-unfold'));
           const opening = turn();
           p.unfolded.clear(); p.renderWaypoints(); // (folded again, for the keyboard's)
@@ -16949,7 +16955,7 @@ def keyfacts(chrome):
                 press(pg, pg.js("KF.at(1)"), f'{name}: Paddle', touch)
                 pg.js(SETTLED)
                 r = pg.js("""(() => { const p = polku.planner, lit = [...document.querySelectorAll('.wpl .sec2.lit')];
-                  return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /^Arrive .+ (-?\\d+° \\d+ m\\/s|No forecast yet)$/.test([...(lit[0]?.querySelectorAll('.wpl-point .wx-line') || [])].pop()?.textContent || '') }; })()""")
+                  return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /^(-?\\d+° \\d+ m\\/s|No forecast yet)$/.test([...(lit[0]?.querySelectorAll('.wpl-point .wx-line') || [])].pop()?.textContent || '') }; })()""")
                 if r != {'tab': 'route', 'lit': ['Paddle'], 'wx': True}:
                     fails.append(f"{name}: a tap on Paddle: {r}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
@@ -16981,13 +16987,13 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
   // Start and End without their distance, and from the list's top the Start row and the first stretch's first words in sight
   list() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
-    // (a row's line: its time first, then the weather and its label at most, never a distance)
-    const line = (row, first) => { const t = row?.querySelector('small')?.textContent || ''; return (t.startsWith(first) && !/\\d k?m\\b(?!\\/)/.test(t)) || t; };
+    // (a row's line: the weather and its label at most, never a distance; its time in its column, #761)
+    const line = (row, first) => { const t = row?.querySelector('.wx-line')?.textContent || ''; return (t.startsWith(first) && !/\\d k?m\\b(?!\\/)/.test(t)) || t; };
     const L = p.els.points, rows = [...L.querySelectorAll('.wpl-point')], start = rows[0], end = rows[rows.length - 1], b = p.els.body.getBoundingClientRect(), v = s.getBoundingClientRect();
     const first = L.querySelector('.wpl-stretch'); // (its first words: how it's drawn where it differs, else its numbers)
     const seen = (e) => { const r = e?.getBoundingClientRect(); return !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1; }; // (the sheet's own foot: the body runs on under it)
     return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis([...document.querySelectorAll('.wpl-foot .btn')].find((b) => b.textContent.trim() === 'Reorder')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), head: vis(L.querySelector('.sec2 .sec2-head small')), warn: vis(L.querySelector('.warn-row')),
-      start: line(start, `Leave ${p.leaveWords()}`), end: line(end, `Arrive ${p.clockOf(p.arriveAt(p.points.length - 1))}`),
+      start: line(start, ''), end: line(end, ''),
       seen: seen(start), stretch: seen(first?.querySelector('b') || first?.querySelector('small')) };
   },
   // How you go ›, then Back: the focus on its row, and the row in sight under the list (#740)
@@ -17271,15 +17277,15 @@ PF_JS = """(async () => {
   p.showMode('grade');
   p.reveal('points'); await wait(300);
   // a route of one section: the weather as you leave on Start's row, and none yet on End's (#764)
-  const wxRow = (i) => p.els.points.querySelector(`.wpl-point[data-i="${i}"] small`)?.textContent || '';
-  if (wxRow(0) !== `Leave ${p.leaveWords()} 5° 8 m/s` || !/^Arrive .+ No forecast yet$/.test(wxRow(p.points.length - 1))) errs.push(`the start's and the end's weather: ${wxRow(0)} / ${wxRow(p.points.length - 1)}`);
+  const wxRow = (i) => p.els.points.querySelector(`.wpl-point[data-i="${i}"] .wx-line`)?.textContent || '';
+  if (wxRow(0) !== '5° 8 m/s' || wxRow(p.points.length - 1) !== 'No forecast yet') errs.push(`the start's and the end's weather: ${wxRow(0)} / ${wxRow(p.points.length - 1)}`);
   // a night at via 1: its row says the weather as you get there, its tag the morning's (the point's own sample, timed as
   // you go on), 9° there and 5° everywhere else, the forecast reaching the end (#764)
   p.setStop(1, { on: 480 }); clearTimeout(p.retimeTimer);
   const j = p.sampleAtM(p.lengthTo(1)), t9 = fill(5); t9[j] = 9;
   set(t9); a.wind.beyond = -1; p.renderAnalysis();
   const night = [...p.els.points.querySelectorAll('.wpl-point[data-i="1"] .wx-line')].map((x) => x.textContent); // (as you get there, and Day 2's first row: as you go on)
-  if (!/^Arrive .+ 5° 8 m\\/s$/.test(night[0] || '') || !/^Leave .+ 9° 8 m\\/s$/.test(night[1] || '')) errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
+  if (night[0] !== '5° 8 m/s' || night[1] !== '9° 8 m/s') errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
   // paddling: its wind as far as it reaches, and from where it isn't known
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
