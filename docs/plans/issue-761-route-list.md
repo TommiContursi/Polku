@@ -81,6 +81,7 @@ Colour is never alone: the heading has the sport's icon and name, the changeover
   - the gear left there: "Your bike stays here", Check's item, in its colour.
 
   A tap opens its point's card there. A changeover and a night sit between two parts, and the next part's heading names the sport, so the point's row loses its tag. A stop stays inside its part, which goes on in its colour after it. Main starts a new section at a stop; Parts 2 doesn't, so the sport isn't said twice.
+- **Every part says when it starts.** The first part's start row says "Leave now · 2° · 3 m/s". A part after a changeover or a night says the same under its heading: "Go on at 10:06 · 2° · 3 m/s", or "Go on at 08:00 · 4° · 2 m/s" on Day 2. Its wait then says only how long it lasts ("Changeover · 5 min", "Night · 13 h"). A stop has no heading after it, so its own row says when you go on. "Leave now" stays, though it could be clearer (an idea from testing, 2026-11-04).
 - **Check's warnings on each stretch,** in its row, with Check's own words, shapes and colours: "2 to read", "1 not checked". A switch adds "1 worth a look", which marks almost every stretch on a route at dawn. They stay out of the line's column, which already has beads, dashes and dots.
   - This undoes #741's "a section's warnings aren't in the list", so the build changes DEVELOPING's line on it and `sections`' "a warning once" check.
 - **Waypoint n.**
@@ -96,8 +97,17 @@ Colour is never alone: the heading has the sport's icon and name, the changeover
 - On the way (23b) filling the line up to where you are;
 - the map's changeover badge (`wp-sport`, green today) in the next sport's colour.
 
+**The word for a straight stretch, elsewhere (looked up on 2026-11-04):** no planner's word is a standard. Most have a mode that follows the network, and its opposite:
+- **Komoot:** "Follow ways", and with it off, an "off-grid" waypoint.
+- **Gaia GPS:** Snap to Trail, Snap to Road, or **Straight Line**.
+- **Garmin Connect:** **Freehand** in place of Follow Roads.
+- **Strava:** a "manual mode".
+- **Ride with GPS:** a straight-line mode, by its users' accounts.
+
+"Straight line" is the most common, and true of each leg; "Freehand" says that you draw it and Polku doesn't route it, true too of a stretch with folded waypoints. "Off paths" would say something about the ground that may not be so, as when a straight leg runs along a path the router doesn't know. The proposal: **Freehand**, beside **Follow paths**.
+
 **Open questions:**
-- Which word for a straight stretch?
+- Which word for a straight stretch? Freehand is proposed.
 - "Worth a look" in the list, or only in Check?
 - Waits as parts of their own (Parts 2), or a point's tag (Parts)?
 

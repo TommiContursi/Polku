@@ -227,6 +227,9 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .parts2 .wpl-warns .look { color: var(--look); }
 .parts2 .wpl-warns .unk { color: var(--unk); }
 .parts2 .wpl-wait .wpl-warns .look { font-weight: var(--weight-regular); }
+/* when a part after a wait sets off, under its title */
+.parts2 .sec2-t { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.parts2 .sec2-t small { font-size: 13px; line-height: 1.3; color: var(--muted); }
 /* the tooltip on a desktop: the app's own (tooltip(), .tip), placed by hand here */
 .frame .tip.mk-tip { position: absolute; }
 .parts2 .wpl-stretch.hovered { background: var(--surface-2); } /* (the switch Hover: the mouse on it) */
@@ -279,7 +282,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
     </ul>
     <h2>What Parts 2 changes (the fourth round)</h2>
     <ul>
-      <li><b>A wait is a part of its own:</b> a changeover, a stop or a night has its own row, dotted on the line with its icon (a clock, a pause, a moon) and its time: "Changeover · 5 min", "Stop · 20 min", "Night · go on at 08:00". A tap opens its point's card there. The point's row no longer says "Hike from here": the next part's heading does. A changeover and a night sit between two parts; a stop stays in its part, which goes on in its colour after it.</li>
+      <li><b>A wait is a part of its own:</b> a changeover, a stop or a night has its own row, dotted on the line with its icon (a clock, a pause, a moon) and its time: "Changeover · 5 min", "Stop · 20 min", "Night · go on at 08:00". A tap opens its point's card there. The point's row no longer says "Hike from here": the next part's heading does, and under it when you set off and the weather then ("Go on at 10:06 · 2° · 3 m/s"), as the start's row says it for the first part. A changeover and a night sit between two parts; a stop stays in its part, which goes on in its colour after it, and its own row says when you go on.</li>
       <li><b>Check's warnings on each stretch,</b> as Check says them, with its shapes and colours: "2 to read", "1 not checked", and with the switch "1 worth a look" too. The gear left at a changeover is on its wait ("Your bike stays here").</li>
       <li><b>Waypoint n</b> for a waypoint with no name of its own, in place of Via n.</li>
       <li><b>The word for a straight stretch</b> is a switch: Straight line, Off paths or Freehand. It's the toolbar's mode too.</li>
@@ -306,7 +309,7 @@ const ROUTES = {
     points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu' }, { name: 'End', sub: 'There at 06:53 · 5° · 3 m/s' }],
     legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.4 km · 8 min · ↑16 m', shaping: 2 }, { n: '1.3 km · 4 min · ↑4 m' }], total: '5.75 km · 19 min · ↑32 m' },
   two: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h', to: 2, nums: '4.25 km · 13 min · ↑10 m' }, { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 2, nums: '1.51 km · 24 min · ↑32 m' }],
-    points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu', sub: 'There at 06:48 · 3° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', gear: 'Your bike stays here' } }, { name: 'End', sub: 'There at 07:11 · 5° · 3 m/s' }],
+    points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu', sub: 'There at 06:48 · 3° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', gear: 'Your bike stays here', go: 'Go on at 06:53 · 3° · 3 m/s' } }, { name: 'End', sub: 'There at 07:11 · 5° · 3 m/s' }],
     legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.2 km · 6 min · ↑13 m', shaping: 1 }, { n: '1.5 km · 18 min · ↑32 m', how: 'Straight line', icon: 'straight', differs: true }], total: '5.76 km · 37 min · ↑35 m' },
   fi: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h' }],
     points: [{ name: 'Pyhä-Häkin kansallispuiston pysäköintialue', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Rautavaaran Metsäkartanon laavu' }, { name: 'Saarijärven kirkonkylän kuntoportaat' }, { name: 'Isojärven kansallispuiston Heretty', sub: 'There at 06:53 · 5° · 3 m/s' }],
@@ -316,8 +319,8 @@ const ROUTES = {
       { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 1, to: 2, nums: '1.78 km · 21 min · ↑11 m' },
       { k: 'paddle', label: 'Paddle', icon: 'paddle', style: 'Balanced', speed: 'Sea kayak, 6.5 km/h', from: 2, to: 3, nums: '874 m · 11 min · ↑16 m' },
       { k: 'trailrun', label: 'Trail run', icon: 'trailrun', style: 'Balanced', speed: 'Normal, 9 km/h', from: 3, nums: '984 m · 9 min · ↑39 m' }],
-    points: [{ name: 'Survontie', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Kylmänorontie', sub: 'There at 10:01 · 2° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', gear: 'Your bike stays here' } },
-      { name: 'Rantatie', sub: 'There at 10:27 · 2° · 3 m/s', tag: { icon: 'paddle', text: 'Paddle from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', small: 'Go on at 10:37' } }, { name: 'Saunalahden laituri', sub: 'There at 10:48 · 2° · 3 m/s', tag: { icon: 'trailrun', text: 'Trail run from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', gear: 'Your sea kayak stays here' } },
+    points: [{ name: 'Survontie', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Kylmänorontie', sub: 'There at 10:01 · 2° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' }, wait: { kind: 'change', b: 'Changeover · 5 min', gear: 'Your bike stays here', go: 'Go on at 10:06 · 2° · 3 m/s' } },
+      { name: 'Rantatie', sub: 'There at 10:27 · 2° · 3 m/s', tag: { icon: 'paddle', text: 'Paddle from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', go: 'Go on at 10:37 · 2° · 3 m/s' } }, { name: 'Saunalahden laituri', sub: 'There at 10:48 · 2° · 3 m/s', tag: { icon: 'trailrun', text: 'Trail run from here · changeover 10 min' }, wait: { kind: 'change', b: 'Changeover · 10 min', gear: 'Your sea kayak stays here', go: 'Go on at 10:58 · 2° · 3 m/s' } },
       { name: 'Kuusikko', sub: 'There at 11:05', wait: { kind: 'stop', b: 'Stop · 15 min', small: 'Go on at 11:20' } }, { name: 'Päätekuja', sub: 'There at 11:22 · 2° · 3 m/s' }],
     legs: [{ n: '2.56 km · 14 min · ↑75 m', shaping: 5, warn: { read: 2 }, tip: ['0 → 2.56 km from the start', '10:00 → 10:01'] }, { n: '1.78 km · 21 min · ↑11 m', shaping: 2, warn: { look: 2 }, tip: ['2.56 → 4.34 km from the start', '10:06 → 10:27'] }, { n: '874 m · 11 min · ↑16 m', shaping: 2, how: 'Over water', icon: 'water', differs: true, warn: { read: 1, unk: 1 } },
       { n: '724 m · 7 min · ↑32 m', shaping: 1 }, { n: '260 m · 2 min · ↑7 m', how: 'Straight line', icon: 'straight', differs: true, warn: { read: 2, look: 1 } }], total: '6.37 km · 1 h 21 min · ↑144 m' },
@@ -325,7 +328,7 @@ const ROUTES = {
   days: { sports: [{ k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 4.5 km/h' }],
     secNums: ['10.3 km · 2 h 40 min · ↑230 m', '5.94 km · 1 h 35 min · ↑130 m'],
     points: [{ name: 'Haukkalammentien pysäköintialue', sub: 'Leave 16:00 · 6° · 3 m/s' }, { name: 'Kattilan laavu', sub: 'There at 17:35 · 5° · 2 m/s', wait: { kind: 'stop', b: 'Stop · 20 min', small: 'Go on at 17:55' } },
-      { name: 'Haukankallion laavu', sub: 'There at 19:00 · 3° · 2 m/s', night: true, wait: { kind: 'night', b: 'Night · go on at 08:00', small: '4° · 2 m/s in the morning', warn: { look: 1, text: 'Sunrise 08:12' } } },
+      { name: 'Haukankallion laavu', sub: 'There at 19:00 · 3° · 2 m/s', night: true, wait: { kind: 'night', b: 'Night · 13 h', warn: { look: 1, text: 'Sunrise 08:12' }, go: 'Go on at 08:00 · 4° · 2 m/s' } },
       { name: 'Mustalampi', sub: 'There at 09:20' }, { name: 'Nuuksionpään pysäköintialue', sub: 'There at 09:35 · 6° · 3 m/s' }],
     legs: [{ n: '6.2 km · 1 h 35 min · ↑140 m', shaping: 2 }, { n: '4.1 km · 1 h 05 min · ↑90 m', warn: { look: 1 } }, { n: '5.3 km · 1 h 20 min · ↑110 m', shaping: 1, warn: { read: 1 } }, { n: '640 m · 15 min · ↑20 m', how: 'Straight line', icon: 'straight', differs: true }], total: '16.2 km · 17 h 35 min · ↑360 m' },
 };
@@ -515,7 +518,9 @@ function parts2(R, frame, S) {
   R.legs.forEach((L, k) => at.push(at[k] + (L.shaping || 0) + 1));
   const markOf = (i) => h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : i === n - 1 ? 'wp-end' : 'wp-via'}`, 'aria-hidden': 'true' }, i === 0 || i === n - 1 ? '' : String(at[i]));
   const body = [h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(at[n - 1] + 1)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }))];
-  const headOf = (sec, k) => h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, one ? 20 : 16) }), h('b', {}, `${days ? `Day ${k + 1} · ` : ''}${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}`));
+  // (a part after a changeover or a night: when you set off and the weather then, under its title, as on the start's row)
+  const headOf = (sec, k) => { const go = k && R.points[sec.from].wait && R.points[sec.from].wait.go, title = h('b', {}, `${days ? `Day ${k + 1} · ` : ''}${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}`);
+    return h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, one ? 20 : 16) }), go ? h('div', { class: 'sec2-t' }, title, h('small', {}, go)) : title); };
   const top = h('div', { class: 'wpl-top' });
   if (one) top.append(headOf(secs[0], 0));
   top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }));
