@@ -15525,6 +15525,18 @@ def sections_list(chrome):
         s = st(pg)
         if s['shapes'] != 6:
             fails.append(f"{name}: unfolded: {s['shapes']} shaping points' rows, not 6")
+        # (#761) unfolded by a tap or a click, they come in one after another, as a Layers group's rows; from the keyboard,
+        # at once
+        IN = "[...polku.planner.els.points.querySelectorAll('.rows > .wpl-in')].map((x) => `${getComputedStyle(x.querySelector('.wpl-point > span:nth-child(2)')).animationName} ${x.style.animationDelay}`).join(', ')"
+        r = pg.js(IN)
+        if r != 'lg-in 0ms, lg-in 40ms, lg-in 80ms, lg-in 120ms, lg-in 120ms, lg-in 120ms':
+            fails.append(f"{name}: six waypoints unfolded by a {'tap' if touch else 'click'}: {r!r} (want lg-in, 40 ms apart up to 120 ms, #761)")
+        press(pg, at(pg, "polku.planner.els.points.querySelector('.wpl-unfold')"), f'{name}: fold', touch)
+        pg.js("polku.planner.els.points.querySelector('.wpl-unfold').focus(); true")
+        key(pg, 'Enter', 'Enter', 13)
+        r = [st(pg)['shapes'], pg.js(IN)]
+        if r != [6, '']:
+            fails.append(f"{name}: unfolded from the keyboard: {r} (want six rows, none coming in, #761)")
         press(pg, at(pg, point(3)), f'{name}: via 3’s row', touch)
         scroll0 = pg.js("polku.planner.cards.saved && polku.planner.cards.saved.scroll")
         if st(pg)['kind'] != 'point':

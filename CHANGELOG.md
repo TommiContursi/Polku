@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-04
 
+### Unfolded waypoints come onto the line ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- When you tap a stretch's ⌄ in the route's list, the waypoints it folds come in one after another onto the route's line, which stays where it is. With reduced motion they fade in place, and from the keyboard they show at once, as folding them does.
+
 ### Rename, remove and move a waypoint in the list, on a desktop ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - On a desktop, a waypoint's row in **Route** shows **Rename**, **Remove** and a grip where its › is, while the mouse is over it or it has the keyboard's focus.

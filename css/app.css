@@ -1488,6 +1488,10 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-wait > span:first-child::after { top: calc(50% + 12px); bottom: -10px; }
 .wpl-wait b { font-size: 14px; }
 .wpl-unfold { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 1px; width: auto; min-width: var(--target); min-height: var(--target); padding: 0 4px 0 8px; font-size: 13px; font-weight: var(--weight-name); color: var(--muted); }
+/* a stretch's waypoints, unfolded by a tap: their marks and words come in as a Layers group's rows (lg-in), one after
+   another (the delay on the row, planner.js sectionRows()), onto the route's line, which stays where it is */
+.wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev) { animation: lg-in var(--t-open) var(--ease-out) backwards; animation-delay: inherit; }
+@media (prefers-reduced-motion: reduce) { .wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev) { animation-name: qd-fade; } }
 @media (pointer: coarse) { .wpl .row { min-height: 44px; } }
 /* Reorder [jd-reorder]: every point with its grip, Earlier and Later; a finger held 0.45 s drags */
 .wpl.reorder .wpl-row { min-height: var(--target); touch-action: pan-y; }
