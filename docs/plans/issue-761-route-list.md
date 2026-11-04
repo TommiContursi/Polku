@@ -142,6 +142,13 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
   - text that Finnish (phase 18) has to fit.
 - **The stretch's tooltip on a desktop** says where the stretch starts and ends along the route and when you're there: "2.56 → 4.34 km from the start", "10:06 → 10:27". It's the app's own `tooltip()`, on hover and on focus, and only where a pointer hovers; a phone has it in the card. It brings no new motion.
 
+**Parts 8, the tenth round** (`?v=parts8`, 2026-11-04, from building PR 6). The list as built since PR 6, and from testing it: with no › on the rows, waypoints ran together, and a stretch's unfolded waypoints didn't read as being inside it.
+- **The places you chose** (the start, a waypoint you see, a stop, a night, a changeover, the end) on a soft tint, one rounded block each; the stretches stay on the glass between them. A switch puts the › back on the tinted blocks only (`chev=tint`) or leaves none (`chev=none`).
+- **A stretch's unfolded waypoints, nested in it** (the switch `nest`), one compact line each with when you're there, as a transit leg's stops are: in one outlined region with their stretch (`region`), indented under it (`indent`), or as built in #799 (`asis`, smaller and lighter rows of their own).
+- **Show all** at the list's top unfolds every stretch at once (PR 6c); **the foot** in one row, Clear route a red button (#795).
+
+The research behind it: nested timelines (the Maersk and Telerik design systems, shadcn's nested timeline) keep two levels, the parent as the trigger, the children folded and on a smaller line, and an expand-all; a shared region is the strongest cue that rows belong together, and a branch off a route's line would read as a side path.
+
 **Ideas for the line, not drawn:**
 - a mark's tooltip, its distance and time from the start;
 - the stretches walked in the dark marked on the line, as Check's "In the dark for 5.75 km" counts them;
