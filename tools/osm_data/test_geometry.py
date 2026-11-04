@@ -186,7 +186,9 @@ class GeometryTests(unittest.TestCase):
     def test_browser_fixture_is_actual_compiler_output(self):
         out,_=self.build();rings=[[self.nodes[n] for n in self.ways[w][0]] for w in [11,12]]
         fixtures=json.loads((Path(__file__).parent.parent/'fixtures/osm-geometry.json').read_text())
+        archive=Path(__file__).parent.parent/'fixtures/osm-geometry.pmtiles'
         for row in fixtures:
+            self.assertEqual(row['json'],self.read(archive,row['point']))
             self.assertEqual(row['json'],self.read(out,row['point']))
             self.assertEqual(row['inside'],point_in_rings(rings,row['point']))
 

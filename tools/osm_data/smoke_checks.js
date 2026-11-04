@@ -328,5 +328,35 @@ async function checkLocalGeometry() {
   cut.tile[1]++;
   try { validateGeometry(cut, cases[0].json.tile); fails.push('geometry from a different tile was accepted'); }
   catch (e) { if (!/geometry/.test(e.message)) fails.push(String(e)); }
+  const { StaticOSM } = await import('/js/osm-data.js'), { idb } = await import('/js/idb.js');
+  const archive = await (await fetch('/tools/fixtures/osm-geometry.pmtiles')).arrayBuffer();
+  const root = `${location.origin}/__geometry_${Date.now()}/`, url = root+'current.json';
+  const coverage = {type:'Polygon',coordinates:[[[-.3,-.3],[.3,-.3],[.3,.3],[-.3,.3],[-.3,-.3]]]};
+  const manifest = {schema:1,release:'geometry-fixture',source:{timestamp:'2026-11-01T00:00:00Z'},bounds:[-.3,-.3,.3,.3],attribution:'© OpenStreetMap contributors',
+    datasets:{geometry:{kind:'geometry',format:'pmtiles-json',schema:2,zoom:13,url:'geometry.pmtiles',bytes:archive.byteLength,
+      source:{timestamp:'2026-11-01T00:00:00Z'},coverage:{type:'GeometryCollection',geometries:[coverage]},areas_complete:true,nearby_complete:true}}};
+  const real = window.fetch, calls = [], store = idb('overpass');
+  const key = `static/${root}geometry.pmtiles/geometry-fixture/13/4097/4097`;
+  let offline = false;
+  window.fetch = async (at,init) => {
+    if (!String(at).startsWith(root)) return real(at,init);
+    calls.push(String(at));
+    if (offline) throw new DOMException('Offline geometry fixture','AbortError');
+    if (String(at)===url) return Response.json(manifest);
+    const [start,end] = init.headers.Range.slice(6).split('-').map(Number);
+    return new Response(archive.slice(start,end+1),{status:206,headers:{'Content-Range':`bytes ${start}-${end}/${archive.byteLength}`}});
+  };
+  try {
+    const reader = new StaticOSM(url,'geometry',13), [a,b] = await Promise.all([reader.tile([4097,4097]),reader.tile([4097,4097])]);
+    if (JSON.stringify(a)!==JSON.stringify(b) || !a.areas_complete || !containsArea(a.elements[0],a.tile,[.06,-.06])) fails.push('schema 2 Range decoding or coalescing failed');
+    if (!(await store.get(key)) || !(await store.get(`static/manifest/${url}`))) fails.push('geometry was not saved in IndexedDB');
+    const count = calls.length; offline = true;
+    const cached = await new StaticOSM(url,'geometry',13).tile([4097,4097]);
+    if (calls.length!==count || JSON.stringify(cached)!==JSON.stringify(a)) fails.push('fresh geometry reader did not reuse offline IndexedDB');
+  } finally {
+    window.fetch = real;
+    await store.del(key);await store.del(`static/manifest/${url}`);
+  }
+
   return fails;
 }

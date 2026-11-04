@@ -2,6 +2,7 @@
 import { request } from './net.js';
 import { idb } from './idb.js';
 import { tileBounds } from './geo.js';
+import { validateGeometry } from './osm-geometry.js';
 
 const cache = idb('overpass');
 const TIMEOUT = 8000;
@@ -58,7 +59,11 @@ function validateTile(json) {
 }
 
 function coversTile(coverages, [w,s,e,n]) {
-  const polygons = coverages.flatMap((coverage) => {
+  const polygons = coverages.flatMap((c) => {
+    if (c.type !== 'GeometryCollection') return [c];
+    if (!Array.isArray(c.geometries) || !c.geometries.length) throw new Error('Invalid OSM coverage');
+    return c.geometries;
+  }).flatMap((coverage) => {
     const p = coverage.type === 'Polygon' ? [coverage.coordinates] : coverage.type === 'MultiPolygon' ? coverage.coordinates : null;
     if (!Array.isArray(p) || !p.length || !p.every((rings) => Array.isArray(rings) && rings.length && rings.every((r) => Array.isArray(r) && r.length >= 4
       && r.every((v) => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite) && Math.abs(v[0]) <= 180 && Math.abs(v[1]) <= 90)
@@ -183,13 +188,15 @@ export class StaticOSM {
     const manifest = await releases.get(this.url).promise;
     const records = Object.entries(manifest.datasets).filter(([name,d])=>name===this.dataset || d.kind===this.dataset).map(([,d])=>d);
     if (!records.length) throw new Error('Unsupported OSM dataset');
+    if (this.dataset==='geometry' && records.length!==1) throw new Error('Unsupported shared OSM geometry dataset');
     let archives=records.map((d) => {
-      if (d?.format!=='pmtiles-json' || d.schema!==1 || d.zoom!==this.zoom || !Number.isSafeInteger(d.bytes) || d.bytes<127) throw new Error('Unsupported OSM dataset');
+      if (d?.format!=='pmtiles-json' || d.schema!==(this.dataset==='geometry' ? 2 : 1) || d.zoom!==this.zoom || !Number.isSafeInteger(d.bytes) || d.bytes<127) throw new Error('Unsupported OSM dataset');
+      if (this.dataset==='geometry' && (d.kind!=='geometry' || !d.coverage || !Number.isFinite(Date.parse(d.source?.timestamp)) || d.zoom!==13 || typeof d.areas_complete!=='boolean' || typeof d.nearby_complete!=='boolean')) throw new Error('Incomplete OSM geometry metadata');
       if (d.kind && (!d.coverage || !Number.isFinite(Date.parse(d.source?.timestamp)))) throw new Error('Incomplete country OSM metadata');
       const effective={...manifest,bounds:d.bounds || manifest.bounds,coverage:d.coverage || manifest.coverage,source:d.source || manifest.source};
       const url=new URL(d.url,this.url), base=new URL(this.url);
       if (url.origin!==base.origin || !['https:','http:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid OSM archive URL');
-      return {manifest:effective,url:url.href,bytes:d.bytes,nearby_complete:d.nearby_complete,country:d.country || manifest.country};
+      return {manifest:effective,url:url.href,bytes:d.bytes,schema:d.schema,areas_complete:d.areas_complete,nearby_complete:d.nearby_complete,country:d.country || manifest.country};
     });
     if (xy) {
       const bounds=tileBounds(...xy,this.zoom);
@@ -220,13 +227,14 @@ export class StaticOSM {
     return tiles.length===1 ? tiles[0] : mergeTiles(tiles);
   }
 
-  async readArchive([x,y], {force}, signal, {manifest,url,bytes,nearby_complete,country}) {
+  async readArchive([x,y], {force}, signal, {manifest,url,bytes,schema,areas_complete,nearby_complete,country}) {
     const key = `static/${url}/${manifest.release}/${this.zoom}/${x}/${y}`;
+    const validate = j => schema===2 ? validateGeometry(j,[this.zoom,x,y]) : validateTile(j);
     if (force) { this.tiles.delete(key); this.readers.delete(url); }
     if (this.tiles.has(key)) return this.tiles.get(key);
     const promise = (async () => {
       const hit = await cache.get(key).catch(() => null);
-      if (hit) return { ...validateTile(hit.json), nearby_complete, source: { ...manifest.source, ...(country ? {country} : {}), provider: 'Polku OSM data', attribution: manifest.attribution } };
+      if (hit) return { ...validate(hit.json), ...(schema===2 ? {areas_complete} : {}), nearby_complete, source: { ...manifest.source, ...(country ? {country} : {}), provider: 'Polku OSM data', attribution: manifest.attribution } };
       signal.throwIfAborted();
       if (!manifest.coverage && manifest.source.url === 'https://download.geofabrik.de/europe/finland-latest.osm.pbf') {
         // The first published release predates embedded coverage; cached tiles still work without this asset.
@@ -256,10 +264,11 @@ export class StaticOSM {
       if (header.minZoom!==this.zoom || header.maxZoom!==this.zoom || header.tileType!==0 || header.tileCompression!==2) throw new Error('Unsupported OSM archive zoom or format');
       const tile = await this.readers.get(url).getZxy(this.zoom, x, y, signal);
       if (tile && tile.data.byteLength > 32 * 1024 * 1024) throw new Error('OSM tile too large');
-      const json = tile ? JSON.parse(new TextDecoder().decode(tile.data)) : { schema: 1, elements: [] };
-      validateTile(json);
+      const json = tile ? JSON.parse(new TextDecoder().decode(tile.data)) : { schema, ...(schema===2 ? {tile:[this.zoom,x,y]} : {}), elements: [] };
+      validate(json);
       signal.throwIfAborted();
       json.nearby_complete = nearby_complete;
+      if (schema===2) json.areas_complete = areas_complete;
       json.source = { ...manifest.source, ...(country ? {country} : {}), provider: 'Polku OSM data', attribution: manifest.attribution };
       cache.set(key, { at: Date.now(), json }).catch(() => {});
       return json;
