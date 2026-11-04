@@ -636,12 +636,12 @@ function fitColumn() {
   // (under a phone's full sheet it's hidden: it stays as it was, and the toolbox still measures the peek by it, #586)
   if (phoneMQ.matches && document.body.dataset.sheet === 'full') return;
   col.classList.remove('no-compass', 'no-3d', ...LETS_GO);
-  if (!phoneMQ.matches) { document.body.classList.remove('kf-off'); return; }
+  if (!phoneMQ.matches) { document.body.classList.remove('kf-off'); if (off) planner.renderReadRow(); return; }
   if (!off) factsH = planner.els.facts.offsetHeight + (parseFloat(getComputedStyle(planner.els.facts).marginTop) || 0); // (all the room it takes: else, at the edge, it comes and goes every frame)
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0, peek = planner.panel.dataset.state === 'peek';
   const back = off && peek ? factsH : 0; // (the room the line would take back)
   const room = (extra = back) => innerHeight - css('--sheet-h') - extra - css('--wx-h') - css('--col-lift') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
-  const facts = (on) => { if (peek) document.body.classList.toggle('kf-off', !on); };
+  const facts = (on) => { if (peek && document.body.classList.toggle('kf-off', !on) !== off) planner.renderReadRow(); }; // (what to read: the count where the line isn't)
   if (room()) { facts(true); return; }
   if (Math.abs(map.getBearing()) < 0.5) col.classList.add('no-compass');
   if (room()) { facts(true); return; }
