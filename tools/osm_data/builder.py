@@ -585,6 +585,22 @@ def check_finland(handler, source_info, db):
         raise ValueError('Source fails complete-Finland count/extent checks')
 
 
+def identity_rows(path, country):
+    previous = None
+    with gzip.open(path, 'rb') as stream:
+        while line := stream.readline(1024):
+            row = json.loads(line)
+            if (len(line) >= 1024 or not isinstance(row,list) or len(row)!=3 or
+                row[0] not in {'node','way','relation'} or type(row[1]) is not int or
+                row[1] <= 0 or not re.fullmatch('[a-f0-9]{64}',row[2])):
+                raise ValueError('Invalid object identity evidence')
+            key=(row[0],row[1])
+            if previous is not None and key <= previous:
+                raise ValueError('Object identity evidence is not unique and sorted')
+            previous=key
+            yield key,row[2],country
+
+
 def write_identities(db, path):
     with path.open('wb') as raw, gzip.GzipFile(filename='', mode='wb', fileobj=raw, mtime=0) as out:
         for row in db.execute('SELECT type,id,sha256 FROM identities ORDER BY type,id'):
@@ -633,7 +649,7 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
             write_identities(db, stage / 'identities.jsonl.gz')
             with (stage/'geometry-roots.jsonl.gz').open('wb') as raw, gzip.GzipFile(filename='',mode='wb',fileobj=raw,mtime=0) as out:
                 for kind,ref,area,inspection,sha in db.execute('''SELECT r.type,r.id,r.area,r.inspection,i.sha256
-                        FROM geometry_roots r JOIN identities i ON i.type=r.type AND i.id=r.id ORDER BY r.type,r.id'''):
+                        FROM geometry_roots r LEFT JOIN identities i ON i.type=r.type AND i.id=r.id ORDER BY r.type,r.id'''):
                     out.write(json_bytes([kind,ref,bool(area),bool(inspection),sha])+b'\n')
             stats['staging_allocated_bytes'] = sum(p.stat().st_blocks*512 for p in tmp.rglob('*') if p.is_file())
             stats.update({
@@ -728,7 +744,8 @@ def inspect_source(source, md5_file, country='finland', snapshot='latest'):
     if stamp.tzinfo is None or not now - timedelta(days=14) <= stamp <= now + timedelta(days=1):
         raise ValueError('Source replication timestamp must be within 14 days and not in the future')
     timestamp = stamp.astimezone(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
-    return {'url': f'https://download.geofabrik.de/europe/{country}-{snapshot}.osm.pbf', 'timestamp': timestamp,
+    base = 'https://download.geofabrik.de/' + ('' if country == 'europe' else 'europe/')
+    return {'url': f'{base}{country}-{snapshot}.osm.pbf', 'timestamp': timestamp,
             'sha256': sha256.hexdigest(), 'bytes': source.stat().st_size}
 
 

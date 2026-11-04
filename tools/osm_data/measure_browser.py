@@ -76,6 +76,7 @@ SCRIPT = """(async () => {
      at = performance.now(); begin = calls.length;
      const litAgain = await L.litTile(...xy), lit_repeat_ms = performance.now()-at;
      if (JSON.stringify(lit) !== JSON.stringify(litAgain) || calls.length !== begin) throw new Error(name + ': repeat lighting downloads again');
+     if (!out.length && (await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.geometry) products.push({name:'geometry',z:13,reader:new StaticOSM(OSM_DATA_MANIFEST,'geometry',13)});
      const details = {};
      for (const {name:product,z,reader} of products) {
        const tile = G.lonLatToTile(...ll,z).map(Math.floor);
@@ -84,7 +85,8 @@ SCRIPT = """(async () => {
        at = performance.now(); begin = calls.length;
        const repeat = await reader.tile(tile), repeat_ms = performance.now()-at;
        if (JSON.stringify(first)!==JSON.stringify(repeat) || calls.length!==begin) throw new Error(name+': '+product+' cache not reused');
-       details[product]={cold_ms:ms,repeat_ms,elements:first.elements.length,requests:requests.length,bytes:requests.reduce((s,r)=>s+r.bytes,0),network:requests};
+       if (product==='geometry' && (first.schema!==2 || first.areas_complete!==true || first.nearby_complete!==true)) throw new Error(name+': incomplete shared geometry');
+       details[product]={source:first.source,cold_ms:ms,repeat_ms,elements:first.elements.length,requests:requests.length,bytes:requests.reduce((s,r)=>s+r.bytes,0),network:requests};
      }
      const trail=await T.trailTile(...G.lonLatToTile(...ll,13).map(Math.floor)), winter=await V.winterTile(...G.lonLatToTile(...ll,12).map(Math.floor));
      const water=await H.waterInputs([ll[0]-.0001,ll[1]-.0001,ll[0]+.0001,ll[1]+.0001],{hazards:true}), stays=await S.staysNear(ll,0.1);
@@ -143,6 +145,31 @@ BORDER_SCRIPT = """(async()=>{
 })()"""
 
 
+GEOMETRY_SCRIPT = """(async()=>{
+ const {StaticOSM}=await import('/js/osm-data.js'), {OSM_DATA_MANIFEST}=await import('/js/config.js'), {lonLatToTile}=await import('/js/geo.js'), {containsArea}=await import('/js/osm-geometry.js');
+ if (!(await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.geometry) return [];
+ const reader=new StaticOSM(OSM_DATA_MANIFEST,'geometry',13), out=[], calls=[], real=window.fetch, root=new URL('.',OSM_DATA_MANIFEST).href;
+ window.fetch=async (url,init)=>{
+  if (/overpass|maps.mail.ru/.test(String(url))) throw new DOMException('Unexpected public Overpass','AbortError');
+  const res=await real(url,init);
+  if(String(url).startsWith(root))calls.push({url:String(url),range:init?.headers?.Range,bytes:+res.headers.get('Content-Length')});
+  return res;
+ };
+ try {
+  for(const [name,ll,id] of [['Inari',[27.7,68.95],402543],['Saimaa',[29.68505859375,61.928610725008284],7379046],['Vattern',[14.5,58.2],null],['Sognsvann',[10.73,59.974],null],['Ulemiste',[24.76,59.39],967594],['Kadrioru park',[24.79,59.44],9259639]]) {
+   const xy=lonLatToTile(...ll,13).map(Math.floor), start=performance.now(), begin=calls.length, j=await reader.tile(xy), cold_ms=performance.now()-start;
+   if(!j.areas_complete || !j.nearby_complete)throw new Error(name+': unlocated geometry');
+   const matches=j.elements.filter(e=>e.area?.complete && containsArea(e,j.tile,ll));
+   if(!matches.some(e=>id ? e.id===id : e.tags.natural==='water'))throw new Error(name+': original lake/park area not found');
+   const count=calls.length, repeat=performance.now();await reader.tile(xy);
+   if(calls.length!==count)throw new Error(name+': geometry repeat downloads again');
+   out.push({name,ll,complete:true,source:j.source,matches:matches.map(e=>({type:e.type,id:e.id,name:e.tags.name})),cold_ms,repeat_ms:performance.now()-repeat,network:calls.slice(begin)});
+  }
+  return out;
+ } finally {window.fetch=real;}
+})()"""
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--country',choices=[*COUNTRY_SAMPLES,'all'],default='finland')
@@ -152,7 +179,7 @@ def main():
     with redirect_stdout(sys.stderr):
         print('OSM measurement: starting Chrome', flush=True)
         chrome = Chrome()
-        result = {'browser': chrome.send('Browser.getVersion'), 'origin': BASE, 'cases': {}, 'border_checks': {}}
+        result = {'browser': chrome.send('Browser.getVersion'), 'origin': BASE, 'cases': {}, 'border_checks': {}, 'geometry_checks': {}}
         try:
             for label, width, height, phone in [('desktop', 1440, 900, False), ('phone_emulated', 390, 844, True)]:
                 print(f'OSM measurement: {label} starting', flush=True)
@@ -175,6 +202,7 @@ def main():
                     result['cases'][label] = data
                     print(f'OSM measurement: {label} {len(data)} covered locations complete', flush=True)
                     if args.country=='all':
+                        result['geometry_checks'][label]=page.js(GEOMETRY_SCRIPT,timeout=90000)
                         result['border_checks'][label]=page.js(BORDER_SCRIPT,timeout=180000)
                         print(f'OSM measurement: {label} border controls complete', flush=True)
                 finally:

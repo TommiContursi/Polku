@@ -104,8 +104,9 @@ provide the original objects.
 Finland keeps the original dataset keys; other records add `kind`, `country`,
 `source`, `bounds` and actual `coverage`. Root Finland coverage remains conservative
 for old clients. New readers select the first archive whose polygon wholly covers
-the requested tile. A border tile needing the union of extracts uses bounded
-Overpass; cross-border ways remain whole within any selected archive. A missing
+the requested tile. A border tile can use the proven union of equal-epoch extract polygons; required
+parts are read in parallel and original copies must agree. Real gaps use bounded
+Overpass. Cross-border ways remain whole within any selected archive. A missing
 archive or wrong archive zoom/type/compression is a failure, never valid empty data.
 
 Candidate payloads use gzip level 6: five real Finland samples took roughly half
@@ -162,3 +163,45 @@ from real compiler output and compared byte-for-content by the Python test;
 Node and the registered `osmdata` browser check exercise the same local predicate.
 The retained Inari/Saimaa sample measurements are in
 [the geometry measurement](../../docs/measurements/osm-local-geometry-2026-11-04.json).
+
+## Shared reference completion and optional 29th archive
+
+Each country build now exports `geometry-roots.jsonl.gz`: sorted rows
+`[type,id,area,inspection,originalSHA256]`. This catalog and the existing original
+identity evidence are checksummed build inputs, excluded from browser releases.
+The shared job downloads those small inputs, verifies their hashes and common
+epoch, and completes their references from the dated Europe PBF. Original tags
+are retained; native reference completion uses explicit depth 10. Selected copies
+must agree with every available original country identity.
+
+```sh
+python -m tools.osm_data.geometry_source osm-build/europe.osm.pbf osm-build/geometry \
+  osm-build/inputs/osm-finland-geometry-inputs osm-build/inputs/osm-sweden-geometry-inputs \
+  osm-build/inputs/osm-norway-geometry-inputs osm-build/inputs/osm-estonia-geometry-inputs \
+  --md5 osm-build/europe.md5 --snapshot YYMMDD --remove-source
+python -m tools.osm_data.bundle osm-build/release FI_RELEASE SE_RELEASE NO_RELEASE EE_RELEASE \
+  --geometry osm-build/geometry
+```
+
+The optional removal flag is for the sibling temporary CI input only. Normal
+local builds preserve their input. The Europe file is deleted after subsetting,
+before allocating the subset location index. It is never uploaded or downloaded
+by the app. The job requires the actual reference size plus 25 GiB free before
+download and 25 GiB after download, and records RAM/time/allocated staging peaks.
+The existing free public runner and hosting/publisher remain in use; a failed
+resource or source gate leaves the current release intact.
+
+The bundle verifies the geometry receipt against all four exact input manifests,
+root/identity hashes, source epoch, coverage collection, archive header and source
+provenance. It adds one shared `geometry.pmtiles` and its measurements to the
+existing 28 products. Original country keys and the enclosing manifest schema
+remain unchanged. New clients accept old manifests without geometry; old clients
+ignore the optional product. The reader uses the existing ranges, cache pin and
+whole-attempt deadline, including valid sparse schema 2 empties and explicit
+completeness flags. Country coverage collections use the same exact union proof.
+
+When geometry is published, candidate/live checks require all 29 archive URLs and
+six lake/park containment locations in both browser profiles, alongside the
+existing 32 consumer cases. Without it, the verified 28-archive checks remain.
+The new format's whole-country measurements and live coverage must be established
+by a completed run; the small retained-source measurements do not establish them.

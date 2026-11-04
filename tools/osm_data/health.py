@@ -32,9 +32,16 @@ def verify(output,release_dir=None):
                 for product in [row,row['lighting'],*row['details'].values()]:
                     urls.update(n['url'] for n in product['network'] if '.pmtiles' in n['url'])
         expected_urls={url.removesuffix('/current.json')+'/'+dataset['url'] for dataset in live['datasets'].values()}
-        p.require(len(expected_urls)==28 and urls==expected_urls,
-                  'Browser consumers did not verify all 28 current release archives')
-        receipt={'release':live['release'],'checked_at':datetime.now(timezone.utc).isoformat(),'browser_cases':sum(map(len,result['cases'].values()))}
+        extended = 'geometry' in live['datasets']
+        expected_count = 29 if extended else 28
+        p.require(len(expected_urls)==expected_count and urls==expected_urls,
+                  'Browser consumers did not verify all current release archives')
+        if extended:
+            p.require(all(len(result.get('geometry_checks',{}).get(profile,[]))==6 and
+                          all(r.get('complete') is True for r in result['geometry_checks'][profile])
+                          for profile in ('desktop','phone_emulated')),
+                      'Live geometry area checks are incomplete')
+        receipt={'release':live['release'],'checked_at':datetime.now(timezone.utc).isoformat(),'archive_count':expected_count,'browser_cases':sum(map(len,result['cases'].values()))}
         p.require(receipt['browser_cases']==32,'Live consumer cases are incomplete')
         (output/'health.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
         print(json.dumps(receipt,sort_keys=True))
