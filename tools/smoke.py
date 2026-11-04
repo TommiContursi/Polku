@@ -17388,6 +17388,8 @@ def pick_card(chrome):
           const q = polku.map.project(ll), r = polku.map.getCanvas().getBoundingClientRect(); return { x: r.left + q.x, y: r.top + q.y }; })()""")
         line = "(() => { const b = document.querySelector('.spot-line'), r = b && b.getBoundingClientRect(), mk = b && b.closest('.maplibregl-marker'); return { still: !!mk && mk !== b && !/transform|all/.test(getComputedStyle(mk).transitionProperty), line: b ? [...b.querySelectorAll('b, small')].map((e) => e.textContent) : null, at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height }, card: polku.planner.cards.current && polku.planner.cards.current.kind, drawn: polku.map.querySourceFeatures('pick').length }; })()"
         s = spot()
+        # A busy click handler after the finger lifts must not turn the touch into a mouse click (#781).
+        pg.js("document.addEventListener('click', () => { const t = performance.now(); while (performance.now() - t < 900) {} }, {capture: true, once: true}); true")
         pg.quick_tap(s['x'], s['y'])
         for _ in range(40):
             time.sleep(0.25)
