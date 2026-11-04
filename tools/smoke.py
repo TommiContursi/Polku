@@ -1627,6 +1627,17 @@ STOPS = """(async () => {
   const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
   const sum = `${document.querySelector('.sum-time b')?.textContent} / ${document.querySelector('.sum-time small')?.textContent}`;
   if (sum !== `${short(total)} / ${short(moving)} moving`) errs.push(`summary time: ${sum}, not ${short(total)} / ${short(moving)} moving`);
+  // times at 59 min 30 s and more carry into the hour: 1 h 60 min reads 2 h 00 min (#492), here and in the summary's short form
+  const G = await import(location.origin + '/js/geo.js');
+  const read = [7170, 10770, 3570].map((s) => G.fmtDuration(s)).join(' / ');
+  if (read !== '2 h 00 min / 3 h 00 min / 1 h 00 min') errs.push(`fmtDuration: ${read}`);
+  const was = [a.time, a.timeWind];
+  a.time = a.timeWind = Math.ceil((a.waits.reduce((t, w) => t + w.sec, 0) + 3600) / 3600) * 3600 + 3570;
+  p.renderAnalysis();
+  const whole = document.querySelector('.sum-time b')?.textContent;
+  if (!/ 00$/.test(whole || '')) errs.push(`summary time at ${a.time} s: ${whole}`);
+  [a.time, a.timeWind] = was;
+  p.renderAnalysis();
   const days = S.tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : p.startSec(), a.waits);
   if (days.length !== 2 || Math.abs(days[0].moving + days[1].moving - moving) > 2) errs.push(`days: ${days.length}, moving ${days.map((d) => d.moving).join('+')} vs ${moving}`);
   p.reveal('depart');
