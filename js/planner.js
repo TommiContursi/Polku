@@ -3079,13 +3079,13 @@ export class Planner {
     const how = leg.mode === 'fixed' ? `Its own line: ${this.routeName || (leg.src ? 'a LIPAS route' : 'an imported track')}${leg.src ? ' (LIPAS)' : ''}` : MODE_LABEL[leg.mode] || MODE_LABEL.auto;
     let carry = 0;
     for (const l of legs) { const c = l.result && l.result.coords, t = l.result && l.result.tags; if (c && t) for (let k = 1; k < c.length; k++) if (t[k - 1] && t[k - 1].portage) carry += dist(c[k - 1], c[k]); }
-    const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how, differs = how !== MODE_LABEL.auto || carry >= 1;
+    const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how;
     const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid), beads = [];
     for (let j = 0, m = open ? 0 : Math.min(shaping, 3); j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { lines, dark } = this.warnsOn(s);
     if (dark) beads.push(h('span', { class: 'moon', style: `top: ${(100 * (Math.max(a0, dark) - a0)) / Math.max(1, a1 - a0)}%`, html: icon('moon', 12) }));
     // (its label starts with its words, so voice control finds it by them)
-    const b = h('button', { type: 'button', class: `row wpl-stretch${differs ? ' differs' : ''}${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to),
+    const b = h('button', { type: 'button', class: `row wpl-stretch${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to),
       'aria-label': [words, says, ...lines.map((x) => x.replace(/<[^>]+>/g, ''))].join(', '), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
       h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
       h('span', {}, h('b', { class: 'wpl-nums' }, words), h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` }),

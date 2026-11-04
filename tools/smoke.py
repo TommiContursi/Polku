@@ -15266,7 +15266,7 @@ SE_STATE = """(() => {
   return { secs, waits: [...L.querySelectorAll('.wpl-wait')].filter(vis).map((x) => `${x.dataset.i}:${x.dataset.wait}:${x.textContent}`), reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn, .wpl-foot .btn[aria-pressed]')].filter(vis).map((b) => b.textContent.trim()), // (Reorder's own button, Done while reordering, #761)
     rows: [...L.querySelectorAll('.wpl-row')].map((x) => x.dataset.i), shapes: [...L.querySelectorAll('.wpl-point.shape')].filter(vis).length,
     list: [...L.querySelectorAll('.wpl-point:not(.shape), .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch')
-      ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '', differs: b.classList.contains('differs') }
+      ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '' }
       : { at: b.dataset.i, line: [...b.querySelectorAll('small:not(.wpl-tag)')].map((x) => x.textContent).join(' ') })),
     kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.listScroller().scrollTop,
     short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
@@ -15286,7 +15286,7 @@ SE_LINE = """(() => {
     heads: [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', sum: s.querySelector('.sec2-head small')?.textContent || '',
       ring: !!s.querySelector('.sec2-head .ic') && ps(s.querySelector('.sec2-head .ic')).boxShadow.startsWith(col(getComputedStyle(s).getPropertyValue('--part') || 'transparent')) })),
     stretches: [...L.querySelectorAll('.wpl-stretch')].filter(vis).map((b) => { const ln = b.querySelector('.wpl-line'), bf = ps(ln, '::before');
-      return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', line: /repeating/.test(bf.backgroundImage) ? (bf.backgroundImage.match(/rgba?\\([^)]*\\)/) || [''])[0] : bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
+      return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', weight: ps(b.querySelector('.how')).fontWeight, line: /repeating/.test(bf.backgroundImage) ? (bf.backgroundImage.match(/rgba?\\([^)]*\\)/) || [''])[0] : bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
         want: col(getComputedStyle(b.closest('.sec2')).getPropertyValue('--part') || 'transparent'), beads: ln.querySelectorAll('.bead').length, fold: b.parentElement.querySelector('.wpl-unfold')?.textContent.trim() ?? null }; }),
     brk: [...L.querySelectorAll('.wpl-point')].filter((b) => /radial/.test(ps(b.firstElementChild, '::after').backgroundImage)).map((b) => b.dataset.i),
     badges: [...document.querySelectorAll('.wp-sport')].map((e) => getComputedStyle(e).backgroundColor),
@@ -15376,6 +15376,8 @@ def sections_list(chrome):
                 lab = next((r['label'] for r in rows if r.get('at') == f"~{x['at']}"), '')
                 if not x['nums'][:1].isdigit() or not x['how'].startswith(want) or x['dash'] != straight_one or (not straight_one and x['line'] != x['want']) or x['want'] != ln['mtb'] or not lab.startswith(x['nums']):
                     fails.append(f"{name}: {what}: stretch ~{x['at']}: {x}, label {lab!r} (want its numbers, then {want}, its line MTB's {ln['mtb']}{', dashed' if straight_one else ''}, its label starting with its numbers)")
+            if straight and len({x['weight'] for x in ln['stretches']}) > 1:
+                fails.append(f"{name}: {what}: how the stretches are drawn, in weights {[(x['how'], x['weight']) for x in ln['stretches']]} (want Follow paths as Freehand, #761)")
         # (#761) a point's line: when you leave or arrive and the weather with its icons, no Start or End in it (its label
         # says them); and a stretch in the dark says how much, with a moon on its line where that begins
         r = pg.js("""(() => { const p = polku.planner, L = p.els.points, row = (i) => L.querySelector(`.wpl-point[data-i="${i}"]`);

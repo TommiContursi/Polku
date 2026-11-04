@@ -1442,7 +1442,8 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-stretch .wpl-nums { font-size: 14px; font-variant-numeric: tabular-nums; }
 .wpl-stretch small { font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .wpl-stretch small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; }
-.wpl-stretch.differs small .ic, .wpl-stretch.differs small .how { color: var(--text); font-weight: var(--weight-name); }
+/* how it's drawn, every stretch alike: Follow paths as Freehand, Over water or its own line (the line says which) */
+.wpl-stretch small .ic, .wpl-stretch small .how { color: var(--text); font-weight: var(--weight-name); }
 /* a point's line (#761): when you arrive or leave, the sky and the temperature, the wind, each with its icon */
 .wx-line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; }
 .wx-line > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }

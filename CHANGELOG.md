@@ -8,6 +8,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - The planner calls the points of your route waypoints, as in **Add a waypoint here**, **Edit this waypoint**, **At this waypoint** and Reorder's "Drag a waypoint". A waypoint without a name of its own is "Waypoint 2", no longer "Via 2": on its card, in the route's list, in notes and as its name in an exported GPX file.
 - The drawing mode that joins your waypoints with straight lines is called **Freehand**: in the drawing menu (still the S key), in **Edit this stretch**, on the route's list, in the map's key and in the profile's way types. Check's item for it reads "Freehand — not following paths". If you had hidden those items in Check, hide them again under their new name.
+- In the route's list, every stretch says how it's drawn in the same way, **Follow paths** as strongly as **Freehand**; a Freehand stretch's line is dashed.
 
 ### Changeovers, stops and nights on the route's line ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
