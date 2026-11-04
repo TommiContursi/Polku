@@ -13,7 +13,11 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
   - **A carry** reads "Over water · carry 120 m" (#779).
   - **The map's changeover badge** is in the next sport's colour.
   - **Reorder** moved under the list already, first in the foot (where PR 5 puts it), since the heading took its row: at half on a phone the start and the first stretch stay in sight (#740, #764). While reordering, the same button is Done.
-- **Next:** PR 3, the waits as parts of their own.
+- **PR 3: built** (2026-11-04), the waits as parts of their own, on `claude/761-waits` after #789.
+  - **As drawn in Parts 7.** Waits have their times, a night its sunset and sunrise (two new icons, `sunset` and `sunrise`), each part a start row, the points' lines Arrive and Leave with the weather's icons, and the warnings and the dark on the stretches.
+  - **The sky's icon** uses the forecast's cloud cover, now carried along the route, by the timeline's own rule (`skyKind()`).
+  - **The tooltips** are the app's own `tooltip()`, in words, so the weather is in words there, not icons.
+- **Next:** PR 4, the words: waypoints, Waypoint n and Freehand.
 
 ## What the user asked for (2026-11-04)
 
@@ -162,7 +166,7 @@ Each small, each tried on the phone before the next, in this order unless the us
    - the map's changeover badge in the next sport's colour (an idea from testing, 2026-11-04).
 
    `pointRow()`, `stretchRow()`, `sectionRows()`, the CSS of `wpl-point`, `wpl-line` and `sec2-head`; `sections` and `multi`.
-3. **The waits as parts of their own:**
+3. **The waits as parts of their own** (built, 2026-11-04):
    - a changeover, a stop and a night, with their times, and a night's sunset and sunrise (two new icons);
    - each part's start row;
    - the points' lines with Arrive, Leave and the weather's icons;

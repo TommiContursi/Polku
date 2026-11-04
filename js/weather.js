@@ -178,6 +178,14 @@ async function fetchPoints(points, hours = 49) {
   return v;
 }
 
+/** The sky's icon for a forecast: snow or rain where it falls, else by the cloud cover (%), the moon at night; partly
+ *  cloudy where the cover isn't known (a cell from before it was asked for). The timeline and the route's list (#761). */
+export function skyKind(rain, temp, cloud, night) {
+  if (rain >= 0.1) return temp < 0.5 ? 'snow' : 'rain';
+  if (!(cloud >= 0)) return night ? 'moon' : 'cloudSun';
+  return cloud >= 70 ? 'cloud' : cloud >= 25 ? (night ? 'cloud' : 'cloudSun') : night ? 'moon' : 'sun';
+}
+
 /** Values of one series at epoch second t (linear in time; direction via vectors). */
 export function sampleAt(s, t) {
   const n = s.time.length;
@@ -195,6 +203,7 @@ export function sampleAt(s, t) {
     dir: ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360,
     temp: lin(s.temp),
     precip: lin(s.precip),
+    cloud: s.cloud ? lin(s.cloud) : null, // % (a cell from before cloud cover was asked for: none)
     snow: s.snow ? lin(s.snow) : null, // cm on the ground (the model)
     snowfall: s.snowfall ? lin(s.snowfall) : null, // cm an hour
   };
@@ -220,7 +229,7 @@ export async function windAlong(pts, along, tAt, startSec) {
   const last = Math.min(...series.map((s) => s.time[s.time.length - 1]));
   const speed = new Float32Array(n), gust = new Float32Array(n), dir = new Float32Array(n);
   const head = new Float32Array(n), cross = new Float32Array(n);
-  const temp = new Float32Array(n), precip = new Float32Array(n);
+  const temp = new Float32Array(n), precip = new Float32Array(n), cloud = new Float32Array(n).fill(NaN);
   const snow = new Float32Array(n).fill(NaN), snowfall = new Float32Array(n).fill(NaN); // NaN: a cell from before snow was asked for
   for (let i = 0; i < n; i++) {
     const s = series[Math.min(k - 1, Math.round((along[i] / total) * (k - 1)))];
@@ -231,6 +240,7 @@ export async function windAlong(pts, along, tAt, startSec) {
     const d = rad(hdg - w.dir);
     speed[i] = w.speed; gust[i] = w.gust; dir[i] = w.dir;
     temp[i] = w.temp; precip[i] = w.precip;
+    if (w.cloud != null) cloud[i] = w.cloud;
     if (w.snow != null) snow[i] = w.snow;
     if (w.snowfall != null) snowfall[i] = w.snowfall;
     // past the forecast's last hour its values are that hour's: shown grey, and the time leaves the wind out (#465)
@@ -243,7 +253,7 @@ export async function windAlong(pts, along, tAt, startSec) {
   // it's more than three days ahead (less certain): sample indexes, or -1
   const at = (t) => { for (let i = 0; i < n; i++) if (startSec + (tAt[i] || 0) > t) return i; return -1; };
   return {
-    speed, gust, dir, head, cross, temp, precip, snow, snowfall, long,
+    speed, gust, dir, head, cross, temp, precip, cloud, snow, snowfall, long,
     beyond: at(last), beyondSec: last, unsure: at(now + 72 * 3600),
     start: { ...first, time: startSec },
     hourly: series[Math.floor(k / 2)],

@@ -17,7 +17,7 @@ import { sunTimes, darkness } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
+import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
@@ -2303,7 +2303,7 @@ export class Planner {
       for (let k = i + 1; k <= j; k++) if (((a.attr[k] || {}).tags || {}).lit === 'yes') litM += a.along[k] - a.along[k - 1];
       const lit = x.kind === 'dark' ? (litM >= 50 ? ` · ${fmtDist(litM)} of it lit` : ' · none of it lit, as far as OpenStreetMap says') : '';
       out.push(x.kind === 'twilight'
-        ? { at: a.along[i], len, kind: 'dark', noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light', tier: 'look', src }
+        ? { at: a.along[i], len, kind: 'dark', twilight: true, noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light', tier: 'look', src }
         : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${lit}${water ? ' · on the water a light is required after dark' : ' · take a light'}`, tier: 'read', src });
     }
     return out;
@@ -2934,12 +2934,13 @@ export class Planner {
     }
   }
 
-  // The sections: where they start and end, their sport, why they end, and their stretches (point indices)
+  // The sections, the route's parts: where they start and end, their sport, why they end (the sport changes, a night,
+  // the end; a stop is a wait inside its part, #761), and their stretches (point indices)
   sections() {
     const n = this.points.length, out = [];
     let from = 0;
     for (let i = 1; i < n; i++) {
-      const stop = i < n - 1 ? this.stopAt(i) : null, ends = i === n - 1 ? 'end' : stop ? (isNight(stop) ? 'night' : 'stop') : this.changeAt(i) ? 'sport' : null;
+      const stop = i < n - 1 ? this.stopAt(i) : null, ends = i === n - 1 ? 'end' : stop && isNight(stop) ? 'night' : this.changeAt(i) ? 'sport' : null;
       if (!ends) continue;
       const stretches = [];
       for (let a = from; a < i;) { const b = Math.min(this.stretchAt(a).to, i); stretches.push({ from: a, to: b }); a = b; }
@@ -2954,11 +2955,11 @@ export class Planner {
     const nums = (s) => { const x = this.stretchNums(s); return x ? [fmtDist(x.len), fmtDuration(x.sec), x.up == null ? '' : `↑${Math.round(x.up)} m`].filter(Boolean).join(' · ') : fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from)); };
     // the forecast m metres along: its sample, and in words; past its reach none yet, never its last hour's (#465) [tabs-c-days]
     const wAt = (m) => (fits && a.wind && a.wind.temp ? this.sampleAtM(m) : -1), past = (w) => w >= 0 && a.wind.beyond >= 0 && w >= a.wind.beyond;
-    const words = (w) => (w < 0 ? '' : past(w) ? 'No forecast yet' : `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`);
-    // the weather on the rows (#764): as you leave on Start's, when you're there on each section's last; a stop's, a night's
-    // or a changeover's own sample is timed as you go on (`timed()`), so its arrival is the sample before, and a night's
-    // tag has its morning's
+    // the weather on the rows (#764, #761): as you leave on Start's and on each part's first after a wait, as you get there
+    // on each part's last and at a stop; a stop's, a night's or a changeover's own sample is timed as you go on (`timed()`),
+    // so its arrival is the sample before it
     const wAtPoint = (i) => { const w = wAt(this.lengthTo(i)); return w > 0 && a.waitAt && a.waitAt[w] ? w - 1 : w; };
+    const wx = (w) => (w < 0 ? null : past(w) ? 'none' : w);
     const one = secs.length === 1;
     let day = 1;
     secs.forEach((sec, k) => {
@@ -2969,17 +2970,21 @@ export class Planner {
       const id = this.pidOf(this.points[sec.from]);
       const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 16) }), h('div', { class: 'sec2-t' }, h('b', {}, title), h('small', {}, sum)));
       const rows = h('div', { class: 'rows', role: 'group', 'aria-label': `${title}, ${sum}` });
-      if (k === 0) rows.append(this.pointRow(sec.from, ro, false, words(wAt(0))));
+      // (a part after a changeover or a night starts with its first point's row, as the route starts with its start's)
+      rows.append(this.pointRow(sec.from, ro, { w: wx(wAt(this.lengthTo(sec.from))), leave: k > 0 }));
       for (const s of sec.stretches) {
         rows.append(this.stretchRow(s, ro));
         const pid = this.pidOf(this.points[s.from]);
-        if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, true));
-        const end = s.to === sec.to;
-        // (where a part ends and another begins, the line breaks: dotted to the next part's heading)
-        rows.append(this.pointRow(s.to, ro, false, end ? words(wAtPoint(s.to)) : '', end && sec.ends === 'night' ? words(wAt(this.lengthTo(s.to))) : '', end && k < secs.length - 1));
+        if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, { shape: true }));
+        const end = s.to === sec.to, stop = !end && this.stopAt(s.to);
+        // (where a part ends, or at a stop, the line breaks: dotted to the next part's heading, through the stop's wait)
+        rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop }));
+        if (stop) rows.append(this.waitRow(s.to, 'stop'));
       }
       // (each part's line in its sport's colour, the map's and the profile's Sport colours)
       box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, style: `--part: var(--sport-${sec.sport}, var(--rail))`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, head, rows));
+      // a changeover and a night: parts of the route of their own, between this part and the next
+      if (k < secs.length - 1) box.append(h('li', { class: 'wait' }, ...this.waitsAt(sec.to).map((kind) => this.waitRow(sec.to, kind))));
     });
   }
 
@@ -2991,31 +2996,80 @@ export class Planner {
     return i;
   }
 
-  // a point's row: its marker, its name, there at · the weather · Via n; a stop, a night (with its morning's weather) or
-  // a change of sport under it. Its mark is on the route's line (#761): dashed above or below it where a leg is a straight
-  // line, dotted below it where its part ends (`brk`), none below the end.
-  pointRow(i, ro, shape = false, wx = '', morning = '', brk = false) {
+  // a point's row (#761): its mark on the route's line, its name, and one line: when you arrive or leave, and where `w`
+  // (a forecast sample, or 'none' past its reach) the weather then, with its icons; Start, End and Via n are in its label,
+  // the mark says them. `leave`: a part's first row after a changeover or a night, the point you set off from again.
+  // Its line is dashed beside a straight leg, dotted below it where its part ends or at a stop (`brk`), none below the end.
+  pointRow(i, ro, { shape = false, w = null, leave = false, brk = false } = {}) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
-    const name = this.nameOf(i), lab = this.label(i), arrive = i > 0 && this.analysisFits() ? this.arriveAt(i) : null;
-    // (no distance from the start: the stretch to it says how far, #761)
-    const sub = (shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `There at ${this.clockOf(arrive)}` : '', wx, name === lab ? '' : lab, loop ? 'back at the start' : '']).filter(Boolean).join(' · ');
-    const stop = this.stopAt(i), ch = this.changeAt(i);
-    const extra = stop ? (isNight(stop) ? `${nightsWord(stop)} · go on at ${hhmm(stop.on)}${morning ? ` · ${morning}` : ''}` : `Stop · ${stop.min} min`) : ch ? `${ACTIVITIES[ch.to].label} from here · changeover ${ch.min} min` : '';
-    // (a row as the cards' rows: its mark, its name, its lines, ›; Revision 5's list)
-    const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', i === n - 1 ? 'last' : '', brk ? 'brk' : '', line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
-    const b = h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+    const name = this.nameOf(i), lab = this.label(i), at = this.timesAt(i), out = i === 0 || leave;
+    const when = i === 0 ? this.leaveWords() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
+    const sky = this.wxOf(w, out ? at && at.leave : at && at.arrive, p);
+    const bits = [when ? h('span', {}, `${out ? 'Leave' : 'Arrive'} ${when}`) : null, ...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
+    const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', last && !leave ? 'last' : '', brk ? 'brk' : '', !leave && line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
+    const b = h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent)].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
       h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i))),
-      h('span', {}, h('b', { class: 'wpl-name' }, name), extra ? h('small', { class: 'wpl-tag', html: `${icon(stop ? (isNight(stop) ? 'moon' : 'pause') : this.sportIcon(ch.to), 15)}<span>${escapeHtml(extra)}</span>` }) : null, sub ? h('small', {}, sub) : null),
+      // (the bits apart by the line's gap: the spaces between them only for the words read out, not drawn)
+      h('span', {}, h('b', { class: 'wpl-name' }, name), bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null),
       h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
+    // (on a desktop, its distance from the start, its times and the weather, as the map's tooltip has them)
+    if (at && !shape) tooltip(b, { name: `${fmtDist(this.lengthTo(i))} from the start`, text: [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `leave ${this.clockOf(at.leave)}` : '', ...sky.map((x) => x.text)].filter(Boolean).join(' · ') });
+    return b;
+  }
+
+  // when you'd get to point i and go on from it (epoch seconds, after a changeover, a stop or a night there), or null
+  timesAt(i) {
+    if (!this.analysisFits()) return null;
+    const arrive = this.arriveAt(i);
+    if (arrive == null) return null;
+    const ch = this.changeAt(i), chSec = ch ? ch.min * 60 : 0, stop = this.stopAt(i);
+    return { arrive, change: arrive + chSec, leave: arrive + chSec + restSec(stop, arrive, chSec) };
+  }
+  // the weather at a forecast sample, as icons and words: the sky and the temperature, the wind; [] where there's none
+  wxOf(w, sec, ll) {
+    const a = this.analysis;
+    if (w == null) return [];
+    if (w === 'none') return [{ text: 'No forecast yet' }];
+    const sun = sec != null ? sunTimes(sec, ll) : null;
+    const night = !!sun && (sun.day === 'polar-night' || (sun.day !== 'polar-day' && sun.rise != null && (sec < sun.rise || sec > sun.set)));
+    const cloud = a.wind.cloud ? a.wind.cloud[w] : NaN;
+    return [{ ic: skyKind(a.wind.precip[w], a.wind.temp[w], cloud, night), text: `${Math.round(a.wind.temp[w])}°` }, { ic: 'wind', text: `${Math.round(a.wind.speed[w])} m/s` }];
+  }
+  // the waits at point i, in order: a changeover, then a stop or a night
+  waitsAt(i) {
+    const stop = this.stopAt(i);
+    return [this.changeAt(i) ? 'change' : '', stop ? (isNight(stop) ? 'night' : 'stop') : ''].filter(Boolean);
+  }
+  // a wait (#761): a changeover, a stop or a night at point i, a part of the route of its own, its line dotted: what it is
+  // and how long, its times under it (a night's sunset and sunrise too, with their icons), and the gear left there. A tap
+  // opens its point's card, where it's set.
+  waitRow(i, kind) {
+    const p = this.points[i], at = this.timesAt(i), ch = this.changeAt(i), stop = this.stopAt(i);
+    const from = at && (kind === 'change' ? at.arrive : at.change), to = at && (kind === 'change' ? at.change : at.leave);
+    const title = kind === 'change' ? `Changeover · ${ch.min} min` : kind === 'stop' ? `Stop · ${stop.min} min` : at ? `${nightsWord(stop)} · ${Math.round((to - from) / 3600)} h` : nightsWord(stop);
+    const sun = kind === 'night' && at ? [sunTimes(from, p).set, sunTimes(to, p).rise] : [];
+    // (before the route is timed: a night's morning hour, nothing for the others)
+    const times = [at ? h('span', {}, `${this.clockOf(from)}–${this.clockOf(to)}`) : kind === 'night' ? h('span', {}, `Go on at ${hhmm(stop.on)}`) : null,
+      ...(sun[0] ? [h('span', { html: `${icon('sunset', 16)}${this.timeOf(sun[0])}` })] : []), ...(sun[1] ? [h('span', { html: `${icon('sunrise', 16)}${this.timeOf(sun[1])}` })] : [])];
+    const gear = kind === 'change' && this.gearAt(i) && !this.carryAt(i) ? `${this.gearLabel(GEAR[ch.from])} stays here` : '';
+    const shown = times.filter(Boolean);
+    const b = h('button', { type: 'button', class: 'row wpl-wait', 'data-i': String(i), 'data-wait': kind,
+      // (its label says in words what the icons say: from and to, sunset and sunrise)
+      'aria-label': [title, at ? `${this.clockOf(from)} to ${this.clockOf(to)}` : shown[0] && shown[0].textContent, sun[0] ? `sunset ${this.timeOf(sun[0])}` : '', sun[1] ? `sunrise ${this.timeOf(sun[1])}` : '', `at ${this.nameOf(i)}`, gear].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+      h('span', { 'aria-hidden': 'true', html: icon({ change: 'clock', stop: 'pause', night: 'moon' }[kind], 18) }),
+      h('span', {}, h('b', {}, title), shown.length ? h('small', { class: 'wx-line' }, ...shown.flatMap((x, k) => (k ? [' ', x] : [x]))) : null, gear ? h('small', { class: 'wpl-warns', html: `<span class="look">${icon('eye', 14)}${escapeHtml(gear)}</span>` }) : null),
+      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     return b;
   }
 
   // a stretch: the line between two points (#761), its distance, time and climb in bold, how it's drawn under them (a
   // carry on it too, #779), and the points that only shape it: beads on its line, their count by ⌄, which unfolds them.
   // One drawn otherwise than along paths (a straight line, over water, its own line) has its word in the text's weight,
-  // a straight one its line dashed.
+  // a straight one its line dashed. Under them Check's warnings on it, as Check says them (what's to read and what isn't
+  // checked, unread: as the key fact counts them, #741), and how much of it is in the dark, with a moon on its line where
+  // that begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
   stretchRow(s, ro) {
     const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
     const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).join(' · ');
@@ -3025,10 +3079,27 @@ export class Planner {
     const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how, differs = how !== MODE_LABEL.auto || carry >= 1;
     const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid), beads = [];
     for (let j = 0, m = open ? 0 : Math.min(shaping, 3); j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), its = this.itemsOn(s).filter((it) => it.g !== 'look' && !this.isRead(it));
+    const nRead = its.filter((it) => it.g === 'read').length, nNot = its.length - nRead;
+    const dark = ((this.analysis && this.analysis.darkWarn) || []).filter((x) => !x.twilight && x.at < a1 && x.at + x.len > a0);
+    const darkM = dark.reduce((m, x) => m + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
+    if (darkM >= 50) beads.push(h('span', { class: 'moon', style: `top: ${(100 * (Math.max(a0, dark[0].at) - a0)) / Math.max(1, a1 - a0)}%`, html: icon('moon', 12) }));
+    const warns = [nRead ? `<span class="read">${icon('warnf', 14)}${nRead} to read</span>` : '', nNot ? `<span class="unk">${icon('unk', 14)}${nNot} not checked</span>` : '',
+      darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : ''].filter(Boolean);
     // (its label starts with its words, so voice control finds it by them)
-    const b = h('button', { type: 'button', class: `row wpl-stretch${differs ? ' differs' : ''}${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to), 'aria-label': `${words}, ${says}`, onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
+    const b = h('button', { type: 'button', class: `row wpl-stretch${differs ? ' differs' : ''}${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to),
+      'aria-label': [words, says, ...warns.map((x) => x.replace(/<[^>]+>/g, ''))].join(', '), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
       h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
-      h('span', {}, h('b', { class: 'wpl-nums' }, words), h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` })));
+      h('span', {}, h('b', { class: 'wpl-nums' }, words), h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` }),
+        warns.length ? h('small', { class: 'wpl-warns', html: warns.join(' ') }) : null));
+    const t0 = this.timesAt(s.from), t1 = this.timesAt(s.to), A = this.analysis;
+    if (t0 && t1) {
+      // (the weather over it, where the forecast reaches: the temperature's range, the wind at its strongest)
+      let lo = Infinity, hi = -Infinity, wind = 0;
+      if (A.wind && A.wind.temp) for (let k = this.sampleAtM(a0), z = this.sampleAtM(a1); k <= z && (A.wind.beyond < 0 || k < A.wind.beyond); k++) { lo = Math.min(lo, A.wind.temp[k]); hi = Math.max(hi, A.wind.temp[k]); wind = Math.max(wind, A.wind.speed[k]); }
+      const wx = lo <= hi ? `${Math.round(lo) === Math.round(hi) ? Math.round(lo) : `${Math.round(lo)}–${Math.round(hi)}`}° · wind up to ${Math.round(wind)} m/s` : '';
+      tooltip(b, { name: `${fmtDist(a0)} → ${fmtDist(a1)} from the start`, text: [`${this.clockOf(t0.leave)} → ${this.clockOf(t1.arrive)}`, wx].filter(Boolean).join(' · ') });
+    }
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': open ? `Fold the ${shaping} shaping points` : `Show the ${shaping} shaping points`,

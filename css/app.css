@@ -1399,8 +1399,10 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-top:empty { display: none; }
 .wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
 .wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
-.wpl .sec2 + .sec2 { position: relative; box-shadow: none; }
-.wpl .sec2 + .sec2::after { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: 1px; background: var(--line); } /* (the rule between two parts starts after the line, so it doesn't cut it) */
+.wpl .sec2:not(:first-child) { position: relative; box-shadow: none; }
+.wpl .sec2:not(:first-child)::after { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: 1px; background: var(--line); } /* (the rule between two parts starts after the line, so it doesn't cut it) */
+.wpl .sec2:has(+ .wait) { padding-bottom: 0; }
+.wpl > li.wait { padding: 0 0 4px; }
 .wpl .sec2.lit { margin: 0 -8px; padding-inline: 8px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent); } /* (the part a key fact opened) */
 /* a part's heading (#761): its sport's icon in a ring of its colour, on the route's line in the marks' column, then its
    sport (and day) and its totals beside it, in the text's colour, bolder than a point's line */
@@ -1408,7 +1410,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .sec2-head > span { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
 .sec2-head > span > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
 .sec2-head > span::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
-.wpl .sec2 + .sec2 > .sec2-head > span::before { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; top: -20px; height: 20px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
+.wpl .sec2:not(:first-child) > .sec2-head > span::before { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; top: -12px; height: 12px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
 .sec2-t { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 12px; }
 .sec2-head b { font-size: var(--font-row); font-weight: var(--weight-strong); line-height: 1.3; overflow-wrap: anywhere; }
 .sec2-t small { font-size: 13.5px; font-weight: var(--weight-name); color: var(--text); font-variant-numeric: tabular-nums; }
@@ -1441,6 +1443,26 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-stretch small { font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .wpl-stretch small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; }
 .wpl-stretch.differs small .ic, .wpl-stretch.differs small .how { color: var(--text); font-weight: var(--weight-name); }
+/* a point's line (#761): when you arrive or leave, the sky and the temperature, the wind, each with its icon */
+.wx-line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; }
+.wx-line > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.wx-line .ic { flex: none; }
+/* Check's warnings on a stretch, its words, shapes and colours (#761), and how much of it is in the dark */
+.wpl-warns { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 2px; }
+.wpl-warns > span { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: var(--weight-name); }
+.wpl-warns .ic { flex: none; }
+.wpl-warns .read { color: var(--danger); }
+.wpl-warns .unk { color: var(--unk); }
+.wpl-warns .look { color: var(--look); font-weight: var(--weight-regular); }
+.wpl-warns .dark { color: var(--muted); font-weight: var(--weight-regular); }
+.wpl-line .moon { position: absolute; z-index: 1; left: 50%; display: grid; place-items: center; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--surface-solid); color: var(--text); }
+/* a wait (#761): a changeover, a stop or a night, a part of the route of its own, its line dotted and broken round its icon */
+.wpl .rows > .row.wpl-wait { box-shadow: none; border-radius: 12px; }
+.wpl-wait > span:first-child { position: relative; width: 22px; align-self: stretch; place-items: center; color: var(--muted); }
+.wpl-wait > span:first-child::before, .wpl-wait > span:first-child::after { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
+.wpl-wait > span:first-child::before { top: -6px; bottom: calc(50% + 12px); }
+.wpl-wait > span:first-child::after { top: calc(50% + 12px); bottom: -10px; }
+.wpl-wait b { font-size: 14px; }
 .wpl-unfold { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 1px; width: auto; min-width: var(--target); min-height: var(--target); padding: 0 4px 0 8px; font-size: 13px; font-weight: var(--weight-name); color: var(--muted); }
 @media (pointer: coarse) { .wpl .row { min-height: 44px; } }
 /* Reorder [jd-reorder]: every point with its grip, Earlier and Later; a finger held 0.45 s drags */

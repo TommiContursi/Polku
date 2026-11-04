@@ -4,6 +4,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-04
 
+### Changeovers, stops and nights on the route's line ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- In the route's list in **Route**, a changeover, a stop and a night each have a row of their own on the route's line, with their times: "Changeover · 5 min" and "10:01–10:06" under it. A night shows its hours, and sunset and sunrise with their icons. A changeover says when your bike or your boat stays there.
+- A stop no longer starts a new part of the route: it sits inside its part, and the line goes on in the sport's colour after it.
+- Each part after a changeover or a night starts with the point you set off from, saying when you leave and the weather then.
+- A point's line says when you arrive or leave, "Arrive 10:27" or "Leave now", and the weather with icons for the sky and the wind. Start, End and Via 2 are no longer written there: the point's mark shows them, and a screen reader still hears them.
+- A stretch shows Check's warnings on it, as in "2 to read" or "1 not checked", and how much of it is in the dark, with a moon on its line where that begins.
+- On a desktop, hovering a stretch or a point shows how far along the route it is, when you're there, and the weather.
+
 ### The route as one line in the route's list ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - The route's list in **Route** draws the route as one line from the start to the end through every point's mark, each sport's part in its own colour, the colours the map and the profile use for the sports. Where the sport changes, or a night ends a day, the line breaks with dots.
