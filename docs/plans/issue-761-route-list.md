@@ -7,8 +7,8 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
 - **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
-- **Waiting:** the user's OK on **Parts 7**, the ninth round after PR 1 (below); the rounds before it stay in the mock-up to compare. PR 2 waits on it, since it rebuilds the section heads the line runs through.
-- **Next:** PR 2, the sport's row with its values.
+- **Decided (2026-11-04): Parts 7**, the ninth round after PR 1 (below), to build. The rounds before it stay in the mock-up to compare.
+- **Next:** PR 2 in the list at the end, the line, the parts' colours and their headings.
 
 ## What the user asked for (2026-11-04)
 
@@ -140,20 +140,39 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
 - "Worth a look" in the list, or only in Check?
 - Waits as parts of their own (Parts 2), or a point's tag (Parts)? Each part's start: under its heading (Parts 3), or its own row (Parts 4)?
 
-**The PRs, if Parts 7 is chosen:** each tried on the phone before the next, ahead of PR 2.
-1. The line, the parts' colours (a route of one sport's too), each part's heading with its totals, and the stretch's words: `pointRow()`, `stretchRow()` (the beads, the numbers as on the map), `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`, the dark list's sport colours; `sections` and `multi`.
-2. The waits as parts of their own, with their times and a night's sunset and sunrise (two new icons), each part's start row, the points' lines with Arrive, Leave and the weather's icons, the tooltips' weather, and Check's warnings on the stretches: `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
-3. Waypoints in the words, Waypoint n and Freehand, across the planner, with their checks.
-
 Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).
 
-## The PRs after the decision
+## The PRs from here
 
-Each small, each tried on the phone before the next, in this order unless the user says otherwise:
+Each small, each tried on the phone before the next, in this order unless the user says otherwise (rewritten on 2026-11-04 when Parts 7 was chosen; the first list's PR 2, 3, 4, 5 and 6 are 8, 6, 7, 9 and 10 here):
 
-1. **The stretch as a line, a point as a row:** `js/planner.js` `pointRow()`, `stretchRow()`, `sectionRows()`; the CSS of `wpl-point` and `wpl-strow`; the check in `tools/smoke.py` `sections` or `tabs` (the rows' order and words, the fold).
-2. **The sport's row with its values,** and How you go and Your speed out of the list's end: `sectionRows()`'s head, `renderHow()`/`speedRow()`, `openStep('how'|'speed')`; `keyfacts` or `sections`.
-3. **The foot in two rows: Reorder and Reverse, then Clear route,** Round trip, Back to start and Import gone from under the list, Reorder gone from the sport's row: `renderWaypoints()`'s `pointsFoot`; `tabs`. Reorder's view shows the sports too (an idea from testing, 2026-11-04, after #782): each stretch says its sport, and a changeover point stands out with the change and its minutes, as in "MTB → Paddle · 15 min". You see what a move does to the order of sports without leaving Reorder or opening a card. `reorderRows()`; `multi` or `sections`.
-4. **The desktop's tools in the row:** Rename (the `name-field` in the row's place), Remove, the grip's drag from the list (today's `dragRow()` in Reorder): `pointcard`-style checks for the hover and the keyboard, and that a finger never sees them.
-5. **The Add row:** search, your location and saved places from the list's end.
-6. **The bottom dock's two columns.**
+1. ~~**The stretch as a line, a point as a row**~~, #780, merged.
+2. **The line, the parts' colours and their headings:**
+   - the line through every mark;
+   - each part in its sport's colour, a route of one sport too, with the dark list's lighter colours;
+   - each part's heading, the sport's icon in its ring, with its totals;
+   - the stretch's numbers in bold over how it's drawn;
+   - the beads and the count by ⌄, and the marks numbered as on the map;
+   - a carry's word on its line (#779).
+
+   `pointRow()`, `stretchRow()`, `sectionRows()`, the CSS of `wpl-point`, `wpl-line` and `sec2-head`; `sections` and `multi`.
+3. **The waits as parts of their own:**
+   - a changeover, a stop and a night, with their times, and a night's sunset and sunrise (two new icons);
+   - each part's start row;
+   - the points' lines with Arrive, Leave and the weather's icons;
+   - the tooltips' weather on a desktop;
+   - Check's warnings on the stretches. This undoes #741's rule for the list, along with DEVELOPING's line and `sections`' "a warning once".
+
+   `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
+4. **The words:** waypoints, Waypoint n and Freehand across the planner: the toolbar's mode, the map's key, the cards, the toasts, an exported GPX's names, USING and the checks.
+5. **The foot:** Reorder and Reverse, then Clear route in red. Round trip, Back to start and Import leave it for ⋯ and the start's card. Export GPX and Save offline stay where they are, on the toolbar and in More, so nothing is in two places (#745). Reorder's view shows each stretch's sport and a changeover as "MTB → Paddle · 15 min". `renderWaypoints()`'s `pointsFoot`, `reorderRows()`; `tabs`, `multi`.
+6. **The desktop's tools in the row:**
+   - Rename (the `name-field` in the row's place) and Remove, shown on hover and on focus;
+   - the grip's drag from the list (today's `dragRow()` in Reorder).
+
+   A phone keeps the card's Rename and Remove, and Reorder. `pointcard`-style checks for the hover and the keyboard, and that a finger never sees them.
+7. **Each sport's How you go and Your speed from its part's heading,** out of the list's end. The heading has the totals now, so this needs a round in the mock-up first.
+8. **The Add row:** search, your location and saved places from the list's end.
+9. **The bottom dock's two columns.**
+
+Not checked in the mock-up yet: Reorder's view, unfolded waypoints on the line, the bottom dock.
