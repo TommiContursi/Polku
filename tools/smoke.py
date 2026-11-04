@@ -15533,7 +15533,9 @@ def sections_list(chrome):
             fails.append(f"{name}: six waypoints unfolded by a {'tap' if touch else 'click'}: {r!r} (want lg-in, 40 ms apart up to 120 ms, #761)")
         press(pg, at(pg, "polku.planner.els.points.querySelector('.wpl-unfold')"), f'{name}: fold', touch)
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').focus(); true")
-        key(pg, 'Enter', 'Enter', 13)
+        for ev in ({'type': 'keyDown', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, 'text': '\r'}, {'type': 'keyUp', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}):
+            pg.c.send('Input.dispatchKeyEvent', ev, pg.s)  # (with its text, so Enter presses the button, as key() doesn't)
+        time.sleep(0.4)
         r = [st(pg)['shapes'], pg.js(IN)]
         if r != [6, '']:
             fails.append(f"{name}: unfolded from the keyboard: {r} (want six rows, none coming in, #761)")
