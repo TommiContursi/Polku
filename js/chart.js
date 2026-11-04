@@ -185,7 +185,7 @@ export function routeReadout(a, i, road = '') {
   const trail = [];
   if (a.upCls[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.upCls[i]])}${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
   if (a.down6[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.down6[i]])}${MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0]}`);
-  trail.push((road ? `${escapeHtml(road)} · ` : '') + (a.surf[i] && a.surf[i] !== 'unknown' ? `${a.way[i]} · ${a.surf[i].replace('_', ' ')}` : a.way[i]));
+  trail.push((road ? `${escapeHtml(road)} · ` : '') + (a.surf[i] && a.surf[i] !== 'unknown' ? `${a.way[i]} · ${escapeHtml(a.surf[i].replace('_', ' '))}` : a.way[i]));
   // trail details where OSM has them
   if (a.td && a.td.trail[i]) {
     if (a.td.width[i] >= 0) trail.push(`${TRAIL_SCALES.width.labels[a.td.width[i] + 2]} wide`);
@@ -397,7 +397,7 @@ export class ProfileChart {
       if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
       if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
       const road = this.nameAt ? this.nameAt(i) : '';
-      rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${a.way[i]} · ${a.surf[i].replace('_', ' ')}`);
+      rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${a.way[i]} · ${escapeHtml(a.surf[i].replace('_', ' '))}`);
     }
     if (pastForecast(a, i)) rows.push('No forecast yet');
     else if (a.wind) {
