@@ -456,3 +456,57 @@ test('a stalled contributing archive still reaches fallback within one hosted de
     assert.deepEqual(result,{missing:true});assert.equal(fallback,1);
   } finally {clearTimeout(timer);globalThis.fetch=real;}
 });
+
+test('static reader decodes local schema 2 through real ranges, caches and distinguishes empty/coverage', async () => {
+  const geometryArchive = await readFile(new URL('../fixtures/osm-geometry.pmtiles', import.meta.url));
+  const { containsArea } = await import('../../js/osm-geometry.js');
+  const real = globalThis.fetch, calls = [];
+  const cover = (w, e) => ({ type: 'Polygon', coordinates: [[[w,-.3],[e,-.3],[e,.3],[w,.3],[w,-.3]]] });
+  const manifest = { schema: 1, release: 'geometry-fixture', bounds: [-.3,-.3,.3,.3], source: { timestamp: '2026-11-01T00:00:00Z' }, attribution: '© OpenStreetMap contributors',
+    datasets: { geometry: { kind: 'geometry', format: 'pmtiles-json', schema: 2, zoom: 13, bytes: geometryArchive.length, url: 'geometry.pmtiles',
+      bounds: [-.3,-.3,.3,.3], coverage: { type: 'GeometryCollection', geometries: [cover(-.3,0),cover(0,.3)] },
+      source: { timestamp: '2026-11-01T00:00:00Z' }, areas_complete: true, nearby_complete: true } } };
+  globalThis.fetch = async (url, init) => {
+    calls.push(String(url));
+    if (String(url).endsWith('current.json')) return Response.json(manifest);
+    const [start,end] = init.headers.Range.slice(6).split('-').map(Number), body = geometryArchive.subarray(start,end+1);
+    return new Response(body, { status: 206, headers: { 'Content-Range': `bytes ${start}-${end}/${geometryArchive.length}` } });
+  };
+  try {
+    const xy = lonLatToTile(.06,-.06,13).map(Math.floor), reader = new StaticOSM('https://data.example/geometry/current.json','geometry',13);
+    const [a,b] = await Promise.all([reader.tile(xy),reader.tile(xy)]);
+    assert.deepEqual(a,b); assert.equal(a.schema,2); assert.deepEqual(a.tile,[13,...xy]);
+    assert.equal(a.areas_complete,true); assert.equal(a.nearby_complete,true);
+    assert.equal(a.source.timestamp,manifest.source.timestamp); assert.equal(a.source.attribution,manifest.attribution);
+    assert.equal(containsArea(a.elements[0],a.tile,[.06,-.06]),true);
+    const count = calls.length; assert.deepEqual(await reader.tile(xy),a); assert.equal(calls.length,count);
+    const empty = await reader.tile(lonLatToTile(.25,-.25,13).map(Math.floor));
+    assert.deepEqual(empty.elements,[]); assert.equal(empty.schema,2); assert.equal(empty.areas_complete,true);
+    await assert.rejects(reader.tile([0,0]),/coverage/);
+    manifest.datasets.geometry.areas_complete = false;
+    const uncertain = await new StaticOSM('https://data.example/uncertain-geometry/current.json','geometry',13).tile(xy);
+    assert.equal(uncertain.areas_complete,false,'source completeness is not inferred from a successfully decoded tile');
+    const original = structuredClone(manifest.datasets.geometry);
+    for (const [name, change] of [
+      ['schema', d => { d.schema = 1; }],
+      ['coverage', d => { delete d.coverage; }],
+      ['kind', d => { delete d.kind; }],
+      ['flags', d => { delete d.areas_complete; }],
+      ['source', d => { delete d.source; }],
+    ]) {
+      manifest.datasets.geometry = structuredClone(original); change(manifest.datasets.geometry);
+      await assert.rejects(new StaticOSM(`https://data.example/bad-geometry-${name}/current.json`,'geometry',13).tile(xy),/dataset|metadata/);
+    }
+    manifest.datasets.geometry = { ...original, coverage: { type: 'GeometryCollection', geometries: [cover(-.3,-.000001),cover(.000001,.3)] } };
+    await assert.rejects(new StaticOSM('https://data.example/geometry-gap/current.json','geometry',13).tile([4096,4096]),/coverage/);
+    manifest.datasets.geometry = original;
+    manifest.datasets.duplicate = { ...original };
+    await assert.rejects(new StaticOSM('https://data.example/geometry-duplicate/current.json','geometry',13).tile(xy),/shared.*dataset/);
+    delete manifest.datasets.duplicate;
+    delete manifest.datasets.geometry;
+    const old = new StaticOSM('https://data.example/old-geometry/current.json','geometry',13), before = calls.length;
+    await assert.rejects(old.tile(xy),/dataset/);await assert.rejects(old.tile(xy),/dataset/);
+    assert.equal(calls.length,before+1,'old manifests stay pinned when an optional product is absent');
+    assert.ok(calls.every(u => u.startsWith('https://data.example/')),'no public fallback is hidden in the reader');
+  } finally { globalThis.fetch = real; }
+});

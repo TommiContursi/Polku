@@ -76,3 +76,19 @@ class HealthTests(unittest.TestCase):
         with patch.object(health.p,'check',return_value=live),patch.object(health.subprocess,'run',side_effect=browser):
             result=health.verify(self.root/'out')
         self.assertEqual(result['release'],'new');self.assertEqual(result['browser_cases'],32)
+
+    def test_extended_release_requires_geometry_url_and_both_profiles_area_checks(self):
+        for mode in ['ok','missing-url','missing-cases']:
+            with self.subTest(mode=mode):
+                live=pointer(self.m)
+                live['datasets']={str(i):{'url':'releases/new/'+str(i)+'.pmtiles'} for i in range(28)}
+                live['datasets']['geometry']={'url':'releases/new/geometry.pmtiles'}
+                def browser(*args,**kwargs):
+                    products={'network':[{'url':'https://data.example/polku-osm/'+d['url']} for k,d in live['datasets'].items() if mode!='missing-url' or k!='geometry']}
+                    row=dict(products,lighting={'network':[]},details={})
+                    checks=[{'complete':True}]*6 if mode!='missing-cases' else []
+                    json.dump({'cases':{'desktop':[row]*16,'phone_emulated':[row]*16},'geometry_checks':{'desktop':checks,'phone_emulated':checks}},kwargs['stdout'])
+                with patch.object(health.p,'check',return_value=live),patch.object(health.subprocess,'run',side_effect=browser):
+                    if mode=='ok':self.assertEqual(health.verify(self.root/mode)['archive_count'],29)
+                    else:
+                        with self.assertRaisesRegex(ValueError,'archives|geometry'):health.verify(self.root/mode)

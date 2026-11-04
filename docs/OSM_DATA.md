@@ -266,7 +266,7 @@ when `OSM_PUBLIC_URL` is configured, independently of unattended publication.
 Source age over 14 days, changed manifests and broken browser headers fail the
 job. It also exercises the actual deployed selection/detail consumers at 16
 locations in two browser profiles, forbidding normal covered Overpass calls
-and checking all 28 current archives. Browser work stops after 180 seconds;
+and checking every archive in the actual manifest (28 existing products, or 29 with shared geometry). An extended release additionally requires six lake/park containment cases in each browser profile. Browser work stops after 180 seconds;
 the monitor job has a ten-minute limit. Synthetic public sample coordinates
 are used; no saved user routes or positions are read.
 
@@ -372,9 +372,11 @@ An explicit path or trail/winter/water/lighting retry resets only that failed
 entry and shares one new manifest attempt, bypassing a network-down pause while
 honoring provider rate limits. Healthy pinned releases and cached tiles remain.
 
-## Full-tag inspection and area follow-up
+## Full-tag inspection and optional area geometry
 
 `inspection.pmtiles` (z14) includes all highways, existing point/place tag classes and supported detail objects, retaining original tags and way geometry. Complete referenced relation bounds supply centres; original member identities and roles remain. Incomplete generic relations retain exact tags but set dataset `nearby_complete:false`, so nearby queries fall back rather than claiming completeness. A relation centre alone cannot prove its members are within a 40 m search; an ambiguous closer relation uses the public query. Exact selected ways can already reuse the published ways product.
+
+The additive schema 2 compiler and static reader support one shared local geometry archive; see [the build instructions](../tools/osm_data/README.md#shared-reference-completion-and-optional-29th-archive). Source completion uses the same dated Europe export and exact country identity evidence, keeps downloads local in the app, and preserves the current release on failure. Published coverage still depends on the actual manifest and deployed consumers.
 
 Area selection remains on one 15-second public round. Its different data representation is tracked in [#696](https://github.com/TommiContursi/Polku/issues/696). The actual Finland geometry probe is in `docs/measurements/osm-areas-2026-11-02.json`: Saimaa's compact geometry alone is 4.67 MB gzip and has 654,393 points. Correct local transfers require clipped containment and nearby original outlines, with holes and incomplete relation geometry preserved. Whole-polygon repetition is not being shipped as a substitute.
 
