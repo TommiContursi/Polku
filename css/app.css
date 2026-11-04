@@ -1434,16 +1434,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-point.in-dash > span:first-child::before, .wpl-point.out-dash > span:first-child::after, .wpl-stretch.straight .wpl-line::before { background: repeating-linear-gradient(to bottom, var(--part) 0 6px, transparent 6px 10px); }
 .wpl-point.brk > span:first-child::after { left: calc(50% - 1.5px); width: 3px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 3px / 3px 6px repeat-y; }
 .wpl-point.shape b { font-weight: var(--weight-regular); }
-/* the places you chose (the start, a waypoint you see, a wait, the end) on a soft tint, so their rows don't run together
-   now they have no ›; a stretch and the waypoints it unfolds stay on the glass between them, those smaller and lighter,
-   as a leg's stops are in directions (#761). A finger keeps its 44 px row; an open card's row keeps its own colour. */
-.wpl .rows .row.wpl-point:not(.shape):not([aria-current="true"]), .wpl .rows > .row.wpl-wait { background: color-mix(in srgb, var(--text) 5%, transparent); }
-.wpl .rows .row.wpl-point:not(.shape):not(:first-child), .wpl .rows > .row.wpl-wait { margin-top: 4px; }
-@media (hover: hover) { .wpl .rows .row.wpl-point:not(.shape):not([aria-current="true"]):hover, .wpl .rows > .row.wpl-wait:hover, .wpl-ptrow:hover > .row.wpl-point:not(.shape):not([aria-current="true"]) { background: color-mix(in srgb, var(--text) 9%, transparent); } }
-.wpl .rows .row.wpl-point.shape { padding-block: 2px; }
-.wpl-point.shape b { font-size: 14px; color: var(--muted); }
-.wpl-point.shape .wp-mini { transform: scale(.75); }
-.wpl-point.shape small, .wpl-point.shape .wpl-warns > span { font-size: 12px; }
 /* a desktop's tools on a waypoint's row (#761): Rename, Remove and the grip at the far end, while a mouse is over the
    row or it has the focus; its words keep their room, so nothing moves under the pointer. No motion: they're there at
    once, and a drag follows the pointer as Reorder's does. */
