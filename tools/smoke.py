@@ -15168,6 +15168,9 @@ SE_STATE = """(() => {
     rows: [...s.querySelectorAll('.wpl-point, .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch') ? `~${b.textContent}` : `${b.dataset.i}:${b.textContent}`)) }));
   return { secs, reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn')].filter(vis).map((b) => b.textContent.trim()),
     rows: [...L.querySelectorAll('.wpl-row')].map((x) => x.dataset.i), shapes: [...L.querySelectorAll('.wpl-point.shape')].filter(vis).length,
+    list: [...L.querySelectorAll('.wpl-point:not(.shape), .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch')
+      ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '', differs: b.classList.contains('differs') }
+      : { at: b.dataset.i, line: [...b.querySelectorAll('small:not(.wpl-tag)')].map((x) => x.textContent).join(' ') })),
     kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.listScroller().scrollTop,
     short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
     slot: p.els.facts.querySelector('.kf-b.warn')?.textContent || null, text: L.textContent };
@@ -15228,8 +15231,25 @@ def sections_list(chrome):
     name, touch = '390x844', True
     pg = page(390, 844, True)
     try:
-        # MTB for three legs, then Paddle for three: two sections; the change of sport on its point's row
-        route(pg, name, {'pts': PTS})
+        # a point is a row and a plain stretch a line between two (#761): four MTB points along paths, each stretch's line
+        # its numbers alone (how it's drawn in its label), no point's line a distance; a straight leg says so first, set apart
+        route(pg, name, {'mode': 'auto', 'pts': PTS[:4], 'names': [[1, 'Hämeentie'], [2, 'Tihtaalinkatu']]})
+        for what, straight in (('four MTB points', None), ('a straight leg', '~1')):
+            if straight:
+                pg.js("polku.planner.setLegMode(1, 'line'); true")
+                time.sleep(1.0)
+                pg.js(SETTLED)
+            rows = st(pg)['list']
+            if [r['at'] for r in rows] != ['0', '~0', '1', '~1', '2', '~2', '3']:
+                fails.append(f"{name}: {what}: the rows {[r['at'] for r in rows]}")
+            for r in rows:
+                if 'line' in r and re.search(r'\d k?m\b(?!/)', r['line']):
+                    fails.append(f"{name}: {what}: point {r['at']}'s line has a distance: {r['line']!r}")
+                elif 'text' in r:
+                    want = 'Straight line' if r['at'] == straight else None
+                    ok = (r['text'].startswith(want) if want else r['text'][:1].isdigit() and 'Follow paths' not in r['text'] and 'Follow paths' in r['label'])
+                    if not ok or r['differs'] != bool(want) or not r['label'].startswith(r['text']):
+                        fails.append(f"{name}: {what}: stretch {r['at']}: {r} (want {want or 'its numbers alone'} first, its label starting with its words)")
         pg.js("polku.planner.setSportFrom(3, 'paddle'); true")
         time.sleep(1.0)
         s = st(pg)
@@ -16569,7 +16589,7 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
     return { first: first ? first.dataset.sec || first.className : '', seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
   },
   // the route's list said once (#764): no hint, a one-part route's heading beside Reorder with no numbers line under it,
-  // Start and End without their distance, and from the list's top the Start row in sight and the first stretch's title
+  // Start and End without their distance, and from the list's top the Start row and the first stretch in sight
   list() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
     // (a row's line: its time first, then the weather and its label at most, never a distance)
@@ -16578,7 +16598,7 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
     const seen = (e) => { const r = e?.getBoundingClientRect(); return !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1; }; // (the sheet's own foot: the body runs on under it)
     return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis(document.querySelector('.wpl-top .btn')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), warn: vis(L.querySelector('.warn-row')),
       start: line(start, `Leave ${p.leaveWords()}`), end: line(end, `There at ${p.clockOf(p.arriveAt(p.points.length - 1))}`),
-      seen: seen(start), stretch: seen(L.querySelector('.wpl-stretch b')) };
+      seen: seen(start), stretch: seen(L.querySelector('.wpl-stretch')) };
   },
   // How you go ›, then Back: the focus on its row, and the row in sight under the list (#740)
   async back() {
@@ -16648,7 +16668,7 @@ def tabs(chrome):
             r = pg.js("""(async () => { const p = polku.planner, ten = new Date(); ten.setHours(10, 0, 0, 0); if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
               p.setLeave(ten / 1000); p.setTab('route'); p.setSheetState('half'); await new Promise((ok) => setTimeout(ok, 800)); const r = TB.list(); p.setLeave(null); return r; })()""")
             if r != {'hint': False, 'nums': False, 'reorder': True, 'beside': True, 'warn': False, 'start': True, 'end': True, 'seen': True, 'stretch': True}:
-                fails.append(f"{name}: the route's list at half: {r} (want no hint, the heading beside Reorder without a numbers line, Start and End without their distance, Start and the first stretch's title in sight)")
+                fails.append(f"{name}: the route's list at half: {r} (want no hint, the heading beside Reorder without a numbers line, Start and End without their distance, Start and the first stretch in sight)")
         pg.js("(async () => { const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('left'); p.setSheetState(p.layout() === 'side' ? 'open' : 'full'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()")
         # How you go ›: the route style alone, with Back to Route; a preset there changes the row's value
         press(pg, at(pg, "TB.row('route', 'How you go')"), f'{name}: How you go', touch)
