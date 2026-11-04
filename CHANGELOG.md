@@ -10,7 +10,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - A stop no longer starts a new part of the route: it sits inside its part, and the line goes on in the sport's colour after it.
 - Each part after a changeover or a night starts with the point you set off from, saying when you leave and the weather then.
 - A point's line says when you arrive or leave, "Arrive 10:27" or "Leave now", and the weather with icons for the sky and the wind. Start, End and Via 2 are no longer written there: the point's mark shows them, and a screen reader still hears them.
-- A stretch shows Check's warnings on it, as in "2 to read" or "1 not checked", and how much of it is in the dark, with a moon on its line where that begins.
+- A stretch shows Check's warnings on it, as in "2 to read" or "1 not checked", and how much of it is in the dark, with a moon on its line where that begins. With its waypoints unfolded, each waypoint shows the warnings on the way to it too, so you can see where they are.
+- A stretch's card no longer lists a warning from the stretch before that ends where it begins.
 - On a desktop, hovering a stretch or a point shows how far along the route it is, when you're there, and the weather.
 
 ### The route as one line in the route's list ([#761](https://github.com/TommiContursi/Polku/issues/761))

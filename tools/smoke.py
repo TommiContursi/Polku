@@ -13694,9 +13694,10 @@ RC_ROUTER = """(() => {
     const prof = url.match(/[/]profile[/]([\\w-]+)/);
     if (prof) return new Response(JSON.stringify({ profileid: prof[1] }));
     if (window.rcHold) await window.rcHold;
-    // a straight line through the points with a vertex halfway, every stretch with the way's tags (window.rcTags)
+    // a straight line through the points with a vertex halfway, every stretch with the way's tags (window.rcTags, or
+    // what it says for the stretch's first [lng, lat])
     const ll = new URL(url).searchParams.get('lonlats').split('|').map((q) => q.split(',').map(Number)), c = [], msgs = [['Longitude', 'Latitude', 'WayTags']];
-    ll.forEach((q, i) => { if (i) { c.push([(ll[i - 1][0] + q[0]) / 2, (ll[i - 1][1] + q[1]) / 2]); msgs.push([Math.round(q[0] * 1e6), Math.round(q[1] * 1e6), window.rcTags]); } c.push(q); });
+    ll.forEach((q, i) => { if (i) { c.push([(ll[i - 1][0] + q[0]) / 2, (ll[i - 1][1] + q[1]) / 2]); msgs.push([Math.round(q[0] * 1e6), Math.round(q[1] * 1e6), typeof window.rcTags === 'function' ? window.rcTags(ll[i - 1]) : window.rcTags]); } c.push(q); });
     return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: msgs }, geometry: { type: 'LineString', coordinates: c } }] }));
   };
   window.rcTags = 'highway=path surface=dirt mtb:scale=1 sac_scale=hiking width=1';
@@ -15559,6 +15560,21 @@ def sections_list(chrome):
             if not re.search(want, tip or ''):
                 fails.append(f"{name}: the tooltip of {sel.split('querySelector(')[1][:-1]}: {tip!r}")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
+        # (#761) unfolded, a waypoint says the warnings on the way to it, as a stretch does: one between via 3 and via 4 is
+        # on via 4's row, in its label too, and on none of the others; with via 4 named, the stretch after it doesn't count it
+        pg.js("window.rcTags = (q) => (Math.abs(q[0] - 23.808) < 0.001 ? 'highway=footway bicycle=no surface=paved' : 'highway=path surface=dirt mtb:scale=1'); true")
+        route(pg, name, {'mode': 'auto', 'pts': PTS})
+        WARNS = "JSON.stringify([...polku.planner.els.points.querySelectorAll('.wpl-point, .wpl-stretch')].map((x) => `${x.dataset.i ?? `${x.dataset.from}-${x.dataset.to}`}:${x.querySelector('.wpl-warns')?.textContent || ''}`).filter((x) => !x.endsWith(':')))"
+        pg.js("polku.planner.els.points.querySelector('.wpl-unfold').click(); true")
+        got, lab = json.loads(pg.js(WARNS)), pg.js("polku.planner.els.points.querySelector('.wpl-point[data-i=\"4\"]')?.getAttribute('aria-label') || ''")
+        if got != ['0-6:1 to read', '4:1 to read'] or '1 to read' not in lab:
+            fails.append(f"{name}: unfolded, the warnings on the stretch and its waypoints: {got}, via 4's label {lab!r} (#761)")
+        pg.js("polku.planner.setName(4, 'Kivikko'); true")
+        time.sleep(0.8)
+        pg.js(SETTLED)
+        got = json.loads(pg.js(WARNS))
+        if got != ['0-4:1 to read', '4:1 to read']:
+            fails.append(f"{name}: with via 4 named, the warnings: {got} (#761)")
         # a mouse drags a row by its grip: via 2 to place 4 (Reorder)
         pg.js("window.rcTags = 'highway=path surface=dirt mtb:scale=1'; true")
         route(pg, name, {'pts': PTS, 'names': [[1, 'Kaupintie'], [2, 'Sorila'], [3, 'Lielahti']]})  # (named: points you see, with rows)

@@ -2974,11 +2974,12 @@ export class Planner {
       rows.append(this.pointRow(sec.from, ro, { w: wx(wAt(this.lengthTo(sec.from))), leave: k > 0 }));
       for (const s of sec.stretches) {
         rows.append(this.stretchRow(s, ro));
-        const pid = this.pidOf(this.points[s.from]);
-        if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, { shape: true }));
+        // (unfolded, each point says the warnings on the way to it, its end too)
+        const open = this.unfolded.has(this.pidOf(this.points[s.from]));
+        if (open) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, { shape: true, warns: true }));
         const end = s.to === sec.to, stop = !end && this.stopAt(s.to);
         // (where a part ends, or at a stop, the line breaks: dotted to the next part's heading, through the stop's wait)
-        rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop }));
+        rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop, warns: open }));
         if (stop) rows.append(this.waitRow(s.to, 'stop'));
       }
       // (each part's line in its sport's colour, the map's and the profile's Sport colours)
@@ -3000,17 +3001,20 @@ export class Planner {
   // (a forecast sample, or 'none' past its reach) the weather then, with its icons; Start, End and Via n are in its label,
   // the mark says them. `leave`: a part's first row after a changeover or a night, the point you set off from again.
   // Its line is dashed beside a straight leg, dotted below it where its part ends or at a stop (`brk`), none below the end.
-  pointRow(i, ro, { shape = false, w = null, leave = false, brk = false } = {}) {
+  // `warns`: in a stretch unfolded, the warnings on the way to it from the point before, as a stretch has its own.
+  pointRow(i, ro, { shape = false, w = null, leave = false, brk = false, warns = false } = {}) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), at = this.timesAt(i), out = i === 0 || leave;
     const when = i === 0 ? this.leaveWords() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
     const sky = this.wxOf(w, out ? at && at.leave : at && at.arrive, p);
     const bits = [when ? h('span', {}, `${out ? 'Leave' : 'Arrive'} ${when}`) : null, ...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
+    const ws = warns && i > 0 ? this.warnsOn({ from: i - 1, to: i }).warns : [];
     const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', last && !leave ? 'last' : '', brk ? 'brk' : '', !leave && line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
-    const b = h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent)].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+    const b = h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
       h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i))),
       // (the bits apart by the line's gap: the spaces between them only for the words read out, not drawn)
-      h('span', {}, h('b', { class: 'wpl-name' }, name), bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null),
+      h('span', {}, h('b', { class: 'wpl-name' }, name), bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null,
+        ws.length ? h('small', { class: 'wpl-warns', html: ws.join(' ') }) : null),
       h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
@@ -3079,13 +3083,8 @@ export class Planner {
     const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how, differs = how !== MODE_LABEL.auto || carry >= 1;
     const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid), beads = [];
     for (let j = 0, m = open ? 0 : Math.min(shaping, 3); j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
-    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), its = this.itemsOn(s).filter((it) => it.g !== 'look' && !this.isRead(it));
-    const nRead = its.filter((it) => it.g === 'read').length, nNot = its.length - nRead;
-    const dark = ((this.analysis && this.analysis.darkWarn) || []).filter((x) => !x.twilight && x.at < a1 && x.at + x.len > a0);
-    const darkM = dark.reduce((m, x) => m + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
-    if (darkM >= 50) beads.push(h('span', { class: 'moon', style: `top: ${(100 * (Math.max(a0, dark[0].at) - a0)) / Math.max(1, a1 - a0)}%`, html: icon('moon', 12) }));
-    const warns = [nRead ? `<span class="read">${icon('warnf', 14)}${nRead} to read</span>` : '', nNot ? `<span class="unk">${icon('unk', 14)}${nNot} not checked</span>` : '',
-      darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : ''].filter(Boolean);
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { warns, dark } = this.warnsOn(s);
+    if (dark) beads.push(h('span', { class: 'moon', style: `top: ${(100 * (Math.max(a0, dark) - a0)) / Math.max(1, a1 - a0)}%`, html: icon('moon', 12) }));
     // (its label starts with its words, so voice control finds it by them)
     const b = h('button', { type: 'button', class: `row wpl-stretch${differs ? ' differs' : ''}${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to),
       'aria-label': [words, says, ...warns.map((x) => x.replace(/<[^>]+>/g, ''))].join(', '), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
@@ -3105,6 +3104,18 @@ export class Planner {
     const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': open ? `Fold the ${shaping} shaping points` : `Show the ${shaping} shaping points`,
       onclick: () => { if (open) this.unfolded.delete(pid); else this.unfolded.add(pid); this.renderWaypoints(); } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
     return h('div', { class: 'wpl-strow' }, b, fold);
+  }
+  // Check's warnings on the way from point s.from to s.to, as Check says them (unread, what's to read and what isn't
+  // checked, as the key fact counts them, #741), and how much of it is in the dark: the words' HTML, and where along the
+  // route the dark begins (or 0)
+  warnsOn(s) {
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), its = this.itemsOn(s).filter((it) => it.g !== 'look' && !this.isRead(it));
+    const nRead = its.filter((it) => it.g === 'read').length, nNot = its.length - nRead;
+    const dark = ((this.analysis && this.analysis.darkWarn) || []).filter((x) => !x.twilight && x.at < a1 && x.at + x.len > a0);
+    const darkM = dark.reduce((m, x) => m + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
+    const warns = [nRead ? `<span class="read">${icon('warnf', 14)}${nRead} to read</span>` : '', nNot ? `<span class="unk">${icon('unk', 14)}${nNot} not checked</span>` : '',
+      darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : ''].filter(Boolean);
+    return { warns, dark: darkM >= 50 ? dark[0].at : 0 };
   }
   // a stretch under the mouse in the list: lit on the map, as a leg's row was
   lightStretchHover(s) {
@@ -3611,11 +3622,14 @@ export class Planner {
     for (let j = 1; j < c.length; j++) { const d = dist(c[j - 1], c[j]); if (at <= d) { const f = d ? at / d : 0; return [+(c[j - 1][0] + (c[j][0] - c[j - 1][0]) * f).toFixed(6), +(c[j - 1][1] + (c[j][1] - c[j - 1][1]) * f).toFixed(6)]; } at -= d; }
     return this.points[s.from];
   }
-  // what Check has on a stretch, the most serious first, then along the route (a whole route's isn't on one stretch)
+  // what Check has on a stretch, the most serious first, then along the route (a whole route's isn't on one stretch).
+  // One that ends where the stretch starts is the stretch's before (within a metre), and one at a point the next one's,
+  // the end's the last's, so a stretch never shows the one before's (#761)
   itemsOn(s) {
     if (!this.analysis || !s) return [];
-    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), rank = { read: 0, not: 1, look: 2 };
-    return (this.headsList || this.itemsAlong()).filter((x) => x.w.ranges !== null && x.w.at != null && x.w.at <= a1 && x.w.at + (x.w.len || 0) >= a0)
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), end = s.to === this.points.length - 1, rank = { read: 0, not: 1, look: 2 };
+    const on = (w) => (w.at < a1 - 1 || (end && w.at <= a1 + 1)) && (w.at + (w.len || 0) > a0 + 1 || w.at >= a0 - 1);
+    return (this.headsList || this.itemsAlong()).filter((x) => x.w.ranges !== null && x.w.at != null && on(x.w))
       .sort((x, y) => rank[x.g] - rank[y.g] || x.w.at - y.w.at);
   }
 

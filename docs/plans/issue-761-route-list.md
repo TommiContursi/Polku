@@ -17,6 +17,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
   - **As drawn in Parts 7.** Waits have their times, a night its sunset and sunrise (two new icons, `sunset` and `sunrise`), each part a start row, the points' lines Arrive and Leave with the weather's icons, and the warnings and the dark on the stretches.
   - **The sky's icon** uses the forecast's cloud cover, now carried along the route, by the timeline's own rule (`skyKind()`).
   - **The tooltips** are the app's own `tooltip()`, in words, so the weather is in words there, not icons.
+  - **Unfolded waypoints** say the warnings on the way to them, as a stretch does, so a warning shows where it is (from testing, 2026-11-04). A stretch no longer counts one that ends where it begins.
 - **Next:** PR 4, the words: waypoints, Waypoint n and Freehand.
 
 ## What the user asked for (2026-11-04)
@@ -146,7 +147,7 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
 
 **Open questions:**
 - ~~Which word for a straight stretch?~~ **Freehand**, chosen on 2026-11-04.
-- "Worth a look" in the list, or only in Check?
+- "Worth a look" in the list, or only in Check? Asked again from testing on 2026-11-04. Much of it the list already says its own way: Freehand's straight line, the gear left at a changeover, a short night; the stretch's card lists it all under Look out for.
 - Waits as parts of their own (Parts 2), or a point's tag (Parts)? Each part's start: under its heading (Parts 3), or its own row (Parts 4)?
 
 Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).
@@ -187,4 +188,4 @@ Each small, each tried on the phone before the next, in this order unless the us
    (Elsewhere: sunset and sunrise in the weather timeline is #788; the line filling up as you go is on #180, On the way.)
 9. **The bottom dock's two columns.**
 
-Not checked in the mock-up yet: Reorder's view, unfolded waypoints on the line, the bottom dock.
+Not checked in the mock-up yet: Reorder's view, the bottom dock. Unfolded waypoints were built in PR 3 without a mock-up: a waypoint's row as any other, with its warnings.
