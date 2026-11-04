@@ -1535,9 +1535,9 @@ STOPS = """(async () => {
   if (document.querySelectorAll('.wp-stop').length !== 2 || document.querySelectorAll('.wp-stop.night').length !== 1) errs.push(`stop badges: ${document.querySelectorAll('.wp-stop').length}`);
   p.reveal('points');
   await wait(200);
-  // Route's list (25d's part 4): the stop and the night on their points' rows; the night ends a day
+  // Route's list (25d's part 4): the stop and the night on their points' rows; the night ends a day, its tag with the morning's weather once it's in (#764)
   const tags = [...document.querySelectorAll('.wpl-point .wpl-tag')].map((x) => x.textContent);
-  if (tags.length !== 2 || !tags.some((t) => /^Stop · \\d+ min$/.test(t)) || !tags.some((t) => /^Night · go on at \\d\\d:\\d\\d$/.test(t)) || !/^Day 1 · /.test(document.querySelector('.wpl .sec2-head b')?.textContent || '')) errs.push(`stops in the waypoint list: ${tags.join(' / ') || 'none'}`);
+  if (tags.length !== 2 || !tags.some((t) => /^Stop · \\d+ min$/.test(t)) || !tags.some((t) => /^Night · go on at \\d\\d:\\d\\d( · (-?\\d+° · \\d+ m\\/s|No forecast yet))?$/.test(t)) || !/^Day 1 · /.test(document.querySelector('.wpl .sec2-head b')?.textContent || '')) errs.push(`stops in the waypoint list: ${tags.join(' / ') || 'none'}`);
   p.reveal('speed');
   await wait(200);
   const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
