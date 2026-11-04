@@ -6,7 +6,8 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
-- **Waiting:** PR 1 tried on the phone before PR 2.
+- **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
+- **Waiting:** a second design round, from testing PR 1 (below); PR 2 waits on it, since it rebuilds the section heads the line runs through.
 - **Next:** PR 2, the sport's row with its values.
 
 ## What the user asked for (2026-11-04)
@@ -38,7 +39,7 @@ Each small, each tried on the phone before the next, in this order unless the us
 
 1. **The stretch as a line, a point as a row:** `js/planner.js` `pointRow()`, `stretchRow()`, `sectionRows()`; the CSS of `wpl-point` and `wpl-strow`; the check in `tools/smoke.py` `sections` or `tabs` (the rows' order and words, the fold).
 2. **The sport's row with its values,** and How you go and Your speed out of the list's end: `sectionRows()`'s head, `renderHow()`/`speedRow()`, `openStep('how'|'speed')`; `keyfacts` or `sections`.
-3. **The foot in two rows: Reorder and Reverse, then Clear route,** Round trip, Back to start and Import gone from under the list, Reorder gone from the sport's row: `renderWaypoints()`'s `pointsFoot`; `tabs`.
+3. **The foot in two rows: Reorder and Reverse, then Clear route,** Round trip, Back to start and Import gone from under the list, Reorder gone from the sport's row: `renderWaypoints()`'s `pointsFoot`; `tabs`. Reorder's view shows the sports too (an idea from testing, 2026-11-04, after #782): each stretch says its sport, and a changeover point stands out with the change and its minutes, as in "MTB → Paddle · 15 min". You see what a move does to the order of sports without leaving Reorder or opening a card. `reorderRows()`; `multi` or `sections`.
 4. **The desktop's tools in the row:** Rename (the `name-field` in the row's place), Remove, the grip's drag from the list (today's `dragRow()` in Reorder): `pointcard`-style checks for the hover and the keyboard, and that a finger never sees them.
 5. **The Add row:** search, your location and saved places from the list's end.
 6. **The bottom dock's two columns.**
