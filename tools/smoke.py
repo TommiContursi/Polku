@@ -15269,6 +15269,27 @@ SE_STATE = """(() => {
 })()"""
 
 
+# The route's line (#761, Parts 7): each part's heading in the list with its sport's totals and its icon in a ring of
+# its colour; each stretch's numbers over how it's drawn, its line in its part's colour (dashed where straight), its
+# folded points beads on the line and a count by ⌄; where a part ends, the line dotted to the next; on the map, a
+# changeover's badge in the next sport's colour.
+SE_LINE = """(() => {
+  const p = polku.planner, L = p.els.points, vis = (e) => !!e && e.getClientRects().length > 0, ps = (e, w) => getComputedStyle(e, w);
+  const col = (v, at = L) => { const d = document.createElement('i'); d.style.color = v; at.append(d); const c = getComputedStyle(d).color; d.remove(); return c; };
+  return {
+    inTop: vis(p.els.pointsTop.querySelector('.sec2-head')),
+    heads: [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', sum: s.querySelector('.sec2-head small')?.textContent || '',
+      ring: !!s.querySelector('.sec2-head .ic') && ps(s.querySelector('.sec2-head .ic')).boxShadow.startsWith(col(getComputedStyle(s).getPropertyValue('--part') || 'transparent')) })),
+    stretches: [...L.querySelectorAll('.wpl-stretch')].filter(vis).map((b) => { const ln = b.querySelector('.wpl-line'), bf = ps(ln, '::before');
+      return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', line: bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
+        want: col(getComputedStyle(b.closest('.sec2')).getPropertyValue('--part') || 'transparent'), beads: ln.querySelectorAll('.bead').length, fold: b.parentElement.querySelector('.wpl-unfold')?.textContent.trim() ?? null }; }),
+    brk: [...L.querySelectorAll('.wpl-point')].filter((b) => /radial/.test(ps(b.firstElementChild, '::after').backgroundImage)).map((b) => b.dataset.i),
+    badges: [...document.querySelectorAll('.wp-sport')].map((e) => getComputedStyle(e).backgroundColor),
+    paddle: col('var(--sport-paddle)', document.body), mtb: col('var(--sport-mtb)'),
+  };
+})()"""
+
+
 def sections_list(chrome):
     fails, trail = [], []
 
@@ -15339,9 +15360,24 @@ def sections_list(chrome):
                     fails.append(f"{name}: {what}: point {r['at']}'s line has a distance: {r['line']!r}")
                 elif 'text' in r:
                     want = 'Straight line' if r['at'] == straight else None
-                    ok = (r['text'].startswith(want) if want else r['text'][:1].isdigit() and 'Follow paths' not in r['text'] and 'Follow paths' in r['label'])
-                    if not ok or r['differs'] != bool(want) or not r['label'].startswith(r['text']):
-                        fails.append(f"{name}: {what}: stretch {r['at']}: {r} (want {want or 'its numbers alone'} first, its label starting with its words)")
+            # (#761, Parts 7: the heading in the list with the totals; each stretch's numbers, then how it's drawn, its line
+            # in the sport's colour, dashed where straight; the label starts with the numbers)
+            ln = pg.js(SE_LINE)
+            if ln['inTop'] or [h['title'] for h in ln['heads']] != ['MTB'] or not ln['heads'][0]['sum'][:1].isdigit() or not ln['heads'][0]['ring']:
+                fails.append(f"{name}: {what}: the part's heading {ln['heads']}, beside Reorder {ln['inTop']} (want MTB in the list, its totals, its ring in its colour)")
+            for x in ln['stretches']:
+                straight_one = x['at'] == (straight or '')[1:]
+                want = 'Straight line' if straight_one else 'Follow paths'
+                lab = next((r['label'] for r in rows if r.get('at') == f"~{x['at']}"), '')
+                if not x['nums'][:1].isdigit() or not x['how'].startswith(want) or x['dash'] != straight_one or (not straight_one and x['line'] != x['want']) or x['want'] != ln['mtb'] or not lab.startswith(x['nums']):
+                    fails.append(f"{name}: {what}: stretch ~{x['at']}: {x}, label {lab!r} (want its numbers, then {want}, its line MTB's {ln['mtb']}{', dashed' if straight_one else ''}, its label starting with its numbers)")
+        # a carry over land on a paddling stretch says so after how it's drawn (#779)
+        route(pg, name, {'pts': PTS[:2]})
+        c = pg.js("""(() => { const p = polku.planner; p.setSportFrom(0, 'paddle'); const l = p.legs[0], [a, b] = p.points, m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+          l.result = { coords: [a, m, b], tags: [{}, { portage: 'yes', surface: 'ground' }], portage: [[1, 2]] }; p.renderWaypoints();
+          return p.els.points.querySelector('.wpl-stretch small')?.textContent || ''; })()""")
+        if not re.search(r'\bcarry \d', c):
+            fails.append(f"{name}: a carry on a paddling stretch: its line says {c!r}, not its carry (#779)")
         # MTB for three legs, then Paddle for three: two sections; the change of sport on its point's row
         route(pg, name, {'pts': PTS})
         pg.js("polku.planner.setSportFrom(3, 'paddle'); true")
@@ -15350,6 +15386,14 @@ def sections_list(chrome):
         titles = [x['title'] for x in s['secs']]
         if len(titles) != 2 or not titles[0].startswith('MTB') or not titles[1].startswith('Paddle'):
             fails.append(f'{name}: MTB then Paddle: sections {titles}')
+        # (#761: each part its totals and its colour, the line dotted where MTB ends; the map's badge in Paddle's colour)
+        ln = pg.js(SE_LINE)
+        if [h['title'] for h in ln['heads']] != ['MTB', 'Paddle'] or not all(h['sum'][:1].isdigit() and h['ring'] for h in ln['heads']) or ln['brk'] != ['3']:
+            fails.append(f"{name}: MTB then Paddle: headings {ln['heads']}, the line broken at {ln['brk']} (want both with their totals and rings, broken at 3)")
+        if [x['line'] == x['want'] for x in ln['stretches']] != [True] * len(ln['stretches']) or ln['stretches'][-1]['want'] != ln['paddle']:
+            fails.append(f"{name}: MTB then Paddle: the stretches' lines {[(x['at'], x['line'], x['want']) for x in ln['stretches']]} (Paddle {ln['paddle']})")
+        if ln['badges'] != [ln['paddle']]:
+            fails.append(f"{name}: the map's changeover badge {ln['badges']}, not Paddle's {ln['paddle']}")
         elif not any(r.startswith('3:') and 'Paddle from here' in r for r in s['secs'][0]['rows']):
             fails.append(f"{name}: the change of sport's row: {s['secs'][0]['rows']}")
         if s['short']:
@@ -15368,8 +15412,9 @@ def sections_list(chrome):
         route(pg, name, {'pts': [[23.790 + 0.004 * k, 61.512 + 0.0008 * (k % 2)] for k in range(8)]})
         s = st(pg)
         strs = [r for x in s['secs'] for r in x['rows'] if r.startswith('~')]
-        if len(strs) != 1 or 'via 6 shaping points' not in strs[0] or s['shapes']:
-            fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown")
+        ln = pg.js(SE_LINE)
+        if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(3, '6')]:
+            fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want 3 beads and 6 by ⌄)")
         press(pg, at(pg, "polku.planner.els.points.querySelector('.wpl-unfold')"), f'{name}: unfold', touch)
         s = st(pg)
         if s['shapes'] != 6:
@@ -16691,7 +16736,7 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
     const L = p.els.points, rows = [...L.querySelectorAll('.wpl-point')], start = rows[0], end = rows[rows.length - 1], b = p.els.body.getBoundingClientRect(), v = s.getBoundingClientRect();
     const first = L.querySelector('.wpl-stretch'); // (its first words: how it's drawn where it differs, else its numbers)
     const seen = (e) => { const r = e?.getBoundingClientRect(); return !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1; }; // (the sheet's own foot: the body runs on under it)
-    return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis(document.querySelector('.wpl-top .btn')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), warn: vis(L.querySelector('.warn-row')),
+    return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis(document.querySelector('.wpl-top .btn')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), head: vis(L.querySelector('.sec2 .sec2-head small')), warn: vis(L.querySelector('.warn-row')),
       start: line(start, `Leave ${p.leaveWords()}`), end: line(end, `There at ${p.clockOf(p.arriveAt(p.points.length - 1))}`),
       seen: seen(start), stretch: seen(first?.querySelector('b') || first?.querySelector('small')) };
   },
@@ -16762,8 +16807,8 @@ def tabs(chrome):
             # the route's list at half says things once (#764), leaving at 10:00 so no "In the dark" row comes between
             r = pg.js("""(async () => { const p = polku.planner, ten = new Date(); ten.setHours(10, 0, 0, 0); if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
               p.setLeave(ten / 1000); p.setTab('route'); p.setSheetState('half'); await new Promise((ok) => setTimeout(ok, 800)); const r = TB.list(); p.setLeave(null); return r; })()""")
-            if r != {'hint': False, 'nums': False, 'reorder': True, 'beside': True, 'warn': False, 'start': True, 'end': True, 'seen': True, 'stretch': True}:
-                fails.append(f"{name}: the route's list at half: {r} (want no hint, the heading beside Reorder without a numbers line, Start and End without their distance, Start and the first stretch's first words in sight)")
+            if r != {'hint': False, 'nums': False, 'reorder': True, 'beside': False, 'head': True, 'warn': False, 'start': True, 'end': True, 'seen': True, 'stretch': True}:
+                fails.append(f"{name}: the route's list at half: {r} (want no hint, the part's heading in the list with its totals (#761), Start and End without their distance, Start and the first stretch's first words in sight)")
         pg.js("(async () => { const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('left'); p.setSheetState(p.layout() === 'side' ? 'open' : 'full'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()")
         # How you go ›: the route style alone, with Back to Route; a preset there changes the row's value
         press(pg, at(pg, "TB.row('route', 'How you go')"), f'{name}: How you go', touch)
