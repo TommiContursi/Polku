@@ -84,7 +84,7 @@ export function initInspector(map, app) {
   map.on('touchstart', () => { lastTouch = Date.now(); openAtPress = app.cardOpen(); });
   map.on('click', async (e) => {
     if (app.isPlanning(e)) return; // (the planner's: drawing, or something it took in the route's view)
-    const touch = Date.now() - lastTouch < 800;
+    const touch = e.originalEvent?.pointerType === 'touch' || e.originalEvent?.sourceCapabilities?.firesTouchEvents || Date.now() - lastTouch < 800;
     // a finger beside an open card closes it; another tap opens the next one
     if (touch && openAtPress) { openAtPress = false; app.closeCard(); return; }
     const box = hitBox(e.point, touch);

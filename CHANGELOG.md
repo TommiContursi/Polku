@@ -16,6 +16,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Between two points, the stretch is a thin line with its distance, time and climb in small type, as in "2.1 km · 7 min · ↑12 m", and the shaping points it folds, with **⌄** to show them. A tap on it opens the stretch's card, as before.
 - A stretch that isn't drawn along paths says how first, with its icon, and its words and its line are green: "Straight line", "Over water", or a route's own line from LIPAS or a file. A stretch along paths no longer says "Follow paths" on its line; a screen reader still hears it.
 
+### A delayed phone tap still opens the selection line ([#781](https://github.com/TommiContursi/Polku/issues/781))
+
+- A quick tap on a path keeps the phone's selection line first even when the page is busy processing the click, instead of opening the full card as though you had clicked with a mouse.
+
 ### A warning in the key fact's place ([#741](https://github.com/TommiContursi/Polku/issues/741))
 
 - When Check finds something to read before you go, the line under the route's numbers says how many, as in "2 to read before you go", in Check's red warning box, in place of the route's key fact such as **Hardest climb**. A tap on it opens Check at the first, with its card.
