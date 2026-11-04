@@ -1390,7 +1390,8 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wp-mini.wp-end::after { width: 6px; height: 6px; }
 .wpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wpl-main small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.wpl-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.wpl-foot { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px; }
+.wpl-foot .foot-l { display: flex; flex-wrap: wrap; gap: 6px; }
 .wpl-foot:empty { display: none; }
 .tool.small { width: 28px; height: 28px; }
 /* Route's list in sections (25d's part 4, Revision 5 [jd-multi]): a section's title, its numbers, its warnings, then

@@ -2891,17 +2891,16 @@ export class Planner {
     // the route's view (25c): the same sections, without Reorder; a point's card still edits it (#745)
     const ro = this.inView();
     if (ro || n < 2) this.reordering = false;
-    const loops = roundTripSports.includes(this.app.activity());
-    // (Reorder under the list, first (#761's PR 2, brought forward from its foot): the parts' headings take the row it had,
-    // and at half on a phone the start and the first stretch stay in sight; while reordering it's Done, in the same place)
-    this.els.pointsFoot.replaceChildren(...[
+    // under the list (#761): Reorder and Reverse, then Clear route in red, with Undo in its note as ever. Reorder's place
+    // stays put while reordering, as Done, and at half on a phone the start and the first stretch stay in sight. Round
+    // trip, Back to start and Import are in ⋯ and the route's cards, so they're not here too (#745).
+    const first = [
       n >= 2 && !ro ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); this.els.pointsFoot.querySelector('[aria-pressed]')?.focus(); },
         html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder') : null,
-      loops ? h('button', { type: 'button', class: 'btn', title: 'Loops of the length you choose, from your start', onclick: () => this.openLoop(), html: `${icon('roundtrip', 16)} Round trip` }) : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The end becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
-      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'Route back to where you started', disabled: this.isLoop(), onclick: () => this.backToStart(), html: `${icon('loop', 16)} Back to start` }) : null,
-      h('button', { type: 'button', class: 'btn', title: 'Import a GPX or KML file (or drop it on the map)', onclick: () => $('#file-input').click(), html: `${icon('upload', 16)} Import` }),
-    ].filter(Boolean)); // (replaceChildren would write a null as "null")
+    ].filter(Boolean); // (replaceChildren would write a null as "null")
+    this.els.pointsFoot.replaceChildren(...[first.length ? h('div', { class: 'foot-l' }, ...first) : null,
+      n ? h('button', { type: 'button', class: 'btn danger-text', title: 'Undo brings it back', onclick: () => this.clear(), html: `${icon('trash', 16)} Clear route` }) : null].filter(Boolean));
     // what had the focus, found again in the list drawn anew (a row by its point or stretch, a button by its words)
     const was = box.contains(document.activeElement) ? document.activeElement : null;
     const wasKey = was && (was.dataset.i != null ? `i${was.dataset.i}` : was.dataset.from != null ? `s${was.dataset.from}${was.classList.contains('wpl-unfold') ? 'u' : ''}` : was.textContent.trim());
@@ -3136,16 +3135,18 @@ export class Planner {
   }
 
   // Reorder [jd-reorder]: every point with its grip, Earlier and Later. A mouse drags by the grip; a finger holds the
-  // row 0.45 s first, so a scroll never drags. Each move is one step of Undo.
+  // row 0.45 s first, so a scroll never drags. Each move is one step of Undo. On a route of more than one sport the
+  // start says its sport and a changeover its change, "MTB → Paddle · 15 min" (#761), so a move shows where it goes.
   reorderRows(box) {
-    const n = this.points.length, loop = this.isLoop();
+    const n = this.points.length, loop = this.isLoop(), many = this.isMulti(), sp = (k) => ACTIVITIES[k].label;
     this.points.forEach((p, i) => {
-      const last = i === n - 1, name = this.nameOf(i), lab = this.label(i);
+      const last = i === n - 1, name = this.nameOf(i), lab = this.label(i), ch = many && this.changeAt(i);
+      const sport = !many ? '' : i === 0 ? sp(this.legSport(0)) : ch ? `${sp(ch.from)} → ${sp(ch.to)}${ch.min ? ` · ${ch.min} min` : ''}` : '';
       const btn = (ic, label, fn, disabled) => h('button', { type: 'button', class: 'tool', 'aria-label': label, title: label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 18) });
       const row = h('li', { class: 'wpl-row', 'data-i': String(i) },
         h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
         h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
-        h('span', { class: 'wpl-main' }, h('b', { class: 'wpl-name' }, name), h('small', {}, [fmtDist(i ? this.lengthTo(i) : 0), name === lab ? '' : lab].filter(Boolean).join(' · '))),
+        h('span', { class: 'wpl-main' }, h('b', { class: 'wpl-name' }, name), h('small', {}, [fmtDist(i ? this.lengthTo(i) : 0), name === lab ? '' : lab, sport].filter(Boolean).join(' · '))),
         btn('chevronUp', `Move ${name} earlier`, () => this.movePointTo(i, i - 1), i === 0),
         btn('chevronDown', `Move ${name} later`, () => this.movePointTo(i, i + 1), last));
       row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') this.dragRow(e, row, i); });

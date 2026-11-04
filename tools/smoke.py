@@ -1522,10 +1522,15 @@ MULTI_REORDER = """(async () => {
   expect('Undo after Alt+↑', ALL);
   [...document.querySelectorAll('.wpl-foot .btn')].find((b) => b.textContent.trim() === 'Reorder').click();
   await wait(250);
+  // (#761) Reorder's rows say the start's sport and each change, with its minutes; and the change goes with its point
+  const says = () => [...document.querySelectorAll('.wpl-row small')].map((x) => x.textContent.split(' · ').slice(1).filter((t) => !/^(Start|End|Waypoint \\d+)$/.test(t)).join(' · ')).join(' / ');
+  const SAYS = 'MTB /  / MTB → Paddle · 7 min /  / Paddle → Run · 10 min / ';
+  if (says() !== SAYS.replace('10 min', `${p.changeAt(4).min} min`)) errs.push(`Reorder's rows say ${says()}`);
   // the changeover earlier: you paddle from Ranta, with its 7 minutes and the gear taken along
   await move('Ranta', 'earlier');
   expect('Ranta earlier', 'Talli mtb Ranta paddle Mäki paddle Saari paddle Laituri run Kylä');
   if (ranta() !== '7 min, taken along') errs.push(`Ranta earlier: its changeover ${ranta()}`);
+  if (says().split(' / ')[1] !== 'MTB → Paddle · 7 min') errs.push(`Reorder's rows after Ranta earlier: ${says()}`);
   // and earlier again: the start now, so the route starts paddling and MTB is gone; a note says so, with Undo
   await move('Ranta', 'earlier');
   expect('Ranta the start', 'Ranta paddle Talli paddle Mäki paddle Saari paddle Laituri run Kylä');
@@ -4349,7 +4354,8 @@ DRAWER = """(async () => {
   // Route: the tools out of ⋯, How you go with the style and the speeds (its two steps, #424's C)
   p.setTab('route'); await wait(100);
   const foot = [...p.els.pointsFoot.querySelectorAll('button')].map(txt);
-  for (const b of ['Round trip', 'Reverse', 'Back to start', 'Import']) if (!foot.includes(b)) errs.push(`Route lacks ${b}: ${foot.join(', ')}`);
+  // (#761) under the list Reorder and Reverse, then Clear route; Round trip, Back to start and Import are in More (below)
+  if (foot.join() !== 'Reorder,Reverse,Clear route') errs.push(`Route's foot: ${foot.join(', ')} (want Reorder, Reverse, Clear route)`);
   if (foot.includes('All leg settings')) errs.push('Route still has All leg settings (25d’s part 4: each stretch has Edit this stretch)');
   const how = document.querySelector('[data-sec=style]');
   if (!how.querySelector('.style-presets') || !how.querySelector('.speed-wrap .speed-box').children.length) errs.push('How you go lacks the style or the speeds');
