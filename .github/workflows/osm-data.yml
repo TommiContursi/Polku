@@ -6,6 +6,8 @@ on:
     paths:
       - 'tools/osm_data/**'
       - 'js/osm-data.js'
+      - 'js/osm-geometry.js'
+      - 'tools/fixtures/osm-*'
       - '.github/workflows/osm-data.yml'
   schedule:
     - cron: '17 3 * * 1'
@@ -105,7 +107,7 @@ jobs:
       stamp: ${{ steps.snapshot.outputs.stamp }}
     steps:
       - id: snapshot
-        name: Pick a completed dated export shared by every country
+        name: Pick a completed dated export shared by every country and Europe
         run: |
           for osm_days in 1 2; do
             osm_stamp=$(date -u -d "$osm_days days ago" +%y%m%d)
@@ -113,13 +115,14 @@ jobs:
             for osm_country in finland sweden norway estonia; do
               curl --head --fail --silent --location --max-time 20 "https://download.geofabrik.de/europe/$osm_country-$osm_stamp.osm.pbf.md5" -o /dev/null || osm_ready=false
             done
+            curl --head --fail --silent --location --max-time 20 "https://download.geofabrik.de/europe-$osm_stamp.osm.pbf.md5" -o /dev/null || osm_ready=false
             if $osm_ready; then
               echo "stamp=$osm_stamp" >> "$GITHUB_OUTPUT"
               echo "Shared dated snapshot: $osm_stamp" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
           done
-          echo 'No completed common country snapshot within two days' >&2
+          echo 'No completed common country/reference snapshot within two days' >&2
           exit 1
 
   build:
@@ -196,6 +199,17 @@ jobs:
             osm-build/release/manifest.json
           if-no-files-found: ignore
           retention-days: 14
+      - name: Retain small geometry inputs without copying country archives
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-geometry-inputs
+          path: |
+            osm-build/release/manifest.json
+            osm-build/release/identities.jsonl.gz
+            osm-build/release/geometry-roots.jsonl.gz
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: osm-${{ matrix.country }}-release
@@ -213,8 +227,78 @@ jobs:
           compression-level: 0
           retention-days: 14
 
+  geometry:
+    needs: [snapshot, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          pattern: osm-*-geometry-inputs
+          path: osm-build/inputs
+      - name: Check actual disk against the dated reference size and staging reserve
+        env:
+          SOURCE_URL: https://download.geofabrik.de/europe-${{ needs.snapshot.outputs.stamp }}.osm.pbf
+        run: |
+          df -h .
+          python - <<'PYCODE'
+          import json,os,shutil,urllib.request
+          with urllib.request.urlopen(urllib.request.Request(os.environ['SOURCE_URL'],method='HEAD'),timeout=30) as r:
+              size=int(r.headers.get('Content-Length',0))
+          free=shutil.disk_usage('.').free
+          print(json.dumps({'source_bytes':size,'free_bytes':free,'staging_reserve_bytes':25*1024**3}))
+          assert size>0 and free>=size+25*1024**3, 'Insufficient reference download/staging disk on this runner'
+          PYCODE
+      - name: Download dated reference and checksum
+        env:
+          SOURCE_URL: https://download.geofabrik.de/europe-${{ needs.snapshot.outputs.stamp }}.osm.pbf
+        run: |
+          curl --fail --location --retry 3 --connect-timeout 30 --max-time 3600 "$SOURCE_URL" -o osm-build/europe.osm.pbf
+          curl --fail --location --retry 3 --max-time 60 "$SOURCE_URL.md5" -o osm-build/europe.md5
+          df -h .
+      - name: Complete original references and compile local geometry
+        env:
+          SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
+        run: |
+          /usr/bin/time -v python -m tools.osm_data.geometry_source osm-build/europe.osm.pbf osm-build/geometry osm-build/inputs/osm-finland-geometry-inputs osm-build/inputs/osm-sweden-geometry-inputs osm-build/inputs/osm-norway-geometry-inputs osm-build/inputs/osm-estonia-geometry-inputs --md5 osm-build/europe.md5 --snapshot "$SNAPSHOT" --remove-source
+          test ! -f osm-build/europe.osm.pbf
+          df -h .
+      - name: Geometry measurements
+        if: always()
+        run: |
+          df -h .
+          if test -f osm-build/geometry/measurements.json; then
+            echo '### Shared OSM geometry build' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat osm-build/geometry/measurements.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-geometry-evidence
+          path: |
+            osm-build/geometry/manifest.json
+            osm-build/geometry/measurements.json
+          retention-days: 14
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-shared-geometry
+          path: osm-build/geometry/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+
   bundle:
-    needs: build
+    needs: [build, geometry]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -231,9 +315,13 @@ jobs:
         with:
           pattern: osm-*-release
           path: osm-build/countries
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: osm-shared-geometry
+          path: osm-build/geometry
       - name: Validate source epoch and all overlapping original object identities
         run: |
-          python -m tools.osm_data.bundle osm-build/release osm-build/countries/osm-finland-release osm-build/countries/osm-sweden-release osm-build/countries/osm-norway-release osm-build/countries/osm-estonia-release
+          python -m tools.osm_data.bundle osm-build/release osm-build/countries/osm-finland-release osm-build/countries/osm-sweden-release osm-build/countries/osm-norway-release osm-build/countries/osm-estonia-release --geometry osm-build/geometry
           df -h .
       - name: Verify the combined reader and browser transfers
         env:

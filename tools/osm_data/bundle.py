@@ -1,7 +1,6 @@
 """Assemble four independently built country archives without concatenating duplicate OSM objects."""
 import argparse
 from datetime import datetime, timezone
-import gzip
 import hashlib
 import heapq
 import json
@@ -11,27 +10,15 @@ import re
 import tempfile
 import time
 
-from tools.osm_data.builder import COUNTRIES, PRODUCT_ZOOMS, LICENSE_TEXT, file_record, json_bytes
+from tools.osm_data.builder import COUNTRIES, PRODUCT_ZOOMS, LICENSE_TEXT, file_record, json_bytes, identity_rows
 from tools.osm_data.publish import local_release, validate
+from tools.osm_data.geometry_source import load_inputs, input_receipt
+from pmtiles.reader import Reader, MmapSource
+from pmtiles.tile import Compression, TileType
 
 
-def identity_rows(path, country):
-    previous = None
-    with gzip.open(path, 'rb') as stream:
-        while line := stream.readline(1024):
-            row = json.loads(line)
-            if (len(line) >= 1024 or not isinstance(row,list) or len(row)!=3 or
-                row[0] not in {'node','way','relation'} or type(row[1]) is not int or
-                row[1] <= 0 or not re.fullmatch('[a-f0-9]{64}',row[2])):
-                raise ValueError('Invalid object identity evidence')
-            key=(row[0],row[1])
-            if previous is not None and key <= previous:
-                raise ValueError('Object identity evidence is not unique and sorted')
-            previous=key
-            yield key,row[2],country
 
-
-def bundle(releases, output):
+def bundle(releases, output, *, geometry=None):
     started=time.monotonic()
     output=Path(output)
     if output.exists():raise FileExistsError(output)
@@ -49,6 +36,26 @@ def bundle(releases, output):
     if len(stamps)!=1:raise ValueError('Country source timestamps differ; build one consistent OSM epoch')
     stamp=next(iter(stamps))
     if not datetime.fromisoformat(stamp.replace('Z','+00:00')).tzinfo:raise ValueError('Invalid source timestamp')
+    shared = None
+    if geometry is not None:
+        geo_root = Path(geometry)
+        _,geo = local_release(geo_root)
+        expected_inputs = load_inputs([p for p,_ in inputs.values()])
+        expected_coverage = {'type':'GeometryCollection','geometries':[inputs[c][1]['coverage'] for c in COUNTRIES]}
+        d = geo.get('datasets',{}).get('geometry',{})
+        if (set(geo.get('datasets',{}))!={'geometry'} or geo.get('inputs')!=input_receipt(expected_inputs) or
+            geo['source']['timestamp']!=stamp or not re.fullmatch(r'https://download\.geofabrik\.de/europe-(latest|[0-9]{6})\.osm\.pbf',geo['source']['url']) or
+            d.get('kind')!='geometry' or d.get('format')!='pmtiles-json' or d.get('schema')!=2 or d.get('zoom')!=13 or
+            d.get('source')!=geo['source'] or d.get('coverage')!=expected_coverage or geo.get('coverage')!=expected_coverage or
+            d.get('areas_complete') is not True or d.get('nearby_complete') is not True):
+            raise ValueError('Geometry does not match the complete same-epoch country inputs')
+        with (geo_root/d['url']).open('rb') as stream:
+            reader = Reader(MmapSource(stream));header=reader.header();metadata=reader.metadata()
+            if (header['min_zoom']!=13 or header['max_zoom']!=13 or header['tile_type']!=TileType.UNKNOWN or
+                header['tile_compression']!=Compression.GZIP or header['addressed_tiles_count']!=d.get('tiles') or
+                metadata.get('schema')!=2 or metadata.get('source')!=geo['source']):
+                raise ValueError('Invalid geometry archive header or provenance')
+        shared = geo_root,geo
     overlap={'unique':0,'duplicates':0,'pairs':{}}
     previous=None
     for key,digest,country in heapq.merge(*(identity_rows(inputs[c][0]/'identities.jsonl.gz',c) for c in COUNTRIES)):
@@ -68,14 +75,21 @@ def bundle(releases, output):
             if not m.get('coverage'):raise ValueError('Country clipping coverage is required')
             sources.append({'country':country,**m['source']})
             for record in m['files']:
-                if record['path'] in {'identities.jsonl.gz','LICENSE.txt'}:continue
+                if record['path'] in {'identities.jsonl.gz','geometry-roots.jsonl.gz','LICENSE.txt'}:continue
                 # Inputs and output live on one CI filesystem; links avoid a second archive-sized copy.
                 os.link(root/record['path'],stage/(country+'-'+record['path']))
             for name,d in m['datasets'].items():
                 key=name if country=='finland' else country+'-'+name
                 datasets[key]={**d,'url':country+'-'+d['url'],'kind':name,'country':country,
                                'bounds':m['bounds'],'coverage':m['coverage'],'source':m['source']}
-        (stage/'LICENSE.txt').write_text(LICENSE_TEXT+'\nSources:\n'+'\n'.join(s['url'] for s in sources)+'\n')
+        if shared:
+            geo_root,geo = shared
+            d = geo['datasets']['geometry']
+            os.link(geo_root/d['url'],stage/'geometry.pmtiles')
+            os.link(geo_root/'measurements.json',stage/'geometry-measurements.json')
+            datasets['geometry'] = {**d,'url':'geometry.pmtiles'}
+        reference = ('\nLocal schema 2 geometry contains original fragments and containment seeds. Reference source: '+shared[1]['source']['url']+'\n') if shared else ''
+        (stage/'LICENSE.txt').write_text(LICENSE_TEXT+'\nSources:\n'+'\n'.join(s['url'] for s in sources)+'\n'+reference)
         (stage/'measurements.json').write_bytes(json_bytes({'bundle_seconds':time.monotonic()-started,
             'overlap':overlap,'archive_bytes':sum(d['bytes'] for d in datasets.values()),
             'countries':{c:json.loads((p/'measurements.json').read_bytes()) if (p/'measurements.json').exists() else {} for c,(p,_) in inputs.items()}})+b'\n')
@@ -86,6 +100,7 @@ def bundle(releases, output):
            'source':finland['source'],'sources':sources,'bounds':finland['bounds'],'coverage':finland['coverage'],
            'datasets':datasets,'overlap':overlap,'attribution':finland['attribution'],'license':finland['license'],
            'files':[file_record(p) for p in sorted(stage.iterdir())]}
+        if shared:m['geometry_inputs']=shared[1]['inputs']
         validate(m)
         (stage/'manifest.json').write_bytes(json_bytes(m)+b'\n')
         os.rename(stage,output)
@@ -96,9 +111,10 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output',type=Path)
     parser.add_argument('releases',nargs=4,type=Path)
+    parser.add_argument('--geometry',type=Path,help='same-epoch verified shared geometry release')
     args=parser.parse_args()
-    m=bundle(args.releases,args.output)
-    print(json.dumps({'release':m['release'],'overlap':m['overlap'],'datasets':{k:{'bytes':d['bytes'],'country':d['country']} for k,d in m['datasets'].items()}},indent=2))
+    m=bundle(args.releases,args.output,geometry=args.geometry)
+    print(json.dumps({'release':m['release'],'overlap':m['overlap'],'datasets':{k:{'bytes':d['bytes'],'country':d.get('country')} for k,d in m['datasets'].items()}},indent=2))
 
 
 if __name__=='__main__':main()

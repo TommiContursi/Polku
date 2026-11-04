@@ -63,7 +63,7 @@ local workstation. Record peak RAM, allocated disk, runtime and all output sizes
 - tools/osm_data/builder.py: keep existing products; collect/export original root
   IDs/purposes/digests during callbacks. Shared predicates/serialization may move
   to geometry.py and be imported directly, preserving current consumers.
-- tools/osm_data/geometry.py CLI: trusted country geometry inputs + source PBF/MD5/
+- tools/osm_data/geometry_source.py CLI: trusted country geometry inputs + source PBF/MD5/
   dated snapshot -> validated filtered subset -> measured shared geometry artifact.
   All writes stay inside fresh staging; existing outputs are refused.
 - tools/osm_data/bundle.py: verify geometry inputs/epoch/hashes, combine the one
@@ -132,7 +132,7 @@ Tiny XML/PBF/PMTiles fixtures may be added under tools/fixtures; no country data
 
 ### Task2: export/complete/verify source geometry once
 
-Files: builder.py, geometry.py, bundle.py, test_builder.py/test_geometry.py/
+Files: builder.py, geometry_source.py, geometry.py, bundle.py, test_builder.py/test_geometry.py/
 test_countries.py, .github/workflows/osm-data.yml, operating/build docs.
 Interface: root purpose/digest catalog + current identity evidence -> same-epoch
 reference-complete subset -> one shared schema2 geometry artifact + provenance.
