@@ -320,9 +320,11 @@ export function tooltip(el, { name, keys = '', text = '', beside = false }) {
     tipEl.hidden = false;
     el.setAttribute('aria-describedby', 'tip');
     const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, th = tipEl.offsetHeight;
-    if (beside && r.right + 8 + w <= innerWidth - 8) {
-      // a row in a list: beside it, so it never covers the next row (the route's list, #761)
-      tipEl.style.left = `${r.right + 8}px`;
+    const side = beside instanceof Element ? beside.getBoundingClientRect() : r;
+    if (beside && side.right + 8 + w <= innerWidth - 8) {
+      // a row in a list: beside it (`beside` the whole row, its buttons too), so it never covers the next row nor the
+      // row's own buttons (the route's list, #761)
+      tipEl.style.left = `${side.right + 8}px`;
       tipEl.style.top = `${Math.max(8, Math.min(innerHeight - 8 - th, r.top + r.height / 2 - th / 2))}px`;
       tipEl.style.transformOrigin = `0 ${th / 2}px`;
       return;

@@ -15421,6 +15421,8 @@ def sections_list(chrome):
         # a point is a row and a plain stretch a line between two (#761): four MTB points along paths, each stretch's line
         # its numbers alone (how it's drawn in its label), no point's line a distance; a straight leg says so first, set apart
         route(pg, name, {'mode': 'auto', 'pts': PTS[:4], 'names': [[1, 'Hämeentie'], [2, 'Tihtaalinkatu']]})
+        if pg.js("polku.planner.els.points.querySelectorAll('.wpl-tools, .wpl-ptrow').length"):
+            fails.append(f"{name}: a phone's rows have a desktop's tools (#761)")
         for what, straight in (('four MTB points', None), ('a straight leg', '~1')):
             if straight:
                 pg.js("polku.planner.setLegMode(1, 'line'); true")
@@ -15641,6 +15643,9 @@ def sections_list(chrome):
             tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()")
             if not re.search(want, tip or ''):
                 fails.append(f"{name}: the tooltip of {sel.split('querySelector(')[1][:-1]}: {tip!r}")
+            # (a stretch's: beside its row, clear of the row's ⌄, #761)
+            if '.wpl-stretch' in sel and pg.js("(() => { const t = document.getElementById('tip').getBoundingClientRect(), u = polku.planner.els.points.querySelector('.wpl-strow .wpl-unfold')?.getBoundingClientRect(); return !u || (t.left < u.right && t.right > u.left && t.top < u.bottom && t.bottom > u.top); })()"):
+                fails.append(f"{name}: the stretch's tooltip covers its ⌄, or there's no ⌄ (#761)")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
         # (#761) unfolded, a waypoint says the warnings on the way to it, as a stretch does: one to read between via 3 and
         # via 4 is on via 4's row, in its label too, one worth a look between via 1 and via 2 on via 2's, and on none of the
@@ -15671,6 +15676,56 @@ def sections_list(chrome):
         if got != ['1 to read', '200 m after sunset']:
             fails.append(f"{name}: via 4's lines with a warning and after sunset: {got} (want the light on a line of its own, #761)")
         pg.js("polku.planner.setLeave(null); true")
+        # (#761, PR 6) a desktop's tools in a waypoint's row, where › is, while the mouse is over it: Rename (the name a
+        # field in the row: Enter keeps it, the focus back on the row), Remove (with Undo in the note) and the grip at the
+        # far end, which drags it along the list
+        route(pg, name, {'pts': PTS[:5], 'names': [[1, 'Kivikko'], [2, 'Laituri'], [3, 'Saari']]})
+        ROW = lambda i: f"polku.planner.els.points.querySelector('.wpl-ptrow[data-i=\"{i}\"]')"
+        def over(i):
+            q = at(pg, f"{ROW(i)}?.querySelector('.wpl-point')")
+            if q:
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': q['x'], 'y': q['y'], 'button': 'none'}, pg.s)
+                time.sleep(0.2)
+            return pg.js(f"[...({ROW(i)}?.querySelectorAll('.wpl-tools > *') || [])].filter((x) => x.getClientRects().length).map((x) => x.getAttribute('aria-label') || (x.matches('.wpl-grip') ? 'grip' : ''))")
+        shown = over(2)
+        if shown != ['Rename Laituri', 'Remove Laituri', 'grip']:
+            fails.append(f"{name}: a waypoint's row under the mouse shows {shown} (want Rename, Remove and the grip, #761)")
+        else:
+            # (the tools' names in the app's tooltip, as the row's own, not the browser's: from the row onto Rename, it says
+            # Rename, #799's animation review)
+            q = at(pg, f"{ROW(2)}.querySelector('[aria-label^=Rename]')")
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': q['x'], 'y': q['y'], 'button': 'none'}, pg.s)
+            time.sleep(0.7)
+            r = pg.js(f"({{ tip: document.querySelector('#tip:not([hidden]) b')?.textContent || '', titles: {ROW(2)}.querySelectorAll('.wpl-tools [title]').length }})")
+            if r != {'tip': 'Rename', 'titles': 0}:
+                fails.append(f"{name}: the mouse on Rename in a row: {r} (want the app's tooltip, Rename, and no title, #761)")
+            press(pg, at(pg, f"{ROW(2)}.querySelector('[aria-label^=Rename]')"), f'{name}: Rename in the row', touch)
+            pg.c.send('Input.insertText', {'text': 'Ranta'}, pg.s)
+            key(pg, 'Enter', 'Enter', 13)
+            r = pg.js("({ name: polku.planner.nameOf(2), field: !!polku.planner.els.points.querySelector('input.name-field'), focus: !!document.activeElement?.matches('.wpl-point[data-i=\"2\"]') })")
+            if r != {'name': 'Ranta', 'field': False, 'focus': True}:
+                fails.append(f"{name}: Rename in the row, Ranta and Enter: {r} (#761)")
+            over(3)
+            press(pg, at(pg, f"{ROW(3)}.querySelector('[aria-label^=Remove]')"), f'{name}: Remove in the row', touch)
+            r = pg.js("({ n: polku.planner.points.length, note: document.querySelector('#toast')?.textContent || '' })")
+            if r['n'] != 4 or not r['note'].startswith('Saari removed'):
+                fails.append(f"{name}: Remove in Saari's row: {r} (#761)")
+            pg.js("polku.planner.undo(); true")
+            time.sleep(0.4)
+            over(1)
+            g, t = at(pg, f"{ROW(1)}.querySelector('.wpl-grip')"), pg.js(f"(() => {{ const b = {ROW(3)}.getBoundingClientRect(); return b.bottom - 6; }})()")
+            if not g:
+                fails.append(f"{name}: no grip on Kivikko's row under the mouse (#761)")
+            else:
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': g['x'], 'y': g['y'], 'button': 'left', 'buttons': 1, 'clickCount': 1}, pg.s)
+                for k in range(1, 11):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': g['x'], 'y': g['y'] + (t - g['y']) * k / 10, 'button': 'left', 'buttons': 1}, pg.s)
+                    time.sleep(0.03)
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': g['x'], 'y': t, 'button': 'left', 'buttons': 0, 'clickCount': 1}, pg.s)
+                time.sleep(0.6)
+                order = pg.js("polku.planner.points.map((_, i) => polku.planner.nameOf(i)).join(', ')")
+                if order != 'Start, Ranta, Saari, Kivikko, End':
+                    fails.append(f"{name}: Kivikko dragged by its grip below Saari: {order} (#761)")
         # a mouse drags a row by its grip: via 2 to place 4 (Reorder)
         pg.js("window.rcTags = 'highway=path surface=dirt mtb:scale=1'; true")
         route(pg, name, {'pts': PTS, 'names': [[1, 'Kaupintie'], [2, 'Sorila'], [3, 'Lielahti']]})  # (named: points you see, with rows)

@@ -256,6 +256,153 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
    one sport has its heading on the line too, in its sport's colour, as every part has. */
 .parts6 .sec2-t.sum { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 12px; }
 .parts6 .sec2-t.sum small { font-size: 13.5px; font-weight: var(--weight-name); color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ======================================================= new in Parts 8 (the tenth round, 2026-11-04, from building PR 6):
+   the places you chose on a soft tint, so their rows don't run together without a ›; a stretch's unfolded waypoints
+   nested in it, one compact line each, as a transit leg's stops are (the switch: in one region with their stretch,
+   indented, or as built); Show all at the list's top; the foot in one row. */
+.parts8 .rows > .row.wpl-point:not(.shape), .parts8 .rows > .row.wpl-wait, .parts8 > li.wait > .row { background: color-mix(in srgb, var(--text) 5%, transparent); border-radius: 12px; }
+.parts8 .rows > .row.wpl-point:not(.shape):not(:first-child), .parts8 .rows > .row.wpl-wait { margin-top: 4px; }
+.parts8 .wpl-point.shape { min-height: 40px; padding-block: 2px; }
+.parts8 .row > .nest-l { display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.parts8 .nest-l b { font-size: 14px; font-weight: var(--weight-regular); color: var(--text); }
+.parts8 .nest-l small { font-size: 13px; color: var(--muted); }
+.parts8 .nest-l .read { display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: var(--weight-name); color: var(--danger); }
+.parts8 .wpl-group { margin-top: 4px; padding-bottom: 4px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); background: color-mix(in srgb, var(--text) 2.5%, transparent); }
+.parts8.nest-region .wpl-group .wpl-point.shape > span:nth-child(2), .parts8.nest-indent .wpl-point.shape > span:nth-child(2) { padding-left: 14px; }
+.parts8 .wpl-top { justify-content: flex-end; }
+
+/* ======================================================= new in Parts 9 (the eleventh round, 2026-11-04): a focused
+   refinement of the timeline's levels, over the rows as built (js/planner.js sectionRows, their classes and app.css).
+   No background but for a selection, a press or a hover. A: Weight and markers, the levels told by the type's weight
+   and size and by the markers' shape and size; B: Lanes, A with what's between two main waypoints one step in. */
+/* both: no › on waypoints and events; a row tells it opens by its press (and a desktop's hover and tools) */
+.p9:is(.ta, .tb) .wpl-point .way-chev, .p9:is(.ta, .tb) .wpl-wait .way-chev { display: none; }
+/* the main waypoints lead: a name a step up; the stretch's numbers a step down, in the text's colour */
+.p9:is(.ta, .tb) .wpl-point:not(.shape) .wpl-name { font-size: 16px; }
+.p9:is(.ta, .tb) .wpl-stretch .wpl-nums { font-weight: var(--weight-name); font-size: 14px; }
+.p9:is(.ta, .tb) .wpl-stretch small { color: var(--muted); }
+/* the waypoints a stretch folds: its beads; its control, apart from the row, under its words, "3 waypoints ⌄" */
+.p9:is(.ta, .tb) .wpl-strow > .wpl-unfold { display: none; }
+.p9 .p9-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; margin: 0 0 4px 34px; padding: 0 10px 0 8px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: var(--weight-name); cursor: pointer; }
+.p9 .p9-chip[aria-expanded="true"] { background: var(--surface-2); color: var(--text); border-color: transparent; }
+.p9 .p9-chipwrap { position: relative; display: flex; }
+.p9 .p9-chipwrap::before { content: ""; position: absolute; left: calc(21px - var(--w) / 2); width: var(--w); top: -3px; bottom: -3px; background: var(--part); } /* (the route's line goes on through its control's row) */
+/* unfolded, they're its beads grown: small hollow rings on its line, one line each, close under its control */
+.p9:is(.ta, .tb) .wpl-point.shape { min-height: 32px; padding-block: 1px; }
+.p9:is(.ta, .tb) .wpl-point.shape .wp-mini { width: 12px; height: 12px; border-width: 2px; border-color: var(--part); background: var(--surface-solid); color: transparent; font-size: 0; }
+.p9:is(.ta, .tb) .wpl-point.shape > span:nth-child(2) { display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.p9:is(.ta, .tb) .wpl-point.shape .wpl-name { font-size: 14px; font-weight: var(--weight-regular); }
+.p9:is(.ta, .tb) .wpl-point.shape .wx-line, .p9:is(.ta, .tb) .wpl-point.shape .wpl-warns > span { font-size: 13px; }
+.p9:is(.ta, .tb) .wpl-point.shape .wpl-warns { margin: 0; }
+/* events: their titles a step down, close to the waypoint they're at */
+.p9:is(.ta, .tb) .wpl-wait b { font-size: 14px; font-weight: var(--weight-name); }
+/* B: what's between two main waypoints, one step in (a stretch, its control, an event); its waypoints two */
+.p9.tb .wpl-stretch > span:nth-child(2), .p9.tb .wpl-wait > span:nth-child(2) { padding-left: 14px; }
+.p9.tb .p9-chip { margin-left: 48px; }
+.p9.tb .wpl-point.shape > span:nth-child(2) { padding-left: 28px; }
+/* a selection: the open card's row, as built (aria-current); a finger's press, as the app's rows press */
+.p9 .p9-press { background: var(--surface-2); }
+
+/* ======================================================= new in Parts 10 (the twelfth round, 2026-11-04): B, with a cue at
+   rest that a row opens its card (a press shows only once a finger is down), and the unfold control in its stretch */
+/* Outlined: a main waypoint and an event in a hairline, as the app's buttons are (.btn: 1 px, --line), a little apart;
+   the route's line threads through them. What's between two of them on the line is the stretch: its numbers, its
+   control, its unfolded waypoints. */
+.wpl.p10.aff-outline .rows > .row:is(.wpl-point:not(.shape), .wpl-wait), .wpl.p10.aff-outline > li.wait > .row { box-shadow: inset 0 0 0 1px var(--line); border-radius: 12px; margin-block: 3px; }
+.wpl.p10.aff-outline .wpl-point:not(.shape) > span:first-child::before { top: -9px; }
+.wpl.p10.aff-outline .wpl-point:not(.shape) > span:first-child::after { bottom: -9px; }
+.wpl.p10.aff-outline .wpl-wait > span:first-child::before { top: -9px; }
+.wpl.p10.aff-outline .wpl-wait > span:first-child::after { bottom: -13px; }
+/* Rules: a hairline between every row, after the line's column, as the app's other rows have (.rows > .row + .row);
+   a stretch with its control and its unfolded waypoints one row */
+.wpl.p10.aff-rules .rows > :is(.wpl-point:not(.shape), .wpl-strow, .wpl-wait):not(:first-child) { position: relative; }
+.wpl.p10.aff-rules .rows > :is(.wpl-point:not(.shape), .wpl-strow, .wpl-wait):not(:first-child)::before { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: 1px; background: var(--line); }
+/* the control as the stretch's last line, where its words start, its count and ⌄ (⌃ open) in its words' colour */
+.p10 .p10-fold { position: relative; display: flex; padding-left: 58px; }
+.p10 .p10-fold::before { content: ""; position: absolute; left: calc(21px - var(--w) / 2); width: var(--w); top: -3px; bottom: -3px; background: var(--part); }
+.p10 .p10-more { display: inline-flex; align-items: center; gap: 2px; min-height: 28px; margin: -6px 0 2px; padding: 0 6px 0 0; border: 0; border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: var(--weight-name); cursor: pointer; }
+.p10 .p10-more[aria-expanded="true"] { color: var(--text); }
+.p10 .p10-more:active { background: var(--surface-2); }
+/* or at the stretch's row's end, beside its numbers, with its words */
+.wpl.p9.p10.f10-end .wpl-strow > .wpl-unfold { display: inline-flex; align-self: flex-start; gap: 2px; padding: 0 6px 0 8px; }
+.wpl.p9.p10.f10-end .wpl-strow { align-items: flex-start; }
+/* unfolded waypoints, from testing (2026-11-04): numbered as the waypoints around them and as on the map, so 1, 2 and 3
+   read as one series, in compact rows (one line, the stretch's words' column, a lighter name); or rows as the others */
+.wpl.p10.n-num .wpl-point.shape { min-height: 36px; }
+.wpl.p10.n-num .wpl-point.shape .wp-mini { width: 20px; height: 20px; border-width: 2px; border-color: #111; background: #fff; color: #111; font-size: 10px; }
+.wpl.p10.n-num .wpl-point.shape > span:nth-child(2) { padding-left: 14px; }
+
+/* ======================================================= new in Parts 11 (the thirteenth round, 2026-11-04), from testing
+   Parts 10: when and how far on the left of the line, as a timetable has them, with no Arrive or Leave; every waypoint
+   the same row, unfolded ones too; how a stretch is drawn told by its line alone (solid along paths and over water,
+   dashed freehand), in words only for a carry; a warning on the stretch it's on, not on the waypoint after it; the
+   times as the clock's or from the start (the switch over the list, as Komoot keeps its list's own settings there) */
+.wpl.p11 .rows > .row, .wpl.p11 > li.wait > .row, .wpl.p11 .wpl-strow > .row { position: relative; padding-left: 66px; }
+.wpl.p11 .sec2-head { padding-left: 66px; }
+.wpl.p11 .sec2:not(:first-child)::after { left: 100px; }
+.p11 .p10-fold { padding-left: 114px; }
+.p11 .p10-fold::before { left: calc(77px - var(--w) / 2); }
+.p11 .p11-when { position: absolute; left: 4px; top: 0; bottom: 0; width: 52px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 1px; text-align: right; font-variant-numeric: tabular-nums; }
+.p11 .p11-when b { font-size: 14px; font-weight: var(--weight-name); line-height: 1.2; white-space: nowrap; }
+.p11 .p11-when small { font-size: 12px; line-height: 1.2; color: var(--muted); white-space: nowrap; }
+.wpl-top.p11-top { justify-content: flex-end; margin: 0 0 2px; }
+
+/* ======================================================= new in Parts 12 (the fourteenth round, 2026-11-04), from
+   testing Parts 11: the column's distance first and in the strong weight, as the planner's numbers lead with it, the time
+   under it, from the start by default; a stretch only what the column can't say, its warnings and a carry, and its
+   folded waypoints' "Show 3 waypoints" as Komoot has it; its numbers in its card (and a desktop's tooltip) */
+.p12 .p10-more { margin: 2px 0; }
+.p12 .p12-gap { position: relative; height: 8px; }
+.p12 :is(.p12-gap, .p10-fold)::before { content: ""; position: absolute; left: calc(77px - var(--w) / 2); width: var(--w); top: -3px; bottom: -3px; background: var(--part); }
+.p12 :is(.p12-gap, .p10-fold).straight::before { background: repeating-linear-gradient(to bottom, var(--part) 0 6px, transparent 6px 10px); }
+.p12 .wpl-strow > .row { min-height: 0; padding-block: 4px; }
+
+/* ======================================================= new in Parts 13 (the fifteenth round, 2026-11-04), from
+   testing Parts 12: say the thing, not a count. A waypoint's row its name alone (the weather on a desktop's hover and in
+   its card); the weather once, for the whole trip, over the list (Go's summary), and on a stretch only where it matters,
+   in words that open the weather; a stretch's warnings named, each opening its own detail ("Fallen tree on the path",
+   as a changeover's "Your bike stays here"); the dark no warning on every stretch but on the timeline: sunset and the
+   dark as rows at their time, and the line shaded while it's dark */
+.wpl.p13 { --night: color-mix(in srgb, #1e2c56 26%, transparent); }
+:root[data-theme="dark"] .wpl.p13 { --night: color-mix(in srgb, #9fb0f0 24%, transparent); }
+.wpl.p13 { position: relative; z-index: 0; } /* (the dark's band behind the line, one piece from the dark to the end) */
+.p13 .p13-band { position: absolute; left: 70px; width: 14px; border-radius: 7px; background: var(--night); z-index: -1; pointer-events: none; }
+.p13 .p13-st { position: relative; display: flex; flex-direction: column; align-items: flex-start; padding: 2px 0 2px 114px; }
+.p13 .p13-st::before { content: ""; position: absolute; left: calc(77px - var(--w) / 2); width: var(--w); top: -3px; bottom: -3px; background: var(--part); }
+.p13 .p13-st.straight::before { background: repeating-linear-gradient(to bottom, var(--part) 0 6px, transparent 6px 10px); }
+.p13 .p13-st > small { min-height: 24px; display: flex; align-items: center; font-size: 12.5px; }
+.p13 .p13-item { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 6px 0 0; border: 0; border-radius: 8px; background: none; font: inherit; font-size: 13px; font-weight: var(--weight-name); text-align: left; cursor: pointer; }
+.p13 .p13-item.read { color: var(--danger); }
+.p13 .p13-item:is(.look, .wind) { color: var(--look); }
+.p13 .p13-item .ic { flex: none; }
+.p13 .p13-item:active { background: var(--surface-2); }
+.wpl.p10.aff-outline.p13 .rows > .row.wpl-point.p13-sun { box-shadow: none; margin-block: 0; min-height: 30px; padding-block: 2px; cursor: default; }
+.p13 .p13-sun .sunic { position: relative; z-index: 1; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-solid); color: var(--text); }
+.p13 .p13-sun b { font-size: 13px; font-weight: var(--weight-name); }
+.p13 .p13-sun .p11-when b { font-size: 12px; color: var(--muted); }
+.p13-wx { margin: 0 0 8px; box-shadow: inset 0 0 0 1px var(--line); }
+.p13-wx > span:first-child { color: var(--muted); }
+
+/* ======================================================= new in Parts 14 (the sixteenth round, 2026-11-04), from
+   testing Parts 13: a stretch with its waypoints folded counts its warnings, as built ("1 to read · 2 worth a look");
+   unfolded, each warning is named between the two waypoints it's between; and the list's own settings (times, and the
+   warnings and heads-ups shown or not) in a menu over it, as a part's ⚙ holds its sport's speed. Built from what's
+   there: the app's menu (popMenu's), seg and tg. */
+.p14-top { position: relative; }
+.p14-top .menu { top: calc(100% + 4px); right: 0; width: min(300px, 100%); gap: 2px; padding: 6px 6px 10px; }
+.p14-top .menu .seg { margin: 2px 6px 6px; }
+.p14-top .menu .tg { margin: 0 6px; }
+
+/* ======================================================= new in Parts 15 (the seventeenth round, 2026-11-04), from
+   testing Parts 14: the rows as built wherever they do the job. A stretch keeps its own row (wpl-strow, wpl-stretch: it
+   opens its card), its line and its beads for the waypoints it folds; its words its warnings in their own style
+   (wpl-warns), counted while folded, named once there's room; a piece between two unfolded waypoints with something to
+   say is such a row too. The trip's weather is Go's day (days, day). */
+.p15 .wpl-strow > .row.wpl-stretch { min-height: 26px; padding-block: 4px; }
+.p15 .wpl-strow > .row.wpl-stretch:has(.bead) { min-height: 44px; }
+.p15 .wpl-stretch .wpl-warns { margin: 0; }
+.p15-days { margin: 0 0 8px; }
 </style>
 </head>
 <body class="mk">
@@ -263,8 +410,20 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
   <h1>The route's list</h1>
   <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. <b>Line</b> is the second round (2026-11-04), from trying the first PR: the list as it is on <code>main</code> now, with one line from the start to the end through every waypoint, the stretch's numbers to read, how every stretch is drawn, and waypoints in the words. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
   <div class="bars">
-    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button><button data-v="parts5">Parts 5</button><button data-v="parts6">Parts 6</button><button data-v="parts7">Parts 7</button></div>
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button><button data-v="parts5">Parts 5</button><button data-v="parts6">Parts 6</button><button data-v="parts7">Parts 7</button><button data-v="parts8">Parts 8</button><button data-v="parts9">Parts 9</button><button data-v="parts10">Parts 10</button><button data-v="parts11">Parts 11</button><button data-v="parts12">Parts 12</button><button data-v="parts13">Parts 13</button><button data-v="parts14">Parts 14</button><button data-v="parts15">Parts 15</button></div>
       <span>Stretch</span><div class="sw" data-k="how"><button data-v="every">How every stretch is drawn</button><button data-v="differs">Only where it differs</button></div></div>
+    <div class="bar"><span>Parts 9</span><div class="sw" data-k="treat"><button data-v="built">As built</button><button data-v="weight">A: Weight and markers</button><button data-v="lanes">B: Lanes</button></div>
+      <span>Route</span><div class="sw" data-k="r9"><button data-v="journey">Three sports</button><button data-v="long">Long, two days</button></div>
+      <span>Selected</span><div class="sw" data-k="sel"><button data-v="none">Nothing</button><button data-v="point">A waypoint</button></div>
+      <span>Pressed</span><div class="sw" data-k="press"><button data-v="off">Nothing</button><button data-v="on">A row, by a finger</button></div></div>
+    <div class="bar"><span>Parts 10: opens</span><div class="sw" data-k="aff"><button data-v="press">A press (Parts 9 B)</button><button data-v="outline">Outlined</button><button data-v="rules">Rules between rows</button></div>
+      <span>Waypoints in a stretch</span><div class="sw" data-k="fold"><button data-v="chip">Apart (Parts 9 B)</button><button data-v="line">Its last line</button><button data-v="end">At its row’s end</button></div>
+      <span>Parts 11: times</span><div class="sw" data-k="t11"><button data-v="clock">The clock’s</button><button data-v="elapsed">From the start</button></div>
+      <span>Parts 14: warnings</span><div class="sw" data-k="w14"><button data-v="show">Shown</button><button data-v="hide">Hidden</button></div>
+      <span>Its menu</span><div class="sw" data-k="m14"><button data-v="closed">Closed</button><button data-v="open">Open</button></div>
+      <span>Unfolded</span><div class="sw" data-k="nested"><button data-v="ring">Rings (Parts 9 B)</button><button data-v="num">Numbered, compact</button><button data-v="same">As the others (main)</button></div></div>
+    <div class="bar"><span>Unfolded (Parts 8)</span><div class="sw" data-k="nest"><button data-v="region">With its stretch</button><button data-v="indent">Indented</button><button data-v="asis">As built</button></div>
+      <span>› (Parts 8)</span><div class="sw" data-k="chev"><button data-v="tint">On the places</button><button data-v="none">None</button></div></div>
     <div class="bar"><span>Frame</span><div class="sw" data-k="frame"><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button><button data-v="side">Side dock</button><button data-v="bottom">Bottom dock</button></div>
       <span>Zoom</span><div class="sw" data-k="zoom"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
     <div class="bar"><span>Route</span><div class="sw" data-k="route"><button data-v="one">One sport</button><button data-v="two">Two sports</button><button data-v="fi">Long names</button><button data-v="multi">Four sports</button><button data-v="days">Two days</button></div>
@@ -353,7 +512,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 import { icon, h } from '../../../js/ui.js';
 
 const q = new URLSearchParams(location.search);
-const S = { v: q.get('v') || 'parts7', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : ['parts4', 'parts5', 'parts6', 'parts7'].includes(q.get('v') || 'parts7') ? 'freehand' : 'straight', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: ['on', 'point'].includes(q.get('hover')) ? q.get('hover') : 'off', sun: q.get('sun') === 'sunmoon' ? 'sunmoon' : 'horizon', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
+const S = { v: q.get('v') || 'parts15', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : ['parts4', 'parts5', 'parts6', 'parts7', 'parts8', 'parts9', 'parts10', 'parts11', 'parts12', 'parts13', 'parts14', 'parts15'].includes(q.get('v') || 'parts15') ? 'freehand' : 'straight', t11: ['clock', 'elapsed'].includes(q.get('t11')) ? q.get('t11') : ['parts12', 'parts13', 'parts14', 'parts15'].includes(q.get('v') || 'parts15') ? 'elapsed' : 'clock', w14: q.get('w14') === 'hide' ? 'hide' : 'show', m14: q.get('m14') === 'open' ? 'open' : 'closed', aff: ['press', 'outline', 'rules'].includes(q.get('aff')) ? q.get('aff') : 'outline', fold: ['chip', 'line', 'end'].includes(q.get('fold')) ? q.get('fold') : 'line', nested: ['ring', 'num', 'same'].includes(q.get('nested')) ? q.get('nested') : 'num', nest: ['region', 'indent', 'asis'].includes(q.get('nest')) ? q.get('nest') : 'region', treat: ['built', 'weight', 'lanes'].includes(q.get('treat')) ? q.get('treat') : 'weight', r9: q.get('r9') === 'long' ? 'long' : 'journey', sel: q.get('sel') === 'point' ? 'point' : 'none', press: q.get('press') === 'on' ? 'on' : 'off', chev: q.get('chev') === 'none' ? 'none' : 'tint', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: ['on', 'point'].includes(q.get('hover')) ? q.get('hover') : 'off', sun: q.get('sun') === 'sunmoon' ? 'sunmoon' : 'horizon', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
 
 // the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
 const ROUTES = {
@@ -658,10 +817,13 @@ function parts5(R, frame, S, round = 5) {
     // (Parts 7: a route of one part's too, though the route's numbers above say them: one style everywhere)
     const nums = round >= 6 ? (single && round < 7 ? null : h('small', {}, sec.nums)) : !one && sec.to - sec.from > 1 ? h('small', {}, sec.nums) : null;
     return h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, one ? 20 : 16) }), nums ? h('div', { class: `sec2-t${round >= 6 ? ' sum' : ''}` }, title, nums) : title); };
+  const now = round >= 8, open = now ? R.legs.findIndex((L) => L.shaping) : -1; // (Parts 8: the first stretch with waypoints folded, unfolded)
   const top = h('div', { class: 'wpl-top' });
   if (one) top.append(headOf(secs[0], 0));
-  top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }));
+  // (Parts 8: Reorder is in the foot, as built; at the top, Show all unfolds every stretch's waypoints at once)
+  top.append(now ? h('button', { type: 'button', class: 'btn small quiet', html: `${icon('chevronDown', 16)} Show all` }) : h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }));
   body.push(top);
+  const placeChev = () => (now && S.chev === 'none' ? null : chev());
   const word = { straight: 'Straight line', offpaths: 'Off paths', freehand: 'Freehand' }[S.word];
   const straight = (k) => !!(R.legs[k] && R.legs[k].icon === 'straight');
   const warns = (w) => { if (!w) return null; const out = [];
@@ -676,7 +838,7 @@ function parts5(R, frame, S, round = 5) {
     const row = h('button', { type: 'button', class: cls, 'aria-label': [p.name, lab, `${w.verb} ${w.time}`, w.temp != null ? `${w.temp}°` : '', w.wind != null ? `wind ${w.wind} m/s` : ''].filter(Boolean).join(', ') },
       h('span', { 'aria-hidden': 'true' }, markOf(i)),
       h('span', {}, h('b', { class: 'wpl-name' }, p.name), h('small', { class: 'wx-line' }, h('span', {}, `${w.verb} ${w.time}`), ...wxParts(w.temp, w.wind, sky))),
-      chev());
+      placeChev());
     if (p.tip) row.mkTip = [p.tip[0], p.tip[1], h('span', { class: 'tip-wx' }, ...wxParts(w.temp, w.wind, sky))];
     return row; };
   // a wait: its name and length, its times under it; a night's sunset and sunrise with their icons
@@ -686,7 +848,7 @@ function parts5(R, frame, S, round = 5) {
     return h('button', { type: 'button', class: 'row wpl-wait', 'aria-label': [w.b, w.span, `at ${R.points[i].name}`, night ? `sunset ${w.set}, sunrise ${w.rise}` : '', w.gear || ''].filter(Boolean).join(', ') },
       h('span', { 'aria-hidden': 'true', html: icon(ic, 18) }),
       h('span', {}, h('b', {}, w.b), small, gear),
-      chev()); };
+      placeChev()); };
   // a stretch: its numbers, how it's drawn; its folded waypoints a count by its ⌄ (their numbers in its label)
   const stretchRow = (k) => { const L = R.legs[k], how = L.icon === 'straight' ? word : L.how || 'Follow paths', m = L.shaping || 0, a = at[k] + 1;
     const more = m > 1 ? `waypoints ${a} to ${a + m - 1}` : m ? `waypoint ${a}` : '';
@@ -697,9 +859,23 @@ function parts5(R, frame, S, round = 5) {
       h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
       h('span', {}, h('b', { class: 'wpl-nums' }, L.n), says ? h('small', { html: says }) : null, warns(L.warn)));
     if (L.tip) b.mkTip = [L.tip[0], L.tip[1], L.tipWx ? h('span', { class: 'tip-wx' }, ...wxParts(L.tipWx.temp, L.tipWx.wind, R.sky || 'cloud')) : null];
-    return h('div', { class: 'wpl-strow' }, b,
-      m ? h('button', { type: 'button', class: 'tool wpl-unfold n', 'aria-expanded': 'false', 'aria-label': `Show ${more}` }, h('span', { 'aria-hidden': 'true' }, String(m)), h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) })) : null); };
-  const list = h('ul', { class: `wpl parts parts2 parts5${round >= 6 ? ' parts6' : ''}` });
+    const unfolded = k === open;
+    if (unfolded) b.querySelector('.wpl-line').replaceChildren(); // (unfolded, its waypoints are marks of their own)
+    const row = h('div', { class: 'wpl-strow' }, b,
+      m ? h('button', { type: 'button', class: 'tool wpl-unfold n', 'aria-expanded': String(unfolded), 'aria-label': `${unfolded ? 'Fold' : 'Show'} ${more}` }, h('span', { 'aria-hidden': 'true' }, String(m)), h('span', { 'aria-hidden': 'true', html: icon(unfolded ? 'chevronUp' : 'chevronDown', 18) })) : null);
+    if (!unfolded) return row;
+    // (Parts 8: its waypoints, unfolded: one line each, the name and when you're there, a warning as its icon and count;
+    // As built: the app's rows, smaller and lighter)
+    const mins = (i) => { const t = /(\d\d):(\d\d)/.exec(when(sub(R.points[i], i)).time || ''); return t ? +t[1] * 60 + +t[2] : null; };
+    const t0 = mins(k), t1 = mins(k + 1), clock = (j) => { if (t0 == null || t1 == null) return ''; const x = Math.round(t0 + ((t1 - t0) * (j + 1)) / (m + 1)); return `${String(Math.floor(x / 60) % 24).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
+    const nested = [...Array(m)].map((_, j) => { const nm = `Waypoint ${a + j}`, t = clock(j), warn = j === 0 && L.warn && L.warn.read;
+      const mk = h('span', { 'aria-hidden': 'true' }, h('span', { class: 'wp wp-mini wp-via' }, String(a + j)));
+      return h('button', { type: 'button', class: `row wpl-point shape${straight(k) ? ' in-dash out-dash' : ''}`, 'aria-label': [nm, t ? `Arrive ${t}` : '', warn ? '1 to read' : ''].filter(Boolean).join(', ') }, mk,
+        S.nest === 'asis' ? h('span', {}, h('b', { class: 'wpl-name' }, nm), t ? h('small', { class: 'wx-line' }, h('span', {}, `Arrive ${t}`)) : null, warn ? h('span', { class: 'wpl-warns' }, h('span', { class: 'read', html: `${icon('warnf', 14)}1 to read` })) : null)
+          : h('span', { class: 'nest-l' }, h('b', {}, nm), t ? h('small', {}, t) : null, warn ? h('span', { class: 'read', html: `${icon('warnf', 13)}1` }) : null)); });
+    if (S.nest === 'region') return h('div', { class: 'wpl-group' }, row, ...nested);
+    const f = document.createDocumentFragment(); f.append(row, ...nested); return f; };
+  const list = h('ul', { class: `wpl parts parts2 parts5${round >= 6 ? ' parts6' : ''}${now ? ` parts8 nest-${S.nest}` : ''}` });
   secs.forEach((sec, k) => {
     const rows = h('div', { class: 'rows', role: 'group' });
     if (k === 0) rows.append(pointRow(0));
@@ -711,8 +887,137 @@ function parts5(R, frame, S, round = 5) {
     list.append(h('li', { class: 'sec2', style: one ? null : `--part: var(--sport-${sec.sport.k})` }, one ? null : headOf(sec, k), rows));
     if (k < secs.length - 1 && R.points[sec.to].wait) list.append(h('li', { class: 'wait' }, waitRow(sec.to)));
   });
-  body.push(list, ...mainFoot(R, frame === 'bottom'));
+  // (Parts 8: the foot as built, in one row, Clear route a red button at its end)
+  const [oldFoot, how] = mainFoot(R, frame === 'bottom');
+  const foot = now ? h('div', { class: 'wpl-foot' }, h('button', { type: 'button', class: 'btn', html: `${icon('grip', 16)} Reorder` }), h('button', { type: 'button', class: 'btn', html: `${icon('reverse', 16)} Reverse` }), h('button', { type: 'button', class: 'btn danger', html: `${icon('trash', 16)} Clear route` })) : oldFoot;
+  body.push(list, foot, how);
   return body;
+}
+
+// ---------- Parts 9: the rows as built (js/planner.js sectionRows: sec2, sec2-head, rows, pointRow, stretchRow, waitRow
+// after #799), a three-sport journey and a long route of two days, for two subtle treatments of the timeline's levels
+const ROUTES9 = {
+  journey: { total: '14.1 km · 2 h 44 min · ↑155 m', parts: [
+    { sport: 'mtb', label: 'MTB', icon: 'bike', sum: '6.8 km · 31 min · ↑84 m', rows: [
+      { p: 0, name: 'Kaupin urheilupuisto', line: 'Leave 09:00', wx: ['cloud', 6, 3], mark: 'start' },
+      { s: '3.4 km · 15 min · ↑46 m', how: 'Follow paths', icon: 'auto', warn: { read: 1 }, fold: [['Waypoint 1', '09:05'], ['Waypoint 2', '09:10', { read: 1 }]], open: true, items13: [['read', 'Cycling not allowed here']], items14: [['read', 'Cycling not allowed here', 1], ['look', 'Gravel, loose in places', 2]] },
+      { p: 3, name: 'Kalevan puisto', line: 'Arrive 09:15', sel: true },
+      { s: '3.4 km · 16 min · ↑38 m', how: 'Follow paths', icon: 'auto', warn: { look: 2 }, fold: [['Waypoint 4', '09:20'], ['Waypoint 5', '09:24'], ['Waypoint 6', '09:28']], items13: [['look', 'Steps: carry the bike', 1], ['look', 'Technical trail S3', 3]] },
+      { p: 7, name: 'Iidesjärven ranta', line: 'Arrive 09:31', wx: ['cloudSun', 7, 4], brk: true }] },
+    { wait: { kind: 'change', b: 'Changeover · 10 min', t: '09:31–09:41', gear: 'Your bike stays here' } },
+    { sport: 'paddle', label: 'Paddle', icon: 'paddle', sum: '4.2 km · 52 min + 20 min stop', rows: [
+      { p: 7, name: 'Iidesjärven ranta', line: 'Leave 09:41', wx: ['cloudSun', 7, 4] },
+      { s: '2.6 km · 32 min', how: 'Over water', icon: 'water', warn: { look: 1 }, items13: [['wind', 'Headwind up to 9 m/s']] },
+      { p: 8, name: 'Tammerkosken laituri', line: 'Arrive 10:13', wx: ['cloudSun', 8, 4], brk: true, press: true },
+      { wait: { kind: 'stop', b: 'Stop · 20 min', t: '10:13–10:33' } },
+      { s: '1.6 km · 20 min', how: 'Over water · carry 120 m', icon: 'water' },
+      { p: 9, name: 'Laukontori', line: 'Arrive 10:53', wx: ['sun', 8, 5], brk: true }] },
+    { wait: { kind: 'change', b: 'Changeover · 5 min', t: '10:53–10:58', gear: 'Your kayak stays here' } },
+    { sport: 'hike', label: 'Hike', icon: 'hike', sum: '3.1 km · 46 min · ↑71 m', rows: [
+      { p: 9, name: 'Laukontori', line: 'Leave 10:58', wx: ['sun', 8, 5] },
+      { s: '3.1 km · 46 min · ↑71 m', how: 'Follow paths', icon: 'auto', warn: { look: 2 }, fold: [['Waypoint 10', '11:08'], ['Waypoint 11', '11:20'], ['Waypoint 12', '11:31']], free11: true, items13: [['look', 'Fallen tree on the path', 0], ['look', 'Steep climb, up to 18 %', 2]] }, // (Parts 11: drawn freehand)
+      { p: 13, name: 'Pyynikin näkötorni', line: 'Arrive 11:44', wx: ['sun', 9, 4], mark: 'end' }] }] },
+};
+// the long route: two days of MTB, eleven main waypoints, folded waypoints, a stop and a night
+(() => {
+  const names = ['Kaupin urheilupuisto', 'Teiskontie', 'Ruskon risteys', 'Sorilan koulu', 'Kämmenniemi', 'Terälahti', 'Velaatta', 'Orivesi asema', 'Längelmäen kirkko', 'Kangasala', 'Pyynikin näkötorni'];
+  const rows1 = [], rows2 = []; let n = 0, min = 9 * 60;
+  const t = () => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  const stretch = (k) => { const m = [2, 0, 3, 1, 0, 4, 2, 0, 3, 1][k % 10], fold = []; for (let j = 0; j < m; j++) { n++; min += 6; fold.push([`Waypoint ${n}`, t()]); } return { s: `${(4.2 + (k % 4) * 1.7).toFixed(1)} km · ${18 + (k % 5) * 7} min · ↑${30 + (k % 6) * 22} m`, how: 'Follow paths', icon: 'auto', warn: k % 3 === 0 ? { read: 1 } : k % 3 === 1 ? { look: 1 + (k % 2) } : null, fold, open: k === 2 }; };
+  names.forEach((name, i) => {
+    if (i) n++; // (every waypoint the next number, as on the map: a main one, then its stretch's folded ones)
+    const rows = i <= 5 ? rows1 : rows2, row = { p: n, name, line: i === 0 ? 'Leave 09:00' : i === 6 ? 'Leave 08:00' : `Arrive ${t()}`, mark: i === 0 ? 'start' : i === names.length - 1 ? 'end' : null, wx: i === 0 || i === 5 || i === 6 || i === names.length - 1 ? ['cloud', 6, 3] : null, brk: i === 5 || i === 3 };
+    if (i === 6) rows.push({ ...row, p: n });
+    else rows.push(row);
+    if (i === 3) rows.push({ wait: { kind: 'stop', b: 'Stop · 30 min', t: `${t()}–${(() => { min += 30; return t(); })()}` } });
+    if (i < names.length - 1 && i !== 5) { rows.push(stretch(i)); min += 25; }
+  });
+  ROUTES9.long = { total: '58.4 km · 1 day 23 h · ↑1 020 m', parts: [
+    { sport: 'mtb', label: 'Day 1 · MTB', icon: 'bike', sum: '31.6 km · 2 h 51 min + 30 min stop · ↑540 m', rows: rows1 },
+    { wait: { kind: 'night', b: 'Night · 15 h', t: '17:00–08:00', sun: ['16:05', '07:58'] } },
+    { sport: 'mtb', label: 'Day 2 · MTB', icon: 'bike', sum: '26.8 km · 2 h 34 min · ↑480 m', rows: rows2 }] };
+})();
+function parts9(frame, S) {
+  const R = ROUTES9[S.r9], p15 = S.v === 'parts15', p14 = S.v === 'parts14' || p15, p13 = S.v === 'parts13' || p14, p12 = S.v === 'parts12' || p13, p11 = S.v === 'parts11' || p12, p10 = S.v === 'parts10' || p11, tre = p10 ? 'tb' : { built: '', weight: 'ta', lanes: 'tb' }[S.treat]; // (Parts 10 is B's)
+  const T = p11 ? { aff: 'outline', fold: 'line', nested: 'same' } : S; // (Parts 11 is Parts 10 as proposed)
+  // Parts 11: when and how far, for the column left of the line; the clock's time, or from the start with stops and changeovers
+  const hm = (line) => { const m = /(\d\d):(\d\d)/.exec(line); return m ? +m[1] * 60 + +m[2] : null; }, st = { km: 0, day: 0, t0: null };
+  const from = (min) => (min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`);
+  // (Parts 13: the three sports leave at 15:30, so the dusk falls on the route: sunset 16:05, dark from 16:55)
+  const SHIFT = p13 && S.r9 === 'journey' ? 390 : 0, hhmm = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const SUN = SHIFT ? [[575, 'sunset', 'Sunset 16:05'], [625, 'moon', 'Dark from 16:55']] : [];
+  const whenOf = (line, km) => { const c = hm(line); if (st.t0 == null) st.t0 = c; st.last = c; const el = st.day * 1440 + c - st.t0, clock = SHIFT ? hhmm(c + SHIFT) : line.match(/\d\d:\d\d/)[0], d = km > 0 ? `${km.toFixed(1)} km` : null;
+    return { t: S.t11 === 'clock' ? clock : from(el), km: d, say: [S.t11 === 'clock' ? clock : `${from(el)} from the start`, d && `${d} from the start`].filter(Boolean).join(', ') }; };
+  const wx = (w) => (w ? [h('span', { html: `${icon(w[0], 14)}${w[1]}°` }), ' ', h('span', { html: `${icon('wind', 14)}${w[2]} m/s` })] : []);
+  const warns = (w) => (w ? h('small', { class: 'wpl-warns', html: [w.read ? `<span class="read">${icon('warnf', 14)}${w.read} to read</span>` : '', w.look ? `<span class="look">${icon('eye', 14)}${w.look} worth a look</span>` : ''].filter(Boolean).join(' ') }) : null);
+  const mark = (r) => h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${r.mark === 'start' ? 'wp-start' : r.mark === 'end' ? 'wp-end' : 'wp-via'}` }, r.mark ? '' : String(r.p)));
+  // (Parts 13: sunset and the dark on the timeline at their time, before the first row after them; the rows after the dark shaded)
+  const sun = (c) => { const out = []; while (SUN.length && SUN[0][0] <= c) { const [t, ic, words] = SUN.shift(), w = whenOf(hhmm(t), st.km);
+    out.push(h('div', { class: `row wpl-point p13-sun${ic === 'moon' ? ' dusk' : st.night ? ' night' : ''}` }, h('span', { 'aria-hidden': 'true' }, h('span', { class: 'sunic', html: icon(ic, 14) })), h('span', {}, h('b', {}, words)), h('span', { class: 'p11-when', 'aria-hidden': 'true' }, h('b', {}, w.t))));
+    if (ic === 'moon') st.night = true; } return out; };
+  const nightCls = () => (p13 && st.night ? ' night' : '');
+  const point = (r, { shape = false, last = false, when = null, dash = '' } = {}) => h('button', { type: 'button', class: ['row', 'wpl-point', shape ? 'shape' : '', last ? 'last' : '', r.brk ? 'brk' : '', dash, nightCls().trim(), S.press === 'on' && r.press ? 'p9-press' : ''].filter(Boolean).join(' '), 'aria-current': S.sel === 'point' && r.sel ? 'true' : null, 'aria-label': `${r.name}, ${when ? when.say : r.line}${p13 && st.night ? ', in the dark' : ''}` },
+    mark(r), when ? h('span', {}, h('b', { class: 'wpl-name' }, r.name), r.wx && !p13 ? h('small', { class: 'wx-line' }, ...wx(r.wx)) : null) // (Parts 11: its name, the weather; no Arrive, no warning; Parts 13: its name)
+      : h('span', {}, h('b', { class: 'wpl-name' }, r.name), h('small', { class: 'wx-line' }, h('span', {}, r.line), ...(r.wx ? [' ', ...wx(r.wx)] : [])), warns(r.warn)), chev(),
+    when ? h('span', { class: 'p11-when', 'aria-hidden': 'true' }, ...(p12 ? [h('b', {}, when.km || '0 km'), h('small', {}, when.t)] : [h('b', {}, when.t), when.km ? h('small', {}, when.km) : null])) : null); // (Parts 12: the distance first)
+  // (Parts 11: no times in its words, the waypoint before it says when it starts; a stop says when you go on, in the column,
+  // since a changeover's and a night's next row does)
+  const wait = (w) => { const go = p11 && w.kind === 'stop' ? whenOf(w.t.split('–')[1], st.km) : null, nc = p13 && st.night ? ' night' : '', sun = w.sun ? [h('span', { html: `${icon('sunset', 16)}${w.sun[0]}` }), ' ', h('span', { html: `${icon('sunrise', 16)}${w.sun[1]}` })] : [];
+    return h('button', { type: 'button', class: `row wpl-wait${nc}`, 'aria-label': `${w.b}, ${w.t}` }, h('span', { 'aria-hidden': 'true', html: icon({ change: 'clock', stop: 'pause', night: 'moon' }[w.kind], 18) }),
+      h('span', {}, h('b', {}, w.b), p11 ? (sun.length ? h('small', { class: 'wx-line' }, ...sun) : null) : h('small', { class: 'wx-line' }, h('span', {}, w.t), ...(sun.length ? [' ', ...sun] : [])), w.gear && !(p14 && S.w14 === 'hide') ? h('small', { class: 'wpl-warns', html: `<span class="look">${icon('eye', 14)}${w.gear}</span>` }) : null), chev(),
+      go ? h('span', { class: 'p11-when', 'aria-hidden': 'true' }, p12 ? h('small', {}, go.t) : h('b', {}, go.t)) : null); };
+  const stretch = (r) => { const m = (r.fold || []).length, open = !!r.open && m > 0, beads = [], words = `${m} waypoint${m === 1 ? '' : 's'}`, fold = p10 ? T.fold : 'chip', km0 = st.km;
+    if (p11) st.km += parseFloat(r.s); // (its numbers say how it's drawn no more: its line does, and a carry in words)
+    for (let j = 0, b = open ? 0 : Math.min(m, 3); j < b; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (b + 1)}%` }));
+    const how11 = p11 && r.free11 ? 'Freehand' : r.how, carry = /carry [\d ]+m/.exec(r.how);
+    const b = h('button', { type: 'button', class: `row wpl-stretch${p11 && r.free11 ? ' straight' : ''}`, 'aria-label': [r.s, how11].join(', ') }, h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
+      h('span', {}, h('b', { class: 'wpl-nums' }, r.s), p11 ? (carry ? h('small', { html: `<span class="how">${carry[0][0].toUpperCase()}${carry[0].slice(1)}</span>` }) : null) : h('small', { html: `${icon(r.icon, 14)}<span class="how">${r.how}</span>` }), warns(r.warn)));
+    // (Parts 12: what the column can't say, its warnings and a carry; with neither, the line alone, or its folded waypoints' control)
+    const bits = p12 ? [warns(r.warn), carry ? h('small', { html: `<span class="how">${carry[0][0].toUpperCase()}${carry[0].slice(1)}</span>` }) : null].filter(Boolean) : null, free = p11 && r.free11 ? ' straight' : '';
+    if (p12) b.lastChild.replaceChildren(...bits);
+    // (Parts 13: each warning named, its own link to its detail; the wind's to the weather; a carry in words)
+    const items = p13 ? ((p14 && r.items14) || r.items13 || [...Array(r.warn?.read || 0)].map(() => ['read', 'Cycling not allowed here']).concat([['look', 'Steps: carry the bike'], ['look', 'Fallen tree on the path']].slice(0, r.warn?.look || 0))) : [];
+    const named = ([k, words]) => h('button', { type: 'button', class: `p13-item ${k}`, html: `${icon({ read: 'warnf', look: 'eye', wind: 'wind' }[k], 14)}${words}` });
+    // (Parts 14: hidden by the list's setting; folded, a count as built; unfolded, each between the two waypoints it's between)
+    const show14 = !p14 || S.w14 === 'show', at = (j) => (show14 ? items.filter((it) => (it[2] ?? m) === j) : []);
+    // (Parts 15: the stretch's own row as built, its line and beads; its warnings in their own style, counted or named)
+    const nb = p15 && m && !open ? Math.min(m, 3) : 0, bd15 = [...Array(nb)].map((_, j) => h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (nb + 1)}%` }));
+    const names15 = (list) => h('small', { class: 'wpl-warns' }, ...list.map(([k, words]) => h('span', { class: k === 'read' ? 'read' : 'look', html: `${icon({ read: 'warnf', look: 'eye', wind: 'wind' }[k], 14)}${words}` })));
+    const leg15 = (kids, line) => h('div', { class: `wpl-strow${nightCls()}` }, h('button', { type: 'button', class: `row wpl-stretch${free}`, 'aria-label': [r.s, how11].join(', ') }, h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...line), h('span', {}, ...kids.filter(Boolean))));
+    const carry15 = carry ? h('small', { html: `<span class="how">${carry[0][0].toUpperCase()}${carry[0].slice(1)}</span>` }) : null;
+    const between = (j) => { const list = at(j); if (!list.length || (p15 && j === 0)) return []; return p15 ? [leg15([names15(list)], [])] : [h('div', { class: `p13-st${free}${nightCls()}` }, ...list.map(named))]; };
+    const said = !p14 ? items.map(named) : !show14 || (m && open) ? [] : m ? [warns({ read: items.filter((it) => it[0] === 'read').length, look: items.filter((it) => it[0] !== 'read').length })] : items.map(named);
+    if (carry && p13) said.push(h('small', { html: `<span class="how">${carry[0][0].toUpperCase()}${carry[0].slice(1)}</span>` }));
+    const first15 = !show14 ? [carry15] : m && !open ? [items.length ? warns({ read: items.filter((it) => it[0] === 'read').length, look: items.filter((it) => it[0] !== 'read').length }) : null, carry15] : [at(0).length ? names15(at(0)) : null, carry15];
+    const out = p15 ? [leg15(first15, bd15)] : p13 ? (said.length ? [h('div', { class: `p13-st${free}${nightCls()}` }, ...said)] : m ? [] : [h('div', { class: `p12-gap${free}${nightCls()}`, 'aria-hidden': 'true' })])
+      : p12 && !bits.length ? (m ? [] : [h('div', { class: `p12-gap${free}`, 'aria-hidden': 'true' })]) : [h('div', { class: 'wpl-strow' }, b, m ? h('button', { type: 'button', class: 'tool wpl-unfold', 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${m} waypoints` }, h('span', { 'aria-hidden': 'true' }, fold === 'end' ? words : String(m)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null)];
+    // (A and B: the control apart from the row, under its words)
+    if (m && tre && fold === 'chip') out.push(h('div', { class: 'p9-chipwrap' }, h('button', { type: 'button', class: 'p9-chip', 'aria-expanded': String(open), html: `${icon(open ? 'chevronUp' : 'chevronDown', 14)}${words}` })));
+    if (m && fold === 'line') out.push(h('div', { class: `p10-fold${free}${nightCls()}` }, h('button', { type: 'button', class: 'p10-more', 'aria-expanded': String(open), onclick: p14 ? () => { r.open = !open; draw(); } : null, 'aria-label': `${open ? 'Fold' : 'Show'} the ${m} waypoints`, html: `${p12 ? `${open ? 'Hide' : 'Show'} ` : ''}${words}${icon(open ? 'chevronUp' : 'chevronDown', 14)}` }))); // (Parts 10; Parts 12 with its verb, as Komoot's)
+    const same = p10 && T.nested === 'same'; // (Parts 10: as the waypoints around them, as on main)
+    if (open) r.fold.forEach(([name, t, w], j) => out.push(...(p14 ? between(j) : []), ...sun(hm(t)), point({ p: +name.replace(/\D/g, ''), name, line: tre && !same ? t : `Arrive ${t}`, warn: w }, { shape: !same, when: p11 ? whenOf(t, km0 + (parseFloat(r.s) * (j + 1)) / (m + 1)) : null, dash: p11 && r.free11 ? 'in-dash out-dash' : '' }))); // (A and B: one line, its time alone)
+    if (open && p14) out.push(...between(m));
+    return out; };
+  const list = h('ol', { class: `wpl p9 ${tre}${p10 ? ` p10 aff-${T.aff} f10-${T.fold} n-${T.nested}` : ''}${p11 ? ' p11' : ''}${p12 ? ' p12' : ''}${p13 ? ' p13' : ''}` });
+  R.parts.forEach((part, k) => {
+    if (part.wait) { list.append(h('li', { class: 'wait' }, wait(part.wait))); if (part.wait.kind === 'night') st.day++; return; }
+    const rows = h('div', { class: 'rows', role: 'group' });
+    part.rows.forEach((r, j) => { if (r.wait) rows.append(...sun(hm(r.wait.t.split('–')[1])), wait(r.wait)); else if (r.s) rows.append(...sun(st.last ?? 0), ...stretch(r)); else rows.append(...sun(hm(r.line)), point(r, { last: k === R.parts.length - 1 && j === part.rows.length - 1, when: p11 ? whenOf(r.line, st.km) : null, dash: p11 ? [part.rows[j - 1]?.free11 ? 'in-dash' : '', part.rows[j + 1]?.free11 ? 'out-dash' : ''].join(' ').trim() : '' })); });
+    list.append(h('li', { class: `sec2${p13 && st.night ? ' night' : ''}`, style: `--part: var(--sport-${part.sport}, var(--rail))` }, h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(part.icon, 16) }), h('div', { class: 'sec2-t' }, h('b', {}, part.label), h('small', {}, part.sum))), rows));
+  });
+  const head = h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(R.parts.reduce((t, p) => t + (p.rows ? p.rows.filter((r) => r.p != null).length + p.rows.reduce((u, r) => u + (r.fold ? r.fold.length : 0), 0) : 0), 0))), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }));
+  const foot = h('div', { class: 'wpl-foot' }, h('button', { type: 'button', class: 'btn', html: `${icon('grip', 16)} Reorder` }), h('button', { type: 'button', class: 'btn', html: `${icon('reverse', 16)} Reverse` }), h('button', { type: 'button', class: 'btn danger', html: `${icon('trash', 16)} Clear route` }));
+  // Parts 11: the list's own setting over it, the times as the clock's or from the start (the app's small segmented switch)
+  const tb = (v, label) => h('button', { type: 'button', 'aria-pressed': String(S.t11 === v), onclick: () => { S.t11 = v; draw(); } }, label);
+  // (Parts 13: the weather once, for the whole trip, as Go sums it up; it opens the weather)
+  const wxSum = p15 ? h('div', { class: 'days p15-days' }, ...(S.r9 === 'journey' ? [['Wed 04/11', '15:30–18:14', '14.1 km · 2 h 22 min moving · ↑155 m', '6…9 °C · wind up to 5 m/s · dry']] : [['Day 1', 'Wed 04/11 · 09:00–12:11', '31.6 km · 2 h 51 min moving · ↑540 m · night at Terälahti', '6 °C · wind up to 3 m/s · dry'], ['Day 2', 'Thu 05/11 · 08:00–14:27', '26.8 km · 2 h 34 min moving · ↑480 m', '4…6 °C · wind up to 4 m/s · rain on 3.2 km']]).map(([b, when, what, wx]) => h('button', { type: 'button', class: 'day' }, h('b', {}, b), h('span', { class: 'day-when' }, when), h('span', { class: 'day-what' }, what), h('span', { class: 'day-wx' }, wx))))
+    : p13 ? h('button', { type: 'button', class: 'row p13-wx' }, h('span', { 'aria-hidden': 'true', html: icon(S.r9 === 'journey' ? 'cloudSun' : 'cloud', 20) }),
+    h('span', {}, h('b', {}, 'Weather on the route'), ...(S.r9 === 'journey' ? [h('small', {}, '6…9 °C · wind up to 5 m/s · dry')] : [h('small', {}, 'Day 1 · 6 °C · wind up to 3 m/s · dry'), h('small', {}, 'Day 2 · 4…6 °C · wind up to 4 m/s · showers after 13:00')]))) : null;
+  // (Parts 14: the list's settings in a menu over it, the app's menu with its seg and tg)
+  const set14 = p14 ? h('div', { class: 'wpl-top p11-top p14-top' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'The list’s settings', title: 'The list’s settings', 'aria-expanded': String(S.m14 === 'open'), html: icon('sliders', 20), onclick: () => { S.m14 = S.m14 === 'open' ? 'closed' : 'open'; draw(); } }),
+    S.m14 === 'open' ? h('div', { class: 'menu', role: 'group', 'aria-label': 'The list’s settings' }, h('div', { class: 'menu-h' }, 'Times'), h('div', { class: 'seg small full', role: 'group', 'aria-label': 'Times' }, tb('elapsed', 'From the start'), tb('clock', 'The clock’s')),
+      h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, 'Warnings and heads-ups', h('small', {}, 'On the stretches, as Check has them')), h('input', { type: 'checkbox', role: 'switch', checked: S.w14 === 'show', onchange: (e) => { S.w14 = e.target.checked ? 'show' : 'hide'; draw(); } }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }))) : null) : null;
+  return p11 ? [head, set14 || h('div', { class: 'wpl-top p11-top' }, h('div', { class: 'seg small', role: 'group', 'aria-label': 'Times in the list' }, ...(p12 ? [tb('elapsed', 'From start'), tb('clock', 'Clock')] : [tb('clock', 'Clock'), tb('elapsed', 'From start')]))), wxSum, list, foot].filter(Boolean) : [head, list, foot];
 }
 
 function draw() {
@@ -723,13 +1028,16 @@ function draw() {
   frame.append(h('div', { class: 'mapline', style: 'top: 30%' }), h('div', { class: 'mapline', style: 'top: 55%; transform: rotate(12deg)' }));
   const sheet = h('section', { class: 'sheet', 'data-layout': phone ? 'sheet' : S.frame === 'side' ? 'left' : 'bottom', 'data-state': 'full', 'aria-label': 'Route planner' });
   if (phone) sheet.append(h('div', { class: 'sheet-handle' }), h('div', { class: 'pl-tools-row' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` })));
-  sheet.append(head(R, S.v !== 'today'));
+  sheet.append(head(/^parts(9|10|11|12|13|14|15)$/.test(S.v) ? ROUTES9[S.r9] : R, S.v !== 'today'));
   const body = h('div', { class: 'sheet-body' });
-  body.append(...(S.v === 'parts7' ? parts5(R, S.frame, S, 7) : S.v === 'parts6' ? parts5(R, S.frame, S, 6) : S.v === 'parts5' ? parts5(R, S.frame, S) : S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
+  body.append(...(/^parts(9|10|11|12|13|14|15)$/.test(S.v) ? parts9(S.frame, S) : S.v === 'parts8' ? parts5(R, S.frame, S, 8) : S.v === 'parts7' ? parts5(R, S.frame, S, 7) : S.v === 'parts6' ? parts5(R, S.frame, S, 6) : S.v === 'parts5' ? parts5(R, S.frame, S) : S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
   sheet.append(body);
   frame.append(sheet);
-  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.', parts3: 'Parts 3: Parts 2, with a part after a changeover or a night saying when it starts under its heading.', parts4: 'Parts 4: Parts 2, with a part after a changeover or a night starting with its point’s row, as the route’s start does; each wait with its times, a night with sunset and sunrise; Freehand.', parts5: 'Parts 5: Parts 4 with far less text: Arrive and Leave with the weather as icons, no Start, End or Waypoint n on a point’s line, a wait’s times under it, sunset and sunrise with icons, folded waypoints a count by ⌄, a part’s heading its sport; on a desktop the weather in the tooltips.', parts6: 'Parts 6: Parts 5 with every part’s totals beside its name, and a route of one sport’s heading on the line in its colour; sunset and sunrise with the horizon icons (chosen).', parts7: 'Parts 7: Parts 6 with a route of one sport’s totals in its heading too: one style everywhere.' }[S.v];
+  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.', parts3: 'Parts 3: Parts 2, with a part after a changeover or a night saying when it starts under its heading.', parts4: 'Parts 4: Parts 2, with a part after a changeover or a night starting with its point’s row, as the route’s start does; each wait with its times, a night with sunset and sunrise; Freehand.', parts5: 'Parts 5: Parts 4 with far less text: Arrive and Leave with the weather as icons, no Start, End or Waypoint n on a point’s line, a wait’s times under it, sunset and sunrise with icons, folded waypoints a count by ⌄, a part’s heading its sport; on a desktop the weather in the tooltips.', parts6: 'Parts 6: Parts 5 with every part’s totals beside its name, and a route of one sport’s heading on the line in its colour; sunset and sunrise with the horizon icons (chosen).', parts7: 'Parts 7: Parts 6 with a route of one sport’s totals in its heading too: one style everywhere.', parts9: 'Parts 9: the rows as built after PR 6 (As built) and two subtle treatments of the timeline’s levels, with no background but for a selection or a press: A, the type’s weight and size and the markers’ shape and size, no › on waypoints and events, the unfold control apart under the stretch’s words, unfolded waypoints its beads grown, one line each; B, A with what’s between two main waypoints one step in. Not drawn: the desktop’s tools on hover (PR 6), 200 %, Finnish words longer than these.', parts15: 'Parts 15: Parts 14 with the rows as built wherever they do the job: a stretch keeps its own row (it opens its card), its line and its beads for the waypoints it folds; its warnings in their own style, counted while folded, named once unfolded or when it has no waypoints in it; a piece between two unfolded waypoints with a warning is such a row too; the trip’s weather is Go’s day. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts14: 'Parts 14: Parts 13, and a stretch with its waypoints folded counts its warnings, as built (1 to read · 2 worth a look); unfolded (Show 2 waypoints, which works here), each warning is named between the two waypoints it’s between. The list’s settings in a menu over it (the sliders): the times from the start or the clock’s, and the warnings and heads-ups shown or not (a changeover’s gear and the wind too), as a part’s ⚙ will hold its sport’s speed. Built from the app’s menu, seg and tg. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts13: 'Parts 13: Parts 12, saying the thing rather than a count. A waypoint’s row its name alone (its weather on a desktop’s hover and in its card); the weather once, for the whole trip, over the list, as Go sums it up, and on a stretch only where it matters (the paddle’s headwind), in words that open the weather; each warning named, its own link to its detail; the dark on the timeline, not a warning on every stretch: sunset and the dark as rows at their time, and the line shaded after it. The three sports leave at 15:30 here, so the dusk falls on the route. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts12: 'Parts 12: Parts 11, with the column’s distance first and in the strong weight, as the planner’s numbers lead with it, and the time under it, from the start by default (the clock’s by the switch); a stretch only what the column can’t say, its warnings and a carry, and Show 3 waypoints as Komoot has it; with none of them, the line alone. Its distance, time and climb in its card (and a desktop’s tooltip). Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts11: 'Parts 11: Parts 10 as proposed (outlined, the control the stretch’s last line), with every waypoint the same row, unfolded ones too; when and how far left of the line, as a timetable has them, with no Arrive or Leave, the clock’s time or from the start by the switch over the list; how a stretch is drawn told by its line (solid along paths and over water, dashed freehand: the hike), in words only for a carry; warnings on the stretch they’re on, not on the waypoint after it; a wait without its times, but a stop’s end in the column. The route, a selection and a press as in Parts 9. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts10: 'Parts 10: B, with a cue at rest that a row opens its card, and the unfold control in its stretch. Opens: a press only (Parts 9 B); Outlined, a main waypoint and an event in a hairline as the app’s buttons are, the line through them, and between two of them the stretch with its control and its unfolded waypoints; or Rules between rows, as the app’s other rows have, a stretch with its waypoints one row. Waypoints in a stretch: apart under it (Parts 9 B), as its last line, or at its row’s end. Unfolded: rings (Parts 9 B), numbered as the waypoints around them in compact rows, or rows as the others (as on main). The route, a selection and a press as in Parts 9. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts8: 'Parts 8: the list as built after PR 6, and from testing: no › on the stretches; the places you chose (the start, a waypoint you see, a wait, the end) on a soft tint, with › (the switch: none); a stretch’s unfolded waypoints nested in it, one line each (the switch: in one region with the stretch, indented, or as built); Show all at the top; the foot in one row, Clear route a red button.' }[S.v];
   stage.append(h('div', {}, frame, h('p', { class: 'cap' }, cap)));
+  const dusk = frame.querySelector('.p13-sun.dusk'); // (Parts 13: the dark's band, from its row to the last waypoint)
+  if (dusk) { const ol = dusk.closest('ol.wpl'), o = ol.getBoundingClientRect(), z = S.zoom === '200' ? 2 : 1, a = dusk.getBoundingClientRect(), b = [...ol.querySelectorAll('.wpl-point')].pop().getBoundingClientRect();
+    ol.append(h('div', { class: 'p13-band', 'aria-hidden': 'true', style: `top: ${(a.top + a.height / 2 - o.top) / z}px; height: ${(b.top + b.height / 2 - a.top - a.height / 2) / z}px` })); }
   const hov = frame.querySelector('.wpl-stretch.hovered, .wpl-point.hovered'), T = hov && (hov.mkTip || (hov.dataset.k != null && R.legs[+hov.dataset.k].tip));
   if (T) {
     const sb = frame.querySelector('.sheet-body'), z = S.zoom === '200' ? 2 : 1;
