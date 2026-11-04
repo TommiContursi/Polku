@@ -15849,6 +15849,23 @@ def sections_list(chrome):
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
     pg.close()
+    # (#761, Phase 1) at 200 % (a 390 phone's 195 × 422) each waypoint's column is the line under its name, in the list
+    name = '195x422 (200 %)'
+    pg = page(195, 422, True)
+    try:
+        route(pg, name, {'pts': PTS[:5]})
+        pg.js("polku.planner.setSheetState('full'); polku.planner.reveal('points'); true")
+        time.sleep(0.6)
+        out = pg.js("""(() => { const L = polku.planner.els.points, w = L.querySelector('.wpl-point .wpl-when'), out = [], lr = L.getBoundingClientRect();
+          if (!lr.width) return ['the list not in sight'];
+          if (!w || getComputedStyle(w).position !== 'static' || !/^[\\d.]+ k?m/.test(w.textContent)) out.push(`its column: ${w ? `${getComputedStyle(w).position}, ${w.textContent}` : 'none'} (want a line under the name)`);
+          for (const e of L.querySelectorAll('*')) { const b = e.getBoundingClientRect(); if (b.width && (b.right > lr.right + 1 || b.left < lr.left - 1)) out.push(`${e.tagName.toLowerCase()}.${e.className} past the list's edge`); }
+          return [...new Set(out)]; })()""")
+        fails += [f'{name}: {o}' for o in out]
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    except Exception as e:
+        fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
+    pg.close()
     name = '360x740, Finnish'
     pg = page(360, 740, True)
     try:
