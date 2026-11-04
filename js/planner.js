@@ -3160,8 +3160,9 @@ export class Planner {
         const done = () => { this.foldingOut = null; this.unfolded.delete(pid); this.renderWaypoints(); };
         if (!out.length) { done(); return; }
         this.foldingOut = pid;
-        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }];
-        out.map((x) => x.animate(frames, { duration: token('--t-press'), easing: cssVar('--ease-out'), fill: 'forwards' }))[0].finished.then(done, done); // (cancelled by a redraw, it folds all the same)
+        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
+        for (const x of out) x.animate(frames, { id: 'fold-out', duration: ms, easing: cssVar('--ease-out'), fill: 'forwards' });
+        setTimeout(done, ms); // (on time, not on the animation's end: one that draws no frames, a page left mid-way, still folds)
       } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
     const row = h('div', { class: 'wpl-strow' }, b, fold);
     if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)

@@ -15536,10 +15536,10 @@ def sections_list(chrome):
         # folded by a tap or a click, their marks and words leave together, faster, before the list closes up
         r = pg.js("""(async () => { const p = polku.planner, u = p.els.points.querySelector('.wpl-unfold');
           u.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
-          const during = [...p.els.points.querySelectorAll('.wpl-point.shape > span:nth-child(2)')].map((x) => x.getAnimations().map((a) => `${a.playState} ${a.effect.getTiming().duration}`).join()).join(', ');
-          await new Promise((r) => setTimeout(r, 400));
+          const during = [...p.els.points.querySelectorAll('.wpl-point.shape > span:nth-child(2)')].map((x) => x.getAnimations().filter((a) => a.id === 'fold-out').map((a) => a.effect.getTiming().duration).join()).join(', ');
+          await new Promise((r) => setTimeout(r, 400)); // (on time, even where the browser draws no frames, as this one may not)
           return { during, after: p.els.points.querySelectorAll('.wpl-point.shape').length }; })()""")
-        if r != {'during': ', '.join(['running 120'] * 6), 'after': 0}:
+        if r != {'during': ', '.join(['120'] * 6), 'after': 0}:
             fails.append(f"{name}: six waypoints folded by a tap: {r} (want them leaving in 120 ms, then folded, #761)")
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').focus(); true")
         for ev in ({'type': 'keyDown', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, 'text': '\r'}, {'type': 'keyUp', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}):
