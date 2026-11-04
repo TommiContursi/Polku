@@ -15581,6 +15581,11 @@ def sections_list(chrome):
         got = json.loads(pg.js(WARNS))
         if got != ['0-4:1 to read 1 worth a look', '2:1 worth a look', '4:1 to read']:
             fails.append(f"{name}: with via 4 named, the warnings: {got} (#761)")
+        # (after sunset on the way to via 4 too: on a line of its own under the warning, as when you're there, not one)
+        got = pg.js("""(() => { const p = polku.planner; p.analysis.darkWarn = [{ at: p.lengthTo(3) + 20, len: 200, kind: 'dark', twilight: true, evening: true, text: 'After sunset (16:02) for 200 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
+          const lines = [...p.els.points.querySelectorAll('.wpl-point[data-i="4"] .wpl-warns')].map((x) => x.textContent); p.analysis.darkWarn = []; p.renderWaypoints(); return lines; })()""")
+        if got != ['1 to read', '200 m after sunset']:
+            fails.append(f"{name}: via 4's lines with a warning and after sunset: {got} (want the light on a line of its own, #761)")
         pg.js("polku.planner.setLeave(null); true")
         # a mouse drags a row by its grip: via 2 to place 4 (Reorder)
         pg.js("window.rcTags = 'highway=path surface=dirt mtb:scale=1'; true")

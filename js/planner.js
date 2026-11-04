@@ -3008,13 +3008,13 @@ export class Planner {
     const when = i === 0 ? this.leaveWords() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
     const sky = this.wxOf(w, out ? at && at.leave : at && at.arrive, p);
     const bits = [when ? h('span', {}, `${out ? 'Leave' : 'Arrive'} ${when}`) : null, ...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
-    const ws = warns && i > 0 ? this.warnsOn({ from: i - 1, to: i }).warns : [];
+    const ws = warns && i > 0 ? this.warnsOn({ from: i - 1, to: i }).lines : [];
     const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', last && !leave ? 'last' : '', brk ? 'brk' : '', !leave && line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
     const b = h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
       h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i))),
       // (the bits apart by the line's gap: the spaces between them only for the words read out, not drawn)
       h('span', {}, h('b', { class: 'wpl-name' }, name), bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null,
-        ws.length ? h('small', { class: 'wpl-warns', html: ws.join(' ') }) : null),
+        ...ws.map((x) => h('small', { class: 'wpl-warns', html: x }))),
       h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
@@ -3071,8 +3071,8 @@ export class Planner {
   // a stretch: the line between two points (#761), its distance, time and climb in bold, how it's drawn under them (a
   // carry on it too, #779), and the points that only shape it: beads on its line, their count by ⌄, which unfolds them.
   // One drawn otherwise than along paths (a straight line, over water, its own line) has its word in the text's weight,
-  // a straight one its line dashed. Under them Check's warnings on it and the dark (`warnsOn()`), with a moon on its line
-  // where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
+  // a straight one its line dashed. Under them Check's warnings on it, then the dark on a line of its own (`warnsOn()`),
+  // with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
   stretchRow(s, ro) {
     const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
     const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).join(' · ');
@@ -3082,14 +3082,14 @@ export class Planner {
     const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how, differs = how !== MODE_LABEL.auto || carry >= 1;
     const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid), beads = [];
     for (let j = 0, m = open ? 0 : Math.min(shaping, 3); j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
-    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { warns, dark } = this.warnsOn(s);
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { lines, dark } = this.warnsOn(s);
     if (dark) beads.push(h('span', { class: 'moon', style: `top: ${(100 * (Math.max(a0, dark) - a0)) / Math.max(1, a1 - a0)}%`, html: icon('moon', 12) }));
     // (its label starts with its words, so voice control finds it by them)
     const b = h('button', { type: 'button', class: `row wpl-stretch${differs ? ' differs' : ''}${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to),
-      'aria-label': [words, says, ...warns.map((x) => x.replace(/<[^>]+>/g, ''))].join(', '), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
+      'aria-label': [words, says, ...lines.map((x) => x.replace(/<[^>]+>/g, ''))].join(', '), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
       h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
       h('span', {}, h('b', { class: 'wpl-nums' }, words), h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` }),
-        warns.length ? h('small', { class: 'wpl-warns', html: warns.join(' ') }) : null));
+        ...lines.map((x) => h('small', { class: 'wpl-warns', html: x }))));
     const t0 = this.timesAt(s.from), t1 = this.timesAt(s.to), A = this.analysis;
     if (t0 && t1) {
       // (the weather over it, where the forecast reaches: the temperature's range, the wind at its strongest)
@@ -3106,9 +3106,9 @@ export class Planner {
   }
   // Check's warnings on the way from point s.from to s.to, as Check says them, unread: what's to read, what isn't
   // checked and what's worth a look, but for what the list says its own way (a straight line and a carry in a stretch's
-  // words, the gear left and a short night on their wait, twilight as the dark is). Then how much of it is in the dark,
-  // after sunset or before sunrise, in the order you'd go through them. The words' HTML, and where along the route the
-  // dark begins (or 0).
+  // words, the gear left and a short night on their wait, twilight as the dark is). Then, on a line of their own, as
+  // when you're there and not a warning: how much of it is after sunset, in the dark or before sunrise, in the order you'd
+  // go through them. The lines' HTML, and where along the route the dark begins (or 0).
   warnsOn(s) {
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
     const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Straight line|Carry \/ portage)/.test(w.text);
@@ -3116,10 +3116,10 @@ export class Planner {
     const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
     const dark = on((x) => !x.twilight), darkM = m(dark), dusk = m(on((x) => x.twilight && x.evening)), dawn = m(on((x) => x.twilight && !x.evening));
     const warns = [n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
-      n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : '',
-      dusk >= 50 ? `<span class="dark">${icon('sunset', 14)}${fmtDist(dusk)} after sunset</span>` : '', darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : '',
+      n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : ''].filter(Boolean);
+    const light = [dusk >= 50 ? `<span class="dark">${icon('sunset', 14)}${fmtDist(dusk)} after sunset</span>` : '', darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : '',
       dawn >= 50 ? `<span class="dark">${icon('sunrise', 14)}${fmtDist(dawn)} before sunrise</span>` : ''].filter(Boolean);
-    return { warns, dark: darkM >= 50 ? dark[0].at : 0 };
+    return { lines: [warns, light].filter((x) => x.length).map((x) => x.join(' ')), dark: darkM >= 50 ? dark[0].at : 0 };
   }
   // a stretch under the mouse in the list: lit on the map, as a leg's row was
   lightStretchHover(s) {
