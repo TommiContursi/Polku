@@ -15686,11 +15686,19 @@ def sections_list(chrome):
             if q:
                 pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': q['x'], 'y': q['y'], 'button': 'none'}, pg.s)
                 time.sleep(0.2)
-            return pg.js(f"[...({ROW(i)}?.querySelectorAll('.wpl-tools > *') || [])].filter((x) => x.getClientRects().length).map((x) => x.getAttribute('aria-label') || x.title)")
+            return pg.js(f"[...({ROW(i)}?.querySelectorAll('.wpl-tools > *') || [])].filter((x) => x.getClientRects().length).map((x) => x.getAttribute('aria-label') || (x.matches('.wpl-grip') ? 'grip' : ''))")
         shown = over(2)
-        if shown != ['Rename Laituri', 'Remove Laituri', 'Drag to move it']:
+        if shown != ['Rename Laituri', 'Remove Laituri', 'grip']:
             fails.append(f"{name}: a waypoint's row under the mouse shows {shown} (want Rename, Remove and the grip, #761)")
         else:
+            # (the tools' names in the app's tooltip, as the row's own, not the browser's: from the row onto Rename, it says
+            # Rename, #799's animation review)
+            q = at(pg, f"{ROW(2)}.querySelector('[aria-label^=Rename]')")
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': q['x'], 'y': q['y'], 'button': 'none'}, pg.s)
+            time.sleep(0.7)
+            r = pg.js(f"({{ tip: document.querySelector('#tip:not([hidden]) b')?.textContent || '', titles: {ROW(2)}.querySelectorAll('.wpl-tools [title]').length }})")
+            if r != {'tip': 'Rename', 'titles': 0}:
+                fails.append(f"{name}: the mouse on Rename in a row: {r} (want the app's tooltip, Rename, and no title, #761)")
             press(pg, at(pg, f"{ROW(2)}.querySelector('[aria-label^=Rename]')"), f'{name}: Rename in the row', touch)
             pg.c.send('Input.insertText', {'text': 'Ranta'}, pg.s)
             key(pg, 'Enter', 'Enter', 13)

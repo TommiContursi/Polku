@@ -21,7 +21,7 @@ import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt,
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
-import { describe } from './hover.js';
+import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
 import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard, pickLine, thingCard, nearestSample } from './cards.js';
@@ -3023,7 +3023,7 @@ export class Planner {
     const bits = [when ? h('span', {}, `${out ? 'Leave' : 'Arrive'} ${when}`) : null, ...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
     const ws = warns && i > 0 ? this.warnsOn({ from: i - 1, to: i }).lines : [];
     const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', last && !leave ? 'last' : '', brk ? 'brk' : '', !leave && line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
-    const tools = !ro && !this.coarse(), key = `${this.pidOf(p)}|${leave}`, naming = tools && this.renamingRow === key;
+    const tools = !ro && hoverCapable(), key = `${this.pidOf(p)}|${leave}`, naming = tools && this.renamingRow === key;
     const mark = h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i)));
     // (the bits apart by the line's gap: the spaces between them only for the words read out, not drawn)
     const more = [bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null, ...ws.map((x) => h('small', { class: 'wpl-warns', html: x }))];
@@ -3034,11 +3034,15 @@ export class Planner {
           onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), ...more))
       : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
         mark, h('span', {}, h('b', { class: 'wpl-name' }, name), ...more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
-    const tool = (ic, label, fn, cls = '') => h('button', { type: 'button', class: `tool${cls}`, 'aria-label': `${label} ${name}`, title: label, onclick: fn, html: icon(ic, 16) });
+    // (the tools' names in the app's tooltip, beside the whole row as the row's own, so it hands over at once from the row
+    // to a tool and covers none of them)
+    const tips = [], tip = (t, label) => { tips.push([t, label]); return t; };
+    const tool = (ic, label, fn, cls = '') => tip(h('button', { type: 'button', class: `tool${cls}`, 'aria-label': `${label} ${name}`, onclick: fn, html: icon(ic, 16) }), label);
     const wrap = tools ? h('div', { class: 'wpl-ptrow', 'data-i': String(i) }, b, h('span', { class: 'wpl-tools' },
       naming ? null : tool('pencil', 'Rename', () => { this.renamingRow = key; this.renderWaypoints(); const f = this.els.points.querySelector('input.name-field'); f?.focus(); f?.select(); }),
       tool('trash', 'Remove', () => this.removeWithUndo(i), ' danger'),
-      h('span', { class: 'wpl-grip', title: 'Drag to move it', 'aria-hidden': 'true', html: icon('grip', 16), onpointerdown: (e) => { if (e.pointerType === 'mouse') this.dragRow(e, wrap, i, { rows: this.listRows() }); } }))) : null;
+      tip(h('span', { class: 'wpl-grip', 'aria-hidden': 'true', html: icon('grip', 16), onpointerdown: (e) => { if (e.pointerType === 'mouse') this.dragRow(e, wrap, i, { rows: this.listRows() }); } }), 'Drag to move it'))) : null;
+    for (const [t, label] of tips) tooltip(t, { name: label, beside: wrap });
     const el = wrap || b;
     el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });

@@ -378,7 +378,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | The one main action | `btn primary big`, with `rt-make-t` for a line under it; its words wrap (a least height) | Make 3 loops |
 | A number with − and +, typable | `rt-step` with `rt-len`, one box holding `tool` −, the field, its unit and `tool` +; its lead and its line beside it | the round trip's Other…, a stop's and a changeover's minutes |
 | A button | `btn` (`quiet`, `primary`): a least height, never a fixed one, so its words wrap inside it (#373) | everywhere |
-| A desktop's tools on a row, while the mouse is over it or it has the focus | `wpl-ptrow` holding the row and `wpl-tools`: `tool`s (Remove `tool danger`, red) and the grip (`wpl-grip`) at the far end, where › is | a waypoint's row in Route's list (#761) |
+| A desktop's tools on a row, while the mouse is over it or it has the focus | `wpl-ptrow` holding the row and `wpl-tools`: `tool`s (Remove `tool danger`, red) and the grip (`wpl-grip`) at the far end, where › is; their names in `tooltip()`, as the row's own; built only where `hoverCapable()`, as the CSS shows them | a waypoint's row in Route's list (#761) |
 | A dangerous action as a button | `btn danger`: the button's own surface and edge, its words and icon in `--danger`; Undo in its note | Clear route under the route's list (#761) |
 | Actions in a group | `menu-h`, `menu-item two-line`, `hr`, `menu-item danger menu-apart` for the dangerous one; built by `popMenu()` in `js/ui.js` | the ⋯ menu |
 | A choice in a list | `menu-item` with `role="menuitemradio"`, `menu-tick`, `cur` ("your route") | the sport menus |
