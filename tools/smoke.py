@@ -15521,10 +15521,39 @@ def sections_list(chrome):
         ln = pg.js(SE_LINE)
         if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(3, '6')]:
             fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want 3 beads and 6 by ⌄)")
+        # (headless Chrome asks for reduced motion; a person usually doesn't)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         press(pg, at(pg, "polku.planner.els.points.querySelector('.wpl-unfold')"), f'{name}: unfold', touch)
         s = st(pg)
         if s['shapes'] != 6:
             fails.append(f"{name}: unfolded: {s['shapes']} shaping points' rows, not 6")
+        # (#761) unfolded by a tap or a click, they come in one after another, as a Layers group's rows; from the keyboard,
+        # at once
+        IN = "[...polku.planner.els.points.querySelectorAll('.rows > .wpl-in')].map((x) => `${getComputedStyle(x.querySelector('.wpl-point > span:nth-child(2)')).animationName} ${x.style.animationDelay}`).join(', ')"
+        r = pg.js(IN)
+        if r != 'lg-in 0ms, lg-in 40ms, lg-in 80ms, lg-in 120ms, lg-in 120ms, lg-in 120ms':
+            fails.append(f"{name}: six waypoints unfolded by a {'tap' if touch else 'click'}: {r!r} (want lg-in, 40 ms apart up to 120 ms, #761)")
+        # folded by a tap or a click, their marks and words leave together, faster, before the list closes up
+        r = pg.js("""(async () => { const p = polku.planner, u = p.els.points.querySelector('.wpl-unfold');
+          u.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+          const during = [...p.els.points.querySelectorAll('.wpl-point.shape > span:nth-child(2)')].map((x) => x.getAnimations().filter((a) => a.id === 'fold-out').map((a) => a.effect.getTiming().duration).join()).join(', ');
+          await new Promise((r) => setTimeout(r, 400)); // (on time, even where the browser draws no frames, as this one may not)
+          return { during, after: p.els.points.querySelectorAll('.wpl-point.shape').length }; })()""")
+        if r != {'during': ', '.join(['120'] * 6), 'after': 0}:
+            fails.append(f"{name}: six waypoints folded by a tap: {r} (want them leaving in 120 ms, then folded, #761)")
+        pg.js("polku.planner.els.points.querySelector('.wpl-unfold').focus(); true")
+        for ev in ({'type': 'keyDown', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, 'text': '\r'}, {'type': 'keyUp', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}):
+            pg.c.send('Input.dispatchKeyEvent', ev, pg.s)  # (with its text, so Enter presses the button, as key() doesn't)
+        time.sleep(0.4)
+        r = [st(pg)['shapes'], pg.js(IN)]
+        if r != [6, '']:
+            fails.append(f"{name}: unfolded from the keyboard: {r} (want six rows, none coming in, #761)")
+        # with reduced motion, they only fade in
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+        r = pg.js(f"""(async () => {{ const p = polku.planner; p.unfolded.clear(); p.renderWaypoints();
+          p.els.points.querySelector('.wpl-unfold').dispatchEvent(new MouseEvent('click', {{ bubbles: true, detail: 1 }})); return {IN}; }})()""")
+        if r != 'qd-fade 0ms, qd-fade 40ms, qd-fade 80ms, qd-fade 120ms, qd-fade 120ms, qd-fade 120ms':
+            fails.append(f"{name}: six waypoints unfolded by a tap with reduced motion: {r!r} (want a fade, #761)")
         press(pg, at(pg, point(3)), f'{name}: via 3’s row', touch)
         scroll0 = pg.js("polku.planner.cards.saved && polku.planner.cards.saved.scroll")
         if st(pg)['kind'] != 'point':

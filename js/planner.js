@@ -2985,8 +2985,13 @@ export class Planner {
       for (const s of sec.stretches) {
         rows.append(this.stretchRow(s, ro));
         // (unfolded, each point says the warnings on the way to it, its end too)
-        const open = this.unfolded.has(this.pidOf(this.points[s.from]));
-        if (open) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, { shape: true, warns: true }));
+        const open = this.unfolded.has(this.pidOf(this.points[s.from])), enter = open && this.unfoldIn === this.pidOf(this.points[s.from]);
+        // (just unfolded by a tap: they come in one after another, as a Layers group's rows do, and only this once)
+        if (enter) this.unfoldIn = null;
+        if (open) for (let i = s.from + 1; i < s.to; i++) {
+          const el = rows.appendChild(this.pointRow(i, ro, { shape: true, warns: true }));
+          if (enter) { el.classList.add('wpl-in'); el.style.animationDelay = `${Math.min(i - s.from - 1, 3) * 40}ms`; }
+        }
         const end = s.to === sec.to, stop = !end && this.stopAt(s.to);
         // (where a part ends, or at a stop, the line breaks: dotted to the next part's heading, through the stop's wait)
         rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop, warns: open }));
@@ -3145,7 +3150,20 @@ export class Planner {
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
-      onclick: () => { if (open) this.unfolded.delete(pid); else this.unfolded.add(pid); this.renderWaypoints(); } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
+      // (by a tap or a click they come in, as Layers' groups' rows do, and leave the way they came, faster: their marks and
+      // words fade back up off the line together, then the list closes up. From the keyboard, at once)
+      onclick: (e) => {
+        if (!open) { this.unfolded.add(pid); this.unfoldIn = e.detail ? pid : null; this.renderWaypoints(); return; }
+        if (this.foldingOut === pid) return;
+        const rows = e.detail ? [...this.els.points.querySelectorAll('.wpl-point.shape')].filter((x) => +x.dataset.i > s.from && +x.dataset.i < s.to) : [];
+        const out = rows.flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]);
+        const done = () => { this.foldingOut = null; this.unfolded.delete(pid); this.renderWaypoints(); };
+        if (!out.length) { done(); return; }
+        this.foldingOut = pid;
+        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
+        for (const x of out) x.animate(frames, { id: 'fold-out', duration: ms, easing: cssVar('--ease-out'), fill: 'forwards' });
+        setTimeout(done, ms); // (on time, not on the animation's end: one that draws no frames, a page left mid-way, still folds)
+      } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
     const row = h('div', { class: 'wpl-strow' }, b, fold);
     if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)
     return row;
