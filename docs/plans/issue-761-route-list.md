@@ -35,6 +35,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Being explored (2026-11-04): Parts 11,** ideas from trying Parts 10 to make the timeline easier to read: when and how far on the left of the line, as a timetable, with no Arrive; the times as the clock's or from the start, a setting by the list (Komoot keeps its list's settings there; the map's marks already have both, in Layers); every waypoint the same row; no Follow paths, Over water or Freehand words when the line already says it; and warnings on the stretch only, since a waypoint's row opens the waypoint, not the warning. Many of the warnings in Helsinki were "Cycling not allowed here", from routes the MTB router takes through ways closed to bikes: #801.
 - **Being explored (2026-11-04): Parts 12,** from trying Parts 11: the column's distance first and stronger, as the planner's numbers lead with it, and the time from the start by default; a stretch only what the column can't say (its warnings, a carry) and "Show 3 waypoints" as Komoot has it, its distance, time and climb in its card.
 - **Being explored (2026-11-04): Parts 13,** from trying Parts 12: say the thing, not a count. The weather once for the whole trip, as Go sums it up, and on a stretch only where it matters; each warning named ("Fallen tree on the path", as a changeover's "Your bike stays here"), opening its own detail; the dark on the timeline (sunset and the dark as rows, the line shaded after it), not a red warning on every stretch.
+- **Liked (2026-11-04): Parts 13, with Parts 14's detail:** a stretch with its waypoints folded counts its warnings, and unfolded names each between the two waypoints it's between; warnings and heads-ups can be hidden by a setting of the list's, beside its times. The aim is to add to the elements that work in production, not to redesign them: each step below changes one thing in the rows as built. The build is proposed under "The PRs from here" (6d to 6h); the order is the user's.
 - **Next:** PR 6b, a hold on any row opens Reorder with that waypoint picked up (phones and desktops), Remove in Reorder's rows, a short wiggle as it opens (stopped within the second; none with reduced motion), a buzz where a phone allows it, and a tap outside the list closes it (that tap does nothing else). Decided with /find-animation-opportunities and /animate, and /review-animations before it opens. It replaces the swipe to remove proposed first.
 
 ## What the user asked for (2026-11-04)
@@ -192,6 +193,11 @@ The research behind it: nested timelines (the Maersk and Telerik design systems,
 - **Checked:** 390 px light, 360 px dark (no sideways scroll). **Not drawn:** sunrise (no morning in these routes), 200 %, the desktop's tools.
 - **Open:** where the dark starts during a changeover, its row falls under the next part's heading; whether "dark" means civil dusk, as Go's "dark from" does; a route walked wholly at night would be one band from the start, with "Dark" at the top.
 
+**Parts 14, the sixteenth round** (`?v=parts14`, 2026-11-04): Parts 13, and:
+- **Folded, a count; unfolded, names:** a stretch whose waypoints are folded counts its warnings as built ("1 to read · 2 worth a look"); "Show 3 waypoints" (it works in the mock-up) unfolds them, and each warning is then named between the two waypoints it's between. A stretch with no waypoints in it names its own.
+- **The list's settings:** a sliders button over the list opens the app's menu with Times (from the start, the clock's) and a toggle for Warnings and heads-ups (a changeover's gear and the wind too). Hidden, the list shows the route alone; the numbers' row over it still says what's to read before you go.
+- **Checked:** 390 px light (unfolding, the menu, hidden), 360 px dark with the menu open (no sideways scroll). **Not drawn:** 200 %, the desktop's tools.
+
 **Ideas for the line, not drawn:**
 - a mark's tooltip, its distance and time from the start;
 - the stretches walked in the dark marked on the line, as Check's "In the dark for 5.75 km" counts them;
@@ -246,6 +252,17 @@ Each small, each tried on the phone before the next, in this order unless the us
    - the grip's drag from the list (today's `dragRow()` in Reorder).
 
    A phone keeps the card's Rename and Remove, and Reorder. `pointcard`-style checks for the hover and the keyboard, and that a finger never sees them.
+6b. **Hold to Reorder** (decided 2026-11-04): a hold on any row opens Reorder with that waypoint picked up, Remove in its rows, a short wiggle, a tap outside closes it (/find-animation-opportunities and /animate first, /review-animations before it opens).
+6c. **Show all** in the Waypoints heading, in words.
+
+Proposed from Parts 10 to 14 (2026-11-04), each one change to the rows as built:
+
+6d. **The column, and every waypoint one row:** `pointRow()`'s line becomes a column left of the line, the distance from the start (`lengthTo()`) over the time from the start (`timesAt()`), with no Arrive or Leave; an unfolded waypoint the same row as the others; each waypoint's row in the button's hairline (Parts 10). A waypoint's row no longer repeats the warnings of the stretch before it (#791's). `sections`, `stops`, `multi`.
+6e. **The slim stretch:** its numbers leave the row for its tooltip and card, and how it's drawn for its line (a carry keeps its words; a screen reader hears both); folded, its warnings counted as `warnsOn()` does; unfolded, each named between its two waypoints (`itemsOn()` for each piece); "Show 3 waypoints" as its last line in place of the count by ⌄.
+6f. **The list's settings:** the sliders over the list, with the times (from the start by default, or the clock's) and Warnings and heads-ups, saved as the map's marks are. The numbers' row keeps the count to read.
+6g. **The weather once:** Go's summary over the list, a line a day, opening the weather; the weather off the waypoints' rows (a desktop's tooltip and the card keep it); on a stretch only where it matters, in words.
+6h. **The dark on the timeline,** with Check: sunset, the dark and sunrise as rows at their time, and the band behind the line. Check's "In the dark" stops being a read on every stretch, which needs its own decision with Check.
+
 7. **Each sport's How you go and Your speed from its part's heading,** out of the list's end: a tap on the heading, with a small ⚙ or › at its end, opens them (chosen on 2026-11-04). The heading has the totals now, so a round in the mock-up comes first.
 8. **The Add row:** search, your location and saved places from the list's end.
    (Elsewhere: sunset and sunrise in the weather timeline is #788; the line filling up as you go is on #180, On the way.)
