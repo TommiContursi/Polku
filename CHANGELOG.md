@@ -76,6 +76,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - After **Done**, the planner's header is the same as while you draw: the route's numbers, with no row of the route's name above them, so the planner covers no more of the map than while you draw. On a desktop **✕** is at the end of the numbers' row; on a phone, fold the planner to its line and its **✕** puts it away.
 - A route's own name, from a GPX or KML file or a picked loop, heads the route's list in **Route**, as in "MTB · Pyynikki loop", while the whole route is one sport with no stops or nights.
 - The line of drawing tips at the foot of **Route** is gone: the first point's own words and the toolbar's tooltips say the same.
+### Fixed: legs waiting for their turn at the router follow on their own ([#78](https://github.com/TommiContursi/Polku/issues/78))
+
+- A long route with many stretches that can't share one routing call (sports that change, places to avoid) asks brouter.de for more routes than a free service takes at once. The stretches past its limit wait as dashed lines, and when Valhalla can't stand in for them either, they are now routed as soon as their turn comes, without pressing **Retry**.
+- Heads-up says so: the routing service takes about a dozen routes a minute from one device, and the stretches follow on their own at the time it gives. Before, it said the service wasn't answering and promised a retry that never came.
 
 ## 2026-11-03
 

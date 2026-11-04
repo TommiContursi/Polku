@@ -1406,6 +1406,8 @@ export class Planner {
       leg.status = 'waiting';
       leg.wait = { reason: e.reason, until: e.until, own: e.source !== 'brouter' };
       leg.key = null;
+      // a slot held back by Polku's own pacing sets no back-off, so nothing else asks again (#78)
+      if (e.reason === 'pacing') { clearTimeout(this.pacedRetry); this.pacedRetry = setTimeout(() => this.retryFailed(), e.until - Date.now() + 200); }
     } else {
       leg.status = 'error';
       toast(`Couldn't route this leg (${e.message}) — drawn as a straight line. Check has a Retry.`, { tone: 'warn', ms: 6000 });
@@ -6774,9 +6776,12 @@ export class Planner {
     const n = this.legs.filter(unrouted).length;
     if (n) {
       const w = (this.legs.find((l) => l.status === 'waiting') || {}).wait;
+      const follow = n === 1 ? 'it follows on its own' : 'they follow on their own';
       const waiting = w && (w.reason === 'limit'
-        ? `The routing service asked for a short pause; ${n === 1 ? 'it follows' : 'they follow'} on their own`
-        : `${w.own ? 'Your routing server' : 'The routing service'} isn’t answering — trying again at ${clock(w.until)}${w.own ? ' (Settings → Routing server)' : ''}`);
+        ? `The routing service asked for a short pause; ${follow}`
+        : w.reason === 'pacing'
+          ? `The routing service takes about a dozen routes a minute from one device; ${follow} at ${clock(w.until)}`
+          : `${w.own ? 'Your routing server' : 'The routing service'} isn’t answering — trying again at ${clock(w.until)}${w.own ? ' (Settings → Routing server)' : ''}`);
       out.push({ ...span(unrouted), kind: 'router', noHide: true, noAvoid: true, text: `${n === 1 ? 'One leg isn’t' : `${n} legs aren’t`} routed yet`, note: waiting || `Drawn as straight line${n === 1 ? '' : 's'}`,
         tier: 'read', src: { kind: 'router', by: 'the routing service' }, retry: () => this.retryFailed() });
     }

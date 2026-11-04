@@ -5961,6 +5961,64 @@ def pacing(chrome):
     return not fails
 
 
+# Issue #78: legs refused for a paced BRouter slot (more unbatched legs than 5 in
+# 10 s, with Valhalla failing too) are routed again on their own once their slot
+# is free, within the windows, and Heads-up says they follow at that time.
+# BRouter and Valhalla are mocked: a straight line, and 400.
+PACED_LEGS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
+  const real = window.fetch.bind(window), calls = [];
+  const head = ['Longitude', 'Latitude', 'Elevation', 'Distance', 'CostPerKm', 'ElevCost', 'TurnCost', 'NodeCost', 'InitialCost', 'WayTags', 'NodeTags'];
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:[/][/](brouter[.]de|valhalla1[.]openstreetmap[.]de)[/]/.test(url)) return real(input, init);
+    calls.push({ src: /valhalla/.test(url) ? 'valhalla' : 'brouter', at: Date.now() });
+    if (/valhalla/.test(url)) return new Response('', { status: 400 });
+    const ll = new URL(url).searchParams.get('lonlats').split('|').map((q) => q.split(',').map(Number));
+    const row = (q) => [String(Math.round(q[0] * 1e6)), String(Math.round(q[1] * 1e6)), '0', '0', '0', '0', '0', '0', '0', 'highway=path', ''];
+    return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: [head, ...ll.slice(1).map(row)] }, geometry: { type: 'LineString', coordinates: ll } }] }));
+  };
+  p.checkWet = async () => {}; // dry ground whatever the weather, so no leg is routed twice
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  p.setActive(true);
+  const points = Array.from({ length: 10 }, (_, i) => [24.90 + i * 0.01, 60.17]);
+  // sports alternating, so no two neighbouring legs share a BRouter call
+  p.restore({ points, modes: points.slice(1).map(() => 'auto'), sports: points.slice(1).map((_, i) => (i % 2 ? 'gravel' : 'mtb')) });
+  const by = (st) => p.legs.filter((l) => l.status === st).length;
+  const statuses = () => p.legs.map((l) => l.status + (l.wait ? ` (${l.wait.reason})` : '')).join(', ');
+  for (let k = 0; k < 80 && !(by('ok') === 5 && by('waiting') === 4); k++) await wait(100);
+  if (!(by('ok') === 5 && by('waiting') === 4 && p.legs.every((l) => l.status !== 'waiting' || l.wait.reason === 'pacing'))) return [`after five calls in 10 s, with Valhalla failing: ${statuses()}`];
+  const row = p.routerWarnings().find((w) => /routed yet/.test(w.text));
+  if (!row || !/follow on their own at \\d\\d?[.:]\\d\\d/.test(row.note || '')) errs.push(`Heads-up on the paced legs: ${row ? row.note : 'no row'}`);
+  const until = Math.max(...p.legs.filter((l) => l.status === 'waiting').map((l) => l.wait.until));
+  for (let k = 0; k < 250 && by('ok') !== 9; k++) await wait(100);
+  if (by('ok') !== 9) errs.push(`${Math.round((Date.now() - until) / 1000)} s after their slot was due: ${statuses()}`);
+  // never more than a window takes: 5 in 10 s for BRouter, one in 1.1 s for Valhalla
+  const net = await import(location.origin + '/js/net.js');
+  for (const src of ['brouter', 'valhalla']) {
+    const at = calls.filter((c) => c.src === src).map((c) => c.at);
+    for (const [ms, max] of net.SOURCES[src].pace) for (const t of at) {
+      const k = at.filter((u) => u >= t && u < t + ms).length;
+      if (k > max) { errs.push(`${src}: ${k} calls within ${ms / 1000} s (it takes ${max})`); break; }
+    }
+  }
+  return errs;
+})()"""
+
+
+def paced_legs(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/60.170/24.945')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        fails = pg.js(PACED_LEGS, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} paced legs are routed again at their slot (#78)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def hover_feedback(chrome):
     pg = chrome.page(1440, 900)
     try:
@@ -17675,7 +17733,7 @@ GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
-    ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
+    ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653)'),
