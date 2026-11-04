@@ -571,3 +571,22 @@ epochs, valid empty unions, stalled/failed contributors and fresh-reader
 IndexedDB reuse offline. Area and ambiguous nearby-relation geometry remains
 the separate #696 scope. The app-only change can be rolled back independently
 of the existing immutable data releases.
+
+### Retry geometry without rebuilding the countries
+
+If all four country jobs succeeded but the shared geometry job failed or timed
+out, dispatch **build** with **release** set to that numeric source run ID. The
+workflow verifies a completed main OSM run and all eight distinct, unexpired
+country release/input artifacts before downloading. It derives one dated Europe
+source from their checksummed manifests, then rebuilds geometry and bundles the
+original countries. Normal **build** with no release still rebuilds all countries.
+Existing main-only publication, monitoring, rollback and retention gates apply.
+
+The geometry job has a 240-minute limit on the same standard runner. The first
+complete attempt spent nearly 42 minutes downloading Europe, leaving only
+78 minutes to compile under the previous 120-minute limit. CLI progress logs
+record native indexing, current object/tile progress, large original IDs, peak
+RSS, elapsed seconds and free disk. A timeout retains the previous live release
+and creates the normal assigned update incident. Actual completed geometry size
+and resources still require the full recovered run; a longer budget alone is
+not evidence of four-country geometry capacity.

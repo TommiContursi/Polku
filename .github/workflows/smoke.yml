@@ -62,6 +62,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        if: contains(matrix.groups, 'osmdata')
+        with:
+          python-version: '3.14.3'
+      - name: Existing OSM fixture dependencies
+        if: contains(matrix.groups, 'osmdata')
+        run: python -m pip install -r tools/osm_data/requirements.txt
+
       - name: Fonts as on the development Mac
         run: |
           sudo apt-get update -qq

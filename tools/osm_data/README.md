@@ -205,3 +205,10 @@ six lake/park containment locations in both browser profiles, alongside the
 existing 32 consumer cases. Without it, the verified 28-archive checks remain.
 The new format's whole-country measurements and live coverage must be established
 by a completed run; the small retained-source measurements do not establish them.
+
+The shared geometry CLI emits phase, object/tile progress and resource records
+to stderr without changing its JSON result or archive bytes. The workflow allows
+240 minutes for its download and compilation. If country jobs passed, `build`
+with the existing `release` input set to their run ID reuses the eight verified
+country artifacts; it does not download country PBFs or rebuild those archives.
+The same-epoch reference, completeness, size and publication checks remain.

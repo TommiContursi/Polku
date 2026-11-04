@@ -31,7 +31,7 @@ class GeometryTests(unittest.TestCase):
         self.relations={100:({'type':'multipolygon','natural':'water','name':'Lake'},[('way',11,'outer'),('way',12,'inner'),('node',9,'label')])}
         self.roots={('relation',100):{'area':True,'inspection':True},('way',13):{'area':False,'inspection':True}}
 
-    def build(self,*,suffix='one',expected_change=None):
+    def build(self,*,suffix='one',expected_change=None,progress=None):
         self.nodes={n:tuple(round(float(v),7) for v in p) for n,p in self.nodes.items()}
         elements=[];xml=['<osm version="0.6">']
         for ref,(lon,lat) in sorted(self.nodes.items()):
@@ -45,8 +45,17 @@ class GeometryTests(unittest.TestCase):
         xml.append('</osm>');source=self.root/(suffix+'.osm');source.write_text(''.join(xml));output=self.root/(suffix+'.pmtiles')
         expected={(e['type'],e['id']):digest(e) for e in elements}
         if expected_change:expected.update(expected_change)
-        report=g.compile_geometry(source,self.roots,expected,output,STAMP,[COVERAGE])
+        report=g.compile_geometry(source,self.roots,expected,output,STAMP,[COVERAGE],**({'progress':progress} if progress else {}))
         return output,report
+
+    def test_progress_reports_stages_without_changing_the_archive(self):
+        original,_=self.build(suffix='baseline');events=[]
+        observed,_=self.build(suffix='progress',progress=lambda stage,**fields:events.append((stage,fields)))
+        self.assertEqual(original.read_bytes(),observed.read_bytes())
+        stages=[stage for stage,_ in events]
+        self.assertEqual(stages[0],'read_originals')
+        self.assertIn('index_nodes',stages);self.assertIn('tile_objects',stages);self.assertIn('write_tiles',stages)
+        self.assertEqual(stages[-1],'complete')
 
     @staticmethod
     def read(output,ll):

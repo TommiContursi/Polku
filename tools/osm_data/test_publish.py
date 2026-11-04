@@ -254,7 +254,7 @@ class PublishTests(unittest.TestCase):
             ('workflow_dispatch','refs/heads/main','build','',False),
             ('workflow_dispatch','refs/heads/main','rollback','true',False),
             ('pull_request','refs/heads/main','build','true',False)]:
-            expression=condition
+            expression=condition.removeprefix('${{').removesuffix('}}').replace('!cancelled()','True').replace('needs.bundle.result',repr('success'))
             for name,value in [('github.event_name',event),('github.ref',ref),('inputs.operation',operation),('vars.OSM_PUBLISH_ENABLED',enabled)]:
                 expression=expression.replace(name,repr(value))
             self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected)
@@ -288,6 +288,45 @@ class PublishTests(unittest.TestCase):
             partial=copy.deepcopy(jobs);partial[failed]['conclusion']='failure'
             with self.subTest(job=jobs[failed]['name']),self.assertRaises(ValueError):
                 publish.recovery_source('TommiContursi/Polku',run,partial,[artifact])
+
+    def test_publication_recovery_accepts_a_verified_geometry_bundle(self):
+        run={'id':123,'status':'completed','conclusion':'failure','head_branch':'main',
+             'head_repository':{'full_name':'TommiContursi/Polku'},'event':'workflow_dispatch','path':'.github/workflows/osm-data.yml'}
+        jobs=[{'name':name,'conclusion':'success'} for name in ('geometry','bundle')]
+        artifact={'name':'nordic-osm-release','expired':False,'size_in_bytes':100}
+        self.assertEqual(publish.recovery_source('TommiContursi/Polku',run,jobs,[artifact]),'123')
+        for i in range(len(jobs)):
+            bad=copy.deepcopy(jobs);bad[i]['conclusion']='failure'
+            with self.assertRaises(ValueError):publish.recovery_source('TommiContursi/Polku',run,bad,[artifact])
+
+    def test_automatic_publication_after_recovery_requires_a_successful_bundle_and_no_cancellation(self):
+        workflow=(Path(__file__).resolve().parents[2]/'.github/workflows/osm-data.yml').read_text()
+        job=workflow.split('\n  publish:\n',1)[1].split('\n  publish-existing:',1)[0]
+        condition=next(l.split('if:',1)[1].strip() for l in job.splitlines() if l.strip().startswith('if:'))
+        self.assertIn('!cancelled()',condition)
+        self.assertIn('needs.bundle.result',condition)
+        for cancelled,bundle,expected in [(False,'success',True),(True,'success',False),(False,'failure',False)]:
+            expression=condition.removeprefix('${{').removesuffix('}}').replace('!cancelled()',repr(not cancelled))
+            for name,value in [('needs.bundle.result',bundle),('github.event_name','workflow_dispatch'),('github.ref','refs/heads/main'),('inputs.operation','build'),('vars.OSM_PUBLISH_ENABLED','true')]:expression=expression.replace(name,repr(value))
+            self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected)
+
+    def test_geometry_recovery_requires_trusted_completed_country_jobs_and_artifacts(self):
+        run={'id':123,'status':'completed','conclusion':'cancelled','head_branch':'main',
+             'head_repository':{'full_name':'TommiContursi/Polku'},'event':'workflow_dispatch','path':'.github/workflows/osm-data.yml'}
+        countries=('finland','sweden','norway','estonia')
+        jobs=[{'name':name,'conclusion':'success'} for name in ['snapshot',*(f'build ({c})' for c in countries)]]
+        artifacts=[{'name':f'osm-{c}-{kind}','expired':False,'size_in_bytes':100} for c in countries for kind in ('release','geometry-inputs')]
+        self.assertEqual(publish.recovery_countries('TommiContursi/Polku',run,jobs,artifacts),'123')
+        for change in [dict(head_branch='feature'),dict(head_repository={'full_name':'other/Polku'}),dict(status='in_progress'),dict(event='pull_request'),dict(path='.github/workflows/other.yml')]:
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                publish.recovery_countries('TommiContursi/Polku',dict(run,**change),jobs,artifacts)
+        for failed in range(len(jobs)):
+            partial=copy.deepcopy(jobs);partial[failed]['conclusion']='failure'
+            with self.subTest(job=jobs[failed]['name']),self.assertRaises(ValueError):
+                publish.recovery_countries('TommiContursi/Polku',run,partial,artifacts)
+        for invalid in [artifacts[:-1],artifacts+[artifacts[0]],[dict(a,expired=True) for a in artifacts]]:
+            with self.subTest(artifacts=invalid),self.assertRaises(ValueError):
+                publish.recovery_countries('TommiContursi/Polku',run,jobs,invalid)
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

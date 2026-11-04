@@ -20,7 +20,7 @@ on:
         options: [verify-access, inspect-retention, test-host, build, verify-candidate, publish-existing, inspect-existing, resume-existing, check, rollback]
         default: verify-access
       release:
-        description: Release ID for rollback; numeric source build run ID for candidate verification or recovery
+        description: Release ID for rollback; source run ID for verification/recovery, or to reuse country builds
         type: string
 
 permissions:
@@ -100,7 +100,7 @@ jobs:
         run: python tools/osm_data/publish.py test-host
 
   snapshot:
-    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')
+    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build' && inputs.release == '')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -127,7 +127,7 @@ jobs:
 
   build:
     needs: snapshot
-    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')
+    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build' && inputs.release == '')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
@@ -229,8 +229,9 @@ jobs:
 
   geometry:
     needs: [snapshot, build]
+    if: ${{ always() && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build' && inputs.release != '')) }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -239,13 +240,46 @@ jobs:
         with:
           python-version: '3.14.3'
       - run: python -m pip install -r tools/osm_data/requirements.txt
+      - name: Select current or verified completed country run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.release }}
+        run: |
+          python - <<'PYCODE'
+          import json,os,re,subprocess
+          from tools.osm_data.publish import recovery_countries,require
+          source,repo=os.environ.get('SOURCE_RUN',''),os.environ['GITHUB_REPOSITORY']
+          selected=os.environ['GITHUB_RUN_ID']
+          if source:
+              require(re.fullmatch('[0-9]+',source),'Enter the numeric source build run ID from Actions')
+              def read(path):
+                  return json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/actions/runs/'+source+path]))
+              selected=recovery_countries(repo,read(''),read('/jobs?filter=all&per_page=100')['jobs'],read('/artifacts?per_page=100')['artifacts'])
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:output.write('run_id='+selected+'\n')
+          print('Country artifact source run: '+selected)
+          PYCODE
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           pattern: osm-*-geometry-inputs
           path: osm-build/inputs
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.source.outputs.run_id }}
+      - name: Derive one dated reference from verified country inputs
+        id: reference
+        run: |
+          python - <<'PYCODE'
+          import os,re
+          from pathlib import Path
+          from tools.osm_data.geometry_source import load_inputs
+          inputs=load_inputs(sorted(Path('osm-build/inputs').glob('osm-*-geometry-inputs')))
+          stamps=[re.search(r'-([0-9]{6})\.osm\.pbf$',m['source']['url']) for _,m in inputs.values()]
+          assert all(stamps) and len({s[1] for s in stamps})==1,'One common dated country snapshot is required'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:output.write('stamp='+stamps[0][1]+'\n')
+          PYCODE
       - name: Check actual disk against the dated reference size and staging reserve
         env:
-          SOURCE_URL: https://download.geofabrik.de/europe-${{ needs.snapshot.outputs.stamp }}.osm.pbf
+          SOURCE_URL: https://download.geofabrik.de/europe-${{ steps.reference.outputs.stamp }}.osm.pbf
         run: |
           df -h .
           python - <<'PYCODE'
@@ -258,14 +292,14 @@ jobs:
           PYCODE
       - name: Download dated reference and checksum
         env:
-          SOURCE_URL: https://download.geofabrik.de/europe-${{ needs.snapshot.outputs.stamp }}.osm.pbf
+          SOURCE_URL: https://download.geofabrik.de/europe-${{ steps.reference.outputs.stamp }}.osm.pbf
         run: |
           curl --fail --location --retry 3 --connect-timeout 30 --max-time 3600 "$SOURCE_URL" -o osm-build/europe.osm.pbf
           curl --fail --location --retry 3 --max-time 60 "$SOURCE_URL.md5" -o osm-build/europe.md5
           df -h .
       - name: Complete original references and compile local geometry
         env:
-          SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
+          SNAPSHOT: ${{ steps.reference.outputs.stamp }}
         run: |
           /usr/bin/time -v python -m tools.osm_data.geometry_source osm-build/europe.osm.pbf osm-build/geometry osm-build/inputs/osm-finland-geometry-inputs osm-build/inputs/osm-sweden-geometry-inputs osm-build/inputs/osm-norway-geometry-inputs osm-build/inputs/osm-estonia-geometry-inputs --md5 osm-build/europe.md5 --snapshot "$SNAPSHOT" --remove-source
           test ! -f osm-build/europe.osm.pbf
@@ -299,6 +333,7 @@ jobs:
 
   bundle:
     needs: [build, geometry]
+    if: ${{ always() && needs.geometry.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -315,6 +350,8 @@ jobs:
         with:
           pattern: osm-*-release
           path: osm-build/countries
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.release || github.run_id }}
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           name: osm-shared-geometry
@@ -422,7 +459,7 @@ jobs:
 
   publish:
     needs: bundle
-    if: vars.OSM_PUBLISH_ENABLED == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build'))
+    if: ${{ !cancelled() && needs.bundle.result == 'success' && vars.OSM_PUBLISH_ENABLED == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     environment: osm-data-production

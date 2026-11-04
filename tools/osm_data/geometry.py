@@ -289,7 +289,7 @@ def add_area(tiles, rings, area_box, complete, boxes):
                     yield xy, {'id':polygon_id,'right':right_intervals,'edges':edges}
 
 
-def compile_geometry(source, roots, expected, output, source_info, coverages):
+def compile_geometry(source, roots, expected, output, source_info, coverages, *, progress=None):
     output = Path(output)
     if output.exists():
         raise FileExistsError(output)
@@ -304,6 +304,7 @@ def compile_geometry(source, roots, expected, output, source_info, coverages):
         try:
             db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; CREATE TABLE objects(type TEXT,id INTEGER,body BLOB,PRIMARY KEY(type,id)); CREATE TABLE areas(type TEXT,id INTEGER,body BLOB,PRIMARY KEY(type,id)); CREATE TABLE tiles(tile INTEGER,type TEXT,id INTEGER,body BLOB,PRIMARY KEY(tile,type,id));')
             handler = Source(db,roots,expected)
+            if progress:progress('read_originals',roots=len(roots))
             # Native relation-only scan avoids storing the millions of way-location nodes.
             area_source = Path(tmp)/'area-relations.osm.pbf'
             with osmium.SimpleWriter(str(area_source)) as writer:
@@ -324,13 +325,15 @@ def compile_geometry(source, roots, expected, output, source_info, coverages):
                     if child not in handler.needed:
                         handler.needed.add(child);pending.append(child)
             locations = osmium.NodeLocationsForWays(osmium.index.create_map(f'sparse_file_array,{tmp}/nodes.idx'))
+            if progress:progress('index_nodes')
             locations.ignore_errors()
             manager = osmium.area.AreaManager()
             with osmium.io.Reader(str(area_source),osmium.osm.RELATION) as reader:
                 osmium.apply(reader,manager.first_pass_handler())
             with osmium.io.Reader(str(source)) as reader:
                 osmium.apply(reader,locations,handler,manager.second_pass_handler(handler))
-            for key,purpose in sorted(roots.items()):
+            for number,(key,purpose) in enumerate(sorted(roots.items())):
+                if progress and number%1000==0:progress('tile_objects',completed=number,total=len(roots),root=key)
                 obj = load(db,'objects',key)
                 if obj is None:
                     if purpose['area']:
@@ -341,6 +344,8 @@ def compile_geometry(source, roots, expected, output, source_info, coverages):
                         report['incomplete_inspection'].append({'type':key[0],'id':key[1]})
                     continue
                 parts, complete = leaves(db,key)
+                if progress and sum(len(o.get('nodes',[])) for o,_ in parts)>10000:
+                    progress('large_object',completed=number,total=len(roots),root=key)
                 generic_box = combine_bounds([bounds([[o['lon'],o['lat']]]) if o['type']=='node' else bounds([[p['lon'],p['lat']] for p in o['geometry'] if p]) for o,_ in parts])
                 if purpose['inspection'] and not complete:
                     report['dataset']['nearby_complete'] = False
@@ -369,6 +374,7 @@ def compile_geometry(source, roots, expected, output, source_info, coverages):
                     db.execute('INSERT INTO tiles VALUES (?,?,?,?)',(zxy_to_tileid(ZOOM,*xy),*key,encoded(element)))
                 db.commit()
             sizes, raw_sizes = [], []
+            if progress:progress('write_tiles')
             staged = Path(tmp)/'geometry.pmtiles'
             with staged.open('wb') as stream:
                 writer = Writer(stream)
@@ -384,6 +390,7 @@ def compile_geometry(source, roots, expected, output, source_info, coverages):
                     if len(data)>8*1024**2 or len(raw)>32*1024**2:
                         raise ValueError(f'Geometry tile exceeds browser limit: {tileid_to_zxy(tid)}')
                     writer.write_tile(tid,data);sizes.append(len(data));raw_sizes.append(len(raw))
+                    if progress and len(sizes)%10000==0:progress('write_tiles',completed=len(sizes))
                 box = combine_bounds(boxes)
                 writer.finalize({'tile_type':TileType.UNKNOWN,'tile_compression':Compression.GZIP,
                     'min_lon_e7':round(box[0]*1e7),'min_lat_e7':round(box[1]*1e7),
@@ -395,6 +402,7 @@ def compile_geometry(source, roots, expected, output, source_info, coverages):
             report['peak_rss_bytes'] = peak if sys.platform == 'darwin' else peak*1024
             os.rename(staged,output)
             report.update(seconds=time.monotonic()-started,archive_bytes=output.stat().st_size,tiles=len(sizes),max_tile_gzip_bytes=max(sizes),max_tile_raw_bytes=max(raw_sizes))
+            if progress:progress('complete',archive_bytes=report['archive_bytes'],tiles=report['tiles'])
             return report
         finally:
             db.close()
