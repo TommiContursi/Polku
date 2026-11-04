@@ -15494,7 +15494,8 @@ def sections_list(chrome):
         # (#761: the changeover a wait of its own, with its times; Paddle's part starts with via 3's row, as you leave it: its
         # label says when, its column how far and how long from the start)
         labs = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-point')].map((x) => `${x.dataset.i}:${x.getAttribute('aria-label') || ''}`)")
-        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–\d\d:\d\d', w) for w in s['waits'])
+        # (its end the next day's after midnight, "23:48–Thu 00:03": the route leaves now, #804)
+        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–(\w+ )?\d\d:\d\d', w) for w in s['waits'])
                                     or not s['secs'][1]['rows'] or not s['secs'][1]['rows'][0].startswith('3:') or not any(x.startswith('3:') and 'Leave ' in x for x in labs)):
             fails.append(f"{name}: the change of sport: waits {s['waits']}, Paddle's rows {s['secs'][1]['rows'][:1]}")
         if s['short']:
@@ -17305,6 +17306,8 @@ PF_JS = """(async () => {
   if (night[0] !== '5° 8 m/s' || night[1] !== '9° 8 m/s') errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
   // paddling: its wind as far as it reaches, and from where it isn't known
+  // (the route leaves now: at night Check's dark item, a read, would take the key fact's slot, #741; this is about the wind, #807)
+  a.darkWarn = [];
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
   const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
   if (line.length !== 1 || !line[0].startsWith('Wind up to 8 m/s, gusts 12 · headwind ') || !line[0].endsWith(` · no forecast yet from km ${km}`)) errs.push(`paddling's key fact: ${line.join(' / ')}`);
