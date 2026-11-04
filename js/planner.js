@@ -208,7 +208,6 @@ export class Planner {
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
     this.unfolded = new Set(); // Route's list: the stretches whose shaping points are unfolded (their first point's pid), in memory only
     this.reordering = false; // Route's list in Reorder
-    this.wxOpen = new Set(); // Route's list: the sections whose weather at their end is said in full (their first point's pid)
     this.roads = initNames(map); // road and path names from the loaded tiles
     this.styles = {}; // the route's own style per sport, else yours for it (styleOf()); a leg may have its own (leg.style)
     this.next = null; // the next leg's sport: null is the map's (nextSport())
@@ -2894,8 +2893,9 @@ export class Planner {
     box.replaceChildren();
     box.classList.toggle('reorder', !!this.reordering);
     if (n >= 2 && !ro) {
-      top.append(h('p', { class: 'wpl-hint' }, this.reordering ? 'Drag a point, or move it earlier or later.' : 'Tap a point or a stretch to change it.'),
-        h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); top.querySelector('.btn')?.focus(); },
+      // (the rows' chevrons say a tap opens them; Reorder's grips need their words, #764)
+      if (this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a point, or move it earlier or later.'));
+      top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); top.querySelector('.btn')?.focus(); },
           html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder'));
     }
     if (this.reordering) this.reorderRows(box);
@@ -2939,30 +2939,36 @@ export class Planner {
   sectionRows(box, ro) {
     const secs = this.sections(), days = secs.some((s) => s.ends === 'night'), a = this.analysis, fits = this.analysisFits();
     const nums = (s) => { const x = this.stretchNums(s); return x ? [fmtDist(x.len), fmtDuration(x.sec), x.up == null ? '' : `↑${Math.round(x.up)} m`].filter(Boolean).join(' · ') : fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from)); };
+    // the forecast m metres along: its sample, and in words; past its reach none yet, never its last hour's (#465) [tabs-c-days]
+    const wAt = (m) => (fits && a.wind && a.wind.temp ? this.sampleAtM(m) : -1), past = (w) => w >= 0 && a.wind.beyond >= 0 && w >= a.wind.beyond;
+    const words = (w) => (w < 0 ? '' : past(w) ? 'No forecast yet' : `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`);
+    // the weather on the rows (#764): as you leave on Start's, when you're there on each section's last; a stop's, a night's
+    // or a changeover's own sample is timed as you go on (`timed()`), so its arrival is the sample before, and a night's
+    // tag has its morning's
+    const wAtPoint = (i) => { const w = wAt(this.lengthTo(i)); return w > 0 && a.waitAt && a.waitAt[w] ? w - 1 : w; };
+    const one = secs.length === 1;
     let day = 1;
     secs.forEach((sec, k) => {
       // (the route's own name, an import's or a picked loop's, in the first row of a route of one section, #751)
       const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label} · ${this.routeName && secs.length === 1 ? this.routeName : `${this.nameOf(sec.from)} → ${this.nameOf(sec.to)}`}`;
       if (sec.ends === 'night') day += this.stopAt(sec.to).n || 1;
-      // a short forecast for its end; a tap says the rest under it [kf2-multi-tap]
-      const w = fits && a.wind && a.wind.temp ? this.sampleAtM(this.lengthTo(sec.to)) : -1, id = this.pidOf(this.points[sec.from]), open = this.wxOpen.has(id);
-      // (past the forecast's reach: none yet, never its last hour's, #465) [tabs-c-days]
-      const nofc = w >= 0 && a.wind.beyond >= 0 && w >= a.wind.beyond;
-      const wx = nofc ? h('span', { class: 'btn small quiet sec2-wx', html: icon('cloudSun', 15) }, 'No forecast yet') : w >= 0 ? h('button', { type: 'button', class: 'btn small quiet sec2-wx', 'aria-expanded': String(open), 'aria-label': `The weather at its end: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s`,
-        onclick: () => { if (open) this.wxOpen.delete(id); else this.wxOpen.add(id); this.renderWaypoints(); }, html: icon('cloudSun', 15) }, `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`) : null;
-      const at = open && w >= 0 ? this.atSample(w) : null;
+      const id = this.pidOf(this.points[sec.from]);
       const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 20) }), h('b', {}, title));
-      const line = h('div', { class: 'sec2-nums' }, h('span', {}, nums(sec)), wx);
-      const more = open && w >= 0 && !nofc ? h('p', { class: 'sec2-wx-at' }, `At its end${at ? `, ${this.clockOf(at)}` : ''}: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s from the ${compass(a.wind.dir ? a.wind.dir[w] : 0)}`) : null;
+      // (a route of one section has its numbers in the numbers row above, #764)
+      const line = one ? null : h('div', { class: 'sec2-nums' }, nums(sec));
       const rows = h('div', { class: 'rows', role: 'group', 'aria-label': title });
-      if (k === 0) rows.append(this.pointRow(sec.from, ro));
+      if (k === 0) rows.append(this.pointRow(sec.from, ro, false, words(wAt(0))));
       for (const s of sec.stretches) {
         rows.append(this.stretchRow(s, ro));
         const pid = this.pidOf(this.points[s.from]);
         if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, true));
-        rows.append(this.pointRow(s.to, ro));
+        const end = s.to === sec.to;
+        rows.append(this.pointRow(s.to, ro, false, end ? words(wAtPoint(s.to)) : '', end && sec.ends === 'night' ? words(wAt(this.lengthTo(s.to))) : ''));
       }
-      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, head, line, more, this.sectionWarn(sec), rows));
+      // (a route of one section, while editing: its heading beside Reorder, where the hint was, #764)
+      const beside = one && !ro;
+      if (beside) this.els.pointsTop.prepend(head);
+      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, beside ? null : head, line, this.sectionWarn(sec), rows));
     });
   }
 
@@ -2987,17 +2993,19 @@ export class Planner {
     return box;
   }
 
-  // a point's row: its marker, its name, there at · how far · Via n; a stop, a night or a change of sport under it
-  pointRow(i, ro, shape = false) {
+  // a point's row: its marker, its name, there at · the weather · how far · Via n; a stop, a night (with its morning's
+  // weather) or a change of sport under it
+  pointRow(i, ro, shape = false, wx = '', morning = '') {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), arrive = i > 0 && this.analysisFits() ? this.arriveAt(i) : null;
-    const sub = shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `there at ${this.clockOf(arrive)}` : '', fmtDist(i ? this.lengthTo(i) : 0), name === lab ? '' : lab, loop ? 'back at the start' : ''];
+    // (Start and End without their distance: 0 m and the route's length, which the numbers row says, #764)
+    const sub = (shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `There at ${this.clockOf(arrive)}` : '', wx, i && !last ? fmtDist(this.lengthTo(i)) : '', name === lab ? '' : lab, loop ? 'back at the start' : '']).filter(Boolean).join(' · ');
     const stop = this.stopAt(i), ch = this.changeAt(i);
-    const extra = stop ? (isNight(stop) ? `${nightsWord(stop)} · go on at ${hhmm(stop.on)}` : `Stop · ${stop.min} min`) : ch ? `${ACTIVITIES[ch.to].label} from here · changeover ${ch.min} min` : '';
+    const extra = stop ? (isNight(stop) ? `${nightsWord(stop)} · go on at ${hhmm(stop.on)}${morning ? ` · ${morning}` : ''}` : `Stop · ${stop.min} min`) : ch ? `${ACTIVITIES[ch.to].label} from here · changeover ${ch.min} min` : '';
     // (a row as the cards' rows: its mark, its name, its lines, ›; Revision 5's list)
     const b = h('button', { type: 'button', class: `row wpl-point${shape ? ' shape' : ''}`, 'data-i': String(i), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
       h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i))),
-      h('span', {}, h('b', { class: 'wpl-name' }, name), extra ? h('small', { class: 'wpl-tag', html: `${icon(stop ? (isNight(stop) ? 'moon' : 'pause') : this.sportIcon(ch.to), 15)}<span>${escapeHtml(extra)}</span>` }) : null, h('small', {}, sub.filter(Boolean).join(' · '))),
+      h('span', {}, h('b', { class: 'wpl-name' }, name), extra ? h('small', { class: 'wpl-tag', html: `${icon(stop ? (isNight(stop) ? 'moon' : 'pause') : this.sportIcon(ch.to), 15)}<span>${escapeHtml(extra)}</span>` }) : null, sub ? h('small', {}, sub) : null),
       h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
@@ -6081,11 +6089,10 @@ export class Planner {
     if (x.k === 'unpaved') { this.showMode('surface'); this.reveal('colours'); return; }
     if (x.k === 'high') { this.reveal('profile'); return; }
     if (x.k === 'day' || x.sport) {
-      // its part of the list, lit: a day's section, or the first of the sport's (its weather open on the water)
+      // its part of the list, lit: a day's section, or the first of the sport's
       const sec = this.sections().find((s) => (x.sport ? s.sport === x.sport : Math.abs(this.lengthTo(s.from) - x.v.from) < 2));
       if (!sec) return;
       this.secLit = this.pidOf(this.points[sec.from]);
-      if (x.sport && isWater(x.sport)) this.wxOpen.add(this.secLit);
       this.renderWaypoints();
       this.reveal('points', { flash: false }); // (the part lights up, not the whole list: its scroll would win)
       // in sight once a rising sheet has its size (--t-sheet), then lit up: one scroll, as a smooth one still on its way
