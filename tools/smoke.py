@@ -1473,11 +1473,103 @@ MULTI = """(async () => {
 })()"""
 
 
+# Reorder on a route of three sports (#782): a change of sport stays with its point, with its own minutes and the gear
+# taken along; another point takes the sport of the part it lands in, so no move adds a changeover. A move that leaves
+# one fewer (a changeover made the start or the end) says so, with Undo. Through Reorder's buttons and Alt+↑, all
+# straight legs.
+MULTI_REORDER = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const p = polku.planner;
+  p.setActive(true);
+  p.clear();
+  p.setMode('line');
+  const names = ['Talli', 'Mäki', 'Ranta', 'Saari', 'Laituri', 'Kylä'];
+  [[23.700, 61.500], [23.712, 61.503], [23.724, 61.506], [23.736, 61.507], [23.748, 61.505], [23.760, 61.504]].forEach((q) => p.addPoint(q));
+  names.forEach((x, i) => p.setName(i, x));
+  p.setSportFrom(2, 'paddle');
+  p.setSportFrom(4, 'run');
+  p.setChangeMin(2, 7);
+  p.setCarry(2, true);
+  await wait(300);
+  // the route as names with each leg's sport between them
+  const seq = () => p.points.map((_, i) => p.nameOf(i) + (i < p.legs.length ? ` ${p.legSport(i)} ` : '')).join('');
+  const changes = () => p.points.map((_, i) => p.changeAt(i)).filter(Boolean).length;
+  const at = (x) => p.points.findIndex((_, i) => p.nameOf(i) === x);
+  const ranta = () => { const i = at('Ranta'), c = p.changeAt(i); return c ? `${c.min} min${p.carryAt(i) ? ', taken along' : ''}` : 'no change'; };
+  const said = () => { const t = document.querySelector('#toast'); return t && !t.hidden ? t.textContent : ''; };
+  const ALL = 'Talli mtb Mäki mtb Ranta paddle Saari paddle Laituri run Kylä';
+  if (seq() !== ALL || changes() !== 2 || ranta() !== '7 min, taken along') return [`the route to reorder: ${seq()}, ${changes()} changeovers, Ranta ${ranta()}`];
+  let most = 2;
+  const expect = (what, want) => { most = Math.max(most, changes()); if (seq() !== want) errs.push(`${what}: ${seq()}`); };
+  const move = async (x, dir) => {
+    document.querySelector('#toast').textContent = '';
+    const b = document.querySelector(`.wpl-row [aria-label="Move ${x} ${dir}"]`);
+    if (!b) return errs.push(`no Move ${x} ${dir} in Reorder`);
+    b.click();
+    await wait(250);
+  };
+  const undo = async (k = 1) => { for (; k > 0; k--) { p.els.undo.click(); await wait(250); } };
+  p.reveal('points');
+  await wait(300);
+  // Alt+↑ on a point's row: Saari, paddled, goes before Ranta and is ridden; the change is still at Ranta
+  const row = document.querySelector(`.wpl-point[data-i="${at('Saari')}"]`);
+  row.focus();
+  row.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true }));
+  await wait(250);
+  expect('Alt+↑ on Saari', 'Talli mtb Mäki mtb Saari mtb Ranta paddle Laituri run Kylä');
+  await undo();
+  expect('Undo after Alt+↑', ALL);
+  [...document.querySelectorAll('.wpl-top .btn')].find((b) => b.textContent.trim() === 'Reorder').click();
+  await wait(250);
+  // the changeover earlier: you paddle from Ranta, with its 7 minutes and the gear taken along
+  await move('Ranta', 'earlier');
+  expect('Ranta earlier', 'Talli mtb Ranta paddle Mäki paddle Saari paddle Laituri run Kylä');
+  if (ranta() !== '7 min, taken along') errs.push(`Ranta earlier: its changeover ${ranta()}`);
+  // and earlier again: the start now, so the route starts paddling and MTB is gone; a note says so, with Undo
+  await move('Ranta', 'earlier');
+  expect('Ranta the start', 'Ranta paddle Talli paddle Mäki paddle Saari paddle Laituri run Kylä');
+  const start = said(), sb = document.querySelector('#toast .toast-act');
+  if (!/^Ranta is the start now, so the route starts in Paddle, not MTB/.test(start) || !sb || sb.textContent !== 'Undo') errs.push(`no note when Ranta becomes the start: ${start || 'none'}`);
+  else { sb.click(); await wait(250); }
+  expect('Undo in the note', 'Talli mtb Ranta paddle Mäki paddle Saari paddle Laituri run Kylä');
+  await undo();
+  expect('Undo after Ranta earlier', ALL);
+  if (ranta() !== '7 min, taken along') errs.push(`after Undo: Ranta's changeover ${ranta()}`);
+  // an ordinary point across the change of sport, twice: it's ridden, and you still change at Ranta
+  await move('Saari', 'earlier');
+  expect('Saari earlier', 'Talli mtb Mäki mtb Saari mtb Ranta paddle Laituri run Kylä');
+  await move('Saari', 'earlier');
+  expect('Saari earlier twice', 'Talli mtb Saari mtb Mäki mtb Ranta paddle Laituri run Kylä');
+  if (said()) errs.push(`a note for a move that changes no changeover: ${said()}`);
+  await undo(2);
+  expect('Undo twice after Saari', ALL);
+  // two changeovers the other way round: you run from Laituri, then paddle from Ranta
+  await move('Laituri', 'earlier');
+  expect('Laituri earlier', 'Talli mtb Mäki mtb Ranta paddle Laituri run Saari run Kylä');
+  await move('Laituri', 'earlier');
+  expect('Laituri before Ranta', 'Talli mtb Mäki mtb Laituri run Ranta paddle Saari paddle Kylä');
+  if (changes() !== 2 || ranta() !== '7 min, taken along') errs.push(`Laituri before Ranta: ${changes()} changeovers, Ranta ${ranta()}`);
+  await undo(2);
+  expect('Undo twice after Laituri', ALL);
+  // the changeover to run made the end: no run after it; a note says so, with Undo
+  await move('Laituri', 'later');
+  expect('Laituri the end', 'Talli mtb Mäki mtb Ranta paddle Saari paddle Kylä paddle Laituri');
+  const end = said(), eb = document.querySelector('#toast .toast-act');
+  if (!/^Laituri is the end now, so there's no Run after it/.test(end) || !eb || eb.textContent !== 'Undo') errs.push(`no note when Laituri becomes the end: ${end || 'none'}`);
+  else { eb.click(); await wait(250); }
+  expect('Undo in the end note', ALL);
+  if (most > 2) errs.push(`a move added changeovers: ${most} at most`);
+  p.clear();
+  return errs;
+})()"""
+
+
 def multi(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.505/23.73')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(MULTI, timeout=85000)
+    fails += pg.js(MULTI_REORDER, timeout=60000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} multisport" + ''.join(f'\n     - {f}' for f in fails), flush=True)
@@ -17444,7 +17536,7 @@ GROUPS = [
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
     ('water', [water, water_late, paddle_map], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late (mocked), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
-    ('multi', [multi], 'multisport: a sport per leg, changeovers, share links (straight legs)'),
+    ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
     ('backtostart', [back_to_start], 'Back to start buttons, closing leg and undo (straight legs)'),
