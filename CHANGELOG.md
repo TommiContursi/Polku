@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Times never read 60 minutes ([#492](https://github.com/TommiContursi/Polku/issues/492))
 
-- A time just under a whole hour now rounds up to it: 7170 s reads "2 h 00 min" where it used to read "1 h 60 min", and 3570 s reads "1 h 00 min" where it used to read "60 min". This holds wherever a time is shown, such as the route's summary, Time & speed, the waypoint list, the days, the cards and the profile.
+- A time just short of a whole hour reads the next hour: 1 h 59 min 40 s reads 2 h 00 min, not 1 h 60 min, wherever a time is shown.
 
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
