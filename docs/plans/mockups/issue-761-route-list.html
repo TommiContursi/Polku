@@ -11,7 +11,7 @@
   app: nothing here is loaded by Polku. The controls are css/app.css's own, by their class names (the rows, the marks,
   the buttons, the section's head, the warning); what Rows adds is in the marked block below.
 
-  ?v=today|rows|line|parts|parts2|parts3|parts4|parts5|parts6  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
+  ?v=today|rows|line|parts|parts2|parts3|parts4|parts5|parts6|parts7  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
   &how=every|differs (Line and Parts: how every stretch is drawn, or only one that differs)
   &word=straight|offpaths|freehand  &look=on (Parts 2: the word for a straight stretch; Worth a look in the list too)
   &route=days (two days with a stop and a night)
@@ -20,7 +20,8 @@
   in Line"; Parts (the third round, the same day) is Line with the block marked "new in Parts"; Parts 2 (the fourth)
   is Parts with the block marked "new in Parts 2"; Parts 3 and Parts 4 are Parts 2 with the block marked "new in Parts 3"
   or "new in Parts 4"; Parts 5 has its own function and the block marked "new in Parts 5", and Parts 6 is Parts 5 with
-  the block marked "new in Parts 6". Every round is a version of its own, and the earlier ones stay as they were drawn.
+  the block marked "new in Parts 6"; Parts 7 is Parts 6 with a route of one part's totals too. Every round is a version
+  of its own, and the earlier ones stay as they were drawn.
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
@@ -262,7 +263,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
   <h1>The route's list</h1>
   <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. <b>Line</b> is the second round (2026-11-04), from trying the first PR: the list as it is on <code>main</code> now, with one line from the start to the end through every waypoint, the stretch's numbers to read, how every stretch is drawn, and waypoints in the words. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
   <div class="bars">
-    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button><button data-v="parts5">Parts 5</button><button data-v="parts6">Parts 6</button></div>
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button><button data-v="parts5">Parts 5</button><button data-v="parts6">Parts 6</button><button data-v="parts7">Parts 7</button></div>
       <span>Stretch</span><div class="sw" data-k="how"><button data-v="every">How every stretch is drawn</button><button data-v="differs">Only where it differs</button></div></div>
     <div class="bar"><span>Frame</span><div class="sw" data-k="frame"><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button><button data-v="side">Side dock</button><button data-v="bottom">Bottom dock</button></div>
       <span>Zoom</span><div class="sw" data-k="zoom"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
@@ -335,6 +336,10 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li><b>A route of one sport looks like the others:</b> its heading is on the line, the sport's icon in a ring of its colour, and the line in its colour; "MTB · Start → End" beside Reorder is gone.</li>
       <li><b>Sunset and sunrise</b> with the horizon icons, chosen on 2026-11-04.</li>
     </ul>
+    <h2>What Parts 7 changes (the ninth round)</h2>
+    <ul>
+      <li><b>A route of one part has its totals in its heading too,</b> as every part has, though the route's numbers above say them: one style everywhere, chosen on 2026-11-04 over saying a number once (#764).</li>
+    </ul>
     <h2>Left out</h2>
     <ul>
       <li>The map, the toolbar and the profile are stand-ins; the numbers are made up for a 5.8 km route.</li>
@@ -348,7 +353,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 import { icon, h } from '../../../js/ui.js';
 
 const q = new URLSearchParams(location.search);
-const S = { v: q.get('v') || 'parts6', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : ['parts4', 'parts5', 'parts6'].includes(q.get('v') || 'parts6') ? 'freehand' : 'straight', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: ['on', 'point'].includes(q.get('hover')) ? q.get('hover') : 'off', sun: q.get('sun') === 'sunmoon' ? 'sunmoon' : 'horizon', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
+const S = { v: q.get('v') || 'parts7', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : ['parts4', 'parts5', 'parts6', 'parts7'].includes(q.get('v') || 'parts7') ? 'freehand' : 'straight', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: ['on', 'point'].includes(q.get('hover')) ? q.get('hover') : 'off', sun: q.get('sun') === 'sunmoon' ? 'sunmoon' : 'horizon', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
 
 // the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
 const ROUTES = {
@@ -639,7 +644,7 @@ function parts5(R, frame, S, round = 5) {
   const secs = [];
   for (let from = 0, i = 1; i < n; i++) if (cuts.has(i) || i === n - 1) { secs.push({ from, to: i }); from = i; }
   const sportAt = (i) => R.sports.find((sp) => (sp.from ?? 0) <= i && i < (sp.to ?? n - 1)) || R.sports[0];
-  secs.forEach((sec, k) => { sec.sport = sportAt(sec.from); sec.nums = R.secNums ? R.secNums[k] : sec.sport.nums; });
+  secs.forEach((sec, k) => { sec.sport = sportAt(sec.from); sec.nums = R.secNums ? R.secNums[k] : sec.sport.nums || R.total; });
   // (Parts 6: a route of one sport has its heading on the line, as every part has; `one` is still a route of one part)
   const one = secs.length === 1 && round < 6, single = secs.length === 1, days = R.points.some((p) => p.night);
   const at = [0];
@@ -650,7 +655,8 @@ function parts5(R, frame, S, round = 5) {
   // sport keeps its ends, as the route's name. Parts 6: every part's totals beside its name, but a route of one part's
   // (the route's numbers above say them)
   const headOf = (sec, k) => { const title = h('b', {}, one ? `${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}` : `${days ? `Day ${k + 1} · ` : ''}${sec.sport.label}`);
-    const nums = round >= 6 ? (single ? null : h('small', {}, sec.nums)) : !one && sec.to - sec.from > 1 ? h('small', {}, sec.nums) : null;
+    // (Parts 7: a route of one part's too, though the route's numbers above say them: one style everywhere)
+    const nums = round >= 6 ? (single && round < 7 ? null : h('small', {}, sec.nums)) : !one && sec.to - sec.from > 1 ? h('small', {}, sec.nums) : null;
     return h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, one ? 20 : 16) }), nums ? h('div', { class: `sec2-t${round >= 6 ? ' sum' : ''}` }, title, nums) : title); };
   const top = h('div', { class: 'wpl-top' });
   if (one) top.append(headOf(secs[0], 0));
@@ -719,10 +725,10 @@ function draw() {
   if (phone) sheet.append(h('div', { class: 'sheet-handle' }), h('div', { class: 'pl-tools-row' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` })));
   sheet.append(head(R, S.v !== 'today'));
   const body = h('div', { class: 'sheet-body' });
-  body.append(...(S.v === 'parts6' ? parts5(R, S.frame, S, 6) : S.v === 'parts5' ? parts5(R, S.frame, S) : S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
+  body.append(...(S.v === 'parts7' ? parts5(R, S.frame, S, 7) : S.v === 'parts6' ? parts5(R, S.frame, S, 6) : S.v === 'parts5' ? parts5(R, S.frame, S) : S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
   sheet.append(body);
   frame.append(sheet);
-  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.', parts3: 'Parts 3: Parts 2, with a part after a changeover or a night saying when it starts under its heading.', parts4: 'Parts 4: Parts 2, with a part after a changeover or a night starting with its point’s row, as the route’s start does; each wait with its times, a night with sunset and sunrise; Freehand.', parts5: 'Parts 5: Parts 4 with far less text: Arrive and Leave with the weather as icons, no Start, End or Waypoint n on a point’s line, a wait’s times under it, sunset and sunrise with icons, folded waypoints a count by ⌄, a part’s heading its sport; on a desktop the weather in the tooltips.', parts6: 'Parts 6: Parts 5 with every part’s totals beside its name, and a route of one sport’s heading on the line in its colour; sunset and sunrise with the horizon icons (chosen).' }[S.v];
+  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.', parts3: 'Parts 3: Parts 2, with a part after a changeover or a night saying when it starts under its heading.', parts4: 'Parts 4: Parts 2, with a part after a changeover or a night starting with its point’s row, as the route’s start does; each wait with its times, a night with sunset and sunrise; Freehand.', parts5: 'Parts 5: Parts 4 with far less text: Arrive and Leave with the weather as icons, no Start, End or Waypoint n on a point’s line, a wait’s times under it, sunset and sunrise with icons, folded waypoints a count by ⌄, a part’s heading its sport; on a desktop the weather in the tooltips.', parts6: 'Parts 6: Parts 5 with every part’s totals beside its name, and a route of one sport’s heading on the line in its colour; sunset and sunrise with the horizon icons (chosen).', parts7: 'Parts 7: Parts 6 with a route of one sport’s totals in its heading too: one style everywhere.' }[S.v];
   stage.append(h('div', {}, frame, h('p', { class: 'cap' }, cap)));
   const hov = frame.querySelector('.wpl-stretch.hovered, .wpl-point.hovered'), T = hov && (hov.mkTip || (hov.dataset.k != null && R.legs[+hov.dataset.k].tip));
   if (T) {
