@@ -67,6 +67,7 @@ Not designed here; listed so they aren't lost. Each starts from the app as it is
 - The profile's own step: compact, half, whole screen; the map following a finger on it.
 - Check's verdict and Go's first screen (Leave now ▾ in the numbers row); the stretches with the cards' facts (#690).
 - The instructions: which grey lines go, which labels replace them.
+- The route's list rethought (#761): its mock-up and plan are in [issue-761-route-list.md](issue-761-route-list.md) (2026-11-04).
 
 ## Ideas to test on the way
 

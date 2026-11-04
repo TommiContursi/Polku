@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>The route's list</title>
+<meta name="description" content="Mock-up for #761: the route's list as it is on main (2026-11-04) beside Rows, where a point is a row with its name, a plain stretch a line between two points, the sport's row carries its style and speed, a desktop edits in the row, and one button sits under the list.">
+<!--
+  #761, 2026-11-04: today's list beside the proposal. The plan: docs/plans/issue-761-route-list.md. Not wired to the
+  app: nothing here is loaded by Polku. The controls are css/app.css's own, by their class names (the rows, the marks,
+  the buttons, the section's head, the warning); what Rows adds is in the marked block below.
+
+  ?v=today|rows  &frame=390|360|side|bottom  &route=one|two|fi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; --map: #e9efe4; --map-2: #d9e4d2; --water: #cfe3ec; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; --map: #26302a; --map-2: #1f2824; --water: #1f3038; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; --map: #26302a; --map-2: #1f2824; --water: #1f3038; }
+* { box-sizing: border-box; }
+body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+.cv { max-width: 1500px; margin: 0 auto; }
+.cv a { color: var(--page-link); }
+.cv h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+.cv > p { margin: 0 0 8px; max-width: 900px; }
+.bars { margin: 12px -16px 0; padding: 8px 16px; border-bottom: 1px solid rgba(128,128,128,.25); }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.bar > span { min-width: 60px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 28px; padding: 3px 11px; border: 0; border-radius: 18px; background: none; color: var(--switch-fg); font: inherit; font-size: 13px; cursor: pointer; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 650; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.stage { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 28px; margin-top: 18px; }
+.frame { position: relative; flex: none; overflow: hidden; border-radius: 26px; background: linear-gradient(135deg, var(--map) 0 38%, var(--water) 38% 52%, var(--map-2) 52%); box-shadow: 0 0 0 1px rgba(0,0,0,.18), 0 18px 40px rgba(0,0,0,.18); }
+.frame .mapline { position: absolute; left: -10%; width: 120%; height: 3px; background: var(--route, #d6336c); opacity: .55; transform: rotate(-18deg); pointer-events: none; }
+.frame.phone { width: 390px; height: 844px; }
+.frame.phone.narrow { width: 360px; height: 740px; }
+.frame.side { width: min(1100px, calc(100vw - 32px)); height: 700px; }
+.frame.bottom { width: min(1100px, calc(100vw - 32px)); height: 700px; }
+.frame.z2 { zoom: 2; }
+.frame.z2.phone { width: 195px; height: 422px; }
+.frame.z2.phone.narrow { width: 180px; height: 370px; }
+.frame.z2.side, .frame.z2.bottom { width: min(550px, calc(50vw - 16px)); height: 350px; }
+.cap { margin: 10px 0 0; font-size: 12.5px; color: var(--page-cap); max-width: 390px; }
+.frame.side + .cap, .frame.bottom + .cap { max-width: 1100px; }
+.notes { margin-top: 28px; max-width: 900px; }
+.notes h2 { font-size: 16px; margin: 20px 0 6px; }
+.notes ul { padding-left: 20px; }
+.notes li { margin: 3px 0; }
+.notes code { font-size: 12.5px; }
+
+/* the planner in its frame: the app's sheet, placed here by hand (the app's own rules draw it on the map) */
+.frame .sheet { position: absolute; display: flex; flex-direction: column; overflow: hidden; }
+.frame.phone .sheet { left: 8px; right: 8px; bottom: 8px; top: 68px; height: auto; }
+.frame.side .sheet { left: 12px; top: 48px; bottom: 12px; width: 400px; height: auto; }
+.frame.bottom .sheet { left: 12px; right: 84px; bottom: 12px; height: 320px; }
+.frame .sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 12px; }
+.frame .sheet-head { padding: 6px 10px 6px 14px; }
+.frame .pl-tools-row { display: flex; gap: 8px; padding: 10px 12px 0; }
+.frame .pl-tools-row .btn { min-height: 36px; }
+.frame .sheet-handle { margin: 6px auto 0; }
+.mk-tabs .pl-tab { pointer-events: none; }
+.mk-tabs { flex-wrap: wrap; }
+.frame.z2 .pl-tools-row { display: none; } /* (a stand-in: the app's toolbar has its own rules at 200 %) */
+/* the bottom dock lays the list in two columns, the heading above them (a proposal of this mock-up for that dock only) */
+.frame.bottom .sheet-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-content: start; }
+.frame.bottom .sheet-body > .wide, .frame.bottom .sheet-body > .wpl-foot, .frame.bottom .sheet-body > .rows2 { grid-column: 1 / -1; }
+.frame.bottom .wpl.rows2 { display: block; columns: 2; column-gap: 28px; }
+.frame.bottom .rows2 > li { display: block; }
+.frame.bottom .rows2 .wpl-pt, .frame.bottom .rows2 .wpl-st, .frame.bottom .rows2 .wpl-top { break-inside: avoid; }
+
+/* ======================================================= new in this mock-up: what Rows proposes.
+   Everything else is css/app.css's own, by its class names. */
+/* a point's row: the grip (a mouse only), its mark, its name and line, the desktop's tools, › */
+.wpl.rows2 { gap: 0; }
+.rows2 .wpl-pt { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--row-h); padding: 2px 4px 2px 0; border-radius: 12px; }
+.rows2 .wpl-pt > .wpl-grip { padding: 6px 2px; margin-left: -2px; }
+@media (pointer: coarse) { .rows2 .wpl-grip { display: none; } }
+.frame[data-touch="1"] .rows2 .wpl-grip { display: none; }
+.rows2 .wpl-pt > .mark { flex: none; width: 22px; display: grid; place-items: center; }
+.rows2 .wpl-go { flex: 1; min-width: 0; display: grid; gap: 1px; min-height: 44px; padding: 5px 6px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.rows2 .wpl-go b { font-size: var(--font-row); font-weight: var(--weight-name); line-height: 1.25; overflow-wrap: anywhere; }
+.rows2 .wpl-go small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.rows2 .wpl-go:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (hover: hover) { .rows2 .wpl-go:hover { background: var(--surface-2); } }
+.rows2 .wpl-pt > .way-chev { color: var(--muted); }
+/* the desktop's tools: Rename and Remove, shown while the row is hovered or has the focus; a phone's row opens its card */
+.rows2 .wpl-tools { display: none; gap: 2px; }
+.rows2 .wpl-tools .tool { width: 32px; height: 32px; min-width: 32px; min-height: 32px; }
+.rows2 .wpl-tools .tool.danger { color: var(--bad); }
+@media (hover: hover) { .rows2 .wpl-pt:hover .wpl-tools, .rows2 .wpl-pt:focus-within .wpl-tools { display: flex; } .rows2 .wpl-pt:hover > .way-chev, .rows2 .wpl-pt:focus-within > .way-chev { display: none; } }
+.frame[data-touch="1"] .rows2 .wpl-tools { display: none !important; }
+.frame[data-touch="1"] .rows2 .wpl-pt > .way-chev { display: block !important; }
+.rows2 .wpl-pt.hovered .wpl-tools { display: flex; } .rows2 .wpl-pt.hovered > .way-chev { display: none; } .rows2 .wpl-pt.hovered .wpl-go { background: var(--surface-2); }
+/* the name typed in its row (the app's name-field, in the row's place) */
+.rows2 .wpl-pt .name-field { flex: 1; min-width: 0; }
+/* a stretch: the line between two points, with its numbers; one that differs from a plain one says how, with its icon */
+.rows2 .wpl-st { display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 0 4px 0 0; }
+.rows2 .wpl-st > .line { flex: none; width: 22px; margin-left: 24px; display: grid; place-items: center; align-self: stretch; }
+.frame[data-touch="1"] .rows2 .wpl-st > .line { margin-left: 0; }
+.rows2 .wpl-st > .line::before { content: ""; width: 2px; height: 100%; min-height: 26px; border-radius: 1px; background: var(--line); }
+.rows2 .wpl-st.differs > .line::before { background: var(--accent); }
+.rows2 .wpl-st > .wpl-go { min-height: 30px; padding: 3px 6px; }
+.rows2 .wpl-st > .wpl-go small { font-size: 12.5px; }
+.rows2 .wpl-st > .wpl-go small b { font-weight: var(--weight-name); color: var(--text); font-size: 12.5px; }
+.rows2 .wpl-st > .wpl-go .ic { vertical-align: -3px; margin-right: 4px; color: var(--accent); }
+.rows2 .wpl-st .wpl-unfold { min-width: 36px; min-height: 36px; }
+/* the sport's row: the sport, then its style and speed as values; a tap opens them (How you go, Your speed) */
+.rows2 .wpl-top { flex-wrap: nowrap; align-items: center; margin: 0 -4px 2px; }
+.rows2 .sport2 { flex: 1 1 auto; min-width: 0; }
+.rows2 .wpl-top .btn { flex: none; }
+.rows2 .sport2 .val { max-width: 50%; }
+.rows2 .sport2 small { overflow-wrap: anywhere; }
+/* Add a place: the empty row at the list's end (a switch here; Komoot's) */
+.rows2 .wpl-add { margin: 0 -4px; color: var(--muted); }
+.rows2 .wpl-add b { font-weight: var(--weight-name); color: var(--text); }
+/* the foot: Reverse, and Clear route at the other end when the switch says so */
+.wpl-foot.foot2 { flex-direction: column; align-items: flex-start; }
+.wpl-foot .foot-l { display: flex; flex-wrap: wrap; gap: 6px; }
+.wpl-foot .btn.danger { color: var(--bad); }
+</style>
+</head>
+<body class="mk">
+<div class="cv">
+  <h1>The route's list</h1>
+  <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
+  <div class="bars">
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button></div></div>
+    <div class="bar"><span>Frame</span><div class="sw" data-k="frame"><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button><button data-v="side">Side dock</button><button data-v="bottom">Bottom dock</button></div>
+      <span>Zoom</span><div class="sw" data-k="zoom"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
+    <div class="bar"><span>Route</span><div class="sw" data-k="route"><button data-v="one">One sport</button><button data-v="two">Two sports</button><button data-v="fi">Long names</button></div>
+      <span>Foot</span><div class="sw" data-k="foot"><button data-v="reverse">Reverse</button><button data-v="clear">Reverse + Clear route</button></div>
+      <span>Add row</span><div class="sw" data-k="add"><button data-v="off">Off</button><button data-v="on">On</button></div>
+      <span>Hover</span><div class="sw" data-k="hover"><button data-v="off">Off</button><button data-v="on">Row 2 hovered</button></div>
+      <span>Reorder</span><div class="sw" data-k="reorder"><button data-v="top">Beside the sport</button><button data-v="foot">Under the list</button></div></div>
+  </div>
+  <div class="stage" id="stage"></div>
+  <div class="notes">
+    <h2>What Rows changes</h2>
+    <ul>
+      <li><b>A point is a row:</b> its mark, its name, and one line: when you leave or get there, the weather then, a stop or a change of sport. Its distance from the start isn't on it (the stretch says how far). A tap opens its card (on a phone) or its popup (#760).</li>
+      <li><b>A plain stretch is a line</b> between two points with its numbers in small type and ⌄ where it folds shaping points. A stretch that differs from a plain one (a straight line, over water, a LIPAS route or an imported track, a carry) has its icon and its word first, in the accent colour. A tap opens the stretch's card.</li>
+      <li><b>The sport's row</b> heads its section: the sport, then its route style and its speed as values ("Balanced · Normal, 16 km/h"). A tap opens them. With two sports each section has its own row, and the point where the sport changes keeps its tag. How you go and Your speed leave the list's end.</li>
+      <li><b>Reorder</b> sits under the list with Reverse, and Clear route on a row of its own under them (chosen on 2026-11-04; the switch shows it beside the sport's row, as today). On a desktop the grip reorders without it; the keyboard still needs it.</li>
+      <li><b>A desktop edits in the row:</b> hover or focus a point's row and Rename and Remove appear where › was; the grip at its left drags it. On a phone the grip and the tools don't exist: the row opens the card, Reorder works as today.</li>
+      <li><b>Under the list:</b> Reverse, and Clear route at the other end (chosen on 2026-11-04; the switch shows Reverse alone). Round trip, Back to start and Import are ways to begin or route actions: ⋯ and the start's card keep them.</li>
+      <li><b>The warning</b> is in the key fact's slot under the numbers (#741), not a box in the list.</li>
+    </ul>
+    <h2>Left out</h2>
+    <ul>
+      <li>The map, the toolbar and the profile are stand-ins; the numbers are made up for a 5.8 km route.</li>
+      <li>The cards and the popup (#760), Reorder's own view, a night's row and a long route's folding (#350): not drawn.</li>
+      <li>The first inline list (2026-10-13 to 2026-10-25) had a name field, five tools, the leg's settings and Depart on every row; its lessons are in the plan.</li>
+    </ul>
+  </div>
+</div>
+<script type="module">
+import { icon, h } from '../../../js/ui.js';
+
+const q = new URLSearchParams(location.search);
+const S = { v: q.get('v') || 'rows', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
+
+// the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
+const ROUTES = {
+  one: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h' }],
+    points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu' }, { name: 'End', sub: 'There at 06:53 · 5° · 3 m/s' }],
+    legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.4 km · 8 min · ↑16 m', shaping: 2 }, { n: '1.3 km · 4 min · ↑4 m' }], total: '5.75 km · 19 min · ↑32 m' },
+  two: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h', to: 2 }, { k: 'hike', label: 'Hike', icon: 'hike', style: 'Balanced', speed: 'Normal, 5 km/h', from: 2 }],
+    points: [{ name: 'Start', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Hämeentie' }, { name: 'Tihtaalinkatu', sub: 'There at 06:48 · 3° · 3 m/s', tag: { icon: 'hike', text: 'Hike from here · changeover 5 min' } }, { name: 'End', sub: 'There at 07:11 · 5° · 3 m/s' }],
+    legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.2 km · 6 min · ↑13 m', shaping: 1 }, { n: '1.5 km · 18 min · ↑32 m', how: 'Straight line', icon: 'straight', differs: true }], total: '5.76 km · 37 min · ↑35 m' },
+  fi: { sports: [{ k: 'mtb', label: 'MTB', icon: 'bike', style: 'Balanced', speed: 'Normal, 16 km/h' }],
+    points: [{ name: 'Pyhä-Häkin kansallispuiston pysäköintialue', sub: 'Leave now · 2° · 3 m/s' }, { name: 'Rautavaaran Metsäkartanon laavu' }, { name: 'Saarijärven kirkonkylän kuntoportaat' }, { name: 'Isojärven kansallispuiston Heretty', sub: 'There at 06:53 · 5° · 3 m/s' }],
+    legs: [{ n: '2.1 km · 7 min · ↑12 m' }, { n: '2.4 km · 8 min · ↑16 m', shaping: 2 }, { n: '1.3 km · 4 min · ↑4 m' }], total: '5.75 km · 19 min · ↑32 m' },
+};
+
+const mark = (i, n) => h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : i === n - 1 ? 'wp-end' : 'wp-via'}`, 'aria-hidden': 'true' }, i === 0 || i === n - 1 ? '' : String(i));
+const chev = (s = 18) => h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', s) });
+const sub = (p, i) => p.sub || `There at 06:${40 + i * 4}`;
+
+// ---------- the planner's head: the numbers, the key fact's slot, the tabs (the same in both versions, but the slot)
+function head(R, rows) {
+  const slot = rows ? h('div', { class: 'kf' }, h('button', { type: 'button', class: 'kf-b danger', style: 'color: var(--danger)' }, h('span', { html: icon('warnf', 18) }), h('span', {}, h('b', {}, '5 to read before you go')), h('span', { html: icon('chevronRight', 16) })))
+    : h('div', { class: 'kf' }, h('button', { type: 'button', class: 'kf-b' }, h('span', { html: icon('mountain', 18) }), h('span', { html: 'High point <b>17 m</b>' }), h('span', { html: icon('chevronRight', 16) })));
+  const [d, t, u] = R.total.split(' · ');
+  return h('div', { class: 'sheet-head' },
+    h('div', { class: 'sheet-sum' }, h('span', { class: 'sum-item' }, h('b', {}, d), h('small', {}, 'distance')), h('span', { class: 'sum-item' }, h('b', {}, t), h('small', {}, 'from now')), h('span', { class: 'sum-item' }, h('b', {}, u.replace('↑', '↑') + ' ↓36 m'), h('small', {}, 'ascent · descent'))),
+    slot,
+    h('div', { class: 'pl-tabs mk-tabs', role: 'tablist' }, h('button', { type: 'button', role: 'tab', class: 'pl-tab', 'aria-selected': 'true', html: `${icon('route', 15)} Route` }), h('button', { type: 'button', role: 'tab', class: 'pl-tab', html: `${icon('warn', 15)} Check <span class="pl-tab-n read">${icon('warnf', 11)} 5</span>` }), h('button', { type: 'button', role: 'tab', class: 'pl-tab', html: `${icon('clock', 15)} Go <span class="pl-tab-t">06:53</span>` })));
+}
+
+// ---------- Today: main's list (js/planner.js sectionRows, pointRow, stretchRow at d326952)
+function today(R, frame) {
+  const n = R.points.length, bottom = frame === 'bottom';
+  const secs = R.sports.length === 1 ? [{ sport: R.sports[0], from: 0, to: n - 1 }] : [{ sport: R.sports[0], from: 0, to: 2 }, { sport: R.sports[1], from: 2, to: 3 }];
+  const one = secs.length === 1;
+  const body = [];
+  body.push(h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(n)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) })));
+  const top = h('div', { class: 'wpl-top' + (bottom ? ' wide' : '') });
+  const headOf = (sec) => h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, 20) }), h('b', {}, `${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}`));
+  if (one) top.append(headOf(secs[0]));
+  top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }));
+  body.push(top);
+  const list = h('ul', { class: 'wpl' });
+  const pointRow = (i, wx) => { const p = R.points[i]; return h('button', { type: 'button', class: 'row wpl-point' },
+    h('span', { 'aria-hidden': 'true' }, mark(i, n)),
+    h('span', {}, h('b', { class: 'wpl-name' }, p.name), p.tag ? h('small', { class: 'wpl-tag', html: `${icon(p.tag.icon, 15)}<span>${p.tag.text}</span>` }) : null, h('small', {}, [i === 0 ? sub(p, i) : wx ? sub(p, i) : `There at 06:${40 + i * 4}`, i && i < n - 1 ? `${(i * 2.1).toFixed(1)} km` : '', i === 0 ? 'Start' : i === n - 1 ? 'End' : ''].filter(Boolean).join(' · '))),
+    chev()); };
+  const stretchRow = (k) => { const L = R.legs[k]; return h('div', { class: 'wpl-strow' }, h('button', { type: 'button', class: 'row wpl-stretch' },
+    h('span', { 'aria-hidden': 'true', html: icon(L.icon || 'auto', 18) }), h('span', {}, h('b', {}, L.n), h('small', {}, [L.how || 'Follow paths', L.shaping ? `via ${L.shaping} shaping point${L.shaping > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · '))), chev(16)),
+    L.shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'aria-expanded': 'false', 'aria-label': `Show the ${L.shaping} shaping points`, html: icon('chevronDown', 18) }) : null); };
+  secs.forEach((sec, si) => {
+    const rows = h('div', { class: 'rows', role: 'group' });
+    if (si === 0) rows.append(pointRow(0, true));
+    for (let k = sec.from; k < sec.to; k++) { rows.append(stretchRow(k)); rows.append(pointRow(k + 1, k + 1 === sec.to)); }
+    const warn = si === 0 ? h('button', { type: 'button', class: 'warn-row danger' }, h('span', { 'aria-hidden': 'true', html: icon('warnf', 20) }), h('span', {}, h('b', {}, '5 to read before you go'), h('small', {}, 'In the dark for 5.75 km and 4 more')), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) })) : null;
+    list.append(h('li', { class: 'sec2' }, one ? null : headOf(sec), one ? null : h('div', { class: 'sec2-nums' }, `${sec.sport.k === 'mtb' ? '4.25 km · 13 min · ↑10 m' : '1.51 km · 24 min · ↑32 m'}`), warn, rows));
+  });
+  body.push(list);
+  body.push(h('div', { class: 'wpl-foot' }, h('button', { type: 'button', class: 'btn', html: `${icon('roundtrip', 16)} Round trip` }), h('button', { type: 'button', class: 'btn', html: `${icon('reverse', 16)} Reverse` }), h('button', { type: 'button', class: 'btn', html: `${icon('loop', 16)} Back to start` }), h('button', { type: 'button', class: 'btn', html: `${icon('upload', 16)} Import` })));
+  const how = h('div', { class: 'rows how-rows' + (bottom ? '' : ' wide') });
+  for (const sp of R.sports) how.append(h('button', { type: 'button', class: 'row' }, h('span', { html: icon('sliders', 20) }), h('span', {}, h('b', {}, 'How you go'), h('small', {}, `The ways Polku picks for ${sp.label}`)), h('span', { class: 'val' }, sp.style), chev()));
+  how.append(h('button', { type: 'button', class: 'row' }, h('span', { html: icon('gauge', 20) }), h('span', {}, h('b', {}, 'Your speed'), h('small', {}, R.sports.map((sp) => `${sp.label}: ${sp.speed.replace(', ', ' · ')}`).join('; ') + ' · 600 m/h up')), h('span', { class: 'val' }, 'Normal'), chev()));
+  body.push(how);
+  return body;
+}
+
+// ---------- Rows: the proposal
+function rows(R, frame, S) {
+  const n = R.points.length, bottom = frame === 'bottom';
+  const secs = R.sports.length === 1 ? [{ sport: R.sports[0], from: 0, to: n - 1 }] : [{ sport: R.sports[0], from: 0, to: 2 }, { sport: R.sports[1], from: 2, to: 3 }];
+  const body = [];
+  body.push(h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(n)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) })));
+  const list = h('ul', { class: 'wpl rows2' });
+  const sportRow = (sec) => h('button', { type: 'button', class: 'row sport2', 'aria-label': `${sec.sport.label}: route style ${sec.sport.style}, speed ${sec.sport.speed}` },
+    h('span', { html: icon(sec.sport.icon, 20) }), h('span', {}, h('b', {}, secs.length > 1 ? `${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}` : sec.sport.label), h('small', {}, `${sec.sport.style} · ${sec.sport.speed}`)), chev());
+  const pointRow = (i) => { const p = R.points[i];
+    const row = h('div', { class: 'wpl-pt' + (S.hover === 'on' && i === 1 ? ' hovered' : '') },
+      h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
+      h('span', { class: 'mark', 'aria-hidden': 'true' }, mark(i, n)),
+      h('button', { type: 'button', class: 'wpl-go' }, h('b', { class: 'wpl-name' }, p.name), p.tag ? h('small', { class: 'wpl-tag', html: `${icon(p.tag.icon, 15)}<span>${p.tag.text}</span>` }) : null, h('small', {}, sub(p, i))),
+      h('span', { class: 'wpl-tools' }, h('button', { type: 'button', class: 'tool', 'aria-label': `Rename ${p.name}`, title: 'Rename', html: icon('pencil', 16) }), h('button', { type: 'button', class: 'tool danger', 'aria-label': `Remove ${p.name}`, title: 'Remove', html: icon('close', 16) })),
+      chev());
+    return row; };
+  const stretch = (k) => { const L = R.legs[k];
+    return h('div', { class: 'wpl-st' + (L.differs ? ' differs' : '') }, h('span', { class: 'line', 'aria-hidden': 'true' }),
+      h('button', { type: 'button', class: 'wpl-go', 'aria-label': `The stretch: ${L.how ? L.how + ', ' : ''}${L.n}` }, h('small', { html: `${L.differs ? `${icon(L.icon, 14)}<b>${L.how}</b> · ` : ''}${L.n}${L.shaping ? ` · via ${L.shaping} shaping point${L.shaping > 1 ? 's' : ''}` : ''}` })),
+      L.shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'aria-expanded': 'false', 'aria-label': `Show the ${L.shaping} shaping points`, html: icon('chevronDown', 18) }) : null); };
+  secs.forEach((sec, si) => {
+    const li = h('li', { class: 'sec2' });
+    const top = h('div', { class: 'wpl-top' }, sportRow(sec));
+    if (si === 0 && S.reorder === 'top') top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }));
+    li.append(top);
+    if (si === 0) li.append(pointRow(0));
+    for (let k = sec.from; k < sec.to; k++) { li.append(stretch(k)); li.append(pointRow(k + 1)); }
+    list.append(li);
+  });
+  if (S.add === 'on') list.append(h('li', {}, h('button', { type: 'button', class: 'row wpl-add' }, h('span', { html: icon('plus', 20) }), h('span', {}, h('b', {}, 'Add a place'), h('small', {}, 'Search, your location or a saved place')))));
+  body.push(list);
+  const foot = h('div', { class: 'wpl-foot' + (S.foot === 'clear' ? ' foot2' : '') }, h('span', { class: 'foot-l' },
+    S.reorder === 'foot' ? h('button', { type: 'button', class: 'btn', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }) : null,
+    h('button', { type: 'button', class: 'btn', html: `${icon('reverse', 16)} Reverse` })));
+  if (S.foot === 'clear') foot.append(h('button', { type: 'button', class: 'btn quiet danger', html: `${icon('trash', 16)} Clear route` }));
+  body.push(foot);
+  return body;
+}
+
+function draw() {
+  const stage = document.getElementById('stage');
+  stage.replaceChildren();
+  const R = ROUTES[S.route], phone = S.frame === '390' || S.frame === '360';
+  const frame = h('div', { class: `frame ${phone ? 'phone' : S.frame}${S.frame === '360' ? ' narrow' : ''}${S.zoom === '200' ? ' z2' : ''}`, 'data-touch': phone ? '1' : '0' });
+  frame.append(h('div', { class: 'mapline', style: 'top: 30%' }), h('div', { class: 'mapline', style: 'top: 55%; transform: rotate(12deg)' }));
+  const sheet = h('section', { class: 'sheet', 'data-layout': phone ? 'sheet' : S.frame === 'side' ? 'left' : 'bottom', 'data-state': 'full', 'aria-label': 'Route planner' });
+  if (phone) sheet.append(h('div', { class: 'sheet-handle' }), h('div', { class: 'pl-tools-row' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` })));
+  sheet.append(head(R, S.v === 'rows'));
+  const body = h('div', { class: 'sheet-body' });
+  body.append(...(S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
+  sheet.append(body);
+  frame.append(sheet);
+  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.' }[S.v];
+  stage.append(h('div', {}, frame, h('p', { class: 'cap' }, cap)));
+  for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[sw.dataset.k] === b.dataset.v));
+  const u = new URL(location); for (const k in S) u.searchParams.set(k, S[k]); history.replaceState(null, '', u);
+}
+for (const sw of document.querySelectorAll('.sw')) sw.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; S[sw.dataset.k] = b.dataset.v; draw(); });
+draw();
+</script>
+</body>
+</html>
