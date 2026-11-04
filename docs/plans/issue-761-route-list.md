@@ -19,7 +19,11 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
   - **The tooltips** are the app's own `tooltip()`, in words, so the weather is in words there, not icons.
   - **Unfolded waypoints** say the warnings on the way to them, as a stretch does, so a warning shows where it is (from testing, 2026-11-04). A stretch no longer counts one that ends where it begins.
   - **Worth a look** is counted too, and twilight said as the dark is: "300 m after sunset", "before sunrise", with their icons, on a line of their own under the warnings (chosen from testing, 2026-11-04).
-- **Next:** PR 4, the words: waypoints, Waypoint n and Freehand.
+- **PR 4: built** (2026-11-04), the words, on `claude/761-words` after #791.
+  - **Waypoints** wherever the planner names a point of the route: the cards, the notes, the hints, Reorder, the start's views, the profile's empty note, an error from the router. "High point", the map's places and "point at" stay.
+  - **Waypoint n** in `label()`, so in the cards, the list's labels, the notes and an exported GPX's names.
+  - **Freehand** for the mode: the toolbar's menu (still S, since F frames the route), Edit this stretch, the list, the map's key, the profile's way type and Check's item. What a leg is (a stand-in drawn straight while it waits for the router, the legs over the ice) stays "a straight line".
+- **Next:** PR 5, the foot.
 
 ## What the user asked for (2026-11-04)
 

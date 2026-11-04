@@ -981,7 +981,7 @@ const KEYS = {
     keyItem(keyLine('background:var(--route);height:5px'), 'Follows paths'),
     keyItem(keyLine('background:var(--route-water);height:5px'), 'Over water'),
     keyItem(keyLine('border-top:5px dotted #ea580c'), 'Carry / portage'),
-    keyItem(keyLine('border-top:4px dashed var(--route-line)'), 'Straight line'),
+    keyItem(keyLine('border-top:4px dashed var(--route-line)'), 'Freehand'),
   ],
   dark: () => [
     keyItem(keyLine('background:#facc15;height:4px;box-shadow:0 0 0 1.5px #111827'), 'Lit (OpenStreetMap)'),

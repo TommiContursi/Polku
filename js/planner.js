@@ -33,7 +33,7 @@ import { swipeSheet, SWIPE, dvh } from './sheet.js';
 import { inFinland } from './safety.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
-const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
+const MODE_LABEL = { auto: 'Follow paths', line: 'Freehand', water: 'Over water' };
 const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
 const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 const MODES = ['auto', 'line', 'water'];
@@ -50,7 +50,7 @@ const MODE_DESC = { auto: 'Along paths and roads, in the route style', line: 'St
 // the desktop toolbar's tooltips: the name, the keys, one sentence
 const TIPS = {
   auto: { name: 'Follow paths', keys: 'P', text: 'The next leg follows paths and roads, chosen by the route style.' },
-  line: { name: 'Straight line', keys: 'S', text: 'The next leg is drawn straight: off the trail, or across a gap the router can’t take.' },
+  line: { name: 'Freehand', keys: 'S', text: 'The next leg is drawn straight: off the trail, or across a gap the router can’t take.' },
   water: { name: 'Over water', keys: 'W', text: 'The next leg is routed on the water by Polku: round land and marked hazards.' },
   style: { name: 'Route style', text: 'Which ways Follow paths prefers, for the whole route. Changing it routes the route again.' },
   sport: { name: 'Sport', text: 'The sport for the legs you draw next, and your speed in it. Legs already drawn keep theirs.' },
@@ -64,7 +64,7 @@ const TIPS = {
   clear: { name: 'Clear route', text: 'Takes the route off the map. Undo brings it back.' },
   more: { name: 'More', text: 'The whole route’s actions that aren’t on the toolbar: a round trip, import and the rest.' },
   done: { name: 'Done', keys: 'E', text: 'Ends drawing: a click on the map shows what’s there. The cards still change the route.' },
-  edit: { name: 'Edit', keys: 'E', text: 'Back to drawing: a click on the map adds a point.' },
+  edit: { name: 'Edit', keys: 'E', text: 'Back to drawing: a click on the map adds a waypoint.' },
 };
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
 const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points'];
@@ -107,7 +107,7 @@ const slid = (el) => parseFloat(getComputedStyle(el).translate.split(' ')[1]) ||
 export const dockOf = () => store.get('plannerDock', 'left');
 // The drawer's tabs (22a): drawing, what's on the way, setting off. Each section lives in one.
 const TABS = [
-  { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: points, legs, round trips, how you go' },
+  { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: waypoints, legs, round trips, how you go' },
   { id: 'check', label: 'Check', icon: 'warn', title: 'What’s on the way: heads-up, climbs, the ground' },
   { id: 'go', label: 'Go', icon: 'clock', title: 'When and how long, the weather, taking it along' },
 ];
@@ -207,7 +207,7 @@ export class Planner {
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
-    this.unfolded = new Set(); // Route's list: the stretches whose shaping points are unfolded (their first point's pid), in memory only
+    this.unfolded = new Set(); // Route's list: the stretches whose waypoints are unfolded (their first point's pid), in memory only
     this.reordering = false; // Route's list in Reorder
     this.roads = initNames(map); // road and path names from the loaded tiles
     this.styles = {}; // the route's own style per sport, else yours for it (styleOf()); a leg may have its own (leg.style)
@@ -436,7 +436,7 @@ export class Planner {
     return j;
   }
 
-  label(i) { return i === 0 ? 'Start' : i === this.points.length - 1 ? 'End' : `Via ${i}`; } // (End, not Finish, on every card and note: #353)
+  label(i) { return i === 0 ? 'Start' : i === this.points.length - 1 ? 'End' : `Waypoint ${i}`; } // (End, not Finish, on every card and note: #353)
 
   // the road or path a point is on: from Valhalla's tags if it routed a leg there, else the map tiles
   autoName(i) {
@@ -445,7 +445,7 @@ export class Planner {
     return t ? t.name : this.roads.nameAt(this.points[i], 30);
   }
 
-  /** What to call point i: your name, else the road it's on, else Start / Via n / End. */
+  /** What to call point i: your name, else the road it's on, else Start / Waypoint n / End. */
   nameOf(i) { return this.pname.get(this.points[i]) || this.autoName(i) || this.label(i); }
 
   setName(i, name) {
@@ -1044,7 +1044,7 @@ export class Planner {
     this.renderState();
     this.renderWaypoints();
     this.renderTools();
-    this.els.said.textContent = on ? 'Editing: a tap on the map adds a point.' : 'Done editing: a tap on the map shows what’s there.';
+    this.els.said.textContent = on ? 'Editing: a tap on the map adds a waypoint.' : 'Done editing: a tap on the map shows what’s there.';
     // the keyboard's focus stays where it was: on Edit where Done was, and back
     if (had >= 0) [this.els.toolEdit, this.els.toolDone][had].focus();
   }
@@ -1459,8 +1459,8 @@ export class Planner {
     L.styleOpen = false;
     L.fromWays = fromWays && !this.points.length;
     if (L.fromWays) this.pushWay();
-    if (start) this.setLoopStart(start, this.points.length === 1 ? 'your first point' : 'the spot you chose', false);
-    else if (this.points.length) this.setLoopStart(this.points[0].slice(), this.points.length === 1 ? 'your first point' : 'your route’s start', false);
+    if (start) this.setLoopStart(start, this.points.length === 1 ? 'your first waypoint' : 'the spot you chose', false);
+    else if (this.points.length) this.setLoopStart(this.points[0].slice(), this.points.length === 1 ? 'your first waypoint' : 'your route’s start', false);
     else this.clearLoopStart();
     if (this.layout() === 'sheet') this.setSheetState('peek', { remember: false }); // the form is the peek
     this.renderLoop();
@@ -1692,7 +1692,7 @@ export class Planner {
       this.closeLoop();
       this.update();
       this.fitRoute();
-      toast(`Loop ${r.letter} is your route now — drag it or its points to change it`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+      toast(`Loop ${r.letter} is your route now — drag it or its waypoints to change it`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
       return;
     }
     const c = r.line.coords, tags = r.line.tags;
@@ -1716,7 +1716,7 @@ export class Planner {
     this.closeLoop();
     this.update();
     this.fitRoute();
-    toast(`Loop ${r.letter} is your route now — drag it or its points to change it`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+    toast(`Loop ${r.letter} is your route now — drag it or its waypoints to change it`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // The round trip is in the header, the peek (#232): renderStart() draws it with the rest of the start.
@@ -1965,7 +1965,7 @@ export class Planner {
     }
     if (this.styleDelta) box.append(h('p', { class: 'style-delta', 'aria-live': 'polite' }, `Last change: ${this.styleDelta}`));
     box.append(h('p', { class: 'note' }, leg != null ? 'Only this leg is routed again.'
-      : `${cat.note || `“${cat.presets[0][1]}” is the routing service’s own profile for the sport.`} A change re-routes the route, usually in one call. To give one leg a different style, open a point’s menu.`));
+      : `${cat.note || `“${cat.presets[0][1]}” is the routing service’s own profile for the sport.`} A change re-routes the route, usually in one call. To give one stretch a style of its own, open its card: Edit this stretch.`));
   }
 
   renderStyleWet(st = (this.styleLeg != null && this.legs[this.styleLeg] && this.legs[this.styleLeg].style) || this.styleOf(this.mainSport())) {
@@ -2735,7 +2735,7 @@ export class Planner {
     const land = this.nextLegSport(), craft = (CRAFT[this.craft] || CRAFT.kayak).label;
     const winter = this.app.winter && this.app.winter().on;
     const onIce = { bike: 'Ride on the ice' }[groupOf(land)] || (land === 'run' || land === 'trailrun' ? 'Run on the ice' : 'Walk on the ice');
-    toast('This point is on the water. How do you get there?', { ms: 10000, action: [
+    toast('This waypoint is on the water. How do you get there?', { ms: 10000, action: [
       { label: `Paddle (${craft === 'SUP' ? craft : craft.toLowerCase()})`, fn: () => this.waterFrom('paddle') },
       { label: 'Swim', fn: () => this.waterFrom('swim') },
       winter ? { label: onIce, fn: () => this.waterFrom('ice') } : null,
@@ -2767,7 +2767,7 @@ export class Planner {
     this.next = null;
     this.matchMode();
     this.update();
-    toast(`${ACTIVITIES[k].label} to this point, and on from here. Undo takes the point back.`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+    toast(`${ACTIVITIES[k].label} to this waypoint, and on from here. Undo takes the waypoint back.`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // a leg drawn straight onto the ice (the water note, in winter): Polku can't see the ice
@@ -2910,7 +2910,7 @@ export class Planner {
     box.replaceChildren();
     box.classList.toggle('reorder', !!this.reordering);
     // (the rows' chevrons say a tap opens them; Reorder's grips need their words, #764)
-    if (n >= 2 && !ro && this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a point, or move it earlier or later.'));
+    if (n >= 2 && !ro && this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a waypoint, or move it earlier or later.'));
     if (this.reordering) this.reorderRows(box);
     else this.sectionRows(box, ro);
     if (wasKey) {
@@ -2998,7 +2998,7 @@ export class Planner {
   }
 
   // a point's row (#761): its mark on the route's line, its name, and one line: when you arrive or leave, and where `w`
-  // (a forecast sample, or 'none' past its reach) the weather then, with its icons; Start, End and Via n are in its label,
+  // (a forecast sample, or 'none' past its reach) the weather then, with its icons; Start, End and Waypoint n are in its label,
   // the mark says them. `leave`: a part's first row after a changeover or a night, the point you set off from again.
   // Its line is dashed beside a straight leg, dotted below it where its part ends or at a stop (`brk`), none below the end.
   // `warns`: in a stretch unfolded, the warnings on the way to it from the point before, as a stretch has its own.
@@ -3100,7 +3100,7 @@ export class Planner {
     }
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
-    const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': open ? `Fold the ${shaping} shaping points` : `Show the ${shaping} shaping points`,
+    const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
       onclick: () => { if (open) this.unfolded.delete(pid); else this.unfolded.add(pid); this.renderWaypoints(); } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
     return h('div', { class: 'wpl-strow' }, b, fold);
   }
@@ -3111,7 +3111,7 @@ export class Planner {
   // go through them. The lines' HTML, and where along the route the dark begins (or 0).
   warnsOn(s) {
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
-    const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Straight line|Carry \/ portage)/.test(w.text);
+    const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Freehand|Carry \/ portage)/.test(w.text);
     const its = this.itemsOn(s).filter((it) => !this.isRead(it) && !(it.g === 'look' && own(it.w))), n = (g) => its.filter((it) => it.g === g).length;
     const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
     const dark = on((x) => !x.twilight), darkM = m(dark), dusk = m(on((x) => x.twilight && x.evening)), dawn = m(on((x) => x.twilight && !x.evening));
@@ -3588,7 +3588,7 @@ export class Planner {
     let i = 0, best = Infinity;
     for (let j = 0; j < a.pts.length; j++) { const d = ((a.pts[j][0] - ll[0]) * k) ** 2 + (a.pts[j][1] - ll[1]) ** 2; if (d < best) { best = d; i = j; } }
     const kind = a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'open water' : a.way[i];
-    const x = { i, along: a.along[i], kind, name: ['straight line', 'water'].includes(a.way[i]) ? '' : this.roadAt(i), tags: (a.attr[i] && a.attr[i].tags) || {} };
+    const x = { i, along: a.along[i], kind, name: ['freehand', 'water'].includes(a.way[i]) ? '' : this.roadAt(i), tags: (a.attr[i] && a.attr[i].tags) || {} };
     this.spotMemo = { a, ll, x };
     return x;
   }
@@ -3644,7 +3644,7 @@ export class Planner {
     if (li == null) return;
     this.cards.close();
     this.insertPoint(li, card.key);
-    toast(`Point added after ${li === 0 ? 'the start' : this.label(li)}`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+    toast(`Waypoint added after ${li === 0 ? 'the start' : this.label(li)}`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
   // Every leg of a stretch in a sport, drawn a way, or in a style (null: the route's), in one step of Undo. In a water
   // sport its legs go over the water, back on land they follow paths again; a fixed line keeps its line.
@@ -3999,7 +3999,7 @@ export class Planner {
     this.addPoint(ll);
     this.autoPeek();
   }
-  // Start here on a spot: a new start before the old one, which is Via 1 now; nothing is removed
+  // Start here on a spot: a new start before the old one, which is Waypoint 1 now; nothing is removed
   startFrom(ll) {
     this.cards.close();
     if (!this.active) this.setActive(true);
@@ -4352,7 +4352,7 @@ export class Planner {
   }
 
   async share() {
-    if (this.points.length < 2) { toast('Add at least two points first'); return; }
+    if (this.points.length < 2) { toast('Add at least two waypoints first'); return; }
     const url = this.shareUrl();
     try {
       await navigator.clipboard.writeText(url);
@@ -4767,7 +4767,7 @@ export class Planner {
     const same = view && view === box.dataset.view, top = same ? box.scrollTop : 0, left = same ? box.querySelector('.loop-cards')?.scrollLeft || 0 : 0;
     this.returnHow();
     box.dataset.view = view || '';
-    box.setAttribute('aria-label', { ways: 'Start a route', draw: 'Draw it', find: 'Marked routes', loop: 'Round trip', first: 'Your first point' }[view] || 'Start a route');
+    box.setAttribute('aria-label', { ways: 'Start a route', draw: 'Draw it', find: 'Marked routes', loop: 'Round trip', first: 'Your first waypoint' }[view] || 'Start a route');
     box.hidden = !view;
     this.els.row.hidden = !!view;
     this.panel.classList.toggle('starting', !!view && !this.points.length); // no route yet: the start is all there is
@@ -4822,7 +4822,7 @@ export class Planner {
       this.sportRow(),
       h('div', { class: 'way-tiles', role: 'group', 'aria-label': 'Ways to begin' }, ...[
         // (a tap on the map starts drawing at once: Draw it's line says so, 2026-10-21)
-        way('draw', 'route', 'Draw it', `${tap === 'tap' ? 'Tap' : 'Click'} the map${desk ? ' where you start, then each place on the way: Polku follows the paths between them.' : ', point by point'}`, () => this.openWay('draw')),
+        way('draw', 'route', 'Draw it', `${tap === 'tap' ? 'Tap' : 'Click'} the map${desk ? ' where you start, then each place on the way: Polku follows the paths between them.' : ', waypoint by waypoint'}`, () => this.openWay('draw')),
         roundTripSports.includes(sp) ? way('loop', 'roundtrip', 'Round trip', desk ? 'A loop of the length or time you pick: three to choose from.' : 'A loop of a length you pick', () => this.openLoop(null, { fromWays: true })) : null,
         markedFor(sp).length ? way('find', 'sign', 'Marked routes', desk ? 'Routes from LIPAS in the map’s view: follow one as it is.' : 'From LIPAS, in view', () => this.openWay('find')) : null,
         way('file', 'upload', desk ? 'A GPX or KML file' : 'A file', desk ? 'Plan on a track from a file, or drop it on the map.' : 'GPX or KML', () => $('#file-input').click()),
@@ -4834,7 +4834,7 @@ export class Planner {
   // Phones keep the card low, one row for the style; it raises the sheet to the chips, and Back lowers it.
   drawView() {
     const desk = this.sideMQ.matches, raised = !desk && this.wayRaised;
-    const LINE = { auto: 'Polku follows the paths', line: 'Polku joins your points with straight lines', water: 'Polku finds a way over the water' };
+    const LINE = { auto: 'Polku follows the paths', line: 'Polku joins your waypoints with straight lines', water: 'Polku finds a way over the water' };
     return [
       raised ? this.backRow('Draw it', () => this.wayBack()) : this.backRow(),
       this.sportRow(),
@@ -4849,7 +4849,7 @@ export class Planner {
   // 'row': one line that opens it. `fold`: the heading folds it again (the round trip's).
   styleBlock(how, { view = 'draw', raise = null, fold = null } = {}) {
     const route = this.mainSport(), m = this.mode;
-    if (view === 'draw' && m === 'line') return h('p', { class: 'way-nostyle', html: `${icon('straight', 16)}<span>Straight lines don’t use a route style</span>` });
+    if (view === 'draw' && m === 'line') return h('p', { class: 'way-nostyle', html: `${icon('straight', 16)}<span>Freehand doesn’t use a route style</span>` });
     if (view === 'draw' && m === 'water' && !isWater(route)) return h('p', { class: 'way-nostyle', html: `${icon('water', 16)}<span>Legs over water are paddled, in your Paddle style</span>` });
     const st = this.styleOf(route), name = styleName(route, st);
     // one button like the toolbar's (2026-10-21), which opens the choices
@@ -4953,7 +4953,7 @@ export class Planner {
     const fmt = (v) => (min ? (v >= 60 ? `${v / 60} h` : `${v} min`) : `${v} km`);
     return [
       // ✕ at the top right, as in the start and its steps (2026-10-21: it replaces Done here too)
-      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map for your next point`)), this.dockX(), this.closeX()),
+      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map for your next waypoint`)), this.dockX(), this.closeX()),
       roundTripSports.includes(sport) ? h('div', { class: 'rt-here' },
         h('span', { class: 'way-cap', html: `${icon('roundtrip', 14)}<span>Round trip from here</span>` }),
         h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Round trip from here' },
@@ -6214,7 +6214,7 @@ export class Planner {
     return [
       h('div', { class: 'speed-row sub head' }, h('span', {}, this.isMulti() ? 'By sport' : 'Moving and stops'), h('b', {}, ''), h('b', {}, ''), h('small', {}, '')),
       ...split.map((x) => h('div', { class: 'speed-row sub' }, h('span', { html: `${icon(this.sportIcon(x.sport), 13)} ${escapeHtml(ACTIVITIES[x.sport].label)}` }), h('b', {}, fmtDist(x.dist)), h('b', {}, fmtDuration(Math.max(0, x.time))), h('small', {}, speedTxt(x.dist, x.time)))),
-      ...[['change', 'Changeovers', 'yours to set on each point'], ['break', 'Breaks', ''], ['night', 'Nights', 'until the hour you go on']].map(([k, label, note]) => {
+      ...[['change', 'Changeovers', 'yours to set on each waypoint'], ['break', 'Breaks', ''], ['night', 'Nights', 'until the hour you go on']].map(([k, label, note]) => {
         const ws = waits.filter((w) => (k === 'change' ? w.change > 0 : k === 'night' ? isNight(w.stop) : w.stop && !isNight(w.stop)));
         const t = ws.reduce((sum, w) => sum + (k === 'change' ? w.change : w.rest || 0), 0), count = k === 'night' ? ws.reduce((c, w) => c + (w.stop.n || 1), 0) : ws.length;
         return ws.length ? h('div', { class: 'speed-row sub' }, h('span', {}, `${label} (${count})`), h('b', {}, ''), h('b', {}, fmtDuration(t)), h('small', {}, note)) : null;
@@ -6461,7 +6461,7 @@ export class Planner {
     if (!a) {
       const tap = matchMedia('(pointer: coarse)').matches ? 'tap' : 'click';
       sum.append(h('p', { class: 'sum-empty' }, this.loop.open ? `Round trip: ${tap} the map to move its start`
-        : this.points.length ? 'Add another point to make a route' : `${tap[0].toUpperCase()}${tap.slice(1)} the map to add a start point`,
+        : this.points.length ? 'Add another waypoint to make a route' : `${tap[0].toUpperCase()}${tap.slice(1)} the map to add your first waypoint`,
         // the first point's: how to see what's on the map, where a phone has no hover (part 5) [r-first]
         this.points.length === 1 && !this.loop.open ? h('small', {}, tap === 'tap' ? 'Hold the map to see what’s there.' : 'Right-click the map to see what’s there.') : null));
 
@@ -6743,7 +6743,7 @@ export class Planner {
     if (!a) return out;
     // a stand-in for a leg not routed yet is its own item, not a Straight line too
     const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a), ...this.iceWarnings(a), ...this.routerWarnings()].sort((x, y) => x.at - y.at);
+    const all = [...a.warnings.filter((w) => !(/^Freehand/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a), ...this.iceWarnings(a), ...this.routerWarnings()].sort((x, y) => x.at - y.at);
     const hidden = hiddenKinds();
     for (const w of all) {
       const k = hideKind(w);

@@ -51,7 +51,7 @@ export function pointCard(pl, p, { actions = true } = {}) {
     get i() { return pl.points.indexOf(card.key); },
     get title() { return card.renaming ? card.nameField() : pl.nameOf(card.i); },
     get label() { return pl.nameOf(card.i); },
-    get sub() { const i = card.i, kind = i === 0 ? 'Start' : i === pl.points.length - 1 ? 'End' : `Via ${i}`; return pl.nameOf(i) === kind || pl.nameOf(i) === pl.label(i) ? '' : kind; }, // (no name of its own: "Via 1" once)
+    get sub() { const kind = pl.label(card.i); return pl.nameOf(card.i) === kind ? '' : kind; }, // (no name of its own: "Waypoint 1" once)
     get save() { return card.renaming ? h('button', { type: 'button', class: 'btn primary', onclick: () => card.endRename(true) }, 'Save') : null; },
     mark: () => pointMark(pl, card.i),
     at: () => card.key,
@@ -62,7 +62,7 @@ export function pointCard(pl, p, { actions = true } = {}) {
   card.nameField = () => {
     if (!card.input) {
       const i = card.i;
-      card.input = h('input', { class: 'name-field', type: 'text', value: pl.pname.get(card.key) || '', placeholder: pl.autoName(i) || pl.label(i), maxlength: 60, spellcheck: 'false', 'aria-label': 'The point’s name',
+      card.input = h('input', { class: 'name-field', type: 'text', value: pl.pname.get(card.key) || '', placeholder: pl.autoName(i) || pl.label(i), maxlength: 60, spellcheck: 'false', 'aria-label': 'The waypoint’s name',
         onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); card.endRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); card.endRename(false); } } });
     }
     return card.input;
@@ -107,7 +107,7 @@ function pointBody(pl, card, body) {
   if (via) {
     const stop = pl.stopAt(i), night = isNight(stop);
     const set = (st) => { pl.setStop(i, st); pl.cards.refresh(); };
-    body.append(h('h4', { class: 'menu-h' }, 'At this point'), segIcons('At this point', [
+    body.append(h('h4', { class: 'menu-h' }, 'At this waypoint'), segIcons('At this waypoint', [
       { k: 'pass', label: 'Pass by', icon: 'pass', on: !stop },
       { k: 'stop', label: 'Stop', icon: 'pause', on: !!stop && !night },
       { k: 'night', label: 'Night', icon: 'moon', on: night },
@@ -139,7 +139,7 @@ function pointBody(pl, card, body) {
   }
   // the start: when you leave
   if (i === 0 && n > 1) { const lv = leaveBlock(pl); lv.put(); body.append(lv.el); }
-  // Next stretch, to Via 4: where it goes, in its name, so a desktop says it too (its line is a tooltip there; 2026-10-22).
+  // Next stretch, to Waypoint 4: where it goes, in its name, so a desktop says it too (its line is a tooltip there; 2026-10-22).
   // A stretch runs to the next point you see (1b): from a point that only shapes the line, the stretch it's on.
   const str = pl.legs[i] ? pl.stretchAt(i) : null;
   const after = str ? item({ icon: 'route', label: `Next stretch, to ${pl.nameOf(str.to)}`, line: 'Its sport, how it’s drawn and its style', chev: true,
@@ -166,10 +166,10 @@ function pointBody(pl, card, body) {
   if (last) body.append(...group('The route', loop ? null : item({ icon: 'loop', label: 'Back to start', line: 'Adds a leg back to the start', k: 'back', onclick: () => { pl.backToStart(); toast('A leg back to the start is added', { ms: 7000, action: undo }); } }), reverse));
   if (i === 0 && n > 1) body.append(...group('The route', reverse));
   // Edit this point; Start here and End here say what they remove; Remove apart, in red
-  body.append(h('h4', { class: 'menu-h' }, 'Edit this point'), acts(
+  body.append(h('h4', { class: 'menu-h' }, 'Edit this waypoint'), acts(
     item({ icon: 'move', label: 'Move', line: `${pl.coarse() ? 'Tap' : 'Click'} where it goes`, k: 'move', onclick: () => pl.moveOnCard(card) }),
     item({ icon: 'pencil', label: 'Rename', line: 'Give it a name of your own', k: 'rename', onclick: () => { card.renaming = true; pl.cards.refresh(); card.input?.focus(); card.input?.select(); } }),
-    via ? item({ icon: 'flag', label: 'Start here', line: loop ? 'The same loop, starting from this point' : 'The part before it is removed, Undo brings it back', k: 'start', onclick: () => pl.startAt(card.i) }) : null,
+    via ? item({ icon: 'flag', label: 'Start here', line: loop ? 'The same loop, starting from this waypoint' : 'The part before it is removed, Undo brings it back', k: 'start', onclick: () => pl.startAt(card.i) }) : null,
     via && !loop ? item({ icon: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back', k: 'end', onclick: () => pl.finishAt(card.i) }) : null));
   body.append(h('hr'), acts(item({ icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, k: 'remove', onclick: () => pl.removeOnCard(card) })));
 }
@@ -295,7 +295,7 @@ export function routeCard(pl, li, ll) {
     get title() { const x = card.spot; return x ? x.name || cap(x.kind) : 'The route'; },
     get label() { return card.title; },
     get sub() { const x = card.spot; return x ? `${x.name ? `${cap(x.kind)}, ` : ''}${fmtDist(x.along)} from the start` : ''; },
-    pill: { label: 'Add a point here', icon: 'plus', fn: () => pl.addOnCard(card) },
+    pill: { label: 'Add a waypoint here', icon: 'plus', fn: () => pl.addOnCard(card) },
     mark: wayMark, at: () => card.key,
     alive: () => { const k = pl.legNear(card.key); if (k == null) return false; card.li = k; return true; },
     get stretch() { return pl.stretchAt(card.li); },
@@ -377,7 +377,7 @@ export function editCard(pl, s, { spot = null } = {}) {
       if (fixed) body.append(h('p', { class: 'rt-cost' }, leg.src ? 'Its own line, from LIPAS' : 'Its own line, from the file you imported'));
       else {
         const ways = water ? ['water', 'line'] : ['auto', 'line'];
-        body.append(segIcons('How it’s drawn', ways.map((m) => ({ k: m, label: { auto: 'Follow paths', line: 'Straight line', water: 'Over water' }[m], icon: { auto: 'auto', line: 'straight', water: 'water' }[m], on: leg.mode === m })),
+        body.append(segIcons('How it’s drawn', ways.map((m) => ({ k: m, label: { auto: 'Follow paths', line: 'Freehand', water: 'Over water' }[m], icon: { auto: 'auto', line: 'straight', water: 'water' }[m], on: leg.mode === m })),
           (m) => pl.setStretch(k.s, { mode: m })));
         if (leg.mode !== 'line') {
           const base = pl.styleOf(sport);
@@ -844,11 +844,11 @@ function pickFoot(pl, card, spot) {
 // pill was (Add to my route, Add a point here by the line, Start a route here with no route).
 function yourRoute(pl, spot, { add = false } = {}) {
   const n = pl.points.length, undo = { label: 'Undo', fn: () => pl.undo() };
-  const pill = !add ? null : !n ? { label: 'Start a route here', fn: () => pl.startRouteAt(spot.ll) } : { label: pl.byTheLine(spot.ll) ? 'Add a point here' : 'Add to my route', fn: () => pl.addWhereItFits(spot.ll) };
+  const pill = !add ? null : !n ? { label: 'Start a route here', fn: () => pl.startRouteAt(spot.ll) } : { label: pl.byTheLine(spot.ll) ? 'Add a waypoint here' : 'Add to my route', fn: () => pl.addWhereItFits(spot.ll) };
   const yours = acts(
     pill ? item({ icon: 'plus', label: pill.label, line: 'In your route, where it fits', k: 'add', onclick: pill.fn }) : null,
-    n ? item({ icon: 'flag', label: 'Start here', line: 'Adds a new start point', k: 'start', onclick: () => pl.startFrom(spot.ll) }) : null,
-    n ? item({ icon: 'flagend', label: 'End here', line: 'Adds a new end point', k: 'end', onclick: () => { pl.cards.close(); pl.endAt(spot.ll); toast('A new end is added', { ms: 7000, action: undo }); } }) : null,
+    n ? item({ icon: 'flag', label: 'Start here', line: 'Adds a new start', k: 'start', onclick: () => pl.startFrom(spot.ll) }) : null,
+    n ? item({ icon: 'flagend', label: 'End here', line: 'Adds a new end', k: 'end', onclick: () => { pl.cards.close(); pl.endAt(spot.ll); toast('A new end is added', { ms: 7000, action: undo }); } }) : null,
     pl.loopsHere() ? item({ icon: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose, from here', k: 'loop', onclick: () => { pl.cards.close(); pl.openLoop(spot.ll); } }) : null,
     n ? item({ icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); if (!pl.active) pl.setActive(true); pl.addNogo(spot.ll, 40, spot.place ? spot.title : 'Avoided place'); } }) : null);
   return yours ? [h('h4', { class: 'menu-h' }, 'Your route'), yours] : [];

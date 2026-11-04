@@ -153,7 +153,7 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
 // BRouter's error lines, in words a rider understands
 function explain(text) {
   const t = text.trim().split('\n')[0];
-  if (/target island|not mapped|position not mapped|no track found/i.test(t)) return 'no path the router can use near one of the points';
+  if (/target island|not mapped|position not mapped|no track found/i.test(t)) return 'no path the router can use near one of the waypoints';
   if (/killed by thread-priority-watchdog|timeout|retry later/i.test(t)) return 'the router was too busy';
   return t;
 }
