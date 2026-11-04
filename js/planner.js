@@ -459,13 +459,18 @@ export class Planner {
 
   // Move point i to position j. Legs whose two ends stay neighbours are kept
   // (an imported track the other way round is turned round); new neighbours
-  // get a new leg in the mode the point's outgoing leg had.
+  // get a new leg in the mode the point's outgoing leg had. A change of sport
+  // stays with its point, and every other leg is in the sport of the part it's
+  // in, so a move never adds a changeover; one that leaves fewer (a changeover
+  // made the start or the end) says so, with Undo (#782).
   movePointTo(i, j) {
     const n = this.points.length;
     if (i === j || i < 0 || j < 0 || i >= n || j >= n) return;
+    const into = this.points.map((_, k) => (this.changeAt(k) ? this.legSport(k) : null)), first = this.legSport(0);
     this.commit();
     const pts = this.points.slice();
     pts.splice(j, 0, pts.splice(i, 1)[0]);
+    into.splice(j, 0, into.splice(i, 1)[0]);
     const out = new Map();
     this.legs.forEach((l, k) => out.set(this.points[k], { l, to: this.points[k + 1] }));
     this.legs = pts.slice(1).map((to, k) => {
@@ -479,7 +484,14 @@ export class Planner {
       return { mode: m === 'fixed' ? 'auto' : m, style: o ? o.l.style : null, sport: (o || r) ? (o || r).l.sport : undefined };
     });
     this.points = pts;
+    let sport = first;
+    this.legs.forEach((_, k) => { sport = into[k] || sport; if (this.legSport(k) !== sport) this.legInSport(k, sport); });
+    const lost = into.findIndex((x, k) => x && !this.changeAt(k));
     this.update();
+    if (lost < 0) return;
+    const name = this.nameOf(lost), sp = ACTIVITIES[into[lost]].label, was = ACTIVITIES[first].label;
+    toast(lost === n - 1 ? `${name} is the end now, so there's no ${sp} after it` : lost === 0 && sp !== was ? `${name} is the start now, so the route starts in ${sp}, not ${was}`
+      : `The route is in ${sp} already at ${name}, so the sport doesn't change there`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // Point i to ll without dragging (Move on its card): one step of Undo, its two legs routed again

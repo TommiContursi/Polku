@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-04
 
+### Reorder keeps where the sport changes ([#782](https://github.com/TommiContursi/Polku/issues/782))
+
+- On a route of more than one sport, the point where you change sport keeps that change when you move it, in **Reorder** or with the keys: you still start paddling there, with its changeover minutes and the gear you take along.
+- Any other point you move takes the sport of the part of the route it lands in. One move no longer adds changeovers, as when MTB, MTB, Paddle, Paddle turned into MTB, Paddle, MTB, Paddle.
+- When a move puts a changeover at the start or the end of the route, where the sport can't change, a note says what's gone, with **Undo**.
+
 ### A point is a row, a stretch the line between two ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list in **Route**, each point is a row with its mark, its name and one line: when you leave or get there and the weather then, with a stop, a night or a change of sport as its tag. A point's row no longer says how far it is from the start: the stretch to it says how far.
