@@ -3015,7 +3015,7 @@ export class Planner {
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     // (on a desktop, its distance from the start, its times and the weather, as the map's tooltip has them)
-    if (at && !shape) tooltip(b, { beside: true, name: `${fmtDist(this.lengthTo(i))} from the start`, text: [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `leave ${this.clockOf(at.leave)}` : '', ...sky.map((x) => x.text)].filter(Boolean).join(' · ') });
+    if (at) tooltip(b, { beside: true, name: `${fmtDist(this.lengthTo(i))} from the start`, text: [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `leave ${this.clockOf(at.leave)}` : '', ...sky.map((x) => x.text)].filter(Boolean).join(' · ') });
     return b;
   }
 

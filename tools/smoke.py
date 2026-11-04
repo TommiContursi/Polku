@@ -15546,7 +15546,8 @@ def sections_list(chrome):
         n_read = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-stretch .wpl-warns .read')].map((x) => x.textContent)")
         if not n_read or not all(re.fullmatch(r'\d+ to read', x) for x in n_read):
             fails.append(f"{name}: the Read item's stretch in the list says {n_read}")
-        for sel, want in (("polku.planner.els.points.querySelector('.wpl-stretch')", r'^0 m → .+ from the start.*\d\d:\d\d → .*\d\d:\d\d'), ("polku.planner.els.points.querySelector('.wpl-point.last')", r'from the start.*Arrive .*\d\d:\d\d')):
+        for sel, want in (("polku.planner.els.points.querySelector('.wpl-stretch')", r'^0 m → .+ from the start.*\d\d:\d\d → .*\d\d:\d\d'), ("polku.planner.els.points.querySelector('.wpl-point.last')", r'from the start.*Arrive .*\d\d:\d\d'),
+                          ("(polku.planner.els.points.querySelector('.wpl-point.shape') || (polku.planner.els.points.querySelector('.wpl-unfold')?.click(), polku.planner.els.points.querySelector('.wpl-point.shape')))", r'from the start.*Arrive .*\d\d:\d\d')):  # (a point a stretch folds, unfolded, too)
             q = at(pg, sel)
             if not q:
                 fails.append(f"{name}: no {sel} for its tooltip")
