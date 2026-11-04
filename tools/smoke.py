@@ -17304,6 +17304,15 @@ PF_JS = """(async () => {
   const night = [...p.els.points.querySelectorAll('.wpl-point[data-i="1"] .wx-line')].map((x) => x.textContent); // (as you get there, and Day 2's first row: as you go on)
   if (night[0] !== '5° 8 m/s' || night[1] !== '9° 8 m/s') errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
+  // a surface tag with markup (#483): both readouts, the map's tip and the profile's, show it as text, not as an element
+  const old = a.surf[1], tagged = '<i>x</i>';
+  a.surf[1] = tagged;
+  const lines = C.routeReadout(a, 1).lines.join(' ');
+  if (!lines.includes('&lt;i&gt;x&lt;/i&gt;') || lines.includes('<i>x')) errs.push(`the map's tip with a markup surface tag: ${lines}`);
+  p.chart.setHover(1, true);
+  const stip = document.getElementById('profile-tip');
+  if (stip.querySelector('i') || !stip.textContent.includes(tagged)) errs.push(`the profile's tip with a markup surface tag: ${stip.innerHTML}`);
+  a.surf[1] = old; p.chart.setHover(-1, true);
   // paddling: its wind as far as it reaches, and from where it isn't known
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
   const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
