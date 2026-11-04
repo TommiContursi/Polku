@@ -1618,8 +1618,10 @@ STOPS = """(async () => {
   if (!w2 || w2.rest < 3600) errs.push(`night of ${w2 && w2.rest / 3600} h`);
   const total = (p.analysis.timeWind || p.analysis.time);
   const moving = total - a.waits.reduce((t, w) => t + w.sec, 0);
-  const sum = document.querySelector('.sum-time small')?.textContent;
-  if (sum !== '2 days') errs.push(`summary time: ${sum}`);
+  // (#761) over days: the whole time, its nights too, with the time on the move under it
+  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const sum = `${document.querySelector('.sum-time b')?.textContent} / ${document.querySelector('.sum-time small')?.textContent}`;
+  if (sum !== `${short(total)} / ${short(moving)} moving`) errs.push(`summary time: ${sum}, not ${short(total)} / ${short(moving)} moving`);
   const days = S.tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : p.startSec(), a.waits);
   if (days.length !== 2 || Math.abs(days[0].moving + days[1].moving - moving) > 2) errs.push(`days: ${days.length}, moving ${days.map((d) => d.moving).join('+')} vs ${moving}`);
   p.reveal('depart');
@@ -15431,6 +15433,13 @@ def sections_list(chrome):
         s = st(pg)
         if len(s['secs']) != 2 or not any(w.startswith('4:stop:Stop · 30 min') for w in s['waits']):
             fails.append(f"{name}: a stop at via 4: sections {[x['title'] for x in s['secs']]}, waits {s['waits']}")
+        # (#761) its part's heading adds the stop to the time on the move, and the numbers row has the whole time with the
+        # time on the move under it
+        t = pg.js("""(() => { const p = polku.planner, A = p.analysis, all = A.timeWind || A.time, mv = all - A.waits.reduce((n, w) => n + w.sec, 0), el = document.querySelector('.sum-time');
+          const f = (sec, u) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}${u}` : `${m} min`; };
+          return { heads: [...p.els.points.querySelectorAll('.sec2-head small')].map((x) => x.textContent), b: el.querySelector('b').textContent, small: el.querySelector('small').textContent, all: f(all, ' min'), mv: f(mv, '') }; })()""")
+        if sum(' + 30 min stop' in x for x in t['heads']) != 1 or t['b'] != t['all'] or t['small'] != f"{t['mv']} moving":
+            fails.append(f"{name}: a stop at via 4: the headings {t['heads']}, the time {t['b']!r} over {t['small']!r} (want one heading's time + 30 min stop, the whole time {t['all']} over {t['mv']} moving, #761)")
         pg.js("polku.planner.setStop(5, { on: 420 }); true")
         time.sleep(0.8)
         s = st(pg)
@@ -16395,7 +16404,9 @@ LV_NIGHTS = """(async () => {
   LV.set('card', '07:00');
   await wait(400);
   if (JSON.stringify(p.stopAt(2)) !== '{"on":420,"n":2}') errs.push(`Go on at 07:00: ${JSON.stringify(p.stopAt(2))}`);
-  if (document.querySelector('.sum-time small')?.textContent !== '3 days') errs.push(`the summary: ${document.querySelector('.sum-time small')?.textContent}`);
+  // (#761) the whole time follows the hour you go on: an hour less
+  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  if (document.querySelector('.sum-time b')?.textContent !== short(p.analysis.timeWind || p.analysis.time)) errs.push(`the summary: ${document.querySelector('.sum-time b')?.textContent}, not ${short(p.analysis.timeWind || p.analysis.time)}`);
   p.cards.close();
   p.reveal('points');
   await wait(300);

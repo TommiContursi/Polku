@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-04
 
+### The whole time, and the time on the move ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- The route's time above the map is the whole of it, its stops, changeovers and nights too, and under it the time on the move, as in "38 min" over "8 min moving". A route over days shows its whole span there too, "16 h 40", in place of "2 days". A route without waits still says when you leave under its time.
+- In the route's list, a part's heading adds its stops to its time on the move, as in "8 min + 30 min stop", so its time and the clock times in its rows agree. **Go** still breaks the time down by way, sport and wait.
+
 ### Waypoints and Freehand ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - The planner calls the points of your route waypoints, as in **Add a waypoint here**, **Edit this waypoint**, **At this waypoint** and Reorder's "Drag a waypoint". A waypoint without a name of its own is "Waypoint 2", no longer "Via 2": on its card, in the route's list, in notes and as its name in an exported GPX file.

@@ -24,6 +24,8 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
   - **Waypoint n** in `label()`, so in the cards, the list's labels, the notes and an exported GPX's names.
   - **How a stretch is drawn** in one style, Follow paths as strong as Freehand (from testing, 2026-11-04): the dashed line marks Freehand, so the word needn't. This undoes the list's "only where it differs" weight from PR 1.
   - **Freehand** for the mode: the toolbar's menu (still S, since F frames the route), Edit this stretch, the list, the map's key, the profile's way type and Check's item. What a leg is (a stand-in drawn straight while it waits for the router, the legs over the ice) stays "a straight line".
+  - **The times** (from testing, 2026-11-04): the numbers row's time is the whole of it, waits too, with "8 min moving" under it where waits make a difference (over days too, in place of "2 days"); a part's heading adds its stops, "8 min + 30 min stop". Its tooltip said the waits were in the time over days, when it showed only the time on the move; now they are.
+  - (Elsewhere: Go's contents where the route says them, and maybe no Go tab, is #794; the map's route line in the list's style is #793.)
 - **Next:** PR 5, the foot.
 
 ## What the user asked for (2026-11-04)

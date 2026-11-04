@@ -2952,7 +2952,15 @@ export class Planner {
 
   sectionRows(box, ro) {
     const secs = this.sections(), days = secs.some((s) => s.ends === 'night'), a = this.analysis, fits = this.analysisFits();
-    const nums = (s) => { const x = this.stretchNums(s); return x ? [fmtDist(x.len), fmtDuration(x.sec), x.up == null ? '' : `↑${Math.round(x.up)} m`].filter(Boolean).join(' · ') : fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from)); };
+    // (a part's time on the move, its stops added to it, "8 min + 30 min stop", so it's the whole and says which is which;
+    // its changeovers and nights are its ends, rows of their own)
+    const nums = (s) => {
+      const x = this.stretchNums(s), stops = [];
+      if (!x) return fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from));
+      for (let i = s.from + 1; i < s.to; i++) if (this.stopAt(i)) stops.push(restSec(this.stopAt(i)));
+      const plus = stops.length ? ` + ${fmtDuration(stops.reduce((t, sec) => t + sec, 0))} ${stops.length === 1 ? 'stop' : 'of stops'}` : '';
+      return [fmtDist(x.len), `${fmtDuration(x.sec)}${plus}`, x.up == null ? '' : `↑${Math.round(x.up)} m`].filter(Boolean).join(' · ');
+    };
     // the forecast m metres along: its sample, and in words; past its reach none yet, never its last hour's (#465) [tabs-c-days]
     const wAt = (m) => (fits && a.wind && a.wind.temp ? this.sampleAtM(m) : -1), past = (w) => w >= 0 && a.wind.beyond >= 0 && w >= a.wind.beyond;
     // the weather on the rows (#764, #761): as you leave on Start's and on each part's first after a wait, as you get there
@@ -6483,8 +6491,8 @@ export class Planner {
     // the time is from your departure: tapping it opens the clock (one control for both)
     const dep = this.leaveWords();
     const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · set the departure`, onclick: () => this.revealDeparture() },
-      // over days: the time on the move, and how many days it's spread over
-      h('b', {}, nights ? shortDuration((a.timeWind || a.time) - waitSec) : fmtDuration(a.timeWind || a.time)), h('small', {}, nights ? `${nights + 1} days` : `from ${dep}`));
+      // the whole time, its waits too, and under it the time on the move where they differ (#761), else when you leave
+      h('b', {}, nights ? shortDuration(a.timeWind || a.time) : fmtDuration(a.timeWind || a.time)), h('small', {}, waitSec ? `${shortDuration((a.timeWind || a.time) - waitSec)} moving` : `from ${dep}`));
     sum.append(time);
     const carry = a.ways.find(([k]) => k === 'portage');
     if (paddle) key('carry', carry ? fmtDist(carry[1]) : '0 m');
