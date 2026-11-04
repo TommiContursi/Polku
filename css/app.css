@@ -636,6 +636,8 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 @media (hover: hover) { .btn:hover { background: var(--surface-2); } }
 .btn.primary { background: var(--accent-bg); border-color: var(--accent-bg); color: #fff; }
 .btn.danger-text { color: var(--bad); border-color: transparent; background: transparent; padding-inline: 4px; }
+/* a dangerous action as a button (Clear route under the list): the button's own surface, its words and icon in red */
+.btn.danger { color: var(--danger); }
 .tool {
   width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer;
@@ -1390,8 +1392,9 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wp-mini.wp-end::after { width: 6px; height: 6px; }
 .wpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wpl-main small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.wpl-foot { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 8px; }
-.wpl-foot .foot-l { display: flex; flex-wrap: wrap; gap: 6px; }
+.wpl-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* the dangerous one at the row's far end, apart from the others (on a line of its own where they don't fit) */
+.wpl-foot .btn.danger { margin-left: auto; }
 .wpl-foot:empty { display: none; }
 .tool.small { width: 28px; height: 28px; }
 /* Route's list in sections (25d's part 4, Revision 5 [jd-multi]): a section's title, its numbers, its warnings, then

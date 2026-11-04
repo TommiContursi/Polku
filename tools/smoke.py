@@ -4356,6 +4356,9 @@ DRAWER = """(async () => {
   const foot = [...p.els.pointsFoot.querySelectorAll('button')].map(txt);
   // (#761) under the list Reorder and Reverse, then Clear route; Round trip, Back to start and Import are in More (below)
   if (foot.join() !== 'Reorder,Reverse,Clear route') errs.push(`Route's foot: ${foot.join(', ')} (want Reorder, Reverse, Clear route)`);
+  // (in one row, Clear route a red button at its end: the button's own edge, its words red)
+  const fb = [...p.els.pointsFoot.querySelectorAll('button')], clr = fb[2], cs = clr && getComputedStyle(clr);
+  if (new Set(fb.map((b) => Math.round(b.getBoundingClientRect().top))).size !== 1 || !cs || cs.borderTopColor === 'rgba(0, 0, 0, 0)' || cs.color === getComputedStyle(fb[1]).color) errs.push(`Route's foot isn't one row with a red Clear route button: ${fb.map((b) => `${txt(b)} at ${Math.round(b.getBoundingClientRect().top)}, ${getComputedStyle(b).color} on ${getComputedStyle(b).borderTopColor}`).join('; ')}`);
   if (foot.includes('All leg settings')) errs.push('Route still has All leg settings (25d’s part 4: each stretch has Edit this stretch)');
   const how = document.querySelector('[data-sec=style]');
   if (!how.querySelector('.style-presets') || !how.querySelector('.speed-wrap .speed-box').children.length) errs.push('How you go lacks the style or the speeds');

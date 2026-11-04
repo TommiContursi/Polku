@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Under the route's list: Reorder, Reverse and Clear route ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
-- Under the route's list in **Route** are **Reorder** and **Reverse**, and **Clear route** in red under them, with **Undo** in its note. **Round trip**, **Back to start** and **Import** left the list: they're in **More** (⋯) and on the route's cards, as before.
+- Under the route's list in **Route** are **Reorder**, **Reverse** and **Clear route** in a row, Clear route a red button at its end, with **Undo** in its note. On a narrow phone Clear route goes to a line of its own. **Round trip**, **Back to start** and **Import** left the list: they're in **More** (⋯) and on the route's cards, as before.
 - On a route of more than one sport, **Reorder** shows the sport you start in and each change of sport with its minutes, as in "MTB → Paddle · 15 min", so you can see where a move takes it.
 
 ### The whole time, and the time on the move ([#761](https://github.com/TommiContursi/Polku/issues/761))

@@ -2891,16 +2891,15 @@ export class Planner {
     // the route's view (25c): the same sections, without Reorder; a point's card still edits it (#745)
     const ro = this.inView();
     if (ro || n < 2) this.reordering = false;
-    // under the list (#761): Reorder and Reverse, then Clear route in red, with Undo in its note as ever. Reorder's place
-    // stays put while reordering, as Done, and at half on a phone the start and the first stretch stay in sight. Round
-    // trip, Back to start and Import are in ⋯ and the route's cards, so they're not here too (#745).
-    const first = [
+    // under the list (#761), in a row: Reorder and Reverse, and at its far end Clear route, a red button, with Undo in its
+    // note as ever. Reorder's place stays put while reordering, as Done, and at half on a phone the start and the first
+    // stretch stay in sight. Round trip, Back to start and Import are in ⋯ and the route's cards, not here too (#745).
+    this.els.pointsFoot.replaceChildren(...[
       n >= 2 && !ro ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); this.els.pointsFoot.querySelector('[aria-pressed]')?.focus(); },
         html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder') : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The end becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
-    ].filter(Boolean); // (replaceChildren would write a null as "null")
-    this.els.pointsFoot.replaceChildren(...[first.length ? h('div', { class: 'foot-l' }, ...first) : null,
-      n ? h('button', { type: 'button', class: 'btn danger-text', title: 'Undo brings it back', onclick: () => this.clear(), html: `${icon('trash', 16)} Clear route` }) : null].filter(Boolean));
+      n ? h('button', { type: 'button', class: 'btn danger', title: 'Undo brings it back', onclick: () => this.clear(), html: `${icon('trash', 16)} Clear route` }) : null,
+    ].filter(Boolean)); // (replaceChildren would write a null as "null")
     // what had the focus, found again in the list drawn anew (a row by its point or stretch, a button by its words)
     const was = box.contains(document.activeElement) ? document.activeElement : null;
     const wasKey = was && (was.dataset.i != null ? `i${was.dataset.i}` : was.dataset.from != null ? `s${was.dataset.from}${was.classList.contains('wpl-unfold') ? 'u' : ''}` : was.textContent.trim());
