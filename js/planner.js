@@ -3015,7 +3015,7 @@ export class Planner {
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     // (on a desktop, its distance from the start, its times and the weather, as the map's tooltip has them)
-    if (at && !shape) tooltip(b, { name: `${fmtDist(this.lengthTo(i))} from the start`, text: [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `leave ${this.clockOf(at.leave)}` : '', ...sky.map((x) => x.text)].filter(Boolean).join(' · ') });
+    if (at && !shape) tooltip(b, { beside: true, name: `${fmtDist(this.lengthTo(i))} from the start`, text: [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `leave ${this.clockOf(at.leave)}` : '', ...sky.map((x) => x.text)].filter(Boolean).join(' · ') });
     return b;
   }
 
@@ -3098,7 +3098,7 @@ export class Planner {
       let lo = Infinity, hi = -Infinity, wind = 0;
       if (A.wind && A.wind.temp) for (let k = this.sampleAtM(a0), z = this.sampleAtM(a1); k <= z && (A.wind.beyond < 0 || k < A.wind.beyond); k++) { lo = Math.min(lo, A.wind.temp[k]); hi = Math.max(hi, A.wind.temp[k]); wind = Math.max(wind, A.wind.speed[k]); }
       const wx = lo <= hi ? `${Math.round(lo) === Math.round(hi) ? Math.round(lo) : `${Math.round(lo)}–${Math.round(hi)}`}° · wind up to ${Math.round(wind)} m/s` : '';
-      tooltip(b, { name: `${fmtDist(a0)} → ${fmtDist(a1)} from the start`, text: [`${this.clockOf(t0.leave)} → ${this.clockOf(t1.arrive)}`, wx].filter(Boolean).join(' · ') });
+      tooltip(b, { beside: true, name: `${fmtDist(a0)} → ${fmtDist(a1)} from the start`, text: [`${this.clockOf(t0.leave)} → ${this.clockOf(t1.arrive)}`, wx].filter(Boolean).join(' · ') });
     }
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });

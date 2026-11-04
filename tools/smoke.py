@@ -1631,7 +1631,8 @@ STOPS = """(async () => {
   // Route's list (#761): the stop a wait in its part, the night a wait between the days, with its hours and its times
   // (sunset and sunrise with their icons); the night ends a day
   const waits = [...document.querySelectorAll('.wpl-wait')].map((x) => `${x.dataset.wait}: ${x.textContent}`);
-  if (waits.length !== 2 || !waits.some((t) => /^stop: Stop · \\d+ min\\d\\d:\\d\\d–/.test(t) && document.querySelector('.wpl .sec2 .wpl-wait[data-wait=stop]')) || !waits.some((t) => /^night: Night · \\d+ h/.test(t) && document.querySelector('.wpl > li.wait .wpl-wait[data-wait=night]'))
+  const kind = (k) => waits.filter((t) => t.startsWith(`${k}: `));
+  if (kind('stop').length !== 1 || kind('night').length !== 1 || !/^stop: Stop · \\d+ min\\d\\d:\\d\\d–/.test(kind('stop')[0]) || !/^night: Night · \\d+ h/.test(kind('night')[0]) || !document.querySelector('.wpl > li.wait .wpl-wait[data-wait=night]')
     || !/^Day 1 · /.test(document.querySelector('.wpl .sec2-head b')?.textContent || '')) errs.push(`stops in the waypoint list: ${waits.join(' / ') || 'none'}`);
   p.reveal('speed');
   await wait(200);
@@ -15426,7 +15427,7 @@ def sections_list(chrome):
         pg.js("polku.planner.setStop(5, { on: 420 }); true")
         time.sleep(0.8)
         s = st(pg)
-        if not s['secs'] or not s['secs'][0]['title'].startswith('Day 1') or not any(w.startswith('5:night:Night · ') for w in s['waits']) or not any(r.startswith('5:') and 'Leave 07:00' in r for x in s['secs'] for r in x['rows']):
+        if not s['secs'] or not s['secs'][0]['title'].startswith('Day 1') or not any(w.startswith('5:night:Night · ') for w in s['waits']) or not any(r.startswith('5:') and re.search(r'Leave (\w+ )?07:00', r) for x in s['secs'] for r in x['rows']):
             fails.append(f"{name}: a night at via 5: sections {[x['title'] for x in s['secs']]}, waits {s['waits']}, rows {[r for x in s['secs'] for r in x['rows']]}")
         # six points that only shape the line: one stretch row, folded; unfolded six rows; a card and Back keep it so
         route(pg, name, {'pts': [[23.790 + 0.004 * k, 61.512 + 0.0008 * (k % 2)] for k in range(8)]})
@@ -15608,9 +15609,9 @@ def sections_list(chrome):
           const bigs = [], smalls = [];
           for (let r = 0; r < 7; r++) { as(bigPts, bigLegs); bigs.push(T()); as(smallPts, smallLegs); smalls.push(T()); }
           p.restoreSnap(s);
-          return { big: med(bigs), small: med(smalls), secs: p.els.points.querySelectorAll('.sec2').length, rows: p.els.points.querySelectorAll('.wpl-point:not(.shape)').length }; })()""")
-        if t['big'] > 2 * max(t['small'], 1) or t['secs'] != 3:
-            fails.append(f"{name}: a 52-point route's list: {t['big']:.1f} ms, the points you see alone {t['small']:.1f} ms; {t['secs']} sections, {t['rows']} point rows")
+          return { big: med(bigs), small: med(smalls), secs: p.els.points.querySelectorAll('.sec2').length, waits: p.els.points.querySelectorAll('.wpl-wait').length, rows: p.els.points.querySelectorAll('.wpl-point:not(.shape)').length }; })()""")
+        if t['big'] > 2 * max(t['small'], 1) or t['secs'] != 1 or t['waits'] != 2:  # (two stops: waits in one part, #761)
+            fails.append(f"{name}: a 52-point route's list: {t['big']:.1f} ms, the points you see alone {t['small']:.1f} ms; {t['secs']} sections, {t['waits']} waits, {t['rows']} point rows")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}, after {' / '.join(trail[-4:])}")

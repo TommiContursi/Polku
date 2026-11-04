@@ -303,7 +303,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
  * while the pointer is on it, and Escape hides it (WCAG 1.4.13). Mouse only: a tap shows none.
  */
 let tipEl = null, tipShow = 0, tipHide = 0, tipLast = 0, tipFor = null;
-export function tooltip(el, { name, keys = '', text = '' }) {
+export function tooltip(el, { name, keys = '', text = '', beside = false }) {
   if (!tipEl) {
     tipEl = h('div', { class: 'tip', role: 'tooltip', id: 'tip', hidden: true });
     tipEl.addEventListener('pointerenter', () => clearTimeout(tipHide));
@@ -320,6 +320,13 @@ export function tooltip(el, { name, keys = '', text = '' }) {
     tipEl.hidden = false;
     el.setAttribute('aria-describedby', 'tip');
     const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, th = tipEl.offsetHeight;
+    if (beside && r.right + 8 + w <= innerWidth - 8) {
+      // a row in a list: beside it, so it never covers the next row (the route's list, #761)
+      tipEl.style.left = `${r.right + 8}px`;
+      tipEl.style.top = `${Math.max(8, Math.min(innerHeight - 8 - th, r.top + r.height / 2 - th / 2))}px`;
+      tipEl.style.transformOrigin = `0 ${th / 2}px`;
+      return;
+    }
     const left = Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2)), below = r.bottom + 8 + th <= innerHeight - 8;
     tipEl.style.left = `${left}px`;
     // under its button, or above it where there's no room (a toolbar at the map's foot, #468)
