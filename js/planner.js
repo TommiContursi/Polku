@@ -3944,7 +3944,7 @@ export class Planner {
     this.setMode('water');
     this.clear();
     this.addPoint(ll);
-    toast('Now click where you want to go');
+    toast(`Now ${this.coarse() ? 'tap' : 'click'} where you want to go`);
   }
   // A desktop's hover (#574): the way under the pointer drawn plainly, while no pick of its own is shown
   hoverPick(coords) {
