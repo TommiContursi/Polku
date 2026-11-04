@@ -3971,6 +3971,15 @@ FIT_LIB = """(() => {
       await mv;
       await framed(`Analyse & edit, the planner opening at ${st}`, TRACK);
     }
+    // (#484) a point without real coordinates is left out, not put at 0,0: a trkpt without lon or with an empty lat, a rtept without lat, a wpt without lon, a gx:coord with one number
+    const G = await import(location.origin + '/js/gpx.js'), pt = (t, a) => `<${t} ${a}></${t}>`;
+    const gpx = G.parseTrackFile(`<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>${[pt('trkpt', 'lat="61.4" lon="23.7"'), pt('trkpt', 'lat="61.41"'), pt('trkpt', 'lat="61.42" lon="23.72"'), pt('trkpt', 'lat="" lon="23.73"'), pt('trkpt', 'lat="61.44" lon="23.74"')].join('')}</trkseg></trk>`
+      + `<rte>${[pt('rtept', 'lat="61.4" lon="23.7"'), pt('rtept', 'lon="23.71"'), pt('rtept', 'lat="61.42" lon="23.72"')].join('')}</rte>${pt('wpt', 'lat="61.4"')}${pt('wpt', 'lat="61.41" lon="23.71"')}</gpx>`, 'bad.gpx');
+    const gpxLens = gpx.lines.map((l) => l.length).join();
+    if (gpxLens !== '3,2' || gpx.lines.some((l) => l.some((c) => c.some((v) => !v))) || gpx.points.length !== 1) err(`a GPX with broken points: lines of ${gpxLens} points (want 3,2), ${gpx.points.length} waypoints (want 1), a zero among them: ${JSON.stringify(gpx.lines)}`);
+    const kml = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2"><Placemark><gx:Track>'
+      + ['23.7 61.4 0', '23.71', '23.72 61.42 0', '23.73 abc 0'].map((c) => `<gx:coord>${c}</gx:coord>`).join('') + '</gx:Track></Placemark></kml>', 'bad.kml');
+    if (kml.lines.map((l) => l.length).join() !== '2') err(`a KML track with broken points: lines of ${kml.lines.map((l) => l.length).join()} points (want 2)`);
     p.setSheetState('half');
     return T.errs.splice(0);
   };
