@@ -7,7 +7,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
 - **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
-- **Waiting:** the user's choice on the rounds after PR 1, **Line** to **Parts 5** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
+- **Waiting:** the user's OK on **Parts 6**, the eighth round after PR 1 (below); the rounds before it stay in the mock-up to compare. PR 2 waits on it, since it rebuilds the section heads the line runs through.
 - **Next:** PR 2, the sport's row with its values.
 
 ## What the user asked for (2026-11-04)
@@ -103,6 +103,11 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
 - **A part's heading is its sport,** and its day, with its numbers under it when it has more than one stretch. Its first and last rows already name its ends. A route of one sport keeps its "A → B", the route's name.
 - **A desktop's tooltips have the weather too.** A stretch's: "2.56 → 4.34 km from the start", "10:06 → 10:27", "☁ 2° ≋ 3–4 m/s". A point's: "4.34 km from the start", "Arrive 10:27 · leave 10:37", and the weather then. The switch Hover shows one or the other.
 - **The page itself scrolls now.** app.css holds the app's page still, and the mock-up had taken that over.
+
+**Parts 6, the eighth round** (`?v=parts6`). From looking at Parts 5, the route of two days was right as it was.
+- **Every part has its sport's totals.** They sit beside the part's name, in the text colour and bolder than a point's grey line, so they read as the whole part's: "Trail run · 984 m · 9 min · ↑39 m". This includes a part of one stretch. A route of one part has none there, since the route's numbers above say them (#764). On a narrow phone they wrap under the name.
+- **A route of one sport looks like the others.** Its heading is on the line, the sport's icon in a ring of its colour, and the line is in its colour. "MTB · Start → End" beside Reorder is gone.
+- **Sunset and sunrise use the horizon icons,** chosen on 2026-11-04.
 - **Check's warnings on each stretch,** in its row, with Check's own words, shapes and colours: "2 to read", "1 not checked". A switch adds "1 worth a look", which marks almost every stretch on a route at dawn. They stay out of the line's column, which already has beads, dashes and dots.
   - This undoes #741's "a section's warnings aren't in the list", so the build changes DEVELOPING's line on it and `sections`' "a warning once" check.
 - **Waypoint n.**
@@ -133,8 +138,8 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
 - "Worth a look" in the list, or only in Check?
 - Waits as parts of their own (Parts 2), or a point's tag (Parts)? Each part's start: under its heading (Parts 3), or its own row (Parts 4)?
 
-**The PRs, if Parts 5 is chosen:** each tried on the phone before the next, ahead of PR 2.
-1. The line, the parts' colours and the stretch's words: `pointRow()`, `stretchRow()` (the beads, the numbers as on the map), `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`, the dark list's sport colours; `sections` and `multi`.
+**The PRs, if Parts 6 is chosen:** each tried on the phone before the next, ahead of PR 2.
+1. The line, the parts' colours (a route of one sport's too), each part's heading with its totals, and the stretch's words: `pointRow()`, `stretchRow()` (the beads, the numbers as on the map), `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`, the dark list's sport colours; `sections` and `multi`.
 2. The waits as parts of their own, with their times and a night's sunset and sunrise (two new icons), each part's start row, the points' lines with Arrive, Leave and the weather's icons, the tooltips' weather, and Check's warnings on the stretches: `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
 3. Waypoints in the words, Waypoint n and Freehand, across the planner, with their checks.
 
