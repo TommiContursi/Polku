@@ -4,9 +4,9 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 
 ## Where it stands
 
-- **Decided:** nothing yet. The mock-up is for the user to choose from (2026-11-04).
-- **Waiting:** the user's look at Rows and its switches (the foot, the Add row, the bottom dock's columns).
-- **Next:** the decision, then the PRs below, one at a time, each tried on the phone.
+- **Decided (2026-11-04):** Rows, with the Add row, Reverse and Clear route under the list, and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
+- **Waiting:** nothing; each PR below is tried on the phone before the next.
+- **Next:** PR 1, after #774 (which takes the list's warning box into the key fact's slot).
 
 ## What the user asked for (2026-11-04)
 
@@ -37,6 +37,7 @@ Each small, each tried on the phone before the next, in this order unless the us
 
 1. **The stretch as a line, a point as a row:** `js/planner.js` `pointRow()`, `stretchRow()`, `sectionRows()`; the CSS of `wpl-point` and `wpl-strow`; the check in `tools/smoke.py` `sections` or `tabs` (the rows' order and words, the fold).
 2. **The sport's row with its values,** and How you go and Your speed out of the list's end: `sectionRows()`'s head, `renderHow()`/`speedRow()`, `openStep('how'|'speed')`; `keyfacts` or `sections`.
-3. **The foot: Reverse** (and Clear route, if chosen): `renderWaypoints()`'s `pointsFoot`; `tabs`.
+3. **The foot: Reverse and Clear route,** Round trip, Back to start and Import gone from under the list: `renderWaypoints()`'s `pointsFoot`; `tabs`.
 4. **The desktop's tools in the row:** Rename (the `name-field` in the row's place), Remove, the grip's drag from the list (today's `dragRow()` in Reorder): `pointcard`-style checks for the hover and the keyboard, and that a finger never sees them.
-5. The Add row and the bottom dock's columns, if chosen.
+5. **The Add row:** search, your location and saved places from the list's end.
+6. **The bottom dock's two columns.**
