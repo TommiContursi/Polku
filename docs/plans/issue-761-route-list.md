@@ -197,4 +197,6 @@ Each small, each tried on the phone before the next, in this order unless the us
    (Elsewhere: sunset and sunrise in the weather timeline is #788; the line filling up as you go is on #180, On the way.)
 9. **The bottom dock's two columns.**
 
+After PR 9 (chosen on 2026-11-04): the cards again (#690), with the toolbox that changes with each card on a phone (#797), and the profile as a tool on a phone (#796).
+
 Not checked in the mock-up yet: Reorder's view, the bottom dock. Unfolded waypoints were built in PR 3 without a mock-up: a waypoint's row as any other, with its warnings.
