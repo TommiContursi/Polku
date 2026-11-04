@@ -3953,7 +3953,10 @@ export class Planner {
     card.osm = { state: 'Asking OpenStreetMap…', asking: true };
     this.cards.refresh();
     try {
-      const w = await osmDetails({ ll, type: what ? what.type : 'way', id: what ? what.id : null });
+      const area=card.pick?.area;
+      const w = area && what && area.id===`${what.type}/${what.id}`
+        ? {type:what.type,id:what.id,tags:area.tags,source:area.source,len:area.whole && what.type==='way' ? area.outer.reduce((m,l)=>m+lineLength(l),0) : 0}
+        : await osmDetails({ ll, type: what ? what.type : 'way', id: what ? what.id : null });
       card.osm = w ? { w, rows: [...OSM_KEYS.filter(([k]) => w.tags[k]).map(([k, label]) => [label, String(w.tags[k])]), ...(w.len ? [['Length', `${Math.round(w.len)} m`]] : []), ['OpenStreetMap', `${w.type} ${w.id}`]] }
         : { state: `No OpenStreetMap ${what && what.type === 'place' ? 'place' : 'way'} found here` };
     } catch { card.osm = { state: 'OpenStreetMap didn’t answer: try again' }; }

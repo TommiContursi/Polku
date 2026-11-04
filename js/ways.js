@@ -6,7 +6,8 @@
 
 import { cachedOverpass } from './osm.js';
 import { OSM_DATA_MANIFEST } from './config.js';
-import { hostedTile } from './osm-data.js';
+import { hostedTile, hostedAttempt, geometryTiles } from './osm-data.js';
+import { selectArea, areaOutline } from './osm-geometry.js';
 import { lonLatToTile, tileBounds, pointSegment, lineLength, bearing } from './geo.js';
 import { kindOf } from './facts.js';
 
@@ -122,8 +123,8 @@ export function seedWays(x, y, d) {
 }
 
 // ------------------------------------------------------------------ an area at a spot (#574: a lake, a park)
-// The smallest named lake, park or nature area a spot is in, asked of Overpass once for the spot (to about 10 m) and cached a
-// week. Its outline comes only within about 5 km of the spot, so a tap on a big lake loads little. { id, tags, lines, outer,
+// The smallest named lake, park or nature area a spot is in (to about 10 m), from hosted geometry then cached Overpass.
+// Its outline comes only within about 5 km of the spot, so a tap on a big lake loads little. { id, tags, lines, outer,
 // whole } or null where there's none: `lines` the outline as drawn, `outer` its outer edge, `whole` when that is all of it.
 const AREA = '[~"^(natural|leisure|boundary)$"~"^(water|park|nature_reserve|recreation_ground|national_park|protected_area)$"]';
 const areas = new Map(); // for checks: 'lat/lon' (4 decimals) → an answer
@@ -131,11 +132,22 @@ export const seedArea = (ll, json) => areas.set(ll.map((v) => v.toFixed(4)).reve
 export async function areaAt(ll) {
   const [lat, lon] = [ll[1].toFixed(4), ll[0].toFixed(4)], key = `${lat}/${lon}`;
   const box = [+lat - 0.045, +lon - 0.09, +lat + 0.045, +lon + 0.09];
+  if(!areas.has(key) && !held) try {
+    return await hostedAttempt(async signal=>{
+      const point=[+lon,+lat], at=await geometryTiles(OSM_DATA_MANIFEST,[...point,...point],signal);
+      const best=selectArea(at.tiles[0],point);
+      if(!best)return null;
+      const window=[box[1],box[0],box[3],box[2]], b=best.area.bounds;
+      const local=await geometryTiles(OSM_DATA_MANIFEST,[Math.max(b[0],window[0]),Math.max(b[1],window[1]),Math.min(b[2],window[2]),Math.min(b[3],window[3])],signal);
+      return {id:`${best.type}/${best.id}`,tags:best.tags,...areaOutline(local.tiles,best,window),source:at.source};
+    });
+  } catch { /* uncovered, incomplete or unavailable geometry keeps the public mirror fallback */ }
   const json = areas.get(key) || (held ? (heldFail ? Promise.reject(new Error('Overpass')) : { elements: [] })
     : cachedOverpass(`area/${key}`, `[out:json][timeout:25];is_in(${lat},${lon})->.a;(way(pivot.a)${AREA};rel(pivot.a)${AREA};)->.x;.x out tags bb;.x out skel geom(${box.map((v) => v.toFixed(4)).join(',')});`, (j) => j, { race: true, oneRound: true, timeoutMs: 15000 }));
   const els = new Map();
   // (twice each: its tags with the whole area's bounds, then its outline with only that part's: the first bounds stay)
-  for (const e of (await json).elements || []) els.set(`${e.type}/${e.id}`, { ...e, ...els.get(`${e.type}/${e.id}`) });
+  const answer=await json;
+  for (const e of answer.elements || []) els.set(`${e.type}/${e.id}`, { ...e, ...els.get(`${e.type}/${e.id}`) });
   const size = ({ bounds: b }) => (b ? (b.maxlat - b.minlat) * (b.maxlon - b.minlon) : Infinity);
   const best = [...els.values()].filter((e) => e.tags).sort((a, b) => !a.tags.name - !b.tags.name || size(a) - size(b))[0];
   if (!best) return null;
@@ -144,7 +156,7 @@ export async function areaAt(ll) {
   const parts = best.geometry ? [{ role: 'outer', geometry: best.geometry }] : (best.members || []).filter((m) => m.geometry);
   const b = best.bounds;
   return { id: `${best.type}/${best.id}`, tags: best.tags, lines: parts.flatMap((m) => runs(m.geometry)), outer: parts.filter((m) => m.role !== 'inner').flatMap((m) => runs(m.geometry)),
-    whole: !!b && b.minlat > box[0] && b.minlon > box[1] && b.maxlat < box[2] && b.maxlon < box[3] };
+    whole: !!b && b.minlat > box[0] && b.minlon > box[1] && b.maxlat < box[2] && b.maxlon < box[3], source:answer.source };
 }
 
 /** The nearest piece within `metres` of a spot, from the tiles that have loaded, or null. */

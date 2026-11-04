@@ -4,7 +4,8 @@
 
 import { TRAFICOM_WMS, isLipasRoute, OSM_DATA_MANIFEST } from './config.js';
 import { overpass } from './osm.js';
-import { hostedTile } from './osm-data.js';
+import { hostedTile, hostedAttempt, geometryTiles } from './osm-data.js';
+import { nearestGeometry } from './osm-geometry.js';
 import { dist, pointSegment, lonLatToTile } from './geo.js';
 import { NAV_TEXT } from './nautical.js';
 import { WINTER_TEXT } from './winter.js';
@@ -162,14 +163,15 @@ export function overColumn(popup, on) {
 }
 
 
-async function inspectionAt([lon,lat], metres, dataset = 'inspection') {
+async function inspectionAt([lon,lat], metres, dataset = 'inspection', signal) {
+  signal?.throwIfAborted();
   const dy = metres / 111000, dx = dy / Math.cos(lat*Math.PI/180);
   const [x0,y0] = lonLatToTile(lon-dx,lat+dy,14).map(Math.floor), [x1,y1] = lonLatToTile(lon+dx,lat-dy,14).map(Math.floor);
   const reads = [];
-  for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++) reads.push(hostedTile(OSM_DATA_MANIFEST,dataset,14,[x,y],()=>{throw new Error('Hosted inspection unavailable');}));
+  for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++) reads.push(hostedTile(OSM_DATA_MANIFEST,dataset,14,[x,y],()=>{throw new Error('Hosted inspection unavailable');},{signal}));
   const tiles = await Promise.all(reads), unique = new Map();
   for (const tile of tiles) for (const e of tile.elements) unique.set(`${e.type}/${e.id}`,e);
-  return {elements:[...unique.values()],source:tiles[0]?.source,nearby_complete:tiles.every(t=>t.nearby_complete!==false)};
+  return {elements:[...unique.values()],source:tiles[0]?.source,nearby_complete:tiles.every(t=>t.nearby_complete===true)};
 }
 
 // OpenStreetMap's way at a spot, asked once (Overpass): the way given (a trail drawn from OSM knows its own), else the
@@ -178,16 +180,20 @@ export async function wayNear(ll, osm = null) {
   const q = osm ? `[out:json][timeout:15];way(${osm});out tags geom;` : `[out:json][timeout:15];way(around:12,${ll[1]},${ll[0]})[highway];out tags geom;`;
   let json;
   try {
-    // A selected way already has full tags in the original, usually cached ways product.
-    json = await inspectionAt(ll,12,osm ? 'ways' : 'inspection');
-    if (osm && !json.elements.some(e=>e.type==='way' && e.id===+osm)) throw new Error('Object not in hosted inspection');
-  } catch {
-    try {
-      if (!osm) throw new Error('Nearest highway requires the complete inspection product');
-      json = await inspectionAt(ll,12);
-      if (!json.elements.some(e=>e.type==='way' && e.id===+osm)) throw new Error('Object absent');
-    } catch { json = await overpass(q, {race:true,oneRound:true,timeoutMs:15000}); }
-  }
+    json = await hostedAttempt(async signal=>{
+      try {
+        // A selected way already has full tags in the original, usually cached ways product.
+        const j=await inspectionAt(ll,12,osm ? 'ways' : 'inspection',signal);
+        if (osm && !j.elements.some(e=>e.type==='way' && e.id===+osm)) throw new Error('Object not in hosted inspection');
+        return j;
+      } catch(err) {
+        if (!osm) throw err;
+        const j=await inspectionAt(ll,12,'inspection',signal);
+        if (!j.elements.some(e=>e.type==='way' && e.id===+osm)) throw new Error('Object absent');
+        return j;
+      }
+    });
+  } catch { json = await overpass(q, {race:true,oneRound:true,timeoutMs:15000}); }
   const ways = (json.elements || []).filter(w=>w.type==='way' && w.geometry && (osm ? w.id===+osm : w.tags?.highway));
   if (!ways.length) return null;
   const near = ways.map((w) => {
@@ -205,22 +211,33 @@ export async function wayNear(ll, osm = null) {
 export async function osmDetails({ type = 'way', id = null, ll }) {
   if (type === 'way') { const w = await wayNear(ll, id); return w && { type: 'way', ...w }; }
   try {
-    const json = await inspectionAt(ll,40);
-    if (id) {
-      const e = json.elements.find(e=>e.type===type && e.id===+id);
-      if (!e) throw new Error('Object not in hosted inspection');
-      return {type:e.type,id:e.id,tags:e.tags,len:0,source:json.source};
-    }
-    if (!json.nearby_complete) throw new Error('Nearby relation geometry incomplete');
-    const keys = ['amenity','tourism','leisure','natural','barrier','ford','man_made','historic'];
-    const at = e=>e.center ? [e.center.lon,e.center.lat] : [e.lon,e.lat];
-    const candidates = json.elements.filter(e=>keys.some(k=>e.tags?.[k]));
-    const known = candidates.filter(e=>e.type==='node' ? dist(at(e),ll)<=40 : e.type==='way' && e.geometry.some((p,i,g)=>i && pointSegment(ll,[g[i-1].lon,g[i-1].lat],[p.lon,p.lat]).d<=40))
-      .sort((a,b)=>dist(at(a),ll)-dist(at(b),ll));
-    const near = known[0];
-    // A relation's centre cannot establish that one of its members is within 40 m.
-    if (candidates.some(e=>e.type==='relation' && (!near || dist(at(e),ll)<dist(at(near),ll)))) throw new Error('Nearby relation needs member geometry');
-    return near ? {type:near.type,id:near.id,tags:near.tags,len:0,source:json.source} : null;
+    return await hostedAttempt(async signal=>{
+      try {
+        const dy=40/111000, dx=dy/Math.cos(ll[1]*Math.PI/180);
+        const local=await geometryTiles(OSM_DATA_MANIFEST,[ll[0]-dx,ll[1]-dy,ll[0]+dx,ll[1]+dy],signal);
+        const e=id ? local.tiles.flatMap(t=>t.elements).find(e=>e.type===type && e.id===+id) : nearestGeometry(local.tiles,ll,40);
+        if(id && !e)throw new Error('Object not in hosted local geometry');
+        return e ? {type:e.type,id:e.id,tags:e.tags,len:0,source:local.source} : null;
+      } catch(err) {
+        if(!id && err.code!=='OSM_DATASET_MISSING')throw err;
+      }
+      const json = await inspectionAt(ll,40,'inspection',signal);
+      if (id) {
+        const e = json.elements.find(e=>e.type===type && e.id===+id);
+        if (!e) throw new Error('Object not in hosted inspection');
+        return {type:e.type,id:e.id,tags:e.tags,len:0,source:json.source};
+      }
+      if (!json.nearby_complete) throw new Error('Nearby relation geometry incomplete');
+      const keys = ['amenity','tourism','leisure','natural','barrier','ford','man_made','historic'];
+      const at = e=>e.center ? [e.center.lon,e.center.lat] : [e.lon,e.lat];
+      const candidates = json.elements.filter(e=>keys.some(k=>e.tags?.[k]));
+      const known = candidates.filter(e=>e.type==='node' ? dist(at(e),ll)<=40 : e.type==='way' && e.geometry.some((p,i,g)=>i && pointSegment(ll,[g[i-1].lon,g[i-1].lat],[p.lon,p.lat]).d<=40))
+        .sort((a,b)=>dist(at(a),ll)-dist(at(b),ll));
+      const near = known[0];
+      // A relation's centre cannot establish that one of its members is within 40 m.
+      if (candidates.some(e=>e.type==='relation' && (!near || dist(at(e),ll)<dist(at(near),ll)))) throw new Error('Nearby relation needs member geometry');
+      return near ? {type:near.type,id:near.id,tags:near.tags,len:0,source:json.source} : null;
+    });
   } catch { /* the existing bounded query also covers objects outside the extracted classes */ }
   // the object the card is about, by its own number (another may be nearer, or at the same spot)
   if (id && (type === 'node' || type === 'relation')) {
