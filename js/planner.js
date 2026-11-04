@@ -2962,26 +2962,24 @@ export class Planner {
     const one = secs.length === 1;
     let day = 1;
     secs.forEach((sec, k) => {
-      // (the route's own name, an import's or a picked loop's, in the first row of a route of one section, #751)
-      const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label} · ${this.routeName && secs.length === 1 ? this.routeName : `${this.nameOf(sec.from)} → ${this.nameOf(sec.to)}`}`;
+      // a part's heading (#761): its sport, its day on a trip of days, a route of one part's own name (an import's or a
+      // picked loop's, #751), and its totals beside it, a route of one part's too (one style everywhere)
+      const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label}${this.routeName && one ? ` · ${this.routeName}` : ''}`, sum = nums(sec);
       if (sec.ends === 'night') day += this.stopAt(sec.to).n || 1;
       const id = this.pidOf(this.points[sec.from]);
-      const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 20) }), h('b', {}, title));
-      // (a route of one section has its numbers in the numbers row above, #764)
-      const line = one ? null : h('div', { class: 'sec2-nums' }, nums(sec));
-      const rows = h('div', { class: 'rows', role: 'group', 'aria-label': title });
+      const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 16) }), h('div', { class: 'sec2-t' }, h('b', {}, title), h('small', {}, sum)));
+      const rows = h('div', { class: 'rows', role: 'group', 'aria-label': `${title}, ${sum}` });
       if (k === 0) rows.append(this.pointRow(sec.from, ro, false, words(wAt(0))));
       for (const s of sec.stretches) {
         rows.append(this.stretchRow(s, ro));
         const pid = this.pidOf(this.points[s.from]);
         if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, true));
         const end = s.to === sec.to;
-        rows.append(this.pointRow(s.to, ro, false, end ? words(wAtPoint(s.to)) : '', end && sec.ends === 'night' ? words(wAt(this.lengthTo(s.to))) : ''));
+        // (where a part ends and another begins, the line breaks: dotted to the next part's heading)
+        rows.append(this.pointRow(s.to, ro, false, end ? words(wAtPoint(s.to)) : '', end && sec.ends === 'night' ? words(wAt(this.lengthTo(s.to))) : '', end && k < secs.length - 1));
       }
-      // (a route of one section, while editing: its heading beside Reorder, where the hint was, #764)
-      const beside = one && !ro;
-      if (beside) this.els.pointsTop.prepend(head);
-      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, beside ? null : head, line, rows));
+      // (each part's line in its sport's colour, the map's and the profile's Sport colours)
+      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, style: `--part: var(--sport-${sec.sport}, var(--rail))`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, head, rows));
     });
   }
 
@@ -2994,8 +2992,9 @@ export class Planner {
   }
 
   // a point's row: its marker, its name, there at · the weather · Via n; a stop, a night (with its morning's weather) or
-  // a change of sport under it
-  pointRow(i, ro, shape = false, wx = '', morning = '') {
+  // a change of sport under it. Its mark is on the route's line (#761): dashed above or below it where a leg is a straight
+  // line, dotted below it where its part ends (`brk`), none below the end.
+  pointRow(i, ro, shape = false, wx = '', morning = '', brk = false) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), arrive = i > 0 && this.analysisFits() ? this.arriveAt(i) : null;
     // (no distance from the start: the stretch to it says how far, #761)
@@ -3003,7 +3002,8 @@ export class Planner {
     const stop = this.stopAt(i), ch = this.changeAt(i);
     const extra = stop ? (isNight(stop) ? `${nightsWord(stop)} · go on at ${hhmm(stop.on)}${morning ? ` · ${morning}` : ''}` : `Stop · ${stop.min} min`) : ch ? `${ACTIVITIES[ch.to].label} from here · changeover ${ch.min} min` : '';
     // (a row as the cards' rows: its mark, its name, its lines, ›; Revision 5's list)
-    const b = h('button', { type: 'button', class: `row wpl-point${shape ? ' shape' : ''}`, 'data-i': String(i), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+    const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', i === n - 1 ? 'last' : '', brk ? 'brk' : '', line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
+    const b = h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
       h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i))),
       h('span', {}, h('b', { class: 'wpl-name' }, name), extra ? h('small', { class: 'wpl-tag', html: `${icon(stop ? (isNight(stop) ? 'moon' : 'pause') : this.sportIcon(ch.to), 15)}<span>${escapeHtml(extra)}</span>` }) : null, sub ? h('small', {}, sub) : null),
       h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
@@ -3012,22 +3012,27 @@ export class Planner {
     return b;
   }
 
-  // a stretch: the line between two points, with its distance, time and climb and the points that only shape it, which
-  // unfold; one drawn otherwise than along paths (a straight line, over water, its own line) says how first (#761)
+  // a stretch: the line between two points (#761), its distance, time and climb in bold, how it's drawn under them (a
+  // carry on it too, #779), and the points that only shape it: beads on its line, their count by ⌄, which unfolds them.
+  // One drawn otherwise than along paths (a straight line, over water, its own line) has its word in the text's weight,
+  // a straight one its line dashed.
   stretchRow(s, ro) {
     const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
-    const head = x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))];
+    const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).join(' · ');
     const how = leg.mode === 'fixed' ? `Its own line: ${this.routeName || (leg.src ? 'a LIPAS route' : 'an imported track')}${leg.src ? ' (LIPAS)' : ''}` : MODE_LABEL[leg.mode] || MODE_LABEL.auto;
-    const differs = how !== MODE_LABEL.auto, words = [...head, shaping ? `via ${shaping} shaping point${shaping > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
-    // (its label starts with its words, so voice control finds it by them, and says how a plain one is drawn too)
-    const b = h('button', { type: 'button', class: `row wpl-stretch${differs ? ' differs' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to), 'aria-label': differs ? `${how} · ${words}` : `${words}, ${how}`, onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
-      h('span', { class: 'wpl-line', 'aria-hidden': 'true' }),
-      h('span', {}, h('small', { html: `${differs ? `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode], 14)}<b>${escapeHtml(how)}</b> · ` : ''}${escapeHtml(words)}` })));
+    let carry = 0;
+    for (const l of legs) { const c = l.result && l.result.coords, t = l.result && l.result.tags; if (c && t) for (let k = 1; k < c.length; k++) if (t[k - 1] && t[k - 1].portage) carry += dist(c[k - 1], c[k]); }
+    const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how, differs = how !== MODE_LABEL.auto || carry >= 1;
+    const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid), beads = [];
+    for (let j = 0, m = open ? 0 : Math.min(shaping, 3); j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
+    // (its label starts with its words, so voice control finds it by them)
+    const b = h('button', { type: 'button', class: `row wpl-stretch${differs ? ' differs' : ''}${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to), 'aria-label': `${words}, ${says}`, onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
+      h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
+      h('span', {}, h('b', { class: 'wpl-nums' }, words), h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` })));
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
-    const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid);
     const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': open ? `Fold the ${shaping} shaping points` : `Show the ${shaping} shaping points`,
-      onclick: () => { if (open) this.unfolded.delete(pid); else this.unfolded.add(pid); this.renderWaypoints(); }, html: icon(open ? 'chevronUp' : 'chevronDown', 18) }) : null;
+      onclick: () => { if (open) this.unfolded.delete(pid); else this.unfolded.add(pid); this.renderWaypoints(); } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
     return h('div', { class: 'wpl-strow' }, b, fold);
   }
   // a stretch under the mouse in the list: lit on the map, as a leg's row was
@@ -3140,7 +3145,7 @@ export class Planner {
       const ch = this.changeAt(i);
       const el = h('div', { class: 'wp-hit', title: `${this.nameOf(i)}${ch ? ` · change to ${ACTIVITIES[ch.to].label} (${ch.min} min)` : ''}${this.stopAt(i) ? ` · ${stopLabel(this.stopAt(i))}` : ''}${this.inView() ? '' : ' · drag to move'} · click for options` }, h('div', {
         class: `wp ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loopEnd ? ' wp-loop' : ''}`,
-      }, i === 0 ? '' : last ? '' : String(i)), ch ? h('span', { class: 'wp-sport', html: icon(this.sportIcon(ch.to), 12) }) : null,
+      }, i === 0 ? '' : last ? '' : String(i)), ch ? h('span', { class: 'wp-sport', style: `background: var(--sport-${ch.to}, var(--accent-bg))`, html: icon(this.sportIcon(ch.to), 12) }) : null, // (in the next sport's colour, as its part in the list, #761)
       this.stopAt(i) ? h('span', { class: `wp-stop${isNight(this.stopAt(i)) ? ' night' : ''}`, html: icon(isNight(this.stopAt(i)) ? 'moon' : 'pause', 11) }) : null);
       el.hidden = !this.active;
       const m = new maplibregl.Marker({ element: el, draggable: !this.inView() }).setLngLat(p).addTo(this.map); // (they stay put in the route's view)
