@@ -2981,57 +2981,58 @@ def onroute(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    # the peek's row (part 3) [jc-peek]: in words, the red box while something is to read, the dashed one while only
-    # something wasn't checked; gone while Check is in sight; a tap shows the first item's card in the peek, with All in
-    # Check, and ✕ brings the peek back as it was
+    # the key facts' line (part 3, #741) [jc-peek]: how many to read in the warning's colour, how many not checked in the
+    # unknown's while only that; still there with Check in sight; a tap opens Check at the first item's card, with All in
+    # Check, and ✕ leaves Check open
     pg = chrome.page(390, 844, True)
     try:
         pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
         fails += pg.js("""(async () => {
           const errs = [];
         """ + CHECK_ROUTE + """
-          const row = () => { const r = p.els.readRow; return r && !r.hidden && r.offsetParent ? r : null; };
+          const line = () => p.els.facts.querySelector('.kf-b.warn');
           const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
           p.setTab('route'); p.setSheetState('peek');
           await wait(500);
-          if (!row()) return ['no row in the peek with something to read'];
-          if (!row().classList.contains('danger') || !/^2 to read before you go\\s*Road works: Teiskontie and 1 more · 1 not checked$/.test(said(row()))) errs.push(`the row: ${row().className} "${said(row())}"`);
-          const sum = p.els.row.getBoundingClientRect(), rr = row().getBoundingClientRect();
-          if (rr.bottom > sum.top + 1) errs.push('the row isn\\'t above the numbers');
+          if (!line()) return ['no warning in the peek\\'s line with something to read'];
+          if (!line().classList.contains('danger') || said(line()) !== '2 to read before you go') errs.push(`the line: ${line().className} "${said(line())}"`);
+          if (line().getAttribute('aria-label') !== '2 to read before you go, 1 not checked: Road works: Teiskontie and 2 more. Open Check at the first') errs.push(`the line's name: ${line().getAttribute('aria-label')}`);
+          const sum = p.els.row.getBoundingClientRect(), lr = line().getBoundingClientRect();
+          if (lr.top < sum.bottom - 1) errs.push('the line isn\\'t under the numbers');
           p.reveal('warnings');
           await wait(600);
-          if (row()) errs.push('the row shows with Check in sight');
+          if (!line()) errs.push('the line let go of the warning with Check in sight');
           p.setSheetState('peek');
           await wait(500);
-          if (!row()) errs.push('the row didn\\'t come back at the peek');
           p.setTab('route');
           return errs;
         })()""", timeout=90000)
-        at = pg.js("(async () => { await " + SETTLED + "; return (" + ROW_STILL + ")(polku.planner.els.readRow.querySelector('.pl-readrow-go')); })()")
+        at = pg.js("(async () => { await " + SETTLED + "; return (" + ROW_STILL + ")(polku.planner.els.facts.querySelector('.kf-b.warn')); })()")
         pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
         pg.js(CARD_OPEN)
         fails += card(pg, 'Road works: Teiskontie', 3, {'group': 'Read before you go', 'src': 'Live · Fintraffic'})
         fails += pg.js("""(async () => {
           const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
           if (!p.cards.box) return ['(no card)'];
-          if (!p.cards.box.querySelector('.heads-all')) errs.push('no All in Check on a card from the row');
+          if (!p.cards.box.querySelector('.heads-all')) errs.push('no All in Check on a card from the line');
           p.cards.box.querySelector('.way-x').click();
           await wait(800);
-          if (p.panel.dataset.state !== 'peek' || p.tab !== 'route') errs.push(`✕ brought back ${p.panel.dataset.state} at ${p.tab}, not the peek as it was`);
-          if (!p.els.readRow || p.els.readRow.hidden) errs.push('the row didn\\'t come back after ✕');
+          if (p.tab !== 'check') errs.push(`✕ brought back ${p.panel.dataset.state} at ${p.tab}, not Check, where the line opened it`);
+          const line = () => p.els.facts.querySelector('.kf-b.warn');
+          if (!line()) errs.push('the line let go of the warning after ✕');
           // only something not checked: the dashed box
           p.hideWarnKind({ key: 'roadwork', label: 'Road works' });
           p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
           p.renderWarnings();
           const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
-          if (!p.els.readRow.classList.contains('unk') || !/^1 not checked\\s*The forecast didn.t answer$/.test(said(p.els.readRow))) errs.push(`the row with only Not checked: ${p.els.readRow.className} "${said(p.els.readRow)}"`);
+          if (!line() || !line().classList.contains('unk') || said(line()) !== '1 not checked' || !/^1 not checked: The forecast didn.t answer\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
           p.hideWarnKind({ key: 'roadwork' }, false);
           // nothing to read and all checked: no row
           window.wx501 = false;
           await p.loadWind(p.analysis);
           p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
           p.hideWarnKind({ key: 'roadwork', label: 'Road works' });
-          if (!p.els.readRow.hidden && !p.headsUp().read.length && !p.headsUp().not.length) errs.push(`a row with nothing to read and all checked: "${p.els.readRow.textContent}"`);
+          if (line() && !p.headsUp().read.length && !p.headsUp().not.length) errs.push(`a warning in the line with nothing to read and all checked: "${line().textContent}"`);
           p.hideWarnKind({ key: 'roadwork' }, false);
           return errs;
         })()""", timeout=60000)
@@ -3147,8 +3148,8 @@ def onroute(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    # marking read (chosen 2026-10-23) [jr-peek, jr-after, jr-card, jr-check]: ✕ on the row marks all it counts read, with
-    # Undo, and the row goes; read items stay in Check, saying so, and on the map; Got it on a card marks one and steps to the
+    # marking read (chosen 2026-10-23) [jr-peek, jr-after, jr-card, jr-check]: All read on Check's groups marks them, with
+    # Undo, and the line is the key fact again; read items stay in Check, saying so, and on the map; Got it on a card marks one and steps to the
     # next unread; All read on a group's heading; kept with the saved route, not in a new route; a changed item is unread
     pg = chrome.page(390, 844, True)
     try:
@@ -3157,22 +3158,26 @@ def onroute(chrome):
           const errs = [];
         """ + CHECK_ROUTE + """
           if (typeof p.markRead !== 'function') return ['no marking read'];
-          const row = () => (p.els.readRow.hidden ? null : p.els.readRow), x = () => row() && row().querySelector('.pl-readrow-x');
+          const line = () => p.els.facts.querySelector('.kf-b.warn');
           const marks = () => (polku.map.getSource('heads').serialize().data.features || []).map((f) => f.properties.g).sort().join(',');
           const note = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
           p.setTab('route'); p.setSheetState('peek');
           await wait(300);
-          if (!x()) return ['no ✕ on the row'];
-          x().click();
+          if (!line()) return ['no warning in the key facts\\' line'];
+          // All read on Read before you go and on Not checked: the line is the key fact again (#741: the row's ✕ is gone)
+          p.reveal('warnings');
+          await wait(400);
+          for (const g of ['read', 'not']) document.querySelector(`[data-sec=warnings] .tier-${g} .tier-all`)?.click();
           await wait(300);
-          if (row()) errs.push(`the row after ✕: "${row().textContent}"`);
-          if (!/^3 marked read: they stay in Check and on the map/.test(note())) errs.push(`the note after ✕: ${note()}`);
-          if (marks() !== 'read,read') errs.push(`markers after ✕: ${marks()}, not the two to read still`);
+          if (line()) errs.push(`the line after All read: "${line().textContent}"`);
+          if (!/1 marked read: they stay in Check and on the map/.test(note())) errs.push(`the note after All read: ${note()}`);
+          if (marks() !== 'read,read') errs.push(`markers after All read: ${marks()}, not the two to read still`);
           const lines = () => [...document.querySelectorAll('[data-sec=warnings] .tier :is(.row, .warn-row)')].map((r) => r.textContent);
-          if (lines().filter((t) => /✓ Read/.test(t)).length !== 3) errs.push(`Check after ✕: ${lines().join(' / ')}`);
+          if (lines().filter((t) => /✓ Read/.test(t)).length !== 3) errs.push(`Check after All read: ${lines().join(' / ')}`);
           [...document.querySelectorAll('.toast button')].find((b) => /Undo/.test(b.textContent))?.click();
           await wait(300);
-          if (!row()) errs.push('Undo didn\\'t bring the row back');
+          if (!line() || line().textContent.trim() !== '1 not checked') errs.push(`Undo brought back "${line() && line().textContent}", not the forecast not checked`);
+          p.readKeys = new Set(); p.save(); p.renderWarnings(); // (all unread again, for Got it)
           // Got it, one by one: read, and the next unread along the route (a phone)
           p.reveal('warnings');
           await wait(500);
@@ -3261,22 +3266,19 @@ def onroute(chrome):
                 if (!lit || Math.hypot(lit.geometry.coordinates[0][0] - p.analysis.pts[20][0], lit.geometry.coordinates[0][1] - p.analysis.pts[20][1]) > 0.0002) errs.push(`a climb's row didn't light its stretch on the map: ${JSON.stringify(lit && lit.geometry.coordinates[0])}`);
                 p.unfocusRange();
               }
-              // the row at the panel's top, from the Route tab: Check and the card together [jc-desk, jc-desk-sel]. While
-              // Route's list shows the same warning in its section, the row isn't there too (Journey D); folded, it is
+              // the key facts' line at the panel's top, from the Route tab: Check and the card together [jc-desk, jc-desk-sel];
+              // Route's list doesn't say it again (#741)
               p.setTab('route');
               p.toggleSection('points', true);
               await wait(200);
-              const row = p.els.readRow;
-              if (row && !row.hidden && row.offsetParent && p.els.points.querySelector('.sec2 .warn-row')) errs.push('the row and the list’s section both say the warning');
-              p.toggleSection('points', false);
-              await wait(200);
-              if (!row || row.hidden || !row.offsetParent) return [...errs, 'no row at the top of the panel, with the list folded'];
-              row.querySelector('.pl-readrow-go').click();
+              if (p.els.points.querySelector('.sec2 .warn-row')) errs.push('the list’s section says the warning too');
+              const line = p.els.facts.querySelector('.kf-b.warn');
+              if (!line || !line.offsetParent) return [...errs, 'no warning in the key facts\\' line at the top of the panel'];
+              line.click();
               await wait(600);
               const box = [...document.querySelectorAll('[data-sec=warnings] .tier-read .warn-row')].find((r) => /Road works/.test(r.textContent));
-              if (p.tab !== 'check' || !box || box.getAttribute('aria-current') !== 'true') errs.push(`the row: ${p.tab}, its box ${box ? box.getAttribute('aria-current') : 'none'}, not Check with the box lit`);
-              if (!document.querySelector('.card-beside .card')) errs.push('the row\\'s card isn\\'t beside the panel');
-              if (!row.hidden && row.offsetParent) errs.push('the row shows with Check in sight');
+              if (p.tab !== 'check' || !box || box.getAttribute('aria-current') !== 'true') errs.push(`the line: ${p.tab}, its box ${box ? box.getAttribute('aria-current') : 'none'}, not Check with the box lit`);
+              if (!document.querySelector('.card-beside .card')) errs.push('the line\\'s card isn\\'t beside the panel');
               p.cards.close();
               return errs;
             })()""")
@@ -3288,7 +3290,7 @@ def onroute(chrome):
 
 
 # The review of #416 (2026-10-23), each finding as a person meets it, on Check's own route (CHECK_ROUTE). A phone:
-# the row is no button in a button (9); what's read starts afresh on another route (2) and a source read is unread
+# the line's warning is one button (9); what's read starts afresh on another route (2) and a source read is unread
 # again when it fails after it answered (4); a card stays open while the same route is worked out again (5); markers
 # are clear of the points (6); What Polku looked at says the trail details are being asked (8); a water source missing
 # on every leg is the whole route (10); Retry says it's asking and that the source still didn't answer (12); every card
@@ -3300,30 +3302,30 @@ WARNFIX = """(async () => {
   const T2 = await import(location.origin + '/js/trails.js');
   p.setTab('route'); p.setSheetState('peek');
   await wait(400);
-  // (#446) framed, then a press on the map: the row coming late (the peek growing) doesn't frame the route again under it
+  // (#446) framed, then a press on the map: the peek changing late (here the key facts' line going) doesn't frame the
+  // route again under it
   p.fitRoute({ animate: false });
   await new Promise((ok) => polku.map.once('idle', ok));
   const c446 = polku.map.getCenter();
   polku.map.getContainer().dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-  p.els.readRow.hidden = true; await wait(300);
+  p.els.facts.hidden = true; await wait(300);
   for (let k = 0; k < 3; k++) await new Promise((ok) => requestAnimationFrame(ok)); // (the refit is a frame after the resize)
   const c446b = polku.map.getCenter();
   if (c446b.lng !== c446.lng || c446b.lat !== c446.lat) errs.push('pressed on the map, then the peek changed: the route was framed again under the press');
-  p.renderReadRow(); await wait(500);
-  // (9) the row: a box with two buttons, its words opening the first item once
-  const row = p.els.readRow;
-  if (row.tagName === 'BUTTON') errs.push('the row is a <button> holding buttons');
-  // …its ✕ as big to touch as the header's other buttons (#443)
-  const rx = row.querySelector('.pl-readrow-x');
-  if (!rx || rx.offsetWidth < 44 || rx.offsetHeight < 44) errs.push(`the row's ✕ is ${rx ? `${rx.offsetWidth} × ${rx.offsetHeight}` : 'missing'}, under 44 px to touch`);
+  p.renderFacts(p.analysis); await wait(500);
+  // (9) the line's warning: one button, as big to touch as the header's other buttons (#443), opening the first item once
+  const line = p.els.facts.querySelector('.kf-b.warn');
+  if (!line || line.tagName !== 'BUTTON' || line.querySelector('button')) errs.push(`the line's warning: ${line ? line.outerHTML.slice(0, 80) : 'missing'}`);
+  else if (line.offsetHeight < 44) errs.push(`the line's warning is ${line.offsetHeight} px tall, under 44 px to touch`);
   let opened = 0;
   const real = p.openFromRow.bind(p);
   p.openFromRow = () => { opened++; return real(); };
-  row.querySelector('.pl-readrow-go')?.click();
+  line?.click();
   await wait(400);
-  if (opened !== 1) errs.push(`a tap on the row's words opened ${opened} times`);
+  if (opened !== 1) errs.push(`a tap on the line's warning opened ${opened} times`);
   p.openFromRow = real;
   p.cards.close();
+  p.setTab('route'); p.setSheetState('peek');
   await wait(300);
   // (12) Retry on a source still not answering: Asking…, then that it still didn't answer
   const weather = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'weather');
@@ -3592,14 +3594,14 @@ def warnfix(chrome):
           if (!step) return ['no ‹ › on the card'];
           const c = card.getBoundingClientRect(), s = step.getBoundingClientRect();
           if (s.bottom > c.bottom + 1 || s.top < c.top) errs.push(`‹ › at ${Math.round(s.top)}–${Math.round(s.bottom)}, the card shows ${Math.round(c.top)}–${Math.round(c.bottom)}`);
-          // (#444) half with the row there: the chart in sight, and back at the peek the row and the numbers in sight
+          // (#444) half with a warning: the chart in sight, and back at the peek the numbers and the line saying it in sight
           p.cards.close(); p.setTab('route'); p.setSheetState('half'); await wait(400); await """ + SETTLED + """;
           const cv = document.getElementById('profile-canvas').getBoundingClientRect(), sb = p.panel.getBoundingClientRect().bottom;
-          if (cv.height < 60 || cv.bottom > sb + 1) errs.push(`half with the row: the chart ${Math.round(cv.top)}–${Math.round(cv.bottom)}, the sheet ends at ${Math.round(sb)}`);
+          if (cv.height < 60 || cv.bottom > sb + 1) errs.push(`half with a warning: the chart ${Math.round(cv.top)}–${Math.round(cv.bottom)}, the sheet ends at ${Math.round(sb)}`);
           p.setSheetState('peek'); await wait(400); await """ + SETTLED + """;
-          const rr = p.els.readRow.getBoundingClientRect(), nr = p.els.row.getBoundingClientRect(), pr = p.panel.getBoundingClientRect();
-          if (p.els.readRow.hidden || !rr.height) errs.push('back at the peek, no row');
-          else if (nr.bottom > pr.bottom + 1 || rr.top < pr.top) errs.push(`back at the peek, the row and the numbers ${Math.round(rr.top)}–${Math.round(nr.bottom)} in a sheet of ${Math.round(pr.top)}–${Math.round(pr.bottom)}`);
+          const line = p.els.facts.querySelector('.kf-b.warn'), lr = line && line.getBoundingClientRect(), nr = p.els.row.getBoundingClientRect(), pr = p.panel.getBoundingClientRect();
+          if (!lr || !lr.height) errs.push('back at the peek, no warning in the line');
+          else if (lr.bottom > pr.bottom + 1 || nr.top < pr.top) errs.push(`back at the peek, the numbers and the line ${Math.round(nr.top)}–${Math.round(lr.bottom)} in a sheet of ${Math.round(pr.top)}–${Math.round(pr.bottom)}`);
           return errs; })()""", timeout=90000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
@@ -3626,13 +3628,13 @@ def warnfix(chrome):
             fails += [f'console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
-    # (11) a desktop: from the row, Escape brings the focus back to its box in Check
+    # (11) a desktop: from the key facts' line, Escape brings the focus back to its box in Check
     pg = chrome.page(1440, 900, False)
     try:
         pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
         fails += pg.js("""(async () => { const errs = [];""" + CHECK_ROUTE + """
-          p.setTab('go'); await wait(300); // (on Route the row steps aside while the list shows the warning: part 4)
-          p.els.readRow.querySelector('.pl-readrow-go').click();
+          p.setTab('go'); await wait(300);
+          p.els.facts.querySelector('.kf-b.warn').click();
           await wait(700);
           document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
           await wait(500);
@@ -3642,28 +3644,7 @@ def warnfix(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    # (12) a desktop's side panel hangs from its top, so the row goes under the numbers and leaves them still; a panel at the
-    # bottom grows up from its foot, so there it stays above them (#594)
-    pg = chrome.page(1440, 900, False)
-    try:
-        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
-        fails += pg.js("""(async () => { const errs = [];""" + CHECK_ROUTE + """
-          p.setTab('go'); await wait(300); await """ + SETTLED + """;
-          const row = p.els.readRow, num = () => p.els.row.getBoundingClientRect(), shown = () => !row.hidden && !!row.offsetParent;
-          if (!shown()) return ['no row on a desktop'];
-          const rr = row.getBoundingClientRect(), n = num(), top = n.top;
-          if (rr.top < n.bottom - 1) errs.push(`beside the side panel the row (${Math.round(rr.top)}) isn't under the numbers (${Math.round(n.bottom)})`);
-          row.hidden = true; await wait(100);
-          if (Math.abs(num().top - top) > 1) errs.push(`the numbers moved from ${Math.round(top)} to ${Math.round(num().top)} px as the row came and went`);
-          p.renderReadRow();
-          p.setDock('bottom'); await wait(400); await """ + SETTLED + """;
-          const b = row.getBoundingClientRect(), nb = num();
-          if (!shown()) errs.push('no row in a panel at the bottom');
-          else if (b.bottom > nb.top + 1) errs.push(`at the bottom the row (${Math.round(b.bottom)}) isn't above the numbers (${Math.round(nb.top)})`);
-          return errs; })()""", timeout=90000)
-        fails += [f'console: {e[:160]}' for e in pg.errors()]
-    finally:
-        pg.close()
+    # (12, #594's numbers left still by a warning in both docks: warn_slot, #741)
     print(f"{'ok  ' if not fails else 'FAIL'} the review of #416: Check's cards, row and markers" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -15178,8 +15159,8 @@ def spot_card_foot(chrome):
 # Route's list in sections, and Reorder (25d's part 4, Journey D): a section where the sport changes, at a stop and at a
 # night (a day each); point rows for the points you see, stretch rows between them with their shaping points folded;
 # a tap opens the point's or the stretch's card, and Back finds the list as it was; Reorder with a grip, Earlier and
-# Later, a mouse's drag and a finger held 0.45 s; the list's keys; the same warning never twice at once (the peek's
-# row while the list shows it). Straight legs; BRouter answered here where a leg follows paths.
+# Later, a mouse's drag and a finger held 0.45 s; the list's keys; a warning said once, by the key facts' line, not
+# the list (#741). Straight legs; BRouter answered here where a leg follows paths.
 SE_STATE = """(() => {
   const p = polku.planner, L = p.els.points, vis = (e) => !!e && e.getClientRects().length > 0, r = (e) => e.getBoundingClientRect();
   const secs = [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', from: +s.dataset.from, to: +s.dataset.to, warn: !!s.querySelector('.warn-row'),
@@ -15188,7 +15169,7 @@ SE_STATE = """(() => {
     rows: [...L.querySelectorAll('.wpl-row')].map((x) => x.dataset.i), shapes: [...L.querySelectorAll('.wpl-point.shape')].filter(vis).length,
     kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.listScroller().scrollTop,
     short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
-    readRow: !p.els.readRow.hidden, text: L.textContent };
+    slot: p.els.facts.querySelector('.kf-b.warn')?.textContent || null, text: L.textContent };
 })()"""
 
 
@@ -15367,18 +15348,18 @@ def sections_list(chrome):
     name, touch = '1440x900', False
     pg = page(1440, 900, False)
     try:
-        # a section's warning: its first item's card; the peek's row isn't shown twice (desktops have none)
+        # a Read item: the key facts' line says it, not its section in the list (#741); a click opens its card
         pg.js("window.rcTags = 'highway=footway bicycle=no surface=paved'; true")
         route(pg, name, {'mode': 'auto', 'pts': PTS[:3]})
         time.sleep(1.0)
         s = st(pg)
-        if not s['secs'] or not s['secs'][0]['warn']:
-            fails.append(f"{name}: a Read item on the route: no warning in its section ({[x['title'] for x in s['secs']]})")
+        if not s['slot'] or any(x['warn'] for x in s['secs']):
+            fails.append(f"{name}: a Read item on the route: the line says {s['slot']!r}, the sections {[x['warn'] for x in s['secs']]}")
         else:
-            press(pg, at(pg, "polku.planner.els.points.querySelector('.sec2 .warn-row')"), f'{name}: the section’s warning', touch)
+            press(pg, at(pg, "polku.planner.els.facts.querySelector('.kf-b.warn')"), f'{name}: the line’s warning', touch)
             if st(pg)['kind'] != 'item':
-                fails.append(f"{name}: the section's warning: {st(pg)['kind']} card")
-            pg.js("polku.planner.cards.close(); true")
+                fails.append(f"{name}: the line's warning: {st(pg)['kind']} card")
+            pg.js("polku.planner.cards.close(); polku.planner.setTab('route'); true")
         # a mouse drags a row by its grip: via 2 to place 4 (Reorder)
         pg.js("window.rcTags = 'highway=path surface=dirt mtb:scale=1'; true")
         route(pg, name, {'pts': PTS, 'names': [[1, 'Kaupintie'], [2, 'Sorila'], [3, 'Lielahti']]})  # (named: points you see, with rows)
@@ -15445,13 +15426,13 @@ def sections_list(chrome):
         pg.js("window.rcTags = 'highway=footway bicycle=no surface=paved'; true")
         route(pg, name, {'mode': 'auto', 'pts': PTS[:3]}, sheet='peek')
         time.sleep(1.0)
-        if not st(pg)['readRow']:
-            fails.append(f'{name}: the peek has no row for the Read item')
+        if not st(pg)['slot']:
+            fails.append(f'{name}: the peek\'s line doesn\'t say the Read item')
         pg.js("polku.planner.setTab('route', { user: true }); polku.planner.setSheetState('half'); true")
         pg.js(SETTLED)
         s = st(pg)
-        if s['readRow'] and any(x['warn'] for x in s['secs']):
-            fails.append(f"{name}: with Route's list at half, the same warning in the peek's row and the list's section")
+        if not s['slot'] or any(x['warn'] for x in s['secs']):
+            fails.append(f"{name}: with Route's list at half, the line says {s['slot']!r}, the sections {[x['warn'] for x in s['secs']]}")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
@@ -16372,6 +16353,7 @@ KF_JS = """(() => { window.KF = {
     a.wind = o.failed ? null : { ...KF.base, startSec: p.startSec(), head: fill(o.head || 0), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(0), temp: fill(8), precip: fill(o.rain || 0) };
     if (o.surf) a.surf = a.surf.map(() => o.surf);
     a.waits = o.waits || []; p.renderAnalysis();
+    p.markRead([...p.unread(p.heads, 'read'), ...p.unread(p.heads, 'not')]); // (what Check found takes the line's place: warn_slot's)
     return KF.read();
   },
   read() {

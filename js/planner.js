@@ -6913,7 +6913,7 @@ export class Planner {
 
   // What Check found that's still unread [jc-peek, jc-desk]: what to read before you go, else what wasn't checked; null
   // with neither. The key facts' line says it in its first line's place (renderFacts()), a tap opens Check at the first.
-  // ✕ on an item's card, Got it and Check's All read mark them read, and the line is the key fact again.
+  // Got it on an item's card and Check's All read mark them read, and the line is the key fact again.
   readSays() {
     const H = this.heads, R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
     if (!this.analysis || !(n1 || n3)) return null;
