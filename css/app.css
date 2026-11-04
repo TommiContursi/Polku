@@ -1404,13 +1404,13 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
 .wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
 .wpl .sec2:not(:first-child) { position: relative; box-shadow: none; }
-.wpl .sec2:not(:first-child)::after { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: 1px; background: var(--line); } /* (the rule between two parts starts after the line, so it doesn't cut it) */
+.wpl .sec2:not(:first-child)::after { content: ""; position: absolute; top: 0; left: calc(44px + var(--when)); right: 0; height: 1px; background: var(--line); } /* (the rule between two parts starts after the line, so it doesn't cut it) */
 .wpl .sec2:has(+ .wait) { padding-bottom: 0; }
 .wpl > li.wait { padding: 0 0 4px; }
 .wpl .sec2.lit { margin: 0 -8px; padding-inline: 8px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent); } /* (the part a key fact opened) */
 /* a part's heading (#761): its sport's icon in a ring of its colour, on the route's line in the marks' column, then its
    sport (and day) and its totals beside it, in the text's colour, bolder than a point's line */
-.sec2-head { display: flex; align-items: flex-start; gap: 12px; padding-left: 10px; }
+.sec2-head { display: flex; align-items: flex-start; gap: 12px; padding-left: calc(10px + var(--when)); }
 .sec2-head > span { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
 .sec2-head > span > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
 .sec2-head > span::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
@@ -1423,7 +1423,20 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-point > span:first-child { position: relative; width: 22px; align-self: stretch; place-items: center; }
 /* the route's line (#761): through every point's mark, in its part's colour (--part: its sport's, set on its part), 3 px;
    none below the end; dashed by a straight leg; dotted below a point where its part ends, to the next part's heading */
-.wpl { --w: 3px; }
+.wpl { --w: 3px; --when: 64px; }
+/* a waypoint's column (#761, Phase 1): left of the line, its distance from the start over its time from the start, the
+   distance first as the planner's numbers have it; the line, the parts' headings, the stretches and the waits one
+   column in. Where the list is too narrow for it (200 %), it's the line under the waypoint's name. Reorder has none. */
+.wpl.reorder { --when: 0px; }
+.wpl:not(.reorder) .rows > .row, .wpl:not(.reorder) .rows > .wpl-ptrow > .row, .wpl:not(.reorder) .wpl-strow > .row, .wpl:not(.reorder) > li.wait > .row { padding-left: calc(10px + var(--when)); }
+.wpl-point { position: relative; }
+.wpl .wpl-when { position: absolute; left: 4px; top: 0; bottom: 0; width: calc(var(--when) - 10px); display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 1px; text-align: right; font-variant-numeric: tabular-nums; }
+.wpl .wpl-when b { font-size: 14px; font-weight: var(--weight-name); line-height: 1.2; white-space: nowrap; }
+.wpl .wpl-when small { font-size: 12px; line-height: 1.2; color: var(--muted); white-space: nowrap; }
+@container plbody (max-width: 300px) {
+  .wpl { --when: 0px; }
+  .wpl .wpl-when { position: static; width: auto; flex-direction: row; justify-content: flex-start; align-items: baseline; gap: 8px; text-align: left; }
+}
 .wpl .sec2 { --part: var(--rail); }
 :root[data-theme="dark"] .wpl { --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; } /* (the map's are for the map: some are under 3:1 on the dark glass) */
 .wpl-point > span:first-child::before, .wpl-point > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); background: var(--part); }

@@ -3025,7 +3025,12 @@ export class Planner {
     const name = this.nameOf(i), lab = this.label(i), at = this.timesAt(i), out = i === 0 || leave;
     const when = i === 0 ? this.leaveWords() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
     const sky = this.wxOf(w, out ? at && at.leave : at && at.arrive, p);
-    const bits = [when ? h('span', {}, `${out ? 'Leave' : 'Arrive'} ${when}`) : null, ...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
+    // (#761, Phase 1: how far and how long from the start in a column left of the line, the distance first as the planner's
+    // numbers have it; the clock's time in its card, its tooltip and what a screen reader hears)
+    const t0 = this.timesAt(0), far = fmtDist(this.lengthTo(i)), since = at && t0 ? fmtDuration(Math.max(0, (out ? at.leave : at.arrive) - t0.leave)) : '';
+    const col = h('span', { class: 'wpl-when', 'aria-hidden': 'true' }, h('b', {}, far), since ? h('small', {}, since) : null);
+    const bits = [...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
+    const said = [`${far} from the start`, since ? `${since} from the start` : '', when ? `${out ? 'Leave' : 'Arrive'} ${when}` : ''];
     const ws = warns && i > 0 ? this.warnsOn({ from: i - 1, to: i }).lines : [];
     const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', last && !leave ? 'last' : '', brk ? 'brk' : '', !leave && line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
     const tools = !ro && hoverCapable(), key = `${this.pidOf(p)}|${leave}`, naming = tools && this.renamingRow === key;
@@ -3036,9 +3041,9 @@ export class Planner {
     const b = naming
       ? h('div', { class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i) }, mark,
         h('span', {}, h('input', { class: 'name-field', type: 'text', value: this.pname.get(p) || '', placeholder: this.autoName(i) || lab, maxlength: 60, spellcheck: 'false', 'aria-label': `The name of ${name}`,
-          onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), ...more))
-      : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
-        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), ...more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+          onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), col, ...more))
+      : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...said, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), col, ...more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     // (the tools' names in the app's tooltip, beside the whole row as the row's own, so it hands over at once from the row
     // to a tool and covers none of them)
     const tips = [], tip = (t, label) => { tips.push([t, label]); return t; };
@@ -3123,7 +3128,8 @@ export class Planner {
   // with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
   stretchRow(s, ro) {
     const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
-    const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).join(' · ');
+    // (each number with its unit: a narrow list breaks them between, never "↑28" from its "m")
+    const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).map((w) => w.replace(/ /g, '\u00a0')).join(' · ');
     const how = leg.mode === 'fixed' ? `Its own line: ${this.routeName || (leg.src ? 'a LIPAS route' : 'an imported track')}${leg.src ? ' (LIPAS)' : ''}` : MODE_LABEL[leg.mode] || MODE_LABEL.auto;
     let carry = 0;
     for (const l of legs) { const c = l.result && l.result.coords, t = l.result && l.result.tags; if (c && t) for (let k = 1; k < c.length; k++) if (t[k - 1] && t[k - 1].portage) carry += dist(c[k - 1], c[k]); }

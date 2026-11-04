@@ -265,7 +265,7 @@ Each small, each tried on the phone before the next, in this order unless the us
 
 In small phases from here (decided 2026-11-04), each one change to the rows as built, tried on the phone before the next; what each phase after the first holds is a proposal, from Parts 10 to 15:
 
-6d. **Phase 1, the distance and the time left of the line,** and nothing else: each waypoint's row, unfolded ones too, gets a column left of the line, the distance from the start over the time from the start (`lengthTo()`, `timesAt()`); the time leaves its line ("Arrive 22:03", "Leave now"), and its weather, warnings and › stay. The line, the parts' headings and the waits move right with it. The clock's time stays in the card and a desktop's tooltip until the list's settings, a later phase. Checked at 360 px, 200 % and with long Finnish names.
+6d. **Phase 1, the distance and the time left of the line** (built, 2026-11-05, after #805: from the start by default, the clock's time in the card, the tooltip and the label; at 200 % the line under the name), and nothing else: each waypoint's row, unfolded ones too, gets a column left of the line, the distance from the start over the time from the start (`lengthTo()`, `timesAt()`); the time leaves its line ("Arrive 22:03", "Leave now"), and its weather, warnings and › stay. The line, the parts' headings and the waits move right with it. The clock's time stays in the card and a desktop's tooltip until the list's settings, a later phase. Checked at 360 px, 200 % and with long Finnish names.
 
 The phases after it, to be decided one at a time:
 
