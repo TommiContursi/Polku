@@ -17694,6 +17694,10 @@ def pick_card(chrome):
         said = pg.js("(() => { const p = polku.planner; p.paddleFrom([23.8129, 61.4844]); const t = document.querySelector('#toast').textContent; p.clear(); p.setActive(false); return t; })()")
         if said != 'Now click where you want to go':
             fails.append(f"Paddle from here: the note says “{said}” (“Now click where you want to go”)")
+        # #656: with no route drawn, Show the whole route says to click the map (read in the same call: the toast times out)
+        said = pg.js("(() => { polku.planner.fitRoute(); return document.querySelector('#toast').textContent; })()")
+        if said != 'No route yet — click the map to start one':
+            fails.append(f"No route yet: the note says “{said}” (“No route yet — click the map to start one”)")
         fails += [f'console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
@@ -17804,6 +17808,10 @@ def pick_card(chrome):
         said = pg.js("(() => { const p = polku.planner; p.paddleFrom([23.8129, 61.4844]); const t = document.querySelector('#toast').textContent; p.clear(); p.setActive(false); return t; })()")
         if said != 'Now tap where you want to go':
             fails.append(f"390x844: Paddle from here: the note says “{said}” (“Now tap where you want to go”)")
+        # #656: with no route drawn, Show the whole route says to tap the map (read in the same call: the toast times out)
+        said = pg.js("(() => { polku.planner.fitRoute(); return document.querySelector('#toast').textContent; })()")
+        if said != 'No route yet — tap the map to start one':
+            fails.append(f"390x844: No route yet: the note says “{said}” (“No route yet — tap the map to start one”)")
         fails += [f'390x844 console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"390x844: raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
