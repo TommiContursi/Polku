@@ -5,8 +5,9 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 ## Where it stands
 
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
-- **Waiting:** nothing; each PR below is tried on the phone before the next.
-- **Next:** PR 1, after #774 (which takes the list's warning box into the key fact's slot).
+- **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
+- **Waiting:** PR 1 tried on the phone before PR 2.
+- **Next:** PR 2, the sport's row with its values.
 
 ## What the user asked for (2026-11-04)
 

@@ -1411,10 +1411,16 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-point.shape b { font-weight: var(--weight-regular); }
 .wpl-tag { display: flex; align-items: center; gap: 4px; color: var(--text); font-weight: 600; }
 .wpl-tag svg { flex: none; }
-.rows > .wpl-strow { display: flex; align-items: center; box-shadow: inset 0 1px 0 var(--line); }
-.rows > .wpl-strow + .row { box-shadow: inset 0 1px 0 var(--line); border-radius: 0; }
-.wpl-strow > .row { flex: 1; min-width: 0; }
-.wpl-strow > .row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* a stretch: the line between two points, in the marks' column, its numbers in small type; one that isn't drawn along
+   paths says how first, its icon, words and line in the accent colour (#761). Thin to look at, a target to touch. */
+.wpl-strow { display: flex; align-items: center; }
+.wpl-strow > .row { flex: 1; min-width: 0; min-height: var(--target); padding-block: 3px; }
+.wpl-strow > .row > .wpl-line { align-self: stretch; width: 22px; place-items: center; }
+.wpl-line::before { content: ""; width: 2px; height: 100%; min-height: 26px; border-radius: 1px; background: var(--line); }
+.wpl-stretch small { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.wpl-stretch.differs .wpl-line::before { background: var(--accent); }
+.wpl-stretch.differs small b { font-size: inherit; color: var(--accent); }
+.wpl-stretch.differs small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; color: var(--accent); }
 .wpl-unfold { flex: none; min-width: var(--target); min-height: var(--target); }
 @media (pointer: coarse) { .wpl .row { min-height: 44px; } }
 /* Reorder [jd-reorder]: every point with its grip, Earlier and Later; a finger held 0.45 s drags */
@@ -1821,7 +1827,9 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .rows.acts > .row.danger > span:nth-child(2) { flex: none; }
 .card-float .rows.acts > [data-k="start"], .card-float .rows.acts > [data-k="end"] { order: -1; } /* (Start here and End here first, Move and Rename under them) */
 @media (hover: hover) { .card-float .rows.acts > .row:hover { background: var(--surface-2); } .card-float .rows.acts > .row.danger:hover { background: color-mix(in srgb, var(--bad) 10%, transparent); } }
-/* the point's row in the planner's list, lit while its card is open */
+/* the point's row in the planner's list: no hairline, the stretch's line is between two points (#761); lit while its
+   card is open */
+.wpl .rows > .row.wpl-point { box-shadow: none; border-radius: 12px; }
 .wpl-point[aria-current="true"], .wpl-stretch[aria-current="true"] { background: var(--accent-soft); }
 .wpl-point[aria-current="true"] .wp-mini { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-bg); }
 .card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; }
