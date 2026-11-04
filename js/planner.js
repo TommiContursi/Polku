@@ -3129,19 +3129,22 @@ export class Planner {
       h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
       h('span', {}, h('b', { class: 'wpl-nums' }, words), h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` }),
         ...lines.map((x) => h('small', { class: 'wpl-warns', html: x }))));
+    let tip = null;
     const t0 = this.timesAt(s.from), t1 = this.timesAt(s.to), A = this.analysis;
     if (t0 && t1) {
       // (the weather over it, where the forecast reaches: the temperature's range, the wind at its strongest)
       let lo = Infinity, hi = -Infinity, wind = 0;
       if (A.wind && A.wind.temp) for (let k = this.sampleAtM(a0), z = this.sampleAtM(a1); k <= z && (A.wind.beyond < 0 || k < A.wind.beyond); k++) { lo = Math.min(lo, A.wind.temp[k]); hi = Math.max(hi, A.wind.temp[k]); wind = Math.max(wind, A.wind.speed[k]); }
       const wx = lo <= hi ? `${Math.round(lo) === Math.round(hi) ? Math.round(lo) : `${Math.round(lo)}–${Math.round(hi)}`}° · wind up to ${Math.round(wind)} m/s` : '';
-      tooltip(b, { beside: true, name: `${fmtDist(a0)} → ${fmtDist(a1)} from the start`, text: [`${this.clockOf(t0.leave)} → ${this.clockOf(t1.arrive)}`, wx].filter(Boolean).join(' · ') });
+      tip = { beside: true, name: `${fmtDist(a0)} → ${fmtDist(a1)} from the start`, text: [`${this.clockOf(t0.leave)} → ${this.clockOf(t1.arrive)}`, wx].filter(Boolean).join(' · ') };
     }
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
       onclick: () => { if (open) this.unfolded.delete(pid); else this.unfolded.add(pid); this.renderWaypoints(); } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
-    return h('div', { class: 'wpl-strow' }, b, fold);
+    const row = h('div', { class: 'wpl-strow' }, b, fold);
+    if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)
+    return row;
   }
   // Check's warnings on the way from point s.from to s.to, as Check says them, unread: what's to read, what isn't
   // checked and what's worth a look, but for what the list says its own way (a straight line and a carry in a stretch's

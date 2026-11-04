@@ -15643,6 +15643,9 @@ def sections_list(chrome):
             tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()")
             if not re.search(want, tip or ''):
                 fails.append(f"{name}: the tooltip of {sel.split('querySelector(')[1][:-1]}: {tip!r}")
+            # (a stretch's: beside its row, clear of the row's ⌄, #761)
+            if '.wpl-stretch' in sel and pg.js("(() => { const t = document.getElementById('tip').getBoundingClientRect(), u = polku.planner.els.points.querySelector('.wpl-strow .wpl-unfold')?.getBoundingClientRect(); return !u || (t.left < u.right && t.right > u.left && t.top < u.bottom && t.bottom > u.top); })()"):
+                fails.append(f"{name}: the stretch's tooltip covers its ⌄, or there's no ⌄ (#761)")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
         # (#761) unfolded, a waypoint says the warnings on the way to it, as a stretch does: one to read between via 3 and
         # via 4 is on via 4's row, in its label too, one worth a look between via 1 and via 2 on via 2's, and on none of the
