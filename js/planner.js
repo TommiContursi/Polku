@@ -2892,7 +2892,10 @@ export class Planner {
     const ro = this.inView();
     if (ro || n < 2) this.reordering = false;
     const loops = roundTripSports.includes(this.app.activity());
+    // (Reorder under the list, first (#761's PR 2, brought forward from its foot): the parts' headings take the row it had,
+    // and at half on a phone the start and the first stretch stay in sight; while reordering, Done is at the list's top)
     this.els.pointsFoot.replaceChildren(...[
+      n >= 2 && !ro && !this.reordering ? h('button', { type: 'button', class: 'btn', 'aria-pressed': 'false', onclick: () => { this.reordering = true; this.renderWaypoints(); this.els.pointsTop.querySelector('.btn')?.focus(); }, html: `${icon('grip', 16)} Reorder` }) : null,
       loops ? h('button', { type: 'button', class: 'btn', title: 'Loops of the length you choose, from your start', onclick: () => this.openLoop(), html: `${icon('roundtrip', 16)} Round trip` }) : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The end becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'Route back to where you started', disabled: this.isLoop(), onclick: () => this.backToStart(), html: `${icon('loop', 16)} Back to start` }) : null,
@@ -2905,11 +2908,10 @@ export class Planner {
     top.replaceChildren();
     box.replaceChildren();
     box.classList.toggle('reorder', !!this.reordering);
-    if (n >= 2 && !ro) {
+    if (n >= 2 && !ro && this.reordering) {
       // (the rows' chevrons say a tap opens them; Reorder's grips need their words, #764)
-      if (this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a point, or move it earlier or later.'));
-      top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); top.querySelector('.btn')?.focus(); },
-          html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder'));
+      top.append(h('p', { class: 'wpl-hint' }, 'Drag a point, or move it earlier or later.'),
+        h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'true', onclick: () => { this.reordering = false; this.renderWaypoints(); this.els.pointsFoot.querySelector('[aria-pressed]')?.focus(); } }, 'Done'));
     }
     if (this.reordering) this.reorderRows(box);
     else this.sectionRows(box, ro);

@@ -12,6 +12,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - A paddling stretch that crosses land says how far you carry, as in "Over water · carry 120 m".
 - The points a stretch folds are small beads on its line, and their number is beside **⌄**, which shows them.
 - On the map, the badge where the sport changes is in the next sport's colour.
+- **Reorder** is under the list now, first in its row of buttons, so at half height on a phone the start and the first stretch are in sight under the headings. While you reorder, **Done** is at the top.
 
 ### Reorder keeps where the sport changes ([#782](https://github.com/TommiContursi/Polku/issues/782))
 

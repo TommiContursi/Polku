@@ -8,7 +8,12 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
 - **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
 - **Decided (2026-11-04): Parts 7**, the ninth round after PR 1 (below), to build. The rounds before it stay in the mock-up to compare.
-- **Next:** PR 2 in the list at the end, the line, the parts' colours and their headings.
+- **PR 2: built** (2026-11-04), the line, the parts' colours and their headings, on `claude/761-line-build` after #784.
+  - **As drawn in Parts 7,** with three differences: a route of one part keeps its own name (an import's or a picked loop's, #751) after its sport; the points' lines and a changeover's tag are still today's until PR 3; and "shaping points" stays in the unfold's label until PR 4.
+  - **A carry** reads "Over water · carry 120 m" (#779).
+  - **The map's changeover badge** is in the next sport's colour.
+  - **Reorder** moved under the list already, first in the foot (where PR 5 puts it), since the heading took its row: at half on a phone the start and the first stretch stay in sight (#740, #764). Done stays at the top while reordering.
+- **Next:** PR 3, the waits as parts of their own.
 
 ## What the user asked for (2026-11-04)
 
@@ -147,13 +152,14 @@ Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the 
 Each small, each tried on the phone before the next, in this order unless the user says otherwise (rewritten on 2026-11-04 when Parts 7 was chosen; the first list's PR 2, 3, 4, 5 and 6 are 8, 6, 7, 9 and 10 here):
 
 1. ~~**The stretch as a line, a point as a row**~~, #780, merged.
-2. **The line, the parts' colours and their headings:**
+2. **The line, the parts' colours and their headings** (built, 2026-11-04):
    - the line through every mark;
    - each part in its sport's colour, a route of one sport too, with the dark list's lighter colours;
    - each part's heading, the sport's icon in its ring, with its totals;
    - the stretch's numbers in bold over how it's drawn;
    - the beads and the count by ⌄, and the marks numbered as on the map;
-   - a carry's word on its line (#779).
+   - a carry's word on its line (#779);
+   - the map's changeover badge in the next sport's colour (an idea from testing, 2026-11-04).
 
    `pointRow()`, `stretchRow()`, `sectionRows()`, the CSS of `wpl-point`, `wpl-line` and `sec2-head`; `sections` and `multi`.
 3. **The waits as parts of their own:**
@@ -161,7 +167,8 @@ Each small, each tried on the phone before the next, in this order unless the us
    - each part's start row;
    - the points' lines with Arrive, Leave and the weather's icons;
    - the tooltips' weather on a desktop;
-   - Check's warnings on the stretches. This undoes #741's rule for the list, along with DEVELOPING's line and `sections`' "a warning once".
+   - Check's warnings on the stretches. This undoes #741's rule for the list, along with DEVELOPING's line and `sections`' "a warning once";
+   - the stretches walked in the dark marked on the line, as Check counts them (an idea from testing, 2026-11-04).
 
    `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
 4. **The words:** waypoints, Waypoint n and Freehand across the planner: the toolbar's mode, the map's key, the cards, the toasts, an exported GPX's names, USING and the checks.
@@ -171,8 +178,9 @@ Each small, each tried on the phone before the next, in this order unless the us
    - the grip's drag from the list (today's `dragRow()` in Reorder).
 
    A phone keeps the card's Rename and Remove, and Reorder. `pointcard`-style checks for the hover and the keyboard, and that a finger never sees them.
-7. **Each sport's How you go and Your speed from its part's heading,** out of the list's end. The heading has the totals now, so this needs a round in the mock-up first.
+7. **Each sport's How you go and Your speed from its part's heading,** out of the list's end: a tap on the heading, with a small ⚙ or › at its end, opens them (chosen on 2026-11-04). The heading has the totals now, so a round in the mock-up comes first.
 8. **The Add row:** search, your location and saved places from the list's end.
+   (Elsewhere: sunset and sunrise in the weather timeline is #788; the line filling up as you go is on #180, On the way.)
 9. **The bottom dock's two columns.**
 
 Not checked in the mock-up yet: Reorder's view, unfolded waypoints on the line, the bottom dock.
