@@ -266,7 +266,7 @@ when `OSM_PUBLIC_URL` is configured, independently of unattended publication.
 Source age over 14 days, changed manifests and broken browser headers fail the
 job. It also exercises the actual deployed selection/detail consumers at 16
 locations in two browser profiles, forbidding normal covered Overpass calls
-and checking every archive in the actual manifest (28 existing products, or 29 with shared geometry). An extended release additionally requires six lake/park containment cases in each browser profile. Browser work stops after 180 seconds;
+and checking every archive in the actual manifest (28 existing products, or 29 with shared geometry). An extended release additionally requires six lake/park cases in each browser profile, exercising original containment, actual area selection, nearby member-distance inspection and the full-tag card action. Browser work stops after 180 seconds;
 the monitor job has a ten-minute limit. Synthetic public sample coordinates
 are used; no saved user routes or positions are read.
 
