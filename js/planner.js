@@ -2981,13 +2981,13 @@ export class Planner {
     return i;
   }
 
-  // a point's row: its marker, its name, there at · the weather · how far · Via n; a stop, a night (with its morning's
-  // weather) or a change of sport under it
+  // a point's row: its marker, its name, there at · the weather · Via n; a stop, a night (with its morning's weather) or
+  // a change of sport under it
   pointRow(i, ro, shape = false, wx = '', morning = '') {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), arrive = i > 0 && this.analysisFits() ? this.arriveAt(i) : null;
-    // (Start and End without their distance: 0 m and the route's length, which the numbers row says, #764)
-    const sub = (shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `There at ${this.clockOf(arrive)}` : '', wx, i && !last ? fmtDist(this.lengthTo(i)) : '', name === lab ? '' : lab, loop ? 'back at the start' : '']).filter(Boolean).join(' · ');
+    // (no distance from the start: the stretch to it says how far, #761)
+    const sub = (shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave ${this.leaveWords()}` : arrive ? `There at ${this.clockOf(arrive)}` : '', wx, name === lab ? '' : lab, loop ? 'back at the start' : '']).filter(Boolean).join(' · ');
     const stop = this.stopAt(i), ch = this.changeAt(i);
     const extra = stop ? (isNight(stop) ? `${nightsWord(stop)} · go on at ${hhmm(stop.on)}${morning ? ` · ${morning}` : ''}` : `Stop · ${stop.min} min`) : ch ? `${ACTIVITIES[ch.to].label} from here · changeover ${ch.min} min` : '';
     // (a row as the cards' rows: its mark, its name, its lines, ›; Revision 5's list)
@@ -3000,15 +3000,17 @@ export class Planner {
     return b;
   }
 
-  // a stretch's row: its distance, time and climb, how it's drawn and the points that only shape it, which unfold
+  // a stretch: the line between two points, with its distance, time and climb and the points that only shape it, which
+  // unfold; one drawn otherwise than along paths (a straight line, over water, its own line) says how first (#761)
   stretchRow(s, ro) {
     const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
     const head = x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))];
     const how = leg.mode === 'fixed' ? `Its own line: ${this.routeName || (leg.src ? 'a LIPAS route' : 'an imported track')}${leg.src ? ' (LIPAS)' : ''}` : MODE_LABEL[leg.mode] || MODE_LABEL.auto;
-    const b = h('button', { type: 'button', class: 'row wpl-stretch', 'data-from': String(s.from), 'data-to': String(s.to), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
-      h('span', { 'aria-hidden': 'true', html: icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || 'auto', 18) }),
-      h('span', {}, h('b', {}, head.filter(Boolean).join(' · ')), h('small', {}, [how, shaping ? `via ${shaping} shaping point${shaping > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · '))),
-      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 16) }));
+    const differs = how !== MODE_LABEL.auto, words = [...head, shaping ? `via ${shaping} shaping point${shaping > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
+    // (its label starts with its words, so voice control finds it by them, and says how a plain one is drawn too)
+    const b = h('button', { type: 'button', class: `row wpl-stretch${differs ? ' differs' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to), 'aria-label': differs ? `${how} · ${words}` : `${words}, ${how}`, onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
+      h('span', { class: 'wpl-line', 'aria-hidden': 'true' }),
+      h('span', {}, h('small', { html: `${differs ? `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode], 14)}<b>${escapeHtml(how)}</b> · ` : ''}${escapeHtml(words)}` })));
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid);
