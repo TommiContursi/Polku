@@ -15542,6 +15542,7 @@ def sections_list(chrome):
           const folding = turn();
           await new Promise((r) => setTimeout(r, 400)); // (on time, even where the browser draws no frames, as this one may not)
           const after = p.els.points.querySelectorAll('.wpl-point.shape').length;
+          document.activeElement?.blur(); // (a finger's tap leaves no keyboard focus; a synthetic one after a redraw would)
           tap(p.els.points.querySelector('.wpl-unfold'));
           const opening = turn();
           p.unfolded.clear(); p.renderWaypoints(); // (folded again, for the keyboard's)
