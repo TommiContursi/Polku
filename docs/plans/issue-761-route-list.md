@@ -149,6 +149,12 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
 
 The research behind it: nested timelines (the Maersk and Telerik design systems, shadcn's nested timeline) keep two levels, the parent as the trigger, the children folded and on a smaller line, and an expand-all; a shared region is the strongest cue that rows belong together, and a branch off a route's line would read as a side path.
 
+**Parts 9, the eleventh round** (`?v=parts9`, 2026-11-04), a focused refinement of the timeline's levels over the rows as built after #799 (a fresh renderer with `sectionRows()`'s DOM and classes, so app.css draws it). Two treatments beside As built, no background but for a selection (the open card's row) or a press, nothing moving:
+- **A, Weight and markers:** no › on waypoints and events; a main waypoint's name a step up (16 px), a stretch's numbers a step down (medium weight), its details muted; the unfold control apart from the row, under the stretch's words, "⌄ 3 waypoints" (a quiet chip, filled once open); unfolded waypoints the stretch's beads grown, small hollow rings on its line, one line each with their time; an event's title a step down.
+- **B, Lanes:** A, with what's between two main waypoints one step in (a stretch, its control, an event) and its unfolded waypoints two, so the levels read down the left edge.
+- **Switches:** a route of three sports with two changeovers, a stop, one stretch unfolded and two folded (`r9=journey`), or a long one of two days with a night (`r9=long`); a waypoint selected or nothing (`sel`); a row pressed by a finger (`press`), since a phone has no hover to tell that a row opens.
+- **Not drawn:** the desktop's tools on hover (PR 6, as built), 200 %, Finnish words longer than these.
+
 **Ideas for the line, not drawn:**
 - a mark's tooltip, its distance and time from the start;
 - the stretches walked in the dark marked on the line, as Check's "In the dark for 5.75 km" counts them;
