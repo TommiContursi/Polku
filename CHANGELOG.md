@@ -6,8 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Rename, remove and move a waypoint in the list, on a desktop ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
-- On a desktop, a waypoint's row in **Route** shows **Rename**, **Remove** and a grip at its end, while the mouse is over it or it has the keyboard's focus.
-- The route's list no longer puts a › on every waypoint and wait: a tap or a click on a row opens its card, as in any list. How you go, Your speed and a card's rows keep theirs, since they open a step of settings.
+- On a desktop, a waypoint's row in **Route** shows **Rename**, **Remove** and a grip where its › is, while the mouse is over it or it has the keyboard's focus.
 - **Rename** turns the name into a field in the row: Enter or clicking away keeps it, Escape leaves it as it was. **Remove** takes the waypoint out, with **Undo** in its note. Drag the grip to move the waypoint up or down the list.
 - On a phone a row still opens the waypoint's card, and **Reorder** moves waypoints.
 
