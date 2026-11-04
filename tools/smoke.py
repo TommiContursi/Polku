@@ -16591,16 +16591,17 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
     return { first: first ? first.dataset.sec || first.className : '', seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
   },
   // the route's list said once (#764): no hint, a one-part route's heading beside Reorder with no numbers line under it,
-  // Start and End without their distance, and from the list's top the Start row and the first stretch in sight
+  // Start and End without their distance, and from the list's top the Start row and the first stretch's first words in sight
   list() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
     // (a row's line: its time first, then the weather and its label at most, never a distance)
     const line = (row, first) => { const t = row?.querySelector('small')?.textContent || ''; return (t.startsWith(first) && !/\\d k?m\\b(?!\\/)/.test(t)) || t; };
     const L = p.els.points, rows = [...L.querySelectorAll('.wpl-point')], start = rows[0], end = rows[rows.length - 1], b = p.els.body.getBoundingClientRect(), v = s.getBoundingClientRect();
+    const first = L.querySelector('.wpl-stretch'); // (its first words: how it's drawn where it differs, else its numbers)
     const seen = (e) => { const r = e?.getBoundingClientRect(); return !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1; }; // (the sheet's own foot: the body runs on under it)
     return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis(document.querySelector('.wpl-top .btn')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), warn: vis(L.querySelector('.warn-row')),
       start: line(start, `Leave ${p.leaveWords()}`), end: line(end, `There at ${p.clockOf(p.arriveAt(p.points.length - 1))}`),
-      seen: seen(start), stretch: seen(L.querySelector('.wpl-stretch')) };
+      seen: seen(start), stretch: seen(first?.querySelector('b') || first?.querySelector('small')) };
   },
   // How you go ›, then Back: the focus on its row, and the row in sight under the list (#740)
   async back() {
@@ -16670,7 +16671,7 @@ def tabs(chrome):
             r = pg.js("""(async () => { const p = polku.planner, ten = new Date(); ten.setHours(10, 0, 0, 0); if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
               p.setLeave(ten / 1000); p.setTab('route'); p.setSheetState('half'); await new Promise((ok) => setTimeout(ok, 800)); const r = TB.list(); p.setLeave(null); return r; })()""")
             if r != {'hint': False, 'nums': False, 'reorder': True, 'beside': True, 'warn': False, 'start': True, 'end': True, 'seen': True, 'stretch': True}:
-                fails.append(f"{name}: the route's list at half: {r} (want no hint, the heading beside Reorder without a numbers line, Start and End without their distance, Start and the first stretch in sight)")
+                fails.append(f"{name}: the route's list at half: {r} (want no hint, the heading beside Reorder without a numbers line, Start and End without their distance, Start and the first stretch's first words in sight)")
         pg.js("(async () => { const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('left'); p.setSheetState(p.layout() === 'side' ? 'open' : 'full'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()")
         # How you go ›: the route style alone, with Back to Route; a preset there changes the row's value
         press(pg, at(pg, "TB.row('route', 'How you go')"), f'{name}: How you go', touch)
