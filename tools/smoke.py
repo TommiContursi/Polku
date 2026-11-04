@@ -264,7 +264,7 @@ WAYPOINTS = """(async () => {
   await wait(300);
   const key = () => p.points.map((q) => q.join()).join('|'), k0 = key();
   // (Reorder lists every point, 25d's part 4)
-  const top = (t) => [...document.querySelectorAll('.wpl-top .btn')].find((b) => b.textContent.trim() === t);
+  const top = (t) => [...document.querySelectorAll('.wpl-top .btn, .wpl-foot .btn')].find((b) => b.textContent.trim() === t); // (Reorder under the list, Done at its top, #761)
   top('Reorder').click();
   await wait(200);
   const rows = () => document.querySelectorAll('.wpl-row');
@@ -1519,7 +1519,7 @@ MULTI_REORDER = """(async () => {
   expect('Alt+↑ on Saari', 'Talli mtb Mäki mtb Saari mtb Ranta paddle Laituri run Kylä');
   await undo();
   expect('Undo after Alt+↑', ALL);
-  [...document.querySelectorAll('.wpl-top .btn')].find((b) => b.textContent.trim() === 'Reorder').click();
+  [...document.querySelectorAll('.wpl-foot .btn')].find((b) => b.textContent.trim() === 'Reorder').click();
   await wait(250);
   // the changeover earlier: you paddle from Ranta, with its 7 minutes and the gear taken along
   await move('Ranta', 'earlier');
@@ -15281,7 +15281,7 @@ SE_LINE = """(() => {
     heads: [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', sum: s.querySelector('.sec2-head small')?.textContent || '',
       ring: !!s.querySelector('.sec2-head .ic') && ps(s.querySelector('.sec2-head .ic')).boxShadow.startsWith(col(getComputedStyle(s).getPropertyValue('--part') || 'transparent')) })),
     stretches: [...L.querySelectorAll('.wpl-stretch')].filter(vis).map((b) => { const ln = b.querySelector('.wpl-line'), bf = ps(ln, '::before');
-      return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', line: bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
+      return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', line: /repeating/.test(bf.backgroundImage) ? (bf.backgroundImage.match(/rgba?\\([^)]*\\)/) || [''])[0] : bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
         want: col(getComputedStyle(b.closest('.sec2')).getPropertyValue('--part') || 'transparent'), beads: ln.querySelectorAll('.bead').length, fold: b.parentElement.querySelector('.wpl-unfold')?.textContent.trim() ?? null }; }),
     brk: [...L.querySelectorAll('.wpl-point')].filter((b) => /radial/.test(ps(b.firstElementChild, '::after').backgroundImage)).map((b) => b.dataset.i),
     badges: [...document.querySelectorAll('.wp-sport')].map((e) => getComputedStyle(e).backgroundColor),
@@ -15322,7 +15322,7 @@ def sections_list(chrome):
     st = lambda pg: pg.js(SE_STATE)
     point = lambda i: f"polku.planner.els.points.querySelector('.wpl-point[data-i=\"{i}\"]')"
     stretch = lambda i: f"polku.planner.els.points.querySelector('.wpl-stretch[data-from=\"{i}\"]')"
-    top = lambda label: f"[...document.querySelectorAll('.wpl-top .btn')].find((b) => b.textContent.trim() === {json.dumps(label)})"
+    top = lambda label: f"[...document.querySelectorAll('.wpl-top .btn, .wpl-foot .btn')].find((b) => b.textContent.trim() === {json.dumps(label)})"
 
     def page(w, h_, phone, extra=None):
         pg = chrome.page(w, h_, phone)
@@ -16736,7 +16736,7 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
     const L = p.els.points, rows = [...L.querySelectorAll('.wpl-point')], start = rows[0], end = rows[rows.length - 1], b = p.els.body.getBoundingClientRect(), v = s.getBoundingClientRect();
     const first = L.querySelector('.wpl-stretch'); // (its first words: how it's drawn where it differs, else its numbers)
     const seen = (e) => { const r = e?.getBoundingClientRect(); return !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1; }; // (the sheet's own foot: the body runs on under it)
-    return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis(document.querySelector('.wpl-top .btn')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), head: vis(L.querySelector('.sec2 .sec2-head small')), warn: vis(L.querySelector('.warn-row')),
+    return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis([...document.querySelectorAll('.wpl-foot .btn')].find((b) => b.textContent.trim() === 'Reorder')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), head: vis(L.querySelector('.sec2 .sec2-head small')), warn: vis(L.querySelector('.warn-row')),
       start: line(start, `Leave ${p.leaveWords()}`), end: line(end, `There at ${p.clockOf(p.arriveAt(p.points.length - 1))}`),
       seen: seen(start), stretch: seen(first?.querySelector('b') || first?.querySelector('small')) };
   },
