@@ -2911,7 +2911,7 @@ export class Planner {
     top.replaceChildren();
     box.replaceChildren();
     box.classList.toggle('reorder', !!this.reordering);
-    // (the rows' chevrons say a tap opens them; Reorder's grips need their words, #764)
+    // (a list's rows open their cards, so they need no › (#761); Reorder's grips need their words, #764)
     if (n >= 2 && !ro && this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a waypoint, or move it earlier or later.'));
     if (this.reordering) this.reorderRows(box);
     else this.sectionRows(box, ro);
@@ -3012,7 +3012,8 @@ export class Planner {
   // the mark says them. `leave`: a part's first row after a changeover or a night, the point you set off from again.
   // Its line is dashed beside a straight leg, dotted below it where its part ends or at a stop (`brk`), none below the end.
   // `warns`: in a stretch unfolded, the warnings on the way to it from the point before, as a stretch has its own.
-  // On a desktop, while drawing, its tools where › is (#761), shown while a mouse is over the row or it has the focus:
+  // No ›: a row of the list opens its card, as a list's rows do (#761). On a desktop, while drawing, its tools at its
+  // end (#761), shown while a mouse is over the row or it has the focus:
   // Rename (its name a field in the row), Remove (with Undo in the note) and the grip, which drags it along the list.
   // A phone's row opens its card, and Reorder moves it.
   pointRow(i, ro, { shape = false, w = null, leave = false, brk = false, warns = false } = {}) {
@@ -3033,7 +3034,7 @@ export class Planner {
         h('span', {}, h('input', { class: 'name-field', type: 'text', value: this.pname.get(p) || '', placeholder: this.autoName(i) || lab, maxlength: 60, spellcheck: 'false', 'aria-label': `The name of ${name}`,
           onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), ...more))
       : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
-        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), ...more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), ...more));
     const tool = (ic, label, fn, cls = '') => h('button', { type: 'button', class: `tool${cls}`, 'aria-label': `${label} ${name}`, title: label, onclick: fn, html: icon(ic, 16) });
     const wrap = tools ? h('div', { class: 'wpl-ptrow', 'data-i': String(i) }, b, h('span', { class: 'wpl-tools' },
       naming ? null : tool('pencil', 'Rename', () => { this.renamingRow = key; this.renderWaypoints(); const f = this.els.points.querySelector('input.name-field'); f?.focus(); f?.select(); }),
@@ -3102,8 +3103,7 @@ export class Planner {
       // (its label says in words what the icons say: from and to, sunset and sunrise)
       'aria-label': [title, at ? `${this.clockOf(from)} to ${this.clockOf(to)}` : shown[0] && shown[0].textContent, sun[0] ? `sunset ${this.timeOf(sun[0])}` : '', sun[1] ? `sunrise ${this.timeOf(sun[1])}` : '', `at ${this.nameOf(i)}`, gear].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
       h('span', { 'aria-hidden': 'true', html: icon({ change: 'clock', stop: 'pause', night: 'moon' }[kind], 18) }),
-      h('span', {}, h('b', {}, title), shown.length ? h('small', { class: 'wx-line' }, ...shown.flatMap((x, k) => (k ? [' ', x] : [x]))) : null, gear ? h('small', { class: 'wpl-warns', html: `<span class="look">${icon('eye', 14)}${escapeHtml(gear)}</span>` }) : null),
-      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+      h('span', {}, h('b', {}, title), shown.length ? h('small', { class: 'wx-line' }, ...shown.flatMap((x, k) => (k ? [' ', x] : [x]))) : null, gear ? h('small', { class: 'wpl-warns', html: `<span class="look">${icon('eye', 14)}${escapeHtml(gear)}</span>` }) : null));
     return b;
   }
 

@@ -15423,6 +15423,8 @@ def sections_list(chrome):
         route(pg, name, {'mode': 'auto', 'pts': PTS[:4], 'names': [[1, 'Hämeentie'], [2, 'Tihtaalinkatu']]})
         if pg.js("polku.planner.els.points.querySelectorAll('.wpl-tools, .wpl-ptrow').length"):
             fails.append(f"{name}: a phone's rows have a desktop's tools (#761)")
+        if pg.js("polku.planner.els.points.querySelectorAll('.wpl-point .way-chev, .wpl-wait .way-chev').length"):
+            fails.append(f"{name}: the list's waypoints and waits still have a › (#761: a list's rows open their cards)")
         for what, straight in (('four MTB points', None), ('a straight leg', '~1')):
             if straight:
                 pg.js("polku.planner.setLegMode(1, 'line'); true")
