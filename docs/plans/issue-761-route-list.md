@@ -7,7 +7,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
 - **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
-- **Waiting:** the user's choice on the second and third rounds, **Line** and **Parts** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
+- **Waiting:** the user's choice on the rounds after PR 1, **Line**, **Parts** and **Parts 2** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
 - **Next:** PR 2, the sport's row with its values.
 
 ## What the user asked for (2026-11-04)
@@ -66,14 +66,45 @@ The mock-up's **Line** (`?v=line&route=multi`) is main at 3db83e6 with this roun
 
 Colour is never alone: the heading has the sport's icon and name, the changeover point its tag, the stretch its words.
 
-**Open questions:**
-- Does an unnamed waypoint stay "Via 4", or become "Waypoint 4" as in Komoot?
-- Should every stretch say how it's drawn, or only where it differs?
-- Should the map's changeover badge (`wp-sport`, green today) take the next sport's colour too?
+**Decided on Parts (2026-11-04):**
+- **"Waypoint 4"** for an unnamed waypoint, in place of "Via 4". It reaches beyond the list:
+  - `label()` is `nameOf()`'s fallback, so it's also the name in an exported GPX;
+  - the cards' second line;
+  - Reorder's buttons, the aria-labels and the checks that read them.
+- **How it's drawn on every stretch,** for now.
 
-**The PRs, if Parts is chosen:** each tried on the phone before the next, ahead of PR 2.
+**The fourth round, Parts 2** (`?v=parts2&route=multi`, and `route=days` for two days). Waits, stops and nights should be parts of their own on the line. A point shouldn't say "Trail run from here" when the next part's heading says it. The line could do more on a desktop. Check's warnings, planned on 2026-11-04, belong on it too. Parts 2 is Parts with:
+
+- **A wait is a part of its own.** A changeover, a stop or a night has its own row:
+  - dotted on the line, with its icon: a clock, a pause, a moon;
+  - its time: "Changeover · 5 min", "Stop · 20 min", "Night · go on at 08:00" with the morning's weather;
+  - the gear left there: "Your bike stays here", Check's item, in its colour.
+
+  A tap opens its point's card there. A changeover and a night sit between two parts, and the next part's heading names the sport, so the point's row loses its tag. A stop stays inside its part, which goes on in its colour after it. Main starts a new section at a stop; Parts 2 doesn't, so the sport isn't said twice.
+- **Check's warnings on each stretch,** in its row, with Check's own words, shapes and colours: "2 to read", "1 not checked". A switch adds "1 worth a look", which marks almost every stretch on a route at dawn. They stay out of the line's column, which already has beads, dashes and dots.
+  - This undoes #741's "a section's warnings aren't in the list", so the build changes DEVELOPING's line on it and `sections`' "a warning once" check.
+- **Waypoint n.**
+- **The word for a straight stretch** is a switch: Straight line, Off paths or Freehand. Komoot's "off-grid" is theirs, and a straight stretch with folded waypoints isn't one straight line. The word is also:
+  - the toolbar's mode name, its tooltip and shortcut;
+  - the map's key, USING, and the checks that read them;
+  - text that Finnish (phase 18) has to fit.
+- **The stretch's tooltip on a desktop** says where the stretch starts and ends along the route and when you're there: "2.56 → 4.34 km from the start", "10:06 → 10:27". It's the app's own `tooltip()`, on hover and on focus, and only where a pointer hovers; a phone has it in the card. It brings no new motion.
+
+**Ideas for the line, not drawn:**
+- a mark's tooltip, its distance and time from the start;
+- the stretches walked in the dark marked on the line, as Check's "In the dark for 5.75 km" counts them;
+- On the way (23b) filling the line up to where you are;
+- the map's changeover badge (`wp-sport`, green today) in the next sport's colour.
+
+**Open questions:**
+- Which word for a straight stretch?
+- "Worth a look" in the list, or only in Check?
+- Waits as parts of their own (Parts 2), or a point's tag (Parts)?
+
+**The PRs, if Parts 2 is chosen:** each tried on the phone before the next, ahead of PR 2.
 1. The line, the parts' colours and the stretch's words: `pointRow()`, `stretchRow()` (the beads, the numbers as on the map), `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`, the dark list's sport colours; `sections` and `multi`.
-2. Waypoints in the words, across the planner, with their checks.
+2. The waits as parts of their own and Check's warnings on the stretches: `sections()` (a stop no longer cuts), `sectionRows()`, the cards' openings; `sections`, `stops`, `multi`.
+3. Waypoints in the words, Waypoint n and the straight stretch's word, across the planner, with their checks.
 
 Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).
 
