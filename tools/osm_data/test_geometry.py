@@ -205,6 +205,28 @@ class GeometryTests(unittest.TestCase):
         self.assertTrue(g.contains_area(e,tile['tile'],[.09,0]))
         self.assertTrue(all(f['path']==[] and f['identity']==e['identity'] for f in e['fragments']))
 
+    def consumer_objects(self):
+        self.nodes.update({20:(.05,-.07),21:(.07,-.07),22:(.07,-.05),23:(.05,-.05),
+                           24:(.055,-.065),25:(.065,-.065),26:(.065,-.055),27:(.055,-.055),
+                           30:(.0598,-.06),31:(.2,.2),32:(0.,-.12),33:(.12,0.)})
+        self.ways[200]=([20,21,22,23,20],{'natural':'water','name':'Small lake'})
+        self.ways[201]=([24,25,26,27,24],{'natural':'water'})
+        self.relations[200]=({'amenity':'shelter','name':'Nearby member'},[('node',30,'entry'),('node',31,'far')])
+        self.relations[201]=({'tourism':'viewpoint','name':'Centre only'},[('node',32,'one'),('node',33,'two')])
+        for ref in [200,201]:
+            self.roots['way',ref]={'area':True,'inspection':True}
+            self.roots['relation',ref]={'area':False,'inspection':True}
+
+    def test_consumer_fixture_retains_small_named_area_and_real_relation_members(self):
+        self.consumer_objects();out,_=self.build()
+        fixture=Path(__file__).parent.parent/'fixtures/osm-area-consumers.pmtiles'
+        for ll in [[.06,-.06],[-.005,.05],[.02,-.02],[.2,.2]]:
+            self.assertEqual(self.read(fixture,ll),self.read(out,ll))
+        tile=self.read(out,[.06,-.06]);types={e['type'] for e in tile['elements'] if e['id']==200}
+        self.assertEqual(types,{'way','relation'})
+        small=next(e for e in tile['elements'] if e['type']=='way' and e['id']==200)
+        self.assertTrue(g.contains_area(small,tile['tile'],[.06,-.06]))
+
     def test_source_and_archive_bytes_are_deterministic(self):
         a,_=self.build(suffix='a');b,_=self.build(suffix='b');self.assertEqual(a.read_bytes(),b.read_bytes())
 

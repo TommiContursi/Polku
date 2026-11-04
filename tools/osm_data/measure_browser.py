@@ -102,6 +102,7 @@ SCRIPT = """(async () => {
 BORDER_SCRIPT = """(async()=>{
  const {StaticOSM}=await import('/js/osm-data.js'), {OSM_DATA_MANIFEST}=await import('/js/config.js'), {lonLatToTile}=await import('/js/geo.js');
  const readers=Object.entries({ways:14,lit:13,trails:13,winter:12,hazards:11,places:12,inspection:14}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
+ if((await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.geometry)readers.push({name:'geometry',z:13,reader:new StaticOSM(OSM_DATA_MANIFEST,'geometry',13)});
  const out={}, calls=[], real=window.fetch, root=new URL('.',OSM_DATA_MANIFEST).href;
  let publicCalls=0;
  window.fetch=async(input,init)=>{
@@ -136,6 +137,11 @@ BORDER_SCRIPT = """(async()=>{
    const water=await H.waterInputs([ll[0]-.0001,ll[1]-.0001,ll[0]+.0001,ll[1]+.0001],{hazards:true}), stays=await S.staysNear(ll,.1);
    if([trail,winter,lit].some(j=>j.source?.provider!=='Polku OSM data') || water.missing.includes('OpenStreetMap') || publicCalls) throw new Error(name+': real border consumer did not use hosted data');
    row.consumers={selected_way:seed.id,selected_pieces:pick.chain.length,tag_requests:tagRequests,trail_ways:trail.w.length,winter_ways:winter.w.length,lit_ways:lit.w.length,hazards:water.hazards.features.length,stays:stays.length,overpass_requests:publicCalls};
+   if(row.geometry) {
+    const nearby=await I.osmDetails({type:'node',ll});
+    if(nearby && nearby.source?.provider!=='Polku OSM data' || publicCalls)throw new Error(name+': nearby border consumer did not use hosted geometry');
+    row.consumers.nearby_object=nearby && `${nearby.type}/${nearby.id}`;
+   }
   }
   out[name]=row;
  }
@@ -147,6 +153,7 @@ BORDER_SCRIPT = """(async()=>{
 
 GEOMETRY_SCRIPT = """(async()=>{
  const {StaticOSM}=await import('/js/osm-data.js'), {OSM_DATA_MANIFEST}=await import('/js/config.js'), {lonLatToTile}=await import('/js/geo.js'), {containsArea}=await import('/js/osm-geometry.js');
+ const W=await import('/js/ways.js'), I=await import('/js/inspect.js');
  if (!(await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.geometry) return [];
  const reader=new StaticOSM(OSM_DATA_MANIFEST,'geometry',13), out=[], calls=[], real=window.fetch, root=new URL('.',OSM_DATA_MANIFEST).href;
  window.fetch=async (url,init)=>{
@@ -163,7 +170,17 @@ GEOMETRY_SCRIPT = """(async()=>{
    if(!matches.some(e=>id ? e.id===id : e.tags.natural==='water'))throw new Error(name+': original lake/park area not found');
    const count=calls.length, repeat=performance.now();await reader.tile(xy);
    if(calls.length!==count)throw new Error(name+': geometry repeat downloads again');
-   out.push({name,ll,complete:true,source:j.source,matches:matches.map(e=>({type:e.type,id:e.id,name:e.tags.name})),cold_ms,repeat_ms:performance.now()-repeat,network:calls.slice(begin)});
+   const repeat_ms=performance.now()-repeat, areaStart=performance.now(), areaBegin=calls.length, area=await W.areaAt(ll), area_ms=performance.now()-areaStart;
+   if(!area || area.source?.provider!=='Polku OSM data' || area.whole && !area.lines.length)throw new Error(name+': hosted area consumer incomplete');
+   const areaNetwork=calls.slice(areaBegin), areaCount=calls.length, areaRepeat=performance.now();await W.areaAt(ll);
+   if(calls.length!==areaCount)throw new Error(name+': repeated area downloads again');
+   const area_repeat_ms=performance.now()-areaRepeat, nearby=await I.osmDetails({type:'node',ll});
+   if(nearby && nearby.source?.provider!=='Polku OSM data')throw new Error(name+': nearby consumer used public data');
+   const [type,ref]=area.id.split('/'), card={pick:{area}}, tagCount=calls.length;
+   await polku.planner.osmOnCard(card,ll,{type,id:+ref});
+   if(card.osm?.w?.id!==+ref || card.osm.w.source?.provider!=='Polku OSM data' || calls.length!==tagCount)throw new Error(name+': full-tag area action does not reuse loaded original tags');
+   out.push({name,ll,complete:true,consumers_verified:true,source:j.source,matches:matches.map(e=>({type:e.type,id:e.id,name:e.tags.name})),cold_ms,repeat_ms,network:calls.slice(begin),
+     area:{id:area.id,name:area.tags.name,whole:area.whole,segments:area.lines.length,area_ms,area_repeat_ms,network:areaNetwork},nearby:nearby && {type:nearby.type,id:nearby.id}});
   }
   return out;
  } finally {window.fetch=real;}
