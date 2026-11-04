@@ -12,7 +12,7 @@ import { fromCss } from './palette.js';
 export const WAY_COLORS = fromCss({
   path: '--way-path', footway: '--way-footway', steps: '--way-steps', track: '--way-track', cycleway: '--way-cycleway',
   'minor road': '--way-minor-road', 'main road': '--way-main-road', water: '--way-water', portage: '--way-portage',
-  'straight line': '--way-straight', other: '--way-other',
+  freehand: '--way-straight', other: '--way-other',
 });
 
 export const COLOR_MODES = {
@@ -431,7 +431,7 @@ export class ProfileChart {
     const muted = css.getPropertyValue('--muted').trim() || '#64748b';
     const cond = this.kind === 'conditions';
     const note = (text) => { ctx.fillStyle = muted; ctx.font = '12px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(text, g.x0, g.h / 2); };
-    if (!a || a.pts.length < 2) { note('Add points on the map to see the elevation profile'); return; }
+    if (!a || a.pts.length < 2) { note('Add waypoints on the map to see the elevation profile'); return; }
     if (cond && !a.wind) { note(this.placeholder || 'Loading the wind along the route…'); return; }
     const [v0, v1] = this.domain();
     const iA = Math.max(0, this.idxOfDist(v0) - 1), iB = Math.min(a.pts.length - 1, this.idxOfDist(v1) + 1);

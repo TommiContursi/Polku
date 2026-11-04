@@ -131,7 +131,7 @@ export async function analyse(line, opt) {
 
   // Per-sample categories
   const surf = sAttr.map((a) => (a.mode === 'water' ? (a.tags && a.tags.portage ? 'ground' : 'water') : a.mode === 'line' ? 'unknown' : surfaceOf(a.tags)));
-  const way = sAttr.map((a) => (a.mode === 'line' ? 'straight line' : wayOf(a.tags || {})));
+  const way = sAttr.map((a) => (a.mode === 'line' ? 'freehand' : wayOf(a.tags || {})));
   const down6 = sAttr.map((a) => mtbScale(a.tags));
   const upCls = new Int8Array(n).fill(-1);
   for (let i = 0; i < n; i++) {
@@ -256,8 +256,8 @@ export function findWarnings(along, grade, sAttr, pts, activity) {
   pushRun((i) => footAt(i) && /^(demanding_alpine|difficult_alpine|alpine)/.test(t(i).sac_scale || ''), 'Alpine terrain (SAC T4+)', 'read', OSM, 0,
     (s, e) => `${tagsIn(s, e, (x) => `sac_scale=${x.sac_scale}`)} · Steep, rocky and exposed. You’ll need your hands in places, the path can disappear, and a fall can be serious.`);
   pushRun((i) => footAt(i) && grade[i] >= 25, (s) => (sp(s) === 'trailrun' ? 'Very steep — walk it' : 'Very steep section'), 'look', TERRAIN, 40, 'Steeper than 25 %. Slow and tiring, and slippery when wet.');
-  pushRun((i) => sAttr[i].mode === 'line', 'Straight line — not following paths', 'look', DRAWN, 150,
-    'Drawn point to point, not along a path. The ground in between could be forest, bog or water, so the distance and time are rough.');
+  pushRun((i) => sAttr[i].mode === 'line', 'Freehand — not following paths', 'look', DRAWN, 150,
+    'Drawn straight between waypoints, not along a path. The ground in between could be forest, bog or water, so the distance and time are rough.');
   pushRun((i) => t(i).portage === 'yes', (s, e) => `Carry / portage ${Math.round(along[e] - along[s])} m`, 'look', OSM, 0, 'portage=yes · Carry the boat and your gear over land here.');
   // ways marked private or closed for the stretch's sport (bikes' "no" has its own row above)
   const marked = (i) => {

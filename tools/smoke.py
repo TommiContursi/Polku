@@ -1618,8 +1618,10 @@ STOPS = """(async () => {
   if (!w2 || w2.rest < 3600) errs.push(`night of ${w2 && w2.rest / 3600} h`);
   const total = (p.analysis.timeWind || p.analysis.time);
   const moving = total - a.waits.reduce((t, w) => t + w.sec, 0);
-  const sum = document.querySelector('.sum-time small')?.textContent;
-  if (sum !== '2 days') errs.push(`summary time: ${sum}`);
+  // (#761) over days: the whole time, its nights too, with the time on the move under it
+  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const sum = `${document.querySelector('.sum-time b')?.textContent} / ${document.querySelector('.sum-time small')?.textContent}`;
+  if (sum !== `${short(total)} / ${short(moving)} moving`) errs.push(`summary time: ${sum}, not ${short(total)} / ${short(moving)} moving`);
   const days = S.tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : p.startSec(), a.waits);
   if (days.length !== 2 || Math.abs(days[0].moving + days[1].moving - moving) > 2) errs.push(`days: ${days.length}, moving ${days.map((d) => d.moving).join('+')} vs ${moving}`);
   p.reveal('depart');
@@ -2626,7 +2628,7 @@ HEADS = """(async () => {
   expect('findWarnings, hike', A.findWarnings(along, Float32Array.from({ length: n }, (_, i) => (i < 20 ? 30 : 0)), attrs('hike', [[30, 40, { highway: 'path', sac_scale: 'alpine_hiking' }], [40, 60, { highway: 'path', access: 'no' }]]), pts, 'hike'),
     [[/^Very steep/, 'look', 'estimate', 'the terrain model', /^Steeper than 25 %/], [/^Alpine terrain/, 'read', 'map', 'OpenStreetMap', /^sac_scale=alpine_hiking · /], [/^Marked no access/, 'read', 'map', 'OpenStreetMap']]);
   expect('findWarnings, road', A.findWarnings(along, flat, attrs('road', [[0, 10, { highway: 'track', surface: 'gravel' }], [10, 20, { highway: 'track' }], [20, 40, { highway: 'path', foot: 'no', access: 'private' }], [40, 60, {}, 'line']]), pts, 'road'),
-    [[/^Unpaved/, 'look', 'map', 'OpenStreetMap', /^surface=gravel, highway=track, highway=path · /], [/^Marked private/, 'look', 'map', 'OpenStreetMap'], [/^Straight line/, 'look', 'calculated', 'how you drew it', /^Drawn point to point/]]);
+    [[/^Unpaved/, 'look', 'map', 'OpenStreetMap', /^surface=gravel, highway=track, highway=path · /], [/^Marked private/, 'look', 'map', 'OpenStreetMap'], [/^Freehand/, 'look', 'calculated', 'how you drew it', /^Drawn straight between waypoints/]]);
   expect('findWarnings, on foot', A.findWarnings(along, flat, attrs('hike', [[0, 20, { highway: 'path', foot: 'no' }]]), pts, 'hike'), [[/^Marked no walking/, 'read', 'map', 'OpenStreetMap']]);
   // the trail details (from the router's tags here)
   const td = { trail: new Uint8Array(n).fill(1), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: new Uint8Array(n), mud: new Uint8Array(n), tree: new Uint8Array(n), ford: new Uint8Array(n), boardwalk: new Uint8Array(n), points: [{ i: 50, at: 500, ll: pts[50], kind: 'barrier', barrier: 'fence' }] };
@@ -2846,7 +2848,7 @@ HEADS_CHECK = """(async () => {
   const boxes = [...sec.querySelectorAll('.tier-read .warn-row.danger')], rowsOf = (g) => [...sec.querySelectorAll(`.tier-${g} .row`)];
   if (boxes.length !== 2 || boxes.some((b) => b.tagName !== 'BUTTON')) errs.push(`Read before you go: ${boxes.length} red warning boxes`);
   if (!/Road works: Teiskontie/.test(boxes[0]?.textContent || '') || !/at 300 m · 60 m/.test(boxes[0]?.textContent || '')) errs.push(`Read's first box: ${boxes[0]?.textContent}`);
-  if (rowsOf('look').map((r) => r.querySelector('b').textContent).join(' / ') !== 'Straight line — not following paths / Steep climb, up to 18 % / Fallen tree across the trail') errs.push(`Worth a look: ${rowsOf('look').map((r) => r.textContent).join(' / ')}`);
+  if (rowsOf('look').map((r) => r.querySelector('b').textContent).join(' / ') !== 'Freehand — not following paths / Steep climb, up to 18 % / Fallen tree across the trail') errs.push(`Worth a look: ${rowsOf('look').map((r) => r.textContent).join(' / ')}`);
   if (!/The forecast didn.t answer/.test(rowsOf('not')[0]?.textContent || '') || !/whole route/i.test(rowsOf('not')[0]?.textContent || '')) errs.push(`Not checked: ${rowsOf('not').map((r) => r.textContent).join(' / ')}`);
   const looked = sec.querySelector('.looked');
   if (!looked || !/What Polku looked at/.test(looked.textContent) || !/Road works and incidents\\s*Fintraffic, \\d\\d[:.]\\d\\d/.test(looked.textContent) || !/Weather on the way\\s*Open-Meteo didn.t answer/.test(looked.textContent) || !/Nothing listed doesn.t mean a way is open, safe or allowed/.test(looked.textContent)) errs.push(`What Polku looked at: ${looked ? looked.textContent : 'none'}`);
@@ -3019,7 +3021,7 @@ def onroute(chrome):
               await press('Next');
               if (title() !== 'Road works: Teiskontie') errs.push(`› went to ${title()}, not Road works`);
               await press('Previous'); await press('Previous');
-              if (title() !== 'Straight line — not following paths') errs.push(`‹ ‹ went to ${title()}, not the first item along`);
+              if (title() !== 'Freehand — not following paths') errs.push(`‹ ‹ went to ${title()}, not the first item along`);
               if (!p.cards.box.querySelector('.heads-step [aria-label="Previous"]').disabled) errs.push('‹ not disabled at the first item');
               for (let k = 0; k < 8; k++) if (!p.cards.box.querySelector('.heads-step [aria-label="Next"]').disabled) await press('Next');
               if (title() !== 'The forecast didn’t answer') errs.push(`the last along the route is ${title()}, not the whole route's Not checked`);
@@ -5027,9 +5029,9 @@ ROUTE_MENU = """(async () => {
   await wait(600);
   // (where the line is now: a card that opens moves the map to keep itself in view)
   const fire = () => { const q = m.project([23.760, 61.5025]); m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') }); };
-  // the route's card (25d's 1b): Add a point here its first button on a desktop
+  // the route's card (25d's 1b): Add a waypoint here its first button on a desktop
   const card = () => (p.cards.current && p.cards.current.kind === 'route' ? document.querySelector('.pl-way.card') : null);
-  const add = () => card() && [...card().querySelectorAll('.btn')].find((b) => /Add a point here/.test(b.textContent));
+  const add = () => card() && [...card().querySelectorAll('.btn')].find((b) => /Add a waypoint here/.test(b.textContent));
   fire();
   await wait(300);
   if (p.points.length !== 2) errs.push(`a click on the line added a point (${p.points.length})`);
@@ -5052,7 +5054,7 @@ ROUTE_MENU = """(async () => {
   else {
     add().click();
     await wait(300);
-    if (p.points.length !== 3) errs.push(`"Add a point here": ${p.points.length} points`);
+    if (p.points.length !== 3) errs.push(`"Add a waypoint here": ${p.points.length} points`);
     p.undo();
     await wait(300);
   }
@@ -9059,9 +9061,9 @@ def nextleg(chrome):
     order = pg.js("[...document.querySelectorAll('.menu-pop .menu-h')].map((e) => e.textContent).join(' / ')")
     if order != 'Draw the next leg / Sport · the legs you draw next / Route style · the whole route':
         fails.append(f'{name}: the drawing menu: {order}')
-    press(pg, pg.js("nlT.item('Straight line')"), f'{name}: Straight line', True)
+    press(pg, pg.js("nlT.item('Freehand')"), f'{name}: Freehand', True)
     press(pg, pg.js(f'nlT.spot({L[1]})'), f'{name}: the second point', True)
-    want(f'{name}, a hike leg', pg.js('nlT.settle(2)'), sports='hike', label=lambda v: bool(v) and 'Straight line, Hike' in v)
+    want(f'{name}, a hike leg', pg.js('nlT.settle(2)'), sports='hike', label=lambda v: bool(v) and 'Freehand, Hike' in v)
     press(pg, pg.js("nlT.at('#pl-tools .modebtn')"), f'{name}: the drawing button', True)
     press(pg, pg.js("nlT.at('.menu-pop .nl-sport')"), f'{name}: the next leg’s sport', True)
     picks = pg.js("document.querySelectorAll('.menu-pop .nl-pick').length")
@@ -9074,7 +9076,7 @@ def nextleg(chrome):
     if '25 / 20 / 12' not in line:
         fails.append(f"{name}: the speed line says “{line}”, not Gravel's speeds")
     escape(pg)
-    want(f'{name}, the button', S(), label=lambda v: bool(v) and 'Straight line, Gravel' in v)
+    want(f'{name}, the button', S(), label=lambda v: bool(v) and 'Freehand, Gravel' in v)
     press(pg, pg.js(f'nlT.spot({L[2]})'), f'{name}: the third point', True)
     want(f'{name}, a gravel leg after the hike', pg.js('nlT.settle(3)'), sports='hike,gravel', waits=1)
     if not pg.js('!!polku.planner.changeAt(1)'):
@@ -9103,7 +9105,7 @@ def nextleg(chrome):
     press(pg, pg.js("nlT.at('.menu-pop .nl-sport')"), f'{name}: the next leg’s sport', True)
     press(pg, pg.js("nlT.item('Hike')"), f'{name}: Hike', True)
     want(f'{name}, Hike next again', S(), mode='auto', next='hike', map='hike')
-    press(pg, pg.js("nlT.item('Straight line')"), f'{name}: Straight line', True)
+    press(pg, pg.js("nlT.item('Freehand')"), f'{name}: Freehand', True)
     # nothing to undo for the next legs: Undo takes the gravel leg back, and the next leg stays Hike
     press(pg, pg.js("nlT.at(polku.planner.els.undo)"), f'{name}: Undo', True)
     want(f'{name}, after Undo', S(), n=2, sports='hike', next='hike', map='hike')
@@ -9115,14 +9117,14 @@ def nextleg(chrome):
         fails.append(f'{name}: the lake point isn’t on the water')
     press(pg, pg.js(f'nlT.spot({lake})'), f'{name}: a point on the lake', True)
     st = S()
-    want(f'{name}, a point on the lake', st, n=3, toast=lambda v: bool(v) and v.startswith('This point is on the water. How do you get there?') and 'Paddle (sea kayak)' in v and 'Swim' in v and 'Stay on land' in v and 'on the ice' not in v)
+    want(f'{name}, a point on the lake', st, n=3, toast=lambda v: bool(v) and v.startswith('This waypoint is on the water. How do you get there?') and 'Paddle (sea kayak)' in v and 'Swim' in v and 'Stay on land' in v and 'on the ice' not in v)
     past = st['past']
     press(pg, pg.js("nlT.toastBtn('Swim')"), f'{name}: Swim', True)
     time.sleep(0.6)
     pg.js(NL_TIMERS)
     st = S()
     # the note Swim shows stays, with its Undo (the tap on Swim hid it at once, #381)
-    want(f'{name}, Swim', st, sports='hike,swim', next='swim', map='swim', past=past, toast=lambda v: bool(v) and v.startswith('Swim to this point, and on from here.') and v.endswith('Undo'))
+    want(f'{name}, Swim', st, sports='hike,swim', next='swim', map='swim', past=past, toast=lambda v: bool(v) and v.startswith('Swim to this waypoint, and on from here.') and v.endswith('Undo'))
     off = pg.js(f"(() => {{ const q = polku.planner.points[2]; return q ? Math.hypot((q[0] - {lake[0]}) * 53500, (q[1] - {lake[1]}) * 111200) : -1; }})()")
     if off < 0 or off > 1:
         fails.append(f'{name}: the point on the lake ' + ('is gone' if off < 0 else f'moved {off:.0f} m from where it was tapped'))
@@ -9762,7 +9764,7 @@ def fold_phone(chrome):
             pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
             fold_settled(pg, fails, 'step 17')
             s = info()
-            if s['st'] != 'folded' or s['card'] != 'point' or not re.fullmatch(r'Via 1, \d\d:\d\d, [\d.]+ k?m: open the card', s['lineLabel'] or '') or s['panel']['h'] > 64:
+            if s['st'] != 'folded' or s['card'] != 'point' or not re.fullmatch(r'Waypoint 1, \d\d:\d\d, [\d.]+ k?m: open the card', s['lineLabel'] or '') or s['panel']['h'] > 64:
                 fails.append(f"⌄ on the card: {s['st']}, card {s['card']}, the line “{s['lineLabel']}” {s['panel']['h']:.0f} px (its name, there at, from the start)")
             y = s['panel']['t'] + 60
             pg.swipe(120, y, y + 200, ms=400, hold=0.1)
@@ -9951,7 +9953,7 @@ def fold_desktop(chrome):
             c1 = pg.js(card)
             lab = pg.js("polku.planner.cards.box.querySelector('.way-fold').getAttribute('aria-label') + '|' + polku.planner.cards.box.querySelector('.way-fold').getAttribute('aria-expanded')")
             line = pg.js("polku.planner.cards.box.querySelector('.way-hint').innerText.replace(/\\s+/g, ' ').trim()")
-            if abs(c1[1] - c0[1]) > 2 or c1[2] > 80 or lab != 'Open the card|false' or not re.fullmatch(r'Via 1 · \d\d:\d\d · [\d.]+ k?m', line):
+            if abs(c1[1] - c0[1]) > 2 or c1[2] > 80 or lab != 'Open the card|false' or not re.fullmatch(r'Waypoint 1 · \d\d:\d\d · [\d.]+ k?m', line):
                 fails.append(f'the card folded: {c1} (was {c0}), its button “{lab}”, its line “{line}” (its name, there at, from the start)')
             fold_click(pg, *fold_at(pg, "polku.planner.cards.box.querySelector('.way-fold')"))
             time.sleep(0.5)
@@ -11518,17 +11520,17 @@ def toolbox(chrome):
               return { radios: [...m.querySelectorAll('[role=menuitemradio][aria-checked=true]')].map((b) => b.textContent.trim()), chips: m.querySelectorAll('.chip').length,
                 expanded: polku.planner.els.modeBtn.getAttribute('aria-expanded'), inside: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0, clear: m.classList.contains('menu-sheet') || r.right <= c.left }; })()""")
             mode0 = pg.js("polku.planner.mode")
-            want = {'auto': 'Follow paths', 'water': 'Over water', 'line': 'Straight line'}[mode0]
+            want = {'auto': 'Follow paths', 'water': 'Over water', 'line': 'Freehand'}[mode0]
             if not m:
                 fails.append(f'{name}: the mode button opened no menu')
             else:
                 if not any(r.startswith(want) for r in m['radios']) or m['expanded'] != 'true' or not m['chips'] or not m['inside'] or not m['clear']:
                     fails.append(f'{name}: the mode’s menu: {m}')
-                item(pg, 'Straight line')
-                tap(pg, '.menu-pop [data-tb-pick]', f'{name}: Straight line')
+                item(pg, 'Freehand')
+                tap(pg, '.menu-pop [data-tb-pick]', f'{name}: Freehand')
                 after = pg.js("({ mode: polku.planner.mode, legs: polku.planner.legs.map((l) => l.mode).join(','), menu: !!document.querySelector('.menu-pop'), label: polku.planner.els.modeBtn.getAttribute('aria-label') })")
-                if after['mode'] != 'line' or after['legs'] != legs0 or after['menu'] or 'Straight line' not in after['label']:
-                    fails.append(f'{name}: picking Straight line: {after} (the legs were {legs0})')
+                if after['mode'] != 'line' or after['legs'] != legs0 or after['menu'] or 'Freehand' not in after['label']:
+                    fails.append(f'{name}: picking Freehand: {after} (the legs were {legs0})')
                 pg.js("(() => { const p = polku.planner; p.addPoint([23.85, 61.523]); return true; })()")
                 time.sleep(0.5)
                 if pg.js("polku.planner.legs.at(-1).mode") != 'line':
@@ -12036,7 +12038,7 @@ START_LIB = """(() => {
       await wait(200);
       if (view() !== 'first') err(`the first point's peek isn't there: ${view()}`);
       const hint = txt($('.pl-way .way-hint b'));
-      if (!/the map for your next point/.test(hint)) err(`the first point's peek says: ${hint}`);
+      if (!/the map for your next waypoint/.test(hint)) err(`the first point's peek says: ${hint}`);
       const chips = $$('.pl-way .rt-here .chip').map(txt);
       if (chips.length !== 4 || chips[3] !== 'Other…') err(`Round trip from here: ${chips.join(' | ') || 'none'}`);
       if (p.sideMQ.matches && !p.els.toolDone.offsetParent) err('no Done on the toolbar after the first point');
@@ -12066,7 +12068,7 @@ START_LIB = """(() => {
     if (!/the map where you start/.test(hint()) || !/follows the paths, and the sport can change on the way/.test(hint())) err(`Draw it says: ${hint()}`);
     p.setMode('line');
     await wait(100);
-    if (!/joins your points with straight lines/.test(hint()) || !/Straight lines don’t use a route style/.test(txt(way()))) err(`Straight line: ${txt(way())}`);
+    if (!/joins your waypoints with straight lines/.test(hint()) || !/Freehand doesn’t use a route style/.test(txt(way()))) err(`Freehand: ${txt(way())}`);
     p.setMode('water');
     await wait(100);
     if (!/finds a way over the water/.test(hint())) err(`Over water: ${hint()}`);
@@ -12305,7 +12307,7 @@ START_LIB = """(() => {
     const L = p.loop;
     if (view() !== 'loop' || L.km !== 10 || L.results.length || L.busy) err(`the 10 km chip: ${view()}, ${L.km} km, ${L.results.length} loops, busy ${L.busy}`);
     if ((await routed()) !== T.r0) err('a length opened the form with routing calls');
-    if (!/From your first point/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))}`);
+    if (!/From your first waypoint/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))}`);
     T.loopTools('the round trip’s form');
     // (once the sheet has grown to the form: as the view turns, the sheet is still the first point's, and a busy page
     // measured it there, cut by the whole difference every time, #407)
@@ -12656,7 +12658,7 @@ def route_view(chrome):
         press(pg, pg.js(RV_LINE), f'{name}: the line', touch)
         s = state(pg)
         if s['n'] != s0['n'] or s['card'] != 'route' or not s['pill']:
-            fails.append(f"{name}: a tap on the line in the route’s view: {s['n'] - s0['n']} points added, {s['card'] or 'no'} card{'' if s['pill'] else ', without Add a point here'} (25d's 1b, #745)")
+            fails.append(f"{name}: a tap on the line in the route’s view: {s['n'] - s0['n']} points added, {s['card'] or 'no'} card{'' if s['pill'] else ', without Add a waypoint here'} (25d's 1b, #745)")
         shut(pg)
         # the markers stay put
         drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
@@ -12777,7 +12779,7 @@ def route_view(chrome):
         pg.js("polku.planner.fitRoute({ animate: false }); true")
         time.sleep(0.6)
         press(pg, pg.js(RV_LINE), f'{name}: the line', touch)
-        if state(pg)['card'] != 'route' or not state(pg)['pill']:  # (Add a point here, the card's first button on a desktop: #745)
+        if state(pg)['card'] != 'route' or not state(pg)['pill']:  # (Add a waypoint here, the card's first button on a desktop: #745)
             fails.append(f'{name}: a click on the line in the route’s view: {state(pg)}')
         shut(pg)
         drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
@@ -13206,9 +13208,9 @@ def point_card(chrome):
         # (the stretch it's on runs to the next point you see: here the end, as the vias only shape the line, 25d's 1b)
         if f"Next stretch, to {pg.js('polku.planner.nameOf(polku.planner.points.length - 1)')}" not in s['rows']:
             fails.append(f"{name}: via 1's row to the stretch after it: {s['rows']}")
-        if s['title'] != 'Via 1' or 'Via 1Via 1' in s['text']:
-            fails.append(f"{name}: an unnamed via point's card says “{s['title']}”{', and Via 1 twice' if 'Via 1Via 1' in s['text'] else ''}")
-        if s['heads'] != ['At this point', 'Edit this point']:
+        if s['title'] != 'Waypoint 1' or 'Waypoint 1Waypoint 1' in s['text']:
+            fails.append(f"{name}: an unnamed via point's card says “{s['title']}”{', and Waypoint 1 twice' if 'Waypoint 1Waypoint 1' in s['text'] else ''}")
+        if s['heads'] != ['At this waypoint', 'Edit this waypoint']:
             fails.append(f"{name}: via 1's groups are {s['heads']}")
         if s['back'] or s['chosen'] != 'Pass by' or s['ringed'] != 1:
             fails.append(f"{name}: from the map: Back “{s['back']}”, the switch at “{s['chosen']}”, the ring on point {s['ringed']}")
@@ -13377,7 +13379,7 @@ def point_card(chrome):
         # the start: you leave, and Leave › (the leave group tries its picker); the end: Back to start; a loop's end has none,
         # its via points no End here
         s = tap_marker(pg, 0, name, touch)
-        if s['labels'][:1] != ['you leave'] or 'Leave' not in s['rows'] or 'Reverse' not in s['rows'] or 'The route' not in s['heads'] or 'Start here' in s['rows'] or 'At this point' in s['heads']:
+        if s['labels'][:1] != ['you leave'] or 'Leave' not in s['rows'] or 'Reverse' not in s['rows'] or 'The route' not in s['heads'] or 'Start here' in s['rows'] or 'At this waypoint' in s['heads']:
             fails.append(f"{name}: the start's card: {s['labels']}, {s['rows']}, {s['heads']}")
         r = pg.js("""(async () => { const p = polku.planner, at = (Math.floor(Date.now() / 3600000) + 3) * 3600, d = new Date(at * 1000), z = (x) => String(x).padStart(2, '0'), i = document.querySelector('.pl-way.card .row.pick input');
           if (!i) return { field: false };
@@ -13408,7 +13410,7 @@ def point_card(chrome):
         if s['kind'] != 'point' or 'Back to start' in s['rows'] or 'Reverse' not in s['rows']:
             fails.append(f"{name}: a loop's end: {s['kind']} card, {s['rows']}")
         s = tap_marker(pg, 2, name, touch)
-        if 'End here' in s['rows'] or 'The same loop, starting from this point' not in s['text']:
+        if 'End here' in s['rows'] or 'The same loop, starting from this waypoint' not in s['text']:
             fails.append(f"{name}: a loop's via point: {s['rows']}")
         # #352's review, 3: a loop's start (its end at the same spot), a stop at via 1, Undo: the start's card stays
         pg.js("(() => { const p = polku.planner; p.cards.close(); p.openPointCard(p.points[0]); p.setStop(1, { min: 30 }); p.undo(); return true; })()")
@@ -13600,7 +13602,7 @@ def point_card(chrome):
         pg.js("polku.planner.cards.close(); polku.planner.setEditing(true); true")
         # the pill: above the spot on a phone, the card's first button on a desktop (1b and 5 give cards one)
         r = pg.js("""(() => { const p = polku.planner, at = p.points[2]; let hit = 0;
-          p.cards.open({ kind: 'test', key: 'pill', title: 'A spot', sub: '', build: (b) => b.append('…'.slice(1)), pill: { label: 'Add a point here', icon: 'plus', fn: () => { hit++; } } }, { at });
+          p.cards.open({ kind: 'test', key: 'pill', title: 'A spot', sub: '', build: (b) => b.append('…'.slice(1)), pill: { label: 'Add a waypoint here', icon: 'plus', fn: () => { hit++; } } }, { at });
           const pill = document.querySelector('.card-pill'), big = document.querySelector('.pl-way.card > .btn.primary.big');
           const R = p.map.getCanvas().getBoundingClientRect(), q = p.map.project(at), pr = pill && pill.getBoundingClientRect();
           (pill || big)?.click();
@@ -13883,14 +13885,14 @@ def route_card(chrome):
             fails += [f'{name}: {o}' for o in pg.js(f"({RC_LOOK})(true)")]
             # the pill: a point at the spot, on the line; one step of Undo; no routing request; the note says where
             r0 = st(pg)
-            press(pg, at(pg, "document.querySelector('.card-pill')"), f'{name}: Add a point here', touch)
+            press(pg, at(pg, "document.querySelector('.card-pill')"), f'{name}: Add a waypoint here', touch)
             r = pg.js(f"""(() => {{ const p = polku.planner, q = p.points[2], a = {json.dumps(LINE['pts'][1])}, b = {json.dumps(LINE['pts'][2])}, t = {json.dumps(t['ll'])};
               const k = Math.cos(q[1] * Math.PI / 180) * 111320, x = (u) => [(u[0] - a[0]) * k, (u[1] - a[1]) * 111320], B = x(b), Q = x(q), T = x(t);
               const f = Math.max(0, Math.min(1, (Q[0] * B[0] + Q[1] * B[1]) / (B[0] ** 2 + B[1] ** 2)));
               return {{ n: p.points.length, past: p.past.length, calls: (window.routerCalls || []).length, line: Math.hypot(Q[0] - f * B[0], Q[1] - f * B[1]), tap: Math.hypot(Q[0] - T[0], Q[1] - T[1]),
                 kind: p.cards.current && p.cards.current.kind, note: document.querySelector('#toast')?.textContent || '' }}; }})()""")
-            if r['n'] != r0['n'] + 1 or r['past'] != r0['past'] + 1 or r['calls'] != r0['calls'] or r['line'] > 2 or r['tap'] > 8 or not r['note'].startswith('Point added after Via 1'):
-                fails.append(f'{name}: Add a point here: {r}')
+            if r['n'] != r0['n'] + 1 or r['past'] != r0['past'] + 1 or r['calls'] != r0['calls'] or r['line'] > 2 or r['tap'] > 8 or not r['note'].startswith('Waypoint added after Waypoint 1'):
+                fails.append(f'{name}: Add a waypoint here: {r}')
             pg.js("polku.planner.undo(); true")
             time.sleep(0.5)
         # This stretch ›: from Kaupintie to Lielahti, over the three points that only shape it; Back to the route's card.
@@ -13910,7 +13912,7 @@ def route_card(chrome):
         # Edit this stretch: its 4 legs; only what fits on land; Other ways only for one leg
         main(pg, 'Edit this stretch', name, touch)
         s = st(pg)
-        if s['kind'] != 'edit' or 'its 4 legs' not in s['text'] or s['seg'] != ['Follow paths', 'Straight line*'] or 'Other ways' in s['rows'] or s['heads'] != ['How you go', 'On this stretch']:
+        if s['kind'] != 'edit' or 'its 4 legs' not in s['text'] or s['seg'] != ['Follow paths', 'Freehand*'] or 'Other ways' in s['rows'] or s['heads'] != ['How you go', 'On this stretch']:
             fails.append(f"{name}: Edit this stretch: {s['kind']} card, {'4 legs' if 'its 4 legs' in s['text'] else 'not its 4 legs'}, the switch {s['seg']}, rows {s['rows']}, groups {s['heads']}")
         fails += [f'{name}: Edit this stretch: {o}' for o in pg.js(f"({RC_LOOK})(true)")]
         # Sport: Paddle for the stretch: its four legs paddled over water, the last leg as it was, one step of Undo
@@ -13921,7 +13923,7 @@ def route_card(chrome):
         tap_row(pg, 'Paddle', name, touch)
         time.sleep(0.4)
         r = pg.js("(() => { const p = polku.planner; return { sports: p.legs.map((_, i) => p.legSport(i)).join(), modes: p.legs.map((l) => l.mode).join(), past: p.past.length, kind: p.cards.current && p.cards.current.kind, seg: [...document.querySelectorAll('.pl-way.card .seg button')].map((e) => e.textContent.trim()) }; })()")
-        if r['sports'] != 'paddle,paddle,paddle,paddle,mtb' or r['modes'] != 'water,water,water,water,line' or r['past'] != past + 1 or r['kind'] != 'edit' or r['seg'] != ['Over water', 'Straight line']:
+        if r['sports'] != 'paddle,paddle,paddle,paddle,mtb' or r['modes'] != 'water,water,water,water,line' or r['past'] != past + 1 or r['kind'] != 'edit' or r['seg'] != ['Over water', 'Freehand']:
             fails.append(f'{name}: Edit this stretch → Paddle: {r}')
         pg.js("polku.planner.undo(); true")
         time.sleep(0.6)
@@ -14001,15 +14003,15 @@ def route_card(chrome):
         close(pg)
         keeps_view(pg, name, touch)
         keeps_view(pg, name, touch, 20.5)
-        # the route's view: the same card, with Add a point here, Edit this stretch and Avoid this spot, and no note (#745)
+        # the route's view: the same card, with Add a waypoint here, Edit this stretch and Avoid this spot, and no note (#745)
         pg.js("polku.planner.done(); true")
         time.sleep(0.6)
         s0 = st(pg)
         press(pg, on_line(pg, 1, 0.3), f'{name}: the line in the route’s view', touch)
         s = st(pg)
-        add = bool(s['pill']) or (s['first'] or {}).get('text') == 'Add a point here'
+        add = bool(s['pill']) or (s['first'] or {}).get('text') == 'Add a waypoint here'
         if s['kind'] != 'route' or not add or 'Edit this stretch' not in s['rows'] or 'Avoid this spot' not in s['rows'] or s['note'] or s['n'] != s0['n'] or not s['view']:
-            fails.append(f"{name}: the route's view: {s['kind']} card, Add a point here {add}, rows {s['rows']}, note {s['note']}, {s['n'] - s0['n']} points added")
+            fails.append(f"{name}: the route's view: {s['kind']} card, Add a waypoint here {add}, rows {s['rows']}, note {s['note']}, {s['n'] - s0['n']} points added")
         close(pg)
         # the planner put away: a tap on the route opens it, at the route's card
         pg.js("polku.planner.setActive(false); true")
@@ -14044,7 +14046,7 @@ def route_card(chrome):
                 fails.append(f"{name}: with the route's card open, the map lights {lit}, not the leg clicked (#83)")
             f = s['first']
             near = f and round(math.hypot(max(0, f['box']['left'] - t['x'], t['x'] - f['box']['right']), max(0, f['box']['top'] - t['y'], t['y'] - f['box']['bottom'])))
-            if not f or f['text'] != 'Add a point here' or near > 30:
+            if not f or f['text'] != 'Add a waypoint here' or near > 30:
                 fails.append(f"{name}: the card's first button {f}, for a click at {t['x']}, {t['y']}")
             if s['values'][2:] != ['S1'] or s['words'] != ['intermediate path'] or s['labels'] != ['there at', s['labels'][1], 'difficulty'] or s['labels'][1] not in ('uphill', 'downhill'):
                 fails.append(f"{name}: an mtb:scale=1 way's numbers: {s['values']} {s['words']} {s['labels']}")
@@ -14205,13 +14207,13 @@ def route_card(chrome):
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}, after {' / '.join(trail[-4:])}")
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the route's card and a stretch's (25d 1b): a tap on the route, Add a point here, This stretch, What's here, Edit this stretch, the whole route, the start's Back to start, End" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the route's card and a stretch's (25d 1b): a tap on the route, Add a waypoint here, This stretch, What's here, Edit this stretch, the whole route, the start's Back to start, End" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # A tap just beside the route while drawing (#725): 17 px from the line's middle by touch, 12 px by mouse, opens the
 # route's card and adds nothing; 30 px off adds a point at the end, as before. A level line at z14 (its casing 9.5 px
 # wide), so the old box (12 px by touch, 6 by mouse) misses both by a hair: only the wider guard takes them. By touch
-# 22 px off too (some 50 m at z14, past legNear()'s 40 m): its card's Add a point here adds one on the line.
+# 22 px off too (some 50 m at z14, past legNear()'s 40 m): its card's Add a waypoint here adds one on the line.
 NL_SPOT = """(async (off) => {
   const p = polku.planner, m = polku.map, c = p.legs[0].result.coords, a = c[0], b = c[c.length - 1], ll = [a[0] + (b[0] - a[0]) * 0.25, a[1]];
   for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
@@ -14258,7 +14260,7 @@ def near_line(chrome):
                         time.sleep(0.6)
                     a = pg.js("(() => { const p = polku.planner; return { n: p.points.length, end: p.points[p.points.length - 1], off: p.nearLine(p.points[1]).d }; })()")
                     if not b or a['n'] != s['n'] + 1 or a['end'] != s['end'] or a['off'] > 2:
-                        fails.append(f"{name}: Add a point here on the card from a tap {d} px beside the line: {'no pill' if not b else str(a['n'] - s['n']) + ' points added'}, the end {'moved' if a['end'] != s['end'] else 'kept'}, {round(a['off'])} m off the line")
+                        fails.append(f"{name}: Add a waypoint here on the card from a tap {d} px beside the line: {'no pill' if not b else str(a['n'] - s['n']) + ' points added'}, the end {'moved' if a['end'] != s['end'] else 'kept'}, {round(a['off'])} m off the line")
                     r = a
                 elif card and (r['kind'] != 'route' or r['n'] != s['n'] or r['end'] != s['end']):
                     fails.append(f"{name}: a {how} {d} px beside the line: {r['kind'] or 'no'} card, {r['n'] - s['n']} points added, the end {'moved' if r['end'] != s['end'] else 'kept'} (#725)")
@@ -14573,7 +14575,7 @@ def spot_card(chrome):
             time.sleep(0.6)
             if st(pg)['n'] != n:
                 fails.append(f"{name}: Undo after Add to my route {what}: {st(pg)['n']} points, not {n}")
-        # a spot 20 m from the line: Add a point here, on the line, no routing call
+        # a spot 20 m from the line: Add a waypoint here, on the line, no routing call
         mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]
         near = [mid[0] - 0.00012, mid[1] + 0.00016]  # (about 20 m from A–B)
         pg.js(f"(() => {{ const v = polku.planner.viewPadding(0); polku.map.jumpTo({{ center: {json.dumps(near)}, zoom: 17, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }}); }})(); polku.planner.cards.close(); document.querySelector('#toast').classList.remove('show'); new Promise((r) => setTimeout(() => r(true), 900))")
@@ -14584,12 +14586,12 @@ def spot_card(chrome):
             past, calls = st(pg)['past'], st(pg)['calls']
             hold(pg, s, 0.65)
             first = st(pg)['rows'][:1]
-            if first != ['Add a point here']:
+            if first != ['Add a waypoint here']:
                 fails.append(f'{name}: held 20 m from the line, the first row says {first}')
             pg.js('sc.calm()')
-            pill_at = at(pg, row('Add a point here'))
+            pill_at = at(pg, row('Add a waypoint here'))
             n_before = pg.js('polku.planner.points.length')
-            press(pg, pill_at, f'{name}: Add a point here', True)
+            press(pg, pill_at, f'{name}: Add a waypoint here', True)
             for _ in range(12):  # (the tap's answer, on a slow page a moment after)
                 if pg.js('polku.planner.points.length') != n_before:
                     break
@@ -14598,7 +14600,7 @@ def spot_card(chrome):
               const x = (u) => [(u[0] - a[0]) * k, (u[1] - a[1]) * 111320], Bq = x(b), Q = x(q), f = Math.max(0, Math.min(1, (Q[0] * Bq[0] + Q[1] * Bq[1]) / (Bq[0] ** 2 + Bq[1] ** 2)));
               return {{ n: p.points.length, past: p.past.length, calls: (window.routerCalls || []).length, line: Math.hypot(Q[0] - f * Bq[0], Q[1] - f * Bq[1]) }}; }})()""")
             if r['n'] != 4 or r['past'] != past + 1 or r['calls'] != calls or r['line'] > 2:
-                fails.append(f"{name}: Add a point here 20 m from the line: {r} (4 points, on the line, no call); the row at {pill_at}, the cards: {pg.js('sc.log()')}")
+                fails.append(f"{name}: Add a waypoint here 20 m from the line: {r} (4 points, on the line, no call); the row at {pill_at}, the cards: {pg.js('sc.log()')}")
             pg.js('polku.planner.undo(); true')
             time.sleep(0.6)
         route(pg, name, ROUTE)
@@ -15266,7 +15268,7 @@ SE_STATE = """(() => {
   return { secs, waits: [...L.querySelectorAll('.wpl-wait')].filter(vis).map((x) => `${x.dataset.i}:${x.dataset.wait}:${x.textContent}`), reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn, .wpl-foot .btn[aria-pressed]')].filter(vis).map((b) => b.textContent.trim()), // (Reorder's own button, Done while reordering, #761)
     rows: [...L.querySelectorAll('.wpl-row')].map((x) => x.dataset.i), shapes: [...L.querySelectorAll('.wpl-point.shape')].filter(vis).length,
     list: [...L.querySelectorAll('.wpl-point:not(.shape), .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch')
-      ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '', differs: b.classList.contains('differs') }
+      ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '' }
       : { at: b.dataset.i, line: [...b.querySelectorAll('small:not(.wpl-tag)')].map((x) => x.textContent).join(' ') })),
     kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.listScroller().scrollTop,
     short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
@@ -15286,7 +15288,7 @@ SE_LINE = """(() => {
     heads: [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', sum: s.querySelector('.sec2-head small')?.textContent || '',
       ring: !!s.querySelector('.sec2-head .ic') && ps(s.querySelector('.sec2-head .ic')).boxShadow.startsWith(col(getComputedStyle(s).getPropertyValue('--part') || 'transparent')) })),
     stretches: [...L.querySelectorAll('.wpl-stretch')].filter(vis).map((b) => { const ln = b.querySelector('.wpl-line'), bf = ps(ln, '::before');
-      return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', line: /repeating/.test(bf.backgroundImage) ? (bf.backgroundImage.match(/rgba?\\([^)]*\\)/) || [''])[0] : bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
+      return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', weight: ps(b.querySelector('.how')).fontWeight, line: /repeating/.test(bf.backgroundImage) ? (bf.backgroundImage.match(/rgba?\\([^)]*\\)/) || [''])[0] : bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
         want: col(getComputedStyle(b.closest('.sec2')).getPropertyValue('--part') || 'transparent'), beads: ln.querySelectorAll('.bead').length, fold: b.parentElement.querySelector('.wpl-unfold')?.textContent.trim() ?? null }; }),
     brk: [...L.querySelectorAll('.wpl-point')].filter((b) => /radial/.test(ps(b.firstElementChild, '::after').backgroundImage)).map((b) => b.dataset.i),
     badges: [...document.querySelectorAll('.wp-sport')].map((e) => getComputedStyle(e).backgroundColor),
@@ -15364,7 +15366,7 @@ def sections_list(chrome):
                 if 'line' in r and re.search(r'\d k?m\b(?!/)', r['line']):
                     fails.append(f"{name}: {what}: point {r['at']}'s line has a distance: {r['line']!r}")
                 elif 'text' in r:
-                    want = 'Straight line' if r['at'] == straight else None
+                    want = 'Freehand' if r['at'] == straight else None
             # (#761, Parts 7: the heading in the list with the totals; each stretch's numbers, then how it's drawn, its line
             # in the sport's colour, dashed where straight; the label starts with the numbers)
             ln = pg.js(SE_LINE)
@@ -15372,10 +15374,12 @@ def sections_list(chrome):
                 fails.append(f"{name}: {what}: the part's heading {ln['heads']}, beside Reorder {ln['inTop']} (want MTB in the list, its totals, its ring in its colour)")
             for x in ln['stretches']:
                 straight_one = x['at'] == (straight or '')[1:]
-                want = 'Straight line' if straight_one else 'Follow paths'
+                want = 'Freehand' if straight_one else 'Follow paths'
                 lab = next((r['label'] for r in rows if r.get('at') == f"~{x['at']}"), '')
                 if not x['nums'][:1].isdigit() or not x['how'].startswith(want) or x['dash'] != straight_one or (not straight_one and x['line'] != x['want']) or x['want'] != ln['mtb'] or not lab.startswith(x['nums']):
                     fails.append(f"{name}: {what}: stretch ~{x['at']}: {x}, label {lab!r} (want its numbers, then {want}, its line MTB's {ln['mtb']}{', dashed' if straight_one else ''}, its label starting with its numbers)")
+            if straight and len({x['weight'] for x in ln['stretches']}) > 1:
+                fails.append(f"{name}: {what}: how the stretches are drawn, in weights {[(x['how'], x['weight']) for x in ln['stretches']]} (want Follow paths as Freehand, #761)")
         # (#761) a point's line: when you leave or arrive and the weather with its icons, no Start or End in it (its label
         # says them); and a stretch in the dark says how much, with a moon on its line where that begins
         r = pg.js("""(() => { const p = polku.planner, L = p.els.points, row = (i) => L.querySelector(`.wpl-point[data-i="${i}"]`);
@@ -15429,6 +15433,13 @@ def sections_list(chrome):
         s = st(pg)
         if len(s['secs']) != 2 or not any(w.startswith('4:stop:Stop · 30 min') for w in s['waits']):
             fails.append(f"{name}: a stop at via 4: sections {[x['title'] for x in s['secs']]}, waits {s['waits']}")
+        # (#761) its part's heading adds the stop to the time on the move, and the numbers row has the whole time with the
+        # time on the move under it
+        t = pg.js("""(() => { const p = polku.planner, A = p.analysis, all = A.timeWind || A.time, mv = all - A.waits.reduce((n, w) => n + w.sec, 0), el = document.querySelector('.sum-time');
+          const f = (sec, u) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}${u}` : `${m} min`; };
+          return { heads: [...p.els.points.querySelectorAll('.sec2-head small')].map((x) => x.textContent), b: el.querySelector('b').textContent, small: el.querySelector('small').textContent, all: f(all, ' min'), mv: f(mv, '') }; })()""")
+        if sum(' + 30 min stop' in x for x in t['heads']) != 1 or t['b'] != t['all'] or t['small'] != f"{t['mv']} moving":
+            fails.append(f"{name}: a stop at via 4: the headings {t['heads']}, the time {t['b']!r} over {t['small']!r} (want one heading's time + 30 min stop, the whole time {t['all']} over {t['mv']} moving, #761)")
         pg.js("polku.planner.setStop(5, { on: 420 }); true")
         time.sleep(0.8)
         s = st(pg)
@@ -15571,6 +15582,12 @@ def sections_list(chrome):
               "const d = new Date(); d.setHours(10, 0, 0, 0); if (d < Date.now()) d.setDate(d.getDate() + 1); polku.planner.setLeave(d / 1000); true")
         route(pg, name, {'mode': 'auto', 'pts': PTS})
         WARNS = "JSON.stringify([...polku.planner.els.points.querySelectorAll('.wpl-point, .wpl-stretch')].map((x) => `${x.dataset.i ?? `${x.dataset.from}-${x.dataset.to}`}:${x.querySelector('.wpl-warns')?.textContent || ''}`).filter((x) => !x.endsWith(':')))"
+        # (#761's words) an unnamed waypoint is Waypoint 2, in an exported GPX too, and ⌄ shows "the 5 waypoints"
+        w = pg.js("""(async () => { const p = polku.planner, G = await import(location.origin + '/js/gpx.js');
+          const gpx = G.toGPX({ name: 'x', coords: p.points, waypoints: p.points, names: p.points.map((_, i) => p.nameOf(i)) });
+          return [p.nameOf(2), /<name>Waypoint 2<[/]name>/.test(gpx), p.els.points.querySelector('.wpl-unfold')?.getAttribute('aria-label')]; })()""")
+        if w != ['Waypoint 2', True, 'Show the 5 waypoints']:
+            fails.append(f"{name}: an unnamed waypoint's name, in a GPX, and ⌄'s label: {w} (want Waypoint 2, in the GPX, Show the 5 waypoints)")
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').click(); true")
         got, lab = json.loads(pg.js(WARNS)), pg.js("polku.planner.els.points.querySelector('.wpl-point[data-i=\"4\"]')?.getAttribute('aria-label') || ''")
         if got != ['0-6:1 to read 1 worth a look', '2:1 worth a look', '4:1 to read'] or '1 to read' not in lab:
@@ -15591,9 +15608,9 @@ def sections_list(chrome):
         pg.js("window.rcTags = 'highway=path surface=dirt mtb:scale=1'; true")
         route(pg, name, {'pts': PTS, 'names': [[1, 'Kaupintie'], [2, 'Sorila'], [3, 'Lielahti']]})  # (named: points you see, with rows)
         # (straight stretches: Check's "Straight line" is worth a look, but the list says it in the stretch's words, not as one)
-        n = pg.js("[polku.planner.itemsAlong().filter((x) => /^Straight line/.test(x.w.text)).length, polku.planner.els.points.querySelectorAll('.wpl-warns .look').length]")
+        n = pg.js("[polku.planner.itemsAlong().filter((x) => /^Freehand/.test(x.w.text)).length, polku.planner.els.points.querySelectorAll('.wpl-warns .look').length]")
         if not n[0] or n[1]:
-            fails.append(f"{name}: straight stretches: Check's Straight line items {n[0]}, worth a look in the list {n[1]} (want some, none, #761)")
+            fails.append(f"{name}: straight stretches: Check's Freehand items {n[0]}, worth a look in the list {n[1]} (want some, none, #761)")
         press(pg, at(pg, top('Reorder')), f'{name}: Reorder', touch)
         before = json.loads(pg.js("JSON.stringify(polku.planner.points)"))
         g = at(pg, "polku.planner.els.points.querySelector('.wpl-row[data-i=\"2\"] .wpl-grip')")
@@ -16387,7 +16404,9 @@ LV_NIGHTS = """(async () => {
   LV.set('card', '07:00');
   await wait(400);
   if (JSON.stringify(p.stopAt(2)) !== '{"on":420,"n":2}') errs.push(`Go on at 07:00: ${JSON.stringify(p.stopAt(2))}`);
-  if (document.querySelector('.sum-time small')?.textContent !== '3 days') errs.push(`the summary: ${document.querySelector('.sum-time small')?.textContent}`);
+  // (#761) the whole time follows the hour you go on: an hour less
+  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  if (document.querySelector('.sum-time b')?.textContent !== short(p.analysis.timeWind || p.analysis.time)) errs.push(`the summary: ${document.querySelector('.sum-time b')?.textContent}, not ${short(p.analysis.timeWind || p.analysis.time)}`);
   p.cards.close();
   p.reveal('points');
   await wait(300);
@@ -17704,7 +17723,7 @@ GROUPS = [
     ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap shows when you\'re there and the profile up to it, a hold or a right-click opens it with its actions in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
-    ('routecard', [route_card, near_line], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
+    ('routecard', [route_card, near_line], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('pickcard', [pick_card], 'a pick (#574): road works on the same card with their years (#564, #565), the line at the spot on a phone, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
     ('spotcard', [spot_card, spot_card_foot], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),

@@ -4,6 +4,17 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-04
 
+### The whole time, and the time on the move ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- The route's time above the map is the whole of it, its stops, changeovers and nights too, and under it the time on the move, as in "38 min" over "8 min moving". A route over days shows its whole span there too, "16 h 40", in place of "2 days". A route without waits still says when you leave under its time.
+- In the route's list, a part's heading adds its stops to its time on the move, as in "8 min + 30 min stop", so its time and the clock times in its rows agree. **Go** still breaks the time down by way, sport and wait.
+
+### Waypoints and Freehand ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- The planner calls the points of your route waypoints, as in **Add a waypoint here**, **Edit this waypoint**, **At this waypoint** and Reorder's "Drag a waypoint". A waypoint without a name of its own is "Waypoint 2", no longer "Via 2": on its card, in the route's list, in notes and as its name in an exported GPX file.
+- The drawing mode that joins your waypoints with straight lines is called **Freehand**: in the drawing menu (still the S key), in **Edit this stretch**, on the route's list, in the map's key and in the profile's way types. Check's item for it reads "Freehand — not following paths". If you had hidden those items in Check, hide them again under their new name.
+- In the route's list, every stretch says how it's drawn in the same way, **Follow paths** as strongly as **Freehand**; a Freehand stretch's line is dashed.
+
 ### Changeovers, stops and nights on the route's line ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list in **Route**, a changeover, a stop and a night each have a row of their own on the route's line, with their times: "Changeover · 5 min" and "10:01–10:06" under it. A night shows its hours, and sunset and sunrise with their icons. A changeover says when your bike or your boat stays there.
