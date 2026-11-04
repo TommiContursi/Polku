@@ -183,9 +183,10 @@ export class Planner {
     this.points = [];
     this.legs = [];
     this.readKeys = new Set(); // Check's items marked read (25d part 3): with the saved route on this device, not in links
-    // (the peek's row as a count beside the numbers: narrow, 200 % on a phone; short, a phone on its side at 150 or 200 %)
+    // (what to read as a count beside the numbers where the key facts' line isn't shown: a phone on its side, 200 % on a
+    // phone, css/app.css .kf; narrow, above Done, else before it)
     this.narrowMQ = matchMedia('(max-width: 300px)');
-    this.shortMQ = matchMedia('(max-height: 300px)');
+    this.shortMQ = matchMedia('(max-height: 520px)');
     for (const mq of [this.narrowMQ, this.shortMQ]) mq.addEventListener('change', () => this.renderReadRow());
     this.mode = ACTIVITIES[app.activity()].mode;
     this.craft = store.get('craft', 'kayak');
@@ -2968,7 +2969,7 @@ export class Planner {
       // (a route of one section, while editing: its heading beside Reorder, where the hint was, #764)
       const beside = one && !ro;
       if (beside) this.els.pointsTop.prepend(head);
-      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, beside ? null : head, line, this.sectionWarn(sec), rows));
+      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, beside ? null : head, line, rows));
     });
   }
 
@@ -2978,19 +2979,6 @@ export class Planner {
     let i = 0;
     while (i < a.along.length - 1 && a.along[i] < m - 1) i++;
     return i;
-  }
-
-  // a section's warnings: what's to read before you go and what wasn't checked there, as the peek's row says it; a tap
-  // shows the first on the route
-  sectionWarn(sec) {
-    const on = this.itemsOn(sec), read = on.filter((x) => x.g === 'read'), not = on.filter((x) => x.g === 'not');
-    if (!read.length && !not.length) return null;
-    const first = read[0] || not[0], k = read.length || not.length;
-    const box = h('button', { type: 'button', class: `warn-row ${read.length ? 'danger' : 'unk'}`, onclick: () => this.openItemCard(first, { from: 'section', el: box }) },
-      h('span', { 'aria-hidden': 'true', html: icon(read.length ? 'warnf' : 'unk', 20) }),
-      h('span', {}, h('b', {}, `${k} ${read.length ? 'to read before you go' : 'not checked'}`), h('small', {}, `${first.w.text}${k > 1 ? ` and ${k - 1} more` : ''}${read.length && not.length ? ` · ${not.length} not checked` : ''}`)),
-      h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
-    return box;
   }
 
   // a point's row: its marker, its name, there at · the weather · how far · Via n; a stop, a night (with its morning's
@@ -4323,15 +4311,15 @@ export class Planner {
     // the next leg is drawn, undo, redo and More are in the toolbox (buildTools(), #745). Before there's a route, and
     // while a round trip is open, it holds the start instead (renderStart(), A with 25b).
     // (wider screens: ✕ at the header row's end, as the mock-up of step 3 has it; phones: the folded line's)
-    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX());
+    // what to read, as a count beside the numbers where the key facts' line isn't shown (renderReadRow())
+    this.els.readRow = h('div', { class: 'warn-row pl-readrow compact', hidden: true });
+    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.readRow, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX());
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
     this.els.card = h('div', { class: 'card-peek', hidden: true });
-    // the peek's row: what to read before you go, and what wasn't checked (25d part 3)
-    this.els.readRow = h('div', { class: 'warn-row pl-readrow', hidden: true });
     // key facts (#471's A2): what stands out on this route, under its numbers
     this.els.facts = h('div', { class: 'kf', role: 'group', 'aria-label': 'Key facts', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.readRow, this.els.row, this.els.facts, this.els.way), this.els.said);
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.row, this.els.facts, this.els.way), this.els.said);
     // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, the
     // planner put away too, at its spot elsewhere (js/card.js, 25d)
     this.cards = new CardHost(this.map, {
@@ -4524,7 +4512,6 @@ export class Planner {
     open = open ?? s.el.dataset.open !== 'true';
     if (id === 'colours' && !open) this.clearCategoryPreview();
     s.el.dataset.open = String(open);
-    if (id === 'points') this.renderReadRow(); // (the list's warnings in sight or not)
     s.head.setAttribute('aria-expanded', String(open));
     store.set('sections', { ...store.get('sections', {}), [id]: open });
     if (open && id === 'profile') requestAnimationFrame(() => this.chart.draw());
@@ -4559,7 +4546,7 @@ export class Planner {
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(st)) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'folded') this.setSheetState('open');
     }
-    this.renderOnRoute(); // (the row gone while Check is in sight; Worth a look's markers with it)
+    this.renderOnRoute(); // (Worth a look's markers while Check is in sight)
   }
 
   // The profile at its size, or smaller (yours, kept)
@@ -5020,7 +5007,6 @@ export class Planner {
   setDock(where) {
     store.set('plannerDock', where);
     this.renderDockBtn();
-    this.renderReadRow(); // (under the numbers beside the side panel, above them at the bottom)
     this.setSheetState(store.get('sheetState', {})[this.layout()], { remember: false });
     this.app.onActiveChange(this.active); // padding vars, button states
     this.renderStart(); // the start's own button says where the panel goes next
@@ -5068,7 +5054,7 @@ export class Planner {
     if (remember && this.cards.place !== 'peek') store.set('sheetState', { ...store.get('sheetState', {}), [lay]: st }); // (a card's sizes are its own, not the planner's)
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { folded: 'Open it as it was', peek: 'Show more', half: 'Drag up for everything, down for the map', full: 'Drag down for the map' }[st] || '';
-    this.renderOnRoute(); // (the row gone while Check is in sight; Worth a look's markers with it; and the folded line)
+    this.renderOnRoute(); // (Worth a look's markers while Check is in sight; and the folded line)
     if (!['folded', 'peek'].includes(st)) requestAnimationFrame(() => this.chart.draw());
     // (folded, the toolbox is the mode, undo and redo; what comes back when it opens isn't new, so it doesn't fade in)
     if ((st === 'folded') !== (was === 'folded')) { this.toolsShown = null; this.renderTools(); }
@@ -5238,7 +5224,7 @@ export class Planner {
     // what a key does happens at once, nothing animates for the keyboard: from a key's own events (Space
     // presses a button on keyup), until what they changed has been drawn (its sizes are measured again in that frame)
     for (const t of ['keydown', 'keyup']) addEventListener(t, () => { this.keyed = true; cancelAnimationFrame(this.keyedOff); this.keyedOff = requestAnimationFrame(() => { this.keyedOff = requestAnimationFrame(() => { this.keyed = false; }); }); }, true);
-    this.sideMQ.addEventListener('change', () => { this.setSheetState(store.get('sheetState', {})[this.layout()]); this.renderReadRow(); });
+    this.sideMQ.addEventListener('change', () => this.setSheetState(store.get('sheetState', {})[this.layout()]));
     // the summary rows are always visible: the peek height is theirs,
     // under the peek's last row, 14 px (the header's padding and 6 px more). With ⌄'s row (40 px, the handle's alone is 18),
     // none under a row with room of its own, the key facts' line or a card (whose header has none, css/app.css), so the row
@@ -5254,18 +5240,9 @@ export class Planner {
       // as it was last docked (placeToolsNow() says whether the peek docks it)
       const box = this.tools, shown = !!box && !box.hidden, take = shown && box.parentElement === this.panel ? hd.offsetTop - this.els.top.offsetHeight : 0;
       if (take) this.dockTake = take;
-      // …and the row of what to read, which goes above the peek while Check or the list says it (renderReadRow()): shown
-      // for the measure, with nothing drawn in between; at 200 % the count beside the numbers too, as it narrows them (Done
-      // did, before #745); not the count in the numbers' line (short), which adds none
-      const rr = this.els.readRow, readRow = rr && rr.hidden && this.panel.dataset.state !== 'peek' && !this.shortMQ.matches
-        && this.readRowWanted() && !this.checkInSight('peek') && !this.listInSight('peek'), count = readRow && this.narrowMQ.matches;
-      if (readRow) rr.hidden = false;
-      if (count) this.els.row.classList.add('with-count');
       // (a card is measured from what it holds, as it fills the sheet at half and full: its peek is the same at every size)
       const c = this.cards.place === 'peek' && this.cards.box, cardAt = c ? c.getBoundingClientRect().top - hd.getBoundingClientRect().top : 0;
       this.peekBare = Math.ceil(hd.offsetTop - take + (c ? cardAt : hd.offsetHeight + grow) + under());
-      if (readRow) rr.hidden = true;
-      if (count) this.els.row.classList.remove('with-count');
       let h = this.peekBare + (this.panel.dataset.state === 'peek' ? take : shown && this.peekDocks ? this.dockTake || 0 : 0);
       // a card's peek is no taller than the planner's own with a route, nor than 52 % of the window: the rest of it is a swipe
       // up, at half (#603). It always has the card's name and numbers, as the planner's has its route's: where the planner's
@@ -6072,6 +6049,8 @@ export class Planner {
 
   // Key facts (#471's A2) [kf2-gravel, kf2-multi, kf2-days]: one line under the route's numbers saying what stands out on
   // this route, else the sport's usual fact; a row a sport on a route of two. A tap opens where it's told in full.
+  // What Check found to read takes the first line's place (#741): the same height in the same place, so nothing moves when
+  // its answer comes late; the weather not known and the other sport's row stay under it.
   renderFacts(a) {
     const box = this.els.facts, multi = !!a && this.isMulti();
     box.hidden = !a;
@@ -6079,9 +6058,15 @@ export class Planner {
     if (!a) { box.replaceChildren(); return; }
     const list = multi ? sportFacts(a, { noWeather: this.noWeather(a) }) : factLine(this.keyFacts(a));
     const ICON = { wind: 'wind', rain: 'rain', bwind: 'wind', unpaved: 'route', day: 'moon', climb: 'mountain', high: 'mountain', wx: 'cloudSun' };
-    box.replaceChildren(...list.map((x) => h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
-      h('span', { 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }), h('span', { html: x.html }),
-      h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) }))));
+    const R = this.readSays(), at = [...box.children].indexOf(document.activeElement); // (a late answer keeps the focus where it was)
+    box.replaceChildren(...(R ? [R, ...list.slice(1)] : list).map((x) => (x === R
+      ? h('button', { type: 'button', class: `kf-b warn ${R.n1 ? 'danger' : 'unk'}`, 'aria-label': R.aria, onclick: () => this.openFromRow() },
+        h('span', { 'aria-hidden': 'true', html: icon(R.n1 ? 'warnf' : 'unk', 16) }), h('span', {}, R.n1 ? `${R.n1} to read before you go` : `${R.n3} not checked`),
+        h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) }))
+      : h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
+        h('span', { 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }), h('span', { html: x.html }),
+        h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) })))));
+    if (at >= 0) box.children[Math.min(at, box.children.length - 1)].focus({ preventScroll: true });
   }
   openFact(x) {
     const a = this.analysis;
@@ -6837,16 +6822,13 @@ export class Planner {
     if (open) this.cards.refresh(); // (its "2 of 5", or closed when it's gone)
   }
 
-  // What shows Check's items outside Check: the peek's row and the markers on the route (25d part 3)
+  // What shows Check's items outside Check: the key facts' line, the count where that isn't shown, and the markers on the
+  // route (25d part 3)
   renderOnRoute() {
+    this.renderFacts(this.analysis);
     this.renderReadRow();
     this.drawHeads();
     this.renderFold();
-  }
-  // whether Route's list is in sight with a section's warning in it (then the peek's row doesn't say it again)
-  listInSight(st = this.panel.dataset.state) {
-    return this.active && this.tab === 'route' && (this.layout() !== 'sheet' || this.sideMQ.matches || !['folded', 'peek'].includes(st))
-      && this.sec.points && this.sec.points.el.dataset.open !== 'false' && !!this.els.points.querySelector('.sec2 .warn-row');
   }
   // whether Check is in sight: a desktop's Check tab, a phone's with the sheet above its peek
   checkInSight(st = this.panel.dataset.state) {
@@ -6929,47 +6911,37 @@ export class Planner {
     }, 120);
   }
 
-  // The peek's row [jc-peek, jc-desk]: what to read before you go, else what wasn't checked, in words, in the warning
-  // box; a tap shows the first of them on the route. Not while Check is in sight (a phone's sheet above its peek, a
-  // desktop's Check tab); an item's card in the peek takes the head (.carded).
-  // Only what's still unread: ✕ marks it all read, with Undo, and the row goes until something new or changed comes.
-  // whether the peek's row has something to say: something to read before you go, or not checked
-  readRowWanted() { return !!this.analysis && !!(this.unread(this.heads, 'read').length || this.unread(this.heads, 'not').length); }
-  renderReadRow() {
-    const el = this.els.readRow, H = this.heads;
-    if (!el) return;
-    el.hidden = !this.readRowWanted() || this.checkInSight() || this.listInSight();
-    const R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
-    // narrow (200 %, a small phone): the count alone, beside the numbers above Done; short (a phone on its side at 150 or
-    // 200 %, #438): before Done, in the numbers' line. Either way it takes none of the map (the review of #416); its name
-    // says the rest, a tap shows the first, and Check's All read marks them all
-    const narrow = this.narrowMQ.matches, inline = narrow || this.shortMQ.matches, row = this.els.row;
-    // where it goes leaves the numbers still: a side panel hangs from its top, so under them; a sheet grows up from its foot, so above them (#594)
-    const after = inline || (this.sideMQ && this.layout() === 'side'), host = inline ? this.els.sum : row;
-    if ((after ? host.nextElementSibling : host.previousElementSibling) !== el) host[after ? 'after' : 'before'](el);
-    row.classList.toggle('with-count', narrow && !el.hidden);
-    row.classList.toggle('count-inline', inline && !narrow && !el.hidden);
-    if (el.hidden) return;
-    const first = n1 ? R1[0] : R3[0], n = n1 || n3;
-    const go = (...kids) => h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}. Show it on the route`, onclick: () => this.openFromRow() },
-      h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }), ...kids);
-    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}${inline ? ' compact' : ''}`;
-    if (inline) { el.replaceChildren(go(h('b', { 'aria-hidden': 'true' }, String(n)))); return; }
-    el.replaceChildren(
-      go(h('span', {}, h('b', {}, `${n} ${n1 ? 'to read before you go' : 'not checked'}`),
-        h('small', {}, `${first.w.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
-      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })),
-      h('button', { type: 'button', class: 'tool pl-readrow-x', title: 'Mark all read: they stay in Check and on the map', 'aria-label': `Mark all ${n1 + n3} read`, onclick: () => this.markRead([...R1, ...R3], { note: true }), html: icon('close', 20) }));
+  // What Check found that's still unread [jc-peek, jc-desk]: what to read before you go, else what wasn't checked; null
+  // with neither. The key facts' line says it in its first line's place (renderFacts()), a tap opens Check at the first.
+  // ✕ on an item's card, Got it and Check's All read mark them read, and the line is the key fact again.
+  readSays() {
+    const H = this.heads, R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
+    if (!this.analysis || !(n1 || n3)) return null;
+    const first = n1 ? R1[0] : R3[0];
+    return { n1, n3, aria: `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}${n1 + n3 > 1 ? ` and ${n1 + n3 - 1} more` : ''}. Open Check at the first` };
   }
-  // the row: the first unread one's card; on a desktop in Check, beside its box, the two together [jc-desk-sel]
+  // where the key facts' line isn't shown (css/app.css .kf: a phone on its side, 200 % on a phone, a short phone whose
+  // map's buttons need its room, js/main.js fitColumn()), the count alone says it in the numbers' row, taking none of the
+  // map (the review of #416, #438): narrow, beside the numbers above Done; else before Done, in the numbers' line
+  renderReadRow() {
+    const el = this.els.readRow, row = this.els.row, R = this.readSays(), narrow = this.narrowMQ.matches;
+    if (!el) return;
+    el.hidden = !R || !(this.shortMQ.matches || document.body.classList.contains('kf-off'));
+    row.classList.toggle('with-count', narrow && !el.hidden);
+    row.classList.toggle('count-inline', !narrow && !el.hidden);
+    if (el.hidden) return;
+    el.className = `warn-row pl-readrow compact ${R.n1 ? 'danger' : 'unk'}`;
+    el.replaceChildren(h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': R.aria, onclick: () => this.openFromRow() },
+      h('span', { 'aria-hidden': 'true', html: icon(R.n1 ? 'warnf' : 'unk', 22) }), h('b', { 'aria-hidden': 'true' }, String(R.n1 || R.n3))));
+  }
+  // the line (or the count): Check, at the first unread one, with its card (a phone's sheet at half under it) [jc-desk-sel]
   openFromRow() {
     const H = this.heads, first = this.unread(H, 'read')[0] || this.unread(H, 'not')[0];
     if (!first) return;
-    if (this.cards.where() === 'peek') { this.openItemCard(first, { from: 'row' }); return; }
     this.setTab('check', { user: true });
     requestAnimationFrame(() => {
       const el = this.els.warnings.querySelector(`[data-key="${CSS.escape(itemKey(first))}"]`);
-      if (el) { el.scrollIntoView({ block: 'nearest' }); el.focus({ preventScroll: true }); } // (Escape and ✕ bring the focus back to it: the row is gone)
+      if (el) { el.scrollIntoView({ block: 'nearest' }); el.focus({ preventScroll: true }); } // (Escape and ✕ bring the focus back to it)
       this.openItemCard(first, { from: 'row', el });
     });
   }

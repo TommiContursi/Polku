@@ -860,6 +860,10 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .kf-b > span:first-child, .kf-b > span:last-child { flex: none; display: grid; color: var(--muted); }
 .kf-b > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .kf-b.miss > span:first-child { color: var(--unk); }
+/* what Check found to read, in the first line's place (#741): in the warning's colour, its sign and its words */
+.kf-b.warn { font-weight: 600; }
+.kf-b.warn.danger, .kf-b.warn.danger > span:first-child { color: var(--danger); }
+.kf-b.warn.unk, .kf-b.warn.unk > span:first-child { color: var(--unk); }
 .kf.legs .kf-b > span:first-child { color: var(--accent); }
 .kf-d { color: var(--muted); font-variant-numeric: tabular-nums; }
 .kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
@@ -1392,7 +1396,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-top .btn { min-height: var(--target); margin-left: auto; }
 .wpl-top > .sec2-head { flex: 1 1 12em; } /* (a route of one section's, beside Reorder, #764; Reorder under it where 12em don't fit) */
 .wpl-top:has(> .sec2-head) + .wpl > .sec2 { padding-top: 0; } /* (its rows 6 px under it, as under a heading in its section) */
-.wpl .sec2 > .warn-row { margin-left: 28px; width: calc(100% - 28px); }
 .wpl .rows { margin: 0; } /* (inside the list: no room for a hover past its edge, as a card has) */
 .wpl-point > span:first-child { width: 22px; place-items: center; }
 .wpl-point.shape b { font-weight: var(--weight-regular); }
@@ -1630,29 +1633,19 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .looked li small { margin-left: auto; color: var(--muted); text-align: right; }
 .looked p { margin: 10px 0 0; }
 .checks .hidden-kinds { padding-top: 10px; }
-/* the peek's row (25d part 3) [jc-peek, jc-desk]: above the numbers, in the warning box, with ✕ to mark it all read
-   (jr-peek); in a short window (200 %, a phone on its side) its count alone, so the numbers stay in the peek (its name
-   says the rest, and a tap shows them) */
-.pl-readrow { margin: 2px 0 8px; padding: 0; gap: 0; align-items: stretch; }
-.pl-readrow-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: var(--row-h); padding: 8px 4px 8px 12px; border: 0; border-radius: 11px 0 0 11px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+/* what to read where the key facts' line isn't shown (#741; a phone on its side, 200 %): the count alone, in the numbers'
+   row, so it takes none of the map (the review of #416, #438). Narrow: beside the numbers above Done; else before Done,
+   in the numbers' line. Its sign and its name say what it is, a tap opens Check at the first */
+.pl-readrow-go { display: flex; align-items: center; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; }
 .pl-readrow-go > span:first-child { flex: none; display: grid; }
-.pl-readrow-go > span:nth-child(2) { flex: 1; min-width: 0; }
-.pl-readrow-go .way-chev { flex: none; display: grid; color: var(--muted); }
 .pl-readrow.danger .pl-readrow-go > span:first-child { color: var(--danger); }
 .pl-readrow.unk .pl-readrow-go > span:first-child { color: var(--unk); }
-.pl-readrow-x { flex: none; align-self: stretch; height: auto; border-left: 1px solid color-mix(in srgb, var(--text) 14%, transparent); border-radius: 0 11px 11px 0; color: var(--muted); }
-/* (narrow screens make a .tool 30 × 32: the ✕ stays a finger's size, as high as the row, #443) */
-.pl-readrow .pl-readrow-x { width: var(--target); height: auto; }
-.pl-readrow-go:focus-visible, .pl-readrow-x:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-@media (max-height: 520px) { .pl-readrow-go { min-height: var(--target); padding-block: 6px; } .pl-readrow small { display: none; } }
-/* narrow (200 %, a small phone): the count alone, beside the numbers above Done; short (a phone on its side at 150 or
-   200 %, #438): before Done, in the numbers' line. Either way it takes none of the map (the review of #416); its sign and
-   its name say what it is, and Check's All read marks them all */
+.pl-readrow-go:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* (beside the distance and the time: the climb's line, the widest, keeps the room to its right) */
 .sheet-row.with-count { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr; gap: 4px 8px; align-items: start; }
 .sheet-row.with-count > .sheet-sum { grid-row: 1 / span 3; }
 .sheet-row.with-count > :not(.sheet-sum) { grid-column: 2; }
-.sheet-row > .pl-readrow { flex: none; margin: 0; }
+.sheet-row > .pl-readrow { flex: none; margin: 0; padding: 0; }
 /* (in the numbers' line, they close up as on a 360 px phone, so the line holds them and the count) */
 .sheet-row.count-inline .sheet-sum { column-gap: 12px; }
 .sheet-row.count-inline .sum-item b { font-size: 16.5px; }

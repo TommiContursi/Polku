@@ -16391,6 +16391,61 @@ KF_CLIMBS = """(() => {
 })()"""
 
 
+# A warning takes the key fact's slot (#741): Check's answer coming late changes the line under the route's numbers to
+# "1 to read before you go" in the same place, so neither the sheet's top nor the numbers move, at a phone's peek and half
+# and in both of a desktop's docks; the route's list doesn't say it again, and the line opens Check at the item.
+WARN_SLOT = """async (st, n) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, errs = [];
+  p.markRead([...p.unread(p.heads, 'read'), ...p.unread(p.heads, 'not')]); // (nothing left to read: the key fact)
+  if (st) p.setSheetState(st); else st = 'side';
+  await wait(400); await """ + SETTLED + """;
+  const at = () => ({ top: Math.round(p.panel.getBoundingClientRect().top), sum: Math.round(p.els.sum.getBoundingClientRect().top) });
+  const line = () => p.els.facts.querySelector('.kf-b'), b = at();
+  if (!line() || line().classList.contains('warn')) errs.push(`${st}: before the answer the line says "${line() && line().textContent}"`);
+  p.analysis.darkWarn = [{ at: 900, len: 40, kind: 'test', ic: 'warn', noHide: true, text: `In the dark for ${n} km`, note: 'A test item.', tier: 'read', src: { kind: 'calculated', by: 'the sun’s times' }, lngLat: p.analysis.pts[90] }];
+  p.renderWarnings(); // (Check's answer, late)
+  await wait(300); await """ + SETTLED + """;
+  const a = at(), l = line(), rr = p.els.readRow;
+  if (a.top !== b.top || a.sum !== b.sum) errs.push(`${st}: as Check answered, the sheet's top went ${b.top} → ${a.top} px, the numbers ${b.sum} → ${a.sum} px`);
+  if (!l || !l.classList.contains('warn') || l.textContent.trim() !== '1 to read before you go') errs.push(`${st}: the line under the numbers says "${l && l.textContent.trim()}"`);
+  if (p.els.points.querySelector('.sec2 .warn-row')) errs.push(`${st}: the route's list says it again`);
+  if (rr && !rr.hidden && rr.offsetParent) errs.push(`${st}: a row says it too: "${rr.textContent}"`);
+  return errs;
+}"""
+
+
+def warn_slot(chrome):
+    fails = []
+    for w, h_, phone, dock, states in ((390, 844, True, 'left', ('peek', 'half')), (1440, 900, False, 'left', ('',)), (1440, 900, False, 'bottom', ('peek', 'half'))):
+        name = f'{w} × {h_}' + ('' if phone else f', {dock} dock')
+        pg = chrome.page(w, h_, phone)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': f'"{dock}"'}, '#14/63.30/26.71')
+            pg.js("(async () => {" + CHECK_ROUTE + " p.setTab('route'); return true; })()", timeout=90000)
+            for k, st in enumerate(states):
+                fails += [f'{name}: {e}' for e in pg.js(f"({WARN_SLOT})({json.dumps(st)}, {k + 2})", timeout=30000)]
+            # the line opens Check at the item, with its card
+            at = pg.js("(() => { const r = polku.planner.els.facts.querySelector('.kf-b.warn')?.getBoundingClientRect(); return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; })()")
+            if not at:
+                fails.append(f'{name}: no line to tap')
+            else:
+                if phone:
+                    pg.quick_tap(at['x'], at['y'])
+                else:
+                    for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                        pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                              'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                time.sleep(1)
+                r = pg.js("(() => { const p = polku.planner, c = p.cards.current; return { tab: p.tab, card: c && c.kind, key: c && c.itemKey }; })()")
+                if r['tab'] != 'check' or r['card'] != 'item' or 'In the dark' not in (r['key'] or ''):
+                    fails.append(f'{name}: the line opened {r}, not Check at the item')
+            fails += [f'{name}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a warning takes the key fact's slot: nothing moves when Check answers, both docks, the line opens Check" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def keyfacts(chrome):
     fails = []
 
@@ -17438,7 +17493,7 @@ GROUPS = [
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
-    ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
+    ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
