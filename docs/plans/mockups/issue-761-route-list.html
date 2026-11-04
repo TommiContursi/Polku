@@ -11,11 +11,12 @@
   app: nothing here is loaded by Polku. The controls are css/app.css's own, by their class names (the rows, the marks,
   the buttons, the section's head, the warning); what Rows adds is in the marked block below.
 
-  ?v=today|rows|line  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
-  &how=every|differs (Line: how every stretch is drawn, or only one that differs)
+  ?v=today|rows|line|parts  &frame=390|360|side|bottom  &route=one|two|fi|multi  &foot=reverse|clear  &add=on  &hover=on  &zoom=200  &reorder=top|foot
+  &how=every|differs (Line and Parts: how every stretch is drawn, or only one that differs)
 
   Line (the second round, 2026-11-04) is main at 3db83e6, drawn with the app's own classes, plus the block marked "new
-  in Line"; Today and Rows stay as they were drawn.
+  in Line"; Parts (the third round, the same day) is Line with the block marked "new in Parts". Today and Rows stay as
+  they were drawn.
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
@@ -158,6 +159,47 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .lined .wpl-stretch .wpl-nums { font-size: 14px; font-variant-numeric: tabular-nums; }
 .lined .wpl-stretch small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; }
 .lined .wpl-stretch.differs small .how { color: var(--accent); font-weight: var(--weight-name); }
+
+/* ======================================================= new in Parts (the third round, 2026-11-04): Line, with each
+   sport's part in its own colour (the map's and the profile's Sport colours, --sport-…), a dotted break where the
+   sport changes, a straight line dashed as on the map, the folded waypoints as beads on the line, and every mark
+   numbered as on the map. A route of one sport keeps the grey line. */
+.wpl.parts { --rail: #858f8a; --w: 3px; }
+:root[data-theme="dark"] .wpl.parts { --rail: #7d8882;
+  /* (the map's Sport colours are for the map; on the dark glass some are under 3:1, so the list takes lighter ones) */
+  --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; }
+.parts .sec2 { --part: var(--rail); }
+/* the line: through each point's mark, along each stretch, from each sport's disc down */
+.parts .wpl-point > span:first-child { position: relative; align-self: stretch; }
+.parts .wpl-point > span:first-child::before, .parts .wpl-point > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); background: var(--part); }
+.parts .wpl-point > span:first-child::before { top: -6px; bottom: 50%; }
+.parts .wpl-point > span:first-child::after { top: 50%; bottom: -6px; }
+.parts .wpl-point.first > span:first-child::before, .parts .wpl-point.last > span:first-child::after { display: none; }
+.parts .wpl-point .wp-mini { position: relative; z-index: 1; }
+.parts .wpl-strow > .row > .wpl-line { position: relative; }
+.parts .wpl-stretch .wpl-line::before { position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: -3px; bottom: -3px; height: auto; min-height: 0; border-radius: 0; background: var(--part); }
+/* a straight line dashed, as the map draws it */
+.parts .wpl-stretch.straight .wpl-line::before, .parts .wpl-point.in-dash > span:first-child::before, .parts .wpl-point.out-dash > span:first-child::after { background: repeating-linear-gradient(to bottom, var(--part) 0 6px, transparent 6px 10px); }
+/* where the sport changes the line breaks: dots from the changeover point to the next sport's disc */
+.parts .wpl-point.change > span:first-child::after { background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 3px / 3px 6px repeat-y; }
+.parts .wpl-point.change .wpl-tag svg { color: var(--next); }
+.parts .sec2-head { padding-left: 10px; gap: 12px; }
+/* every part's heading the same, the first too: its sport's icon in a ring of its colour, on the line, in the marks'
+   column */
+.parts .sec2-head > span { position: relative; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
+.parts .sec2-head > span > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
+.parts .sec2-head > span::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
+.parts .sec2 + .sec2 > .sec2-head > span::before { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; top: -20px; height: 20px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
+.parts .sec2-nums { position: relative; padding-left: 44px; }
+.parts .sec2-head + .sec2-nums::before { content: ""; position: absolute; left: calc(21px - var(--w) / 2); width: var(--w); top: -1px; bottom: -6px; background: var(--part); }
+.wpl.parts .sec2 + .sec2 { position: relative; box-shadow: none; }
+.wpl.parts .sec2 + .sec2::after { content: ""; position: absolute; top: 0; left: 44px; right: 0; height: 1px; background: var(--line); }
+/* the waypoints a stretch folds: beads on its line, one for each, three at most (its words say which) */
+.parts .wpl-line .bead { position: absolute; z-index: 1; left: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--surface-solid); box-shadow: inset 0 0 0 2px var(--part); }
+/* the stretch: its numbers to read, then how it's drawn and the waypoints it folds, by number */
+.parts .wpl-stretch .wpl-nums { font-size: 14px; font-variant-numeric: tabular-nums; }
+.parts .wpl-stretch small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; }
+.parts .wpl-stretch.differs small .ic, .parts .wpl-stretch.differs small .how { color: var(--text); font-weight: var(--weight-name); }
 </style>
 </head>
 <body class="mk">
@@ -165,7 +207,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
   <h1>The route's list</h1>
   <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. <b>Line</b> is the second round (2026-11-04), from trying the first PR: the list as it is on <code>main</code> now, with one line from the start to the end through every waypoint, the stretch's numbers to read, how every stretch is drawn, and waypoints in the words. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
   <div class="bars">
-    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button></div>
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button></div>
       <span>Stretch</span><div class="sw" data-k="how"><button data-v="every">How every stretch is drawn</button><button data-v="differs">Only where it differs</button></div></div>
     <div class="bar"><span>Frame</span><div class="sw" data-k="frame"><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button><button data-v="side">Side dock</button><button data-v="bottom">Bottom dock</button></div>
       <span>Zoom</span><div class="sw" data-k="zoom"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
@@ -195,6 +237,14 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li><b>Said once:</b> a part of one stretch has no numbers under its heading, as its stretch says them (PR 2 rebuilds the heading).</li>
       <li><b>Waypoints:</b> the points a stretch folds are "3 waypoints", never "shaping points". The list's other words that say "point" are in the plan.</li>
     </ul>
+    <h2>What Parts changes (the third round)</h2>
+    <ul>
+      <li><b>Each sport has its colour:</b> its part of the line and its icon at the head of the part are in the sport's colour, the one the map and the profile's strip already use for it (Colour by Sport); in dark mode a lighter one, for 3:1 on the dark glass. A route of one sport keeps the grey line.</li>
+      <li><b>Every part's heading looks the same,</b> the first too: the sport's icon in a ring of its colour, on the line in the marks' column, then its name and its two ends. (Line had the ring only from the second part on, and the first heading looked like something else.)</li>
+      <li><b>The line breaks where the sport changes:</b> it goes into the changeover point in one sport's colour, then dots lead past the rule between the parts to the next sport's icon. The changeover's own icon is in the next sport's colour too. Colour is never alone: the heading has the sport's icon and name, the point its tag.</li>
+      <li><b>A straight line is dashed,</b> as on the map, and says so in words; a stretch that isn't along paths has its word in the text colour, bolder, not the accent's green.</li>
+      <li><b>Folded waypoints show on the line:</b> a bead for each, three at most, and the words say which: "waypoints 1–5". The marks are numbered as on the map, so the point after five folded waypoints is 6.</li>
+    </ul>
     <h2>Left out</h2>
     <ul>
       <li>The map, the toolbar and the profile are stand-ins; the numbers are made up for a 5.8 km route.</li>
@@ -208,7 +258,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 import { icon, h } from '../../../js/ui.js';
 
 const q = new URLSearchParams(location.search);
-const S = { v: q.get('v') || 'line', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
+const S = { v: q.get('v') || 'parts', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
 
 // the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
 const ROUTES = {
@@ -363,6 +413,46 @@ function line(R, frame, S) {
   return body;
 }
 
+// ---------- Parts: Line, with each sport's part in its colour, the line broken where the sport changes, a straight
+// line dashed, and the folded waypoints as beads, numbered as on the map
+function parts(R, frame, S) {
+  const n = R.points.length, secs = sections(R), one = secs.length === 1;
+  // each point's number as the map shows it: folded waypoints count, so the point after five of them is 6
+  const at = [0];
+  R.legs.forEach((L, k) => at.push(at[k] + (L.shaping || 0) + 1));
+  const markOf = (i) => h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : i === n - 1 ? 'wp-end' : 'wp-via'}`, 'aria-hidden': 'true' }, i === 0 || i === n - 1 ? '' : String(at[i]));
+  const body = [h('button', { type: 'button', class: 'sec-head wide', 'aria-expanded': 'true' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(at[n - 1] + 1)), h('span', { class: 'sec-sum' }), h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }))];
+  const headOf = (sec) => h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(sec.sport.icon, one ? 20 : 16) }), h('b', {}, `${sec.sport.label} · ${R.points[sec.from].name} → ${R.points[sec.to].name}`));
+  const top = h('div', { class: 'wpl-top' });
+  if (one) top.append(headOf(secs[0]));
+  top.append(h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': 'false', html: `${icon('grip', 16)} Reorder` }));
+  body.push(top);
+  const straight = (k) => !!(R.legs[k] && R.legs[k].icon === 'straight');
+  const pointRow = (i, k) => { const p = R.points[i], change = !one && k < secs.length - 1 && i === secs[k].to, lab = i === 0 ? 'Start' : i === n - 1 ? 'End' : `Via ${at[i]}`;
+    const cls = ['row', 'wpl-point', one && i === 0 ? 'first' : '', i === n - 1 ? 'last' : '', change ? 'change' : '', straight(i - 1) ? 'in-dash' : '', !change && straight(i) ? 'out-dash' : ''].filter(Boolean).join(' ');
+    return h('button', { type: 'button', class: cls, style: change ? `--next: var(--sport-${secs[k + 1].sport.k})` : null },
+      h('span', { 'aria-hidden': 'true' }, markOf(i)),
+      h('span', {}, h('b', { class: 'wpl-name' }, p.name), p.tag ? h('small', { class: 'wpl-tag', html: `${icon(p.tag.icon, 15)}<span>${p.tag.text}</span>` }) : null, h('small', {}, [sub(p, i), lab].join(' · '))),
+      chev()); };
+  const stretchRow = (k) => { const L = R.legs[k], how = L.how || 'Follow paths', m = L.shaping || 0, a = at[k] + 1;
+    const more = m > 1 ? `waypoints ${a}–${a + m - 1}` : m ? `waypoint ${a}` : '';
+    const says = [L.differs || S.how === 'every' ? `${icon(L.icon || 'auto', 14)}<span class="how">${how}</span>` : '', more].filter(Boolean).join(' · ');
+    const beads = []; for (let j = 0, b = Math.min(m, 3); j < b; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (b + 1)}%` }));
+    return h('div', { class: 'wpl-strow' }, h('button', { type: 'button', class: `row wpl-stretch${L.differs ? ' differs' : ''}${straight(k) ? ' straight' : ''}`, 'aria-label': [L.n, how, more].filter(Boolean).join(', ') },
+        h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
+        h('span', {}, h('b', { class: 'wpl-nums' }, L.n), says ? h('small', { html: says }) : null)),
+      m ? h('button', { type: 'button', class: 'tool wpl-unfold', 'aria-expanded': 'false', 'aria-label': `Show ${more}`, html: icon('chevronDown', 18) }) : null); };
+  const list = h('ul', { class: 'wpl parts' });
+  secs.forEach((sec, k) => {
+    const rows = h('div', { class: 'rows', role: 'group' });
+    if (k === 0) rows.append(pointRow(0, 0));
+    for (let j = sec.from; j < sec.to; j++) rows.append(stretchRow(j), pointRow(j + 1, k));
+    list.append(h('li', { class: 'sec2', style: one ? null : `--part: var(--sport-${sec.sport.k})` }, one ? null : headOf(sec), one || sec.to - sec.from < 2 ? null : h('div', { class: 'sec2-nums' }, sec.sport.nums), rows));
+  });
+  body.push(list, ...mainFoot(R, frame === 'bottom'));
+  return body;
+}
+
 function draw() {
   const stage = document.getElementById('stage');
   stage.replaceChildren();
@@ -373,10 +463,10 @@ function draw() {
   if (phone) sheet.append(h('div', { class: 'sheet-handle' }), h('div', { class: 'pl-tools-row' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` })));
   sheet.append(head(R, S.v !== 'today'));
   const body = h('div', { class: 'sheet-body' });
-  body.append(...(S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
+  body.append(...(S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
   sheet.append(body);
   frame.append(sheet);
-  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.' }[S.v];
+  const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.' }[S.v];
   stage.append(h('div', {}, frame, h('p', { class: 'cap' }, cap)));
   for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[sw.dataset.k] === b.dataset.v));
   const u = new URL(location); for (const k in S) u.searchParams.set(k, S[k]); history.replaceState(null, '', u);

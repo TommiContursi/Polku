@@ -7,7 +7,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **PR 1: built, PR #780** (2026-11-04). Two differences from the mock-up: a stretch is a target (36 px with a mouse, 44 px by touch, its line still 2 px), and a differing stretch's word is in the accent colour, as this plan says. A point's line keeps its label after a name (Via 2). A carry has no word of its own yet (#779).
 - **PR 1 merged** (#780), and #782 fixed how Reorder moves a change of sport (#783).
-- **Waiting:** the user's choice on the second round, **Line** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
+- **Waiting:** the user's choice on the second and third rounds, **Line** and **Parts** in the mock-up (below). PR 2 waits on it, since it rebuilds the section heads the line runs through.
 - **Next:** PR 2, the sport's row with its values.
 
 ## What the user asked for (2026-11-04)
@@ -56,12 +56,23 @@ The mock-up's **Line** (`?v=line&route=multi`) is main at 3db83e6 with this roun
 
   "High point" stays: it's the profile's. The checks in `tools/smoke.py` that read these words change with them.
 
+**The third round, Parts** (`?v=parts&route=multi`, the same day). From looking at Line: a change of sport should be easier to see, and the parts shouldn't run into one line. Waypoints folded into a stretch were hard to notice ("5 waypoints" in grey, and then a mark numbered 1). Dashes and colour may help. Parts is Line with:
+
+- **Each sport in its colour.** Its part of the line and the ring round its icon at the head of the part are in the sport's colour. That's `--sport-…`, which Colour by Sport already uses on the map and in the profile's strip. In dark mode the list takes lighter ones (orange-500, sky-400 and so on), since some of the map's are under 3:1 on the dark glass. A route of one sport keeps the grey line.
+- **Every part's heading the same, the first too.** The sport's icon sits in a ring of its colour, on the line, in the marks' column. In Line the first heading had no ring and looked like something else.
+- **The line breaks where the sport changes.** It goes into the changeover point in one colour, then dots lead past the rule between the parts to the next sport's ring. The changeover tag's icon is in the next sport's colour.
+- **A straight line is dashed,** as on the map. A word saying how a stretch is drawn is in the text colour, bolder, not the accent's green: DESIGN.md keeps the accent for what's chosen.
+- **Folded waypoints on the line.** Each one is a bead, three at most, and the words say which: "waypoints 1–5". The marks are numbered as on the map, so the point after five folded waypoints is 6.
+
+Colour is never alone: the heading has the sport's icon and name, the changeover point its tag, the stretch its words.
+
 **Open questions:**
 - Does an unnamed waypoint stay "Via 4", or become "Waypoint 4" as in Komoot?
-- How every stretch is drawn, or only where it differs?
+- Should every stretch say how it's drawn, or only where it differs?
+- Should the map's changeover badge (`wp-sport`, green today) take the next sport's colour too?
 
-**The PRs, if Line is chosen:** each tried on the phone before the next, ahead of PR 2.
-1. The line and the stretch's words: `pointRow()`, `stretchRow()`, `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`; `sections`.
+**The PRs, if Parts is chosen:** each tried on the phone before the next, ahead of PR 2.
+1. The line, the parts' colours and the stretch's words: `pointRow()`, `stretchRow()` (the beads, the numbers as on the map), `sectionRows()`, the CSS of `wpl-point`, `wpl-line`, `sec2-head` and `sec2-nums`, the dark list's sport colours; `sections` and `multi`.
 2. Waypoints in the words, across the planner, with their checks.
 
 Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).
