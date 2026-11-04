@@ -11,7 +11,7 @@
 // re-samples the grid. Particle canvases render at 1× pixel density.
 
 import { measuredSnow } from './winter.js';
-import { forecastCells, cellSize, latticePoint, alignSeries, uncached } from './weather.js';
+import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind } from './weather.js';
 import { compass } from './geo.js';
 import { h, icon, store } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
@@ -1072,10 +1072,7 @@ export class WeatherOverlay {
         return;
       }
       const night = sunAltitude(ll[1], ll[0], this.cur.t) < -3;
-      const snow = s.temp < 0.5;
-      const kind = s.rain >= 0.1 ? (snow ? 'snow' : 'rain')
-        : !(s.cloud >= 0) ? (night ? 'moon' : 'cloudSun')
-          : s.cloud >= 70 ? 'cloud' : s.cloud >= 25 ? (night ? 'cloud' : 'cloudSun') : night ? 'moon' : 'sun';
+      const kind = skyKind(s.rain, s.temp, s.cloud, night);
       const sky = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' }[kind];
       const sum = this.accum(ll, 6);
       const rainTxt = s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry';

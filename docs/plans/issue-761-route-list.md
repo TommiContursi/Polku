@@ -13,7 +13,13 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
   - **A carry** reads "Over water · carry 120 m" (#779).
   - **The map's changeover badge** is in the next sport's colour.
   - **Reorder** moved under the list already, first in the foot (where PR 5 puts it), since the heading took its row: at half on a phone the start and the first stretch stay in sight (#740, #764). While reordering, the same button is Done.
-- **Next:** PR 3, the waits as parts of their own.
+- **PR 3: built** (2026-11-04), the waits as parts of their own, on `claude/761-waits` after #789.
+  - **As drawn in Parts 7.** Waits have their times, a night its sunset and sunrise (two new icons, `sunset` and `sunrise`), each part a start row, the points' lines Arrive and Leave with the weather's icons, and the warnings and the dark on the stretches.
+  - **The sky's icon** uses the forecast's cloud cover, now carried along the route, by the timeline's own rule (`skyKind()`).
+  - **The tooltips** are the app's own `tooltip()`, in words, so the weather is in words there, not icons.
+  - **Unfolded waypoints** say the warnings on the way to them, as a stretch does, so a warning shows where it is (from testing, 2026-11-04). A stretch no longer counts one that ends where it begins.
+  - **Worth a look** is counted too, and twilight said as the dark is: "300 m after sunset", "before sunrise", with their icons, on a line of their own under the warnings (chosen from testing, 2026-11-04).
+- **Next:** PR 4, the words: waypoints, Waypoint n and Freehand.
 
 ## What the user asked for (2026-11-04)
 
@@ -142,7 +148,7 @@ From looking at Parts 2: the first part starts with a row, the start's ("Leave n
 
 **Open questions:**
 - ~~Which word for a straight stretch?~~ **Freehand**, chosen on 2026-11-04.
-- "Worth a look" in the list, or only in Check?
+- ~~"Worth a look" in the list, or only in Check?~~ **In the list** (chosen on 2026-11-04, from testing), Check's quieter third, but for what the list says its own way: a straight line and a carry, the gear left at a changeover, a short night, and twilight, said as the dark is ("300 m after sunset"), so a route at dusk doesn't mark every stretch.
 - Waits as parts of their own (Parts 2), or a point's tag (Parts)? Each part's start: under its heading (Parts 3), or its own row (Parts 4)?
 
 Not checked: Reorder's view, unfolded waypoints on the line, a night's row, the bottom dock (one column, as on main).
@@ -162,7 +168,7 @@ Each small, each tried on the phone before the next, in this order unless the us
    - the map's changeover badge in the next sport's colour (an idea from testing, 2026-11-04).
 
    `pointRow()`, `stretchRow()`, `sectionRows()`, the CSS of `wpl-point`, `wpl-line` and `sec2-head`; `sections` and `multi`.
-3. **The waits as parts of their own:**
+3. **The waits as parts of their own** (built, 2026-11-04):
    - a changeover, a stop and a night, with their times, and a night's sunset and sunrise (two new icons);
    - each part's start row;
    - the points' lines with Arrive, Leave and the weather's icons;
@@ -183,4 +189,4 @@ Each small, each tried on the phone before the next, in this order unless the us
    (Elsewhere: sunset and sunrise in the weather timeline is #788; the line filling up as you go is on #180, On the way.)
 9. **The bottom dock's two columns.**
 
-Not checked in the mock-up yet: Reorder's view, unfolded waypoints on the line, the bottom dock.
+Not checked in the mock-up yet: Reorder's view, the bottom dock. Unfolded waypoints were built in PR 3 without a mock-up: a waypoint's row as any other, with its warnings.

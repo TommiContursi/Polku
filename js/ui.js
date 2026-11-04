@@ -65,6 +65,9 @@ const P = {
   pause: '<path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>',
+  // the sun on the horizon, going down and coming up (a night in the route's list, #761)
+  sunset: '<path d="M2 20h20"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0"/><path d="M3.5 15.5 5 16.5M20.5 15.5 19 16.5"/><path d="M12 2.5V9M9 6l3 3 3-3"/>',
+  sunrise: '<path d="M2 20h20"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0"/><path d="M3.5 15.5 5 16.5M20.5 15.5 19 16.5"/><path d="M12 9V2.5M9 5.5l3-3 3 3"/>',
   cloud: '<path d="M7 19a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 13a3.5 3.5 0 0 1-2 6H7Z"/>',
   cloudSun: '<path d="M8 2.5v1.5M2.5 8H4M3.9 3.9l1 1M12.1 3.9l-1 1"/><path d="M5 10.5a3.5 3.5 0 0 1 6.3-3.4"/><path d="M8 20a4 4 0 1 1 1.3-7.8A5 5 0 0 1 19 14a3 3 0 0 1-1 6H8Z"/>',
   snow: '<path d="M7 15a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 9a4 4 0 0 1-2 6"/><path d="M8 18.5h.01M12 18h.01M16 18.5h.01M10 21.5h.01M14 21.5h.01" stroke-width="2.6"/>',
@@ -300,7 +303,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
  * while the pointer is on it, and Escape hides it (WCAG 1.4.13). Mouse only: a tap shows none.
  */
 let tipEl = null, tipShow = 0, tipHide = 0, tipLast = 0, tipFor = null;
-export function tooltip(el, { name, keys = '', text = '' }) {
+export function tooltip(el, { name, keys = '', text = '', beside = false }) {
   if (!tipEl) {
     tipEl = h('div', { class: 'tip', role: 'tooltip', id: 'tip', hidden: true });
     tipEl.addEventListener('pointerenter', () => clearTimeout(tipHide));
@@ -317,6 +320,13 @@ export function tooltip(el, { name, keys = '', text = '' }) {
     tipEl.hidden = false;
     el.setAttribute('aria-describedby', 'tip');
     const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, th = tipEl.offsetHeight;
+    if (beside && r.right + 8 + w <= innerWidth - 8) {
+      // a row in a list: beside it, so it never covers the next row (the route's list, #761)
+      tipEl.style.left = `${r.right + 8}px`;
+      tipEl.style.top = `${Math.max(8, Math.min(innerHeight - 8 - th, r.top + r.height / 2 - th / 2))}px`;
+      tipEl.style.transformOrigin = `0 ${th / 2}px`;
+      return;
+    }
     const left = Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2)), below = r.bottom + 8 + th <= innerHeight - 8;
     tipEl.style.left = `${left}px`;
     // under its button, or above it where there's no room (a toolbar at the map's foot, #468)
