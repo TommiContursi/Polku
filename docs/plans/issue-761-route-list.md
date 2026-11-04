@@ -26,7 +26,8 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
   - **Freehand** for the mode: the toolbar's menu (still S, since F frames the route), Edit this stretch, the list, the map's key, the profile's way type and Check's item. What a leg is (a stand-in drawn straight while it waits for the router, the legs over the ice) stays "a straight line".
   - **The times** (from testing, 2026-11-04): the numbers row's time is the whole of it, waits too, with "8 min moving" under it where waits make a difference (over days too, in place of "2 days"); a part's heading adds its stops, "8 min + 30 min stop". Its tooltip said the waits were in the time over days, when it showed only the time on the move; now they are.
   - (Elsewhere: Go's contents where the route says them, and maybe no Go tab, is #794; the map's route line in the list's style is #793.)
-- **Next:** PR 5, the foot.
+- **PR 5: built** (2026-11-04), the foot, on `claude/761-foot` after #792: Reorder, Reverse and Clear route in one row, Clear route a red button at its far end (`btn danger`, a new shared control; from testing, 2026-11-04, in place of the mock-up's two rows and its red text), on a line of its own at 360 px; Round trip, Back to start and Import in More and the cards only; Reorder's rows with the start's sport and each change, "MTB → Paddle · 15 min" (drawn without a mock-up: its words were set from testing).
+- **Next:** PR 6, the desktop's tools in the row.
 
 ## What the user asked for (2026-11-04)
 
@@ -195,5 +196,7 @@ Each small, each tried on the phone before the next, in this order unless the us
 8. **The Add row:** search, your location and saved places from the list's end.
    (Elsewhere: sunset and sunrise in the weather timeline is #788; the line filling up as you go is on #180, On the way.)
 9. **The bottom dock's two columns.**
+
+After PR 9 (chosen on 2026-11-04): the cards again (#690), with the toolbox that changes with each card on a phone (#797), and the profile as a tool on a phone (#796).
 
 Not checked in the mock-up yet: Reorder's view, the bottom dock. Unfolded waypoints were built in PR 3 without a mock-up: a waypoint's row as any other, with its warnings.
