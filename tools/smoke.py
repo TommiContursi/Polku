@@ -1439,8 +1439,9 @@ MULTI = """(async () => {
   p.reveal('points');
   await wait(200);
   // Route's list (25d's part 4): a section a sport, each changeover on its point's row with its minutes
-  const tags = [...document.querySelectorAll('.wpl-point .wpl-tag')].map((x) => x.textContent);
-  if (tags.join(' / ') !== 'Paddle from here · changeover 15 min / Run from here · changeover 3 min') errs.push(`changeovers in the list: ${tags.join(' / ') || 'none'}`);
+  // (#761: each changeover a wait of its own between two parts, no tag on its point's row)
+  const tags = [...document.querySelectorAll('.wpl > li.wait .wpl-wait b')].map((x) => x.textContent);
+  if (tags.join(' / ') !== 'Changeover · 15 min / Changeover · 3 min' || document.querySelector('.wpl-point .wpl-tag')) errs.push(`changeovers in the list: ${tags.join(' / ') || 'none'}`);
   const titles = [...document.querySelectorAll('.wpl .sec2-head b')].map((x) => x.textContent.split(' · ')[0]);
   if (titles.join() !== 'MTB,Paddle,Run') errs.push(`the list's sections: ${titles.join(', ')}`);
   p.reveal('speed');
@@ -1627,9 +1628,11 @@ STOPS = """(async () => {
   if (document.querySelectorAll('.wp-stop').length !== 2 || document.querySelectorAll('.wp-stop.night').length !== 1) errs.push(`stop badges: ${document.querySelectorAll('.wp-stop').length}`);
   p.reveal('points');
   await wait(200);
-  // Route's list (25d's part 4): the stop and the night on their points' rows; the night ends a day, its tag with the morning's weather once it's in (#764)
-  const tags = [...document.querySelectorAll('.wpl-point .wpl-tag')].map((x) => x.textContent);
-  if (tags.length !== 2 || !tags.some((t) => /^Stop · \\d+ min$/.test(t)) || !tags.some((t) => /^Night · go on at \\d\\d:\\d\\d( · (-?\\d+° · \\d+ m\\/s|No forecast yet))?$/.test(t)) || !/^Day 1 · /.test(document.querySelector('.wpl .sec2-head b')?.textContent || '')) errs.push(`stops in the waypoint list: ${tags.join(' / ') || 'none'}`);
+  // Route's list (#761): the stop a wait in its part, the night a wait between the days, with its hours and its times
+  // (sunset and sunrise with their icons); the night ends a day
+  const waits = [...document.querySelectorAll('.wpl-wait')].map((x) => `${x.dataset.wait}: ${x.textContent}`);
+  if (waits.length !== 2 || !waits.some((t) => /^stop: Stop · \\d+ min\\d\\d:\\d\\d–/.test(t) && document.querySelector('.wpl .sec2 .wpl-wait[data-wait=stop]')) || !waits.some((t) => /^night: Night · \\d+ h/.test(t) && document.querySelector('.wpl > li.wait .wpl-wait[data-wait=night]'))
+    || !/^Day 1 · /.test(document.querySelector('.wpl .sec2-head b')?.textContent || '')) errs.push(`stops in the waypoint list: ${waits.join(' / ') || 'none'}`);
   p.reveal('speed');
   await wait(200);
   const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
@@ -15258,7 +15261,7 @@ SE_STATE = """(() => {
   const p = polku.planner, L = p.els.points, vis = (e) => !!e && e.getClientRects().length > 0, r = (e) => e.getBoundingClientRect();
   const secs = [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', from: +s.dataset.from, to: +s.dataset.to, warn: !!s.querySelector('.warn-row'),
     rows: [...s.querySelectorAll('.wpl-point, .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch') ? `~${b.textContent}` : `${b.dataset.i}:${b.textContent}`)) }));
-  return { secs, reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn, .wpl-foot .btn[aria-pressed]')].filter(vis).map((b) => b.textContent.trim()), // (Reorder's own button, Done while reordering, #761)
+  return { secs, waits: [...L.querySelectorAll('.wpl-wait')].filter(vis).map((x) => `${x.dataset.i}:${x.dataset.wait}:${x.textContent}`), reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn, .wpl-foot .btn[aria-pressed]')].filter(vis).map((b) => b.textContent.trim()), // (Reorder's own button, Done while reordering, #761)
     rows: [...L.querySelectorAll('.wpl-row')].map((x) => x.dataset.i), shapes: [...L.querySelectorAll('.wpl-point.shape')].filter(vis).length,
     list: [...L.querySelectorAll('.wpl-point:not(.shape), .wpl-stretch')].filter(vis).map((b) => (b.classList.contains('wpl-stretch')
       ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '', differs: b.classList.contains('differs') }
@@ -15371,6 +15374,19 @@ def sections_list(chrome):
                 lab = next((r['label'] for r in rows if r.get('at') == f"~{x['at']}"), '')
                 if not x['nums'][:1].isdigit() or not x['how'].startswith(want) or x['dash'] != straight_one or (not straight_one and x['line'] != x['want']) or x['want'] != ln['mtb'] or not lab.startswith(x['nums']):
                     fails.append(f"{name}: {what}: stretch ~{x['at']}: {x}, label {lab!r} (want its numbers, then {want}, its line MTB's {ln['mtb']}{', dashed' if straight_one else ''}, its label starting with its numbers)")
+        # (#761) a point's line: when you leave or arrive and the weather with its icons, no Start or End in it (its label
+        # says them); and a stretch in the dark says how much, with a moon on its line where that begins
+        r = pg.js("""(() => { const p = polku.planner, L = p.els.points, row = (i) => L.querySelector(`.wpl-point[data-i="${i}"]`);
+          const line = (i) => row(i)?.querySelector('.wx-line'), out = [];
+          if (!/^Leave /.test(line(0)?.textContent || '') || /Start/.test(line(0)?.textContent || '') || !/Start/.test(row(0)?.getAttribute('aria-label') || '')) out.push(`the start's line ${line(0)?.textContent}, its label ${row(0)?.getAttribute('aria-label')}`);
+          if (!/^Arrive /.test(line(3)?.textContent || '') || /End/.test(line(3)?.textContent || '')) out.push(`the end's line ${line(3)?.textContent}`);
+          if (p.analysis.wind && !(line(0)?.querySelectorAll('svg').length >= 2)) out.push('no icons for the weather on the start\u2019s line');
+          const a0 = p.lengthTo(1); p.analysis.darkWarn = [{ at: a0 + 20, len: 250, kind: 'dark', text: 'In the dark for 250 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
+          const st1 = L.querySelector('.wpl-stretch[data-from="1"]'), dark = st1?.querySelector('.wpl-warns .dark')?.textContent || '';
+          if (!/250 m in the dark/.test(dark) || !st1?.querySelector('.wpl-line .moon')) out.push(`a stretch in the dark: ${dark || 'nothing'} said, ${st1?.querySelector('.wpl-line .moon') ? 'a' : 'no'} moon on its line`);
+          p.analysis.darkWarn = []; p.renderWaypoints();
+          return out; })()""")
+        fails.extend(f"{name}: {x}" for x in r)
         # a carry over land on a paddling stretch says so after how it's drawn (#779)
         route(pg, name, {'pts': PTS[:2]})
         c = pg.js("""(() => { const p = polku.planner; p.setSportFrom(0, 'paddle'); const l = p.legs[0], [a, b] = p.points, m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
@@ -15394,20 +15410,24 @@ def sections_list(chrome):
             fails.append(f"{name}: MTB then Paddle: the stretches' lines {[(x['at'], x['line'], x['want']) for x in ln['stretches']]} (Paddle {ln['paddle']})")
         if ln['badges'] != [ln['paddle']]:
             fails.append(f"{name}: the map's changeover badge {ln['badges']}, not Paddle's {ln['paddle']}")
-        elif not any(r.startswith('3:') and 'Paddle from here' in r for r in s['secs'][0]['rows']):
-            fails.append(f"{name}: the change of sport's row: {s['secs'][0]['rows']}")
+        # (#761: the changeover a wait of its own, with its times; Paddle's part starts with via 3's row, as you leave it)
+        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–\d\d:\d\d', w) for w in s['waits'])
+                                    or not s['secs'][1]['rows'] or not s['secs'][1]['rows'][0].startswith('3:') or 'Leave ' not in s['secs'][1]['rows'][0]):
+            fails.append(f"{name}: the change of sport: waits {s['waits']}, Paddle's rows {s['secs'][1]['rows'][:1]}")
         if s['short']:
             fails.append(f"{name}: rows under 44 px: {s['short']}")
-        # a stop at via 4: three sections; a night at via 5 ends one, with its morning's start, and the sections are days
+        # a stop at via 4: a wait in its part, still two parts (#761); a night at via 5 ends a day, a wait between the
+        # days, and Day 2 starts with via 5's row as you leave it in the morning
         pg.js("polku.planner.setStop(4, { min: 30 }); true")
         time.sleep(0.8)
-        if len(st(pg)['secs']) != 3:
-            fails.append(f"{name}: a stop at via 4: sections {[x['title'] for x in st(pg)['secs']]}")
+        s = st(pg)
+        if len(s['secs']) != 2 or not any(w.startswith('4:stop:Stop · 30 min') for w in s['waits']):
+            fails.append(f"{name}: a stop at via 4: sections {[x['title'] for x in s['secs']]}, waits {s['waits']}")
         pg.js("polku.planner.setStop(5, { on: 420 }); true")
         time.sleep(0.8)
         s = st(pg)
-        if not s['secs'] or not s['secs'][0]['title'].startswith('Day 1') or not any(r.startswith('5:') and 'go on at 07:00' in r for x in s['secs'] for r in x['rows']):
-            fails.append(f"{name}: a night at via 5: sections {[x['title'] for x in s['secs']]}, rows {[r for x in s['secs'] for r in x['rows']]}")
+        if not s['secs'] or not s['secs'][0]['title'].startswith('Day 1') or not any(w.startswith('5:night:Night · ') for w in s['waits']) or not any(r.startswith('5:') and 'Leave 07:00' in r for x in s['secs'] for r in x['rows']):
+            fails.append(f"{name}: a night at via 5: sections {[x['title'] for x in s['secs']]}, waits {s['waits']}, rows {[r for x in s['secs'] for r in x['rows']]}")
         # six points that only shape the line: one stretch row, folded; unfolded six rows; a card and Back keep it so
         route(pg, name, {'pts': [[23.790 + 0.004 * k, 61.512 + 0.0008 * (k % 2)] for k in range(8)]})
         s = st(pg)
@@ -15520,6 +15540,23 @@ def sections_list(chrome):
             if st(pg)['kind'] != 'item':
                 fails.append(f"{name}: the line's warning: {st(pg)['kind']} card")
             pg.js("polku.planner.cards.close(); polku.planner.setTab('route'); true")
+        # (#761) its stretch in the list says it too, in Check's words; on a desktop a stretch's tooltip and a point's say
+        # where along the route and when
+        n_read = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-stretch .wpl-warns .read')].map((x) => x.textContent)")
+        if not n_read or not all(re.fullmatch(r'\d+ to read', x) for x in n_read):
+            fails.append(f"{name}: the Read item's stretch in the list says {n_read}")
+        for sel, want in (("polku.planner.els.points.querySelector('.wpl-stretch')", r'^0 m → .+ from the start.*\d\d:\d\d → .*\d\d:\d\d'), ("polku.planner.els.points.querySelector('.wpl-point.last')", r'from the start.*Arrive .*\d\d:\d\d')):
+            q = at(pg, sel)
+            if not q:
+                fails.append(f"{name}: no {sel} for its tooltip")
+                continue
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': q['x'], 'y': q['y'], 'button': 'none'}, pg.s)
+            time.sleep(0.8)
+            tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()")
+            if not re.search(want, tip or ''):
+                fails.append(f"{name}: the tooltip of {sel.split('querySelector(')[1][:-1]}: {tip!r}")
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
         # a mouse drags a row by its grip: via 2 to place 4 (Reorder)
         pg.js("window.rcTags = 'highway=path surface=dirt mtb:scale=1'; true")
         route(pg, name, {'pts': PTS, 'names': [[1, 'Kaupintie'], [2, 'Sorila'], [3, 'Lielahti']]})  # (named: points you see, with rows)
@@ -16552,6 +16589,8 @@ WARN_SLOT = """async (st, n) => {
   if (a.top !== b.top || a.sum !== b.sum) errs.push(`${st}: as Check answered, the sheet's top went ${b.top} → ${a.top} px, the numbers ${b.sum} → ${a.sum} px`);
   if (!l || !l.classList.contains('warn') || l.textContent.trim() !== '1 to read before you go') errs.push(`${st}: the line under the numbers says "${l && l.textContent.trim()}"`);
   if (p.els.points.querySelector('.sec2 .warn-row')) errs.push(`${st}: the route's list says it again`);
+  const onLine = [...p.els.points.querySelectorAll('.wpl-stretch .wpl-warns .read')].map((x) => x.textContent);
+  if (onLine.join() !== '1 to read') errs.push(`${st}: the stretch's warnings in the list: ${onLine.join(' / ') || 'none'} (#761)`);
   if (rr && !rr.hidden && rr.offsetParent) errs.push(`${st}: a row says it too: "${rr.textContent}"`);
   return errs;
 }"""
@@ -16699,7 +16738,7 @@ def keyfacts(chrome):
                 press(pg, pg.js("KF.at(1)"), f'{name}: Paddle', touch)
                 pg.js(SETTLED)
                 r = pg.js("""(() => { const p = polku.planner, lit = [...document.querySelectorAll('.wpl .sec2.lit')];
-                  return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /There at [^·]+ · (-?\\d+° · \\d+ m\\/s|No forecast yet)/.test([...(lit[0]?.querySelectorAll('.wpl-point') || [])].pop()?.textContent || '') }; })()""")
+                  return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /^Arrive .+ (-?\\d+° \\d+ m\\/s|No forecast yet)$/.test([...(lit[0]?.querySelectorAll('.wpl-point .wx-line') || [])].pop()?.textContent || '') }; })()""")
                 if r != {'tab': 'route', 'lit': ['Paddle'], 'wx': True}:
                     fails.append(f"{name}: a tap on Paddle: {r}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
@@ -16737,7 +16776,7 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
     const first = L.querySelector('.wpl-stretch'); // (its first words: how it's drawn where it differs, else its numbers)
     const seen = (e) => { const r = e?.getBoundingClientRect(); return !!r && r.top >= b.top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1; }; // (the sheet's own foot: the body runs on under it)
     return { hint: vis(document.querySelector('.wpl-hint')), nums: vis(L.querySelector('.sec2-nums')), reorder: vis([...document.querySelectorAll('.wpl-foot .btn')].find((b) => b.textContent.trim() === 'Reorder')), beside: vis(p.els.pointsTop.querySelector('.sec2-head')), head: vis(L.querySelector('.sec2 .sec2-head small')), warn: vis(L.querySelector('.warn-row')),
-      start: line(start, `Leave ${p.leaveWords()}`), end: line(end, `There at ${p.clockOf(p.arriveAt(p.points.length - 1))}`),
+      start: line(start, `Leave ${p.leaveWords()}`), end: line(end, `Arrive ${p.clockOf(p.arriveAt(p.points.length - 1))}`),
       seen: seen(start), stretch: seen(first?.querySelector('b') || first?.querySelector('small')) };
   },
   // How you go ›, then Back: the focus on its row, and the row in sight under the list (#740)
@@ -17022,14 +17061,14 @@ PF_JS = """(async () => {
   p.reveal('points'); await wait(300);
   // a route of one section: the weather as you leave on Start's row, and none yet on End's (#764)
   const wxRow = (i) => p.els.points.querySelector(`.wpl-point[data-i="${i}"] small`)?.textContent || '';
-  if (!wxRow(0).startsWith(`Leave ${p.leaveWords()} · 5° · 8 m/s`) || !/^There at [^·]+ · No forecast yet/.test(wxRow(p.points.length - 1))) errs.push(`the start's and the end's weather: ${wxRow(0)} / ${wxRow(p.points.length - 1)}`);
+  if (wxRow(0) !== `Leave ${p.leaveWords()} 5° 8 m/s` || !/^Arrive .+ No forecast yet$/.test(wxRow(p.points.length - 1))) errs.push(`the start's and the end's weather: ${wxRow(0)} / ${wxRow(p.points.length - 1)}`);
   // a night at via 1: its row says the weather as you get there, its tag the morning's (the point's own sample, timed as
   // you go on), 9° there and 5° everywhere else, the forecast reaching the end (#764)
   p.setStop(1, { on: 480 }); clearTimeout(p.retimeTimer);
   const j = p.sampleAtM(p.lengthTo(1)), t9 = fill(5); t9[j] = 9;
   set(t9); a.wind.beyond = -1; p.renderAnalysis();
-  const night = p.els.points.querySelector('.wpl-point[data-i="1"]')?.textContent || '';
-  if (!/There at [^·]+ · 5° · 8 m\\/s/.test(night) || !/go on at \\d\\d:\\d\\d · 9° · 8 m\\/s/.test(night)) errs.push(`a night's weather, as you get there and in the morning: ${night}`);
+  const night = [...p.els.points.querySelectorAll('.wpl-point[data-i="1"] .wx-line')].map((x) => x.textContent); // (as you get there, and Day 2's first row: as you go on)
+  if (!/^Arrive .+ 5° 8 m\\/s$/.test(night[0] || '') || !/^Leave .+ 9° 8 m\\/s$/.test(night[1] || '')) errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
   // paddling: its wind as far as it reaches, and from where it isn't known
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
