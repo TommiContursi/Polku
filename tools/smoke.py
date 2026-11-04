@@ -15250,6 +15250,8 @@ def sections_list(chrome):
                     ok = (r['text'].startswith(want) if want else r['text'][:1].isdigit() and 'Follow paths' not in r['text'] and 'Follow paths' in r['label'])
                     if not ok or r['differs'] != bool(want) or not r['label'].startswith(r['text']):
                         fails.append(f"{name}: {what}: stretch {r['at']}: {r} (want {want or 'its numbers alone'} first, its label starting with its words)")
+        # MTB for three legs, then Paddle for three: two sections; the change of sport on its point's row
+        route(pg, name, {'pts': PTS})
         pg.js("polku.planner.setSportFrom(3, 'paddle'); true")
         time.sleep(1.0)
         s = st(pg)
