@@ -12,7 +12,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
   - **As drawn in Parts 7,** with three differences: a route of one part keeps its own name (an import's or a picked loop's, #751) after its sport; the points' lines and a changeover's tag are still today's until PR 3; and "shaping points" stays in the unfold's label until PR 4.
   - **A carry** reads "Over water · carry 120 m" (#779).
   - **The map's changeover badge** is in the next sport's colour.
-  - **Reorder** moved under the list already, first in the foot (where PR 5 puts it), since the heading took its row: at half on a phone the start and the first stretch stay in sight (#740, #764). Done stays at the top while reordering.
+  - **Reorder** moved under the list already, first in the foot (where PR 5 puts it), since the heading took its row: at half on a phone the start and the first stretch stay in sight (#740, #764). While reordering, the same button is Done.
 - **Next:** PR 3, the waits as parts of their own.
 
 ## What the user asked for (2026-11-04)
