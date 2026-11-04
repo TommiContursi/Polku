@@ -7,7 +7,9 @@ import heapq
 import json
 import re
 import os
+import resource
 import shutil
+import sys
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -91,7 +93,7 @@ def collect_roots(inputs):
     return roots,expected
 
 
-def build_geometry(source, inputs, output, source_info, *, remove_source=False):
+def build_geometry(source, inputs, output, source_info, *, remove_source=False, progress=None):
     started = time.monotonic()
     source,output = Path(source),Path(output)
     if source_info['timestamp'] != next(iter(inputs.values()))[1]['source']['timestamp']:
@@ -100,6 +102,7 @@ def build_geometry(source, inputs, output, source_info, *, remove_source=False):
         raise FileExistsError(output)
     if remove_source and source.resolve().parent != output.resolve().parent:
         raise ValueError('Only the explicitly selected sibling temporary source can be removed')
+    if progress:progress('collect_roots')
     roots,expected = collect_roots(inputs)
     if not roots:
         raise ValueError('Country inputs contain no geometry roots')
@@ -107,7 +110,9 @@ def build_geometry(source, inputs, output, source_info, *, remove_source=False):
     with tempfile.TemporaryDirectory(prefix='.'+output.name+'-',dir=output.parent) as tmp:
         tmp = Path(tmp)
         subset = tmp/'complete.osm.pbf'
+        if progress:progress('complete_references',roots=len(roots))
         tracker = reference_subset(source,roots,subset)
+        if progress:progress('verify_country_identities',subset_bytes=subset.stat().st_size)
         sets = {kind:getattr(tracker,kind+'_ids')() for kind in ('node','way','relation')}
         evidenced = set()
         for root,_ in inputs.values():
@@ -129,7 +134,7 @@ def build_geometry(source, inputs, output, source_info, *, remove_source=False):
             source.unlink()
         stage = tmp/'release';stage.mkdir()
         coverages = [m['coverage'] for _,m in inputs.values()]
-        report = compile_geometry(subset,roots,expected,stage/'geometry.pmtiles',source_info,coverages)
+        report = compile_geometry(subset,roots,expected,stage/'geometry.pmtiles',source_info,coverages,progress=progress)
         if not report['dataset']['areas_complete'] or not report['dataset']['nearby_complete']:
             print(encoded({'incomplete_areas':report['incomplete_areas'][:20],
                            'incomplete_inspection':report['incomplete_inspection'][:20]}).decode(),flush=True)
@@ -169,11 +174,21 @@ def main():
     parser.add_argument('--remove-source',action='store_true',help='remove the sibling CI input after subsetting, before allocating its location index')
     args = parser.parse_args()
     if args.output.exists():raise FileExistsError(args.output)
+    started=time.monotonic();last_stage=None;last_at=0
+    def progress(stage,**fields):
+        nonlocal last_stage,last_at
+        now=time.monotonic()
+        if stage==last_stage and now-last_at<60 and stage!='large_object':return
+        last_stage,last_at=stage,now
+        rss=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if sys.platform=='darwin' else 1024)
+        print(encoded(dict(phase=stage,seconds=round(now-started,2),peak_rss_bytes=rss,
+                           free_bytes=shutil.disk_usage(args.source.parent).free,**fields)).decode(),file=sys.stderr,flush=True)
+    progress('verify_reference')
     inputs = load_inputs(args.countries)
     source_info = inspect_source(args.source,args.md5,'europe',args.snapshot)
     if shutil.disk_usage(args.source.parent).free < 25*1024**3:
         raise ValueError('Geometry subsetting requires 25 GiB free staging disk after download')
-    m = build_geometry(args.source,inputs,args.output,source_info,remove_source=args.remove_source)
+    m = build_geometry(args.source,inputs,args.output,source_info,remove_source=args.remove_source,progress=progress)
     print(encoded({'release':m['release'],'dataset':m['datasets']['geometry']}).decode(),flush=True)
 
 

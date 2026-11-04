@@ -335,19 +335,39 @@ def local_release(directory):
     return raw, manifest
 
 
-def recovery_source(repository, run, jobs, artifacts):
+def trusted_build_run(repository, run):
     require(type(run.get('id')) is int and run['id'] > 0 and run.get('status') == 'completed'
             and run.get('head_branch') == 'main' and run.get('head_repository', {}).get('full_name') == repository
             and run.get('event') in {'schedule', 'workflow_dispatch'}
             and run.get('path') == '.github/workflows/osm-data.yml',
             'Recovery needs a completed main OSM build from this repository')
-    required = {'snapshot', 'bundle', *(f'build ({country})' for country in ('finland', 'sweden', 'norway', 'estonia'))}
+
+
+def recovery_source(repository, run, jobs, artifacts):
+    trusted_build_run(repository, run)
+    countries = {'snapshot', *(f'build ({country})' for country in ('finland', 'sweden', 'norway', 'estonia'))}
     passed = {job['name'] for job in jobs if job.get('conclusion') == 'success'}
-    require(required <= passed, 'All four country builds and bundle must have passed')
+    # A geometry recovery verifies the original four-country run before reusing its artifacts.
+    require('bundle' in passed and (countries <= passed or 'geometry' in passed),
+            'All four country builds or verified geometry recovery, and bundle must have passed')
     candidates = [artifact for artifact in artifacts if artifact.get('name') == 'nordic-osm-release']
     require(len(candidates) == 1 and candidates[0].get('expired') is False
             and type(candidates[0].get('size_in_bytes')) is int and candidates[0]['size_in_bytes'] > 0,
             'Recovery needs one unexpired four-country release artifact')
+    return str(run['id'])
+
+
+def recovery_countries(repository, run, jobs, artifacts):
+    trusted_build_run(repository, run)
+    countries = ('finland', 'sweden', 'norway', 'estonia')
+    required = {'snapshot', *(f'build ({country})' for country in countries)}
+    passed = {job['name'] for job in jobs if job.get('conclusion') == 'success'}
+    require(required <= passed, 'All four country builds must have passed')
+    names = {f'osm-{country}-{kind}' for country in countries for kind in ('release', 'geometry-inputs')}
+    selected = [a for a in artifacts if a.get('name') in names]
+    require(len(selected) == len(names) and {a['name'] for a in selected} == names
+            and all(a.get('expired') is False and type(a.get('size_in_bytes')) is int and a['size_in_bytes'] > 0 for a in selected),
+            'Recovery needs every distinct unexpired country release and geometry input artifact')
     return str(run['id'])
 
 
