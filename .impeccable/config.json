@@ -29,6 +29,15 @@
         ],
         "createdAt": "2026-10-29T23:14:09.158Z",
         "reason": "Claude: the finding is .route-bar > i, css/app.css's routing progress bar linked by the mock-up, not the mock-up's own CSS; it slides only while a leg is routed, after 300 ms, and pulses with reduced motion: a progress indicator, sanctioned constant motion"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/issue-761-route-list.html"
+        ],
+        "createdAt": "2026-11-04T04:45:11.657Z",
+        "reason": "Claude: the mock-up has no animation, keyframes or scrolling content; the only moving rows are static CSS stand-ins for the map's line"
       }
     ]
   }
