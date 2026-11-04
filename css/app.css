@@ -1492,6 +1492,12 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
    another (the delay on the row, planner.js sectionRows()), onto the route's line, which stays where it is */
 .wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev) { animation: lg-in var(--t-open) var(--ease-out) backwards; animation-delay: inherit; }
 @media (prefers-reduced-motion: reduce) { .wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev) { animation-name: qd-fade; } }
+/* its ⌄ turns as it opens, as Layers' group arrow and Settings' speeds do (settleControls() gives it its start across the
+   list's redraw); from the keyboard, and with reduced motion, at once (#803) */
+.wpl-unfold .ic { transition: transform var(--t-press) var(--ease-out); }
+.wpl-unfold[aria-expanded="true"] .ic { transform: rotate(180deg); transition-duration: var(--t-open); }
+.wpl-unfold:focus-visible .ic { transition: none; }
+@media (prefers-reduced-motion: reduce) { .wpl-unfold .ic { transition: none; } }
 @media (pointer: coarse) { .wpl .row { min-height: 44px; } }
 /* Reorder [jd-reorder]: every point with its grip, Earlier and Later; a finger held 0.45 s drags */
 .wpl.reorder .wpl-row { min-height: var(--target); touch-action: pan-y; }

@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-05
+
+### A stretch's ⌄ turns ([#803](https://github.com/TommiContursi/Polku/issues/803))
+
+- In the route's list, a stretch's ⌄ turns up as its waypoints unfold and back down as they fold, the moment you tap it, as a group's arrow does in **Layers**. From the keyboard, and with reduced motion, it turns at once.
+
 ## 2026-11-04
 
 ### Unfolded waypoints come onto the line ([#761](https://github.com/TommiContursi/Polku/issues/761))
