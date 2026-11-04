@@ -860,10 +860,20 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .kf-b > span:first-child, .kf-b > span:last-child { flex: none; display: grid; color: var(--muted); }
 .kf-b > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .kf-b.miss > span:first-child { color: var(--unk); }
-/* what Check found to read, in the first line's place (#741): in the warning's colour, its sign and its words */
-.kf-b.warn { font-weight: 600; }
-.kf-b.warn.danger, .kf-b.warn.danger > span:first-child { color: var(--danger); }
-.kf-b.warn.unk, .kf-b.warn.unk > span:first-child { color: var(--unk); }
+/* what Check found to read, in the first line's place (#741): Check's warning box (.warn-row), drawn inside the line so
+   it's as tall as the key fact's; on a phone the box is 36 px of the finger's 44, clear of the peek's edge under it */
+.kf-b.warn { position: relative; isolation: isolate; margin: 0; padding: 2px 10px; font-weight: var(--weight-name); }
+.kf-b.warn::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 10px; border: 1.5px solid transparent; }
+.kf-b.warn.danger::before { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.kf-b.warn.danger > span:first-child { color: var(--danger); }
+.kf-b.warn.unk::before { background: var(--unk-soft); border: 1.5px dashed var(--unk); }
+.kf-b.warn.unk > span:first-child { color: var(--unk); }
+@media (hover: hover) {
+  .kf-b.warn:hover { background: none; }
+  .kf-b.warn.danger:hover::before { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); }
+  .kf-b.warn.unk:hover::before { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); }
+}
+@media (pointer: coarse) { .kf-b.warn { padding-bottom: 10px; } .kf-b.warn::before { bottom: 8px; } }
 .kf.legs .kf-b > span:first-child { color: var(--accent); }
 .kf-d { color: var(--muted); font-variant-numeric: tabular-nums; }
 .kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }

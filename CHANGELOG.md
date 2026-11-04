@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### A warning in the key fact's place ([#741](https://github.com/TommiContursi/Polku/issues/741))
 
-- When Check finds something to read before you go, the line under the route's numbers says how many, as in "2 to read before you go", in the warning's colour, in place of the route's key fact such as **Hardest climb**. A tap on it opens Check at the first, with its card.
+- When Check finds something to read before you go, the line under the route's numbers says how many, as in "2 to read before you go", in Check's red warning box, in place of the route's key fact such as **Hardest climb**. A tap on it opens Check at the first, with its card.
 - The line keeps its place and its height, so the route's numbers and **Done** no longer jump when Check's answer comes in after the route is drawn.
 - The row above the numbers is gone, and so is its **✕**: **Got it** on a warning's card and **All read** in Check mark warnings read, and then the line shows the key fact again.
 - The warning shows in the same place in both of a desktop's docks. With the planner along the bottom it was missing before, and in the side panel it was a row inside the route's list, which no longer repeats it.

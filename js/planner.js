@@ -6061,7 +6061,7 @@ export class Planner {
     const R = this.readSays(), at = [...box.children].indexOf(document.activeElement); // (a late answer keeps the focus where it was)
     box.replaceChildren(...(R ? [R, ...list.slice(1)] : list).map((x) => (x === R
       ? h('button', { type: 'button', class: `kf-b warn ${R.n1 ? 'danger' : 'unk'}`, 'aria-label': R.aria, onclick: () => this.openFromRow() },
-        h('span', { 'aria-hidden': 'true', html: icon(R.n1 ? 'warnf' : 'unk', 16) }), h('span', {}, R.n1 ? `${R.n1} to read before you go` : `${R.n3} not checked`),
+        h('span', { 'aria-hidden': 'true', html: icon(R.n1 ? 'warnf' : 'unk', 18) }), h('span', {}, R.n1 ? `${R.n1} to read before you go` : `${R.n3} not checked`),
         h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) }))
       : h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
         h('span', { 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }), h('span', { html: x.html }),
