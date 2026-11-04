@@ -117,7 +117,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .rows2 .wpl-add { margin: 0 -4px; color: var(--muted); }
 .rows2 .wpl-add b { font-weight: var(--weight-name); color: var(--text); }
 /* the foot: Reverse, and Clear route at the other end when the switch says so */
-.wpl-foot.foot2 { justify-content: space-between; }
+.wpl-foot.foot2 { flex-direction: column; align-items: flex-start; }
 .wpl-foot .foot-l { display: flex; flex-wrap: wrap; gap: 6px; }
 .wpl-foot .btn.danger { color: var(--bad); }
 </style>
@@ -143,7 +143,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li><b>A point is a row:</b> its mark, its name, and one line: when you leave or get there, the weather then, a stop or a change of sport. Its distance from the start isn't on it (the stretch says how far). A tap opens its card (on a phone) or its popup (#760).</li>
       <li><b>A plain stretch is a line</b> between two points with its numbers in small type and ⌄ where it folds shaping points. A stretch that differs from a plain one (a straight line, over water, a LIPAS route or an imported track, a carry) has its icon and its word first, in the accent colour. A tap opens the stretch's card.</li>
       <li><b>The sport's row</b> heads its section: the sport, then its route style and its speed as values ("Balanced · Normal, 16 km/h"). A tap opens them. With two sports each section has its own row, and the point where the sport changes keeps its tag. How you go and Your speed leave the list's end.</li>
-      <li><b>Reorder</b> sits beside the sport's row, as today, or under the list with Reverse (the switch): a question of 2026-11-04. On a desktop the grip reorders without it; the keyboard still needs it.</li>
+      <li><b>Reorder</b> sits under the list with Reverse, and Clear route on a row of its own under them (chosen on 2026-11-04; the switch shows it beside the sport's row, as today). On a desktop the grip reorders without it; the keyboard still needs it.</li>
       <li><b>A desktop edits in the row:</b> hover or focus a point's row and Rename and Remove appear where › was; the grip at its left drags it. On a phone the grip and the tools don't exist: the row opens the card, Reorder works as today.</li>
       <li><b>Under the list:</b> Reverse, and Clear route at the other end (chosen on 2026-11-04; the switch shows Reverse alone). Round trip, Back to start and Import are ways to begin or route actions: ⋯ and the start's card keep them.</li>
       <li><b>The warning</b> is in the key fact's slot under the numbers (#741), not a box in the list.</li>
@@ -160,7 +160,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 import { icon, h } from '../../../js/ui.js';
 
 const q = new URLSearchParams(location.search);
-const S = { v: q.get('v') || 'rows', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'foot' ? 'foot' : 'top' };
+const S = { v: q.get('v') || 'rows', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: q.get('hover') === 'on' ? 'on' : 'off', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
 
 // the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
 const ROUTES = {

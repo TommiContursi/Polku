@@ -4,7 +4,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 
 ## Where it stands
 
-- **Decided (2026-11-04):** Rows, with the Add row, Reverse and Clear route under the list, and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
+- **Decided (2026-11-04):** Rows, with the Add row; under the list two rows, Reorder and Reverse on the first, Clear route on the second; and the bottom dock's two columns. Open the mock-up with `?v=rows&foot=clear&add=on` to see it as chosen.
 - **Waiting:** nothing; each PR below is tried on the phone before the next.
 - **Next:** PR 1, after #774 (which takes the list's warning box into the key fact's slot).
 
@@ -22,7 +22,7 @@ The list edited in place from fc13027: a name field on every row, a grip, Earlie
 - **A plain stretch is a line** between two points, with its numbers in small type and ⌄ where shaping points fold. A stretch that differs (a straight line, over water, a LIPAS route, an imported track, a carry) has its icon and its word first, in the accent colour, and its line in the accent colour too. A tap opens the stretch's card.
 - **The sport's row** heads its section: the sport, with its route style and its speed as values ("Balanced · Normal, 16 km/h"), › to change them. With two sports each section has its own row and the point where the sport changes keeps its tag. How you go and Your speed leave the list's end; the toolbar's Route style stays for the next leg.
 - **A desktop edits in the row:** hovering or focusing a point's row shows Rename and Remove where › was, 32 px each; the grip at its left drags the point. On a phone there's no grip and no tools (`pointer: coarse`): the row opens the card, Reorder works as today. The keyboard reaches Rename and Remove by Tab, since the tools show on `:focus-within`.
-- **Under the list:** Reverse; with the switch on, Clear route at the other end in red, with Undo as today. Round trip, Back to start and Import leave the list: ⋯ and the start's card have them.
+- **Under the list, two rows:** Reorder and Reverse on the first; Clear route on the second, in red, with Undo as today. Reorder leaves the sport's row. Round trip, Back to start and Import leave the list: ⋯ and the start's card have them.
 - **The warning** is in the key fact's slot under the numbers (#741), not a box in the list.
 - **The bottom dock** lays the rows in two columns, the sport's row and the foot across both (the mock-up's proposal for that dock only; the desktop docks have a piece of their own later).
 - **The Add row** (Komoot's empty "Add a place" row at the end, with search, your location and saved places) is a switch, off by default: a question of #761, not part of the first PRs.
@@ -37,7 +37,7 @@ Each small, each tried on the phone before the next, in this order unless the us
 
 1. **The stretch as a line, a point as a row:** `js/planner.js` `pointRow()`, `stretchRow()`, `sectionRows()`; the CSS of `wpl-point` and `wpl-strow`; the check in `tools/smoke.py` `sections` or `tabs` (the rows' order and words, the fold).
 2. **The sport's row with its values,** and How you go and Your speed out of the list's end: `sectionRows()`'s head, `renderHow()`/`speedRow()`, `openStep('how'|'speed')`; `keyfacts` or `sections`.
-3. **The foot: Reverse and Clear route,** Round trip, Back to start and Import gone from under the list: `renderWaypoints()`'s `pointsFoot`; `tabs`.
+3. **The foot in two rows: Reorder and Reverse, then Clear route,** Round trip, Back to start and Import gone from under the list, Reorder gone from the sport's row: `renderWaypoints()`'s `pointsFoot`; `tabs`.
 4. **The desktop's tools in the row:** Rename (the `name-field` in the row's place), Remove, the grip's drag from the list (today's `dragRow()` in Reorder): `pointcard`-style checks for the hover and the keyboard, and that a finger never sees them.
 5. **The Add row:** search, your location and saved places from the list's end.
 6. **The bottom dock's two columns.**
