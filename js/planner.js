@@ -19,7 +19,7 @@ import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decode
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
-import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
+import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls } from './ui.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
@@ -3151,19 +3151,22 @@ export class Planner {
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
     const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
       // (by a tap or a click they come in, as Layers' groups' rows do, and leave the way they came, faster: their marks and
-      // words fade back up off the line together, then the list closes up. From the keyboard, at once)
+      // words fade back up off the line together, then the list closes up. From the keyboard, at once. Its ⌄ turns as Layers'
+      // arrow does, across the redraw (settleControls()), and at the tap that folds them, not once they've gone, #803)
       onclick: (e) => {
-        if (!open) { this.unfolded.add(pid); this.unfoldIn = e.detail ? pid : null; this.renderWaypoints(); return; }
+        const redraw = () => { const settle = settleControls(this.els.points); this.renderWaypoints(); settle(); };
+        if (!open) { this.unfolded.add(pid); this.unfoldIn = e.detail ? pid : null; redraw(); return; }
         if (this.foldingOut === pid) return;
+        e.currentTarget.setAttribute('aria-expanded', 'false');
         const rows = e.detail ? [...this.els.points.querySelectorAll('.wpl-point.shape')].filter((x) => +x.dataset.i > s.from && +x.dataset.i < s.to) : [];
         const out = rows.flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]);
-        const done = () => { this.foldingOut = null; this.unfolded.delete(pid); this.renderWaypoints(); };
+        const done = () => { this.foldingOut = null; this.unfolded.delete(pid); redraw(); };
         if (!out.length) { done(); return; }
         this.foldingOut = pid;
         const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
         for (const x of out) x.animate(frames, { id: 'fold-out', duration: ms, easing: cssVar('--ease-out'), fill: 'forwards' });
         setTimeout(done, ms); // (on time, not on the animation's end: one that draws no frames, a page left mid-way, still folds)
-      } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })) : null;
+      } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) })) : null;
     const row = h('div', { class: 'wpl-strow' }, b, fold);
     if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)
     return row;
