@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Paddle from here on a phone ([#656](https://github.com/TommiContursi/Polku/issues/656))
 
-- On a phone, Paddle from here says to tap where you want to go, not click.
+- On a phone, **Paddle from here** says to tap where you want to go, not click.
 
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
