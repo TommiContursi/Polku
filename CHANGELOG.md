@@ -4,6 +4,16 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-04
 
+### The route as one line in the route's list ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- The route's list in **Route** draws the route as one line from the start to the end through every point's mark, each sport's part in its own colour, the colours the map and the profile use for the sports. Where the sport changes, or a night ends a day, the line breaks with dots.
+- Each part of the route starts with a heading: the sport's icon in a ring of its colour, the sport, and its distance, time and climb beside it. A route of one sport has one too.
+- A stretch between two points shows its distance, time and climb in bold, and under them how it's drawn, with its icon: **Follow paths**, **Straight line**, **Over water** or a route's own line. A straight stretch's line is dashed, as on the map.
+- A paddling stretch that crosses land says how far you carry, as in "Over water · carry 120 m".
+- The points a stretch folds are small beads on its line, and their number is beside **⌄**, which shows them.
+- On the map, the badge where the sport changes is in the next sport's colour.
+- **Reorder** is under the list now, first in its row of buttons, so at half height on a phone the start and the first stretch are in sight under the headings. While you reorder, **Done** is at the top.
+
 ### Reorder keeps where the sport changes ([#782](https://github.com/TommiContursi/Polku/issues/782))
 
 - On a route of more than one sport, the point where you change sport keeps that change when you move it, in **Reorder** or with the keys: you still start paddling there, with its changeover minutes and the gear you take along.
