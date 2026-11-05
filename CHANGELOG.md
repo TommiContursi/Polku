@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Menus fit a narrow screen ([#722](https://github.com/TommiContursi/Polku/issues/722))
+
+- On a phone with the text enlarged to 200 %, **More**'s menu and the drawing menu fit the screen, their descriptions wrapping, instead of running past its right edge.
+
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each waypoint shows how far it is from the start and how long it takes to get there, stops and changeovers included, in a column left of the route's line: "1.11 km" over "5 min". With the text enlarged, they go under the waypoint's name.
