@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Words along trails stay when the map is tilted ([#635](https://github.com/TommiContursi/Polku/issues/635))
+
+- With **3D** on and the map tilted steeply, the words that run along a line stay readable, standing up towards you: the difficulty and uphill numbers, road, river and lake names, marked routes' names, the fairways' depths and the contours' heights. Before, they all disappeared past about 65°. The flat map looks the same.
+
 ### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
 
 - After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.

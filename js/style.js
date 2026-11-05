@@ -439,7 +439,7 @@ export function buildStyle(s, ctx) {
       id: 'mtb-label', type: 'symbol', source: 'ofm', 'source-layer': 'transportation', minzoom: 14.5,
       filter: ['all', ['has', 'mtb_scale'], ['in', ['get', 'class'], ['literal', ['path', 'track']]]],
       layout: {
-        'symbol-placement': 'line', 'symbol-spacing': zi(14.5, 170, 18, 320),
+        'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'symbol-spacing': zi(14.5, 170, 18, 320),
         'text-field': ['concat', 'S', ['to-string', ['get', 'mtb_scale']]],
         'text-font': FONT_B, 'text-size': zi(14.5, 10, 18, 14), 'text-offset': [0, -1.1],
         'text-keep-upright': true, 'text-max-angle': 40, 'text-padding': 1,
@@ -452,7 +452,7 @@ export function buildStyle(s, ctx) {
       id: 'uphill-label', type: 'symbol', source: 'uphill', minzoom: 14.5,
       filter: ['>=', ['get', 'grade'], 6],
       layout: {
-        'symbol-placement': 'line', 'symbol-spacing': zi(14.5, 170, 18, 320),
+        'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'symbol-spacing': zi(14.5, 170, 18, 320),
         'text-field': ['concat', '↑S', ['to-string', ['get', 'cls']]],
         'text-font': FONT_B, 'text-size': zi(14.5, 10, 18, 14), 'text-offset': [0, 1.1],
         'text-keep-upright': true, 'text-max-angle': 40, 'text-padding': 1,
@@ -466,7 +466,7 @@ export function buildStyle(s, ctx) {
     const kind = ['get', 'kind'];
     const ink = s.base === 'night' || isAerial(s.base) ? '#f5f5f5' : '#111827';
     const halo = s.base === 'night' || isAerial(s.base) ? '#0f172a' : '#ffffff';
-    add({ id: 'nm-navline-label', type: 'symbol', source: 'nmLines', minzoom: 13, filter: ['!=', ['get', 'depth'], ''], layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'depth'], 'text-font': FONT_I, 'text-size': 11, 'text-keep-upright': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.6 } });
+    add({ id: 'nm-navline-label', type: 'symbol', source: 'nmLines', minzoom: 13, filter: ['!=', ['get', 'depth'], ''], layout: { 'symbol-placement': 'line-center', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'depth'], 'text-font': FONT_I, 'text-size': 11, 'text-keep-upright': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.6 } });
     add({ id: 'nm-area-label', type: 'symbol', source: 'nmAreas', minzoom: 12.5, filter: ['all', ['in', kind, ['literal', ['speed', 'restrict']]], ['!=', ['get', 'label'], '']], layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 11, 'text-padding': 40 }, paint: { 'text-color': '#be185d', 'text-halo-color': halo, 'text-halo-width': 1.8 } });
     add({
       id: 'nm-marks', type: 'symbol', source: 'nmMarks', minzoom: 11,
@@ -924,11 +924,11 @@ function addLabels(s, P, hc, layers) {
   const add = (l) => { if (!topo || /^(contour|lipas)/.test(l.id)) layers.push(l); };
   const halo = { 'text-halo-color': P.halo, 'text-halo-width': hc ? 2 : 1.4, 'text-halo-blur': 0.3 };
 
-  add({ id: 'label-waterway', type: 'symbol', source: 'ofm', 'source-layer': 'waterway', minzoom: 12, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 11, 'text-letter-spacing': 0.1 }, paint: { 'text-color': P.waterText, ...halo } });
+  add({ id: 'label-waterway', type: 'symbol', source: 'ofm', 'source-layer': 'waterway', minzoom: 12, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 11, 'text-letter-spacing': 0.1 }, paint: { 'text-color': P.waterText, ...halo } });
   add({ id: 'label-water', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-max-width': 6, 'text-letter-spacing': 0.08 }, paint: { 'text-color': P.waterText, ...halo } });
-  add({ id: 'label-water-line', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'LineString']], layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-letter-spacing': 0.15 }, paint: { 'text-color': P.waterText, ...halo } });
+  add({ id: 'label-water-line', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'LineString']], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-letter-spacing': 0.15 }, paint: { 'text-color': P.waterText, ...halo } });
   add({ id: 'label-park', type: 'symbol', source: 'ofm', 'source-layer': 'park', minzoom: 9, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 12, 'text-max-width': 8 }, paint: { 'text-color': '#2f6b2f', ...halo } });
-  add({ id: 'label-road', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 13, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': zi(13, 10, 17, 13), 'text-rotation-alignment': 'map' }, paint: { 'text-color': P.text, ...halo } });
+  add({ id: 'label-road', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 13, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': zi(13, 10, 17, 13), 'text-rotation-alignment': 'map' }, paint: { 'text-color': P.text, ...halo } });
   add({
     id: 'label-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11,
     filter: ['==', ['get', 'class'], 'peak'],
@@ -940,10 +940,10 @@ function addLabels(s, P, hc, layers) {
     paint: { 'text-color': '#6b4b2b', ...halo },
   });
   if (s.contours && !isTopo(s.base)) {
-    add({ id: 'contour-label', type: 'symbol', source: 'contours', 'source-layer': 'contours', minzoom: 13, filter: ['>', ['get', 'level'], 0], layout: { 'symbol-placement': 'line', 'text-field': ['to-string', ['get', 'ele']], 'text-font': FONT, 'text-size': 10, 'symbol-spacing': 350 }, paint: { 'text-color': isAerial(s.base) ? '#ffeccc' : P.contourText, ...halo } });
+    add({ id: 'contour-label', type: 'symbol', source: 'contours', 'source-layer': 'contours', minzoom: 13, filter: ['>', ['get', 'level'], 0], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['to-string', ['get', 'ele']], 'text-font': FONT, 'text-size': 10, 'symbol-spacing': 350 }, paint: { 'text-color': isAerial(s.base) ? '#ffeccc' : P.contourText, ...halo } });
   }
   if (s.overlays.lipasRoutes) {
-    add({ id: 'lipas-route-label', type: 'symbol', source: 'lipasRoutes', minzoom: 13, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT_B, 'text-size': 11, 'symbol-spacing': 400 }, paint: { 'text-color': ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#444'], ...halo } });
+    add({ id: 'lipas-route-label', type: 'symbol', source: 'lipasRoutes', minzoom: 13, layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_B, 'text-size': 11, 'symbol-spacing': 400 }, paint: { 'text-color': ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#444'], ...halo } });
   }
   const place = (id, classes, minzoom, size, font = FONT) =>
     add({ id, type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom, filter: ['in', ['get', 'class'], ['literal', classes]], layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': size, 'text-max-width': 8 }, paint: { 'text-color': P.text, ...halo } });
