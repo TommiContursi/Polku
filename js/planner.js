@@ -7488,7 +7488,7 @@ const WATER_LOST = {
 };
 
 // "2 h 13" or "54 min": a duration where there's little room
-const shortDuration = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+const shortDuration = (sec) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
 
 // A LIPAS leg's place along LIPAS's line, the other way round
 const flipSrc = (src) => (src ? { ...src, a: src.b, b: src.a } : null);

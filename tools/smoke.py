@@ -1624,9 +1624,20 @@ STOPS = """(async () => {
   const total = (p.analysis.timeWind || p.analysis.time);
   const moving = total - a.waits.reduce((t, w) => t + w.sec, 0);
   // (#761) over days: the whole time, its nights too, with the time on the move under it
-  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const short = (sec) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
   const sum = `${document.querySelector('.sum-time b')?.textContent} / ${document.querySelector('.sum-time small')?.textContent}`;
   if (sum !== `${short(total)} / ${short(moving)} moving`) errs.push(`summary time: ${sum}, not ${short(total)} / ${short(moving)} moving`);
+  // times at 59 min 30 s and more carry into the hour: 1 h 60 min reads 2 h 00 min (#492), here and in the summary's short form
+  const G = await import(location.origin + '/js/geo.js');
+  const read = [7170, 10770, 3570].map((s) => G.fmtDuration(s)).join(' / ');
+  if (read !== '2 h 00 min / 3 h 00 min / 1 h 00 min') errs.push(`fmtDuration: ${read}`);
+  const was = [a.time, a.timeWind];
+  a.time = a.timeWind = Math.ceil((a.waits.reduce((t, w) => t + w.sec, 0) + 3600) / 3600) * 3600 + 3570;
+  p.renderAnalysis();
+  const whole = document.querySelector('.sum-time b')?.textContent;
+  if (!/ 00$/.test(whole || '')) errs.push(`summary time at ${a.time} s: ${whole}`);
+  [a.time, a.timeWind] = was;
+  p.renderAnalysis();
   const days = S.tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : p.startSec(), a.waits);
   if (days.length !== 2 || Math.abs(days[0].moving + days[1].moving - moving) > 2) errs.push(`days: ${days.length}, moving ${days.map((d) => d.moving).join('+')} vs ${moving}`);
   p.reveal('depart');
@@ -15511,7 +15522,7 @@ def sections_list(chrome):
         # (#761) its part's heading adds the stop to the time on the move, and the numbers row has the whole time with the
         # time on the move under it
         t = pg.js("""(() => { const p = polku.planner, A = p.analysis, all = A.timeWind || A.time, mv = all - A.waits.reduce((n, w) => n + w.sec, 0), el = document.querySelector('.sum-time');
-          const f = (sec, u) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}${u}` : `${m} min`; };
+          const f = (sec, u) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}${u}` : `${m} min`; };
           return { heads: [...p.els.points.querySelectorAll('.sec2-head small')].map((x) => x.textContent), b: el.querySelector('b').textContent, small: el.querySelector('small').textContent, all: f(all, ' min'), mv: f(mv, '') }; })()""")
         if sum(' + 30 min stop' in x for x in t['heads']) != 1 or t['b'] != t['all'] or t['small'] != f"{t['mv']} moving":
             fails.append(f"{name}: a stop at via 4: the headings {t['heads']}, the time {t['b']!r} over {t['small']!r} (want one heading's time + 30 min stop, the whole time {t['all']} over {t['mv']} moving, #761)")
@@ -16588,7 +16599,7 @@ LV_NIGHTS = """(async () => {
   await wait(400);
   if (JSON.stringify(p.stopAt(2)) !== '{"on":420,"n":2}') errs.push(`Go on at 07:00: ${JSON.stringify(p.stopAt(2))}`);
   // (#761) the whole time follows the hour you go on: an hour less
-  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const short = (sec) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
   if (document.querySelector('.sum-time b')?.textContent !== short(p.analysis.timeWind || p.analysis.time)) errs.push(`the summary: ${document.querySelector('.sum-time b')?.textContent}, not ${short(p.analysis.timeWind || p.analysis.time)}`);
   p.cards.close();
   p.reveal('points');
