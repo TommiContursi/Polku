@@ -17046,6 +17046,13 @@ def keyfacts(chrome):
                   return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /^(-?\\d+° \\d+ m\\/s|No forecast yet)$/.test([...(lit[0]?.querySelectorAll('.wpl-point .wx-line') || [])].pop()?.textContent || '') }; })()""")
                 if r != {'tab': 'route', 'lit': ['Paddle'], 'wx': True}:
                     fails.append(f"{name}: a tap on Paddle: {r}")
+            # each sport's climbing counted as the route's total counts it, a climb once past 2 m (#752): MTB's 1 m ups and
+            # downs are ↑0 m, Hike's 30 m climb ↑30 m
+            r = pg.js("""import(location.origin + '/js/facts.js').then((F) => { const n = 41, a = { activity: 'mtb', along: Array.from({ length: n }, (_, i) => i * 10),
+              ele: Array.from({ length: n }, (_, i) => (i < 30 ? 100 + (i % 2) : 100 + 3 * (i - 30))), attr: Array.from({ length: n }, (_, i) => ({ sport: i <= 20 ? 'mtb' : 'hike' })) };
+              return F.sportFacts(a, { noWeather: 'not known' }).map((f) => f.aria.match(/↑\\d+ m/)[0]); })""")
+            if r != ['↑0 m', '↑30 m']:
+                fails.append(f"{name}: the sports' climbing, MTB with 1 m ups and downs, then Hike with a 30 m climb: {r}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.close()
 
