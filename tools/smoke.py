@@ -3468,7 +3468,7 @@ WARNFIX = """(async () => {
   p.cards.close();
   await wait(300);
   // (12, the recheck) Retry on the trail details: "Asking…" while Overpass is asked, on a card built again meanwhile too
-  // (another source answering), and Overpass named plainly when it still didn't answer
+  // (another source answering), and OpenStreetMap named plainly when it still didn't answer (the app's name for it, #695)
   T2.holdFetches(true, true); T2.forgetFailures();
   await p.loadTrail(p.analysis);
   const trail = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'trail');
@@ -3478,14 +3478,15 @@ WARNFIX = """(async () => {
     p.loadTrail = async (a) => { await wait(1500); return real.call(p, a); };
     p.openItemCard(trail, { from: 'check' });
     await wait(500);
+    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
+    if (/OpenStreetMap still didn.t answer/.test(said())) errs.push(`(the test) a note naming OpenStreetMap before Retry on the trail details: "${said()}"`);
     p.cards.box.querySelector('.btn.primary.big').click();
     await wait(300);
     p.renderWarnings();
     const tb = p.cards.box && p.cards.box.querySelector('.btn.primary.big');
     if (!tb || tb.textContent.trim() !== 'Asking…' || !tb.disabled) errs.push(`Retry on the trail details, its card built again while Overpass is asked: "${tb ? tb.textContent.trim() : 'no button'}"${tb && !tb.disabled ? ', tappable' : ''}`);
-    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
-    for (let k = 0; k < 50 && !/Overpass[^/]*still didn.t answer/.test(said()); k++) await wait(100);
-    if (!/Overpass \\(OpenStreetMap\\) still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
+    for (let k = 0; k < 50 && !/OpenStreetMap still didn.t answer/.test(said()); k++) await wait(100);
+    if (!/OpenStreetMap still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
     delete p.loadTrail;
     p.cards.close();
     await wait(300);
@@ -5797,6 +5798,36 @@ def aerial_fallback(chrome):
     return not fails
 
 
+# The map's words over the aerial photos (#554): every label of one colour at 4.5:1 on its halo, the dark one there
+AERIAL_LABELS = """(() => {
+  const m = polku.map, ctx = document.createElement('canvas').getContext('2d'), out = [];
+  const rgb = (c) => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3); };
+  const lum = (c) => c.map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  for (const l of m.getStyle().layers) {
+    if (l.type !== 'symbol' || !l.layout || !l.layout['text-field']) continue;
+    const c = m.getPaintProperty(l.id, 'text-color'), h = m.getPaintProperty(l.id, 'text-halo-color');
+    if (typeof c !== 'string' || typeof h !== 'string') continue; // (a colour by the feature: not one value to measure)
+    const [x, y] = [lum(rgb(c)), lum(rgb(h))].sort((p, q) => q - p), r = (x + 0.05) / (y + 0.05);
+    if (r < 4.5) out.push(`${l.id}: ${c} on its halo ${h}, ${r.toFixed(2)}:1`);
+  }
+  return out;
+})()"""
+
+
+def aerial_labels(chrome):
+    fails = []
+    for base in ('aerial', 'ortofi'):
+        pg = chrome.page(1440, 900, False)
+        try:
+            pg.open_app({'base': base, 'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.515/23.85')
+            fails += [f'{base}: {e}' for e in pg.js(AERIAL_LABELS)]
+            fails += [f'{base} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's words over the aerial photos at 4.5:1 on their halo" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def layers(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/60.15/24.95')
@@ -7593,6 +7624,11 @@ def contrast(chrome):
             pressed = pg.js("['#btn-settings', '#btn-time'].filter((s) => document.querySelector(s).getAttribute('aria-pressed') !== 'true')")
             fails += [f'{scheme}: {s} not pressed by a click' for s in pressed]
             fails += [f'{scheme}: {f}' for f in pg.js(CONTRAST + f"({json.dumps(scheme)})")]
+            # the search field's hint in the glass's grey, not the browser's (#551)
+            h = pg.js("""(() => { const s = document.querySelector('.search'), m = s.appendChild(document.createElement('i')); m.style.color = 'var(--muted)';
+              const out = { hint: getComputedStyle(s.querySelector('input'), '::placeholder').color, muted: getComputedStyle(m).color }; m.remove(); return out; })()""")
+            if h['hint'] != h['muted']:
+                fails.append(f"{scheme}: the search field's hint in {h['hint']}, not the glass's grey {h['muted']}")
             fails += [f'{scheme} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
@@ -17059,6 +17095,13 @@ def keyfacts(chrome):
                   return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /^(-?\\d+° \\d+ m\\/s|No forecast yet)$/.test([...(lit[0]?.querySelectorAll('.wpl-point .wx-line') || [])].pop()?.textContent || '') }; })()""")
                 if r != {'tab': 'route', 'lit': ['Paddle'], 'wx': True}:
                     fails.append(f"{name}: a tap on Paddle: {r}")
+            # each sport's climbing counted as the route's total counts it, a climb once past 2 m (#752): MTB's 1 m ups and
+            # downs are ↑0 m, Hike's 30 m climb ↑30 m
+            r = pg.js("""import(location.origin + '/js/facts.js').then((F) => { const n = 41, a = { activity: 'mtb', along: Array.from({ length: n }, (_, i) => i * 10),
+              ele: Array.from({ length: n }, (_, i) => (i < 30 ? 100 + (i % 2) : 100 + 3 * (i - 30))), attr: Array.from({ length: n }, (_, i) => ({ sport: i <= 20 ? 'mtb' : 'hike' })) };
+              return F.sportFacts(a, { noWeather: 'not known' }).map((f) => f.aria.match(/↑\\d+ m/)[0]); })""")
+            if r != ['↑0 m', '↑30 m']:
+                fails.append(f"{name}: the sports' climbing, MTB with 1 m ups and downs, then Hike with a 30 m climb: {r}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.close()
 
@@ -17282,16 +17325,20 @@ def tabs_names(chrome):
             pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
             pg.js(SETTLED)
             want = """(async () => { const p = polku.planner, a = p.analysis, d = (await import(location.origin + '/js/geo.js')).fmtDist(a.total);
-              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${p.els.tabBtn.go.querySelector('.pl-tab-t').textContent}` }; })()"""
-            for step in ('drawn', 'a point added'):
+              const at = p.els.tabBtn.go.querySelector('.pl-tab-t').textContent;
+              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${at}`, at, title: p.els.tabBtn.go.title }; })()"""
+            # (the Go tab's tooltip says "back at" only on a round trip, #753)
+            for step, word, then in (('drawn', 'there', 'p.addPoint([23.86, 61.52])'), ('a point added', 'there', 'p.backToStart()'), ('back to the start', 'back', None)):
                 ax, w_ = names(pg), pg.js(want)
                 tabs = ax.get('tab', [])
                 if w_['prof'] not in ax.get('image', []):
                     fails.append(f"{name}: the profile, {step}: images named {ax.get('image', [])} (want {w_['prof']!r})")
                 if len(tabs) != 3 or tabs[0] != 'Route' or not tabs[1].startswith('Check') or tabs[1][5:6] not in ('', ':') or tabs[2] != w_['go']:
                     fails.append(f"{name}: the tabs' names, {step}: {tabs} (Route, Check: …, {w_['go']!r})")
-                if step == 'drawn':
-                    pg.js("(async () => { const p = polku.planner, a = p.analysis; p.addPoint([23.86, 61.52]); for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; })()", timeout=30000)
+                if not w_['title'].startswith(f"When and how long: {word} at {w_['at']} "):
+                    fails.append(f"{name}: the Go tab's tooltip, {step}: {w_['title']!r} (want {word} at {w_['at']})")
+                if then:
+                    pg.js(f"(async () => {{ const p = polku.planner, a = p.analysis; {then}; for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; }})()", timeout=30000)
                     pg.js(SETTLED)
             # the headings: Route (and its How you go), Check and Go, one level at a time
             for tab, js in (('Route', "polku.planner.setTab('route')"), ('How you go', "polku.planner.openStep('how')"), ('Check', "polku.planner.openStep(null); polku.planner.setTab('check')"), ('Go', "polku.planner.setTab('go')")):
@@ -17973,7 +18020,7 @@ GROUPS = [
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
-    ('raster', [raster_maps, aerial_fallback], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653)'),
+    ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
@@ -18008,7 +18055,7 @@ GROUPS = [
     ('drawer', [drawer], 'the drawer in three tabs (22a): every part in its place, the start, the lit leg'),
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
-    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239); the search field\'s hint in the glass\'s grey (#551)'),
     ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
     ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
