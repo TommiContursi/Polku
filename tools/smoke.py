@@ -17698,6 +17698,11 @@ def pick_card(chrome):
         said = pg.js("(() => { polku.planner.fitRoute(); return document.querySelector('#toast').textContent; })()")
         if said != 'No route yet — click the map to start one':
             fails.append(f"No route yet: the note says “{said}” (“No route yet — click the map to start one”)")
+        # #656: a round trip on the water from a start far from it says to click a shore (no routing: a stand-in for the
+        # map's water, and More loops' way in, which doesn't frame the map first)
+        said = pg.js("(async () => { const p = polku.planner, L = p.loop, act = p.app.activity; p.app.activity = () => 'paddle'; Object.assign(L, { start: [23.8129, 61.4844], water: { isWater: () => false } }); await p.generateLoops({ more: true }); const t = L.note; p.app.activity = act; Object.assign(L, { start: null, note: '' }); delete L.water; return t; })()")
+        if said != 'That start is over a kilometre from the water: click a shore, a beach or a landing for the loops to start from.':
+            fails.append(f"a round trip far from the water: the note says “{said}” (“… click a shore …”)")
         fails += [f'console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
@@ -17812,6 +17817,10 @@ def pick_card(chrome):
         said = pg.js("(() => { polku.planner.fitRoute(); return document.querySelector('#toast').textContent; })()")
         if said != 'No route yet — tap the map to start one':
             fails.append(f"390x844: No route yet: the note says “{said}” (“No route yet — tap the map to start one”)")
+        # #656: a round trip on the water from a start far from it says to tap a shore (no routing, as on the desktop)
+        said = pg.js("(async () => { const p = polku.planner, L = p.loop, act = p.app.activity; p.app.activity = () => 'paddle'; Object.assign(L, { start: [23.8129, 61.4844], water: { isWater: () => false } }); await p.generateLoops({ more: true }); const t = L.note; p.app.activity = act; Object.assign(L, { start: null, note: '' }); delete L.water; return t; })()")
+        if said != 'That start is over a kilometre from the water: tap a shore, a beach or a landing for the loops to start from.':
+            fails.append(f"390x844: a round trip far from the water: the note says “{said}” (“… tap a shore …”)")
         fails += [f'390x844 console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"390x844: raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
