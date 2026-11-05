@@ -3468,7 +3468,7 @@ WARNFIX = """(async () => {
   p.cards.close();
   await wait(300);
   // (12, the recheck) Retry on the trail details: "Asking…" while Overpass is asked, on a card built again meanwhile too
-  // (another source answering), and Overpass named plainly when it still didn't answer
+  // (another source answering), and OpenStreetMap named plainly when it still didn't answer (the app's name for it, #695)
   T2.holdFetches(true, true); T2.forgetFailures();
   await p.loadTrail(p.analysis);
   const trail = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'trail');
@@ -3478,14 +3478,15 @@ WARNFIX = """(async () => {
     p.loadTrail = async (a) => { await wait(1500); return real.call(p, a); };
     p.openItemCard(trail, { from: 'check' });
     await wait(500);
+    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
+    if (/OpenStreetMap still didn.t answer/.test(said())) errs.push(`(the test) a note naming OpenStreetMap before Retry on the trail details: "${said()}"`);
     p.cards.box.querySelector('.btn.primary.big').click();
     await wait(300);
     p.renderWarnings();
     const tb = p.cards.box && p.cards.box.querySelector('.btn.primary.big');
     if (!tb || tb.textContent.trim() !== 'Asking…' || !tb.disabled) errs.push(`Retry on the trail details, its card built again while Overpass is asked: "${tb ? tb.textContent.trim() : 'no button'}"${tb && !tb.disabled ? ', tappable' : ''}`);
-    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
-    for (let k = 0; k < 50 && !/Overpass[^/]*still didn.t answer/.test(said()); k++) await wait(100);
-    if (!/Overpass \\(OpenStreetMap\\) still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
+    for (let k = 0; k < 50 && !/OpenStreetMap still didn.t answer/.test(said()); k++) await wait(100);
+    if (!/OpenStreetMap still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
     delete p.loadTrail;
     p.cards.close();
     await wait(300);
