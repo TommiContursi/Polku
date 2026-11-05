@@ -8362,6 +8362,11 @@ def tile_fails(chrome):
               " || Date.now() - t0 > 15000 ? setTimeout(() => ok(true), 300) : setTimeout(go, 100); go(); })")
     looks = """({ loads: polku.map.__loads || 0, failed: window.__depthsFailed, points: polku.planner.points.length,
       view: polku.planner.active && polku.planner.inView(), shared: /[?&]r=/.test(location.search) })"""
+    # what Depths says in the quick drawer
+    depths = """(async () => { document.querySelector('#btn-layers').click(); await new Promise((r) => setTimeout(r, 600));
+      const s = document.querySelector('#quick-layers .qt[data-id="depths"] .qt-l small');
+      const t = s ? `${s.textContent}${s.classList.contains('warn') ? ' (warn)' : ''}` : 'no Depths tile';
+      document.querySelector('#btn-layers').click(); return t; })()"""
     for w, h_, phone in ((390, 844, True), (1440, 900, False)):
         pg = chrome.page(w, h_, phone)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': DEPTHS_FAIL_LAST}, pg.s)
@@ -8389,15 +8394,25 @@ def tile_fails(chrome):
                              f"{'open' if s['view'] else 'not open'}{', the link still in the address' if s['shared'] else ''}")
             if mode == 'drop':
                 # a failed source still says so: Depths in the quick drawer
-                small = pg.js("""(async () => { document.querySelector('#btn-layers').click(); await new Promise((r) => setTimeout(r, 600));
-                  const s = document.querySelector('#quick-layers .qt[data-id="depths"] .qt-l small');
-                  const t = s ? `${s.textContent}${s.classList.contains('warn') ? ' (warn)' : ''}` : 'no Depths tile';
-                  document.querySelector('#btn-layers').click(); return t; })()""")
+                small = pg.js(depths)
                 if not small.startswith('No data now') or '(warn)' not in small:
                     fails.append(f'{name}: Depths in the quick drawer says “{small}”')
+        # opened at zoom 12, below the soundings' 13, where they ask for no tiles: the depths that show there have
+        # failed, so Depths says so too (#399)
+        name = f'{w}x{h_}, at zoom 12 with the depth tiles failing'
+        pg.js("sessionStorage.setItem('polku-test-depths', 'drop'); localStorage.removeItem('polku:route'); history.replaceState(null, '', location.pathname + '#12/61.5155/23.8220'); true")
+        pg.c.send('Page.reload', {}, pg.s)
+        pg.c.wait_event('Page.loadEventFired', pg.s, 60)
+        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => window.polku && polku.map._loaded && window.__depthsFailed || Date.now() - t0 > 30000 ? setTimeout(() => ok(true), 1000) : setTimeout(go, 100); go(); })", timeout=40000)
+        z, failed = pg.js("[polku.map.getZoom(), window.__depthsFailed]")
+        small = pg.js(depths)
+        if not failed or z >= 13:
+            fails.append(f'{name}: at zoom {z:.1f}, {failed} depth tiles asked for (the check proves nothing)')
+        elif not small.startswith('No data now') or '(warn)' not in small:
+            fails.append(f'{name}: Depths in the quick drawer says “{small}”')
         fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the map's last tiles failing: Polku still opens the saved route and a share link (#393)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's last tiles failing: Polku still opens the saved route and a share link, and Depths says so (#393, #399)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -17895,7 +17910,7 @@ GROUPS = [
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a hidden Heads-up kind shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
-    ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
+    ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
