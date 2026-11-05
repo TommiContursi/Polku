@@ -2958,12 +2958,12 @@ export class Planner {
   // A row of its own with its name and ✕, as the planner's steps have, and a tap outside closes it alone: on a phone it's
   // over the list, where that tap would open a card.
   listMenu(anchor) {
-    const S = this.listShow;
+    const S = this.listShow, set = (patch) => { this.setListShow(patch); this.app.listShowChanged(); };
     const x = h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close List settings', html: icon('close', 20), onclick: () => { menu.close(); anchor.focus(); } });
-    const sw = ([k, label]) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: S[k], onchange: (e) => this.setListShow({ [k]: e.target.checked }) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    const sw = ([k, label]) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: S[k], onchange: (e) => set({ [k]: e.target.checked }) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
     const menu = popMenu(anchor, [
       { node: h('div', { class: 'way-bar' }, h('b', {}, 'List settings'), x) },
-      { group: 'Times', items: [['route', 'From start', false], ['clock', 'Clock', true]].map(([ic, label, clock]) => ({ icon: ic, label, radio: true, checked: S.clock === clock, fn: () => this.setListShow({ clock }) })) },
+      { group: 'Times', items: [['route', 'From start', false], ['clock', 'Clock', true]].map(([ic, label, clock]) => ({ icon: ic, label, radio: true, checked: S.clock === clock, fn: () => set({ clock }) })) },
       { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, ...LIST_SHOWS.map(sw)) }] },
       { note: 'Hidden items stay in Check and the cards.' },
     ], { label: 'List settings', modal: true });

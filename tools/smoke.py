@@ -16021,17 +16021,20 @@ def sections_list(chrome):
         # (#761) the list's settings, the app's menu over the list: the column's times by the clock, and the rows without how
         # a leg is drawn, its warnings, the dark or the weather, each a switch, saved; what's hidden is still in Check
         r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), leg = () => L.querySelector('.wpl-stretch[data-from="3"]')?.textContent || '';
+          document.querySelector('#btn-settings').click(); await wait(500); // (Settings open beside it: its switches follow the menu's)
           p.els.pointsTools.querySelector('.wpl-set').click(); await wait(300);
           const m = document.querySelector('.menu-pop'), menu = [...m.querySelectorAll('.menu-h, .menu-item, .tg-text')].map((x) => x.textContent).join('|'), before = leg();
           for (const x of m.querySelectorAll('.tg input')) x.click();
+          const inSettings = [...document.querySelectorAll('#settings-body [data-group="settings-list"] .tg input')].map((x) => x.checked);
+          document.querySelector('#settings-panel .panel-close').click();
           const after = leg(), wx = L.querySelectorAll('.wpl-point .wx-line').length, kept = document.body.contains(p.els.pointsTools.querySelector('.wpl-set')) && p.els.pointsTools.querySelector('.wpl-set') === p.els.listSet;
           [...m.querySelectorAll('[role=menuitemradio]')].find((x) => x.textContent === 'Clock').click(); await wait(100);
           const col = L.querySelector('.wpl-point[data-i="1"] .wpl-when small')?.textContent || '', saved = JSON.parse(localStorage.getItem('polku:listShow') || '{}'), check = p.headsUp().read.length;
           p.listShow = { clock: false, warnings: true, look: true, drawing: true, dark: true, weather: true, speed: false }; localStorage.setItem('polku:listShow', JSON.stringify(p.listShow)); p.renderWaypoints();
-          return { menu, before, after, wx, kept, col, saved, check, back: leg() === before }; })()""")
+          return { menu, before, after, wx, kept, col, saved, check, inSettings, back: leg() === before }; })()""")
         if (r['menu'] != 'Times|From start|Clock|Show|Warnings|Worth a look|Drawing mode|Darkness|Weather|Speed' or 'Follow paths' not in r['before'] or 'Cycling not allowed here' not in r['before'] or not re.fullmatch(r'[\d.]+\sk?m · \d+\smin( · ↑\d+\sm)? · [\d.]+\skm/h', r['after'])
-                or r['wx'] or not r['kept'] or not re.fullmatch(r'\d\d[:.]\d\d', r['col']) or r['saved'] != {'clock': True, 'warnings': False, 'look': False, 'drawing': False, 'dark': False, 'weather': False, 'speed': True} or not r['check'] or not r['back']):
-            fails.append(f"{name}: the list's settings: {r} (want its menu, the leg's numbers and speed alone, no weather, the clock's times, saved, Check as before, #761)")
+                or r['wx'] or not r['kept'] or not re.fullmatch(r'\d\d[:.]\d\d', r['col']) or r['saved'] != {'clock': True, 'warnings': False, 'look': False, 'drawing': False, 'dark': False, 'weather': False, 'speed': True} or not r['check'] or not r['back'] or r['inSettings'] != [False] * 5 + [True]):
+            fails.append(f"{name}: the list's settings: {r} (want its menu, the leg's numbers and speed alone, no weather, the clock's times, saved, Settings' switches the same, Check as before, #761)")
         pg.js("polku.planner.setName(4, 'Kivikko'); true")
         time.sleep(0.8)
         pg.js(SETTLED)
