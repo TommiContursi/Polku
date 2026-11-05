@@ -17306,6 +17306,18 @@ PF_JS = """(async () => {
   const night = [...p.els.points.querySelectorAll('.wpl-point[data-i="1"] .wx-line')].map((x) => x.textContent); // (as you get there, and Day 2's first row: as you go on)
   if (night[0] !== '5° 8 m/s' || night[1] !== '9° 8 m/s') errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
+  // a surface tag with markup (#483), and a highway tag (its way's name when it isn't one Polku knows): both readouts, the
+  // map's tip and the profile's (the conditions' too), show them as text, not as elements
+  const old = [a.surf[1], a.way[1], p.chart.kind], tagged = '<i>x</i>';
+  a.surf[1] = a.way[1] = tagged;
+  const lines = C.routeReadout(a, 1).lines.join(' ');
+  if (!lines.includes('&lt;i&gt;x&lt;/i&gt;') || lines.includes('<i>x')) errs.push(`the map's tip with markup tags: ${lines}`);
+  p.chart.setHover(1, true);
+  const stip = document.getElementById('profile-tip');
+  if (stip.querySelector('i') || !stip.textContent.includes(tagged)) errs.push(`the profile's tip with markup tags: ${stip.innerHTML}`);
+  p.chart.kind = 'conditions'; p.chart.setHover(1, true);
+  if (stip.querySelector('i') || !stip.textContent.includes(tagged)) errs.push(`the conditions' tip with a markup highway tag: ${stip.innerHTML}`);
+  [a.surf[1], a.way[1], p.chart.kind] = old; p.chart.setHover(-1, true);
   // paddling: its wind as far as it reaches, and from where it isn't known
   // (what Check finds would take the line's place, #741: at night the dark, by day No forecast yet; this is about the wind, #807)
   p.readSays = () => null;
