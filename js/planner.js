@@ -619,6 +619,7 @@ export class Planner {
   removePoint(i) {
     this.commit();
     this.points.splice(i, 1);
+    if (this.points.length < 2) this.routeName = ''; // (no route left: the next one drawn isn't the track's, #821)
     if (!this.legs.length) { /* single point */ }
     else if (i === 0) this.legs.shift();
     else if (i >= this.legs.length) this.legs.pop();
@@ -4240,6 +4241,7 @@ export class Planner {
     store.set('route', {
       nogos: this.nogos,
       points: this.points,
+      routeName: this.routeName || '', // an imported track's or a marked route's (#822); none in older saved routes
       names: this.points.map((p) => this.pname.get(p) || ''), // on this device only: not in share links
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
       stops: this.points.map((p) => this.pstop.get(p) || null),
@@ -4267,6 +4269,7 @@ export class Planner {
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
     if (!r || !r.points || !r.points.length) return false;
     this.points = r.points;
+    this.routeName = r.routeName || '';
     this.readKeys = new Set(r.read || []);
     this.nameAll(r.names);
     this.changeAll(r.changes);

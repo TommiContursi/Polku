@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### An imported track keeps its name, and only its own ([#822](https://github.com/TommiContursi/Polku/issues/822), [#821](https://github.com/TommiContursi/Polku/issues/821))
+
+- A track you imported or a marked route you followed keeps its name when you reload Polku or come back later: in **More**'s title, the route's list and the GPX you export.
+- When you remove an imported track's points until one or none is left, the route you draw next no longer takes the track's name. **Undo** brings the removed point back with the name.
+
 ### Words along trails stay when the map is tilted ([#635](https://github.com/TommiContursi/Polku/issues/635))
 
 - With **3D** on and the map tilted steeply, the words that run along a line stay readable, standing up towards you: the difficulty and uphill numbers, road, river and lake names, marked routes' names, the fairways' depths and the contours' heights. Before, they all disappeared past about 65°. The flat map looks the same.
