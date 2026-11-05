@@ -15779,8 +15779,8 @@ def sections_list(chrome):
         s = st(pg)
         strs = [r for x in s['secs'] for r in x['rows'] if r.startswith('~')]
         ln = pg.js(SE_LINE)
-        if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(3, '6')]:
-            fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want 3 beads and 6 by ⌄)")
+        if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(6, '6')]:
+            fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want a bead each and 6 by ⌄, #761)")
         # (headless Chrome asks for reduced motion; a person usually doesn't)
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         press(pg, at(pg, "polku.planner.els.points.querySelector('.wpl-unfold')"), f'{name}: unfold', touch)
@@ -15982,7 +15982,7 @@ def sections_list(chrome):
             if '.wpl-stretch' in sel and pg.js("(() => { const t = document.getElementById('tip').getBoundingClientRect(), u = polku.planner.els.points.querySelector('.wpl-strow .wpl-unfold')?.getBoundingClientRect(); return !u || (t.left < u.right && t.right > u.left && t.top < u.bottom && t.bottom > u.top); })()"):
                 fails.append(f"{name}: the stretch's tooltip covers its ⌄, or there's no ⌄ (#761)")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
-        # (#761) unfolded, each leg says the warnings on it, as a stretch does: one to read between via 3 and via 4 is on that
+        # (#761) unfolded, each leg names the warnings on it, in Check's words: one to read between via 3 and via 4 on that
         # leg's row, in its label too, one worth a look between via 1 and via 2 on that one's, and on none of the others, nor
         # on the waypoints; with via 4 named, the stretch after it doesn't count the one before it. (Leaving at 10:00, in
         # daylight.)
@@ -15998,18 +15998,27 @@ def sections_list(chrome):
             fails.append(f"{name}: an unnamed waypoint's name, in a GPX, and ⌄'s label: {w} (want Waypoint 2, in the GPX, Show the 5 waypoints)")
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').click(); true")
         got, lab = json.loads(pg.js(WARNS)), pg.js("polku.planner.els.points.querySelector('.wpl-stretch[data-from=\"3\"]')?.getAttribute('aria-label') || ''")
-        if got != ['1-2:1 worth a look', '3-4:1 to read'] or '1 to read' not in lab:
+        if got != ['1-2:Technical trail S3', '3-4:Cycling not allowed here'] or 'Cycling not allowed here' not in lab:
             fails.append(f"{name}: unfolded, the warnings on the legs and waypoints: {got}, the leg to via 4's label {lab!r} (#761)")
+        # (#761) a leg says each once, with its places counted, the most serious first, a line each and three at most; the
+        # dark isn't named, its own line says it
+        r = pg.js("""(() => { const p = polku.planner, keep = p.itemsOn, it = (g, text, at, kind) => ({ g, w: { text, at, kind, lngLat: [23.8 + at / 1e5, 61.5] } });
+          const on = (list) => { p.itemsOn = (s) => (s.from === 1 && s.to === 2 ? list : keep.call(p, s)); p.renderWaypoints(); return [...p.els.points.querySelectorAll('.wpl-stretch[data-from="1"] .wpl-warns')].map((x) => x.textContent); };
+          const a = on([it('read', 'Cycling not allowed here', 10), it('read', 'Cycling not allowed here', 40), it('read', 'In the dark for 300 m', 10, 'dark'), it('look', 'Steps — carry the bike', 60)]);
+          const b = on(['Cycling not allowed here', 'Steps — carry the bike', 'Steep descent', 'Ferry crossing'].map((t, k) => it(k ? 'look' : 'read', t, 10 * k)));
+          delete p.itemsOn; p.renderWaypoints(); return { a, b }; })()""")
+        if r != {'a': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'b': ['Cycling not allowed here', 'Steps — carry the bike', '2 more']}:
+            fails.append(f"{name}: a leg's warnings by name: {r} (want each once with its places, no dark, three lines at most, #761)")
         pg.js("polku.planner.setName(4, 'Kivikko'); true")
         time.sleep(0.8)
         pg.js(SETTLED)
         got = json.loads(pg.js(WARNS))
-        if got != ['1-2:1 worth a look', '3-4:1 to read']:
+        if got != ['1-2:Technical trail S3', '3-4:Cycling not allowed here']:
             fails.append(f"{name}: with via 4 named, the warnings: {got} (#761)")
         # (after sunset on the way to via 4 too: on a line of its own under the warning, as when you're there, not one)
         got = pg.js("""(() => { const p = polku.planner; p.analysis.darkWarn = [{ at: p.lengthTo(3) + 20, len: 200, kind: 'dark', twilight: true, evening: true, text: 'After sunset (16:02) for 200 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
           const lines = [...p.els.points.querySelectorAll('.wpl-stretch[data-from="3"] .wpl-warns')].map((x) => x.textContent); p.analysis.darkWarn = []; p.renderWaypoints(); return lines; })()""")
-        if got != ['1 to read', '200 m after sunset']:
+        if got != ['Cycling not allowed here', '200 m after sunset']:
             fails.append(f"{name}: the leg to via 4's lines with a warning and after sunset: {got} (want the light on a line of its own, #761)")
         # (#819) a stretch unfolded, then its only folded waypoint removed: the end's row doesn't say the stretch's warnings
         # again under its own

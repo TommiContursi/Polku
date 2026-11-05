@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### A leg says what its warnings are ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- In the route's list, a leg says what to look out for in Check's words, colours and icons: "Cycling not allowed here", "Steps — carry the bike". Each is said once on a line of its own, with its places counted ("Cycling not allowed here (2 places)"), the most serious first, and after two lines the rest as "3 more", which the leg's card lists.
+- The dark keeps its own line ("124 m in the dark"), so Check's "In the dark" isn't said a second time on a leg.
+- A stretch with its waypoints folded still counts them ("2 to read · 2 worth a look"), and shows a bead on its line for each waypoint it folds, not three at most. Where there are many, the beads run together, and the number beside ⌄ says how many.
+
 ### An unfolded stretch shows its legs ([#761](https://github.com/TommiContursi/Polku/issues/761), [#819](https://github.com/TommiContursi/Polku/issues/819))
 
 - In the route's list, when you tap a stretch's ⌄, the stretch gives way to its legs: a row for each leg between two waypoints, with its distance, time and climb, how it's drawn, and the warnings and the dark on it. The waypoints between them show their names, and how far and how long from the start.

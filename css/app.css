@@ -1493,7 +1493,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-warns .read { color: var(--danger); }
 .wpl-warns .unk { color: var(--unk); }
 .wpl-warns .look { color: var(--look); font-weight: var(--weight-regular); }
-.wpl-warns .dark { color: var(--muted); font-weight: var(--weight-regular); }
+.wpl-warns :is(.dark, .more) { color: var(--muted); font-weight: var(--weight-regular); }
 .wpl-line .moon { position: absolute; z-index: 1; left: 50%; display: grid; place-items: center; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--surface-solid); color: var(--text); }
 /* a wait (#761): a changeover, a stop or a night, a part of the route of its own, its line dotted and broken round its icon */
 .wpl .rows > .row.wpl-wait { box-shadow: none; border-radius: 12px; }
