@@ -5798,6 +5798,36 @@ def aerial_fallback(chrome):
     return not fails
 
 
+# The map's words over the aerial photos (#554): every label of one colour at 4.5:1 on its halo, the dark one there
+AERIAL_LABELS = """(() => {
+  const m = polku.map, ctx = document.createElement('canvas').getContext('2d'), out = [];
+  const rgb = (c) => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3); };
+  const lum = (c) => c.map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  for (const l of m.getStyle().layers) {
+    if (l.type !== 'symbol' || !l.layout || !l.layout['text-field']) continue;
+    const c = m.getPaintProperty(l.id, 'text-color'), h = m.getPaintProperty(l.id, 'text-halo-color');
+    if (typeof c !== 'string' || typeof h !== 'string') continue; // (a colour by the feature: not one value to measure)
+    const [x, y] = [lum(rgb(c)), lum(rgb(h))].sort((p, q) => q - p), r = (x + 0.05) / (y + 0.05);
+    if (r < 4.5) out.push(`${l.id}: ${c} on its halo ${h}, ${r.toFixed(2)}:1`);
+  }
+  return out;
+})()"""
+
+
+def aerial_labels(chrome):
+    fails = []
+    for base in ('aerial', 'ortofi'):
+        pg = chrome.page(1440, 900, False)
+        try:
+            pg.open_app({'base': base, 'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.515/23.85')
+            fails += [f'{base}: {e}' for e in pg.js(AERIAL_LABELS)]
+            fails += [f'{base} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's words over the aerial photos at 4.5:1 on their halo" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def layers(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/60.15/24.95')
@@ -17977,7 +18007,7 @@ GROUPS = [
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
-    ('raster', [raster_maps, aerial_fallback], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653)'),
+    ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),

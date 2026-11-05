@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Names you can read on the aerial photos ([#554](https://github.com/TommiContursi/Polku/issues/554))
+
+- On **Aerial** and **Aerial FI**, a peak's name and height and a park's name are white, and the names of lakes, rivers and the sea light blue, on their dark halo like the map's other words there, instead of brown, green and dark blue that were hard to read over the photos.
+
 ### The search field's hint is easier to read ([#551](https://github.com/TommiContursi/Polku/issues/551))
 
 - The search field's hint, "Search places or paste coordinates", is in the darker grey of the other words on the frosted glass, in light and in dark, instead of the browser's pale grey that was hard to read over the map.
