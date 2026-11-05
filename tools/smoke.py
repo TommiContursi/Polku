@@ -2813,10 +2813,12 @@ HEADS_UP = """(async () => {
     if (p.analysis === b) errs.push('(the test) the route was not analysed again');
     else if (not('hazards')) errs.push('a late failure for the route before put Fintraffic in Not checked');
     // road works and busy roads not asked for on a route too long, and Digiroad not answering: in Not checked, and What
-    // Polku looked at says so (#491). safety.js's own hazardsAlong, with Fintraffic's answers seeded and Digiroad refused
+    // Polku looked at says so (#491). safety.js's own hazardsAlong, with Fintraffic's answers seeded and Digiroad's
+    // answered here: first a WFS error (no back-off from net.js), then an empty answer
     const S = polku.safety, roadcond = S.roadcondFeatures, f0 = window.fetch;
+    let wfs = '<ows:ExceptionReport/>';
     S.incidents = { t: Date.now(), feats: [] }; S.roadcond = { t: Date.now() }; S.roadcondFeatures = () => [];
-    window.fetch = (input, init) => (/digiroad/.test(String(input && input.url ? input.url : input)) ? Promise.reject(new TypeError('Failed to fetch')) : f0(input, init));
+    window.fetch = (input, init) => (/digiroad/.test(String(input && input.url ? input.url : input)) ? Promise.resolve(new Response(wfs, { status: 200 })) : f0(input, init));
     try {
       // Helsinki to Jyväskylä: more tiles than either asks for, so nothing is asked
       const far = { pts: [[24.94, 60.17], [25.75, 62.24]], along: Float32Array.from([0, 240000]), attr: [{ sport: 'mtb', tags: {} }, { sport: 'mtb', tags: {} }], tAt: Float32Array.from([0, 36000]), activity: 'mtb' };
@@ -2829,14 +2831,17 @@ HEADS_UP = """(async () => {
         const row = looked(what);
         if (!row || row.state !== 'bad' || !re.test(row.by)) errs.push(`What Polku looked at, a route too long: ${row ? `${row.what}: ${row.state} · ${row.by}` : `no ${what} row`}`);
       }
-      // this route, its road works answered and Digiroad refused: busy roads in Not checked with Retry, until it answers
+      // …but not on the water: Fintraffic's roads don't count there
+      const wet = { ...p.analysis, attr: p.analysis.attr.map((x) => ({ ...x, sport: 'paddle' })) };
+      if (p.notChecked(wet).some((x) => x.key === 'roadworks' || x.key === 'busy')) errs.push(`a paddling route too long: ${p.notChecked(wet).map((x) => x.text).join(' / ')} in Not checked`);
+      // this route, its road works answered and Digiroad's an error: busy roads in Not checked with Retry, until it answers
       for (const [x, y] of S.tilesFor(box, 8, 6)) { S.roadworkTiles.set(`${x}/${y}`, []); S.roadworkTime.set(`${x}/${y}`, Date.now()); }
       hz = (c, opt) => S.hazardsAlong(c, opt);
       await p.loadHazards(p.analysis);
       const busy = not('busy'), row = () => looked(/^Busy roads/);
       if (!busy || !/^Busy roads: Digiroad didn.t answer$/.test(busy.text) || typeof busy.retry !== 'function') errs.push(`Digiroad not answering: ${busy ? `${busy.text}, Retry ${typeof busy.retry}` : `not in Not checked (${keys()})`}`);
       if (!row() || row().state !== 'bad') errs.push(`What Polku looked at, Digiroad not answering: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
-      for (const [x, y] of S.tilesFor(box, 11, 24)) S.aadtTiles.set(`${x}/${y}`, []);
+      wfs = '{"type":"FeatureCollection","features":[]}';
       if (busy && busy.retry) await busy.retry();
       if (not('busy')) errs.push('Digiroad answered after Retry and busy roads are still in Not checked');
       if (!row() || row().state !== 'ok') errs.push(`What Polku looked at, Digiroad answered: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
