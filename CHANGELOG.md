@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Imported files with a broken point ([#484](https://github.com/TommiContursi/Polku/issues/484))
+
+- Importing a GPX or KML file that has a point without coordinates leaves that point out and keeps the rest of the track, instead of drawing a line across the world.
+
 ### Paddle from here on a phone ([#656](https://github.com/TommiContursi/Polku/issues/656))
 
 - On a phone, **Paddle from here** says to tap where you want to go, not click.
