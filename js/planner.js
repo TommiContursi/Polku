@@ -656,6 +656,7 @@ export class Planner {
     this.leavePassed = null;
     this.points = [];
     this.legs = [];
+    this.routeName = ''; // (an imported track's or a marked route's: not the next route's, #769)
     this.next = null; // a new route starts in the map's sport
     this.matchMode();
     this.litLeg(null);

@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
+
+- After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
+
 ### Depths says when it has no data, zoomed out too ([#399](https://github.com/TommiContursi/Polku/issues/399))
 
 - When Traficom's depth maps aren't answering, **Depths** in **Layers** says "No data now" at the zooms where the soundings aren't shown yet, not only once you zoom in to see them.
