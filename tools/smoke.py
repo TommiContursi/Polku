@@ -15799,8 +15799,8 @@ def sections_list(chrome):
         ln = pg.js(SE_LINE)
         if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(6, '6')]:
             fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want a bead each and 6 by ⌄, #761)")
-        # (#761) Show all waypoints over the list unfolds every stretch's at once, and Fold all waypoints folds them, with no
-        # motion
+        # (#761) Show all waypoints over the list unfolds every stretch's at once, and Fold all waypoints folds them; from the
+        # keyboard with no motion (by a tap, below)
         r = pg.js("""(() => { const p = polku.planner, b = () => p.els.pointsTools.querySelector('.wpl-all');
           const st = () => `${b()?.textContent}|${b()?.getAttribute('aria-expanded')}|${p.els.points.querySelectorAll('.wpl-point.shape').length}|${p.els.points.querySelectorAll('.wpl-in').length}`;
           const out = [st()]; b().click(); out.push(st()); b().click(); out.push(st()); return out; })()""")
@@ -15855,6 +15855,18 @@ def sections_list(chrome):
           return { during, legs, after, folding, opening }; })()""")
         if r != {'during': ', '.join(['120'] * 6), 'legs': ', '.join([''] + ['120'] * 6), 'after': 0, 'folding': 'false, turning', 'opening': 'true, turning'}:
             fails.append(f"{name}: six waypoints folded by a tap, then unfolded: {r} (want them and the legs after the first leaving in 120 ms, then folded, and ⌄ turning at each tap, #761, #803)")
+        # (#761) Show all and Fold all by a tap or a click move as a stretch's ⌄ does: each stretch's rows come in, the
+        # chevron turning, and leave together at the tap; the list stays where it was scrolled (it went to its top, #846)
+        r = pg.js(f"""(async () => {{ const p = polku.planner, b = () => p.els.pointsTools.querySelector('.wpl-all'), tap = () => {{ b().focus({{ preventScroll: true }}); b().dispatchEvent(new MouseEvent('click', {{ bubbles: true, detail: 1 }})); }};
+          const turn = () => `${{b().getAttribute('aria-expanded')}}, ${{b().querySelector('.ic').getAnimations().filter((a) => a.transitionProperty === 'transform').length ? 'turning' : 'still'}}`;
+          const sc = p.listScroller(); sc.scrollTop = sc.scrollHeight; const top = sc.scrollTop;
+          tap(); const come = {IN}, opening = turn(), kept = sc.scrollTop === top;
+          await new Promise((r) => setTimeout(r, 400)); // (as a person taps again: once they're in)
+          tap(); const out = [...p.els.points.querySelectorAll('.wpl-point.shape > span:nth-child(2)')].filter((x) => x.getAnimations().some((a) => a.id === 'fold-out')).length, folding = turn();
+          await new Promise((r) => setTimeout(r, 400));
+          return {{ come, opening, kept, top, out, folding, after: p.els.points.querySelectorAll('.wpl-point.shape').length }}; }})()""")
+        if {k: v for k, v in r.items() if k != 'top'} != {'come': COME('lg-in'), 'opening': 'true, turning', 'kept': True, 'out': 6, 'folding': 'false, turning', 'after': 0}:
+            fails.append(f"{name}: Show all, then Fold all, by a tap: {r} (want each stretch's rows coming in as one stretch's do, then leaving at the tap, the chevron turning, the list where it was, #761, #846)")
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').focus(); true")
         for ev in ({'type': 'keyDown', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, 'text': '\r'}, {'type': 'keyUp', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}):
             pg.c.send('Input.dispatchKeyEvent', ev, pg.s)  # (with its text, so Enter presses the button, as key() doesn't)

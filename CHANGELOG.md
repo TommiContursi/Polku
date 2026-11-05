@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-06
 
+### Show all waypoints moves as a stretch's ⌄ does ([#761](https://github.com/TommiContursi/Polku/issues/761), [#846](https://github.com/TommiContursi/Polku/issues/846))
+
+- A tap or a click on **Show all waypoints** brings each stretch's waypoints and legs in one after another, as a stretch's **⌄** does, and **Fold all waypoints** sends them out together. Its chevron turns at the tap. From the keyboard, they change at once.
+- On a phone, **Show all waypoints** no longer jumps the route's list back to its top.
+
 ### Each part's ⚙: its sport, speed and route style ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each part's heading has a **⚙**. It opens the part's **Sport**, which changes only that part's legs (with **Undo**), its sport's **Your speed**, with the speed editor in place, and its sport's **Route style**, as the drawing menu has them for the next leg.

@@ -212,6 +212,7 @@ export class Planner {
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
     this.unfolded = new Set(); // Route's list: the stretches whose waypoints are unfolded (their first point's pid), in memory only
+    this.unfoldIn = new Set(); // (those just unfolded by a tap: their rows come in, once)
     this.renamingRow = null; // Route's list on a desktop: the row whose name is a field (its point's pid, and whether it's a part's start row)
     this.reordering = false; // Route's list in Reorder
     this.roads = initNames(map); // road and path names from the loaded tiles
@@ -2917,12 +2918,14 @@ export class Planner {
     const was = box.contains(document.activeElement) ? document.activeElement : null;
     const wasKey = was && (was.dataset.i != null ? `i${was.dataset.i}` : was.dataset.from != null ? `s${was.dataset.from}${was.classList.contains('wpl-unfold') ? 'u' : ''}` : was.textContent.trim());
     const top = this.els.pointsTop;
+    // (the heading's tools first, while the rows are still there: Show all, focused as it goes, made Chrome lay the
+    // planner out with an empty list, and its scroll fell to the top, #846)
+    this.els.pointsTools.replaceChildren(...(n >= 2 && !this.reordering ? this.listTools() : []));
     top.replaceChildren();
     box.replaceChildren();
     box.classList.toggle('reorder', !!this.reordering);
     // (the rows' chevrons say a tap opens them; Reorder's grips need their words, #764)
     if (n >= 2 && !ro && this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a waypoint, or move it earlier or later.'));
-    this.els.pointsTools.replaceChildren(...(n >= 2 && !this.reordering ? this.listTools() : []));
     if (this.reordering) this.reorderRows(box);
     else this.sectionRows(box, ro);
     if (wasKey) {
@@ -2944,12 +2947,19 @@ export class Planner {
     // goes back to it)
     let set = this.els.listSet;
     if (!set) tooltip(set = this.els.listSet = h('button', { type: 'button', class: 'tool wpl-set', 'aria-label': 'List settings', 'aria-haspopup': 'menu', html: icon('sliders', 20), onclick: (e) => this.listMenu(e.currentTarget) }), { name: 'List settings' });
-    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'aria-expanded': String(all), html: `<span>${all ? 'Fold' : 'Show'} all waypoints</span>${icon('chevronDown', 16)}`, // (its chevron turns as a stretch's ⌄ does)
+    // (Show all and Fold all move as each stretch's ⌄: from a tap, each stretch's rows come in one after another, all the
+    // stretches together, and leave the same way; from the keyboard, at once. Its chevron turns as the ⌄ does, across the
+    // redraw: `data-k` keeps it the same control while its words change)
+    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'data-k': 'all', 'aria-expanded': String(all), html: `<span>${all ? 'Fold' : 'Show'} all waypoints</span>${icon('chevronDown', 16)}`,
       onclick: (e) => {
-        const had = document.activeElement === e.currentTarget;
-        for (const pid of pids) this.unfolded[all ? 'delete' : 'add'](pid);
-        this.renderWaypoints();
-        if (had) this.els.pointsTools.querySelector('.wpl-all')?.focus();
+        // (settle() puts the focus back on it too)
+        const redraw = () => { const settle = settleControls(this.els.pointsTools); this.renderWaypoints(); settle(); };
+        if (!all) { for (const pid of pids) { if (e.detail && !this.unfolded.has(pid)) this.unfoldIn.add(pid); this.unfolded.add(pid); } redraw(); return; }
+        if (this.foldingOut === 'all') return;
+        e.currentTarget.setAttribute('aria-expanded', 'false');
+        this.foldingOut = 'all';
+        this.foldOut(this.sections().flatMap((sec) => sec.stretches).filter((s) => pids.includes(this.pidOf(this.points[s.from]))), e.detail > 0,
+          () => { this.foldingOut = null; for (const pid of pids) this.unfolded.delete(pid); redraw(); });
       } }) : null, set].filter(Boolean);
   }
   // the list's settings (#761), the app's menu: the column's times, from the start or the clock's, and what the rows show,
@@ -3056,9 +3066,9 @@ export class Planner {
       // (a part after a changeover or a night starts with its first point's row, as the route starts with its start's)
       rows.append(this.pointRow(sec.from, ro, { w: wx(wAt(this.lengthTo(sec.from))), leave: k > 0 }));
       for (const s of sec.stretches) {
-        const pid = this.pidOf(this.points[s.from]), open = s.to - s.from > 1 && this.unfolded.has(pid), enter = open && this.unfoldIn === pid;
+        const pid = this.pidOf(this.points[s.from]), open = s.to - s.from > 1 && this.unfolded.has(pid), enter = open && this.unfoldIn.has(pid);
         // (just unfolded by a tap: they come in one after another, as a Layers group's rows do, and only this once)
-        if (enter) this.unfoldIn = null;
+        if (enter) this.unfoldIn.delete(pid);
         // unfolded, its legs (#761): each a stretch of its own between two waypoints, with its numbers and its warnings, the
         // first with the fold's ⌃ where ⌄ was; a waypoint comes in with the leg after it, the first leg's words at once
         if (!open) rows.append(this.stretchRow(s, ro));
@@ -3251,20 +3261,11 @@ export class Planner {
       // folds them, not once they've gone, #803)
       onclick: (e) => {
         const redraw = () => { const settle = settleControls(this.els.points); this.renderWaypoints(); settle(); };
-        if (!open) { this.unfolded.add(pid); this.unfoldIn = e.detail ? pid : null; redraw(); return; }
+        if (!open) { this.unfolded.add(pid); if (e.detail) this.unfoldIn.add(pid); redraw(); return; }
         if (this.foldingOut === pid) return;
         e.currentTarget.setAttribute('aria-expanded', 'false');
-        const inside = (i) => i > folds.from && i < folds.to, L = this.els.points;
-        const rows = e.detail ? [...L.querySelectorAll('.wpl-point.shape')].filter((x) => inside(+x.dataset.i)) : [];
-        const out = [...rows.flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]),
-          ...(e.detail ? [...L.querySelectorAll('.wpl-stretch')].filter((x) => inside(+x.dataset.from)).map((x) => x.children[1]) : [])];
-        const done = () => { this.foldingOut = null; this.unfolded.delete(pid); redraw(); };
-        if (!out.length) { done(); return; }
         this.foldingOut = pid;
-        // (only the end: each leaves from where it is, so one still coming in doesn't flash to full first)
-        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }] : [{ opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
-        for (const x of out) x.animate(frames, { id: 'fold-out', duration: ms, easing: cssVar('--ease-out'), fill: 'forwards' });
-        setTimeout(done, ms); // (on time, not on the animation's end: one that draws no frames, a page left mid-way, still folds)
+        this.foldOut([folds], e.detail > 0, () => { this.foldingOut = null; this.unfolded.delete(pid); redraw(); });
       } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) })) : null;
     const row = h('div', { class: 'wpl-strow' }, b, fold);
     if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)
@@ -3298,6 +3299,19 @@ export class Planner {
     rows.push(`${c.label} · up to ${w.speed[kw].toFixed(1)} m/s from ${compass(w.dir[kw])}${gust > w.speed[kw] + 2 ? `, gusts ${gust.toFixed(0)}` : ''}`);
     rows.push(`${t} °C · ${w.precip[kr] >= 0.1 ? `${w.temp[kr] < 0.5 ? 'snow' : 'rain'} up to ${w.precip[kr].toFixed(1)} mm/h` : 'dry'}`);
     return rows;
+  }
+  // The waypoints of the stretches `spans` fold away as a stretch's ⌄ folds them: from a tap, their marks and words, and the
+  // legs' words after the first, fade back up off the line together, then `done` draws the list again; from the keyboard,
+  // at once (#803, and Fold all waypoints, #761)
+  foldOut(spans, tap, done) {
+    const inside = (i) => spans.some((s) => i > s.from && i < s.to), L = this.els.points;
+    const out = tap ? [...[...L.querySelectorAll('.wpl-point.shape')].filter((x) => inside(+x.dataset.i)).flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]),
+      ...[...L.querySelectorAll('.wpl-stretch')].filter((x) => inside(+x.dataset.from)).map((x) => x.children[1])] : [];
+    if (!out.length) { done(); return; }
+    // (only the end: each leaves from where it is, so one still coming in doesn't flash to full first)
+    const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }] : [{ opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
+    for (const x of out) x.animate(frames, { id: 'fold-out', duration: ms, easing: cssVar('--ease-out'), fill: 'forwards' });
+    setTimeout(done, ms); // (on time, not on the animation's end: one that draws no frames, a page left mid-way, still folds)
   }
   // a stretch's average speed in Your speed's units for its sport: a pace for running and swimming, else km/h (#761)
   speedWords(m, sec, sport) {
