@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### A multisport route's climbing adds up ([#752](https://github.com/TommiContursi/Polku/issues/752))
+
+- On a route of two sports, the line under the route's numbers counts each sport's climbing as the route's total does, a climb once it passes 2 m, so the sports' climbs add up to about the total instead of more.
+
 ### Tooltips that say what happens ([#753](https://github.com/TommiContursi/Polku/issues/753))
 
 - On a desktop, the Go tab's tooltip says "there at" with the arrival time on a route that ends somewhere else, and "back at" only on a round trip.
