@@ -15384,11 +15384,29 @@ def spot_card_foot(chrome):
                 if (w == 195) != (r['lines'] == len(want)) or (w != 195 and r['lines'] != 1):
                     fails.append(f"{name}: {what}: the last row is on {r['lines']} lines (one where there's room, a line each at 200 %)")
                 pg.js('polku.planner.cards.close(); true')
+            if phone and w > 195:
+                # a spot under the floating toolbox (undo and redo, over the map above the card): the map moves it, and its
+                # pill, clear of the toolbox too, as of the map's buttons (#555); a card open first, so the sheet and the
+                # toolbox are where the next card leaves them
+                r = pg.js("""(async () => { const p = polku.planner, m = polku.map, t = document.getElementById('pl-tools'), R = m.getCanvas().getBoundingClientRect(), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+                  const open = async (ll) => { p.openSpotCard(ll, { touch: true }); if (p.picked) p.openLine(); await wait(1500); };
+                  p.setSheetState('peek'); await open(m.unproject([R.width / 2, R.height * 0.3]));
+                  const state = () => (t.hidden ? 'hidden' : t.classList.contains('docked') ? 'docked' : 'floating');
+                  if (state() !== 'floating') return { tools: state() };
+                  const T = t.getBoundingClientRect(), ll = m.unproject([(T.left + T.right) / 2 - R.left, (T.top + T.bottom) / 2 - R.top]);
+                  await open(ll);
+                  const q = m.project(ll), x = R.left + q.x, y = R.top + q.y, U = t.getBoundingClientRect();
+                  return { tools: state(), card: p.cards.current && p.cards.current.kind, under: x >= U.left && x <= U.right && y >= U.top && y <= U.bottom, spot: [x, y].map(Math.round), box: [U.left, U.top, U.right, U.bottom].map(Math.round) }; })()""", timeout=30000)
+                pg.js('sc.calm()')
+                over = pg.js(PILL_OVER)
+                if r.get('tools') != 'floating' or r.get('card') != 'spot' or r.get('under') or 'pl-tools' in over:
+                    fails.append(f"{name}: a spot under the toolbox: {r}{f', the pill under {over}' if over else ''}")
+                pg.js('polku.planner.cards.close(); true')
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         except Exception as e:
             fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: Share, Weather here ›, Not right?, at four sizes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: Share, Weather here ›, Not right?, at four sizes; a spot clear of the toolbox" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
