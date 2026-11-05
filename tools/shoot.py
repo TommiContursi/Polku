@@ -298,6 +298,11 @@ def NO_TERRAIN(part=False):
     return ("(() => { const real = window.fetch; window.fetch = (u, i) => { const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\//.exec(String(u));"
             f" if (m && ({fail})) return Promise.reject(new TypeError('Failed to fetch')); return real(u, i); }}; return true; }})()")
 
+# #388: Go's wind with a headwind the whole way ("Headwind 100 %"), the forecast's own values otherwise
+GO_WIND = ("(async () => { const p = polku.planner, a = p.analysis, wait = (ms) => new Promise((r) => setTimeout(r, ms));"
+           " for (let k = 0; k < 150 && !a.wind; k++) await wait(100); if (!a.wind) throw new Error('No forecast for the screenshot');"
+           " a.wind.head = a.wind.head.map(() => 6); a.wind.speed = a.wind.speed.map(() => 6); p.renderAnalysis(); p.reveal('depart'); await wait(600); return true; })()")
+
 # #88, #89: the fit button with the sheet at full, a GPX import (the Kauppi ride as a track) with
 # the planner open at half, and a round-trip loop clicked on its line (its farthest point from
 # the start). Older code leaves the full sheet up and the map unmoved, fits the track as if there
@@ -673,6 +678,8 @@ SCENES = {
     'desk-tab-check': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('warnings')),
     'desk-tab-go': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('speed')),
     'phone-tab-check': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=TAB('warnings')),
+    'desk-go-wind': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=GO_WIND),
+    'phone-go-wind': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=GO_WIND),
     'desk-sweep-headsup': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),
     'desk-sweep-hidden': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_HIDDEN),
     'phone-sweep-headsup': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='full', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),
