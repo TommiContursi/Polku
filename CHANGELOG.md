@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### An imported track keeps its name, and only its own ([#822](https://github.com/TommiContursi/Polku/issues/822), [#821](https://github.com/TommiContursi/Polku/issues/821))
+
+- A track you imported or a marked route you followed keeps its name when you reload Polku or come back later: in **More**'s title, the route's list and the GPX you export.
+- When you remove an imported track's points until one or none is left, the route you draw next no longer takes the track's name. **Undo** brings the removed point back with the name.
+
 ### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
 
 - After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
