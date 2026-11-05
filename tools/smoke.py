@@ -15451,12 +15451,13 @@ def sections_list(chrome):
                 fails.append(f"{name}: {what}: how the stretches are drawn, in weights {[(x['how'], x['weight']) for x in ln['stretches']]} (want Follow paths as Freehand, #761)")
         # (#761) a point's line: the weather with its icons, no Start or End in it (its label says them); its column (#761,
         # Phase 1) how far and how long from the start, the clock's time in its label; and a stretch in the dark says how much,
-        # with a moon on its line where that begins
+        # with a moon on its line where that begins (the end's day before its time after midnight, "Arrive Thu 00:05": the route
+        # leaves now, #804)
         r = pg.js("""(() => { const p = polku.planner, L = p.els.points, row = (i) => L.querySelector(`.wpl-point[data-i="${i}"]`);
           const line = (i) => row(i)?.querySelector('.wx-line'), out = [];
           const col = (i) => row(i)?.querySelector('.wpl-when')?.textContent || '';
           if (/Leave|Start/.test(line(0)?.textContent || '') || !/Start.*Leave /.test(row(0)?.getAttribute('aria-label') || '') || !/^0 m(0 min)?$/.test(col(0))) out.push(`the start's line ${line(0)?.textContent}, its column ${col(0)}, its label ${row(0)?.getAttribute('aria-label')}`);
-          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\\d.]+ k?m\\d+ (h \\d+ )?min$/.test(col(3)) || !/Arrive \\d\\d:\\d\\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
+          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\\d.]+ k?m\\d+ (h \\d+ )?min$/.test(col(3)) || !/Arrive (\\w+ )?\\d\\d:\\d\\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
           if (p.analysis.wind && !(line(0)?.querySelectorAll('svg').length >= 2)) out.push('no icons for the weather on the start\u2019s line');
           const a0 = p.lengthTo(1); p.analysis.darkWarn = [{ at: a0 + 20, len: 250, kind: 'dark', text: 'In the dark for 250 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
           const st1 = L.querySelector('.wpl-stretch[data-from="1"]'), dark = st1?.querySelector('.wpl-warns .dark')?.textContent || '';
@@ -15494,7 +15495,8 @@ def sections_list(chrome):
         # (#761: the changeover a wait of its own, with its times; Paddle's part starts with via 3's row, as you leave it: its
         # label says when, its column how far and how long from the start)
         labs = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-point')].map((x) => `${x.dataset.i}:${x.getAttribute('aria-label') || ''}`)")
-        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–\d\d:\d\d', w) for w in s['waits'])
+        # (its end the next day's after midnight, "23:48–Thu 00:03": the route leaves now, #804)
+        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–(\w+ )?\d\d:\d\d', w) for w in s['waits'])
                                     or not s['secs'][1]['rows'] or not s['secs'][1]['rows'][0].startswith('3:') or not any(x.startswith('3:') and 'Leave ' in x for x in labs)):
             fails.append(f"{name}: the change of sport: waits {s['waits']}, Paddle's rows {s['secs'][1]['rows'][:1]}")
         if s['short']:
@@ -17305,6 +17307,8 @@ PF_JS = """(async () => {
   if (night[0] !== '5° 8 m/s' || night[1] !== '9° 8 m/s') errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
   // paddling: its wind as far as it reaches, and from where it isn't known
+  // (what Check finds would take the line's place, #741: at night the dark, by day No forecast yet; this is about the wind, #807)
+  p.readSays = () => null;
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
   const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
   if (line.length !== 1 || !line[0].startsWith('Wind up to 8 m/s, gusts 12 · headwind ') || !line[0].endsWith(` · no forecast yet from km ${km}`)) errs.push(`paddling's key fact: ${line.join(' / ')}`);
