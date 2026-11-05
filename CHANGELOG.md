@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Back to start under the route's list ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- Under the route's list, **Back to start** sits beside **Reverse**: it adds a leg from the end back to where you started, with **Undo** in its note. It isn't there when the route already comes back to its start.
+
 ### The difficulty key and Go's wind ([#388](https://github.com/TommiContursi/Polku/issues/388))
 
 - With the trails coloured by **Difficulty**, the note in **Layers** says the colours go from S0 green to S6 dark purple, as the map draws them, not to S5.
