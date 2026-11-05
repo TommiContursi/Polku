@@ -298,6 +298,13 @@ def NO_TERRAIN(part=False):
     return ("(() => { const real = window.fetch; window.fetch = (u, i) => { const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\//.exec(String(u));"
             f" if (m && ({fail})) return Promise.reject(new TypeError('Failed to fetch')); return real(u, i); }}; return true; }})()")
 
+# #491: Check on a route too long to ask for its road works and busy roads (Helsinki to Jyväskylä's box: nothing asked
+# for), its Not checked, then What Polku looked at
+LONG_HAZARDS = ("(() => { const S = polku.safety, far = { pts: [[24.94, 60.17], [25.75, 62.24]], along: [0, 240000], attr: [{ sport: 'mtb', tags: {} }, { sport: 'mtb', tags: {} }], tAt: [0, 36000], activity: 'mtb' };"
+                " polku.planner.app.hazards = (a, o) => S.hazardsAlong(far, o); return true; })()")
+LOOKED = ("(async () => { polku.planner.reveal('warnings'); await new Promise((r) => setTimeout(r, 600));"
+          " document.querySelector('.looked').scrollIntoView({ block: 'center' }); return true; })()")
+
 # #88, #89: the fit button with the sheet at full, a GPX import (the Kauppi ride as a track) with
 # the planner open at half, and a round-trip loop clicked on its line (its farthest point from
 # the start). Older code leaves the full sheet up and the map unmoved, fits the track as if there
@@ -673,6 +680,10 @@ SCENES = {
     'desk-tab-check': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('warnings')),
     'desk-tab-go': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('speed')),
     'phone-tab-check': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=TAB('warnings')),
+    'desk-long-hazards': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, pre=LONG_HAZARDS, js=TAB('warnings')),
+    'desk-long-looked': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, pre=LONG_HAZARDS, js=LOOKED),
+    'phone-long-hazards': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', pre=LONG_HAZARDS, js=TAB('warnings')),
+    'phone-long-looked': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', pre=LONG_HAZARDS, js=LOOKED),
     'desk-sweep-headsup': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),
     'desk-sweep-hidden': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_HIDDEN),
     'phone-sweep-headsup': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='full', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),

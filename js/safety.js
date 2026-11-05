@@ -155,9 +155,10 @@ export class SafetyLayers {
     return out;
   }
 
+  // true when every tile of the box answered, false when one didn't, 'long' when the box has too many to ask for
   async loadAadt(box, { max = 9, publish = true } = {}) {
     const tiles = this.tilesFor(box, 11, max);
-    if (!tiles) return false;
+    if (!tiles) return 'long';
     const jobs = tiles.map(async ([x, y]) => {
       const key = `${x}/${y}`;
       if (this.aadtTiles.has(key)) return this.aadtTiles.get(key);
@@ -169,14 +170,14 @@ export class SafetyLayers {
         const feats = (gj.features || []).filter((f) => f.geometry).map((f) => ({ type: 'Feature', properties: { kind: 'aadt', aadt: f.properties.arvo }, geometry: f.geometry }));
         this.aadtTiles.set(key, feats);
         return feats;
-      }).catch(() => { this.aadtTiles.delete(key); return []; });
+      }).catch(() => { this.aadtTiles.delete(key); return null; });
       this.aadtTiles.set(key, p);
       return p;
     });
-    await Promise.all(jobs);
+    const got = await Promise.all(jobs);
     if (this.aadtTiles.size > 80) this.aadtTiles.delete(this.aadtTiles.keys().next().value);
     if (publish) this.publish();
-    return true;
+    return !got.includes(null);
   }
 
   // ---------------------------------------------------------------- incidents & road works
@@ -193,10 +194,10 @@ export class SafetyLayers {
     } catch { /* keep old */ }
   }
 
-  // false when a tile of the box didn't answer
+  // true when every tile of the box answered, false when one didn't, 'long' when the box has too many to ask for
   async loadRoadworks(box, { publish = true } = {}) {
-    const tiles = this.tilesFor(box, 8, 6) || [];
-    const got = await Promise.all(tiles.map(async ([x, y]) => {
+    const tiles = this.tilesFor(box, 8, 6);
+    const got = await Promise.all((tiles || []).map(async ([x, y]) => {
       const key = `${x}/${y}`;
       if (this.roadworkTiles.has(key)) return this.roadworkTiles.get(key);
       const [w, s, e, n] = tileBounds(x, y, 8);
@@ -212,7 +213,7 @@ export class SafetyLayers {
       return p;
     }));
     if (publish) this.publish();
-    return !got.includes(null);
+    return tiles ? !got.includes(null) : 'long';
   }
   // when the box's road works were fetched (ms), one a tile
   roadworkAt(box) {
@@ -460,7 +461,7 @@ export class SafetyLayers {
     for (const p of a.pts) { box[0] = Math.min(box[0], p[0]); box[1] = Math.min(box[1], p[1]); box[2] = Math.max(box[2], p[0]); box[3] = Math.max(box[3], p[1]); }
     const landAt = (i) => !isWater((a.attr[i] && a.attr[i].sport) || activity);
     const onWheelsOrFeet = a.pts.some((_, i) => landAt(i));
-    const [, worksIn] = await Promise.all([
+    const [, worksIn, , busyIn] = await Promise.all([
       this.loadIncidents(),
       this.loadRoadworks(box, { publish: false }),
       this.loadRoadcond(),
@@ -530,6 +531,13 @@ export class SafetyLayers {
       flush(a.pts.length - 1);
     }
     out.answeredAt = live.at; // when Fintraffic answered (What Polku looked at says so)
+    // what it couldn't ask for or didn't get, for Not checked (#491); `retry` where asking again can help
+    const long = 'Polku asks for them on shorter routes. Zoomed in, the map shows them in Layers.';
+    out.notChecked = [
+      worksIn === 'long' && { key: 'roadworks', by: 'Fintraffic', text: 'Road works: not checked on a route this long', note: `Road works on the way aren’t known. ${long}` },
+      busyIn === 'long' && { key: 'busy', by: 'Digiroad', text: 'Busy roads: not checked on a route this long', note: `Roads with lots of cars on the way aren’t known. ${long}` },
+      busyIn === false && { key: 'busy', by: 'Digiroad', text: 'Busy roads: Digiroad didn’t answer', note: 'Roads with lots of cars on the way aren’t known.', retry: true },
+    ].filter(Boolean);
     return out.sort((x, y) => x.at - y.at);
   }
 }
