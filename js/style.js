@@ -53,7 +53,7 @@ const PALETTES = {
   },
 };
 // Aerial and MML bases reuse the trail palette but hide our own fills.
-PALETTES.aerial = { ...PALETTES.trail, path: '#ffffff', track: '#ffe4b5', text: '#ffffff', halo: '#1a1a1a', hillshade: false };
+PALETTES.aerial = { ...PALETTES.trail, path: '#ffffff', track: '#ffe4b5', waterText: '#bfe0ff', text: '#ffffff', halo: '#1a1a1a', hillshade: false };
 PALETTES.ortofi = PALETTES.aerial;
 PALETTES.mml = { ...PALETTES.trail, hillshade: false };
 PALETTES.maasto = PALETTES.mml;
@@ -927,7 +927,7 @@ function addLabels(s, P, hc, layers) {
   add({ id: 'label-waterway', type: 'symbol', source: 'ofm', 'source-layer': 'waterway', minzoom: 12, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 11, 'text-letter-spacing': 0.1 }, paint: { 'text-color': P.waterText, ...halo } });
   add({ id: 'label-water', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-max-width': 6, 'text-letter-spacing': 0.08 }, paint: { 'text-color': P.waterText, ...halo } });
   add({ id: 'label-water-line', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'LineString']], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-letter-spacing': 0.15 }, paint: { 'text-color': P.waterText, ...halo } });
-  add({ id: 'label-park', type: 'symbol', source: 'ofm', 'source-layer': 'park', minzoom: 9, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 12, 'text-max-width': 8 }, paint: { 'text-color': '#2f6b2f', ...halo } });
+  add({ id: 'label-park', type: 'symbol', source: 'ofm', 'source-layer': 'park', minzoom: 9, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 12, 'text-max-width': 8 }, paint: { 'text-color': isAerial(s.base) ? P.text : '#2f6b2f', ...halo } });
   add({ id: 'label-road', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 13, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': zi(13, 10, 17, 13), 'text-rotation-alignment': 'map' }, paint: { 'text-color': P.text, ...halo } });
   add({
     id: 'label-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11,
@@ -937,7 +937,7 @@ function addLabels(s, P, hc, layers) {
       'text-field': ['case', ['has', 'name'], ['concat', ['get', 'name'], '\n', ['to-string', ['get', 'ele']], ' m'], ['concat', ['to-string', ['get', 'ele']], ' m']],
       'text-font': FONT, 'text-size': 11, 'text-offset': [0, 0.8], 'text-anchor': 'top', 'text-optional': true,
     },
-    paint: { 'text-color': '#6b4b2b', ...halo },
+    paint: { 'text-color': isAerial(s.base) ? P.text : '#6b4b2b', ...halo },
   });
   if (s.contours && !isTopo(s.base)) {
     add({ id: 'contour-label', type: 'symbol', source: 'contours', 'source-layer': 'contours', minzoom: 13, filter: ['>', ['get', 'level'], 0], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['to-string', ['get', 'ele']], 'text-font': FONT, 'text-size': 10, 'symbol-spacing': 350 }, paint: { 'text-color': isAerial(s.base) ? '#ffeccc' : P.contourText, ...halo } });
