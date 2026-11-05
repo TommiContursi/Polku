@@ -5096,7 +5096,6 @@ export class Planner {
   async listMarked() {
     const M = this.marked, sp = this.app.activity(), types = markedFor(sp);
     const gen = (M.gen = (M.gen || 0) + 1);
-    const keep = M.list[M.on] && M.list[M.on].key;
     if (!types.length) { M.list = []; M.state = 'none'; this.showMarked(); this.renderStart(); return; }
     const c = this.map.getCenter();
     const fin = c.lng > 19 && c.lng < 32 && c.lat > 59.4 && c.lat < 70.2;
@@ -5116,6 +5115,7 @@ export class Planner {
       return;
     }
     if (gen !== M.gen || this.startView() !== 'find') return;
+    const keep = M.list[M.on] && M.list[M.on].key; // (the pick as it is now: one made while LIPAS answered stays, #427)
     M.list = res.routes.slice(0, 20);
     M.on = Math.max(0, M.list.findIndex((r) => r.key === keep));
     M.partial = res.failed > 0 && M.list.length > 0;
@@ -6548,7 +6548,7 @@ export class Planner {
       this.renderBreakdown();
       this.renderSpeed(); // your speeds for the sport, before there's a route and after Clear (#87)
       this.els.climbs.innerHTML = '';
-      this.els.warnings.innerHTML = '';
+      this.renderWarnings(); // (Check's tab and the peek's row too: nothing on the way, #463)
       this.els.wind.innerHTML = '';
       this.drawColored(); // no route: its colours and wind arrows go from the map too
       if (this.app.onAnalysis) this.app.onAnalysis(null);
