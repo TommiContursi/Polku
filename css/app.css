@@ -1245,6 +1245,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .sheet-cols > .sec[data-sec="depart"] > .sec-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 0 28px; align-items: start; }
   .sheet-cols .sec-head { pointer-events: none; }
   .sheet-cols .sec-chev, .sheet-cols .sec-sum { display: none; }
+  .sheet-cols .wpl-head-tools { right: 0; } /* (no ⌄ in a wide panel's columns, #761) */
   .sheet-cols .sec[data-open="false"] .sec-body { display: block; }
   .sheet-cols .sec[data-sec="speed"][data-open="false"] > .sec-body, .sheet-cols .sec[data-sec="depart"][data-open="false"] > .sec-body { display: grid; }
 }
@@ -1421,6 +1422,15 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .sec2-head b { font-size: var(--font-row); font-weight: var(--weight-strong); line-height: 1.3; overflow-wrap: anywhere; }
 .sec2-t small { font-size: 13.5px; font-weight: var(--weight-name); color: var(--text); font-variant-numeric: tabular-nums; }
 .wpl-top .btn { min-height: var(--target); margin-left: auto; }
+/* Show all waypoints and the list's settings (#761), in the Waypoints heading's row, where its summary is while the list
+   is open (so the list starts no lower); a finger's targets 44 px; where the planner is narrow (200 %), over the list */
+.sec[data-sec="points"] { position: relative; }
+.wpl-head-tools { position: absolute; top: 0; right: 22px; height: 40px; display: flex; align-items: center; gap: 2px; }
+.wpl-head-tools:empty { display: none; }
+.wpl-head-tools > * { min-height: var(--target); }
+.wpl-head-tools > .tool { min-width: var(--target); }
+@container plbody (max-width: 300px) { .wpl-head-tools { position: static; height: auto; justify-content: space-between; margin: 0 0 6px; } }
+.wpl-shows { padding: 0 8px; } /* (the list's settings' switches, in the app's menu) */
 .wpl .rows { margin: 0; } /* (inside the list: no room for a hover past its edge, as a card has) */
 .wpl-point > span:first-child { position: relative; width: 22px; align-self: stretch; place-items: center; }
 /* the route's line (#761): through every point's mark, in its part's colour (--part: its sport's, set on its part), 3 px;
@@ -1493,7 +1503,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-warns .read { color: var(--danger); }
 .wpl-warns .unk { color: var(--unk); }
 .wpl-warns .look { color: var(--look); font-weight: var(--weight-regular); }
-.wpl-warns .dark { color: var(--muted); font-weight: var(--weight-regular); }
+.wpl-warns :is(.dark, .more) { color: var(--muted); font-weight: var(--weight-regular); }
 .wpl-line .moon { position: absolute; z-index: 1; left: 50%; display: grid; place-items: center; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--surface-solid); color: var(--text); }
 /* a wait (#761): a changeover, a stop or a night, a part of the route of its own, its line dotted and broken round its icon */
 .wpl .rows > .row.wpl-wait { box-shadow: none; border-radius: 12px; }
@@ -1503,10 +1513,11 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-wait > span:first-child::after { top: calc(50% + 12px); bottom: -10px; }
 .wpl-wait b { font-size: 14px; }
 .wpl-unfold { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 1px; width: auto; min-width: var(--target); min-height: var(--target); padding: 0 4px 0 8px; font-size: 13px; font-weight: var(--weight-name); color: var(--muted); }
-/* a stretch's waypoints, unfolded by a tap: their marks and words come in as a Layers group's rows (lg-in), one after
-   another (the delay on the row, planner.js sectionRows()), onto the route's line, which stays where it is */
-.wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev) { animation: lg-in var(--t-open) var(--ease-out) backwards; animation-delay: inherit; }
-@media (prefers-reduced-motion: reduce) { .wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev) { animation-name: qd-fade; } }
+/* a stretch's waypoints and its legs, unfolded by a tap: their marks and words come in as a Layers group's rows (lg-in),
+   one after another (the delay on the row, planner.js sectionRows()), onto the route's line, which stays where it is */
+.wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev, .wpl-stretch > span:nth-child(2)) { animation: lg-in var(--t-open) var(--ease-out) backwards; animation-delay: inherit; }
+.wpl .rows > .wpl-in :is(.row, .wpl-point > span:first-child) { animation-delay: inherit; } /* (a row in a wrapper, a leg's or a desktop's waypoint's, and a waypoint's mark in its span take the row's delay) */
+@media (prefers-reduced-motion: reduce) { .wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev, .wpl-stretch > span:nth-child(2)) { animation-name: qd-fade; } }
 /* its ⌄ turns as it opens, as Layers' group arrow and Settings' speeds do (settleControls() gives it its start across the
    list's redraw); from the keyboard, and with reduced motion, at once (#803) */
 .wpl-unfold .ic { transition: transform var(--t-press) var(--ease-out); }

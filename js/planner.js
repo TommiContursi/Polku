@@ -204,6 +204,7 @@ export class Planner {
     this.pid = new WeakMap(); // point → who it is: the same through a move, Undo and Redo (a point's card follows it, 25d)
     this.pidN = 0;
     this.marks = { km: true, time: true, duration: true, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
+    this.listShow = { clock: false, routing: true, warnings: true, dark: true, weather: true, ...store.get('listShow', {}) }; // Route's list's settings (#761)
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
@@ -2915,6 +2916,7 @@ export class Planner {
     box.classList.toggle('reorder', !!this.reordering);
     // (the rows' chevrons say a tap opens them; Reorder's grips need their words, #764)
     if (n >= 2 && !ro && this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a waypoint, or move it earlier or later.'));
+    this.els.pointsTools.replaceChildren(...(n >= 2 && !this.reordering ? this.listTools() : []));
     if (this.reordering) this.reorderRows(box);
     else this.sectionRows(box, ro);
     if (wasKey) {
@@ -2926,14 +2928,44 @@ export class Planner {
     if (!box.matches(':hover') && !this.mapHover) this.unlitLeg(); // (not the leg under the pointer on the map)
   }
 
+  // In the Waypoints heading's row (#761), where its summary is while the list is open, so the list starts no lower: Show
+  // all waypoints, every stretch's at once (Fold all waypoints folds them), with no motion, since so many rows at once say
+  // nothing, and the list's settings
+  listTools() {
+    const pids = this.sections().flatMap((sec) => sec.stretches).filter((s) => s.to - s.from > 1).map((s) => this.pidOf(this.points[s.from]));
+    const all = pids.length > 0 && pids.every((pid) => this.unfolded.has(pid));
+    // (the settings' button is kept from one drawing of the list to the next, so its menu, open while the list changes,
+    // goes back to it)
+    let set = this.els.listSet;
+    if (!set) tooltip(set = this.els.listSet = h('button', { type: 'button', class: 'tool wpl-set', 'aria-label': 'List settings', 'aria-haspopup': 'menu', html: icon('sliders', 20), onclick: (e) => this.listMenu(e.currentTarget) }), { name: 'List settings' });
+    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'aria-expanded': String(all), html: `<span>${all ? 'Fold' : 'Show'} all waypoints</span>`, // (words only: the heading's ⌄ is beside it)
+      onclick: (e) => {
+        const had = document.activeElement === e.currentTarget;
+        for (const pid of pids) this.unfolded[all ? 'delete' : 'add'](pid);
+        this.renderWaypoints();
+        if (had) this.els.pointsTools.querySelector('.wpl-all')?.focus();
+      } }) : null, set].filter(Boolean);
+  }
+  // the list's settings (#761), the app's menu: the column's times, from the start or the clock's, and what the rows show,
+  // each a switch; saved as the map's marks are. What's hidden stays in Check and the cards.
+  listMenu(anchor) {
+    const S = this.listShow, save = () => { store.set('listShow', S); this.renderWaypoints(); };
+    const sw = (k, label) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: S[k], onchange: (e) => { S[k] = e.target.checked; save(); } }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    popMenu(anchor, [
+      { group: 'Times', items: [['route', 'From start', false], ['clock', 'Clock', true]].map(([ic, label, clock]) => ({ icon: ic, label, radio: true, checked: S.clock === clock, fn: () => { S.clock = clock; save(); } })) },
+      { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, sw('routing', 'Routing'), sw('warnings', 'Warnings'), sw('dark', 'Darkness'), sw('weather', 'Weather')) }] },
+      { note: 'Hidden items stay in Check and the cards.' },
+    ], { label: 'List settings' });
+  }
+
   // The open card's row in Route's list, lit: a point's own row, or the stretch's it folds into; a stretch's cards
-  // light the stretch's row
+  // light the rows on it: its own, an unfolded one's legs, or the folded stretch a leg's card is on
   litRows() {
     const box = this.els.points, c = this.cards.current;
     const i = c && c.key && this.points.includes(c.key) ? this.points.indexOf(c.key) : -1, s = c && c.kind !== 'item' ? c.stretch || c.s || null : null;
     const own = i >= 0 && box.querySelector(`.wpl-point[data-i="${i}"]`);
     for (const r of box.querySelectorAll('.wpl-point, .wpl-stretch')) {
-      const on = own ? r === own : r.classList.contains('wpl-stretch') && (i >= 0 ? +r.dataset.from < i && i < +r.dataset.to : !!s && +r.dataset.from === s.from);
+      const on = own ? r === own : r.classList.contains('wpl-stretch') && (i >= 0 ? +r.dataset.from < i && i < +r.dataset.to : !!s && +r.dataset.from < s.to && s.from < +r.dataset.to);
       if (on) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current');
     }
   }
@@ -2985,18 +3017,20 @@ export class Planner {
       // (a part after a changeover or a night starts with its first point's row, as the route starts with its start's)
       rows.append(this.pointRow(sec.from, ro, { w: wx(wAt(this.lengthTo(sec.from))), leave: k > 0 }));
       for (const s of sec.stretches) {
-        rows.append(this.stretchRow(s, ro));
-        // (unfolded, each point says the warnings on the way to it, its end too)
-        const open = this.unfolded.has(this.pidOf(this.points[s.from])), enter = open && this.unfoldIn === this.pidOf(this.points[s.from]);
+        const pid = this.pidOf(this.points[s.from]), open = s.to - s.from > 1 && this.unfolded.has(pid), enter = open && this.unfoldIn === pid;
         // (just unfolded by a tap: they come in one after another, as a Layers group's rows do, and only this once)
         if (enter) this.unfoldIn = null;
-        if (open) for (let i = s.from + 1; i < s.to; i++) {
-          const el = rows.appendChild(this.pointRow(i, ro, { shape: true, warns: true }));
-          if (enter) { el.classList.add('wpl-in'); el.style.animationDelay = `${Math.min(i - s.from - 1, 3) * 40}ms`; }
+        // unfolded, its legs (#761): each a stretch of its own between two waypoints, with its numbers and its warnings, the
+        // first with the fold's ⌃ where ⌄ was; a waypoint comes in with the leg after it, the first leg's words at once
+        if (!open) rows.append(this.stretchRow(s, ro));
+        else for (let i = s.from; i < s.to; i++) {
+          const come = (el) => { if (enter) { el.classList.add('wpl-in'); el.style.animationDelay = `${Math.max(0, Math.min(i - s.from - 1, 3)) * 40}ms`; } return el; };
+          if (i > s.from) rows.append(come(this.pointRow(i, ro, { shape: true })));
+          rows.append(come(this.stretchRow({ from: i, to: i + 1 }, ro, i === s.from ? s : null)));
         }
         const end = s.to === sec.to, stop = !end && this.stopAt(s.to);
         // (where a part ends, or at a stop, the line breaks: dotted to the next part's heading, through the stop's wait)
-        rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop, warns: open }));
+        rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop }));
         if (stop) rows.append(this.waitRow(s.to, 'stop'));
       }
       // (each part's line in its sport's colour, the map's and the profile's Sport colours)
@@ -3018,34 +3052,32 @@ export class Planner {
   // (a forecast sample, or 'none' past its reach) the weather then, with its icons; Start, End and Waypoint n are in its label,
   // the mark says them. `leave`: a part's first row after a changeover or a night, the point you set off from again.
   // Its line is dashed beside a straight leg, dotted below it where its part ends or at a stop (`brk`), none below the end.
-  // `warns`: in a stretch unfolded, the warnings on the way to it from the point before, as a stretch has its own.
   // On a desktop, while drawing, its tools where › is (#761), shown while a mouse is over the row or it has the focus:
   // Rename (its name a field in the row), Remove (with Undo in the note) and the grip, which drags it along the list.
   // A phone's row opens its card, and Reorder moves it.
-  pointRow(i, ro, { shape = false, w = null, leave = false, brk = false, warns = false } = {}) {
+  pointRow(i, ro, { shape = false, w = null, leave = false, brk = false } = {}) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), at = this.timesAt(i), out = i === 0 || leave;
     const when = i === 0 ? this.leaveWords() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
-    const sky = this.wxOf(w, out ? at && at.leave : at && at.arrive, p);
+    const sky = this.wxOf(w, out ? at && at.leave : at && at.arrive, p), shown = this.listShow.weather ? sky : [];
     // (#761, Phase 1: how far and how long from the start in a column left of the line, the distance first as the planner's
     // numbers have it; the clock's time in its card, its tooltip and what a screen reader hears)
     const t0 = this.timesAt(0), far = fmtDist(this.lengthTo(i)), since = at && t0 ? fmtDuration(Math.max(0, (out ? at.leave : at.arrive) - t0.leave)) : '';
-    const col = h('span', { class: 'wpl-when', 'aria-hidden': 'true' }, h('b', {}, far), since ? h('small', {}, since) : null);
-    const bits = [...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
+    const col = h('span', { class: 'wpl-when', 'aria-hidden': 'true' }, h('b', {}, far), since ? h('small', {}, this.listShow.clock ? this.timeOf(out ? at.leave : at.arrive) : since) : null);
+    const bits = [...shown.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
     const said = [`${far} from the start`, since ? `${since} from the start` : '', when ? `${out ? 'Leave' : 'Arrive'} ${when}` : ''];
-    const ws = warns && i > 0 ? this.warnsOn({ from: i - 1, to: i }).lines : [];
     const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', last && !leave ? 'last' : '', brk ? 'brk' : '', !leave && line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
     const tools = !ro && hoverCapable(), key = `${this.pidOf(p)}|${leave}`, naming = tools && this.renamingRow === key;
     const mark = h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i)));
     // (the bits apart by the line's gap: the spaces between them only for the words read out, not drawn)
-    const more = [bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null, ...ws.map((x) => h('small', { class: 'wpl-warns', html: x }))];
+    const more = bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null;
     // (renaming, the row is no button: its name is a field, Enter or leaving it keeps the name, Escape doesn't)
     const b = naming
       ? h('div', { class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i) }, mark,
         h('span', {}, h('input', { class: 'name-field', type: 'text', value: this.pname.get(p) || '', placeholder: this.autoName(i) || lab, maxlength: 60, spellcheck: 'false', 'aria-label': `The name of ${name}`,
-          onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), col, ...more))
-      : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...said, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
-        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), col, ...more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+          onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), col, more))
+      : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...said, ...bits.map((x) => x.textContent)].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), col, more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     // (the tools' names in the app's tooltip, beside the whole row as the row's own, so it hands over at once from the row
     // to a tool and covers none of them)
     const tips = [], tip = (t, label) => { tips.push([t, label]); return t; };
@@ -3112,7 +3144,7 @@ export class Planner {
     // (before the route is timed: a night's morning hour, nothing for the others)
     const times = [at ? h('span', {}, `${this.clockOf(from)}–${this.clockOf(to)}`) : kind === 'night' ? h('span', {}, `Go on at ${hhmm(stop.on)}`) : null,
       ...(sun[0] ? [h('span', { html: `${icon('sunset', 16)}${this.timeOf(sun[0])}` })] : []), ...(sun[1] ? [h('span', { html: `${icon('sunrise', 16)}${this.timeOf(sun[1])}` })] : [])];
-    const gear = kind === 'change' && this.gearAt(i) && !this.carryAt(i) ? `${this.gearLabel(GEAR[ch.from])} stays here` : '';
+    const gear = kind === 'change' && this.listShow.warnings && this.gearAt(i) && !this.carryAt(i) ? `${this.gearLabel(GEAR[ch.from])} stays here` : '';
     const shown = times.filter(Boolean);
     const b = h('button', { type: 'button', class: 'row wpl-wait', 'data-i': String(i), 'data-wait': kind,
       // (its label says in words what the icons say: from and to, sunset and sunrise)
@@ -3124,27 +3156,31 @@ export class Planner {
   }
 
   // a stretch: the line between two points (#761), its distance, time and climb in bold, how it's drawn under them (a
-  // carry on it too, #779), and the points that only shape it: beads on its line, their count by ⌄, which unfolds them.
+  // carry on it too, #779), and the points that only shape it: a bead each on its line (running together where there's no
+  // room), their count by ⌄, which unfolds them.
   // One drawn otherwise than along paths (a straight line, over water, its own line) has its word in the text's weight,
-  // a straight one its line dashed. Under them Check's warnings on it, then the dark on a line of its own (`warnsOn()`),
-  // with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
-  stretchRow(s, ro) {
-    const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
+  // a straight one its line dashed. Under them Check's warnings on it, counted, or on a leg named, then the dark on a
+  // line of its own (`warnsOn()`), with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
+  // `folds`: the stretch whose waypoints its ⌄ folds, itself, or for an unfolded stretch's first leg the stretch (null
+  // for its other legs).
+  stretchRow(s, ro, folds = s) {
+    const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = folds ? folds.to - folds.from - 1 : 0, x = this.stretchNums(s);
     // (each number with its unit: a narrow list breaks them between, never "↑28" from its "m")
     const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).map((w) => w.replace(/ /g, '\u00a0')).join(' · ');
     const how = leg.mode === 'fixed' ? `Its own line: ${this.routeName || (leg.src ? 'a LIPAS route' : 'an imported track')}${leg.src ? ' (LIPAS)' : ''}` : MODE_LABEL[leg.mode] || MODE_LABEL.auto;
     let carry = 0;
     for (const l of legs) { const c = l.result && l.result.coords, t = l.result && l.result.tags; if (c && t) for (let k = 1; k < c.length; k++) if (t[k - 1] && t[k - 1].portage) carry += dist(c[k - 1], c[k]); }
     const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how;
-    const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid), beads = [];
-    for (let j = 0, m = open ? 0 : Math.min(shaping, 3); j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
-    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { lines, dark } = this.warnsOn(s);
+    const pid = folds && this.pidOf(this.points[folds.from]), open = !!folds && this.unfolded.has(pid), beads = [];
+    for (let j = 0, m = open ? 0 : shaping; j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { lines, dark } = this.warnsOn(s, s.to - s.from === 1);
     if (dark) beads.push(h('span', { class: 'moon', style: `top: ${(100 * (Math.max(a0, dark) - a0)) / Math.max(1, a1 - a0)}%`, html: icon('moon', 12) }));
     // (its label starts with its words, so voice control finds it by them)
     const b = h('button', { type: 'button', class: `row wpl-stretch${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to),
       'aria-label': [words, says, ...lines.map((x) => x.replace(/<[^>]+>/g, ''))].join(', '), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
       h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
-      h('span', {}, h('b', { class: 'wpl-nums' }, words), h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` }),
+      h('span', {}, h('b', { class: 'wpl-nums' }, words), this.listShow.routing ? h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` })
+        : carry >= 1 ? h('small', {}, h('span', { class: 'how' }, `Carry ${fmtDist(carry)}`)) : null,
         ...lines.map((x) => h('small', { class: 'wpl-warns', html: x }))));
     let tip = null;
     const t0 = this.timesAt(s.from), t1 = this.timesAt(s.to), A = this.analysis;
@@ -3157,21 +3193,25 @@ export class Planner {
     }
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
-    const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
+    const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(folds.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
       // (by a tap or a click they come in, as Layers' groups' rows do, and leave the way they came, faster: their marks and
-      // words fade back up off the line together, then the list closes up. From the keyboard, at once. Its ⌄ turns as Layers'
-      // arrow does, across the redraw (settleControls()), and at the tap that folds them, not once they've gone, #803)
+      // words, and the legs' words after the first, fade back up off the line together, then the list closes up. From the
+      // keyboard, at once. Its ⌄ turns as Layers' arrow does, across the redraw (settleControls()), and at the tap that
+      // folds them, not once they've gone, #803)
       onclick: (e) => {
         const redraw = () => { const settle = settleControls(this.els.points); this.renderWaypoints(); settle(); };
         if (!open) { this.unfolded.add(pid); this.unfoldIn = e.detail ? pid : null; redraw(); return; }
         if (this.foldingOut === pid) return;
         e.currentTarget.setAttribute('aria-expanded', 'false');
-        const rows = e.detail ? [...this.els.points.querySelectorAll('.wpl-point.shape')].filter((x) => +x.dataset.i > s.from && +x.dataset.i < s.to) : [];
-        const out = rows.flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]);
+        const inside = (i) => i > folds.from && i < folds.to, L = this.els.points;
+        const rows = e.detail ? [...L.querySelectorAll('.wpl-point.shape')].filter((x) => inside(+x.dataset.i)) : [];
+        const out = [...rows.flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]),
+          ...(e.detail ? [...L.querySelectorAll('.wpl-stretch')].filter((x) => inside(+x.dataset.from)).map((x) => x.children[1]) : [])];
         const done = () => { this.foldingOut = null; this.unfolded.delete(pid); redraw(); };
         if (!out.length) { done(); return; }
         this.foldingOut = pid;
-        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
+        // (only the end: each leaves from where it is, so one still coming in doesn't flash to full first)
+        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }] : [{ opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
         for (const x of out) x.animate(frames, { id: 'fold-out', duration: ms, easing: cssVar('--ease-out'), fill: 'forwards' });
         setTimeout(done, ms); // (on time, not on the animation's end: one that draws no frames, a page left mid-way, still folds)
       } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) })) : null;
@@ -3183,18 +3223,24 @@ export class Planner {
   // checked and what's worth a look, but for what the list says its own way (a straight line and a carry in a stretch's
   // words, the gear left and a short night on their wait, twilight as the dark is). Then, on a line of their own, as
   // when you're there and not a warning: how much of it is after sunset, in the dark or before sunrise, in the order you'd
-  // go through them. The lines' HTML, and where along the route the dark begins (or 0).
-  warnsOn(s) {
+  // go through them. The lines' HTML, and where along the route the dark begins (or 0). `named` (a leg, #761): each
+  // warning in Check's words, a line each, once, with how many places, the most serious first, three lines at most; the
+  // dark isn't named, its own line says it.
+  warnsOn(s, named = false) {
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
     const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Freehand|Carry \/ portage)/.test(w.text);
     const its = this.itemsOn(s).filter((it) => !this.isRead(it) && !(it.g === 'look' && own(it.w))), n = (g) => its.filter((it) => it.g === g).length;
     const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
-    const dark = on((x) => !x.twilight), darkM = m(dark), dusk = m(on((x) => x.twilight && x.evening)), dawn = m(on((x) => x.twilight && !x.evening));
-    const warns = [n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
-      n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : ''].filter(Boolean);
+    const dark = on((x) => !x.twilight), darkM = this.listShow.dark ? m(dark) : 0, dusk = this.listShow.dark ? m(on((x) => x.twilight && x.evening)) : 0, dawn = this.listShow.dark ? m(on((x) => x.twilight && !x.evening)) : 0;
+    const G = { read: ['read', 'warnf'], not: ['unk', 'unk'], look: ['look', 'eye'] }, by = new Map();
+    for (const it of named ? its : []) if (it.w.kind !== 'dark') by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
+    const names = [...by].map(([t, x]) => `<span class="${G[x.g][0]}">${icon(G[x.g][1], 14)}${escapeHtml(t)}${x.k > 1 ? ` (${x.k} places)` : ''}</span>`);
+    const warns = !this.listShow.warnings ? [] : named ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
+      : [[n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
+        n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : ''].filter(Boolean).join(' ')].filter(Boolean);
     const light = [dusk >= 50 ? `<span class="dark">${icon('sunset', 14)}${fmtDist(dusk)} after sunset</span>` : '', darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : '',
       dawn >= 50 ? `<span class="dark">${icon('sunrise', 14)}${fmtDist(dawn)} before sunrise</span>` : ''].filter(Boolean);
-    return { lines: [warns, light].filter((x) => x.length).map((x) => x.join(' ')), dark: darkM >= 50 ? dark[0].at : 0 };
+    return { lines: [...warns, light.join(' ')].filter(Boolean), dark: darkM >= 50 ? dark[0].at : 0 };
   }
   // a stretch under the mouse in the list: lit on the map, as a leg's row was
   lightStretchHover(s) {
@@ -4628,7 +4674,7 @@ export class Planner {
       route: pane('route',
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
-        this.section('points', 'Waypoints', this.els.pointsTop = h('div', { class: 'wpl-top' }),
+        this.section('points', 'Waypoints', this.els.pointsTools = h('div', { class: 'wpl-head-tools' }), this.els.pointsTop = h('div', { class: 'wpl-top' }),
           this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // Route style › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
         this.els.howRows = h('div', { class: 'rows how-rows' }),
