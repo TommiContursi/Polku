@@ -6547,7 +6547,7 @@ export class Planner {
       this.renderBreakdown();
       this.renderSpeed(); // your speeds for the sport, before there's a route and after Clear (#87)
       this.els.climbs.innerHTML = '';
-      this.els.warnings.innerHTML = '';
+      this.renderWarnings(); // (Check's tab and the peek's row too: nothing on the way, #463)
       this.els.wind.innerHTML = '';
       this.drawColored(); // no route: its colours and wind arrows go from the map too
       if (this.app.onAnalysis) this.app.onAnalysis(null);
