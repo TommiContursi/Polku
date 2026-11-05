@@ -7,6 +7,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### Route style, in plain words ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - What was called **How you go** is now **Route style**: the row under the route's list, its step, and **Fine-tune in Route style** in the drawing menu and before a route's first leg.
+- Each sport's **Route style** row shows the sport's icon in its colour and its name, in place of "The ways Polku picks for …".
 - **Edit this stretch** starts with the stretch's sport, how it's drawn and its route style, with no heading over them.
 - In **Settings**, the note on speeds points to **Route › Your speed**, where they are.
 

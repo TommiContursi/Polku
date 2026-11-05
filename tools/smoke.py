@@ -17390,6 +17390,10 @@ def tabs(chrome):
         r = pg.js("TB.route()")['rows']
         if [x.split(' · ')[0] for x in r] != ['Route style', 'Route style', 'Your speed']:
             fails.append(f"{name}: Route's rows on a multisport route: {r}")
+        # (#761) each style's row says its sport, its icon in the sport's colour
+        r2 = pg.js("[...TB.pane().querySelectorAll('.how-rows > .row')].slice(0, -1).map((b) => `${b.querySelector('small')?.textContent}|${(/--sport-(\\w+)/.exec(b.firstElementChild.style.color) || [])[1]}`)")
+        if r2 != ['MTB|mtb', 'Paddle|paddle']:
+            fails.append(f"{name}: the style rows' sports: {r2} (want each its sport's name, its icon in the sport's colour, #761)")
         else:
             press(pg, at(pg, "TB.pane().querySelectorAll('.how-rows > .row')[1]"), f"{name}: Paddle's Route style", touch)
             line = pg.js("TB.pane().querySelector('.step-head p').textContent")

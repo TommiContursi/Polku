@@ -6407,13 +6407,18 @@ export class Planner {
     if (flash) requestAnimationFrame(() => this.flash(this.sec[id].el));
   }
 
-  // Route's rows, each sport's style and your speed, each opening its step (#424's C)
+  // Route's rows, each sport's style and your speed, each opening its step (#424's C); a style's row says its sport, its
+  // icon in the sport's colour as the route's line has it (#761)
   renderHow() {
     const box = this.els.howRows;
     if (!box) return;
     const main = this.mainSport();
     box.replaceChildren(
-      ...[main, ...this.routeSports().filter((x) => x !== main)].map((sport) => item({ icon: 'sliders', label: 'Route style', line: `The ways Polku picks for ${ACTIVITIES[sport].label}`, val: styleName(sport, this.styleOf(sport)), chev: true, k: `how-${sport}`, onclick: () => { this.styleLeg = null; this.openStep('how', sport); } })),
+      ...[main, ...this.routeSports().filter((x) => x !== main)].map((sport) => {
+        const row = item({ icon: this.sportIcon(sport), label: 'Route style', line: ACTIVITIES[sport].label, val: styleName(sport, this.styleOf(sport)), chev: true, k: `how-${sport}`, onclick: () => { this.styleLeg = null; this.openStep('how', sport); } });
+        row.firstElementChild.style.color = `var(--sport-${sport}, currentColor)`;
+        return row;
+      }),
       this.speedRow());
   }
   speedRow() {

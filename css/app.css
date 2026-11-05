@@ -1440,7 +1440,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .wpl .wpl-when { position: static; width: auto; flex-direction: row; justify-content: flex-start; align-items: baseline; gap: 8px; text-align: left; }
 }
 .wpl .sec2 { --part: var(--rail); }
-:root[data-theme="dark"] .wpl { --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; } /* (the map's are for the map: some are under 3:1 on the dark glass) */
+:root[data-theme="dark"] :is(.wpl, .how-rows) { --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; } /* (the map's are for the map: some are under 3:1 on the dark glass) */
 .wpl-point > span:first-child::before, .wpl-point > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); background: var(--part); }
 .wpl-point > span:first-child::before { top: -6px; bottom: 50%; }
 .wpl-point > span:first-child::after { top: 50%; bottom: -6px; }
