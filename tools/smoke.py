@@ -17373,8 +17373,8 @@ PF_JS = """(async () => {
   p.showMode('grade');
   // Go's wind: each share on one line, its number and % with it, "Headwind 100 %" too (#388)
   p.reveal('depart'); await wait(300);
-  const shares = [...p.els.wind.querySelectorAll('.ex-item')], lines = (el) => { const r = document.createRange(); r.selectNodeContents(el.lastChild); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
-  if (!shares.length || shares.some((el) => lines(el) !== 1)) errs.push(`Go's wind shares: ${shares.map((el) => `${el.textContent} on ${lines(el)} lines`).join(' / ') || 'none'}`);
+  const shares = [...p.els.wind.querySelectorAll('.ex-item')], linesOf = (el) => { const r = document.createRange(); r.selectNodeContents(el.lastChild); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
+  if (!shares.length || shares.some((el) => linesOf(el) !== 1)) errs.push(`Go's wind shares: ${shares.map((el) => `${el.textContent} on ${linesOf(el)} lines`).join(' / ') || 'none'}`);
   p.reveal('points'); await wait(300);
   // a route of one section: the weather as you leave on Start's row, and none yet on End's (#764)
   const wxRow = (i) => p.els.points.querySelector(`.wpl-point[data-i="${i}"] .wx-line`)?.textContent || '';
