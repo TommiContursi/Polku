@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### The search field's hint is easier to read ([#551](https://github.com/TommiContursi/Polku/issues/551))
+
+- The search field's hint, "Search places or paste coordinates", is in the darker grey of the other words on the frosted glass, in light and in dark, instead of the browser's pale grey that was hard to read over the map.
+
 ### A multisport route's climbing adds up ([#752](https://github.com/TommiContursi/Polku/issues/752))
 
 - On a route of two sports, the line under the route's numbers counts each sport's climbing as the route's total does, a climb once it passes 2 m, so the sports' climbs add up to about the total instead of more.

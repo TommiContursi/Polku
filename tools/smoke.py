@@ -7594,6 +7594,11 @@ def contrast(chrome):
             pressed = pg.js("['#btn-settings', '#btn-time'].filter((s) => document.querySelector(s).getAttribute('aria-pressed') !== 'true')")
             fails += [f'{scheme}: {s} not pressed by a click' for s in pressed]
             fails += [f'{scheme}: {f}' for f in pg.js(CONTRAST + f"({json.dumps(scheme)})")]
+            # the search field's hint in the glass's grey, not the browser's (#551)
+            h = pg.js("""(() => { const s = document.querySelector('.search'), m = s.appendChild(document.createElement('i')); m.style.color = 'var(--muted)';
+              const out = { hint: getComputedStyle(s.querySelector('input'), '::placeholder').color, muted: getComputedStyle(m).color }; m.remove(); return out; })()""")
+            if h['hint'] != h['muted']:
+                fails.append(f"{scheme}: the search field's hint in {h['hint']}, not the glass's grey {h['muted']}")
             fails += [f'{scheme} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
@@ -18007,7 +18012,7 @@ GROUPS = [
     ('drawer', [drawer], 'the drawer in three tabs (22a): every part in its place, the start, the lit leg'),
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
-    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239); the search field\'s hint in the glass\'s grey (#551)'),
     ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
     ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
