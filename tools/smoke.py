@@ -1624,9 +1624,20 @@ STOPS = """(async () => {
   const total = (p.analysis.timeWind || p.analysis.time);
   const moving = total - a.waits.reduce((t, w) => t + w.sec, 0);
   // (#761) over days: the whole time, its nights too, with the time on the move under it
-  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const short = (sec) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
   const sum = `${document.querySelector('.sum-time b')?.textContent} / ${document.querySelector('.sum-time small')?.textContent}`;
   if (sum !== `${short(total)} / ${short(moving)} moving`) errs.push(`summary time: ${sum}, not ${short(total)} / ${short(moving)} moving`);
+  // times at 59 min 30 s and more carry into the hour: 1 h 60 min reads 2 h 00 min (#492), here and in the summary's short form
+  const G = await import(location.origin + '/js/geo.js');
+  const read = [7170, 10770, 3570].map((s) => G.fmtDuration(s)).join(' / ');
+  if (read !== '2 h 00 min / 3 h 00 min / 1 h 00 min') errs.push(`fmtDuration: ${read}`);
+  const was = [a.time, a.timeWind];
+  a.time = a.timeWind = Math.ceil((a.waits.reduce((t, w) => t + w.sec, 0) + 3600) / 3600) * 3600 + 3570;
+  p.renderAnalysis();
+  const whole = document.querySelector('.sum-time b')?.textContent;
+  if (!/ 00$/.test(whole || '')) errs.push(`summary time at ${a.time} s: ${whole}`);
+  [a.time, a.timeWind] = was;
+  p.renderAnalysis();
   const days = S.tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : p.startSec(), a.waits);
   if (days.length !== 2 || Math.abs(days[0].moving + days[1].moving - moving) > 2) errs.push(`days: ${days.length}, moving ${days.map((d) => d.moving).join('+')} vs ${moving}`);
   p.reveal('depart');
@@ -1644,7 +1655,7 @@ STOPS = """(async () => {
   p.reveal('speed');
   await wait(200);
   const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
-  if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
+  if (!rows.some((t) => /^Breaks \\(1\\)/.test(t)) || !rows.some((t) => /^Nights \\(1\\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
   // the point's card has the stop, places to sleep for a night, and the gear switch (25d)
   p.openPointCard(p.points[2]);
   await wait(200);
@@ -2627,7 +2638,7 @@ HEADS = """(async () => {
   // analysis.js: bike runs, then foot runs, then the rest
   // (the technical stretch is S3, then S4: named by its hardest)
   const bike = A.findWarnings(along, flat, attrs('mtb', [[0, 6, { highway: 'steps' }], [10, 16, { highway: 'path', bicycle: 'no' }], [20, 23, { highway: 'path', 'mtb:scale': '3' }], [23, 26, { highway: 'path', 'mtb:scale': '4' }], [30, 50, { highway: 'track', portage: 'yes' }], [50, 56, { route: 'ferry' }]]), pts, 'mtb');
-  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap', /^highway=steps · /], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap', /^bicycle=no · /], [/^Technical trail S4/, 'look', 'map', 'OpenStreetMap', /^mtb:scale=4 · Extremely difficult\./], [/^Carry/, 'look', 'map', 'OpenStreetMap', /^portage=yes · /], [/^Ferry/, 'look', 'map', 'OpenStreetMap', /^route=ferry · /]]);
+  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap', /^highway=steps · /], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap', /^bicycle=no · /], [/^Technical trail S4/, 'look', 'map', 'OpenStreetMap', /^mtb:scale=4 · Extremely difficult\\./], [/^Carry/, 'look', 'map', 'OpenStreetMap', /^portage=yes · /], [/^Ferry/, 'look', 'map', 'OpenStreetMap', /^route=ferry · /]]);
   const steep = Float32Array.from({ length: n }, (_, i) => (i < 20 ? 20 : i < 40 ? -25 : 0));
   expect('findWarnings, steep', A.findWarnings(along, steep, attrs('mtb', []), pts, 'mtb'), [[/^Steep climb/, 'look', 'estimate', 'the terrain model', /^Steeper than 15 %/], [/^Steep descent/, 'look', 'estimate', 'the terrain model', /^Steeper than 18 %/]]);
   expect('findWarnings, hike', A.findWarnings(along, Float32Array.from({ length: n }, (_, i) => (i < 20 ? 30 : 0)), attrs('hike', [[30, 40, { highway: 'path', sac_scale: 'alpine_hiking' }], [40, 60, { highway: 'path', access: 'no' }]]), pts, 'hike'),
@@ -3128,7 +3139,7 @@ def onroute(chrome):
           p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
           p.renderWarnings();
           const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
-          if (!line() || !line().classList.contains('unk') || said(line()) !== '1 not checked' || !/^1 not checked: The forecast didn.t answer\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
+          if (!line() || !line().classList.contains('unk') || said(line()) !== '1 not checked' || !/^1 not checked: The forecast didn.t answer\\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
           p.hideWarnKind({ key: 'roadwork' }, false);
           // nothing to read and all checked: no row
           window.wx501 = false;
@@ -3971,6 +3982,18 @@ FIT_LIB = """(() => {
       await mv;
       await framed(`Analyse & edit, the planner opening at ${st}`, TRACK);
     }
+    // (#484) a point without real coordinates is left out, not put at 0,0: a trkpt without lon or with an empty lat, a rtept without lat, a wpt without lon, a gx:coord with one number
+    const G = await import(location.origin + '/js/gpx.js'), pt = (t, a) => `<${t} ${a}></${t}>`;
+    const gpx = G.parseTrackFile(`<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>${[pt('trkpt', 'lat="61.4" lon="23.7"'), pt('trkpt', 'lat="61.41"'), pt('trkpt', 'lat="61.42" lon="23.72"'), pt('trkpt', 'lat="" lon="23.73"'), pt('trkpt', 'lat="61.44" lon="23.74"')].join('')}</trkseg></trk>`
+      + `<rte>${[pt('rtept', 'lat="61.4" lon="23.7"'), pt('rtept', 'lon="23.71"'), pt('rtept', 'lat="61.42" lon="23.72"')].join('')}</rte>${pt('wpt', 'lat="61.4"')}${pt('wpt', 'lat="61.41" lon="23.71"')}</gpx>`, 'bad.gpx');
+    const gpxLens = gpx.lines.map((l) => l.length).join();
+    if (gpxLens !== '3,2' || gpx.lines.some((l) => l.some((c) => c.some((v) => !v))) || gpx.points.length !== 1) err(`a GPX with broken points: lines of ${gpxLens} points (want 3,2), ${gpx.points.length} waypoints (want 1), a zero among them: ${JSON.stringify(gpx.lines)}`);
+    const kml = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2"><Placemark><gx:Track>'
+      + ['23.7 61.4 0', '23.71', '23.72 61.42 0', '23.73 abc 0'].map((c) => `<gx:coord>${c}</gx:coord>`).join('') + '</gx:Track></Placemark></kml>', 'bad.kml');
+    if (kml.lines.map((l) => l.length).join() !== '2') err(`a KML track with broken points: lines of ${kml.lines.map((l) => l.length).join()} points (want 2)`);
+    // a KML line's empty values are missing too, not 0 (an empty altitude leaves the point as it is)
+    const ls = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4,0 ,61.41,0 23.72,,0 23.73, 61.43 23.74,61.44,</coordinates></LineString></Placemark></kml>', 'bad.kml');
+    if (ls.lines.map((l) => l.length).join() !== '2' || ls.lines.some((l) => l.some((c) => c.some((v) => !v)))) err(`a KML line with empty values: ${JSON.stringify(ls.lines)} (want 2 points, no zero)`);
     p.setSheetState('half');
     return T.errs.splice(0);
   };
@@ -4553,7 +4576,7 @@ SPORT_SWITCH = """(async () => {
   await wait(500);
   if (sports() !== 'mtb,paddle,mtb') errs.push(`after the map’s sport changed: ${sports()}`);
   if (keys() !== k0) errs.push('legs routed again after the map’s sport changed');
-  if (!/The map and the legs you draw next are Gravel now\. Your route stays MTB and Paddle\./.test($('#toast')?.textContent || '')) errs.push(`toast: ${$('#toast')?.textContent}`);
+  if (!/The map and the legs you draw next are Gravel now\\. Your route stays MTB and Paddle\\./.test($('#toast')?.textContent || '')) errs.push(`toast: ${$('#toast')?.textContent}`);
   if (p.nextSport() !== 'gravel' || p.mainSport() !== 'mtb') errs.push(`the next leg ${p.nextSport()}, the route ${p.mainSport()}`);
   // Undo after it: the legs that followed MTB stay MTB (they took the map's sport before)
   p.undo(); await wait(300);
@@ -4570,7 +4593,7 @@ SPORT_SWITCH = """(async () => {
   await pick('hike');
   $('#activity-bar .act-all').click(); await wait(500);
   if (sports() !== 'hike,paddle,hike' || polku.state.activity !== 'hike' || p.nextSport() !== 'hike') errs.push(`The whole route: ${sports()}, the map ${polku.state.activity}, the next leg ${p.nextSport()}`);
-  if (!/^Your route is Hike now: 2 legs planned again\./.test($('#toast')?.textContent || '')) errs.push(`its toast: ${$('#toast')?.textContent}`);
+  if (!/^Your route is Hike now: 2 legs planned again\\./.test($('#toast')?.textContent || '')) errs.push(`its toast: ${$('#toast')?.textContent}`);
   p.undo(); await wait(500);
   if (sports() !== 'mtb,paddle,mtb' || polku.state.activity !== 'gravel' || p.nextSport() !== 'gravel' || keys() !== k0) errs.push(`Undo after The whole route: ${sports()}, the map ${polku.state.activity}, the next leg ${p.nextSport()}`);
   // from land to the water: not offered, and it says why; only the legs drawn next
@@ -7282,7 +7305,7 @@ def changelog(chrome):
           const start = Date.now(); while (document.querySelector('.changelog-notes[aria-busy]') && Date.now()-start<15000) await wait(50);
           const notes = document.querySelector('.changelog-notes'), status = document.querySelector('.modal-changelog [role=status]');
           if (!count() || !notes?.querySelector('h3') || !notes.querySelector('h4') || !notes.querySelector('li strong')) errs.push('real changelog did not render dates/headings/lists/bold');
-          if (!/Release notes through \d{4}-\d{2}-\d{2}/.test(status?.textContent || '')) errs.push('no source date');
+          if (!/Release notes through \\d{4}-\\d{2}-\\d{2}/.test(status?.textContent || '')) errs.push('no source date');
           if ((net.usage().find(s => s.id === 'polku').session) !== before+1) errs.push('changelog did not use request()');
           const b = document.querySelector('.modal-changelog .modal-body'); b.scrollTop = 2000;
           if (b.scrollTop < 100 || b.scrollWidth > b.clientWidth+1) errs.push('notes do not scroll or overflow sideways');
@@ -7366,7 +7389,7 @@ def changelog(chrome):
         pg.js("document.querySelector('.modal-changelog [aria-label=Close]').click(); new Promise(r=>setTimeout(r,100))")
         offline(True)
         pg.js("document.querySelector('#btn-changelog').click(); " + loaded)
-        if not pg.js("/Offline: showing saved release notes through \d{4}-\d{2}-\d{2}/.test(document.querySelector('.modal-changelog [role=status]').textContent)"):
+        if not pg.js("/Offline: showing saved release notes through \\d{4}-\\d{2}-\\d{2}/.test(document.querySelector('.modal-changelog [role=status]').textContent)"):
             fails.append('worker offline with cache: no dated saved-copy notice')
         fails += [f'worker offline: console: {e[:160]}' for e in pg.errors()]
     finally:
@@ -11998,7 +12021,7 @@ START_LIB = """(() => {
     if (p.tools.hidden || !p.els.more.offsetParent) return null;
     p.els.more.click();
     await wait(150);
-    const items = $$('.menu-pop .menu-item').map((b) => txt(b.querySelector('span')).replace(/\s+/g, ' '));
+    const items = $$('.menu-pop .menu-item').map((b) => txt(b.querySelector('span')).replace(/\\s+/g, ' '));
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await wait(100);
     return items;
@@ -12168,7 +12191,7 @@ START_LIB = """(() => {
     const u0 = p.past.length, r0 = await routed();
     if (!desk) {
       const row = $('.pl-way .stylebtn[data-k=srow]');
-      if (!row || !/Route style\s*Balanced/.test(txt(row))) err(`the style button: ${txt(row) || 'none'}`);
+      if (!row || !/Route style\\s*Balanced/.test(txt(row))) err(`the style button: ${txt(row) || 'none'}`);
       const before = p.panel.getBoundingClientRect().height;
       if (row) row.click();
       await settled();
@@ -15466,12 +15489,13 @@ def sections_list(chrome):
                 fails.append(f"{name}: {what}: how the stretches are drawn, in weights {[(x['how'], x['weight']) for x in ln['stretches']]} (want Follow paths as Freehand, #761)")
         # (#761) a point's line: the weather with its icons, no Start or End in it (its label says them); its column (#761,
         # Phase 1) how far and how long from the start, the clock's time in its label; and a stretch in the dark says how much,
-        # with a moon on its line where that begins
+        # with a moon on its line where that begins (the end's day before its time after midnight, "Arrive Thu 00:05": the route
+        # leaves now, #804)
         r = pg.js("""(() => { const p = polku.planner, L = p.els.points, row = (i) => L.querySelector(`.wpl-point[data-i="${i}"]`);
           const line = (i) => row(i)?.querySelector('.wx-line'), out = [];
           const col = (i) => row(i)?.querySelector('.wpl-when')?.textContent || '';
           if (/Leave|Start/.test(line(0)?.textContent || '') || !/Start.*Leave /.test(row(0)?.getAttribute('aria-label') || '') || !/^0 m(0 min)?$/.test(col(0))) out.push(`the start's line ${line(0)?.textContent}, its column ${col(0)}, its label ${row(0)?.getAttribute('aria-label')}`);
-          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\d.]+ k?m\d+ (h \d+ )?min$/.test(col(3)) || !/Arrive \d\d:\d\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
+          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\\d.]+ k?m\\d+ (h \\d+ )?min$/.test(col(3)) || !/Arrive (\\w+ )?\\d\\d:\\d\\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
           if (p.analysis.wind && !(line(0)?.querySelectorAll('svg').length >= 2)) out.push('no icons for the weather on the start\u2019s line');
           const a0 = p.lengthTo(1); p.analysis.darkWarn = [{ at: a0 + 20, len: 250, kind: 'dark', text: 'In the dark for 250 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
           const st1 = L.querySelector('.wpl-stretch[data-from="1"]'), dark = st1?.querySelector('.wpl-warns .dark')?.textContent || '';
@@ -15509,7 +15533,8 @@ def sections_list(chrome):
         # (#761: the changeover a wait of its own, with its times; Paddle's part starts with via 3's row, as you leave it: its
         # label says when, its column how far and how long from the start)
         labs = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-point')].map((x) => `${x.dataset.i}:${x.getAttribute('aria-label') || ''}`)")
-        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–\d\d:\d\d', w) for w in s['waits'])
+        # (its end the next day's after midnight, "23:48–Thu 00:03": the route leaves now, #804)
+        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–(\w+ )?\d\d:\d\d', w) for w in s['waits'])
                                     or not s['secs'][1]['rows'] or not s['secs'][1]['rows'][0].startswith('3:') or not any(x.startswith('3:') and 'Leave ' in x for x in labs)):
             fails.append(f"{name}: the change of sport: waits {s['waits']}, Paddle's rows {s['secs'][1]['rows'][:1]}")
         if s['short']:
@@ -15524,7 +15549,7 @@ def sections_list(chrome):
         # (#761) its part's heading adds the stop to the time on the move, and the numbers row has the whole time with the
         # time on the move under it
         t = pg.js("""(() => { const p = polku.planner, A = p.analysis, all = A.timeWind || A.time, mv = all - A.waits.reduce((n, w) => n + w.sec, 0), el = document.querySelector('.sum-time');
-          const f = (sec, u) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}${u}` : `${m} min`; };
+          const f = (sec, u) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}${u}` : `${m} min`; };
           return { heads: [...p.els.points.querySelectorAll('.sec2-head small')].map((x) => x.textContent), b: el.querySelector('b').textContent, small: el.querySelector('small').textContent, all: f(all, ' min'), mv: f(mv, '') }; })()""")
         if sum(' + 30 min stop' in x for x in t['heads']) != 1 or t['b'] != t['all'] or t['small'] != f"{t['mv']} moving":
             fails.append(f"{name}: a stop at via 4: the headings {t['heads']}, the time {t['b']!r} over {t['small']!r} (want one heading's time + 30 min stop, the whole time {t['all']} over {t['mv']} moving, #761)")
@@ -15975,11 +16000,11 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const ui = box.querySelector('.tg-ui'), edge = (cs(ui).boxShadow.match(/rgba?\([^)]*\)/) || [cs(ui).backgroundColor])[0], er = ratio(over(rgb(edge), solid), solid);
   if (er < 3) out.push(`a switch's off track: its edge ${er.toFixed(2)}:1, under 3:1`);
   // small headings: 12 px capitals in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
-  box.innerHTML = `<div class="menu-h">A</div><div class="lp-sec"><h3>A</h3></div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
+  box.innerHTML = `<div class="menu-h">A</div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
     <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div><div class="speed-route"><h4>A</h4></div>
     <div class="wind-title">A</div><span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
   const want = `12px 700 0.72px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
-  for (const e of box.querySelectorAll('.menu-h, h3, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
+  for (const e of box.querySelectorAll('.menu-h, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
     const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
     if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
   }
@@ -16601,7 +16626,7 @@ LV_NIGHTS = """(async () => {
   await wait(400);
   if (JSON.stringify(p.stopAt(2)) !== '{"on":420,"n":2}') errs.push(`Go on at 07:00: ${JSON.stringify(p.stopAt(2))}`);
   // (#761) the whole time follows the hour you go on: an hour less
-  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const short = (sec) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
   if (document.querySelector('.sum-time b')?.textContent !== short(p.analysis.timeWind || p.analysis.time)) errs.push(`the summary: ${document.querySelector('.sum-time b')?.textContent}, not ${short(p.analysis.timeWind || p.analysis.time)}`);
   p.cards.close();
   p.reveal('points');
@@ -17319,7 +17344,21 @@ PF_JS = """(async () => {
   const night = [...p.els.points.querySelectorAll('.wpl-point[data-i="1"] .wx-line')].map((x) => x.textContent); // (as you get there, and Day 2's first row: as you go on)
   if (night[0] !== '5° 8 m/s' || night[1] !== '9° 8 m/s') errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
+  // a surface tag with markup (#483), and a highway tag (its way's name when it isn't one Polku knows): both readouts, the
+  // map's tip and the profile's (the conditions' too), show them as text, not as elements
+  const old = [a.surf[1], a.way[1], p.chart.kind], tagged = '<i>x</i>';
+  a.surf[1] = a.way[1] = tagged;
+  const lines = C.routeReadout(a, 1).lines.join(' ');
+  if (!lines.includes('&lt;i&gt;x&lt;/i&gt;') || lines.includes('<i>x')) errs.push(`the map's tip with markup tags: ${lines}`);
+  p.chart.setHover(1, true);
+  const stip = document.getElementById('profile-tip');
+  if (stip.querySelector('i') || !stip.textContent.includes(tagged)) errs.push(`the profile's tip with markup tags: ${stip.innerHTML}`);
+  p.chart.kind = 'conditions'; p.chart.setHover(1, true);
+  if (stip.querySelector('i') || !stip.textContent.includes(tagged)) errs.push(`the conditions' tip with a markup highway tag: ${stip.innerHTML}`);
+  [a.surf[1], a.way[1], p.chart.kind] = old; p.chart.setHover(-1, true);
   // paddling: its wind as far as it reaches, and from where it isn't known
+  // (what Check finds would take the line's place, #741: at night the dark, by day No forecast yet; this is about the wind, #807)
+  p.readSays = () => null;
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
   const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
   if (line.length !== 1 || !line[0].startsWith('Wind up to 8 m/s, gusts 12 · headwind ') || !line[0].endsWith(` · no forecast yet from km ${km}`)) errs.push(`paddling's key fact: ${line.join(' / ')}`);
@@ -17329,18 +17368,18 @@ PF_JS = """(async () => {
   p.renderAnalysis();
   const C2 = await import(location.origin + '/js/facts.js');
   const card = C2.headline(a, n - 2, 'paddle', {}).filter((x) => x.key !== 'clock').map((x) => `${x.value} ${x.label}${x.missing ? ' (missing)' : ''}`);
-  if (card.some((t) => /20 m\/s|−3|-3/.test(t)) || card.some((t) => !/missing/.test(t))) errs.push(`the route's card past the forecast: ${card.join(' / ')}`);
+  if (card.some((t) => /20 m\\/s|−3|-3/.test(t)) || card.some((t) => !/missing/.test(t))) errs.push(`the route's card past the forecast: ${card.join(' / ')}`);
   const tip = C.routeReadout ? C.routeReadout(a, n - 2) : null, tipText = tip ? [tip.title, ...tip.lines].join(' ') : '';
-  if (!tip || /20 m\/s|−3|-3 °C|snow|Crosswind|Calm/.test(tipText) || !/No forecast yet/.test(tipText)) errs.push(`the route's tip past the forecast: ${tipText}`);
+  if (!tip || /20 m\\/s|−3|-3 °C|snow|Crosswind|Calm/.test(tipText) || !/No forecast yet/.test(tipText)) errs.push(`the route's tip past the forecast: ${tipText}`);
   const head = [...p.els.stats.querySelectorAll('.stat')].map((x) => x.textContent);
-  if (head.some((t) => /20 m\/s|gusts 26/.test(t)) || !head.some((t) => /^Headwind100 %/.test(t))) errs.push(`the paddle's header past the forecast: ${head.join(' / ')}`);
+  if (head.some((t) => /20 m\\/s|gusts 26/.test(t)) || !head.some((t) => /^Headwind100 %/.test(t))) errs.push(`the paddle's header past the forecast: ${head.join(' / ')}`);
   p.showMode('wind');
   const arrows = polku.map.getSource('routeWind')?.serialize().data.features || [];
   const at = (c) => a.pts.findIndex((q) => Math.abs(q[0] - c[0]) < 1e-9 && Math.abs(q[1] - c[1]) < 1e-9), past = arrows.filter((f) => at(f.geometry.coordinates) >= k).length;
   if (!arrows.length || past) errs.push(`the map's wind arrows: ${arrows.length}, past the cut ${past}`);
   p.chart.setHover && p.chart.setHover(n - 2, true);
   const ptip = document.getElementById('profile-tip');
-  if (ptip && !ptip.hidden && (/20\.0 m\/s|−3|-3 °C/.test(ptip.textContent) || !/No forecast yet/.test(ptip.textContent))) errs.push(`the profile's tip past the forecast: ${ptip.textContent}`);
+  if (ptip && !ptip.hidden && (/20\\.0 m\\/s|−3|-3 °C/.test(ptip.textContent) || !/No forecast yet/.test(ptip.textContent))) errs.push(`the profile's tip past the forecast: ${ptip.textContent}`);
   p.showMode('grade');
   // a start past the forecast: none anywhere, said once for the trip
   a.wind.beyond = 0; p.renderAnalysis();
@@ -17705,6 +17744,19 @@ def pick_card(chrome):
         time.sleep(1)
         if pg.js("polku.map.querySourceFeatures('pick').length"):
             fails.append('the hover moved off the way: the way still drawn')
+        # #656: Paddle from here says to click where to go, as the planner's other notes do (read in the same call: the toast times out)
+        said = pg.js("(() => { const p = polku.planner; p.paddleFrom([23.8129, 61.4844]); const t = document.querySelector('#toast').textContent; p.clear(); p.setActive(false); return t; })()")
+        if said != 'Now click where you want to go':
+            fails.append(f"Paddle from here: the note says “{said}” (“Now click where you want to go”)")
+        # #656: with no route drawn, Show the whole route says to click the map (read in the same call: the toast times out)
+        said = pg.js("(() => { polku.planner.fitRoute(); return document.querySelector('#toast').textContent; })()")
+        if said != 'No route yet — click the map to start one':
+            fails.append(f"No route yet: the note says “{said}” (“No route yet — click the map to start one”)")
+        # #656: a round trip on the water from a start far from it says to click a shore (no routing: a stand-in for the
+        # map's water, and More loops' way in, which doesn't frame the map first)
+        said = pg.js("(async () => { const p = polku.planner, L = p.loop, act = p.app.activity; p.app.activity = () => 'paddle'; Object.assign(L, { start: [23.8129, 61.4844], water: { isWater: () => false } }); await p.generateLoops({ more: true }); const t = L.note; p.app.activity = act; Object.assign(L, { start: null, note: '' }); delete L.water; return t; })()")
+        if said != 'That start is over a kilometre from the water: click a shore, a beach or a landing for the loops to start from.':
+            fails.append(f"a round trip far from the water: the note says “{said}” (“… click a shore …”)")
         fails += [f'console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
@@ -17811,6 +17863,18 @@ def pick_card(chrome):
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
         if not wait['line'] or not re.search(r'Loading the whole way', ' '.join(wait['line'])) or not wait['drawn'] or not re.search(r'OpenStreetMap is slow', ' '.join(wait['slow'] or [])):
             fails.append(f"390x844: a tap on a way while its ways come: the line {wait['line']}, {wait['drawn']} lines drawn, 11 s later {wait['slow']} (“Loading the whole way…” and the map's own way drawn; then “OpenStreetMap is slow: still asking…”)")
+        # #656: Paddle from here says to tap where to go, as the planner's other notes do (read in the same call: the toast times out)
+        said = pg.js("(() => { const p = polku.planner; p.paddleFrom([23.8129, 61.4844]); const t = document.querySelector('#toast').textContent; p.clear(); p.setActive(false); return t; })()")
+        if said != 'Now tap where you want to go':
+            fails.append(f"390x844: Paddle from here: the note says “{said}” (“Now tap where you want to go”)")
+        # #656: with no route drawn, Show the whole route says to tap the map (read in the same call: the toast times out)
+        said = pg.js("(() => { polku.planner.fitRoute(); return document.querySelector('#toast').textContent; })()")
+        if said != 'No route yet — tap the map to start one':
+            fails.append(f"390x844: No route yet: the note says “{said}” (“No route yet — tap the map to start one”)")
+        # #656: a round trip on the water from a start far from it says to tap a shore (no routing, as on the desktop)
+        said = pg.js("(async () => { const p = polku.planner, L = p.loop, act = p.app.activity; p.app.activity = () => 'paddle'; Object.assign(L, { start: [23.8129, 61.4844], water: { isWater: () => false } }); await p.generateLoops({ more: true }); const t = L.note; p.app.activity = act; Object.assign(L, { start: null, note: '' }); delete L.water; return t; })()")
+        if said != 'That start is over a kilometre from the water: tap a shore, a beach or a landing for the loops to start from.':
+            fails.append(f"390x844: a round trip far from the water: the note says “{said}” (“… tap a shore …”)")
         fails += [f'390x844 console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"390x844: raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
