@@ -8,6 +8,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - The search field's hint, "Search places or paste coordinates", is in the darker grey of the other words on the frosted glass, in light and in dark, instead of the browser's pale grey that was hard to read over the map.
 
+### A multisport route's climbing adds up ([#752](https://github.com/TommiContursi/Polku/issues/752))
+
+- On a route of two sports, the line under the route's numbers counts each sport's climbing as the route's total does, a climb once it passes 2 m, so the sports' climbs add up to about the total instead of more.
+
+### Tooltips that say what happens ([#753](https://github.com/TommiContursi/Polku/issues/753))
+
+- On a desktop, the Go tab's tooltip says "there at" with the arrival time on a route that ends somewhere else, and "back at" only on a round trip.
+- **Redo**'s tooltip says it puts back what **Undo** took, and **Reverse** says the same in the toolbar and under the route's list: each leg keeps its mode and style.
+
 ### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
 
 - After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.

@@ -147,11 +147,17 @@ export function factLine(facts) {
 // land its climbing
 export function sportFacts(a, { noWeather = null }) {
   const by = new Map(), w = noWeather ? null : a.wind;
+  // the climbing as the route's total counts it (analysis.js): 2 m before a climb counts, nothing on open water; a climb
+  // is the sport's where it passes 2 m
+  let ref = a.ele && a.ele[0];
   for (let i = 1; i < a.along.length; i++) {
-    const sp = (a.attr[i] && a.attr[i].sport) || a.activity, v = by.get(sp) || { sport: sp, m: 0, up: 0 };
+    const at = a.attr[i] || {}, sp = at.sport || a.activity, v = by.get(sp) || { sport: sp, m: 0, up: 0 };
     v.m += a.along[i] - a.along[i - 1];
-    const d = a.ele ? a.ele[i] - a.ele[i - 1] : 0;
-    if (d > 0) v.up += d;
+    if (a.ele) {
+      if (at.mode === 'water' && !(at.tags && at.tags.portage)) ref = a.ele[i];
+      else if (a.ele[i] - ref > 2) { v.up += a.ele[i] - ref; ref = a.ele[i]; }
+      else if (ref - a.ele[i] > 2) ref = a.ele[i];
+    }
     by.set(sp, v);
   }
   return [...by.values()].map(({ sport, m, up }) => {
