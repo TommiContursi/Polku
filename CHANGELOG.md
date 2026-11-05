@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### An unfolded stretch shows its legs ([#761](https://github.com/TommiContursi/Polku/issues/761), [#819](https://github.com/TommiContursi/Polku/issues/819))
+
+- In the route's list, when you tap a stretch's ⌄, the stretch gives way to its legs: a row for each leg between two waypoints, with its distance, time and climb, how it's drawn, and the warnings and the dark on it. The waypoints between them show their names, and how far and how long from the start.
+- Tap a leg to open its own card. **Edit this stretch** there changes that leg alone: its sport, how it's drawn or its style.
+- The legs come in with their waypoints and fold away with them, and the ⌃ to fold them is where you tapped ⌄.
+- A waypoint's row no longer repeats the warnings on the way to it. A route's end no longer repeats its stretch's warnings once the waypoints the stretch folded are gone.
+
 ### The difficulty key and Go's wind ([#388](https://github.com/TommiContursi/Polku/issues/388))
 
 - With the trails coloured by **Difficulty**, the note in **Layers** says the colours go from S0 green to S6 dark purple, as the map draws them, not to S5.
