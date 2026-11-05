@@ -1313,7 +1313,8 @@ function tileZoom(id) {
   return (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].minzoom) || QUICK_TILE[id].zoom || 0;
 }
 function tileFailing(id) {
-  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d]) : RASTER_OVERLAYS[id] ? [id] : [];
+  // (the depths that show at this zoom: below its own zoom a layer asks for no tiles, so never fails, #399)
+  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d] && map.getZoom() >= (RASTER_OVERLAYS[d].minzoom || 0)) : RASTER_OVERLAYS[id] ? [id] : [];
   if (raster.length && raster.every((d) => rasterDown(`ov-${d}`))) return true;
   if (id === 'trailDetails') return Date.now() - detailsBusyAt < 120e3;
   if (id === 'lit') return litWays.progress.failed > 0; // Overpass deliberately has no global backoff status

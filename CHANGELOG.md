@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Depths says when it has no data, zoomed out too ([#399](https://github.com/TommiContursi/Polku/issues/399))
+
+- When Traficom's depth maps aren't answering, **Depths** in **Layers** says "No data now" at the zooms where the soundings aren't shown yet, not only once you zoom in to see them.
+
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each waypoint shows how far it is from the start and how long it takes to get there, stops and changeovers included, in a column left of the route's line: "1.11 km" over "5 min". With the text enlarged, they go under the waypoint's name.
