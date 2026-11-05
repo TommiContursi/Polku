@@ -505,7 +505,7 @@ LAYERS = """(async () => {
   }
   // the difficulty colours' note names the scale's last grade, S6 (#388)
   const { DIFF_COLORS } = await import(location.origin + '/js/config.js'), segBtn = (t) => [...body.querySelectorAll('.seg button')].find((b) => b.textContent === t);
-  const was = [...body.querySelectorAll('.seg button')].find((b) => b.getAttribute('aria-pressed') === 'true');
+  const was = segBtn('Difficulty').parentElement.querySelector('[aria-pressed="true"]');
   segBtn('Difficulty').click(); await wait(200);
   const diffNote = [...body.querySelectorAll('p.note')].find((x) => /^Halo colour is the MTB difficulty/.test(x.textContent));
   if (!diffNote || !diffNote.textContent.includes(`S${DIFF_COLORS.length - 1}`)) errs.push(`the difficulty colours' note: ${diffNote ? diffNote.textContent : 'none'}, not up to S${DIFF_COLORS.length - 1}`);
