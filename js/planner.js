@@ -6897,7 +6897,7 @@ export class Planner {
     }
     if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents, road conditions and busy roads on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
     // road works and busy roads it couldn't ask for on a route this long, or Digiroad not answering (#491)
-    for (const x of (a.hazards && a.hazards.notChecked) || []) out.push({ ...x, ranges: null, retry: x.retry ? ask(x.key, () => this.loadHazards(a)) : null });
+    if (this.fintrafficHere(a)) for (const x of (a.hazards && a.hazards.notChecked) || []) out.push({ ...x, ranges: null, retry: x.retry ? ask(x.key, () => this.loadHazards(a)) : null });
     if (a.trailError) {
       const sum = a.trailError.reduce((t, [, len]) => t + len, 0), whole = sum >= end - 20;
       out.push({ key: 'trail', by: 'OpenStreetMap', who: 'OpenStreetMap', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
