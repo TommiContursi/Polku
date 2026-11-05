@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Check says when a long route's road works and busy roads weren't checked ([#491](https://github.com/TommiContursi/Polku/issues/491))
+
+- On a long route, Polku doesn't ask for the road works or the busy roads along all of it, and Check's **Not checked** now says so, instead of showing none as if there were none. **What Polku looked at** says it too, and has a row for busy roads.
+- When Digiroad doesn't answer about busy roads, **Not checked** says so, with **Retry**.
+
 ### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
 
 - After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
