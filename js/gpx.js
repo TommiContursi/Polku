@@ -11,26 +11,31 @@ export function parseTrackFile(text, filename = '') {
     for (const el of doc.getElementsByTagName('LineString')) {
       const c = el.getElementsByTagName('coordinates')[0];
       if (!c) continue;
-      const coords = c.textContent.trim().split(/\s+/).map((t) => t.split(',').map(Number)).filter((p) => p.length >= 2 && p.every(Number.isFinite));
+      // an empty value is NaN, not 0; only the longitude and latitude need to be numbers
+      const coords = c.textContent.trim().split(/\s+/).map((t) => t.split(',').map((v) => (v ? +v : NaN))).filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
       if (coords.length > 1) lines.push(coords.map((p) => [p[0], p[1]]));
     }
     for (const el of doc.getElementsByTagName('gx:coord')) {
       // gx:Track — handled as one line
       const p = el.textContent.trim().split(/\s+/).map(Number);
+      if (!Number.isFinite(p[0]) || !Number.isFinite(p[1])) continue;
       if (!lines.gx) { lines.gx = []; lines.push(lines.gx); }
       lines.gx.push([p[0], p[1]]);
     }
   } else {
+    // an attribute that's missing or empty is NaN, not 0
+    const lonLat = (p) => ['lon', 'lat'].map((a) => (p.getAttribute(a)?.trim() ? +p.getAttribute(a) : NaN));
     for (const seg of doc.querySelectorAll('trkseg')) {
-      const coords = [...seg.querySelectorAll('trkpt')].map((p) => [+p.getAttribute('lon'), +p.getAttribute('lat')]);
+      const coords = [...seg.querySelectorAll('trkpt')].map(lonLat).filter((c) => c.every(Number.isFinite));
       if (coords.length > 1) lines.push(coords);
     }
     for (const rte of doc.querySelectorAll('rte')) {
-      const coords = [...rte.querySelectorAll('rtept')].map((p) => [+p.getAttribute('lon'), +p.getAttribute('lat')]);
+      const coords = [...rte.querySelectorAll('rtept')].map(lonLat).filter((c) => c.every(Number.isFinite));
       if (coords.length > 1) lines.push(coords);
     }
     for (const w of doc.querySelectorAll('wpt')) {
-      points.push({ lngLat: [+w.getAttribute('lon'), +w.getAttribute('lat')], name: (w.querySelector('name') || {}).textContent || '' });
+      const lngLat = lonLat(w);
+      if (lngLat.every(Number.isFinite)) points.push({ lngLat, name: (w.querySelector('name') || {}).textContent || '' });
     }
   }
   if (!lines.length) throw new Error('No tracks or routes found in the file');
