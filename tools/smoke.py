@@ -14215,6 +14215,14 @@ def route_card(chrome):
         s = st(pg)
         if s['kind'] != 'edit' or s['seg'] or 'Other ways' in s['rows']:
             fails.append(f"{name}: Edit this stretch on an imported track: {s['kind']} card, the switch {s['seg']}, rows {s['rows']}")
+        # Clear route forgets the track's name and Undo brings it back; a route drawn next has a name of its own (#769;
+        # not an exact one: road names come from the tiles). Drawn straight, so no router is asked.
+        r = pg.js("""(async () => { const p = polku.planner, wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+          p.cards.close(); p.clear(); const cleared = p.routeName; p.undo(); await wait(200); const back = p.routeTitle();
+          p.clear(); p.setMode('line'); p.addPoint([23.800, 61.518]); p.addPoint([23.815, 61.5188]); await wait(500);
+          return { cleared, back, drawn: p.routeTitle(), saved: p.routeSnapshot().routeName }; })()""")
+        if r['cleared'] or r['back'] != 'A track' or not r['drawn'] or r['drawn'] == 'A track' or r['saved']:
+            fails.append(f"{name}: an imported track's name: “{r['cleared']}” after Clear route, “{r['back']}” after Undo; a route drawn then is “{r['drawn']}”, saved as “{r['saved']}”")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}, after {' / '.join(trail[-4:])}")
