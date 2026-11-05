@@ -8,7 +8,7 @@ import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessO
 import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
-import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
+import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
@@ -66,6 +66,8 @@ const TIPS = {
   done: { name: 'Done', keys: 'E', text: 'Ends drawing: a click on the map shows what’s there. The cards still change the route.' },
   edit: { name: 'Edit', keys: 'E', text: 'Back to drawing: a click on the map adds a waypoint.' },
 };
+// What Route's list can show or hide, in its settings' order: its menu over the list and Settings (#761)
+export const LIST_SHOWS = [['warnings', 'Warnings'], ['drawing', 'Drawing mode'], ['dark', 'Darkness'], ['weather', 'Weather'], ['speed', 'Speed']];
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
 const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points'];
 const NEAR_LINE = 30;
@@ -204,7 +206,7 @@ export class Planner {
     this.pid = new WeakMap(); // point → who it is: the same through a move, Undo and Redo (a point's card follows it, 25d)
     this.pidN = 0;
     this.marks = { km: true, time: true, duration: true, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
-    this.listShow = { clock: false, routing: true, warnings: true, dark: true, weather: true, ...store.get('listShow', {}) }; // Route's list's settings (#761)
+    this.listShow = { clock: false, warnings: true, drawing: false, dark: false, weather: false, speed: false, ...store.get('listShow', {}) }; // Route's list's settings (#761): only Warnings at first
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
@@ -2950,15 +2952,21 @@ export class Planner {
       } }) : null, set].filter(Boolean);
   }
   // the list's settings (#761), the app's menu: the column's times, from the start or the clock's, and what the rows show,
-  // each a switch; saved as the map's marks are. What's hidden stays in Check and the cards.
+  // each a switch (Settings has the same, `LIST_SHOWS`); saved as the map's marks are. What's hidden stays in Check and the
+  // cards.
   listMenu(anchor) {
-    const S = this.listShow, save = () => { store.set('listShow', S); this.renderWaypoints(); };
-    const sw = (k, label) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: S[k], onchange: (e) => { S[k] = e.target.checked; save(); } }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    const S = this.listShow;
+    const sw = ([k, label]) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: S[k], onchange: (e) => this.setListShow({ [k]: e.target.checked }) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
     popMenu(anchor, [
-      { group: 'Times', items: [['route', 'From start', false], ['clock', 'Clock', true]].map(([ic, label, clock]) => ({ icon: ic, label, radio: true, checked: S.clock === clock, fn: () => { S.clock = clock; save(); } })) },
-      { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, sw('routing', 'Routing'), sw('warnings', 'Warnings'), sw('dark', 'Darkness'), sw('weather', 'Weather')) }] },
+      { group: 'Times', items: [['route', 'From start', false], ['clock', 'Clock', true]].map(([ic, label, clock]) => ({ icon: ic, label, radio: true, checked: S.clock === clock, fn: () => this.setListShow({ clock }) })) },
+      { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, ...LIST_SHOWS.map(sw)) }] },
       { note: 'Hidden items stay in Check and the cards.' },
     ], { label: 'List settings' });
+  }
+  setListShow(patch) {
+    Object.assign(this.listShow, patch);
+    store.set('listShow', this.listShow);
+    this.renderWaypoints();
   }
 
   // The open card's row in Route's list, lit: a point's own row, or the stretch's it folds into; a stretch's cards
@@ -3028,12 +3036,13 @@ export class Planner {
         if (!open) rows.append(this.stretchRow(s, ro));
         else for (let i = s.from; i < s.to; i++) {
           const come = (el) => { if (enter) { el.classList.add('wpl-in'); el.style.animationDelay = `${Math.max(0, Math.min(i - s.from - 1, 3)) * 40}ms`; } return el; };
-          if (i > s.from) rows.append(come(this.pointRow(i, ro, { shape: true })));
+          if (i > s.from) rows.append(come(this.pointRow(i, ro, { shape: true, w: this.listShow.weather ? wx(wAtPoint(i)) : null })));
           rows.append(come(this.stretchRow({ from: i, to: i + 1 }, ro, i === s.from ? s : null)));
         }
         const end = s.to === sec.to, stop = !end && this.stopAt(s.to);
         // (where a part ends, or at a stop, the line breaks: dotted to the next part's heading, through the stop's wait)
-        rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop }));
+        // (the weather at a part's ends and a stop; with Weather shown, at every waypoint, #761)
+        rows.append(this.pointRow(s.to, ro, { w: end || stop || this.listShow.weather ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop }));
         if (stop) rows.append(this.waitRow(s.to, 'stop'));
       }
       // (each part's line in its sport's colour, the map's and the profile's Sport colours)
@@ -3169,7 +3178,7 @@ export class Planner {
   stretchRow(s, ro, folds = s) {
     const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = folds ? folds.to - folds.from - 1 : 0, x = this.stretchNums(s);
     // (each number with its unit: a narrow list breaks them between, never "↑28" from its "m")
-    const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).map((w) => w.replace(/ /g, '\u00a0')).join(' · ');
+    const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : '', this.listShow.speed && x.sec > 0 ? this.speedWords(x.len, x.sec, this.legSport(s.from)) : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).map((w) => w.replace(/ /g, '\u00a0')).join(' · ');
     const how = leg.mode === 'fixed' ? `Its own line: ${this.routeName || (leg.src ? 'a LIPAS route' : 'an imported track')}${leg.src ? ' (LIPAS)' : ''}` : MODE_LABEL[leg.mode] || MODE_LABEL.auto;
     let carry = 0;
     for (const l of legs) { const c = l.result && l.result.coords, t = l.result && l.result.tags; if (c && t) for (let k = 1; k < c.length; k++) if (t[k - 1] && t[k - 1].portage) carry += dist(c[k - 1], c[k]); }
@@ -3182,8 +3191,8 @@ export class Planner {
     const b = h('button', { type: 'button', class: `row wpl-stretch${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to),
       'aria-label': [words, says, ...lines.map((x) => x.replace(/<[^>]+>/g, ''))].join(', '), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
       h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
-      h('span', {}, h('b', { class: 'wpl-nums' }, words), this.listShow.routing ? h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` })
-        : carry >= 1 ? h('small', {}, h('span', { class: 'how' }, `Carry ${fmtDist(carry)}`)) : null,
+      h('span', {}, h('b', { class: 'wpl-nums' }, words), this.listShow.drawing ? h('small', { html: `${icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || MODE_ICON.auto, 14)}<span class="how">${escapeHtml(says)}</span>` })
+        : carry >= 1 ? h('small', {}, h('span', { class: 'how' }, `Carry ${fmtDist(carry)}`)) : null, // (a carry stays, with Drawing mode hidden)
         ...lines.map((x) => h('small', { class: 'wpl-warns', html: x }))));
     let tip = null;
     const t0 = this.timesAt(s.from), t1 = this.timesAt(s.to), A = this.analysis;
@@ -3221,6 +3230,11 @@ export class Planner {
     const row = h('div', { class: 'wpl-strow' }, b, fold);
     if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)
     return row;
+  }
+  // a stretch's average speed in Your speed's units for its sport: a pace for running and swimming, else km/h (#761)
+  speedWords(m, sec, sport) {
+    const kmh = (m / 1000) / (sec / 3600);
+    return sport === 'run' || sport === 'trailrun' ? `${pace(kmh)} /km` : sport === 'swim' ? `${pace100(kmh)} /100 m` : `${kmh.toFixed(1)} km/h`;
   }
   // Check's warnings on the way from point s.from to s.to, as Check says them, unread: what's to read, what isn't
   // checked and what's worth a look, but for what the list says its own way (a straight line and a carry in a stretch's

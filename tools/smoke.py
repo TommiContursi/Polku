@@ -16026,11 +16026,11 @@ def sections_list(chrome):
           const after = leg(), wx = L.querySelectorAll('.wpl-point .wx-line').length, kept = document.body.contains(p.els.pointsTools.querySelector('.wpl-set')) && p.els.pointsTools.querySelector('.wpl-set') === p.els.listSet;
           [...m.querySelectorAll('[role=menuitemradio]')].find((x) => x.textContent === 'Clock').click(); await wait(100);
           const col = L.querySelector('.wpl-point[data-i="1"] .wpl-when small')?.textContent || '', saved = JSON.parse(localStorage.getItem('polku:listShow') || '{}'), check = p.headsUp().read.length;
-          localStorage.removeItem('polku:listShow'); p.listShow = { clock: false, routing: true, warnings: true, dark: true, weather: true }; p.renderWaypoints();
+          p.listShow = { clock: false, warnings: true, drawing: true, dark: true, weather: true, speed: false }; localStorage.setItem('polku:listShow', JSON.stringify(p.listShow)); p.renderWaypoints();
           return { menu, before, after, wx, kept, col, saved, check, back: leg() === before }; })()""")
-        if (r['menu'] != 'Times|From start|Clock|Show|Routing|Warnings|Darkness|Weather' or 'Follow paths' not in r['before'] or 'Cycling not allowed here' not in r['before'] or not re.fullmatch(r'[\d.]+\sk?m · \d+\smin( · ↑\d+\sm)?', r['after'])
-                or r['wx'] or not r['kept'] or not re.fullmatch(r'\d\d[:.]\d\d', r['col']) or r['saved'] != {'clock': True, 'routing': False, 'warnings': False, 'dark': False, 'weather': False} or not r['check'] or not r['back']):
-            fails.append(f"{name}: the list's settings: {r} (want its menu, the leg's numbers alone, no weather, the clock's times, saved, Check as before, #761)")
+        if (r['menu'] != 'Times|From start|Clock|Show|Warnings|Drawing mode|Darkness|Weather|Speed' or 'Follow paths' not in r['before'] or 'Cycling not allowed here' not in r['before'] or not re.fullmatch(r'[\d.]+\sk?m · \d+\smin( · ↑\d+\sm)? · [\d.]+\skm/h', r['after'])
+                or r['wx'] or not r['kept'] or not re.fullmatch(r'\d\d[:.]\d\d', r['col']) or r['saved'] != {'clock': True, 'warnings': False, 'drawing': False, 'dark': False, 'weather': False, 'speed': True} or not r['check'] or not r['back']):
+            fails.append(f"{name}: the list's settings: {r} (want its menu, the leg's numbers and speed alone, no weather, the clock's times, saved, Check as before, #761)")
         pg.js("polku.planner.setName(4, 'Kivikko'); true")
         time.sleep(0.8)
         pg.js(SETTLED)
@@ -16197,6 +16197,30 @@ def sections_list(chrome):
           for (const e of L.querySelectorAll('*')) { const b = e.getBoundingClientRect(); if (b.width && (b.right > lr.right + 1 || b.left < lr.left - 1)) out.push(`${e.tagName.toLowerCase()}.${e.className} past the list's edge`); }
           return [...new Set(out)]; })()""")
         fails += [f'{name}: {o}' for o in out]
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    except Exception as e:
+        fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
+    pg.close()
+    # (#761) the list's own defaults, on a fresh page: Warnings alone, the same switches in Settings, and from there the
+    # speed on each stretch's numbers and the weather at every waypoint
+    name = '390x844, the list\'s defaults'
+    pg = page(390, 844, True, {'polku:listShow': '{}'})
+    try:
+        route(pg, name, {'mode': 'auto', 'pts': PTS})
+        r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+          const shown = { ...p.listShow }, how = L.querySelectorAll('.wpl-stretch .how').length, wx = L.querySelectorAll('.wpl-point .wx-line').length;
+          document.querySelector('#btn-settings').click(); await wait(400);
+          const tgs = () => [...document.querySelectorAll('#settings-body [data-group="settings-list"] .tg')];
+          const settings = tgs().map((t) => `${t.querySelector('.tg-text').firstChild.textContent}:${t.querySelector('input').checked}`);
+          for (const t of tgs()) if (/Speed|Weather/.test(t.textContent)) t.querySelector('input').click();
+          await wait(300); document.querySelector('#btn-settings').click(); await wait(300);
+          p.els.pointsTools.querySelector('.wpl-all')?.click(); await wait(200);
+          const nums = L.querySelector('.wpl-stretch .wpl-nums')?.textContent || '', pts = L.querySelectorAll('.wpl-point').length, withWx = L.querySelectorAll('.wpl-point .wx-line').length;
+          return { shown, how, wx, settings, nums, pts, withWx, wind: !!p.analysis.wind }; })()""")
+        if (r['shown'] != {'clock': False, 'warnings': True, 'drawing': False, 'dark': False, 'weather': False, 'speed': False} or r['how'] or r['wx']
+                or r['settings'] != ['Warnings:true', 'Drawing mode:false', 'Darkness:false', 'Weather:false', 'Speed:false'] or not re.search(r'[\d.]+\skm/h$', r['nums'])
+                or (r['wind'] and r['withWx'] != r['pts'])):
+            fails.append(f"{name}: {r} (want Warnings alone at first, the same switches in Settings, then the speed on the numbers and the weather at every waypoint, #761)")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
