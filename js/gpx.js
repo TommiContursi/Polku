@@ -11,7 +11,8 @@ export function parseTrackFile(text, filename = '') {
     for (const el of doc.getElementsByTagName('LineString')) {
       const c = el.getElementsByTagName('coordinates')[0];
       if (!c) continue;
-      const coords = c.textContent.trim().split(/\s+/).map((t) => t.split(',').map(Number)).filter((p) => p.length >= 2 && p.every(Number.isFinite));
+      // an empty value is NaN, not 0; only the longitude and latitude need to be numbers
+      const coords = c.textContent.trim().split(/\s+/).map((t) => t.split(',').map((v) => (v ? +v : NaN))).filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
       if (coords.length > 1) lines.push(coords.map((p) => [p[0], p[1]]));
     }
     for (const el of doc.getElementsByTagName('gx:coord')) {
