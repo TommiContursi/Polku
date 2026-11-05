@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### A marked route picked while the list loads ([#427](https://github.com/TommiContursi/Polku/issues/427))
+
+- In **Marked routes**, a route you pick on the map while the list is still loading stays picked when the list comes in, instead of going back to the one picked before.
+
 ### Check's tab after Clear route ([#463](https://github.com/TommiContursi/Polku/issues/463))
 
 - After **Clear route**, Check's tab no longer shows the old route's count and "?", and a screen reader hears just "Check". **Undo** brings the route's count back with the route.
