@@ -316,6 +316,8 @@ In small phases from here (decided 2026-11-04), each one change to the rows as b
 
 6i. **The list's tooltips as full as the profile's** (built 2026-11-06, after 6h): a stretch's times and speed, then the profile's facts over all of it (`stretchRows()`); a waypoint's times, height and the profile's tip at its sample (`sampleRows()`, shared with `ProfileChart.setHover()`); a tooltip on each wait. `tooltip()` takes `lines`. `sections` reads each line.
 
+6j. **A part's ⚙** (built 2026-11-06, after 6i): on each part's heading, the app's menu as the drawing menu's next leg (its name and ✕, `modal`): Sport · this part (the sports in place; a pick changes the part's legs alone), Your speed with its editor in place, and the sport's Route style chips with Fine-tune. Not a step of its own, as first proposed: the drawing menu already does this job, so the ⚙ reuses it (`speedItems()`, `styleItems()`). The rows under the list stay, so both can be tried. The Waypoints heading doesn't fold; Show all waypoints has its chevron. `sections` checks both on MTB then Paddle.
+
 The phases after it, to be decided one at a time:
 
 - **Less on a waypoint's row:** it no longer repeats the warnings of the stretch before it (#791's), and maybe its weather (to the card and a desktop's tooltip). Not sure yet: losing ›, and each row in the button's hairline (Parts 10).
