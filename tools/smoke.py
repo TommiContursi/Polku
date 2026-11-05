@@ -9695,26 +9695,27 @@ def button3d_phones(chrome):
 
 
 # The map's words along a line stand up when it's tilted in 3D (#635): each line-placed text layer's own layout, on a line
-# of the test's across the screen, read from the frame's pixels in a colour no map has (MapLibre still lists a glyph it
-# hides, so its features can't show it). Flat as a control, then tilted to 72° with 3D on.
+# of the test's across the screen, read from the frame's pixels in its own colour, less the pixels of that colour already
+# there (MapLibre still lists a glyph it hides, so its features can't show it). Flat as a control, then tilted to 72° with 3D on.
 LABELS_3D = """(async (pitch) => {
   const m = polku.map, out = [], W = m.getCanvas().clientWidth, H = m.getCanvas().clientHeight;
   const idle = () => new Promise((ok) => { const t = setTimeout(ok, 8000); m.once('idle', () => { clearTimeout(t); ok(); }); });
   // the pixels of the frame that drew them
   const ink = () => new Promise((ok) => { m.once('render', () => { const gl = m.painter.context.gl, px = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
     gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, px); let n = 0;
-    for (let i = 0; i < px.length; i += 4) if (px[i] > 200 && px[i + 1] < 90 && px[i + 2] > 200) n++; ok(n); }); m.triggerRepaint(); });
+    for (let i = 0; i < px.length; i += 4) if (px[i] < 60 && px[i + 1] > 200 && px[i + 2] > 200) n++; ok(n); }); m.triggerRepaint(); });
   m.jumpTo({ pitch, bearing: pitch ? 20 : 0 });
   await idle();
   const line = [0.15, 0.3, 0.5, 0.7, 0.85].map((x) => m.unproject([x * W, 0.72 * H]).toArray());
+  const base = await ink();
   m.addSource('probe-635', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } } });
   const ids = m.getStyle().layers.filter((l) => l.type === 'symbol' && l.layout && /^line/.test(l.layout['symbol-placement'] || '') && l.layout['text-field']).map((l) => l.id);
   for (const id of ids) {
     const l = m.getStyle().layers.find((x) => x.id === id), { 'icon-image': _, ...layout } = l.layout;
-    m.addLayer({ id: 'probe-635', type: 'symbol', source: 'probe-635', paint: { 'text-color': '#ff00ff' },
+    m.addLayer({ id: 'probe-635', type: 'symbol', source: 'probe-635', paint: { 'text-color': '#00ffff' },
       layout: { ...layout, visibility: 'visible', 'text-field': 'Polku 635 Polku 635', 'text-size': 16, 'symbol-spacing': 120, 'text-allow-overlap': true, 'text-ignore-placement': true } });
-    await idle();
-    const n = await ink();
+    let n = 0; // (until its glyphs are in and faded up: six frames at most, slow ones tilted over the terrain)
+    for (let k = 0; n < 150 && k < 6; k++, await new Promise((r) => setTimeout(r, 250))) n = (await ink()) - base;
     if (n < 150) out.push(`${id}'s words ${pitch ? `tilted to ${pitch}°` : 'flat'}: ${n} pixels drawn`);
     m.removeLayer('probe-635');
   }
@@ -9730,12 +9731,12 @@ def labels_3d(chrome):
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#15.6/61.8790/25.0650')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-        flat = pg.js(f"({LABELS_3D})(0)", timeout=120000)
+        flat = pg.js(f"({LABELS_3D})(0)", timeout=300000)
         fails += flat['out']
         pg.js("document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
         if not pg.js("polku.state.terrain3d"):
             fails.append('3D did not turn on')
-        tilted = pg.js(f"({LABELS_3D})(72)", timeout=120000)
+        tilted = pg.js(f"({LABELS_3D})(72)", timeout=300000)
         fails += tilted['out']
         if {'label-road', 'label-waterway', 'label-water-line'} - set(flat['ids']):
             fails.append(f"the layers with words along a line: {flat['ids']}")
