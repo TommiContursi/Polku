@@ -9743,6 +9743,59 @@ def button3d_phones(chrome):
     return button3d(chrome, phones=True)
 
 
+# The map's words along a line stand up when it's tilted in 3D (#635): each line-placed text layer's own layout, on a line
+# of the test's across the screen, read from the frame's pixels in its own colour, less the pixels of that colour already
+# there (MapLibre still lists a glyph it hides, so its features can't show it). Flat as a control, then tilted to 72° with 3D on.
+LABELS_3D = """(async (pitch) => {
+  const m = polku.map, out = [], W = m.getCanvas().clientWidth, H = m.getCanvas().clientHeight;
+  const idle = () => new Promise((ok) => { const t = setTimeout(ok, 8000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+  // the pixels of the frame that drew them
+  const ink = () => new Promise((ok) => { m.once('render', () => { const gl = m.painter.context.gl, px = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+    gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, px); let n = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i] < 60 && px[i + 1] > 200 && px[i + 2] > 200) n++; ok(n); }); m.triggerRepaint(); });
+  m.jumpTo({ pitch, bearing: pitch ? 20 : 0 });
+  await idle();
+  const line = [0.15, 0.3, 0.5, 0.7, 0.85].map((x) => m.unproject([x * W, 0.72 * H]).toArray());
+  const base = await ink();
+  m.addSource('probe-635', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } } });
+  const ids = m.getStyle().layers.filter((l) => l.type === 'symbol' && l.layout && /^line/.test(l.layout['symbol-placement'] || '') && l.layout['text-field']).map((l) => l.id);
+  for (const id of ids) {
+    const l = m.getStyle().layers.find((x) => x.id === id), { 'icon-image': _, ...layout } = l.layout;
+    m.addLayer({ id: 'probe-635', type: 'symbol', source: 'probe-635', paint: { 'text-color': '#00ffff' },
+      layout: { ...layout, visibility: 'visible', 'text-field': 'Polku 635 Polku 635', 'text-size': 16, 'symbol-spacing': 120, 'text-allow-overlap': true, 'text-ignore-placement': true } });
+    let n = 0; // (until its glyphs are in and faded up: six frames at most, slow ones tilted over the terrain)
+    for (let k = 0; n < 150 && k < 6; k++, await new Promise((r) => setTimeout(r, 250))) n = (await ink()) - base;
+    if (n < 150) out.push(`${id}'s words ${pitch ? `tilted to ${pitch}°` : 'flat'}: ${n} pixels drawn`);
+    m.removeLayer('probe-635');
+  }
+  m.removeSource('probe-635');
+  return { ids, out };
+})"""
+
+
+def labels_3d(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#15.6/61.8790/25.0650')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        flat = pg.js(f"({LABELS_3D})(0)", timeout=300000)
+        fails += flat['out']
+        pg.js("document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
+        if not pg.js("polku.state.terrain3d"):
+            fails.append('3D did not turn on')
+        tilted = pg.js(f"({LABELS_3D})(72)", timeout=300000)
+        fails += tilted['out']
+        if {'label-road', 'label-waterway', 'label-water-line'} - set(flat['ids']):
+            fails.append(f"the layers with words along a line: {flat['ids']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's words along a line, flat and tilted in 3D (pixels)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Fold, then away (step 3 of #233: #338, #303, #434): the planner and every card fold to one line and come back as
 # they were; a second swipe, or ✕ at the line, puts the planner away or closes the card. Phones by touch, desktops by mouse.
 FOLD_INFO = """(() => { const p = polku.planner, b = (e) => { if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; };
@@ -18089,7 +18142,7 @@ GROUPS = [
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
-    ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
+    ('button3d', [button3d, labels_3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels)'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap shows when you\'re there and the profile up to it, a hold or a right-click opens it with its actions in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),

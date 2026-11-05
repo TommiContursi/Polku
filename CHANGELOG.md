@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Words along trails stay when the map is tilted ([#635](https://github.com/TommiContursi/Polku/issues/635))
+
+- With **3D** on and the map tilted steeply, the words that run along a line stay readable, standing up towards you: the difficulty and uphill numbers, road, river and lake names, marked routes' names, the fairways' depths and the contours' heights. Before, they all disappeared past about 65°. The flat map looks the same.
+
 ### A card's spot clear of the undo buttons ([#555](https://github.com/TommiContursi/Polku/issues/555))
 
 - On a phone, when a card opens and the map moves its spot into sight above it, the spot and its pill also stay clear of the floating **Undo** and **Redo** buttons, so a tap on the pill reaches the pill, not the buttons.
