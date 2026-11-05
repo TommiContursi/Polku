@@ -16849,11 +16849,13 @@ def leave(chrome):
             pg.js(LV_JS)
             if pg.js("polku.planner.startSec()") != want:
                 fails.append(f"{name}: after a reload it leaves {pg.js('new Date(polku.planner.startSec() * 1000).toString()')}")
-            # and an imported track's name (#822)
+            # and an imported track's name, which its share link doesn't carry; a route without one stays without (#822)
+            unnamed = pg.js("polku.planner.routeName")
             pg.js("polku.planner.loadTrack([[23.800, 61.518], [23.805, 61.5185], [23.810, 61.519], [23.815, 61.5188]], 'A track'); true")
             pg.reload()
-            if pg.js("polku.planner.routeTitle()") != 'A track':
-                fails.append(f"{name}: an imported track after a reload is “{pg.js('polku.planner.routeTitle()')}”, not “A track”")
+            r = pg.js("({ title: polku.planner.routeTitle(), link: /A(%20|\\+| )track/.test(polku.planner.shareUrl()) })")
+            if unnamed or r['title'] != 'A track' or r['link']:
+                fails.append(f"{name}: the route's name after a reload: “{unnamed}” without one; an imported track's “{r['title']}”, in its share link: {r['link']}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.close()
 
