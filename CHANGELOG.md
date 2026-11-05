@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
+
+- After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
+
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each waypoint shows how far it is from the start and how long it takes to get there, stops and changeovers included, in a column left of the route's line: "1.11 km" over "5 min". With the text enlarged, they go under the waypoint's name.
