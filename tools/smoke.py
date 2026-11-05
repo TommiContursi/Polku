@@ -3468,7 +3468,7 @@ WARNFIX = """(async () => {
   p.cards.close();
   await wait(300);
   // (12, the recheck) Retry on the trail details: "Asking…" while Overpass is asked, on a card built again meanwhile too
-  // (another source answering), and Overpass named plainly when it still didn't answer
+  // (another source answering), and OpenStreetMap named plainly when it still didn't answer (the app's name for it, #695)
   T2.holdFetches(true, true); T2.forgetFailures();
   await p.loadTrail(p.analysis);
   const trail = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'trail');
@@ -3478,14 +3478,15 @@ WARNFIX = """(async () => {
     p.loadTrail = async (a) => { await wait(1500); return real.call(p, a); };
     p.openItemCard(trail, { from: 'check' });
     await wait(500);
+    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
+    if (/OpenStreetMap still didn.t answer/.test(said())) errs.push(`(the test) a note naming OpenStreetMap before Retry on the trail details: "${said()}"`);
     p.cards.box.querySelector('.btn.primary.big').click();
     await wait(300);
     p.renderWarnings();
     const tb = p.cards.box && p.cards.box.querySelector('.btn.primary.big');
     if (!tb || tb.textContent.trim() !== 'Asking…' || !tb.disabled) errs.push(`Retry on the trail details, its card built again while Overpass is asked: "${tb ? tb.textContent.trim() : 'no button'}"${tb && !tb.disabled ? ', tappable' : ''}`);
-    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
-    for (let k = 0; k < 50 && !/Overpass[^/]*still didn.t answer/.test(said()); k++) await wait(100);
-    if (!/Overpass \\(OpenStreetMap\\) still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
+    for (let k = 0; k < 50 && !/OpenStreetMap still didn.t answer/.test(said()); k++) await wait(100);
+    if (!/OpenStreetMap still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
     delete p.loadTrail;
     p.cards.close();
     await wait(300);
@@ -5797,6 +5798,36 @@ def aerial_fallback(chrome):
     return not fails
 
 
+# The map's words over the aerial photos (#554): every label of one colour at 4.5:1 on its halo, the dark one there
+AERIAL_LABELS = """(() => {
+  const m = polku.map, ctx = document.createElement('canvas').getContext('2d'), out = [];
+  const rgb = (c) => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3); };
+  const lum = (c) => c.map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  for (const l of m.getStyle().layers) {
+    if (l.type !== 'symbol' || !l.layout || !l.layout['text-field']) continue;
+    const c = m.getPaintProperty(l.id, 'text-color'), h = m.getPaintProperty(l.id, 'text-halo-color');
+    if (typeof c !== 'string' || typeof h !== 'string') continue; // (a colour by the feature: not one value to measure)
+    const [x, y] = [lum(rgb(c)), lum(rgb(h))].sort((p, q) => q - p), r = (x + 0.05) / (y + 0.05);
+    if (r < 4.5) out.push(`${l.id}: ${c} on its halo ${h}, ${r.toFixed(2)}:1`);
+  }
+  return out;
+})()"""
+
+
+def aerial_labels(chrome):
+    fails = []
+    for base in ('aerial', 'ortofi'):
+        pg = chrome.page(1440, 900, False)
+        try:
+            pg.open_app({'base': base, 'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.515/23.85')
+            fails += [f'{base}: {e}' for e in pg.js(AERIAL_LABELS)]
+            fails += [f'{base} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's words over the aerial photos at 4.5:1 on their halo" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def layers(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/60.15/24.95')
@@ -7593,6 +7624,11 @@ def contrast(chrome):
             pressed = pg.js("['#btn-settings', '#btn-time'].filter((s) => document.querySelector(s).getAttribute('aria-pressed') !== 'true')")
             fails += [f'{scheme}: {s} not pressed by a click' for s in pressed]
             fails += [f'{scheme}: {f}' for f in pg.js(CONTRAST + f"({json.dumps(scheme)})")]
+            # the search field's hint in the glass's grey, not the browser's (#551)
+            h = pg.js("""(() => { const s = document.querySelector('.search'), m = s.appendChild(document.createElement('i')); m.style.color = 'var(--muted)';
+              const out = { hint: getComputedStyle(s.querySelector('input'), '::placeholder').color, muted: getComputedStyle(m).color }; m.remove(); return out; })()""")
+            if h['hint'] != h['muted']:
+                fails.append(f"{scheme}: the search field's hint in {h['hint']}, not the glass's grey {h['muted']}")
             fails += [f'{scheme} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
@@ -7818,6 +7854,19 @@ def appearance(chrome):
         tap('#btn-settings', 'Settings, after a reload')
         if pg.js(THEME_NOW)['pressed'] != ['light']:
             fails.append(f"Light, after a reload: Settings shows {pg.js(THEME_NOW)['pressed']} chosen")
+
+        # the timeline's strip in the new look as soon as the theme changes (#583): Automatic, the timeline open, the
+        # device turning dark; the strip as it is, against the strip drawn again (first with nothing changed, as a control)
+        scheme(pg, 'light')
+        pg.open_app({'activity': 'mtb', 'appearance': 'auto', 'base': 'trail', 'timeline': True})
+        strip = """(() => { const w = polku.weather, was = w.stripCv.toDataURL(); w.renderStrip();
+          return { shown: !w.bar.hidden && w.stripCv.width > 0, same: was === w.stripCv.toDataURL() }; })()"""
+        r0 = pg.js(strip)
+        scheme(pg, 'dark')
+        pg.js(THEME_IS + "('dark')")
+        r = pg.js(strip)
+        if r0 != {'shown': True, 'same': True} or r != {'shown': True, 'same': True}:
+            fails.append(f"the timeline's strip, the device turning dark: {r} (with nothing changed: {r0}; shown and the same as drawn again)")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -9692,6 +9741,59 @@ def button3d(chrome, phones=False):
 
 def button3d_phones(chrome):
     return button3d(chrome, phones=True)
+
+
+# The map's words along a line stand up when it's tilted in 3D (#635): each line-placed text layer's own layout, on a line
+# of the test's across the screen, read from the frame's pixels in its own colour, less the pixels of that colour already
+# there (MapLibre still lists a glyph it hides, so its features can't show it). Flat as a control, then tilted to 72° with 3D on.
+LABELS_3D = """(async (pitch) => {
+  const m = polku.map, out = [], W = m.getCanvas().clientWidth, H = m.getCanvas().clientHeight;
+  const idle = () => new Promise((ok) => { const t = setTimeout(ok, 8000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+  // the pixels of the frame that drew them
+  const ink = () => new Promise((ok) => { m.once('render', () => { const gl = m.painter.context.gl, px = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+    gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, px); let n = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i] < 60 && px[i + 1] > 200 && px[i + 2] > 200) n++; ok(n); }); m.triggerRepaint(); });
+  m.jumpTo({ pitch, bearing: pitch ? 20 : 0 });
+  await idle();
+  const line = [0.15, 0.3, 0.5, 0.7, 0.85].map((x) => m.unproject([x * W, 0.72 * H]).toArray());
+  const base = await ink();
+  m.addSource('probe-635', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } } });
+  const ids = m.getStyle().layers.filter((l) => l.type === 'symbol' && l.layout && /^line/.test(l.layout['symbol-placement'] || '') && l.layout['text-field']).map((l) => l.id);
+  for (const id of ids) {
+    const l = m.getStyle().layers.find((x) => x.id === id), { 'icon-image': _, ...layout } = l.layout;
+    m.addLayer({ id: 'probe-635', type: 'symbol', source: 'probe-635', paint: { 'text-color': '#00ffff' },
+      layout: { ...layout, visibility: 'visible', 'text-field': 'Polku 635 Polku 635', 'text-size': 16, 'symbol-spacing': 120, 'text-allow-overlap': true, 'text-ignore-placement': true } });
+    let n = 0; // (until its glyphs are in and faded up: six frames at most, slow ones tilted over the terrain)
+    for (let k = 0; n < 150 && k < 6; k++, await new Promise((r) => setTimeout(r, 250))) n = (await ink()) - base;
+    if (n < 150) out.push(`${id}'s words ${pitch ? `tilted to ${pitch}°` : 'flat'}: ${n} pixels drawn`);
+    m.removeLayer('probe-635');
+  }
+  m.removeSource('probe-635');
+  return { ids, out };
+})"""
+
+
+def labels_3d(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#15.6/61.8790/25.0650')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        flat = pg.js(f"({LABELS_3D})(0)", timeout=300000)
+        fails += flat['out']
+        pg.js("document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
+        if not pg.js("polku.state.terrain3d"):
+            fails.append('3D did not turn on')
+        tilted = pg.js(f"({LABELS_3D})(72)", timeout=300000)
+        fails += tilted['out']
+        if {'label-road', 'label-waterway', 'label-water-line'} - set(flat['ids']):
+            fails.append(f"the layers with words along a line: {flat['ids']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's words along a line, flat and tilted in 3D (pixels)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 
 # Fold, then away (step 3 of #233: #338, #303, #434): the planner and every card fold to one line and come back as
@@ -15403,11 +15505,29 @@ def spot_card_foot(chrome):
                 if (w == 195) != (r['lines'] == len(want)) or (w != 195 and r['lines'] != 1):
                     fails.append(f"{name}: {what}: the last row is on {r['lines']} lines (one where there's room, a line each at 200 %)")
                 pg.js('polku.planner.cards.close(); true')
+            if phone and w > 195:
+                # a spot under the floating toolbox (undo and redo, over the map above the card): the map moves it, and its
+                # pill, clear of the toolbox too, as of the map's buttons (#555); a card open first, so the sheet and the
+                # toolbox are where the next card leaves them
+                r = pg.js("""(async () => { const p = polku.planner, m = polku.map, t = document.getElementById('pl-tools'), R = m.getCanvas().getBoundingClientRect(), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+                  const open = async (ll) => { p.openSpotCard(ll, { touch: true }); if (p.picked) p.openLine(); await wait(1500); };
+                  p.setSheetState('peek'); await open(m.unproject([R.width / 2, R.height * 0.3]));
+                  const state = () => (t.hidden ? 'hidden' : t.classList.contains('docked') ? 'docked' : 'floating');
+                  if (state() !== 'floating') return { tools: state() };
+                  const T = t.getBoundingClientRect(), ll = m.unproject([(T.left + T.right) / 2 - R.left, (T.top + T.bottom) / 2 - R.top]);
+                  await open(ll);
+                  const q = m.project(ll), x = R.left + q.x, y = R.top + q.y, U = t.getBoundingClientRect();
+                  return { tools: state(), card: p.cards.current && p.cards.current.kind, under: x >= U.left && x <= U.right && y >= U.top && y <= U.bottom, spot: [x, y].map(Math.round), box: [U.left, U.top, U.right, U.bottom].map(Math.round) }; })()""", timeout=30000)
+                pg.js('sc.calm()')
+                over = pg.js(PILL_OVER)
+                if r.get('tools') != 'floating' or r.get('card') != 'spot' or r.get('under') or 'pl-tools' in over:
+                    fails.append(f"{name}: a spot under the toolbox: {r}{f', the pill under {over}' if over else ''}")
+                pg.js('polku.planner.cards.close(); true')
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         except Exception as e:
             fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: Share, Weather here ›, Not right?, at four sizes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: Share, Weather here ›, Not right?, at four sizes; a spot clear of the toolbox" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -17072,6 +17192,13 @@ def keyfacts(chrome):
                   return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /^(-?\\d+° \\d+ m\\/s|No forecast yet)$/.test([...(lit[0]?.querySelectorAll('.wpl-point .wx-line') || [])].pop()?.textContent || '') }; })()""")
                 if r != {'tab': 'route', 'lit': ['Paddle'], 'wx': True}:
                     fails.append(f"{name}: a tap on Paddle: {r}")
+            # each sport's climbing counted as the route's total counts it, a climb once past 2 m (#752): MTB's 1 m ups and
+            # downs are ↑0 m, Hike's 30 m climb ↑30 m
+            r = pg.js("""import(location.origin + '/js/facts.js').then((F) => { const n = 41, a = { activity: 'mtb', along: Array.from({ length: n }, (_, i) => i * 10),
+              ele: Array.from({ length: n }, (_, i) => (i < 30 ? 100 + (i % 2) : 100 + 3 * (i - 30))), attr: Array.from({ length: n }, (_, i) => ({ sport: i <= 20 ? 'mtb' : 'hike' })) };
+              return F.sportFacts(a, { noWeather: 'not known' }).map((f) => f.aria.match(/↑\\d+ m/)[0]); })""")
+            if r != ['↑0 m', '↑30 m']:
+                fails.append(f"{name}: the sports' climbing, MTB with 1 m ups and downs, then Hike with a 30 m climb: {r}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.close()
 
@@ -17295,16 +17422,20 @@ def tabs_names(chrome):
             pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
             pg.js(SETTLED)
             want = """(async () => { const p = polku.planner, a = p.analysis, d = (await import(location.origin + '/js/geo.js')).fmtDist(a.total);
-              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${p.els.tabBtn.go.querySelector('.pl-tab-t').textContent}` }; })()"""
-            for step in ('drawn', 'a point added'):
+              const at = p.els.tabBtn.go.querySelector('.pl-tab-t').textContent;
+              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${at}`, at, title: p.els.tabBtn.go.title }; })()"""
+            # (the Go tab's tooltip says "back at" only on a round trip, #753)
+            for step, word, then in (('drawn', 'there', 'p.addPoint([23.86, 61.52])'), ('a point added', 'there', 'p.backToStart()'), ('back to the start', 'back', None)):
                 ax, w_ = names(pg), pg.js(want)
                 tabs = ax.get('tab', [])
                 if w_['prof'] not in ax.get('image', []):
                     fails.append(f"{name}: the profile, {step}: images named {ax.get('image', [])} (want {w_['prof']!r})")
                 if len(tabs) != 3 or tabs[0] != 'Route' or not tabs[1].startswith('Check') or tabs[1][5:6] not in ('', ':') or tabs[2] != w_['go']:
                     fails.append(f"{name}: the tabs' names, {step}: {tabs} (Route, Check: …, {w_['go']!r})")
-                if step == 'drawn':
-                    pg.js("(async () => { const p = polku.planner, a = p.analysis; p.addPoint([23.86, 61.52]); for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; })()", timeout=30000)
+                if not w_['title'].startswith(f"When and how long: {word} at {w_['at']} "):
+                    fails.append(f"{name}: the Go tab's tooltip, {step}: {w_['title']!r} (want {word} at {w_['at']})")
+                if then:
+                    pg.js(f"(async () => {{ const p = polku.planner, a = p.analysis; {then}; for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; }})()", timeout=30000)
                     pg.js(SETTLED)
             # the headings: Route (and its How you go), Check and Go, one level at a time
             for tab, js in (('Route', "polku.planner.setTab('route')"), ('How you go', "polku.planner.openStep('how')"), ('Check', "polku.planner.openStep(null); polku.planner.setTab('check')"), ('Go', "polku.planner.setTab('go')")):
@@ -17986,7 +18117,7 @@ GROUPS = [
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
-    ('raster', [raster_maps, aerial_fallback], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653)'),
+    ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
@@ -18021,7 +18152,7 @@ GROUPS = [
     ('drawer', [drawer], 'the drawer in three tabs (22a): every part in its place, the start, the lit leg'),
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
-    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239); the search field\'s hint in the glass\'s grey (#551)'),
     ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
     ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
@@ -18037,7 +18168,7 @@ GROUPS = [
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
-    ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
+    ('button3d', [button3d, labels_3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels)'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap shows when you\'re there and the profile up to it, a hold or a right-click opens it with its actions in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
