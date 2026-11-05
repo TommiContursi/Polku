@@ -41,6 +41,7 @@ A piece of the planner's content work ([#660](https://github.com/TommiContursi/P
 - **Decided (2026-11-05): Parts 16's Its legs,** an idea from testing: the list as a subway map, the waypoints its stations and every leg between two of them a row of its own, with its facts and its edits (below). The list may grow long: less text on the rows and a way to choose the details shown come later. **Built** on `claude/761-next-6d574e`, with #819 in it ("The PRs from here", Its legs).
 - **Ideas from testing (2026-11-05):** a leg edited from its waypoint (its sport and how it's drawn are the leg's: today a waypoint's card has **Sport from here** and **Next stretch, to …** ›, three taps to Freehand); the beads as many as the stretch folds, not three at most; a switch over the list for the details shown on the waypoints and legs (the list's settings).
 - **Chosen (2026-11-05):** Parts 17's named warnings on a leg and a bead for each folded waypoint, **built** on `claude/761-legs-words` (#838, after #820; "The PRs from here", 6f). Its waypoint's card that edits the next leg isn't built: what was asked for is editing on the leg itself, drawn as Parts 18 (below).
+- **Being explored (2026-11-05): Parts 19,** the list's settings and every other setting discussed for the list (below).
 - **Waiting (2026-11-05): editing a leg on its row** (Parts 18's A, B and C) is decided when the cards are rethought (#690), with the cards. Not sure either whether a leg keeps how it's drawn in words ("Follow paths"): its line says it, and much of the rows' text could be hidden, by "less on a row" or the list's settings (a switch for the details shown).
 - **Next:** PR 6b, a hold on any row opens Reorder with that waypoint picked up (phones and desktops), Remove in Reorder's rows, a short wiggle as it opens (stopped within the second; none with reduced motion), a buzz where a phone allows it, and a tap outside the list closes it (that tap does nothing else). Decided with /find-animation-opportunities and /animate, and /review-animations before it opens. It replaces the swipe to remove proposed first.
 
@@ -232,6 +233,16 @@ The research behind it: nested timelines (the Maersk and Telerik design systems,
 - **B: how it's drawn, a menu.** The leg's "Follow paths" is a button on its row (⌄ beside it), opening the app's menu there (`popMenu`'s `menu-item`): Follow paths or Freehand, then the leg's Sport and Route style, which go on to Edit this stretch's steps. Two taps to Freehand. Every leg has the button, and its row becomes two targets; with no room beside it (200 %), the menu is a sheet.
 - **C: ✎ edits it in the list.** The ✎ opens Edit this stretch's own controls under the leg, in the list (how it's drawn, Sport, Route style), the route's line going on beside them, and Done closes them. Two taps to Freehand, and the list moves to make room; a card's narrow rules hold there (#384).
 - **Checked:** 390 px light, 360 px dark with long Finnish names, 200 % at 360 and 390 px, the side and bottom docks, as tested and with a waypoint on the water: no sideways scroll; Parts 16 and 17 draw as before. **Not drawn:** a paddle leg's menu or strip (Over water and Freehand); the motion of B's menu and C's strip (/animate when one is chosen).
+
+**Parts 19, the twenty-first round** (`?v=parts19`, 2026-11-05): the list's settings, every one discussed so far (Parts 11, 14 and 15; 6c and PR 7 below; testing on 2026-11-05), over Parts 17's list as built in #838:
+- **Show all waypoints** (6c, decided) is a button over the list, in words, unfolding every stretch's waypoints; then **Fold them all**.
+- **The list's settings** are the sliders beside it, opening the app's menu as Parts 14 drew it:
+  - **Times:** from the start (the default) or the clock's, in the column.
+  - **On the rows,** each shown or hidden: how each leg is drawn (its line shows it too: dashed Freehand, the water's blue); warnings and heads-ups, a changeover's gear too; sunset and the dark; the weather (at the start, a part's ends and a stop).
+  - Hidden, they stay in Check and in each card, and the numbers over the list still say what's to read; saved as the map's marks are.
+- **Details** on the bar are presets to compare: All (as built), Fewer (no how it's drawn, no weather) and The route alone (the waypoints, the legs' numbers and the waits).
+- **A part's ⚙** (PR 7, decided), at its heading's end, opens a menu with its sport's **How you go** (its style) and **Your speed**, each going on to its step as today; they leave the list's end.
+- **Checked:** 390 and 360 px, light and dark, with long Finnish names, 200 % at 360 and 390 px, both docks, each menu open, both times: no sideways scroll; Parts 16 to 18 draw as before. **Not drawn:** the menus' motion (/animate when built); where #755's speed in the numbers row meets the ⚙.
 
 **Ideas for the line, not drawn:**
 - a mark's tooltip, its distance and time from the start;
