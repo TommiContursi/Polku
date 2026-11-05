@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### The timeline's strip follows light and dark ([#583](https://github.com/TommiContursi/Polku/issues/583))
+
+- When Polku changes between light and dark with the timeline open, its weather strip's words, your trip's band and the night's shading change with it at once, instead of keeping the old look until the time or the window changed.
+
 ### Names you can read on the aerial photos ([#554](https://github.com/TommiContursi/Polku/issues/554))
 
 - On **Aerial** and **Aerial FI**, a peak's name and height and a park's name are white, and the names of lakes, rivers and the sea light blue, on their dark halo like the map's other words there, instead of brown, green and dark blue that were hard to read over the photos.

@@ -434,11 +434,12 @@ const planner = new Planner(map, {
   },
 });
 // The theme changed: the route and the colour scales are read from the CSS again (js/palette.js), so the
-// map and the planner draw with them again.
+// map, the planner and the timeline's strip draw with them again.
 onTheme(() => {
   map.setStyle(buildStyle(state, ctx), { diff: true });
   planner.drawHeads(); // (its markers' images are the theme's)
   if (planner.analysis) planner.showMode(planner.colorMode);
+  weather.renderStrip();
 });
 
 // Where you are: the dot, its cone and Follow me. While following, the dot sits in the middle
