@@ -1347,8 +1347,9 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .pill.ok { background: rgba(202,138,4,.14); color: var(--ok-text); }
 .pill.warn { background: rgba(234,88,12,.14); color: var(--warn-text); }
 .pill.bad { background: rgba(220,38,38,.14); color: var(--bad-text); }
-.exposure { display: grid; gap: 4px; margin: 4px 0; width: 100%; }
-.ex-item { display: grid; grid-template-columns: 90px 1fr; align-items: center; font-size: 12px; color: var(--muted); }
+.exposure { display: grid; grid-template-columns: max-content 1fr; gap: 4px 8px; margin: 4px 0; width: 100%; }
+/* the shares' words as wide as the widest, so "Headwind 100 %" stays on one line and the bars start together (#388) */
+.ex-item { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; font-size: 12px; color: var(--muted); }
 .ex-item i { grid-column: 2; grid-row: 1; height: 7px; border-radius: 999px; display: block; }
 .hours { display: flex; gap: 4px; overflow-x: auto; }
 .hour { display: flex; flex-direction: column; align-items: center; min-width: 40px; padding: 4px; border-radius: 8px; background: var(--surface-2); font-size: 12px; }

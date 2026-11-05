@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### The difficulty key and Go's wind ([#388](https://github.com/TommiContursi/Polku/issues/388))
+
+- With the trails coloured by **Difficulty**, the note in **Layers** says the colours go from S0 green to S6 dark purple, as the map draws them, not to S5.
+- In **Go**, each of the wind's shares stays on one line: "Headwind 100 %" no longer breaks before its %, and the bars start in line.
+
 ### Check says when a long route's road works and busy roads weren't checked ([#491](https://github.com/TommiContursi/Polku/issues/491))
 
 - On a long route, Polku doesn't ask for the road works or the busy roads along all of it, and Check's **Not checked** now says so, instead of showing none as if there were none. **What Polku looked at** says it too, and has a row for busy roads.

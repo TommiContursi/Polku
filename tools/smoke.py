@@ -503,6 +503,14 @@ LAYERS = """(async () => {
       if (polku.state.overlays[id] && !body.querySelector(`input[aria-label="${RASTER_OVERLAYS[id].label} opacity"]`)) errs.push(`${k}: no opacity slider for ${id}`);
     }
   }
+  // the difficulty colours' note names the scale's last grade, S6 (#388)
+  const { DIFF_COLORS } = await import(location.origin + '/js/config.js'), segBtn = (t) => [...body.querySelectorAll('.seg button')].find((b) => b.textContent === t);
+  const was = segBtn('Difficulty').parentElement.querySelector('[aria-pressed="true"]');
+  segBtn('Difficulty').click(); await wait(200);
+  const diffNote = [...body.querySelectorAll('p.note')].find((x) => /^Halo colour is the MTB difficulty/.test(x.textContent));
+  if (!diffNote || !diffNote.textContent.includes(`S${DIFF_COLORS.length - 1}`)) errs.push(`the difficulty colours' note: ${diffNote ? diffNote.textContent : 'none'}, not up to S${DIFF_COLORS.length - 1}`);
+  if (was) [...segBtn('Difficulty').parentElement.children].find((b) => b.textContent === was.textContent).click();
+  await wait(200);
   if (!polku.map.getLayer('ov-soundings')) errs.push('paddle: soundings are not on');
   // the weather fields have one too (no fetch: the switch only, not the data)
   const wx = { ...polku.state.weather };
@@ -17557,6 +17565,10 @@ PF_JS = """(async () => {
   const tag = document.querySelector('.pl-profile .nofc');
   if (!tag || !tag.getClientRects().length || tag.textContent !== 'No forecast yet') errs.push(`the profile's cut: ${tag ? tag.textContent : 'none'}`);
   p.showMode('grade');
+  // Go's wind: each share on one line, its number and % with it, "Headwind 100 %" too (#388)
+  p.reveal('depart'); await wait(300);
+  const shares = [...p.els.wind.querySelectorAll('.ex-item')], linesOf = (el) => { const r = document.createRange(); r.selectNodeContents(el.lastChild); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
+  if (!shares.length || shares.some((el) => linesOf(el) !== 1)) errs.push(`Go's wind shares: ${shares.map((el) => `${el.textContent} on ${linesOf(el)} lines`).join(' / ') || 'none'}`);
   p.reveal('points'); await wait(300);
   // a route of one section: the weather as you leave on Start's row, and none yet on End's (#764)
   const wxRow = (i) => p.els.points.querySelector(`.wpl-point[data-i="${i}"] .wx-line`)?.textContent || '';
