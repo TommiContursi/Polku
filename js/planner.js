@@ -107,7 +107,7 @@ const slid = (el) => parseFloat(getComputedStyle(el).translate.split(' ')[1]) ||
 export const dockOf = () => store.get('plannerDock', 'left');
 // The drawer's tabs (22a): drawing, what's on the way, setting off. Each section lives in one.
 const TABS = [
-  { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: waypoints, legs, round trips, how you go' },
+  { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: waypoints, legs, round trips, route style' },
   { id: 'check', label: 'Check', icon: 'warn', title: 'What’s on the way: heads-up, climbs, the ground' },
   { id: 'go', label: 'Go', icon: 'clock', title: 'When and how long, the weather, taking it along' },
 ];
@@ -1906,7 +1906,7 @@ export class Planner {
   // the style a leg in `sport` is routed with (unless it has its own): the route's for that sport, else yours for it.
   // The route's, whatever the map's sport is (#71).
   styleOf(sport) { return this.styles[sport] || this.savedStyle(sport); }
-  // the sport whose style How you go shows: on a multisport route, the one picked there
+  // the sport whose style Route style shows: on a multisport route, the one picked there
   howSport() { return this.routeSports().includes(this.styleSport) ? this.styleSport : this.mainSport(); }
 
   wetFor(style) { const w = (style && style.wet) || 'auto'; return w === 'yes' || (w === 'auto' && this.wet.on); }
@@ -4676,11 +4676,11 @@ export class Planner {
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
         this.section('points', 'Waypoints', this.els.pointsTools = h('div', { class: 'wpl-head-tools' }), this.els.pointsTop = h('div', { class: 'wpl-top' }),
           this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
-        // How you go › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
+        // Route style › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
         this.els.howRows = h('div', { class: 'rows how-rows' }),
-        // how you go: which ways the router prefers, and how fast the time is counted (shown in a start step's
+        // the route style: which ways the router prefers, and how fast the time is counted (shown in a start step's
         // Fine-tune too, the same elements: borrowHow())
-        this.section('style', 'How you go', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap)),
+        this.section('style', 'Route style', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap)),
       check: pane('check',
         this.els.checkEmpty = h('p', { class: 'note pl-empty' }, 'Draw a route to see what’s on the way: heads-up, climbs, the ground.'),
         this.els.stats,
@@ -4971,8 +4971,8 @@ export class Planner {
   }
 
   // The route style before the first leg or the loops: the route's sport's presets as chips, and Fine-tune, which
-  // opens How you go's own section in place (renderStyle()'s, moved here: borrowHow()). The same style as the mode's
-  // menu and How you go, so a change anywhere shows everywhere; with no route yet it routes nothing (setStyle()).
+  // opens Route style's own section in place (renderStyle()'s, moved here: borrowHow()). The same style as the mode's
+  // menu and Route style, so a change anywhere shows everywhere; with no route yet it routes nothing (setStyle()).
   // 'row': one line that opens it. `fold`: the heading folds it again (the round trip's).
   styleBlock(how, { view = 'draw', raise = null, fold = null } = {}) {
     const route = this.mainSport(), m = this.mode;
@@ -4990,7 +4990,7 @@ export class Planner {
         type: 'button', class: 'chip', 'data-k': `style-${k}`, 'aria-pressed': String(!custom && st.p === k), onclick: () => pick(k), html: `${!custom && st.p === k ? icon('check', 15) : ''}<span>${escapeHtml(label)}</span>`,
       })), custom ? h('span', { class: 'chip chip-on', 'aria-hidden': 'true' }, 'Custom') : null),
       h('button', { type: 'button', class: 'row way-srow way-tune', 'data-k': 'tune', 'aria-expanded': String(!!this.wayTune), onclick: () => { this.wayTune = !this.wayTune; this.renderStart(); },
-        html: `<span>${icon('sliders', 20)}</span><span><b>Fine-tune in How you go</b></span><span class="way-chev">${icon(this.wayTune ? 'chevronUp' : 'chevronDown', 16)}</span>` }));
+        html: `<span>${icon('sliders', 20)}</span><span><b>Fine-tune in Route style</b></span><span class="way-chev">${icon(this.wayTune ? 'chevronUp' : 'chevronDown', 16)}</span>` }));
     if (this.wayTune) {
       const box = h('div', { class: 'way-how' });
       out.append(box);
@@ -4999,7 +4999,7 @@ export class Planner {
     return out;
   }
 
-  // How you go's style section and your speeds, shown in a start step: the same elements, moved in and back
+  // Route style's section and your speeds, shown in a start step: the same elements, moved in and back
   borrowHow(into) {
     this.renderStyle();
     this.renderSpeed(); // (your speeds, before there's a route)
@@ -6111,7 +6111,7 @@ export class Planner {
       const styles = { group: 'Route style · the whole route', items: [
         { chips: [...cat.presets.map(([k, label]) => ({ label: escapeHtml(label), radio: true, checked: !custom && rs.p === k, fn: () => pick(k, label) })),
           custom ? { label: 'Custom', radio: true, checked: true, disabled: true, fn: () => {} } : null] },
-        { icon: 'sliders', label: 'Fine-tune in How you go', fn: () => { this.styleLeg = null; this.openStep('how', ns); } },
+        { icon: 'sliders', label: 'Fine-tune in Route style', fn: () => { this.styleLeg = null; this.openStep('how', ns); } },
       ] };
       // in the order the button reads: how it's drawn, its sport ("Hike · Balanced") and the style
       // three parts, apart: how the next leg is drawn (and its note), its sport and speed, the whole route's style
@@ -6218,7 +6218,7 @@ export class Planner {
   }
 
   // "Time & speed": your speeds for this sport (editable) and where the time goes on this route.
-  // your speeds for the route's sports (the main one first), in `box`: How you go's, and Go › Time's Change
+  // your speeds for the route's sports (the main one first), in `box`: Route style's, and Go › Time's Change
   speedEditors(box) {
     const act = this.mainSport();
     renderSpeedEditor(box, act, { craft: this.craft, onCraft: (k) => this.setCraft(k), onChange: () => this.retime() });
@@ -6233,7 +6233,7 @@ export class Planner {
   renderSpeed() {
     const a = this.analysis;
     const act = this.mainSport();
-    // your speeds: in Route › How you go, beside the route style (there before there's a route too)
+    // your speeds: in Route › Route style's section, beside the route style (there before there's a route too)
     this.speedEditors(this.els.speedBox);
     this.renderHow();
     // Go › Time: how long, and where the time goes
@@ -6453,13 +6453,18 @@ export class Planner {
     if (flash) requestAnimationFrame(() => this.flash(this.sec[id].el));
   }
 
-  // Route's rows, each sport's style and your speed, each opening its step (#424's C)
+  // Route's rows, each sport's style and your speed, each opening its step (#424's C); a style's row says its sport, its
+  // icon in the sport's colour as the route's line has it (#761)
   renderHow() {
     const box = this.els.howRows;
     if (!box) return;
     const main = this.mainSport();
     box.replaceChildren(
-      ...[main, ...this.routeSports().filter((x) => x !== main)].map((sport) => item({ icon: 'sliders', label: 'How you go', line: `The ways Polku picks for ${ACTIVITIES[sport].label}`, val: styleName(sport, this.styleOf(sport)), chev: true, k: `how-${sport}`, onclick: () => { this.styleLeg = null; this.openStep('how', sport); } })),
+      ...[main, ...this.routeSports().filter((x) => x !== main)].map((sport) => {
+        const row = item({ icon: this.sportIcon(sport), label: 'Route style', line: ACTIVITIES[sport].label, val: styleName(sport, this.styleOf(sport)), chev: true, k: `how-${sport}`, onclick: () => { this.styleLeg = null; this.openStep('how', sport); } });
+        row.firstElementChild.style.color = `var(--sport-${sport}, currentColor)`;
+        return row;
+      }),
       this.speedRow());
   }
   speedRow() {
@@ -6467,14 +6472,14 @@ export class Planner {
     const line = this.isMulti() ? [act, ...this.routeSports().filter((x) => x !== act)].map((x) => `${ACTIVITIES[x].label}: ${this.speedLine(x)}`).join('; ') : sp.txt;
     return item({ icon: 'gauge', label: 'Your speed', line, val: sp.name, chev: true, k: 'speed', onclick: () => this.openStep('speed') });
   }
-  // A step of Route's (null: back to Route): How you go's style alone, or your speeds alone [tabs-c-how, tabs-c-speed]
-  // `sport`: whose legs How you go styles (null: the main sport's)
+  // A step of Route's (null: back to Route): Route style alone, or your speeds alone [tabs-c-how, tabs-c-speed]
+  // `sport`: whose legs Route style styles (null: the main sport's)
   openStep(k, sport = null) {
     const pane = this.els.panes.route, was = pane.dataset.step, row = was === 'how' ? `how-${this.howSport()}` : was;
     if (k) {
       if (k === 'how') { this.styleSport = sport; this.renderStyle(); }
       const label = ACTIVITIES[this.howSport()].label;
-      this.els.stepTitle.textContent = k === 'how' ? 'How you go' : 'Your speed';
+      this.els.stepTitle.textContent = k === 'how' ? 'Route style' : 'Your speed';
       this.els.stepLine.textContent = k === 'speed' ? 'How fast the times are counted. A change only times the route again; the route stays.'
         : this.isMulti() ? `${label}, for the route’s ${label} legs. A change routes them again.` : `${label}, for the whole route. A change routes the route again.`;
       if (k === 'speed') this.renderSpeed();

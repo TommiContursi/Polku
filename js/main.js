@@ -1651,7 +1651,7 @@ function renderSettingsPanel() {
       h('button', { type: 'button', class: 'btn', onclick: () => { openPanel('quick-layers'); quickStep('edit', k); } }, `Edit ${a.label}’s tiles`));
   }
   p.append(group('sports', 'Speeds and tiles by sport', speeds,
-    h('p', { class: 'note' }, 'Polku times your route with these speeds, so they also decide when you reach each place and the weather you meet there. A change applies at once to your route’s legs in that sport. The planner has the same speeds in its drawing menu and in Route › How you go. A sport’s five tiles are the ones Layers shows while it’s chosen. Kept on this device only.')));
+    h('p', { class: 'note' }, 'Polku times your route with these speeds, so they also decide when you reach each place and the weather you meet there. A change applies at once to your route’s legs in that sport. The planner has the same speeds in its drawing menu and in Route › Your speed. A sport’s five tiles are the ones Layers shows while it’s chosen. Kept on this device only.')));
 
   p.append(group('display', 'Display',
     h('div', { class: 'tg-text', id: 'appearance-h' }, 'Appearance'),
