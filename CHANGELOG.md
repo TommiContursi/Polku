@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Names you can read on the aerial photos ([#554](https://github.com/TommiContursi/Polku/issues/554))
+
+- On **Aerial** and **Aerial FI**, a peak's name and height and a park's name are white, and the names of lakes, rivers and the sea light blue, on their dark halo like the map's other words there, instead of brown, green and dark blue that were hard to read over the photos.
+
 ### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
 
 - After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
