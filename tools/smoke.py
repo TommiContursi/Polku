@@ -3468,7 +3468,7 @@ WARNFIX = """(async () => {
   p.cards.close();
   await wait(300);
   // (12, the recheck) Retry on the trail details: "Asking…" while Overpass is asked, on a card built again meanwhile too
-  // (another source answering), and Overpass named plainly when it still didn't answer
+  // (another source answering), and OpenStreetMap named plainly when it still didn't answer (the app's name for it, #695)
   T2.holdFetches(true, true); T2.forgetFailures();
   await p.loadTrail(p.analysis);
   const trail = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'trail');
@@ -3478,14 +3478,15 @@ WARNFIX = """(async () => {
     p.loadTrail = async (a) => { await wait(1500); return real.call(p, a); };
     p.openItemCard(trail, { from: 'check' });
     await wait(500);
+    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
+    if (/OpenStreetMap still didn.t answer/.test(said())) errs.push(`(the test) a note naming OpenStreetMap before Retry on the trail details: "${said()}"`);
     p.cards.box.querySelector('.btn.primary.big').click();
     await wait(300);
     p.renderWarnings();
     const tb = p.cards.box && p.cards.box.querySelector('.btn.primary.big');
     if (!tb || tb.textContent.trim() !== 'Asking…' || !tb.disabled) errs.push(`Retry on the trail details, its card built again while Overpass is asked: "${tb ? tb.textContent.trim() : 'no button'}"${tb && !tb.disabled ? ', tappable' : ''}`);
-    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
-    for (let k = 0; k < 50 && !/Overpass[^/]*still didn.t answer/.test(said()); k++) await wait(100);
-    if (!/Overpass \\(OpenStreetMap\\) still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
+    for (let k = 0; k < 50 && !/OpenStreetMap still didn.t answer/.test(said()); k++) await wait(100);
+    if (!/OpenStreetMap still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
     delete p.loadTrail;
     p.cards.close();
     await wait(300);
@@ -17276,16 +17277,20 @@ def tabs_names(chrome):
             pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
             pg.js(SETTLED)
             want = """(async () => { const p = polku.planner, a = p.analysis, d = (await import(location.origin + '/js/geo.js')).fmtDist(a.total);
-              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${p.els.tabBtn.go.querySelector('.pl-tab-t').textContent}` }; })()"""
-            for step in ('drawn', 'a point added'):
+              const at = p.els.tabBtn.go.querySelector('.pl-tab-t').textContent;
+              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${at}`, at, title: p.els.tabBtn.go.title }; })()"""
+            # (the Go tab's tooltip says "back at" only on a round trip, #753)
+            for step, word, then in (('drawn', 'there', 'p.addPoint([23.86, 61.52])'), ('a point added', 'there', 'p.backToStart()'), ('back to the start', 'back', None)):
                 ax, w_ = names(pg), pg.js(want)
                 tabs = ax.get('tab', [])
                 if w_['prof'] not in ax.get('image', []):
                     fails.append(f"{name}: the profile, {step}: images named {ax.get('image', [])} (want {w_['prof']!r})")
                 if len(tabs) != 3 or tabs[0] != 'Route' or not tabs[1].startswith('Check') or tabs[1][5:6] not in ('', ':') or tabs[2] != w_['go']:
                     fails.append(f"{name}: the tabs' names, {step}: {tabs} (Route, Check: …, {w_['go']!r})")
-                if step == 'drawn':
-                    pg.js("(async () => { const p = polku.planner, a = p.analysis; p.addPoint([23.86, 61.52]); for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; })()", timeout=30000)
+                if not w_['title'].startswith(f"When and how long: {word} at {w_['at']} "):
+                    fails.append(f"{name}: the Go tab's tooltip, {step}: {w_['title']!r} (want {word} at {w_['at']})")
+                if then:
+                    pg.js(f"(async () => {{ const p = polku.planner, a = p.analysis; {then}; for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; }})()", timeout=30000)
                     pg.js(SETTLED)
             # the headings: Route (and its How you go), Check and Go, one level at a time
             for tab, js in (('Route', "polku.planner.setTab('route')"), ('How you go', "polku.planner.openStep('how')"), ('Check', "polku.planner.openStep(null); polku.planner.setTab('check')"), ('Go', "polku.planner.setTab('go')")):
