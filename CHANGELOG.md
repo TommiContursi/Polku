@@ -8,6 +8,18 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - When Traficom's depth maps aren't answering, **Depths** in **Layers** says "No data now" at the zooms where the soundings aren't shown yet, not only once you zoom in to see them.
 
+### A marked route picked while the list loads ([#427](https://github.com/TommiContursi/Polku/issues/427))
+
+- In **Marked routes**, a route you pick on the map while the list is still loading stays picked when the list comes in, instead of going back to the one picked before.
+
+### Check's tab after Clear route ([#463](https://github.com/TommiContursi/Polku/issues/463))
+
+- After **Clear route**, Check's tab no longer shows the old route's count and "?", and a screen reader hears just "Check". **Undo** brings the route's count back with the route.
+
+### Menus fit a narrow screen ([#722](https://github.com/TommiContursi/Polku/issues/722))
+
+- On a phone with the text enlarged to 200 %, **More**'s menu and the drawing menu fit the screen, their descriptions wrapping, instead of running past its right edge.
+
 ### Imported files with a broken point ([#484](https://github.com/TommiContursi/Polku/issues/484))
 
 - Importing a GPX or KML file that has a point without coordinates leaves that point out and keeps the rest of the track, instead of drawing a line across the world.

@@ -2883,6 +2883,14 @@ HEADS_CHECK = """(async () => {
   p.hideWarnKind({ key: 'roadwork' }, false);
   p.analysis.darkWarn = [...window.mine];
   p.renderWarnings();
+  // Clear route: no count, no "?" and no name beyond Check on the tab; Undo brings the route's back (#463: the road
+  // works to read, the forecast not checked; and in the dark, by the hour)
+  p.clear();
+  await wait(100);
+  if (n().textContent || !unk().hidden || tab.hasAttribute('aria-label')) errs.push(`Check's tab after Clear route: "${n().textContent}", its "?" ${unk().hidden ? 'hidden' : 'shown'}, its name ${tab.getAttribute('aria-label')}`);
+  p.undo();
+  for (let k = 0; k < 450 && !(p.legs.length === 2 && p.analysisFits() && p.analysis.hazards && (p.analysis.windError || p.analysis.wind)); k++) await wait(100);
+  if (!n().classList.contains('read') || unk().hidden || !/^Check: \\d+ to read before you go, \\d+ not checked/.test(tab.getAttribute('aria-label') || '')) errs.push(`Check's tab after Undo: "${n().textContent}", its "?" ${unk().hidden ? 'hidden' : 'shown'}, its name ${tab.getAttribute('aria-label')}`);
   return errs;
 })()"""
 
@@ -10567,9 +10575,11 @@ def fold_tools(chrome):
                     continue  # (not shown: the toolbox's names say so above)
                 pg.tap(*at)
                 time.sleep(0.4)
-                m = pg.js("(() => { const m = document.querySelector('.menu-pop'); return m ? m.innerText : ''; })()")
+                m, box = pg.js("(() => { const m = document.querySelector('.menu-pop'), r = m?.getBoundingClientRect(); return m ? [m.innerText, [r.left, r.right]] : ['', null]; })()")
                 if want not in m:
                     fails.append(f"{name}: a tap on {sel.split('.')[-1]} showed “{m[:60]}”, not its menu")
+                elif box[0] < 0 or box[1] > w:  # (#722: the menu inside the screen, its rows wrapping)
+                    fails.append(f"{name}: {sel.split('.')[-1]}'s menu from x {box[0]:.0f} to {box[1]:.0f}, past the screen's {w}")
                 pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true")
                 time.sleep(0.3)
             n = pg.js("polku.planner.points.length")
@@ -12352,6 +12362,18 @@ START_LIB = """(() => {
     if (p.points.length) err(`a tap in Marked routes added ${p.points.length} points`);
     return T.errs.splice(0);
   };
+  // a route picked on the map while the list is asked again stays picked when LIPAS answers (#427)
+  T.markedLate = async () => {
+    const other = M().list.find((x, i) => i !== M().on), ask = p.app.lipasRoutesIn;
+    if (!other) return ['#427: one marked route listed'];
+    p.app.lipasRoutesIn = async (...a) => { await wait(1500); return ask(...a); };
+    p.listMarked();
+    p.pickMarked(M().list.indexOf(other)); // (as a tap on its line does: pickMarkedAt())
+    await until(() => M().state !== 'loading', 6000);
+    p.app.lipasRoutesIn = ask;
+    if (M().list[M().on]?.key !== other.key) err(`a route picked while the list loaded: ${M().list[M().on]?.key} picked once LIPAS answered, not ${other.key} (#427)`);
+    return T.errs.splice(0);
+  };
   T.markedStates = async () => {
     // LIPAS not answering: said as missing, with Retry, never "none here"
     window.lipasMode = 'fail';
@@ -12558,6 +12580,7 @@ def start(chrome):
         fails += pg.js('stT.marked()', timeout=30000)
         P('stT.markedSpot()', 'the other marked route’s line')
         fails += pg.js('stT.markedTapped()', timeout=10000)
+        fails += pg.js('stT.markedLate()', timeout=10000)
         fails += pg.js('stT.markedStates()', timeout=30000)
         if P("stT.at('.pl-way .sport-chip')", 'Marked routes’ sport') and pg.js("stT.pickSport('Swim')"):
             P("stT.at('.menu-pop [data-st-pick]')", 'Swim')

@@ -2462,7 +2462,7 @@ body.dropping .drop-hint { display: flex; }
 .menu-chips .menu-item.chip > span { display: inline; }
 .menu-chips .menu-item.chip:disabled { opacity: 1; }
 /* with no room beside its button (enlarged text, a raised sheet): a sheet of its own */
-.menu-pop.menu-sheet { left: 8px; right: 8px; top: 64px; bottom: 8px; width: auto; max-height: none; }
+.menu-pop.menu-sheet { left: 8px; right: 8px; top: 64px; bottom: 8px; width: auto; min-width: 0; max-height: none; }
 /* "your route" beside a sport, "already" beside a choice (the sport menus, B of #233) */
 .cur { margin-left: 4px; font-size: 11.5px; font-weight: 700; color: var(--accent); }
 /* the drawing menu's Next leg: the sport, its list, the speed line and Your speed's editor in place */
