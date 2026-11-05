@@ -314,6 +314,8 @@ In small phases from here (decided 2026-11-04), each one change to the rows as b
 
 6h. **The list's settings, as decided after Parts 19** (built 2026-11-06): Warnings first and the only one on at first, Routing called Drawing mode, Weather at every waypoint, and Speed (a stretch's average in Your speed's units, `speedWords()`); the same switches in Settings › Route's list (`LIST_SHOWS`, `setListShow()`). From trying it (2026-11-06): Worth a look on a switch of its own, on at first, and the menu with its name and ✕, a tap outside closing it alone (`popMenu()`'s `modal`). `sections` checks the defaults on a page of its own.
 
+6i. **The list's tooltips as full as the profile's** (built 2026-11-06, after 6h): a stretch's times and speed, then the profile's facts over all of it (`stretchRows()`); a waypoint's times, height and the profile's tip at its sample (`sampleRows()`, shared with `ProfileChart.setHover()`); a tooltip on each wait. `tooltip()` takes `lines`. `sections` reads each line.
+
 The phases after it, to be decided one at a time:
 
 - **Less on a waypoint's row:** it no longer repeats the warnings of the stretch before it (#791's), and maybe its weather (to the card and a desktop's tooltip). Not sure yet: losing ›, and each row in the button's hairline (Parts 10).

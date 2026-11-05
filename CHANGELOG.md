@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-06
 
+### The route's list's tooltips say what the profile says ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- On a desktop, a stretch's tooltip in the route's list gives its times and average speed, then what the profile says over all of it: the grade from its lowest to its highest, the hardest uphill and downhill, the way most of it is on, the wind at its strongest with its gusts, the temperature and the rain.
+- A waypoint's tooltip gives its times, then the profile's facts there: its height, the grade, the way on from it, the wind and the weather.
+- Stops, nights and changeovers have a tooltip too: where and when, a night's sunset and sunrise, the gear left at a changeover, and the weather as you go on.
+
 ### The route's list shows less at first ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - At first, a stretch in the route's list shows its distance, time, climb and warnings. How it's drawn, the dark and the weather each have a switch in **List settings**.
