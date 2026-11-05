@@ -2927,13 +2927,13 @@ export class Planner {
   }
 
   // The open card's row in Route's list, lit: a point's own row, or the stretch's it folds into; a stretch's cards
-  // light the stretch's row
+  // light the rows on it: its own, an unfolded one's legs, or the folded stretch a leg's card is on
   litRows() {
     const box = this.els.points, c = this.cards.current;
     const i = c && c.key && this.points.includes(c.key) ? this.points.indexOf(c.key) : -1, s = c && c.kind !== 'item' ? c.stretch || c.s || null : null;
     const own = i >= 0 && box.querySelector(`.wpl-point[data-i="${i}"]`);
     for (const r of box.querySelectorAll('.wpl-point, .wpl-stretch')) {
-      const on = own ? r === own : r.classList.contains('wpl-stretch') && (i >= 0 ? +r.dataset.from < i && i < +r.dataset.to : !!s && +r.dataset.from === s.from);
+      const on = own ? r === own : r.classList.contains('wpl-stretch') && (i >= 0 ? +r.dataset.from < i && i < +r.dataset.to : !!s && +r.dataset.from < s.to && s.from < +r.dataset.to);
       if (on) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current');
     }
   }
@@ -2985,18 +2985,20 @@ export class Planner {
       // (a part after a changeover or a night starts with its first point's row, as the route starts with its start's)
       rows.append(this.pointRow(sec.from, ro, { w: wx(wAt(this.lengthTo(sec.from))), leave: k > 0 }));
       for (const s of sec.stretches) {
-        rows.append(this.stretchRow(s, ro));
-        // (unfolded, each point says the warnings on the way to it, its end too)
-        const open = this.unfolded.has(this.pidOf(this.points[s.from])), enter = open && this.unfoldIn === this.pidOf(this.points[s.from]);
+        const pid = this.pidOf(this.points[s.from]), open = s.to - s.from > 1 && this.unfolded.has(pid), enter = open && this.unfoldIn === pid;
         // (just unfolded by a tap: they come in one after another, as a Layers group's rows do, and only this once)
         if (enter) this.unfoldIn = null;
-        if (open) for (let i = s.from + 1; i < s.to; i++) {
-          const el = rows.appendChild(this.pointRow(i, ro, { shape: true, warns: true }));
-          if (enter) { el.classList.add('wpl-in'); el.style.animationDelay = `${Math.min(i - s.from - 1, 3) * 40}ms`; }
+        // unfolded, its legs (#761): each a stretch of its own between two waypoints, with its numbers and its warnings, the
+        // first with the fold's ⌃ where ⌄ was; a waypoint comes in with the leg after it, the first leg's words at once
+        if (!open) rows.append(this.stretchRow(s, ro));
+        else for (let i = s.from; i < s.to; i++) {
+          const come = (el) => { if (enter) { el.classList.add('wpl-in'); el.style.animationDelay = `${Math.max(0, Math.min(i - s.from - 1, 3)) * 40}ms`; } return el; };
+          if (i > s.from) rows.append(come(this.pointRow(i, ro, { shape: true })));
+          rows.append(come(this.stretchRow({ from: i, to: i + 1 }, ro, i === s.from ? s : null)));
         }
         const end = s.to === sec.to, stop = !end && this.stopAt(s.to);
         // (where a part ends, or at a stop, the line breaks: dotted to the next part's heading, through the stop's wait)
-        rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop, warns: open }));
+        rows.append(this.pointRow(s.to, ro, { w: end || stop ? wx(wAtPoint(s.to)) : null, brk: (end && k < secs.length - 1) || !!stop }));
         if (stop) rows.append(this.waitRow(s.to, 'stop'));
       }
       // (each part's line in its sport's colour, the map's and the profile's Sport colours)
@@ -3018,11 +3020,10 @@ export class Planner {
   // (a forecast sample, or 'none' past its reach) the weather then, with its icons; Start, End and Waypoint n are in its label,
   // the mark says them. `leave`: a part's first row after a changeover or a night, the point you set off from again.
   // Its line is dashed beside a straight leg, dotted below it where its part ends or at a stop (`brk`), none below the end.
-  // `warns`: in a stretch unfolded, the warnings on the way to it from the point before, as a stretch has its own.
   // On a desktop, while drawing, its tools where › is (#761), shown while a mouse is over the row or it has the focus:
   // Rename (its name a field in the row), Remove (with Undo in the note) and the grip, which drags it along the list.
   // A phone's row opens its card, and Reorder moves it.
-  pointRow(i, ro, { shape = false, w = null, leave = false, brk = false, warns = false } = {}) {
+  pointRow(i, ro, { shape = false, w = null, leave = false, brk = false } = {}) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), at = this.timesAt(i), out = i === 0 || leave;
     const when = i === 0 ? this.leaveWords() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
@@ -3033,19 +3034,18 @@ export class Planner {
     const col = h('span', { class: 'wpl-when', 'aria-hidden': 'true' }, h('b', {}, far), since ? h('small', {}, since) : null);
     const bits = [...sky.map((x) => h('span', { html: `${x.ic ? icon(x.ic, 14) : ''}${escapeHtml(x.text)}` })), loop ? h('span', {}, 'Back at the start') : null].filter(Boolean);
     const said = [`${far} from the start`, since ? `${since} from the start` : '', when ? `${out ? 'Leave' : 'Arrive'} ${when}` : ''];
-    const ws = warns && i > 0 ? this.warnsOn({ from: i - 1, to: i }).lines : [];
     const line = (k) => this.legs[k] && this.legs[k].mode === 'line', on = [shape ? 'shape' : '', last && !leave ? 'last' : '', brk ? 'brk' : '', !leave && line(i - 1) ? 'in-dash' : '', !brk && line(i) ? 'out-dash' : ''].filter(Boolean);
     const tools = !ro && hoverCapable(), key = `${this.pidOf(p)}|${leave}`, naming = tools && this.renamingRow === key;
     const mark = h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i)));
     // (the bits apart by the line's gap: the spaces between them only for the words read out, not drawn)
-    const more = [bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null, ...ws.map((x) => h('small', { class: 'wpl-warns', html: x }))];
+    const more = bits.length ? h('small', { class: 'wx-line' }, ...bits.flatMap((x, k) => (k ? [' ', x] : [x]))) : null;
     // (renaming, the row is no button: its name is a field, Enter or leaving it keeps the name, Escape doesn't)
     const b = naming
       ? h('div', { class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i) }, mark,
         h('span', {}, h('input', { class: 'name-field', type: 'text', value: this.pname.get(p) || '', placeholder: this.autoName(i) || lab, maxlength: 60, spellcheck: 'false', 'aria-label': `The name of ${name}`,
-          onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), col, ...more))
-      : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...said, ...bits.map((x) => x.textContent), ...ws.map((x) => x.replace(/<[^>]+>/g, ''))].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
-        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), col, ...more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+          onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.endRowRename(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.endRowRename(false); } }, onblur: () => this.endRowRename(true) }), col, more))
+      : h('button', { type: 'button', class: ['row', 'wpl-point', ...on].join(' '), 'data-i': String(i), 'aria-label': [name, name === lab ? '' : lab, ...said, ...bits.map((x) => x.textContent)].filter(Boolean).join(', '), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+        mark, h('span', {}, h('b', { class: 'wpl-name' }, name), col, more), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
     // (the tools' names in the app's tooltip, beside the whole row as the row's own, so it hands over at once from the row
     // to a tool and covers none of them)
     const tips = [], tip = (t, label) => { tips.push([t, label]); return t; };
@@ -3128,15 +3128,17 @@ export class Planner {
   // One drawn otherwise than along paths (a straight line, over water, its own line) has its word in the text's weight,
   // a straight one its line dashed. Under them Check's warnings on it, then the dark on a line of its own (`warnsOn()`),
   // with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
-  stretchRow(s, ro) {
-    const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
+  // `folds`: the stretch whose waypoints its ⌄ folds, itself, or for an unfolded stretch's first leg the stretch (null
+  // for its other legs).
+  stretchRow(s, ro, folds = s) {
+    const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = folds ? folds.to - folds.from - 1 : 0, x = this.stretchNums(s);
     // (each number with its unit: a narrow list breaks them between, never "↑28" from its "m")
     const words = (x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))]).filter(Boolean).map((w) => w.replace(/ /g, '\u00a0')).join(' · ');
     const how = leg.mode === 'fixed' ? `Its own line: ${this.routeName || (leg.src ? 'a LIPAS route' : 'an imported track')}${leg.src ? ' (LIPAS)' : ''}` : MODE_LABEL[leg.mode] || MODE_LABEL.auto;
     let carry = 0;
     for (const l of legs) { const c = l.result && l.result.coords, t = l.result && l.result.tags; if (c && t) for (let k = 1; k < c.length; k++) if (t[k - 1] && t[k - 1].portage) carry += dist(c[k - 1], c[k]); }
     const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how;
-    const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid), beads = [];
+    const pid = folds && this.pidOf(this.points[folds.from]), open = !!folds && this.unfolded.has(pid), beads = [];
     for (let j = 0, m = open ? 0 : Math.min(shaping, 3); j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { lines, dark } = this.warnsOn(s);
     if (dark) beads.push(h('span', { class: 'moon', style: `top: ${(100 * (Math.max(a0, dark) - a0)) / Math.max(1, a1 - a0)}%`, html: icon('moon', 12) }));
@@ -3157,17 +3159,20 @@ export class Planner {
     }
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
-    const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
+    const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(folds.from), 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`,
       // (by a tap or a click they come in, as Layers' groups' rows do, and leave the way they came, faster: their marks and
-      // words fade back up off the line together, then the list closes up. From the keyboard, at once. Its ⌄ turns as Layers'
-      // arrow does, across the redraw (settleControls()), and at the tap that folds them, not once they've gone, #803)
+      // words, and the legs' words after the first, fade back up off the line together, then the list closes up. From the
+      // keyboard, at once. Its ⌄ turns as Layers' arrow does, across the redraw (settleControls()), and at the tap that
+      // folds them, not once they've gone, #803)
       onclick: (e) => {
         const redraw = () => { const settle = settleControls(this.els.points); this.renderWaypoints(); settle(); };
         if (!open) { this.unfolded.add(pid); this.unfoldIn = e.detail ? pid : null; redraw(); return; }
         if (this.foldingOut === pid) return;
         e.currentTarget.setAttribute('aria-expanded', 'false');
-        const rows = e.detail ? [...this.els.points.querySelectorAll('.wpl-point.shape')].filter((x) => +x.dataset.i > s.from && +x.dataset.i < s.to) : [];
-        const out = rows.flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]);
+        const inside = (i) => i > folds.from && i < folds.to, L = this.els.points;
+        const rows = e.detail ? [...L.querySelectorAll('.wpl-point.shape')].filter((x) => inside(+x.dataset.i)) : [];
+        const out = [...rows.flatMap((x) => [...x.querySelectorAll('.wp-mini, :scope > span:nth-child(2), :scope > .way-chev')]),
+          ...(e.detail ? [...L.querySelectorAll('.wpl-stretch')].filter((x) => inside(+x.dataset.from)).map((x) => x.children[1]) : [])];
         const done = () => { this.foldingOut = null; this.unfolded.delete(pid); redraw(); };
         if (!out.length) { done(); return; }
         this.foldingOut = pid;
