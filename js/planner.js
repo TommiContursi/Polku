@@ -3177,7 +3177,8 @@ export class Planner {
         const done = () => { this.foldingOut = null; this.unfolded.delete(pid); redraw(); };
         if (!out.length) { done(); return; }
         this.foldingOut = pid;
-        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
+        // (only the end: each leaves from where it is, so one still coming in doesn't flash to full first)
+        const frames = matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0 }] : [{ opacity: 0, transform: 'translateY(-4px)' }], ms = token('--t-press');
         for (const x of out) x.animate(frames, { id: 'fold-out', duration: ms, easing: cssVar('--ease-out'), fill: 'forwards' });
         setTimeout(done, ms); // (on time, not on the animation's end: one that draws no frames, a page left mid-way, still folds)
       } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) })) : null;

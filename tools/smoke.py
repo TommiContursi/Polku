@@ -15794,11 +15794,25 @@ def sections_list(chrome):
         r = pg.js(IN)
         if r != COME('lg-in'):
             fails.append(f"{name}: six waypoints unfolded by a {'tap' if touch else 'click'}: {r!r} (want lg-in, the first leg at once, then each waypoint with its leg 40 ms apart up to 120 ms, #761)")
+        # (#761's animation review) a waypoint's mark comes in with its name, not ahead of it
+        r = pg.js("[...polku.planner.els.points.querySelectorAll('.rows > .wpl-in .wpl-point')].filter((b) => getComputedStyle(b.querySelector('.wp-mini')).animationDelay !== getComputedStyle(b.children[1]).animationDelay).map((b) => `${b.dataset.i}: ${getComputedStyle(b.querySelector('.wp-mini')).animationDelay} / ${getComputedStyle(b.children[1]).animationDelay}`)")
+        if r:
+            fails.append(f"{name}: unfolded, marks and names at different delays: {r} (want each mark with its name, #761)")
         # (#761) unfolded, its legs: each a row between two waypoints, the first with ⌃ where ⌄ was, and the waypoints
         # without the legs' warnings
         r = pg.js("(() => { const L = polku.planner.els.points; return { legs: [...L.querySelectorAll('.wpl-stretch')].map((x) => `${x.dataset.from}-${x.dataset.to}`).join(' '), fold: [...L.querySelectorAll('.wpl-strow')].findIndex((x) => x.querySelector('.wpl-unfold[aria-expanded=\"true\"]')), warns: L.querySelectorAll('.wpl-point .wpl-warns').length }; })()")
         if r != {'legs': '0-1 1-2 2-3 3-4 4-5 5-6 6-7', 'fold': 0, 'warns': 0}:
             fails.append(f"{name}: six waypoints unfolded: {r} (want seven legs, ⌃ on the first, no warnings on the waypoints, #761)")
+        # (#761's animation review) folded while they're still coming in, a row leaves from where it is, never flashing to
+        # full first
+        r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, tap = () => L.querySelector('.wpl-unfold').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+          p.unfolded.clear(); p.renderWaypoints(); tap();
+          const el = [...L.querySelectorAll('.rows > .wpl-in')].pop().querySelector('.wpl-point > span:nth-child(2), .wpl-stretch > span:nth-child(2)'), a = el.getAnimations().find((x) => x.animationName === 'lg-in');
+          a.pause(); a.currentTime = 160; // (40 ms into its own 180 ms, after its 120 ms wait)
+          const before = +getComputedStyle(el).opacity; tap(); const after = +getComputedStyle(el).opacity;
+          await new Promise((r) => setTimeout(r, 400)); p.unfolded.add(p.pidOf(p.points[0])); p.renderWaypoints(); return { before, after }; })()""")
+        if not (0 < r['before'] < 1) or r['after'] > r['before'] + 0.01:
+            fails.append(f"{name}: folded while coming in: opacity {r['before']} before the tap, {r['after']} after (want no rise, #761)")
         # folded by a tap or a click, their marks and words leave together, faster, before the list closes up
         # (#803) and its ⌄ turns, at the tap: down as they leave, up as they come
         r = pg.js("""(async () => { const p = polku.planner, u = p.els.points.querySelector('.wpl-unfold'), tap = (b) => b.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));

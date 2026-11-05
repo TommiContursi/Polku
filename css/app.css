@@ -1506,7 +1506,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 /* a stretch's waypoints and its legs, unfolded by a tap: their marks and words come in as a Layers group's rows (lg-in),
    one after another (the delay on the row, planner.js sectionRows()), onto the route's line, which stays where it is */
 .wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev, .wpl-stretch > span:nth-child(2)) { animation: lg-in var(--t-open) var(--ease-out) backwards; animation-delay: inherit; }
-.wpl .rows > .wpl-in > .row { animation-delay: inherit; } /* (a row in a wrapper, a leg's or a desktop's waypoint's, takes its delay) */
+.wpl .rows > .wpl-in :is(.row, .wpl-point > span:first-child) { animation-delay: inherit; } /* (a row in a wrapper, a leg's or a desktop's waypoint's, and a waypoint's mark in its span take the row's delay) */
 @media (prefers-reduced-motion: reduce) { .wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev, .wpl-stretch > span:nth-child(2)) { animation-name: qd-fade; } }
 /* its ⌄ turns as it opens, as Layers' group arrow and Settings' speeds do (settleControls() gives it its start across the
    list's redraw); from the keyboard, and with reduced motion, at once (#803) */
