@@ -14284,6 +14284,25 @@ def route_card(chrome):
           return { cleared, back, drawn: p.routeTitle(), saved: p.routeSnapshot().routeName }; })()""")
         if r['cleared'] or r['back'] != 'A track' or not r['drawn'] or r['drawn'] == 'A track' or r['saved']:
             fails.append(f"{name}: an imported track's name: “{r['cleared']}” after Clear route, “{r['back']}” after Undo; a route drawn then is “{r['drawn']}”, saved as “{r['saved']}”")
+        # so does removing its points one by one, with the point's card's Remove: one point left is no route, and Undo
+        # brings the point back with the name (#821)
+        pg.js("(() => { const p = polku.planner; p.clear(); p.loadTrack([[23.800, 61.518], [23.805, 61.5185], [23.810, 61.519], [23.815, 61.5188]], 'A track'); p.fitRoute({ animate: false }); return true; })()")
+        time.sleep(1.5)
+        removed = []
+        for k in (1, 'undo', 1, 0):
+            if k == 'undo':
+                pg.js("polku.planner.undo(); true")
+                time.sleep(0.3)
+            else:
+                close(pg)
+                pg.js(f"polku.planner.openPointCard(polku.planner.points[{k}]); true")
+                time.sleep(0.6)
+                tap_row(pg, 'Remove', name, touch)
+            removed.append(pg.js("`${polku.planner.points.length}: ${polku.planner.routeTitle()}`"))
+        r = pg.js("""(async () => { const p = polku.planner; p.setMode('line'); p.addPoint([23.800, 61.518]); p.addPoint([23.815, 61.5188]);
+          await new Promise((ok) => setTimeout(ok, 500)); return p.routeTitle(); })()""")
+        if removed[0].endswith('A track') or removed[1] != '2: A track' or removed[3] != '0: ' or not r or r == 'A track':
+            fails.append(f"{name}: an imported track's points removed one by one: {' / '.join(removed)}; a route drawn then is “{r}”")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}, after {' / '.join(trail[-4:])}")
@@ -16830,6 +16849,11 @@ def leave(chrome):
             pg.js(LV_JS)
             if pg.js("polku.planner.startSec()") != want:
                 fails.append(f"{name}: after a reload it leaves {pg.js('new Date(polku.planner.startSec() * 1000).toString()')}")
+            # and an imported track's name (#822)
+            pg.js("polku.planner.loadTrack([[23.800, 61.518], [23.805, 61.5185], [23.810, 61.519], [23.815, 61.5188]], 'A track'); true")
+            pg.reload()
+            if pg.js("polku.planner.routeTitle()") != 'A track':
+                fails.append(f"{name}: an imported track after a reload is “{pg.js('polku.planner.routeTitle()')}”, not “A track”")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.close()
 
