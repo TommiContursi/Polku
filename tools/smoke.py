@@ -10552,9 +10552,11 @@ def fold_tools(chrome):
                     continue  # (not shown: the toolbox's names say so above)
                 pg.tap(*at)
                 time.sleep(0.4)
-                m = pg.js("(() => { const m = document.querySelector('.menu-pop'); return m ? m.innerText : ''; })()")
+                m, box = pg.js("(() => { const m = document.querySelector('.menu-pop'), r = m?.getBoundingClientRect(); return m ? [m.innerText, [r.left, r.right]] : ['', null]; })()")
                 if want not in m:
                     fails.append(f"{name}: a tap on {sel.split('.')[-1]} showed “{m[:60]}”, not its menu")
+                elif box[0] < 0 or box[1] > w:  # (#722: the menu inside the screen, its rows wrapping)
+                    fails.append(f"{name}: {sel.split('.')[-1]}'s menu from x {box[0]:.0f} to {box[1]:.0f}, past the screen's {w}")
                 pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true")
                 time.sleep(0.3)
             n = pg.js("polku.planner.points.length")
