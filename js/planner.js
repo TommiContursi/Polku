@@ -6895,7 +6895,9 @@ export class Planner {
       const whole = ranges.length === 1 && ranges[0][0] < 1 && ranges[0][0] + ranges[0][1] >= end - 1; // (every leg: the whole route, no place)
       out.push({ key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(whole ? null : ranges), retry: () => this.retryWater() });
     }
-    if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents and road conditions on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
+    if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents, road conditions and busy roads on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
+    // road works and busy roads it couldn't ask for on a route this long, or Digiroad not answering (#491)
+    for (const x of (a.hazards && a.hazards.notChecked) || []) out.push({ ...x, ranges: null, retry: x.retry ? ask(x.key, () => this.loadHazards(a)) : null });
     if (a.trailError) {
       const sum = a.trailError.reduce((t, [, len]) => t + len, 0), whole = sum >= end - 20;
       out.push({ key: 'trail', by: 'OpenStreetMap', who: 'OpenStreetMap', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
@@ -6926,7 +6928,11 @@ export class Planner {
         te ? 'bad' : a.trailAsking || (!a.trailLong && !a.trailMore) ? 'wait' : a.trailLong ? 'na' : 'ok');
       const ter = a.terrain;
       row('Heights and climbs', ter ? (ter.all ? (ter.retry ? 'didn’t load' : 'none here') : `missing for ${fmtDist(ter.missing)}`) : 'the terrain model', ter ? 'bad' : 'ok');
-      if (this.fintrafficHere(a)) row('Road works and incidents', a.hazardsError ? 'Fintraffic didn’t answer' : a.hazards ? `Fintraffic, ${clock(a.hazardsAt)}` : 'asking Fintraffic…', a.hazardsError ? 'bad' : a.hazards ? 'ok' : 'wait');
+      if (this.fintrafficHere(a)) {
+        const hz = a.hazards, skip = (k) => !a.hazardsError && hz && (hz.notChecked || []).find((x) => x.key === k);
+        row('Road works and incidents', a.hazardsError ? 'Fintraffic didn’t answer' : hz ? `Fintraffic, ${clock(a.hazardsAt)}${skip('roadworks') ? ', not road works: too long a route' : ''}` : 'asking Fintraffic…', a.hazardsError || skip('roadworks') ? 'bad' : hz ? 'ok' : 'wait');
+        row('Busy roads', a.hazardsError ? 'not checked' : skip('busy') ? (skip('busy').retry ? 'Digiroad didn’t answer' : 'not checked: too long a route') : hz ? 'Digiroad' : 'asking Digiroad…', a.hazardsError || skip('busy') ? 'bad' : hz ? 'ok' : 'wait');
+      }
       if (a.snow) row('Winter ways', a.winterError ? 'didn’t load' : a.winterCls ? 'OpenStreetMap' : 'loading…', a.winterError ? 'bad' : a.winterCls ? 'ok' : 'wait');
     }
     const wr = this.legs.filter((l) => l.mode === 'water' && l.result && l.result.water).map((l) => l.result.water);
