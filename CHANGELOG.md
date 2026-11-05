@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Paddle from here on a phone ([#656](https://github.com/TommiContursi/Polku/issues/656))
+
+- On a phone, **Paddle from here** says to tap where you want to go, not click.
+- On a phone, the other notes that ask you to click the map now say tap: the one when **Show the whole route** has no route to show, and the round trip notes about a start far from the water or no loop found.
+
 ### Times never read 60 minutes ([#492](https://github.com/TommiContursi/Polku/issues/492))
 
 - A time just short of a whole hour reads the next hour: 1 h 59 min 40 s reads 2 h 00 min, not 1 h 60 min, wherever a time is shown.
