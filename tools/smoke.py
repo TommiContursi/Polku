@@ -12314,6 +12314,18 @@ START_LIB = """(() => {
     if (p.points.length) err(`a tap in Marked routes added ${p.points.length} points`);
     return T.errs.splice(0);
   };
+  // a route picked on the map while the list is asked again stays picked when LIPAS answers (#427)
+  T.markedLate = async () => {
+    const other = M().list.find((x, i) => i !== M().on), ask = p.app.lipasRoutesIn;
+    if (!other) return ['#427: one marked route listed'];
+    p.app.lipasRoutesIn = async (...a) => { await wait(1500); return ask(...a); };
+    p.listMarked();
+    p.pickMarked(M().list.indexOf(other)); // (as a tap on its line does: pickMarkedAt())
+    await until(() => M().state !== 'loading', 6000);
+    p.app.lipasRoutesIn = ask;
+    if (M().list[M().on]?.key !== other.key) err(`a route picked while the list loaded: ${M().list[M().on]?.key} picked once LIPAS answered, not ${other.key} (#427)`);
+    return T.errs.splice(0);
+  };
   T.markedStates = async () => {
     // LIPAS not answering: said as missing, with Retry, never "none here"
     window.lipasMode = 'fail';
@@ -12520,6 +12532,7 @@ def start(chrome):
         fails += pg.js('stT.marked()', timeout=30000)
         P('stT.markedSpot()', 'the other marked route’s line')
         fails += pg.js('stT.markedTapped()', timeout=10000)
+        fails += pg.js('stT.markedLate()', timeout=10000)
         fails += pg.js('stT.markedStates()', timeout=30000)
         if P("stT.at('.pl-way .sport-chip')", 'Marked routes’ sport') and pg.js("stT.pickSport('Swim')"):
             P("stT.at('.menu-pop [data-st-pick]')", 'Swim')
