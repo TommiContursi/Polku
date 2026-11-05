@@ -4415,7 +4415,7 @@ DRAWER = """(async () => {
     await wait(80);
     if (p.tab !== tab || el.closest('.pl-pane').hidden) errs.push(`reveal(${id}) didn’t open ${tab}`);
   }
-  p.openStep(null); // (reveal(style) opened How you go's step)
+  p.openStep(null); // (reveal(style) opened Route style's step)
   // the profile: under the header, out of the tabs; not at peek
   const cv = document.querySelector('#profile-canvas');
   if (!cv || !cv.closest('.pl-profile') || cv.closest('.pl-pane')) errs.push('the profile isn’t under the header');
@@ -4428,7 +4428,7 @@ DRAWER = """(async () => {
   p.setProfileCompact(!p.profCompact); await wait(200);
   if (p.layout() === 'side' && cv.offsetHeight === h0) errs.push('the profile’s size button changed nothing');
   p.setProfileCompact(!p.profCompact); await wait(100);
-  // Route: the tools out of ⋯, How you go with the style and the speeds (its two steps, #424's C)
+  // Route: the tools out of ⋯, Route style's section with the style and the speeds (its two steps, #424's C)
   p.setTab('route'); await wait(100);
   const foot = [...p.els.pointsFoot.querySelectorAll('button')].map(txt);
   // (#761) under the list Reorder, Reverse and Back to start, then Clear route; Round trip and Import are in More (below)
@@ -4439,7 +4439,7 @@ DRAWER = """(async () => {
   if (new Set(fb.slice(0, 3).map((b) => Math.round(b.getBoundingClientRect().top))).size !== 1 || !clr || Math.abs(clr.getBoundingClientRect().right - fr.right) > 1 || !cs || cs.borderTopColor === 'rgba(0, 0, 0, 0)' || cs.color === getComputedStyle(fb[1]).color) errs.push(`Route's foot isn't one row with a red Clear route button: ${fb.map((b) => `${txt(b)} at ${Math.round(b.getBoundingClientRect().top)}, ${getComputedStyle(b).color} on ${getComputedStyle(b).borderTopColor}`).join('; ')}`);
   if (foot.includes('All leg settings')) errs.push('Route still has All leg settings (25d’s part 4: each stretch has Edit this stretch)');
   const how = document.querySelector('[data-sec=style]');
-  if (!how.querySelector('.style-presets') || !how.querySelector('.speed-wrap .speed-box').children.length) errs.push('How you go lacks the style or the speeds');
+  if (!how.querySelector('.style-presets') || !how.querySelector('.speed-wrap .speed-box').children.length) errs.push('Route style’s section lacks the style or the speeds');
   // More: the whole route's actions (25a)
   p.els.more.click(); await wait(100);
   const items = [...document.querySelectorAll('.menu-pop .menu-item')].map(txt);
@@ -9500,10 +9500,10 @@ def nextleg(chrome):
         fails.append(f"{name}: Settings' Fast for MTB didn't re-time the MTB route with the map on Hike ({t0} s, then {t1} s)")
     if not pg.js("(document.querySelector('#settings-body .speed-sport-row[data-k=mtb] small')?.textContent || '').startsWith('Fast')"):
         fails.append(f"{name}: Settings' MTB row doesn't say Fast")
-    # How you go's speeds with no route are the sport's, not the cleared route's (#87)
+    # Your speed's speeds with no route are the sport's, not the cleared route's (#87)
     sp = pg.js("(async () => { const p = polku.planner; p.clear(); polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 500)); return [...p.els.speedBox.querySelectorAll('button')].map((b) => b.textContent).join(','); })()")
     if 'Sea kayak' not in sp:
-        fails.append(f"{name}: How you go's speeds after Clear, with Paddle: {sp}")
+        fails.append(f"{name}: Your speed's speeds after Clear, with Paddle: {sp}")
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the next leg's sport and speed, the water note, Settings' speeds (B of #233)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
@@ -10911,9 +10911,9 @@ def stops_scroll(chrome):
                 fold_settled(pg, fails, f'{tag} the handle down at {size}')
                 if st() == size:
                     fails.append(f'{tag}: the handle dragged 200 px down at {size}, scrolled: the sheet stayed at {size}')
-            # a tab or a step from its start (Codex on #603): scrolled to the end at full, Check or How you go leaves the tabs in
+            # a tab or a step from its start (Codex on #603): scrolled to the end at full, Check or Route style leaves the tabs in
             # sight with room for the tab under them, not the sheet at its own top (at 200 % its header and profile fill it)
-            for how, js in (('Check', "p.setTab('check', { user: true })"), ('How you go', "p.openStep('how')")):
+            for how, js in (('Check', "p.setTab('check', { user: true })"), ('Route style', "p.openStep('how')")):
                 pg.js(f"(() => {{ const p = polku.planner; p.openStep(null); p.setTab('route'); p.setSheetState('full', {{ remember: false }}); return true; }})()")
                 fold_settled(pg, fails, f'{tag} at full for {how}')
                 pg.js("polku.planner.panel.scrollTop = polku.planner.panel.scrollHeight; true")
@@ -12363,27 +12363,27 @@ START_LIB = """(() => {
     if (p.styleOf('mtb').p !== 'flowy') err(`the chip set ${p.styleOf('mtb').p}`);
     if (p.past.length !== u0) err('a style before there’s a route made an Undo step');
     if ((await routed()) !== r0 || /routed again/.test(txt($('#toast')))) err('a style before there’s a route routed or said so');
-    // the same style everywhere: the toolbox, How you go's own section
+    // the same style everywhere: the toolbox, Route style's own section
     if (!/Flowy/.test(p.els.modeBtn.getAttribute('aria-label'))) err(`the toolbox says ${p.els.modeBtn.getAttribute('aria-label')}`);
     const how = [...p.els.styleBox.querySelectorAll('.style-presets [aria-pressed=true]')].map(txt);
-    if (!how.some((t) => /Flowy/.test(t))) err(`How you go says ${how.join(', ') || 'nothing'}`);
-    // Fine-tune: How you go's own section, in place (the same element), and back in How you go after
+    if (!how.some((t) => /Flowy/.test(t))) err(`Route style says ${how.join(', ') || 'nothing'}`);
+    // Fine-tune: Route style's own section, in place (the same element), and back in Route style after
     click('.pl-way [data-k=tune]');
     await wait(200);
-    if (!p.els.styleBox.closest('.pl-way')) err('Fine-tune didn’t open How you go’s section in place');
+    if (!p.els.styleBox.closest('.pl-way')) err('Fine-tune didn’t open Route style’s section in place');
     if (!desk) {
       click('.pl-way .way-back'); // ‹ Draw it: back to the card, the sheet lowered
       await until(() => !p.wayRaised);
       await settled();
       if (!$('.pl-way .stylebtn[data-k=srow]') || p.els.styleBox.closest('.pl-way')) err('Back from Fine-tune didn’t lower the Draw it card');
     }
-    if (!p.els.styleBox.closest('[data-sec=style]') && !desk) err('How you go’s section isn’t back in How you go');
+    if (!p.els.styleBox.closest('[data-sec=style]') && !desk) err('Route style’s section isn’t back in its place');
     // the phone's back gesture: back to the ways, as they were
     history.back();
     await until(() => view() === 'ways');
     if (view() !== 'ways') err(`the back gesture from Draw it: ${view()}`);
-    if (p.els.styleBox.closest('.pl-way') || !p.els.styleBox.closest('[data-sec=style]')) err('How you go’s section isn’t back in How you go after the ways');
-    // put the style back as it was, from How you go
+    if (p.els.styleBox.closest('.pl-way') || !p.els.styleBox.closest('[data-sec=style]')) err('Route style’s section isn’t back in its place after the ways');
+    // put the style back as it was, from Route style
     p.setStyle({ p: 'balanced', v: {}, wet: 'auto' });
     return T.errs.splice(0);
   };
@@ -14188,7 +14188,7 @@ def route_card(chrome):
         # Edit this stretch: its 4 legs; only what fits on land; Other ways only for one leg
         main(pg, 'Edit this stretch', name, touch)
         s = st(pg)
-        if s['kind'] != 'edit' or 'its 4 legs' not in s['text'] or s['seg'] != ['Follow paths', 'Freehand*'] or 'Other ways' in s['rows'] or s['heads'] != ['How you go', 'On this stretch']:
+        if s['kind'] != 'edit' or 'its 4 legs' not in s['text'] or s['seg'] != ['Follow paths', 'Freehand*'] or 'Other ways' in s['rows'] or s['heads'] != ['On this stretch']:
             fails.append(f"{name}: Edit this stretch: {s['kind']} card, {'4 legs' if 'its 4 legs' in s['text'] else 'not its 4 legs'}, the switch {s['seg']}, rows {s['rows']}, groups {s['heads']}")
         fails += [f'{name}: Edit this stretch: {o}' for o in pg.js(f"({RC_LOOK})(true)")]
         # Sport: Paddle for the stretch: its four legs paddled over water, the last leg as it was, one step of Undo
@@ -17334,7 +17334,7 @@ def keyfacts(chrome):
 
 
 # The planner's tabs, C (25d, #424 [tabs-c-route, tabs-c-how, tabs-c-speed, tabs-c-check, tabs-c-go, tabs-c-layers]): Route
-# opens with How you go › and Your speed ›, each a step of its own with Back to Route; Check's top keeps the facts, without
+# opens with Route style › and Your speed ›, each a step of its own with Back to Route; Check's top keeps the facts, without
 # Speed and Style; Go opens with Leave, There at, where the time goes, then Your speed ›; the map's marks are a Your route
 # group in Layers while a route is drawn (straight legs)
 TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; window.TB = {
@@ -17362,7 +17362,7 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
       start: line(start, ''), end: line(end, ''),
       seen: seen(start), stretch: seen(first?.querySelector('b') || first?.querySelector('small')) };
   },
-  // How you go ›, then Back: the focus on its row, and the row in sight under the list (#740)
+  // Route style ›, then Back: the focus on its row, and the row in sight under the list (#740)
   async back() {
     const p = polku.planner, frames = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
     p.openStep('how'); await frames(); p.els.stepHead.querySelector('.way-back').click(); await frames();
@@ -17412,7 +17412,7 @@ def tabs(chrome):
         pg.js(TB_JS)
         pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
         r = pg.js("TB.route()")
-        if r['first'] != 'points' or r['rows'] != ['How you go · Balanced', 'Your speed · Normal'] or not r['list'] or r['step']:
+        if r['first'] != 'points' or r['rows'] != ['Route style · Balanced', 'Your speed · Normal'] or not r['list'] or r['step']:
             fails.append(f"{name}: Route opens with {r}")
             pg.close()
             return
@@ -17424,7 +17424,7 @@ def tabs(chrome):
                 fails.append(f"{name}: Route's first content, {where}: {r} (want the route's list, its heading in sight)")
             r = pg.js("TB.back()")
             if r != {'focus': 'how-mtb', 'seen': True}:
-                fails.append(f"{name}: Back from How you go, {where}: {r} (want the focus on its row, in sight)")
+                fails.append(f"{name}: Back from Route style, {where}: {r} (want the focus on its row, in sight)")
         if phone:
             # the route's list at half says things once (#764), leaving at 10:00 so no "In the dark" row comes between
             r = pg.js("""(async () => { const p = polku.planner, ten = new Date(); ten.setHours(10, 0, 0, 0); if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
@@ -17432,17 +17432,17 @@ def tabs(chrome):
             if r != {'hint': False, 'nums': False, 'reorder': True, 'beside': False, 'head': True, 'warn': False, 'start': True, 'end': True, 'seen': True, 'stretch': True}:
                 fails.append(f"{name}: the route's list at half: {r} (want no hint, the part's heading in the list with its totals (#761), Start and End without their distance, Start and the first stretch's first words in sight)")
         pg.js("(async () => { const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('left'); p.setSheetState(p.layout() === 'side' ? 'open' : 'full'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()")
-        # How you go ›: the route style alone, with Back to Route; a preset there changes the row's value
-        press(pg, at(pg, "TB.row('route', 'How you go')"), f'{name}: How you go', touch)
+        # Route style ›: the route style alone, with Back to Route; a preset there changes the row's value
+        press(pg, at(pg, "TB.row('route', 'Route style')"), f'{name}: Route style', touch)
         s = pg.js("TB.step()")
-        if s != {'step': 'how', 'back': 'Route', 'title': 'How you go', 'list': False, 'presets': True, 'speeds': False, 'sectionHead': False}:
-            fails.append(f"{name}: How you go's step: {s}")
+        if s != {'step': 'how', 'back': 'Route', 'title': 'Route style', 'list': False, 'presets': True, 'speeds': False, 'sectionHead': False}:
+            fails.append(f"{name}: Route style's step: {s}")
         press(pg, at(pg, "[...document.querySelectorAll('#pl-pane-route .style-box .chip')].find((c) => c.getAttribute('aria-pressed') !== 'true')"), f'{name}: another style', touch)
         style = pg.js("polku.planner.styleOf('mtb').p")
         press(pg, at(pg, "document.querySelector('#pl-pane-route .step-head .way-back')"), f'{name}: Back', touch)
         r = pg.js("TB.route()")
-        if r['step'] or not r['list'] or style == 'balanced' or r['rows'][0] == 'How you go · Balanced':
-            fails.append(f"{name}: Back from How you go after a style ({style}): {r}")
+        if r['step'] or not r['list'] or style == 'balanced' or r['rows'][0] == 'Route style · Balanced':
+            fails.append(f"{name}: Back from Route style after a style ({style}): {r}")
         # Your speed ›: the speeds alone
         press(pg, at(pg, "TB.row('route', 'Your speed')"), f'{name}: Your speed', touch)
         s = pg.js("TB.step()")
@@ -17464,22 +17464,26 @@ def tabs(chrome):
         if r != {'tab': 'route', 'step': 'speed'}:
             fails.append(f"{name}: Go's Your speed opened {r}")
         pg.js("polku.planner.openStep(null); true")
-        # a multisport route: How you go has a row for each sport, and Paddle's styles the paddle legs, not the MTB ones
+        # a multisport route: Route style has a row for each sport, and Paddle's styles the paddle legs, not the MTB ones
         pg.js("polku.planner.setTab('route'); polku.planner.setSportFrom(2, 'paddle'); true")
         time.sleep(0.6)
         r = pg.js("TB.route()")['rows']
-        if [x.split(' · ')[0] for x in r] != ['How you go', 'How you go', 'Your speed']:
+        if [x.split(' · ')[0] for x in r] != ['Route style', 'Route style', 'Your speed']:
             fails.append(f"{name}: Route's rows on a multisport route: {r}")
+        # (#761) each style's row says its sport, its icon in the sport's colour
+        r2 = pg.js("[...TB.pane().querySelectorAll('.how-rows > .row')].slice(0, -1).map((b) => `${b.querySelector('small')?.textContent}|${(/--sport-(\\w+)/.exec(b.firstElementChild.style.color) || [])[1]}`)")
+        if r2 != ['MTB|mtb', 'Paddle|paddle']:
+            fails.append(f"{name}: the style rows' sports: {r2} (want each its sport's name, its icon in the sport's colour, #761)")
         else:
-            press(pg, at(pg, "TB.pane().querySelectorAll('.how-rows > .row')[1]"), f"{name}: Paddle's How you go", touch)
+            press(pg, at(pg, "TB.pane().querySelectorAll('.how-rows > .row')[1]"), f"{name}: Paddle's Route style", touch)
             line = pg.js("TB.pane().querySelector('.step-head p').textContent")
             if pg.js("TB.step()")['step'] != 'how' or not line.startswith('Paddle, for the route’s Paddle legs'):
-                fails.append(f"{name}: Paddle's How you go says {line!r}")
+                fails.append(f"{name}: Paddle's Route style says {line!r}")
             was = pg.js("({ mtb: polku.planner.styleOf('mtb').p, paddle: polku.planner.styleOf('paddle').p })")
             press(pg, at(pg, "[...document.querySelectorAll('#pl-pane-route .style-box .chip')].find((c) => c.getAttribute('aria-pressed') !== 'true')"), f'{name}: another Paddle style', touch)
             now = pg.js("({ mtb: polku.planner.styleOf('mtb').p, paddle: polku.planner.styleOf('paddle').p })")
             if now['mtb'] != was['mtb'] or now['paddle'] == was['paddle']:
-                fails.append(f"{name}: a style in Paddle's How you go: {was} → {now}")
+                fails.append(f"{name}: a style in Paddle's Route style: {was} → {now}")
             pg.js("polku.planner.openStep(null); true")
         # the marks on the map: in Layers, a Your route group while a route is drawn; none in Check
         r = pg.js("""(async () => { const p = polku.planner, vis = (e) => !!e && e.getClientRects().length > 0; p.setTab('check');
@@ -17562,8 +17566,8 @@ def tabs_names(chrome):
                 if then:
                     pg.js(f"(async () => {{ const p = polku.planner, a = p.analysis; {then}; for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; }})()", timeout=30000)
                     pg.js(SETTLED)
-            # the headings: Route (and its How you go), Check and Go, one level at a time
-            for tab, js in (('Route', "polku.planner.setTab('route')"), ('How you go', "polku.planner.openStep('how')"), ('Check', "polku.planner.openStep(null); polku.planner.setTab('check')"), ('Go', "polku.planner.setTab('go')")):
+            # the headings: Route (and its Route style), Check and Go, one level at a time
+            for tab, js in (('Route', "polku.planner.setTab('route')"), ('Route style', "polku.planner.openStep('how')"), ('Check', "polku.planner.openStep(null); polku.planner.setTab('check')"), ('Go', "polku.planner.setTab('go')")):
                 pg.js(f"{js}; true")
                 time.sleep(0.4)
                 skips = pg.js(f"({TN_HEADS})(polku.planner.panel)")
@@ -18309,7 +18313,7 @@ GROUPS = [
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
-    ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
+    ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),

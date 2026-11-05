@@ -371,8 +371,7 @@ export function editCard(pl, s, { spot = null } = {}) {
       const t = k.s, legs = pl.legs.slice(t.from, t.to), leg = legs[0], n = legs.length, sport = pl.legSport(t.from), route = pl.app.activity();
       const own = sport !== route, water = ['paddle', 'swim'].includes(sport), fixed = leg.mode === 'fixed';
       body.append(h('p', { class: 'rt-cost' }, `Changes apply to this stretch: its ${n === 1 ? 'one leg' : `${n} legs`}`));
-      body.append(h('h4', { class: 'menu-h' }, 'How you go'),
-        rows(item({ icon: pl.sportIcon(sport), label: 'Sport', line: own ? `This stretch only, the route is ${ACTIVITIES[route].label}` : 'Like the rest of the route', val: ACTIVITIES[sport].label, chev: true, k: 'sport',
+      body.append(rows(item({ icon: pl.sportIcon(sport), label: 'Sport', line: own ? `This stretch only, the route is ${ACTIVITIES[route].label}` : 'Like the rest of the route', val: ACTIVITIES[sport].label, chev: true, k: 'sport',
           onclick: () => pl.cards.open(stretchSportCard(pl, card), { at: card.at(), from: card }) })));
       if (fixed) body.append(h('p', { class: 'rt-cost' }, leg.src ? 'Its own line, from LIPAS' : 'Its own line, from the file you imported'));
       else {
@@ -413,7 +412,7 @@ function stretchSportCard(pl, edit) {
   };
 }
 
-// Edit this stretch › Route style: the route's, or a style of its own for this stretch; Fine-tune… opens How you go's
+// Edit this stretch › Route style: the route's, or a style of its own for this stretch; Fine-tune… opens Route style's
 function stretchStyleCard(pl, edit) {
   return {
     kind: 'estyle', get key() { return edit.key; }, get s() { return edit.s; }, title: 'Route style', get sub() { return edit.sub; },
@@ -425,7 +424,7 @@ function stretchStyleCard(pl, edit) {
       body.append(choices('Route style', [
         item({ icon: 'sliders', label: `The route’s, ${styleName(sport, base)}`, role: 'radio', checked: !own, onclick: () => pick(null) }),
         ...cat.presets.map(([k, label]) => item({ icon: 'sliders', label, role: 'radio', checked: !!own && own.p === k, onclick: () => pick({ p: k, v: {}, wet: base.wet || 'auto' }) })),
-      ]), rows(item({ icon: 'sliders', label: 'Fine-tune', line: 'Its terrain, climbs and roads, in How you go', chev: true, onclick: () => { pl.cards.close(); pl.styleLeg = s.from; pl.renderStyle(); pl.reveal('style'); } })));
+      ]), rows(item({ icon: 'sliders', label: 'Fine-tune', line: 'Its terrain, climbs and roads, in Route style', chev: true, onclick: () => { pl.cards.close(); pl.styleLeg = s.from; pl.renderStyle(); pl.reveal('style'); } })));
     },
   };
 }
