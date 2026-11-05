@@ -2883,6 +2883,14 @@ HEADS_CHECK = """(async () => {
   p.hideWarnKind({ key: 'roadwork' }, false);
   p.analysis.darkWarn = [...window.mine];
   p.renderWarnings();
+  // Clear route: no count, no "?" and no name beyond Check on the tab; Undo brings the route's back (#463: the road
+  // works to read, the forecast not checked; and in the dark, by the hour)
+  p.clear();
+  await wait(100);
+  if (n().textContent || !unk().hidden || tab.hasAttribute('aria-label')) errs.push(`Check's tab after Clear route: "${n().textContent}", its "?" ${unk().hidden ? 'hidden' : 'shown'}, its name ${tab.getAttribute('aria-label')}`);
+  p.undo();
+  for (let k = 0; k < 450 && !(p.legs.length === 2 && p.analysisFits() && p.analysis.hazards && (p.analysis.windError || p.analysis.wind)); k++) await wait(100);
+  if (!n().classList.contains('read') || unk().hidden || !/^Check: \\d+ to read before you go, \\d+ not checked/.test(tab.getAttribute('aria-label') || '')) errs.push(`Check's tab after Undo: "${n().textContent}", its "?" ${unk().hidden ? 'hidden' : 'shown'}, its name ${tab.getAttribute('aria-label')}`);
   return errs;
 })()"""
 
@@ -10552,9 +10560,11 @@ def fold_tools(chrome):
                     continue  # (not shown: the toolbox's names say so above)
                 pg.tap(*at)
                 time.sleep(0.4)
-                m = pg.js("(() => { const m = document.querySelector('.menu-pop'); return m ? m.innerText : ''; })()")
+                m, box = pg.js("(() => { const m = document.querySelector('.menu-pop'), r = m?.getBoundingClientRect(); return m ? [m.innerText, [r.left, r.right]] : ['', null]; })()")
                 if want not in m:
                     fails.append(f"{name}: a tap on {sel.split('.')[-1]} showed “{m[:60]}”, not its menu")
+                elif box[0] < 0 or box[1] > w:  # (#722: the menu inside the screen, its rows wrapping)
+                    fails.append(f"{name}: {sel.split('.')[-1]}'s menu from x {box[0]:.0f} to {box[1]:.0f}, past the screen's {w}")
                 pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true")
                 time.sleep(0.3)
             n = pg.js("polku.planner.points.length")
