@@ -309,7 +309,7 @@ In small phases from here (decided 2026-11-04), each one change to the rows as b
 
 6f. **A leg names its warnings, and a bead for each folded waypoint** (Parts 17, built 2026-11-05, after #820): `warnsOn(s, named)` for a stretch of one leg, each of Check's unread warnings in its words, a line each, once with its places counted, the most serious first, two and "N more" past three lines, the dark not named (its own line says it); a folded stretch counts them as before; `stretchRow()` draws a bead for each folded waypoint. `sections` checks both.
 
-6g. **Show all waypoints and the list's settings** (Parts 19, built 2026-11-05, after #839): over the list, Show all waypoints and Fold all waypoints (6c), with no motion, and the sliders opening the app's menu: Times (From start, Clock) and Show (Routing, Warnings, Darkness, Weather), saved as the map's marks are (`listShow`). Motion decided with /animate: none, the menu's own. `sections` checks both.
+6g. **Show all waypoints and the list's settings** (Parts 19, built 2026-11-05, after #839): in the Waypoints heading's row (where its summary is while the list is open, so the list starts no lower and the start and first stretch stay in sight at a phone's half, #764; over the list at 200 %), Show all waypoints and Fold all waypoints (6c), with no motion, and the sliders opening the app's menu: Times (From start, Clock) and Show (Routing, Warnings, Darkness, Weather), saved as the map's marks are (`listShow`). Motion decided with /animate: none, the menu's own. `sections` checks both.
 
 The phases after it, to be decided one at a time:
 

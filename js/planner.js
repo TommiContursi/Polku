@@ -2916,7 +2916,7 @@ export class Planner {
     box.classList.toggle('reorder', !!this.reordering);
     // (the rows' chevrons say a tap opens them; Reorder's grips need their words, #764)
     if (n >= 2 && !ro && this.reordering) top.append(h('p', { class: 'wpl-hint' }, 'Drag a waypoint, or move it earlier or later.'));
-    else if (n >= 2) top.append(...this.listTools());
+    this.els.pointsTools.replaceChildren(...(n >= 2 && !this.reordering ? this.listTools() : []));
     if (this.reordering) this.reorderRows(box);
     else this.sectionRows(box, ro);
     if (wasKey) {
@@ -2928,8 +2928,9 @@ export class Planner {
     if (!box.matches(':hover') && !this.mapHover) this.unlitLeg(); // (not the leg under the pointer on the map)
   }
 
-  // Over Route's list (#761): Show all waypoints, every stretch's at once (Fold all waypoints folds them), with no motion,
-  // since so many rows at once say nothing, and the list's settings
+  // In the Waypoints heading's row (#761), where its summary is while the list is open, so the list starts no lower: Show
+  // all waypoints, every stretch's at once (Fold all waypoints folds them), with no motion, since so many rows at once say
+  // nothing, and the list's settings
   listTools() {
     const pids = this.sections().flatMap((sec) => sec.stretches).filter((s) => s.to - s.from > 1).map((s) => this.pidOf(this.points[s.from]));
     const all = pids.length > 0 && pids.every((pid) => this.unfolded.has(pid));
@@ -2937,12 +2938,12 @@ export class Planner {
     // goes back to it)
     let set = this.els.listSet;
     if (!set) tooltip(set = this.els.listSet = h('button', { type: 'button', class: 'tool wpl-set', 'aria-label': 'List settings', 'aria-haspopup': 'menu', html: icon('sliders', 20), onclick: (e) => this.listMenu(e.currentTarget) }), { name: 'List settings' });
-    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'aria-expanded': String(all), html: `${icon(all ? 'chevronUp' : 'chevronDown', 16)}<span>${all ? 'Fold' : 'Show'} all waypoints</span>`,
+    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'aria-expanded': String(all), html: `<span>${all ? 'Fold' : 'Show'} all waypoints</span>`, // (words only: the heading's ⌄ is beside it)
       onclick: (e) => {
         const had = document.activeElement === e.currentTarget;
         for (const pid of pids) this.unfolded[all ? 'delete' : 'add'](pid);
         this.renderWaypoints();
-        if (had) this.els.pointsTop.querySelector('.wpl-all')?.focus();
+        if (had) this.els.pointsTools.querySelector('.wpl-all')?.focus();
       } }) : null, set].filter(Boolean);
   }
   // the list's settings (#761), the app's menu: the column's times, from the start or the clock's, and what the rows show,
@@ -4673,7 +4674,7 @@ export class Planner {
       route: pane('route',
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
-        this.section('points', 'Waypoints', this.els.pointsTop = h('div', { class: 'wpl-top' }),
+        this.section('points', 'Waypoints', this.els.pointsTools = h('div', { class: 'wpl-head-tools' }), this.els.pointsTop = h('div', { class: 'wpl-top' }),
           this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // How you go › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
         this.els.howRows = h('div', { class: 'rows how-rows' }),

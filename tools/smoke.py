@@ -15591,7 +15591,7 @@ SE_STATE = """(() => {
       ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '' }
       : { at: b.dataset.i, line: [...b.querySelectorAll('small:not(.wpl-tag)')].map((x) => x.textContent).join(' ') })),
     kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.listScroller().scrollTop,
-    short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
+    short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button, .wpl-head-tools button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
     slot: p.els.facts.querySelector('.kf-b.warn')?.textContent || null, text: L.textContent };
 })()"""
 
@@ -15783,7 +15783,7 @@ def sections_list(chrome):
             fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want a bead each and 6 by ⌄, #761)")
         # (#761) Show all waypoints over the list unfolds every stretch's at once, and Fold all waypoints folds them, with no
         # motion
-        r = pg.js("""(() => { const p = polku.planner, b = () => p.els.pointsTop.querySelector('.wpl-all');
+        r = pg.js("""(() => { const p = polku.planner, b = () => p.els.pointsTools.querySelector('.wpl-all');
           const st = () => `${b()?.textContent}|${b()?.getAttribute('aria-expanded')}|${p.els.points.querySelectorAll('.wpl-point.shape').length}|${p.els.points.querySelectorAll('.wpl-in').length}`;
           const out = [st()]; b().click(); out.push(st()); b().click(); out.push(st()); return out; })()""")
         if r != ['Show all waypoints|false|0|0', 'Fold all waypoints|true|6|0', 'Show all waypoints|false|0|0']:
@@ -16019,10 +16019,10 @@ def sections_list(chrome):
         # (#761) the list's settings, the app's menu over the list: the column's times by the clock, and the rows without how
         # a leg is drawn, its warnings, the dark or the weather, each a switch, saved; what's hidden is still in Check
         r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), leg = () => L.querySelector('.wpl-stretch[data-from="3"]')?.textContent || '';
-          p.els.pointsTop.querySelector('.wpl-set').click(); await wait(300);
+          p.els.pointsTools.querySelector('.wpl-set').click(); await wait(300);
           const m = document.querySelector('.menu-pop'), menu = [...m.querySelectorAll('.menu-h, .menu-item, .tg-text')].map((x) => x.textContent).join('|'), before = leg();
           for (const x of m.querySelectorAll('.tg input')) x.click();
-          const after = leg(), wx = L.querySelectorAll('.wpl-point .wx-line').length, kept = document.body.contains(p.els.pointsTop.querySelector('.wpl-set')) && p.els.pointsTop.querySelector('.wpl-set') === p.els.listSet;
+          const after = leg(), wx = L.querySelectorAll('.wpl-point .wx-line').length, kept = document.body.contains(p.els.pointsTools.querySelector('.wpl-set')) && p.els.pointsTools.querySelector('.wpl-set') === p.els.listSet;
           [...m.querySelectorAll('[role=menuitemradio]')].find((x) => x.textContent === 'Clock').click(); await wait(100);
           const col = L.querySelector('.wpl-point[data-i="1"] .wpl-when small')?.textContent || '', saved = JSON.parse(localStorage.getItem('polku:listShow') || '{}'), check = p.headsUp().read.length;
           localStorage.removeItem('polku:listShow'); p.listShow = { clock: false, routing: true, warnings: true, dark: true, weather: true }; p.renderWaypoints();
