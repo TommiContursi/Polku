@@ -2898,13 +2898,16 @@ export class Planner {
     // the route's view (25c): the same sections, without Reorder; a point's card still edits it (#745)
     const ro = this.inView();
     if (ro || n < 2) this.reordering = false;
-    // under the list (#761), in a row: Reorder and Reverse, and at its far end Clear route, a red button, with Undo in its
-    // note as ever. Reorder's place stays put while reordering, as Done, and at half on a phone the start and the first
-    // stretch stay in sight. Round trip, Back to start and Import are in ⋯ and the route's cards, not here too (#745).
+    // under the list (#761), in a row: Reorder, Reverse and Back to start (not on a loop), and at its far end Clear route, a
+    // red button, with Undo in its note as ever. Reorder's place stays put while reordering, as Done, and at half on a phone
+    // the start and the first stretch stay in sight. Round trip and Import are in ⋯ and the route's cards, not here too (#745).
     this.els.pointsFoot.replaceChildren(...[
       n >= 2 && !ro ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); this.els.pointsFoot.querySelector('[aria-pressed]')?.focus(); },
         html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder') : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: TIPS.reverse.text, onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
+      // (beside Reverse, the other way to change the whole route's shape from here; a loop has no leg back to add)
+      n > 1 && !this.isLoop() ? h('button', { type: 'button', class: 'btn', title: TIPS.backToStart.text, html: `${icon('loop', 16)} Back to start`,
+        onclick: () => { this.backToStart(); toast('A leg back to the start is added', { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } }); } }) : null,
       n ? h('button', { type: 'button', class: 'btn danger', title: 'Undo brings it back', onclick: () => this.clear(), html: `${icon('trash', 16)} Clear route` }) : null,
     ].filter(Boolean)); // (replaceChildren would write a null as "null")
     // what had the focus, found again in the list drawn anew (a row by its point or stretch, a button by its words)

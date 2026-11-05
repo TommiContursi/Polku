@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Back to start under the route's list ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- Under the route's list, **Back to start** sits beside **Reverse**: it adds a leg from the end back to where you started, with **Undo** in its note. It isn't there when the route already comes back to its start.
+
 ### Route style, in plain words ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - What was called **How you go** is now **Route style**: the row under the route's list, its step, and **Fine-tune in Route style** in the drawing menu and before a route's first leg.

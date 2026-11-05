@@ -4431,11 +4431,12 @@ DRAWER = """(async () => {
   // Route: the tools out of ⋯, Route style's section with the style and the speeds (its two steps, #424's C)
   p.setTab('route'); await wait(100);
   const foot = [...p.els.pointsFoot.querySelectorAll('button')].map(txt);
-  // (#761) under the list Reorder and Reverse, then Clear route; Round trip, Back to start and Import are in More (below)
-  if (foot.join() !== 'Reorder,Reverse,Clear route') errs.push(`Route's foot: ${foot.join(', ')} (want Reorder, Reverse, Clear route)`);
-  // (in one row, Clear route a red button at its end: the button's own edge, its words red)
-  const fb = [...p.els.pointsFoot.querySelectorAll('button')], clr = fb[2], cs = clr && getComputedStyle(clr);
-  if (new Set(fb.map((b) => Math.round(b.getBoundingClientRect().top))).size !== 1 || !cs || cs.borderTopColor === 'rgba(0, 0, 0, 0)' || cs.color === getComputedStyle(fb[1]).color) errs.push(`Route's foot isn't one row with a red Clear route button: ${fb.map((b) => `${txt(b)} at ${Math.round(b.getBoundingClientRect().top)}, ${getComputedStyle(b).color} on ${getComputedStyle(b).borderTopColor}`).join('; ')}`);
+  // (#761) under the list Reorder, Reverse and Back to start, then Clear route; Round trip and Import are in More (below)
+  if (foot.join() !== 'Reorder,Reverse,Back to start,Clear route') errs.push(`Route's foot: ${foot.join(', ')} (want Reorder, Reverse, Back to start, Clear route)`);
+  // (the three in one row, Clear route a red button at its end, on a line of its own where the row has no room: the
+  // button's own edge, its words red)
+  const fb = [...p.els.pointsFoot.querySelectorAll('button')], clr = fb[3], cs = clr && getComputedStyle(clr), fr = p.els.pointsFoot.getBoundingClientRect();
+  if (new Set(fb.slice(0, 3).map((b) => Math.round(b.getBoundingClientRect().top))).size !== 1 || !clr || Math.abs(clr.getBoundingClientRect().right - fr.right) > 1 || !cs || cs.borderTopColor === 'rgba(0, 0, 0, 0)' || cs.color === getComputedStyle(fb[1]).color) errs.push(`Route's foot isn't one row with a red Clear route button: ${fb.map((b) => `${txt(b)} at ${Math.round(b.getBoundingClientRect().top)}, ${getComputedStyle(b).color} on ${getComputedStyle(b).borderTopColor}`).join('; ')}`);
   if (foot.includes('All leg settings')) errs.push('Route still has All leg settings (25d’s part 4: each stretch has Edit this stretch)');
   const how = document.querySelector('[data-sec=style]');
   if (!how.querySelector('.style-presets') || !how.querySelector('.speed-wrap .speed-box').children.length) errs.push('Route style’s section lacks the style or the speeds');
@@ -5193,7 +5194,7 @@ BACK_TO_START = """(async (entry) => {
   if (entry === 'finish') p.markers[p.markers.length - 1].getElement().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
   const selector = entry === 'finish' ? '.pl-way.card .row[title="Adds a leg back to the start"]'
     : entry === 'toolbar' ? '#pl-tools button[aria-label="Back to start"]' // the desktop toolbar (25a), room for it at 1920
-    : 'button[title="Route back to where you started"]';
+    : '.wpl-foot button[title="A leg from the end back to where you started."]'; // (under the route's list, beside Reverse, #761)
   const button = document.querySelector(selector);
   if (!button || button.disabled || !button.getClientRects().length) return [`${entry}: button unavailable`];
   button.click();
