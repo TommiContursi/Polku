@@ -15781,6 +15781,13 @@ def sections_list(chrome):
         ln = pg.js(SE_LINE)
         if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(6, '6')]:
             fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want a bead each and 6 by ⌄, #761)")
+        # (#761) Show all waypoints over the list unfolds every stretch's at once, and Fold all waypoints folds them, with no
+        # motion
+        r = pg.js("""(() => { const p = polku.planner, b = () => p.els.pointsTop.querySelector('.wpl-all');
+          const st = () => `${b()?.textContent}|${b()?.getAttribute('aria-expanded')}|${p.els.points.querySelectorAll('.wpl-point.shape').length}|${p.els.points.querySelectorAll('.wpl-in').length}`;
+          const out = [st()]; b().click(); out.push(st()); b().click(); out.push(st()); return out; })()""")
+        if r != ['Show all waypoints|false|0|0', 'Fold all waypoints|true|6|0', 'Show all waypoints|false|0|0']:
+            fails.append(f"{name}: Show all waypoints, then Fold all waypoints: {r} (want six shown, none coming in, then folded, #761)")
         # (headless Chrome asks for reduced motion; a person usually doesn't)
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         press(pg, at(pg, "polku.planner.els.points.querySelector('.wpl-unfold')"), f'{name}: unfold', touch)
@@ -16009,6 +16016,20 @@ def sections_list(chrome):
           delete p.itemsOn; p.renderWaypoints(); return { a, b }; })()""")
         if r != {'a': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'b': ['Cycling not allowed here', 'Steps — carry the bike', '2 more']}:
             fails.append(f"{name}: a leg's warnings by name: {r} (want each once with its places, no dark, three lines at most, #761)")
+        # (#761) the list's settings, the app's menu over the list: the column's times by the clock, and the rows without how
+        # a leg is drawn, its warnings, the dark or the weather, each a switch, saved; what's hidden is still in Check
+        r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), leg = () => L.querySelector('.wpl-stretch[data-from="3"]')?.textContent || '';
+          p.els.pointsTop.querySelector('.wpl-set').click(); await wait(300);
+          const m = document.querySelector('.menu-pop'), menu = [...m.querySelectorAll('.menu-h, .menu-item, .tg-text')].map((x) => x.textContent).join('|'), before = leg();
+          for (const x of m.querySelectorAll('.tg input')) x.click();
+          const after = leg(), wx = L.querySelectorAll('.wpl-point .wx-line').length, kept = document.body.contains(p.els.pointsTop.querySelector('.wpl-set')) && p.els.pointsTop.querySelector('.wpl-set') === p.els.listSet;
+          [...m.querySelectorAll('[role=menuitemradio]')].find((x) => x.textContent === 'Clock').click(); await wait(100);
+          const col = L.querySelector('.wpl-point[data-i="1"] .wpl-when small')?.textContent || '', saved = JSON.parse(localStorage.getItem('polku:listShow') || '{}'), check = p.headsUp().read.length;
+          localStorage.removeItem('polku:listShow'); p.listShow = { clock: false, routing: true, warnings: true, dark: true, weather: true }; p.renderWaypoints();
+          return { menu, before, after, wx, kept, col, saved, check, back: leg() === before }; })()""")
+        if (r['menu'] != 'Times|From start|Clock|Show|Routing|Warnings|Darkness|Weather' or 'Follow paths' not in r['before'] or 'Cycling not allowed here' not in r['before'] or not re.fullmatch(r'[\d.]+\sk?m · \d+\smin( · ↑\d+\sm)?', r['after'])
+                or r['wx'] or not r['kept'] or not re.fullmatch(r'\d\d[:.]\d\d', r['col']) or r['saved'] != {'clock': True, 'routing': False, 'warnings': False, 'dark': False, 'weather': False} or not r['check'] or not r['back']):
+            fails.append(f"{name}: the list's settings: {r} (want its menu, the leg's numbers alone, no weather, the clock's times, saved, Check as before, #761)")
         pg.js("polku.planner.setName(4, 'Kivikko'); true")
         time.sleep(0.8)
         pg.js(SETTLED)

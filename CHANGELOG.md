@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Show all waypoints, and the list's settings ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- Over the route's list, **Show all waypoints** unfolds every stretch's waypoints at once, and **Fold all waypoints** folds them again.
+- Beside it, **List settings** (the sliders) choose the times in the list, **From start** or **Clock**, and what the rows show: **Routing** (Follow paths, Freehand), **Warnings**, **Darkness** and **Weather**, each with a switch. Polku remembers your choice.
+- Hidden details are still in **Check** and in each card, and the planner still says how many warnings there are to read. A carry stays in the list with Routing hidden.
+
 ### A leg says what its warnings are ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, a leg says what to look out for in Check's words, colours and icons: "Cycling not allowed here", "Steps — carry the bike". Each is said once on a line of its own, with its places counted ("Cycling not allowed here (2 places)"), the most serious first, and after two lines the rest as "3 more", which the leg's card lists.

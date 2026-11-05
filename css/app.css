@@ -1421,6 +1421,9 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .sec2-head b { font-size: var(--font-row); font-weight: var(--weight-strong); line-height: 1.3; overflow-wrap: anywhere; }
 .sec2-t small { font-size: 13.5px; font-weight: var(--weight-name); color: var(--text); font-variant-numeric: tabular-nums; }
 .wpl-top .btn { min-height: var(--target); margin-left: auto; }
+.wpl-top .wpl-all { margin-left: 0; margin-right: auto; } /* (Show all waypoints at the start, the list's settings at the end, #761) */
+.wpl-top .wpl-set { margin-left: auto; }
+.wpl-shows { padding: 0 8px; } /* (the list's settings' switches, in the app's menu) */
 .wpl .rows { margin: 0; } /* (inside the list: no room for a hover past its edge, as a card has) */
 .wpl-point > span:first-child { position: relative; width: 22px; align-self: stretch; place-items: center; }
 /* the route's line (#761): through every point's mark, in its part's colour (--part: its sport's, set on its part), 3 px;
