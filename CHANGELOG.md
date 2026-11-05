@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### A card's spot clear of the undo buttons ([#555](https://github.com/TommiContursi/Polku/issues/555))
+
+- On a phone, when a card opens and the map moves its spot into sight above it, the spot and its pill also stay clear of the floating **Undo** and **Redo** buttons, so a tap on the pill reaches the pill, not the buttons.
+
 ### The timeline's strip follows light and dark ([#583](https://github.com/TommiContursi/Polku/issues/583))
 
 - When Polku changes between light and dark with the timeline open, its weather strip's words, your trip's band and the night's shading change with it at once, instead of keeping the old look until the time or the window changed.
