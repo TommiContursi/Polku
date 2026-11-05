@@ -55,7 +55,7 @@ const TIPS = {
   style: { name: 'Route style', text: 'Which ways Follow paths prefers, for the whole route. Changing it routes the route again.' },
   sport: { name: 'Sport', text: 'The sport for the legs you draw next, and your speed in it. Legs already drawn keep theirs.' },
   undo: { name: 'Undo', keys: 'Ctrl Z', text: 'Takes back the last change.' },
-  redo: { name: 'Redo', keys: 'Ctrl Shift Z', text: 'Does it again.' },
+  redo: { name: 'Redo', keys: 'Ctrl Shift Z', text: 'Puts back what Undo took.' },
   reverse: { name: 'Reverse', text: 'The end becomes the start; each leg keeps its mode and style.' },
   backToStart: { name: 'Back to start', text: 'A leg from the end back to where you started.' },
   share: { name: 'Share link', text: 'Copies a link to this route.' },
@@ -619,6 +619,7 @@ export class Planner {
   removePoint(i) {
     this.commit();
     this.points.splice(i, 1);
+    if (this.points.length < 2) this.routeName = ''; // (no route left: the next one drawn isn't the track's, #821)
     if (!this.legs.length) { /* single point */ }
     else if (i === 0) this.legs.shift();
     else if (i >= this.legs.length) this.legs.pop();
@@ -2902,7 +2903,7 @@ export class Planner {
     this.els.pointsFoot.replaceChildren(...[
       n >= 2 && !ro ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); this.els.pointsFoot.querySelector('[aria-pressed]')?.focus(); },
         html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder') : null,
-      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The end becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
+      n > 1 ? h('button', { type: 'button', class: 'btn', title: TIPS.reverse.text, onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
       n ? h('button', { type: 'button', class: 'btn danger', title: 'Undo brings it back', onclick: () => this.clear(), html: `${icon('trash', 16)} Clear route` }) : null,
     ].filter(Boolean)); // (replaceChildren would write a null as "null")
     // what had the focus, found again in the list drawn anew (a row by its point or stretch, a button by its words)
@@ -4240,6 +4241,7 @@ export class Planner {
     store.set('route', {
       nogos: this.nogos,
       points: this.points,
+      routeName: this.routeName || '', // an imported track's or a marked route's (#822); none in older saved routes
       names: this.points.map((p) => this.pname.get(p) || ''), // on this device only: not in share links
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
       stops: this.points.map((p) => this.pstop.get(p) || null),
@@ -4267,6 +4269,7 @@ export class Planner {
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
     if (!r || !r.points || !r.points.length) return false;
     this.points = r.points;
+    this.routeName = r.routeName || '';
     this.readKeys = new Set(r.read || []);
     this.nameAll(r.names);
     this.changeAll(r.changes);
@@ -6279,7 +6282,7 @@ export class Planner {
     const a = this.analysis, t = this.els.tabBtn && this.els.tabBtn.go.querySelector('.pl-tab-t');
     if (!t) return;
     t.textContent = a ? this.clockOf(this.startSec() + (a.timeWind || a.time)) : '';
-    this.els.tabBtn.go.title = a ? `When and how long: back at ${t.textContent} · the weather, taking it along` : TABS[2].title;
+    this.els.tabBtn.go.title = a ? `When and how long: ${this.isLoop() ? 'back' : 'there'} at ${t.textContent} · the weather, taking it along` : TABS[2].title;
     if (a) this.els.tabBtn.go.setAttribute('aria-label', `Go: arrive ${t.textContent}`); else this.els.tabBtn.go.removeAttribute('aria-label'); // (not "Go09:41")
   }
 
