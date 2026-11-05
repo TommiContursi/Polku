@@ -7818,6 +7818,19 @@ def appearance(chrome):
         tap('#btn-settings', 'Settings, after a reload')
         if pg.js(THEME_NOW)['pressed'] != ['light']:
             fails.append(f"Light, after a reload: Settings shows {pg.js(THEME_NOW)['pressed']} chosen")
+
+        # the timeline's strip in the new look as soon as the theme changes (#583): Automatic, the timeline open, the
+        # device turning dark; the strip as it is, against the strip drawn again (first with nothing changed, as a control)
+        scheme(pg, 'light')
+        pg.open_app({'activity': 'mtb', 'appearance': 'auto', 'base': 'trail', 'timeline': True})
+        strip = """(() => { const w = polku.weather, was = w.stripCv.toDataURL(); w.renderStrip();
+          return { shown: !w.bar.hidden && w.stripCv.width > 0, same: was === w.stripCv.toDataURL() }; })()"""
+        r0 = pg.js(strip)
+        scheme(pg, 'dark')
+        pg.js(THEME_IS + "('dark')")
+        r = pg.js(strip)
+        if r0 != {'shown': True, 'same': True} or r != {'shown': True, 'same': True}:
+            fails.append(f"the timeline's strip, the device turning dark: {r} (with nothing changed: {r0}; shown and the same as drawn again)")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
