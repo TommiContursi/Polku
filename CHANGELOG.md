@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Tooltips that say what happens ([#753](https://github.com/TommiContursi/Polku/issues/753))
+
+- On a desktop, the Go tab's tooltip says "there at" with the arrival time on a route that ends somewhere else, and "back at" only on a round trip.
+- **Redo**'s tooltip says it puts back what **Undo** took, and **Reverse** says the same in the toolbar and under the route's list: each leg keeps its mode and style.
+
 ### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
 
 - After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
