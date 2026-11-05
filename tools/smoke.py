@@ -509,7 +509,7 @@ LAYERS = """(async () => {
   segBtn('Difficulty').click(); await wait(200);
   const diffNote = [...body.querySelectorAll('p.note')].find((x) => /^Halo colour is the MTB difficulty/.test(x.textContent));
   if (!diffNote || !diffNote.textContent.includes(`S${DIFF_COLORS.length - 1}`)) errs.push(`the difficulty colours' note: ${diffNote ? diffNote.textContent : 'none'}, not up to S${DIFF_COLORS.length - 1}`);
-  if (was) segBtn(was.textContent).click();
+  if (was) [...segBtn('Difficulty').parentElement.children].find((b) => b.textContent === was.textContent).click();
   await wait(200);
   if (!polku.map.getLayer('ov-soundings')) errs.push('paddle: soundings are not on');
   // the weather fields have one too (no fetch: the switch only, not the data)
