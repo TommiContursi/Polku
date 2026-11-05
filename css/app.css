@@ -211,6 +211,7 @@ html { -webkit-tap-highlight-color: transparent; }
   font: inherit; font-size: 15px; height: 100%;
 }
 .search input::-webkit-search-cancel-button { display: none; }
+.search input::placeholder { color: var(--muted); } /* (the glass's grey: the browser's is too faint over the map, #551) */
 .search kbd {
   font: 11px ui-monospace, monospace; padding: 1px 6px; border-radius: 6px;
   border: 1px solid var(--line); color: var(--muted);

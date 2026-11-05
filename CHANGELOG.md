@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### The search field's hint is easier to read ([#551](https://github.com/TommiContursi/Polku/issues/551))
+
+- The search field's hint, "Search places or paste coordinates", is in the darker grey of the other words on the frosted glass, in light and in dark, instead of the browser's pale grey that was hard to read over the map.
+
 ### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
 
 - After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
