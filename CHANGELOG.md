@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Route style, in plain words ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- What was called **How you go** is now **Route style**: the row under the route's list, its step, and **Fine-tune in Route style** in the drawing menu and before a route's first leg.
+- **Edit this stretch** starts with the stretch's sport, how it's drawn and its route style, with no heading over them.
+- In **Settings**, the note on speeds points to **Route › Your speed**, where they are.
+
 ### The difficulty key and Go's wind ([#388](https://github.com/TommiContursi/Polku/issues/388))
 
 - With the trails coloured by **Difficulty**, the note in **Layers** says the colours go from S0 green to S6 dark purple, as the map draws them, not to S5.

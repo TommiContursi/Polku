@@ -1074,7 +1074,7 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .way-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .way-chips .chip, .rt-chips .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; font-size: 14px; color: var(--text); }
 .way-how { padding: 10px 0 0; border-top: 1px solid var(--line); }
-/* How you go's own section, in place: its presets are the chips just above it, and its note is about a drawn route */
+/* Route style's own section, in place: its presets are the chips just above it, and its note is about a drawn route */
 .way-how .style-box > :is(.style-presets, .note:last-child) { display: none; }
 .way-how .speed-wrap { margin-top: 12px; }
 .way-nostyle { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 13.5px; }
@@ -1110,7 +1110,7 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .rt-making { display: grid; gap: 6px; justify-items: center; width: 70%; }
 .rt-progress { width: 100%; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .35); overflow: hidden; }
 .rt-progress i { display: block; width: var(--p, 0%); height: 100%; background: #fff; }
-/* How you go: the route style, then your speed */
+/* Route style's section: the route style, then your speed */
 .how-h { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 8px; font-size: 12px; font-weight: 700; }
 .how-h small { font-weight: 500; color: var(--muted); }
 .speed-wrap { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); border-radius: 0; }
@@ -1126,7 +1126,7 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .time-head span { font-size: 12.5px; color: var(--muted); }
 .wpl-foot .btn { white-space: nowrap; }
 .onmap .tg { max-width: 360px; }
-/* Route's two rows, and their steps (#424's C): a step shows How you go's style or your speeds alone, with Back to Route */
+/* Route's two rows, and their steps (#424's C): a step shows the route style or your speeds alone, with Back to Route */
 .how-rows { grid-column: 1 / -1; margin-bottom: 6px; }
 .step-head { grid-column: 1 / -1; display: grid; justify-items: start; gap: 4px; }
 .step-head h3 { margin: 6px 0 0; font-size: var(--font-title); }
@@ -2472,7 +2472,7 @@ body.dropping .drop-hint { display: flex; }
 .menu-item.nl-speed { height: auto; min-height: 40px; padding: 6px 10px; }
 .menu-item > .nl-speeds { flex: none; font-size: 12.5px; font-weight: 700; color: var(--accent); }
 .nl-editor { max-width: 320px; padding: 4px 10px 8px 37px; }
-.nl-editor .speed-how { display: none; } /* the full words are in How you go */
+.nl-editor .speed-how { display: none; } /* the full words are in Your speed */
 @media (pointer: coarse) { :is(.menu-pop, .menu-leaving) .menu-item { min-height: 44px; } .menu-chips .menu-item.chip { min-height: 44px; } }
 
 /* the map's column on short phones with the sheet raised (main.js fitColumn()) */
