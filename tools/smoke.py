@@ -2883,6 +2883,14 @@ HEADS_CHECK = """(async () => {
   p.hideWarnKind({ key: 'roadwork' }, false);
   p.analysis.darkWarn = [...window.mine];
   p.renderWarnings();
+  // Clear route: no count, no "?" and no name beyond Check on the tab; Undo brings the route's back (#463: the road
+  // works to read, the forecast not checked; and in the dark, by the hour)
+  p.clear();
+  await wait(100);
+  if (n().textContent || !unk().hidden || tab.hasAttribute('aria-label')) errs.push(`Check's tab after Clear route: "${n().textContent}", its "?" ${unk().hidden ? 'hidden' : 'shown'}, its name ${tab.getAttribute('aria-label')}`);
+  p.undo();
+  for (let k = 0; k < 450 && !(p.legs.length === 2 && p.analysisFits() && p.analysis.hazards && (p.analysis.windError || p.analysis.wind)); k++) await wait(100);
+  if (!n().classList.contains('read') || unk().hidden || !/^Check: \\d+ to read before you go, \\d+ not checked/.test(tab.getAttribute('aria-label') || '')) errs.push(`Check's tab after Undo: "${n().textContent}", its "?" ${unk().hidden ? 'hidden' : 'shown'}, its name ${tab.getAttribute('aria-label')}`);
   return errs;
 })()"""
 
