@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### The timeline's strip follows light and dark ([#583](https://github.com/TommiContursi/Polku/issues/583))
+
+- When Polku changes between light and dark with the timeline open, its weather strip's words, your trip's band and the night's shading change with it at once, instead of keeping the old look until the time or the window changed.
+
 ### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
 
 - After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
