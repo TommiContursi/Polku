@@ -148,8 +148,7 @@ export function fmtDist(m) {
 }
 
 export function fmtDuration(s) {
-  const h = Math.floor(s / 3600);
-  const m = Math.round((s % 3600) / 60);
+  const t = Math.round(s / 60), h = Math.floor(t / 60), m = t % 60;
   return h ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`;
 }
 

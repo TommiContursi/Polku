@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### Times never read 60 minutes ([#492](https://github.com/TommiContursi/Polku/issues/492))
+
+- A time just short of a whole hour reads the next hour: 1 h 59 min 40 s reads 2 h 00 min, not 1 h 60 min, wherever a time is shown.
+
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each waypoint shows how far it is from the start and how long it takes to get there, stops and changeovers included, in a column left of the route's line: "1.11 km" over "5 min". With the text enlarged, they go under the waypoint's name.
