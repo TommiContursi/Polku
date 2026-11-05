@@ -3124,10 +3124,11 @@ export class Planner {
   }
 
   // a stretch: the line between two points (#761), its distance, time and climb in bold, how it's drawn under them (a
-  // carry on it too, #779), and the points that only shape it: beads on its line, their count by ⌄, which unfolds them.
+  // carry on it too, #779), and the points that only shape it: a bead each on its line (running together where there's no
+  // room), their count by ⌄, which unfolds them.
   // One drawn otherwise than along paths (a straight line, over water, its own line) has its word in the text's weight,
-  // a straight one its line dashed. Under them Check's warnings on it, then the dark on a line of its own (`warnsOn()`),
-  // with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
+  // a straight one its line dashed. Under them Check's warnings on it, counted, or on a leg named, then the dark on a
+  // line of its own (`warnsOn()`), with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
   // `folds`: the stretch whose waypoints its ⌄ folds, itself, or for an unfolded stretch's first leg the stretch (null
   // for its other legs).
   stretchRow(s, ro, folds = s) {
@@ -3139,8 +3140,8 @@ export class Planner {
     for (const l of legs) { const c = l.result && l.result.coords, t = l.result && l.result.tags; if (c && t) for (let k = 1; k < c.length; k++) if (t[k - 1] && t[k - 1].portage) carry += dist(c[k - 1], c[k]); }
     const says = carry >= 1 ? `${how} · carry ${fmtDist(carry)}` : how;
     const pid = folds && this.pidOf(this.points[folds.from]), open = !!folds && this.unfolded.has(pid), beads = [];
-    for (let j = 0, m = open ? 0 : Math.min(shaping, 3); j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
-    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { lines, dark } = this.warnsOn(s);
+    for (let j = 0, m = open ? 0 : shaping; j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), { lines, dark } = this.warnsOn(s, s.to - s.from === 1);
     if (dark) beads.push(h('span', { class: 'moon', style: `top: ${(100 * (Math.max(a0, dark) - a0)) / Math.max(1, a1 - a0)}%`, html: icon('moon', 12) }));
     // (its label starts with its words, so voice control finds it by them)
     const b = h('button', { type: 'button', class: `row wpl-stretch${leg.mode === 'line' ? ' straight' : ''}`, 'data-from': String(s.from), 'data-to': String(s.to),
@@ -3188,18 +3189,24 @@ export class Planner {
   // checked and what's worth a look, but for what the list says its own way (a straight line and a carry in a stretch's
   // words, the gear left and a short night on their wait, twilight as the dark is). Then, on a line of their own, as
   // when you're there and not a warning: how much of it is after sunset, in the dark or before sunrise, in the order you'd
-  // go through them. The lines' HTML, and where along the route the dark begins (or 0).
-  warnsOn(s) {
+  // go through them. The lines' HTML, and where along the route the dark begins (or 0). `named` (a leg, #761): each
+  // warning in Check's words, a line each, once, with how many places, the most serious first, three lines at most; the
+  // dark isn't named, its own line says it.
+  warnsOn(s, named = false) {
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
     const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Freehand|Carry \/ portage)/.test(w.text);
     const its = this.itemsOn(s).filter((it) => !this.isRead(it) && !(it.g === 'look' && own(it.w))), n = (g) => its.filter((it) => it.g === g).length;
     const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
     const dark = on((x) => !x.twilight), darkM = m(dark), dusk = m(on((x) => x.twilight && x.evening)), dawn = m(on((x) => x.twilight && !x.evening));
-    const warns = [n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
-      n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : ''].filter(Boolean);
+    const G = { read: ['read', 'warnf'], not: ['unk', 'unk'], look: ['look', 'eye'] }, by = new Map();
+    for (const it of named ? its : []) if (it.w.kind !== 'dark') by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
+    const names = [...by].map(([t, x]) => `<span class="${G[x.g][0]}">${icon(G[x.g][1], 14)}${escapeHtml(t)}${x.k > 1 ? ` (${x.k} places)` : ''}</span>`);
+    const warns = named ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
+      : [[n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
+        n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : ''].filter(Boolean).join(' ')].filter(Boolean);
     const light = [dusk >= 50 ? `<span class="dark">${icon('sunset', 14)}${fmtDist(dusk)} after sunset</span>` : '', darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : '',
       dawn >= 50 ? `<span class="dark">${icon('sunrise', 14)}${fmtDist(dawn)} before sunrise</span>` : ''].filter(Boolean);
-    return { lines: [warns, light].filter((x) => x.length).map((x) => x.join(' ')), dark: darkM >= 50 ? dark[0].at : 0 };
+    return { lines: [...warns, light.join(' ')].filter(Boolean), dark: darkM >= 50 ? dark[0].at : 0 };
   }
   // a stretch under the mouse in the list: lit on the map, as a leg's row was
   lightStretchHover(s) {
