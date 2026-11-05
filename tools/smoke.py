@@ -3980,6 +3980,9 @@ FIT_LIB = """(() => {
     const kml = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2"><Placemark><gx:Track>'
       + ['23.7 61.4 0', '23.71', '23.72 61.42 0', '23.73 abc 0'].map((c) => `<gx:coord>${c}</gx:coord>`).join('') + '</gx:Track></Placemark></kml>', 'bad.kml');
     if (kml.lines.map((l) => l.length).join() !== '2') err(`a KML track with broken points: lines of ${kml.lines.map((l) => l.length).join()} points (want 2)`);
+    // a KML line's empty values are missing too, not 0 (an empty altitude leaves the point as it is)
+    const ls = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4,0 ,61.41,0 23.72,,0 23.73, 61.43 23.74,61.44,</coordinates></LineString></Placemark></kml>', 'bad.kml');
+    if (ls.lines.map((l) => l.length).join() !== '2' || ls.lines.some((l) => l.some((c) => c.some((v) => !v)))) err(`a KML line with empty values: ${JSON.stringify(ls.lines)} (want 2 points, no zero)`);
     p.setSheetState('half');
     return T.errs.splice(0);
   };
