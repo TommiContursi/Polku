@@ -8,6 +8,25 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - Under the route's list, **Back to start** sits beside **Reverse**: it adds a leg from the end back to where you started, with **Undo** in its note. It isn't there when the route already comes back to its start.
 
+### Show all waypoints, and the list's settings ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- In the route's list's heading, **Show all waypoints** unfolds every stretch's waypoints at once, and **Fold all waypoints** folds them again.
+- Beside it, **List settings** (the sliders) choose the times in the list, **From start** or **Clock**, and what the rows show: **Routing** (Follow paths, Freehand), **Warnings**, **Darkness** and **Weather**, each with a switch. Polku remembers your choice.
+- Hidden details are still in **Check** and in each card, and the planner still says how many warnings there are to read. A carry stays in the list with Routing hidden.
+
+### A leg says what its warnings are ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- In the route's list, a leg says what to look out for in Check's words, colours and icons: "Cycling not allowed here", "Steps — carry the bike". Each is said once on a line of its own, with its places counted ("Cycling not allowed here (2 places)"), the most serious first, and after two lines the rest as "3 more", which the leg's card lists.
+- The dark keeps its own line ("124 m in the dark"), so Check's "In the dark" isn't said a second time on a leg.
+- A stretch with its waypoints folded still counts them ("2 to read · 2 worth a look"), and shows a bead on its line for each waypoint it folds, not three at most. Where there are many, the beads run together, and the number beside ⌄ says how many.
+
+### An unfolded stretch shows its legs ([#761](https://github.com/TommiContursi/Polku/issues/761), [#819](https://github.com/TommiContursi/Polku/issues/819))
+
+- In the route's list, when you tap a stretch's ⌄, the stretch gives way to its legs: a row for each leg between two waypoints, with its distance, time and climb, how it's drawn, and the warnings and the dark on it. The waypoints between them show their names, and how far and how long from the start.
+- Tap a leg to open its own card. **Edit this stretch** there changes that leg alone: its sport, how it's drawn or its style.
+- The legs come in with their waypoints and fold away with them, and the ⌃ to fold them is where you tapped ⌄.
+- A waypoint's row no longer repeats the warnings on the way to it. A route's end no longer repeats its stretch's warnings once the waypoints the stretch folded are gone.
+
 ### The difficulty key and Go's wind ([#388](https://github.com/TommiContursi/Polku/issues/388))
 
 - With the trails coloured by **Difficulty**, the note in **Layers** says the colours go from S0 green to S6 dark purple, as the map draws them, not to S5.

@@ -15592,7 +15592,7 @@ SE_STATE = """(() => {
       ? { at: `~${b.dataset.from}`, text: b.textContent, label: b.getAttribute('aria-label') || '' }
       : { at: b.dataset.i, line: [...b.querySelectorAll('small:not(.wpl-tag)')].map((x) => x.textContent).join(' ') })),
     kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.listScroller().scrollTop,
-    short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
+    short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button, .wpl-head-tools button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
     slot: p.els.facts.querySelector('.kf-b.warn')?.textContent || null, text: L.textContent };
 })()"""
 
@@ -15780,26 +15780,54 @@ def sections_list(chrome):
         s = st(pg)
         strs = [r for x in s['secs'] for r in x['rows'] if r.startswith('~')]
         ln = pg.js(SE_LINE)
-        if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(3, '6')]:
-            fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want 3 beads and 6 by ⌄)")
+        if len(strs) != 1 or 'shaping' in strs[0] or s['shapes'] or [(x['beads'], x['fold']) for x in ln['stretches']] != [(6, '6')]:
+            fails.append(f"{name}: six shaping points: stretch rows {strs}, {s['shapes']} shown, beads and fold {[(x['beads'], x['fold']) for x in ln['stretches']]} (want a bead each and 6 by ⌄, #761)")
+        # (#761) Show all waypoints over the list unfolds every stretch's at once, and Fold all waypoints folds them, with no
+        # motion
+        r = pg.js("""(() => { const p = polku.planner, b = () => p.els.pointsTools.querySelector('.wpl-all');
+          const st = () => `${b()?.textContent}|${b()?.getAttribute('aria-expanded')}|${p.els.points.querySelectorAll('.wpl-point.shape').length}|${p.els.points.querySelectorAll('.wpl-in').length}`;
+          const out = [st()]; b().click(); out.push(st()); b().click(); out.push(st()); return out; })()""")
+        if r != ['Show all waypoints|false|0|0', 'Fold all waypoints|true|6|0', 'Show all waypoints|false|0|0']:
+            fails.append(f"{name}: Show all waypoints, then Fold all waypoints: {r} (want six shown, none coming in, then folded, #761)")
         # (headless Chrome asks for reduced motion; a person usually doesn't)
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         press(pg, at(pg, "polku.planner.els.points.querySelector('.wpl-unfold')"), f'{name}: unfold', touch)
         s = st(pg)
         if s['shapes'] != 6:
             fails.append(f"{name}: unfolded: {s['shapes']} shaping points' rows, not 6")
-        # (#761) unfolded by a tap or a click, they come in one after another, as a Layers group's rows; from the keyboard,
-        # at once
-        IN = "[...polku.planner.els.points.querySelectorAll('.rows > .wpl-in')].map((x) => `${getComputedStyle(x.querySelector('.wpl-point > span:nth-child(2)')).animationName} ${x.style.animationDelay}`).join(', ')"
+        # (#761) unfolded by a tap or a click, they come in one after another, as a Layers group's rows, each waypoint with
+        # the leg after it, the first leg's words at once; from the keyboard, at once
+        IN = "[...polku.planner.els.points.querySelectorAll('.rows > .wpl-in')].map((x) => `${getComputedStyle(x.querySelector('.wpl-point > span:nth-child(2), .wpl-stretch > span:nth-child(2)')).animationName} ${x.style.animationDelay}`).join(', ')"
+        COME = lambda a: ', '.join(f'{a} {d}ms' for d in [0] + [min(i - 1, 3) * 40 for i in range(1, 7) for _ in (0, 1)])
         r = pg.js(IN)
-        if r != 'lg-in 0ms, lg-in 40ms, lg-in 80ms, lg-in 120ms, lg-in 120ms, lg-in 120ms':
-            fails.append(f"{name}: six waypoints unfolded by a {'tap' if touch else 'click'}: {r!r} (want lg-in, 40 ms apart up to 120 ms, #761)")
+        if r != COME('lg-in'):
+            fails.append(f"{name}: six waypoints unfolded by a {'tap' if touch else 'click'}: {r!r} (want lg-in, the first leg at once, then each waypoint with its leg 40 ms apart up to 120 ms, #761)")
+        # (#761's animation review) a waypoint's mark comes in with its name, not ahead of it
+        r = pg.js("[...polku.planner.els.points.querySelectorAll('.rows > .wpl-in .wpl-point')].filter((b) => getComputedStyle(b.querySelector('.wp-mini')).animationDelay !== getComputedStyle(b.children[1]).animationDelay).map((b) => `${b.dataset.i}: ${getComputedStyle(b.querySelector('.wp-mini')).animationDelay} / ${getComputedStyle(b.children[1]).animationDelay}`)")
+        if r:
+            fails.append(f"{name}: unfolded, marks and names at different delays: {r} (want each mark with its name, #761)")
+        # (#761) unfolded, its legs: each a row between two waypoints, the first with ⌃ where ⌄ was, and the waypoints
+        # without the legs' warnings
+        r = pg.js("(() => { const L = polku.planner.els.points; return { legs: [...L.querySelectorAll('.wpl-stretch')].map((x) => `${x.dataset.from}-${x.dataset.to}`).join(' '), fold: [...L.querySelectorAll('.wpl-strow')].findIndex((x) => x.querySelector('.wpl-unfold[aria-expanded=\"true\"]')), warns: L.querySelectorAll('.wpl-point .wpl-warns').length }; })()")
+        if r != {'legs': '0-1 1-2 2-3 3-4 4-5 5-6 6-7', 'fold': 0, 'warns': 0}:
+            fails.append(f"{name}: six waypoints unfolded: {r} (want seven legs, ⌃ on the first, no warnings on the waypoints, #761)")
+        # (#761's animation review) folded while they're still coming in, a row leaves from where it is, never flashing to
+        # full first
+        r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, tap = () => L.querySelector('.wpl-unfold').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+          p.unfolded.clear(); p.renderWaypoints(); tap();
+          const el = [...L.querySelectorAll('.rows > .wpl-in')].pop().querySelector('.wpl-point > span:nth-child(2), .wpl-stretch > span:nth-child(2)'), a = el.getAnimations().find((x) => x.animationName === 'lg-in');
+          a.pause(); a.currentTime = 160; // (40 ms into its own 180 ms, after its 120 ms wait)
+          const before = +getComputedStyle(el).opacity; tap(); const after = +getComputedStyle(el).opacity;
+          await new Promise((r) => setTimeout(r, 400)); p.unfolded.add(p.pidOf(p.points[0])); p.renderWaypoints(); return { before, after }; })()""")
+        if not (0 < r['before'] < 1) or r['after'] > r['before'] + 0.01:
+            fails.append(f"{name}: folded while coming in: opacity {r['before']} before the tap, {r['after']} after (want no rise, #761)")
         # folded by a tap or a click, their marks and words leave together, faster, before the list closes up
         # (#803) and its ⌄ turns, at the tap: down as they leave, up as they come
         r = pg.js("""(async () => { const p = polku.planner, u = p.els.points.querySelector('.wpl-unfold'), tap = (b) => b.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
           const turn = () => { const b = p.els.points.querySelector('.wpl-unfold'); return `${b.getAttribute('aria-expanded')}, ${b.querySelector('.ic').getAnimations().filter((a) => a.transitionProperty === 'transform').length ? 'turning' : 'still'}`; };
           tap(u);
-          const during = [...p.els.points.querySelectorAll('.wpl-point.shape > span:nth-child(2)')].map((x) => x.getAnimations().filter((a) => a.id === 'fold-out').map((a) => a.effect.getTiming().duration).join()).join(', ');
+          const out = (x) => x.getAnimations().filter((a) => a.id === 'fold-out').map((a) => a.effect.getTiming().duration).join();
+          const during = [...p.els.points.querySelectorAll('.wpl-point.shape > span:nth-child(2)')].map(out).join(', '), legs = [...p.els.points.querySelectorAll('.wpl-stretch')].map((x) => out(x.children[1])).join(', ');
           const folding = turn();
           await new Promise((r) => setTimeout(r, 400)); // (on time, even where the browser draws no frames, as this one may not)
           const after = p.els.points.querySelectorAll('.wpl-point.shape').length;
@@ -15807,9 +15835,9 @@ def sections_list(chrome):
           tap(p.els.points.querySelector('.wpl-unfold'));
           const opening = turn();
           p.unfolded.clear(); p.renderWaypoints(); // (folded again, for the keyboard's)
-          return { during, after, folding, opening }; })()""")
-        if r != {'during': ', '.join(['120'] * 6), 'after': 0, 'folding': 'false, turning', 'opening': 'true, turning'}:
-            fails.append(f"{name}: six waypoints folded by a tap, then unfolded: {r} (want them leaving in 120 ms, then folded, and ⌄ turning at each tap, #761, #803)")
+          return { during, legs, after, folding, opening }; })()""")
+        if r != {'during': ', '.join(['120'] * 6), 'legs': ', '.join([''] + ['120'] * 6), 'after': 0, 'folding': 'false, turning', 'opening': 'true, turning'}:
+            fails.append(f"{name}: six waypoints folded by a tap, then unfolded: {r} (want them and the legs after the first leaving in 120 ms, then folded, and ⌄ turning at each tap, #761, #803)")
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').focus(); true")
         for ev in ({'type': 'keyDown', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, 'text': '\r'}, {'type': 'keyUp', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}):
             pg.c.send('Input.dispatchKeyEvent', ev, pg.s)  # (with its text, so Enter presses the button, as key() doesn't)
@@ -15821,7 +15849,7 @@ def sections_list(chrome):
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         r = pg.js(f"""(async () => {{ const p = polku.planner; p.unfolded.clear(); p.renderWaypoints();
           p.els.points.querySelector('.wpl-unfold').dispatchEvent(new MouseEvent('click', {{ bubbles: true, detail: 1 }})); return {IN}; }})()""")
-        if r != 'qd-fade 0ms, qd-fade 40ms, qd-fade 80ms, qd-fade 120ms, qd-fade 120ms, qd-fade 120ms':
+        if r != COME('qd-fade'):
             fails.append(f"{name}: six waypoints unfolded by a tap with reduced motion: {r!r} (want a fade, #761)")
         press(pg, at(pg, point(3)), f'{name}: via 3’s row', touch)
         scroll0 = pg.js("polku.planner.cards.saved && polku.planner.cards.saved.scroll")
@@ -15832,7 +15860,24 @@ def sections_list(chrome):
         s = st(pg)
         if s['kind'] or s['shapes'] != 6 or scroll0 is None or abs(s['scroll'] - scroll0) > 2:
             fails.append(f"{name}: Back from a row's card: card {s['kind']}, {s['shapes']} rows unfolded, scrolled {s['scroll']} (was {scroll0})")
-        # a stretch's row: its card; Edit this stretch changes every leg in it
+        # (#761) a leg's row: its own card, that row lit; Edit this stretch there changes that leg alone, and the fold splits
+        # around it: the stretch before it stays unfolded, the one after it folds
+        press(pg, at(pg, stretch(2)), f'{name}: leg 2’s row', touch)
+        r = pg.js("({ kind: polku.planner.cards.current?.kind, title: document.querySelector('.pl-way.card .way-hint b')?.textContent, lit: [...polku.planner.els.points.querySelectorAll('[aria-current=\"true\"]')].map((x) => `${x.dataset.from}-${x.dataset.to}`) })")
+        if r != {'kind': 'stretch', 'title': 'Waypoint 2 → Waypoint 3', 'lit': ['2-3']}:
+            fails.append(f"{name}: leg 2's row: {r} (want its own card, Waypoint 2 → Waypoint 3, and only its row lit, #761)")
+        else:
+            press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .btn')].find((b) => b.textContent.trim() === 'Edit this stretch')"), f'{name}: Edit this stretch', touch)
+            press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b').textContent === 'Sport')"), f'{name}: Sport', touch)
+            press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b').textContent === 'Hike')"), f'{name}: Hike', touch)
+            time.sleep(0.6)
+            r = pg.js("({ sports: polku.planner.legs.map((_, i) => polku.planner.legSport(i)).join(), rows: [...polku.planner.els.points.querySelectorAll('.wpl-stretch')].map((x) => `${x.dataset.from}-${x.dataset.to}`).join(' ') })")
+            if r != {'sports': 'mtb,mtb,hike,mtb,mtb,mtb,mtb', 'rows': '0-1 1-2 2-3 3-7'}:
+                fails.append(f"{name}: Edit this stretch from leg 2's row → Hike: {r} (want that leg alone, and the stretch after it folded, #761)")
+            pg.js("polku.planner.cards.close(); polku.planner.undo(); true")
+            time.sleep(0.6)
+        # a stretch's row, folded: its card; Edit this stretch changes every leg in it
+        pg.js("(() => { const p = polku.planner; p.unfolded.clear(); p.renderWaypoints(); return true; })()")
         press(pg, at(pg, stretch(0)), f'{name}: the stretch’s row', touch)
         if st(pg)['kind'] != 'stretch':
             fails.append(f"{name}: a stretch's row: {st(pg)['kind']} card")
@@ -15945,9 +15990,10 @@ def sections_list(chrome):
             if '.wpl-stretch' in sel and pg.js("(() => { const t = document.getElementById('tip').getBoundingClientRect(), u = polku.planner.els.points.querySelector('.wpl-strow .wpl-unfold')?.getBoundingClientRect(); return !u || (t.left < u.right && t.right > u.left && t.top < u.bottom && t.bottom > u.top); })()"):
                 fails.append(f"{name}: the stretch's tooltip covers its ⌄, or there's no ⌄ (#761)")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
-        # (#761) unfolded, a waypoint says the warnings on the way to it, as a stretch does: one to read between via 3 and
-        # via 4 is on via 4's row, in its label too, one worth a look between via 1 and via 2 on via 2's, and on none of the
-        # others; with via 4 named, the stretch after it doesn't count the one before it. (Leaving at 10:00, in daylight.)
+        # (#761) unfolded, each leg names the warnings on it, in Check's words: one to read between via 3 and via 4 on that
+        # leg's row, in its label too, one worth a look between via 1 and via 2 on that one's, and on none of the others, nor
+        # on the waypoints; with via 4 named, the stretch after it doesn't count the one before it. (Leaving at 10:00, in
+        # daylight.)
         pg.js("window.rcTags = (q) => (Math.abs(q[0] - 23.808) < 0.001 ? 'highway=footway bicycle=no surface=paved' : Math.abs(q[0] - 23.796) < 0.001 ? 'highway=path surface=dirt mtb:scale=3' : 'highway=path surface=dirt mtb:scale=1'); "
               "const d = new Date(); d.setHours(10, 0, 0, 0); if (d < Date.now()) d.setDate(d.getDate() + 1); polku.planner.setLeave(d / 1000); true")
         route(pg, name, {'mode': 'auto', 'pts': PTS})
@@ -15959,20 +16005,53 @@ def sections_list(chrome):
         if w != ['Waypoint 2', True, 'Show the 5 waypoints']:
             fails.append(f"{name}: an unnamed waypoint's name, in a GPX, and ⌄'s label: {w} (want Waypoint 2, in the GPX, Show the 5 waypoints)")
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').click(); true")
-        got, lab = json.loads(pg.js(WARNS)), pg.js("polku.planner.els.points.querySelector('.wpl-point[data-i=\"4\"]')?.getAttribute('aria-label') || ''")
-        if got != ['0-6:1 to read 1 worth a look', '2:1 worth a look', '4:1 to read'] or '1 to read' not in lab:
-            fails.append(f"{name}: unfolded, the warnings on the stretch and its waypoints: {got}, via 4's label {lab!r} (#761)")
+        got, lab = json.loads(pg.js(WARNS)), pg.js("polku.planner.els.points.querySelector('.wpl-stretch[data-from=\"3\"]')?.getAttribute('aria-label') || ''")
+        if got != ['1-2:Technical trail S3', '3-4:Cycling not allowed here'] or 'Cycling not allowed here' not in lab:
+            fails.append(f"{name}: unfolded, the warnings on the legs and waypoints: {got}, the leg to via 4's label {lab!r} (#761)")
+        # (#761) a leg says each once, with its places counted, the most serious first, a line each and three at most; the
+        # dark isn't named, its own line says it
+        r = pg.js("""(() => { const p = polku.planner, keep = p.itemsOn, it = (g, text, at, kind) => ({ g, w: { text, at, kind, lngLat: [23.8 + at / 1e5, 61.5] } });
+          const on = (list) => { p.itemsOn = (s) => (s.from === 1 && s.to === 2 ? list : keep.call(p, s)); p.renderWaypoints(); return [...p.els.points.querySelectorAll('.wpl-stretch[data-from="1"] .wpl-warns')].map((x) => x.textContent); };
+          const a = on([it('read', 'Cycling not allowed here', 10), it('read', 'Cycling not allowed here', 40), it('read', 'In the dark for 300 m', 10, 'dark'), it('look', 'Steps — carry the bike', 60)]);
+          const b = on(['Cycling not allowed here', 'Steps — carry the bike', 'Steep descent', 'Ferry crossing'].map((t, k) => it(k ? 'look' : 'read', t, 10 * k)));
+          delete p.itemsOn; p.renderWaypoints(); return { a, b }; })()""")
+        if r != {'a': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'b': ['Cycling not allowed here', 'Steps — carry the bike', '2 more']}:
+            fails.append(f"{name}: a leg's warnings by name: {r} (want each once with its places, no dark, three lines at most, #761)")
+        # (#761) the list's settings, the app's menu over the list: the column's times by the clock, and the rows without how
+        # a leg is drawn, its warnings, the dark or the weather, each a switch, saved; what's hidden is still in Check
+        r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), leg = () => L.querySelector('.wpl-stretch[data-from="3"]')?.textContent || '';
+          p.els.pointsTools.querySelector('.wpl-set').click(); await wait(300);
+          const m = document.querySelector('.menu-pop'), menu = [...m.querySelectorAll('.menu-h, .menu-item, .tg-text')].map((x) => x.textContent).join('|'), before = leg();
+          for (const x of m.querySelectorAll('.tg input')) x.click();
+          const after = leg(), wx = L.querySelectorAll('.wpl-point .wx-line').length, kept = document.body.contains(p.els.pointsTools.querySelector('.wpl-set')) && p.els.pointsTools.querySelector('.wpl-set') === p.els.listSet;
+          [...m.querySelectorAll('[role=menuitemradio]')].find((x) => x.textContent === 'Clock').click(); await wait(100);
+          const col = L.querySelector('.wpl-point[data-i="1"] .wpl-when small')?.textContent || '', saved = JSON.parse(localStorage.getItem('polku:listShow') || '{}'), check = p.headsUp().read.length;
+          localStorage.removeItem('polku:listShow'); p.listShow = { clock: false, routing: true, warnings: true, dark: true, weather: true }; p.renderWaypoints();
+          return { menu, before, after, wx, kept, col, saved, check, back: leg() === before }; })()""")
+        if (r['menu'] != 'Times|From start|Clock|Show|Routing|Warnings|Darkness|Weather' or 'Follow paths' not in r['before'] or 'Cycling not allowed here' not in r['before'] or not re.fullmatch(r'[\d.]+\sk?m · \d+\smin( · ↑\d+\sm)?', r['after'])
+                or r['wx'] or not r['kept'] or not re.fullmatch(r'\d\d[:.]\d\d', r['col']) or r['saved'] != {'clock': True, 'routing': False, 'warnings': False, 'dark': False, 'weather': False} or not r['check'] or not r['back']):
+            fails.append(f"{name}: the list's settings: {r} (want its menu, the leg's numbers alone, no weather, the clock's times, saved, Check as before, #761)")
         pg.js("polku.planner.setName(4, 'Kivikko'); true")
         time.sleep(0.8)
         pg.js(SETTLED)
         got = json.loads(pg.js(WARNS))
-        if got != ['0-4:1 to read 1 worth a look', '2:1 worth a look', '4:1 to read']:
+        if got != ['1-2:Technical trail S3', '3-4:Cycling not allowed here']:
             fails.append(f"{name}: with via 4 named, the warnings: {got} (#761)")
         # (after sunset on the way to via 4 too: on a line of its own under the warning, as when you're there, not one)
         got = pg.js("""(() => { const p = polku.planner; p.analysis.darkWarn = [{ at: p.lengthTo(3) + 20, len: 200, kind: 'dark', twilight: true, evening: true, text: 'After sunset (16:02) for 200 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
-          const lines = [...p.els.points.querySelectorAll('.wpl-point[data-i="4"] .wpl-warns')].map((x) => x.textContent); p.analysis.darkWarn = []; p.renderWaypoints(); return lines; })()""")
-        if got != ['1 to read', '200 m after sunset']:
-            fails.append(f"{name}: via 4's lines with a warning and after sunset: {got} (want the light on a line of its own, #761)")
+          const lines = [...p.els.points.querySelectorAll('.wpl-stretch[data-from="3"] .wpl-warns')].map((x) => x.textContent); p.analysis.darkWarn = []; p.renderWaypoints(); return lines; })()""")
+        if got != ['Cycling not allowed here', '200 m after sunset']:
+            fails.append(f"{name}: the leg to via 4's lines with a warning and after sunset: {got} (want the light on a line of its own, #761)")
+        # (#819) a stretch unfolded, then its only folded waypoint removed: the end's row doesn't say the stretch's warnings
+        # again under its own
+        # (the first leg is worth a look and the second isn't: with via 1 gone, the stretch is the first's)
+        route(pg, name, {'mode': 'auto', 'pts': PTS[1:4]})
+        r = pg.js("""(async () => { const p = polku.planner, L = p.els.points; L.querySelector('.wpl-unfold').click(); p.removeWithUndo(1);
+          for (let k = 0; k < 50 && !(p.legs.length === 1 && p.analysisFits() && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100));
+          await new Promise((r) => setTimeout(r, 400));
+          return { stretch: L.querySelector('.wpl-stretch .wpl-warns')?.textContent || '', end: [...L.querySelectorAll('.wpl-point.last .wpl-warns')].map((x) => x.textContent) }; })()""")
+        if not r['stretch'] or r['end']:
+            fails.append(f"{name}: unfolded, then its waypoint removed: the stretch says {r['stretch']!r}, the end's row {r['end']} (want the end's row without them, #819)")
         pg.js("polku.planner.setLeave(null); true")
         # (#761, PR 6) a desktop's tools in a waypoint's row, where › is, while the mouse is over it: Rename (the name a
         # field in the row: Enter keeps it, the focus back on the row), Remove (with Undo in the note) and the grip at the
