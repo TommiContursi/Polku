@@ -8695,7 +8695,7 @@ def settings_groups(chrome):
         st = pg.js("""(() => { const b = document.querySelector('#settings-body'), g = [...b.querySelectorAll(':scope > .lg-group')];
           return { titles: g.map((d) => d.querySelector('.lg-title').textContent), open: g.filter((d) => d.open).length, fits: b.scrollHeight <= b.clientHeight + 1,
             coming: b.querySelectorAll('.coming').length, usable: [...b.querySelectorAll('.coming')].flatMap((c) => [c, ...c.querySelectorAll('input, button')]).filter((c) => 'disabled' in c && !c.disabled).length }; })()""")
-        want = ['Speeds and tiles by sport', 'Display', 'Language and units', 'Route arrows and marks', 'Map and planner', 'Hidden Heads-up', 'Offline maps', 'Saved on this device', 'Strava and Garmin', 'Data sources', 'About Polku']
+        want = ['Speeds and tiles by sport', 'Display', 'Language and units', 'Route’s list', 'Route arrows and marks', 'Map and planner', 'Hidden Heads-up', 'Offline maps', 'Saved on this device', 'Strava and Garmin', 'Data sources', 'About Polku']
         if st['titles'] != want:
             fails.append(f"the groups are {st['titles']}")
         if st['open'] or not st['fits']:
@@ -8773,7 +8773,7 @@ def settings_groups(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} Settings: eleven folding groups that fit a phone and stay as left, planned settings off, Show again, Clear, marks and 3D height in both places, another sport's tiles by touch, and the focus back on ⚙" + ''.join(f'\n     - {f}' for f in fails))
+    print(f"{'ok  ' if not fails else 'FAIL'} Settings: twelve folding groups that fit a phone and stay as left, planned settings off, Show again, Clear, marks and 3D height in both places, another sport's tiles by touch, and the focus back on ⚙" + ''.join(f'\n     - {f}' for f in fails))
     return not fails
 
 
@@ -16014,9 +16014,10 @@ def sections_list(chrome):
           const on = (list) => { p.itemsOn = (s) => (s.from === 1 && s.to === 2 ? list : keep.call(p, s)); p.renderWaypoints(); return [...p.els.points.querySelectorAll('.wpl-stretch[data-from="1"] .wpl-warns')].map((x) => x.textContent); };
           const a = on([it('read', 'Cycling not allowed here', 10), it('read', 'Cycling not allowed here', 40), it('read', 'In the dark for 300 m', 10, 'dark'), it('look', 'Steps — carry the bike', 60)]);
           const b = on(['Cycling not allowed here', 'Steps — carry the bike', 'Steep descent', 'Ferry crossing'].map((t, k) => it(k ? 'look' : 'read', t, 10 * k)));
-          delete p.itemsOn; p.renderWaypoints(); return { a, b }; })()""")
-        if r != {'a': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'b': ['Cycling not allowed here', 'Steps — carry the bike', '2 more']}:
-            fails.append(f"{name}: a leg's warnings by name: {r} (want each once with its places, no dark, three lines at most, #761)")
+          p.listShow.look = false; const c = on([it('read', 'Cycling not allowed here', 10), it('look', 'Steps — carry the bike', 60)]); p.listShow.look = true;
+          delete p.itemsOn; p.renderWaypoints(); return { a, b, c }; })()""")
+        if r != {'a': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'b': ['Cycling not allowed here', 'Steps — carry the bike', '2 more'], 'c': ['Cycling not allowed here']}:
+            fails.append(f"{name}: a leg's warnings by name: {r} (want each once with its places, no dark, three lines at most, and Worth a look hiding the lighter ones alone, #761)")
         # (#761) the list's settings, the app's menu over the list: the column's times by the clock, and the rows without how
         # a leg is drawn, its warnings, the dark or the weather, each a switch, saved; what's hidden is still in Check
         r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), leg = () => L.querySelector('.wpl-stretch[data-from="3"]')?.textContent || '';
@@ -16026,10 +16027,10 @@ def sections_list(chrome):
           const after = leg(), wx = L.querySelectorAll('.wpl-point .wx-line').length, kept = document.body.contains(p.els.pointsTools.querySelector('.wpl-set')) && p.els.pointsTools.querySelector('.wpl-set') === p.els.listSet;
           [...m.querySelectorAll('[role=menuitemradio]')].find((x) => x.textContent === 'Clock').click(); await wait(100);
           const col = L.querySelector('.wpl-point[data-i="1"] .wpl-when small')?.textContent || '', saved = JSON.parse(localStorage.getItem('polku:listShow') || '{}'), check = p.headsUp().read.length;
-          p.listShow = { clock: false, warnings: true, drawing: true, dark: true, weather: true, speed: false }; localStorage.setItem('polku:listShow', JSON.stringify(p.listShow)); p.renderWaypoints();
+          p.listShow = { clock: false, warnings: true, look: true, drawing: true, dark: true, weather: true, speed: false }; localStorage.setItem('polku:listShow', JSON.stringify(p.listShow)); p.renderWaypoints();
           return { menu, before, after, wx, kept, col, saved, check, back: leg() === before }; })()""")
-        if (r['menu'] != 'Times|From start|Clock|Show|Warnings|Drawing mode|Darkness|Weather|Speed' or 'Follow paths' not in r['before'] or 'Cycling not allowed here' not in r['before'] or not re.fullmatch(r'[\d.]+\sk?m · \d+\smin( · ↑\d+\sm)? · [\d.]+\skm/h', r['after'])
-                or r['wx'] or not r['kept'] or not re.fullmatch(r'\d\d[:.]\d\d', r['col']) or r['saved'] != {'clock': True, 'warnings': False, 'drawing': False, 'dark': False, 'weather': False, 'speed': True} or not r['check'] or not r['back']):
+        if (r['menu'] != 'Times|From start|Clock|Show|Warnings|Worth a look|Drawing mode|Darkness|Weather|Speed' or 'Follow paths' not in r['before'] or 'Cycling not allowed here' not in r['before'] or not re.fullmatch(r'[\d.]+\sk?m · \d+\smin( · ↑\d+\sm)? · [\d.]+\skm/h', r['after'])
+                or r['wx'] or not r['kept'] or not re.fullmatch(r'\d\d[:.]\d\d', r['col']) or r['saved'] != {'clock': True, 'warnings': False, 'look': False, 'drawing': False, 'dark': False, 'weather': False, 'speed': True} or not r['check'] or not r['back']):
             fails.append(f"{name}: the list's settings: {r} (want its menu, the leg's numbers and speed alone, no weather, the clock's times, saved, Check as before, #761)")
         pg.js("polku.planner.setName(4, 'Kivikko'); true")
         time.sleep(0.8)
@@ -16217,10 +16218,35 @@ def sections_list(chrome):
           p.els.pointsTools.querySelector('.wpl-all')?.click(); await wait(200);
           const nums = L.querySelector('.wpl-stretch .wpl-nums')?.textContent || '', pts = L.querySelectorAll('.wpl-point').length, withWx = L.querySelectorAll('.wpl-point .wx-line').length;
           return { shown, how, wx, settings, nums, pts, withWx, wind: !!p.analysis.wind }; })()""")
-        if (r['shown'] != {'clock': False, 'warnings': True, 'drawing': False, 'dark': False, 'weather': False, 'speed': False} or r['how'] or r['wx']
-                or r['settings'] != ['Warnings:true', 'Drawing mode:false', 'Darkness:false', 'Weather:false', 'Speed:false'] or not re.search(r'[\d.]+\skm/h$', r['nums'])
+        if (r['shown'] != {'clock': False, 'warnings': True, 'look': True, 'drawing': False, 'dark': False, 'weather': False, 'speed': False} or r['how'] or r['wx']
+                or r['settings'] != ['Warnings:true', 'Worth a look:true', 'Drawing mode:false', 'Darkness:false', 'Weather:false', 'Speed:false'] or not re.search(r'[\d.]+\skm/h$', r['nums'])
                 or (r['wind'] and r['withWx'] != r['pts'])):
             fails.append(f"{name}: {r} (want Warnings alone at first, the same switches in Settings, then the speed on the numbers and the weather at every waypoint, #761)")
+        # (#761) by touch, a tap outside the open menu, on a stretch's row, closes it and opens nothing (it opened that
+        # stretch's card); its ✕ closes it with the focus back on its button; Worth a look hides Check's lighter warnings alone
+        pg.js("""(async () => { const p = polku.planner; p.setSheetState('full'); await new Promise((r) => setTimeout(r, 600));
+          const sc = p.listScroller(); sc.scrollTop += p.els.pointsTools.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8; return true; })()""")
+        open_menu = "(async () => { polku.planner.els.pointsTools.querySelector('.wpl-set').click(); await new Promise((r) => setTimeout(r, 500)); return !!document.querySelector('.menu-pop'); })()"
+        mid = "(r) => r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null"
+        if pg.js(open_menu):
+            q = pg.js(f"""(() => {{ const m = document.querySelector('.menu-pop').getBoundingClientRect();
+              return ({mid})([...polku.planner.els.points.querySelectorAll('.wpl-stretch')].map((x) => x.getBoundingClientRect()).find((r) => r.top >= 0 && r.bottom <= innerHeight && (r.bottom < m.top || r.top > m.bottom))); }})()""")
+            if not q:
+                fails.append(f"{name}: no stretch's row in sight beside the list's settings")
+                pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true")
+            else:
+                pg.tap(q['x'], q['y']); time.sleep(0.5)
+                r = pg.js("({ menu: !!document.querySelector('.menu-pop'), card: polku.planner.cards.current ? polku.planner.cards.current.kind : null })")
+                if r != {'menu': False, 'card': None}:
+                    fails.append(f"{name}: a tap outside the list's settings: {r} (want it closed and no card, #761)")
+                    pg.js("polku.planner.cards.close(); true")
+            time.sleep(0.8)
+        if pg.js(open_menu):
+            q = pg.js(f"({mid})(document.querySelector('.menu-pop .way-x')?.getBoundingClientRect())")
+            pg.tap(q['x'], q['y']); time.sleep(0.4)
+            r = pg.js("({ menu: !!document.querySelector('.menu-pop'), focus: document.activeElement === polku.planner.els.listSet })")
+            if r != {'menu': False, 'focus': True}:
+                fails.append(f"{name}: the list's settings' ✕: {r} (want it closed, the focus on its button, #761)")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")

@@ -8,6 +8,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - At first, a stretch in the route's list shows its distance, time, climb and warnings. How it's drawn, the dark and the weather each have a switch in **List settings**.
 - In **List settings**, **Warnings** comes first, and **Routing** is now called **Drawing mode** (Follow paths, Freehand).
+- **Worth a look** has its own switch: with it off, the list leaves out Check's lighter warnings, such as steps or a technical trail, and the gear left at a changeover, and keeps the warnings to read.
+- **List settings** has a row with its name and ✕. On a phone, a tap outside it closes it and doesn't also open what's under it.
 - **Weather** shows the weather at every waypoint, not only where a part starts or ends and at a stop, which helps on a long route with few waypoints.
 - **Speed**, off at first, adds each stretch's average speed after its numbers, as **Your speed** gives it: a pace for running and swimming.
 - The same switches are in **Settings › Route’s list**.

@@ -265,7 +265,7 @@ class Page:
         items = {'polku:settings': json.dumps(settings or {'activity': 'mtb'}),
                  # (Route's list with its rows' details shown, as the checks read them; its own defaults, Warnings alone,
                  # are checked on a page of their own, #761)
-                 'polku:listShow': json.dumps({'warnings': True, 'drawing': True, 'dark': True, 'weather': True, 'speed': False})}
+                 'polku:listShow': json.dumps({'warnings': True, 'look': True, 'drawing': True, 'dark': True, 'weather': True, 'speed': False})}
         items.update(storage or {})
         # Polku's offer of Fewer effects when frames are slow (#632) would come up in every test on SwiftShader
         items['polku:settings'] = json.dumps({'fewerOffered': True, **json.loads(items['polku:settings'])})

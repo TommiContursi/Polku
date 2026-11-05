@@ -312,7 +312,7 @@ In small phases from here (decided 2026-11-04), each one change to the rows as b
 
 6g. **Show all waypoints and the list's settings** (Parts 19, built 2026-11-05, after #839): in the Waypoints heading's row (where its summary is while the list is open, so the list starts no lower and the start and first stretch stay in sight at a phone's half, #764; over the list at 200 %), Show all waypoints and Fold all waypoints (6c), with no motion, and the sliders opening the app's menu: Times (From start, Clock) and Show (Routing, Warnings, Darkness, Weather), saved as the map's marks are (`listShow`). Motion decided with /animate: none, the menu's own. `sections` checks both.
 
-6h. **The list's settings, as decided after Parts 19** (built 2026-11-06): Warnings first and the only one on at first, Routing called Drawing mode, Weather at every waypoint, and Speed (a stretch's average in Your speed's units, `speedWords()`); the same switches in Settings › Route's list (`LIST_SHOWS`, `setListShow()`). `sections` checks the defaults on a page of its own.
+6h. **The list's settings, as decided after Parts 19** (built 2026-11-06): Warnings first and the only one on at first, Routing called Drawing mode, Weather at every waypoint, and Speed (a stretch's average in Your speed's units, `speedWords()`); the same switches in Settings › Route's list (`LIST_SHOWS`, `setListShow()`). From trying it (2026-11-06): Worth a look on a switch of its own, on at first, and the menu with its name and ✕, a tap outside closing it alone (`popMenu()`'s `modal`). `sections` checks the defaults on a page of its own.
 
 The phases after it, to be decided one at a time:
 

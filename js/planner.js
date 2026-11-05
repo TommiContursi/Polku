@@ -67,7 +67,8 @@ const TIPS = {
   edit: { name: 'Edit', keys: 'E', text: 'Back to drawing: a click on the map adds a waypoint.' },
 };
 // What Route's list can show or hide, in its settings' order: its menu over the list and Settings (#761)
-export const LIST_SHOWS = [['warnings', 'Warnings'], ['drawing', 'Drawing mode'], ['dark', 'Darkness'], ['weather', 'Weather'], ['speed', 'Speed']];
+// (Warnings: what's to read and what isn't checked; Worth a look: Check's lighter ones and a changeover's gear)
+export const LIST_SHOWS = [['warnings', 'Warnings'], ['look', 'Worth a look'], ['drawing', 'Drawing mode'], ['dark', 'Darkness'], ['weather', 'Weather'], ['speed', 'Speed']];
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
 const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points'];
 const NEAR_LINE = 30;
@@ -206,7 +207,7 @@ export class Planner {
     this.pid = new WeakMap(); // point → who it is: the same through a move, Undo and Redo (a point's card follows it, 25d)
     this.pidN = 0;
     this.marks = { km: true, time: true, duration: true, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
-    this.listShow = { clock: false, warnings: true, drawing: false, dark: false, weather: false, speed: false, ...store.get('listShow', {}) }; // Route's list's settings (#761): only Warnings at first
+    this.listShow = { clock: false, warnings: true, look: true, drawing: false, dark: false, weather: false, speed: false, ...store.get('listShow', {}) }; // Route's list's settings (#761): only the warnings at first
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
@@ -2954,14 +2955,18 @@ export class Planner {
   // the list's settings (#761), the app's menu: the column's times, from the start or the clock's, and what the rows show,
   // each a switch (Settings has the same, `LIST_SHOWS`); saved as the map's marks are. What's hidden stays in Check and the
   // cards.
+  // A row of its own with its name and ✕, as the planner's steps have, and a tap outside closes it alone: on a phone it's
+  // over the list, where that tap would open a card.
   listMenu(anchor) {
     const S = this.listShow;
+    const x = h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close List settings', html: icon('close', 20), onclick: () => { menu.close(); anchor.focus(); } });
     const sw = ([k, label]) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: S[k], onchange: (e) => this.setListShow({ [k]: e.target.checked }) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
-    popMenu(anchor, [
+    const menu = popMenu(anchor, [
+      { node: h('div', { class: 'way-bar' }, h('b', {}, 'List settings'), x) },
       { group: 'Times', items: [['route', 'From start', false], ['clock', 'Clock', true]].map(([ic, label, clock]) => ({ icon: ic, label, radio: true, checked: S.clock === clock, fn: () => this.setListShow({ clock }) })) },
       { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, ...LIST_SHOWS.map(sw)) }] },
       { note: 'Hidden items stay in Check and the cards.' },
-    ], { label: 'List settings' });
+    ], { label: 'List settings', modal: true });
   }
   setListShow(patch) {
     Object.assign(this.listShow, patch);
@@ -3156,7 +3161,7 @@ export class Planner {
     // (before the route is timed: a night's morning hour, nothing for the others)
     const times = [at ? h('span', {}, `${this.clockOf(from)}–${this.clockOf(to)}`) : kind === 'night' ? h('span', {}, `Go on at ${hhmm(stop.on)}`) : null,
       ...(sun[0] ? [h('span', { html: `${icon('sunset', 16)}${this.timeOf(sun[0])}` })] : []), ...(sun[1] ? [h('span', { html: `${icon('sunrise', 16)}${this.timeOf(sun[1])}` })] : [])];
-    const gear = kind === 'change' && this.listShow.warnings && this.gearAt(i) && !this.carryAt(i) ? `${this.gearLabel(GEAR[ch.from])} stays here` : '';
+    const gear = kind === 'change' && this.listShow.look && this.gearAt(i) && !this.carryAt(i) ? `${this.gearLabel(GEAR[ch.from])} stays here` : '';
     const shown = times.filter(Boolean);
     const b = h('button', { type: 'button', class: 'row wpl-wait', 'data-i': String(i), 'data-wait': kind,
       // (its label says in words what the icons say: from and to, sunset and sunrise)
@@ -3246,13 +3251,13 @@ export class Planner {
   warnsOn(s, named = false) {
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
     const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Freehand|Carry \/ portage)/.test(w.text);
-    const its = this.itemsOn(s).filter((it) => !this.isRead(it) && !(it.g === 'look' && own(it.w))), n = (g) => its.filter((it) => it.g === g).length;
+    const S = this.listShow, its = this.itemsOn(s).filter((it) => !this.isRead(it) && (it.g === 'look' ? S.look && !own(it.w) : S.warnings)), n = (g) => its.filter((it) => it.g === g).length;
     const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
     const dark = on((x) => !x.twilight), darkM = this.listShow.dark ? m(dark) : 0, dusk = this.listShow.dark ? m(on((x) => x.twilight && x.evening)) : 0, dawn = this.listShow.dark ? m(on((x) => x.twilight && !x.evening)) : 0;
     const G = { read: ['read', 'warnf'], not: ['unk', 'unk'], look: ['look', 'eye'] }, by = new Map();
     for (const it of named ? its : []) if (it.w.kind !== 'dark') by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
     const names = [...by].map(([t, x]) => `<span class="${G[x.g][0]}">${icon(G[x.g][1], 14)}${escapeHtml(t)}${x.k > 1 ? ` (${x.k} places)` : ''}</span>`);
-    const warns = !this.listShow.warnings ? [] : named ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
+    const warns = named ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
       : [[n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
         n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : ''].filter(Boolean).join(' ')].filter(Boolean);
     const light = [dusk >= 50 ? `<span class="dark">${icon('sunset', 14)}${fmtDist(dusk)} after sunset</span>` : '', darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : '',
