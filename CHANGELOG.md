@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### A marked route picked while the list loads ([#427](https://github.com/TommiContursi/Polku/issues/427))
+
+- In **Marked routes**, a route you pick on the map while the list is still loading stays picked when the list comes in, instead of going back to the one picked before.
+
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each waypoint shows how far it is from the start and how long it takes to get there, stops and changeovers included, in a column left of the route's line: "1.11 km" over "5 min". With the text enlarged, they go under the waypoint's name.

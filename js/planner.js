@@ -5095,7 +5095,6 @@ export class Planner {
   async listMarked() {
     const M = this.marked, sp = this.app.activity(), types = markedFor(sp);
     const gen = (M.gen = (M.gen || 0) + 1);
-    const keep = M.list[M.on] && M.list[M.on].key;
     if (!types.length) { M.list = []; M.state = 'none'; this.showMarked(); this.renderStart(); return; }
     const c = this.map.getCenter();
     const fin = c.lng > 19 && c.lng < 32 && c.lat > 59.4 && c.lat < 70.2;
@@ -5115,6 +5114,7 @@ export class Planner {
       return;
     }
     if (gen !== M.gen || this.startView() !== 'find') return;
+    const keep = M.list[M.on] && M.list[M.on].key; // (the pick as it is now: one made while LIPAS answered stays, #427)
     M.list = res.routes.slice(0, 20);
     M.on = Math.max(0, M.list.findIndex((r) => r.key === keep));
     M.partial = res.failed > 0 && M.list.length > 0;
