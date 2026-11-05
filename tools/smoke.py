@@ -1644,7 +1644,7 @@ STOPS = """(async () => {
   p.reveal('speed');
   await wait(200);
   const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
-  if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
+  if (!rows.some((t) => /^Breaks \\(1\\)/.test(t)) || !rows.some((t) => /^Nights \\(1\\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
   // the point's card has the stop, places to sleep for a night, and the gear switch (25d)
   p.openPointCard(p.points[2]);
   await wait(200);
@@ -2627,7 +2627,7 @@ HEADS = """(async () => {
   // analysis.js: bike runs, then foot runs, then the rest
   // (the technical stretch is S3, then S4: named by its hardest)
   const bike = A.findWarnings(along, flat, attrs('mtb', [[0, 6, { highway: 'steps' }], [10, 16, { highway: 'path', bicycle: 'no' }], [20, 23, { highway: 'path', 'mtb:scale': '3' }], [23, 26, { highway: 'path', 'mtb:scale': '4' }], [30, 50, { highway: 'track', portage: 'yes' }], [50, 56, { route: 'ferry' }]]), pts, 'mtb');
-  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap', /^highway=steps · /], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap', /^bicycle=no · /], [/^Technical trail S4/, 'look', 'map', 'OpenStreetMap', /^mtb:scale=4 · Extremely difficult\./], [/^Carry/, 'look', 'map', 'OpenStreetMap', /^portage=yes · /], [/^Ferry/, 'look', 'map', 'OpenStreetMap', /^route=ferry · /]]);
+  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap', /^highway=steps · /], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap', /^bicycle=no · /], [/^Technical trail S4/, 'look', 'map', 'OpenStreetMap', /^mtb:scale=4 · Extremely difficult\\./], [/^Carry/, 'look', 'map', 'OpenStreetMap', /^portage=yes · /], [/^Ferry/, 'look', 'map', 'OpenStreetMap', /^route=ferry · /]]);
   const steep = Float32Array.from({ length: n }, (_, i) => (i < 20 ? 20 : i < 40 ? -25 : 0));
   expect('findWarnings, steep', A.findWarnings(along, steep, attrs('mtb', []), pts, 'mtb'), [[/^Steep climb/, 'look', 'estimate', 'the terrain model', /^Steeper than 15 %/], [/^Steep descent/, 'look', 'estimate', 'the terrain model', /^Steeper than 18 %/]]);
   expect('findWarnings, hike', A.findWarnings(along, Float32Array.from({ length: n }, (_, i) => (i < 20 ? 30 : 0)), attrs('hike', [[30, 40, { highway: 'path', sac_scale: 'alpine_hiking' }], [40, 60, { highway: 'path', access: 'no' }]]), pts, 'hike'),
@@ -3128,7 +3128,7 @@ def onroute(chrome):
           p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
           p.renderWarnings();
           const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
-          if (!line() || !line().classList.contains('unk') || said(line()) !== '1 not checked' || !/^1 not checked: The forecast didn.t answer\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
+          if (!line() || !line().classList.contains('unk') || said(line()) !== '1 not checked' || !/^1 not checked: The forecast didn.t answer\\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
           p.hideWarnKind({ key: 'roadwork' }, false);
           // nothing to read and all checked: no row
           window.wx501 = false;
@@ -4553,7 +4553,7 @@ SPORT_SWITCH = """(async () => {
   await wait(500);
   if (sports() !== 'mtb,paddle,mtb') errs.push(`after the map’s sport changed: ${sports()}`);
   if (keys() !== k0) errs.push('legs routed again after the map’s sport changed');
-  if (!/The map and the legs you draw next are Gravel now\. Your route stays MTB and Paddle\./.test($('#toast')?.textContent || '')) errs.push(`toast: ${$('#toast')?.textContent}`);
+  if (!/The map and the legs you draw next are Gravel now\\. Your route stays MTB and Paddle\\./.test($('#toast')?.textContent || '')) errs.push(`toast: ${$('#toast')?.textContent}`);
   if (p.nextSport() !== 'gravel' || p.mainSport() !== 'mtb') errs.push(`the next leg ${p.nextSport()}, the route ${p.mainSport()}`);
   // Undo after it: the legs that followed MTB stay MTB (they took the map's sport before)
   p.undo(); await wait(300);
@@ -4570,7 +4570,7 @@ SPORT_SWITCH = """(async () => {
   await pick('hike');
   $('#activity-bar .act-all').click(); await wait(500);
   if (sports() !== 'hike,paddle,hike' || polku.state.activity !== 'hike' || p.nextSport() !== 'hike') errs.push(`The whole route: ${sports()}, the map ${polku.state.activity}, the next leg ${p.nextSport()}`);
-  if (!/^Your route is Hike now: 2 legs planned again\./.test($('#toast')?.textContent || '')) errs.push(`its toast: ${$('#toast')?.textContent}`);
+  if (!/^Your route is Hike now: 2 legs planned again\\./.test($('#toast')?.textContent || '')) errs.push(`its toast: ${$('#toast')?.textContent}`);
   p.undo(); await wait(500);
   if (sports() !== 'mtb,paddle,mtb' || polku.state.activity !== 'gravel' || p.nextSport() !== 'gravel' || keys() !== k0) errs.push(`Undo after The whole route: ${sports()}, the map ${polku.state.activity}, the next leg ${p.nextSport()}`);
   // from land to the water: not offered, and it says why; only the legs drawn next
@@ -7282,7 +7282,7 @@ def changelog(chrome):
           const start = Date.now(); while (document.querySelector('.changelog-notes[aria-busy]') && Date.now()-start<15000) await wait(50);
           const notes = document.querySelector('.changelog-notes'), status = document.querySelector('.modal-changelog [role=status]');
           if (!count() || !notes?.querySelector('h3') || !notes.querySelector('h4') || !notes.querySelector('li strong')) errs.push('real changelog did not render dates/headings/lists/bold');
-          if (!/Release notes through \d{4}-\d{2}-\d{2}/.test(status?.textContent || '')) errs.push('no source date');
+          if (!/Release notes through \\d{4}-\\d{2}-\\d{2}/.test(status?.textContent || '')) errs.push('no source date');
           if ((net.usage().find(s => s.id === 'polku').session) !== before+1) errs.push('changelog did not use request()');
           const b = document.querySelector('.modal-changelog .modal-body'); b.scrollTop = 2000;
           if (b.scrollTop < 100 || b.scrollWidth > b.clientWidth+1) errs.push('notes do not scroll or overflow sideways');
@@ -7366,7 +7366,7 @@ def changelog(chrome):
         pg.js("document.querySelector('.modal-changelog [aria-label=Close]').click(); new Promise(r=>setTimeout(r,100))")
         offline(True)
         pg.js("document.querySelector('#btn-changelog').click(); " + loaded)
-        if not pg.js("/Offline: showing saved release notes through \d{4}-\d{2}-\d{2}/.test(document.querySelector('.modal-changelog [role=status]').textContent)"):
+        if not pg.js("/Offline: showing saved release notes through \\d{4}-\\d{2}-\\d{2}/.test(document.querySelector('.modal-changelog [role=status]').textContent)"):
             fails.append('worker offline with cache: no dated saved-copy notice')
         fails += [f'worker offline: console: {e[:160]}' for e in pg.errors()]
     finally:
@@ -11983,7 +11983,7 @@ START_LIB = """(() => {
     if (p.tools.hidden || !p.els.more.offsetParent) return null;
     p.els.more.click();
     await wait(150);
-    const items = $$('.menu-pop .menu-item').map((b) => txt(b.querySelector('span')).replace(/\s+/g, ' '));
+    const items = $$('.menu-pop .menu-item').map((b) => txt(b.querySelector('span')).replace(/\\s+/g, ' '));
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await wait(100);
     return items;
@@ -12153,7 +12153,7 @@ START_LIB = """(() => {
     const u0 = p.past.length, r0 = await routed();
     if (!desk) {
       const row = $('.pl-way .stylebtn[data-k=srow]');
-      if (!row || !/Route style\s*Balanced/.test(txt(row))) err(`the style button: ${txt(row) || 'none'}`);
+      if (!row || !/Route style\\s*Balanced/.test(txt(row))) err(`the style button: ${txt(row) || 'none'}`);
       const before = p.panel.getBoundingClientRect().height;
       if (row) row.click();
       await settled();
@@ -15451,12 +15451,13 @@ def sections_list(chrome):
                 fails.append(f"{name}: {what}: how the stretches are drawn, in weights {[(x['how'], x['weight']) for x in ln['stretches']]} (want Follow paths as Freehand, #761)")
         # (#761) a point's line: the weather with its icons, no Start or End in it (its label says them); its column (#761,
         # Phase 1) how far and how long from the start, the clock's time in its label; and a stretch in the dark says how much,
-        # with a moon on its line where that begins
+        # with a moon on its line where that begins (the end's day before its time after midnight, "Arrive Thu 00:05": the route
+        # leaves now, #804)
         r = pg.js("""(() => { const p = polku.planner, L = p.els.points, row = (i) => L.querySelector(`.wpl-point[data-i="${i}"]`);
           const line = (i) => row(i)?.querySelector('.wx-line'), out = [];
           const col = (i) => row(i)?.querySelector('.wpl-when')?.textContent || '';
           if (/Leave|Start/.test(line(0)?.textContent || '') || !/Start.*Leave /.test(row(0)?.getAttribute('aria-label') || '') || !/^0 m(0 min)?$/.test(col(0))) out.push(`the start's line ${line(0)?.textContent}, its column ${col(0)}, its label ${row(0)?.getAttribute('aria-label')}`);
-          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\d.]+ k?m\d+ (h \d+ )?min$/.test(col(3)) || !/Arrive \d\d:\d\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
+          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\\d.]+ k?m\\d+ (h \\d+ )?min$/.test(col(3)) || !/Arrive (\\w+ )?\\d\\d:\\d\\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
           if (p.analysis.wind && !(line(0)?.querySelectorAll('svg').length >= 2)) out.push('no icons for the weather on the start\u2019s line');
           const a0 = p.lengthTo(1); p.analysis.darkWarn = [{ at: a0 + 20, len: 250, kind: 'dark', text: 'In the dark for 250 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
           const st1 = L.querySelector('.wpl-stretch[data-from="1"]'), dark = st1?.querySelector('.wpl-warns .dark')?.textContent || '';
@@ -15494,7 +15495,8 @@ def sections_list(chrome):
         # (#761: the changeover a wait of its own, with its times; Paddle's part starts with via 3's row, as you leave it: its
         # label says when, its column how far and how long from the start)
         labs = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-point')].map((x) => `${x.dataset.i}:${x.getAttribute('aria-label') || ''}`)")
-        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–\d\d:\d\d', w) for w in s['waits'])
+        # (its end the next day's after midnight, "23:48–Thu 00:03": the route leaves now, #804)
+        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–(\w+ )?\d\d:\d\d', w) for w in s['waits'])
                                     or not s['secs'][1]['rows'] or not s['secs'][1]['rows'][0].startswith('3:') or not any(x.startswith('3:') and 'Leave ' in x for x in labs)):
             fails.append(f"{name}: the change of sport: waits {s['waits']}, Paddle's rows {s['secs'][1]['rows'][:1]}")
         if s['short']:
@@ -15960,11 +15962,11 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const ui = box.querySelector('.tg-ui'), edge = (cs(ui).boxShadow.match(/rgba?\([^)]*\)/) || [cs(ui).backgroundColor])[0], er = ratio(over(rgb(edge), solid), solid);
   if (er < 3) out.push(`a switch's off track: its edge ${er.toFixed(2)}:1, under 3:1`);
   // small headings: 12 px capitals in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
-  box.innerHTML = `<div class="menu-h">A</div><div class="lp-sec"><h3>A</h3></div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
+  box.innerHTML = `<div class="menu-h">A</div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
     <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div><div class="speed-route"><h4>A</h4></div>
     <div class="wind-title">A</div><span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
   const want = `12px 700 0.72px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
-  for (const e of box.querySelectorAll('.menu-h, h3, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
+  for (const e of box.querySelectorAll('.menu-h, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
     const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
     if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
   }
@@ -17314,6 +17316,8 @@ PF_JS = """(async () => {
   if (stip.querySelector('i') || !stip.textContent.includes(tagged)) errs.push(`the profile's tip with a markup surface tag: ${stip.innerHTML}`);
   a.surf[1] = old; p.chart.setHover(-1, true);
   // paddling: its wind as far as it reaches, and from where it isn't known
+  // (what Check finds would take the line's place, #741: at night the dark, by day No forecast yet; this is about the wind, #807)
+  p.readSays = () => null;
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
   const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
   if (line.length !== 1 || !line[0].startsWith('Wind up to 8 m/s, gusts 12 · headwind ') || !line[0].endsWith(` · no forecast yet from km ${km}`)) errs.push(`paddling's key fact: ${line.join(' / ')}`);
@@ -17323,18 +17327,18 @@ PF_JS = """(async () => {
   p.renderAnalysis();
   const C2 = await import(location.origin + '/js/facts.js');
   const card = C2.headline(a, n - 2, 'paddle', {}).filter((x) => x.key !== 'clock').map((x) => `${x.value} ${x.label}${x.missing ? ' (missing)' : ''}`);
-  if (card.some((t) => /20 m\/s|−3|-3/.test(t)) || card.some((t) => !/missing/.test(t))) errs.push(`the route's card past the forecast: ${card.join(' / ')}`);
+  if (card.some((t) => /20 m\\/s|−3|-3/.test(t)) || card.some((t) => !/missing/.test(t))) errs.push(`the route's card past the forecast: ${card.join(' / ')}`);
   const tip = C.routeReadout ? C.routeReadout(a, n - 2) : null, tipText = tip ? [tip.title, ...tip.lines].join(' ') : '';
-  if (!tip || /20 m\/s|−3|-3 °C|snow|Crosswind|Calm/.test(tipText) || !/No forecast yet/.test(tipText)) errs.push(`the route's tip past the forecast: ${tipText}`);
+  if (!tip || /20 m\\/s|−3|-3 °C|snow|Crosswind|Calm/.test(tipText) || !/No forecast yet/.test(tipText)) errs.push(`the route's tip past the forecast: ${tipText}`);
   const head = [...p.els.stats.querySelectorAll('.stat')].map((x) => x.textContent);
-  if (head.some((t) => /20 m\/s|gusts 26/.test(t)) || !head.some((t) => /^Headwind100 %/.test(t))) errs.push(`the paddle's header past the forecast: ${head.join(' / ')}`);
+  if (head.some((t) => /20 m\\/s|gusts 26/.test(t)) || !head.some((t) => /^Headwind100 %/.test(t))) errs.push(`the paddle's header past the forecast: ${head.join(' / ')}`);
   p.showMode('wind');
   const arrows = polku.map.getSource('routeWind')?.serialize().data.features || [];
   const at = (c) => a.pts.findIndex((q) => Math.abs(q[0] - c[0]) < 1e-9 && Math.abs(q[1] - c[1]) < 1e-9), past = arrows.filter((f) => at(f.geometry.coordinates) >= k).length;
   if (!arrows.length || past) errs.push(`the map's wind arrows: ${arrows.length}, past the cut ${past}`);
   p.chart.setHover && p.chart.setHover(n - 2, true);
   const ptip = document.getElementById('profile-tip');
-  if (ptip && !ptip.hidden && (/20\.0 m\/s|−3|-3 °C/.test(ptip.textContent) || !/No forecast yet/.test(ptip.textContent))) errs.push(`the profile's tip past the forecast: ${ptip.textContent}`);
+  if (ptip && !ptip.hidden && (/20\\.0 m\\/s|−3|-3 °C/.test(ptip.textContent) || !/No forecast yet/.test(ptip.textContent))) errs.push(`the profile's tip past the forecast: ${ptip.textContent}`);
   p.showMode('grade');
   // a start past the forecast: none anywhere, said once for the trip
   a.wind.beyond = 0; p.renderAnalysis();
