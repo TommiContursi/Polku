@@ -33,7 +33,7 @@ jobs:
       - name: Syntax
         run: |
           for f in js/*.js sw.js; do node --check "$f"; done
-          python3 -m py_compile tools/*.py serve.py .github/*.py
+          python3 -W error -m py_compile tools/*.py serve.py .github/*.py
 
       # every group and size in exactly one job, or the groups asked for in one
       - name: Jobs

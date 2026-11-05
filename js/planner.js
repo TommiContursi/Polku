@@ -55,7 +55,7 @@ const TIPS = {
   style: { name: 'Route style', text: 'Which ways Follow paths prefers, for the whole route. Changing it routes the route again.' },
   sport: { name: 'Sport', text: 'The sport for the legs you draw next, and your speed in it. Legs already drawn keep theirs.' },
   undo: { name: 'Undo', keys: 'Ctrl Z', text: 'Takes back the last change.' },
-  redo: { name: 'Redo', keys: 'Ctrl Shift Z', text: 'Does it again.' },
+  redo: { name: 'Redo', keys: 'Ctrl Shift Z', text: 'Puts back what Undo took.' },
   reverse: { name: 'Reverse', text: 'The end becomes the start; each leg keeps its mode and style.' },
   backToStart: { name: 'Back to start', text: 'A leg from the end back to where you started.' },
   share: { name: 'Share link', text: 'Copies a link to this route.' },
@@ -619,6 +619,7 @@ export class Planner {
   removePoint(i) {
     this.commit();
     this.points.splice(i, 1);
+    if (this.points.length < 2) this.routeName = ''; // (no route left: the next one drawn isn't the track's, #821)
     if (!this.legs.length) { /* single point */ }
     else if (i === 0) this.legs.shift();
     else if (i >= this.legs.length) this.legs.pop();
@@ -656,6 +657,7 @@ export class Planner {
     this.leavePassed = null;
     this.points = [];
     this.legs = [];
+    this.routeName = ''; // (an imported track's or a marked route's: not the next route's, #769)
     this.next = null; // a new route starts in the map's sport
     this.matchMode();
     this.litLeg(null);
@@ -1564,7 +1566,7 @@ export class Planner {
       // on the water: from the water nearest the start (a click on the shore, a beach, a car park by the lake)
       const from = wet ? nearestWater(L.start, water, 1000) : L.start;
       if (!from) {
-        L.note = 'That start is over a kilometre from the water: click a shore, a beach or a landing for the loops to start from.';
+        L.note = `That start is over a kilometre from the water: ${this.coarse() ? 'tap' : 'click'} a shore, a beach or a landing for the loops to start from.`;
         return;
       }
       let direction = L.dir;
@@ -1649,7 +1651,7 @@ export class Planner {
       L.calls = (L.calls || 0) + calls;
       L.on = ok.length ? n0 : L.on;
       L.note = !ok.length ? (limited ? limited.err.message : more ? 'No more loops worked out here — try another length or start.'
-        : wet ? 'No loop worked out on the water here — try another length, or a start on a bigger lake or the sea.' : 'No loop worked out here — try another length or start, or click the map nearer to paths.') : '';
+        : wet ? 'No loop worked out on the water here — try another length, or a start on a bigger lake or the sea.' : `No loop worked out here — try another length or start, or ${this.coarse() ? 'tap' : 'click'} the map nearer to paths.`) : '';
       this.drawLoops();
       if (ok.length) this.frame(bbox(L.results.flatMap((r) => r.line.coords)), { duration: 600, maxZoom: 15 });
     } finally {
@@ -2901,7 +2903,7 @@ export class Planner {
     this.els.pointsFoot.replaceChildren(...[
       n >= 2 && !ro ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); this.els.pointsFoot.querySelector('[aria-pressed]')?.focus(); },
         html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder') : null,
-      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The end becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
+      n > 1 ? h('button', { type: 'button', class: 'btn', title: TIPS.reverse.text, onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
       n ? h('button', { type: 'button', class: 'btn danger', title: 'Undo brings it back', onclick: () => this.clear(), html: `${icon('trash', 16)} Clear route` }) : null,
     ].filter(Boolean)); // (replaceChildren would write a null as "null")
     // what had the focus, found again in the list drawn anew (a row by its point or stretch, a button by its words)
@@ -3944,7 +3946,7 @@ export class Planner {
     this.setMode('water');
     this.clear();
     this.addPoint(ll);
-    toast('Now click where you want to go');
+    toast(`Now ${this.coarse() ? 'tap' : 'click'} where you want to go`);
   }
   // A desktop's hover (#574): the way under the pointer drawn plainly, while no pick of its own is shown
   hoverPick(coords) {
@@ -4239,6 +4241,7 @@ export class Planner {
     store.set('route', {
       nogos: this.nogos,
       points: this.points,
+      routeName: this.routeName || '', // an imported track's or a marked route's (#822); none in older saved routes
       names: this.points.map((p) => this.pname.get(p) || ''), // on this device only: not in share links
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
       stops: this.points.map((p) => this.pstop.get(p) || null),
@@ -4266,6 +4269,7 @@ export class Planner {
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
     if (!r || !r.points || !r.points.length) return false;
     this.points = r.points;
+    this.routeName = r.routeName || '';
     this.readKeys = new Set(r.read || []);
     this.nameAll(r.names);
     this.changeAll(r.changes);
@@ -5095,7 +5099,6 @@ export class Planner {
   async listMarked() {
     const M = this.marked, sp = this.app.activity(), types = markedFor(sp);
     const gen = (M.gen = (M.gen || 0) + 1);
-    const keep = M.list[M.on] && M.list[M.on].key;
     if (!types.length) { M.list = []; M.state = 'none'; this.showMarked(); this.renderStart(); return; }
     const c = this.map.getCenter();
     const fin = c.lng > 19 && c.lng < 32 && c.lat > 59.4 && c.lat < 70.2;
@@ -5115,6 +5118,7 @@ export class Planner {
       return;
     }
     if (gen !== M.gen || this.startView() !== 'find') return;
+    const keep = M.list[M.on] && M.list[M.on].key; // (the pick as it is now: one made while LIPAS answered stays, #427)
     M.list = res.routes.slice(0, 20);
     M.on = Math.max(0, M.list.findIndex((r) => r.key === keep));
     M.partial = res.failed > 0 && M.list.length > 0;
@@ -6278,7 +6282,7 @@ export class Planner {
     const a = this.analysis, t = this.els.tabBtn && this.els.tabBtn.go.querySelector('.pl-tab-t');
     if (!t) return;
     t.textContent = a ? this.clockOf(this.startSec() + (a.timeWind || a.time)) : '';
-    this.els.tabBtn.go.title = a ? `When and how long: back at ${t.textContent} · the weather, taking it along` : TABS[2].title;
+    this.els.tabBtn.go.title = a ? `When and how long: ${this.isLoop() ? 'back' : 'there'} at ${t.textContent} · the weather, taking it along` : TABS[2].title;
     if (a) this.els.tabBtn.go.setAttribute('aria-label', `Go: arrive ${t.textContent}`); else this.els.tabBtn.go.removeAttribute('aria-label'); // (not "Go09:41")
   }
 
@@ -6547,7 +6551,7 @@ export class Planner {
       this.renderBreakdown();
       this.renderSpeed(); // your speeds for the sport, before there's a route and after Clear (#87)
       this.els.climbs.innerHTML = '';
-      this.els.warnings.innerHTML = '';
+      this.renderWarnings(); // (Check's tab and the peek's row too: nothing on the way, #463)
       this.els.wind.innerHTML = '';
       this.drawColored(); // no route: its colours and wind arrows go from the map too
       if (this.app.onAnalysis) this.app.onAnalysis(null);
@@ -6894,7 +6898,9 @@ export class Planner {
       const whole = ranges.length === 1 && ranges[0][0] < 1 && ranges[0][0] + ranges[0][1] >= end - 1; // (every leg: the whole route, no place)
       out.push({ key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(whole ? null : ranges), retry: () => this.retryWater() });
     }
-    if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents and road conditions on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
+    if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents, road conditions and busy roads on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
+    // road works and busy roads it couldn't ask for on a route this long, or Digiroad not answering (#491)
+    if (a.hazards && a.hazards.notChecked && this.fintrafficHere(a)) for (const x of a.hazards.notChecked) out.push({ ...x, ranges: null, retry: x.retry ? ask(x.key, () => this.loadHazards(a)) : null });
     if (a.trailError) {
       const sum = a.trailError.reduce((t, [, len]) => t + len, 0), whole = sum >= end - 20;
       out.push({ key: 'trail', by: 'OpenStreetMap', who: 'OpenStreetMap', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
@@ -6925,7 +6931,11 @@ export class Planner {
         te ? 'bad' : a.trailAsking || (!a.trailLong && !a.trailMore) ? 'wait' : a.trailLong ? 'na' : 'ok');
       const ter = a.terrain;
       row('Heights and climbs', ter ? (ter.all ? (ter.retry ? 'didn’t load' : 'none here') : `missing for ${fmtDist(ter.missing)}`) : 'the terrain model', ter ? 'bad' : 'ok');
-      if (this.fintrafficHere(a)) row('Road works and incidents', a.hazardsError ? 'Fintraffic didn’t answer' : a.hazards ? `Fintraffic, ${clock(a.hazardsAt)}` : 'asking Fintraffic…', a.hazardsError ? 'bad' : a.hazards ? 'ok' : 'wait');
+      if (this.fintrafficHere(a)) {
+        const hz = a.hazards, skip = (k) => !a.hazardsError && hz && (hz.notChecked || []).find((x) => x.key === k);
+        row('Road works and incidents', a.hazardsError ? 'Fintraffic didn’t answer' : hz ? `Fintraffic, ${clock(a.hazardsAt)}${skip('roadworks') ? ', not road works: too long a route' : ''}` : 'asking Fintraffic…', a.hazardsError || skip('roadworks') ? 'bad' : hz ? 'ok' : 'wait');
+        row('Busy roads', a.hazardsError ? 'not checked' : skip('busy') ? (skip('busy').retry ? 'Digiroad didn’t answer' : 'not checked: too long a route') : hz ? 'Digiroad' : 'asking Digiroad…', a.hazardsError || skip('busy') ? 'bad' : hz ? 'ok' : 'wait');
+      }
       if (a.snow) row('Winter ways', a.winterError ? 'didn’t load' : a.winterCls ? 'OpenStreetMap' : 'loading…', a.winterError ? 'bad' : a.winterCls ? 'ok' : 'wait');
     }
     const wr = this.legs.filter((l) => l.mode === 'water' && l.result && l.result.water).map((l) => l.result.water);
@@ -7311,7 +7321,7 @@ export class Planner {
   /** Frame the whole route in the part of the map the planner leaves free. */
   fitRoute({ animate = true } = {}) {
     const b = this.routeBounds();
-    if (!b) { toast('No route yet — click the map to start one'); return; }
+    if (!b) { toast(`No route yet — ${this.coarse() ? 'tap' : 'click'} the map to start one`); return; }
     this.frame(b, { duration: animate ? 700 : 0 });
     this.fitAt = { t: Date.now(), peek: this.panel.style.getPropertyValue('--peek-h') };
   }
@@ -7488,7 +7498,7 @@ const WATER_LOST = {
 };
 
 // "2 h 13" or "54 min": a duration where there's little room
-const shortDuration = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+const shortDuration = (sec) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
 
 // A LIPAS leg's place along LIPAS's line, the other way round
 const flipSrc = (src) => (src ? { ...src, a: src.b, b: src.a } : null);

@@ -503,6 +503,14 @@ LAYERS = """(async () => {
       if (polku.state.overlays[id] && !body.querySelector(`input[aria-label="${RASTER_OVERLAYS[id].label} opacity"]`)) errs.push(`${k}: no opacity slider for ${id}`);
     }
   }
+  // the difficulty colours' note names the scale's last grade, S6 (#388)
+  const { DIFF_COLORS } = await import(location.origin + '/js/config.js'), segBtn = (t) => [...body.querySelectorAll('.seg button')].find((b) => b.textContent === t);
+  const was = segBtn('Difficulty').parentElement.querySelector('[aria-pressed="true"]');
+  segBtn('Difficulty').click(); await wait(200);
+  const diffNote = [...body.querySelectorAll('p.note')].find((x) => /^Halo colour is the MTB difficulty/.test(x.textContent));
+  if (!diffNote || !diffNote.textContent.includes(`S${DIFF_COLORS.length - 1}`)) errs.push(`the difficulty colours' note: ${diffNote ? diffNote.textContent : 'none'}, not up to S${DIFF_COLORS.length - 1}`);
+  if (was) [...segBtn('Difficulty').parentElement.children].find((b) => b.textContent === was.textContent).click();
+  await wait(200);
   if (!polku.map.getLayer('ov-soundings')) errs.push('paddle: soundings are not on');
   // the weather fields have one too (no fetch: the switch only, not the data)
   const wx = { ...polku.state.weather };
@@ -1624,9 +1632,20 @@ STOPS = """(async () => {
   const total = (p.analysis.timeWind || p.analysis.time);
   const moving = total - a.waits.reduce((t, w) => t + w.sec, 0);
   // (#761) over days: the whole time, its nights too, with the time on the move under it
-  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const short = (sec) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
   const sum = `${document.querySelector('.sum-time b')?.textContent} / ${document.querySelector('.sum-time small')?.textContent}`;
   if (sum !== `${short(total)} / ${short(moving)} moving`) errs.push(`summary time: ${sum}, not ${short(total)} / ${short(moving)} moving`);
+  // times at 59 min 30 s and more carry into the hour: 1 h 60 min reads 2 h 00 min (#492), here and in the summary's short form
+  const G = await import(location.origin + '/js/geo.js');
+  const read = [7170, 10770, 3570].map((s) => G.fmtDuration(s)).join(' / ');
+  if (read !== '2 h 00 min / 3 h 00 min / 1 h 00 min') errs.push(`fmtDuration: ${read}`);
+  const was = [a.time, a.timeWind];
+  a.time = a.timeWind = Math.ceil((a.waits.reduce((t, w) => t + w.sec, 0) + 3600) / 3600) * 3600 + 3570;
+  p.renderAnalysis();
+  const whole = document.querySelector('.sum-time b')?.textContent;
+  if (!/ 00$/.test(whole || '')) errs.push(`summary time at ${a.time} s: ${whole}`);
+  [a.time, a.timeWind] = was;
+  p.renderAnalysis();
   const days = S.tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : p.startSec(), a.waits);
   if (days.length !== 2 || Math.abs(days[0].moving + days[1].moving - moving) > 2) errs.push(`days: ${days.length}, moving ${days.map((d) => d.moving).join('+')} vs ${moving}`);
   p.reveal('depart');
@@ -1644,7 +1663,7 @@ STOPS = """(async () => {
   p.reveal('speed');
   await wait(200);
   const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
-  if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
+  if (!rows.some((t) => /^Breaks \\(1\\)/.test(t)) || !rows.some((t) => /^Nights \\(1\\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
   // the point's card has the stop, places to sleep for a night, and the gear switch (25d)
   p.openPointCard(p.points[2]);
   await wait(200);
@@ -2627,7 +2646,7 @@ HEADS = """(async () => {
   // analysis.js: bike runs, then foot runs, then the rest
   // (the technical stretch is S3, then S4: named by its hardest)
   const bike = A.findWarnings(along, flat, attrs('mtb', [[0, 6, { highway: 'steps' }], [10, 16, { highway: 'path', bicycle: 'no' }], [20, 23, { highway: 'path', 'mtb:scale': '3' }], [23, 26, { highway: 'path', 'mtb:scale': '4' }], [30, 50, { highway: 'track', portage: 'yes' }], [50, 56, { route: 'ferry' }]]), pts, 'mtb');
-  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap', /^highway=steps · /], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap', /^bicycle=no · /], [/^Technical trail S4/, 'look', 'map', 'OpenStreetMap', /^mtb:scale=4 · Extremely difficult\./], [/^Carry/, 'look', 'map', 'OpenStreetMap', /^portage=yes · /], [/^Ferry/, 'look', 'map', 'OpenStreetMap', /^route=ferry · /]]);
+  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap', /^highway=steps · /], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap', /^bicycle=no · /], [/^Technical trail S4/, 'look', 'map', 'OpenStreetMap', /^mtb:scale=4 · Extremely difficult\\./], [/^Carry/, 'look', 'map', 'OpenStreetMap', /^portage=yes · /], [/^Ferry/, 'look', 'map', 'OpenStreetMap', /^route=ferry · /]]);
   const steep = Float32Array.from({ length: n }, (_, i) => (i < 20 ? 20 : i < 40 ? -25 : 0));
   expect('findWarnings, steep', A.findWarnings(along, steep, attrs('mtb', []), pts, 'mtb'), [[/^Steep climb/, 'look', 'estimate', 'the terrain model', /^Steeper than 15 %/], [/^Steep descent/, 'look', 'estimate', 'the terrain model', /^Steeper than 18 %/]]);
   expect('findWarnings, hike', A.findWarnings(along, Float32Array.from({ length: n }, (_, i) => (i < 20 ? 30 : 0)), attrs('hike', [[30, 40, { highway: 'path', sac_scale: 'alpine_hiking' }], [40, 60, { highway: 'path', access: 'no' }]]), pts, 'hike'),
@@ -2801,6 +2820,43 @@ HEADS_UP = """(async () => {
     await wait(100);
     if (p.analysis === b) errs.push('(the test) the route was not analysed again');
     else if (not('hazards')) errs.push('a late failure for the route before put Fintraffic in Not checked');
+    // road works and busy roads not asked for on a route too long, and Digiroad not answering: in Not checked, and What
+    // Polku looked at says so (#491). safety.js's own hazardsAlong, with Fintraffic's answers seeded and Digiroad's
+    // answered here: first a WFS error (no back-off from net.js), then an empty answer
+    const S = polku.safety, roadcond = S.roadcondFeatures, f0 = window.fetch;
+    let wfs = '<ows:ExceptionReport/>';
+    S.incidents = { t: Date.now(), feats: [] }; S.roadcond = { t: Date.now() }; S.roadcondFeatures = () => [];
+    window.fetch = (input, init) => (/digiroad/.test(String(input && input.url ? input.url : input)) ? Promise.resolve(new Response(wfs, { status: 200 })) : f0(input, init));
+    try {
+      // Helsinki to Jyväskylä: more tiles than either asks for, so nothing is asked
+      const far = { pts: [[24.94, 60.17], [25.75, 62.24]], along: Float32Array.from([0, 240000]), attr: [{ sport: 'mtb', tags: {} }, { sport: 'mtb', tags: {} }], tAt: Float32Array.from([0, 36000]), activity: 'mtb' };
+      hz = (c, opt) => S.hazardsAlong(far, opt);
+      await p.loadHazards(p.analysis);
+      for (const [k, re] of [['roadworks', /^Road works: not checked on a route this long$/], ['busy', /^Busy roads: not checked on a route this long$/]]) {
+        if (!not(k) || !re.test(not(k).text) || !not(k).note) errs.push(`a route too long for ${k}: ${not(k) ? `${not(k).text} · ${not(k).note}` : `not in Not checked (${keys()})`}`);
+      }
+      for (const [what, re] of [[/^Road works/, /road works/], [/^Busy roads/, /too long/]]) {
+        const row = looked(what);
+        if (!row || row.state !== 'bad' || !re.test(row.by)) errs.push(`What Polku looked at, a route too long: ${row ? `${row.what}: ${row.state} · ${row.by}` : `no ${what} row`}`);
+      }
+      // …but not on the water: Fintraffic's roads don't count there
+      const wet = { ...p.analysis, attr: p.analysis.attr.map((x) => ({ ...x, sport: 'paddle' })) };
+      if (p.notChecked(wet).some((x) => x.key === 'roadworks' || x.key === 'busy')) errs.push(`a paddling route too long: ${p.notChecked(wet).map((x) => x.text).join(' / ')} in Not checked`);
+      // this route, its road works answered and Digiroad's an error: busy roads in Not checked with Retry, until it answers
+      for (const [x, y] of S.tilesFor(box, 8, 6)) { S.roadworkTiles.set(`${x}/${y}`, []); S.roadworkTime.set(`${x}/${y}`, Date.now()); }
+      hz = (c, opt) => S.hazardsAlong(c, opt);
+      await p.loadHazards(p.analysis);
+      const busy = not('busy'), row = () => looked(/^Busy roads/);
+      if (!busy || !/^Busy roads: Digiroad didn.t answer$/.test(busy.text) || typeof busy.retry !== 'function') errs.push(`Digiroad not answering: ${busy ? `${busy.text}, Retry ${typeof busy.retry}` : `not in Not checked (${keys()})`}`);
+      if (!row() || row().state !== 'bad') errs.push(`What Polku looked at, Digiroad not answering: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+      wfs = '{"type":"FeatureCollection","features":[]}';
+      if (busy && busy.retry) await busy.retry();
+      if (not('busy')) errs.push('Digiroad answered after Retry and busy roads are still in Not checked');
+      if (!row() || row().state !== 'ok') errs.push(`What Polku looked at, Digiroad answered: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+    } finally {
+      S.roadcondFeatures = roadcond; S.incidents = null; S.roadcond = null; S.roadworkTiles.clear(); S.aadtTiles.clear(); window.fetch = f0;
+      hz = async (c) => works(c);
+    }
     // Fintraffic is looked at only for a route on land in Finland
     if (!looked(/^Road works/)) errs.push('What Polku looked at has no Fintraffic for a route on land in Finland');
     p.clear();
@@ -2872,6 +2928,14 @@ HEADS_CHECK = """(async () => {
   p.hideWarnKind({ key: 'roadwork' }, false);
   p.analysis.darkWarn = [...window.mine];
   p.renderWarnings();
+  // Clear route: no count, no "?" and no name beyond Check on the tab; Undo brings the route's back (#463: the road
+  // works to read, the forecast not checked; and in the dark, by the hour)
+  p.clear();
+  await wait(100);
+  if (n().textContent || !unk().hidden || tab.hasAttribute('aria-label')) errs.push(`Check's tab after Clear route: "${n().textContent}", its "?" ${unk().hidden ? 'hidden' : 'shown'}, its name ${tab.getAttribute('aria-label')}`);
+  p.undo();
+  for (let k = 0; k < 450 && !(p.legs.length === 2 && p.analysisFits() && p.analysis.hazards && (p.analysis.windError || p.analysis.wind)); k++) await wait(100);
+  if (!n().classList.contains('read') || unk().hidden || !/^Check: \\d+ to read before you go, \\d+ not checked/.test(tab.getAttribute('aria-label') || '')) errs.push(`Check's tab after Undo: "${n().textContent}", its "?" ${unk().hidden ? 'hidden' : 'shown'}, its name ${tab.getAttribute('aria-label')}`);
   return errs;
 })()"""
 
@@ -3128,7 +3192,7 @@ def onroute(chrome):
           p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
           p.renderWarnings();
           const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
-          if (!line() || !line().classList.contains('unk') || said(line()) !== '1 not checked' || !/^1 not checked: The forecast didn.t answer\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
+          if (!line() || !line().classList.contains('unk') || said(line()) !== '1 not checked' || !/^1 not checked: The forecast didn.t answer\\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
           p.hideWarnKind({ key: 'roadwork' }, false);
           // nothing to read and all checked: no row
           window.wx501 = false;
@@ -3449,7 +3513,7 @@ WARNFIX = """(async () => {
   p.cards.close();
   await wait(300);
   // (12, the recheck) Retry on the trail details: "Asking…" while Overpass is asked, on a card built again meanwhile too
-  // (another source answering), and Overpass named plainly when it still didn't answer
+  // (another source answering), and OpenStreetMap named plainly when it still didn't answer (the app's name for it, #695)
   T2.holdFetches(true, true); T2.forgetFailures();
   await p.loadTrail(p.analysis);
   const trail = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'trail');
@@ -3459,14 +3523,15 @@ WARNFIX = """(async () => {
     p.loadTrail = async (a) => { await wait(1500); return real.call(p, a); };
     p.openItemCard(trail, { from: 'check' });
     await wait(500);
+    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
+    if (/OpenStreetMap still didn.t answer/.test(said())) errs.push(`(the test) a note naming OpenStreetMap before Retry on the trail details: "${said()}"`);
     p.cards.box.querySelector('.btn.primary.big').click();
     await wait(300);
     p.renderWarnings();
     const tb = p.cards.box && p.cards.box.querySelector('.btn.primary.big');
     if (!tb || tb.textContent.trim() !== 'Asking…' || !tb.disabled) errs.push(`Retry on the trail details, its card built again while Overpass is asked: "${tb ? tb.textContent.trim() : 'no button'}"${tb && !tb.disabled ? ', tappable' : ''}`);
-    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
-    for (let k = 0; k < 50 && !/Overpass[^/]*still didn.t answer/.test(said()); k++) await wait(100);
-    if (!/Overpass \\(OpenStreetMap\\) still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
+    for (let k = 0; k < 50 && !/OpenStreetMap still didn.t answer/.test(said()); k++) await wait(100);
+    if (!/OpenStreetMap still didn.t answer/.test(said())) errs.push(`Retry on the trail details, no answer again: the note says "${said()}"`);
     delete p.loadTrail;
     p.cards.close();
     await wait(300);
@@ -3971,6 +4036,18 @@ FIT_LIB = """(() => {
       await mv;
       await framed(`Analyse & edit, the planner opening at ${st}`, TRACK);
     }
+    // (#484) a point without real coordinates is left out, not put at 0,0: a trkpt without lon or with an empty lat, a rtept without lat, a wpt without lon, a gx:coord with one number
+    const G = await import(location.origin + '/js/gpx.js'), pt = (t, a) => `<${t} ${a}></${t}>`;
+    const gpx = G.parseTrackFile(`<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>${[pt('trkpt', 'lat="61.4" lon="23.7"'), pt('trkpt', 'lat="61.41"'), pt('trkpt', 'lat="61.42" lon="23.72"'), pt('trkpt', 'lat="" lon="23.73"'), pt('trkpt', 'lat="61.44" lon="23.74"')].join('')}</trkseg></trk>`
+      + `<rte>${[pt('rtept', 'lat="61.4" lon="23.7"'), pt('rtept', 'lon="23.71"'), pt('rtept', 'lat="61.42" lon="23.72"')].join('')}</rte>${pt('wpt', 'lat="61.4"')}${pt('wpt', 'lat="61.41" lon="23.71"')}</gpx>`, 'bad.gpx');
+    const gpxLens = gpx.lines.map((l) => l.length).join();
+    if (gpxLens !== '3,2' || gpx.lines.some((l) => l.some((c) => c.some((v) => !v))) || gpx.points.length !== 1) err(`a GPX with broken points: lines of ${gpxLens} points (want 3,2), ${gpx.points.length} waypoints (want 1), a zero among them: ${JSON.stringify(gpx.lines)}`);
+    const kml = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2"><Placemark><gx:Track>'
+      + ['23.7 61.4 0', '23.71', '23.72 61.42 0', '23.73 abc 0'].map((c) => `<gx:coord>${c}</gx:coord>`).join('') + '</gx:Track></Placemark></kml>', 'bad.kml');
+    if (kml.lines.map((l) => l.length).join() !== '2') err(`a KML track with broken points: lines of ${kml.lines.map((l) => l.length).join()} points (want 2)`);
+    // a KML line's empty values are missing too, not 0 (an empty altitude leaves the point as it is)
+    const ls = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4,0 ,61.41,0 23.72,,0 23.73, 61.43 23.74,61.44,</coordinates></LineString></Placemark></kml>', 'bad.kml');
+    if (ls.lines.map((l) => l.length).join() !== '2' || ls.lines.some((l) => l.some((c) => c.some((v) => !v)))) err(`a KML line with empty values: ${JSON.stringify(ls.lines)} (want 2 points, no zero)`);
     p.setSheetState('half');
     return T.errs.splice(0);
   };
@@ -4553,7 +4630,7 @@ SPORT_SWITCH = """(async () => {
   await wait(500);
   if (sports() !== 'mtb,paddle,mtb') errs.push(`after the map’s sport changed: ${sports()}`);
   if (keys() !== k0) errs.push('legs routed again after the map’s sport changed');
-  if (!/The map and the legs you draw next are Gravel now\. Your route stays MTB and Paddle\./.test($('#toast')?.textContent || '')) errs.push(`toast: ${$('#toast')?.textContent}`);
+  if (!/The map and the legs you draw next are Gravel now\\. Your route stays MTB and Paddle\\./.test($('#toast')?.textContent || '')) errs.push(`toast: ${$('#toast')?.textContent}`);
   if (p.nextSport() !== 'gravel' || p.mainSport() !== 'mtb') errs.push(`the next leg ${p.nextSport()}, the route ${p.mainSport()}`);
   // Undo after it: the legs that followed MTB stay MTB (they took the map's sport before)
   p.undo(); await wait(300);
@@ -4570,7 +4647,7 @@ SPORT_SWITCH = """(async () => {
   await pick('hike');
   $('#activity-bar .act-all').click(); await wait(500);
   if (sports() !== 'hike,paddle,hike' || polku.state.activity !== 'hike' || p.nextSport() !== 'hike') errs.push(`The whole route: ${sports()}, the map ${polku.state.activity}, the next leg ${p.nextSport()}`);
-  if (!/^Your route is Hike now: 2 legs planned again\./.test($('#toast')?.textContent || '')) errs.push(`its toast: ${$('#toast')?.textContent}`);
+  if (!/^Your route is Hike now: 2 legs planned again\\./.test($('#toast')?.textContent || '')) errs.push(`its toast: ${$('#toast')?.textContent}`);
   p.undo(); await wait(500);
   if (sports() !== 'mtb,paddle,mtb' || polku.state.activity !== 'gravel' || p.nextSport() !== 'gravel' || keys() !== k0) errs.push(`Undo after The whole route: ${sports()}, the map ${polku.state.activity}, the next leg ${p.nextSport()}`);
   // from land to the water: not offered, and it says why; only the legs drawn next
@@ -5763,6 +5840,36 @@ def aerial_fallback(chrome):
             fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
             pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} missing aerial detail keeps or loads its last available image" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The map's words over the aerial photos (#554): every label of one colour at 4.5:1 on its halo, the dark one there
+AERIAL_LABELS = """(() => {
+  const m = polku.map, ctx = document.createElement('canvas').getContext('2d'), out = [];
+  const rgb = (c) => { ctx.fillStyle = '#000'; ctx.fillStyle = c; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3); };
+  const lum = (c) => c.map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  for (const l of m.getStyle().layers) {
+    if (l.type !== 'symbol' || !l.layout || !l.layout['text-field']) continue;
+    const c = m.getPaintProperty(l.id, 'text-color'), h = m.getPaintProperty(l.id, 'text-halo-color');
+    if (typeof c !== 'string' || typeof h !== 'string') continue; // (a colour by the feature: not one value to measure)
+    const [x, y] = [lum(rgb(c)), lum(rgb(h))].sort((p, q) => q - p), r = (x + 0.05) / (y + 0.05);
+    if (r < 4.5) out.push(`${l.id}: ${c} on its halo ${h}, ${r.toFixed(2)}:1`);
+  }
+  return out;
+})()"""
+
+
+def aerial_labels(chrome):
+    fails = []
+    for base in ('aerial', 'ortofi'):
+        pg = chrome.page(1440, 900, False)
+        try:
+            pg.open_app({'base': base, 'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.515/23.85')
+            fails += [f'{base}: {e}' for e in pg.js(AERIAL_LABELS)]
+            fails += [f'{base} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's words over the aerial photos at 4.5:1 on their halo" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -7282,7 +7389,7 @@ def changelog(chrome):
           const start = Date.now(); while (document.querySelector('.changelog-notes[aria-busy]') && Date.now()-start<15000) await wait(50);
           const notes = document.querySelector('.changelog-notes'), status = document.querySelector('.modal-changelog [role=status]');
           if (!count() || !notes?.querySelector('h3') || !notes.querySelector('h4') || !notes.querySelector('li strong')) errs.push('real changelog did not render dates/headings/lists/bold');
-          if (!/Release notes through \d{4}-\d{2}-\d{2}/.test(status?.textContent || '')) errs.push('no source date');
+          if (!/Release notes through \\d{4}-\\d{2}-\\d{2}/.test(status?.textContent || '')) errs.push('no source date');
           if ((net.usage().find(s => s.id === 'polku').session) !== before+1) errs.push('changelog did not use request()');
           const b = document.querySelector('.modal-changelog .modal-body'); b.scrollTop = 2000;
           if (b.scrollTop < 100 || b.scrollWidth > b.clientWidth+1) errs.push('notes do not scroll or overflow sideways');
@@ -7366,7 +7473,7 @@ def changelog(chrome):
         pg.js("document.querySelector('.modal-changelog [aria-label=Close]').click(); new Promise(r=>setTimeout(r,100))")
         offline(True)
         pg.js("document.querySelector('#btn-changelog').click(); " + loaded)
-        if not pg.js("/Offline: showing saved release notes through \d{4}-\d{2}-\d{2}/.test(document.querySelector('.modal-changelog [role=status]').textContent)"):
+        if not pg.js("/Offline: showing saved release notes through \\d{4}-\\d{2}-\\d{2}/.test(document.querySelector('.modal-changelog [role=status]').textContent)"):
             fails.append('worker offline with cache: no dated saved-copy notice')
         fails += [f'worker offline: console: {e[:160]}' for e in pg.errors()]
     finally:
@@ -7562,6 +7669,11 @@ def contrast(chrome):
             pressed = pg.js("['#btn-settings', '#btn-time'].filter((s) => document.querySelector(s).getAttribute('aria-pressed') !== 'true')")
             fails += [f'{scheme}: {s} not pressed by a click' for s in pressed]
             fails += [f'{scheme}: {f}' for f in pg.js(CONTRAST + f"({json.dumps(scheme)})")]
+            # the search field's hint in the glass's grey, not the browser's (#551)
+            h = pg.js("""(() => { const s = document.querySelector('.search'), m = s.appendChild(document.createElement('i')); m.style.color = 'var(--muted)';
+              const out = { hint: getComputedStyle(s.querySelector('input'), '::placeholder').color, muted: getComputedStyle(m).color }; m.remove(); return out; })()""")
+            if h['hint'] != h['muted']:
+                fails.append(f"{scheme}: the search field's hint in {h['hint']}, not the glass's grey {h['muted']}")
             fails += [f'{scheme} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
@@ -7787,6 +7899,19 @@ def appearance(chrome):
         tap('#btn-settings', 'Settings, after a reload')
         if pg.js(THEME_NOW)['pressed'] != ['light']:
             fails.append(f"Light, after a reload: Settings shows {pg.js(THEME_NOW)['pressed']} chosen")
+
+        # the timeline's strip in the new look as soon as the theme changes (#583): Automatic, the timeline open, the
+        # device turning dark; the strip as it is, against the strip drawn again (first with nothing changed, as a control)
+        scheme(pg, 'light')
+        pg.open_app({'activity': 'mtb', 'appearance': 'auto', 'base': 'trail', 'timeline': True})
+        strip = """(() => { const w = polku.weather, was = w.stripCv.toDataURL(); w.renderStrip();
+          return { shown: !w.bar.hidden && w.stripCv.width > 0, same: was === w.stripCv.toDataURL() }; })()"""
+        r0 = pg.js(strip)
+        scheme(pg, 'dark')
+        pg.js(THEME_IS + "('dark')")
+        r = pg.js(strip)
+        if r0 != {'shown': True, 'same': True} or r != {'shown': True, 'same': True}:
+            fails.append(f"the timeline's strip, the device turning dark: {r} (with nothing changed: {r0}; shown and the same as drawn again)")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -8362,6 +8487,11 @@ def tile_fails(chrome):
               " || Date.now() - t0 > 15000 ? setTimeout(() => ok(true), 300) : setTimeout(go, 100); go(); })")
     looks = """({ loads: polku.map.__loads || 0, failed: window.__depthsFailed, points: polku.planner.points.length,
       view: polku.planner.active && polku.planner.inView(), shared: /[?&]r=/.test(location.search) })"""
+    # what Depths says in the quick drawer
+    depths = """(async () => { document.querySelector('#btn-layers').click(); await new Promise((r) => setTimeout(r, 600));
+      const s = document.querySelector('#quick-layers .qt[data-id="depths"] .qt-l small');
+      const t = s ? `${s.textContent}${s.classList.contains('warn') ? ' (warn)' : ''}` : 'no Depths tile';
+      document.querySelector('#btn-layers').click(); return t; })()"""
     for w, h_, phone in ((390, 844, True), (1440, 900, False)):
         pg = chrome.page(w, h_, phone)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': DEPTHS_FAIL_LAST}, pg.s)
@@ -8389,15 +8519,25 @@ def tile_fails(chrome):
                              f"{'open' if s['view'] else 'not open'}{', the link still in the address' if s['shared'] else ''}")
             if mode == 'drop':
                 # a failed source still says so: Depths in the quick drawer
-                small = pg.js("""(async () => { document.querySelector('#btn-layers').click(); await new Promise((r) => setTimeout(r, 600));
-                  const s = document.querySelector('#quick-layers .qt[data-id="depths"] .qt-l small');
-                  const t = s ? `${s.textContent}${s.classList.contains('warn') ? ' (warn)' : ''}` : 'no Depths tile';
-                  document.querySelector('#btn-layers').click(); return t; })()""")
+                small = pg.js(depths)
                 if not small.startswith('No data now') or '(warn)' not in small:
                     fails.append(f'{name}: Depths in the quick drawer says “{small}”')
+        # opened at zoom 12, below the soundings' 13, where they ask for no tiles: the depths that show there have
+        # failed, so Depths says so too (#399)
+        name = f'{w}x{h_}, at zoom 12 with the depth tiles failing'
+        pg.js("sessionStorage.setItem('polku-test-depths', 'drop'); localStorage.removeItem('polku:route'); history.replaceState(null, '', location.pathname + '#12/61.5155/23.8220'); true")
+        pg.c.send('Page.reload', {}, pg.s)
+        pg.c.wait_event('Page.loadEventFired', pg.s, 60)
+        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => window.polku && polku.map._loaded && window.__depthsFailed || Date.now() - t0 > 30000 ? setTimeout(() => ok(true), 1000) : setTimeout(go, 100); go(); })", timeout=40000)
+        z, failed = pg.js("[polku.map.getZoom(), window.__depthsFailed]")
+        small = pg.js(depths)
+        if not failed or z >= 13:
+            fails.append(f'{name}: at zoom {z:.1f}, {failed} depth tiles asked for (the check proves nothing)')
+        elif not small.startswith('No data now') or '(warn)' not in small:
+            fails.append(f'{name}: Depths in the quick drawer says “{small}”')
         fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the map's last tiles failing: Polku still opens the saved route and a share link (#393)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's last tiles failing: Polku still opens the saved route and a share link, and Depths says so (#393, #399)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -9648,6 +9788,59 @@ def button3d_phones(chrome):
     return button3d(chrome, phones=True)
 
 
+# The map's words along a line stand up when it's tilted in 3D (#635): each line-placed text layer's own layout, on a line
+# of the test's across the screen, read from the frame's pixels in its own colour, less the pixels of that colour already
+# there (MapLibre still lists a glyph it hides, so its features can't show it). Flat as a control, then tilted to 72° with 3D on.
+LABELS_3D = """(async (pitch) => {
+  const m = polku.map, out = [], W = m.getCanvas().clientWidth, H = m.getCanvas().clientHeight;
+  const idle = () => new Promise((ok) => { const t = setTimeout(ok, 8000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+  // the pixels of the frame that drew them
+  const ink = () => new Promise((ok) => { m.once('render', () => { const gl = m.painter.context.gl, px = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+    gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, px); let n = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i] < 60 && px[i + 1] > 200 && px[i + 2] > 200) n++; ok(n); }); m.triggerRepaint(); });
+  m.jumpTo({ pitch, bearing: pitch ? 20 : 0 });
+  await idle();
+  const line = [0.15, 0.3, 0.5, 0.7, 0.85].map((x) => m.unproject([x * W, 0.72 * H]).toArray());
+  const base = await ink();
+  m.addSource('probe-635', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } } });
+  const ids = m.getStyle().layers.filter((l) => l.type === 'symbol' && l.layout && /^line/.test(l.layout['symbol-placement'] || '') && l.layout['text-field']).map((l) => l.id);
+  for (const id of ids) {
+    const l = m.getStyle().layers.find((x) => x.id === id), { 'icon-image': _, ...layout } = l.layout;
+    m.addLayer({ id: 'probe-635', type: 'symbol', source: 'probe-635', paint: { 'text-color': '#00ffff' },
+      layout: { ...layout, visibility: 'visible', 'text-field': 'Polku 635 Polku 635', 'text-size': 16, 'symbol-spacing': 120, 'text-allow-overlap': true, 'text-ignore-placement': true } });
+    let n = 0; // (until its glyphs are in and faded up: six frames at most, slow ones tilted over the terrain)
+    for (let k = 0; n < 150 && k < 6; k++, await new Promise((r) => setTimeout(r, 250))) n = (await ink()) - base;
+    if (n < 150) out.push(`${id}'s words ${pitch ? `tilted to ${pitch}°` : 'flat'}: ${n} pixels drawn`);
+    m.removeLayer('probe-635');
+  }
+  m.removeSource('probe-635');
+  return { ids, out };
+})"""
+
+
+def labels_3d(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#15.6/61.8790/25.0650')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        flat = pg.js(f"({LABELS_3D})(0)", timeout=300000)
+        fails += flat['out']
+        pg.js("document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
+        if not pg.js("polku.state.terrain3d"):
+            fails.append('3D did not turn on')
+        tilted = pg.js(f"({LABELS_3D})(72)", timeout=300000)
+        fails += tilted['out']
+        if {'label-road', 'label-waterway', 'label-water-line'} - set(flat['ids']):
+            fails.append(f"the layers with words along a line: {flat['ids']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's words along a line, flat and tilted in 3D (pixels)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Fold, then away (step 3 of #233: #338, #303, #434): the planner and every card fold to one line and come back as
 # they were; a second swipe, or ✕ at the line, puts the planner away or closes the card. Phones by touch, desktops by mouse.
 FOLD_INFO = """(() => { const p = polku.planner, b = (e) => { if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; };
@@ -10529,9 +10722,11 @@ def fold_tools(chrome):
                     continue  # (not shown: the toolbox's names say so above)
                 pg.tap(*at)
                 time.sleep(0.4)
-                m = pg.js("(() => { const m = document.querySelector('.menu-pop'); return m ? m.innerText : ''; })()")
+                m, box = pg.js("(() => { const m = document.querySelector('.menu-pop'), r = m?.getBoundingClientRect(); return m ? [m.innerText, [r.left, r.right]] : ['', null]; })()")
                 if want not in m:
                     fails.append(f"{name}: a tap on {sel.split('.')[-1]} showed “{m[:60]}”, not its menu")
+                elif box[0] < 0 or box[1] > w:  # (#722: the menu inside the screen, its rows wrapping)
+                    fails.append(f"{name}: {sel.split('.')[-1]}'s menu from x {box[0]:.0f} to {box[1]:.0f}, past the screen's {w}")
                 pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true")
                 time.sleep(0.3)
             n = pg.js("polku.planner.points.length")
@@ -11983,7 +12178,7 @@ START_LIB = """(() => {
     if (p.tools.hidden || !p.els.more.offsetParent) return null;
     p.els.more.click();
     await wait(150);
-    const items = $$('.menu-pop .menu-item').map((b) => txt(b.querySelector('span')).replace(/\s+/g, ' '));
+    const items = $$('.menu-pop .menu-item').map((b) => txt(b.querySelector('span')).replace(/\\s+/g, ' '));
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await wait(100);
     return items;
@@ -12153,7 +12348,7 @@ START_LIB = """(() => {
     const u0 = p.past.length, r0 = await routed();
     if (!desk) {
       const row = $('.pl-way .stylebtn[data-k=srow]');
-      if (!row || !/Route style\s*Balanced/.test(txt(row))) err(`the style button: ${txt(row) || 'none'}`);
+      if (!row || !/Route style\\s*Balanced/.test(txt(row))) err(`the style button: ${txt(row) || 'none'}`);
       const before = p.panel.getBoundingClientRect().height;
       if (row) row.click();
       await settled();
@@ -12312,6 +12507,18 @@ START_LIB = """(() => {
     const list = !T.spotAt ? '?' : T.spotAt.list === 'loading' ? 'the list still loading when the spot was read' : T.spotAt.gen !== M().gen ? 'the list asked again after the spot was read' : 'the list in';
     if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key} (${list}, #427; the spot moved ${moved()}, ${opened}, ${T.sheetNow()})`);
     if (p.points.length) err(`a tap in Marked routes added ${p.points.length} points`);
+    return T.errs.splice(0);
+  };
+  // a route picked on the map while the list is asked again stays picked when LIPAS answers (#427)
+  T.markedLate = async () => {
+    const other = M().list.find((x, i) => i !== M().on), ask = p.app.lipasRoutesIn;
+    if (!other) return ['#427: one marked route listed'];
+    p.app.lipasRoutesIn = async (...a) => { await wait(1500); return ask(...a); };
+    p.listMarked();
+    p.pickMarked(M().list.indexOf(other)); // (as a tap on its line does: pickMarkedAt())
+    await until(() => M().state !== 'loading', 6000);
+    p.app.lipasRoutesIn = ask;
+    if (M().list[M().on]?.key !== other.key) err(`a route picked while the list loaded: ${M().list[M().on]?.key} picked once LIPAS answered, not ${other.key} (#427)`);
     return T.errs.splice(0);
   };
   T.markedStates = async () => {
@@ -12520,6 +12727,7 @@ def start(chrome):
         fails += pg.js('stT.marked()', timeout=30000)
         P('stT.markedSpot()', 'the other marked route’s line')
         fails += pg.js('stT.markedTapped()', timeout=10000)
+        fails += pg.js('stT.markedLate()', timeout=10000)
         fails += pg.js('stT.markedStates()', timeout=30000)
         if P("stT.at('.pl-way .sport-chip')", 'Marked routes’ sport') and pg.js("stT.pickSport('Swim')"):
             P("stT.at('.menu-pop [data-st-pick]')", 'Swim')
@@ -14215,6 +14423,33 @@ def route_card(chrome):
         s = st(pg)
         if s['kind'] != 'edit' or s['seg'] or 'Other ways' in s['rows']:
             fails.append(f"{name}: Edit this stretch on an imported track: {s['kind']} card, the switch {s['seg']}, rows {s['rows']}")
+        # Clear route forgets the track's name and Undo brings it back; a route drawn next has a name of its own (#769;
+        # not an exact one: road names come from the tiles). Drawn straight, so no router is asked.
+        r = pg.js("""(async () => { const p = polku.planner, wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+          p.cards.close(); p.clear(); const cleared = p.routeName; p.undo(); await wait(200); const back = p.routeTitle();
+          p.clear(); p.setMode('line'); p.addPoint([23.800, 61.518]); p.addPoint([23.815, 61.5188]); await wait(500);
+          return { cleared, back, drawn: p.routeTitle(), saved: p.routeSnapshot().routeName }; })()""")
+        if r['cleared'] or r['back'] != 'A track' or not r['drawn'] or r['drawn'] == 'A track' or r['saved']:
+            fails.append(f"{name}: an imported track's name: “{r['cleared']}” after Clear route, “{r['back']}” after Undo; a route drawn then is “{r['drawn']}”, saved as “{r['saved']}”")
+        # so does removing its points one by one, with the point's card's Remove: one point left is no route, and Undo
+        # brings the point back with the name (#821)
+        pg.js("(() => { const p = polku.planner; p.clear(); p.loadTrack([[23.800, 61.518], [23.805, 61.5185], [23.810, 61.519], [23.815, 61.5188]], 'A track'); p.fitRoute({ animate: false }); return true; })()")
+        time.sleep(1.5)
+        removed = []
+        for k in (1, 'undo', 1, 0):
+            if k == 'undo':
+                pg.js("polku.planner.undo(); true")
+                time.sleep(0.3)
+            else:
+                close(pg)
+                pg.js(f"polku.planner.openPointCard(polku.planner.points[{k}]); true")
+                time.sleep(0.6)
+                tap_row(pg, 'Remove', name, touch)
+            removed.append(pg.js("`${polku.planner.points.length}: ${polku.planner.routeTitle()}`"))
+        r = pg.js("""(async () => { const p = polku.planner; p.setMode('line'); p.addPoint([23.800, 61.518]); p.addPoint([23.815, 61.5188]);
+          await new Promise((ok) => setTimeout(ok, 500)); return p.routeTitle(); })()""")
+        if removed[0].endswith('A track') or removed[1] != '2: A track' or removed[3] != '0: ' or not r or r == 'A track':
+            fails.append(f"{name}: an imported track's points removed one by one: {' / '.join(removed)}; a route drawn then is “{r}”")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}, after {' / '.join(trail[-4:])}")
@@ -15315,11 +15550,29 @@ def spot_card_foot(chrome):
                 if (w == 195) != (r['lines'] == len(want)) or (w != 195 and r['lines'] != 1):
                     fails.append(f"{name}: {what}: the last row is on {r['lines']} lines (one where there's room, a line each at 200 %)")
                 pg.js('polku.planner.cards.close(); true')
+            if phone and w > 195:
+                # a spot under the floating toolbox (undo and redo, over the map above the card): the map moves it, and its
+                # pill, clear of the toolbox too, as of the map's buttons (#555); a card open first, so the sheet and the
+                # toolbox are where the next card leaves them
+                r = pg.js("""(async () => { const p = polku.planner, m = polku.map, t = document.getElementById('pl-tools'), R = m.getCanvas().getBoundingClientRect(), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+                  const open = async (ll) => { p.openSpotCard(ll, { touch: true }); if (p.picked) p.openLine(); await wait(1500); };
+                  p.setSheetState('peek'); await open(m.unproject([R.width / 2, R.height * 0.3]));
+                  const state = () => (t.hidden ? 'hidden' : t.classList.contains('docked') ? 'docked' : 'floating');
+                  if (state() !== 'floating') return { tools: state() };
+                  const T = t.getBoundingClientRect(), ll = m.unproject([(T.left + T.right) / 2 - R.left, (T.top + T.bottom) / 2 - R.top]);
+                  await open(ll);
+                  const q = m.project(ll), x = R.left + q.x, y = R.top + q.y, U = t.getBoundingClientRect();
+                  return { tools: state(), card: p.cards.current && p.cards.current.kind, under: x >= U.left && x <= U.right && y >= U.top && y <= U.bottom, spot: [x, y].map(Math.round), box: [U.left, U.top, U.right, U.bottom].map(Math.round) }; })()""", timeout=30000)
+                pg.js('sc.calm()')
+                over = pg.js(PILL_OVER)
+                if r.get('tools') != 'floating' or r.get('card') != 'spot' or r.get('under') or 'pl-tools' in over:
+                    fails.append(f"{name}: a spot under the toolbox: {r}{f', the pill under {over}' if over else ''}")
+                pg.js('polku.planner.cards.close(); true')
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         except Exception as e:
             fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: Share, Weather here ›, Not right?, at four sizes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: Share, Weather here ›, Not right?, at four sizes; a spot clear of the toolbox" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -15451,12 +15704,13 @@ def sections_list(chrome):
                 fails.append(f"{name}: {what}: how the stretches are drawn, in weights {[(x['how'], x['weight']) for x in ln['stretches']]} (want Follow paths as Freehand, #761)")
         # (#761) a point's line: the weather with its icons, no Start or End in it (its label says them); its column (#761,
         # Phase 1) how far and how long from the start, the clock's time in its label; and a stretch in the dark says how much,
-        # with a moon on its line where that begins
+        # with a moon on its line where that begins (the end's day before its time after midnight, "Arrive Thu 00:05": the route
+        # leaves now, #804)
         r = pg.js("""(() => { const p = polku.planner, L = p.els.points, row = (i) => L.querySelector(`.wpl-point[data-i="${i}"]`);
           const line = (i) => row(i)?.querySelector('.wx-line'), out = [];
           const col = (i) => row(i)?.querySelector('.wpl-when')?.textContent || '';
           if (/Leave|Start/.test(line(0)?.textContent || '') || !/Start.*Leave /.test(row(0)?.getAttribute('aria-label') || '') || !/^0 m(0 min)?$/.test(col(0))) out.push(`the start's line ${line(0)?.textContent}, its column ${col(0)}, its label ${row(0)?.getAttribute('aria-label')}`);
-          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\d.]+ k?m\d+ (h \d+ )?min$/.test(col(3)) || !/Arrive \d\d:\d\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
+          if (/Arrive|End/.test(line(3)?.textContent || '') || !/^[\\d.]+ k?m\\d+ (h \\d+ )?min$/.test(col(3)) || !/Arrive (\\w+ )?\\d\\d:\\d\\d/.test(row(3)?.getAttribute('aria-label') || '')) out.push(`the end's line ${line(3)?.textContent}, its column ${col(3)}, its label ${row(3)?.getAttribute('aria-label')}`);
           if (p.analysis.wind && !(line(0)?.querySelectorAll('svg').length >= 2)) out.push('no icons for the weather on the start\u2019s line');
           const a0 = p.lengthTo(1); p.analysis.darkWarn = [{ at: a0 + 20, len: 250, kind: 'dark', text: 'In the dark for 250 m', tier: 'look', note: '', src: { kind: 'calculated', by: 'the sun’s times' } }]; p.renderWaypoints();
           const st1 = L.querySelector('.wpl-stretch[data-from="1"]'), dark = st1?.querySelector('.wpl-warns .dark')?.textContent || '';
@@ -15494,7 +15748,8 @@ def sections_list(chrome):
         # (#761: the changeover a wait of its own, with its times; Paddle's part starts with via 3's row, as you leave it: its
         # label says when, its column how far and how long from the start)
         labs = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-point')].map((x) => `${x.dataset.i}:${x.getAttribute('aria-label') || ''}`)")
-        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–\d\d:\d\d', w) for w in s['waits'])
+        # (its end the next day's after midnight, "23:48–Thu 00:03": the route leaves now, #804)
+        if len(s['secs']) == 2 and (not any(w.startswith('3:change:Changeover · ') and re.search(r'\d\d:\d\d–(\w+ )?\d\d:\d\d', w) for w in s['waits'])
                                     or not s['secs'][1]['rows'] or not s['secs'][1]['rows'][0].startswith('3:') or not any(x.startswith('3:') and 'Leave ' in x for x in labs)):
             fails.append(f"{name}: the change of sport: waits {s['waits']}, Paddle's rows {s['secs'][1]['rows'][:1]}")
         if s['short']:
@@ -15509,7 +15764,7 @@ def sections_list(chrome):
         # (#761) its part's heading adds the stop to the time on the move, and the numbers row has the whole time with the
         # time on the move under it
         t = pg.js("""(() => { const p = polku.planner, A = p.analysis, all = A.timeWind || A.time, mv = all - A.waits.reduce((n, w) => n + w.sec, 0), el = document.querySelector('.sum-time');
-          const f = (sec, u) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}${u}` : `${m} min`; };
+          const f = (sec, u) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}${u}` : `${m} min`; };
           return { heads: [...p.els.points.querySelectorAll('.sec2-head small')].map((x) => x.textContent), b: el.querySelector('b').textContent, small: el.querySelector('small').textContent, all: f(all, ' min'), mv: f(mv, '') }; })()""")
         if sum(' + 30 min stop' in x for x in t['heads']) != 1 or t['b'] != t['all'] or t['small'] != f"{t['mv']} moving":
             fails.append(f"{name}: a stop at via 4: the headings {t['heads']}, the time {t['b']!r} over {t['small']!r} (want one heading's time + 30 min stop, the whole time {t['all']} over {t['mv']} moving, #761)")
@@ -15960,11 +16215,11 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const ui = box.querySelector('.tg-ui'), edge = (cs(ui).boxShadow.match(/rgba?\([^)]*\)/) || [cs(ui).backgroundColor])[0], er = ratio(over(rgb(edge), solid), solid);
   if (er < 3) out.push(`a switch's off track: its edge ${er.toFixed(2)}:1, under 3:1`);
   // small headings: 12 px capitals in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
-  box.innerHTML = `<div class="menu-h">A</div><div class="lp-sec"><h3>A</h3></div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
+  box.innerHTML = `<div class="menu-h">A</div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
     <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div><div class="speed-route"><h4>A</h4></div>
     <div class="wind-title">A</div><span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
   const want = `12px 700 0.72px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
-  for (const e of box.querySelectorAll('.menu-h, h3, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
+  for (const e of box.querySelectorAll('.menu-h, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
     const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
     if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
   }
@@ -16586,7 +16841,7 @@ LV_NIGHTS = """(async () => {
   await wait(400);
   if (JSON.stringify(p.stopAt(2)) !== '{"on":420,"n":2}') errs.push(`Go on at 07:00: ${JSON.stringify(p.stopAt(2))}`);
   // (#761) the whole time follows the hour you go on: an hour less
-  const short = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+  const short = (sec) => { const t = Math.round(sec / 60), hr = Math.floor(t / 60), m = t % 60; return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
   if (document.querySelector('.sum-time b')?.textContent !== short(p.analysis.timeWind || p.analysis.time)) errs.push(`the summary: ${document.querySelector('.sum-time b')?.textContent}, not ${short(p.analysis.timeWind || p.analysis.time)}`);
   p.cards.close();
   p.reveal('points');
@@ -16759,6 +17014,13 @@ def leave(chrome):
             pg.js(LV_JS)
             if pg.js("polku.planner.startSec()") != want:
                 fails.append(f"{name}: after a reload it leaves {pg.js('new Date(polku.planner.startSec() * 1000).toString()')}")
+            # and an imported track's name, which its share link doesn't carry; a route without one stays without (#822)
+            unnamed = pg.js("polku.planner.routeName")
+            pg.js("polku.planner.loadTrack([[23.800, 61.518], [23.805, 61.5185], [23.810, 61.519], [23.815, 61.5188]], 'A track'); true")
+            pg.reload()
+            r = pg.js("({ title: polku.planner.routeTitle(), link: /A(%20|\\+| )track/.test(polku.planner.shareUrl()) })")
+            if unnamed or r['title'] != 'A track' or r['link']:
+                fails.append(f"{name}: the route's name after a reload: “{unnamed}” without one; an imported track's “{r['title']}”, in its share link: {r['link']}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.close()
 
@@ -16975,6 +17237,13 @@ def keyfacts(chrome):
                   return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: /^(-?\\d+° \\d+ m\\/s|No forecast yet)$/.test([...(lit[0]?.querySelectorAll('.wpl-point .wx-line') || [])].pop()?.textContent || '') }; })()""")
                 if r != {'tab': 'route', 'lit': ['Paddle'], 'wx': True}:
                     fails.append(f"{name}: a tap on Paddle: {r}")
+            # each sport's climbing counted as the route's total counts it, a climb once past 2 m (#752): MTB's 1 m ups and
+            # downs are ↑0 m, Hike's 30 m climb ↑30 m
+            r = pg.js("""import(location.origin + '/js/facts.js').then((F) => { const n = 41, a = { activity: 'mtb', along: Array.from({ length: n }, (_, i) => i * 10),
+              ele: Array.from({ length: n }, (_, i) => (i < 30 ? 100 + (i % 2) : 100 + 3 * (i - 30))), attr: Array.from({ length: n }, (_, i) => ({ sport: i <= 20 ? 'mtb' : 'hike' })) };
+              return F.sportFacts(a, { noWeather: 'not known' }).map((f) => f.aria.match(/↑\\d+ m/)[0]); })""")
+            if r != ['↑0 m', '↑30 m']:
+                fails.append(f"{name}: the sports' climbing, MTB with 1 m ups and downs, then Hike with a 30 m climb: {r}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.close()
 
@@ -17198,16 +17467,20 @@ def tabs_names(chrome):
             pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
             pg.js(SETTLED)
             want = """(async () => { const p = polku.planner, a = p.analysis, d = (await import(location.origin + '/js/geo.js')).fmtDist(a.total);
-              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${p.els.tabBtn.go.querySelector('.pl-tab-t').textContent}` }; })()"""
-            for step in ('drawn', 'a point added'):
+              const at = p.els.tabBtn.go.querySelector('.pl-tab-t').textContent;
+              return { prof: `Elevation profile, ${d}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m`, go: `Go: arrive ${at}`, at, title: p.els.tabBtn.go.title }; })()"""
+            # (the Go tab's tooltip says "back at" only on a round trip, #753)
+            for step, word, then in (('drawn', 'there', 'p.addPoint([23.86, 61.52])'), ('a point added', 'there', 'p.backToStart()'), ('back to the start', 'back', None)):
                 ax, w_ = names(pg), pg.js(want)
                 tabs = ax.get('tab', [])
                 if w_['prof'] not in ax.get('image', []):
                     fails.append(f"{name}: the profile, {step}: images named {ax.get('image', [])} (want {w_['prof']!r})")
                 if len(tabs) != 3 or tabs[0] != 'Route' or not tabs[1].startswith('Check') or tabs[1][5:6] not in ('', ':') or tabs[2] != w_['go']:
                     fails.append(f"{name}: the tabs' names, {step}: {tabs} (Route, Check: …, {w_['go']!r})")
-                if step == 'drawn':
-                    pg.js("(async () => { const p = polku.planner, a = p.analysis; p.addPoint([23.86, 61.52]); for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; })()", timeout=30000)
+                if not w_['title'].startswith(f"When and how long: {word} at {w_['at']} "):
+                    fails.append(f"{name}: the Go tab's tooltip, {step}: {w_['title']!r} (want {word} at {w_['at']})")
+                if then:
+                    pg.js(f"(async () => {{ const p = polku.planner, a = p.analysis; {then}; for (let k = 0; k < 100 && p.analysis === a; k++) await new Promise((r) => setTimeout(r, 100)); for (let k = 0; k < 100 && !(p.analysis && p.analysis.ele); k++) await new Promise((r) => setTimeout(r, 100)); return true; }})()", timeout=30000)
                     pg.js(SETTLED)
             # the headings: Route (and its How you go), Check and Go, one level at a time
             for tab, js in (('Route', "polku.planner.setTab('route')"), ('How you go', "polku.planner.openStep('how')"), ('Check', "polku.planner.openStep(null); polku.planner.setTab('check')"), ('Go', "polku.planner.setTab('go')")):
@@ -17292,6 +17565,10 @@ PF_JS = """(async () => {
   const tag = document.querySelector('.pl-profile .nofc');
   if (!tag || !tag.getClientRects().length || tag.textContent !== 'No forecast yet') errs.push(`the profile's cut: ${tag ? tag.textContent : 'none'}`);
   p.showMode('grade');
+  // Go's wind: each share on one line, its number and % with it, "Headwind 100 %" too (#388)
+  p.reveal('depart'); await wait(300);
+  const shares = [...p.els.wind.querySelectorAll('.ex-item')], linesOf = (el) => { const r = document.createRange(); r.selectNodeContents(el.lastChild); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
+  if (!shares.length || shares.some((el) => linesOf(el) !== 1)) errs.push(`Go's wind shares: ${shares.map((el) => `${el.textContent} on ${linesOf(el)} lines`).join(' / ') || 'none'}`);
   p.reveal('points'); await wait(300);
   // a route of one section: the weather as you leave on Start's row, and none yet on End's (#764)
   const wxRow = (i) => p.els.points.querySelector(`.wpl-point[data-i="${i}"] .wx-line`)?.textContent || '';
@@ -17304,7 +17581,21 @@ PF_JS = """(async () => {
   const night = [...p.els.points.querySelectorAll('.wpl-point[data-i="1"] .wx-line')].map((x) => x.textContent); // (as you get there, and Day 2's first row: as you go on)
   if (night[0] !== '5° 8 m/s' || night[1] !== '9° 8 m/s') errs.push(`a night's weather, as you get there and in the morning: ${night.join(' / ')}`);
   p.setStop(1, null); clearTimeout(p.retimeTimer);
+  // a surface tag with markup (#483), and a highway tag (its way's name when it isn't one Polku knows): both readouts, the
+  // map's tip and the profile's (the conditions' too), show them as text, not as elements
+  const old = [a.surf[1], a.way[1], p.chart.kind], tagged = '<i>x</i>';
+  a.surf[1] = a.way[1] = tagged;
+  const lines = C.routeReadout(a, 1).lines.join(' ');
+  if (!lines.includes('&lt;i&gt;x&lt;/i&gt;') || lines.includes('<i>x')) errs.push(`the map's tip with markup tags: ${lines}`);
+  p.chart.setHover(1, true);
+  const stip = document.getElementById('profile-tip');
+  if (stip.querySelector('i') || !stip.textContent.includes(tagged)) errs.push(`the profile's tip with markup tags: ${stip.innerHTML}`);
+  p.chart.kind = 'conditions'; p.chart.setHover(1, true);
+  if (stip.querySelector('i') || !stip.textContent.includes(tagged)) errs.push(`the conditions' tip with a markup highway tag: ${stip.innerHTML}`);
+  [a.surf[1], a.way[1], p.chart.kind] = old; p.chart.setHover(-1, true);
   // paddling: its wind as far as it reaches, and from where it isn't known
+  // (what Check finds would take the line's place, #741: at night the dark, by day No forecast yet; this is about the wind, #807)
+  p.readSays = () => null;
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
   const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
   if (line.length !== 1 || !line[0].startsWith('Wind up to 8 m/s, gusts 12 · headwind ') || !line[0].endsWith(` · no forecast yet from km ${km}`)) errs.push(`paddling's key fact: ${line.join(' / ')}`);
@@ -17314,18 +17605,18 @@ PF_JS = """(async () => {
   p.renderAnalysis();
   const C2 = await import(location.origin + '/js/facts.js');
   const card = C2.headline(a, n - 2, 'paddle', {}).filter((x) => x.key !== 'clock').map((x) => `${x.value} ${x.label}${x.missing ? ' (missing)' : ''}`);
-  if (card.some((t) => /20 m\/s|−3|-3/.test(t)) || card.some((t) => !/missing/.test(t))) errs.push(`the route's card past the forecast: ${card.join(' / ')}`);
+  if (card.some((t) => /20 m\\/s|−3|-3/.test(t)) || card.some((t) => !/missing/.test(t))) errs.push(`the route's card past the forecast: ${card.join(' / ')}`);
   const tip = C.routeReadout ? C.routeReadout(a, n - 2) : null, tipText = tip ? [tip.title, ...tip.lines].join(' ') : '';
-  if (!tip || /20 m\/s|−3|-3 °C|snow|Crosswind|Calm/.test(tipText) || !/No forecast yet/.test(tipText)) errs.push(`the route's tip past the forecast: ${tipText}`);
+  if (!tip || /20 m\\/s|−3|-3 °C|snow|Crosswind|Calm/.test(tipText) || !/No forecast yet/.test(tipText)) errs.push(`the route's tip past the forecast: ${tipText}`);
   const head = [...p.els.stats.querySelectorAll('.stat')].map((x) => x.textContent);
-  if (head.some((t) => /20 m\/s|gusts 26/.test(t)) || !head.some((t) => /^Headwind100 %/.test(t))) errs.push(`the paddle's header past the forecast: ${head.join(' / ')}`);
+  if (head.some((t) => /20 m\\/s|gusts 26/.test(t)) || !head.some((t) => /^Headwind100 %/.test(t))) errs.push(`the paddle's header past the forecast: ${head.join(' / ')}`);
   p.showMode('wind');
   const arrows = polku.map.getSource('routeWind')?.serialize().data.features || [];
   const at = (c) => a.pts.findIndex((q) => Math.abs(q[0] - c[0]) < 1e-9 && Math.abs(q[1] - c[1]) < 1e-9), past = arrows.filter((f) => at(f.geometry.coordinates) >= k).length;
   if (!arrows.length || past) errs.push(`the map's wind arrows: ${arrows.length}, past the cut ${past}`);
   p.chart.setHover && p.chart.setHover(n - 2, true);
   const ptip = document.getElementById('profile-tip');
-  if (ptip && !ptip.hidden && (/20\.0 m\/s|−3|-3 °C/.test(ptip.textContent) || !/No forecast yet/.test(ptip.textContent))) errs.push(`the profile's tip past the forecast: ${ptip.textContent}`);
+  if (ptip && !ptip.hidden && (/20\\.0 m\\/s|−3|-3 °C/.test(ptip.textContent) || !/No forecast yet/.test(ptip.textContent))) errs.push(`the profile's tip past the forecast: ${ptip.textContent}`);
   p.showMode('grade');
   // a start past the forecast: none anywhere, said once for the trip
   a.wind.beyond = 0; p.renderAnalysis();
@@ -17690,6 +17981,19 @@ def pick_card(chrome):
         time.sleep(1)
         if pg.js("polku.map.querySourceFeatures('pick').length"):
             fails.append('the hover moved off the way: the way still drawn')
+        # #656: Paddle from here says to click where to go, as the planner's other notes do (read in the same call: the toast times out)
+        said = pg.js("(() => { const p = polku.planner; p.paddleFrom([23.8129, 61.4844]); const t = document.querySelector('#toast').textContent; p.clear(); p.setActive(false); return t; })()")
+        if said != 'Now click where you want to go':
+            fails.append(f"Paddle from here: the note says “{said}” (“Now click where you want to go”)")
+        # #656: with no route drawn, Show the whole route says to click the map (read in the same call: the toast times out)
+        said = pg.js("(() => { polku.planner.fitRoute(); return document.querySelector('#toast').textContent; })()")
+        if said != 'No route yet — click the map to start one':
+            fails.append(f"No route yet: the note says “{said}” (“No route yet — click the map to start one”)")
+        # #656: a round trip on the water from a start far from it says to click a shore (no routing: a stand-in for the
+        # map's water, and More loops' way in, which doesn't frame the map first)
+        said = pg.js("(async () => { const p = polku.planner, L = p.loop, act = p.app.activity; p.app.activity = () => 'paddle'; Object.assign(L, { start: [23.8129, 61.4844], water: { isWater: () => false } }); await p.generateLoops({ more: true }); const t = L.note; p.app.activity = act; Object.assign(L, { start: null, note: '' }); delete L.water; return t; })()")
+        if said != 'That start is over a kilometre from the water: click a shore, a beach or a landing for the loops to start from.':
+            fails.append(f"a round trip far from the water: the note says “{said}” (“… click a shore …”)")
         fails += [f'console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
@@ -17796,6 +18100,18 @@ def pick_card(chrome):
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
         if not wait['line'] or not re.search(r'Loading the whole way', ' '.join(wait['line'])) or not wait['drawn'] or not re.search(r'OpenStreetMap is slow', ' '.join(wait['slow'] or [])):
             fails.append(f"390x844: a tap on a way while its ways come: the line {wait['line']}, {wait['drawn']} lines drawn, 11 s later {wait['slow']} (“Loading the whole way…” and the map's own way drawn; then “OpenStreetMap is slow: still asking…”)")
+        # #656: Paddle from here says to tap where to go, as the planner's other notes do (read in the same call: the toast times out)
+        said = pg.js("(() => { const p = polku.planner; p.paddleFrom([23.8129, 61.4844]); const t = document.querySelector('#toast').textContent; p.clear(); p.setActive(false); return t; })()")
+        if said != 'Now tap where you want to go':
+            fails.append(f"390x844: Paddle from here: the note says “{said}” (“Now tap where you want to go”)")
+        # #656: with no route drawn, Show the whole route says to tap the map (read in the same call: the toast times out)
+        said = pg.js("(() => { polku.planner.fitRoute(); return document.querySelector('#toast').textContent; })()")
+        if said != 'No route yet — tap the map to start one':
+            fails.append(f"390x844: No route yet: the note says “{said}” (“No route yet — tap the map to start one”)")
+        # #656: a round trip on the water from a start far from it says to tap a shore (no routing, as on the desktop)
+        said = pg.js("(async () => { const p = polku.planner, L = p.loop, act = p.app.activity; p.app.activity = () => 'paddle'; Object.assign(L, { start: [23.8129, 61.4844], water: { isWater: () => false } }); await p.generateLoops({ more: true }); const t = L.note; p.app.activity = act; Object.assign(L, { start: null, note: '' }); delete L.water; return t; })()")
+        if said != 'That start is over a kilometre from the water: tap a shore, a beach or a landing for the loops to start from.':
+            fails.append(f"390x844: a round trip far from the water: the note says “{said}” (“… tap a shore …”)")
         fails += [f'390x844 console: {e[:160]}' for e in pg.errors() if 'overpass' not in e.lower() and 'CORS' not in e]
     except Exception as e:
         fails.append(f"390x844: raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
@@ -17850,7 +18166,7 @@ GROUPS = [
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
-    ('raster', [raster_maps, aerial_fallback], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653)'),
+    ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
@@ -17885,7 +18201,7 @@ GROUPS = [
     ('drawer', [drawer], 'the drawer in three tabs (22a): every part in its place, the start, the lit leg'),
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
-    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239); the search field\'s hint in the glass\'s grey (#551)'),
     ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
     ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
@@ -17895,13 +18211,13 @@ GROUPS = [
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a hidden Heads-up kind shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
-    ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
+    ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
-    ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
+    ('button3d', [button3d, labels_3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels)'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap shows when you\'re there and the profile up to it, a hold or a right-click opens it with its actions in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),

@@ -434,11 +434,12 @@ const planner = new Planner(map, {
   },
 });
 // The theme changed: the route and the colour scales are read from the CSS again (js/palette.js), so the
-// map and the planner draw with them again.
+// map, the planner and the timeline's strip draw with them again.
 onTheme(() => {
   map.setStyle(buildStyle(state, ctx), { diff: true });
   planner.drawHeads(); // (its markers' images are the theme's)
   if (planner.analysis) planner.showMode(planner.colorMode);
+  weather.renderStrip();
 });
 
 // Where you are: the dot, its cone and Follow me. While following, the dot sits in the middle
@@ -1096,7 +1097,7 @@ function trailControls() {
     }),
     h('p', { class: 'note' }, {
       off: `Trails and roads drawn for ${act.label.toLowerCase()}: what matters for it stands out. Turn on difficulty or uphill colours here.`,
-      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0 green → S5 purple). White halo = not graded yet.',
+      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0 green → S6 dark purple). White halo = not graded yet.',
       up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
       both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
       winter: 'Trails by how soon they open after snow (OSM mtb:winter), ploughed and unploughed paths, no access in winter, ski tracks: Trailmap’s winter classes, from OpenStreetMap where mapped (zoom 11+). In winter they show by themselves (the Winter group).',
@@ -1313,7 +1314,8 @@ function tileZoom(id) {
   return (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].minzoom) || QUICK_TILE[id].zoom || 0;
 }
 function tileFailing(id) {
-  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d]) : RASTER_OVERLAYS[id] ? [id] : [];
+  // (the depths that show at this zoom: below its own zoom a layer asks for no tiles, so never fails, #399)
+  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d] && map.getZoom() >= (RASTER_OVERLAYS[d].minzoom || 0)) : RASTER_OVERLAYS[id] ? [id] : [];
   if (raster.length && raster.every((d) => rasterDown(`ov-${d}`))) return true;
   if (id === 'trailDetails') return Date.now() - detailsBusyAt < 120e3;
   if (id === 'lit') return litWays.progress.failed > 0; // Overpass deliberately has no global backoff status

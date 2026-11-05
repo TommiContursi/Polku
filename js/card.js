@@ -505,7 +505,7 @@ export class CardHost {
       // move than for an upward one, as a map's nicer to nudge sideways)
       let ddy = dy;
       const half = pill ? pill.offsetWidth / 2 : 0;
-      const box = (el) => (el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null);
+      const box = (el) => (el && !el.hidden && el.getClientRects().length ? el.getBoundingClientRect() : null); // (the toolbox is fixed: no offsetParent)
       const base = [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls')].map(box).filter(Boolean);
       const credits = box(document.querySelector('.maplibregl-ctrl-bottom-left'));
       const clear = (list) => (nx, ny) => list.every((b) => nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20);

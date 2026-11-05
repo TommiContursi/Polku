@@ -4,6 +4,83 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-05
 
+### The difficulty key and Go's wind ([#388](https://github.com/TommiContursi/Polku/issues/388))
+
+- With the trails coloured by **Difficulty**, the note in **Layers** says the colours go from S0 green to S6 dark purple, as the map draws them, not to S5.
+- In **Go**, each of the wind's shares stays on one line: "Headwind 100 %" no longer breaks before its %, and the bars start in line.
+
+### Check says when a long route's road works and busy roads weren't checked ([#491](https://github.com/TommiContursi/Polku/issues/491))
+
+- On a long route, Polku doesn't ask for the road works or the busy roads along all of it, and Check's **Not checked** now says so, instead of showing none as if there were none. **What Polku looked at** says it too, and has a row for busy roads.
+- When Digiroad doesn't answer about busy roads, **Not checked** says so, with **Retry**.
+
+### An imported track keeps its name, and only its own ([#822](https://github.com/TommiContursi/Polku/issues/822), [#821](https://github.com/TommiContursi/Polku/issues/821))
+
+- A track you imported or a marked route you followed keeps its name when you reload Polku or come back later: in **More**'s title, the route's list and the GPX you export.
+- When you remove an imported track's points until one or none is left, the route you draw next no longer takes the track's name. **Undo** brings the removed point back with the name.
+
+### Words along trails stay when the map is tilted ([#635](https://github.com/TommiContursi/Polku/issues/635))
+
+- With **3D** on and the map tilted steeply, the words that run along a line stay readable, standing up towards you: the difficulty and uphill numbers, road, river and lake names, marked routes' names, the fairways' depths and the contours' heights. Before, they all disappeared past about 65°. The flat map looks the same.
+
+### A card's spot clear of the undo buttons ([#555](https://github.com/TommiContursi/Polku/issues/555))
+
+- On a phone, when a card opens and the map moves its spot into sight above it, the spot and its pill also stay clear of the floating **Undo** and **Redo** buttons, so a tap on the pill reaches the pill, not the buttons.
+
+### The timeline's strip follows light and dark ([#583](https://github.com/TommiContursi/Polku/issues/583))
+
+- When Polku changes between light and dark with the timeline open, its weather strip's words, your trip's band and the night's shading change with it at once, instead of keeping the old look until the time or the window changed.
+
+### Names you can read on the aerial photos ([#554](https://github.com/TommiContursi/Polku/issues/554))
+
+- On **Aerial** and **Aerial FI**, a peak's name and height and a park's name are white, and the names of lakes, rivers and the sea light blue, on their dark halo like the map's other words there, instead of brown, green and dark blue that were hard to read over the photos.
+
+### The search field's hint is easier to read ([#551](https://github.com/TommiContursi/Polku/issues/551))
+
+- The search field's hint, "Search places or paste coordinates", is in the darker grey of the other words on the frosted glass, in light and in dark, instead of the browser's pale grey that was hard to read over the map.
+
+### A multisport route's climbing adds up ([#752](https://github.com/TommiContursi/Polku/issues/752))
+
+- On a route of two sports, the line under the route's numbers counts each sport's climbing as the route's total does, a climb once it passes 2 m, so the sports' climbs add up to about the total instead of more.
+
+### Tooltips that say what happens ([#753](https://github.com/TommiContursi/Polku/issues/753))
+
+- On a desktop, the Go tab's tooltip says "there at" with the arrival time on a route that ends somewhere else, and "back at" only on a round trip.
+- **Redo**'s tooltip says it puts back what **Undo** took, and **Reverse** says the same in the toolbar and under the route's list: each leg keeps its mode and style.
+
+### Clear route forgets the route's name ([#769](https://github.com/TommiContursi/Polku/issues/769))
+
+- After **Clear route**, a route you draw next no longer takes the name of the track you imported or the marked route you followed before: in **More**'s title, the route's list, the GPX you export and the route you save offline. **Undo** brings the cleared route back with its name.
+
+### Depths says when it has no data, zoomed out too ([#399](https://github.com/TommiContursi/Polku/issues/399))
+
+- When Traficom's depth maps aren't answering, **Depths** in **Layers** says "No data now" at the zooms where the soundings aren't shown yet, not only once you zoom in to see them.
+
+### A marked route picked while the list loads ([#427](https://github.com/TommiContursi/Polku/issues/427))
+
+- In **Marked routes**, a route you pick on the map while the list is still loading stays picked when the list comes in, instead of going back to the one picked before.
+
+### Check's tab after Clear route ([#463](https://github.com/TommiContursi/Polku/issues/463))
+
+- After **Clear route**, Check's tab no longer shows the old route's count and "?", and a screen reader hears just "Check". **Undo** brings the route's count back with the route.
+
+### Menus fit a narrow screen ([#722](https://github.com/TommiContursi/Polku/issues/722))
+
+- On a phone with the text enlarged to 200 %, **More**'s menu and the drawing menu fit the screen, their descriptions wrapping, instead of running past its right edge.
+
+### Imported files with a broken point ([#484](https://github.com/TommiContursi/Polku/issues/484))
+
+- Importing a GPX or KML file that has a point without coordinates leaves that point out and keeps the rest of the track, instead of drawing a line across the world.
+
+### Paddle from here on a phone ([#656](https://github.com/TommiContursi/Polku/issues/656))
+
+- On a phone, **Paddle from here** says to tap where you want to go, not click.
+- On a phone, the other notes that ask you to click the map now say tap: the one when **Show the whole route** has no route to show, and the round trip notes about a start far from the water or no loop found.
+
+### Times never read 60 minutes ([#492](https://github.com/TommiContursi/Polku/issues/492))
+
+- A time just short of a whole hour reads the next hour: 1 h 59 min 40 s reads 2 h 00 min, not 1 h 60 min, wherever a time is shown.
+
 ### How far and how long, beside each waypoint ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each waypoint shows how far it is from the start and how long it takes to get there, stops and changeovers included, in a column left of the route's line: "1.11 km" over "5 min". With the text enlarged, they go under the waypoint's name.
