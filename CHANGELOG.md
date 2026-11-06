@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-06
 
+### Show all waypoints moves as a stretch's ⌄ does ([#761](https://github.com/TommiContursi/Polku/issues/761), [#846](https://github.com/TommiContursi/Polku/issues/846))
+
+- A tap or a click on **Show all waypoints** brings each stretch's waypoints and legs in one after another, as a stretch's **⌄** does, and **Fold all waypoints** sends them out together. Its chevron turns at the tap. From the keyboard, they change at once.
+- On a phone, **Show all waypoints** no longer jumps the route's list back to its top.
+
 ### The route's list names its warnings ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - A folded stretch in the route's list names its warnings in Check's words while there are one or two, such as "Cycling not allowed here (2 places)", so you needn't unfold it to see what they are. With more, it counts them, "2 warnings", and its ⌄ shows which.

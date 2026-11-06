@@ -324,8 +324,10 @@ In small phases from here (decided 2026-11-04), each one change to the rows as b
 
 6j. **A part's ⚙** (built 2026-11-06, after 6i): on each part's heading, the app's menu as the drawing menu's next leg (its name and ✕, `modal`): Sport · this part (the sports in place; a pick changes the part's legs alone), Your speed with its editor in place, and the sport's Route style chips with Fine-tune. Not a step of its own, as first proposed: the drawing menu already does this job, so the ⚙ reuses it (`speedItems()`, `styleItems()`). The rows under the list stay, so both can be tried. The Waypoints heading doesn't fold; Show all waypoints has its chevron. `sections` checks both on MTB then Paddle.
 
+6k. **Show all and Fold all move** (built 2026-11-06, after 6j, decided with /animate): as each stretch's ⌄, every stretch at once, each stretch's rows one after another (`unfoldIn` a set), leaving together (`foldOut()`, shared with the ⌄); the chevron turns at the tap; from the keyboard, at once. With it, #846: Show all no longer takes a phone's list to its top. /review-animations approved it on 2026-11-06 (run on #852, which carries it).
 
 6l. **From trying 6h to 6j** (built 2026-11-06): a folded stretch names its warnings while there are one or two ("Cycling not allowed here (2 places)"), as a leg does, and counts more as "2 warnings", no longer "to read"; Check's "In the dark" stays out of the warnings, folded too, as a leg already left it out (Darkness has its own line, and Check and the numbers' line still say it); the folded waypoints' names in bold when shown, as the others'; the weather's line in every tooltip, the profile's too, starts with the sky's icon; the Waypoints heading no longer shows a pointer. The heading, Show all, a folded stretch's count and the parts' headings wait for a round in the mock-up, and Worth a look's new name for the user's pick.
+
 The phases after it, to be decided one at a time:
 
 - **Less on a waypoint's row:** it no longer repeats the warnings of the stretch before it (#791's), and maybe its weather (to the card and a desktop's tooltip). Not sure yet: losing ›, and each row in the button's hairline (Parts 10).

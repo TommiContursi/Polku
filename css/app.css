@@ -1429,8 +1429,10 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wpl-head-tools:empty { display: none; }
 .wpl-head-tools > * { min-height: var(--target); }
 .wpl-head-tools > .tool { min-width: var(--target); }
-.wpl-all .ic { flex: none; } /* (Show all waypoints' chevron, turned while they're all shown, as a stretch's ⌄) */
-.wpl-all[aria-expanded="true"] .ic { transform: rotate(180deg); }
+.wpl-all .ic { flex: none; transition: transform var(--t-press) var(--ease-out); } /* (Show all waypoints' chevron, turned while they're all shown, as a stretch's ⌄) */
+.wpl-all[aria-expanded="true"] .ic { transform: rotate(180deg); transition-duration: var(--t-open); }
+.wpl-all:focus-visible .ic { transition: none; } /* (from the keyboard, at once, as the ⌄) */
+@media (prefers-reduced-motion: reduce) { .wpl-all .ic { transition: none; } }
 .sec2-set { flex: none; min-width: var(--target); min-height: var(--target); margin: -12px 0; } /* (a part's ⚙, at its heading's end, a finger's size adding no height) */
 @container plbody (max-width: 300px) { .wpl-head-tools { position: static; height: auto; justify-content: space-between; margin: 0 0 6px; } }
 .wpl-shows { padding: 0 8px; } /* (the list's settings' switches, in the app's menu) */
