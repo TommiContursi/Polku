@@ -174,7 +174,7 @@ Its priorities, for this plan:
 | Each sport's row in the key facts | Its distance and a fact | Its icon in its colour, its one standout fact and ›; no distance |
 | The drawing mode | Follow paths ▾ | Stays |
 | The start's sport row | A row ending in the chevron, opening the sport menu | Stays a row, its chevron the muted ▾ of a value you pick; the When row under it the same |
-| A part's sport, Route style, Your speed | Each part's ⚙ (#852's 6j), and the rows under the list | The sport as MTB ▾ in the part's heading, one tap to the sports; its ⚙ goes; Route style and Your speed one row a sport under the list ("MTB … Balanced ›", its speeds under it), opening both; the long speed row goes |
+| A part's sport, Route style, Your speed | Each part's ⚙ (#852's 6j), and the rows under the list | The sport as MTB ▾ in the part's heading, one tap to the sports, and its ⚙ beside it for that sport's style and speed on every leg; Route style and Your speed also one row a sport under the list ("MTB … Balanced ›", its speeds under it), opening both; the long speed row goes |
 | Show all waypoints | Green, on the left | Green, on the right, after a "Waypoints" heading |
 | A stretch's fold | Green ⌄ and its count | Stays |
 | Use colours, Selected | Green 10 px words | Gone: a row with a tick in On the route's list |
@@ -210,7 +210,7 @@ The route and a card for each detail, with no tabs: the warnings open the Check 
   - **each sport's row** stays, built for a phone: its icon in the sport's colour, its one standout fact and ›, without its distance (the part's heading has it). The trip's box doesn't repeat what a sport's row says;
   - **the profile:** Colour by and On map move into the profile card, and a quiet line over the profile names the colouring;
   - **When** is the trip's box's first line (above).
-- **A part's sport** is "MTB ▾" in its heading, one tap to the sports. **Route style and Your speed** stay under the list, one row a sport ("MTB … Balanced ›", its speeds under it), a tap opening that sport's Route style and Your speed together; the long speed row goes. A style and a speed are a sport's, not a part's, so a part's ⚙ goes. Settings keeps your speeds; Layers holds neither. This replaces "the rows under the list go".
+- **A part's sport** is "MTB ▾" in its heading, one tap to the sports. **Route style and Your speed** stay under the list, one row a sport ("MTB … Balanced ›", its speeds under it), a tap opening that sport's Route style and Your speed together; the long speed row goes. **A part's ⚙ stays** beside MTB ▾ (corrected the same evening): a style and a speed are a sport's, and the ⚙ sets them for every leg of that sport, as its menu's group title says ("Route style · MTB legs"). So there are two ways to them, by a tool lives where you work with it: the ⚙ while working on one part, the rows to look over every sport at once. Settings keeps your speeds; Layers holds neither. This replaces "the rows under the list go".
 - **The order in the sheet:** the numbers, the profile, the sports' rows, then the trip's box with When. The peek is the numbers, the profile and the sports' rows (#742's "under the route's numbers"), so When is the first thing above it at half, no longer in the peek. Whether the box belongs above the profile, to keep When in the peek, is to confirm.
 - **The toolbar and the list's foot:** a tool lives where you work with it (the rule above). The foot has Reorder, Reverse and Back to start.
 
@@ -334,7 +334,7 @@ Each is small and tried on a phone before the next, in this order (decided 2026-
 9. **The warnings as a box in the numbers row, opening the Check card;** the tabs go. Each sport's row loses its distance.
 10. **The Add row** (#761's PR 8), with the search in the sheet.
 11. **The rest of the rule:**
-    - a part's sport as MTB ▾ in its heading, its ⚙ gone; Route style and Your speed one row a sport under the list, opening both, and the long speed row gone;
+    - a part's sport as MTB ▾ in its heading, its ⚙ beside it; Route style and Your speed also one row a sport under the list, opening both, and the long speed row gone;
     - the list's foot without Clear route;
     - the toolbar giving Take it along to More first as it narrows (with #797);
     - the dotted time words gone;
@@ -354,7 +354,7 @@ Settled with the user in three rounds of questions, and recorded on [#869](https
 5. **Best time to leave:** the departure's day, a day at a time with ‹ ›, up to ten days; on a trip over days, the first day's departure only; each part weighed by its own sport, and why said in words.
 6. **Parts 22** as drawn, Go's tab gone; **#759** folds into the weather card.
 7. **The profile in the peek** (#742): under the route's numbers, about 70 px, while you draw and in the route's view; a quiet line over it names the colouring; a tap on either opens the profile (at half, then the profile card, which holds Colour by and On map). It's the third PR, after When.
-8. **A part's sport** is MTB ▾ in its heading, and its ⚙ goes; Route style and Your speed stay under the list, one row a sport, a tap opening both; the long speed row goes; Settings keeps your speeds, Layers neither (the calmer top).
+8. **A part's sport** is MTB ▾ in its heading, its ⚙ beside it (for that sport's style and speed on every leg: "Route style · MTB legs"); Route style and Your speed also stay under the list, one row a sport, a tap opening both; the long speed row goes; Settings keeps your speeds, Layers neither (the calmer top).
 9. **The calmer top:** the numbers keep the time alone; the warnings are a fourth figure, ⚠ 3 over "warnings" (Not checked, Good to know's count or ✓ without them; a row of its own at 200 %); each sport's row is its icon, its one standout fact and ›, without its distance.
 10. **A tool lives where you work with it:** the toolbar keeps every tool, Take it along going to More first as it narrows; the list's foot keeps Reorder, Reverse and Back to start; Clear route leaves the foot; the map's sport stays as it works today.
 11. **Green means you can tap it:** a value, a fold, a way back, or the one main action; DESIGN.md's words change to match.
