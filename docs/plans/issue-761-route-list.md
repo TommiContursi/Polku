@@ -320,6 +320,8 @@ In small phases from here (decided 2026-11-04), each one change to the rows as b
 
 6k. **Show all and Fold all move** (built 2026-11-06, after 6j, decided with /animate): as each stretch's ⌄, every stretch at once, each stretch's rows one after another (`unfoldIn` a set), leaving together (`foldOut()`, shared with the ⌄); the chevron turns at the tap; from the keyboard, at once. With it, #846: Show all no longer takes a phone's list to its top. Waits for /review-animations.
 
+6m. **What acts, as chosen from Parts 20 and 21** (built 2026-11-06, after 6k): no heading over the list (the Route tab says it); Show all waypoints in green, its ⌄ first and how many are hidden in grey (`wpl-all`, B); a part's heading one button with its ⚙ at the end, its numbers under its sport (`sec2-head`); a stretch's ⌄ in green before its count in grey. Three new rows in DEVELOPING's Shared controls. The trip's weather over the list (Parts 21) is the next PR.
+
 The phases after it, to be decided one at a time:
 
 - **Less on a waypoint's row:** it no longer repeats the warnings of the stretch before it (#791's), and maybe its weather (to the card and a desktop's tooltip). Not sure yet: losing ›, and each row in the button's hairline (Parts 10).

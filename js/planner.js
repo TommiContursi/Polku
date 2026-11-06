@@ -2937,12 +2937,11 @@ export class Planner {
     if (!box.matches(':hover') && !this.mapHover) this.unlitLeg(); // (not the leg under the pointer on the map)
   }
 
-  // In the Waypoints heading's row (#761), where its summary is while the list is open, so the list starts no lower: Show
-  // all waypoints, every stretch's at once (Fold all waypoints folds them), with no motion, since so many rows at once say
-  // nothing, and the list's settings
+  // Over the list (#761): Show all waypoints, every stretch's at once (Fold all waypoints folds them), in green as an action
+  // in words is (Layers' Map key), with how many are hidden in grey; and the list's settings at the row's end
   listTools() {
-    const pids = this.sections().flatMap((sec) => sec.stretches).filter((s) => s.to - s.from > 1).map((s) => this.pidOf(this.points[s.from]));
-    const all = pids.length > 0 && pids.every((pid) => this.unfolded.has(pid));
+    const folds = this.sections().flatMap((sec) => sec.stretches).filter((s) => s.to - s.from > 1), pids = folds.map((s) => this.pidOf(this.points[s.from]));
+    const all = pids.length > 0 && pids.every((pid) => this.unfolded.has(pid)), hidden = folds.reduce((t, s) => t + (this.unfolded.has(this.pidOf(this.points[s.from])) ? 0 : s.to - s.from - 1), 0);
     // (the settings' button is kept from one drawing of the list to the next, so its menu, open while the list changes,
     // goes back to it)
     let set = this.els.listSet;
@@ -2950,7 +2949,8 @@ export class Planner {
     // (Show all and Fold all move as each stretch's ⌄: from a tap, each stretch's rows come in one after another, all the
     // stretches together, and leave the same way; from the keyboard, at once. Its chevron turns as the ⌄ does, across the
     // redraw: `data-k` keeps it the same control while its words change)
-    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'data-k': 'all', 'aria-expanded': String(all), html: `<span>${all ? 'Fold' : 'Show'} all waypoints</span>${icon('chevronDown', 16)}`,
+    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'data-k': 'all', 'aria-expanded': String(all), 'aria-label': `${all ? 'Fold' : 'Show'} all waypoints, ${all ? 'all shown' : `${hidden} hidden`}`,
+      html: `${icon('chevronDown', 16)}<span>${all ? 'Fold' : 'Show'} all waypoints</span><small>${all ? 'all shown' : `${hidden} hidden`}</small>`,
       onclick: (e) => {
         // (settle() puts the focus back on it too)
         const redraw = () => { const settle = settleControls(this.els.pointsTools); this.renderWaypoints(); settle(); };
@@ -3057,11 +3057,12 @@ export class Planner {
       const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label}${this.routeName && one ? ` · ${this.routeName}` : ''}`, sum = nums(sec);
       if (sec.ends === 'night') day += this.stopAt(sec.to).n || 1;
       const id = this.pidOf(this.points[sec.from]);
-      // (its ⚙: the part's sport, its speed and its route style, as the drawing menu has the next leg's, #761)
-      const set = h('button', { type: 'button', class: 'tool sec2-set', 'aria-label': `${title}: sport, speed and route style`, 'aria-haspopup': 'menu', 'aria-expanded': 'false', html: icon('cog', 18) });
-      set.onclick = () => this.partMenu(set, sec);
-      tooltip(set, { name: 'Sport, speed and route style' });
-      const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 16) }), h('div', { class: 'sec2-t' }, h('b', {}, title), h('small', {}, sum)), set);
+      // (the whole heading a button: the part's sport, its speed and its route style, as the drawing menu has the next leg's;
+      // its numbers under its sport, and a ⚙ at its end, where a waypoint's › is, #761)
+      const head = h('button', { type: 'button', class: 'sec2-head', 'aria-label': `${title}, ${sum}: sport, speed and route style`, 'aria-haspopup': 'menu', 'aria-expanded': 'false' },
+        h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 16) }), h('span', { class: 'sec2-t' }, h('b', {}, title), h('small', {}, sum)), h('span', { class: 'sec2-set', 'aria-hidden': 'true', html: icon('cog', 18) }));
+      head.onclick = () => this.partMenu(head, sec);
+      tooltip(head, { name: 'Sport, speed and route style' });
       const rows = h('div', { class: 'rows', role: 'group', 'aria-label': `${title}, ${sum}` });
       // (a part after a changeover or a night starts with its first point's row, as the route starts with its start's)
       rows.append(this.pointRow(sec.from, ro, { w: wx(wAt(this.lengthTo(sec.from))), leave: k > 0 }));
@@ -3266,7 +3267,7 @@ export class Planner {
         e.currentTarget.setAttribute('aria-expanded', 'false');
         this.foldingOut = pid;
         this.foldOut([folds], e.detail > 0, () => { this.foldingOut = null; this.unfolded.delete(pid); redraw(); });
-      } }, h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) })) : null;
+      } }, h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) }), h('span', { 'aria-hidden': 'true' }, String(shaping))) : null; // (⌄ in green, its count in grey, as Show all's)
     const row = h('div', { class: 'wpl-strow' }, b, fold);
     if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)
     return row;
@@ -4834,9 +4835,10 @@ export class Planner {
     const titleEl = h('span', { class: 'sec-title' }, title);
     const count = h('span', { class: 'sec-count' });
     const sum = h('span', { class: 'sec-sum' });
+    // (nor has it a heading: the Route tab says what it is, and Show all waypoints leads it, #761; its name for a screen reader)
     const head = fold ? h('button', { type: 'button', class: 'sec-head', 'aria-expanded': String(open), onclick: () => this.toggleSection(id) },
-      titleEl, count, sum, h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) })) : h('div', { class: 'sec-head' }, titleEl, count);
-    const el = h('section', { class: 'sec', 'data-sec': id, 'data-open': String(open) }, head, h('div', { class: 'sec-body' }, ...kids));
+      titleEl, count, sum, h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) })) : null;
+    const el = h('section', { class: 'sec', 'data-sec': id, 'data-open': String(open), 'aria-label': fold ? null : title }, head, h('div', { class: 'sec-body' }, ...kids));
     this.sec[id] = { el, head: fold ? head : null, titleEl, count, sum };
     return el;
   }

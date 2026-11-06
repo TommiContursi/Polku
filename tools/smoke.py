@@ -15755,12 +15755,16 @@ def sections_list(chrome):
             fails.append(f"{name}: the change of sport: waits {s['waits']}, Paddle's rows {s['secs'][1]['rows'][:1]}")
         if s['short']:
             fails.append(f"{name}: rows under 44 px: {s['short']}")
-        # (#761) each part's ⚙: its sport, which changes that part's legs alone (Undo puts them back), its speed's editor in
-        # place, and its route style; the Waypoints heading doesn't fold, and Show all waypoints has its chevron
+        # (#761) each part's heading, a button with its ⚙ at the end: its sport, which changes that part's legs alone (Undo
+        # puts them back), its speed's editor in place, and its route style; the list has no heading, and Show all waypoints
+        # leads it in green, its chevron first and how many are hidden in grey, as a stretch's ⌄ is green before its count
         r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), sports = () => p.legs.map((_, k) => p.legSport(k)).join(',');
-          const sets = [...L.querySelectorAll('.sec2-head .sec2-set')].map((x) => x.getAttribute('aria-label')), before = sports();
-          const heading = { chev: !!p.sec.points.el.querySelector(':scope > .sec-head .sec-chev'), button: p.sec.points.el.querySelector(':scope > .sec-head').tagName, all: !!p.els.pointsTools.querySelector('.wpl-all .ic') };
-          L.querySelectorAll('.sec2-set')[1].click(); await wait(300);
+          const sets = [...L.querySelectorAll('button.sec2-head')].filter((x) => x.querySelector('.sec2-set .ic')).map((x) => x.getAttribute('aria-label').replace(/,.*:/, ':')), before = sports();
+          const c = (el) => el && getComputedStyle(el).color, probe = document.body.appendChild(Object.assign(document.createElement('span'), { style: 'color: var(--accent)' })), green = c(probe); probe.remove();
+          const all = p.els.pointsTools.querySelector('.wpl-all'), u = L.querySelector('.wpl-unfold');
+          const heading = { head: !!p.sec.points.el.querySelector(':scope > .sec-head'), all: all?.textContent || '', green: c(all) === green && c(all.firstElementChild) === green && c(all.querySelector('small')) !== green,
+            unfold: !!u?.firstElementChild?.querySelector('.ic') && c(u.firstElementChild) === green && c(u.lastElementChild) !== green };
+          L.querySelectorAll('button.sec2-head')[1].click(); await wait(300);
           const m = document.querySelector('.menu-pop'), groups = [...m.querySelectorAll('.menu-h')].map((x) => x.textContent);
           m.querySelector('.nl-speed').click(); const editor = !!m.querySelector('.nl-editor');
           m.querySelector('.part-sport').click(); [...m.querySelectorAll('[role=menuitemradio]')].find((x) => x.textContent.startsWith('Hike')).click();
@@ -15769,9 +15773,10 @@ def sections_list(chrome):
           p.undo(); for (let k = 0; k < 50 && !p.analysisFits(); k++) await wait(100);
           return { sets, heading, groups, editor, before, after, closed, back: sports() }; })()""", timeout=30000)
         want_after = ','.join(x if x != 'paddle' else 'hike' for x in r['before'].split(','))
-        if (r['sets'] != ['MTB: sport, speed and route style', 'Paddle: sport, speed and route style'] or r['heading'] != {'chev': False, 'button': 'DIV', 'all': True}
+        h_ = r['heading']
+        if (r['sets'] != ['MTB: sport, speed and route style', 'Paddle: sport, speed and route style'] or h_['head'] or not re.fullmatch(r'Show all waypoints\d+ hidden', h_['all']) or not h_['green'] or not h_['unfold']
                 or r['groups'] != ['Sport · this part', 'Route style · Paddle legs'] or not r['editor'] or r['after'] != want_after or not r['closed'] or r['back'] != r['before']):
-            fails.append(f"{name}: a part's ⚙: {r} (want a ⚙ on each heading, the Waypoints heading unfolding, Paddle's sport changed alone, then back with Undo, #761)")
+            fails.append(f"{name}: a part's heading: {r} (want each heading a button with its ⚙, no heading over the list, Show all and a stretch's ⌄ in green before a grey count, Paddle's sport changed alone, then back with Undo, #761)")
         # a stop at via 4: a wait in its part, still two parts (#761); a night at via 5 ends a day, a wait between the
         # days, and Day 2 starts with via 5's row as you leave it in the morning
         pg.js("polku.planner.setStop(4, { min: 30 }); true")
