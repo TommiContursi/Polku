@@ -11,6 +11,10 @@
   The controls are css/app.css's own, by their class names, and the icons and h() are js/ui.js's; what this mock-up
   adds is in the block marked "new in this mock-up". Today's Check and Go panes are the app's own DOM, captured from
   main at 9849191 in the browser (the route below, drawn with a local BRouter), with only their ids taken out.
+  It links app.css rather than copying the controls' CSS into a block, as #761's mock-up does, so what's drawn is the
+  app's look today. The cost: when app.css or js/ui.js change, Today's panes and the rows change with them, so a later
+  round compares against main as it is then, not as it was on 2026-11-06. The page is wide, so app.css's rules for a
+  phone (720 px and under) don't apply inside a frame: the app's own rows overflow a little at 200 %.
 
   ?v=today|a|b|c  &s=route|list|when|weather|profile|warn|next  &r=multi|mtb|fi  &f=390|360|side  &z=100|200
   &w=now|at|by (when you leave)  &g=off|on (each control labelled by its kind)
@@ -49,6 +53,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .frame.z2.phone { width: 195px; height: 422px; }
 .frame.z2.phone.narrow { width: 180px; height: 370px; }
 .frame.z2.side { width: min(550px, calc(50vw - 16px)); height: 350px; }
+@media (max-width: 440px) { .frame.phone, .frame.phone.narrow { width: calc(100vw - 32px); } .cap { max-width: none; } } /* (this page on a phone: the frame fits the screen, 16 px each side) */
 .cap { margin: 10px 0 0; font-size: 12.5px; color: var(--page-cap); max-width: 390px; }
 .frame.side + .cap { max-width: 1100px; }
 .notes { margin-top: 28px; max-width: 900px; }
@@ -316,7 +321,7 @@ const tripBox = (R) => h('div', { class: 'p22-box', role: 'group', 'aria-label':
     h('span', { class: 'day-wx', html: `${icon(S.w === 'at' ? 'cloudSun' : R.day.sky, 14)}${S.w === 'at' ? '4 °C · wind up to 5 m/s · dry · in the light' : R.day.box}` }), chevR()));
 
 // ---------------------------------------------------------------- the route's list, as built (Parts 21, #852)
-const P = { open: new Set() };
+const FOLD = { open: new Set() }; // (the stretches unfolded)
 function warnsHtml(list) {
   const G = { read: ['read', 'warnf'], look: ['look', 'eye'] };
   return list.map(([g, t]) => `<span class="${G[g][0]}">${icon(G[g][1], 14)}${t}</span>`);
@@ -333,11 +338,11 @@ function list(R) {
         rows.append(h('button', { type: 'button', class: `row wpl-point${kind === 'end' ? ' last' : ''}${brk ? ' brk' : ''}`, 'data-g': 'Row ›' },
           h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini wp-${kind}` }, num)), h('span', {}, h('b', { class: 'wpl-name' }, name), h('span', { class: 'wpl-when', 'aria-hidden': 'true' }, h('b', {}, far), h('small', {}, since))), chevR()));
       } else if (r[0] === 'st') {
-        const [, nums, warns, fold, carry] = r, key = `${R.key}:${k}`, open = P.open.has(key), beads = [];
+        const [, nums, warns, fold, carry] = r, key = `${R.key}:${k}`, open = FOLD.open.has(key), beads = [];
         for (let j = 0; j < (open ? 0 : fold || 0); j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (fold + 1)}%` }));
         const st = h('button', { type: 'button', class: 'row wpl-stretch', 'data-g': 'Row' }, h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
           h('span', {}, h('b', { class: 'wpl-nums' }, nums), carry ? h('small', { class: 'wpl-warns' }, carry) : null, ...warnsHtml(warns).map((x) => h('small', { class: 'wpl-warns', html: x }))));
-        const f = fold ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-g': 'Green ⌄', 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${fold} waypoint${fold === 1 ? '' : 's'}`, onclick: () => { P.open[open ? 'delete' : 'add'](key); draw(); } },
+        const f = fold ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-g': 'Green ⌄', 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${fold} waypoint${fold === 1 ? '' : 's'}`, onclick: () => { FOLD.open[open ? 'delete' : 'add'](key); draw(); } },
           h('span', { 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) }), h('span', { 'aria-hidden': 'true' }, String(fold))) : null;
         rows.append(h('div', { class: 'wpl-strow' }, st, f));
       } else {
@@ -350,8 +355,8 @@ function list(R) {
   });
   return ol;
 }
-const folds = (R) => R.parts.reduce((t, p, k) => t + p.rows.filter((r) => r[0] === 'st' && r[3] && !P.open.has(`${R.key}:${k}`)).reduce((a, r) => a + r[3], 0), 0);
-const showAll = (R) => { const n = folds(R); return h('button', { type: 'button', class: 'btn small quiet wpl-all p20-all', 'data-g': 'Green ⌄', 'aria-expanded': String(!n), onclick: () => { R.parts.forEach((p, k) => (n ? P.open.add(`${R.key}:${k}`) : P.open.delete(`${R.key}:${k}`))); draw(); } },
+const folds = (R) => R.parts.reduce((t, p, k) => t + p.rows.filter((r) => r[0] === 'st' && r[3] && !FOLD.open.has(`${R.key}:${k}`)).reduce((a, r) => a + r[3], 0), 0);
+const showAll = (R) => { const n = folds(R); return h('button', { type: 'button', class: 'btn small quiet wpl-all p20-all', 'data-g': 'Green ⌄', 'aria-expanded': String(!n), onclick: () => { R.parts.forEach((p, k) => (n ? FOLD.open.add(`${R.key}:${k}`) : FOLD.open.delete(`${R.key}:${k}`))); draw(); } },
   h('span', { html: icon(n ? 'chevronDown' : 'chevronUp', 16) }), h('span', {}, n ? 'Show all waypoints' : 'Fold all waypoints'), h('small', {}, n ? `${n} hidden` : 'all shown')); };
 const sliders = () => h('button', { type: 'button', class: 'tool wpl-set', 'data-g': 'Icon', 'aria-label': 'List settings', 'aria-haspopup': 'menu', html: icon('sliders', 20) });
 // today: Show all on the left (Parts 20's B), the sliders at the end; the directions: a heading, Show all on the right
@@ -476,8 +481,7 @@ function sheet(R, phone) {
   if (!today) body.append(addRow());
   body.append(foot());
   if (today) body.append(howRows(R));
-  if (v === 'a') body.append(h('section', { class: 'rt-sec', id: 'a-warn' }, h('h3', {}, 'Check'), warnings(R)), h('section', { class: 'rt-sec', id: 'a-by' }, h('h3', {}, 'On the route'), colourList(R)),
-    h('section', { class: 'rt-sec' }, h('h3', {}, 'Take it along'), h('div', { class: 'wpl-foot' }, ...[['download', 'Export GPX'], ['link', 'Copy share link'], ['offline', 'Save offline…']].map(([ic, t]) => h('button', { type: 'button', class: 'btn', 'data-g': 'Button', html: `${icon(ic, 16)} ${t}` })))));
+  if (v === 'a') body.append(h('section', { class: 'rt-sec', id: 'a-warn' }, h('h3', {}, 'Check'), warnings(R)), h('section', { class: 'rt-sec', id: 'a-by' }, h('h3', {}, 'On the route'), colourList(R))); // (Take it along stays in More: one home an action)
   return el;
 }
 
@@ -516,7 +520,7 @@ function draw() {
       profile: 'Today: On the route is in Check, after the warnings, each kind a bar with “Use colours” (10 px, and on Terrain and Ground cards inside a card), repeating the profile’s Colour by.',
       warn: 'Today: Check, the app’s own pane: its numbers, Warnings, Good to know, What Polku looked at, then On the route.',
       next: 'Today: the top bar’s search finds the place; picking it only moves the map there, with no mark and no card, so the next waypoint is a tap you must aim yourself. Only a LIPAS route opens a card.' },
-    a: 'A, one page: no tabs. When first in the top row; then the numbers, the warnings, the profile (a tap scrolls to On the route), the trip’s box (opening the weather card), the list with Show all on the right and the Add row, then Check, On the route and Take it along as sections of the same page.',
+    a: 'A, one page: no tabs. When first in the top row; then the numbers, the warnings, the profile (a tap scrolls to On the route), the trip’s box (opening the weather card), the list with Show all on the right and the Add row, then Check and On the route as sections of the same page. Take it along stays in More.',
     b: 'B, the route and its cards (proposed): no tabs. The planner holds the route: When first, the numbers, the warnings, the profile, the trip’s box, the list and the Add row. Each summary opens its detail as a card, one at a time, in the sheet’s place on a phone and beside the panel on a desktop: the warnings Check, the profile Profile and On the route, the box the weather.',
     c: 'C, two tabs: Route and Check, Go gone (Parts 22). When first in the top row; On the route under the profile as its legend, with lengths (#758); the trip’s box over the list opens the weather card.',
   };

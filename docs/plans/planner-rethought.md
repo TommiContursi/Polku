@@ -1,6 +1,6 @@
 # The planner, rethought (#869)
 
-Polku's planner from a blank map to the trip, as a whole: research on other planners, an inventory of the planner on `main`, one rule for its controls, and three directions to choose from. The mock-up is [mockups/planner-rethought.html](mockups/planner-rethought.html): today's planner and the three directions, at 390 and 360 px, 200 % and the desktop's side dock, with a route of three sports, an MTB route with real terrain, and long Finnish names. **Label the controls** on its bar tags every control with its kind, so the rule can be checked by eye.
+Polku's planner from a blank map to the trip, as a whole: research on other planners, an inventory of the planner on `main`, one rule for its controls, and three directions to choose from. The mock-up is [mockups/planner-rethought.html](mockups/planner-rethought.html): today's planner and the three directions, at 390 and 360 px, 200 % and the desktop's side dock, with a route of three sports, an MTB route with real terrain, and long Finnish names. **Label the controls** on its bar tags every control with its kind, so the rule can be checked by eye. On a phone, the same page is a private Artifact: [the planner, rethought](https://claude.ai/artifact/JNgtQWQNkb83CrWa77xgMd), built from this file with `css/app.css` and `js/ui.js` inlined.
 
 ## Where it stands
 
@@ -106,7 +106,7 @@ Four Sonnet subagents ran at low effort. Each ran 3–8 searches and opened few 
 | On the route | In Check, though it says what the route is made of, not what to check; its Use colours repeats Colour by |
 
 **Found on the way:**
-- **Search for the next place** only moves the map. A place from the top bar's search has no mark and no card, so the next waypoint is a tap you aim yourself (`choose()` in `js/search.js`); only a LIPAS result opens a card. It's PR 1 below.
+- **Search for the next place** only moves the map. A place from the top bar's search has no mark and no card, so the next waypoint is a tap you aim yourself (`choose()` in `js/search.js`); only a LIPAS result opens a card. Filed as #871, and PR 1 below.
 - **The weather timeline covers things.** At 390 with the planner at full, it covers the planner's numbers, its profile and the search's lower results. That's on #377.
 - **Minutes already work.** The departure has had minute precision since #364's C, so #219's first half is done; noted on #219.
 
@@ -137,7 +137,11 @@ Its priorities, for this plan:
 
 ## The rule for controls
 
-**What a control does decides how it looks.** Each kind is a control in DEVELOPING's Shared controls already, and only the When pill is new: it's Colour by's pill as a button.
+**What a control does decides how it looks.** Each kind below is a control in DEVELOPING's Shared controls already. Four controls in the directions are new, and they're proposals until the user chooses them:
+- **the When pill:** Colour by's pill (`mode-select`) as a button, opening the app's menu;
+- **On the route's list:** a `row` with a tick and its bar, the chosen one unfolded with Check's lengths;
+- **Best time to leave's strip:** a bar an hour, scrubbed by a finger;
+- **the trip's box:** Go's day cards (`days`, `day`) as buttons ending in › (Parts 22's).
 
 | What it does | How it looks | The control |
 |---|---|---|
@@ -150,7 +154,11 @@ Its priorities, for this plan:
 | Closes, folds, undoes, more, its settings | A bare icon from a fixed few: ✕ ⌄ ↶ ↷ ⋯ ⚙ and the list's sliders | `tool` |
 
 **The rules with it:**
-1. **One look per action, per layout.** A whole-route action is a menu item in More on a phone, and an icon with its tooltip and key on a desktop's toolbar. The list's foot keeps the list's own (Reorder, Reverse, Back to start, Clear route). The docked toolbox's row of route icons goes on phones.
+1. **One home per action on a phone.**
+   - The list's foot holds what acts on the list: Reorder, Reverse, Back to start and Clear route.
+   - More holds taking it along (Share link, Export GPX, Save offline) and starting again (Round trip, Import).
+   - A desktop's toolbar adds icons with tooltips and keys, for a pointer.
+   - Today More repeats the foot's Reverse, Back to start and Clear route, and the docked toolbox repeats six of them as icons. Both are choices below (10 and 11): #750 set More's order, and #660's queue said no PR touches the toolbar again.
 2. **The arrows mean one thing each:** › opens, ‹ goes back, ⌄ ⌃ fold here, ▾ picks a value. → and ↑ go.
 3. **Headings are words,** in sentence case (#767). A heading that opens its settings has ⚙ at its end, as a part's does.
 4. **A desktop may be denser,** with icons, tooltips and keys, never a different kind of control for the same job.
@@ -171,7 +179,7 @@ Its priorities, for this plan:
 | Wind / Temperature / Rain along the route ↑ | Green links in Go | Gone with Go: Colour by |
 | Strongest headwind … → | A green link | A row › in the weather card |
 | Take it along | Buttons in Go, items in More, icons at full | Items in More, icons on the desktop's toolbar |
-| The docked toolbox's icon row (phone, full) | Six bare icons | Gone; More has them |
+| The docked toolbox's icon row (phone, full) | Six bare icons | Gone, More and the foot having them (choice 11) |
 | Done, Edit | Buttons | Stay |
 | ‹ Route on a card | Green words | Stays |
 | The tabs | Route, Check, Go | Gone (A, B) or Route and Check (C) |
@@ -206,7 +214,7 @@ Its priorities, for this plan:
 | **Check** | A section of the page; the warnings' row scrolls to it | The Check card, from the warnings' row: Check as built, without On the route | A tab, without On the route |
 | **The weather** | The card | The card | The card |
 | **On a desktop** | One panel | The panel, and each card beside it, so the route stays in sight | The panel |
-| **Its cost** | A long page; Check and On the route under a long list | Three cards to learn; one more step to Check's sources | Keeps a tab bar for one thing; the profile's legend at full only |
+| **Its cost** | A long page; Check and On the route under a long list | Three cards to learn; on a phone a card covers the list while it's open | Keeps a tab bar for one thing; the profile's legend at full only |
 
 **Why B:**
 - **The phone's room goes to the route.** At half it shows when you leave, the numbers, the warnings, the profile, the trip and the start of the list.
@@ -271,20 +279,20 @@ A is the simplest to learn but the longest to scroll. C changes the least.
 
 Each is small and tried on a phone before the next. The order is for B; A and C differ only from PR 7. The order the user set on 2026-11-04 put the cards (#690, #797) and the profile (#796) before the weather card; this order puts the weather first, since Parts 22 is ready. The user decides.
 
-1. **Fix: a place found by search gets its mark and its card** (Add to route, Start here, End here). It's a Fix PR, in the month's milestone, and holds in every direction. `choose()` in `js/search.js`, `openPlaceCard()`.
+1. **Fix: a place found by search gets its mark and its card** (#871: Add to route, Start here, End here). It's a Fix PR, in the month's milestone, and holds in every direction. `choose()` in `js/search.js`, `openPlaceCard()`.
 2. **When first:** the pill in the sheet's top row, with Leave now and Leave at. It sets `setLeave()` as Leave's row does, and Go's Leave row stays until PR 4. `renderLeave()`, the sheet's top row (`js/planner.js`). Checks: `leave`, `keyfacts`.
 3. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.
 4. **The weather card from the trip's box** (Parts 22, #431, #794). Go's time and weather move into it, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
 5. **Best time to leave** (#273, parts 1, 3 and 5): the strip and the named departures in the weather card; the crossing window for a paddle (#856). The forecast is the one `windAlong()` already has, so no new requests. `weather`, `water`.
 6. **Arrive by** (#219): the pill's third item, worked back with the wind; the states above. `leave`, `stops`.
 7. **The profile card, with On the route as Colour by's list** (#796, #758). Check's On the route goes.
-8. **The Check card from the warnings' row;** the tabs go. The rows under the list (Route style, Your speed) go, since each part's ⚙ has them.
+8. **The Check card from the warnings' row;** the tabs go. The rows under the list (Route style, Your speed) stay until choice 12 says otherwise: the user kept both ways on 2026-11-05 to try them.
 9. **The Add row** (#761's PR 8), with the search in the sheet.
 10. **The rest of the rule:**
-    - the docked toolbox's icon row goes on phones;
     - the dotted time words go;
+    - More and the docked toolbox, if choices 10 and 11 say so;
     - DESIGN.md's accent rule changes its words;
-    - DEVELOPING's Shared controls gets the When pill and the On the route list.
+    - DEVELOPING's Shared controls gets the new controls the user chose: the When pill, On the route's list, the strip and the trip's box.
 
 Every motion is decided with /animate when it's built, and a PR that moves something stops for /review-animations.
 
@@ -299,6 +307,10 @@ Every motion is decided with /animate when it's built, and a PR that moves somet
 7. **The accent's words in DESIGN.md:** as proposed, or keep green words for what's chosen only.
 8. **#869's milestone.**
 9. **The map's 48 hours:** keep setting the departure as they do today (#233's step 3), or move only the map's hour, with the pill the one place to set when you leave.
+10. **More's copies of the foot's actions** (Reverse, Back to start, Clear route): keep them (as #750 set More's order), or let the foot be their one home on a phone.
+11. **The docked toolbox's row of route icons** on a phone at full: keep it, or let More and the foot have them. #660's queue said no PR touches the toolbar again, so it changes only on the user's word.
+12. **The rows under the list** (Route style and Your speed for each sport): keep them beside each part's ⚙, as tried since 2026-11-05, or let the ⚙ be their one home.
+13. **The new controls:** the When pill, On the route's list, the strip and the trip's box, each joining Shared controls once chosen.
 
 ## Not drawn, or not known
 
