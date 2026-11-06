@@ -17342,6 +17342,141 @@ def leave(chrome):
     return not fails
 
 
+
+# When on the first screen (#869): a row under the sport's in Start a route and each way to begin, "Leave now", with a
+# menu of Leave now and Leave at…, whose field lies over it so a tap opens the phone's own picker (a click and Enter a
+# desktop's). A time picked before the first waypoint survives a reload (it didn't: the saved route had no points),
+# carries into the route, where Go's Leave and the numbers say it, and Leave now brings it back to now.
+WHEN_JS = """(() => { window.WN = {
+  row: () => document.querySelector('.pl-way .when-row'),
+  read() {
+    const r = WN.row(), s = document.querySelector('.pl-way .sport-row');
+    if (!r) return null;
+    const R = r.getBoundingClientRect(), S = s.getBoundingClientRect();
+    return { name: r.querySelector('b').textContent, line: r.querySelector('small').textContent, label: r.getAttribute('aria-label'), popup: r.getAttribute('aria-haspopup'), expanded: r.getAttribute('aria-expanded'),
+      h: Math.round(R.height), under: Math.abs(R.top - S.bottom) < 12 && Math.abs(R.left - S.left) < 1 && Math.abs(R.width - S.width) < 1 };
+  },
+  at(el) { if (!el || !el.getClientRects().length) return null; const b = el.getBoundingClientRect(); return { x: b.left + Math.min(60, b.width / 3), y: b.top + b.height / 2 }; },
+  menu() {
+    const m = document.querySelector('.menu-pop[aria-label="When"]');
+    if (!m) return null;
+    const f = m.querySelector('.menu-pick input'), a = WN.at(f);
+    return { items: [...m.querySelectorAll('.menu-item')].map((x) => x.matches('input') ? `${x.type}: ${x.getAttribute('aria-label')}` : `${x.textContent}${x.getAttribute('aria-checked') === 'true' ? ' ✓' : ''}`),
+      over: !!a && document.elementFromPoint(a.x, a.y) === f, field: a, now: WN.at([...m.querySelectorAll('.menu-item')].find((x) => x.textContent === 'Leave now')) };
+  },
+};
+window.__picked = [];
+HTMLInputElement.prototype.showPicker = function () { window.__picked.push(this.type); };
+return true; })()"""
+
+
+def when_start(chrome):
+    fails = []
+
+    def press(pg, at, name, touch):
+        if not at:
+            fails.append(f'{name}: not on screen')
+            return False
+        if touch:
+            pg.quick_tap(at['x'], at['y'])
+        else:
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                      'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+        time.sleep(0.5)
+        return True
+
+    def enter(pg):
+        for event in ('rawKeyDown', 'char', 'keyUp'):
+            fields = {'type': event, 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}
+            if event == 'char':
+                fields['text'] = '\r'
+            pg.c.send('Input.dispatchKeyEvent', fields, pg.s)
+        time.sleep(0.4)
+
+    def one(w, h_, phone):
+        name, touch = f'{w}x{h_}', phone
+        pg = chrome.page(w, h_, phone)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js(LV_JS)
+        pg.js(WHEN_JS)
+        pg.js("polku.planner.setActive(true); true")
+        pg.js(SETTLED)
+        r = pg.js("WN.read()")
+        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or r['popup'] != 'menu' or r['expanded'] != 'false' or r['h'] < 44 or not r['under']:
+            fails.append(f"{name}: Start a route's When row: {r}")
+            pg.close()
+            return
+        # each way to begin has it too, under the sport's (A file is a tile here)
+        for way, js in (('Draw it', "polku.planner.openWay('draw')"), ('Marked routes', "polku.planner.openWay('find')"), ('Round trip', "polku.planner.openLoop(null, { fromWays: true })")):
+            pg.js(f"{js}; true")
+            time.sleep(0.3)
+            r = pg.js("WN.read()")
+            if not r or r['name'] != 'Leave now' or not r['under']:
+                fails.append(f"{name}: {way}'s When row: {r}")
+            pg.js("polku.planner.loop.open ? polku.planner.closeLoop() : polku.planner.wayBack(); true")
+            time.sleep(0.3)
+        # its menu: Leave now, ticked, and Leave at…, the field a tap meets (a click and Enter open the picker too)
+        pg.js(SETTLED)
+        press(pg, pg.js("WN.at(WN.row())"), f'{name}: the When row', touch)
+        m = pg.js("WN.menu()")
+        if not m or m['items'] != ['Leave now ✓', 'datetime-local: Leave at… Pick a day and a time'] or not m['over'] or pg.js("WN.row().getAttribute('aria-expanded')") != 'true':
+            fails.append(f"{name}: When's menu: {m}")
+            pg.close()
+            return
+        press(pg, m['field'], f'{name}: Leave at…', touch)
+        if not phone:
+            enter(pg)
+        if pg.js("window.__picked") != ['datetime-local'] * (1 if phone else 2):
+            fails.append(f"{name}: a {'tap' if phone else 'click and Enter'} on Leave at… opened {pg.js('window.__picked') or 'no picker'}")
+        # tomorrow at 09:00, picked and the picker put away: the menu goes, and the row says it as Go's Leave does
+        r = pg.js("""(async () => { const f = document.querySelector('.menu-pick input'), want = LV.at(1, 9, 0);
+          f.value = LV.iso(want); f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); f.blur();
+          await new Promise((ok) => setTimeout(ok, 300));
+          return { ...WN.read(), menu: !!WN.menu(), leave: polku.planner.leaveAt, want, clock: LV.clock(want), day: 'Tomorrow, ' + LV.day(want) }; })()""")
+        if r['leave'] != r['want'] or r['menu'] or r['expanded'] != 'false' or r['name'] != f"Leave at {r['clock']}" or r['line'] != r['day'] or r['label'] != f"When: Leave at {r['clock']}. {r['day']}":
+            fails.append(f"{name}: Leave at tomorrow, 09:00: {r}")
+        # a reload before there's a route keeps it
+        want = r['want']
+        pg.js("polku.planner.save(); true")
+        pg.reload()
+        pg.js(LV_JS)
+        pg.js(WHEN_JS)
+        pg.js("polku.planner.setActive(true); true")
+        r = pg.js("({ start: polku.planner.startSec(), name: WN.read()?.name })")
+        if r['start'] != want or r['name'] != f"Leave at {pg.js(f'LV.clock({want})')}":
+            fails.append(f"{name}: after a reload with no route: {r}")
+        # two waypoints: Go's Leave and the numbers say it; a reload keeps it with the route
+        pg.js("""(async () => { const p = polku.planner; p.setMode('line'); p.addPoint([23.800, 61.512]); p.addPoint([23.815, 61.5155]);
+          for (let k = 0; k < 100 && !p.analysis; k++) await new Promise((ok) => setTimeout(ok, 100)); p.reveal('speed'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()""", timeout=30000)
+        r = pg.js(f"({{ ...LV.read('go'), from: document.querySelector('.sum-time small')?.textContent, start: polku.planner.startSec(), clock: LV.clock({want}), day: LV.day({want}) }})")
+        if not r or r['start'] != want or r['val'] != r['clock'] or r['line'] != f"Tomorrow, {r['day']}" or r['from'] != f"from {r['day']}, {r['clock']}":
+            fails.append(f"{name}: the route drawn after Leave at: {r}")
+        pg.reload()
+        pg.js(LV_JS)
+        pg.js(WHEN_JS)
+        if pg.js("polku.planner.startSec()") != want:
+            fails.append(f"{name}: after a reload with the route it leaves {pg.js('new Date(polku.planner.startSec() * 1000).toString()')}")
+        # Leave now, from the first screen's menu again: back to now everywhere
+        pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); await new Promise((ok) => setTimeout(ok, 400)); return true; })()")
+        pg.js(SETTLED)
+        press(pg, pg.js("WN.at(WN.row())"), f'{name}: the When row again', touch)
+        m = pg.js("WN.menu()")
+        if not m or m['items'][:1] != ['Leave now'] or not m['now']:
+            fails.append(f"{name}: When's menu with a time: {m}")
+        else:
+            press(pg, m['now'], f'{name}: Leave now', touch)
+            r = pg.js("({ ...WN.read(), leave: polku.planner.leaveAt, go: LV.read('go')?.val, hour: polku.weather.hour })")
+            if r['leave'] is not None or r['name'] != 'Leave now' or r['go'] != 'Now' or r['hour'] != 0:
+                fails.append(f"{name}: after Leave now: {r}")
+        fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+        pg.close()
+
+    one(390, 844, True)
+    one(1440, 900, False)
+    print(f"{'ok  ' if not fails else 'FAIL'} when on the first screen" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 # Key facts (25d, #471's A2 [kf2-gravel, kf2-gravel-calm, kf2-gravel-check, kf2-multi, kf2-multi-tap, kf2-days, kf2-paddle]) and
 # the hardest climb [tabs-c-climbs]: one line under the route's numbers says what stands out (rain, a headwind that adds
 # time, unpaved on a road bike, a water leg's wind), else the sport's usual fact, with the weather said when it isn't known;
@@ -18543,7 +18678,7 @@ GROUPS = [
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy with a hold (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
-    ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
+    ('leave', [leave, when_start], 'when you leave (25d, #364\'s C, #869): When on the first screen, the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),

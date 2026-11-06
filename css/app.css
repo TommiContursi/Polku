@@ -2483,6 +2483,17 @@ body.dropping .drop-hint { display: flex; }
 .menu-item[aria-checked="true"]:not(.chip) { background: var(--accent-soft); }
 .menu-item > .menu-tick { flex: none; display: grid; color: var(--accent); }
 .menu-item.menu-apart { margin-top: 6px; }
+/* When's Leave at… (#869): the phone's own picker, its field unseen over the item as on .row.pick, under a look of a menu-item */
+.menu-pick { position: relative; display: grid; }
+.menu-pick > span { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border-radius: 8px; font-size: 13px; color: var(--text); }
+.menu-pick > span > span:nth-child(2) { flex: 1; min-width: 0; display: grid; }
+.menu-pick small { font-size: 12px; color: var(--muted); }
+.menu-pick .menu-tick { flex: none; display: grid; color: var(--accent); }
+.menu-pick.on > span { background: var(--accent-soft); }
+.menu-pick > input.menu-item { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; font-size: var(--font-field); } /* (16 px: a focused field under it zooms an iPhone) */
+.menu-pick:has(> input:active) > span, .menu-pick:has(> input:focus-visible) > span { background: var(--surface-2); }
+.menu-pick:has(> input:focus-visible) > span { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (hover: hover) { .menu-pick:hover > span { background: var(--surface-2); } }
 .menu-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 8px; max-width: 320px; }
 .menu-chips .menu-item.chip { height: 36px; padding: 0 12px; gap: 4px; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; }
 .menu-chips .menu-item.chip > span { display: inline; }
