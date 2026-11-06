@@ -9,11 +9,11 @@ import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, noTerrain } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
-import { sunTimes, darkness } from './sun.js';
+import { sunTimes, darkness, nightAt } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
@@ -3168,8 +3168,7 @@ export class Planner {
     const a = this.analysis;
     if (w == null) return [];
     if (w === 'none') return [{ text: 'No forecast yet' }];
-    const sun = sec != null ? sunTimes(sec, ll) : null;
-    const night = !!sun && (sun.day === 'polar-night' || (sun.day !== 'polar-day' && sun.rise != null && (sec < sun.rise || sec > sun.set)));
+    const night = sec != null && nightAt(sec, ll);
     const cloud = a.wind.cloud ? a.wind.cloud[w] : NaN;
     return [{ ic: skyKind(a.wind.precip[w], a.wind.temp[w], cloud, night), text: `${Math.round(a.wind.temp[w])}°` }, { ic: 'wind', text: `${Math.round(a.wind.speed[w])} m/s` }];
   }
@@ -3275,7 +3274,7 @@ export class Planner {
   // strongest, the temperature's range and the most rain; over water, the wind and the weather alone
   stretchRows(k0, k1, water) {
     const a = this.analysis, w = a.wind, rows = [], ways = new Map();
-    let g0 = Infinity, g1 = -Infinity, up = -1, down = -1, kw = -1, kr = -1, lo = Infinity, hi = -Infinity, gust = 0;
+    let g0 = Infinity, g1 = -Infinity, up = -1, down = -1, kw = -1, kr = -1, kc = -1, lo = Infinity, hi = -Infinity, gust = 0;
     for (let k = k0; k <= k1; k++) {
       if (!noTerrain(a, k)) { g0 = Math.min(g0, a.grade[k]); g1 = Math.max(g1, a.grade[k]); }
       up = Math.max(up, a.upCls[k]); down = Math.max(down, a.down6[k]);
@@ -3283,6 +3282,7 @@ export class Planner {
       if (w && forecastKnown(w, k)) {
         if (kw < 0 || w.speed[k] > w.speed[kw]) kw = k;
         if (kr < 0 || w.precip[k] > w.precip[kr]) kr = k;
+        if (w.cloud && (kc < 0 || w.cloud[k] > w.cloud[kc])) kc = k;
         lo = Math.min(lo, w.temp[k]); hi = Math.max(hi, w.temp[k]); gust = Math.max(gust, w.gust[k]);
       }
     }
@@ -3296,7 +3296,8 @@ export class Planner {
     if (kw < 0) return w ? [...rows, 'No forecast yet'] : rows;
     const c = windClass(w.head[kw], w.speed[kw]), t = Math.round(lo) === Math.round(hi) ? `${Math.round(lo)}` : `${Math.round(lo)}–${Math.round(hi)}`;
     rows.push(`${c.label} · up to ${w.speed[kw].toFixed(1)} m/s from ${compass(w.dir[kw])}${gust > w.speed[kw] + 2 ? `, gusts ${gust.toFixed(0)}` : ''}`);
-    rows.push(`${t} °C · ${w.precip[kr] >= 0.1 ? `${w.temp[kr] < 0.5 ? 'snow' : 'rain'} up to ${w.precip[kr].toFixed(1)} mm/h` : 'dry'}`);
+    // (its sky: where it rains most, else where it's cloudiest, as the line says the most rain)
+    rows.push(`${skyIcon(a, w.precip[kr] >= 0.1 || kc < 0 ? kr : kc)}${t} °C · ${w.precip[kr] >= 0.1 ? `${w.temp[kr] < 0.5 ? 'snow' : 'rain'} up to ${w.precip[kr].toFixed(1)} mm/h` : 'dry'}`);
     return rows;
   }
   // a stretch's average speed in Your speed's units for its sport: a pace for running and swimming, else km/h (#761)
@@ -3308,20 +3309,21 @@ export class Planner {
   // checked and what's worth a look, but for what the list says its own way (a straight line and a carry in a stretch's
   // words, the gear left and a short night on their wait, twilight as the dark is). Then, on a line of their own, as
   // when you're there and not a warning: how much of it is after sunset, in the dark or before sunrise, in the order you'd
-  // go through them. The lines' HTML, and where along the route the dark begins (or 0). `named` (a leg, #761): each
-  // warning in Check's words, a line each, once, with how many places, the most serious first, three lines at most; the
-  // dark isn't named, its own line says it.
-  warnsOn(s, named = false) {
+  // go through them. The lines' HTML, and where along the route the dark begins (or 0). Each warning in Check's words, a
+  // line each, once, with how many places, the most serious first, three lines at most; the dark isn't named where its
+  // own line says it (Darkness). A folded stretch (not a `leg`) with more than two counts them instead: its ⌄ shows
+  // which (#761).
+  warnsOn(s, leg = false) {
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
     const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Freehand|Carry \/ portage)/.test(w.text);
     const S = this.listShow, its = this.itemsOn(s).filter((it) => !this.isRead(it) && (it.g === 'look' ? S.look && !own(it.w) : S.warnings)), n = (g) => its.filter((it) => it.g === g).length;
     const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
     const dark = on((x) => !x.twilight), darkM = this.listShow.dark ? m(dark) : 0, dusk = this.listShow.dark ? m(on((x) => x.twilight && x.evening)) : 0, dawn = this.listShow.dark ? m(on((x) => x.twilight && !x.evening)) : 0;
     const G = { read: ['read', 'warnf'], not: ['unk', 'unk'], look: ['look', 'eye'] }, by = new Map();
-    for (const it of named ? its : []) if (it.w.kind !== 'dark') by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
+    for (const it of its) if (it.w.kind !== 'dark' || !S.dark) by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
     const names = [...by].map(([t, x]) => `<span class="${G[x.g][0]}">${icon(G[x.g][1], 14)}${escapeHtml(t)}${x.k > 1 ? ` (${x.k} places)` : ''}</span>`);
-    const warns = named ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
-      : [[n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
+    const warns = leg || names.length <= 2 ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
+      : [[n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} warning${n('read') === 1 ? '' : 's'}</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
         n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : ''].filter(Boolean).join(' ')].filter(Boolean);
     const light = [dusk >= 50 ? `<span class="dark">${icon('sunset', 14)}${fmtDist(dusk)} after sunset</span>` : '', darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : '',
       dawn >= 50 ? `<span class="dark">${icon('sunrise', 14)}${fmtDist(dawn)} before sunrise</span>` : ''].filter(Boolean);

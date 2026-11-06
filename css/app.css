@@ -1147,7 +1147,8 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right) { visibility: hidden; }
 @media (max-width: 720px) { body[data-sheet="full"] .map-ctrls { visibility: hidden; } } /* on desktop it has its own column beside the planner */
 .sec { border-top: 1px solid var(--line); }
-.sec-head { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 11px 0 9px; border: 0; background: none; cursor: pointer; text-align: left; color: var(--text); font: inherit; }
+.sec-head { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 11px 0 9px; border: 0; background: none; text-align: left; color: var(--text); font: inherit; }
+button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #761) */
 .sec-title { white-space: nowrap; }
 .sec-count { font-size: 11px; font-weight: 700; }
 .sec-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2458,6 +2459,7 @@ body.dropping .drop-hint { display: flex; }
 }
 .tip > b { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 13px; }
 .tip > span { display: block; }
+:is(.tip, .profile-tip) .ic { display: inline-block; margin-right: 4px; vertical-align: -2px; } /* (the sky's, before the weather's words, #761) */
 :root[data-theme="dark"] .tip { background: #e8ece9; color: #111; }
 .tip kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; border: 1px solid currentColor; font: 600 11px/1 ui-monospace, Menlo, monospace; opacity: .8; }
 

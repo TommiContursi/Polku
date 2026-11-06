@@ -36,6 +36,12 @@ export function sunTimes(at, [lon, lat]) {
   return { rise, set, dawn, dusk, noon: toSec(transit), day: sun === 'up' ? 'polar-day' : sun === 'down' ? 'polar-night' : null };
 }
 
+/** Whether epoch second `at` is after sunset or before sunrise at [lon, lat], the polar night too. */
+export function nightAt(at, ll) {
+  const s = sunTimes(at, ll);
+  return s.day === 'polar-night' || (s.day !== 'polar-day' && s.rise != null && (at < s.rise || at > s.set));
+}
+
 /**
  * The stretches of a trip in the dark: [{ from, to, kind, sunFrom, sunTo }] in epoch
  * seconds between `start` and `end` (kind: 'twilight' after sunset or before sunrise,

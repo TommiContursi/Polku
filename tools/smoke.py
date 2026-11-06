@@ -15759,7 +15759,7 @@ def sections_list(chrome):
         # place, and its route style; the Waypoints heading doesn't fold, and Show all waypoints has its chevron
         r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), sports = () => p.legs.map((_, k) => p.legSport(k)).join(',');
           const sets = [...L.querySelectorAll('.sec2-head .sec2-set')].map((x) => x.getAttribute('aria-label')), before = sports();
-          const heading = { chev: !!p.sec.points.el.querySelector(':scope > .sec-head .sec-chev'), button: p.sec.points.el.querySelector(':scope > .sec-head').tagName, all: !!p.els.pointsTools.querySelector('.wpl-all .ic') };
+          const heading = { chev: !!p.sec.points.el.querySelector(':scope > .sec-head .sec-chev'), button: p.sec.points.el.querySelector(':scope > .sec-head').tagName, cursor: getComputedStyle(p.sec.points.el.querySelector(':scope > .sec-head')).cursor, all: !!p.els.pointsTools.querySelector('.wpl-all .ic') };
           L.querySelectorAll('.sec2-set')[1].click(); await wait(300);
           const m = document.querySelector('.menu-pop'), groups = [...m.querySelectorAll('.menu-h')].map((x) => x.textContent);
           m.querySelector('.nl-speed').click(); const editor = !!m.querySelector('.nl-editor');
@@ -15769,9 +15769,9 @@ def sections_list(chrome):
           p.undo(); for (let k = 0; k < 50 && !p.analysisFits(); k++) await wait(100);
           return { sets, heading, groups, editor, before, after, closed, back: sports() }; })()""", timeout=30000)
         want_after = ','.join(x if x != 'paddle' else 'hike' for x in r['before'].split(','))
-        if (r['sets'] != ['MTB: sport, speed and route style', 'Paddle: sport, speed and route style'] or r['heading'] != {'chev': False, 'button': 'DIV', 'all': True}
+        if (r['sets'] != ['MTB: sport, speed and route style', 'Paddle: sport, speed and route style'] or r['heading'] != {'chev': False, 'button': 'DIV', 'cursor': 'auto', 'all': True}
                 or r['groups'] != ['Sport · this part', 'Route style · Paddle legs'] or not r['editor'] or r['after'] != want_after or not r['closed'] or r['back'] != r['before']):
-            fails.append(f"{name}: a part's ⚙: {r} (want a ⚙ on each heading, the Waypoints heading unfolding, Paddle's sport changed alone, then back with Undo, #761)")
+            fails.append(f"{name}: a part's ⚙: {r} (want a ⚙ on each heading, the Waypoints heading unfolding, with no pointer over it, Paddle's sport changed alone, then back with Undo, #761)")
         # a stop at via 4: a wait in its part, still two parts (#761); a night at via 5 ends a day, a wait between the
         # days, and Day 2 starts with via 5's row as you leave it in the morning
         pg.js("polku.planner.setStop(4, { min: 30 }); true")
@@ -15986,10 +15986,10 @@ def sections_list(chrome):
             if st(pg)['kind'] != 'item':
                 fails.append(f"{name}: the line's warning: {st(pg)['kind']} card")
             pg.js("polku.planner.cards.close(); polku.planner.setTab('route'); true")
-        # (#761) its stretch in the list says it too, in Check's words; on a desktop a stretch's tooltip and a point's say
-        # where along the route and when
+        # (#761) its stretch in the list says it too, folded, in Check's words; on a desktop a stretch's tooltip and a point's
+        # say where along the route and when
         n_read = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-stretch .wpl-warns .read')].map((x) => x.textContent)")
-        if not n_read or not all(re.fullmatch(r'\d+ to read', x) for x in n_read):
+        if not n_read or not all(re.fullmatch(r'Cycling not allowed here( \(\d+ places\))?', x) for x in n_read):
             fails.append(f"{name}: the Read item's stretch in the list says {n_read}")
         # (#761) each as the profile's tip says it, a line each: a stretch's speed and the way most of it is on, a waypoint's
         # way on, and (below) a stop's where and when; with the forecast, the wind and the weather on each
@@ -16007,10 +16007,14 @@ def sections_list(chrome):
             tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? [...t.children].map((x) => x.textContent).join('\\n') : ''; })()")
             if not re.search(want, tip or ''):
                 fails.append(f"{name}: the tooltip of {sel.split('querySelector(')[1][:-1]}: {tip!r}")
+            elif wind and not pg.js("[...document.getElementById('tip').children].some((x) => /°C/.test(x.textContent) && x.firstElementChild?.matches('svg.ic'))"):
+                fails.append(f"{name}: the tooltip of {sel.split('querySelector(')[1][:-1]}: no sky's icon on its weather line (#761)")
             # (a stretch's: beside its row, clear of the row's ⌄, #761)
             if '.wpl-stretch' in sel and pg.js("(() => { const t = document.getElementById('tip').getBoundingClientRect(), u = polku.planner.els.points.querySelector('.wpl-strow .wpl-unfold')?.getBoundingClientRect(); return !u || (t.left < u.right && t.right > u.left && t.top < u.bottom && t.bottom > u.top); })()"):
                 fails.append(f"{name}: the stretch's tooltip covers its ⌄, or there's no ⌄ (#761)")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
+        if wind and not pg.js("(() => { const c = polku.planner.chart, t = document.getElementById('profile-tip'); c.setHover(Math.floor(polku.planner.analysis.along.length / 2)); const ok = /<svg [^>]*class=\"ic\"[^>]*>.*<\\/svg>-?\\d+ °C · /.test(t.innerHTML); c.setHover(-1); return ok; })()"):
+            fails.append(f"{name}: the profile's tip: no sky's icon before its temperature (#761)")
         pg.js("polku.planner.setStop(1, { min: 30 }); true")
         time.sleep(0.8)
         q = at(pg, "(() => { const w = polku.planner.els.points.querySelector('.wpl-wait'); w?.scrollIntoView({ block: 'center' }); return w; })()")
@@ -16048,9 +16052,17 @@ def sections_list(chrome):
           const a = on([it('read', 'Cycling not allowed here', 10), it('read', 'Cycling not allowed here', 40), it('read', 'In the dark for 300 m', 10, 'dark'), it('look', 'Steps — carry the bike', 60)]);
           const b = on(['Cycling not allowed here', 'Steps — carry the bike', 'Steep descent', 'Ferry crossing'].map((t, k) => it(k ? 'look' : 'read', t, 10 * k)));
           p.listShow.look = false; const c = on([it('read', 'Cycling not allowed here', 10), it('look', 'Steps — carry the bike', 60)]); p.listShow.look = true;
-          delete p.itemsOn; p.renderWaypoints(); return { a, b, c }; })()""")
-        if r != {'a': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'b': ['Cycling not allowed here', 'Steps — carry the bike', '2 more'], 'c': ['Cycling not allowed here']}:
-            fails.append(f"{name}: a leg's warnings by name: {r} (want each once with its places, no dark, three lines at most, and Worth a look hiding the lighter ones alone, #761)")
+          // (folded: two at most by name, the same one in two places once; three, counted; the dark by name with Darkness off)
+          const was = [...p.unfolded]; p.unfolded.clear();
+          const fold = (list) => { p.itemsOn = (s) => (s.to - s.from > 1 ? list : keep.call(p, s)); p.renderWaypoints(); const x = [...p.els.points.querySelectorAll('.wpl-stretch')].find((y) => y.dataset.to - y.dataset.from > 1); return x ? [...x.querySelectorAll('.wpl-warns')].map((y) => y.textContent) : null; };
+          const d = fold([it('read', 'Cycling not allowed here', 10), it('read', 'Cycling not allowed here', 400), it('look', 'Steps — carry the bike', 600)]);
+          const e = fold([it('read', 'Cycling not allowed here', 10), it('read', 'Steep descent', 400), it('look', 'Steps — carry the bike', 600)]);
+          p.listShow.dark = false; const f = fold([it('read', 'In the dark for 300 m', 10, 'dark')]); p.listShow.dark = true;
+          for (const x of was) p.unfolded.add(x);
+          delete p.itemsOn; p.renderWaypoints(); return { a, b, c, d, e, f }; })()""")
+        if r != {'a': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'b': ['Cycling not allowed here', 'Steps — carry the bike', '2 more'], 'c': ['Cycling not allowed here'],
+                 'd': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'e': ['2 warnings 1 worth a look'], 'f': ['In the dark for 300 m']}:
+            fails.append(f"{name}: the warnings by name: {r} (want a leg's each once with its places, no dark, three lines at most, and Worth a look hiding the lighter ones alone; folded, two by name, three counted, the dark by name with Darkness off, #761)")
         # (#761) the list's settings, the app's menu over the list: the column's times by the clock, and the rows without how
         # a leg is drawn, its warnings, the dark or the weather, each a switch, saved; what's hidden is still in Check
         r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), leg = () => L.querySelector('.wpl-stretch[data-from="3"]')?.textContent || '';

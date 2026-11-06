@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-06
 
+### The route's list names its warnings ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- A folded stretch in the route's list names its warnings in Check's words while there are one or two, such as "Cycling not allowed here (2 places)", so you needn't unfold it to see what they are. With more, it counts them, "2 warnings", and its ⌄ shows which.
+- With **Darkness** off, a stretch in the dark says so as a warning.
+- The weather in the list's tooltips and the profile's starts with the sky's icon: sun, cloud, rain or snow, or the moon on a clear night. A stretch's shows its wettest sky, or where it's dry, its cloudiest.
+
 ### Each part's ⚙: its sport, speed and route style ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each part's heading has a **⚙**. It opens the part's **Sport**, which changes only that part's legs (with **Undo**), its sport's **Your speed**, with the speed editor in place, and its sport's **Route style**, as the drawing menu has them for the next leg.
