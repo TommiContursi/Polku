@@ -15760,7 +15760,7 @@ def sections_list(chrome):
         # leads it in green, its chevron first and how many are hidden in grey, as a stretch's ⌄ is green before its count
         r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), sports = () => p.legs.map((_, k) => p.legSport(k)).join(',');
           const sets = [...L.querySelectorAll('button.sec2-head')].filter((x) => x.querySelector('.sec2-set .ic')).map((x) => x.getAttribute('aria-label').replace(/,.*:/, ':')), before = sports();
-          const c = (el) => el && getComputedStyle(el).color, probe = document.body.appendChild(Object.assign(document.createElement('span'), { style: 'color: var(--accent)' })), green = c(probe); probe.remove();
+          const c = (el) => el && getComputedStyle(el).color, probe = p.els.pointsTools.appendChild(Object.assign(document.createElement('span'), { style: 'color: var(--accent)' })), green = c(probe); probe.remove(); // (the planner's own green)
           const all = p.els.pointsTools.querySelector('.wpl-all'), u = L.querySelector('.wpl-unfold');
           const heading = { head: !!p.sec.points.el.querySelector(':scope > .sec-head'), all: all?.textContent || '', green: c(all) === green && c(all.firstElementChild) === green && c(all.querySelector('small')) !== green,
             unfold: !!u?.firstElementChild?.querySelector('.ic') && c(u.firstElementChild) === green && c(u.lastElementChild) !== green };
@@ -15809,7 +15809,7 @@ def sections_list(chrome):
         r = pg.js("""(() => { const p = polku.planner, b = () => p.els.pointsTools.querySelector('.wpl-all');
           const st = () => `${b()?.textContent}|${b()?.getAttribute('aria-expanded')}|${p.els.points.querySelectorAll('.wpl-point.shape').length}|${p.els.points.querySelectorAll('.wpl-in').length}`;
           const out = [st()]; b().click(); out.push(st()); b().click(); out.push(st()); return out; })()""")
-        if r != ['Show all waypoints|false|0|0', 'Fold all waypoints|true|6|0', 'Show all waypoints|false|0|0']:
+        if r != ['Show all waypoints6 hidden|false|0|0', 'Fold all waypointsall shown|true|6|0', 'Show all waypoints6 hidden|false|0|0']:
             fails.append(f"{name}: Show all waypoints, then Fold all waypoints: {r} (want six shown, none coming in, then folded, #761)")
         # (headless Chrome asks for reduced motion; a person usually doesn't)
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
@@ -17457,7 +17457,7 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
   // the Route tab's first content, from its top: what it is and whether its heading is in sight in the body (#740)
   top() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
-    const first = [...TB.pane().children].find(vis), head = first?.querySelector('.sec-head') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect();
+    const first = [...TB.pane().children].find(vis), head = first?.querySelector('.sec-head, .wpl-head-tools') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect(); // (the list's: Show all's row, #761)
     return { first: first ? first.dataset.sec || first.className : '', seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
   },
   // the route's list said once (#764): no hint, a one-part route's heading beside Reorder with no numbers line under it,

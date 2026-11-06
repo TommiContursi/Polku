@@ -1405,6 +1405,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-top:empty { display: none; }
 .wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
 .wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
+.wpl > .sec2:first-child { padding-top: 2px; } /* (right under Show all's row: at half on a phone, the start and the first stretch in sight, #740) */
 .wpl .sec2:not(:first-child) { position: relative; box-shadow: none; }
 .wpl .sec2:not(:first-child)::after { content: ""; position: absolute; top: 0; left: calc(44px + var(--when)); right: 0; height: 1px; background: var(--line); } /* (the rule between two parts starts after the line, so it doesn't cut it) */
 .wpl .sec2:has(+ .wait) { padding-bottom: 0; }
@@ -1412,7 +1413,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl .sec2.lit { margin: 0 -8px; padding-inline: 8px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent); } /* (the part a key fact opened) */
 /* a part's heading (#761): its sport's icon in a ring of its colour, on the route's line in the marks' column, then its
    sport (and day) and its totals beside it, in the text's colour, bolder than a point's line */
-.sec2-head { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: var(--target); margin: 0; padding: 6px 0 6px calc(10px + var(--when)); border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sec2-head { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: var(--target); margin: 0; padding: 0 0 0 calc(10px + var(--when)); border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .sec2-head[aria-expanded="true"] { background: var(--surface-2); } /* (its menu open, as a row's) */
 .sec2-head:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (hover: hover) { .sec2-head:hover { background: var(--surface-2); } }
@@ -1427,7 +1428,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 /* Show all waypoints and the list's settings (#761), over the list, where its heading was: Show all in green, as an action
    in words is (Layers' Map key), its ⌄ first and how many are hidden in grey; the settings at the row's end; a finger's
    targets 44 px */
-.wpl-head-tools { display: flex; align-items: center; gap: 2px; margin: 4px 0; }
+.wpl-head-tools { display: flex; align-items: center; gap: 2px; }
 .wpl-head-tools:empty { display: none; }
 .wpl-head-tools > * { min-height: var(--target); }
 .wpl-head-tools > .tool { min-width: var(--target); margin-left: auto; }
