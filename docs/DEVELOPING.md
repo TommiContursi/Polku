@@ -382,7 +382,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | A dangerous action as a button | `btn danger`: the button's own surface and edge, its words and icon in `--danger`; Undo in its note | Clear route under the route's list (#761) |
 | An action in words, with how many it acts on | `btn small quiet wpl-all`: its ⌄ and its words in green (`--accent`), as Layers' Map key; how many in grey (`small`) | Show all waypoints, over Route's list (#761) |
 | A fold's count | `wpl-unfold`: its ⌄ in green, then its count in grey | a stretch's waypoints in Route's list (#761) |
-| A heading that opens its own settings | `sec2-head`, a button, the whole row, with a ⚙ (`sec2-set`) where a row's › is; grey while its menu is open | a part's heading in Route's list (#761) |
+| A heading that opens its own settings | `sec2-head`, a button, the whole row, with a ⚙ (`sec2-set`) where a row's › is; grey while it's held or its menu is open, and under a mouse | a part's heading in Route's list (#761) |
 | Actions in a group | `menu-h`, `menu-item two-line`, `hr`, `menu-item danger menu-apart` for the dangerous one; built by `popMenu()` in `js/ui.js` | the ⋯ menu |
 | A choice in a list | `menu-item` with `role="menuitemradio"`, `menu-tick`, `cur` ("your route") | the sport menus |
 | Numbers with their labels | `sheet-sum`, `sum-item` | the peek's summary |

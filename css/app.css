@@ -1415,9 +1415,9 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* a part's heading (#761): its sport's icon in a ring of its colour, on the route's line in the marks' column, then its
    sport (and day) and its totals beside it, in the text's colour, bolder than a point's line */
 .sec2-head { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: var(--target); margin: 0; padding: 0 0 0 calc(10px + var(--when)); border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.sec2-head[aria-expanded="true"] { background: var(--surface-2); } /* (its menu open, as a row's) */
+.sec2-head[aria-expanded="true"], .sec2-head:active { background: var(--surface-2); } /* (its menu open or held, as a row's) */
 .sec2-head:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-@media (hover: hover) { .sec2-head:hover { background: var(--surface-2); } }
+@media (hover: hover) and (pointer: fine) { .sec2-head:hover { background: var(--surface-2); } }
 .sec2-head > span:first-child { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
 .sec2-head > span:first-child > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
 .sec2-head > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
