@@ -5035,7 +5035,7 @@ export class Planner {
         const name = at == null ? 'Leave now' : `Leave at ${this.timeOf(at)}`;
         const line = at != null ? `${this.dayOf(at, true)}${far ? ' · no forecast yet' : ''}` : passed ? `${this.dayOf(passed)}, ${this.timeOf(passed)} has passed` : 'Times and weather along the route';
         b.setAttribute('aria-label', `When: ${name}. ${line}`);
-        b.innerHTML = `<span>${icon('clock', 20)}</span><span><b>${escapeHtml(name)}</b><small>${escapeHtml(line)}</small></span><span class="way-chev">${icon('chevronDown', 16)}</span>`;
+        b.innerHTML = `<span>${icon(at == null ? 'clock' : 'calendar', 20)}</span><span><b>${escapeHtml(name)}</b><small>${escapeHtml(line)}</small></span><span class="way-chev">${icon('chevronDown', 16)}</span>`;
       };
       this.els.when = { el: b, put };
     }
