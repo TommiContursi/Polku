@@ -37,7 +37,7 @@ The user's points, as plans:
 - short plain nouns;
 - cards one at a time;
 - Fold, then away;
-- the sheet's stops;
+- the sheet's sizes (the line, the peek, half, full);
 - the desktop's layout D (#594);
 - nothing used today takes more taps (PRODUCT.md).
 
@@ -200,6 +200,7 @@ The route and a card for each detail, with no tabs: the warnings' row opens the 
   - **once a departure is set,** the Start and End rows show the clock's times, and the moving time moves to each part's heading and the trip's box;
   - **its menu:** Leave now, Leave at…, Arrive by… and Best time to leave › (once there's a route); Last available is left out;
   - **the map's hour no longer moves the departure,** which reverses #233's step 3: Best time to leave's strip is where the departure is slid.
+- **The profile in the peek** (#742, decided 2026-11-06): under the route's numbers, about 70 px tall at 390 × 844 (as the profile size removed on 2026-10-30 showed it), while you draw and in the route's view alike, so the peek is the same either way (#797). It sits there at every size, so it doesn't move when the sheet does; Colour by and On map go under the key facts. A tap opens the profile: at half until the profile card is built (PR 8), then the profile card. It keeps the profile in sight while you draw, in place of bringing the profile size back. At 200 % on a phone the peek with it is taller than the screen: the key facts step aside first, as they do today (`fitColumn()`).
 - **Arrive by:** on a trip with nights, the arrival at the end of the last day; "about" when the wind changes the timing; on a round trip it fills How long by Time.
 - **Best time to leave:** the departure's day, a day at a time with ‹ ›, as far as the forecast reaches (ten days); on a trip over days, the first day's departure only. It weighs the dark, rain and heat for everyone, headwind on a bike, and wind, waves and the crossing window on the water, each part by its own sport, and says why in words.
 - **A part's sport** is "MTB ▾" in its heading, one tap to the sports; its ⚙ keeps Route style and Your speed, and the rows under the list go.
@@ -208,7 +209,7 @@ The route and a card for each detail, with no tabs: the warnings' row opens the 
 ### The first round
 
 **What all three shared:**
-- **When first.** (Decided otherwise: see above.) The When pill opened the sheet's top row, before the numbers and the waypoints, in sight at every stop of the sheet: "Leave now ▾".
+- **When first.** (Decided otherwise: see above.) The When pill opened the sheet's top row, before the numbers and the waypoints, in sight at every size of the sheet: "Leave now ▾".
   - Its menu: Leave now; Leave at… (the phone's own picker, as Leave's `row pick` today); Arrive by… (Polku works out when to leave); and Best time to leave ›.
   - With a time set, the pill says it ("Leave Sat 09:00", "Arrive by 20:30"), and the numbers' second line says the other end ("there at 10:11", "leave 19:19").
   - Last available is Google's, for transit; it's left out.
@@ -230,6 +231,7 @@ The route and a card for each detail, with no tabs: the warnings' row opens the 
 | **The tabs** | None: one scroll | None | Route and Check |
 | **On the route** | A section of the page under the list: Colour by as a list, the chosen one ticked with its lengths | The profile card: the profile tall, a finger on it moving a mark on the map, On the route's list under it, the climbs | Under the profile in Route, as its legend with lengths (#758 as written) |
 | **Check** | A section of the page; the warnings' row scrolls to it | The Check card, from the warnings' row: Check as built, without On the route | A tab, without On the route |
+| **The profile while you draw** | At half, as today | In the peek, under the numbers (decided, #742), a tap opening the profile card | At half, as today |
 | **The weather** | The card | The card | The card |
 | **On a desktop** | One panel | The panel, and each card beside it, so the route stays in sight | The panel |
 | **Its cost** | A long page; Check and On the route under a long list | Three cards to learn; on a phone a card covers the list while it's open | Keeps a tab bar for one thing; the profile's legend at full only |
@@ -255,6 +257,7 @@ A is the simplest to learn but the longest to scroll. C changes the least.
 | On the route | 1 and a scroll past Check | 1 (scrolls) | 1 (the profile) | a raise to full |
 | The weather in detail | 1 (Go) and a scroll | 1 (box) | 1 | 1 |
 | Take it along | 1 (More) | 1 | 1 | 1 |
+| The profile while you draw | a raise to half | a raise to half | in the peek (decided) | a raise to half |
 
 **What becomes of them (decided):**
 - **Parts 22** is built as drawn: the trip's box, the weather card, and Go's tab gone.
@@ -304,23 +307,24 @@ Each is small and tried on a phone before the next, in this order (decided 2026-
    - the When row under the sport row on the first screen (Start a route and each way to begin);
    - with a route, the pill under the trip's time in the numbers, in place of "from now";
    - the clock's times on the Start and End rows once a departure is set; the moving time to each part's heading and the trip's box;
-   - its menu: Leave now and Leave at for now (Arrive by is PR 6, Best time to leave PR 5).
+   - its menu: Leave now and Leave at for now (Best time to leave is PR 6, Arrive by PR 7).
 
-   The start's sport row keeps its look, its chevron read as ▾ (rule 2). It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 4. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
-3. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.
-4. **The weather card from the trip's box** (Parts 22, #431, #794): Go's time and weather move into it, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
-5. **Best time to leave** (#273, parts 1, 3 and 5; #856):
+   The start's sport row keeps its look, its chevron read as ▾ (rule 2). It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 5. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
+3. **The profile in the peek** (#742): under the route's numbers, about 70 px, while you draw and in the route's view; a tap opens the profile at half (the profile card in PR 8). Colour by and On map move under the key facts at half. `measureSheet()`'s peek, `fitColumn()` at 200 %. Checks: `sheetstops`, `keyfacts`, `routeview`, at 360 px and 200 %.
+4. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.
+5. **The weather card from the trip's box** (Parts 22, #431, #794): Go's time and weather move into it, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
+6. **Best time to leave** (#273, parts 1, 3 and 5; #856):
    - the departure's day in the weather card, ‹ › a day at a time up to ten days;
    - a bar an hour, scrubbed by a finger, with the day's best named;
    - the dark, rain and heat for everyone, headwind on a bike, and wind, waves and the crossing window on the water, each part by its own sport;
    - the map's hour stops moving the departure (#233's step 3 reversed).
 
    The forecast is `windAlong()`'s hourly series, so there are no new requests; past two days it's the ten-day one (`LONG_HOURS`). `weather`, `water`.
-6. **Arrive by** (#219): the menu's third item, worked back with the wind ("about" where the wind changes it); on a trip with nights, the end of the last day; on a round trip, How long by Time; the states listed above. `leave`, `stops`, `loops`.
-7. **The profile card, with On the route as Colour by's list** (#796, #758). Check's On the route goes.
-8. **The Check card from the warnings' row;** the tabs go.
-9. **The Add row** (#761's PR 8), with the search in the sheet.
-10. **The rest of the rule:**
+7. **Arrive by** (#219): the menu's third item, worked back with the wind ("about" where the wind changes it); on a trip with nights, the end of the last day; on a round trip, How long by Time; the states listed above. `leave`, `stops`, `loops`.
+8. **The profile card, with On the route as Colour by's list** (#796, #758). Check's On the route goes.
+9. **The Check card from the warnings' row;** the tabs go.
+10. **The Add row** (#761's PR 8), with the search in the sheet.
+11. **The rest of the rule:**
     - a part's sport as MTB ▾ in its heading, its ⚙ keeping Route style and Your speed, and the rows under the list gone;
     - the list's foot without Clear route;
     - the toolbar giving Take it along to More first as it narrows (with #797);
@@ -340,13 +344,14 @@ Settled with the user in three rounds of questions, and recorded on [#869](https
 4. **Arrive by:** on a trip with nights, the end of the last day; "about" when the wind changes the timing; on a round trip it fills How long by Time.
 5. **Best time to leave:** the departure's day, a day at a time with ‹ ›, up to ten days; on a trip over days, the first day's departure only; each part weighed by its own sport, and why said in words.
 6. **Parts 22** as drawn, Go's tab gone; **#759** folds into the weather card.
-7. **A part's sport** is MTB ▾ in its heading; its ⚙ keeps Route style and Your speed; the rows under the list go.
-8. **A tool lives where you work with it:** the toolbar keeps every tool, Take it along going to More first as it narrows; the list's foot keeps Reorder, Reverse and Back to start; Clear route leaves the foot; the map's sport stays as it works today.
-9. **Green means you can tap it:** a value, a fold, a way back, or the one main action; DESIGN.md's words change to match.
-10. **The new controls:** the When pill (and a part's sport, the same pill), On the route's list, the strip and the trip's box.
-11. **The order:** as above, #871 first.
-12. **Words:** the bar is the toolbar (`CONTEXT.md`, in #872).
-13. **Milestone:** Calmer planner.
+7. **The profile in the peek** (#742): under the route's numbers, about 70 px, while you draw and in the route's view; a tap opens the profile (at half, then the profile card). It's the third PR, after When.
+8. **A part's sport** is MTB ▾ in its heading; its ⚙ keeps Route style and Your speed; the rows under the list go.
+9. **A tool lives where you work with it:** the toolbar keeps every tool, Take it along going to More first as it narrows; the list's foot keeps Reorder, Reverse and Back to start; Clear route leaves the foot; the map's sport stays as it works today.
+10. **Green means you can tap it:** a value, a fold, a way back, or the one main action; DESIGN.md's words change to match.
+11. **The new controls:** the When pill (and a part's sport, the same pill), On the route's list, the strip and the trip's box.
+12. **The order:** as above: #871, When, the profile in the peek, Show all on the right, the weather card, Best time to leave, Arrive by, the profile card, the Check card, the Add row, the rest of the rule.
+13. **Words:** the bar is the toolbar, and the planner's heights are its sizes: the line, the peek, half and full (`CONTEXT.md`, in #872).
+14. **Milestone:** Calmer planner.
 
 ## Not drawn, or not known
 
