@@ -22,6 +22,11 @@
   or "new in Parts 4"; Parts 5 has its own function and the block marked "new in Parts 5", and Parts 6 is Parts 5 with
   the block marked "new in Parts 6"; Parts 7 is Parts 6 with a route of one part's totals too. Every round is a version
   of its own, and the earlier ones stay as they were drawn.
+  Parts 20 (2026-11-06) has its own function, parts20(), and the block marked "new in Parts 20": main's list at 31c8040
+  with what acts made plain. &h20=built|group|left|mid|right|switch &s20=built|row &n20=muted|green &w20=look|good|notes
+  &r20=test|two|fi|days
+  Parts 22 (2026-11-06) is Parts 21 with the trip's box (#794, #431): parts20() draws its list, box22() the box and
+  card22() the weather card it opens, in the block marked "new in Parts 22". &c22=list|card &t22=card|nums &g22=gone|kept
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
@@ -436,6 +441,88 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .p19-part > .tool { margin-left: 2px; flex: none; }
 .p19-part .menu { top: calc(100% + 2px); right: 0; width: min(280px, 100%); }
 .p16-beside .p16-card { padding: 10px 14px 12px; border-radius: var(--radius); background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow), var(--edge); }
+/* ======================================================= new in Parts 20 (2026-11-06): what acts, in the app's own
+   look for it. A: the heading itself a disclosure, as Layers' groups are (their summary's chevron, lg-count's green
+   count); B to D: Show all in green words, as Layers' Map key; E: a switch (tg); a part's heading one row with ›, as a
+   waypoint's; a folded stretch's count in green. The rest is main's list at 31c8040, by its classes. */
+.p20-group { align-items: center; padding-right: calc(var(--target) + 6px); }
+.p20-group::after { content: ""; flex: none; width: 8px; height: 8px; margin: 0 4px 0 auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
+.p20-group[aria-expanded="true"]::after { transform: rotate(45deg); }
+.p20-group .lg-count { white-space: nowrap; }
+@container plbody (max-width: 300px) { .p20-group { padding-right: 0; } } /* (the sliders on a row of their own there, as built) */
+.wpl-head-tools.p20-bar { position: static; height: auto; min-height: 44px; justify-content: space-between; margin: 0 0 4px; }
+.p20-bar.mid { justify-content: center; }
+.p20-bar.mid > .wpl-set { position: absolute; top: 0; right: 0; }
+.p20-bar.right { justify-content: flex-end; }
+.p20-all { gap: 6px; color: var(--accent); font-weight: 650; }
+.p20-all small { color: var(--muted); font-size: 13px; font-weight: 500; }
+.p20-tg { flex: 1; min-width: 0; margin: 0; }
+.p20-go { width: 100%; margin: 0; padding-top: 6px; padding-bottom: 6px; padding-right: 0; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.p20-go .sec2-t { flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; align-items: flex-start; gap: 1px; }
+.p20-go:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.p20-go > .way-chev { width: auto; align-self: center; margin-right: 4px; color: var(--muted); } /* (not the sport's ring: app.css draws one on every span of the heading; built, its rule would be the first span's) */
+.wpl .sec2 > .sec2-head.p20-go > span.way-chev::before, .wpl .sec2 > .sec2-head.p20-go > span.way-chev::after { content: none; } /* (nor the dotted line into a later part's ring) */
+.p20-go > .way-chev > .ic { padding: 0; background: none; box-shadow: none; }
+@media (hover: hover) { .p20-go:hover { background: var(--surface-2); } }
+.p20-green .wpl-unfold > span:first-child { color: var(--accent); font-weight: 700; }
+/* ======================================================= new in Parts 21 (2026-11-06): from Parts 20, with B chosen. A
+   stretch's ⌄ green before its count in grey (what you tap green, how many grey, as Show all's), or a line of its own,
+   Show 2 waypoints, as Show all's words; the waypoints outlined, as Parts 10's were (a hairline, as the app's buttons). */
+.p21-end .wpl-unfold { gap: 3px; padding: 0 8px 0 4px; }
+.p21-end .wpl-unfold > span:first-child { color: var(--accent); }
+.wpl .rows .p21-line { min-height: 0; padding-top: 0; padding-bottom: 2px; cursor: default; }
+@media (hover: hover) { .wpl .rows .p21-line:hover { background: none; } }
+.p21-line .p20-all { margin: -6px 0 0 -8px; }
+.wpl.p21-outline .rows > .row:is(.wpl-point, .wpl-wait) { /* (the folded ones too, shown: one style for every waypoint) */ box-shadow: inset 0 0 0 1px var(--line); border-radius: 12px; margin-block: 3px; }
+.wpl.p21-outline :is(.wpl-point, .wpl-wait) > span:first-child::before { top: -9px; }
+.wpl.p21-outline .wpl-point > span:first-child::after { bottom: -9px; }
+.wpl.p21-outline .wpl-wait > span:first-child::after { bottom: -13px; }
+/* (from looking at Parts 21, 2026-11-06: the hairline too strong; at half its contrast, or a tint of the text's colour with no edge) */
+.wpl.p21-faint .rows > .row:is(.wpl-point, .wpl-wait) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 45%, transparent); }
+.wpl.p21-tint .rows > .row:is(.wpl-point, .wpl-wait) { box-shadow: none; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.wpl.p21 .wpl-point.shape b { font-weight: var(--weight-name); } /* (#850: the folded waypoints, shown, as bold as the others; until it's on main) */
+.p21-wx .day-wx .ic { display: inline-block; margin-right: 4px; vertical-align: -2px; } /* (the trip's weather, Parts 15's Go day over the list, with the sky's icon) */
+/* ======================================================= new in Parts 22 (2026-11-06): the trip's box (#794), Go's day
+   cards as buttons that end in ›, and the weather card it opens (#431, a card of 25d's kind) with what Go holds today:
+   in the sheet's place on a phone, floating at the card's width on a desktop. */
+.p22-box .day { width: 100%; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; min-height: var(--target); color: var(--text); font: inherit; cursor: pointer; }
+.p22-box .day > b { grid-row: span 4; align-self: start; }
+.p22-box .day > .way-chev { grid-column: 3; grid-row: 1 / span 4; align-self: center; color: var(--muted); }
+.p22-box .day > span { overflow-wrap: anywhere; }
+.p22-box .day-wx .ic { display: inline-block; margin-right: 4px; vertical-align: -2px; }
+.p22-box .day:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.p22-card { position: absolute; z-index: 5; display: flex; flex-direction: column; min-height: 0; background: var(--surface-solid); border-radius: 18px; box-shadow: var(--shadow); }
+.p22-card.phone { left: 8px; right: 8px; bottom: 8px; top: 68px; }
+.frame.side .p22-card, .frame.bottom .p22-card { left: 424px; top: 48px; width: 320px; max-height: calc(100% - 60px); }
+.p22-top { display: flex; align-items: center; gap: 8px; padding: 8px 6px 4px 14px; }
+.p22-top h3 { flex: 1; min-width: 0; margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.p22-back { align-self: flex-start; margin: 6px 0 0 6px; color: var(--accent); font-weight: var(--weight-name); }
+.p22-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.p22-body h4 { margin: 8px 0 0; font-size: 13px; font-weight: var(--weight-strong); color: var(--muted); }
+.p22-when { margin: -4px 0 0; font-size: 14px; }
+.p22-body .row { flex-wrap: wrap; row-gap: 0; } /* (at 200 % its value and › go under its words, which stay whole) */
+.p22-body .row > span:nth-child(2) { flex: 1 1 110px; min-width: 0; }
+.p22-day { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.p22-day > b { font-size: 14px; }
+.p22-read { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; row-gap: 2px; }
+.p22-read > b { font-size: 30px; letter-spacing: -.03em; line-height: 1; }
+.p22-read > span { flex: 1 1 150px; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+.p22-read small, .p22-sun, .p22-note { display: block; color: var(--muted); font-size: 13px; }
+.p22-sun .ic { display: inline-block; margin-right: 3px; vertical-align: -2px; }
+.p22-share { display: flex; height: 10px; border-radius: 5px; overflow: hidden; }
+.p22-share > i { display: block; }
+.p22-key { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; font-size: 13px; }
+.p22-key i { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 2px; }
+.p22-links { display: flex; flex-wrap: wrap; gap: 0 4px; margin: -6px -10px 0; }
+.p22-links .btn { color: var(--accent); font-weight: var(--weight-name); }
+.p22-time > summary { cursor: pointer; color: var(--accent); font-weight: var(--weight-name); list-style: none; display: flex; align-items: center; gap: 4px; min-height: var(--target); }
+.p22-time > summary::-webkit-details-marker { display: none; }
+.p22-time[open] > summary .ic { transform: rotate(180deg); }
+.p22-tt { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 4px 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.p22-tt > b { font-weight: var(--weight-name); }
+.p22-tt > .tot { font-weight: var(--weight-strong); }
+.p22-strip { display: block; width: 100%; height: 44px; border-radius: 8px; }
+.p22-play { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 </style>
 </head>
 <body class="mk">
@@ -443,8 +530,20 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
   <h1>The route's list</h1>
   <p>Today's list on <code>main</code> (2026-11-04, after #770) beside <b>Rows</b>: a point is a row with its name, a plain stretch is a line between two points with its numbers, the sport's row carries its route style and speed, a desktop renames and removes in the row (hover, or the keyboard), a phone's row opens its card, and one button sits under the list. <b>Line</b> is the second round (2026-11-04), from trying the first PR: the list as it is on <code>main</code> now, with one line from the start to the end through every waypoint, the stretch's numbers to read, how every stretch is drawn, and waypoints in the words. The plan: <a href="../issue-761-route-list.md">issue-761-route-list.md</a>.</p>
   <div class="bars">
-    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button><button data-v="parts5">Parts 5</button><button data-v="parts6">Parts 6</button><button data-v="parts7">Parts 7</button><button data-v="parts8">Parts 8</button><button data-v="parts9">Parts 9</button><button data-v="parts10">Parts 10</button><button data-v="parts11">Parts 11</button><button data-v="parts12">Parts 12</button><button data-v="parts13">Parts 13</button><button data-v="parts14">Parts 14</button><button data-v="parts15">Parts 15</button><button data-v="parts16">Parts 16</button><button data-v="parts17">Parts 17</button><button data-v="parts18">Parts 18</button><button data-v="parts19">Parts 19</button></div>
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="rows">Rows</button><button data-v="line">Line</button><button data-v="parts">Parts</button><button data-v="parts2">Parts 2</button><button data-v="parts3">Parts 3</button><button data-v="parts4">Parts 4</button><button data-v="parts5">Parts 5</button><button data-v="parts6">Parts 6</button><button data-v="parts7">Parts 7</button><button data-v="parts8">Parts 8</button><button data-v="parts9">Parts 9</button><button data-v="parts10">Parts 10</button><button data-v="parts11">Parts 11</button><button data-v="parts12">Parts 12</button><button data-v="parts13">Parts 13</button><button data-v="parts14">Parts 14</button><button data-v="parts15">Parts 15</button><button data-v="parts16">Parts 16</button><button data-v="parts17">Parts 17</button><button data-v="parts18">Parts 18</button><button data-v="parts19">Parts 19</button><button data-v="parts20">Parts 20</button><button data-v="parts21">Parts 21</button><button data-v="parts22">Parts 22</button></div>
       <span>Stretch</span><div class="sw" data-k="how"><button data-v="every">How every stretch is drawn</button><button data-v="differs">Only where it differs</button></div></div>
+    <div class="bar"><span>Parts 22: the trip’s box</span><div class="sw" data-k="c22"><button data-v="list">The list</button><button data-v="card">After a tap on the box</button></div>
+      <span>Time on the way</span><div class="sw" data-k="t22"><button data-v="card">In the card (proposed)</button><button data-v="nums">The time’s own card</button></div>
+      <span>Go’s tab</span><div class="sw" data-k="g22"><button data-v="gone">Gone (proposed)</button><button data-v="kept">Kept</button></div></div>
+    <div class="bar"><span>Parts 21: a part’s heading</span><div class="sw" data-k="s21"><button data-v="built">As built, ⚙</button><button data-v="cog">The row, ⚙ (proposed)</button><button data-v="chev">The row, ›</button></div>
+      <span>A stretch’s ⌄</span><div class="sw" data-k="f21"><button data-v="num">Green count (Parts 20)</button><button data-v="end">Green ⌄, grey count (proposed)</button><button data-v="line">Show 2 waypoints, a line</button></div>
+      <span>Waypoints</span><div class="sw" data-k="o21"><button data-v="off">As built</button><button data-v="on">Outlined</button><button data-v="faint">A faint outline</button><button data-v="tint">A faint tint</button></div>
+      <span>The trip’s weather</span><div class="sw" data-k="x21"><button data-v="off">None, as built</button><button data-v="on">Go’s day over the list (Parts 15)</button></div></div>
+    <div class="bar"><span>Parts 20: the heading</span><div class="sw" data-k="h20"><button data-v="built">As built</button><button data-v="group">A: Itself, as Layers’ groups</button><button data-v="left">B: Green, left (proposed)</button><button data-v="mid">C: Green, middle</button><button data-v="right">D: Green, right</button><button data-v="switch">E: A switch</button></div>
+      <span>A part’s heading</span><div class="sw" data-k="s20"><button data-v="built">As built, ⚙</button><button data-v="row">One row, ›</button></div>
+      <span>A folded stretch’s count</span><div class="sw" data-k="n20"><button data-v="muted">As built</button><button data-v="green">Green</button></div>
+      <span>Worth a look</span><div class="sw" data-k="w20"><button data-v="look">Worth a look</button><button data-v="good">Good to know</button><button data-v="notes">Notes</button></div>
+      <span>Route</span><div class="sw" data-k="r20"><button data-v="test">As tried</button><button data-v="two">Two sports</button><button data-v="fi">Long Finnish names</button><button data-v="days">Two days, a night (Parts 22)</button></div></div>
     <div class="bar"><span>Parts 16 to 19: unfolded</span><div class="sw" data-k="u16"><button data-v="built">As on main</button><button data-v="legs">Its legs</button></div>
       <span>Waypoints 1–4</span><div class="sw" data-k="f16"><button data-v="folded">Folded</button><button data-v="open">Unfolded</button></div>
       <span>Leg 2 → 3</span><div class="sw" data-k="e16"><button data-v="paths">Follow paths</button><button data-v="free">Set to Freehand</button></div>
@@ -555,7 +654,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 import { icon, h } from '../../../js/ui.js';
 
 const q = new URLSearchParams(location.search);
-const S = { v: q.get('v') || 'parts19', d19: ['fewer', 'alone', 'custom'].includes(q.get('d19')) ? q.get('d19') : 'all', t19: q.get('t19') === 'clock' ? 'clock' : 'from', m19: q.get('m19') === 'open' ? 'open' : 'closed', h19: q.get('h19') === 'open' ? 'open' : 'closed', x19how: q.get('x19how') === 'off' ? 'off' : 'on', x19warn: q.get('x19warn') === 'off' ? 'off' : 'on', x19dark: q.get('x19dark') === 'off' ? 'off' : 'on', x19wx: q.get('x19wx') === 'off' ? 'off' : 'on', e18: ['menu', 'strip'].includes(q.get('e18')) ? q.get('e18') : 'pencil', u16: q.get('u16') === 'built' ? 'built' : 'legs', f16: q.get('f16') === 'folded' ? 'folded' : 'open', e16: q.get('e16') === 'free' ? 'free' : 'paths', s16: ['leg', 'point'].includes(q.get('s16')) ? q.get('s16') : 'none', r16: ['water', 'fi', 'many'].includes(q.get('r16')) ? q.get('r16') : 'test', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : ['parts4', 'parts5', 'parts6', 'parts7', 'parts8', 'parts9', 'parts10', 'parts11', 'parts12', 'parts13', 'parts14', 'parts15'].includes(q.get('v') || 'parts15') ? 'freehand' : 'straight', t11: ['clock', 'elapsed'].includes(q.get('t11')) ? q.get('t11') : ['parts12', 'parts13', 'parts14', 'parts15'].includes(q.get('v') || 'parts15') ? 'elapsed' : 'clock', w14: q.get('w14') === 'hide' ? 'hide' : 'show', m14: q.get('m14') === 'open' ? 'open' : 'closed', aff: ['press', 'outline', 'rules'].includes(q.get('aff')) ? q.get('aff') : 'outline', fold: ['chip', 'line', 'end'].includes(q.get('fold')) ? q.get('fold') : 'line', nested: ['ring', 'num', 'same'].includes(q.get('nested')) ? q.get('nested') : 'num', nest: ['region', 'indent', 'asis'].includes(q.get('nest')) ? q.get('nest') : 'region', treat: ['built', 'weight', 'lanes'].includes(q.get('treat')) ? q.get('treat') : 'weight', r9: q.get('r9') === 'long' ? 'long' : 'journey', sel: q.get('sel') === 'point' ? 'point' : 'none', press: q.get('press') === 'on' ? 'on' : 'off', chev: q.get('chev') === 'none' ? 'none' : 'tint', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: ['on', 'point'].includes(q.get('hover')) ? q.get('hover') : 'off', sun: q.get('sun') === 'sunmoon' ? 'sunmoon' : 'horizon', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
+const S = { v: q.get('v') || 'parts22', c22: q.get('c22') === 'card' ? 'card' : 'list', t22: q.get('t22') === 'nums' ? 'nums' : 'card', g22: q.get('g22') === 'kept' ? 'kept' : 'gone', s21: ['built', 'chev'].includes(q.get('s21')) ? q.get('s21') : 'cog', f21: ['num', 'line'].includes(q.get('f21')) ? q.get('f21') : 'end', o21: ['on', 'faint', 'tint'].includes(q.get('o21')) ? q.get('o21') : 'off', x21: q.get('x21') === 'off' ? 'off' : 'on', h20: ['built', 'group', 'mid', 'right', 'switch'].includes(q.get('h20')) ? q.get('h20') : 'left', s20: q.get('s20') === 'built' ? 'built' : 'row', n20: q.get('n20') === 'muted' ? 'muted' : 'green', w20: ['look', 'notes'].includes(q.get('w20')) ? q.get('w20') : 'good', r20: ['two', 'fi', 'days'].includes(q.get('r20')) ? q.get('r20') : 'test', d19: ['fewer', 'alone', 'custom'].includes(q.get('d19')) ? q.get('d19') : 'all', t19: q.get('t19') === 'clock' ? 'clock' : 'from', m19: q.get('m19') === 'open' ? 'open' : 'closed', h19: q.get('h19') === 'open' ? 'open' : 'closed', x19how: q.get('x19how') === 'off' ? 'off' : 'on', x19warn: q.get('x19warn') === 'off' ? 'off' : 'on', x19dark: q.get('x19dark') === 'off' ? 'off' : 'on', x19wx: q.get('x19wx') === 'off' ? 'off' : 'on', e18: ['menu', 'strip'].includes(q.get('e18')) ? q.get('e18') : 'pencil', u16: q.get('u16') === 'built' ? 'built' : 'legs', f16: q.get('f16') === 'folded' ? 'folded' : 'open', e16: q.get('e16') === 'free' ? 'free' : 'paths', s16: ['leg', 'point'].includes(q.get('s16')) ? q.get('s16') : 'none', r16: ['water', 'fi', 'many'].includes(q.get('r16')) ? q.get('r16') : 'test', word: ['straight', 'offpaths', 'freehand'].includes(q.get('word')) ? q.get('word') : ['parts4', 'parts5', 'parts6', 'parts7', 'parts8', 'parts9', 'parts10', 'parts11', 'parts12', 'parts13', 'parts14', 'parts15'].includes(q.get('v') || 'parts15') ? 'freehand' : 'straight', t11: ['clock', 'elapsed'].includes(q.get('t11')) ? q.get('t11') : ['parts12', 'parts13', 'parts14', 'parts15'].includes(q.get('v') || 'parts15') ? 'elapsed' : 'clock', w14: q.get('w14') === 'hide' ? 'hide' : 'show', m14: q.get('m14') === 'open' ? 'open' : 'closed', aff: ['press', 'outline', 'rules'].includes(q.get('aff')) ? q.get('aff') : 'outline', fold: ['chip', 'line', 'end'].includes(q.get('fold')) ? q.get('fold') : 'line', nested: ['ring', 'num', 'same'].includes(q.get('nested')) ? q.get('nested') : 'num', nest: ['region', 'indent', 'asis'].includes(q.get('nest')) ? q.get('nest') : 'region', treat: ['built', 'weight', 'lanes'].includes(q.get('treat')) ? q.get('treat') : 'weight', r9: q.get('r9') === 'long' ? 'long' : 'journey', sel: q.get('sel') === 'point' ? 'point' : 'none', press: q.get('press') === 'on' ? 'on' : 'off', chev: q.get('chev') === 'none' ? 'none' : 'tint', look: q.get('look') === 'on' ? 'on' : 'off', how: q.get('how') === 'differs' ? 'differs' : 'every', frame: q.get('frame') || '390', zoom: q.get('zoom') || '100', route: q.get('route') || 'one', foot: q.get('foot') || 'clear', add: q.get('add') === 'off' ? 'off' : 'on', hover: ['on', 'point'].includes(q.get('hover')) ? q.get('hover') : 'off', sun: q.get('sun') === 'sunmoon' ? 'sunmoon' : 'horizon', reorder: q.get('reorder') === 'top' ? 'top' : 'foot' };
 
 // the route: four points, three legs; two sports change the last leg to Hike; long names are Finnish places
 const ROUTES = {
@@ -595,13 +694,13 @@ const sub = (p, i) => p.sub || `There at 06:${40 + i * 4}`;
 
 // ---------- the planner's head: the numbers, the key fact's slot, the tabs (the same in both versions, but the slot)
 function head(R, rows) {
-  const slot = rows ? h('div', { class: 'kf' }, h('button', { type: 'button', class: 'kf-b danger', style: 'color: var(--danger)' }, h('span', { html: icon('warnf', 18) }), h('span', {}, h('b', {}, '5 to read before you go')), h('span', { html: icon('chevronRight', 16) })))
+  const slot = rows ? h('div', { class: 'kf' }, h('button', { type: 'button', class: 'kf-b danger', style: 'color: var(--danger)' }, h('span', { html: icon('warnf', 18) }), h('span', {}, h('b', {}, S.v === 'parts22' ? '5 warnings' : '5 to read before you go')), h('span', { html: icon('chevronRight', 16) })))
     : h('div', { class: 'kf' }, h('button', { type: 'button', class: 'kf-b' }, h('span', { html: icon('mountain', 18) }), h('span', { html: 'High point <b>17 m</b>' }), h('span', { html: icon('chevronRight', 16) })));
   const [d, t, u] = R.total.split(' · ');
   return h('div', { class: 'sheet-head' },
     h('div', { class: 'sheet-sum' }, h('span', { class: 'sum-item' }, h('b', {}, d), h('small', {}, 'distance')), h('span', { class: 'sum-item' }, h('b', {}, t), h('small', {}, 'from now')), h('span', { class: 'sum-item' }, h('b', {}, u.replace('↑', '↑') + ' ↓36 m'), h('small', {}, 'ascent · descent'))),
     slot,
-    h('div', { class: 'pl-tabs mk-tabs', role: 'tablist' }, h('button', { type: 'button', role: 'tab', class: 'pl-tab', 'aria-selected': 'true', html: `${icon('route', 15)} Route` }), h('button', { type: 'button', role: 'tab', class: 'pl-tab', html: `${icon('warn', 15)} Check <span class="pl-tab-n read">${icon('warnf', 11)} 5</span>` }), h('button', { type: 'button', role: 'tab', class: 'pl-tab', html: `${icon('clock', 15)} Go <span class="pl-tab-t">06:53</span>` })));
+    h('div', { class: 'pl-tabs mk-tabs', role: 'tablist' }, h('button', { type: 'button', role: 'tab', class: 'pl-tab', 'aria-selected': 'true', html: `${icon('route', 15)} Route` }), h('button', { type: 'button', role: 'tab', class: 'pl-tab', html: `${icon('warn', 15)} Check <span class="pl-tab-n read">${icon('warnf', 11)} 5</span>` }), S.v === 'parts22' && S.g22 === 'gone' ? null : h('button', { type: 'button', role: 'tab', class: 'pl-tab', html: `${icon('clock', 15)} Go <span class="pl-tab-t">06:53</span>` })));
 }
 
 // ---------- Today: main's list (js/planner.js sectionRows, pointRow, stretchRow at d326952)
@@ -1254,6 +1353,160 @@ function parts16(S) {
   return [head, top, list, foot];
 }
 
+// ---------- Parts 20 (2026-11-06): main's list at 31c8040 (js/planner.js sectionRows(), after #844, #847 and #848, with
+// #850's warnings: a folded stretch names one or two, and counts more), and what acts made plain: the heading, a part's
+// heading, a folded stretch's count, and Worth a look's name. A click on Show all or a stretch's ⌄ folds and unfolds.
+const P20 = { open: new Set() };
+const R20 = {
+  // the route of the screenshots from trying it, 2026-11-06: MTB through Kaisaniemi, a stop, two waypoints folded
+  test: { total: '498 m · 32 min · ↑3 m', parts: [{ k: 'mtb', label: 'MTB', icon: 'bike', from: 0, to: 4, nums: '498 m · 2 min + 30 min stop · ↑3 m' }],
+    points: [{ name: 'Asema-aukio', far: '0 m', since: '0 min' }, { name: 'Asema-aukio', far: '130 m', since: '0 min', shape: true }, { name: 'Kaisantunneli', far: '273 m', since: '1 min', stop: ['Stop · 30 min', '10:01–10:31'] },
+      { name: 'Svante Olssonin puistokuja', far: '404 m', since: '32 min', shape: true }, { name: 'Birger Brunilan puistokuja', far: '498 m', since: '32 min' }],
+    legs: [{ n: '130 m · 0 min', w: [['read', 'Cycling not allowed here']] }, { n: '143 m · 0 min', w: [['read', 'Cycling not allowed here']] }, { n: '131 m · 1 min · ↑3 m', w: [['look', 'Technical trail S3']] }, { n: '95 m · 1 min', w: [['read', 'Gate: no access'], ['look', 'Technical trail S3']] }],
+    stretches: { 0: '273 m · 1 min', 2: '225 m · 1 min · ↑3 m' }, day: ['Thu 06/11', '10:00–10:32', '498 m · 2 min moving · ↑3 m', 'cloud', '4 °C · wind up to 4 m/s · dry'] },
+  // MTB to the shore, then Paddle with three kinds of warning in one folded stretch: counted
+  two: { total: '6.12 km · 1 h 16 min · ↑21 m', parts: [{ k: 'mtb', label: 'MTB', icon: 'bike', from: 0, to: 2, nums: '2.48 km · 9 min · ↑18 m' }, { k: 'paddle', label: 'Paddle', icon: 'paddle', from: 2, to: 5, nums: '3.64 km · 47 min · ↑3 m' }],
+    points: [{ name: 'Asema-aukio', far: '0 m', since: '0 min' }, { name: 'Kaisaniemenranta', far: '1.31 km', since: '5 min', shape: true }, { name: 'Hakaniemen ranta', far: '2.48 km', since: '9 min', leaveSince: '19 min', change: ['Changeover · 10 min', '10:09–10:19', 'Your bike stays here'] },
+      { name: 'Siltasaarensalmi', far: '3.40 km', since: '31 min', shape: true }, { name: 'Tervasaaren laituri', far: '4.62 km', since: '47 min', shape: true }, { name: 'Pikku Kalasatama', far: '6.12 km', since: '1 h 16 min' }],
+    legs: [{ n: '1.31 km · 5 min · ↑12 m', w: [['read', 'Cycling not allowed here']] }, { n: '1.17 km · 4 min · ↑6 m', w: [] }, { n: '920 m · 12 min', w: [['read', 'Shipping lane: cross it straight'], ['look', 'Shallow water']] },
+      { n: '1.22 km · 16 min · ↑3 m', w: [['look', 'Open water: waves up to 0.4 m']] }, { n: '1.50 km · 19 min', w: [['look', 'Shallow water']] }],
+    stretches: { 0: '2.48 km · 9 min · ↑18 m', 2: '3.64 km · 47 min · ↑3 m' }, day: ['Thu 06/11', '10:00–11:16', '6.12 km · 56 min moving · ↑21 m', 'cloudSun', '4…5 °C · wind up to 6 m/s · dry'] },
+};
+// (Parts 22: what Go says for each route today, for the weather card)
+R20.test.c22 = { there: 'There at 10:32 · 2 min moving, a 30 min stop', share: [21, 49, 30], strongest: 'Strongest headwind 4.0 m/s at km 0.3', up: '0 min', windT: 'about ±0', moving: ['498 m', '2 min', '14.6 km/h'],
+  time: [['Paved', '373 m', '1 min', '15.9 km/h'], ['Trails', '125 m', '1 min', '11.0 km/h']],
+  days: [{ sky: 'cloud', t: '4°', wind: '4.0 m/s from NW, gusts 7.4 · Breezy', rain: '4 °C · dry the whole way', sun: [['sunrise', 'Sunrise 08:07'], ['sunset', 'sunset 16:11'], ['moon', 'dark from 17:00']] }] };
+R20.two.c22 = { there: 'There at 11:16 · 56 min moving, a 10 min changeover', share: [34, 40, 26], strongest: 'Strongest headwind 5.6 m/s at km 4.1, on the water', up: '1 min', windT: 'about +3 min', moving: ['6.12 km', '56 min', '6.6 km/h'],
+  time: [['Paved', '1.92 km', '6 min', '18.9 km/h'], ['Gravel & unpaved', '560 m', '3 min', '11.6 km/h'], ['On the water', '3.64 km', '47 min', '4.6 km/h']],
+  days: [{ sky: 'cloudSun', t: '5°', wind: '6 m/s from SW, gusts 9 · Breezy', rain: '4…5 °C · dry the whole way', sun: [['sunrise', 'Sunrise 08:07'], ['sunset', 'sunset 16:11'], ['moon', 'dark from 17:00']] }] };
+// two days on foot with a night at a lean-to: a part a day, as the app cuts them
+R20.days = { total: '32.7 km · 1 day 20 h · ↑365 m', parts: [{ k: 'hike', label: 'Hike, day 1', icon: 'hike', from: 0, to: 2, nums: '14.1 km · 2 h 44 min · ↑155 m' }, { k: 'hike', label: 'Hike, day 2', icon: 'hike', from: 2, to: 4, nums: '18.6 km · 3 h 10 min · ↑210 m' }],
+  points: [{ name: 'Pyynikin näkötorni', far: '0 m', since: '0 min' }, { name: 'Haukiluoma', far: '6.2 km', since: '1 h 12 min', shape: true }, { name: 'Kintulammin laavu', far: '14.1 km', since: '2 h 44 min', leaveSince: '17 h', stop: ['Night · 14 h 16 min', 'Wed 18:14 – Thu 08:30'] },
+    { name: 'Ruutana', far: '24.0 km', since: '18 h 42 min', shape: true }, { name: 'Lempäälän asema', far: '32.7 km', since: '1 day 20 h' }],
+  legs: [{ n: '6.2 km · 1 h 12 min · ↑60 m', w: [] }, { n: '7.9 km · 1 h 32 min · ↑95 m', w: [['look', 'Steps']] }, { n: '9.9 km · 1 h 42 min · ↑120 m', w: [['read', 'Ford: the bridge is out']] }, { n: '8.7 km · 1 h 28 min · ↑90 m', w: [] }],
+  stretches: { 0: '14.1 km · 2 h 44 min · ↑155 m', 2: '18.6 km · 3 h 10 min · ↑210 m' }, day: ['Wed 05/11', '15:30–18:14', '14.1 km · 2 h 22 min moving · ↑155 m', 'cloud', '6…9 °C · wind up to 5 m/s · dry'],
+  c22: { there: 'There Thu 06/11 at 11:40 · 5 h 20 min moving, a night', share: [38, 41, 21], strongest: 'Strongest headwind 6.8 m/s at km 24.1', up: '42 min', windT: 'about +6 min', moving: ['32.7 km', '5 h 20 min', '6.1 km/h'],
+    time: [['Paved', '6.02 km', '1 h 4 min', '5.6 km/h'], ['Gravel & unpaved', '11.4 km', '2 h 9 min', '5.3 km/h'], ['Trails', '15.3 km', '3 h 7 min', '4.9 km/h']],
+    days: [{ b: 'Day 1', when: 'Wed 05/11 · 15:30–18:14', what: '14.1 km · 2 h 22 min moving · ↑155 m · night at Kintulammin laavu', sky: 'cloud', wx: '6…9 °C · wind up to 5 m/s · dry', sunBox: 'Sunset 16:09 · dark from 16:58, 1 h 16 min before the night',
+      t: '8°', wind: 'up to 5 m/s from SW, gusts 8', rain: '6…9 °C · dry', sun: [['sunset', 'Sunset 16:09'], ['moon', 'dark from 16:58']] },
+    { b: 'Day 2', when: 'Thu 06/11 · 08:30–11:40', what: '18.6 km · 2 h 58 min moving · ↑210 m', sky: 'rain', wx: '3…7 °C · wind up to 7 m/s · rain from 10:00, up to 1.2 mm/h',
+      t: '5°', wind: 'up to 7 m/s from W, gusts 11 · Windy', rain: '3…7 °C · rain from 10:00, up to 1.2 mm/h', sun: [['sunrise', 'Sunrise 08:05']] }] } };
+R20.fi = { ...R20.test, points: R20.test.points.map((p, i) => ({ ...p, name: ['Pyhä-Häkin kansallispuiston pysäköintialue', 'Rautavaaran Metsäkartanon laavu', 'Saarijärven kirkonkylän kuntoportaat', 'Isojärven kansallispuiston Heretty', 'Kuusamon Oulankajoen riippusiltasaari'][i] })) };
+
+// a stretch's warnings as #850 says them: a leg, or a folded stretch with one or two, each named once with its places;
+// a folded stretch with more, counted (Worth a look in the word picked on the bar)
+function warns20(list, leg) {
+  const G = { read: ['read', 'warnf'], look: ['look', 'eye'] }, by = new Map(), one = (g, t) => `<span class="${G[g][0]}">${icon(G[g][1], 14)}${t}</span>`;
+  for (const [g, t] of list) by.set(t, { g, k: (by.get(t)?.k || 0) + 1 });
+  const names = [...by].sort((a, b) => (a[1].g === 'read' ? 0 : 1) - (b[1].g === 'read' ? 0 : 1)).map(([t, x]) => one(x.g, `${t}${x.k > 1 ? ` (${x.k} places)` : ''}`));
+  if (leg || names.length <= 2) return names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names;
+  const n = (g) => list.filter((x) => x[0] === g).length, look = (k) => (S.w20 === 'notes' ? `${k} note${k === 1 ? '' : 's'}` : `${k} ${S.w20 === 'good' ? 'good to know' : 'worth a look'}`);
+  return [[n('read') ? one('read', `${n('read')} warning${n('read') === 1 ? '' : 's'}`) : '', n('look') ? one('look', look(n('look'))) : ''].filter(Boolean).join(' ')];
+}
+
+// Parts 22: the trip's box, a day a row (Go's day cards), each a button with › opening the weather card
+function box22(R) {
+  const C = R.c22, D = C.days.length > 1 ? C.days : [{ b: R.day[0], when: `Leave now · ${C.there.replace(/ ·.*/, '').replace('There', 'there')}`, sky: R.day[3], wx: R.day[4].replace(/^[^·]+· /, `${C.days[0].rain.split(' · ')[0]} · `) }];
+  return h('div', { class: 'days p15-days p22-box', role: 'group', 'aria-label': 'The trip' }, ...D.map((d) => h('button', { type: 'button', class: 'day', 'aria-label': `${d.b}, ${d.when}${d.what ? `, ${d.what}` : ''}, ${d.wx}${d.sunBox ? `, ${d.sunBox}` : ''}: the weather on the way`, onclick: () => { S.c22 = 'card'; draw(); } },
+    h('b', {}, d.b), h('span', { class: 'day-when' }, d.when), d.what ? h('span', { class: 'day-what' }, d.what) : null, h('span', { class: 'day-wx', html: `${icon(d.sky, 14)}${d.wx}` }), d.sunBox ? h('span', { class: 'day-what' }, d.sunBox) : null,
+    h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }))));
+}
+// Parts 22: the weather card (#431), opened from the box: the route first, then the map's weather
+function card22(R, phone) {
+  const C = R.c22, D = C.days, chev = () => h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }), K = ['var(--danger)', 'var(--muted)', 'var(--accent)'], back = () => { S.c22 = 'list'; draw(); };
+  const w = 300, hh = 44, X = (hr) => (hr / 48) * w; let line = '';
+  for (let i = 0; i <= 96; i++) { const hr = i / 2, t = 6 + 3 * Math.sin(((hr - 9) / 24) * 2 * Math.PI); line += `${i ? 'L' : 'M'}${X(hr).toFixed(1)},${(hh * (0.12 + 0.55 * (1 - (t - 2) / 10))).toFixed(1)}`; }
+  const ride = D.length > 1 ? [[5.5, 8.2], [22.5, 25.7]] : [[0, 1.2]];
+  const strip = `<svg class="p22-strip" viewBox="0 0 ${w} ${hh}" preserveAspectRatio="none" aria-hidden="true"><rect width="${w}" height="${hh}" fill="var(--surface-2)"/><rect x="${X(6.5)}" width="${X(10)}" height="${hh}" fill="var(--line)"/><rect x="${X(30.5)}" width="${X(10)}" height="${hh}" fill="var(--line)"/>${ride.map(([a, b]) => `<rect x="${X(a)}" width="${X(b - a)}" height="${hh}" fill="var(--accent)" opacity=".22"/>`).join('')}<path d="${line}" fill="none" stroke="#ea580c" stroke-width="1.6" vector-effect="non-scaling-stroke"/><rect width="2" height="${hh}" fill="var(--text)"/></svg>`;
+  const tt = h('div', { class: 'p22-tt' }, ...C.time.flatMap(([k, d, t, v]) => [h('b', {}, k), h('span', {}, d), h('span', {}, t), h('span', {}, v)]),
+    h('span', {}, 'Uphill (over 3 %)'), h('span', {}), h('span', {}, C.up), h('span', {}), h('span', {}, 'The wind'), h('span', {}), h('span', {}, C.windT), h('span', {}),
+    h('b', { class: 'tot' }, 'Moving time'), ...C.moving.map((x) => h('span', { class: 'tot' }, x)));
+  return h('section', { class: `p22-card${phone ? ' phone' : ''}`, 'aria-label': 'Weather on the way' },
+    phone ? h('button', { type: 'button', class: 'btn small quiet p22-back', onclick: back, html: `<span style="display:inline-flex;transform:scaleX(-1)">${icon('chevronRight', 16)}</span>Route` }) : null,
+    h('div', { class: 'p22-top' }, h('span', { 'aria-hidden': 'true', style: 'color: var(--accent)', html: icon(D[0].sky, 24) }), h('h3', {}, 'Weather on the way'), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: back, html: icon('close', 20) })),
+    h('div', { class: 'p22-body' },
+      h('div', { class: 'rows' }, h('button', { type: 'button', class: 'row' }, h('span', { 'aria-hidden': 'true', html: icon('clock', 20) }), h('span', {}, h('b', {}, 'Leave'), h('small', {}, 'Sets the times and the weather')), h('span', { class: 'val' }, 'Now'), chev())),
+      h('p', { class: 'p22-when' }, C.there),
+      ...D.map((d) => h('div', { class: 'p22-day' }, D.length > 1 ? h('b', {}, `${d.b} · ${d.when}`) : null,
+        h('div', { class: 'p22-read' }, h('span', { 'aria-hidden': 'true', style: 'flex: none', html: icon(d.sky, 30) }), h('b', {}, d.t), h('span', {}, d.wind, h('small', {}, d.rain))),
+        h('span', { class: 'p22-sun', html: d.sun.map(([ic, x]) => `${icon(ic, 14)}${x}`).join(' · ') }))),
+      h('h4', {}, 'The wind on the way'),
+      h('div', {}, h('div', { class: 'p22-share', 'aria-hidden': 'true' }, ...C.share.map((x, i) => h('i', { style: `width: ${x}%; background: ${K[i]}` }))),
+        h('div', { class: 'p22-key' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', {}, h('i', { style: `background: ${K[i]}` }), `${k} ${C.share[i]} %`))),
+        h('span', { class: 'p22-note' }, C.strongest)),
+      h('div', { class: 'p22-links' }, ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([ic, k]) => h('button', { type: 'button', class: 'btn small quiet', html: `${icon(ic, 16)} ${k} on the route` }))),
+      S.t22 === 'card' ? h('details', { class: 'p22-time' }, h('summary', { html: `Time on the way: ${C.moving[1]} moving ${icon('chevronDown', 16)}` }), tt) : null,
+      h('h4', {}, 'On the map'),
+      h('div', { html: strip }),
+      h('div', { class: 'p22-play' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Play', html: icon('play', 18) }), h('span', {}, `Now, ${R.day[0].slice(0, 3)} 10:00 · your trip shaded`)),
+      h('div', { class: 'rows' }, h('button', { type: 'button', class: 'row' }, h('span', { 'aria-hidden': 'true', html: icon('layers', 20) }), h('span', {}, h('b', {}, 'Weather layers')), h('span', { class: 'val' }, 'Rain'), chev()))));
+}
+
+function parts20(S) {
+  // (Parts 21: B's heading, the part's heading the row's own button with its ⚙ at the end, the stretch's ⌄ as the bar says, outlined)
+  const p21 = /^parts2[12]$/.test(S.v), H = p21 ? 'left' : S.h20, SR = p21 ? { built: 'built', cog: 'cog', chev: 'row' }[S.s21] : S.s20, F = p21 ? S.f21 : S.n20 === 'green' ? 'num' : '';
+  const R = R20[S.r20], n = R.points.length, key = (i) => `${S.r20}:${i}`, chevR = () => h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) });
+  const mark = (i) => h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : i === n - 1 ? 'wp-end' : 'wp-via'}` }, i === 0 || i === n - 1 ? '' : String(i)));
+  const point = (i, { shape = false, brk = false, leave = false } = {}) => { const p = R.points[i];
+    return h('button', { type: 'button', class: ['row wpl-point', shape ? 'shape' : '', i === n - 1 ? 'last' : '', brk ? 'brk' : ''].filter(Boolean).join(' '), 'data-i': String(i) },
+      mark(i), h('span', {}, h('b', { class: 'wpl-name' }, p.name), h('span', { class: 'wpl-when', 'aria-hidden': 'true' }, h('b', {}, p.far), h('small', {}, leave && p.leaveSince ? p.leaveSince : p.since))), chevR()); };
+  const wait = (i, kind) => { const [b, span, gear] = R.points[i][kind];
+    return h('button', { type: 'button', class: 'row wpl-wait', 'data-i': String(i), 'data-wait': kind }, h('span', { 'aria-hidden': 'true', html: icon(kind === 'change' ? 'clock' : 'pause', 18) }),
+      h('span', {}, h('b', {}, b), h('small', { class: 'wx-line' }, h('span', {}, span)), gear ? h('small', { class: 'wpl-warns', html: `<span class="look">${icon('eye', 14)}${gear}</span>` }) : null), chevR()); };
+  // a stretch's row; `fold`, the stretch whose waypoints its ⌄ folds (a folded stretch's own, or an unfolded one's first leg)
+  const stretch = (from, to, fold) => {
+    const shaping = fold ? fold.to - fold.from - 1 : 0, open = !!fold && P20.open.has(key(fold.from)), beads = [];
+    for (let j = 0, m = open ? 0 : shaping; j < m; j++) beads.push(h('span', { class: 'bead', style: `top: ${((j + 1) * 100) / (m + 1)}%` }));
+    const b = h('button', { type: 'button', class: 'row wpl-stretch', 'data-from': String(from), 'data-to': String(to) }, h('span', { class: 'wpl-line', 'aria-hidden': 'true' }, ...beads),
+      h('span', {}, h('b', { class: 'wpl-nums' }, to - from === 1 ? R.legs[from].n : R.stretches[from]), ...warns20(R.legs.slice(from, to).flatMap((l) => l.w), to - from === 1).map((x) => h('small', { class: 'wpl-warns', html: x }))));
+    const kids = [h('span', { 'aria-hidden': 'true' }, String(shaping)), h('span', { 'aria-hidden': 'true', html: icon('chevronDown', 18) })];
+    if (F === 'end') kids.reverse(); // (⌄ first, in green; its count after it, in grey)
+    const f = shaping && F !== 'line' ? h('button', { type: 'button', class: 'tool wpl-unfold', 'aria-expanded': String(open), 'aria-label': `${open ? 'Fold' : 'Show'} the ${shaping} waypoint${shaping === 1 ? '' : 's'}`, onclick: () => { P20.open[open ? 'delete' : 'add'](key(fold.from)); draw(); } }, ...kids) : null;
+    return h('div', { class: 'wpl-strow' }, b, f);
+  };
+  // (Show 2 waypoints as a line of the stretch's own, under its words, as Show all's are: ⌄ and its words in green)
+  const showLine = (s, open) => { const m = s.to - s.from - 1;
+    return h('div', { class: 'wpl-strow' }, h('div', { class: 'row wpl-stretch p21-line' }, h('span', { class: 'wpl-line', 'aria-hidden': 'true' }), h('span', {}, h('button', { type: 'button', class: 'btn small quiet wpl-all p20-all', 'aria-expanded': String(open), onclick: () => { P20.open[open ? 'delete' : 'add'](key(s.from)); draw(); } },
+      h('span', { html: icon('chevronDown', 16) }), h('span', {}, `${open ? 'Fold' : 'Show'} ${m} waypoint${m === 1 ? '' : 's'}`))))); };
+  const mains = R.points.map((p, i) => (p.shape ? -1 : i)).filter((i) => i >= 0);
+  const list = h('ol', { class: ['wpl', p21 ? 'p21' : '', F === 'num' ? 'p20-green' : '', F === 'end' ? 'p21-end' : '', p21 && S.o21 !== 'off' ? `p21-outline p21-${S.o21}` : ''].filter(Boolean).join(' '), 'aria-label': 'Waypoints, in order' });
+  R.parts.forEach((part, k) => {
+    const ring = h('span', { 'aria-hidden': 'true', html: icon(part.icon, 16) }), t = h('div', { class: 'sec2-t' }, h('b', {}, part.label), h('small', {}, part.nums));
+    // (one row: its sport over its numbers, › at its end, opening what the ⚙ opens: the part's sport, speed and route style)
+    const head = SR !== 'built' ? h('button', { type: 'button', class: 'sec2-head p20-go', 'aria-haspopup': 'menu', 'aria-label': `${part.label}, ${part.nums}: sport, speed and route style` }, ring, t, SR === 'cog' ? h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('cog', 18) }) : chevR())
+      : h('div', { class: 'sec2-head' }, ring, t, h('button', { type: 'button', class: 'tool sec2-set', 'aria-label': `${part.label}: sport, speed and route style`, html: icon('cog', 18) }));
+    const rows = h('div', { class: 'rows', role: 'group' }, point(part.from, { leave: k > 0 })), ms = mains.filter((i) => i >= part.from && i <= part.to);
+    for (let j = 0; j < ms.length - 1; j++) {
+      const s = { from: ms[j], to: ms[j + 1] }, p = R.points[s.to], end = s.to === part.to;
+      const many = s.to - s.from > 1, open = many && P20.open.has(key(s.from));
+      if (!open) rows.append(stretch(s.from, s.to, s));
+      else for (let i = s.from; i < s.to; i++) { if (i > s.from) rows.append(point(i, { shape: true })); rows.append(stretch(i, i + 1, i === s.from ? s : null)); }
+      if (many && F === 'line') rows.append(showLine(s, open));
+      rows.append(point(s.to, { brk: (end && k < R.parts.length - 1) || !!p.stop }));
+      if (p.stop) rows.append(wait(s.to, 'stop'));
+      if (end && p.change) rows.append(wait(s.to, 'change'));
+    }
+    list.append(h('li', { class: 'sec2', style: `--part: var(--sport-${part.k}, var(--rail))` }, head, rows));
+  });
+  // the heading's row: what's folded, and Show all / Fold all
+  const folds = mains.slice(0, -1).map((i, j) => [i, mains[j + 1] - i - 1]).filter(([, m]) => m > 0), hidden = folds.reduce((t, [i, m]) => t + (P20.open.has(key(i)) ? 0 : m), 0), all = !hidden;
+  const toggle = () => { for (const [i] of folds) P20.open[all ? 'delete' : 'add'](key(i)); draw(); }, words = all ? 'Fold all waypoints' : 'Show all waypoints', count = all ? 'all shown' : `${hidden} hidden`;
+  const set = h('button', { type: 'button', class: 'tool wpl-set', 'aria-label': 'List settings', 'aria-haspopup': 'menu', html: icon('sliders', 20) });
+  const green = () => h('button', { type: 'button', class: 'btn small quiet wpl-all p20-all', 'aria-expanded': String(all), onclick: toggle }, h('span', { html: icon('chevronDown', 16) }), h('span', {}, words), h('small', {}, count));
+  const top = H === 'built' ? [h('div', { class: 'sec-head' }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'sec-count' }, String(n))),
+      h('div', { class: 'wpl-head-tools' }, h('button', { type: 'button', class: 'btn small quiet wpl-all', 'aria-expanded': String(all), onclick: toggle }, h('span', {}, words), h('span', { html: icon('chevronDown', 16) })), set)]
+    : H === 'group' ? [h('button', { type: 'button', class: 'sec-head p20-group', 'aria-expanded': String(all), 'aria-label': `Waypoints, ${count}: ${all ? 'fold' : 'show'} them all`, onclick: toggle }, h('span', { class: 'sec-title' }, 'Waypoints'), h('span', { class: 'lg-count' }, count)), h('div', { class: 'wpl-head-tools' }, set)]
+    : H === 'switch' ? [h('div', { class: 'wpl-head-tools p20-bar' }, h('label', { class: 'tg p20-tg' }, h('span', { class: 'tg-text' }, 'Show all waypoints', h('small', {}, count)), h('input', { type: 'checkbox', role: 'switch', checked: all, onchange: toggle }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' })), set)]
+    : [h('div', { class: `wpl-head-tools p20-bar ${H}` }, green(), set)];
+  const head = ['built', 'group'].includes(H) ? top.slice(0, 1) : [], tools = ['built', 'group'].includes(H) ? top.slice(1) : top;
+  const foot = h('div', { class: 'wpl-foot' }, h('button', { type: 'button', class: 'btn', html: `${icon('reverse', 16)} Reverse` }), h('button', { type: 'button', class: 'btn', html: `${icon('loop', 16)} Back to start` }), h('button', { type: 'button', class: 'btn danger', html: `${icon('trash', 16)} Clear route` }));
+  const how = h('div', { class: 'rows how-rows' }, ...R.parts.map((part) => h('button', { type: 'button', class: 'row' }, h('span', { 'aria-hidden': 'true', style: `color: var(--sport-${part.k}, currentColor)`, html: icon(part.icon, 20) }), h('span', {}, h('b', {}, 'Route style'), h('small', {}, part.label)), h('span', { class: 'val' }, 'Balanced'), chevR())),
+    h('button', { type: 'button', class: 'row' }, h('span', { 'aria-hidden': 'true', html: icon('gauge', 20) }), h('span', {}, h('b', {}, 'Your speed'), h('small', {}, '20 / 16 / 11 km/h · 600 m/h up')), h('span', { class: 'val' }, 'Normal'), chevR()));
+  // (Parts 21: the trip's weather once, as Parts 15 had it: Go's day over the list, opening Go's weather)
+  const wx = S.v === 'parts22' ? box22(R) : p21 && S.x21 === 'on' ? h('div', { class: 'days p15-days p21-wx' }, h('button', { type: 'button', class: 'day', title: 'Go: the weather on the way' }, h('b', {}, R.day[0]), h('span', { class: 'day-when' }, R.day[1]), h('span', { class: 'day-what' }, R.day[2]), h('span', { class: 'day-wx', html: `${icon(R.day[3], 14)}${R.day[4]}` }))) : null;
+  return [h('section', { class: 'sec', 'data-sec': 'points', 'data-open': 'true' }, ...head, h('div', { class: 'sec-body' }, ...tools, wx, h('div', { class: 'wpl-top' }), list, foot)), how];
+}
+
 function draw() {
   const stage = document.getElementById('stage');
   stage.replaceChildren();
@@ -1262,12 +1515,17 @@ function draw() {
   frame.append(h('div', { class: 'mapline', style: 'top: 30%' }), h('div', { class: 'mapline', style: 'top: 55%; transform: rotate(12deg)' }));
   const sheet = h('section', { class: 'sheet', 'data-layout': phone ? 'sheet' : S.frame === 'side' ? 'left' : 'bottom', 'data-state': 'full', 'aria-label': 'Route planner' });
   if (phone) sheet.append(h('div', { class: 'sheet-handle' }), h('div', { class: 'pl-tools-row' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` })));
-  sheet.append(head(/^parts1[6-9]$/.test(S.v) ? R16() : /^parts(9|10|11|12|13|14|15)$/.test(S.v) ? ROUTES9[S.r9] : R, S.v !== 'today'));
+  sheet.append(head(/^parts2[012]$/.test(S.v) ? R20[S.r20] : /^parts1[6-9]$/.test(S.v) ? R16() : /^parts(9|10|11|12|13|14|15)$/.test(S.v) ? ROUTES9[S.r9] : R, S.v !== 'today'));
   const body = h('div', { class: 'sheet-body' });
-  body.append(...(/^parts1[6-9]$/.test(S.v) ? parts16(S) : /^parts(9|10|11|12|13|14|15)$/.test(S.v) ? parts9(S.frame, S) : S.v === 'parts8' ? parts5(R, S.frame, S, 8) : S.v === 'parts7' ? parts5(R, S.frame, S, 7) : S.v === 'parts6' ? parts5(R, S.frame, S, 6) : S.v === 'parts5' ? parts5(R, S.frame, S) : S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
+  body.append(...(/^parts2[012]$/.test(S.v) ? parts20(S) : /^parts1[6-9]$/.test(S.v) ? parts16(S) : /^parts(9|10|11|12|13|14|15)$/.test(S.v) ? parts9(S.frame, S) : S.v === 'parts8' ? parts5(R, S.frame, S, 8) : S.v === 'parts7' ? parts5(R, S.frame, S, 7) : S.v === 'parts6' ? parts5(R, S.frame, S, 6) : S.v === 'parts5' ? parts5(R, S.frame, S) : S.v === 'parts4' ? parts2(R, S.frame, S, 4) : S.v === 'parts3' ? parts2(R, S.frame, S, 3) : S.v === 'parts2' ? parts2(R, S.frame, S) : S.v === 'parts' ? parts(R, S.frame, S) : S.v === 'line' ? line(R, S.frame, S) : S.v === 'rows' ? rows(R, S.frame, S) : today(R, S.frame)));
   sheet.append(body);
   frame.append(sheet);
+  if (S.v === 'parts22' && S.c22 === 'card') { if (phone) sheet.hidden = true; frame.append(card22(R20[S.r20], phone)); } // (Parts 22: the weather card, from the box)
   const cap = { today: 'Today: main at d326952. The warning is a box in the list; a stretch is a row with ›; Round trip, Reverse, Back to start and Import under it; How you go and Your speed at the end.', rows: 'Rows: the sport’s row, a point a row, a plain stretch a line; a desktop’s tools on hover (the switch); Reverse under the list.', line: 'Line: main at 3db83e6 (#780, #783) and the second round: one line from the start to the end through every mark, each later sport a node on it; the stretch’s numbers in bold, how it’s drawn and its waypoints under them.', parts: 'Parts: Line with each sport’s part in its colour and the line broken where the sport changes; a straight line dashed; the folded waypoints as beads, numbered as on the map.', parts2: 'Parts 2: Parts with each wait (a changeover, a stop, a night) its own dotted part of the line; Check’s warnings on each stretch; Waypoint n; on a desktop, the stretch’s tooltip.', parts3: 'Parts 3: Parts 2, with a part after a changeover or a night saying when it starts under its heading.', parts4: 'Parts 4: Parts 2, with a part after a changeover or a night starting with its point’s row, as the route’s start does; each wait with its times, a night with sunset and sunrise; Freehand.', parts5: 'Parts 5: Parts 4 with far less text: Arrive and Leave with the weather as icons, no Start, End or Waypoint n on a point’s line, a wait’s times under it, sunset and sunrise with icons, folded waypoints a count by ⌄, a part’s heading its sport; on a desktop the weather in the tooltips.', parts6: 'Parts 6: Parts 5 with every part’s totals beside its name, and a route of one sport’s heading on the line in its colour; sunset and sunrise with the horizon icons (chosen).', parts7: 'Parts 7: Parts 6 with a route of one sport’s totals in its heading too: one style everywhere.', parts9: 'Parts 9: the rows as built after PR 6 (As built) and two subtle treatments of the timeline’s levels, with no background but for a selection or a press: A, the type’s weight and size and the markers’ shape and size, no › on waypoints and events, the unfold control apart under the stretch’s words, unfolded waypoints its beads grown, one line each; B, A with what’s between two main waypoints one step in. Not drawn: the desktop’s tools on hover (PR 6), 200 %, Finnish words longer than these.', parts15: 'Parts 15: Parts 14 with the rows as built wherever they do the job: a stretch keeps its own row (it opens its card), its line and its beads for the waypoints it folds; its warnings in their own style, counted while folded, named once unfolded or when it has no waypoints in it; a piece between two unfolded waypoints with a warning is such a row too; the trip’s weather is Go’s day. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts14: 'Parts 14: Parts 13, and a stretch with its waypoints folded counts its warnings, as built (1 to read · 2 worth a look); unfolded (Show 2 waypoints, which works here), each warning is named between the two waypoints it’s between. The list’s settings in a menu over it (the sliders): the times from the start or the clock’s, and the warnings and heads-ups shown or not (a changeover’s gear and the wind too), as a part’s ⚙ will hold its sport’s speed. Built from the app’s menu, seg and tg. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts13: 'Parts 13: Parts 12, saying the thing rather than a count. A waypoint’s row its name alone (its weather on a desktop’s hover and in its card); the weather once, for the whole trip, over the list, as Go sums it up, and on a stretch only where it matters (the paddle’s headwind), in words that open the weather; each warning named, its own link to its detail; the dark on the timeline, not a warning on every stretch: sunset and the dark as rows at their time, and the line shaded after it. The three sports leave at 15:30 here, so the dusk falls on the route. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts12: 'Parts 12: Parts 11, with the column’s distance first and in the strong weight, as the planner’s numbers lead with it, and the time under it, from the start by default (the clock’s by the switch); a stretch only what the column can’t say, its warnings and a carry, and Show 3 waypoints as Komoot has it; with none of them, the line alone. Its distance, time and climb in its card (and a desktop’s tooltip). Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts11: 'Parts 11: Parts 10 as proposed (outlined, the control the stretch’s last line), with every waypoint the same row, unfolded ones too; when and how far left of the line, as a timetable has them, with no Arrive or Leave, the clock’s time or from the start by the switch over the list; how a stretch is drawn told by its line (solid along paths and over water, dashed freehand: the hike), in words only for a carry; warnings on the stretch they’re on, not on the waypoint after it; a wait without its times, but a stop’s end in the column. The route, a selection and a press as in Parts 9. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts10: 'Parts 10: B, with a cue at rest that a row opens its card, and the unfold control in its stretch. Opens: a press only (Parts 9 B); Outlined, a main waypoint and an event in a hairline as the app’s buttons are, the line through them, and between two of them the stretch with its control and its unfolded waypoints; or Rules between rows, as the app’s other rows have, a stretch with its waypoints one row. Waypoints in a stretch: apart under it (Parts 9 B), as its last line, or at its row’s end. Unfolded: rings (Parts 9 B), numbered as the waypoints around them in compact rows, or rows as the others (as on main). The route, a selection and a press as in Parts 9. Not drawn: the desktop’s tools on hover (PR 6), 200 %.', parts8: 'Parts 8: the list as built after PR 6, and from testing: no › on the stretches; the places you chose (the start, a waypoint you see, a wait, the end) on a soft tint, with › (the switch: none); a stretch’s unfolded waypoints nested in it, one line each (the switch: in one region with the stretch, indented, or as built); Show all at the top; the foot in one row, Clear route a red button.',
+    parts22: S.c22 === 'card' ? `Parts 22 (2026-11-06): the weather card (#431), opened from the trip’s box, with what the Go tab holds today. The route first: Leave (Go’s own control), when you’re there, ${R20[S.r20].c22.days.length > 1 ? 'each day' : 'the day'} with its sun, the wind on the way, the links that colour the route on the profile${S.t22 === 'card' ? ', and Time on the way folded' : ''}; then the map’s 48 hours, your trip shaded, and its layers, as #233’s step 3 chose. ${S.frame === '390' || S.frame === '360' ? 'On a phone it takes the sheet’s place, and ‹ Route goes back to the planner as it was.' : 'On a desktop it floats at the card’s width beside the planner, as a point’s card does.'}${S.t22 === 'nums' ? ' Time on the way is the time’s own card instead, from the numbers row.' : ''}`
+      : `Parts 22 (2026-11-06): Parts 21 with the trip’s box (#794): ${R20[S.r20].c22.days.length > 1 ? 'a day a row with its numbers, its weather and, on the first, the dark before the night' : 'when you leave and get there and the weather in one line, without the numbers over it'}, each ending in › and opening the weather card with what the Go tab holds today. Your speed is in each part’s ⚙ and Take it along in More, so ${S.g22 === 'gone' ? 'Go’s tab is gone: Route and Check' : 'Go has nothing of its own (its tab kept here for comparison)'}. Whether Check needs a tab is the next question.`,
+    parts21: 'Parts 21 (2026-11-06): Parts 20 with B chosen for the heading’s row (Show all waypoints in green on the left, with how many are hidden), and three ideas from looking at it. A part’s heading (proposed) is one button, the whole row, with its ⚙ at the end to set it apart from the waypoints’ ›; The row, › is Parts 20’s. A stretch’s ⌄ (proposed) is green before its count in grey, as Show all is: what you tap in green, how many in grey; Green count is Parts 20’s; Show 2 waypoints is a line of the stretch’s own under its words, in Show all’s green, as Parts 10 had it (folding them, Fold 2 waypoints stays under them). Outlined puts each waypoint (the folded ones too, once shown) and a stop in a hairline, as Parts 10’s were, so they stand out as what opens a card; too strong, from looking at it, so A faint outline is the same hairline at half its contrast, and A faint tint a 4 % tint of the text’s colour with no edge. The trip’s weather is Parts 15’s: Go’s day over the list, with its times, numbers and weather (the sky’s icon too), opening Go’s weather; with it, the rows needn’t carry the weather (Weather in List settings stays off). The rows are main’s, with #850’s warnings and its bold names.',
+    parts20: 'Parts 20 (2026-11-06): main’s list after #844, #847 and #848, with #850’s warnings, and what acts made plain, from trying them. The heading: B (proposed) drops it for Show all in green words, as Layers’ Map key is, with how many are hidden, on the left where the heading’s words were; C and D put it in the middle or on the right. A keeps the heading and makes it the disclosure, as a Layers group’s heading: Waypoints and, in green as Layers’ “2 on”, how many are hidden, with Layers’ chevron at its end; it’s Layers’ own control, but its words don’t say what a tap does, and the heading folded the whole list until #848. E is a switch, which stays off while a stretch is unfolded by hand, and a switch reads as a setting kept. A part’s heading (proposed) is one row, as a waypoint’s: its sport over its numbers and ›, opening what the ⚙ opens (its sport, speed and route style). A folded stretch’s count is green, as Layers’ counts are. Worth a look’s name shows only in a count: Two sports has one. Route as the heading isn’t drawn: the tab above says it. The numbers, the warning’s slot and the tabs over the list are the mock-up’s stand-in.',
     parts19: 'Parts 19: the list’s settings, every one discussed so far, over Parts 17’s list as built (#838). Over the list, Show all waypoints (6c, decided) unfolds every stretch, and Fold them all folds them; the sliders open the app’s menu, as in Parts 14: the times from the start or the clock’s, and on the rows how each leg is drawn, warnings and heads-ups (a changeover’s gear too), sunset and the dark, and the weather, each shown or hidden. Hidden, they stay in Check and the cards, and the numbers over the list still say what’s to read. Details on the bar: All (as built), Fewer (no how it’s drawn, no weather) and The route alone. Each part’s heading has a ⚙ for its sport’s How you go and Your speed (PR 7, decided), which leave the list’s end. The numbers, the warning’s slot and the tabs over the list are the mock-up’s stand-in.',
     parts18: 'Parts 18: Parts 17’s named warnings and beads (built in #838), and three ways to edit a leg on its own row, each shown on the leg to Waypoint 3 (Leg 2 → 3 sets it to Freehand). A: a ✎ at the end of every stretch’s and leg’s row, the row tools’ own, opening Edit this stretch for it at once (one tap to the card, two to change it; today three), on phones always there, on a desktop with the mouse over the row as Rename is. B: how it’s drawn is a button on the row, opening the app’s menu there: Follow paths or Freehand, then the leg’s sport and style (one tap to the menu, two to change how it’s drawn). C: the ✎ opens Edit this stretch’s own controls in the list, under the leg, and Done closes them. A tap on the row still opens the leg’s card in all three. The numbers, the warning’s slot and the tabs over the list are the mock-up’s stand-in.',
     parts17: 'Parts 17: Parts 16’s Its legs, built in #820, and from testing: a leg says what its warnings are, in Check’s words and colours (“Cycling not allowed here”, “Steps — carry the bike”), each once with its places counted, three lines at most, as a changeover says “Your bike stays here”; a folded stretch still counts them. The dark keeps its own line, so Check’s “In the dark” isn’t named again. The beads are one for each folded waypoint (Twelve folded), running together where the line has no room. A waypoint’s card edits the leg to the next waypoint (Card: Waypoint 2’s). The numbers, the warning’s slot and the tabs over the list are the mock-up’s stand-in.',
