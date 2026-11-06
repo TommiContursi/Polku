@@ -2944,7 +2944,7 @@ export class Planner {
     // goes back to it)
     let set = this.els.listSet;
     if (!set) tooltip(set = this.els.listSet = h('button', { type: 'button', class: 'tool wpl-set', 'aria-label': 'List settings', 'aria-haspopup': 'menu', html: icon('sliders', 20), onclick: (e) => this.listMenu(e.currentTarget) }), { name: 'List settings' });
-    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'aria-expanded': String(all), html: `<span>${all ? 'Fold' : 'Show'} all waypoints</span>`, // (words only: the heading's ⌄ is beside it)
+    return [pids.length ? h('button', { type: 'button', class: 'btn small quiet wpl-all', 'aria-expanded': String(all), html: `<span>${all ? 'Fold' : 'Show'} all waypoints</span>${icon('chevronDown', 16)}`, // (its chevron turns as a stretch's ⌄ does)
       onclick: (e) => {
         const had = document.activeElement === e.currentTarget;
         for (const pid of pids) this.unfolded[all ? 'delete' : 'add'](pid);
@@ -2967,6 +2967,25 @@ export class Planner {
       { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, ...LIST_SHOWS.map(sw)) }] },
       { note: 'Hidden items stay in Check and the cards.' },
     ], { label: 'List settings', modal: true });
+  }
+  // A part's ⚙ (#761): its sport, which opens the list of sports in its place and changes this part's legs alone; its
+  // sport's speed, whose editor opens in place; and its sport's route style, as the drawing menu has the next leg's. Its
+  // name and ✕ on a row of their own, and a tap outside closes it alone, as the list's settings.
+  partMenu(anchor, sec) {
+    const sport = sec.sport, label = ACTIVITIES[sport].label;
+    let pickOpen = false, speedOpen = false;
+    const items = () => [
+      { node: h('div', { class: 'way-bar' }, h('b', {}, label), h('button', { type: 'button', class: 'tool way-x', 'aria-label': `Close ${label}’s settings`, html: icon('close', 20), onclick: () => { menu.close(); anchor.focus(); } })) },
+      { group: 'Sport · this part', items: [...(pickOpen
+        ? this.app.sportItems({ checked: sport, route: this.routeSports(), fn: (k) => { if (k !== sport) this.setStretch({ from: sec.from, to: sec.to }, { sport: k }); } })
+        : [{ icon: this.sportIcon(sport), label: escapeHtml(label), desc: 'Only this part’s legs change', keep: true, expanded: false, cls: 'part-sport', after: icon('chevronDown', 16), fn: () => { pickOpen = true; speedOpen = false; again('.menu-item[aria-checked="true"]'); } }]),
+      ...this.speedItems(sport, speedOpen, () => { speedOpen = !speedOpen; pickOpen = false; again('.nl-speed'); })] },
+      'hr',
+      { group: this.isMulti() ? `Route style · ${label} legs` : 'Route style · the whole route', items: this.styleItems(sport) },
+    ];
+    const again = (focus) => { menu.refill(items()); const el = focus && menu.el.querySelector(focus); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest' }); } };
+    const menu = popMenu(anchor, items(), { label: `${label}: sport, speed and route style`, modal: true, sheet: true, onClose: () => anchor.setAttribute('aria-expanded', 'false') });
+    anchor.setAttribute('aria-expanded', 'true');
   }
   setListShow(patch) {
     Object.assign(this.listShow, patch);
@@ -3028,7 +3047,11 @@ export class Planner {
       const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label}${this.routeName && one ? ` · ${this.routeName}` : ''}`, sum = nums(sec);
       if (sec.ends === 'night') day += this.stopAt(sec.to).n || 1;
       const id = this.pidOf(this.points[sec.from]);
-      const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 16) }), h('div', { class: 'sec2-t' }, h('b', {}, title), h('small', {}, sum)));
+      // (its ⚙: the part's sport, its speed and its route style, as the drawing menu has the next leg's, #761)
+      const set = h('button', { type: 'button', class: 'tool sec2-set', 'aria-label': `${title}: sport, speed and route style`, 'aria-haspopup': 'menu', 'aria-expanded': 'false', html: icon('cog', 18) });
+      set.onclick = () => this.partMenu(set, sec);
+      tooltip(set, { name: 'Sport, speed and route style' });
+      const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 16) }), h('div', { class: 'sec2-t' }, h('b', {}, title), h('small', {}, sum)), set);
       const rows = h('div', { class: 'rows', role: 'group', 'aria-label': `${title}, ${sum}` });
       // (a part after a changeover or a night starts with its first point's row, as the route starts with its start's)
       rows.append(this.pointRow(sec.from, ro, { w: wx(wAt(this.lengthTo(sec.from))), leave: k > 0 }));
@@ -4792,14 +4815,15 @@ export class Planner {
 
   // A collapsible section; its open state is remembered across visits.
   section(id, title, ...kids) {
-    const open = (store.get('sections', {})[id]) !== false;
+    const fold = id !== 'points'; // (the waypoints' list doesn't fold: Fold all waypoints folds its rows, #761)
+    const open = !fold || (store.get('sections', {})[id]) !== false;
     const titleEl = h('span', { class: 'sec-title' }, title);
     const count = h('span', { class: 'sec-count' });
     const sum = h('span', { class: 'sec-sum' });
-    const head = h('button', { type: 'button', class: 'sec-head', 'aria-expanded': String(open), onclick: () => this.toggleSection(id) },
-      titleEl, count, sum, h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }));
+    const head = fold ? h('button', { type: 'button', class: 'sec-head', 'aria-expanded': String(open), onclick: () => this.toggleSection(id) },
+      titleEl, count, sum, h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) })) : h('div', { class: 'sec-head' }, titleEl, count);
     const el = h('section', { class: 'sec', 'data-sec': id, 'data-open': String(open) }, head, h('div', { class: 'sec-body' }, ...kids));
-    this.sec[id] = { el, head, titleEl, count, sum };
+    this.sec[id] = { el, head: fold ? head : null, titleEl, count, sum };
     return el;
   }
 
@@ -6163,18 +6187,7 @@ export class Planner {
     this.nlSpeed = false;
     const items = () => {
       if (next) return [{ group: 'Sport · the legs you draw next', items: this.nextLegItems(refill) }];
-      const ns = this.nextLegSport(), rs = this.styleOf(ns), cat = STYLES[ns] || STYLES.mtb, custom = isCustom(ns, rs);
-      const pick = (k, label) => {
-        this.styleLeg = null;
-        this.setStyle({ p: k, v: {}, wet: rs.wet || 'auto' }, null, ns);
-        const own = this.legs.some((l) => l.style);
-        if (this.points.length > 1) toast(`Route style: ${label} · the route is routed again${own ? '; legs with their own style keep it' : ''}`, { ms: 6000, action: { label: 'Undo', fn: () => this.undo() } });
-      };
-      const styles = { group: 'Route style · the whole route', items: [
-        { chips: [...cat.presets.map(([k, label]) => ({ label: escapeHtml(label), radio: true, checked: !custom && rs.p === k, fn: () => pick(k, label) })),
-          custom ? { label: 'Custom', radio: true, checked: true, disabled: true, fn: () => {} } : null] },
-        { icon: 'sliders', label: 'Fine-tune in Route style', fn: () => { this.styleLeg = null; this.openStep('how', ns); } },
-      ] };
+      const styles = { group: 'Route style · the whole route', items: this.styleItems(this.nextLegSport()) };
       // in the order the button reads: how it's drawn, its sport ("Hike · Balanced") and the style
       // three parts, apart: how the next leg is drawn (and its note), its sport and speed, the whole route's style
       return [
@@ -6210,15 +6223,35 @@ export class Planner {
       out.push({ icon: this.sportIcon(ns), label: escapeHtml(ACTIVITIES[ns].label), desc: 'Legs already drawn keep their sport', keep: true, expanded: false, cls: 'nl-sport',
         after: icon('chevronDown', 16), fn: () => { this.nlOpen = true; this.nlSpeed = false; refill('.nl-pick[aria-checked="true"]'); } });
     }
-    out.push({ icon: 'clock', label: `<span class="nl-line">Your speed: ${escapeHtml(this.speedLine(ns))}</span>`, keep: true, expanded: !!this.nlSpeed, cls: 'nl-speed',
-      after: `<span class="nl-speeds">Change</span>${icon(this.nlSpeed ? 'chevronUp' : 'chevronDown', 16)}`, fn: () => { this.nlSpeed = !this.nlSpeed; this.nlOpen = false; refill('.nl-speed'); } });
-    if (this.nlSpeed) {
+    out.push(...this.speedItems(ns, this.nlSpeed, () => { this.nlSpeed = !this.nlSpeed; this.nlOpen = false; refill('.nl-speed'); }));
+    return out;
+  }
+  // a sport's speed in a menu (the next leg's, a part's ⚙): its line, which opens Your speed's editor in place
+  speedItems(sport, open, fn) {
+    const out = [{ icon: 'clock', label: `<span class="nl-line">Your speed: ${escapeHtml(this.speedLine(sport))}</span>`, keep: true, expanded: !!open, cls: 'nl-speed',
+      after: `<span class="nl-speeds">Change</span>${icon(open ? 'chevronUp' : 'chevronDown', 16)}`, fn }];
+    if (open) {
       const box = h('div', { class: 'nl-editor' });
-      const line = () => { const el = box.closest('.menu')?.querySelector('.nl-line'); if (el) el.textContent = `Your speed: ${this.speedLine(ns)}`; };
-      renderSpeedEditor(box, ns, { craft: this.craft, onCraft: (c) => this.setCraft(c), onChange: () => { this.retime(); line(); } });
+      const line = () => { const el = box.closest('.menu')?.querySelector('.nl-line'); if (el) el.textContent = `Your speed: ${this.speedLine(sport)}`; };
+      renderSpeedEditor(box, sport, { craft: this.craft, onCraft: (c) => this.setCraft(c), onChange: () => { this.retime(); line(); } });
       out.push({ node: box });
     }
     return out;
+  }
+  // a sport's route style in a menu (the drawing menu's, a part's ⚙): its presets as chips, and Fine-tune in Route style
+  styleItems(sport) {
+    const rs = this.styleOf(sport), cat = STYLES[sport] || STYLES.mtb, custom = isCustom(sport, rs);
+    const pick = (k, label) => {
+      this.styleLeg = null;
+      this.setStyle({ p: k, v: {}, wet: rs.wet || 'auto' }, null, sport);
+      const own = this.legs.some((l) => l.style);
+      if (this.points.length > 1) toast(`Route style: ${label} · the route is routed again${own ? '; legs with their own style keep it' : ''}`, { ms: 6000, action: { label: 'Undo', fn: () => this.undo() } });
+    };
+    return [
+      { chips: [...cat.presets.map(([k, label]) => ({ label: escapeHtml(label), radio: true, checked: !custom && rs.p === k, fn: () => pick(k, label) })),
+        custom ? { label: 'Custom', radio: true, checked: true, disabled: true, fn: () => {} } : null] },
+      { icon: 'sliders', label: 'Fine-tune in Route style', fn: () => { this.styleLeg = null; this.openStep('how', sport); } },
+    ];
   }
 
   // a sport's speed in one line: "Normal · 20 / 16 / 11 km/h · 600 m/h up"; paddling, its craft: "Sea kayak · 6.5 km/h"

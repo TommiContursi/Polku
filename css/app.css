@@ -1245,7 +1245,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .sheet-cols > .sec[data-sec="depart"] > .sec-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 0 28px; align-items: start; }
   .sheet-cols .sec-head { pointer-events: none; }
   .sheet-cols .sec-chev, .sheet-cols .sec-sum { display: none; }
-  .sheet-cols .wpl-head-tools { right: 0; } /* (no ⌄ in a wide panel's columns, #761) */
   .sheet-cols .sec[data-open="false"] .sec-body { display: block; }
   .sheet-cols .sec[data-sec="speed"][data-open="false"] > .sec-body, .sheet-cols .sec[data-sec="depart"][data-open="false"] > .sec-body { display: grid; }
 }
@@ -1425,10 +1424,13 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 /* Show all waypoints and the list's settings (#761), in the Waypoints heading's row, where its summary is while the list
    is open (so the list starts no lower); a finger's targets 44 px; where the planner is narrow (200 %), over the list */
 .sec[data-sec="points"] { position: relative; }
-.wpl-head-tools { position: absolute; top: 0; right: 22px; height: 40px; display: flex; align-items: center; gap: 2px; }
+.wpl-head-tools { position: absolute; top: 0; right: 0; height: 40px; display: flex; align-items: center; gap: 2px; }
 .wpl-head-tools:empty { display: none; }
 .wpl-head-tools > * { min-height: var(--target); }
 .wpl-head-tools > .tool { min-width: var(--target); }
+.wpl-all .ic { flex: none; } /* (Show all waypoints' chevron, turned while they're all shown, as a stretch's ⌄) */
+.wpl-all[aria-expanded="true"] .ic { transform: rotate(180deg); }
+.sec2-set { flex: none; min-width: var(--target); min-height: var(--target); margin: -12px 0; } /* (a part's ⚙, at its heading's end, a finger's size adding no height) */
 @container plbody (max-width: 300px) { .wpl-head-tools { position: static; height: auto; justify-content: space-between; margin: 0 0 6px; } }
 .wpl-shows { padding: 0 8px; } /* (the list's settings' switches, in the app's menu) */
 .menu-pop > .way-bar { margin: 0; padding-left: 10px; } /* (its name and ✕, on a row of their own) */

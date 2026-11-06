@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-06
 
+### Each part's ⚙: its sport, speed and route style ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- In the route's list, each part's heading has a **⚙**. It opens the part's **Sport**, which changes only that part's legs (with **Undo**), its sport's **Your speed**, with the speed editor in place, and its sport's **Route style**, as the drawing menu has them for the next leg.
+- **Route style** and **Your speed** are still under the list as well.
+- The **Waypoints** heading no longer folds the list away. **Show all waypoints** has a chevron, turned while every waypoint is shown.
+
 ### The route's list's tooltips say what the profile says ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - On a desktop, a stretch's tooltip in the route's list gives its times and average speed, then what the profile says over all of it: the grade from its lowest to its highest, the hardest uphill and downhill, the way most of it is on, the wind at its strongest with its gusts, the temperature and the rain.
