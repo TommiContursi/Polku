@@ -1,12 +1,12 @@
 # The planner, rethought (#869)
 
-Polku's planner from a blank map to the trip, as a whole: research on other planners, an inventory of the planner on `main`, one rule for its controls, and three directions to choose from. The mock-up is [mockups/planner-rethought.html](mockups/planner-rethought.html): today's planner and the three directions, at 390 and 360 px, 200 % and the desktop's side dock, with a route of three sports, an MTB route with real terrain, and long Finnish names. **Label the controls** on its bar tags every control with its kind, so the rule can be checked by eye. On a phone, the same page is a private Artifact: [the planner, rethought](https://claude.ai/artifact/JNgtQWQNkb83CrWa77xgMd), built from this file with `css/app.css` and `js/ui.js` inlined.
+Polku's planner from a blank map to the trip, as a whole: research on other planners, an inventory of the planner on `main`, one rule for its controls, three directions, and the one the user chose. The mock-up is [mockups/planner-rethought.html](mockups/planner-rethought.html): **B, as decided** first, then today's planner and the first round's three directions, at 390 and 360 px, 200 % and the desktop's side dock, with a route of three sports, an MTB route with real terrain, and long Finnish names. **Label the controls** on its bar tags every control with its kind, so the rule can be checked by eye. On a phone, the same page is a private Artifact: [the planner, rethought](https://claude.ai/artifact/JNgtQWQNkb83CrWa77xgMd), built from this file with `css/app.css` and `js/ui.js` inlined.
 
 ## Where it stands
 
-- **A proposal (2026-11-06).** Nothing here is decided until the user chooses. No app code is written for it.
-- **Asked for on 2026-11-06,** from testing: the planner does a great deal, and its controls follow no one rule. Parts 22 of #761 (the trip's box and the weather card) waits on this.
-- **The recommendation is B,** the route and a card for each detail. A and C are drawn to compare.
+- **Decided (2026-11-06): B, the route and a card for each detail,** with every choice settled in three rounds of questions with the user ([#869's comment](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6694631770), and "Decided" at this plan's end). The mock-up's **B, as decided** draws it; the first round's A, B and C stay on its bar to compare.
+- **Asked for on 2026-11-06,** from testing: the planner does a great deal, and its controls follow no one rule. Parts 22 of #761 (the trip's box and the weather card) is built in it.
+- **Milestone:** Calmer planner. No app code is written here; the build is the PRs below, one at a time.
 
 ## What it must make easy
 
@@ -85,7 +85,7 @@ Four Sonnet subagents ran at low effort. Each ran 3–8 searches and opened few 
   - Departure and weather: the sun, the wind, eight hour chips, and three links that colour the route.
   - Take it along.
 - **Elsewhere:**
-  - the toolbox: Done, Follow paths ▾ and undo and redo; at full it docks with six route actions as bare icons;
+  - the toolbar: Done, Follow paths ▾ and undo and redo; at full it docks with six route actions as bare icons;
   - More (⋯);
   - each part's ⚙;
   - the list's settings;
@@ -96,11 +96,11 @@ Four Sonnet subagents ran at low effort. Each ran 3–8 searches and opened few 
 
 | What | Today |
 |---|---|
-| One action, three looks | Reverse, Clear route, Share link, Export GPX and Save offline are bare icons (the docked toolbox, the desktop's toolbar), menu items (More) and buttons (the list's foot, Go's Take it along) |
-| A value you change, five looks | A row with a green value and › (Route style Balanced ›, Leave Now ›, Your speed Normal ›); a native select as a pill (Colour by Wind ▾); the toolbox's button with ▾ (Follow paths · Hike · Balanced); dotted words (46 min moving); the desktop's style and sport buttons |
+| One action, three looks | Reverse, Clear route, Share link, Export GPX and Save offline are bare icons (the docked toolbar, the desktop's toolbar), menu items (More) and buttons (the list's foot, Go's Take it along) |
+| A value you change, five looks | A row with a green value and › (Route style Balanced ›, Leave Now ›, Your speed Normal ›); a native select as a pill (Colour by Wind ▾); the toolbar's button with ▾ (Follow paths · Hike · Balanced); dotted words (46 min moving); the desktop's style and sport buttons |
 | Green words, six jobs | Back (‹ Route), unfold (Show all waypoints), colour the route (Wind along the route ↑, Use colours), a value (Balanced, Now), a state (Selected), a jump (Strongest headwind … →) |
 | Arrows | › ⌄ ⌃ ▾ → ↑, all on one screen |
-| The sport, five places | The top bar's pill (the map's sport, MTB here), the toolbox's next leg (Hike), each part's ⚙, Route style › under the list, Go's Your speed; a waypoint's card has Sport from here |
+| The sport, five places | The top bar's pill (the map's sport, MTB here), the toolbar's next leg (Hike), each part's ⚙, Route style › under the list, Go's Your speed; a waypoint's card has Sport from here |
 | When you leave, three places | Go › Time › Leave, the dotted time in the numbers, and the weather timeline's slider ("Also your route's departure") |
 | The weather, five places | The key facts (Paddle · wind up to 5 m/s), Colour by's wind, Go's Departure and weather, the timeline's window, On the route's Weather group |
 | On the route | In Check, though it says what the route is made of, not what to check; its Use colours repeats Colour by |
@@ -137,8 +137,8 @@ Its priorities, for this plan:
 
 ## The rule for controls
 
-**What a control does decides how it looks.** Each kind below is a control in DEVELOPING's Shared controls already. Four controls in the directions are new, and they're proposals until the user chooses them:
-- **the When pill:** Colour by's pill (`mode-select`) as a button, opening the app's menu;
+**What a control does decides how it looks.** Each kind below is a control in DEVELOPING's Shared controls already. Four controls are new; the user chose them on 2026-11-06, and each joins Shared controls in the PR that builds it:
+- **the When pill:** Colour by's pill (`mode-select`) as a button, opening the app's menu; a part's sport (MTB ▾) is the same pill;
 - **On the route's list:** a `row` with a tick and its bar, the chosen one unfolded with Check's lengths;
 - **Best time to leave's strip:** a bar an hour, scrubbed by a finger;
 - **the trip's box:** Go's day cards (`days`, `day`) as buttons ending in › (Parts 22's).
@@ -146,7 +146,7 @@ Its priorities, for this plan:
 | What it does | How it looks | The control |
 |---|---|---|
 | Opens something: a card, a step, the detail | A row, the whole row a target, › at its end; a value it holds in green before › | `row` with `val`, `kf-b`, `warn-row`, the trip's box (`day`) |
-| Picks a value from a few, here | The value itself with ▾, opening the app's menu at it | Colour by (`mode-select`), the drawing mode (`modebtn`), When (proposed: the same pill as a button) |
+| Picks a value from a few, here | The value itself with ▾, opening the app's menu at it | Colour by (`mode-select`), the drawing mode (`modebtn`), When and a part's sport (the same pill as a button) |
 | Does it now | A button in words, an icon before them if it helps; one main action in green; a dangerous one red | `btn`, `btn primary big`, `btn danger` |
 | Shows or hides something here, or goes back | Green words with ⌄ ⌃ or ‹ | `btn small quiet` (`wpl-all`, `way-back`), `wpl-unfold` |
 | Stays on or off; one of a few modes | A switch | `tg`, `seg` |
@@ -154,32 +154,32 @@ Its priorities, for this plan:
 | Closes, folds, undoes, more, its settings | A bare icon from a fixed few: ✕ ⌄ ↶ ↷ ⋯ ⚙ and the list's sliders | `tool` |
 
 **The rules with it:**
-1. **One home per action on a phone.**
-   - The list's foot holds what acts on the list: Reorder, Reverse, Back to start and Clear route.
-   - More holds taking it along (Share link, Export GPX, Save offline) and starting again (Round trip, Import).
-   - A desktop's toolbar adds icons with tooltips and keys, for a pointer.
-   - Today More repeats the foot's Reverse, Back to start and Clear route, and the docked toolbox repeats six of them as icons. Both are choices below (10 and 11): #750 set More's order, and #660's queue said no PR touches the toolbar again.
+1. **A tool lives where you work with it** (decided 2026-11-06, in place of "one home for each action"):
+   - the toolbar keeps every tool it has. As it narrows, Take it along (Share link, Export GPX, Save offline) goes to More first, and the drawing tools (Reverse, Back to start, Clear route) keep their room longest;
+   - the list's foot keeps Reorder, Reverse and Back to start, as Komoot's list does. Clear route leaves it: it's on the toolbar, or in More;
+   - the map's sport stays as it works today.
 2. **The arrows mean one thing each:** › opens, ‹ goes back, ⌄ ⌃ fold here, ▾ picks a value. → and ↑ go.
 3. **Headings are words,** in sentence case (#767). A heading that opens its settings has ⚙ at its end, as a part's does.
 4. **A desktop may be denser,** with icons, tooltips and keys, never a different kind of control for the same job.
 
-**DESIGN.md's accent rule.** It says the accent marks "what's chosen or the one main action". Its Colors section also gives the accent to links, and Parts 20 chose green words for what acts here (Show all). The proposal changes the rule's words to "what's chosen, what acts here in words, and the one main action". That makes green mean you can tap it: a value, a fold or a way back, never plain information.
+**Green means you can tap it** (decided 2026-11-06): a value, a fold, a way back, or the one main action; never plain information. DESIGN.md's accent rule says "what's chosen or the one main action" today, and changes its words to match in the rule's PR (its Colors section already gives the accent to links, and Parts 20 chose green words for Show all).
 
 **Every control against it:**
 
 | Control | Today | Under the rule |
 |---|---|---|
-| When | Go's Leave row, dotted time, the timeline's slider | The When pill, one place to set it. #233's step 3 keeps the map's 48 hours setting the departure as they do today: whether they still should is choice 9 |
+| When | Go's Leave row, dotted time, the timeline's slider | The When pill: a row under the sport on the first screen, and under the trip's time once there's a route. The map's hour no longer moves the departure (reversing #233's step 3); Best time to leave's strip is where it's slid |
 | Colour by | A native select, and Use colours in Check | Colour by's pill; On the route's list in the profile (B) |
 | The drawing mode | Follow paths ▾ | Stays |
-| Route style, Your speed | Rows under the list, and each part's ⚙ | Each part's ⚙ only (built in #852's 6j) |
+| A part's sport, Route style, Your speed | Each part's ⚙ (#852's 6j), and the rows under the list | The sport as MTB ▾ in the part's heading, one tap to the sports; the ⚙ keeps Route style and Your speed; the rows under the list go |
 | Show all waypoints | Green, on the left | Green, on the right, after a "Waypoints" heading |
 | A stretch's fold | Green ⌄ and its count | Stays |
 | Use colours, Selected | Green 10 px words | Gone: a row with a tick in On the route's list |
 | Wind / Temperature / Rain along the route ↑ | Green links in Go | Gone with Go: Colour by |
 | Strongest headwind … → | A green link | A row › in the weather card |
-| Take it along | Buttons in Go, items in More, icons at full | Items in More, icons on the desktop's toolbar |
-| The docked toolbox's icon row (phone, full) | Six bare icons | Gone, More and the foot having them (choice 11) |
+| Take it along | Buttons in Go, items in More, icons on the toolbar | On the toolbar while it has room, the first to go to More as it narrows; Go's buttons go with Go |
+| The docked toolbar's icon row (phone, full) | Six bare icons | Stays: the toolbar keeps every tool, Take it along in More first at a phone's width |
+| Clear route | In the list's foot, the toolbar and More | On the toolbar, or in More; it leaves the foot |
 | Done, Edit | Buttons | Stay |
 | ‹ Route on a card | Green words | Stays |
 | The tabs | Route, Check, Go | Gone (A, B) or Route and Check (C) |
@@ -189,8 +189,25 @@ Its priorities, for this plan:
 
 ## The directions
 
-**What all three share:**
-- **When first.** The When pill opens the sheet's top row, before the numbers and the waypoints, in sight at every stop of the sheet: "Leave now ▾".
+### B, as decided (2026-11-06)
+
+The route and a card for each detail, with no tabs: the warnings' row opens the Check card; the profile opens the profile card, with On the route (Colour by's list) under it; the trip's box opens the weather card. On a desktop a card opens beside the planner. What changed from the first round's B:
+
+- **When:**
+  - **on the first screen,** a When row under the sport row, in Start a route and in each way to begin: "Leave now ⌄", with the same menu;
+  - **with a route,** under the trip's time in the numbers: "1 h 11 min" over "Leave now ▾", where "from now" is today. In that narrow column a time set reads "Sat 09:00 ▾" or "by 20:30 ▾"; the weather card's pill says it whole. Checked in the mock-up at 360 px and 200 %;
+  - **once a departure is set,** the Start and End rows show the clock's times, and the moving time moves to each part's heading and the trip's box;
+  - **its menu:** Leave now, Leave at…, Arrive by… and Best time to leave › (once there's a route); Last available is left out;
+  - **the map's hour no longer moves the departure,** which reverses #233's step 3: Best time to leave's strip is where the departure is slid.
+- **Arrive by:** on a trip with nights, the arrival at the end of the last day; "about" when the wind changes the timing; on a round trip it fills How long by Time.
+- **Best time to leave:** the departure's day, a day at a time with ‹ ›, as far as the forecast reaches (ten days); on a trip over days, the first day's departure only. It weighs the dark, rain and heat for everyone, headwind on a bike, and wind, waves and the crossing window on the water, each part by its own sport, and says why in words.
+- **A part's sport** is "MTB ▾" in its heading, one tap to the sports; its ⚙ keeps Route style and Your speed, and the rows under the list go.
+- **The toolbar and the list's foot:** a tool lives where you work with it (the rule above). The foot has Reorder, Reverse and Back to start.
+
+### The first round
+
+**What all three shared:**
+- **When first.** (Decided otherwise: see above.) The When pill opened the sheet's top row, before the numbers and the waypoints, in sight at every stop of the sheet: "Leave now ▾".
   - Its menu: Leave now; Leave at… (the phone's own picker, as Leave's `row pick` today); Arrive by… (Polku works out when to leave); and Best time to leave ›.
   - With a time set, the pill says it ("Leave Sat 09:00", "Arrive by 20:30"), and the numbers' second line says the other end ("there at 10:11", "leave 19:19").
   - Last available is Google's, for transit; it's left out.
@@ -198,7 +215,7 @@ Its priorities, for this plan:
 - **The trip's box** (Parts 22) over the list: a day a row, ending in ›, opening the weather card.
 - **The weather card** (#431, Parts 22), from the box, the pill's Best time to leave, or the map's Weather:
   - When again, the same pill;
-  - **Best time to leave** (#273): a bar for each of the next 48 hours, lower the better (height, not colour alone), the dark shaded behind. The best three are named in words, each a row with a tick, set by a tap. It counts what matters for the route's sports: the dark and rain for everyone, headwind on a bike, and wind and waves on the open water, with a crossing window for a paddle (#856);
+  - **Best time to leave** (#273; decided by day, above): a bar for each of the next 48 hours, lower the better (height, not colour alone), the dark shaded behind. The best three are named in words, each a row with a tick, set by a tap. It counts what matters for the route's sports: the dark and rain for everyone, headwind on a bike, and wind and waves on the open water, with a crossing window for a paddle (#856);
   - the day's weather and sun;
   - the wind on the way, and its strongest headwind as a row ›;
   - Time on the way, folded;
@@ -207,7 +224,7 @@ Its priorities, for this plan:
 - **Go's tab goes** (Parts 22): its time is in the weather card, Your speed in each part's ⚙, and Take it along in More.
 - **The list as built,** untouched.
 
-| | A: One page | B: The route and its cards (proposed) | C: Two tabs |
+| | A: One page | B: The route and its cards (chosen) | C: Two tabs |
 |---|---|---|---|
 | **The tabs** | None: one scroll | None | Route and Check |
 | **On the route** | A section of the page under the list: Colour by as a list, the chosen one ticked with its lengths | The profile card: the profile tall, a finger on it moving a mark on the map, On the route's list under it, the climbs | Under the profile in Route, as its legend with lengths (#758 as written) |
@@ -238,11 +255,11 @@ A is the simplest to learn but the longest to scroll. C changes the least.
 | The weather in detail | 1 (Go) and a scroll | 1 (box) | 1 | 1 |
 | Take it along | 1 (More) | 1 | 1 | 1 |
 
-**What becomes of:**
-- **Parts 22** is built as drawn, in every direction: the trip's box, the weather card, and Go's tab gone. It's the next PR after the pill, with Best time to leave inside its card.
-- **Check's tab** becomes the Check card (B), a section (A) or stays (C).
-- **#759** becomes part of the weather card. The hour chips leave with Go, and their job goes to Best time to leave's strip. The route's weather stays on the profile through Colour by (wind, temperature, rain), as today.
-- **#758** is On the route as Colour by's list: in the profile card (B), a section (A), or the profile's legend (C).
+**What becomes of them (decided):**
+- **Parts 22** is built as drawn: the trip's box, the weather card, and Go's tab gone.
+- **Check's tab** becomes the Check card.
+- **#759** folds into the weather card. The hour chips leave with Go, and their job goes to Best time to leave's strip. The route's weather stays on the profile through Colour by (wind, temperature, rain), as today.
+- **#758** is On the route as Colour by's list, in the profile card.
 
 **The other skills' notes on B:**
 - **/emil-design-eng:**
@@ -251,7 +268,7 @@ A is the simplest to learn but the longest to scroll. C changes the least.
   - scrubbing the strip has no motion either;
   - nothing moves under the finger.
 - **/mobile-native:**
-  - the strip's 48 bars are 7 px each, too small for a finger. It's a drag that scrubs (`touch-action: pan-y`, so a vertical drag still moves the sheet), with the time read out over it, and the named departures as the 44 px targets;
+  - a day's 24 bars are about 14 px each (the first round's 48 were 7), still too small for a finger. It's a drag that scrubs (`touch-action: pan-y`, so a vertical drag still moves the sheet), with the time read out over it, and the named departures as the 44 px targets;
   - the Add row's field is 16 px, with `enterkeyhint="search"`;
   - a card keeps the sheet's `overscroll-behavior: contain` and the safe area at its foot;
   - the strip's scrub against the sheet's swipe, and the iOS picker from the menu, need a phone.
@@ -261,67 +278,85 @@ A is the simplest to learn but the longest to scroll. C changes the least.
   - the strip updates the times as the finger moves, not on release;
   - On the route's list sits under the profile it colours.
 - **/break-ui**, at 360 px, 200 % and with long Finnish names:
-  - the pill wraps (a 22 px radius, not a pill's, once it does);
+  - the pill wraps (a 22 px radius, not a pill's, once it does); in the numbers' column, as decided, it's short ("by 20:30 ▾") and fits at 360 px and 200 %;
   - the list's heading row wraps with Show all still at the right;
   - the When menu is a sheet of its own at 200 %, as `popMenu()`'s is;
   - On the route's legend keeps its labels whole;
   - what overflows sideways at 200 % in the mock-up is the app's own rows drawn with its desktop rules (the mock-up's page is wide), as in #761's mock-up.
 
-**States the build must draw,** not drawn in the mock-up:
+**States the build must draw,** most not drawn in the mock-up:
 - **Leave at, past and future:** a time that has passed (Leave's note today); a time past the forecast ("No forecast yet" on the box and the strip).
 - **Arrive by too soon:** "Leave now and you're there at 20:02".
 - **Failures:** the forecast didn't load (the strip says so, with Retry); the search didn't answer (a tap on the map still works).
-- **A trip of days:** a row a day in the box (Parts 22's `r20=days`).
+- **A trip of days:** a row a day in the box (Parts 22's `r20=days`); Best time to leave picks the first day's departure only; Arrive by is the end of the last day.
+- **Arrive by on a round trip:** it fills How long by Time.
+- **A day with no good departure:** "No departure that day ends the trip in the light" (the mock-up's last days show it).
 - **Midnight sun:** no dark to shade.
 - **Arrive by and the wind:** a departure worked back with the wind changes the arrival, so it settles in a step or two and says "about".
 
 ## The PRs
 
-Each is small and tried on a phone before the next. The order is for B; A and C differ only from PR 7. The order the user set on 2026-11-04 put the cards (#690, #797) and the profile (#796) before the weather card; this order puts the weather first, since Parts 22 is ready. The user decides.
+Each is small and tried on a phone before the next, in this order (decided 2026-11-06). #797's toolbar work goes where the toolbar changes.
 
-1. **Fix: a place found by search gets its mark and its card** (#871: Add to route, Start here, End here). It's a Fix PR, in the month's milestone, and holds in every direction. `choose()` in `js/search.js`, `openPlaceCard()`.
-2. **When first:** the pill in the sheet's top row, with Leave now and Leave at. It sets `setLeave()` as Leave's row does, and Go's Leave row stays until PR 4. `renderLeave()`, the sheet's top row (`js/planner.js`). Checks: `leave`, `keyfacts`.
+1. **Fix: a place found by search gets its mark and its card** (#871: Add to route, Start here, End here). A Fix PR, in the month's milestone. `choose()` in `js/search.js`, `openPlaceCard()`.
+2. **When:**
+   - the When row under the sport row on the first screen (Start a route and each way to begin);
+   - with a route, the pill under the trip's time in the numbers, in place of "from now";
+   - the clock's times on the Start and End rows once a departure is set; the moving time to each part's heading and the trip's box;
+   - its menu: Leave now and Leave at for now (Arrive by is PR 6, Best time to leave PR 5).
+
+   It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 4. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
 3. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.
-4. **The weather card from the trip's box** (Parts 22, #431, #794). Go's time and weather move into it, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
-5. **Best time to leave** (#273, parts 1, 3 and 5): the strip and the named departures in the weather card; the crossing window for a paddle (#856). The forecast is the one `windAlong()` already has, so no new requests. `weather`, `water`.
-6. **Arrive by** (#219): the pill's third item, worked back with the wind; the states above. `leave`, `stops`.
+4. **The weather card from the trip's box** (Parts 22, #431, #794): Go's time and weather move into it, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
+5. **Best time to leave** (#273, parts 1, 3 and 5; #856):
+   - the departure's day in the weather card, ‹ › a day at a time up to ten days;
+   - a bar an hour, scrubbed by a finger, with the day's best named;
+   - the dark, rain and heat for everyone, headwind on a bike, and wind, waves and the crossing window on the water, each part by its own sport;
+   - the map's hour stops moving the departure (#233's step 3 reversed).
+
+   The forecast is `windAlong()`'s hourly series, so there are no new requests; past two days it's the ten-day one (`LONG_HOURS`). `weather`, `water`.
+6. **Arrive by** (#219): the menu's third item, worked back with the wind ("about" where the wind changes it); on a trip with nights, the end of the last day; on a round trip, How long by Time; the states listed above. `leave`, `stops`, `loops`.
 7. **The profile card, with On the route as Colour by's list** (#796, #758). Check's On the route goes.
-8. **The Check card from the warnings' row;** the tabs go. The rows under the list (Route style, Your speed) stay until choice 12 says otherwise: the user kept both ways on 2026-11-05 to try them.
+8. **The Check card from the warnings' row;** the tabs go.
 9. **The Add row** (#761's PR 8), with the search in the sheet.
 10. **The rest of the rule:**
-    - the dotted time words go;
-    - More and the docked toolbox, if choices 10 and 11 say so;
-    - DESIGN.md's accent rule changes its words;
-    - DEVELOPING's Shared controls gets the new controls the user chose: the When pill, On the route's list, the strip and the trip's box.
+    - a part's sport as MTB ▾ in its heading, its ⚙ keeping Route style and Your speed, and the rows under the list gone;
+    - the list's foot without Clear route;
+    - the toolbar giving Take it along to More first as it narrows (with #797);
+    - the dotted time words gone;
+    - DESIGN.md's accent rule in the words above;
+    - DEVELOPING's Shared controls with the new controls.
 
 Every motion is decided with /animate when it's built, and a PR that moves something stops for /review-animations.
 
-## For the user to choose
+## Decided, 2026-11-06
 
-1. **The direction:** A, B (proposed) or C.
-2. **Parts 22:** build it as drawn, with Go's tab gone, after the pill (proposed).
-3. **Check's tab:** a card (B), a section (A) or a tab (C).
-4. **#759:** folded into the weather card (proposed).
-5. **The pill's place:** the sheet's top row (proposed, in sight at every stop), or the list's heading row (by the timeline it starts).
-6. **The order:** the weather card first (proposed), or the cards (#690) and the profile (#796) first, as decided on 2026-11-04.
-7. **The accent's words in DESIGN.md:** as proposed, or keep green words for what's chosen only.
-8. **#869's milestone.**
-9. **The map's 48 hours:** keep setting the departure as they do today (#233's step 3), or move only the map's hour, with the pill the one place to set when you leave.
-10. **More's copies of the foot's actions** (Reverse, Back to start, Clear route): keep them (as #750 set More's order), or let the foot be their one home on a phone.
-11. **The docked toolbox's row of route icons** on a phone at full: keep it, or let More and the foot have them. #660's queue said no PR touches the toolbar again, so it changes only on the user's word.
-12. **The rows under the list** (Route style and Your speed for each sport): keep them beside each part's ⚙, as tried since 2026-11-05, or let the ⚙ be their one home.
-13. **The new controls:** the When pill, On the route's list, the strip and the trip's box, each joining Shared controls once chosen.
+Settled with the user in three rounds of questions, and recorded on [#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6694631770). These replace the first round's "For the user to choose".
+
+1. **The direction:** B, no tabs; on a desktop a card opens beside the planner.
+2. **When:** a row under the sport row on the first screen; with a route, under the trip's time in the numbers; the clock's times on Start and End once set; the moving time in the parts' headings and the trip's box. Its menu: Leave now, Leave at…, Arrive by… and Best time to leave ›. Last available is left out.
+3. **The map's hour** no longer moves the departure (reversing #233's step 3); Best time to leave's strip is where it's slid.
+4. **Arrive by:** on a trip with nights, the end of the last day; "about" when the wind changes the timing; on a round trip it fills How long by Time.
+5. **Best time to leave:** the departure's day, a day at a time with ‹ ›, up to ten days; on a trip over days, the first day's departure only; each part weighed by its own sport, and why said in words.
+6. **Parts 22** as drawn, Go's tab gone; **#759** folds into the weather card.
+7. **A part's sport** is MTB ▾ in its heading; its ⚙ keeps Route style and Your speed; the rows under the list go.
+8. **A tool lives where you work with it:** the toolbar keeps every tool, Take it along going to More first as it narrows; the list's foot keeps Reorder, Reverse and Back to start; Clear route leaves the foot; the map's sport stays as it works today.
+9. **Green means you can tap it:** a value, a fold, a way back, or the one main action; DESIGN.md's words change to match.
+10. **The new controls:** the When pill (and a part's sport, the same pill), On the route's list, the strip and the trip's box.
+11. **The order:** as above, #871 first.
+12. **Words:** the bar is the toolbar (`CONTEXT.md`, in #872).
+13. **Milestone:** Calmer planner.
 
 ## Not drawn, or not known
 
 - **Not drawn:**
-  - the map and its buttons; the toolbox and the desktop's toolbar (stand-ins);
+  - the map and its buttons; the phone's and the desktop's toolbar (stand-ins, drawn simply);
   - Reorder; a waypoint's and a leg's cards (#690's round);
   - the bottom dock (as the side dock, in two columns);
   - motion; dark and light side by side (the mock-up follows the system).
 - **Illustrative:** Best time to leave's hours and named departures, the crossing window's waves, Arrive by's times, and the search's results in the sheet. The top bar's results for "Pyynikin näkötorni" are real.
 - **Not known:**
   - whether three cards feel like more to learn than two tabs, which a phone will tell;
-  - how a strip of 48 hours scrubs against the sheet's swipe;
+  - how a day's strip scrubs against the sheet's swipe;
   - how Arrive by settles with the wind;
-  - the top bar's sport pill beside each part's sport (three sports in the planner, DEVELOPING's "Three sports"), left as it is here.
+  - how a part's MTB ▾ in its heading sits beside the top bar's sport pill (DEVELOPING's "Three sports"): the map's sport stays as it works today, and a phone will tell whether the two read as one idea.
