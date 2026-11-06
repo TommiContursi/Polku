@@ -326,6 +326,8 @@ each of these as P1, and skip style nits:
 - Plain, natural English in complete sentences. Say what happens on the
   screen ("Back to start does nothing"), not what kind of defect it is ("a
   shadowed method").
+- **Polku's words are in [CONTEXT.md](CONTEXT.md):** use them, and add a term
+  there once the user settles it.
 - **Never quote the user's chat messages** in the repo, issues or PRs. Write what
   they asked for as a plan or an idea ("An idea from testing, 2026-10-15").
 - Dates as dates (2026-10-15), never "today" or "last week".
