@@ -15857,16 +15857,24 @@ def sections_list(chrome):
             fails.append(f"{name}: six waypoints folded by a tap, then unfolded: {r} (want them and the legs after the first leaving in 120 ms, then folded, and ⌄ turning at each tap, #761, #803)")
         # (#761) Show all and Fold all by a tap or a click move as a stretch's ⌄ does: each stretch's rows come in, the
         # chevron turning, and leave together at the tap; the list stays where it was scrolled (it went to its top, #846)
-        r = pg.js(f"""(async () => {{ const p = polku.planner, b = () => p.els.pointsTools.querySelector('.wpl-all'), tap = () => {{ b().focus({{ preventScroll: true }}); b().dispatchEvent(new MouseEvent('click', {{ bubbles: true, detail: 1 }})); }};
+        # (each turn from a list drawn at rest: a page that draws no frames never finishes the one before)
+        r = pg.js(f"""(async () => {{ const p = polku.planner, b = () => p.els.pointsTools.querySelector('.wpl-all'), tap = () => b().dispatchEvent(new MouseEvent('click', {{ bubbles: true, detail: 1 }}));
           const turn = () => `${{b().getAttribute('aria-expanded')}}, ${{b().querySelector('.ic').getAnimations().filter((a) => a.transitionProperty === 'transform').length ? 'turning' : 'still'}}`;
-          const sc = p.listScroller(); sc.scrollTop = sc.scrollHeight; const top = sc.scrollTop;
-          tap(); const come = {IN}, opening = turn(), kept = sc.scrollTop === top;
-          await new Promise((r) => setTimeout(r, 400)); // (as a person taps again: once they're in)
+          document.activeElement?.blur(); p.unfolded.clear(); p.renderWaypoints();
+          tap(); const come = {IN}, opening = turn();
+          p.renderWaypoints(); getComputedStyle(b().querySelector('.ic')).transform; // (all shown, drawn at rest, as a person sees it before the tap)
           tap(); const out = [...p.els.points.querySelectorAll('.wpl-point.shape > span:nth-child(2)')].filter((x) => x.getAnimations().some((a) => a.id === 'fold-out')).length, folding = turn();
           await new Promise((r) => setTimeout(r, 400));
-          return {{ come, opening, kept, top, out, folding, after: p.els.points.querySelectorAll('.wpl-point.shape').length }}; }})()""")
-        if {k: v for k, v in r.items() if k != 'top'} != {'come': COME('lg-in'), 'opening': 'true, turning', 'kept': True, 'out': 6, 'folding': 'false, turning', 'after': 0}:
-            fails.append(f"{name}: Show all, then Fold all, by a tap: {r} (want each stretch's rows coming in as one stretch's do, then leaving at the tap, the chevron turning, the list where it was, #761, #846)")
+          return {{ come, opening, out, folding, after: p.els.points.querySelectorAll('.wpl-point.shape').length }}; }})()""")
+        if r != {'come': COME('lg-in'), 'opening': 'true, turning', 'out': 6, 'folding': 'false, turning', 'after': 0}:
+            fails.append(f"{name}: Show all, then Fold all, by a tap: {r} (want each stretch's rows coming in as one stretch's do, then leaving at the tap, the chevron turning at each, #761)")
+        # (#846) with Show all focused, the list stays where it was scrolled: it went to its top where the browser lays the
+        # page out as the focus leaves (with its accessibility tree on, as the pane's and a screen reader's; done here by hand)
+        r = pg.js("""(() => { const p = polku.planner, b = p.els.pointsTools.querySelector('.wpl-all'), sc = p.listScroller(); sc.scrollTop = sc.scrollHeight; const top = sc.scrollTop;
+          const lay = () => sc.scrollHeight; document.addEventListener('focusout', lay, true);
+          b.focus({ preventScroll: true }); b.click(); const now = sc.scrollTop; document.removeEventListener('focusout', lay, true); p.unfolded.clear(); p.renderWaypoints(); return { top, now }; })()""")
+        if not r['top'] or r['now'] != r['top']:
+            fails.append(f"{name}: Show all with the list scrolled: {r} (want it where it was, #846)")
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').focus(); true")
         for ev in ({'type': 'keyDown', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, 'text': '\r'}, {'type': 'keyUp', 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}):
             pg.c.send('Input.dispatchKeyEvent', ev, pg.s)  # (with its text, so Enter presses the button, as key() doesn't)
