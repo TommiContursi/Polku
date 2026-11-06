@@ -1,8 +1,8 @@
 // Search, grouped: places (Photon / OSM, biased to the view), LIPAS routes and
 // stops by name (js/lipas.js), named trails on the loaded map, and coordinates
 // like "61.497, 23.761". Each group shows as it arrives. Picking a route fits it
-// and opens its card, where "Follow this route" is one tap away. Recent picks are
-// kept on this device.
+// and opens its card, where "Follow this route" is one tap away; picking a place
+// opens its card at a pin. Recent picks are kept on this device.
 
 import { PHOTON, LIPAS_TYPES } from './config.js';
 import { request } from './net.js';
@@ -33,7 +33,7 @@ export function initSearch(map, input, list, app) {
 
   const remember = (r) => {
     if (r.kind === 'coords') return;
-    const keep = { kind: r.kind, label: r.label, sub: r.sub, center: r.center, bbox: r.bbox, zoom: r.zoom, lipas: r.lipas };
+    const keep = { kind: r.kind, label: r.label, sub: r.sub, center: r.center, bbox: r.bbox, zoom: r.zoom, lipas: r.lipas, osm: r.osm };
     const old = store.get(RECENT, []).filter((x) => !(x.label === keep.label && x.sub === keep.sub));
     store.set(RECENT, [keep, ...old].slice(0, MAX.recent));
   };
@@ -64,6 +64,8 @@ export function initSearch(map, input, list, app) {
       }
       return;
     }
+    // a place: its card at its point once the map is there, as a place's icon has (an area's point is Photon's, inside it)
+    if (r.kind === 'places') map.once('moveend', () => app.openPlace(r));
     if (r.bbox) map.fitBounds(r.bbox, { padding: app.padding ? app.padding() : 60, maxZoom: 15, duration: 900 });
     else map.flyTo({ center: r.center, zoom: Math.max(map.getZoom(), r.zoom || 14), duration: 900 });
   };
@@ -143,6 +145,7 @@ export function initSearch(map, input, list, app) {
             center: f.geometry.coordinates,
             bbox: ext ? [[ext[0], ext[3]], [ext[2], ext[1]]] : null,
             zoom: p.osm_key === 'place' ? 12 : 15,
+            osm: { key: p.osm_key, value: p.osm_value },
           };
         });
         settle();

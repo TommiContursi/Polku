@@ -894,6 +894,103 @@ LIPAS_RIDE = """(async () => {
 })()"""
 
 
+# A place picked from search (#871): its card at the spot with a pin, its name and kind; Your route's start only while
+# planning. Photon and LIPAS answer from stubs: a tower (a point) and a lake (an area, with its extent).
+SEARCH_PLACE = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], real = window.fetch;
+  const L = await import(location.origin + '/js/lipas.js');
+  L.seedLipas(() => ({ type: 'FeatureCollection', features: [] }));
+  const tower = [23.73417, 61.49502], lake = [23.7, 61.47];
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/photon\\.komoot\\.io\\//.test(url)) return real(input, init);
+    const f = (name, c, key, value, type, extent) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: c }, properties: { name, osm_key: key, osm_value: value, osm_type: type, osm_id: 1, city: 'Tampere', country: 'Finland', extent } });
+    return new Response(JSON.stringify({ type: 'FeatureCollection', features: [f('Pyynikin näkötorni', tower, 'man_made', 'tower', 'W'), f('Pyhäjärvi', lake, 'natural', 'water', 'R', [23.5, 61.52, 23.9, 61.42])] }), { headers: { 'content-type': 'application/json' } });
+  };
+  const p = polku.planner, card = () => document.querySelector('.pl-way.card');
+  const pick = async (q, name) => {
+    p.cards.close();
+    const input = document.querySelector('#search-input');
+    input.focus();
+    input.value = q;
+    input.dispatchEvent(new Event('input'));
+    let li = null;
+    for (let k = 0; k < 40 && !li; k++) { await wait(150); li = [...document.querySelectorAll('#search-results li[data-kind=places]')].find((x) => x.textContent.startsWith(name)); }
+    if (!li) { errs.push(`${name} is not in the results`); return null; }
+    li.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    for (let k = 0; k < 40 && !(card() && card().getAttribute('aria-label') === name); k++) await wait(150);
+    if (!card() || card().getAttribute('aria-label') !== name) { errs.push(`${name}: no card of its own (${card() ? card().getAttribute('aria-label') : 'none'})`); return null; }
+    return card();
+  };
+  const pinAt = (ll, name) => {
+    const pin = document.querySelector('.card-pin');
+    if (!pin) { errs.push(`${name}: no pin at the spot`); return; }
+    const r = pin.getBoundingClientRect(), a = polku.map.project(ll), m = polku.map.getContainer().getBoundingClientRect();
+    if (Math.hypot(r.left + r.width / 2 - m.left - a.x, r.top + r.height / 2 - m.top - a.y) > 12) errs.push(`${name}: the pin is ${Math.round(r.left + r.width / 2 - m.left - a.x)}, ${Math.round(r.top + r.height / 2 - m.top - a.y)} px off the spot`);
+  };
+  // browsing: its facts, no Your route
+  p.setActive(false, { instant: true });
+  let c = await pick('Pyynikin', 'Pyynikin näkötorni');
+  if (c) {
+    pinAt(tower, 'the tower');
+    if (!/Tower/.test(c.textContent)) errs.push('the tower\\'s card doesn\\'t say it\\'s a tower');
+    if (c.querySelector('[data-k=add]')) errs.push('browsing, the card offers to start a route');
+  }
+  // an area: the card at Photon's point for it
+  c = await pick('Pyhäjärvi', 'Pyhäjärvi');
+  if (c) pinAt(lake, 'the lake');
+  // planning: Start a route here, which starts it at the place
+  p.setActive(true, { edit: true, instant: true });
+  p.clear();
+  c = await pick('Pyynikin', 'Pyynikin näkötorni');
+  const add = c && c.querySelector('[data-k=add]');
+  if (c && !add) errs.push('planning, the card has no Start a route here');
+  if (add) {
+    add.click();
+    await wait(300);
+    if (p.points.length !== 1 || Math.hypot(p.points[0][0] - tower[0], p.points[0][1] - tower[1]) > 1e-5) errs.push(`Start a route here: ${JSON.stringify(p.points)}`);
+    // with a route: Add to my route, Start here and End here (not tapped: a second point would route)
+    c = await pick('Pyhäjärvi', 'Pyhäjärvi');
+    const ks = c ? [...c.querySelectorAll('[data-k]')].map((b) => b.dataset.k) : [];
+    if (c && !['add', 'start', 'end'].every((k) => ks.includes(k))) errs.push(`planning with a route, the card has ${ks.join(', ')}`);
+  }
+  p.clear();
+  p.setActive(false, { instant: true });
+  window.photonReal = real; // (put back by SEARCH_CLICKED)
+  return errs;
+})()"""
+
+# …and a real click on a result: the card is still the place's after the click's own events (with reduced motion the map
+# is there, and the card open, before the click ends)
+SEARCH_RESULT_AT = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), input = document.querySelector('#search-input');
+  polku.planner.cards.close();
+  input.focus();
+  input.value = 'Pyynikin';
+  input.dispatchEvent(new Event('input'));
+  // (the list is drawn again as each group comes: its row once it has stayed put)
+  let last = '';
+  for (let k = 0; k < 40; k++) {
+    await wait(150);
+    const li = [...document.querySelectorAll('#search-results li[data-kind=places]')].find((x) => x.textContent.startsWith('Pyynikin näkötorni'));
+    const r = li && li.getBoundingClientRect(), at = r && r.height ? JSON.stringify([r.left + r.width / 2, r.top + r.height / 2]) : '';
+    if (at && at === last) return { x: JSON.parse(at)[0], y: JSON.parse(at)[1] };
+    last = at;
+  }
+  return null;
+})()"""
+SEARCH_CLICKED = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], name = () => document.querySelector('.pl-way.card')?.getAttribute('aria-label');
+  for (let k = 0; k < 40 && name() !== 'Pyynikin näkötorni'; k++) await wait(150);
+  await wait(300);
+  if (name() !== 'Pyynikin näkötorni') errs.push(`a click on the result: the card is ${name() || 'gone'}`);
+  window.fetch = window.photonReal;
+  (await import(location.origin + '/js/lipas.js')).seedLipas(null);
+  localStorage.removeItem('polku:recentSearches');
+  return errs;
+})()"""
+
+
 # LIPAS's lines against the route (#560): the route's magenta has a hue of 329°. A pink or a violet line (250°–350°) beside
 # it reads as its family on the night map, where a thin line's white edge makes every colour pale, so the ski tracks (pink)
 # and the violet routes are blue-violet (about 240°), which reads as a different colour
@@ -914,9 +1011,17 @@ def lipas(chrome):
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(LIPAS_RIDE)
     fails += pg.js(LIPAS_HUES)
+    fails += pg.js(SEARCH_PLACE)
+    at = pg.js(SEARCH_RESULT_AT)
+    if not at:
+        fails.append('search: Pyynikin näkötorni is not in the results for a click')
+    else:
+        for kind in ('mousePressed', 'mouseReleased'):
+            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+    fails += pg.js(SEARCH_CLICKED)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} LIPAS search & ride, and no pink or violet line beside the route" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} LIPAS search & ride, no pink or violet line beside the route, a place from search gets its card" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -18380,7 +18485,7 @@ GROUPS = [
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
-    ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
+    ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place from search gets its pin and card (#871)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
     ('water', [water, water_late, paddle_map], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late (mocked), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),

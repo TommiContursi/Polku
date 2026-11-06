@@ -507,6 +507,8 @@ initSearch(map, $('#search-input'), $('#search-results'), {
     inspector.openLipas(props, ll, near);
     if (planner.cards.current) planner.cards.current.gone = () => setData('lipasPick', { type: 'FeatureCollection', features: [] });
   },
+  // a place's card at a pin (#871): its name and kind, and while planning Your route, as a hold on the map gives
+  openPlace: (r) => planner.openPlaceCard({ layer: { id: 'search' }, properties: { name: r.label, class: r.osm && r.osm.key, subclass: r.osm && r.osm.value }, geometry: { type: 'Point', coordinates: r.center } }, r.center, { pin: true, hold: planner.active }),
 });
 
 // Weather overlay: image sources are swapped in place when possible; adding or

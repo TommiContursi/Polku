@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-06
 
+### A place found by search gets its card ([#871](https://github.com/TommiContursi/Polku/issues/871))
+
+- A place picked from the search, such as a tower or a lake, now gets a pin on the map and its card, once the map has moved there: its name, its kind, its height and where it comes from.
+- While you're planning, the card also offers **Your route**: **Start a route here** with no route yet, or **Add to my route**, **Start here** and **End here** with one, as a hold on the map does.
+- A lake's or a park's pin is at the point the search gives for it, usually on it, not at its edge.
+
 ### What you can tap in the route's list ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - The route's list no longer has a **Waypoints** heading. **Show all waypoints** is over the list in green, with how many waypoints are hidden beside it.
