@@ -331,7 +331,7 @@ const whenMenu = () => {
 };
 // (as decided: When under the trip's time, where "from now" is today; the moving time goes to the parts' headings and the trip's box)
 const warnSum = (R) => h('button', { type: 'button', class: 'sum-item rt-warnsum', 'data-g': 'Box ›', 'aria-label': `${R.warnN} warning${R.warnN === 1 ? '' : 's'}: open Check`, onclick: go('warn') }, h('b', { html: `${icon('warnf', 18)}${R.warnN}` }), h('small', {}, `warning${R.warnN === 1 ? '' : 's'}`));
-const sum = (R) => CALM() ? h('div', { class: 'sheet-sum' }, ...R.nums.map(([b, s], i) => h('span', { class: 'sum-item' }, h('b', {}, b), h('small', {}, i === 1 ? 'time' : s))), S.z === '200' ? null : warnSum(R))
+const sum = (R) => CALM() ? h('div', { class: 'sheet-sum' }, ...R.nums.map(([b, s], i) => h('span', { class: 'sum-item' }, h('b', {}, b), h('small', {}, s))), S.z === '200' ? null : warnSum(R))
   : DEC() ? h('div', { class: 'sheet-sum' }, ...R.nums.map(([b, s], i) => h('span', { class: `sum-item${i === 1 ? ' rt-sum-when' : ''}` }, h('b', {}, b), i === 1 ? whenPill(true) : h('small', {}, s))))
   : h('div', { class: 'sheet-sum' }, ...R.nums.map(([b, s], i) => h(i === 1 ? 'button' : 'span', { class: `sum-item${i === 1 ? ' sum-time' : ''}`, type: i === 1 ? 'button' : null, 'data-g': i === 1 && S.v === 'today' ? 'Dotted words' : null, onclick: i === 1 && S.v === 'today' ? go('when') : null },
   h('b', {}, b), h('small', {}, i === 1 && S.w === 'by' ? 'leave 19:19' : i === 1 && S.w === 'at' ? `there at ${R.key === 'mtb' ? '09:26' : '10:11'}` : s))));
@@ -372,7 +372,7 @@ const boxWeather = (R) => { const line = S.w === 'at' ? '4 °C · wind up to 5 m
   return said ? line.split(' · ').filter((x) => !/^wind/.test(x)).join(' · ') : line; };
 const there = (R) => (S.w === 'by' ? '20:30' : S.w === 'at' ? (R.key === 'mtb' ? '09:26' : '10:11') : R.arrive);
 const calmBox = (R) => h('div', { class: 'p22-box', role: 'group', 'aria-label': 'The trip' },
-  h('div', { class: 'day rt-calmday' }, h('div', { class: 'rt-dayline' }, whenPill(), h('span', {}, S.w === 'by' ? `· leave ${R.key === 'mtb' ? '20:04' : '19:19'}` : `→ there at ${there(R)}`), h('small', {}, `${R.moving} moving`)),
+  h('div', { class: 'day rt-calmday' }, h('div', { class: 'rt-dayline' }, whenPill(), h('span', {}, S.w === 'by' ? `· leave ${R.key === 'mtb' ? '20:04' : '19:19'}` : `→ there at ${there(R)}`)),
     h('button', { type: 'button', class: 'rt-dayweather', 'data-g': 'Row ›', onclick: go('weather') }, h('span', { html: `${icon(S.w === 'at' ? 'cloudSun' : R.day.sky, 14)}${boxWeather(R)}` }), chevR())));
 const tripBox = (R) => CALM() ? calmBox(R) : h('div', { class: 'p22-box', role: 'group', 'aria-label': 'The trip' },
   h('button', { type: 'button', class: 'day', 'data-g': 'Row ›', onclick: go('weather') },
@@ -620,7 +620,7 @@ function draw() {
     if (t) body.scrollTop += t.getBoundingClientRect().top - body.getBoundingClientRect().top - 8;
   });
   const CAPD = {
-    calm: 'B, as decided, with its calmer top: the numbers keep the time alone, and the warnings are a fourth figure, ⚠ 3 over “warnings”, opening Check (a row of its own at 200 %). Over the profile a quiet line, Profile · Way type ›, and the profile itself open the profile card, where Colour by and On map now are. Each sport has one short row, its icon in its colour and its one standout fact. When is the trip’s box’s first line, “Leave now ▾ → there at 20:02”, with the day’s weather under it. A part’s heading keeps MTB ▾ and its ⚙, which sets the style and speed for every leg of that sport; Route style and Your speed are also one row a sport under the list, to look over every sport at once.',
+    calm: 'B, as decided, with its calmer top: the numbers keep production’s second line (the time on the move under the whole time), and the warnings are a fourth figure, ⚠ 3 over “warnings”, opening Check (a row of its own at 200 %). Over the profile a quiet line, Profile · Way type ›, and the profile itself open the profile card, where Colour by and On map now are. Each sport has one short row, its icon in its colour and its one standout fact. When is the trip’s box’s first line, “Leave now ▾ → there at 20:02”, with the day’s weather under it. A part’s heading keeps MTB ▾ and its ⚙, which sets the style and speed for every leg of that sport; Route style and Your speed are also one row a sport under the list, to look over every sport at once.',
     peek: 'B, as decided, at the peek (#742): the profile under the route’s numbers, about 70 px, while you draw and in the route’s view alike; a tap opens the profile card (at half until that card is built). It sits there at every size, so it doesn’t move when the sheet does; Colour by is under the key facts at half.',
     start: 'B, as decided: Start a route has the sport row and, under it, a When row, Leave now ▾, with the same menu; each way to begin keeps both. A time set here is the route’s departure from its first waypoint.',
     route: 'B, as decided (2026-11-06): no tabs. When is under the trip’s time in the numbers, where “from now” is today; with a time set, the Start and End rows show the clock’s times. The moving time is in each part’s heading and in the trip’s box. A part’s sport is MTB ▾ in its heading, its ⚙ Route style and Your speed. The warnings open the Check card, the profile the profile card, the box the weather card.',
