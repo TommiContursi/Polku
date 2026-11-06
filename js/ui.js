@@ -311,7 +311,8 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
  * while the pointer is on it, and Escape hides it (WCAG 1.4.13). Mouse only: a tap shows none.
  */
 let tipEl = null, tipShow = 0, tipHide = 0, tipLast = 0, tipFor = null;
-export function tooltip(el, { name, keys = '', text = '', beside = false }) {
+// `lines`: rows of the app's own markup under its name, one a line, as the profile's tip has them (the route's list, #761)
+export function tooltip(el, { name, keys = '', text = '', lines = [], beside = false }) {
   if (!tipEl) {
     tipEl = h('div', { class: 'tip', role: 'tooltip', id: 'tip', hidden: true });
     tipEl.addEventListener('pointerenter', () => clearTimeout(tipHide));
@@ -322,7 +323,7 @@ export function tooltip(el, { name, keys = '', text = '', beside = false }) {
   const show = () => {
     clearTimeout(tipHide);
     tipFor = el;
-    tipEl.innerHTML = `<b>${escapeHtml(name)}${keys ? keys.split(' ').map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('') : ''}</b>${escapeHtml(text)}`;
+    tipEl.innerHTML = `<b>${escapeHtml(name)}${keys ? keys.split(' ').map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('') : ''}</b>${escapeHtml(text)}${lines.map((l) => `<span>${l}</span>`).join('')}`;
     // the first grows from its button; one shown or just gone, or the keyboard's, comes at once
     tipEl.classList.toggle('instant', !tipEl.hidden || Date.now() - tipLast < 900 || el.matches(':focus-visible'));
     tipEl.hidden = false;

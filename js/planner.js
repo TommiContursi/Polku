@@ -1,7 +1,7 @@
 // Route planner: waypoints, per-leg routing modes, undo/redo, the bottom sheet
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
-import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS } from './config.js';
+import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
@@ -9,7 +9,7 @@ import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, noTerrain } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
@@ -3107,8 +3107,13 @@ export class Planner {
     const el = wrap || b;
     el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
     el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
-    // (on a desktop, its distance from the start, its times and the weather, as the map's tooltip has them)
-    if (at && !naming) tooltip(b, { beside: true, name: `${fmtDist(this.lengthTo(i))} from the start`, text: [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `leave ${this.clockOf(at.leave)}` : '', ...sky.map((x) => x.text)].filter(Boolean).join(' · ') });
+    // (on a desktop, its distance from the start and its times, then the profile's tip there: its height, the grade, the way on
+    // from it and the weather, #761)
+    if (at && !naming) {
+      const A = this.analysis, k = this.analysisFits() ? this.sampleAtM(this.lengthTo(i)) : -1, water = isWater(this.legSport(Math.min(i, n - 2)));
+      const times = [i > 0 ? `Arrive ${this.clockOf(at.arrive)}` : '', at.leave !== at.arrive || i === 0 ? `${i > 0 ? 'leave' : 'Leave'} ${this.clockOf(at.leave)}` : ''].filter(Boolean).join(' · ');
+      tooltip(b, { beside: true, name: `${fmtDist(this.lengthTo(i))} from the start`, lines: [times, ...(k < 0 ? [] : [...(water || noTerrain(A, k) ? [] : [`Height ${Math.round(A.ele[k])} m`]), ...sampleRows(A, k, this.roadAt(k), water)])] });
+    }
     return el;
   }
   // the end of a rename in a row of the list: the name kept (Enter, or the field left) or not (Escape); the focus back
@@ -3169,6 +3174,13 @@ export class Planner {
       h('span', { 'aria-hidden': 'true', html: icon({ change: 'clock', stop: 'pause', night: 'moon' }[kind], 18) }),
       h('span', {}, h('b', {}, title), shown.length ? h('small', { class: 'wx-line' }, ...shown.flatMap((x, k) => (k ? [' ', x] : [x]))) : null, gear ? h('small', { class: 'wpl-warns', html: `<span class="look">${icon('eye', 14)}${escapeHtml(gear)}</span>` }) : null),
       h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+    // (on a desktop, where and when, a night's sunset and sunrise, the gear left there and the weather as you go on, as the
+    // profile's tip has it, #761)
+    if (at) {
+      const k = this.analysisFits() ? this.sampleAtM(this.lengthTo(i)) : -1, left = kind === 'change' && this.gearAt(i) && !this.carryAt(i) ? `${this.gearLabel(GEAR[ch.from])} stays here` : '';
+      tooltip(b, { beside: true, name: title, lines: [`At ${escapeHtml(this.nameOf(i))}`, `${this.clockOf(from)} → ${this.clockOf(to)}`, sun[0] && sun[1] ? `Sunset ${this.timeOf(sun[0])} · sunrise ${this.timeOf(sun[1])}` : '', left,
+        ...(k < 0 ? [] : sampleRows(this.analysis, k, '', true))].filter(Boolean) });
+    }
     return b;
   }
 
@@ -3177,7 +3189,7 @@ export class Planner {
   // room), their count by ⌄, which unfolds them.
   // One drawn otherwise than along paths (a straight line, over water, its own line) has its word in the text's weight,
   // a straight one its line dashed. Under them Check's warnings on it, counted, or on a leg named, then the dark on a
-  // line of its own (`warnsOn()`), with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, and the weather.
+  // line of its own (`warnsOn()`), with a moon on its line where the dark begins. On a desktop its tooltip: where it starts and ends along the route, when, how fast, and what the profile's tip says, over all of it (`stretchRows()`).
   // `folds`: the stretch whose waypoints its ⌄ folds, itself, or for an unfolded stretch's first leg the stretch (null
   // for its other legs).
   stretchRow(s, ro, folds = s) {
@@ -3200,13 +3212,12 @@ export class Planner {
         : carry >= 1 ? h('small', {}, h('span', { class: 'how' }, `Carry ${fmtDist(carry)}`)) : null, // (a carry stays, with Drawing mode hidden)
         ...lines.map((x) => h('small', { class: 'wpl-warns', html: x }))));
     let tip = null;
-    const t0 = this.timesAt(s.from), t1 = this.timesAt(s.to), A = this.analysis;
+    const t0 = this.timesAt(s.from), t1 = this.timesAt(s.to), sport = this.legSport(s.from);
     if (t0 && t1) {
-      // (the weather over it, where the forecast reaches: the temperature's range, the wind at its strongest)
-      let lo = Infinity, hi = -Infinity, wind = 0;
-      if (A.wind && A.wind.temp) for (let k = this.sampleAtM(a0), z = this.sampleAtM(a1); k <= z && (A.wind.beyond < 0 || k < A.wind.beyond); k++) { lo = Math.min(lo, A.wind.temp[k]); hi = Math.max(hi, A.wind.temp[k]); wind = Math.max(wind, A.wind.speed[k]); }
-      const wx = lo <= hi ? `${Math.round(lo) === Math.round(hi) ? Math.round(lo) : `${Math.round(lo)}–${Math.round(hi)}`}° · wind up to ${Math.round(wind)} m/s` : '';
-      tip = { beside: true, name: `${fmtDist(a0)} → ${fmtDist(a1)} from the start`, text: [`${this.clockOf(t0.leave)} → ${this.clockOf(t1.arrive)}`, wx].filter(Boolean).join(' · ') };
+      // (when and how fast, the speed whatever the list's settings, then as the profile's tip says a point, over it all)
+      tip = { beside: true, name: `${fmtDist(a0)} → ${fmtDist(a1)} from the start`, lines: [
+        [`${this.clockOf(t0.leave)} → ${this.clockOf(t1.arrive)}`, x && x.sec > 0 ? this.speedWords(x.len, x.sec, sport) : ''].filter(Boolean).join(' · '),
+        ...(this.analysisFits() ? this.stretchRows(this.sampleAtM(a0), this.sampleAtM(a1), isWater(sport)) : [])] };
     }
     b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
     b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
@@ -3235,6 +3246,35 @@ export class Planner {
     const row = h('div', { class: 'wpl-strow' }, b, fold);
     if (tip) tooltip(b, { ...tip, beside: row }); // (beside the row and its ⌄, not over it)
     return row;
+  }
+  // a stretch's tooltip under its times (#761), as the profile's tip says a point (`sampleRows()`), over samples k0 to k1:
+  // the grade from its lowest to its highest, the hardest uphill and downhill, the way most of it is on, the wind at its
+  // strongest, the temperature's range and the most rain; over water, the wind and the weather alone
+  stretchRows(k0, k1, water) {
+    const a = this.analysis, w = a.wind, rows = [], ways = new Map();
+    let g0 = Infinity, g1 = -Infinity, up = -1, down = -1, kw = -1, kr = -1, lo = Infinity, hi = -Infinity, gust = 0;
+    for (let k = k0; k <= k1; k++) {
+      if (!noTerrain(a, k)) { g0 = Math.min(g0, a.grade[k]); g1 = Math.max(g1, a.grade[k]); }
+      up = Math.max(up, a.upCls[k]); down = Math.max(down, a.down6[k]);
+      if (k < k1) { const key = `${a.way[k]}|${a.surf[k]}`, was = ways.get(key); ways.set(key, { k: was ? was.k : k, m: (was ? was.m : 0) + a.along[k + 1] - a.along[k] }); }
+      if (w && forecastKnown(w, k)) {
+        if (kw < 0 || w.speed[k] > w.speed[kw]) kw = k;
+        if (kr < 0 || w.precip[k] > w.precip[kr]) kr = k;
+        lo = Math.min(lo, w.temp[k]); hi = Math.max(hi, w.temp[k]); gust = Math.max(gust, w.gust[k]);
+      }
+    }
+    if (!water) {
+      const pct = (g) => `${g >= 0 ? '+' : ''}${g.toFixed(1)}`, main = [...ways.values()].sort((p, q) => q.m - p.m)[0];
+      if (g0 <= g1) rows.push(`Grade ${pct(g0) === pct(g1) ? pct(g0) : `${pct(g0)} to ${pct(g1)}`} %`);
+      if (up >= 0) rows.push(`Uphill ${UPHILL_TEXT[up].split(' · ')[0]}`);
+      if (down >= 0) rows.push(`${MTB_SCALE_TEXT[down].split(' · ')[0]} downhill`);
+      if (main) { const road = this.roadAt(main.k); rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${escapeHtml(a.way[main.k])} · ${escapeHtml(a.surf[main.k].replace('_', ' '))}`); }
+    }
+    if (kw < 0) return w ? [...rows, 'No forecast yet'] : rows;
+    const c = windClass(w.head[kw], w.speed[kw]), t = Math.round(lo) === Math.round(hi) ? `${Math.round(lo)}` : `${Math.round(lo)}–${Math.round(hi)}`;
+    rows.push(`${c.label} · up to ${w.speed[kw].toFixed(1)} m/s from ${compass(w.dir[kw])}${gust > w.speed[kw] + 2 ? `, gusts ${gust.toFixed(0)}` : ''}`);
+    rows.push(`${t} °C · ${w.precip[kr] >= 0.1 ? `${w.temp[kr] < 0.5 ? 'snow' : 'rain'} up to ${w.precip[kr].toFixed(1)} mm/h` : 'dry'}`);
+    return rows;
   }
   // a stretch's average speed in Your speed's units for its sport: a pace for running and swimming, else km/h (#761)
   speedWords(m, sec, sport) {

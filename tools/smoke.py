@@ -15974,8 +15974,12 @@ def sections_list(chrome):
         n_read = pg.js("[...polku.planner.els.points.querySelectorAll('.wpl-stretch .wpl-warns .read')].map((x) => x.textContent)")
         if not n_read or not all(re.fullmatch(r'\d+ to read', x) for x in n_read):
             fails.append(f"{name}: the Read item's stretch in the list says {n_read}")
-        for sel, want in (("polku.planner.els.points.querySelector('.wpl-stretch')", r'^0 m → .+ from the start.*\d\d:\d\d → .*\d\d:\d\d'), ("polku.planner.els.points.querySelector('.wpl-point.last')", r'from the start.*Arrive .*\d\d:\d\d'),
-                          ("(polku.planner.els.points.querySelector('.wpl-point.shape') || (polku.planner.els.points.querySelector('.wpl-unfold')?.click(), polku.planner.els.points.querySelector('.wpl-point.shape')))", r'from the start.*Arrive .*\d\d:\d\d')):  # (a point a stretch folds, unfolded, too)
+        # (#761) each as the profile's tip says it, a line each: a stretch's speed and the way most of it is on, a waypoint's
+        # way on, and (below) a stop's where and when; with the forecast, the wind and the weather on each
+        wind = pg.js("!!polku.planner.analysis.wind")
+        sky = r'\n\w[\w ]* · (up to )?[\d.]+ m/s from [NESW]+.*\n-?\d+(–-?\d+)? °C · ' if wind else ''
+        for sel, want in (("polku.planner.els.points.querySelector('.wpl-stretch')", r'^0 m → .+ from the start\n\d\d:\d\d → \d\d:\d\d · [\d.]+\skm/h\n(.+\n)*\w+ · [^\n]+' + sky), ("polku.planner.els.points.querySelector('.wpl-point.last')", r'from the start\nArrive \d\d:\d\d\n(.+\n)*\w+ · [^\n]+' + sky),
+                          ("(polku.planner.els.points.querySelector('.wpl-point.shape') || (polku.planner.els.points.querySelector('.wpl-unfold')?.click(), polku.planner.els.points.querySelector('.wpl-point.shape')))", r'from the start\nArrive .*\d\d:\d\d')):  # (a point a stretch folds, unfolded, too)
             q = at(pg, sel)
             if not q:
                 fails.append(f"{name}: no {sel} for its tooltip")
@@ -15983,13 +15987,25 @@ def sections_list(chrome):
             pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
             pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': q['x'], 'y': q['y'], 'button': 'none'}, pg.s)
             time.sleep(0.8)
-            tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()")
+            tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? [...t.children].map((x) => x.textContent).join('\\n') : ''; })()")
             if not re.search(want, tip or ''):
                 fails.append(f"{name}: the tooltip of {sel.split('querySelector(')[1][:-1]}: {tip!r}")
             # (a stretch's: beside its row, clear of the row's ⌄, #761)
             if '.wpl-stretch' in sel and pg.js("(() => { const t = document.getElementById('tip').getBoundingClientRect(), u = polku.planner.els.points.querySelector('.wpl-strow .wpl-unfold')?.getBoundingClientRect(); return !u || (t.left < u.right && t.right > u.left && t.top < u.bottom && t.bottom > u.top); })()"):
                 fails.append(f"{name}: the stretch's tooltip covers its ⌄, or there's no ⌄ (#761)")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
+        pg.js("polku.planner.setStop(1, { min: 30 }); true")
+        time.sleep(0.8)
+        q = at(pg, "(() => { const w = polku.planner.els.points.querySelector('.wpl-wait'); w?.scrollIntoView({ block: 'center' }); return w; })()")
+        if q:
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': q['x'], 'y': q['y'], 'button': 'none'}, pg.s)
+            time.sleep(0.8)
+            tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? [...t.children].map((x) => x.textContent).join('\\n') : ''; })()")
+        if not q or not re.search(r'^Stop · 30 min\nAt .+\n\d\d:\d\d → \d\d:\d\d' + sky, tip or ''):
+            fails.append(f"{name}: a stop's tooltip: {tip if q else 'no stop'!r} (want where, when and the weather, #761)")
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 5, 'y': 5, 'button': 'none'}, pg.s)
+        pg.js("polku.planner.setStop(1, null); true")
+        time.sleep(0.8)
         # (#761) unfolded, each leg names the warnings on it, in Check's words: one to read between via 3 and via 4 on that
         # leg's row, in its label too, one worth a look between via 1 and via 2 on that one's, and on none of the others, nor
         # on the waypoints; with via 4 named, the stretch after it doesn't count the one before it. (Leaving at 10:00, in

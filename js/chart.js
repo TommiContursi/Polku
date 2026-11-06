@@ -212,6 +212,24 @@ export function routeReadout(a, i, road = '') {
   };
 }
 
+// the profile's tip at sample i under its distance and height: the grade, the uphill and the downhill, the way, the wind and
+// the weather; `water`, the wind and the weather alone. A waypoint's tooltip in the route's list says the same (#761).
+export function sampleRows(a, i, road = '', water = false) {
+  const rows = water || noTerrain(a, i) ? [] : [`Grade ${a.grade[i] >= 0 ? '+' : ''}${a.grade[i].toFixed(1)} %`];
+  if (!water) {
+    if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
+    if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
+    rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${escapeHtml(a.way[i])} · ${escapeHtml(a.surf[i].replace('_', ' '))}`);
+  }
+  if (pastForecast(a, i)) rows.push('No forecast yet');
+  else if (a.wind) {
+    const w = a.wind, c = windClass(w.head[i], w.speed[i]);
+    rows.push(`${c.label} · ${w.speed[i].toFixed(1)} m/s from ${compass(w.dir[i])}${w.gust[i] > w.speed[i] + 2 ? `, gusts ${w.gust[i].toFixed(0)}` : ''}`);
+    rows.push(`${w.temp[i].toFixed(0)} °C · ${w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry'}`);
+  }
+  return rows;
+}
+
 function niceStep(range, target) {
   const raw = range / target;
   const p = 10 ** Math.floor(Math.log10(raw));
@@ -389,24 +407,10 @@ export class ProfileChart {
     const g = this.geom();
     const [v0, v1] = this.domain();
     const x = g.x0 + ((a.along[i] - v0) / (v1 - v0)) * (g.x1 - g.x0);
-    const rows = this.kind === 'conditions'
-      ? [`<b>${fmtDist(a.along[i])}</b> · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : escapeHtml(a.way[i])}`]
-      : noTerrain(a, i) ? [`<b>${fmtDist(a.along[i])}</b> · no terrain here`]
-        : [`<b>${fmtDist(a.along[i])}</b> · ${Math.round(a.ele[i])} m`, `Grade ${a.grade[i] >= 0 ? '+' : ''}${a.grade[i].toFixed(1)} %`];
-    if (this.kind !== 'conditions') {
-      if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
-      if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
-      const road = this.nameAt ? this.nameAt(i) : '';
-      rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${escapeHtml(a.way[i])} · ${escapeHtml(a.surf[i].replace('_', ' '))}`);
-    }
-    if (pastForecast(a, i)) rows.push('No forecast yet');
-    else if (a.wind) {
-      const w = a.wind;
-      const c = windClass(w.head[i], w.speed[i]);
-      rows.push(`${c.label} · ${w.speed[i].toFixed(1)} m/s from ${compass(w.dir[i])}${w.gust[i] > w.speed[i] + 2 ? `, gusts ${w.gust[i].toFixed(0)}` : ''}`);
-      rows.push(`${w.temp[i].toFixed(0)} °C · ${w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry'}`);
-      if (a.tAtWind) rows.push(`Reached ${clock(a.wind.startSec + a.tAtWind[i])}`);
-    }
+    const cond = this.kind === 'conditions';
+    const rows = [cond ? `<b>${fmtDist(a.along[i])}</b> · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : escapeHtml(a.way[i])}`
+      : `<b>${fmtDist(a.along[i])}</b> · ${noTerrain(a, i) ? 'no terrain here' : `${Math.round(a.ele[i])} m`}`, ...sampleRows(a, i, !cond && this.nameAt ? this.nameAt(i) : '', cond)];
+    if (!pastForecast(a, i) && a.wind && a.tAtWind) rows.push(`Reached ${clock(a.wind.startSec + a.tAtWind[i])}`);
     this.tip.innerHTML = rows.join('<br>');
     this.tip.hidden = false;
     const tw = this.tip.offsetWidth;
