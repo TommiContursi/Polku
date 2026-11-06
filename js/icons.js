@@ -329,7 +329,7 @@ export function iconUrl(id) {
 }
 
 // Check's markers on the route (25d part 3): a disc in the surface colour, ringed in its group's colour, with its sign: a
-// filled triangle to read before you go, an eye worth a look, a dashed ring and "?" not checked. The colours are the
+// filled triangle for a warning, an eye for good to know, a dashed ring and "?" not checked. The colours are the
 // CSS's (WARN_COLORS) and in the name, so a new theme asks for new ones.
 const MARK = { read: ['danger', 'M12 2.5 1.5 20.5h21L12 2.5ZM11 9.2v5.6h2V9.2h-2Zm0 7.4v2h2v-2h-2Z', true], look: ['look', 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z', false], not: ['unk', 'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.4', false] };
 export const warnMarkId = (g) => `wm-${g}~${(WARN_COLORS[MARK[g][0]] + WARN_COLORS.surface).replace(/[^0-9a-z]/gi, '')}`;

@@ -101,8 +101,8 @@ export function buildStyle(s, ctx) {
     pickSide: { type: 'geojson', data: ctx.data.pickSide || EMPTY },
     pickArea: { type: 'geojson', data: ctx.data.pickArea || EMPTY },
     pickRing: { type: 'geojson', data: ctx.data.pickRing || EMPTY },
-    // Check's items on the route (25d part 3): close ones merged, keeping the most serious one's sign (sev: 3 read before
-    // you go, 2 not checked, 1 worth a look); the open one apart, with its obstacle's own icon (#85); the stretches a
+    // Check's items on the route (25d part 3): close ones merged, keeping the most serious one's sign (sev: 3 a warning,
+    // 2 not checked, 1 good to know); the open one apart, with its obstacle's own icon (#85); the stretches a
     // source didn't cover
     heads: { type: 'geojson', data: ctx.data.heads || EMPTY, cluster: true, clusterRadius: 24, clusterMaxZoom: 17, clusterProperties: { sev: ['max', ['get', 'sev']] } },
     headsOn: { type: 'geojson', data: ctx.data.headsOn || EMPTY },
