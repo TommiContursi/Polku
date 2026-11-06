@@ -9,6 +9,19 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - A tap or a click on **Show all waypoints** brings each stretch's waypoints and legs in one after another, as a stretch's **⌄** does, and **Fold all waypoints** sends them out together. Its chevron turns at the tap. From the keyboard, they change at once.
 - On a phone, **Show all waypoints** no longer jumps the route's list back to its top.
 
+### The route's list names its warnings ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- A folded stretch in the route's list names its warnings in Check's words while there are one or two, such as "Cycling not allowed here (2 places)", so you needn't unfold it to see what they are. With more, it counts them, "2 warnings", and its ⌄ shows which.
+- A folded stretch no longer counts Check's "In the dark" among its warnings, as its legs already didn't: **Darkness** shows the dark in the list, and Check and the line over the list still say it.
+- The waypoints a stretch folds keep their names and distances in bold when they're shown, as the others' are.
+- The weather in the list's tooltips and the profile's starts with the sky's icon: sun, cloud, rain or snow, or the moon on a clear night. A stretch's shows its wettest sky, or where it's dry, its cloudiest.
+
+### Warnings and Good to know ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- Check's groups are now called **Warnings** (what can stop you, turn you back or hurt), **Not checked** and **Good to know**.
+- Where the app said "to read before you go", it now says "warnings": the line under the route's numbers says "2 warnings", and so do the folded planner's line and the Check tab.
+- In **List settings**, **Worth a look** is now called **Good to know**.
+
 ### Each part's ⚙: its sport, speed and route style ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each part's heading has a **⚙**. It opens the part's **Sport**, which changes only that part's legs (with **Undo**), its sport's **Your speed**, with the speed editor in place, and its sport's **Route style**, as the drawing menu has them for the next leg.

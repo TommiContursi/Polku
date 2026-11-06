@@ -4,7 +4,8 @@
 
 import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, GRADE_BANDS, OFFROAD_BIKE, isWater, SPORT_COLORS, ACTIVITIES } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
-import { windClass, tempBand, rainBand, forecastKnown, WIND_CLASSES, TEMP_BANDS, RAIN_BANDS } from './weather.js';
+import { windClass, tempBand, rainBand, forecastKnown, skyKind, WIND_CLASSES, TEMP_BANDS, RAIN_BANDS } from './weather.js';
+import { nightAt } from './sun.js';
 import { WAY_SCALES, NOT_MAPPED } from './facts.js';
 import { escapeHtml, icon } from './ui.js';
 import { fromCss } from './palette.js';
@@ -214,6 +215,12 @@ export function routeReadout(a, i, road = '') {
 
 // the profile's tip at sample i under its distance and height: the grade, the uphill and the downhill, the way, the wind and
 // the weather; `water`, the wind and the weather alone. A waypoint's tooltip in the route's list says the same (#761).
+// the sky's icon at sample i, as the list's weather has it, a moon on a clear night: for a tip's weather line (#761)
+export function skyIcon(a, i) {
+  const w = a.wind, sec = a.tAtWind ? w.startSec + a.tAtWind[i] : null;
+  return icon(skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, sec != null && nightAt(sec, a.pts[i])), 14);
+}
+
 export function sampleRows(a, i, road = '', water = false) {
   const rows = water || noTerrain(a, i) ? [] : [`Grade ${a.grade[i] >= 0 ? '+' : ''}${a.grade[i].toFixed(1)} %`];
   if (!water) {
@@ -225,7 +232,7 @@ export function sampleRows(a, i, road = '', water = false) {
   else if (a.wind) {
     const w = a.wind, c = windClass(w.head[i], w.speed[i]);
     rows.push(`${c.label} · ${w.speed[i].toFixed(1)} m/s from ${compass(w.dir[i])}${w.gust[i] > w.speed[i] + 2 ? `, gusts ${w.gust[i].toFixed(0)}` : ''}`);
-    rows.push(`${w.temp[i].toFixed(0)} °C · ${w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry'}`);
+    rows.push(`${skyIcon(a, i)}${w.temp[i].toFixed(0)} °C · ${w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry'}`);
   }
   return rows;
 }

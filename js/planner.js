@@ -9,11 +9,11 @@ import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, noTerrain } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
-import { sunTimes, darkness } from './sun.js';
+import { sunTimes, darkness, nightAt } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
@@ -67,8 +67,8 @@ const TIPS = {
   edit: { name: 'Edit', keys: 'E', text: 'Back to drawing: a click on the map adds a waypoint.' },
 };
 // What Route's list can show or hide, in its settings' order: its menu over the list and Settings (#761)
-// (Warnings: what's to read and what isn't checked; Worth a look: Check's lighter ones and a changeover's gear)
-export const LIST_SHOWS = [['warnings', 'Warnings'], ['look', 'Worth a look'], ['drawing', 'Drawing mode'], ['dark', 'Darkness'], ['weather', 'Weather'], ['speed', 'Speed']];
+// (Warnings: what's a warning and what isn't checked; Good to know: Check's lighter ones and a changeover's gear)
+export const LIST_SHOWS = [['warnings', 'Warnings'], ['look', 'Good to know'], ['drawing', 'Drawing mode'], ['dark', 'Darkness'], ['weather', 'Weather'], ['speed', 'Speed']];
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
 const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points'];
 const NEAR_LINE = 30;
@@ -1027,7 +1027,7 @@ export class Planner {
     }
     document.body.classList.toggle('planning', on);
     for (const m of this.markers) m.getElement().hidden = !on;
-    this.drawHeads(); // (put away: what to read before you go stays marked on the route)
+    this.drawHeads(); // (put away: the warnings stay marked on the route)
     this.renderState();
     this.app.onActiveChange(on);
     if (on && !this.analysis) this.renderAnalysis(); // the empty planner's first words (and its round-trip button)
@@ -3178,8 +3178,7 @@ export class Planner {
     const a = this.analysis;
     if (w == null) return [];
     if (w === 'none') return [{ text: 'No forecast yet' }];
-    const sun = sec != null ? sunTimes(sec, ll) : null;
-    const night = !!sun && (sun.day === 'polar-night' || (sun.day !== 'polar-day' && sun.rise != null && (sec < sun.rise || sec > sun.set)));
+    const night = sec != null && nightAt(sec, ll);
     const cloud = a.wind.cloud ? a.wind.cloud[w] : NaN;
     return [{ ic: skyKind(a.wind.precip[w], a.wind.temp[w], cloud, night), text: `${Math.round(a.wind.temp[w])}°` }, { ic: 'wind', text: `${Math.round(a.wind.speed[w])} m/s` }];
   }
@@ -3276,7 +3275,7 @@ export class Planner {
   // strongest, the temperature's range and the most rain; over water, the wind and the weather alone
   stretchRows(k0, k1, water) {
     const a = this.analysis, w = a.wind, rows = [], ways = new Map();
-    let g0 = Infinity, g1 = -Infinity, up = -1, down = -1, kw = -1, kr = -1, lo = Infinity, hi = -Infinity, gust = 0;
+    let g0 = Infinity, g1 = -Infinity, up = -1, down = -1, kw = -1, kr = -1, kc = -1, lo = Infinity, hi = -Infinity, gust = 0;
     for (let k = k0; k <= k1; k++) {
       if (!noTerrain(a, k)) { g0 = Math.min(g0, a.grade[k]); g1 = Math.max(g1, a.grade[k]); }
       up = Math.max(up, a.upCls[k]); down = Math.max(down, a.down6[k]);
@@ -3284,6 +3283,7 @@ export class Planner {
       if (w && forecastKnown(w, k)) {
         if (kw < 0 || w.speed[k] > w.speed[kw]) kw = k;
         if (kr < 0 || w.precip[k] > w.precip[kr]) kr = k;
+        if (w.cloud && (kc < 0 || w.cloud[k] > w.cloud[kc])) kc = k;
         lo = Math.min(lo, w.temp[k]); hi = Math.max(hi, w.temp[k]); gust = Math.max(gust, w.gust[k]);
       }
     }
@@ -3297,7 +3297,8 @@ export class Planner {
     if (kw < 0) return w ? [...rows, 'No forecast yet'] : rows;
     const c = windClass(w.head[kw], w.speed[kw]), t = Math.round(lo) === Math.round(hi) ? `${Math.round(lo)}` : `${Math.round(lo)}–${Math.round(hi)}`;
     rows.push(`${c.label} · up to ${w.speed[kw].toFixed(1)} m/s from ${compass(w.dir[kw])}${gust > w.speed[kw] + 2 ? `, gusts ${gust.toFixed(0)}` : ''}`);
-    rows.push(`${t} °C · ${w.precip[kr] >= 0.1 ? `${w.temp[kr] < 0.5 ? 'snow' : 'rain'} up to ${w.precip[kr].toFixed(1)} mm/h` : 'dry'}`);
+    // (its sky: where it rains most, else where it's cloudiest, as the line says the most rain)
+    rows.push(`${skyIcon(a, w.precip[kr] >= 0.1 || kc < 0 ? kr : kc)}${t} °C · ${w.precip[kr] >= 0.1 ? `${w.temp[kr] < 0.5 ? 'snow' : 'rain'} up to ${w.precip[kr].toFixed(1)} mm/h` : 'dry'}`);
     return rows;
   }
   // The waypoints of the stretches `spans` fold away as a stretch's ⌄ folds them: from a tap, their marks and words, and the
@@ -3319,24 +3320,25 @@ export class Planner {
     return sport === 'run' || sport === 'trailrun' ? `${pace(kmh)} /km` : sport === 'swim' ? `${pace100(kmh)} /100 m` : `${kmh.toFixed(1)} km/h`;
   }
   // Check's warnings on the way from point s.from to s.to, as Check says them, unread: what's to read, what isn't
-  // checked and what's worth a look, but for what the list says its own way (a straight line and a carry in a stretch's
+  // checked and what's good to know, but for what the list says its own way (a straight line and a carry in a stretch's
   // words, the gear left and a short night on their wait, twilight as the dark is). Then, on a line of their own, as
   // when you're there and not a warning: how much of it is after sunset, in the dark or before sunrise, in the order you'd
-  // go through them. The lines' HTML, and where along the route the dark begins (or 0). `named` (a leg, #761): each
-  // warning in Check's words, a line each, once, with how many places, the most serious first, three lines at most; the
-  // dark isn't named, its own line says it.
-  warnsOn(s, named = false) {
+  // go through them. The lines' HTML, and where along the route the dark begins (or 0). Each warning in Check's words, a
+  // line each, once, with how many places, the most serious first, three lines at most; never Check's dark, which has
+  // its line here (Darkness). A folded stretch (not a `leg`) with more than two counts them instead: its ⌄ shows which
+  // (#761).
+  warnsOn(s, leg = false) {
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
-    const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Freehand|Carry \/ portage)/.test(w.text);
-    const S = this.listShow, its = this.itemsOn(s).filter((it) => !this.isRead(it) && (it.g === 'look' ? S.look && !own(it.w) : S.warnings)), n = (g) => its.filter((it) => it.g === g).length;
+    const own = (w) => w.kind === 'gear' || /^(Freehand|Carry \/ portage)/.test(w.text);
+    const S = this.listShow, its = this.itemsOn(s).filter((it) => !this.isRead(it) && it.w.kind !== 'dark' && (it.g === 'look' ? S.look && !own(it.w) : S.warnings)), n = (g) => its.filter((it) => it.g === g).length;
     const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
     const dark = on((x) => !x.twilight), darkM = this.listShow.dark ? m(dark) : 0, dusk = this.listShow.dark ? m(on((x) => x.twilight && x.evening)) : 0, dawn = this.listShow.dark ? m(on((x) => x.twilight && !x.evening)) : 0;
     const G = { read: ['read', 'warnf'], not: ['unk', 'unk'], look: ['look', 'eye'] }, by = new Map();
-    for (const it of named ? its : []) if (it.w.kind !== 'dark') by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
+    for (const it of its) by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
     const names = [...by].map(([t, x]) => `<span class="${G[x.g][0]}">${icon(G[x.g][1], 14)}${escapeHtml(t)}${x.k > 1 ? ` (${x.k} places)` : ''}</span>`);
-    const warns = named ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
-      : [[n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} to read</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
-        n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} worth a look</span>` : ''].filter(Boolean).join(' ')].filter(Boolean);
+    const warns = leg || names.length <= 2 ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
+      : [[n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} warning${n('read') === 1 ? '' : 's'}</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',
+        n('look') ? `<span class="look">${icon('eye', 14)}${n('look')} good to know</span>` : ''].filter(Boolean).join(' ')].filter(Boolean);
     const light = [dusk >= 50 ? `<span class="dark">${icon('sunset', 14)}${fmtDist(dusk)} after sunset</span>` : '', darkM >= 50 ? `<span class="dark">${icon('moon', 14)}${fmtDist(darkM)} in the dark</span>` : '',
       dawn >= 50 ? `<span class="dark">${icon('sunrise', 14)}${fmtDist(dawn)} before sunrise</span>` : ''].filter(Boolean);
     return { lines: [...warns, light.join(' ')].filter(Boolean), dark: darkM >= 50 ? dark[0].at : 0 };
@@ -4697,7 +4699,7 @@ export class Planner {
         if (!key && this.itemLit) this.unlightItem();
         // a stretch's cards (the route's, the stretch's, Edit this stretch and its steps): the stretch lit, end to end (1b)
         this.lightStretch(card && card.kind !== 'item' ? card.lit || card.stretch || card.s || null : null);
-        if (key !== this.headsOpen) { this.headsOpen = key; this.drawHeads(); } // (the open one ringed, Worth a look's shown)
+        if (key !== this.headsOpen) { this.headsOpen = key; this.drawHeads(); } // (the open one ringed, Good to know's shown)
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.renderFold();
         this.measureSheet?.();
@@ -4881,7 +4883,7 @@ export class Planner {
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(st)) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'folded') this.setSheetState('open');
     }
-    this.renderOnRoute(); // (Worth a look's markers while Check is in sight)
+    this.renderOnRoute(); // (Good to know's markers while Check is in sight)
   }
 
   // The profile at its size, or smaller (yours, kept)
@@ -5389,7 +5391,7 @@ export class Planner {
     if (remember && this.cards.place !== 'peek') store.set('sheetState', { ...store.get('sheetState', {}), [lay]: st }); // (a card's sizes are its own, not the planner's)
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { folded: 'Open it as it was', peek: 'Show more', half: 'Drag up for everything, down for the map', full: 'Drag down for the map' }[st] || '';
-    this.renderOnRoute(); // (Worth a look's markers while Check is in sight; and the folded line)
+    this.renderOnRoute(); // (Good to know's markers while Check is in sight; and the folded line)
     if (!['folded', 'peek'].includes(st)) requestAnimationFrame(() => this.chart.draw());
     // (folded, the toolbox is the mode, undo and redo; what comes back when it opens isn't new, so it doesn't fade in)
     if ((st === 'folded') !== (was === 'folded')) { this.toolsShown = null; this.renderTools(); }
@@ -5490,7 +5492,7 @@ export class Planner {
     if (at) this.cards.inSight(at);
   }
   foldAway() { if (this.cards.place === 'peek') this.cards.close(); else this.close(); }
-  // The folded line: the planner's numbers, with the count of what's to read before you go, or the card's mark, its
+  // The folded line: the planner's numbers, with the count of warnings, or the card's mark, its
   // name (whole, never cut) and the open card's first two numbers; one button that opens it as it was. Its words are a
   // screen reader's too.
   renderFold() {
@@ -5529,7 +5531,7 @@ export class Planner {
     go.replaceChildren(
       n ? h('span', { class: `fold-warn ${R1.length ? 'danger' : 'unk'}`, 'aria-hidden': 'true', html: icon(R1.length ? 'warnf' : 'unk', 16) }, String(n)) : '',
       h('b', { 'aria-hidden': 'true' }, ...line(busy ? ['Routing…', ...nums] : nums)));
-    go.setAttribute('aria-label', `${n ? `${n} ${R1.length ? 'to read before you go' : 'not checked'}, ` : ''}${busy ? 'routing, ' : ''}${nums.join(', ')}: open the planner as it was`);
+    go.setAttribute('aria-label', `${n ? `${n} ${R1.length ? `warning${n === 1 ? '' : 's'}` : 'not checked'}, ` : ''}${busy ? 'routing, ' : ''}${nums.join(', ')}: open the planner as it was`);
   }
 
   // D's top row, once the numbers have scrolled under it: the numbers, as the folded line has them, then the route's name
@@ -6405,7 +6407,7 @@ export class Planner {
     const R = this.readSays(), at = [...box.children].indexOf(document.activeElement); // (a late answer keeps the focus where it was)
     box.replaceChildren(...(R ? [R, ...list.slice(1)] : list).map((x) => (x === R
       ? h('button', { type: 'button', class: `kf-b warn ${R.n1 ? 'danger' : 'unk'}`, 'aria-label': R.aria, onclick: () => this.openFromRow() },
-        h('span', { 'aria-hidden': 'true', html: icon(R.n1 ? 'warnf' : 'unk', 18) }), h('span', {}, R.n1 ? `${R.n1} to read before you go` : `${R.n3} not checked`),
+        h('span', { 'aria-hidden': 'true', html: icon(R.n1 ? 'warnf' : 'unk', 18) }), h('span', {}, R.n1 ? `${R.n1} warning${R.n1 === 1 ? '' : 's'}` : `${R.n3} not checked`),
         h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) }))
       : h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
         h('span', { 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }), h('span', { html: x.html }),
@@ -6976,7 +6978,7 @@ export class Planner {
   }
 
   // ---------------------------------------------------------------- Check's groups (25d part 2)
-  // Every Heads-up item in Check's groups: Read before you go and Worth a look, each item's own (set where it's made;
+  // Every Heads-up item in Check's groups: Warnings and Good to know, each item's own (set where it's made;
   // one without goes to Read, so a forgotten one looks more serious, never less), in order along the route; Not
   // checked, the sources that didn't answer (notChecked()); and how many of each kind you've hidden.
   headsUp(a = this.analysis) {
@@ -7115,8 +7117,8 @@ export class Planner {
     return rows;
   }
 
-  // Check's groups (25d part 2) [jc-check, chk-phone, chk-desk]: Read before you go (the red warning box), Not checked
-  // and Worth a look (rows, each with its group's icon), each in order along the route and lit while its card is open;
+  // Check's groups (25d part 2) [jc-check, chk-phone, chk-desk]: Warnings (the red warning box), Not checked
+  // and Good to know (rows, each with its group's icon), each in order along the route and lit while its card is open;
   // then What Polku looked at, and the kinds you've hidden, to bring back. A tap shows the item on the route (its card).
   renderWarnings() {
     const a = this.analysis;
@@ -7160,9 +7162,9 @@ export class Planner {
         list.length > MAX ? h('p', { class: 'tier-sub' }, `And ${list.length - MAX} more along the route: ‹ › on a card steps through them`) : null);
     };
     box.append(...[
-      tier('read', 'warnf', 'Read before you go', 'What can stop you, turn you back or hurt', H.read),
+      tier('read', 'warnf', 'Warnings', 'What can stop you, turn you back or hurt', H.read),
       tier('not', 'unk', 'Not checked', 'A source didn’t answer: the route may miss something', H.not),
-      tier('look', 'eye', 'Worth a look', 'Sections to know about', H.look),
+      tier('look', 'eye', 'Good to know', 'Sections to know about', H.look),
     ].filter(Boolean));
     // what was looked at, from where, and what that doesn't mean
     const SAY = { ok: ['check', 'Checked'], bad: ['unk', 'Not checked'], wait: ['clock', 'Being asked'], na: ['minus', 'Not used'] };
@@ -7193,8 +7195,8 @@ export class Planner {
     return this.active && this.tab === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || !['folded', 'peek'].includes(st));
   }
 
-  // Check's items on the map [jc-peek, jc-check, jc-worst, jc-step]: Read before you go and Not checked with a place
-  // always (with the planner put away too), Worth a look while Check or an item is in view; the open one apart and
+  // Check's items on the map [jc-peek, jc-check, jc-worst, jc-step]: Warnings and Not checked with a place
+  // always (with the planner put away too), Good to know while Check or an item is in view; the open one apart and
   // ringed, with its obstacle's own icon (#85); the stretches a source didn't cover, dashed (a source missing for the
   // whole route says so in words, with no marker)
   drawHeads() {
@@ -7269,14 +7271,14 @@ export class Planner {
     }, 120);
   }
 
-  // What Check found that's still unread [jc-peek, jc-desk]: what to read before you go, else what wasn't checked; null
+  // What Check found that's still unread [jc-peek, jc-desk]: the warnings, else what wasn't checked; null
   // with neither. The key facts' line says it in its first line's place (renderFacts()), a tap opens Check at the first.
   // Got it on an item's card and Check's All read mark them read, and the line is the key fact again.
   readSays() {
     const H = this.heads, R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
     if (!this.analysis || !(n1 || n3)) return null;
     const first = n1 ? R1[0] : R3[0];
-    return { n1, n3, aria: `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}${n1 + n3 > 1 ? ` and ${n1 + n3 - 1} more` : ''}. Open Check at the first` };
+    return { n1, n3, aria: `${[n1 && `${n1} warning${n1 === 1 ? '' : 's'}`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}${n1 + n3 > 1 ? ` and ${n1 + n3 - 1} more` : ''}. Open Check at the first` };
   }
   // where the key facts' line isn't shown (css/app.css .kf: a phone on its side, 200 % on a phone, a short phone whose
   // map's buttons need its room, js/main.js fitColumn()), the count alone says it in the numbers' row, taking none of the
@@ -7342,8 +7344,8 @@ export class Planner {
     if (next) this.openItemCard(next, { from: c.from });
   }
 
-  // The Check tab's badge [chk-phone]: Read before you go's count with a triangle in the warning colour, else Worth a
-  // look's count, neutral; "?" beside it while something wasn't checked. Its name says all three.
+  // The Check tab's badge [chk-phone]: the warnings' count with a triangle in the warning colour, else Good to
+  // know's count, neutral; "?" beside it while something wasn't checked. Its name says all three.
   renderBadge(H) {
     const tab = this.els.tabBtn && this.els.tabBtn.check;
     if (!tab) return;
@@ -7352,7 +7354,7 @@ export class Planner {
     n.classList.toggle('read', !!r);
     n.innerHTML = r ? `${icon('warnf', 11)}${r}` : l ? String(l) : '';
     unk.hidden = !q;
-    const say = [r && `${r} to read before you go`, q && `${q} not checked`, l && `${l} worth a look`].filter(Boolean).join(', ');
+    const say = [r && `${r} warning${r === 1 ? '' : 's'}`, q && `${q} not checked`, l && `${l} good to know`].filter(Boolean).join(', ');
     if (say) tab.setAttribute('aria-label', `Check: ${say}`); else tab.removeAttribute('aria-label');
   }
 

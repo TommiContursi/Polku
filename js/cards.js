@@ -276,7 +276,7 @@ const editMark = () => svg(LINE('var(--accent-bg)') + END(7, 22) + END(27, 8));
 const routeMark = () => svg(`${LINE('var(--route)')}<circle cx="7" cy="22" r="5.2" style="fill:#2e9e5b;stroke:#fff" stroke-width="2.2"/><circle cx="27" cy="8" r="5.2" style="fill:#111;stroke:#fff" stroke-width="2.2"/>`);
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 // a warning on a stretch: its box in its group's colour, opening its card (Journey C's warn-row)
-const TIER = { read: ['danger', 'warnf', 'Read before you go'], look: ['look', 'eye', 'Worth a look'], not: ['unk', 'unk', 'Not checked'] };
+const TIER = { read: ['danger', 'warnf', 'Warning'], look: ['look', 'eye', 'Good to know'], not: ['unk', 'unk', 'Not checked'] };
 function warnBox(pl, x, from) {
   const [cls, ic, say] = TIER[x.g];
   return h('button', { type: 'button', class: `warn-row ${cls}`, onclick: () => pl.openItemCard(x, { from }) },
@@ -481,7 +481,7 @@ export function wholeCard(pl) {
 }
 
 // ------------------------------------------------------------------ an item of Check (25d part 3)
-const GROUP = { read: ['Read before you go', 'warnf'], look: ['Worth a look', 'eye'], not: ['Not checked', 'unk'] };
+const GROUP = { read: ['Warning', 'warnf'], look: ['Good to know', 'eye'], not: ['Not checked', 'unk'] };
 // where an item comes from, in words: "Live · Fintraffic, 18:40", "From the map · OpenStreetMap", "An estimate · …"
 const SRC = { live: ['Live', 'live'], map: ['From the map', 'mapsrc'], estimate: ['An estimate', 'est'], calculated: ['Calculated', 'check'], router: ['Routing', 'route'] };
 // a note as a sentence: its first letter up, unless it begins with a tag (foot=private) or a name; a full stop
