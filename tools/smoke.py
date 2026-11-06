@@ -949,10 +949,43 @@ SEARCH_PLACE = """(async () => {
     add.click();
     await wait(300);
     if (p.points.length !== 1 || Math.hypot(p.points[0][0] - tower[0], p.points[0][1] - tower[1]) > 1e-5) errs.push(`Start a route here: ${JSON.stringify(p.points)}`);
+    // with a route: Add to my route, Start here and End here (not tapped: a second point would route)
+    c = await pick('Pyhäjärvi', 'Pyhäjärvi');
+    const ks = c ? [...c.querySelectorAll('[data-k]')].map((b) => b.dataset.k) : [];
+    if (c && !['add', 'start', 'end'].every((k) => ks.includes(k))) errs.push(`planning with a route, the card has ${ks.join(', ')}`);
   }
   p.clear();
-  window.fetch = real;
-  L.seedLipas(null);
+  p.setActive(false, { instant: true });
+  window.photonReal = real; // (put back by SEARCH_CLICKED)
+  return errs;
+})()"""
+
+# …and a real click on a result: the card is still the place's after the click's own events (with reduced motion the map
+# is there, and the card open, before the click ends)
+SEARCH_RESULT_AT = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), input = document.querySelector('#search-input');
+  polku.planner.cards.close();
+  input.focus();
+  input.value = 'Pyynikin';
+  input.dispatchEvent(new Event('input'));
+  // (the list is drawn again as each group comes: its row once it has stayed put)
+  let last = '';
+  for (let k = 0; k < 40; k++) {
+    await wait(150);
+    const li = [...document.querySelectorAll('#search-results li[data-kind=places]')].find((x) => x.textContent.startsWith('Pyynikin näkötorni'));
+    const r = li && li.getBoundingClientRect(), at = r && r.height ? JSON.stringify([r.left + r.width / 2, r.top + r.height / 2]) : '';
+    if (at && at === last) return { x: JSON.parse(at)[0], y: JSON.parse(at)[1] };
+    last = at;
+  }
+  return null;
+})()"""
+SEARCH_CLICKED = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], name = () => document.querySelector('.pl-way.card')?.getAttribute('aria-label');
+  for (let k = 0; k < 40 && name() !== 'Pyynikin näkötorni'; k++) await wait(150);
+  await wait(300);
+  if (name() !== 'Pyynikin näkötorni') errs.push(`a click on the result: the card is ${name() || 'gone'}`);
+  window.fetch = window.photonReal;
+  (await import(location.origin + '/js/lipas.js')).seedLipas(null);
   localStorage.removeItem('polku:recentSearches');
   return errs;
 })()"""
@@ -979,6 +1012,13 @@ def lipas(chrome):
     fails = pg.js(LIPAS_RIDE)
     fails += pg.js(LIPAS_HUES)
     fails += pg.js(SEARCH_PLACE)
+    at = pg.js(SEARCH_RESULT_AT)
+    if not at:
+        fails.append('search: Pyynikin näkötorni is not in the results for a click')
+    else:
+        for kind in ('mousePressed', 'mouseReleased'):
+            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+    fails += pg.js(SEARCH_CLICKED)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} LIPAS search & ride, no pink or violet line beside the route, a place from search gets its card" + ''.join(f'\n     - {f}' for f in fails), flush=True)
