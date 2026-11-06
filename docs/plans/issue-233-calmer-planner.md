@@ -492,6 +492,7 @@ Asked for and chosen on 2026-10-27, and drawn in the mock-up's third tab (`?q=fo
 - With Colour by on wind, temperature or rain and the weather on, the map's weather goes to the hour you get there. The strip, the line or the Weather button says "Following the route".
 - On a desktop it lets go when the pointer leaves the profile. On a phone the point stays until you tap the map or change Colour by.
 - Dragging the weather's 48 hours sets the hour, and with it the departure, as today, and stops following. Following never changes the departure.
+  - *Reversed on 2026-11-06 (#869, [its plan](planner-rethought.md)):* the map's hour no longer moves the departure. When is set from the planner's When pill, and Best time to leave's strip is where the departure is slid.
 - Past 48 hours the map's weather stays at its last hour and says "The map's weather reaches 2 days". The profile's colours go on. A longer forecast for the map is an issue of its own.
 - **What it costs:** no new request within 48 hours.
   - The map's grid holds 49 hours of forecast, so following only picks another hour from it: `applyHour()` in `js/wxmap.js`, the same work as dragging the strip.

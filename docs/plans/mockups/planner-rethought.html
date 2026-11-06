@@ -516,7 +516,7 @@ function nextPlace(R) { // the Add row's search, in the sheet: your location, re
 // ---------------------------------------------------------------- the sheet, by version and screen
 function startSheet(R, phone) {
   const tile = (ic, b, sm) => h('button', { type: 'button', class: 'way-tile', 'data-g': 'Tile' }, h('span', { class: 'way-ic', 'aria-hidden': 'true', html: icon(ic, 22) }), h('span', { class: 'way-t' }, h('b', {}, b), h('small', {}, sm)));
-  const pickRow = (ic, b, sm, g, fn) => h('button', { type: 'button', class: 'row', 'data-g': g, 'aria-haspopup': 'menu', onclick: fn }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, b), h('small', {}, sm)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronDown', 18) }));
+  const pickRow = (ic, b, sm, g, fn) => h('button', { type: 'button', class: 'row', 'data-g': g, 'aria-haspopup': 'menu', onclick: fn }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, b), h('small', {}, sm)), h('span', { class: 'way-chev', 'aria-hidden': 'true', style: 'color: var(--muted)', html: icon('chevronDown', 18) })); // (▾: a value you pick, muted as a pill's, never a fold's green ⌄)
   return h('section', { class: 'sheet rt-start', 'data-layout': phone ? 'sheet' : 'side', 'data-state': 'half', 'aria-label': 'Start a route' },
     h('div', { class: 'rt-top' }, h('h3', { class: 'rt-title' }, 'Start a route'), h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Planner size' }), h('span', { class: 'rt-end' }, h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'Close', html: icon('close', 20) }))),
     h('div', { class: 'sheet-body' },
@@ -560,7 +560,7 @@ function draw() {
   frame.append(h('div', { class: 'mk-top', 'aria-hidden': 'true' }, h('span', { class: 'mk-logo' }), h('span', { class: `mk-search${typed ? ' typed' : ''}`, html: `${icon('search', 18)}${typed ? 'Pyynikin näkötorni' : 'Search places or paste coordinates'}` }), h('span', { class: 'mk-pill', html: `${icon(R.parts[0].icon, 18)}${icon('chevronDown', 14)}` }), h('span', { class: 'mk-cog', html: icon('cog', 20) })));
   const sh = S.s === 'start' ? startSheet(R, phone) : sheet(R, phone), v = S.v, s = S.s;
   frame.append(sh);
-  if (phone && s === 'route' && !DEC()) frame.append(h('div', { class: 'mk-tools', style: 'top: calc(46% - 62px)' }, h('button', { type: 'button', class: 'btn done', 'data-g': 'Button' }, 'Done'), h('button', { type: 'button', class: 'modebtn btn', 'data-g': 'Pill ▾', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` }),
+  if (phone && s === 'route') frame.append(h('div', { class: 'mk-tools', style: 'top: calc(46% - 62px)' }, h('button', { type: 'button', class: 'btn done', 'data-g': 'Button' }, 'Done'), h('button', { type: 'button', class: 'modebtn btn', 'data-g': 'Pill ▾', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` }),
     h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'Undo', html: icon('undo', 20) }), h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'Redo', html: icon('redo', 20) }), h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'More', html: icon('more', 20) })));
   // what the screen opens: in Today, a tab or the search; in A, a section; in B, a card; in C, a tab or the profile's legend
   let c = null;

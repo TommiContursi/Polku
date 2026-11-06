@@ -96,7 +96,7 @@ Four Sonnet subagents ran at low effort. Each ran 3–8 searches and opened few 
 
 | What | Today |
 |---|---|
-| One action, three looks | Reverse, Clear route, Share link, Export GPX and Save offline are bare icons (the docked toolbar, the desktop's toolbar), menu items (More) and buttons (the list's foot, Go's Take it along) |
+| One action, three looks | Reverse, Clear route, Share link, Export GPX and Save offline are bare icons (the phone's docked toolbar and the desktop's), menu items (More) and buttons (the list's foot, Go's Take it along) |
 | A value you change, five looks | A row with a green value and › (Route style Balanced ›, Leave Now ›, Your speed Normal ›); a native select as a pill (Colour by Wind ▾); the toolbar's button with ▾ (Follow paths · Hike · Balanced); dotted words (46 min moving); the desktop's style and sport buttons |
 | Green words, six jobs | Back (‹ Route), unfold (Show all waypoints), colour the route (Wind along the route ↑, Use colours), a value (Balanced, Now), a state (Selected), a jump (Strongest headwind … →) |
 | Arrows | › ⌄ ⌃ ▾ → ↑, all on one screen |
@@ -158,7 +158,7 @@ Its priorities, for this plan:
    - the toolbar keeps every tool it has. As it narrows, Take it along (Share link, Export GPX, Save offline) goes to More first, and the drawing tools (Reverse, Back to start, Clear route) keep their room longest;
    - the list's foot keeps Reorder, Reverse and Back to start, as Komoot's list does. Clear route leaves it: it's on the toolbar, or in More;
    - the map's sport stays as it works today.
-2. **The arrows mean one thing each:** › opens, ‹ goes back, ⌄ ⌃ fold here, ▾ picks a value. → and ↑ go.
+2. **The arrows mean one thing each:** › opens, ‹ goes back, ⌄ ⌃ fold here, ▾ picks a value. → and ↑ go. ▾ and ⌄ are the same chevron in the app's icons, so what tells them apart is where they sit: ▾ ends a value you pick (in a pill, or at the end of a row that picks one, muted), and ⌄ ⌃ fold here (alone, or in green words).
 3. **Headings are words,** in sentence case (#767). A heading that opens its settings has ⚙ at its end, as a part's does.
 4. **A desktop may be denser,** with icons, tooltips and keys, never a different kind of control for the same job.
 
@@ -171,6 +171,7 @@ Its priorities, for this plan:
 | When | Go's Leave row, dotted time, the timeline's slider | The When pill: a row under the sport on the first screen, and under the trip's time once there's a route. The map's hour no longer moves the departure (reversing #233's step 3); Best time to leave's strip is where it's slid |
 | Colour by | A native select, and Use colours in Check | Colour by's pill; On the route's list in the profile (B) |
 | The drawing mode | Follow paths ▾ | Stays |
+| The start's sport row | A row ending in the chevron, opening the sport menu | Stays a row, its chevron the muted ▾ of a value you pick; the When row under it the same |
 | A part's sport, Route style, Your speed | Each part's ⚙ (#852's 6j), and the rows under the list | The sport as MTB ▾ in the part's heading, one tap to the sports; the ⚙ keeps Route style and Your speed; the rows under the list go |
 | Show all waypoints | Green, on the left | Green, on the right, after a "Waypoints" heading |
 | A stretch's fold | Green ⌄ and its count | Stays |
@@ -194,7 +195,7 @@ Its priorities, for this plan:
 The route and a card for each detail, with no tabs: the warnings' row opens the Check card; the profile opens the profile card, with On the route (Colour by's list) under it; the trip's box opens the weather card. On a desktop a card opens beside the planner. What changed from the first round's B:
 
 - **When:**
-  - **on the first screen,** a When row under the sport row, in Start a route and in each way to begin: "Leave now ⌄", with the same menu;
+  - **on the first screen,** a When row under the sport row, in Start a route and in each way to begin: "Leave now ▾", with the same menu. Both rows pick a value, so both end in ▾, muted as a pill's chevron (the sport row ends in the same chevron today, rule 2);
   - **with a route,** under the trip's time in the numbers: "1 h 11 min" over "Leave now ▾", where "from now" is today. In that narrow column a time set reads "Sat 09:00 ▾" or "by 20:30 ▾"; the weather card's pill says it whole. Checked in the mock-up at 360 px and 200 %;
   - **once a departure is set,** the Start and End rows show the clock's times, and the moving time moves to each part's heading and the trip's box;
   - **its menu:** Leave now, Leave at…, Arrive by… and Best time to leave › (once there's a route); Last available is left out;
@@ -305,7 +306,7 @@ Each is small and tried on a phone before the next, in this order (decided 2026-
    - the clock's times on the Start and End rows once a departure is set; the moving time to each part's heading and the trip's box;
    - its menu: Leave now and Leave at for now (Arrive by is PR 6, Best time to leave PR 5).
 
-   It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 4. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
+   The start's sport row keeps its look, its chevron read as ▾ (rule 2). It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 4. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
 3. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.
 4. **The weather card from the trip's box** (Parts 22, #431, #794): Go's time and weather move into it, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
 5. **Best time to leave** (#273, parts 1, 3 and 5; #856):
