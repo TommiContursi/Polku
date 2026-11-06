@@ -5058,9 +5058,13 @@ export class Planner {
     field.addEventListener('blur', () => { if (picked) this.whenPop?.close(this.keyed); }); // (left by a key: the focus back on the row)
     const pick = h('div', { class: `menu-pick${at != null ? ' on' : ''}` },
       h('span', { 'aria-hidden': 'true', html: `${icon('calendar', 17)}<span>Leave at…${at != null ? `<small>${escapeHtml(day)}</small>` : ''}</span>${at != null ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}` }), field);
+    const keyed = anchor.matches(':focus-visible');
     anchor.setAttribute('aria-expanded', 'true');
     this.whenPop = popMenu(anchor, [{ group: 'When', items: [{ icon: 'clock', label: 'Leave now', radio: true, checked: at == null, fn: () => this.setLeave(null) }, { node: pick }] }],
       { label: 'When', align: 'left', sheet: true, onClose: () => { this.whenPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
+    // with a time set, the focus on Leave at… from the keyboard, and on neither from a tap: on Leave now it reads as
+    // picked, and a field focused under a finger opens an iPhone's picker
+    if (at != null) { if (keyed) field.focus({ preventScroll: true }); else this.whenPop.el.querySelector(':focus')?.blur(); }
   }
   // a step's top row: Back on the left; on the right the panel's place (desktops) and ✕
   backRow(label = 'Ways to begin', fn = () => this.wayBack()) {
