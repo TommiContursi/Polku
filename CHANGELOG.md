@@ -11,12 +11,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The waypoints a stretch folds keep their names and distances in bold when they're shown, as the others' are.
 - The weather in the list's tooltips and the profile's starts with the sky's icon: sun, cloud, rain or snow, or the moon on a clear night. A stretch's shows its wettest sky, or where it's dry, its cloudiest.
 
+<<<<<<< HEAD
 ### Warnings and Good to know ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - Check's groups are now called **Warnings** (what can stop you, turn you back or hurt), **Not checked** and **Good to know**.
 - Where the app said "to read before you go", it now says "warnings": the line under the route's numbers says "2 warnings", and so do the folded planner's line and the Check tab.
 - In **List settings**, **Worth a look** is now called **Good to know**.
 
+=======
+>>>>>>> origin/main
 ### Each part's ⚙: its sport, speed and route style ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - In the route's list, each part's heading has a **⚙**. It opens the part's **Sport**, which changes only that part's legs (with **Undo**), its sport's **Your speed**, with the speed editor in place, and its sport's **Route style**, as the drawing menu has them for the next leg.
