@@ -39,7 +39,7 @@
   --page: #dfe6e0; /* behind the map, before it draws */
   /* The design system's values (docs/plans/design-system.md, #382), named by what they're for. A control
      takes them when it's next touched; DESIGN.md lists them, and `tools/smoke.py values` keeps the two equal. */
-  /* Check's three groups (25d): Read before you go, Worth a look, Not checked, and the box behind each */
+  /* Check's three groups (25d): Warnings, Good to know, Not checked, and the box behind each */
   --danger: #b4232a; --danger-soft: #fbe9e9;
   --look: #8a5a00; --look-soft: #fbf4e2;
   --unk: #47607a; --unk-soft: #eaf0f6;
@@ -979,7 +979,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-tabs .sheet-dock { align-self: center; color: var(--muted); }
 .pl-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
 .pl-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 6px; }
-/* Check's badge (25d part 2): Read before you go's count with a triangle in the warning colour, else a neutral count;
+/* Check's badge (25d part 2): the warnings' count with a triangle in the warning colour, else a neutral count;
    "?" beside it while something wasn't checked */
 .pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; gap: 2px; border-radius: 9px; background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .pl-tab-n.read:not(:empty) { background: var(--danger); color: var(--surface-solid); box-shadow: none; }
@@ -1147,7 +1147,8 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right) { visibility: hidden; }
 @media (max-width: 720px) { body[data-sheet="full"] .map-ctrls { visibility: hidden; } } /* on desktop it has its own column beside the planner */
 .sec { border-top: 1px solid var(--line); }
-.sec-head { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 11px 0 9px; border: 0; background: none; cursor: pointer; text-align: left; color: var(--text); font: inherit; }
+.sec-head { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 11px 0 9px; border: 0; background: none; text-align: left; color: var(--text); font: inherit; }
+button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #761) */
 .sec-title { white-space: nowrap; }
 .sec-count { font-size: 11px; font-weight: 700; }
 .sec-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1461,7 +1462,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-point .wp-mini { position: relative; z-index: 1; }
 .wpl-point.in-dash > span:first-child::before, .wpl-point.out-dash > span:first-child::after, .wpl-stretch.straight .wpl-line::before { background: repeating-linear-gradient(to bottom, var(--part) 0 6px, transparent 6px 10px); }
 .wpl-point.brk > span:first-child::after { left: calc(50% - 1.5px); width: 3px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 3px / 3px 6px repeat-y; }
-.wpl-point.shape b { font-weight: var(--weight-regular); }
 /* a desktop's tools on a waypoint's row (#761): Rename, Remove and the grip at the far end, where › is, while a mouse is
    over the row or it has the focus; its words keep their room, so nothing moves under the pointer. No motion: they're
    there at once, and a drag follows the pointer as Reorder's does. */
@@ -1724,7 +1724,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .warn-row.unk { background: var(--unk-soft); border: 1.5px dashed var(--unk); }
 .warn-row.unk > span:first-child, .warn-row.unk em { color: var(--unk); }
 /* ---------------------------------------------------------------- Check's groups (25d part 2, #366)
-   Read before you go, Not checked and Worth a look lead the Check tab, with no header of their own: Read's items the
+   Warnings, Not checked and Good to know lead the Check tab, with no header of their own: Read's items the
    red warning box (warn-row danger), the others rows (row) with their group's icon in its colour, each lit while its
    card is open (aria-current). Then What Polku looked at, and the kinds hidden, to bring back. */
 .tier + .tier { margin-top: 8px; }
@@ -2458,6 +2458,7 @@ body.dropping .drop-hint { display: flex; }
 }
 .tip > b { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 13px; }
 .tip > span { display: block; }
+:is(.tip > span, .profile-tip) > .ic { display: inline-block; margin-right: 4px; vertical-align: -2px; } /* (the sky's, before the weather's words, #761) */
 :root[data-theme="dark"] .tip { background: #e8ece9; color: #111; }
 .tip kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; border: 1px solid currentColor; font: 600 11px/1 ui-monospace, Menlo, monospace; opacity: .8; }
 
