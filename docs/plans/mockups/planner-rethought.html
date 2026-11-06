@@ -99,6 +99,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .rt-pill .ic { flex: none; }
 .rt-pill > span { min-width: 0; }
 .rt-pill > .ic:last-child { color: var(--muted); }
+.ic.caret { width: 10px; height: 10px; flex: none; color: var(--muted); } /* (▾, proposed: a value you pick, in the muted ink a pill gives its arrow) */
 .rt-pill:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .rt-menu { position: absolute; z-index: 9; left: 12px; top: 62px; width: min(300px, calc(100% - 24px)); }
 .rt-menu .menu-item.two-line { min-height: 48px; flex: none; } /* (the menu is a flex column: as a sheet of its own its items keep their height and it scrolls) */
@@ -314,9 +315,11 @@ const chevR = (s = 18) => h('span', { class: 'way-chev', 'aria-hidden': 'true', 
 const go = (s) => () => { S.s = s; draw(); };
 const WHEN = { now: 'Leave now', at: 'Leave Sat 09:00', by: 'Arrive by 20:30' }, WHEN_S = { now: 'Leave now', at: 'Sat 09:00', by: 'by 20:30' };
 const DEC = () => S.v === 'd'; // (B as decided, 2026-11-06)
+const CARET = '<svg class="ic caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3h8L5 8.5z" fill="currentColor"/></svg>';
+const pickArrow = (size = 16) => (DEC() ? CARET : icon('chevronDown', size)); // (as decided, ▾ for a value you pick; the first round drew the chevron)
 const CALM = () => DEC() && S.t === 'calm'; // (and its calmer top, decided the same evening)
 const whenPill = (short) => h('button', { type: 'button', class: `rt-pill${short ? ' rt-pill-sum' : ''}`, 'data-g': 'Pill ▾', 'aria-haspopup': 'menu', 'aria-label': `When: ${WHEN[S.w]}`, 'aria-expanded': String(S.s === 'when'), onclick: () => { S.s = S.s === 'when' ? 'route' : 'when'; draw(); } },
-  short ? null : h('span', { html: icon('clock', 18) }), h('span', {}, short ? WHEN_S[S.w] : S.r === 'fi' && S.w === 'at' ? 'Leave Sat 08/11 at 09:00' : WHEN[S.w]), h('span', { html: icon('chevronDown', 16) }));
+  short ? null : h('span', { html: icon('clock', 18) }), h('span', {}, short ? WHEN_S[S.w] : S.r === 'fi' && S.w === 'at' ? 'Leave Sat 08/11 at 09:00' : WHEN[S.w]), h('span', { html: pickArrow() }));
 const whenMenu = () => {
   // (as popMenu() builds an item: its icon, its words with a line under them, a tick on the chosen one)
   const item = (k, label, desc, ic) => h('button', { type: 'button', role: 'menuitemradio', class: 'menu-item two-line', 'aria-checked': String(S.w === k), onclick: () => { S.w = k; S.s = 'route'; draw(); },
@@ -356,7 +359,7 @@ function chart(R, big) {
   const scrub = big ? `<line x1="${X(max * 0.62)}" x2="${X(max * 0.62)}" y1="0" y2="${H - 14}" stroke="var(--text)" stroke-width="1.5"/>` : '';
   return `<svg class="rt-prof${big ? ' big' : ''}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Profile: ${R.nums[0][0]}, ${R.nums[2][0]}">${fills}<path d="${line}" fill="none" stroke="var(--chart-ink)" stroke-width="1.3"/>${ticks}${scrub}</svg>`;
 }
-const colourPill = (R) => h('button', { type: 'button', class: 'rt-pill', 'data-g': 'Pill ▾', 'aria-haspopup': 'menu' }, h('span', {}, `Colour by: ${R.chosen}`), h('span', { html: icon('chevronDown', 16) }));
+const colourPill = (R) => h('button', { type: 'button', class: 'rt-pill', 'data-g': 'Pill ▾', 'aria-haspopup': 'menu' }, h('span', {}, `Colour by: ${R.chosen}`), h('span', { html: pickArrow() }));
 const onMap = () => h('label', { class: 'tg', 'data-g': 'Switch' }, h('span', { class: 'tg-text' }, 'On map'), h('input', { type: 'checkbox', role: 'switch' }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
 function profileBlock(R, opens) {
   const svg = h('div', { html: chart(R, false) });
@@ -364,10 +367,13 @@ function profileBlock(R, opens) {
     opens ? h('button', { type: 'button', class: 'rt-prof-btn', 'data-g': 'Row ›', 'aria-label': 'Profile and On the route: open', onclick: go('profile') }, svg) : svg);
 }
 // the trip's box (Parts 22): a day a row, ›, opening the weather card
+// (the box's weather, without what a sport's row already says: the wind, where one says it)
+const boxWeather = (R) => { const line = S.w === 'at' ? '4 °C · wind up to 5 m/s · dry · in the light' : R.day.box, said = R.calmKf.some(([, , , t]) => /wind/.test(t));
+  return said ? line.split(' · ').filter((x) => !/^wind/.test(x)).join(' · ') : line; };
 const there = (R) => (S.w === 'by' ? '20:30' : S.w === 'at' ? (R.key === 'mtb' ? '09:26' : '10:11') : R.arrive);
 const calmBox = (R) => h('div', { class: 'p22-box', role: 'group', 'aria-label': 'The trip' },
   h('div', { class: 'day rt-calmday' }, h('div', { class: 'rt-dayline' }, whenPill(), h('span', {}, S.w === 'by' ? `· leave ${R.key === 'mtb' ? '20:04' : '19:19'}` : `→ there at ${there(R)}`), h('small', {}, `${R.moving} moving`)),
-    h('button', { type: 'button', class: 'rt-dayweather', 'data-g': 'Row ›', onclick: go('weather') }, h('span', { html: `${icon(S.w === 'at' ? 'cloudSun' : R.day.sky, 14)}${S.w === 'at' ? '4 °C · wind up to 5 m/s · dry · in the light' : R.day.box}` }), chevR())));
+    h('button', { type: 'button', class: 'rt-dayweather', 'data-g': 'Row ›', onclick: go('weather') }, h('span', { html: `${icon(S.w === 'at' ? 'cloudSun' : R.day.sky, 14)}${boxWeather(R)}` }), chevR())));
 const tripBox = (R) => CALM() ? calmBox(R) : h('div', { class: 'p22-box', role: 'group', 'aria-label': 'The trip' },
   h('button', { type: 'button', class: 'day', 'data-g': 'Row ›', onclick: go('weather') },
     h('span', { class: 'day-when' }, `${S.w === 'at' ? 'Sat 08/11' : 'Today'} · ${S.w === 'by' ? `leave ${R.key === 'mtb' ? '20:04' : '19:19'}` : S.w === 'at' ? '09:00' : 'now'} → there at ${S.w === 'by' ? '20:30' : S.w === 'at' ? (R.key === 'mtb' ? '09:26' : '10:11') : R.arrive}${DEC() ? ` · ${R.moving} moving` : ''}`),
@@ -383,7 +389,7 @@ function list(R) {
   const ol = h('ol', { class: 'wpl p21 p21-end', 'aria-label': 'Waypoints, in order' });
   R.parts.forEach((part, k) => {
     const head = DEC() ? h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(part.icon, 16) }),
-        h('div', { class: 'sec2-t' }, h('button', { type: 'button', class: 'rt-pill rt-sport', 'data-g': 'Pill ▾', 'aria-haspopup': 'menu', 'aria-label': `${part.label}: this part’s sport` }, h('span', {}, part.label), h('span', { html: icon('chevronDown', 16) })), h('small', {}, part.nums)),
+        h('div', { class: 'sec2-t' }, h('button', { type: 'button', class: 'rt-pill rt-sport', 'data-g': 'Pill ▾', 'aria-haspopup': 'menu', 'aria-label': `${part.label}: this part’s sport` }, h('span', {}, part.label), h('span', { html: pickArrow() })), h('small', {}, part.nums)),
         h('button', { type: 'button', class: 'tool sec2-set', 'data-g': 'Icon', 'aria-label': `${part.label}: Route style and Your speed, for every ${part.label} leg`, html: icon('cog', 18) })) // (it sets the sport's style and speed: its menu says "Route style · MTB legs")
       : h('button', { type: 'button', class: 'sec2-head p20-go', 'data-g': 'Row ⚙', 'aria-haspopup': 'menu', 'aria-label': `${part.label}, ${part.nums}: sport, speed and route style` },
       h('span', { 'aria-hidden': 'true', html: icon(part.icon, 16) }), h('div', { class: 'sec2-t' }, h('b', {}, part.label), h('small', {}, part.nums)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('cog', 18) }));
@@ -542,7 +548,7 @@ function nextPlace(R) { // the Add row's search, in the sheet: your location, re
 // ---------------------------------------------------------------- the sheet, by version and screen
 function startSheet(R, phone) {
   const tile = (ic, b, sm) => h('button', { type: 'button', class: 'way-tile', 'data-g': 'Tile' }, h('span', { class: 'way-ic', 'aria-hidden': 'true', html: icon(ic, 22) }), h('span', { class: 'way-t' }, h('b', {}, b), h('small', {}, sm)));
-  const pickRow = (ic, b, sm, g, fn) => h('button', { type: 'button', class: 'row', 'data-g': g, 'aria-haspopup': 'menu', onclick: fn }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, b), h('small', {}, sm)), h('span', { class: 'way-chev', 'aria-hidden': 'true', style: 'color: var(--muted)', html: icon('chevronDown', 18) })); // (▾: a value you pick, muted as a pill's, never a fold's green ⌄)
+  const pickRow = (ic, b, sm, g, fn) => h('button', { type: 'button', class: 'row', 'data-g': g, 'aria-haspopup': 'menu', onclick: fn }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, b), h('small', {}, sm)), h('span', { class: 'way-chev', 'aria-hidden': 'true', style: 'color: var(--muted)', html: pickArrow(18) })); // (▾: a value you pick, as a pill's, never a fold's green ⌄)
   return h('section', { class: 'sheet rt-start', 'data-layout': phone ? 'sheet' : 'side', 'data-state': 'half', 'aria-label': 'Start a route' },
     h('div', { class: 'rt-top' }, h('h3', { class: 'rt-title' }, 'Start a route'), h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Planner size' }), h('span', { class: 'rt-end' }, h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'Close', html: icon('close', 20) }))),
     h('div', { class: 'sheet-body' },
@@ -557,7 +563,7 @@ function sheet(R, phone) {
     : h('div', { class: 'rt-top' }, whenPill(), h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Planner size' }), h('span', { class: 'rt-end' }, h('button', { type: 'button', class: 'tool sheet-fold', 'data-g': 'Icon', 'aria-label': 'Fold', html: icon('chevronDown', 20) })));
   const body = h('div', { class: 'sheet-body' }); // (the whole sheet scrolls as one under its top row, as the app's does at half and full)
   el.append(top, body);
-  if (phone && full) body.append(h('div', { class: 'mk-dock' }, h('button', { type: 'button', class: 'btn done', 'data-g': 'Button' }, 'Done'), h('button', { type: 'button', class: 'modebtn btn', 'data-g': 'Pill ▾', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` }),
+  if (phone && full) body.append(h('div', { class: 'mk-dock' }, h('button', { type: 'button', class: 'btn done', 'data-g': 'Button' }, 'Done'), h('button', { type: 'button', class: 'modebtn btn', 'data-g': 'Pill ▾', html: `${icon('auto', 16)} Follow paths ${pickArrow(14)}` }),
     h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'Undo', html: icon('undo', 20) }), h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'Redo', html: icon('redo', 20) }), h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'More', html: icon('more', 20) }),
     v === 'today' ? h('div', { class: 'mk-icons' }, ...['reverse', 'loop', 'link', 'download', 'offline', 'trash', 'more'].map((ic) => h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': ic, html: icon(ic, 20) })))
       : v === 'd' ? h('div', { class: 'mk-icons' }, ...[['reverse', 'Reverse'], ['loop', 'Back to start'], ['trash', 'Clear route']].map(([ic, t]) => h('button', { type: 'button', class: `tool${ic === 'trash' ? ' danger' : ''}`, 'data-g': 'Icon', 'aria-label': t, html: icon(ic, 20) }))) : null));
@@ -590,7 +596,7 @@ function draw() {
   frame.append(h('div', { class: 'mk-top', 'aria-hidden': 'true' }, h('span', { class: 'mk-logo' }), h('span', { class: `mk-search${typed ? ' typed' : ''}`, html: `${icon('search', 18)}${typed ? 'Pyynikin näkötorni' : 'Search places or paste coordinates'}` }), h('span', { class: 'mk-pill', html: `${icon(R.parts[0].icon, 18)}${icon('chevronDown', 14)}` }), h('span', { class: 'mk-cog', html: icon('cog', 20) })));
   const sh = S.s === 'start' ? startSheet(R, phone) : sheet(R, phone), v = S.v, s = S.s;
   frame.append(sh);
-  if (phone && (s === 'route' || s === 'peek')) frame.append(h('div', { class: 'mk-tools', style: 'top: calc(46% - 62px)' }, h('button', { type: 'button', class: 'btn done', 'data-g': 'Button' }, 'Done'), h('button', { type: 'button', class: 'modebtn btn', 'data-g': 'Pill ▾', html: `${icon('auto', 16)} Follow paths ${icon('chevronDown', 14)}` }),
+  if (phone && (s === 'route' || s === 'peek')) frame.append(h('div', { class: 'mk-tools', style: 'top: calc(46% - 62px)' }, h('button', { type: 'button', class: 'btn done', 'data-g': 'Button' }, 'Done'), h('button', { type: 'button', class: 'modebtn btn', 'data-g': 'Pill ▾', html: `${icon('auto', 16)} Follow paths ${pickArrow(14)}` }),
     h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'Undo', html: icon('undo', 20) }), h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'Redo', html: icon('redo', 20) }), h('button', { type: 'button', class: 'tool', 'data-g': 'Icon', 'aria-label': 'More', html: icon('more', 20) })));
   // what the screen opens: in Today, a tab or the search; in A, a section; in B, a card; in C, a tab or the profile's legend
   let c = null;

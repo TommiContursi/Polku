@@ -139,6 +139,7 @@ Its priorities, for this plan:
 
 **What a control does decides how it looks.** Each kind below is a control in DEVELOPING's Shared controls already. Four controls are new; the user chose them on 2026-11-06, and each joins Shared controls in the PR that builds it:
 - **the When pill:** Colour by's pill (`mode-select`) as a button, opening the app's menu; a part's sport (MTB ▾) is the same pill;
+- **▾, a caret icon:** a small filled triangle for a value you pick, apart from the fold's chevron (rule 2);
 - **On the route's list:** a `row` with a tick and its bar, the chosen one unfolded with Check's lengths;
 - **Best time to leave's strip:** a bar an hour, scrubbed by a finger;
 - **the trip's box:** Go's day cards (`days`, `day`) as buttons ending in › (Parts 22's).
@@ -158,7 +159,7 @@ Its priorities, for this plan:
    - the toolbar keeps every tool it has. As it narrows, Take it along (Share link, Export GPX, Save offline) goes to More first, and the drawing tools (Reverse, Back to start, Clear route) keep their room longest;
    - the list's foot keeps Reorder, Reverse and Back to start, as Komoot's list does. Clear route leaves it: it's on the toolbar, or in More;
    - the map's sport stays as it works today.
-2. **The arrows mean one thing each:** › opens, ‹ goes back, ⌄ ⌃ fold here, ▾ picks a value. → and ↑ go. ▾ and ⌄ are the same chevron in the app's icons, so what tells them apart is where they sit: ▾ ends a value you pick (in a pill, or at the end of a row that picks one, muted), and ⌄ ⌃ fold here (alone, or in green words).
+2. **The arrows mean one thing each:** › opens, ‹ goes back, ⌄ ⌃ fold here, ▾ picks a value. → and ↑ go. ▾ is a small filled triangle, a new icon (`caret`, proposed for `js/ui.js`), in a value you pick: When, a part's sport, Colour by, the drawing mode, and the start's sport and When rows. ⌄ ⌃ stay the chevron, for folding (alone, or in green words). Today every one of them is the chevron, so the two jobs look the same.
 3. **Headings are words,** in sentence case (#767). A heading that opens its settings has ⚙ at its end, as a part's does.
 4. **A desktop may be denser,** with icons, tooltips and keys, never a different kind of control for the same job.
 
@@ -173,7 +174,8 @@ Its priorities, for this plan:
 | The warnings | A row with › in the key facts | A box in the numbers row, ⚠ 3 over "warnings", opening the Check card (a row of its own at 200 %) |
 | Each sport's row in the key facts | Its distance and a fact | Its icon in its colour, its one standout fact and ›; no distance |
 | The drawing mode | Follow paths ▾ | Stays |
-| The start's sport row | A row ending in the chevron, opening the sport menu | Stays a row, its chevron the muted ▾ of a value you pick; the When row under it the same |
+| The start's sport row | A row ending in the chevron, opening the sport menu | Stays a row, ending in ▾; the When row under it the same |
+| A pill's arrow (Colour by, Follow paths, When, a part's sport) | The chevron, as a fold's | ▾ |
 | A part's sport, Route style, Your speed | Each part's ⚙ (#852's 6j), and the rows under the list | The sport as MTB ▾ in the part's heading, one tap to the sports, and its ⚙ beside it for that sport's style and speed on every leg; Route style and Your speed also one row a sport under the list ("MTB … Balanced ›", its speeds under it), opening both; the long speed row goes |
 | Show all waypoints | Green, on the left | Green, on the right, after a "Waypoints" heading |
 | A stretch's fold | Green ⌄ and its count | Stays |
@@ -197,7 +199,7 @@ Its priorities, for this plan:
 The route and a card for each detail, with no tabs: the warnings open the Check card; the profile opens the profile card, with On the route (Colour by's list) under it; the trip's box opens the weather card. On a desktop a card opens beside the planner. What changed from the first round's B:
 
 - **When:**
-  - **on the first screen,** a When row under the sport row, in Start a route and in each way to begin: "Leave now ▾", with the same menu. Both rows pick a value, so both end in ▾, muted as a pill's chevron (the sport row ends in the same chevron today, rule 2);
+  - **on the first screen,** a When row under the sport row, in Start a route and in each way to begin: "Leave now ▾", with the same menu. Both rows pick a value, so both end in ▾ (rule 2; the sport row ends in the fold's chevron today);
   - **with a route,** the trip's box's first line: "Leave now ▾ → there at 20:02" (with Arrive by, "Arrive by 20:30 ▾ · leave 19:19"), the day's weather on the line under it. The numbers keep the time alone. This is the calmer top's ([decided the same evening](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6695559607)); it replaces "under the trip's time in the numbers", first drawn that afternoon and kept on the mock-up's **B's top: Before**;
   - **once a departure is set,** the Start and End rows show the clock's times, and the moving time moves to each part's heading and the trip's box;
   - **its menu:** Leave now, Leave at…, Arrive by… and Best time to leave › (once there's a route); Last available is left out;
@@ -207,7 +209,7 @@ The route and a card for each detail, with no tabs: the warnings open the Check 
 - **Best time to leave:** the departure's day, a day at a time with ‹ ›, as far as the forecast reaches (ten days); on a trip over days, the first day's departure only. It weighs the dark, rain and heat for everyone, headwind on a bike, and wind, waves and the crossing window on the water, each part by its own sport, and says why in words.
 - **The calmer top** ([decided the same evening](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6695559607), from the user's look at the mock-up: too much at the top):
   - **the numbers** keep the time alone, and **the warnings** are a fourth figure in their style, "⚠ 3" over "warnings", in red, opening the Check card. Without warnings it says the first that holds: Not checked (a source failed), Good to know's count, or ✓. At 200 % it takes a row of its own;
-  - **each sport's row** stays, built for a phone: its icon in the sport's colour, its one standout fact and ›, without its distance (the part's heading has it). The trip's box doesn't repeat what a sport's row says;
+  - **each sport's row** stays, built for a phone: its icon in the sport's colour, its one standout fact and ›, without its distance (the part's heading has it). The trip's box doesn't repeat what a sport's row says: where Paddle's row says the wind, the box's weather line is "3 °C · dry · in the dark";
   - **the profile:** Colour by and On map move into the profile card, and a quiet line over the profile names the colouring;
   - **When** is the trip's box's first line (above).
 - **A part's sport** is "MTB ▾" in its heading, one tap to the sports. **Route style and Your speed** stay under the list, one row a sport ("MTB … Balanced ›", its speeds under it), a tap opening that sport's Route style and Your speed together; the long speed row goes. **A part's ⚙ stays** beside MTB ▾ (corrected the same evening): a style and a speed are a sport's, and the ⚙ sets them for every leg of that sport, as its menu's group title says ("Route style · MTB legs"). So there are two ways to them, by a tool lives where you work with it: the ⚙ while working on one part, the rows to look over every sport at once. Settings keeps your speeds; Layers holds neither. This replaces "the rows under the list go".
@@ -318,7 +320,7 @@ Each is small and tried on a phone before the next, in this order (decided 2026-
    - the clock's times on the Start and End rows once a departure is set; the moving time to each part's heading and the box's first line;
    - its menu: Leave now and Leave at for now (Best time to leave is PR 6, Arrive by PR 7).
 
-   The start's sport row keeps its look, its chevron read as ▾ (rule 2). It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 5. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
+   The start's sport row and every pill in it end in ▾, the caret (rule 2). It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 5. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
 3. **The profile in the peek** (#742): under the route's numbers, about 70 px, while you draw and in the route's view; a quiet line over it, "Profile · Way type ›"; it and the profile open the profile at half (the profile card in PR 8), where Colour by and On map stay until PR 8 moves them into the card. `measureSheet()`'s peek, `fitColumn()` at 200 %. Checks: `sheetstops`, `keyfacts`, `routeview`, at 360 px and 200 %.
 4. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.
 5. **The trip's box's weather line, and the weather card it opens** (Parts 22, #431, #794): Go's time and weather move into the card, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
