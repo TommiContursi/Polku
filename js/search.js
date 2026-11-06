@@ -2,7 +2,8 @@
 // stops by name (js/lipas.js), named trails on the loaded map, and coordinates
 // like "61.497, 23.761". Each group shows as it arrives. Picking a route fits it
 // and opens its card, where "Follow this route" is one tap away; picking a place
-// opens its card at a pin. Recent picks are kept on this device.
+// opens its card at a pin, and coordinates or a trail the spot's. Recent picks are
+// kept on this device.
 
 import { PHOTON, LIPAS_TYPES } from './config.js';
 import { request } from './net.js';
@@ -33,7 +34,7 @@ export function initSearch(map, input, list, app) {
 
   const remember = (r) => {
     if (r.kind === 'coords') return;
-    const keep = { kind: r.kind, label: r.label, sub: r.sub, center: r.center, bbox: r.bbox, zoom: r.zoom, lipas: r.lipas, osm: r.osm };
+    const keep = { kind: r.kind, label: r.label, sub: r.sub, center: r.center, bbox: r.bbox, zoom: r.zoom, lipas: r.lipas, osm: r.osm, at: r.at };
     const old = store.get(RECENT, []).filter((x) => !(x.label === keep.label && x.sub === keep.sub));
     store.set(RECENT, [keep, ...old].slice(0, MAX.recent));
   };
@@ -66,6 +67,8 @@ export function initSearch(map, input, list, app) {
     }
     // a place: its card at its point once the map is there, as a place's icon has (an area's point is Photon's, inside it)
     if (r.kind === 'places') map.once('moveend', () => app.openPlace(r));
+    // coordinates and a trail: the spot's card at a pin, once the map has drawn what's there, as a link to a spot opens
+    else if (r.at) map.once('moveend', () => map.once('idle', () => app.openSpot(r.at, r.kind === 'trails' ? r.label : '')));
     if (r.bbox) map.fitBounds(r.bbox, { padding: app.padding ? app.padding() : 60, maxZoom: 15, duration: 900 });
     else map.flyTo({ center: r.center, zoom: Math.max(map.getZoom(), r.zoom || 14), duration: 900 });
   };
@@ -115,7 +118,7 @@ export function initSearch(map, input, list, app) {
     if (m) {
       let lat = +m[1], lon = +m[2];
       if (Math.abs(lat) > 90) [lat, lon] = [lon, lat];
-      groups = { coords: [{ kind: 'coords', label: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, sub: 'Coordinates', center: [lon, lat], zoom: 15 }] };
+      groups = { coords: [{ kind: 'coords', label: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, sub: 'Coordinates', center: [lon, lat], at: [lon, lat], zoom: 15 }] };
       active = 0;
       render();
       return;
@@ -227,7 +230,9 @@ function trailsNamed(map, q) {
   return [...by.entries()]
     .sort((a, b) => b[1].len - a[1].len)
     .map(([name, t]) => {
-      const b = bbox(t.pts);
-      return { kind: 'trails', label: name, sub: `${t.cls === 'track' ? 'Track' : 'Path'} · on the map`, bbox: [[b[0], b[1]], [b[2], b[3]]] };
+      const b = bbox(t.pts), mid = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2];
+      // (its card on the trail, near the middle of the view it's fitted to)
+      const at = t.pts.reduce((best, c) => (dist(c, mid) < dist(best, mid) ? c : best), t.pts[0]);
+      return { kind: 'trails', label: name, sub: `${t.cls === 'track' ? 'Track' : 'Path'} · on the map`, bbox: [[b[0], b[1]], [b[2], b[3]]], at };
     });
 }
