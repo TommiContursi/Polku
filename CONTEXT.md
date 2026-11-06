@@ -99,6 +99,10 @@ What the route is made of: its gradient, surface, way type and width, for exampl
 **Colour by**:
 The choice of what colours the route and the profile.
 
+**Size**:
+How far the planner is raised on a phone: the line, the peek, half or full.
+_Avoid_: stop (a stop is a wait at a waypoint), fold level
+
 **Weather card**:
 The trip's weather: where you'll be, at the time you're there.
 _Avoid_: weather window
