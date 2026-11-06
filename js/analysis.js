@@ -296,7 +296,7 @@ export function accessOf(tags, sport) {
 export function accessRow(m, at, len, lngLat, note, said) {
   const text = said || (!m.no ? 'Marked private in OpenStreetMap' : m.tag === 'foot=no' ? 'Marked no walking in OpenStreetMap' : 'Marked no access in OpenStreetMap');
   const why = !m.no ? 'usually closed: factory and military sites, house yards, roads closed by a sign' : 'closed unless a sign says otherwise';
-  // closed (no) can stop you; private is worth a look (often a yard, or a forest road everyman's right lets you on)
+  // closed (no) can stop you; private is good to know (often a yard, or a forest road everyman's right lets you on)
   return { at, len, text, note: note || `${m.tag} · ${why}`, lngLat, osm: true, hide: 'Private or no access', fix: 'Tagged wrong? Leave a note on OpenStreetMap', tier: m.no ? 'read' : 'look', src: OSM };
 }
 
