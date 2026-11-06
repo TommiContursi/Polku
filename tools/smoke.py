@@ -17268,7 +17268,7 @@ WARN_SLOT = """async (st, n) => {
   if (!l || !l.classList.contains('warn') || l.textContent.trim() !== '1 to read before you go') errs.push(`${st}: the line under the numbers says "${l && l.textContent.trim()}"`);
   if (p.els.points.querySelector('.sec2 .warn-row')) errs.push(`${st}: the route's list says it again`);
   const onLine = [...p.els.points.querySelectorAll('.wpl-stretch .wpl-warns .read')].map((x) => x.textContent);
-  if (onLine.join() !== '1 to read') errs.push(`${st}: the stretch's warnings in the list: ${onLine.join(' / ') || 'none'} (#761)`);
+  if (onLine.length !== 1 || !/^In the dark for \\d+ km$/.test(onLine[0])) errs.push(`${st}: the stretch's warnings in the list: ${onLine.join(' / ') || 'none'} (#761: the one warning by its name)`);
   if (rr && !rr.hidden && rr.offsetParent) errs.push(`${st}: a row says it too: "${rr.textContent}"`);
   return errs;
 }"""
