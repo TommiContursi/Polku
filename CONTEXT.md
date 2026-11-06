@@ -55,6 +55,10 @@ _Avoid_: routing mode
 **Route style**:
 How the router weighs the ways for the whole route: Balanced or Flowy trails, for example.
 
+**Toolbar**:
+The bar for drawing: Done or Edit, the drawing mode, undo and redo, the route's tools and More.
+_Avoid_: toolbox
+
 ### The trip
 
 **Trip**:
