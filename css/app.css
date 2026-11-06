@@ -1406,6 +1406,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wpl-top:empty { display: none; }
 .wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
 .wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
+.wpl > .sec2:first-child { padding-top: 2px; } /* (right under Show all's row: at half on a phone, the start and the first stretch in sight, #740) */
 .wpl .sec2:not(:first-child) { position: relative; box-shadow: none; }
 .wpl .sec2:not(:first-child)::after { content: ""; position: absolute; top: 0; left: calc(44px + var(--when)); right: 0; height: 1px; background: var(--line); } /* (the rule between two parts starts after the line, so it doesn't cut it) */
 .wpl .sec2:has(+ .wait) { padding-bottom: 0; }
@@ -1413,28 +1414,32 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wpl .sec2.lit { margin: 0 -8px; padding-inline: 8px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent); } /* (the part a key fact opened) */
 /* a part's heading (#761): its sport's icon in a ring of its colour, on the route's line in the marks' column, then its
    sport (and day) and its totals beside it, in the text's colour, bolder than a point's line */
-.sec2-head { display: flex; align-items: flex-start; gap: 12px; padding-left: calc(10px + var(--when)); }
-.sec2-head > span { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
-.sec2-head > span > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
-.sec2-head > span::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
-.wpl .sec2:not(:first-child) > .sec2-head > span::before { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; top: -12px; height: 12px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
-.sec2-t { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 12px; }
+.sec2-head { display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: var(--target); margin: 0; padding: 0 0 0 calc(10px + var(--when)); border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sec2-head[aria-expanded="true"], .sec2-head:active { background: var(--surface-2); } /* (its menu open or held, as a row's) */
+.sec2-head:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) { .sec2-head:hover { background: var(--surface-2); } }
+.sec2-head > span:first-child { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
+.sec2-head > span:first-child > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
+.sec2-head > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
+.wpl .sec2:not(:first-child) > .sec2-head > span:first-child::before { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; top: -12px; height: 12px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
+.sec2-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; } /* (its numbers under its sport, #761) */
 .sec2-head b { font-size: var(--font-row); font-weight: var(--weight-strong); line-height: 1.3; overflow-wrap: anywhere; }
 .sec2-t small { font-size: 13.5px; font-weight: var(--weight-name); color: var(--text); font-variant-numeric: tabular-nums; }
 .wpl-top .btn { min-height: var(--target); margin-left: auto; }
-/* Show all waypoints and the list's settings (#761), in the Waypoints heading's row, where its summary is while the list
-   is open (so the list starts no lower); a finger's targets 44 px; where the planner is narrow (200 %), over the list */
-.sec[data-sec="points"] { position: relative; }
-.wpl-head-tools { position: absolute; top: 0; right: 0; height: 40px; display: flex; align-items: center; gap: 2px; }
+/* Show all waypoints and the list's settings (#761), over the list, where its heading was: Show all in green, as an action
+   in words is (Layers' Map key), its ⌄ first and how many are hidden in grey; the settings at the row's end; a finger's
+   targets 44 px */
+.wpl-head-tools { display: flex; align-items: center; gap: 2px; }
 .wpl-head-tools:empty { display: none; }
 .wpl-head-tools > * { min-height: var(--target); }
-.wpl-head-tools > .tool { min-width: var(--target); }
+.wpl-head-tools > .tool { min-width: var(--target); margin-left: auto; }
+.wpl-all { gap: 6px; padding-left: 4px; color: var(--accent); font-weight: var(--weight-name); }
+.wpl-all small { color: var(--muted); font-size: 13px; font-weight: var(--weight-regular); }
 .wpl-all .ic { flex: none; transition: transform var(--t-press) var(--ease-out); } /* (Show all waypoints' chevron, turned while they're all shown, as a stretch's ⌄) */
 .wpl-all[aria-expanded="true"] .ic { transform: rotate(180deg); transition-duration: var(--t-open); }
 .wpl-all:focus-visible .ic { transition: none; } /* (from the keyboard, at once, as the ⌄) */
 @media (prefers-reduced-motion: reduce) { .wpl-all .ic { transition: none; } }
-.sec2-set { flex: none; min-width: var(--target); min-height: var(--target); margin: -12px 0; } /* (a part's ⚙, at its heading's end, a finger's size adding no height) */
-@container plbody (max-width: 300px) { .wpl-head-tools { position: static; height: auto; justify-content: space-between; margin: 0 0 6px; } }
+.sec2-set { flex: none; align-self: center; display: inline-flex; margin-right: 8px; color: var(--muted); } /* (a part's ⚙ at its heading's end, where a waypoint's › is) */
 .wpl-shows { padding: 0 8px; } /* (the list's settings' switches, in the app's menu) */
 .menu-pop > .way-bar { margin: 0; padding-left: 10px; } /* (its name and ✕, on a row of their own) */
 .wpl .rows { margin: 0; } /* (inside the list: no room for a hover past its edge, as a card has) */
@@ -1517,7 +1522,8 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wpl-wait > span:first-child::before { top: -6px; bottom: calc(50% + 12px); }
 .wpl-wait > span:first-child::after { top: calc(50% + 12px); bottom: -10px; }
 .wpl-wait b { font-size: 14px; }
-.wpl-unfold { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 1px; width: auto; min-width: var(--target); min-height: var(--target); padding: 0 4px 0 8px; font-size: 13px; font-weight: var(--weight-name); color: var(--muted); }
+.wpl-unfold > span:first-child { color: var(--accent); } /* (its ⌄ in green, before its count in grey, as Show all's, #761) */
+.wpl-unfold { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 3px; width: auto; min-width: var(--target); min-height: var(--target); padding: 0 8px 0 4px; font-size: 13px; font-weight: var(--weight-name); color: var(--muted); }
 /* a stretch's waypoints and its legs, unfolded by a tap: their marks and words come in as a Layers group's rows (lg-in),
    one after another (the delay on the row, planner.js sectionRows()), onto the route's line, which stays where it is */
 .wpl .rows > .wpl-in :is(.wp-mini, .wpl-point > span:nth-child(2), .way-chev, .wpl-stretch > span:nth-child(2)) { animation: lg-in var(--t-open) var(--ease-out) backwards; animation-delay: inherit; }

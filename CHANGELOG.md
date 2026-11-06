@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-06
 
+### What you can tap in the route's list ([#761](https://github.com/TommiContursi/Polku/issues/761))
+
+- The route's list no longer has a **Waypoints** heading. **Show all waypoints** is over the list in green, with how many waypoints are hidden beside it.
+- A stretch's **⌄** is green too, before how many waypoints it folds.
+- A part's heading is one button: a tap anywhere on it opens its sport, speed and route style. Its numbers are under the sport, and its **⚙** stays at its end.
+
 ### Show all waypoints moves as a stretch's ⌄ does ([#761](https://github.com/TommiContursi/Polku/issues/761), [#846](https://github.com/TommiContursi/Polku/issues/846))
 
 - A tap or a click on **Show all waypoints** brings each stretch's waypoints and legs in one after another, as a stretch's **⌄** does, and **Fold all waypoints** sends them out together. Its chevron turns at the tap. From the keyboard, they change at once.
