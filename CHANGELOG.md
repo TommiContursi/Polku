@@ -7,7 +7,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### The route's list names its warnings ([#761](https://github.com/TommiContursi/Polku/issues/761))
 
 - A folded stretch in the route's list names its warnings in Check's words while there are one or two, such as "Cycling not allowed here (2 places)", so you needn't unfold it to see what they are. With more, it counts them, "2 warnings", and its ⌄ shows which.
-- With **Darkness** off, a stretch in the dark says so as a warning.
+- A folded stretch no longer counts Check's "In the dark" among its warnings, as its legs already didn't: **Darkness** shows the dark in the list, and Check and the line over the list still say it.
+- The waypoints a stretch folds keep their names and distances in bold when they're shown, as the others' are.
 - The weather in the list's tooltips and the profile's starts with the sky's icon: sun, cloud, rain or snow, or the moon on a clear night. A stretch's shows its wettest sky, or where it's dry, its cloudiest.
 
 ### Each part's ⚙: its sport, speed and route style ([#761](https://github.com/TommiContursi/Polku/issues/761))

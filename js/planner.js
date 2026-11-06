@@ -3310,17 +3310,17 @@ export class Planner {
   // words, the gear left and a short night on their wait, twilight as the dark is). Then, on a line of their own, as
   // when you're there and not a warning: how much of it is after sunset, in the dark or before sunrise, in the order you'd
   // go through them. The lines' HTML, and where along the route the dark begins (or 0). Each warning in Check's words, a
-  // line each, once, with how many places, the most serious first, three lines at most; the dark isn't named where its
-  // own line says it (Darkness). A folded stretch (not a `leg`) with more than two counts them instead: its ⌄ shows
-  // which (#761).
+  // line each, once, with how many places, the most serious first, three lines at most; never Check's dark, which has
+  // its line here (Darkness). A folded stretch (not a `leg`) with more than two counts them instead: its ⌄ shows which
+  // (#761).
   warnsOn(s, leg = false) {
     const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), D = (this.analysis && this.analysis.darkWarn) || [];
-    const own = (w) => w.twilight || w.kind === 'gear' || w.hide === 'Short night' || /^(Freehand|Carry \/ portage)/.test(w.text);
-    const S = this.listShow, its = this.itemsOn(s).filter((it) => !this.isRead(it) && (it.g === 'look' ? S.look && !own(it.w) : S.warnings)), n = (g) => its.filter((it) => it.g === g).length;
+    const own = (w) => w.kind === 'gear' || /^(Freehand|Carry \/ portage)/.test(w.text);
+    const S = this.listShow, its = this.itemsOn(s).filter((it) => !this.isRead(it) && it.w.kind !== 'dark' && (it.g === 'look' ? S.look && !own(it.w) : S.warnings)), n = (g) => its.filter((it) => it.g === g).length;
     const on = (f) => D.filter((x) => f(x) && x.at < a1 && x.at + x.len > a0), m = (L) => L.reduce((t, x) => t + Math.min(a1, x.at + x.len) - Math.max(a0, x.at), 0);
     const dark = on((x) => !x.twilight), darkM = this.listShow.dark ? m(dark) : 0, dusk = this.listShow.dark ? m(on((x) => x.twilight && x.evening)) : 0, dawn = this.listShow.dark ? m(on((x) => x.twilight && !x.evening)) : 0;
     const G = { read: ['read', 'warnf'], not: ['unk', 'unk'], look: ['look', 'eye'] }, by = new Map();
-    for (const it of its) if (it.w.kind !== 'dark' || !S.dark) by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
+    for (const it of its) by.set(it.w.text, { g: it.g, k: (by.get(it.w.text)?.k || 0) + 1 });
     const names = [...by].map(([t, x]) => `<span class="${G[x.g][0]}">${icon(G[x.g][1], 14)}${escapeHtml(t)}${x.k > 1 ? ` (${x.k} places)` : ''}</span>`);
     const warns = leg || names.length <= 2 ? (names.length > 3 ? [...names.slice(0, 2), `<span class="more">${names.length - 2} more</span>`] : names)
       : [[n('read') ? `<span class="read">${icon('warnf', 14)}${n('read')} warning${n('read') === 1 ? '' : 's'}</span>` : '', n('not') ? `<span class="unk">${icon('unk', 14)}${n('not')} not checked</span>` : '',

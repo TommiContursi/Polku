@@ -1462,7 +1462,6 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wpl-point .wp-mini { position: relative; z-index: 1; }
 .wpl-point.in-dash > span:first-child::before, .wpl-point.out-dash > span:first-child::after, .wpl-stretch.straight .wpl-line::before { background: repeating-linear-gradient(to bottom, var(--part) 0 6px, transparent 6px 10px); }
 .wpl-point.brk > span:first-child::after { left: calc(50% - 1.5px); width: 3px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 3px / 3px 6px repeat-y; }
-.wpl-point.shape b { font-weight: var(--weight-regular); }
 /* a desktop's tools on a waypoint's row (#761): Rename, Remove and the grip at the far end, where › is, while a mouse is
    over the row or it has the focus; its words keep their room, so nothing moves under the pointer. No motion: they're
    there at once, and a drag follows the pointer as Reorder's does. */
@@ -2459,7 +2458,7 @@ body.dropping .drop-hint { display: flex; }
 }
 .tip > b { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 13px; }
 .tip > span { display: block; }
-:is(.tip, .profile-tip) .ic { display: inline-block; margin-right: 4px; vertical-align: -2px; } /* (the sky's, before the weather's words, #761) */
+:is(.tip > span, .profile-tip) > .ic { display: inline-block; margin-right: 4px; vertical-align: -2px; } /* (the sky's, before the weather's words, #761) */
 :root[data-theme="dark"] .tip { background: #e8ece9; color: #111; }
 .tip kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; border: 1px solid currentColor; font: 600 11px/1 ui-monospace, Menlo, monospace; opacity: .8; }
 

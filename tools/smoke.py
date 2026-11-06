@@ -16042,6 +16042,9 @@ def sections_list(chrome):
         if w != ['Waypoint 2', True, 'Show the 5 waypoints']:
             fails.append(f"{name}: an unnamed waypoint's name, in a GPX, and ⌄'s label: {w} (want Waypoint 2, in the GPX, Show the 5 waypoints)")
         pg.js("polku.planner.els.points.querySelector('.wpl-unfold').click(); true")
+        w = pg.js("(() => { const L = polku.planner.els.points, f = (sel) => getComputedStyle(L.querySelector(sel)).fontWeight; return [f('.wpl-point.shape .wpl-name'), f('.wpl-point:not(.shape) .wpl-name'), f('.wpl-point.shape .wpl-when b'), f('.wpl-point:not(.shape) .wpl-when b')]; })()")
+        if w[0] != w[1] or w[2] != w[3]:
+            fails.append(f"{name}: unfolded, a folded waypoint's name and distance weigh {w[0]}, {w[2]}, the others' {w[1]}, {w[3]} (want the same, #761)")
         got, lab = json.loads(pg.js(WARNS)), pg.js("polku.planner.els.points.querySelector('.wpl-stretch[data-from=\"3\"]')?.getAttribute('aria-label') || ''")
         if got != ['1-2:Technical trail S3', '3-4:Cycling not allowed here'] or 'Cycling not allowed here' not in lab:
             fails.append(f"{name}: unfolded, the warnings on the legs and waypoints: {got}, the leg to via 4's label {lab!r} (#761)")
@@ -16058,11 +16061,12 @@ def sections_list(chrome):
           const d = fold([it('read', 'Cycling not allowed here', 10), it('read', 'Cycling not allowed here', 400), it('look', 'Steps — carry the bike', 600)]);
           const e = fold([it('read', 'Cycling not allowed here', 10), it('read', 'Steep descent', 400), it('look', 'Steps — carry the bike', 600)]);
           p.listShow.dark = false; const f = fold([it('read', 'In the dark for 300 m', 10, 'dark')]); p.listShow.dark = true;
+          const g = fold([it('read', 'In the dark for 300 m', 10, 'dark'), it('read', 'Cycling not allowed here', 40)]);
           for (const x of was) p.unfolded.add(x);
-          delete p.itemsOn; p.renderWaypoints(); return { a, b, c, d, e, f }; })()""")
+          delete p.itemsOn; p.renderWaypoints(); return { a, b, c, d, e, f, g }; })()""")
         if r != {'a': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'b': ['Cycling not allowed here', 'Steps — carry the bike', '2 more'], 'c': ['Cycling not allowed here'],
-                 'd': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'e': ['2 warnings 1 worth a look'], 'f': ['In the dark for 300 m']}:
-            fails.append(f"{name}: the warnings by name: {r} (want a leg's each once with its places, no dark, three lines at most, and Worth a look hiding the lighter ones alone; folded, two by name, three counted, the dark by name with Darkness off, #761)")
+                 'd': ['Cycling not allowed here (2 places)', 'Steps — carry the bike'], 'e': ['2 warnings 1 worth a look'], 'f': [], 'g': ['Cycling not allowed here']}:
+            fails.append(f"{name}: the warnings by name: {r} (want a leg's each once with its places, no dark, three lines at most, and Worth a look hiding the lighter ones alone; folded, two by name, three counted, and never Check's dark, which Darkness says in its own line, #761)")
         # (#761) the list's settings, the app's menu over the list: the column's times by the clock, and the rows without how
         # a leg is drawn, its warnings, the dark or the weather, each a switch, saved; what's hidden is still in Check
         r = pg.js("""(async () => { const p = polku.planner, L = p.els.points, wait = (ms) => new Promise((r) => setTimeout(r, ms)), leg = () => L.querySelector('.wpl-stretch[data-from="3"]')?.textContent || '';
