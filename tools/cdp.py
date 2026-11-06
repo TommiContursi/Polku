@@ -262,7 +262,10 @@ class Page:
     def open_app(self, settings=None, storage=None, hash_='#13.6/61.5135/23.8170'):
         """Fresh app: clean localStorage with the given settings, then wait for the map and Polku's load step."""
         self.goto(BASE + 'sw.js')
-        items = {'polku:settings': json.dumps(settings or {'activity': 'mtb'})}
+        items = {'polku:settings': json.dumps(settings or {'activity': 'mtb'}),
+                 # (Route's list with its rows' details shown, as the checks read them; its own defaults, Warnings alone,
+                 # are checked on a page of their own, #761)
+                 'polku:listShow': json.dumps({'warnings': True, 'look': True, 'drawing': True, 'dark': True, 'weather': True, 'speed': False})}
         items.update(storage or {})
         # Polku's offer of Fewer effects when frames are slow (#632) would come up in every test on SwiftShader
         items['polku:settings'] = json.dumps({'fewerOffered': True, **json.loads(items['polku:settings'])})

@@ -13,7 +13,7 @@ import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
 import { buildStyle, routeDim } from './style.js';
 import { installIcons, iconUrl } from './icons.js';
-import { Planner, parseShared, parsePin, dockOf, hiddenKinds } from './planner.js';
+import { Planner, parseShared, parsePin, dockOf, hiddenKinds, LIST_SHOWS } from './planner.js';
 import { item } from './card.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
@@ -392,6 +392,7 @@ map.on('mouseout', () => routeHoverLeg(null)); // off the map (onto the planner,
 const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
 const planner = new Planner(map, {
   activity: () => state.activity,
+  listShowChanged: () => { if (!$('#settings-panel').hidden) renderSettingsPanel(); }, // (Route's list's menu, Settings open beside it)
   fitColumn: () => fitColumn(), // (the map's column, again: a folded toolbox lifted it, step 3 of #233)
   hoverLeg: routeHoverLeg,
   winter: () => ({ on: !!state.winterOn, setting: winterSetting() }), // winter on the route (15b): snow in the time, Heads-up
@@ -1669,6 +1670,13 @@ function renderSettingsPanel() {
   p.append(group('language', 'Language and units',
     comingChoice('Language', ['Automatic', 'English', 'Suomi', 'Svenska']),
     comingChoice('Units', ['Metric', 'Imperial'])));
+
+  // Route's list's settings, the same as its menu over the list (#761), saved together
+  const LS = planner.listShow;
+  p.append(group('list', 'Route’s list',
+    h('div', { class: 'tg-text' }, 'Times'), seg([[false, 'From start'], [true, 'Clock']], LS.clock, (v) => { planner.setListShow({ clock: v }); renderSettingsPanel(); }),
+    ...LIST_SHOWS.map(([k, label]) => toggle(label, LS[k], (v) => planner.setListShow({ [k]: v }))),
+    h('p', { class: 'note' }, 'What the route’s list shows; its settings button has the same. Hidden items stay in Check and the cards.')));
 
   // the same switches as Layers' Your route; a change draws these again, for the times' switches
   p.append(group('route', 'Route arrows and marks', arrowsToggle(),

@@ -1431,6 +1431,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-head-tools > .tool { min-width: var(--target); }
 @container plbody (max-width: 300px) { .wpl-head-tools { position: static; height: auto; justify-content: space-between; margin: 0 0 6px; } }
 .wpl-shows { padding: 0 8px; } /* (the list's settings' switches, in the app's menu) */
+.menu-pop > .way-bar { margin: 0; padding-left: 10px; } /* (its name and ✕, on a row of their own) */
 .wpl .rows { margin: 0; } /* (inside the list: no room for a hover past its edge, as a card has) */
 .wpl-point > span:first-child { position: relative; width: 22px; align-self: stretch; place-items: center; }
 /* the route's line (#761): through every point's mark, in its part's colour (--part: its sport's, set on its part), 3 px;
