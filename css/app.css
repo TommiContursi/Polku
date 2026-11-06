@@ -39,7 +39,7 @@
   --page: #dfe6e0; /* behind the map, before it draws */
   /* The design system's values (docs/plans/design-system.md, #382), named by what they're for. A control
      takes them when it's next touched; DESIGN.md lists them, and `tools/smoke.py values` keeps the two equal. */
-  /* Check's three groups (25d): Read before you go, Worth a look, Not checked, and the box behind each */
+  /* Check's three groups (25d): Warnings, Good to know, Not checked, and the box behind each */
   --danger: #b4232a; --danger-soft: #fbe9e9;
   --look: #8a5a00; --look-soft: #fbf4e2;
   --unk: #47607a; --unk-soft: #eaf0f6;
@@ -979,7 +979,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-tabs .sheet-dock { align-self: center; color: var(--muted); }
 .pl-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
 .pl-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 6px; }
-/* Check's badge (25d part 2): Read before you go's count with a triangle in the warning colour, else a neutral count;
+/* Check's badge (25d part 2): the warnings' count with a triangle in the warning colour, else a neutral count;
    "?" beside it while something wasn't checked */
 .pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; gap: 2px; border-radius: 9px; background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .pl-tab-n.read:not(:empty) { background: var(--danger); color: var(--surface-solid); box-shadow: none; }
@@ -1724,7 +1724,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .warn-row.unk { background: var(--unk-soft); border: 1.5px dashed var(--unk); }
 .warn-row.unk > span:first-child, .warn-row.unk em { color: var(--unk); }
 /* ---------------------------------------------------------------- Check's groups (25d part 2, #366)
-   Read before you go, Not checked and Worth a look lead the Check tab, with no header of their own: Read's items the
+   Warnings, Not checked and Good to know lead the Check tab, with no header of their own: Read's items the
    red warning box (warn-row danger), the others rows (row) with their group's icon in its colour, each lit while its
    card is open (aria-current). Then What Polku looked at, and the kinds hidden, to bring back. */
 .tier + .tier { margin-top: 8px; }
