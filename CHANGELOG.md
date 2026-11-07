@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-07
 
+### Leave at… on a desktop ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- On a desktop, **When**'s **Leave at…** shows a date and time field in its menu, with **Set**. Type the time or pick it from the field's calendar, then **Set** or Enter sets it and closes the menu. Before, the browser's own picker had no OK, and the menu stayed open after a pick.
+
 ### When, before the first waypoint ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - **Start a route** has a **When** row under the sport, in each way to begin too. It says **Leave now**, and its menu has **Leave now** and **Leave at…**, which opens your phone's own date and time picker.

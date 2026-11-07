@@ -1801,7 +1801,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 /* the name typed where it's shown, with Save */
 .name-field { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 0 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 17px; font-weight: 600; }
 .name-field:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
-.card .way-head:has(.name-field) .btn.primary { flex: none; min-height: 44px; padding-inline: 14px; font-size: 15px; }
+.card .way-head:has(.name-field) .btn.primary, .menu-when .btn.primary { flex: none; min-height: 44px; padding-inline: 14px; font-size: 15px; }
 /* a 360 px phone: the switch's words under their icons, so long words fit */
 @container card (max-width: 335px) { .card-peek .seg.icons button { flex-direction: column; min-height: 54px; gap: 2px; } }
 /* narrow (200 %, a small phone): Back, undo, redo and ✕ on a row of their own, the name the card's whole width, the
@@ -2483,6 +2483,8 @@ body.dropping .drop-hint { display: flex; }
 .menu-item[aria-checked="true"]:not(.chip) { background: var(--accent-soft); }
 .menu-item > .menu-tick { flex: none; display: grid; color: var(--accent); }
 .menu-item.menu-apart { margin-top: 6px; }
+/* a desktop's Leave at…: the field itself, with Set (a browser's picker there has no OK) */
+.menu-when { display: flex; gap: 8px; align-items: center; padding: 2px 4px 4px; }
 /* When's Leave at… (#869): the phone's own picker, its field unseen over the item as on .row.pick, under a look of a menu-item */
 .menu-pick { position: relative; display: grid; }
 .menu-pick > span { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border-radius: 8px; font-size: 13px; color: var(--text); }
