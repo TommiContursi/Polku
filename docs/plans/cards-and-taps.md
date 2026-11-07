@@ -2,7 +2,7 @@
 
 The design for [#690](https://github.com/TommiContursi/Polku/issues/690) (primary), [#876](https://github.com/TommiContursi/Polku/issues/876) (one rule for a tap, a click, a hold and a right click), [#760](https://github.com/TommiContursi/Polku/issues/760) (a spot's popup) and [#647](https://github.com/TommiContursi/Polku/issues/647) (on a desktop the card covers the way), looking at #107, #716, #845, #627, #796 and #859 too. Milestone: [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): research and inventory done; the first round of questions is with the user.** Nothing is decided yet. Each decision goes under "Decided" as the user makes it, and the mock-up follows the first round.
+**Where it stands (2026-11-07): the first round is decided; the second round of questions is with the user.** Each decision goes under "Decided" as the user makes it; the mock-up follows the second round.
 
 It builds on what's decided and doesn't reopen it: cards one at a time with ‹ Back (#345, #574); the sheet's sizes (#603); nothing moves under the pointer (#594); backgrounds mean selection (#761); green means you can tap it, and the rule for controls (#869); a tap while drawing adds a waypoint (#345); short plain nouns; missing or late data never looks complete; don't redesign what works.
 
@@ -85,11 +85,23 @@ New research checked the apps #345's research ([issue-345-research.md](issue-345
 
 **Take:** one card a tap opens, the same a hold opens; a row of a few labelled actions in sight with the rest behind one control; the card grows by a swipe or a tap. **Avoid:** different actions for a tap and a hold (today's Polku); Gaia's setting that swaps what a tap and a hold do, which its users found harder ([Gaia's forum](https://help.gaiagps.com/hc/en-us/community/posts/1500000618942)).
 
-## For the user to choose (round 1)
+## Decided
 
-1. Which old mock-up to redraw.
-2. What a tap opens.
-3. What a tap on the route's line opens: the leg or the stretch.
-4. Where a card sits on a desktop.
+### Round 1 (2026-11-07)
 
-The card's anatomy, the "MTB ▾" pill's scope, the words and each kind's value follow in round 2.
+1. **The mock-up to redraw** is `cards-rethought.html` (#574's), published as a private Artifact too, so it opens on a phone.
+2. **A tap opens the card, and a hold or a right click open the same card** (#876's rule, A). Its first size shows the facts and its actions; the phone's line at the spot goes, its words becoming the card's first line (reversing #574's line at the spot). **Browsing and drawing aren't kept strictly apart:** a card offers what can be done there in either, and an action that changes the route starts drawing by itself, as Add to my route does today. While drawing, a tap on the empty map still adds a waypoint.
+3. **A tap on the route's line opens the leg you tapped,** and from it, easily, its stretch, the whole route, the way under it (the road or the path) and a LIPAS route it follows. Two ideas go with it: hiding the route for a moment (#756) and drawing it beside the way rather than over it (#199).
+4. **On a desktop a card opens beside the planner** (A), as #869's cards do, not at the spot. Being able to move it stays wanted (#647) for a long leg or route it would still hide; a card that says what the map would have shown needs moving less. **A card is never bigger than its content needs,** or it can be resized.
+5. **A place's facts are asked for when its card opens** (one Overpass request, cached), as its height and Share say too little. The card ideas already filed come into the design: links to MapComplete and StreetComplete (#855), Look around here (#757), Not right? as a form (#347), notes of your own (#854), opening hours when you get there (#859), places to sleep along the route (#160), saved places (#156), Avoid this spot's size (#708).
+
+## For the user to choose (round 2)
+
+1. How a card is laid out, the same for every kind.
+2. Where its actions go: a row of a few, or a grid.
+3. Each kind's main action and its first few.
+4. Switching from a leg to its stretch, the route and the way under it.
+5. The "MTB ▾" pill on a leg's card.
+6. Moving and sizing a card on a desktop.
+7. A waypoint's and a place's value at a glance, and which filed ideas go on which card.
+8. The words.
