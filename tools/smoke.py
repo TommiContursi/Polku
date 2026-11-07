@@ -17392,8 +17392,8 @@ def leave(chrome):
 
 
 # When on the first screen (#869): a row under the sport's in Start a route and each way to begin, "Leave now", with a
-# menu of Leave now and Leave at…, whose field lies over it so a tap opens the phone's own picker (a click and Enter a
-# desktop's). A time picked before the first waypoint survives a reload (it didn't: the saved route had no points),
+# menu of Leave now and Leave at…: on a phone its field lies over it, so a tap opens the phone's own picker; on a
+# desktop, whose browser picker has no OK, it shows the field itself with Set, which sets the time and closes. A time picked before the first waypoint survives a reload (it didn't: the saved route had no points),
 # carries into the route, where Go's Leave and the numbers say it, and Leave now brings it back to now.
 WHEN_JS = """(() => { window.WN = {
   row: () => document.querySelector('.pl-way .when-row'),
@@ -17410,7 +17410,13 @@ WHEN_JS = """(() => { window.WN = {
     if (!m) return null;
     const f = m.querySelector('.menu-pick input'), a = WN.at(f);
     return { items: [...m.querySelectorAll('.menu-item')].map((x) => x.matches('input') ? `${x.type}: ${x.getAttribute('aria-label')}` : `${x.textContent}${x.getAttribute('aria-checked') === 'true' ? ' ✓' : ''}`),
-      over: !!a && document.elementFromPoint(a.x, a.y) === f, field: a, now: WN.at([...m.querySelectorAll('.menu-item')].find((x) => x.textContent === 'Leave now')) };
+      over: !!a && document.elementFromPoint(a.x, a.y) === f, field: a, now: WN.at([...m.querySelectorAll('.menu-item')].find((x) => x.textContent === 'Leave now')),
+      at: WN.at([...m.querySelectorAll('button.menu-item')].find((x) => x.textContent.startsWith('Leave at'))) };
+  },
+  // a desktop's Leave at…: the field itself, with Set
+  form() {
+    const f = document.querySelector('.menu-pop .menu-when input'), b = document.querySelector('.menu-pop .menu-when .btn.primary');
+    return f && b && { type: f.type, focused: document.activeElement === f, label: f.getAttribute('aria-label'), set: b.textContent, at: WN.at(b) };
   },
 };
 window.__picked = [];
@@ -17434,14 +17440,6 @@ def when_start(chrome):
         time.sleep(0.5)
         return True
 
-    def enter(pg):
-        for event in ('rawKeyDown', 'char', 'keyUp'):
-            fields = {'type': event, 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}
-            if event == 'char':
-                fields['text'] = '\r'
-            pg.c.send('Input.dispatchKeyEvent', fields, pg.s)
-        time.sleep(0.4)
-
     def one(w, h_, phone):
         name, touch = f'{w}x{h_}', phone
         pg = chrome.page(w, h_, phone)
@@ -17464,22 +17462,32 @@ def when_start(chrome):
                 fails.append(f"{name}: {way}'s When row: {r}")
             pg.js("polku.planner.loop.open ? polku.planner.closeLoop() : polku.planner.wayBack(); true")
             time.sleep(0.3)
-        # its menu: Leave now, ticked, and Leave at…, the field a tap meets (a click and Enter open the picker too)
+        # its menu: Leave now, ticked, and Leave at…: on a phone the field a tap meets, on a desktop the field and Set
         pg.js(SETTLED)
         press(pg, pg.js("WN.at(WN.row())"), f'{name}: the When row', touch)
         m = pg.js("WN.menu()")
-        if not m or m['items'] != ['Leave now ✓', 'datetime-local: Leave at… Pick a day and a time'] or not m['over'] or pg.js("WN.row().getAttribute('aria-expanded')") != 'true':
+        want_items = ['Leave now ✓', 'datetime-local: Leave at… Pick a day and a time'] if phone else ['Leave now ✓', 'Leave at…']
+        if not m or m['items'] != want_items or (phone and not m['over']) or pg.js("WN.row().getAttribute('aria-expanded')") != 'true':
             fails.append(f"{name}: When's menu: {m}")
             pg.close()
             return
-        press(pg, m['field'], f'{name}: Leave at…', touch)
+        press(pg, m['field'] if phone else m['at'], f'{name}: Leave at…', touch)
+        if phone and pg.js("window.__picked") != ['datetime-local']:
+            fails.append(f"{name}: a tap on Leave at… opened {pg.js('window.__picked') or 'no picker'}")
+        f = None if phone else pg.js("WN.form()")
+        if not phone and (not f or f['type'] != 'datetime-local' or not f['focused'] or f['set'] != 'Set' or f['label'] != 'Leave at: a day and a time'):
+            fails.append(f"{name}: Leave at…'s field and Set: {f}")
+            pg.close()
+            return
+        # tomorrow at 09:00: picked and the phone's picker put away, or Set clicked; the menu goes, and the row says it as
+        # Go's Leave does
+        r = pg.js("""(async () => { const f = document.querySelector('.menu-pop input'), want = LV.at(1, 9, 0);
+          f.value = LV.iso(want); f.dispatchEvent(new Event('input', { bubbles: true }));
+          if (f.closest('.menu-pick')) { f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); }
+          return true; })()""")
         if not phone:
-            enter(pg)
-        if pg.js("window.__picked") != ['datetime-local'] * (1 if phone else 2):
-            fails.append(f"{name}: a {'tap' if phone else 'click and Enter'} on Leave at… opened {pg.js('window.__picked') or 'no picker'}")
-        # tomorrow at 09:00, picked and the picker put away: the menu goes, and the row says it as Go's Leave does
-        r = pg.js("""(async () => { const f = document.querySelector('.menu-pick input'), want = LV.at(1, 9, 0);
-          f.value = LV.iso(want); f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); f.blur();
+            press(pg, f['at'], f'{name}: Set', touch)
+        r = pg.js("""(async () => { const want = LV.at(1, 9, 0);
           await new Promise((ok) => setTimeout(ok, 300));
           return { ...WN.read(), menu: !!WN.menu(), leave: polku.planner.leaveAt, want, clock: LV.clock(want), day: 'Tomorrow, ' + LV.day(want) }; })()""")
         if r['leave'] != r['want'] or r['menu'] or r['expanded'] != 'false' or r['name'] != f"Leave at {r['clock']}" or r['line'] != r['day'] or r['label'] != f"When: Leave at {r['clock']}. {r['day']}":
