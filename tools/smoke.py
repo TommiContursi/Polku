@@ -5789,7 +5789,7 @@ ROUTE_BITS = """(async () => {
   if (p.points.length !== 2) errs.push(`a click beside an open card added a point (${p.points.length})`);
   if (p.cards.current) errs.push('a click beside an open card left it open');
   p.openPointCard(p.points[0]);
-  if (![...document.querySelectorAll('.pl-way.card .way-x')].some((b) => b.getClientRects().length)) errs.push('the point’s card has no close button');
+  if (![...document.querySelectorAll('.pl-way.card .way-x, #planner .sheet-x')].some((b) => b.getClientRects().length)) errs.push('the point’s card has no close button');
   if (![...document.querySelectorAll('.pl-way.card .row b')].some((b) => b.textContent === 'Leave')) errs.push('no Leave in the start point’s card');
   p.cards.close();
   p.clear();
@@ -10241,8 +10241,12 @@ def fold_phone(chrome):
         info = lambda: pg.js(FOLD_INFO)
         s = info()
         # ⌄ in a row of its own at the sheet's top right, a finger's size, and no ✕ there yet
-        if not s['fold'] or s['fold']['w'] < 44 or s['fold']['h'] < 44 or s['fold']['r'] < s['panel']['r'] - 16 or s['fold']['t'] > s['panel']['t'] + 8:
-            fails.append(f"peek: ⌄ not at the sheet's top right, 44 px: {s['fold']} in {s['panel']}")
+        # (at its top left since #889, ✕ at its right)
+        if not s['fold'] or s['fold']['w'] < 44 or s['fold']['h'] < 44 or s['fold']['l'] > s['panel']['l'] + 16 or s['fold']['t'] > s['panel']['t'] + 8:
+            fails.append(f"peek: ⌄ not at the sheet's top left, 44 px: {s['fold']} in {s['panel']}")
+        x = pg.js("(() => { const b = polku.planner.els.topX.getBoundingClientRect(); return b.width ? { r: b.right, t: b.top, w: b.width } : null; })()")
+        if not x or x['w'] < 44 or x['r'] < s['panel']['r'] - 16 or x['t'] > s['panel']['t'] + 8:
+            fails.append(f"peek: ✕ not at the sheet's top right, 44 px: {x} in {s['panel']}")
         if s['lineX'] or s['line']:
             fails.append('peek: ✕ or the folded line showing above the peek')
         # (the peek ends at its profile's foot, the profile's own 6 px under it, #742; without the key facts' line the peek is as
@@ -10325,13 +10329,13 @@ def fold_phone(chrome):
             if info()['st'] != want or not info()['active']:
                 fails.append(f"the handle's {k}: {info()['st']}, open {info()['active']} (wanted {want})")
                 break
-        # the route's view at full: Edit and More join ⌄'s row at its left (#745, where ⋯ was), the grip in the middle
+        # the route's view at full: Edit and More join ⌄'s row at its left (#745, where ⋯ was), after ⌄ (#889), the grip in the middle
         pg.js("polku.planner.setEditing(false); polku.planner.setSheetState('full'); true")
         fold_settled(pg, fails, 'step 11b')
         s = info()
         row, grip = pg.js("[polku.planner.els.top.getBoundingClientRect().bottom, ((r, p) => Math.abs(r.left + r.width / 2 - (p.left + p.width / 2)))(polku.planner.els.handle.getBoundingClientRect(), polku.planner.panel.getBoundingClientRect())]")
         b = s['toolBtns'] or []
-        if s['toolsIn'] != 'top' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or any((t['t'] + t['b']) / 2 > row for t in b) or b[0]['l'] > s['panel']['l'] + 16 or grip > 1:
+        if s['toolsIn'] != 'top' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or any((t['t'] + t['b']) / 2 > row for t in b) or b[0]['l'] > s['fold']['r'] + 16 or grip > 1:
             fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the grip {grip:.0f} px off the middle (Edit and More at the left of ⌄'s row, #745)")
         pg.js("polku.planner.setEditing(true); true")
         # the map's buttons don't chase the sheet (#540): with motion, a fold changes their place once, and they go with the
@@ -10402,7 +10406,7 @@ def fold_phone(chrome):
         if s['card'] != 'point' or s['st'] != 'peek' or not acts:
             fails.append(f"a tap on point 1 with the planner folded: card {s['card']}, {s['st']}, its actions in sight {acts} (its peek, #690)")
         else:
-            pg.tap(*(fold_at(pg, "polku.planner.cards.box.querySelector('.way-head .way-x')") or (0, 0)))
+            pg.tap(*(fold_at(pg, "[...document.querySelectorAll('.pl-way.card .way-x, #planner .sheet-x')].find((b) => b.getClientRects().length)") or (0, 0)))
             fold_settled(pg, fails, 'step 21')
             s = info()
             if s['card'] or s['st'] != 'folded' or not s['active'] or 'km' not in s['lineText']:
@@ -11657,7 +11661,7 @@ def stops_card_swap(chrome):
             if s['card'] != 'note' or s['st'] != 'full' or s['stops'] != ['folded', 'peek', 'half', 'full']:
                 fails.append(f"{tag}: a short card from a point's card at full: {s['card']} at {s['st']}, its sizes {s['stops']} (full, and the planner's four)")
             # ✕: the planner as it was; the first card from the map at its peek
-            tap_el("polku.planner.cards.box.querySelector('.way-x:not([hidden])')", '✕')
+            tap_el("[...document.querySelectorAll('.pl-way.card .way-x, #planner .sheet-x')].find((b) => b.getClientRects().length)", '✕')
             if pg.js("(() => { const p = polku.planner; return [p.cards.current ? p.cards.current.kind : null, p.panel.dataset.state]; })()") != [None, 'peek']:
                 fails.append(f"{tag}: ✕ on the cards: the planner not back at its peek")
             pg.js("polku.planner.setSheetState('half', { remember: false }); true")
@@ -13300,7 +13304,7 @@ def route_view(chrome):
         if c['kind'] != 'point' or not c['view'] or c['past'] != s0['past'] or c['pts'] != line0:
             fails.append(f'{name}: a tap on a point in the route’s view: {c}')
         pg.js(SETTLED)  # (the sheet at the card's size: a tap while it grows lands where ✕ was)
-        press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .way-x')].find((b) => b.getClientRects().length)"), f'{name}: the card’s ✕', touch)
+        press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .way-x, #planner .sheet-x')].find((b) => b.getClientRects().length)"), f'{name}: the card’s ✕', touch)
         if pg.js("!!polku.planner.cards.current"):
             fails.append(f'{name}: the point’s card’s ✕ left it open')
         # Edit: the drawing tools are back, with undo as it was; a tap adds a point again
@@ -13715,7 +13719,9 @@ PC_FIT = """((narrow) => {
   }
   if (narrow) {
     const bar = c.querySelector(':scope > .way-bar'), t = r(c.querySelector('.way-hint'));
-    for (const k of ['[data-k=undo]', '[data-k=redo]', '.way-x']) { const b = bar && bar.querySelector(k); if (!vis(b)) out.push(`no ${k} in the top row`); else if (r(b).bottom > t.top + 1) out.push(`${k} beside the title, not above it`); }
+    // (✕ in the sheet's top row in the peek, #889)
+    if (!vis(document.querySelector('#planner .sheet-x'))) out.push('no ✕ in the sheet\'s top row');
+    for (const k of ['[data-k=undo]', '[data-k=redo]']) { const b = bar && bar.querySelector(k); if (!vis(b)) out.push(`no ${k} in the top row`); else if (r(b).bottom > t.top + 1) out.push(`${k} beside the title, not above it`); }
     if (vis(c.querySelector(':scope > .way-head > .way-x'))) out.push('a second ✕ beside the title');
     const n = [...c.querySelectorAll('.sum-item')].map(r);
     if (n.some((a, k) => k && a.top < n[k - 1].bottom - 1)) out.push('the numbers aren’t one to a row');
@@ -14452,7 +14458,7 @@ def route_card(chrome):
                       f"(() => {{ const c = polku.map.getCenter(); polku.map.jumpTo({{ center: [c.lng + 0.0000049, c.lat + 0.0000049], zoom: {zoom} }}); const n = polku.map.getCenter(); return [n.lng, n.lat]; }})()")
             time.sleep(0.8)
             if how == '✕':
-                press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .way-x')].find((b) => b.getClientRects().length)"), f'{name}: ✕', touch)
+                press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .way-x, #planner .sheet-x')].find((b) => b.getClientRects().length)"), f'{name}: ✕', touch)
             else:
                 pg.js("history.back(); true")
             time.sleep(1.2)
@@ -18935,7 +18941,7 @@ CA_STATE = """(() => {
     h: polku.planner.panel.offsetHeight,
     more: more ? txt(more) : '', moreRows: more ? [...more.nextElementSibling.querySelectorAll('.row b')].map(txt) : [],
     seg: [...c.querySelectorAll('.seg.icons button')].map(txt), pill: !!document.querySelector('.card-pill'),
-    foot: [...c.querySelectorAll('.card-foot .btn')].map(txt), set: !!c.querySelector('.way-head .card-set'),
+    foot: [...c.querySelectorAll('.card-foot .btn')].map(txt), set: [...document.querySelectorAll('.pl-way.card .way-head .card-set, #planner .sheet-set')].some((b) => b.getClientRects().length),
   };
 })()"""
 
@@ -19120,8 +19126,8 @@ def pick_card_settings(chrome):
         else:
             if st['row'][:1] != ['Add to my route*'] or 'Share' not in st['row']:
                 fails.append(f"{name}: a spot's action row {st['row']}")
-            if not st['set'] or not _ca_tap(pg, "document.querySelector('.pl-way.card .way-head .card-set')"):
-                fails.append(f"{name}: no ⋯ beside the card's ✕")
+            if not st['set'] or not _ca_tap(pg, "[...document.querySelectorAll('.pl-way.card .way-head .card-set, #planner .sheet-set')].find((b) => b.getClientRects().length)"):
+                fails.append(f"{name}: no ⋯ beside the card's ✕ (in the sheet's top row in a phone's peek, #889)")
             else:
                 m = pg.js("""(() => { const m = document.querySelector('.menu-pop'); return m && { bar: m.querySelector('.way-bar b')?.textContent, x: !!m.querySelector('.way-bar .way-x'),
                   groups: [...m.querySelectorAll('.menu-h')].map((e) => e.textContent), map: [...m.querySelectorAll('.tg-text')].map((e) => e.textContent) }; })()""")
@@ -19134,7 +19140,7 @@ def pick_card_settings(chrome):
                 if after != [False, 'spot', 4]:
                     fails.append(f"{name}: a tap outside Card settings: menu open, card, points {after} (closed, spot, 4)")
                 # Colour by, picked from it
-                _ca_tap(pg, "document.querySelector('.pl-way.card .way-head .card-set')")
+                _ca_tap(pg, "[...document.querySelectorAll('.pl-way.card .way-head .card-set, #planner .sheet-set')].find((b) => b.getClientRects().length)")
                 _ca_tap(pg, "[...document.querySelectorAll('.menu-pop .menu-item')].find((e) => e.textContent.trim() === 'Surface')")
                 if pg.js('polku.planner.colorMode') != 'surface':
                     fails.append(f"{name}: Colour by Surface from Card settings: the route's is {pg.js('polku.planner.colorMode')}")

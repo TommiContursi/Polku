@@ -6223,7 +6223,7 @@ export class Planner {
     // after Done, Edit and More go into ⌄'s row at its left, where ⋯ alone was before #745, where they fit with the grip in
     // the middle (both sides as wide as them); else a row of their own (200 %)
     const arrows = [this.els.up, this.els.foldBtn].reduce((a, b) => a + b.offsetWidth, 0); // (beside them, at the row's left)
-    this.dockTools(dock, dock && this.inView() && this.els.top.offsetHeight > 18 && 2 * (w + arrows) + 48 <= this.els.top.clientWidth ? w + arrows : 0);
+    this.dockTools(dock, dock && this.inView() && this.els.top.offsetHeight > 18 && 2 * (w + arrows) + 40 <= this.els.top.clientWidth ? w + arrows : 0); // (40: the grip's 32 px bar, and a little room)
     if (dock) {
       // as many as fit without another row (the sheet's size follows once, below)
       setOpts(box, 0);
