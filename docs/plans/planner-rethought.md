@@ -329,6 +329,8 @@ Each is small and tried on a phone before the next, in this order (decided 2026-
    - built as two PRs ("How it's built"): first the row on the first screen, then the trip's box's first line;
    - its menu: Leave now and Leave at for now (Best time to leave is PR 6, Arrive by PR 7).
 
+   **Built, the first half (#878, 2026-11-07):** the When row under the sport row in Start a route, Draw it, Round trip and Marked routes, a `row` as the sport's is, its icon the clock leaving now and the calendar at a time; its menu through `popMenu()`, Leave now and Leave at…, whose date field lies unseen over the item (`menu-pick`), so a tap opens the phone's own picker. A time picked before the first waypoint now survives a reload. The ▾ moved to a PR of its own, so the sport row keeps its chevron for now; the trip's box's first line and the clock's times on Start and End are the second half.
+
    The start's sport row and every pill in it end in ▾, the caret (rule 2). It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 5. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
 3. **The profile in the peek** (#742): under the route's numbers, about 70 px, while you draw and in the route's view; a quiet line over it, "Profile · Way type ›"; it and the profile open the profile at half (the profile card in PR 8), where Colour by and On map stay until PR 8 moves them into the card. `measureSheet()`'s peek, `fitColumn()` at 200 %. Checks: `sheetstops`, `keyfacts`, `routeview`, at 360 px and 200 %.
 4. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.

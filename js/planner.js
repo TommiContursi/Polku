@@ -24,7 +24,7 @@ import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, a
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard, pickLine, thingCard, nearestSample } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, leaveLocal, leaveFrom, spotCard, lipasCard, pickLine, thingCard, nearestSample } from './cards.js';
 import { pickData } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -1748,7 +1748,7 @@ export class Planner {
     const top = L.fromWays ? [this.backRow()] : [];
     const close = L.fromWays ? null : h('button', { type: 'button', class: 'tool way-x', 'data-k': 'loop-x', 'aria-label': 'Close the round trip', title: 'Close the round trip', onclick: () => this.closeLoop(), html: icon('close', 20) });
     // the form's top: the sport's row right under the top row, as in every step (2026-10-21)
-    const lead = (head) => (L.fromWays ? [...top, this.sportRow(), head] : [head, this.sportRow()]);
+    const lead = (head) => (L.fromWays ? [...top, this.sportRow(), this.whenRow(), head] : [head, this.sportRow(), this.whenRow()]);
     if (!roundTripSports.includes(sport)) return [...lead(h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip')), close)), h('p', { class: 'note' }, `No round trips for ${ACTIVITIES[sport].label} yet.`)];
     if (L.results.length && !L.editing) return [...top, ...this.loopResults(close)];
     if (L.busy) return [...top, ...this.loopMaking(close)];
@@ -4415,7 +4415,7 @@ export class Planner {
   loadSaved() {
     const r = store.get('route', null);
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
-    if (!r || !r.points || !r.points.length) return false;
+    if (!r || !r.points || !r.points.length) { if (r && r.leave) this.openLeave(r.leave); return false; } // (a time set before the first point: When's)
     this.points = r.points;
     this.routeName = r.routeName || '';
     this.readKeys = new Set(r.read || []);
@@ -5024,6 +5024,48 @@ export class Planner {
     b.onclick = () => this.app.sportMenu && this.app.sportMenu(b);
     return b;
   }
+  // When (#869): a row under the sport's, in the ways to begin and every step, so the departure is set before the first
+  // waypoint: the same one Go's Leave sets (setLeave()), kept with the route. One element, said again in place (put()),
+  // so a menu open at it stays open while the start is drawn again.
+  whenRow() {
+    if (!this.els.when) {
+      const b = h('button', { type: 'button', class: 'row when-row', 'data-k': 'when', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.whenMenu(b) });
+      const put = () => {
+        const at = this.leaveAt, passed = at == null && this.leavePassed, far = at != null && at - Date.now() / 1000 >= LONG_HOURS * 3600;
+        const name = at == null ? 'Leave now' : `Leave at ${this.timeOf(at)}`;
+        const line = at != null ? `${this.dayOf(at, true)}${far ? ' · no forecast yet' : ''}` : passed ? `${this.dayOf(passed)}, ${this.timeOf(passed)} has passed` : 'Times and weather along the route';
+        b.setAttribute('aria-label', `When: ${name}. ${line}`);
+        b.innerHTML = `<span>${icon(at == null ? 'clock' : 'calendar', 20)}</span><span><b>${escapeHtml(name)}</b><small>${escapeHtml(line)}</small></span><span class="way-chev">${icon('chevronDown', 16)}</span>`;
+      };
+      this.els.when = { el: b, put };
+    }
+    this.els.when.put();
+    return this.els.when.el;
+  }
+  // When's menu: Leave now, and Leave at…, whose date field lies unseen over it, so a tap opens the phone's own picker
+  // (an iPhone has no showPicker()) and the field is what the keyboard and a screen reader reach, as pickRow()'s. The
+  // menu stays while the picker is open, and goes once a time is picked and the picker is put away.
+  whenMenu(anchor) {
+    if (this.whenPop) { this.whenPop.close(); return; }
+    const at = this.leaveAt, now = Date.now() / 1000, day = at != null ? `${this.dayOf(at, true)}, ${this.timeOf(at)}` : '';
+    const field = h('input', { type: 'datetime-local', step: '900', class: 'menu-item', value: leaveLocal(at ?? Math.ceil(now / 900) * 900), min: leaveLocal(Math.floor(now / 900) * 900),
+      'aria-label': `Leave at…${at != null ? ` ${day}.` : ''} Pick a day and a time` });
+    let picked = false;
+    const open = () => { try { field.showPicker(); } catch { /* the phone opens its own */ } };
+    field.addEventListener('click', open);
+    field.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    field.addEventListener('change', () => { picked = true; leaveFrom(this, field.value); });
+    field.addEventListener('blur', () => { if (picked) this.whenPop?.close(this.keyed); }); // (left by a key: the focus back on the row)
+    const pick = h('div', { class: `menu-pick${at != null ? ' on' : ''}` },
+      h('span', { 'aria-hidden': 'true', html: `${icon('calendar', 17)}<span>Leave at…${at != null ? `<small>${escapeHtml(day)}</small>` : ''}</span>${at != null ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}` }), field);
+    const keyed = anchor.matches(':focus-visible');
+    anchor.setAttribute('aria-expanded', 'true');
+    this.whenPop = popMenu(anchor, [{ group: 'When', items: [{ icon: 'clock', label: 'Leave now', radio: true, checked: at == null, fn: () => this.setLeave(null) }, { node: pick }] }],
+      { label: 'When', align: 'left', sheet: true, onClose: () => { this.whenPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
+    // with a time set, the focus on Leave at… from the keyboard, and on neither from a tap: on Leave now it reads as
+    // picked, and a field focused under a finger opens an iPhone's picker
+    if (at != null) { if (keyed) field.focus({ preventScroll: true }); else this.whenPop.el.querySelector(':focus')?.blur(); }
+  }
   // a step's top row: Back on the left; on the right the panel's place (desktops) and ✕
   backRow(label = 'Ways to begin', fn = () => this.wayBack()) {
     return h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', 'data-k': 'back', onclick: fn, html: `${icon('chevronLeft', 18)}<span>${escapeHtml(label)}</span>` }), this.dockX(), this.closeX());
@@ -5050,7 +5092,7 @@ export class Planner {
     return [
       // the same top row as each step's: the title where a step has ‹ Ways to begin, ✕ on the right; then the sport
       h('div', { class: 'way-bar way-top' }, h('h2', { class: 'way-name' }, 'Start a route'), this.dockX(), this.closeX()),
-      this.sportRow(),
+      this.sportRow(), this.whenRow(),
       h('div', { class: 'way-tiles', role: 'group', 'aria-label': 'Ways to begin' }, ...[
         // (a tap on the map starts drawing at once: Draw it's line says so, 2026-10-21)
         way('draw', 'route', 'Draw it', `${tap === 'tap' ? 'Tap' : 'Click'} the map${desk ? ' where you start, then each place on the way: Polku follows the paths between them.' : ', waypoint by waypoint'}`, () => this.openWay('draw')),
@@ -5068,7 +5110,7 @@ export class Planner {
     const LINE = { auto: 'Polku follows the paths', line: 'Polku joins your waypoints with straight lines', water: 'Polku finds a way over the water' };
     return [
       raised ? this.backRow('Draw it', () => this.wayBack()) : this.backRow(),
-      this.sportRow(),
+      this.sportRow(), this.whenRow(),
       h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map where you start`), h('small', { class: 'way-line' }, `${LINE[this.mode]}, and the sport can change on the way.`)),
       this.styleBlock(desk || raised ? 'full' : 'row', { raise: () => { this.wayRaised = true; this.pushWay(); this.renderStart(); } }),
     ];
@@ -5200,7 +5242,7 @@ export class Planner {
   findView() {
     const M = this.marked, sp = this.app.activity(), label = ACTIVITIES[sp].label, desk = this.sideMQ.matches;
     // the sport's row, as in the ways: it decides what's listed, and says so (2026-10-21)
-    const out = [this.backRow(), this.sportRow(), h('div', { class: 'way-hint' }, h('b', {}, 'Marked routes in view'), h('small', {}, `From LIPAS · ${this.coarse() ? 'tap' : 'click'} a card or a coloured line`))];
+    const out = [this.backRow(), this.sportRow(), this.whenRow(), h('div', { class: 'way-hint' }, h('b', {}, 'Marked routes in view'), h('small', {}, `From LIPAS · ${this.coarse() ? 'tap' : 'click'} a card or a coloured line`))];
     const note = (state, ic, text, btn = null) => h('div', { class: `mr-state${state === 'fail' ? ' fail' : ''}`, 'data-state': state, role: 'status' },
       h('span', { class: 'mr-ic', 'aria-hidden': 'true', html: icon(ic, 18) }), h('span', { class: 'mr-text' }, text), btn);
     const act = (k, label, fn) => h('button', { type: 'button', class: 'btn small', 'data-k': k, onclick: fn }, label);
@@ -6621,6 +6663,7 @@ export class Planner {
   // Leave's rows say when you leave: Go's, and an open card's
   renderLeave() {
     this.els.leave.put();
+    this.els.when?.put();
     this.cards.refresh();
   }
 

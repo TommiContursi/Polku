@@ -207,23 +207,25 @@ function sportCard(pl, point) {
   return card;
 }
 
+// a departure as a datetime-local field writes it ("2026-11-07T09:00"), and one picked in it: Go's Leave and When's (#869)
+export const leaveLocal = (sec) => { const d = new Date(sec * 1000), z = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
+export function leaveFrom(pl, v) {
+  const sec = v ? new Date(v).getTime() / 1000 : null;
+  if (sec != null && sec <= Date.now() / 1000) toast('That time has passed, so it leaves now');
+  pl.setLeave(sec);
+}
+
 // Leave ›, on the start's card and in Go (#364's C) [r6-leave-c, r6-leave-c-set, r6-leave-c-far, r6-leave-c-passed]: the
 // phone's own date and time for any day ahead. Once set, the date is the row's line, the time its value, and Now on
 // that line (2026-10-24's detail); past the forecast's reach, or a date that had passed, a note under it. Only the start
 // has a date: the rest counts from it.
 export function leaveBlock(pl) {
-  const local = (sec) => { const d = new Date(sec * 1000), z = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
-  const row = pickRow({ icon: 'clock', label: 'Leave', type: 'datetime-local', now: () => pl.setLeave(null), set: (v) => {
-    const sec = v ? new Date(v).getTime() / 1000 : null;
-    if (sec != null && sec <= Date.now() / 1000) toast('That time has passed, so it leaves now');
-    pl.setLeave(sec);
-    put();
-  } });
+  const row = pickRow({ icon: 'clock', label: 'Leave', type: 'datetime-local', now: () => pl.setLeave(null), set: (v) => { leaveFrom(pl, v); put(); } });
   const note = h('p', { class: 'pick-note', hidden: true });
   const put = () => {
     const at = pl.leaveAt, now = Date.now() / 1000, passed = at == null && pl.leavePassed, far = at != null && at - now >= LONG_HOURS * 3600;
     row.put({ line: at == null ? 'Sets the times and the weather along the route' : pl.dayOf(at, true), val: at == null ? 'Now' : pl.timeOf(at),
-      value: local(at ?? Math.ceil(now / 900) * 900), min: local(Math.floor(now / 900) * 900), set: at != null }); // (min on the clock's quarter hour: the field's steps count from it)
+      value: leaveLocal(at ?? Math.ceil(now / 900) * 900), min: leaveLocal(Math.floor(now / 900) * 900), set: at != null }); // (min on the clock's quarter hour: the field's steps count from it)
     note.hidden = !far && !passed;
     note.classList.toggle('info', !!passed);
     note.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(far ? 'cloudSun' : 'info', 16) }),

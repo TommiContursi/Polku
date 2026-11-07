@@ -53,6 +53,7 @@ const P = {
   play: '<path d="M7 4v16l13-8Z" fill="currentColor"/>',
   gauge: '<path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"/><path d="m12 15 3.5-4.5"/><circle cx="12" cy="15" r="1"/>',
   clock: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+  calendar: '<rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 10h16M8.5 3v4M15.5 3v4"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   pencil: '<path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/>',
   pass: '<path d="M4 12h15M13 6l6 6-6 6"/>',

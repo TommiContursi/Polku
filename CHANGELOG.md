@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-07
 
+### When, before the first waypoint ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- **Start a route** has a **When** row under the sport, in each way to begin too. It says **Leave now**, and its menu has **Leave now** and **Leave at…**, which opens your phone's own date and time picker.
+- The time you pick is the departure Go's **Leave** sets: the route you draw next leaves then, and its times and the weather along it follow. Once it's set, the row says the time and the day, and "no forecast yet" past the forecast's ten days.
+- A time picked before the first waypoint now stays when you reload Polku. A time that has passed leaves now, and the row says when it was planned for.
+
 ### Coordinates and trails from search get their card too ([#875](https://github.com/TommiContursi/Polku/issues/875))
 
 - Pasted coordinates, or a trail picked under **Trails on the map**, now get a pin and the spot's card once the map has drawn what's there, as a tap there would: a trail's card is on its line, with the whole way drawn in its colours.
