@@ -9,7 +9,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - On a phone the planner and every card now have the same four sizes: the line, the peek, half and full. A swipe lands in the same place whatever is open, and full is always full; a short card sits at the top with room under it.
 - The planner's peek shows the route's profile under its numbers, while you draw and in the route's view. A tap on it opens the planner at half, where you can run a finger along it. The peek is as tall as a card's, with its actions in sight.
 - While you drag the planner or a card, no marks show at the screen's edge any more. A flick still moves it one size.
-- On a phone the planner's **⌄** is at the left of its top row and **✕**, which puts it away, at the right. A card has **⋯**, **⌄** and **✕** on one row beside its name, not on two rows.
+- The planner and every card have one row at their top: **⌄** at the left (with a mouse **⌃** and **⌄**), the handle in the middle, and **✕** at the right, with a card's **⋯** beside it. The planner's **✕** puts it away, as on its line.
+- At half and full the top row is the sheet's own glass until something scrolls under it.
 
 ### Paddling: what wasn't checked on the water ([#490](https://github.com/TommiContursi/Polku/issues/490), [#129](https://github.com/TommiContursi/Polku/issues/129), [#80](https://github.com/TommiContursi/Polku/issues/80), [#400](https://github.com/TommiContursi/Polku/issues/400))
 
