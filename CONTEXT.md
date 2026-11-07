@@ -129,3 +129,7 @@ _Avoid_: weather window
 
 **Weather timeline**:
 The map's weather hour by hour, not tied to the route.
+
+**Weather line**:
+The weather card folded to one line: the map's weather at its hour, and the strip that sets the hour. In the sheet's place on a phone, at the toolbar's end on a desktop.
+_Avoid_: weather bar, weather toolbar

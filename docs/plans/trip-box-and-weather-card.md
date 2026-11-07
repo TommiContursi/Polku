@@ -2,7 +2,7 @@
 
 The design of step 6 of [the one order](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784): the trip's box over the list, and the weather card it opens, with Go's tab gone ([#431](https://github.com/TommiContursi/Polku/issues/431), [#794](https://github.com/TommiContursi/Polku/issues/794), [#759](https://github.com/TommiContursi/Polku/issues/759), [#766](https://github.com/TommiContursi/Polku/issues/766)). Part of [#869](https://github.com/TommiContursi/Polku/issues/869); milestone [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): research and the inventory are done; the first round is with the user, with a first mock-up to choose from.** The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri) to try on a phone (built from this file with `css/app.css` and `js/ui.js` inlined and the screenshots embedded). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2, with the weather line for the map's hours in two places to compare; **C: Together**, **A: Rows** and **B: Graph**, the earlier answers, stay to compare. Each at half and full, for a day trip and a trip with a night. No app code is written here.
+**Where it stands (2026-11-07): decided, ready to build as two PRs (6a and 6b) once step 5 is merged and tried on a phone.** The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri) to try on a phone (built from this file with `css/app.css` and `js/ui.js` inlined and the screenshots embedded). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2, with the weather line for the map's hours in two places to compare; **C: Together**, **A: Rows** and **B: Graph**, the earlier answers, stay to compare. Each at half and full, for a day trip and a trip with a night. No app code is written here.
 
 ## Already decided
 
@@ -157,6 +157,70 @@ Drawn as **C: Together** in the mock-up (A and B stay on its bar):
 
 - **Feels like** isn't fetched today. The mock-up works it out as the wind chill; the build would ask Open-Meteo for `apparent_temperature`, its ninth variable, still one call (more than ten count as more).
 
-## Not drawn yet
+**Round 3 (2026-11-07):** the user chose to go with D and improve it later, once it's built and tried on a phone. Asked for alongside:
+- **A colour legend over the map while a weather layer is on,** as yr's app shows: added to #903.
+- **The weather line on a desktop** is the short piece at the right end of the toolbar from #594's mock-up (`issue-594-desktop-layout.html`, 1920 × 1080, The weather): the sky, the temperature and the hour, ⌃ and ✕, the strip opening above it. Drawn in the mock-up's Desktop frame on The weather line.
+- **The controls checked against DEVELOPING's "Shared controls",** and D changed to match (below).
 
-The break-ui states (late, partial or missing forecast, past ten days, the midnight sun, a passed departure, a paddle with no waves, long Finnish names), the desktop's details and the PRs come after the next round.
+## Decided (2026-11-07)
+
+1. **The weather card is D:** for each day, the sky, the temperature and three small lines (feels like, rain in mm, the wind and its gust with its arrow; on a paddle day the waves, an estimate; in winter the snow on the ground); "In the dark…" when it is; the sun's times on a line of their own; the hours as FMI's table (the trip's hours and one either side, marked ●) and yr's graph of 12 hours, together. Then the wind on the way, Strongest headwind ›, Colour by, Time on the way folded, and On the map.
+2. **The trip's box:** "Leave now ▾ → there at 21:19", and under it the day's weather without what a sport's row says: "6…7 °C · dry · in the dark" (a row a day on a trip with nights, each with ›). A tap opens the card at that day and frames the day on the map.
+3. **The map's hours are the weather line,** the card folded: in the sheet's place on a phone (#233's step 3, chosen 2026-10-27), and the short piece at the right end of the toolbar on a desktop (#594). The line: ▷, the sky, the temperature, the hour with the wind (gust) and rain, the layer as a pill ("Rain ▾"), ⌃ and ✕, over a strip dragged for the hour. Weather (the button, T) opens the line; ⌃ opens the card; dragging the hours in the card folds it to the line.
+4. **The map's hour no longer moves the departure** (#431, 2026-11-07), nor the departure the map's hour.
+5. **Data:** feels like (`apparent_temperature`) is fetched, Open-Meteo's ninth variable, still one call. The chance of rain, water temperature, MET Norway's ranges and the ideas in #903 aren't part of step 6.
+6. **The rest of round 1, as recommended:** uncertainty in words where it starts ("less certain from Tue", "No forecast yet from km 12"), never colour alone; the hour chips go before Best time to leave (step 9) comes; "33 min moving" opens the card at Time on the way; "Includes when you leave" goes with Copy share link in More; "Wet and near freezing" under the day it's on.
+
+### The controls, against DEVELOPING's "Shared controls"
+
+| In the card | Shared control | Status |
+|---|---|---|
+| ‹ Route and ✕, the name | `way-bar`, `btn small quiet way-back`, `tool way-x`; `way-head`, `way-hint`; the sky as `card-mark` | As production's cards (`cardBox()` in `js/card.js`) |
+| When, the layer's pill | The ▾ pill (step 4; #869's "new controls") | Built in step 4, before this |
+| Strongest headwind ›, Weather layers ›, Time on the way ⌄ | `row` in `rows` (`val`, ›; ⌄ to unfold) | As production |
+| The wind on the way | Go's `exposure` and `ex-item` | Moved as it is |
+| Colour by | `mode-select` | As production's (its ▾ is step 15's rule) |
+| Time on the way | Go's `speed-table` and `speed-row` | Moved as it is |
+| Table or graph (if ever wanted) | `seg` | As production |
+| The line's buttons | `tool` | As production |
+| **The hours' table** | none | **New:** a row an hour (time, sky, temperature, feels like, mm, wind (gust)); joins the table when built |
+| **The day's graph** | none | **New:** a canvas like the profile's and the timeline's strip (`js/chart.js`, `js/wxmap.js`); joins the table when built |
+| **The reading** | none | **New:** the sky, the temperature at 30 px, three lines with icons; content rather than a control |
+
+The mock-up's own pieces aren't production's: the When pill's look is planner-rethought's drawing of step 4's pill, the toolbar is drawn simply, and the profile is a shape.
+
+## How step 6 is built
+
+Two PRs, each tried on a phone before the next; both in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16), referring to #869 and fixing what they finish (#431, #794, #759, #766).
+
+**6a. The trip's box and the weather card; Go's tab goes.**
+- `js/planner.js`: the box after the sports' rows (When's line from step 4, and the weather line, a row a day with nights); `renderWind()` becomes the card's content (the reading, the sun, the hours' table, the graph, the wind on the way, Colour by, Time on the way from `speed-table`); the numbers' time opens the card at Time on the way (`revealDeparture()` goes); the day rows frame their day (`focusRange()`); the tabs lose Go (`renderTabTimes()`, the Go pane, Take it along's buttons, which are in More).
+- `js/cards.js` and `js/card.js`: a weather card in the card host, one at a time with ‹ Back, from the box and from the numbers.
+- `js/weather.js`: `apparent_temperature` in `fetchPoints()`, cached with the rest; the cells cached before it carry none, and the card says "feels like" only where it's known.
+- `js/chart.js` (or a small drawing of its own beside it): the day's graph.
+- `css/app.css`: the reading, the hours' table, the graph; nothing that a shared control already does.
+- **Removed:** Go's tab and pane; `hourStrip()` and the hour chips; Go's Leave row (the box's When replaces it, step 4); the second Your speed (each part's ⚙ and the row under the list keep it); the Go tab's time.
+- **Checks** (`tools/smoke.py`): `tabs` (no Go; what a screen reader hears), `leave` (When on the box, no Go Leave row), `sections` and `stops` (a row a day, the night's sun), `keyfacts` (the box doesn't repeat a sport's row), `weather` (feels like cached and missing), `water` (the waves' line), and a new check that the card says "No forecast yet", "less certain" and the older forecast in words, and that the box says the dark. Looked at at 390 × 844, 360 × 740, 200 % and 1440 × 900, MTB and paddle, light and dark.
+- **Docs:** CHANGELOG (Go's tab gone, the weather card), USING (the box and the card), README (Go's mentions), DEVELOPING (Weather: the card; the shared controls' new rows).
+
+**6b. The weather line; the map's hour apart from the departure.**
+- `js/wxmap.js`: the window becomes the card's folded line (▷, the reading, the hour, the layer's pill opening its menu, ⌃, ✕, the strip); the four chips go into the pill's menu (Wind, Temperature, Rain, Snow); `onHour` no longer calls `planner.setLeave`, nor `setLeave` the map's hour; the "Also the departure" flag goes; road works and road conditions still follow the map's hour.
+- `js/main.js`: `syncWxH()`, `body.wx-over` and `columnFits()` for the line in the sheet's place on a phone; on a desktop the short piece at the toolbar's right end (`placeTools()`, which gives nothing up for it), its strip opening above it; Weather and T open the line.
+- **Removed:** the floating window's placement and resize grip; the chips' row; the departure's link both ways (and with it the water legs routing again when the hour moves).
+- **Checks:** `weather` (the line's reading whole at 390 px and 200 %), `fold` (the card folds to the line, ⌃ opens it, ✕ turns the weather off), `leave` (the map's hour leaves the departure alone, and the other way), `quick` (the pill's menu), `controls`.
+- **Docs:** CHANGELOG, USING (the Weather button and the line), DEVELOPING (Weather, the sheet).
+
+**Motion:** the card opening from the box and folding to the line moves things, so `/animate` decides it in 6a and 6b, and the user runs `/review-animations` before those PRs open (AGENTS.md).
+
+## Left for step 9 and later
+
+- **Best time to leave and Arrive by** (step 9): the room under When in the card (the mock-up's dashed box) and the When menu's two items; the strip of departures is Best time to leave's, the map's hours stay the line's.
+- **The chance of rain** (one more variable), **MET Norway's ranges and the chance of thunder** (a second source): issues only if the user wants them.
+- **Water temperature** (#862), **observations, cameras, warnings, the next 90 minutes, the map's legend** (#903), **clouds and thunder on the map** (#182).
+- **A design critique by a fresh subagent** of the mock-up's screenshots wasn't run in this round; it's worth doing on the built card.
+
+## Not drawn, or not known
+
+- **States the build must draw,** not drawn in the mock-up: the forecast loading, late, partial (No forecast yet from km …) or missing (with Retry); a departure past ten days (the box and the card say No forecast yet, the sun and the dark still count); a departure that has passed; the midnight sun (no dark to shade, no "dark from"); a paddle with no wave estimate (the line left out, not 0 m); long Finnish names in the day headings at 360 px and 200 %.
+- **The desktop's card** is where cards open today until step 8 puts it beside the planner.
+- **Illustrative in the mock-up:** the waves, feels like (the wind chill there), the water's temperature, the sky between the hours, the profile, the list, and the rain and winter data.

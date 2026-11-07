@@ -334,7 +334,7 @@ Each is small and tried on a phone before the next, in this order (decided 2026-
    The start's sport row and every pill in it end in ▾, the caret (rule 2). It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 5. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
 3. **The profile in the peek** (#742): under the route's numbers, about 70 px, while you draw and in the route's view; a quiet line over it, "Profile · Way type ›"; it and the profile open the profile at half (the profile card in PR 8), where Colour by and On map stay until PR 8 moves them into the card. `measureSheet()`'s peek, `fitColumn()` at 200 %. Checks: `sheetstops`, `keyfacts`, `routeview`, at 360 px and 200 %.
 4. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.
-5. **The trip's box's weather line, and the weather card it opens** (Parts 22, #431, #794): Go's time and weather move into the card, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
+5. **The trip's box's weather line, and the weather card it opens** (Parts 22, #431, #794): Go's time and weather move into the card, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`. **Designed (2026-11-07):** [trip-box-and-weather-card.md](trip-box-and-weather-card.md), as two PRs, 6a and 6b.
 6. **Best time to leave** (#273, parts 1, 3 and 5; #856):
    - the departure's day in the weather card, ‹ › a day at a time up to ten days;
    - a bar an hour, scrubbed by a finger, with the day's best named;

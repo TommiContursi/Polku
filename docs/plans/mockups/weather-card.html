@@ -190,11 +190,21 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wd-tbl svg.arw { vertical-align: -2px; margin-left: 2px; color: var(--wc-wind); }
 .wd-key { font-size: 12px; color: var(--muted); }
 .wd-seg { align-self: flex-start; }
+.wd-shell { flex: none; padding: 0 14px; margin: 0; }
+.wd-handle { position: absolute; left: 50%; top: 4px; margin-left: -36px; }
+.wc-card .exposure { margin: 0; }
+.wc-card .mode-select { align-self: flex-start; }
 @container card (max-width: 300px) { .wd-tbl .feel { display: none; } }
 /* the toolbar, drawn simply, for the line above it (the old weather line's place, #233's step 3 before 2026-10-27) */
 .mk-tb { position: absolute; left: 8px; right: 8px; z-index: 5; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); }
 .mk-tb .btn { min-height: 44px; }
 .frame.phone .sheet.peek { top: auto; height: 262px; }
+.mk-tb.desk { left: 424px; right: auto; bottom: 12px; }
+.mk-tb-wx { display: flex; align-items: center; gap: 4px; margin-left: 6px; padding-left: 10px; border-left: 1px solid var(--line); font-size: 14px; white-space: nowrap; }
+.mk-tb-wx > b { font-size: 16px; color: var(--wd-warm, #b91c1c); }
+.mk-tb-wx .wd-sky { display: grid; color: var(--muted); }
+.wx-line.desk-open .wl-row > .tool:not(:first-child) { display: none; } /* (the short piece on the toolbar has ⌄ and ✕) */
+.frame.desk .wx-line.desk-open { left: auto; right: auto; bottom: 76px; width: 440px; }
 .wx-line.above { bottom: auto; }
 /* the weather line: the card folded (#233's step 3, chosen 2026-10-27), the map's hour set by a drag along its strip */
 .wx-line { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 6; padding: 4px 4px 6px; border-radius: 18px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); container-type: inline-size; }
@@ -242,7 +252,7 @@ import { icon, h } from '../../../js/ui.js';
 const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/design-weather-card/';
 const q = new URLSearchParams(location.search);
 const pick = (k, vals, d) => (vals.includes(q.get(k)) ? q.get(k) : d);
-const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site'], 'site'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line'], 'route'), hr: 1, size: pick('size', ['half', 'full'], 'half'),
+const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site'], 'site'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line'], 'route'), hr: 1, tt: pick('tt', ['open'], ''), wl: pick('wl', ['open', 'line'], 'open'), size: pick('size', ['half', 'full'], 'half'),
   trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain', 'winter'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100') };
 
 // ---------------------------------------------------------------- the forecast, at the start, from 19:00 on Sat 7 Nov (local)
@@ -460,7 +470,11 @@ function card() {
   const R = T(), atMap = S.s === 'map';
   const half = phone() && S.size === 'half';
   const el = h('section', { class: `wc-card${half ? ' half' : ''}`, 'aria-label': 'Weather on the way' });
-  el.append(h('div', { class: 'wc-top' }, phone() ? h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Card size' }) : null,
+  if (S.v === 'site') el.append(phone() ? h('button', { type: 'button', class: 'sheet-handle wd-handle', 'aria-label': 'Card size' }) : null,
+    h('div', { class: 'pl-way card wd-shell' }, h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: go('route'), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
+      h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) })),
+      h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, 'Weather on the way')), h('span', { class: 'card-mark', 'aria-hidden': 'true', html: icon(sky(wx(Math.floor(R.days[0].i0)), Math.floor(R.days[0].i0)), 22) }))));
+  else el.append(h('div', { class: 'wc-top' }, phone() ? h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Card size' }) : null,
     h('button', { type: 'button', class: 'btn small quiet wc-back', onclick: go('route'), html: `${icon('chevronLeft', 16)}Route` }),
     h('h3', {}, atMap && S.size === 'half' ? 'Weather' : 'Weather on the way'), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) })));
   const body = h('div', { class: 'wc-body' });
@@ -489,7 +503,15 @@ function card() {
     else body.append(h('div', { class: 'wc-day' }, dayH,
       h('div', { class: 'wc-read' }, h('span', { 'aria-hidden': 'true', style: 'flex: none; color: var(--muted)', html: icon(w.sky, 30) }), h('b', {}, w.big), h('span', {}, `${w.wind} · ${w.rate}`, h('small', {}, `${w.t} · ${w.rain}`))), sun));
   }
-  body.append(h('h4', {}, 'The wind on the way'),
+  if (S.v === 'site') {
+    const COL = ['#ef4444', '#f59e0b', '#22a447'], open = S.tt === 'open';
+    body.append(h('h4', {}, 'The wind on the way'),
+      h('div', { class: 'exposure' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', { class: 'ex-item' }, h('i', { style: `background:${COL[i]};width:${Math.max(4, R.share[i])}%` }), `${k} ${R.share[i]} %`))),
+      h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('wind', 20) }), h('span', {}, h('b', {}, R.strongest)), chevR())),
+      h('label', { class: 'mode-select' }, h('span', { class: 'mode-select-label' }, 'Colour by'), h('span', { class: 'mode-select-box' }, h('select', {}, ...['Way type', 'Wind', 'Temperature', 'Rain'].map((o) => h('option', {}, o))), h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }))),
+      h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row', 'aria-expanded': String(open), onclick: () => { S.tt = open ? '' : 'open'; draw(); } }, h('span', { html: icon('clock', 20) }), h('span', {}, h('b', {}, 'Time on the way'), h('small', {}, `${R.nums[1][0]} · ${R.nums[1][1]}`)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) }))),
+      ...(open ? [h('div', { class: 'speed-table' }, ...[...TIME, ...BYSPORT, ...(S.trip === 'night' ? [['Nights (1)', '', '21 h 08 min', '']] : []), ['Total time', '5.48 km', R.nums[1][0], '9.9 km/h']].map((r) => h('div', { class: `speed-row${/^(of which|the wind)/.test(r[0]) ? ' sub' : ''}` }, h('span', {}, r[0]), h('b', {}, r[1]), h('b', {}, r[2]), h('small', {}, r[3]))))] : []));
+  } else body.append(h('h4', {}, 'The wind on the way'),
     h('div', {}, h('div', { class: 'wc-share', 'aria-hidden': 'true' }, ...R.share.map((x, i) => h('i', { style: `width: ${x}%; background: ${['#ef4444', '#f59e0b', '#22a447'][i]}` }))),
       h('div', { class: 'wc-key' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', {}, h('i', { style: `background: ${['#ef4444', '#f59e0b', '#22a447'][i]}` }), `${k} ${R.share[i]} %`)))),
     h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('wind', 20) }), h('span', {}, h('b', {}, R.strongest)), chevR())),
@@ -555,7 +577,18 @@ function draw() {
   const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}` });
   fr.append(h('img', { class: 'mk-map', src: `${PIC}bg-${phone() ? 'phone' : 'desk'}.jpg`, alt: '' }));
   if (S.s === 'line') {
-    if (!phone()) { fr.append(planner()); fr.append(wxLine(false)); }
+    if (!phone()) {
+      // #594's desktop: the toolbar at the map's foot beside the planner, the weather folded to a short piece at its right end
+      // ("☁ 8° 07:20 ⌃ ✕"); ⌃ opens the strip above it
+      const x = wx(S.hr), tb = h('div', { class: 'mk-tb desk' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths` }),
+        h('button', { type: 'button', class: 'tool', 'aria-label': 'Straight line', html: icon('straight', 20) }), h('button', { type: 'button', class: 'tool', 'aria-label': 'Over water', html: icon('water', 20) }),
+        ...[['undo', 'Undo'], ['redo', 'Redo'], ['more', 'More']].map(([ic, t]) => h('button', { type: 'button', class: 'tool', 'aria-label': t, html: icon(ic, 20) })),
+        h('span', { class: 'mk-tb-wx', role: 'group', 'aria-label': 'The map’s weather' }, h('span', { class: `wd-sky ${sky(x, S.hr)}`, html: icon(sky(x, S.hr), 18) }), h('b', {}, `${Math.round(x[3])}°`), h('span', {}, hourWords(S.hr).replace('Now · ', '')),
+          h('button', { type: 'button', class: 'tool', 'aria-label': S.wl === 'open' ? 'Fold the weather' : 'Open the weather', 'aria-expanded': String(S.wl === 'open'), onclick: () => { S.wl = S.wl === 'open' ? 'line' : 'open'; draw(); }, html: icon(S.wl === 'open' ? 'chevronDown' : 'chevronUp', 18) }),
+          h('button', { type: 'button', class: 'tool', 'aria-label': 'Weather off', onclick: go('route'), html: icon('close', 18) })));
+      fr.append(planner(), tb);
+      if (S.wl === 'open') { const ln = wxLine(false); ln.classList.add('desk-open'); fr.append(ln); requestAnimationFrame(() => { const w = tb.querySelector('.mk-tb-wx'), r = w.getBoundingClientRect(), f = fr.getBoundingClientRect(), z = S.z === '200' ? 2 : 1; ln.style.left = `${Math.max(8, (r.right - f.left) / z - 440)}px`; }); }
+    }
     else if (S.v === 'site' && S.at === 'above') {
       const pl = planner(); pl.classList.add('peek'); pl.classList.remove('half');
       const tb = h('div', { class: 'mk-tb', style: 'bottom: 278px' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths ${CARET}` }),
