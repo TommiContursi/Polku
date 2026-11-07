@@ -5951,6 +5951,7 @@ export class Planner {
       if (!on) { p.hidden = true; p.classList.remove('leaving'); this.tools.inert = false; this.dropCardSeen(); this.placeTools(); } // (the toolbox went down with it)
       s.cancel();
     };
+    if (on) this.placeTools(); // (at once, as setSheetState() does: the map's buttons rise above it from where they were)
     p.dispatchEvent(new Event('sheetstate')); // (main.js: the map's room, and what rides above the sheet)
   }
 
