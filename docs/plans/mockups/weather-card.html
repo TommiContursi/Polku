@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Weather card</title>
+<meta name="description" content="Mock-up for #431: the trip's box and the weather card it opens, with Go's tab gone. Today's Go and weather timeline from main beside the new card, in words or with a graph.">
+<!--
+  #431 (step 6 of #869's order), 2026-11-07. The plan: docs/plans/trip-box-and-weather-card.md. Not wired to the app:
+  nothing here is loaded by Polku. Drawn with css/app.css's own classes (sheet, sheet-head, sheet-sum, sum-item, kf,
+  kf-b, rows, row, val, btn small quiet, tool, menu); what's new is in the block marked "new". The maps and Today's
+  screens are screenshots of main at 1c23902 with the route drawn by a local BRouter; the weather is Open-Meteo's for
+  that evening, read from the app. Illustrative: the waves, and everything under Data: Rain.
+
+  ?v=today|rows|graph  &s=route|card|map  &size=half|full  &trip=day|night  &data=real|rain  &f=390|360|desk  &z=100|200
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
+<style>
+/* ======================================================= the page (mock-up chrome, not the design; #869's) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; }
+* { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; } /* (app.css holds the app's page still; this page scrolls) */
+body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+.cv { max-width: 1500px; margin: 0 auto; }
+.cv a { color: var(--page-link); }
+.cv h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+.cv > p { margin: 0 0 8px; max-width: 900px; }
+.bars { margin: 12px -16px 0; padding: 8px 16px; border-bottom: 1px solid rgba(128,128,128,.25); }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.bar > span { min-width: 60px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 28px; padding: 3px 11px; border: 0; border-radius: 18px; background: none; color: var(--switch-fg); font: inherit; font-size: 13px; cursor: pointer; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 650; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.stage { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 28px; margin-top: 18px; }
+.frame { position: relative; flex: none; overflow: hidden; border-radius: 26px; background: #a9cbe9; box-shadow: 0 0 0 1px rgba(0,0,0,.18), 0 18px 40px rgba(0,0,0,.18); }
+.frame > .mk-map { position: absolute; left: 0; top: 0; width: 100%; height: auto; pointer-events: none; user-select: none; }
+.frame.desk > .mk-map { width: 1440px; }
+.frame.phone { width: 390px; height: 844px; }
+.frame.phone.narrow { width: 360px; height: 740px; }
+.frame.desk { width: min(1100px, calc(100vw - 32px)); height: 700px; border-radius: 10px; }
+.frame.z2 { zoom: 2; }
+.frame.z2.phone { width: 195px; height: 422px; }
+.frame.z2.phone.narrow { width: 180px; height: 370px; }
+.frame.z2.desk { width: min(550px, calc(50vw - 16px)); height: 350px; }
+.frame.z2 > .mk-map { display: none; } /* (the map's screenshot is at 100 %: at 200 % the frame shows the sheet alone) */
+@media (max-width: 440px) { .frame.phone, .frame.phone.narrow { width: calc(100vw - 32px); } .cap { max-width: none; } }
+.cap { margin: 10px 0 0; font-size: 12.5px; color: var(--page-cap); max-width: 390px; }
+.frame.desk + .cap { max-width: 1100px; }
+.shots { display: flex; flex-wrap: wrap; gap: 16px; }
+.shots figure { margin: 0; }
+.shots img { display: block; width: 300px; max-width: 100%; height: auto; border-radius: 18px; box-shadow: 0 2px 12px rgba(0,0,0,.18); }
+.shots figcaption { margin-top: 6px; max-width: 300px; font-size: 12.5px; color: var(--page-cap); }
+.notes { margin-top: 28px; max-width: 900px; }
+.notes h2 { font-size: 16px; margin: 20px 0 6px; }
+.notes ul { padding-left: 20px; }
+.notes li { margin: 3px 0; }
+
+/* the planner in its frame: the app's sheet, placed here by hand (the app's own rules place it on the map) */
+.frame .sheet[data-layout][data-state] { position: absolute; display: flex; flex-direction: column; overflow: hidden; height: auto; }
+.frame.phone .sheet, .frame.phone .wc-card { left: 8px; right: 8px; bottom: 8px; top: 68px; }
+.frame.phone .sheet.half, .frame.phone .wc-card.half { top: 46%; }
+.frame.desk .sheet { left: 12px; top: 64px; bottom: 12px; width: 400px; }
+.frame .sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 12px; }
+.frame .sheet-head { padding: 2px 10px 6px 14px; margin: 0 -12px; }
+.frame .sheet-handle { position: absolute; left: 50%; top: 4px; margin-left: -36px; }
+.rt-top { position: relative; flex: none; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 14px 4px 0 12px; }
+.rt-top .rt-end { margin-left: auto; display: flex; }
+.rt-warnsum { border: 0; background: none; padding: 0; font: inherit; color: var(--danger); text-align: left; cursor: pointer; }
+.rt-warnsum b { display: inline-flex; align-items: center; gap: 4px; color: var(--danger); }
+.rt-warnsum small { color: var(--danger); }
+.rt-profline { display: flex; align-items: center; gap: 2px; min-height: 28px; margin: 4px 0 0; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.rt-prof { display: block; width: 100%; height: 70px; margin: 2px 0 4px; }
+/* the When pill (#869, step 4's ▾ pill) */
+.rt-pill { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); max-width: 100%; padding: 4px 10px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.frame.phone .rt-pill { min-height: 44px; }
+.rt-pill > span { min-width: 0; }
+.ic.caret { width: 10px; height: 10px; flex: none; color: var(--muted); }
+/* the trip's box (#761 Parts 22, as #869's calmer top drew it) */
+.p22-box { margin: 10px 0 2px; display: grid; gap: 6px; }
+.p22-box .day { width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; }
+.rt-dayline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 700; }
+.rt-dayweather { display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.rt-dayweather > span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rt-dayweather b { color: var(--text); font-weight: 600; }
+.rt-dayweather .ic { display: inline-block; margin-right: 4px; vertical-align: -2px; }
+.way-chev { color: var(--muted); display: grid; }
+.mk-list { margin-top: 12px; }
+.mk-list h4 { margin: 6px 0; font-size: 13px; color: var(--muted); font-weight: var(--weight-strong); }
+.mk-list .row { min-height: 44px; }
+
+/* ======================================================= new: the weather card (#431) */
+.wc-card { position: absolute; z-index: 5; display: flex; flex-direction: column; min-height: 0; background: var(--surface-solid); color: var(--text); border-radius: 18px; box-shadow: var(--shadow); }
+.frame.desk .wc-card { left: 424px; top: 64px; width: 340px; bottom: 12px; }
+.wc-top { position: relative; display: flex; align-items: center; gap: 4px; min-height: 52px; padding: 14px 6px 0 4px; }
+.wc-top h3 { flex: 1; min-width: 0; margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.wc-back { color: var(--accent); font-weight: var(--weight-name); }
+.wc-body { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 16px; display: flex; flex-direction: column; gap: 12px; overscroll-behavior: contain; }
+.wc-body h4 { margin: 8px 0 -4px; font-size: 13px; font-weight: var(--weight-strong); color: var(--muted); }
+.wc-when { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 700; }
+.wc-room { padding: 8px 10px; border: 1.5px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 13px; }
+.wc-day { display: flex; flex-direction: column; gap: 6px; }
+.wc-day > .wc-dayh { font-weight: 700; }
+.wc-day > .wc-dayh small { display: block; color: var(--muted); font-weight: 400; font-size: 13px; }
+.wc-read { display: flex; align-items: center; gap: 10px; }
+.wc-read > b { font-size: 32px; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.wc-read > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.wc-read small, .wc-sun, .wc-note { display: block; color: var(--muted); font-size: 13px; }
+.wc-sun .ic, .wc-note .ic { display: inline-block; margin-right: 3px; vertical-align: -2px; }
+.wc-dark { color: var(--text); font-weight: 600; }
+.wc-share { display: flex; height: 10px; border-radius: 5px; overflow: hidden; }
+.wc-share > i { display: block; }
+.wc-key { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 6px; font-size: 13px; }
+.wc-key i { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 2px; }
+.wc-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.wc-time > summary { cursor: pointer; display: flex; align-items: center; gap: 4px; min-height: var(--target); color: var(--accent); font-weight: var(--weight-name); list-style: none; }
+.wc-time > summary::-webkit-details-marker { display: none; }
+.wc-tt { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 4px 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.wc-tt > .h { grid-column: 1 / -1; margin-top: 4px; font-weight: var(--weight-strong); color: var(--muted); }
+.wc-tt > .tot { font-weight: var(--weight-strong); }
+.wc-wave { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.wc-wave > span:first-child { color: var(--sport-paddle); flex: none; }
+/* the graph (B): the hours around the trip, the trip shaded, the dark behind */
+.wc-card { --wc-dark: color-mix(in srgb, var(--text) 9%, transparent); }
+.wc-graph { display: block; width: 100%; height: auto; overflow: visible; }
+.wc-graph text { font: 600 10px/1 system-ui, sans-serif; fill: var(--muted); }
+.wc-graph text.t { fill: var(--text); font-size: 11px; }
+/* the map's 48 hours (today's timeline strip, now the card's last part) */
+.wc-map { display: flex; flex-direction: column; gap: 6px; }
+.wc-reading { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.wc-reading > b { font-size: 22px; }
+.wc-reading small { display: block; color: var(--muted); font-size: 13px; }
+.wc-play { display: flex; align-items: center; gap: 8px; }
+.wc-play input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.wc-play > span { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rows.wc-rows { grid-template-columns: minmax(0, 1fr); }
+</style>
+</head>
+<body class="mk">
+<div class="cv">
+  <h1>The weather card</h1>
+  <p>#431, step 6 of #869’s order: the trip’s box over the list, and the weather card it opens. The card takes Go’s contents and the weather timeline’s: <b>it replaces the floating timeline window</b>, whose 48 hours become the card’s last part, <i>On the map</i>. Go’s tab goes. The question now (Q1) is how the card shows the trip’s weather: <b>Rows</b> in words, or a <b>Graph</b> of the hours around the trip. Tap the trip’s box to open the card; switch Size to see what fits at half on a phone. The plan is <a href="../trip-box-and-weather-card.md">docs/plans/trip-box-and-weather-card.md</a>.</p>
+  <div class="bars" id="bars"></div>
+  <div class="stage" id="stage"></div>
+  <div class="notes">
+    <h2>What’s real and what isn’t</h2>
+    <ul>
+      <li>The map and Today’s screens are screenshots of <code>main</code> at 1c23902: MTB from Töölö to Kaivopuisto, a sea kayak to Suomenlinna across the Särkän väylä with a 220 m carry, a hike on the island; the night trip spends the night at waypoint 2.</li>
+      <li>The weather is the forecast Polku had for that evening (Open-Meteo), at the start, hour by hour: dry, 4–7 °C, wind 4–7 m/s from the west.</li>
+      <li>Illustrative: the waves (Polku’s router estimates them but doesn’t say them yet), the profile (its shape), the list, and everything under Data: Rain.</li>
+      <li>Not designed here: Best time to leave and Arrive by (step 9); the dashed box marks their room.</li>
+    </ul>
+  </div>
+</div>
+<script type="module">
+import { icon, h } from '../../../js/ui.js';
+
+const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/design-weather-card/';
+const q = new URLSearchParams(location.search);
+const pick = (k, vals, d) => (vals.includes(q.get(k)) ? q.get(k) : d);
+const S = { v: pick('v', ['today', 'rows', 'graph'], 'rows'), s: pick('s', ['route', 'card', 'map'], 'route'), size: pick('size', ['half', 'full'], 'half'),
+  trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100') };
+
+// ---------------------------------------------------------------- the forecast, at the start, from 19:00 on Sat 7 Nov (local)
+// [wind m/s, gust, from °, °C, rain mm/h], an hour each, as Polku had it (Open-Meteo, 2026-11-07 20:21)
+const WX = [[5.1,8.4,303,6.7,0],[4.3,7.7,277,6.5,0],[5,7.3,285,6.2,0],[5.3,7.8,281,6.2,0],[5.1,8,289,6.1,0],[4.9,7.7,296,6.1,0],[4.9,7.3,290,5.9,0],[5.2,7.8,288,5.7,0],[5.5,8.2,297,5.5,0],[5.4,8.2,301,5.1,0],[5.4,8.2,305,5,0],[5.4,8.1,308,4.9,0],[5.5,8.3,307,4.9,0],[5.5,8.4,307,4.9,0],[5.7,8.5,318,4.9,0],[5.4,8.7,314,5.1,0],[5,8.1,308,5.5,0],[4.6,7.6,305,5.8,0],[4.1,7.1,304,6,0],[3.9,6.4,292,6.1,0],[4.6,6.9,281,6.1,0],[5.1,7.5,282,5.8,0],[5.3,7.9,288,5.7,0],[5.2,7.8,285,5.7,0],[5.2,7.9,289,5.9,0],[4.9,7.8,288,5.9,0],[4.7,7.2,284,5.6,0],[5.2,7.7,286,5.2,0],[5.2,7.8,288,4.8,0],[4.7,7.7,288,4.6,0],[4.2,7,283,4.4,0],[4.2,6.3,278,4.4,0],[4.3,6.4,272,4.2,0],[4.8,7,271,4,0],[4.9,7.3,273,4.1,0],[4.9,7.6,274,4.3,0],[5.3,7.7,271,4.4,0],[5.4,7.9,269,4.7,0],[6.6,9.7,267,5.5,0],[7,10.3,273,6.2,0],[7.4,11.1,269,6.4,0],[7.3,11.2,266,6.6,0],[7.1,11,265,6.6,0],[6.9,10.5,266,6.5,0],[7.3,10.7,265,6.3,0],[6.9,10.7,261,6.1,0],[7.1,10.6,273,6,0],[7.5,11.1,264,5.9,0],[7.2,11.1,266,5.8,0],[6.7,10.7,271,5.8,0]];
+const H0 = 19; // WX[0] is Sat 19:00
+const RAIN = [0, 0.2, 0.6, 1.4, 0.9, 0.3, 0, 0, 0, 0]; // (Data: Rain, illustrative, from the hour before the trip)
+const wx = (i) => { const x = WX[Math.max(0, Math.min(WX.length - 1, i))].slice(); const k = i - Math.floor(T().days[0].i0) + 1; if (S.data === 'rain' && k >= 0 && k < RAIN.length) x[4] = RAIN[k]; return x; }; // (the rain comes as the trip starts)
+const DAYS = ['Sat', 'Sun', 'Mon'];
+const hr = (i) => (H0 + i) % 24, dayOf = (i) => DAYS[Math.floor((H0 + i) / 24)];
+const dark = (i) => { const t = hr(i); return t >= 17 || t < 8; }; // (dark from about 16:58 to sunrise at 08:00)
+const compass = (d) => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(d / 45) % 8];
+
+// ---------------------------------------------------------------- the trips, as the app worked them out
+const DAY = {
+  nums: [['5.48 km', 'distance'], ['58 min', '33 min moving'], ['↑9 ↓22 m', 'ascent · descent']], warnN: 7,
+  leave: 'Leave now', there: 'there at 21:19', tab: '21:19',
+  rows: [['mtb', 'bike', 'MTB', '<b>↑7 m</b> · cycleway and footway'], ['paddle', 'paddle', 'Paddle', 'wind up to <b>5 m/s</b>, gusts 8'], ['hike', 'hike', 'Hike', '<b>↑2 m</b>']],
+  days: [{ name: 'Sat 07/11 · 20:21–21:19', i0: 1, i1: 2.3, sun: 'Sunset 16:11 · dark from 16:58 · sunrise 07:59', inDark: 'In the dark the whole way' }],
+  share: [1, 13, 86], strongest: 'Strongest headwind 2.8 m/s at km 2.4', wave: ['0.3 m', '20:45'],
+};
+const NIGHT = {
+  nums: [['5.48 km', 'distance'], ['22 h 06', '32 min moving'], ['↑9 ↓22 m', 'ascent · descent']], warnN: 6,
+  leave: 'Leave Sun 10:00', there: 'there Mon 08:05', tab: 'Mon 08:05',
+  rows: DAY.rows,
+  days: [{ n: 1, name: 'Sun 08/11 · 10:00–10:41', what: '4.96 km · 27 min moving · night at Waypoint 2', i0: 15, i1: 15.7, sun: 'Sunrise 08:01 · sunset 16:08 · dark from 16:56', inDark: '' },
+    { n: 2, name: 'Mon 09/11 · 08:00–08:05', what: '521 m · 6 min moving', i0: 37, i1: 37.1, sun: 'Sunrise 08:03 · sunset 16:05 · dark from 16:53', inDark: '' }],
+  share: [1, 6, 93], strongest: 'Strongest headwind 3.0 m/s at km 0.1', wave: ['0.2 m', '10:25'],
+};
+const T = () => (S.trip === 'day' ? DAY : NIGHT);
+const TIME = [['Paved', '2.42 km', '9 min', '16.5 km/h'], ['Gravel & unpaved', '256 m', '3 min', '5.2 km/h'], ['Trails', '830 m', '3 min', '16.6 km/h'], ['On the water', '1.75 km', '13 min', '8.0 km/h'], ['Carries', '220 m', '5 min', '2.5 km/h'], ['of which uphill (over 3 %)', '', '1 min', ''], ['the wind', '', '−4 min', '']];
+const BYSPORT = [['MTB', '2.97 km', '9 min', '20.7 km/h'], ['Paddle', '1.97 km', '18 min', '6.4 km/h'], ['Hike', '540 m', '6 min', '5.3 km/h'], ['Changeovers (2)', '', '25 min', '']];
+
+// a day's weather in words, over the hours it's on the way (the route's own samples in the app; here the start's hours)
+function dayWx(d) {
+  const hs = []; for (let i = Math.floor(d.i0); i <= Math.ceil(d.i1); i++) hs.push(wx(i));
+  const t0 = Math.round(Math.min(...hs.map((x) => x[3]))), t1 = Math.round(Math.max(...hs.map((x) => x[3])));
+  const w0 = Math.round(Math.min(...hs.map((x) => x[0]))), w1 = Math.round(Math.max(...hs.map((x) => x[0]))), g = Math.round(Math.max(...hs.map((x) => x[1])));
+  const wet = hs.filter((x) => x[4] >= 0.1), peak = Math.max(0, ...hs.map((x) => x[4]));
+  return { t: t0 === t1 ? `${t0} °C` : `${t0}…${t1} °C`, big: `${Math.round(hs[0][3])}°`, wind: `${w0 === w1 ? w0 : `${w0}–${w1}`} m/s from ${compass(hs[0][2])}, gusts ${g}`, rate: w1 >= 8 ? 'Windy' : w1 >= 4 ? 'Breezy' : 'Light',
+    rain: wet.length ? `Rain from km 2, up to ${peak.toFixed(1)} mm/h · about 1 mm on you` : 'Dry the whole way', rainShort: wet.length ? 'rain from km 2' : 'dry', sky: wet.length ? 'rain' : dark(Math.floor(d.i0)) ? 'moon' : 'cloud' };
+}
+
+// ---------------------------------------------------------------- small builders
+const CARET = '<svg class="ic caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3h8L5 8.5z" fill="currentColor"/></svg>';
+const chevR = (s = 18) => h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', s) });
+const go = (s) => () => { S.s = s; draw(); };
+const whenPill = () => h('button', { type: 'button', class: 'rt-pill', 'aria-haspopup': 'menu', 'aria-label': `When: ${T().leave}` }, h('span', { html: icon(S.trip === 'day' ? 'clock' : 'calendar', 18) }), h('span', {}, T().leave), h('span', { html: CARET }));
+const phone = () => S.f !== 'desk';
+
+// the planner's top, as #869's calmer top drew it: the numbers, the profile, each sport's row
+function head() {
+  const R = T();
+  const sum = h('div', { class: 'sheet-sum' }, ...R.nums.map(([b, s]) => h('span', { class: 'sum-item' }, h('b', {}, b), h('small', {}, s))),
+    S.z === '200' ? null : h('button', { type: 'button', class: 'sum-item rt-warnsum', 'aria-label': `${R.warnN} warnings: open Check` }, h('b', { html: `${icon('warnf', 18)}${R.warnN}` }), h('small', {}, 'warnings')));
+  const prof = `<svg class="rt-prof" viewBox="0 0 340 70" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C40,34 70,46 110,38 S170,30 184,48 L184,70 L0,70Z" fill="var(--sport-mtb)" opacity=".35"/><path d="M184,56 L306,56 L306,70 L184,70Z" fill="var(--sport-paddle)" opacity=".35"/><path d="M306,56 C318,50 330,52 340,54 L340,70 L306,70Z" fill="var(--sport-hike)" opacity=".35"/><path d="M0,40 C40,34 70,46 110,38 S170,30 184,48 L184,56 L306,56 C318,50 330,52 340,54" fill="none" stroke="var(--text)" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`;
+  const rows = h('div', { class: 'kf legs', role: 'group', 'aria-label': 'Key facts' },
+    S.z === '200' ? h('button', { type: 'button', class: 'kf-b warn danger' }, h('span', { html: icon('warnf', 18) }), h('span', {}, h('b', {}, `${R.warnN} warnings`)), h('span', { html: icon('chevronRight', 16) })) : null,
+    ...R.rows.map(([k, ic, name, t]) => h('button', { type: 'button', class: 'kf-b' }, h('span', { style: `color: var(--sport-${k})`, html: icon(ic, 18) }), h('span', { html: `${name} · ${t}` }), h('span', { html: icon('chevronRight', 16) }))));
+  return h('div', { class: 'sheet-head' }, sum, h('button', { type: 'button', class: 'rt-profline' }, h('span', {}, 'Profile · Way type'), chevR(14)), h('div', { html: prof }), rows);
+}
+
+// the trip's box: When, then the day's weather without what a sport's row says (the wind: Paddle's row says it)
+function box() {
+  const R = T(), line = (d) => { const w = dayWx(d); return [w.t, w.rainShort, d.inDark ? 'in the dark' : 'in the light'].join(' · '); };
+  const first = h('div', { class: 'rt-dayline' }, whenPill(), h('span', {}, `→ ${R.there}`));
+  if (R.days.length === 1) return h('div', { class: 'p22-box', role: 'group', 'aria-label': 'The trip' }, h('div', { class: 'day' }, first,
+    h('button', { type: 'button', class: 'rt-dayweather', onclick: go('card') }, h('span', { html: `${icon(dayWx(R.days[0]).sky, 14)}${line(R.days[0])}` }), chevR())));
+  return h('div', { class: 'p22-box', role: 'group', 'aria-label': 'The trip' }, h('div', { class: 'day' }, first,
+    ...R.days.map((d) => h('button', { type: 'button', class: 'rt-dayweather', onclick: go('card') }, h('span', { html: `<b>Day ${d.n} · ${d.name}</b><br>${icon(dayWx(d).sky, 14)}${line(d)}` }), chevR()))));
+}
+
+function planner() {
+  const full = S.size === 'full' || !phone();
+  const el = h('section', { class: `sheet${full ? '' : ' half'}`, 'data-layout': phone() ? 'sheet' : 'side', 'data-state': full ? 'full' : 'half', 'aria-label': 'Route planner' });
+  const top = h('div', { class: 'rt-top' }, h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Planner size' }), h('span', { class: 'rt-end' }, h('button', { type: 'button', class: 'tool sheet-fold', 'aria-label': 'Fold', html: icon('chevronDown', 20) })));
+  const body = h('div', { class: 'sheet-body' }, head(), box(),
+    h('div', { class: 'mk-list' }, h('h4', {}, 'Waypoints'), h('div', { class: 'rows wc-rows' },
+      ...[['Töölö', '0 m'], ['Kaivopuisto', '2.97 km'], [S.trip === 'day' ? 'Suomenlinna' : 'Waypoint 2', '4.96 km']].map(([n, d]) => h('button', { type: 'button', class: 'row' }, h('span', { html: icon('pin', 18) }), h('span', {}, h('b', {}, n)), h('span', { class: 'val' }, d), chevR())))));
+  el.append(top, body);
+  return el;
+}
+
+// ---------------------------------------------------------------- the graph (B): 12 hours around a day's trip, a column an hour
+function graph(d) {
+  const a = Math.max(0, Math.floor(d.i0) - 2), n = 12, W = 340, cw = W / n, top = 26, th = 52, rb = 104, H = 132;
+  const hs = Array.from({ length: n }, (_, k) => wx(a + k)), ts = hs.map((x) => x[3]), lo = Math.min(...ts) - 1, hi = Math.max(...ts) + 1;
+  const ty = (t) => top + 4 + (1 - (t - lo) / (hi - lo)) * (th - 8);
+  let s = `<svg class="wc-graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="${dayOf(a)} ${hr(a)}:00 to ${hr(a + n)}:00 at the start: ${dayWx(d).t}, ${dayWx(d).wind}, ${dayWx(d).rainShort}">`;
+  for (let k = 0; k < n; k++) if (dark(a + k)) s += `<rect x="${k * cw}" y="0" width="${cw}" height="${rb}" fill="var(--wc-dark)"/>`;
+  const x0 = (d.i0 - a) * cw, x1 = Math.max(x0 + 4, (d.i1 - a) * cw);
+  s += `<rect x="${x0}" y="0" width="${x1 - x0}" height="${rb}" fill="var(--accent)" opacity=".18"/><rect x="${x0}" y="0" width="2" height="${rb}" fill="var(--accent)"/>`;
+  s += `<text x="${x0 + 4}" y="${rb - 6}" style="fill: var(--accent)">you</text>`;
+  hs.forEach((x, k) => { const cx = k * cw + cw / 2;
+    s += `<g transform="translate(${cx},9) rotate(${x[2] + 180})"><path d="M0,-6 L0,6 M-3,-2 L0,-6 L3,-2" stroke="var(--text)" stroke-width="1.4" fill="none"/></g>`;
+    s += `<text x="${cx}" y="${top - 1}" text-anchor="middle" class="t">${Math.round(x[0])}</text>`;
+    if (x[4] > 0) { const bh = Math.min(28, x[4] * 16); s += `<rect x="${k * cw + 4}" y="${rb - bh}" width="${cw - 8}" height="${bh}" rx="2" fill="#3b82f6"/>`; } });
+  s += `<path d="${ts.map((t, k) => `${k ? 'L' : 'M'}${(k * cw + cw / 2).toFixed(1)},${ty(t).toFixed(1)}`).join('')}" fill="none" stroke="#ea580c" stroke-width="2"/>`;
+  ts.forEach((t, k) => { if (k % 3 === 1) s += `<text x="${k * cw + cw / 2}" y="${ty(t) - 5}" text-anchor="middle" style="fill:#ea580c">${Math.round(t)}°</text>`; });
+  for (let k = 0; k <= n; k += 3) s += `<text x="${Math.min(W - 14, k * cw + 2)}" y="${H - 14}">${k === 0 || hr(a + k) === 0 ? `${dayOf(a + k)} ` : ''}${String(hr(a + k)).padStart(2, '0')}</text>`;
+  s += `<text x="0" y="${H - 1}">m/s at the top · °C · rain · the dark shaded</text></svg>`;
+  return h('div', { html: s });
+}
+
+// the map's 48 hours: today's timeline strip, the trip shaded, no longer moving the departure
+function strip48() {
+  const W = 340, H = 56, cw = W / 48, ts = WX.slice(1, 49).map((x) => x[3]), lo = Math.min(...ts) - 1, hi = Math.max(...ts) + 1;
+  let s = `<svg class="wc-graph" viewBox="0 0 ${W} ${H + 14}" role="img" aria-label="The map’s next 48 hours: temperature, rain and wind. Drag to change the hour.">`;
+  for (let k = 0; k < 48; k++) if (dark(k + 1)) s += `<rect x="${k * cw}" y="0" width="${cw + .2}" height="${H}" fill="var(--wc-dark)"/>`;
+  for (const d of T().days) s += `<rect x="${(d.i0 - 1) * cw}" y="0" width="${Math.max(3, (d.i1 - d.i0) * cw)}" height="${H}" fill="var(--accent)" opacity=".3"/>`;
+  for (let k = 1; k < 48; k += 3) s += `<g transform="translate(${k * cw},8) rotate(${WX[k + 1][2] + 180})"><path d="M0,-4 L0,4 M-2,-1 L0,-4 L2,-1" stroke="var(--muted)" stroke-width="1.2" fill="none"/></g>`;
+  s += `<path d="${ts.map((t, k) => `${k ? 'L' : 'M'}${(k * cw).toFixed(1)},${(18 + (1 - (t - lo) / (hi - lo)) * 32).toFixed(1)}`).join('')}" fill="none" stroke="#ea580c" stroke-width="1.6"/>`;
+  s += `<rect x="0" y="0" width="2" height="${H}" fill="var(--text)"/>`;
+  [[0, 'Now'], [4, 'Sun'], [16, '12'], [28, 'Mon'], [40, '12']].forEach(([k, l]) => { s += `<text x="${k * cw + 3}" y="${H + 12}">${l}</text>`; });
+  return h('div', { html: `${s}</svg>` });
+}
+
+// ---------------------------------------------------------------- the weather card
+function card() {
+  const R = T(), atMap = S.s === 'map';
+  const half = phone() && S.size === 'half';
+  const el = h('section', { class: `wc-card${half ? ' half' : ''}`, 'aria-label': 'Weather on the way' });
+  el.append(h('div', { class: 'wc-top' }, phone() ? h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Card size' }) : null,
+    h('button', { type: 'button', class: 'btn small quiet wc-back', onclick: go('route'), html: `${icon('chevronLeft', 16)}Route` }),
+    h('h3', {}, atMap && S.size === 'half' ? 'Weather' : 'Weather on the way'), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) })));
+  const body = h('div', { class: 'wc-body' });
+  body.append(h('div', { class: 'wc-when' }, whenPill(), h('span', {}, `→ ${R.there}`)),
+    h('div', { class: 'wc-room' }, 'Room for Best time to leave (step 9)'));
+  for (const d of R.days) {
+    const w = dayWx(d);
+    const dayH = R.days.length > 1 ? h('div', { class: 'wc-dayh' }, `Day ${d.n} · ${d.name}`, h('small', {}, d.what)) : null;
+    const sun = h('span', { class: 'wc-sun', html: `${icon(d.inDark ? 'moon' : 'sunset', 14)}${d.inDark ? `<span class="wc-dark">${d.inDark}</span> · ` : ''}${d.sun}` });
+    if (S.v === 'graph') body.append(h('div', { class: 'wc-day' }, dayH, h('div', { class: 'wc-read' }, h('span', {}, h('b', { style: 'font-size: 15px' }, `${w.t} · ${w.wind} · ${w.rainShort}`))), graph(d), sun));
+    else body.append(h('div', { class: 'wc-day' }, dayH,
+      h('div', { class: 'wc-read' }, h('span', { 'aria-hidden': 'true', style: 'flex: none; color: var(--muted)', html: icon(w.sky, 30) }), h('b', {}, w.big), h('span', {}, `${w.wind} · ${w.rate}`, h('small', {}, `${w.t} · ${w.rain}`))), sun));
+  }
+  body.append(h('h4', {}, 'The wind on the way'),
+    h('div', {}, h('div', { class: 'wc-share', 'aria-hidden': 'true' }, ...R.share.map((x, i) => h('i', { style: `width: ${x}%; background: ${['#ef4444', '#f59e0b', '#22a447'][i]}` }))),
+      h('div', { class: 'wc-key' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', {}, h('i', { style: `background: ${['#ef4444', '#f59e0b', '#22a447'][i]}` }), `${k} ${R.share[i]} %`)))),
+    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('wind', 20) }), h('span', {}, h('b', {}, R.strongest)), chevR())),
+    h('div', { class: 'wc-wave' }, h('span', { html: icon('paddle', 18) }), h('span', {}, h('b', {}, `Paddle: waves up to about ${R.wave[0]}`), h('small', { class: 'wc-note' }, `An estimate from the wind at ${R.wave[1]}, over the open water upwind`))),
+    h('h4', {}, 'Colour the route by'),
+    h('div', { class: 'wc-links' }, ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([ic, k]) => h('button', { type: 'button', class: 'btn small quiet', html: `${icon(ic, 16)} ${k}` }))),
+    h('details', { class: 'wc-time' }, h('summary', { html: `Time on the way: ${R.nums[1][1]} ${icon('chevronDown', 16)}` }),
+      h('div', { class: 'wc-tt' }, ...TIME.flatMap((r) => r.map((x) => h('span', {}, x))), h('span', { class: 'h' }, 'By sport'), ...BYSPORT.flatMap((r) => r.map((x) => h('span', {}, x))),
+        ...(S.trip === 'night' ? ['Nights (1)', '', '21 h 08 min', ''].map((x) => h('span', {}, x)) : []), ...['Total time', '5.48 km', R.nums[1][0], '9.9 km/h'].map((x) => h('span', { class: 'tot' }, x)))));
+  const map = h('div', { class: 'wc-map', id: 'wc-onmap' }, h('h4', {}, 'On the map'), strip48(),
+    h('div', { class: 'wc-reading' }, h('span', { style: 'color: var(--muted)', html: icon('cloud', 26) }), h('b', {}, '6°'), h('span', {}, '4 m/s W, gusts 7 · dry', h('small', {}, 'at the map’s middle'))),
+    h('div', { class: 'wc-play' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Play', html: icon('play', 18) }), h('input', { type: 'range', min: 0, max: 48, value: 0, 'aria-label': 'The map’s hour' }), h('span', {}, 'Now · 20:21')),
+    h('span', { class: 'wc-note' }, 'Your trip is shaded. Road works and road conditions follow this hour too.'),
+    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('layers', 20) }), h('span', {}, h('b', {}, 'Weather layers')), h('span', { class: 'val' }, 'Wind'), chevR())));
+  body.append(map);
+  el.append(body);
+  if (atMap) requestAnimationFrame(() => { body.scrollTop = map.offsetTop - 8; });
+  return el;
+}
+
+// ---------------------------------------------------------------- Today, from main: Go and the timeline window
+function today() {
+  return h('div', { class: 'shots' },
+    h('figure', {}, h('img', { src: `${PIC}today-timeline.jpg`, alt: 'Today on a phone: the weather timeline window over the planner at its peek' }), h('figcaption', {}, 'The timeline: a window of its own over the planner, its four chips, the 48 hours, the reading at the map’s middle, play, and ⚑ “also your route’s departure”.')),
+    h('figure', {}, h('img', { src: `${PIC}today-go-time.jpg`, alt: 'Today on a phone: Go at full, its Time section' }), h('figcaption', {}, 'Go, its top: Leave, There at, the time’s table and Your speed.')),
+    h('figure', {}, h('img', { src: `${PIC}today-go-weather.jpg`, alt: 'Today on a phone: Go at full, its weather' }), h('figcaption', {}, 'Go, further down: the sun, the wind at the start, the temperature, rain, the wind’s shares, eight hour chips past the trip, the three links, Take it along.')));
+}
+
+// ---------------------------------------------------------------- the page
+const SW = [
+  ['Version', 'v', [['today', 'Today'], ['rows', 'A: Rows'], ['graph', 'B: Graph']]],
+  ['Screen', 's', [['route', 'The planner'], ['card', 'Card, from the box'], ['map', 'Card, from Weather']]],
+  ['Size', 'size', [['half', 'Half'], ['full', 'Full']]],
+  ['Trip', 'trip', [['day', 'A day trip'], ['night', 'With a night']]],
+  ['Data', 'data', [['real', 'That evening’s'], ['rain', 'Rain (illustrative)']]],
+  ['Frame', 'f', [['390', '390'], ['360', '360'], ['desk', 'Desktop']]],
+  ['Zoom', 'z', [['100', '100 %'], ['200', '200 %']]],
+];
+function bars() {
+  const el = document.getElementById('bars'); el.replaceChildren();
+  for (const [label, k, opts] of SW) {
+    if (S.v === 'today' && k !== 'v') continue;
+    el.append(h('div', { class: 'bar' }, h('span', {}, label), h('div', { class: 'sw' }, ...opts.map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(S[k] === v), onclick: () => { S[k] = v; draw(); } }, t)))));
+  }
+}
+const CAP = {
+  route: 'The planner at half: the numbers, the profile, each sport’s row, then the trip’s box. Its first line is When, “Leave now ▾ → there at …”; under it the day’s weather without the wind, which Paddle’s row says. A tap on the weather line opens the card.',
+  card: 'The weather card in the sheet’s place, ‹ Route back to the planner as it was. ',
+  map: 'Weather (the map’s button, or T) opens the same card at On the map: the map’s 48 hours, which no longer move the departure. ',
+};
+function draw() {
+  const p = new URLSearchParams(); for (const [k, v] of Object.entries(S)) p.set(k, v); history.replaceState(null, '', `?${p}`);
+  bars();
+  const stage = document.getElementById('stage'); stage.replaceChildren();
+  if (S.v === 'today') { stage.append(today()); return; }
+  const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}` });
+  fr.append(h('img', { class: 'mk-map', src: `${PIC}bg-${phone() ? 'phone' : 'desk'}.jpg`, alt: '' }));
+  if (phone() && S.s !== 'route') fr.append(card());
+  else { fr.append(planner()); if (S.s !== 'route') fr.append(card()); }
+  const cap = S.s === 'route' ? CAP.route : CAP[S.s] + (S.v === 'graph' ? 'B: each day is a line in words and a graph of 12 hours at the start, a column an hour: the wind (m/s, its arrow), the temperature, rain, the dark shaded, your trip in green.' : 'A: each day in words: its reading (the sky, the temperature, the wind with its gusts, the rain) and its sun, saying when the trip is in the dark.')
+    + (phone() && S.size === 'half' && S.s !== 'route' ? ' At half, this is all a phone shows before a swipe.' : '');
+  stage.append(h('div', {}, fr, h('p', { class: 'cap' }, cap)));
+}
+draw();
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 The design of step 6 of [the one order](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784): the trip's box over the list, and the weather card it opens, with Go's tab gone ([#431](https://github.com/TommiContursi/Polku/issues/431), [#794](https://github.com/TommiContursi/Polku/issues/794), [#759](https://github.com/TommiContursi/Polku/issues/759), [#766](https://github.com/TommiContursi/Polku/issues/766)). Part of [#869](https://github.com/TommiContursi/Polku/issues/869); milestone [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): research and the inventory are done; the first round of questions is with the user.** No mock-up yet: it's drawn once the first round is answered. No app code is written here.
+**Where it stands (2026-11-07): research and the inventory are done; the first round is with the user, with a first mock-up to choose from.** The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri) to try on a phone (built from this file with `css/app.css` and `js/ui.js` inlined and the screenshots embedded). **Today** shows Go and the timeline from `main`; **A: Rows** and **B: Graph** are the two answers to Q1, at half and full, for a day trip and a trip with a night. No app code is written here.
 
 ## Already decided
 
@@ -117,8 +117,11 @@ Checked by hand on 2026-11-07 against the services themselves.
 
 ## Round 1, with the user
 
-Asked on 2026-11-07; the answers go here.
+Asked on 2026-11-07 in the session, nine questions with a recommendation each: rows or a graph; the box's weather line; the card's order; paddling's waves; uncertainty in words; what Weather opens; the gap until step 9; a day row's tap; the small placements. The answers go here.
+
+- **Q1, rows or a graph:** not decided from words. Asked to see it, keeping in mind that a phone shows far less at once than a desktop. Drawn as A and B in the mock-up, with Size: Half showing what a phone shows before a swipe.
+- **The card and the timeline are one thing:** the weather card replaces the floating timeline window; its 48 hours are the card's last part, On the map.
 
 ## Not drawn yet
 
-The mock-up, the break-ui states and the PRs come after round 1.
+The break-ui states (late, partial or missing forecast, past ten days, the midnight sun, a passed departure, a paddle with no waves, long Finnish names), the desktop's details and the PRs come after the next round.
