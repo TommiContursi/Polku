@@ -2,7 +2,7 @@
 // the planner keeps the actions. A card shows only what can be done now, editing or in the route's view alike: Done
 // and Edit decide only whether a tap on the map adds a point (#745).
 import { h, icon, sign, toast, store } from './ui.js';
-import { nums, group, rows, acts, item, pickRow, segIcons, mainButton } from './card.js';
+import { nums, group, rows, acts, item, pickRow, segIcons, mainButton, actions, actRow, moreFor, peekEnd } from './card.js';
 import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unmapped, areaFacts } from './facts.js';
 import { newPick, resolvePick, modesOf, modeOf, setMode, loadWeather } from './pick.js';
 import { breakdownRows, colorAt, PICK_MODES, COLOR_MODES, NO_TERRAIN, ProfileChart } from './chart.js';
@@ -94,12 +94,11 @@ function pointBody(pl, card, body) {
     body.append(h('p', { class: 'rt-cost' }, failed ? 'A leg before it couldn’t be routed, so these are along a straight line there. Check has a Retry.'
       : 'A leg before it waits for the router, so these are along a straight line there for now.'));
   }
-  // the route's profile, coloured as the route is up to the point and grey after it
-  const a = !pending && pl.analysis, k = a && Number.isFinite(a.minE) ? a.along.findIndex((d) => d >= pl.lengthTo(i) - 1) : -1;
-  if (k >= 0) body.append(profileOf(a, pl.colorMode, k));
-  // On the profile: the legs on both sides of it
-  if (k >= 0) body.append(rows(item({ icon: 'mountain', label: 'On the profile', line: 'The legs on both sides of it, in the planner’s profile', k: 'profile',
-    onclick: () => pl.showStretchOnProfile({ from: Math.max(0, card.i - 1), to: Math.min(pl.points.length - 1, card.i + 1) }) })));
+  // its actions in sight: Move, Rename and Remove, in red on a row of its own; the peek ends after them
+  body.append(...actions(null,
+    { icon: 'move', label: 'Move', line: `${pl.coarse() ? 'Tap' : 'Click'} where it goes`, k: 'move', onclick: () => pl.moveOnCard(card) },
+    { icon: 'pencil', label: 'Rename', line: 'Give it a name of your own', k: 'rename', onclick: () => { card.renaming = true; pl.cards.refresh(); card.input?.focus(); card.input?.select(); } },
+    { icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, k: 'remove', onclick: () => pl.removeWithUndo(card.i) }), peekEnd());
   // At this point: Pass by · Stop · Night, and the stop's minutes or the night's morning hour under it
   if (via) {
     const stop = pl.stopAt(i), night = isNight(stop);
@@ -130,10 +129,6 @@ function pointBody(pl, card, body) {
       body.append(rows(item({ icon: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km', chev: true, onclick: () => pl.cards.open(staysCard(pl, card), { at: card.key, from: card }) })));
     }
   }
-  // the start: Back to start first, one tap from a route that comes back (#334's A, 2026-10-24)
-  if (i === 0 && n > 1 && !loop) {
-    body.append(acts(item({ icon: 'loop', label: 'Back to start', line: 'Adds a leg back to the start', k: 'back', onclick: () => { pl.backToStart(); toast('A leg back to the start is added', { ms: 7000, action: { label: 'Undo', fn: () => pl.undo() } }); } })));
-  }
   // the start: when you leave
   if (i === 0 && n > 1) { const lv = leaveBlock(pl); lv.put(); body.append(lv.el); }
   // Next stretch, to Waypoint 4: where it goes, in its name, so a desktop says it too (its line is a tooltip there; 2026-10-22).
@@ -157,18 +152,20 @@ function pointBody(pl, card, body) {
     }
   }
   if (after) body.append(rows(after));
-  // The route: the start and the end turn it round; the end, not on a loop, goes back to the start
+  // the route's profile, coloured as the route is up to the point and grey after it
+  const a = !pending && pl.analysis, k = a && Number.isFinite(a.minE) ? a.along.findIndex((d) => d >= pl.lengthTo(i) - 1) : -1;
+  if (k >= 0) body.append(profileOf(a, pl.colorMode, k));
+  // On the profile: the legs on both sides of it
+  if (k >= 0) body.append(rows(item({ icon: 'mountain', label: 'On the profile', line: 'The legs on both sides of it, in the planner’s profile', k: 'profile',
+    onclick: () => pl.showStretchOnProfile({ from: Math.max(0, card.i - 1), to: Math.min(pl.points.length - 1, card.i + 1) }) })));
+  // More for this waypoint: Start here and End here say what they remove; the start and the end turn the route round, and
+  // go back to the start
   const undo = { label: 'Undo', fn: () => pl.undo() };
-  const reverse = item({ icon: 'reverse', label: 'Reverse', line: 'The route runs the other way, from the end to the start', k: 'reverse', onclick: () => { pl.reverse(); toast('The route runs the other way now', { ms: 7000, action: undo }); } });
-  if (last) body.append(...group('The route', loop ? null : item({ icon: 'loop', label: 'Back to start', line: 'Adds a leg back to the start', k: 'back', onclick: () => { pl.backToStart(); toast('A leg back to the start is added', { ms: 7000, action: undo }); } }), reverse));
-  if (i === 0 && n > 1) body.append(...group('The route', reverse));
-  // Edit this point; Start here and End here say what they remove; Remove apart, in red
-  body.append(h('h4', { class: 'menu-h' }, 'Edit this waypoint'), acts(
-    item({ icon: 'move', label: 'Move', line: `${pl.coarse() ? 'Tap' : 'Click'} where it goes`, k: 'move', onclick: () => pl.moveOnCard(card) }),
-    item({ icon: 'pencil', label: 'Rename', line: 'Give it a name of your own', k: 'rename', onclick: () => { card.renaming = true; pl.cards.refresh(); card.input?.focus(); card.input?.select(); } }),
+  body.append(...moreFor('waypoint',
     via ? item({ icon: 'flag', label: 'Start here', line: loop ? 'The same loop, starting from this waypoint' : 'The part before it is removed, Undo brings it back', k: 'start', onclick: () => pl.startAt(card.i) }) : null,
-    via && !loop ? item({ icon: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back', k: 'end', onclick: () => pl.finishAt(card.i) }) : null));
-  body.append(h('hr'), acts(item({ icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, k: 'remove', onclick: () => pl.removeWithUndo(card.i) })));
+    via && !loop ? item({ icon: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back', k: 'end', onclick: () => pl.finishAt(card.i) }) : null,
+    !via && n > 1 ? item({ icon: 'reverse', label: 'Reverse', line: 'The route runs the other way, from the end to the start', k: 'reverse', onclick: () => { pl.reverse(); toast('The route runs the other way now', { ms: 7000, action: undo }); } }) : null,
+    !via && n > 1 && !loop ? item({ icon: 'loop', label: 'Back to start', line: 'Adds a leg back to the start', k: 'back', onclick: () => { pl.backToStart(); toast('A leg back to the start is added', { ms: 7000, action: undo }); } }) : null));
 }
 
 // Sport from here ›: the sports, the one in force ticked, "your route" on the route's own [r-sport]
@@ -283,10 +280,11 @@ function warnBox(pl, x, from) {
     h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
 }
 
-// A tap on the route [p-route, d-route, w-hike, r6-route-b]: the way at the spot, three numbers for your sport, a
-// warning on its stretch, then This stretch, What's here and Edit this stretch; On the profile and Avoid this spot
-// (#364's B); The whole route › (#90's B). The pill adds a point at the spot. `ll` is the spot: the card finds its leg
-// again by it after every change (route()), and closes when the route no longer passes there.
+// A tap on the route [p-route, d-route, w-hike, r6-route-b]: the way at the spot, three numbers for your sport, its actions
+// (Add a waypoint here at the spot, Avoid this spot and Other ways, #690), a warning on its stretch, then This stretch,
+// What's here and Edit this stretch; More for this leg: On the profile (#364's B) and The whole route › (#90's B). Away
+// from a phone's peek Add a waypoint here is the card's pill, its first button at the pointer. `ll` is the spot: the card
+// finds its leg again by it after every change (route()), and closes when the route no longer passes there.
 export function routeCard(pl, li, ll) {
   const card = {
     kind: 'route', key: ll, li,
@@ -310,6 +308,11 @@ function routeBody(pl, card, body) {
   const x = card.spot, s = card.stretch, sport = pl.legSport(card.li);
   body.append(nums(x ? headline(pl.analysis, x.i, sport, { when: pl.atSample(x.i), clock: (t) => pl.clockOf(t) })
     : (SPORT_FACTS[sport] || SPORT_FACTS.mtb).map((k) => ({ value: '–', label: WAITING[k], wait: true }))));
+  // Other ways where the leg has them: one leg BRouter routed (as Edit this stretch has it)
+  const leg = pl.legs[card.li], other = leg && leg.mode === 'auto' && leg.status === 'ok' && leg.result && leg.result.provider !== 'valhalla';
+  body.append(...actions(pl.cards.where() === 'peek' ? { icon: 'plus', label: 'Add a waypoint here', k: 'add', onclick: () => pl.addOnCard(card) } : null,
+    { icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); pl.addNogo(card.key, 40, 'Avoided place'); } },
+    other ? { icon: 'route', label: 'Other ways', line: 'Up to two, on the map', k: 'other', onclick: () => { pl.cards.close(); pl.offerAlts(card.li, true); } } : null), peekEnd());
   // the most serious warning on its stretch
   const warn = pl.itemsOn(s)[0];
   if (warn) body.append(warnBox(pl, warn, card));
@@ -317,10 +320,9 @@ function routeBody(pl, card, body) {
     item({ icon: 'route', label: 'This stretch', line: `${pl.nameOf(s.from)} → ${pl.nameOf(s.to)}`, chev: true, onclick: () => pl.cards.open(stretchCard(pl, s, { spot: card.key }), { at: card.key, from: card }) }),
     item({ icon: 'info', label: 'What’s here', line: x && x.kind === 'open water' ? 'The water, as the map knows it' : 'The trail, as the map knows it', chev: true, onclick: () => pl.cards.open(hereCard(pl, card), { at: card.key, from: card }) }),
     item({ icon: 'pencil', label: 'Edit this stretch', line: 'Sport, how it’s drawn, style', chev: true, onclick: () => pl.cards.open(editCard(pl, s, { spot: card.key }), { at: card.key, from: card }) })));
-  body.append(acts(
+  body.append(...moreFor('leg',
     pl.analysis ? item({ icon: 'mountain', label: 'On the profile', line: 'Zooms the profile to this stretch', k: 'profile', onclick: () => pl.showStretchOnProfile(card.stretch) }) : null,
-    item({ icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); pl.addNogo(card.key, 40, 'Avoided place'); } })));
-  body.append(h('hr'), rows(item({ icon: 'more', label: 'The whole route', line: 'Share, export, save offline, reverse or clear it', chev: true, onclick: () => pl.cards.open(wholeCard(pl), { at: card.key, from: card }) })));
+    item({ icon: 'more', label: 'The whole route', line: 'Share, export, save offline, reverse or clear it', chev: true, onclick: () => pl.cards.open(wholeCard(pl), { at: card.key, from: card }) })));
 }
 
 // a stretch's two ends, kept by who they are through an edit, Undo and Redo, as a point's card keeps its point
@@ -486,8 +488,8 @@ const SRC = { live: ['Live', 'live'], map: ['From the map', 'mapsrc'], estimate:
 // a note as a sentence: its first letter up, unless it begins with a tag (foot=private) or a name; a full stop
 const sentence = (t) => { t = String(t || '').trim(); return t ? `${/^[a-zäöå]+(?![=:_\w])/.test(t) ? t[0].toUpperCase() + t.slice(1) : t}${/[.!?:]$/.test(t) ? '' : '.'}` : ''; };
 
-// An item's card [r-item, jc-step, jc-desk-sel]: its group's mark and name, where it is and how long, where it comes from,
-// its note, its one main action, the rest of its actions as rows; on a phone ‹ › along the route and All in Check ›.
+// An item's card [r-item, jc-step, jc-desk-sel]: its group's mark and name, where it is and how long, its one main action
+// and Got it (#690), where it comes from, its note, More for this warning; on a phone ‹ › along the route and All in Check ›.
 // `key`: itemKey(), which finds it again in a new analysis; closed when it's gone.
 export function itemCard(pl, key, from) {
   const card = {
@@ -515,13 +517,6 @@ function itemBody(pl, card, body) {
     body.append(nums([{ value: fmtDist(w.at), label: 'from the start' }, w.len > 5 ? { value: fmtDist(w.len), label: 'long' } : null, steep ? { value: `${Math.round(steep)} %`, label: 'steepest' } : null]));
     if (w.items) body.append(h('p', { class: 'heads-where' }, pl.whereOf(w)));
   }
-  // where it comes from (Not checked says it in its group's name)
-  if (g !== 'not' && w.src) {
-    const [say, ic] = SRC[w.src.kind] || SRC.map, by = `${w.src.by}${w.src.kind === 'live' && w.src.at ? `, ${new Date(w.src.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`;
-    body.append(h('p', { class: 'heads-src' }, h('span', { 'aria-hidden': 'true', html: icon(ic, 14) }),
-      h('span', {}, `${say} · `, w.src.url ? h('a', { href: w.src.url, target: '_blank', rel: 'noopener' }, by) : by)));
-  }
-  if (w.note) body.append(h('p', { class: 'heads-note' }, sentence(w.note)));
   // the one main action
   const { main, more } = pl.itemActions(it);
   if (main) {
@@ -545,7 +540,15 @@ function itemBody(pl, card, body) {
   // Got it: marked read, and on a phone the next unread along the route; once read, it says so and can be undone
   const read = pl.isRead(it);
   body.append(h('button', { type: 'button', class: `btn heads-got${read ? ' on' : ''}`, 'aria-pressed': String(read), onclick: () => pl.gotIt(card), html: icon('check', 20) }, h('span', {}, read ? 'Read · Mark unread' : 'Got it')));
-  if (more.length) body.append(rows(...more.map((m) => item({ icon: m.icon, label: m.label, line: m.line, onclick: () => m.fn() }))));
+  body.append(peekEnd());
+  // where it comes from (Not checked says it in its group's name)
+  if (g !== 'not' && w.src) {
+    const [say, ic] = SRC[w.src.kind] || SRC.map, by = `${w.src.by}${w.src.kind === 'live' && w.src.at ? `, ${new Date(w.src.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`;
+    body.append(h('p', { class: 'heads-src' }, h('span', { 'aria-hidden': 'true', html: icon(ic, 14) }),
+      h('span', {}, `${say} · `, w.src.url ? h('a', { href: w.src.url, target: '_blank', rel: 'noopener' }, by) : by)));
+  }
+  if (w.note) body.append(h('p', { class: 'heads-note' }, sentence(w.note)));
+  body.append(...moreFor('warning', ...more.map((m) => item({ icon: m.icon, label: m.label, line: m.line, onclick: () => m.fn() }))));
   // the planner put away: the way to it, at this item [jc-closed]
   if (!pl.active) body.append(rows(item({ icon: 'route', label: 'Open the planner at it', line: 'Check and the route, at this item', chev: true, onclick: () => pl.openPlannerAt(card) })));
   // on a phone: ‹ › along the route, and All in Check › unless it was opened from Check at half
@@ -777,8 +780,9 @@ function pickBody(pl, card, body) {
   const { pick, spot } = card, w = pick.ways, a = pick.a && pick.a !== 'failed' ? pick.a : null;
   const way = w && typeof w === 'object', ar = pick.area && typeof pick.area === 'object' ? pick.area : null, water = !way && spot.area === 'water';
   if (ar) spot.osm = { type: ar.id.split('/')[0], id: +ar.id.split('/')[1] };
+  if (way) spot.osm = { type: 'way', id: w.seed.id };
+  const [top, more] = spotActs(pl, card, spot, way ? 'way' : 'spot');
   if (way) {
-    spot.osm = { type: 'way', id: w.seed.id };
     const pieces = new Set(w.chain.map((x) => x.w.id)).size;
     // (while the tiles its ends run into come, its length so far: it may grow; with no terrain, or part of it, as the route
     // says it: no number that isn't there, and none estimated unsaid)
@@ -788,6 +792,7 @@ function pickBody(pl, card, body) {
         : pick.a === 'failed' ? { value: '?', label: 'heights didn’t load', missing: true } : { value: '–', label: 'up', wait: true },
       a ? (none ? null : { value: `${Math.round(a.down)} m`, label: ter ? 'down, part estimated' : 'down' }) : pick.a === 'failed' ? null : { value: '–', label: 'down', wait: true }]));
     if (ter && ter.retry) body.append(failed(none ? '' : `The terrain didn’t load for ${fmtDist(ter.missing)} of it: estimated there. `, pick.again));
+    body.append(...top);
     if (a) body.append(profileGroup(pl, card, a));
     else if (pick.a === 'failed') body.append(failed('The terrain didn’t load: no profile or grades yet. ', pick.again));
     else body.append(profileGroup(pl, card, null, 'Loading the heights for its profile'));
@@ -798,16 +803,16 @@ function pickBody(pl, card, body) {
     const slow = Date.now() - pick.at >= SLOW;
     body.append(skeleton(pick, slow ? 'OpenStreetMap is slow to answer: still asking. What shows meanwhile is the map’s own.' : 'Loading the whole way from OpenStreetMap', h('div', { class: 'pick-skel-nums', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'))));
     if (slow) body.append(failed('', pick.again));
-    body.append(profileGroup(pl, card, null));
+    body.append(...top, profileGroup(pl, card, null));
   }
-  else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again));
+  else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again), ...top);
   else {
     // (an area's edge only when all of it came: a big lake's outline is cut some kilometres off)
     body.append(nums([pick.ele === undefined ? { value: '–', label: 'height here', wait: true } : pick.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(pick.ele)} m`, label: 'height here' },
       ar && ar.whole ? { value: fmtDist(ar.outer.reduce((m, l) => m + lineLength(l), 0)), label: 'round its edge' } : null]));
     if (pick.area === 'failed') body.append(failed('OpenStreetMap didn’t answer: its outline and facts aren’t shown. ', pick.again));
+    body.append(...top);
   }
-  body.append(...yourRoute(pl, spot, { add: true }));
   // (the map tile's own way while the ways come; no way's facts where there's none)
   const g = way ? wayGroups(w.chain, a) : spot.way ? wayGroups([{ w: { tags: spot.tags || {}, len: 1 } }]) : { along: [], surface: [], diff: [] };
   // the incline where you tapped, whatever the sport (what the hover says, #561)
@@ -816,39 +821,42 @@ function pickBody(pl, card, body) {
   // an area's own facts; the water's depth from Traficom's chart (shown, never routed on) and Paddle from here, whatever OpenStreetMap says
   body.append(...factGroup('About it', [...(ar ? areaFacts(ar.tags).rows : []),
     water ? ['Depth', pick.depth === undefined ? 'Asking Traficom' : pick.depth === null ? 'Traficom didn’t answer' : pick.depth, 'From Traficom’s chart'] : null]));
-  if (water) body.append(acts(item({ icon: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here', k: 'paddle', onclick: () => pl.paddleFrom(spot.ll) })));
   body.append(...weatherGroup(pick), ...placesGroup(pl, pick));
   if (card.osm && card.osm.rows) body.append(h('h4', { class: 'menu-h' }, 'All OpenStreetMap details'), ...card.osm.rows.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))));
+  body.append(...more);
   const miss = way ? unmapped(w.chain) : ar ? areaFacts(ar.tags).missing : [];
   // (only what OpenStreetMap's own ways or area say can be "not mapped": while they load or didn't come, no claim)
   body.append(h('p', { class: 'pick-unmapped' }, h('span', {}, way || ar ? (miss.length ? `Not mapped: ${miss.join(', ')}.` : 'From OpenStreetMap.') : w === 'none' && !spot.area ? 'Nothing is mapped right here.' : ''),
     h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card }) }, 'Not right?')));
-  body.append(osmState(card), pickFoot(pl, card, spot));
+  body.append(osmState(card));
 }
 // While the ways or the heights come: what's asked, in words (`say`), and the card's own shapes for what will come, so nothing
 // jumps when they're in. They show after 300 ms and breathe, as the busy bar does; a rebuild (the weather came) goes on
 // where it was, as the delays count from the tap (--since).
 const skeleton = (pick, say, ...shapes) => h('div', { class: 'pick-skel', style: `--since:${Date.now() - pick.at}ms` },
   say ? h('p', { class: 'pick-note', role: 'status' }, say.endsWith('.') ? say : `${say}…`) : null, ...shapes);
-// the card's last row: Share, Weather here ›, All OpenStreetMap details and Copy
-function pickFoot(pl, card, spot) {
-  const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: icon(ic, 16) }, h('span', {}, label));
-  return h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(spot.ll)),
-    spot.osm && !osmIn(card) ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.id ? spot.osm : null)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll))));
-}
 
-// Your route: only what can be done now (with no route, a round trip from here). `add`: the spot's one action first, as the
-// pill was (Add to my route, Add a point here by the line, Start a route here with no route).
-function yourRoute(pl, spot, { add = false } = {}) {
-  const n = pl.points.length, undo = { label: 'Undo', fn: () => pl.undo() };
-  const pill = !add ? null : !n ? { label: 'Start a route here', fn: () => pl.startRouteAt(spot.ll) } : { label: pl.byTheLine(spot.ll) ? 'Add a waypoint here' : 'Add to my route', fn: () => pl.addWhereItFits(spot.ll) };
-  const yours = acts(
-    pill ? item({ icon: 'plus', label: pill.label, line: 'In your route, where it fits', k: 'add', onclick: pill.fn }) : null,
-    n ? item({ icon: 'flag', label: 'Start here', line: 'Adds a new start', k: 'start', onclick: () => pl.startFrom(spot.ll) }) : null,
-    n ? item({ icon: 'flagend', label: 'End here', line: 'Adds a new end', k: 'end', onclick: () => { pl.cards.close(); pl.endAt(spot.ll); toast('A new end is added', { ms: 7000, action: undo }); } }) : null,
+// What a spot, a place or a way's card can do (#876, #690): the action row under its numbers, only what can be done now: the
+// spot's one action first, green (Add to my route, Add a waypoint here by the line, Start a route here with no route),
+// Avoid this spot with a route, Share and Weather here; the rest under More for this …, as rows with their lines. A
+// waypoint made from a place takes the place's own name (#886), LIPAS's or OpenStreetMap's, in one step of Undo; a spot, a way
+// or a pin's words ("Water", a shared link's) give none.
+// [the row and the peek's end, More for this …]
+function spotActs(pl, card, spot, what) {
+  const n = pl.points.length, undo = { label: 'Undo', fn: () => pl.undo() }, water = spot.area === 'water' && !(card.pick && card.pick.ways && typeof card.pick.ways === 'object');
+  const name = spot.lipas ? spot.lipas.name : spot.place ? (spot.tags || {}).name : '';
+  const main = !n ? { label: 'Start a route here', fn: () => pl.startRouteAt(spot.ll, name) } : { label: pl.byTheLine(spot.ll) ? 'Add a waypoint here' : 'Add to my route', fn: () => pl.addWhereItFits(spot.ll, name) };
+  return [[actRow({ main: true, icon: 'plus', label: main.label, line: n ? 'In your route, where it fits' : 'A new route, from here', k: 'add', onclick: main.fn },
+    n ? { icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); if (!pl.active) pl.setActive(true); pl.addNogo(spot.ll, 40, spot.place ? spot.title : 'Avoided place'); } } : null,
+    { icon: 'share', label: 'Share', line: 'A link to this spot', k: 'share', onclick: () => pl.shareSpot(spot) },
+    { icon: 'cloudSun', label: 'Weather here', line: 'The timeline, held at the spot', k: 'weather', onclick: () => pl.weatherHere(spot.ll) }), peekEnd()],
+  moreFor(what,
+    n ? item({ icon: 'flag', label: 'Start here', line: 'Adds a new start', k: 'start', onclick: () => pl.startFrom(spot.ll, name) }) : null,
+    n ? item({ icon: 'flagend', label: 'End here', line: 'Adds a new end', k: 'end', onclick: () => { pl.cards.close(); pl.endAt(spot.ll, name); toast('A new end is added', { ms: 7000, action: undo }); } }) : null,
     pl.loopsHere() ? item({ icon: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose, from here', k: 'loop', onclick: () => { pl.cards.close(); pl.openLoop(spot.ll); } }) : null,
-    n ? item({ icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); if (!pl.active) pl.setActive(true); pl.addNogo(spot.ll, 40, spot.place ? spot.title : 'Avoided place'); } }) : null);
-  return yours ? [h('h4', { class: 'menu-h' }, 'Your route'), yours] : [];
+    water ? item({ icon: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here', k: 'paddle', onclick: () => pl.paddleFrom(spot.ll) }) : null,
+    item({ icon: 'pin', label: 'Copy', line: coords(spot.ll), k: 'copy', onclick: () => copyText(coords(spot.ll)) }),
+    spot.osm && !osmIn(card) ? item({ icon: 'details', label: 'All OpenStreetMap details', line: 'The map’s own data, as tags', k: 'osm', onclick: () => pl.osmOnCard(card, spot.ll, spot.osm.id || (spot.place && spot.osm.type !== 'way') ? spot.osm : null) }) : null)];
 }
 
 // A place's card (#574: What's here's facts on the card): its height, where it comes from, its facts in groups (LIPAS's,
@@ -858,13 +866,14 @@ function spotBody(pl, card, body) {
   const { spot } = card, osm = card.osm && card.osm.w, tags = { ...spot.tags, ...(osm ? osm.tags : {}) };
   body.append(nums([card.ele === undefined ? { value: '–', label: 'height', wait: true } : card.ele === null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(card.ele)} m`, label: 'height' }]));
   if (spot.src) body.append(h('p', { class: 'rt-cost' }, spot.src));
-  body.append(...yourRoute(pl, spot, { add: true }));
+  const [top, more] = spotActs(pl, card, spot, 'place');
+  body.append(...top);
   body.append(...factsIn(spot.lipas ? lipasFacts(spot.lipas) : placeGroups(tags, spot.kind, { known: !!osm })));
   if (spot.lipas && spot.lipas.info) body.append(h('p', { class: 'insp-info' }, spot.lipas.info));
   body.append(rows(spot.partOf ? item({ icon: 'route', label: `Part of ${spot.partOf.props.name}`, line: 'A marked route, from LIPAS', chev: true, onclick: () => pl.cards.open(lipasCard(pl, spot.partOf.props, spot.ll, { click: spot.ll }), { at: spot.ll, from: card }) }) : null,
     ...(spot.lipas ? lipasLinks(spot.lipas) : [])) || '');
   if (osm) body.append(h('h4', { class: 'menu-h' }, 'All OpenStreetMap details'), ...card.osm.rows.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))));
-  body.append(osmState(card), foot(pl, card, spot));
+  body.append(...more, osmState(card), foot(pl, card, spot, { acts: false }));
 }
 // [{ group, label, value, missing }] as the card's groups
 const factsIn = (list) => [...new Set(list.map((f) => f.group))].flatMap((g) => factGroup(g, list.filter((f) => f.group === g).map((f) => [f.label, f.missing ? `? ${f.value}` : f.value])));
@@ -881,12 +890,12 @@ function lipasLinks(p) {
     www ? link({ icon: 'external', label: 'Website', line: 'The place’s own page', href: www }) : null];
 }
 
-// the card's last row [p-spot]: Share, Weather here ›, Not right?, All OpenStreetMap details and Copy
-function foot(pl, card, spot) {
+// the card's last row [p-spot]: Not right?; a LIPAS route's has Share, Weather here › and Copy too (`acts`), as its actions
+// aren't in an action row
+function foot(pl, card, spot, { acts: all = true } = {}) {
   const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: ic ? icon(ic, 16) : '' }, h('span', {}, label));
-  return h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(spot.ll)),
-    btn('Not right?', null, () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card })),
-    spot.osm && !osmIn(card) ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.type === 'way' && !spot.osm.id ? null : spot.osm)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll))));
+  return h('div', { class: 'insp-actions card-foot' }, all ? btn('Share', 'share', () => pl.shareSpot(spot)) : null, all ? btn('Weather here ›', 'cloudSun', () => pl.weatherHere(spot.ll)) : null,
+    btn('Not right?', null, () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card })), all ? btn('Copy', 'pin', () => copyText(coords(spot.ll))) : null);
 }
 // All OpenStreetMap details asked for, or in: its button goes (a failure keeps it, saying so on the card)
 const osmIn = (card) => !!(card.osm && (card.osm.rows || card.osm.asking));
