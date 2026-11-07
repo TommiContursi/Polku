@@ -43,11 +43,11 @@ function stepper({ value, unit, step, min = 0, max = 1440, label, set, line = nu
     line ? h('small', {}, line) : null);
 }
 
-// A point's card [p-point, r-stop, r-night, r-change, r-start, r-end, r-view-point]. A tap gives when you're there, how far
-// along and the profile up to it (#574); `actions` (a hold, a right-click, the list) adds what you can do there.
-export function pointCard(pl, p, { actions = true } = {}) {
+// A point's card [p-point, r-stop, r-night, r-change, r-start, r-end, r-view-point]: when you're there, how far along, the
+// profile up to it and what you can do there, however it's opened (#876).
+export function pointCard(pl, p) {
   const card = {
-    kind: 'point', key: p, pill: null, actions,
+    kind: 'point', key: p, pill: null,
     get i() { return pl.points.indexOf(card.key); },
     get title() { return card.renaming ? card.nameField() : pl.nameOf(card.i); },
     get label() { return pl.nameOf(card.i); },
@@ -97,12 +97,9 @@ function pointBody(pl, card, body) {
   // the route's profile, coloured as the route is up to the point and grey after it
   const a = !pending && pl.analysis, k = a && Number.isFinite(a.minE) ? a.along.findIndex((d) => d >= pl.lengthTo(i) - 1) : -1;
   if (k >= 0) body.append(profileOf(a, pl.colorMode, k));
-  if (!card.actions) {
-    // On the profile: the legs on both sides of it
-    if (k >= 0) body.append(h('div', { class: 'insp-actions card-foot' }, h('button', { type: 'button', class: 'btn quiet', html: icon('mountain', 16),
-      onclick: () => pl.showStretchOnProfile({ from: Math.max(0, card.i - 1), to: Math.min(pl.points.length - 1, card.i + 1) }) }, h('span', {}, 'On the profile'))));
-    return;
-  }
+  // On the profile: the legs on both sides of it
+  if (k >= 0) body.append(rows(item({ icon: 'mountain', label: 'On the profile', line: 'The legs on both sides of it, in the planner’s profile', k: 'profile',
+    onclick: () => pl.showStretchOnProfile({ from: Math.max(0, card.i - 1), to: Math.min(pl.points.length - 1, card.i + 1) }) })));
   // At this point: Pass by · Stop · Night, and the stop's minutes or the night's morning hour under it
   if (via) {
     const stop = pl.stopAt(i), night = isNight(stop);
@@ -594,7 +591,7 @@ export function spotCard(pl, spot) {
 // line what OpenStreetMap doesn't have. The same facts for every sport. It shows what the map's own tile knows at once
 // and fills in as the ways, the heights and the weather come, saying so while it waits.
 export function pickCard(pl, spot) {
-  const pick = newPick(spot, { hold: !!spot.hold, sport: pl.app.activity(), sec: pl.app.weatherSec(), zoom: pl.map.getZoom(), touch: !!spot.touch });
+  const pick = newPick(spot, { sport: pl.app.activity(), sec: pl.app.weatherSec(), zoom: pl.map.getZoom(), touch: !!spot.touch });
   const here = () => pl.cards.stack.some((e) => e.card === card);
   const card = {
     kind: 'spot', key: spot.ll, spot, pick, osm: null, pinned: true,
@@ -810,8 +807,7 @@ function pickBody(pl, card, body) {
       ar && ar.whole ? { value: fmtDist(ar.outer.reduce((m, l) => m + lineLength(l), 0)), label: 'round its edge' } : null]));
     if (pick.area === 'failed') body.append(failed('OpenStreetMap didn’t answer: its outline and facts aren’t shown. ', pick.again));
   }
-  // what a hold opens it for: your route's actions
-  if (pick.hold) body.append(...yourRoute(pl, spot, { add: true }));
+  body.append(...yourRoute(pl, spot, { add: true }));
   // (the map tile's own way while the ways come; no way's facts where there's none)
   const g = way ? wayGroups(w.chain, a) : spot.way ? wayGroups([{ w: { tags: spot.tags || {}, len: 1 } }]) : { along: [], surface: [], diff: [] };
   // the incline where you tapped, whatever the sport (what the hover says, #561)
@@ -834,11 +830,11 @@ function pickBody(pl, card, body) {
 // where it was, as the delays count from the tap (--since).
 const skeleton = (pick, say, ...shapes) => h('div', { class: 'pick-skel', style: `--since:${Date.now() - pick.at}ms` },
   say ? h('p', { class: 'pick-note', role: 'status' }, say.endsWith('.') ? say : `${say}…`) : null, ...shapes);
-// the card's last row: Share and Weather here ›; a hold adds All OpenStreetMap details and Copy
+// the card's last row: Share, Weather here ›, All OpenStreetMap details and Copy
 function pickFoot(pl, card, spot) {
   const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: icon(ic, 16) }, h('span', {}, label));
   return h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(spot.ll)),
-    ...(card.pick.hold ? [spot.osm && !osmIn(card) ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.id ? spot.osm : null)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll)))] : []));
+    spot.osm && !osmIn(card) ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.id ? spot.osm : null)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll))));
 }
 
 // Your route: only what can be done now (with no route, a round trip from here). `add`: the spot's one action first, as the
@@ -856,13 +852,13 @@ function yourRoute(pl, spot, { add = false } = {}) {
 }
 
 // A place's card (#574: What's here's facts on the card): its height, where it comes from, its facts in groups (LIPAS's,
-// or OpenStreetMap's once its tags are asked for, a fact its kind would have and doesn't saying so), its pages; a hold adds
-// Your route; the last row as every card's.
+// or OpenStreetMap's once its tags are asked for, a fact its kind would have and doesn't saying so), its pages, Your route;
+// the last row as every card's.
 function spotBody(pl, card, body) {
   const { spot } = card, osm = card.osm && card.osm.w, tags = { ...spot.tags, ...(osm ? osm.tags : {}) };
   body.append(nums([card.ele === undefined ? { value: '–', label: 'height', wait: true } : card.ele === null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(card.ele)} m`, label: 'height' }]));
   if (spot.src) body.append(h('p', { class: 'rt-cost' }, spot.src));
-  if (spot.hold) body.append(...yourRoute(pl, spot, { add: true }));
+  body.append(...yourRoute(pl, spot, { add: true }));
   body.append(...factsIn(spot.lipas ? lipasFacts(spot.lipas) : placeGroups(tags, spot.kind, { known: !!osm })));
   if (spot.lipas && spot.lipas.info) body.append(h('p', { class: 'insp-info' }, spot.lipas.info));
   body.append(rows(spot.partOf ? item({ icon: 'route', label: `Part of ${spot.partOf.props.name}`, line: 'A marked route, from LIPAS', chev: true, onclick: () => pl.cards.open(lipasCard(pl, spot.partOf.props, spot.ll, { click: spot.ll }), { at: spot.ll, from: card }) }) : null,
@@ -885,12 +881,12 @@ function lipasLinks(p) {
     www ? link({ icon: 'external', label: 'Website', line: 'The place’s own page', href: www }) : null];
 }
 
-// the card's last row [p-spot]: Share, Weather here › and Not right?
+// the card's last row [p-spot]: Share, Weather here ›, Not right?, All OpenStreetMap details and Copy
 function foot(pl, card, spot) {
   const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: ic ? icon(ic, 16) : '' }, h('span', {}, label));
   return h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(spot.ll)),
     btn('Not right?', null, () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card })),
-    ...(spot.hold ? [spot.osm && !osmIn(card) ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.type === 'way' && !spot.osm.id ? null : spot.osm)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll)))] : []));
+    spot.osm && !osmIn(card) ? btn('All OpenStreetMap details', 'details', () => pl.osmOnCard(card, spot.ll, spot.osm.type === 'way' && !spot.osm.id ? null : spot.osm)) : null, btn('Copy', 'pin', () => copyText(coords(spot.ll))));
 }
 // All OpenStreetMap details asked for, or in: its button goes (a failure keeps it, saying so on the card)
 const osmIn = (card) => !!(card.osm && (card.osm.rows || card.osm.asking));

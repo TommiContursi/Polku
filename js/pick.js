@@ -19,14 +19,13 @@ const PLAIN = '#374151'; // the pick before its heights are in
 const metresPerPixel = (ll, zoom) => (40075016.686 * Math.cos((ll[1] * Math.PI) / 180)) / (512 * 2 ** zoom);
 
 /**
- * A new pick at `spot` (the planner's: where, the map's own words for it). `hold`: opened by a hold or a right-click, so
- * it has the actions; `sec`: the hour the map's weather shows; `zoom`, `touch`: how far a finger or a pointer reaches.
+ * A new pick at `spot` (the planner's: where, the map's own words for it). `sec`: the hour the map's weather shows; `zoom`, `touch`: how far a finger or a pointer reaches.
  * ways, a, wx, places, area: undefined while asked, 'failed', 'none' (no way there; no area: null), or the answer. Where
  * no way is in reach, the area the spot is in (`spot.area`: the map draws water or a park there); on water, its depth
  * (`depth`: words, or null where Traficom didn't answer), whatever the ways do.
  */
-export const newPick = (spot, { hold = false, sport, sec, zoom, touch = false } = {}) => ({
-  spot, ll: spot.ll, hold, sport, sec, zoom, touch, at: Date.now(), ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, area: undefined, depth: undefined, dead: false,
+export const newPick = (spot, { sport, sec, zoom, touch = false } = {}) => ({
+  spot, ll: spot.ll, sport, sec, zoom, touch, at: Date.now(), ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, area: undefined, depth: undefined, dead: false,
 });
 
 /** Asks for the pick's ways and what follows; `changed()` after each answer. A closed pick (`dead`) stops. */
