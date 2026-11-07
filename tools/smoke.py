@@ -18968,6 +18968,10 @@ def sheet_card_peek(chrome):
                     st = pg.js(CA_STATE)
                     if not st or st['place'] != 'peek' or st['sheet'] != 'peek' or abs(st['h'] - plan) > 1:
                         fails.append(f"{name}: {kind}'s card at {st and st['place']}, the sheet {st and st['sheet']} at {st and st['h']} px, not the planner's peek ({plan} px)")
+                    elif kind == 'a warning':  # (its action is Got it, under where it is)
+                        got = pg.js("Math.round(document.querySelector('.pl-way.card .heads-got').getBoundingClientRect().bottom)")
+                        if got > st['cardBottom']:
+                            fails.append(f"{name}: a warning's Got it ends at {got} px, under the card's foot at {st['cardBottom']} px")
                     elif kind != 'a stretch':  # (a stretch's card has no actions in sight, #690: the peek is its name and numbers)
                         _ca_peek(st, f'{name} {kind}', fails)
                 continue
