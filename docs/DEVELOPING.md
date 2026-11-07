@@ -135,7 +135,9 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
     - places you avoid.
   - **Wind:** each water cell's open-water fetch upwind gives a wave height (JONSWAP), and rough water costs more for the craft.
   - **The path:** A* runs on the grid, and the cell path is string-pulled into straight lines that may not cost more than A*'s way. Land is passable at a high cost, which gives carries.
-  - **Slow sources:** each source gets 2.5 s; then the leg is routed without it, Check's Not checked says so, and neither `router.js` nor `water.js` keeps that leg. When the answer comes (`onWaterData`), the planner routes those legs again, and a leg still being routed then is routed once more in `water.js`.
+  - **Slow sources:** each source gets 2.5 s; then the leg is routed without it, Check's Not checked says so, and neither `router.js` nor `water.js` keeps that leg. When the answer comes (`onWaterData`), the planner routes those legs again, and a leg still being routed then is routed once more in `water.js`. A source that failed is asked again two minutes on (`AGAIN_MS`): `onWaterData` tells the planner then too, and routing those legs again asks it (#129). Undo and Redo route again a leg that went without a source, online (#80).
+  - **Legs too long to ask for:** a box over 16 of OSM's z11 tiles isn't asked for rocks, nor one over 24 of Väylävirasto's z10 tiles for fairways and marks. `waterInputs()` returns those as `skipped`, apart from `missing`: the leg is kept, nothing asks again, and Check says "not checked, the leg is too long" (`WATER_LONG`, key `waterlong`), and What Polku looked at says so too (#490).
+  - **The hidden map's tiles:** a tile that fails (not a 404) asks for a frame, as on the main map (#393), or `load` never came and no water leg was routed (#400). A water tile that doesn't load is drawn as land: the leg may carry where there's water.
   - **No depths.** Traficom's depth data isn't used: its licence excludes route planning. See phase 13 in [plans/done.md](plans/done.md).
 
 ### Marked routes from LIPAS
