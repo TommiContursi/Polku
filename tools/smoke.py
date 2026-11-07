@@ -15445,8 +15445,10 @@ def facts(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
     st = lambda: pg.js('fa.state()')
-    btn = lambda label: pg.js(f"(() => {{ const b = [...document.querySelectorAll('.pl-way.card .btn')].find((x) => x.textContent.trim() === {json.dumps(label)}); if (b) b.click(); return !!b; }})()")
-    has = lambda label: pg.js(f"[...document.querySelectorAll('.pl-way.card .btn')].some((x) => x.textContent.trim() === {json.dumps(label)})")
+    # (a button, or a row under More for this … by its name, #690)
+    named = lambda label: f"[...document.querySelectorAll('.pl-way.card .btn, .pl-way.card .row')].filter((x) => (x.matches('.row') ? x.querySelector('b')?.textContent || '' : x.textContent).trim() === {json.dumps(label)})"
+    btn = lambda label: pg.js(f"(() => {{ const b = {named(label)}[0]; if (b) b.click(); return !!b; }})()")
+    has = lambda label: pg.js(f"{named(label)}.length > 0")
     links = lambda: pg.js("[...document.querySelectorAll('.pl-way.card a')].map((a) => a.getAttribute('href'))")
     rows = lambda: pg.js("[...document.querySelectorAll('.pl-way.card .row b')].map((b) => b.textContent)")
 
