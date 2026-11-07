@@ -28,3 +28,35 @@ From docs/BACKLOG.md (lines [72](https://github.com/TommiContursi/Polku/blob/9bb
   - **snow:** Open-Meteo snowfall and snow depth, FMI snow depth (phase 15).
   - Each would be a switch under *Weather on the map*, on the timeline.
 - **Timeline into the past** *(2026-10-14)*: a few hours back, to see how the rain has moved. FMI's radar layers keep about two weeks at 5 minutes (WMS `time`), so the last 2–3 hours could play like the forecast does.
+
+## The look (2026-11-07)
+
+An idea from 2026-11-07: make the weather on the map look much better, with clouds and thunder, before more layers are added. The mock-up compares today's look with two directions, over real map pictures from `main`: [mockups/issue-182-weather-look.html](mockups/issue-182-weather-look.html). Nothing is built; the user picks.
+
+### What's there today (main at c9fe8d4)
+
+- **Rain:** the radar or the forecast in `RAIN_RAMP`'s colours, each pixel's opacity 150 + 45 × mm/h (at most 235 of 255), and the layer at 0.85 (`js/style.js`, `js/radar.js`), so from about 2 mm/h the map under it is mostly gone. Over it, `drawPrecip()` in `js/wxmap.js` draws falling streaks, fewer and fainter below 1 mm/h, and snowflakes below 0.5 °C.
+- **Cloud:** Open-Meteo's cloud cover is fetched (`js/weather.js`), but only the reading's icon uses it. Nothing is drawn on the map.
+- **Thunder:** nothing.
+- **Reduced motion:** the streaks and flakes move all the same.
+
+### The directions in the mock-up
+
+- **A, motion leads:** drizzle, rain and heavy rain fall differently (short and slow, today's streaks, long and dense), so they read apart without the colour. The colour under them covers at most 38 %. Clouds are soft shadows drifting with the wind. Lightning strikes are small bolts by age (under 10, 10–30 and 30–60 minutes), and the forecast's thunder an amber hatched area with a label.
+- **B, colour leads:** the rain in four clear steps (0.1, 0.5, 2 and 8 mm/h), each with its edge, at 42 %, and half the streaks. Clouds are a white veil. Strikes are dots by age, the forecast's thunder a warm glow, and a new batch of strikes flashes once.
+- **Both:** **Clouds** and **Thunder** chips on the timeline; the nearest strike in the reading ("⚡ 6 km · 4 min ago"); a legend that names each mark; lightning only at Now, since it is seen, not forecast; the timeline's note says when lightning couldn't be loaded; in reduced motion the rain is drawn still, clouds don't drift and nothing flashes.
+- The colours sit under the map's words and the route, where `addWeather()` puts them; the motion is drawn over everything, as the app's canvas is.
+
+### For the user to decide
+
+- A or B, or parts of each (for example A's rain with B's strikes).
+- Cloud as shadows or as a veil: shadows read on the light maps, a veil on the night map.
+- The chips: six don't fit one row. On a 390 px phone they take two rows, and at 200 % the timeline fills the screen. One pill that picks the layer, as yr.no's app does (#903, item 6), could replace them on phones.
+
+### When it's built
+
+- **Lightning:** FMI's open data (the `fmi::observations::lightning::simple` stored query answered on 2026-11-07), for the map's view and the last hour, through `request()` in `js/net.js` like every source, with its entry in Settings → Data sources. It sends the view's corners, never a position.
+- **Forecast thunder:** Open-Meteo's weather code (95–99) and CAPE are in its hourly forecast; whether `lightning_potential` covers Finland is unknown.
+- **Missing data:** when lightning fails, the map shows the forecast's thunder only and says so; it never looks like a calm sky.
+- The motion is decided with /animate, and the user runs /review-animations before the PR opens.
+- Model: Opus at high (a new source, `js/wxmap.js` and `js/style.js`, smoke checks with recorded lightning).
