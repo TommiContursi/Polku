@@ -18997,9 +18997,9 @@ def sheet_profile_peek(chrome):
         name = f'{w}x{h_}'
         pg = _ca_page(chrome, w, h_, True, fails, name)
         try:
-            prof = lambda: pg.js("""(() => { const p = polku.planner, c = document.getElementById('profile-canvas').getBoundingClientRect(), s = p.panel.getBoundingClientRect(), o = p.panel.querySelector('.prof-open'), r = o.getBoundingClientRect();
+            prof = lambda: pg.js("""(() => { const p = polku.planner, c = document.getElementById('profile-canvas').getBoundingClientRect(), s = p.panel.getBoundingClientRect(), o = p.panel.querySelector('.prof-open'), r = o && o.getBoundingClientRect();
               return { st: p.panel.dataset.state, h: Math.round(s.height), top: Math.round(c.top - s.top), bottom: Math.round(s.bottom - c.bottom), ch: Math.round(c.height), sum: Math.round(p.els.sum.getBoundingClientRect().bottom - s.top),
-                open: o.offsetParent ? { x: r.left + r.width / 2, y: r.top + r.height / 2, name: o.getAttribute('aria-label') } : null }; })()""")
+                open: o && o.offsetParent ? { x: r.left + r.width / 2, y: r.top + r.height / 2, name: o.getAttribute('aria-label') } : null }; })()""")
             for view in ('drawing', "the route's view"):
                 if view != 'drawing':
                     pg.js("polku.planner.done(); polku.planner.setSheetState('peek', { remember: false }); true")
