@@ -2,7 +2,7 @@
 
 The design for [#690](https://github.com/TommiContursi/Polku/issues/690) (primary), [#876](https://github.com/TommiContursi/Polku/issues/876) (one rule for a tap, a click, a hold and a right click), [#760](https://github.com/TommiContursi/Polku/issues/760) (a spot's popup) and [#647](https://github.com/TommiContursi/Polku/issues/647) (on a desktop the card covers the way), looking at #107, #716, #845, #627, #796 and #859 too. Milestone: [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): three rounds decided; the mock-up's third version (New 3) draws them, and its open details are with the user.** Where "The design" below differs from round 3, round 3 wins until the design is rewritten from New 3. The mock-up is [mockups/cards-and-taps.html](mockups/cards-and-taps.html), also a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7) to try on a phone.
+**Where it stands (2026-11-07): three rounds decided; the mock-up's New 3 draws them; four small details (round 4) are with the user.** Where "The design" below differs from round 3, round 3 wins until the design is rewritten from New 3. The mock-up is [mockups/cards-and-taps.html](mockups/cards-and-taps.html), also a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7) to try on a phone.
 
 It builds on what's decided and doesn't reopen it: cards one at a time with ‹ Back (#345, #574); the sheet's sizes (#603); nothing moves under the pointer (#594); backgrounds mean selection (#761); green means you can tap it, and the rule for controls (#869); a tap while drawing adds a waypoint (#345); short plain nouns; missing or late data never looks complete; don't redesign what works.
 
@@ -207,7 +207,7 @@ From emil-design-eng: picking a thing happens tens of times a day, so a card rep
 - **The small size holds the actions,** as Apple Maps' smallest detent holds a place's action row: the case for "to the actions" in round 3.
 
 
-[mockups/cards-and-taps.html](mockups/cards-and-taps.html) (served at `/docs/plans/mockups/cards-and-taps.html`), and the same page as a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7). **Today** is `main` at babbafd: screenshots of each card by tap and by hold, phone and desktop. **New** draws the cards with `css/app.css`'s and `js/ui.js`'s own classes and menus, over a screenshot of the map with the route; the route's heights, grades, surfaces, way types, times and warnings are main's own analysis. #574's version stays in [cards-rethought.html](mockups/cards-rethought.html).
+[mockups/cards-and-taps.html](mockups/cards-and-taps.html) (served at `/docs/plans/mockups/cards-and-taps.html`), and the same page as a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7). Its versions: **Today**, **Round 2** and **New 3** (the default). **Today** is `main` at babbafd: screenshots of each card by tap and by hold, phone and desktop. **New 3** draws round 3: the warning box beside the numbers, the rest of the actions on the card under "More for this …", ⋯ with the card's settings, Pass by · Stop · Night on a waypoint's card, Alternative routes, production's readout (the way's details and the weather then) over each profile, the weather in a card's first line, the first size showing the top of what follows, an action row for places, spots and ways ("By kind"), and a way's card as main has it (EuroVelo 10's own profile and facts, exported from the app). **Round 2** draws the cards with `css/app.css`'s and `js/ui.js`'s own classes and menus, over a screenshot of the map with the route; the route's heights, grades, surfaces, way types, times and warnings are main's own analysis. #574's version stays in [cards-rethought.html](mockups/cards-rethought.html).
 
 - **To try:** tap, click, hold or right-click the line, a waypoint, a warning, the path north of Kaivopuisto, the campfire site on Uunisaari; drag or tap the grip through peek, half and full; scrub a profile; ‹ › and Leg · Stretch · Route; MTB ▾ and ⋯ open the app's menu; the eye hides the route.
 - **Switches:** the card; Phone 390, 360, 200 % and Desktop; the actions B or A; the peek to the actions or with the profile; the data real, late, missing or with long names (main's own street names); drawing or browsing; light or dark.
@@ -233,10 +233,25 @@ Small, each tried on a phone before the next, starting from production. Motion i
 10. **A warning's Its leg ›.** Checks: `heads`.
 11. **Add what's missing › (#855) and Look around here › (#757).**
 
-## For the user to choose (round 3)
+## Round 3's questions, as asked (answered under "Decided")
 
 14. The first size: to the actions, or with the profile.
 15. The actions' look: B (buttons) or A (the action row).
 16. A desktop's short ways. The card beside the planner keeps the map clear, but every action on it is a long trip from where you clicked, and it covers the map's left (here the route's start, which the build would frame aside). The mock-up puts each kind's main action at the pointer too (Add a waypoint here on the line, Add to my route on a place, a way or a spot); dragging a waypoint stays; Delete on the waypoint under the pointer would make removing one a key. Or: the card at the spot as today, its actions in reach, covering what it's about (#647).
 17. The order of the PRs above.
 18. A waypoint's Pass by · Stop · Night: behind ⋯ (as drawn), or the switch on the card as today's hold card has it.
+
+## For the user to choose (round 4)
+
+19. **What ⋯ holds on a card:** Colour by, colours on the map, Hide the route, and on a desktop where the card sits (at the spot or beside the planner). Nothing else?
+20. **Where the action row goes:** places, spots and ways (their actions are a few equals, as Apple Maps' place card has them), and buttons for the route's own things (a leg, a waypoint, a warning), whose main action leads.
+21. **The new name for Other ways:** Alternative routes. It renames the action everywhere it appears (the leg's card, the toolbar's menu, Check), and PRODUCT.md's and CONTEXT.md's words.
+22. **The eye and Hide the route:** both, as drawn (the eye a tap away on a leg's card, Hide the route in ⋯ on every card), or only one of them.
+
+### What round 3 adds to the PRs
+
+- PR 2 becomes: the main action and two more in sight; the rest under them on the card, under "More for this …", with their lines; ⋯ beside ✕ with the card's settings.
+- PR 4 gains the weather in the leg's first line and production's readout over its profile; its warnings box comes with #869's box for the planner (its PR 9), so they share one control.
+- PR 9 keeps Pass by · Stop · Night on the waypoint's card.
+- A new small PR: Other ways renamed (round 4's Q21), everywhere at once.
+- #884: the planner's ⋯ beside its ✕, with its settings.
