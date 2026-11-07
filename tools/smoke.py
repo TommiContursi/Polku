@@ -15350,7 +15350,8 @@ def crosshair(chrome):
                 key(pg, k, code, vk, mods)
                 time.sleep(0.6)
                 s = st(pg)
-                seen.append((s['kind'], s['heads'], s['rows']))
+                # (All OpenStreetMap details is a row once OpenStreetMap has answered, which may come between the two keys, #690)
+                seen.append((s['kind'], s['heads'], [x for x in s['rows'] if x != 'All OpenStreetMap details']))
                 key(pg, 'Escape', 'Escape', 27)
             if seen[0][0] != 'spot' or 'More for this spot' not in seen[0][1] or seen[1] != seen[0]:
                 fails.append(f'{name}: with the planner put away, Enter opens {seen[0]}, Shift+F10 {seen[1]}')
