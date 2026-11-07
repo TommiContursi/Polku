@@ -1643,6 +1643,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .card .way-hint b { line-height: 1.25; hyphens: manual; }
 .card .way-head { align-items: flex-start; }
 .card .way-head > .way-x { margin: -6px -8px 0 0; }
+.card .way-head > .card-set { margin-top: -6px; } /* (level with ✕) */
 /* the top row: only with Back (in words), or narrow; otherwise ✕ is in the name's row */
 .card > .way-bar { margin-bottom: -6px; }
 .card[data-back="no"] > .way-bar { display: none; }
