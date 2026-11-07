@@ -2,7 +2,7 @@
 
 The design of step 6 of [the one order](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784): the trip's box over the list, and the weather card it opens, with Go's tab gone ([#431](https://github.com/TommiContursi/Polku/issues/431), [#794](https://github.com/TommiContursi/Polku/issues/794), [#759](https://github.com/TommiContursi/Polku/issues/759), [#766](https://github.com/TommiContursi/Polku/issues/766)). Part of [#869](https://github.com/TommiContursi/Polku/issues/869); milestone [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): research and the inventory are done; the first round is with the user, with a first mock-up to choose from.** The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri) to try on a phone (built from this file with `css/app.css` and `js/ui.js` inlined and the screenshots embedded). **Today** shows Go and the timeline from `main`; **C: Together** is the card after the user's answer to Q1, with the weather line for the map's hours; **A: Rows** and **B: Graph**, the first two answers, stay to compare. Each at half and full, for a day trip and a trip with a night. No app code is written here.
+**Where it stands (2026-11-07): research and the inventory are done; the first round is with the user, with a first mock-up to choose from.** The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri) to try on a phone (built from this file with `css/app.css` and `js/ui.js` inlined and the screenshots embedded). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2, with the weather line for the map's hours in two places to compare; **C: Together**, **A: Rows** and **B: Graph**, the earlier answers, stay to compare. Each at half and full, for a day trip and a trip with a night. No app code is written here.
 
 ## Already decided
 
@@ -80,7 +80,23 @@ From [planner-rethought.md](planner-rethought.md) ("Decided, 2026-11-06", "How i
 
 ## Research
 
-Three subagents (Sonnet, low effort) searched; most of what they found came from search summaries, so it's a list of leads. What the design leans on was checked by hand, and is marked **checked**.
+**Looked at by hand (2026-11-07), at 390 px in Claude Code's browser pane, and in yr.no's phone app from the user's screenshots** ([on `pr-screenshots`](https://github.com/TommiContursi/Polku/tree/pr-screenshots/claude/design-weather-card/yr-app)). This is what the design leans on:
+
+| Service | The reading | The hours | The sun, uncertainty, extras |
+|---|---|---|---|
+| yr.no, web | The sky symbol and the temperature large in red; beside it three small lines with icons: Feels like 3°, 0 mm in blue, 4 (7) m/s with an arrow | **Table \| Graph**, a switch. Table: a row an hour of about 40 px: time, symbol, temperature (red), precipitation mm (blue), wind (gust) m/s with an arrow. Graph: the sky every two hours, the temperature a red line, rain blue bars, then the wind and the gusts (dashed) in a panel of their own with arrows | Sunrise and sunset with their icons on a line under each day's rows; rain as a range (dark blue expected, light blue possible) |
+| yr.no, app | "Today 21:00", 4° very large, "Feels like 2°", the wind in a circle with "Light breeze from west (m/s)", a sentence for the evening, ↑ and ↓ for the day | The same table, each day a block with sunrise and sunset under it; the graph adds pressure; the temperature's area is blue below 0 °C | The next 90 minutes of rain; the map's layers with one pill ("Wind ▾") over a compact time bar ("Today at 20:00", play, ticks with the days' names); nearby observations and road cameras; warnings; UV, aurora, the moon. Filed as #903 |
+| FMI (ilmatieteenlaitos.fi) | — | A row an hour: time, symbol, temperature (red), **feels like** with a person icon, the wind in a circle with speed (gust), chance of rain and mm | Each day folded to one line (Sun 8.11. 15:00 7°); a 15-day chart with 50 % and 80 % ranges for temperature and rain |
+| Foreca | A sentence for the day ("Morning 3 °C, afternoon 5°, evening 6°…") | A row an hour: symbol with its word, temperature (red), feels like, humidity, mm, the wind's arrow and speed, gusts and the chance of rain small under them | The day's header draws the sun's arc: day length, sunrise and sunset; the moon's phase, moonrise and moonset |
+
+What it means for the card:
+- **One reading at yr's size,** not tiles: the sky, the temperature about 30 px, three small lines with icons.
+- **The hours as FMI's and yr's rows,** about 40 px each, a colour a kind (temperature red, rain blue, wind its own), and yr's graph for those who read a graph. yr offers the two as a switch; the user asked for them together.
+- **The sun on its own line** under the reading, as yr and Foreca do.
+- **Feels like is on all three.**
+
+The subagents' first pass, from search summaries, follows as leads.
+
 
 | Service | How it shows the weather on the way | Source |
 |---|---|---|
@@ -131,6 +147,14 @@ Asked on 2026-11-07 in the session, nine questions with a recommendation each: r
 Drawn as **C: Together** in the mock-up (A and B stay on its bar):
 - **Each day:** its big numbers as tiles, each in its own colour: Temperature (orange, with "feels like" under it), Wind (teal: the strongest wind, its arrow, the gusts and where it's from), Rain (blue: millimetres on you, where and how hard), and Waves on a day with a paddle (the paddle's colour, "an estimate"). Two tiles a row on a phone, three where a day has three and there's room, one a row at 200 %. Then "In the dark the whole way" on a line of its own when it is, the sun's times with their icons on the next, and the day's 12 hours as a graph in the same colours: the wind and the gusts in figures, the temperature as a line, rain as bars with their mm/h, the dark shaded, your trip in green.
 - **The map's hours:** the weather line, two rows tall: play, the temperature, the hour with the wind, the gusts and rain under it, ⌃ to open the card and ✕ to turn the weather off; under them a 24 px strip with a 44 px target, dragged to set the hour (the reading follows), with your trip shaded, rain in blue, the temperature in orange and the dark in grey. In the card, On the map shows the same line; dragging it folds the card down to the line.
+**Round 2 (2026-11-07):** C's tiles were far too big, and the sky symbol and snow, the snow's depth and the water's temperature were missing; the background work on weather sites hadn't been done, and the old weather line's mock-up hadn't been looked at. Both done since (the research above; #233's step 3 mock-up, `issue-338-room-for-the-map.html?q=foot`: the line above the toolbar before 2026-10-27, and the card folded to its line after). Drawn as **D: Like a weather site** (C stays on the bar):
+- **Each day:** the sky symbol (from `skyKind()`), the temperature at 30 px in red (blue below 0 °C), and three small lines with icons: feels like, rain in mm (blue), the wind and its gust in m/s with a drawn arrow (teal). On a paddle day two more: the waves, an estimate, and the water's temperature, marked as needing a new source. In winter, the snow on the ground. Then "In the dark the whole way" when it is, and the sun's times on a line of their own.
+- **The hours:** FMI's table (time, sky, temperature, feels like, mm, wind (gust) m/s with its arrow) for the trip's hours and one either side, the trip's hours marked ●; then yr's graph of 12 hours. **Hours: Table or graph** draws yr's switch instead (the app's `seg`), to compare.
+- **The weather line:** the old line's order (▷ · the sky · temperature · the hour, the wind and rain · the layer as a pill "Rain ▾", as yr's map does · ⌃ · ✕) over the strip. **Line** switches where it sits: in the sheet's place (chosen 2026-10-27) or above the toolbar with the planner at its peek (the version before). Above the toolbar, about a third of the map shows at 390 × 844; in the sheet's place nearly all of it.
+- **Data: Winter** shows snow (illustrative).
+- **Where the data comes from:** the sky, snowfall and snow depth are fetched today (`cloud_cover`, `snowfall`, `snow_depth`), FMI's measured depth too (`js/winter.js`). Feels like and the chance of rain would be Open-Meteo's ninth and tenth variables, still one call (more than ten count as more), for the map's grid as well since `fetchPoints()` serves both. The water's temperature is a new source: Open-Meteo Marine or MET Norway's Oceanforecast on the coast, SYKE for lakes (#862).
+- **Filed from yr's app:** #903 (nearby observations, cameras, warnings, the next 90 minutes, UV and aurora, map layers); comments on #862 (the sea's temperature) and #182 (the 90-minute radar, the layer pill).
+
 - **Feels like** isn't fetched today. The mock-up works it out as the wind chill; the build would ask Open-Meteo for `apparent_temperature`, its ninth variable, still one call (more than ten count as more).
 
 ## Not drawn yet
