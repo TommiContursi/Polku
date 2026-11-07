@@ -112,7 +112,7 @@ November 2026").
 - Docs and tooling PRs stay on their one subject.
 
 **Model and effort,** picked when the session starts: Sonnet, or Opus at
-medium, for docs, small fixes, rebases, filing issues and the weekly sweep;
+medium, for docs, small fixes, rebases, filing issues and `/lessons`;
 Opus at high for a phase's part, multi-file work and hard bugs, including
 anything touching routing, saved data or share links. Raise it to xhigh
 only when high is stuck on the same problem; never `max` as a habit.
@@ -271,9 +271,10 @@ conversation again
 - **Never push to `main` or merge** unless the user says so. The user merges:
   say which PRs are ready (the ones not in draft, in their "after #N" order),
   and which wait and why.
-- **When a milestone's last issue closes,** a short retro in `docs/retros/`:
-  what cost time, what to keep and what changes in AGENTS.md, with the PRs
-  and issues as evidence. Then the milestone is closed.
+- **When a milestone's last issue closes,** ask the user to run `/lessons` on
+  it (only the user can start it). Its Docs PR adds the milestone's short retro
+  in `docs/retros/`: what cost time, what to keep and what changes in
+  AGENTS.md, with the PRs and issues as evidence. Then the milestone is closed.
 
 ## Code Review Rules
 
