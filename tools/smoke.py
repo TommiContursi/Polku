@@ -11298,11 +11298,10 @@ def stops_card(chrome):
             time.sleep(0.6)
             fold_settled(pg, fails, f"{tag} a point's card")
             s = info()
-            # (taller only to show its name and numbers whole, where the planner's peek has no key facts' line: a source that
-            # didn't answer)
-            named = pg.js("(() => { const p = polku.planner, b = p.cards.box; return Math.ceil(b.querySelector(':scope > .sheet-sum').getBoundingClientRect().bottom - p.panel.getBoundingClientRect().top + parseFloat(getComputedStyle(b).paddingBottom)); })()")
-            if s['card'] != 'point' or s['st'] != 'peek' or s['h'] > max(plan, named) + 1 or s['stops'] != ['folded', 'peek', 'half', 'full']:
-                fails.append(f"{tag}: a point's card opened at the planner's peek ({plan} px, its name and numbers {named}): {s['st']} at {s['h']} px, its stops {s['stops']}")
+            # (#690: to its actions, Move, Rename and Remove, and up to 40 px of what follows them)
+            named = pg.js("(() => { const p = polku.planner, b = p.cards.box; return Math.ceil(b.querySelector(':scope > .peek-end').previousElementSibling.getBoundingClientRect().bottom - p.panel.getBoundingClientRect().top + parseFloat(getComputedStyle(b).paddingBottom)); })()")
+            if s['card'] != 'point' or s['st'] != 'peek' or not named <= s['h'] <= named + 41 or s['stops'] != ['folded', 'peek', 'half', 'full']:
+                fails.append(f"{tag}: a point's card opened at its peek (the planner's {plan} px, to its actions {named}): {s['st']} at {s['h']} px, its stops {s['stops']}")
             # held 200 px up from its peek: the card shows as much of itself as the sheet does
             x, y = body()
             t0 = time.time()
@@ -13470,31 +13469,31 @@ PC_LOOK = """((phone) => {
   for (const b of c.querySelectorAll('.sum-item b')) { const lh = parseFloat(getComputedStyle(b).lineHeight) || 20; if (b.offsetHeight > lh * 1.5) out.push(`“${b.textContent}” on more than one line`); }
   // (but the card folded to its title row: its name and two numbers, one line, step 3 of #233's fix round)
   if (/ · /.test(((k) => { k.querySelectorAll('.way-facts, .way-hint small').forEach((e) => e.remove()); return k.textContent; })(c.cloneNode(true)))) out.push('facts strung with “ · ”');
-  const rows = [...c.querySelectorAll('.row')], rm = rows[rows.length - 1];
-  if (!rm || rm.querySelector('b').textContent !== 'Remove' || !rm.classList.contains('danger')) out.push('Remove isn’t the last row, in red');
-  else if (rm.parentElement.previousElementSibling?.tagName !== 'HR') out.push('Remove isn’t apart, after a line');
+  // (#690: Move, Rename and Remove in red are buttons under the numbers, each line its tooltip; the rest rows with lines)
+  const rows = [...c.querySelectorAll('.row')], rm = c.querySelector(':scope > .rows.btns > [data-k=remove]');
+  if (!rm || !rm.classList.contains('danger') || rm.parentElement.previousElementSibling !== c.querySelector(':scope > .sheet-sum')) out.push('Remove isn’t a button in red under the numbers');
   for (const row of rows) {
-    const line = row.querySelector('small');
+    const line = row.querySelector('small'), btn = row.parentElement.classList.contains('btns');
     if (!row.querySelector('.ic')) out.push(`${row.querySelector('b').textContent}: no icon`);
-    if (!line) out.push(`${row.querySelector('b').textContent}: no line under it`);
-    if (!phone) {
+    if (btn ? !row.title : !line) out.push(`${row.querySelector('b').textContent}: no ${btn ? 'tooltip' : 'line under it'}`);
+    if (!phone && !btn) {
       if (Math.round(r(row).height) !== 36) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not 36`);
       if (line && line.getClientRects().length) out.push(`${row.querySelector('b').textContent}'s line shows on a desktop`);
       if (line && row.title !== line.textContent) out.push(`${row.querySelector('b').textContent}'s tooltip isn't its line`);
     }
   }
   if (!phone) {
-    // Revision 5: 320 px wide, 480 px tall at most; the edits as buttons, two a row, Start here and End here first; no
-    // heading above them; Remove a red button on a row of its own
+    // Revision 5: 320 px wide, 480 px tall at most; the edits as buttons, two a row (#690: Move and Rename, under the numbers);
+    // no heading above them; Remove a red button on a row of its own
     const box = r(c.closest('.maplibregl-popup-content') || c);
     if (Math.round(r(c).width) !== 320 || box.height > 480 + 20) out.push(`the desktop card ${Math.round(r(c).width)} × ${Math.round(box.height)} px, not 320 wide and 480 tall at most`);
     const edits = [...c.querySelectorAll('.rows.acts')].find((l) => l.querySelector('[data-k=move]'));
     if (edits) {
       const b = [...edits.children].filter((x) => x.getClientRects().length).map((x) => ({ k: x.dataset.k, top: Math.round(r(x).top) }));
       const rowsOf = [...new Set(b.map((x) => x.top))].sort((x, y) => x - y).map((t) => b.filter((x) => x.top === t).map((x) => x.k).join('+'));
-      const want = c.querySelector('[data-k=end]') ? ['start+end', 'move+rename'] : c.querySelector('[data-k=start]') ? ['start+move', 'rename'] : ['move+rename'];
+      const want = ['move+rename', 'remove'];
       if (rowsOf.join(' / ') !== want.join(' / ')) out.push(`the edits as buttons: ${rowsOf.join(' / ')}, not ${want.join(' / ')}`);
-      if (edits.previousElementSibling?.getClientRects().length) out.push('a heading above the edit buttons');
+      if (edits.previousElementSibling?.matches('.menu-h')) out.push('a heading above the edit buttons');
     }
     const rmb = c.querySelector('[data-k=remove]');
     if (rmb && (Math.abs(r(rmb).width - r(rmb.parentElement).width) > 1 || getComputedStyle(rmb).borderTopColor === getComputedStyle(c).color)) out.push('Remove isn’t a red button on a row of its own');
@@ -13643,7 +13642,7 @@ def point_card(chrome):
             fails.append(f"{name}: via 1's row to the stretch after it: {s['rows']}")
         if s['title'] != 'Waypoint 1' or 'Waypoint 1Waypoint 1' in s['text']:
             fails.append(f"{name}: an unnamed via point's card says “{s['title']}”{', and Waypoint 1 twice' if 'Waypoint 1Waypoint 1' in s['text'] else ''}")
-        if s['heads'] != ['At this waypoint', 'Edit this waypoint']:
+        if s['heads'] != ['At this waypoint', 'More for this waypoint']:
             fails.append(f"{name}: via 1's groups are {s['heads']}")
         if s['back'] or s['chosen'] != 'Pass by' or s['ringed'] != 1:
             fails.append(f"{name}: from the map: Back “{s['back']}”, the switch at “{s['chosen']}”, the ring on point {s['ringed']}")
@@ -13812,7 +13811,7 @@ def point_card(chrome):
         # the start: you leave, and Leave › (the leave group tries its picker); the end: Back to start; a loop's end has none,
         # its via points no End here
         s = tap_marker(pg, 0, name, touch)
-        if s['labels'][:1] != ['you leave'] or 'Leave' not in s['rows'] or 'Reverse' not in s['rows'] or 'The route' not in s['heads'] or 'Start here' in s['rows'] or 'At this waypoint' in s['heads']:
+        if s['labels'][:1] != ['you leave'] or 'Leave' not in s['rows'] or 'Reverse' not in s['rows'] or 'More for this waypoint' not in s['heads'] or 'Start here' in s['rows'] or 'At this waypoint' in s['heads']:
             fails.append(f"{name}: the start's card: {s['labels']}, {s['rows']}, {s['heads']}")
         r = pg.js("""(async () => { const p = polku.planner, at = (Math.floor(Date.now() / 3600000) + 3) * 3600, d = new Date(at * 1000), z = (x) => String(x).padStart(2, '0'), i = document.querySelector('.pl-way.card .row.pick input');
           if (!i) return { field: false };
@@ -14033,18 +14032,6 @@ def point_card(chrome):
         if not r['view'] or not r['stop'] or r['kind'] != 'point':
             fails.append(f'{name}: Stop in the route’s view: {r}')
         pg.js("polku.planner.cards.close(); polku.planner.setEditing(true); true")
-        # the pill: above the spot on a phone, the card's first button on a desktop (1b and 5 give cards one)
-        r = pg.js("""(() => { const p = polku.planner, at = p.points[2]; let hit = 0;
-          p.cards.open({ kind: 'test', key: 'pill', title: 'A spot', sub: '', build: (b) => b.append('…'.slice(1)), pill: { label: 'Add a waypoint here', icon: 'plus', fn: () => { hit++; } } }, { at });
-          const pill = document.querySelector('.card-pill'), big = document.querySelector('.pl-way.card > .btn.primary.big');
-          const R = p.map.getCanvas().getBoundingClientRect(), q = p.map.project(at), pr = pill && pill.getBoundingClientRect();
-          (pill || big)?.click();
-          const out = { pill: !!pill, big: !!big, above: pr ? Math.round(R.top + q.y - pr.bottom) : null, hit };
-          p.cards.close(); return out; })()""")
-        if phone and (not r['pill'] or r['above'] is None or not 0 <= r['above'] <= 60 or r['hit'] != 1):
-            fails.append(f'{name}: the pill on a phone: {r}')
-        if not phone and (not r['big'] or r['pill'] or r['hit'] != 1):
-            fails.append(f'{name}: the pill on a desktop: {r}')
         if not phone:
             # a point at the right edge: the card opens to its left, on screen
             pg.js("(() => { const m = polku.map, q = m.project(polku.planner.points[2]); m.panBy([q.x - (m.getCanvas().clientWidth - 110), 0], { duration: 0 }); return true; })()")
@@ -14115,7 +14102,7 @@ def point_card(chrome):
 
 
 # The route's card and a stretch's card (25d's 1b, Journey D): a tap on the route shows what's there, with Add a point
-# here at the spot (a pill just above it on a phone, the card's first button on a desktop); This stretch, What's here
+# here at the spot (on a phone the card's under its numbers, the spot pinned, #690; the card's first button on a desktop); This stretch, What's here
 # and Edit this stretch a row away; On the profile, Avoid this spot and The whole route › on it too (#364's 2 B and
 # 3 B, #90's B); the start's card with Back to start first while drawing (#334's A); End, never Finish (#353).
 # BRouter is answered here, with a way's tags, where a leg follows paths; the water's sources are answered empty.
@@ -14179,7 +14166,8 @@ RC_STATE = """(() => {
   return {
     kind: p.cards.current ? p.cards.current.kind : null, place: p.cards.place, n: p.points.length, past: p.past.length, view: p.inView(), active: p.active,
     calls: (window.routerCalls || []).length, menu: !!document.querySelector('.maplibregl-popup .pt-menu'),
-    pill: vis(document.querySelector('.card-pill')) ? box(document.querySelector('.card-pill')) : null, pin: vis(document.querySelector('.card-pin')),
+    // (a phone's: on the card, under its numbers, #690)
+    pill: vis(document.querySelector('.card-peek .pl-way.card > [data-k=add]')) ? box(document.querySelector('.card-peek .pl-way.card > [data-k=add]')) : null, pin: vis(document.querySelector('.card-pin')),
     first: first ? { text: first.textContent.trim(), box: box(first) } : null,
     card: c ? box(c.closest('.maplibregl-popup-content') || c) : null,
     title: c ? c.querySelector('.way-hint b')?.textContent || '' : '', sub: c ? c.querySelector('.way-hint small')?.textContent || '' : '',
@@ -14188,7 +14176,8 @@ RC_STATE = """(() => {
     values: c ? [...c.querySelectorAll('.sum-item b')].map((e) => e.textContent) : [],
     words: c ? [...c.querySelectorAll('.sum-item em')].map((e) => e.textContent) : [],
     miss: c ? [...c.querySelectorAll('.sum-item.miss small')].map((e) => e.textContent) : [],
-    rows: c ? [...c.querySelectorAll('.row')].filter(vis).map((e) => e.querySelector('b').textContent) : [],
+    // (a place's, a spot's and a way's action row first, then the rows: #690)
+    rows: c ? [...c.querySelectorAll('.card-acts button > span:last-child, .row b')].filter((e) => vis(e) && !e.closest('[role=radio]')).map((e) => e.textContent) : [],
     danger: c ? [...c.querySelectorAll('.row.danger')].map((e) => e.querySelector('b').textContent) : [],
     heads: c ? [...c.querySelectorAll('.menu-h')].map((e) => e.textContent) : [],
     seg: c ? [...c.querySelectorAll('.seg button')].map((e) => e.textContent.trim() + (e.getAttribute('aria-checked') === 'true' ? '*' : '')) : [],
@@ -14213,6 +14202,7 @@ RC_LOOK = """((phone) => {
     if (!row.getClientRects().length || row.getAttribute('role') === 'radio') continue;
     const name = row.querySelector('b').textContent, line = row.querySelector('small');
     if (!row.querySelector('.ic')) out.push(`${name}: no icon`);
+    if (row.parentElement.classList.contains('btns')) { if (!row.title) out.push(`${name}: no tooltip`); continue; } // (#690: the actions in sight, buttons)
     if (!line) out.push(`${name}: no line under it`);
     if (!phone && line && line.getClientRects().length) out.push(`${name}'s line shows on a desktop`);
     if (!phone && line && row.title !== line.textContent) out.push(`${name}'s tooltip isn't its line`);
@@ -14239,7 +14229,7 @@ def route_card(chrome):
 
     at = lambda pg, x: (pg.js(SETTLED), pg.js(f"({PC_STILL})(() => ({x}))"))[1]
     st = lambda pg: pg.js(RC_STATE)
-    row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.getClientRects().length && b.querySelector('b').textContent === {json.dumps(label)})"
+    row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row, .pl-way.card .card-acts button')].find((b) => b.getClientRects().length && (b.querySelector('b') || b.lastElementChild).textContent === {json.dumps(label)})"
     tap_row = lambda pg, label, name, touch: press(pg, at(pg, row(label)), f'{name}: {label}', touch)
     main = lambda pg, label, name, touch: press(pg, at(pg, f"[...document.querySelectorAll('.pl-way.card .btn')].find((b) => b.textContent.trim() === {json.dumps(label)})"), f'{name}: {label}', touch)
     on_line = lambda pg, li, t: (pg.js(SETTLED), pg.js(f"({RC_ON})({li}, {t})"))[1]
@@ -14291,7 +14281,8 @@ def route_card(chrome):
         s0 = route(pg, name, LINE)
         if pg.js("polku.planner.label(polku.planner.points.length - 1)") != 'End' or pg.js("/\\bFinish\\b/i.test(polku.planner.panel.innerText)"):
             fails.append(f"{name}: the last point is “{pg.js('polku.planner.label(polku.planner.points.length - 1)')}”, or the planner says Finish (#353)")
-        # a tap on the line, away from its handle: the route's card in the peek, the pill just above the tap, nothing added
+        # a tap on the line, away from its handle: the route's card in the peek, Add a waypoint here in sight on it, the spot
+        # pinned above it, nothing added
         t = on_line(pg, 1, 0.3)
         press(pg, t, f'{name}: the line', touch)
         s = st(pg)
@@ -14303,22 +14294,18 @@ def route_card(chrome):
                 fails.append(f"{name}: with the route's card open, the map lights {lit}, not the leg tapped (#83)")
             # (the map has moved the spot into sight above the card in the peek, as for a point's card)
             spot = pg.js(f"(() => {{ const R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project({json.dumps(t['ll'])}); return {{ x: R.left + q.x, y: R.top + q.y }}; }})()")
-            if not s['pill'] or not s['pin'] or not 0 <= spot['y'] - s['pill']['bottom'] <= 60 or spot['y'] >= s['card']['top']:
-                fails.append(f"{name}: the pill {s['pill']} and the pin {s['pin']}, for the spot at {round(spot['y'])} px over a card from {round(s['card']['top'])} px")
-            # nothing over the pill: its middle is the pill's, not the map's scale or its credits (they took its tap)
-            over = pg.js("(() => { const b = document.querySelector('.card-pill'), r = b && b.getBoundingClientRect(), e = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e && !b.contains(e) ? (e.id || String(e.className.baseVal ?? e.className)) : ''; })()")
-            if over:
-                fails.append(f'{name}: {over} is over the pill')
+            if not s['pill'] or not s['pin'] or s['pill']['bottom'] > s['card']['bottom'] or spot['y'] >= s['card']['top']:
+                fails.append(f"{name}: Add a waypoint here {s['pill']} on a card at {s['card']}, the pin {s['pin']}, for the spot at {round(spot['y'])} px")
             if s['labels'][:2] != ['there at', 'uphill'] and s['labels'][:2] != ['there at', 'downhill'] or s['miss'] != ['difficulty not mapped'] or s['values'][2:] != ['?']:
                 fails.append(f"{name}: a straight line's numbers: {s['values']} {s['labels']}, dashed {s['miss']}")
-            if s['rows'] != ['This stretch', 'What’s here', 'Edit this stretch', 'On the profile', 'Avoid this spot', 'The whole route']:
+            if s['rows'] != ['Avoid this spot', 'This stretch', 'What’s here', 'Edit this stretch', 'On the profile', 'The whole route']:
                 fails.append(f"{name}: the route's card's rows: {s['rows']}")
             if 'from the start' not in s['sub']:
                 fails.append(f"{name}: the route's card's line: “{s['sub']}”")
             fails += [f'{name}: {o}' for o in pg.js(f"({RC_LOOK})(true)")]
             # the pill: a point at the spot, on the line; one step of Undo; no routing request; the note says where
             r0 = st(pg)
-            press(pg, at(pg, "document.querySelector('.card-pill')"), f'{name}: Add a waypoint here', touch)
+            press(pg, at(pg, "document.querySelector('.pl-way.card > [data-k=add]')"), f'{name}: Add a waypoint here', touch)
             r = pg.js(f"""(() => {{ const p = polku.planner, q = p.points[2], a = {json.dumps(LINE['pts'][1])}, b = {json.dumps(LINE['pts'][2])}, t = {json.dumps(t['ll'])};
               const k = Math.cos(q[1] * Math.PI / 180) * 111320, x = (u) => [(u[0] - a[0]) * k, (u[1] - a[1]) * 111320], B = x(b), Q = x(q), T = x(t);
               const f = Math.max(0, Math.min(1, (Q[0] * B[0] + Q[1] * B[1]) / (B[0] ** 2 + B[1] ** 2)));
@@ -14613,18 +14600,18 @@ def route_card(chrome):
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}, after {' / '.join(trail[-4:])}")
     pg.close()
 
-    # ------------------------------------------------------------------ 200 %: a strip of map keeps the spot and the pill in sight [w-200]
+    # ------------------------------------------------------------------ 200 %: a strip of map keeps the spot and its pin in sight [w-200]
     name = '390x844 at 200 %'
     pg = page(195, 422, True)
     try:
         route(pg, name, LINE)
         pg.js("(() => { const p = polku.planner, c = p.legs[1].result ? p.legs[1].result.coords : [p.points[1], p.points[2]]; p.openRouteCard(1, [(c[0][0] + c[c.length - 1][0]) / 2, (c[0][1] + c[c.length - 1][1]) / 2]); return true; })()")
         time.sleep(1.5)  # (the card's own look for its spot, 900 ms after it opens)
-        r = pg.js("""(() => { const b = document.querySelector('.card-pill'), r = b && b.getBoundingClientRect(), top = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        r = pg.js("""(() => { const b = document.querySelector('.card-pin'), r = b && b.getBoundingClientRect(), top = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
           const p = polku.planner, R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project(p.cards.current.key), card = document.querySelector('.pl-way.card').getBoundingClientRect();
-          return { pill: !!b, over: !b || b.contains(top) ? '' : (top ? top.id || top.className || top.tagName : 'nothing'), spot: Math.round(R.top + q.y), card: Math.round(card.top) }; })()""")
-        if not r['pill'] or r['over'] or r['spot'] >= r['card']:
-            fails.append(f"{name}: the pill {'there' if r['pill'] else 'missing'}{', under ' + str(r['over']) if r['over'] else ''}; the spot at {r['spot']} px over a card from {r['card']} px")
+          return { pin: !!b, spot: Math.round(R.top + q.y), card: Math.round(card.top), top: Math.round(document.querySelector('.topbar').getBoundingClientRect().bottom) }; })()""")
+        if not r['pin'] or not r['top'] <= r['spot'] < r['card']:
+            fails.append(f"{name}: the pin {'there' if r['pin'] else 'missing'}; the spot at {r['spot']} px, between the top bar at {r['top']} px and a card from {r['card']} px")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
@@ -14714,7 +14701,7 @@ def near_line(chrome):
                 r = pg.js("(() => { const p = polku.planner; return { kind: p.cards.current && p.cards.current.kind, n: p.points.length, end: p.points[p.points.length - 1] }; })()")
                 if card == 'pill' and r['kind'] == 'route':
                     time.sleep(1)  # (the card's own look for its spot)
-                    b = pg.js("(() => { const r = document.querySelector('.card-pill')?.getBoundingClientRect(); return r && r.width ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : null; })()")
+                    b = pg.js("(() => { const r = document.querySelector('.pl-way.card > [data-k=add]')?.getBoundingClientRect(); return r && r.width ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : null; })()")
                     if b:
                         pg.quick_tap(b['x'], b['y'])
                         time.sleep(0.6)
@@ -14808,9 +14795,9 @@ SC_HELP = """(() => {
       }
       return null;
     },
-    // the map and the card at rest: the map not moving and the pill (if any) in the same place twice, two frames apart
+    // the map and the card at rest: the map not moving and the spot's pin (if any) in the same place twice, two frames apart
     calm: async () => {
-      const at = () => { const b = document.querySelector('.card-pill'); return b ? JSON.stringify(b.getBoundingClientRect()) : ''; };
+      const at = () => { const b = document.querySelector('.card-pin'); return b ? JSON.stringify(b.getBoundingClientRect()) : ''; };
       let a = at(), same = 0;
       for (let k = 0; k < 120 && same < 3; k++) { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); await wait(60); const b = at(); same = b === a && !m.isMoving() ? same + 1 : 0; a = b; }
       return same >= 3;
@@ -14875,7 +14862,7 @@ def spot_card(chrome):
     fails, trail = [], []
     st = lambda pg: pg.js(RC_STATE)
     on_line = lambda pg, li, t: (pg.js(SETTLED), pg.js(f"({RC_ON})({li}, {t})"))[1]
-    row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.getClientRects().length && b.querySelector('b').textContent === {json.dumps(label)})"
+    row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row, .pl-way.card .card-acts button')].find((b) => b.getClientRects().length && (b.querySelector('b') || b.lastElementChild).textContent === {json.dumps(label)})"
     at = lambda pg, x: (pg.js(SETTLED), pg.js(f"({PC_STILL})(() => ({x}))"))[1]
 
     def hold(pg, s, secs, moves=(), checks=()):
@@ -14956,7 +14943,7 @@ def spot_card(chrome):
         if c['kind'] != 'spot' or c['place'] != 'peek' or c['n'] != 0:
             fails.append(f"{name}: a finger held 0.65 s with no route: {c['kind'] or 'no'} card ({c['place']}), {c['n']} points")
         else:
-            if c['rows'] != ['Start a route here', 'Round trip from here'] or c['pill'] or c['labels'][:1] != ['height here']:
+            if c['rows'][:5] != ['Start a route here', 'Share', 'Weather here', 'Round trip from here', 'Copy'] or c['pill'] or c['labels'][:1] != ['height here']:
                 fails.append(f"{name}: no route, the spot's card: rows {c['rows']}, numbers {c['labels']}, pill {bool(c['pill'])}")
             # Android's contextmenu after the hold: no second card
             pg.js("window.scCard = polku.planner.cards.current; true")
@@ -15162,8 +15149,8 @@ def spot_card(chrome):
                 time.sleep(0.25)
             if c['kind'] != 'place' or c['n'] != 0:
                 fails.append(f"{name}: a tap on {pl['name']}: {c['kind'] or 'no'} card, {c['n']} points (the finger at {pl.get('x')},{pl.get('y')} on {under}; the cards: {pg.js('sc.log()')})")
-            # the tap's card has Your route and Copy, and a hold on the place opens the same card (#876)
-            elif 'Your route' not in c['heads'] or 'Copy' not in c['text']:
+            # the tap's card has its actions and Copy, and a hold on the place opens the same card (#876, #690)
+            elif 'More for this place' not in c['heads'] or c['rows'][:1] != ['Add to my route'] or 'Copy' not in c['rows']:
                 fails.append(f"{name}: a tap on {pl['name']}: groups {c['heads']}, {'' if 'Copy' in c['text'] else 'no '}Copy")
             else:
                 tapped = (c['title'], c['heads'], c['rows'])
@@ -15230,7 +15217,7 @@ def spot_card(chrome):
         right(pg, s)
         time.sleep(1)
         b = st(pg)
-        if a['kind'] != 'spot' or 'Your route' not in a['heads'] or 'Copy' not in a['text']:
+        if a['kind'] != 'spot' or a['rows'][:1] != ['Add to my route'] or 'Copy' not in a['rows']:
             fails.append(f"{name}: a click with the planner put away: {a['kind'] or 'no'} card, groups {a['heads']}, {'' if 'Copy' in a['text'] else 'no '}Copy")
         elif (b['kind'], b['title'], b['heads'], b['rows']) != (a['kind'], a['title'], a['heads'], a['rows']):
             fails.append(f"{name}: a right-click opens {b['kind']} {b['title']}, groups {b['heads']}, rows {b['rows']}; a click {a['title']}, {a['heads']}, {a['rows']}")
@@ -15352,7 +15339,7 @@ def crosshair(chrome):
             if wp < 0 or s['kind'] != 'point' or s['pt'] != wp or 'Remove' not in s['rows']:
                 fails.append(f"{name}: Tab from the map and Enter: marker {wp} focused, {s['kind'] or 'no'} card for point {s['pt']}, rows {s['rows']}")
             key(pg, 'Escape', 'Escape', 27)
-            # with the planner put away, Enter and Shift+F10 at the crosshair open the same card, with Your route (#876)
+            # with the planner put away, Enter and Shift+F10 at the crosshair open the same card, with its actions (#876, #690)
             pg.js('polku.planner.setActive(false); true')
             seen = []
             for k, code, vk, mods in (('Enter', 'Enter', 13, 0), ('F10', 'F10', 121, 8)):
@@ -15363,7 +15350,7 @@ def crosshair(chrome):
                 s = st(pg)
                 seen.append((s['kind'], s['heads'], s['rows']))
                 key(pg, 'Escape', 'Escape', 27)
-            if seen[0][0] != 'spot' or 'Your route' not in seen[0][1] or seen[1] != seen[0]:
+            if seen[0][0] != 'spot' or 'More for this spot' not in seen[0][1] or seen[1] != seen[0]:
                 fails.append(f'{name}: with the planner put away, Enter opens {seen[0]}, Shift+F10 {seen[1]}')
             pg.js('polku.planner.setActive(true); true')
             # the map loses the focus: no crosshair
@@ -15723,9 +15710,8 @@ def share_spot(chrome):
 
 
 def spot_card_foot(chrome):
-    """The spot's and a place's card's last row (25d part 6b): Share, Weather here ›, Not right?, All OpenStreetMap details and Copy
-    in one row, last, whole at every size (two lines at most where there's room, a line each at 200 %), the buttons as big as touch
-    needs, with a long Finnish name."""
+    """The spot's and a place's card's last row (25d part 6b): a place's Not right?, last, whole at every size, as big as touch
+    needs, with a long Finnish name; a spot's in its Not mapped line, with no last row (#690: the rest are its actions)."""
     fails = []
     name_ = 'Kuusijärvenkierroksen eteläinen taukopaikkarakennus'
     for w, h_, phone in ((1440, 900, False), (390, 844, True), (360, 740, True), (195, 422, True)):
@@ -15753,16 +15739,13 @@ def spot_card_foot(chrome):
                   return { last: c.lastElementChild === f, words: bs.map((b) => b.textContent.trim()), small: bs.filter((b) => box(b).height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)).length,
                     wide: [f.scrollWidth - f.clientWidth, c.scrollWidth - c.clientWidth], out: bs.filter((b) => box(b).left < C.left - 1 || box(b).right > C.right + 1).length,
                     lines: new Set(bs.map((b) => Math.round(box(b).top))).size, title: c.querySelector('.way-hint').textContent.length }; })()""")
-                if not r:
-                    fails.append(f'{name}: {what}: no card with a last row')
-                    continue
-                # (a spot's Not right? is at the end of its Not mapped line; All OpenStreetMap details where there's a way or a place to ask for)
-                want = (['Share', 'Weather here ›'] if what == 'a spot' else ['Share', 'Weather here ›', 'Not right?']) + [x for x in ['All OpenStreetMap details'] if x in r['words']] + ['Copy']
-                if not r['last'] or r['words'] != want or r['small'] or r['out'] or r['wide'][0] > 0 or r['wide'][1] > 0:
+                # (#690: Share, Weather here, Copy and All OpenStreetMap details are the card's actions now; a place's last row is
+                # Not right?, and a spot's Not right? is at the end of its Not mapped line, with no last row)
+                if what == 'a spot':
+                    if r:
+                        fails.append(f'{name}: a spot: a last row {r}')
+                elif not r or not r['last'] or r['words'] != ['Not right?'] or r['small'] or r['out'] or r['wide'][0] > 0 or r['wide'][1] > 0 or r['lines'] != 1:
                     fails.append(f'{name}: {what}: the last row {r}')
-                # (two lines with a hold's buttons, as a hold's card had, now a tap's too (#876), until the cards' actions are laid out anew)
-                if (w == 195) != (r['lines'] == len(want)) or (w != 195 and r['lines'] > 2):
-                    fails.append(f"{name}: {what}: the last row is on {r['lines']} lines (two at most where there's room, a line each at 200 %)")
                 pg.js('polku.planner.cards.close(); true')
             if phone and w > 195:
                 # a spot under the floating toolbox (undo and redo, over the map above the card): the map moves it, and its
@@ -15786,7 +15769,7 @@ def spot_card_foot(chrome):
         except Exception as e:
             fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: Share, Weather here ›, Not right?, All OpenStreetMap details, Copy, at four sizes; a spot clear of the toolbox" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: a place's Not right?, a spot's none (#690), at four sizes; a spot clear of the toolbox" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

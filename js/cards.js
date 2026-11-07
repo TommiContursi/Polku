@@ -282,9 +282,9 @@ function warnBox(pl, x, from) {
 
 // A tap on the route [p-route, d-route, w-hike, r6-route-b]: the way at the spot, three numbers for your sport, its actions
 // (Add a waypoint here at the spot, Avoid this spot and Other ways, #690), a warning on its stretch, then This stretch,
-// What's here and Edit this stretch; More for this leg: On the profile (#364's B) and The whole route › (#90's B). `ll` is
-// the spot, marked on the map: the card finds its leg again by it after every change (route()), and closes when the route
-// no longer passes there.
+// What's here and Edit this stretch; More for this leg: On the profile (#364's B) and The whole route › (#90's B). Away
+// from a phone's peek Add a waypoint here is the card's pill, its first button at the pointer. `ll` is the spot: the card
+// finds its leg again by it after every change (route()), and closes when the route no longer passes there.
 export function routeCard(pl, li, ll) {
   const card = {
     kind: 'route', key: ll, li,
@@ -292,7 +292,8 @@ export function routeCard(pl, li, ll) {
     get title() { const x = card.spot; return x ? x.name || cap(x.kind) : 'The route'; },
     get label() { return card.title; },
     get sub() { const x = card.spot; return x ? `${x.name ? `${cap(x.kind)}, ` : ''}${fmtDist(x.along)} from the start` : ''; },
-    pinned: true, mark: wayMark, at: () => card.key,
+    pill: { label: 'Add a waypoint here', icon: 'plus', fn: () => pl.addOnCard(card) },
+    mark: wayMark, at: () => card.key,
     alive: () => { const k = pl.legNear(card.key); if (k == null) return false; card.li = k; return true; },
     get stretch() { return pl.stretchAt(card.li); },
     get lit() { return { from: card.li, to: card.li + 1 }; }, // on the map, the leg between the two points around the spot (#83)
@@ -309,7 +310,7 @@ function routeBody(pl, card, body) {
     : (SPORT_FACTS[sport] || SPORT_FACTS.mtb).map((k) => ({ value: '–', label: WAITING[k], wait: true }))));
   // Other ways where the leg has them: one leg BRouter routed (as Edit this stretch has it)
   const leg = pl.legs[card.li], other = leg && leg.mode === 'auto' && leg.status === 'ok' && leg.result && leg.result.provider !== 'valhalla';
-  body.append(...actions({ icon: 'plus', label: 'Add a waypoint here', k: 'add', onclick: () => pl.addOnCard(card) },
+  body.append(...actions(pl.cards.where() === 'peek' ? { icon: 'plus', label: 'Add a waypoint here', k: 'add', onclick: () => pl.addOnCard(card) } : null,
     { icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); pl.addNogo(card.key, 40, 'Avoided place'); } },
     other ? { icon: 'route', label: 'Other ways', line: 'Up to two, on the map', k: 'other', onclick: () => { pl.cards.close(); pl.offerAlts(card.li, true); } } : null), peekEnd());
   // the most serious warning on its stretch

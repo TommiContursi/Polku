@@ -302,6 +302,13 @@ export class CardHost {
     const focused = was && was.contains(document.activeElement) ? keyOf(document.activeElement) : null, scroll = was ? was.scrollTop : 0;
     const box = this.cardBox(card, back);
     const where = entry.beside ? 'float' : this.where();
+    // the card's one action at the spot, away from a phone's peek: its first button, at the pointer (floatAt() moves it
+    // to the foot of a card that opens upwards, so it stays by the pointer)
+    if (where !== 'peek' && card.pill && at) {
+      const b = mainButton(card.pill.label, card.pill.icon, () => card.pill.fn());
+      b.dataset.k = 'pill';
+      box.prepend(b);
+    }
     if (where === 'peek') {
       if (this.popup) { const p = this.popup; this.popup = null; p.remove(); }
       this.peek.replaceChildren(box);
@@ -311,10 +318,10 @@ export class CardHost {
       this.peek.hidden = true;
       box.classList.toggle('rolled', this.rolled);
       if (entry.beside || !at) this.besideAt(box, this.rolled ? null : entry.beside); // (folded, it stays where it folded)
-      else this.floatAt(box, at, fresh);
+      else this.floatAt(box, at, fresh, card.pill && !card.pinned ? 4 : OFFSET); // (an action at the pointer: the card's corner right there)
     }
     this.box = box;
-    this.placePin(card, at);
+    this.placePin(card, at, where);
     this.onChange(card, fresh);
     if (was) {
       box.scrollTop = scroll;
@@ -343,7 +350,7 @@ export class CardHost {
     const { card } = entry, at = card.at ? card.at() : entry.at;
     if (!on) {
       if (entry.beside || !at) this.besideAt(box, entry.beside);
-      else this.floatAt(box, at, true);
+      else this.floatAt(box, at, true, card.pill && !card.pinned ? 4 : OFFSET);
     } else if (this.popup.besideEl) el.style.top = `${Math.round(r0.bottom - el.offsetHeight)}px`;
     else {
       const R = this.map.getCanvas().getBoundingClientRect(), pt = this.map.project(this.popup.getLngLat()), x = R.left + pt.x;
@@ -372,20 +379,23 @@ export class CardHost {
   cardBox(card, back) {
     const x = () => h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', title: 'Close (Esc)', onclick: () => this.close(), html: icon('close', 20) });
     const d = this.dock();
+    // ⋯, Card settings: beside the name, or in the top row on a narrow card, as ✕ is (kept from one drawing of the card to
+    // the next, so its menu, open while the card changes, stays at it)
+    const set = this.settings(card);
+    if (set && !this.setBtns) this.setBtns = [0, 1].map(() => h('button', { type: 'button', class: 'tool card-set', 'aria-label': 'Card settings', 'aria-haspopup': 'menu', title: 'Card settings', html: icon('more', 22) }));
+    if (set) for (const b of this.setBtns) b.onclick = (e) => set(e.currentTarget);
+    if (set) this.setBtns[1].dataset.k = 'set';
     const bar = h('div', { class: 'way-bar' },
       back ? h('button', { type: 'button', class: 'btn small quiet way-back', title: 'Back (Esc)', onclick: () => this.back(), html: icon('chevronLeft', 18) }, h('span', {}, back)) : null,
+      set ? this.setBtns[1] : null,
       d ? h('button', { type: 'button', class: 'tool', 'data-k': 'undo', 'aria-label': 'Undo', disabled: !d.canUndo, onclick: d.undo, html: icon('undo', 20) }) : null,
       d ? h('button', { type: 'button', class: 'tool', 'data-k': 'redo', 'aria-label': 'Redo', disabled: !d.canRedo, onclick: d.redo, html: icon('redo', 20) }) : null,
       x());
     const name = card.title instanceof Node ? card.title : h('b', {}, card.title);
-    // (⋯ is kept from one drawing of the card to the next, so its menu, open while the card changes, stays at it)
-    const set = this.settings(card);
-    if (set && !this.setBtn) this.setBtn = h('button', { type: 'button', class: 'tool card-set', 'aria-label': 'Card settings', 'aria-haspopup': 'menu', title: 'Card settings', html: icon('more', 22) });
-    if (set) this.setBtn.onclick = (e) => set(e.currentTarget);
     const head = h('div', { class: 'way-head' },
       h('h3', { class: 'way-hint', tabindex: '-1' }, name, card.sub ? h('small', {}, card.sub) : null),
       card.mark ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, card.mark()) : null,
-      card.save || null, set ? this.setBtn : null,
+      card.save || null, set ? this.setBtns[0] : null,
       h('button', { type: 'button', class: 'tool way-fold', onclick: (e) => this.roll(!this.rolled, { motion: !!e.detail }) }), // (the keyboard's: at once)
       x());
     const body = h('div', { class: 'pl-way card', role: 'region', 'aria-label': typeof card.title === 'string' ? card.title : card.label || '' }, bar, head);
@@ -407,22 +417,30 @@ export class CardHost {
       h('button', { type: 'button', class: 'btn small', onclick: () => this.escape() }, 'Cancel'));
   }
 
-  // A spot's mark while its card is open (a tap on the line, a pick, a shared spot): its actions are on the card (#690)
-  placePin(card, at) {
+  // The pill: the card's one action at the spot. On a desktop it's the card's first button, at the pointer (render(); 1b
+  // and 5 give cards one); on a phone the card has it under its numbers (#690), and a pin marks the spot.
+  placePin(card, at, where) {
     if (this.pin) { this.pin.remove(); this.pin = null; }
-    if (at && card.pinned) this.pin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(at).addTo(this.map);
+    // (a spot's pin: with its pill on a phone, or for a shared spot wherever its card is)
+    if (at && (card.pinned || (card.pill && where === 'peek'))) this.pin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(at).addTo(this.map);
+  }
+  // the action by the pointer: the card's first button, or its last when the card opens upwards
+  actAt(box) {
+    const b = box.querySelector(':scope > [data-k=pill]');
+    if (!b || !this.popup || this.popup.besideEl) return;
+    if (String(this.popup.options.anchor).startsWith('bottom')) box.append(b); else box.prepend(b);
   }
 
   // at the spot: the corner at the point, opening to the left or upwards where there's no room
-  floatAt(box, at, fresh) {
-    const off = OFFSET, offsets = { 'top-left': [off, off], 'top-right': [-off, off], 'bottom-left': [off, -off], 'bottom-right': [-off, -off] };
+  floatAt(box, at, fresh, off = OFFSET) {
+    const offsets = { 'top-left': [off, off], 'top-right': [-off, off], 'bottom-left': [off, -off], 'bottom-right': [-off, -off] };
     if (!this.popup || this.popup.besideEl) {
       this.remove();
       this.popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: 'none', anchor: 'top-left', className: 'polku-popup card-float', offset: offsets });
       this.popup.setLngLat(at).setDOMContent(box).addTo(this.map);
       fresh = true;
     } else { if (fresh) this.popup.setOffset(offsets); this.popup.setLngLat(at).setDOMContent(box); }
-    if (!fresh) return;
+    if (!fresh) { this.actAt(box); return; }
     const pt = this.map.project(at), R = this.map.getCanvas().getBoundingClientRect(), x = R.left + pt.x, y = R.top + pt.y;
     const w = box.offsetWidth, ht = box.offsetHeight;
     // a narrow screen (a phone with the planner put away): above its spot, moved sideways to stay whole on the screen
@@ -433,6 +451,7 @@ export class CardHost {
       this.popup.options.anchor = 'bottom';
       this.popup.setOffset({ bottom: [Math.round(dx), -OFFSET] });
       this.popup.setLngLat(at);
+      this.actAt(box);
       // (room above it under the top bar: the map moves down, never sideways, which would take it off the screen)
       const top = this.popup.getElement().getBoundingClientRect().top, bar = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 8;
       if (top < bar) this.map.panBy([0, top - bar], { duration: 0 });
@@ -444,6 +463,7 @@ export class CardHost {
     const right = innerWidth - x - (innerWidth < 720 ? 64 : 84), below = innerHeight - 8 - (this.pad().bottom || 0) - y;
     const anchor = `${below < ht + OFFSET && y - 120 > below ? 'bottom' : 'top'}-${right < w + OFFSET && x - (this.pad().left || 0) > right ? 'right' : 'left'}`;
     if (anchor !== this.popup.options.anchor) { this.popup.options.anchor = anchor; this.popup.setLngLat(at); }
+    this.actAt(box);
     this.keep();
   }
 
