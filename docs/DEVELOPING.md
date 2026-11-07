@@ -34,7 +34,7 @@ Read the section the task needs, not the whole file. The files after a section a
 - [Files](#files)
 - [Working on it](#working-on-it)
   - [Shared controls](#shared-controls)
-  - [Design skills](#design-skills)
+  - [Skills](#skills)
 
 ## Bugs and reviews
 
@@ -432,7 +432,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 - **A mock-up** copies the CSS of the controls it uses from `css/app.css`, with the same class names, in a marked block (as `docs/plans/mockups/issue-345-map-cards.html` does), so what the user approves is what gets built. When the app's controls change, the copy is made again.
 - **No copies:** no second class for a control that exists (a `card-row` beside `way-tile`, say). A variant of one is a modifier on its class, said in this table.
 
-### Design skills
+### Skills
 
 - **Emil Kowalski's skills** ([emilkowal.ski/skill](https://emilkowal.ski/skill), MIT: `.agents/skills/LICENSE`) are kept in `.agents/skills/`, so every checkout and worktree has them, for Claude Code and Codex alike. Claude Code finds them through the links in `.claude/skills/`. `skills-lock.json` records each one's source and hash.
 - **Eleven of the fifteen,** the ones [phase 24's plan](plans/24-design-review.md#the-skills) uses. animate-expo and write-swift (React Native, Swift), ask-sonner (a React library) and pick-ui-library (choosing dependencies) don't fit Polku.
