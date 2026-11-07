@@ -4675,6 +4675,7 @@ export class Planner {
     // folded: the line, one button that opens it as it was, and ✕ at its end
     this.els.foldGo = h('button', { type: 'button', class: 'fold-go', onclick: (e) => this.unfold({ instant: !e.detail }), onkeydown: (e) => { if (e.key === 'ArrowUp') { e.preventDefault(); this.unfold({ instant: true }); } } });
     this.els.foldX = tool('close', 'Put the planner away: your route stays', () => this.foldAway(), 'fold-x');
+    this.els.topX = tool('close', 'Put the planner away: your route stays', () => this.close(), 'sheet-x'); // (the top row's, #889)
     this.els.fold = h('div', { class: 'fold-line' }, this.els.foldGo, this.els.foldX);
     this.els.topSum = h('div', { class: 'top-sum', 'aria-hidden': 'true' }); // (D: the numbers in the top row, renderTopSum())
     this.els.dockBtn = tool('panelBottom', 'Move to the bottom', () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), 'sheet-dock');
@@ -4750,6 +4751,7 @@ export class Planner {
       },
       // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox
       settings: (card) => this.cardMenu(card),
+      fold: (instant) => this.fold({ instant }),
       dock: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView()
         ? { undo: () => this.undo(), redo: () => this.redo(), canUndo: !!this.past.length, canRedo: !!this.future.length } : null),
     });
@@ -4836,7 +4838,8 @@ export class Planner {
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clearCategoryPreview(); });
     this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
-    this.els.top = h('div', { class: 'sheet-top' }, h('span'), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.up, this.els.foldBtn), this.els.topSum);
+    // ⌃ and ⌄ at its left, the route's view's Edit and More docked after them at full, ✕ at its right (#889)
+    this.els.top = h('div', { class: 'sheet-top' }, h('span', { class: 'sheet-top-start' }, this.els.up, this.els.foldBtn), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.topX), this.els.topSum);
     this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
     // (the tabs' headings, h3, under one of the planner's own: its title row has the route's name only in the route's view)
     p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, h('h2', { class: 'sr-only' }, 'Planner'), this.els.tabs, this.els.body, this.els.bar);
@@ -5561,7 +5564,7 @@ export class Planner {
   foldable() { return this.cards.place === 'peek' || (this.points.length > 1 && !this.peekOnly()); }
   // the keyboard's focus goes with it: from ⌄ or the handle to the line, and back to where it came from
   fold({ instant = false } = {}) {
-    this.foldFocus = [this.els.foldBtn, this.els.min, this.els.handle].find((b) => b === document.activeElement) || null;
+    this.foldFocus = [this.els.foldBtn, this.els.min, this.els.handle].find((b) => b === document.activeElement) || (document.activeElement?.matches('.card .way-fold') ? document.activeElement : null);
     this.setSheetState('folded', { instant });
     if (this.foldFocus) this.els.foldGo.focus({ preventScroll: true });
   }
@@ -6211,7 +6214,8 @@ export class Planner {
     const dock = !folded && ((st === 'full' && !carded) || docks(sheetH));
     // after Done, Edit and More go into ⌄'s row at its left, where ⋯ alone was before #745, where they fit with the grip in
     // the middle (both sides as wide as them); else a row of their own (200 %)
-    this.dockTools(dock, dock && this.inView() && this.els.top.offsetHeight > 18 && 2 * w + 48 <= this.els.top.clientWidth ? w : 0);
+    const arrows = [this.els.up, this.els.foldBtn].reduce((a, b) => a + b.offsetWidth, 0); // (beside them, at the row's left)
+    this.dockTools(dock, dock && this.inView() && this.els.top.offsetHeight > 18 && 2 * (w + arrows) + 48 <= this.els.top.clientWidth ? w + arrows : 0);
     if (dock) {
       // as many as fit without another row (the sheet's size follows once, below)
       setOpts(box, 0);

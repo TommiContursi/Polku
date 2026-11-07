@@ -799,15 +799,16 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
    (planner.js dockTools(), #745) */
 .sheet-top { flex: none; display: grid; grid-template-columns: max(44px, var(--top-side, 0px)) 1fr max(44px, var(--top-side, 0px)); align-items: center; height: 18px; }
 .sheet-top .pl-tools.docked { flex-wrap: nowrap; margin: 0; padding: 0 0 0 6px; border: 0; } /* (off the sheet's rounded corner) */
+.sheet-top-start { display: flex; min-width: 0; }
 .sheet-top-end { display: flex; justify-content: flex-end; }
-.sheet-top-end .tool { display: none; width: 44px; height: 44px; }
+:is(.sheet-top-start, .sheet-top-end) > .tool { display: none; width: 44px; height: 44px; }
 .sheet[data-layout="side"] .sheet-top { display: none; }
+/* on a phone, ⌄ (with a mouse ⌃ too) at the top row's left and ✕ at its right, one row (#889); a card has its own ⋯ ⌄ ✕
+   beside its name, so over one the row is the handle alone */
 @media (max-width: 720px) {
-  .sheet.foldable .sheet-top { height: 40px; }
-  .sheet.foldable .sheet-fold { display: inline-flex; }
+  .sheet.foldable:not(.carded) .sheet-top { height: 40px; }
+  .sheet.foldable:not(.carded) :is(.sheet-fold, .sheet-x) { display: inline-flex; }
 }
-/* (a card in the peek of a window 721–899 px wide hides the header row and its ⌄: the card's is in the top row) */
-@media (min-width: 721px) { .sheet.carded .sheet-top { height: 40px; } .sheet.carded .sheet-fold { display: inline-flex; } }
 /* the folded line: one row over the top row, the handle drawn in its top padding; the planner's numbers (or a card's
    mark, name and first two numbers), one button that opens it as it was, and ✕ at its end. It and what it folds
    cross-fade while the sheet moves between them (js/planner.js, moved()) */
@@ -921,7 +922,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 @media (hover: hover) and (pointer: fine) and (max-width: 720px) {
   .sheet.foldable:not(.carded) .sheet-up { display: inline-flex; }
   .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: max(88px, var(--top-side, 0px)) 1fr max(88px, var(--top-side, 0px)); }
-  .sheet.foldable:not(.carded) .top-sum { right: 96px; }
+  .sheet.foldable:not(.carded) .top-sum { left: 96px; }
 }
 @media (hover: hover) and (pointer: fine) and (max-width: 359px) { .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: auto minmax(0, 1fr) auto; } .sheet.foldable:not(.carded) .sheet-handle { max-width: 100%; } }
 @media (hover: hover) and (pointer: fine) and (min-width: 721px) { .sheet[data-layout="sheet"].foldable:not(.carded) .sheet-up-min { display: inline-flex; } }
@@ -1866,7 +1867,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .top-sum { display: none; }
 @media (max-width: 720px) {
   .sheet.foldable:has(> .sheet-top .pl-tools.docked) .top-sum { left: calc(var(--top-side) + 12px); }
-  .sheet.foldable .top-sum { display: flex; position: absolute; top: 0; left: 14px; right: 52px; height: 40px; flex-wrap: wrap; align-items: center; column-gap: 6px; overflow: hidden;
+  .sheet.foldable .top-sum { display: flex; position: absolute; top: 0; left: 52px; right: 52px; height: 40px; flex-wrap: wrap; align-items: center; column-gap: 6px; overflow: hidden;
     pointer-events: none; opacity: 0; transition: opacity var(--t-press) var(--ease-out); font-variant-numeric: tabular-nums; }
   .sheet.sum-on .top-sum { opacity: 1; transition-duration: var(--t-open); }
   .sheet-handle::before { transition: transform var(--t-press) var(--ease-out); }
@@ -1886,7 +1887,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
   background: var(--surface-solid); border-radius: 18px 18px 0 0; font-variant-numeric: tabular-nums; }
 .sheet[data-layout="side"] .top-sum > * { line-height: 1.4; }
 .sheet[data-layout="side"] .top-sum i { order: -1; flex-basis: 100%; white-space: normal; overflow-wrap: anywhere; }
-.sheet[data-layout="side"].scroll-all > .sheet-top .sheet-top-end { position: absolute; top: 5px; right: 6px; z-index: 1; }
+.sheet[data-layout="side"].scroll-all > .sheet-top .sheet-top-start { position: absolute; top: 5px; right: 6px; z-index: 1; }
 .sheet[data-layout="side"].scroll-all > .sheet-top .sheet-fold { display: inline-flex; }
 @media (prefers-reduced-motion: reduce) { .sheet-handle::before { transition: none; } }
 /* a phone's peek: the card is the peek, 52 % of the window at most (it scrolls inside), the point in sight above it */
@@ -1918,9 +1919,16 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .card > .way-bar { min-height: 36px; margin-bottom: -4px; }
 .card-float .way-back { min-height: 36px; font-size: 14px; }
 .card-float :is(.way-x, .card-set) { width: 36px; height: 36px; }
-/* a desktop's card folds to its title row (step 3 of #233); on a phone the sheet's ⌄ folds the card in the peek */
+/* a desktop's card folds to its title row (step 3 of #233); in a phone's peek its ⌄ folds the sheet to its line, beside ✕
+   wherever ✕ is, ⋯ ⌄ ✕ on one row (#889) */
 .card .way-fold { display: none; }
-@media (min-width: 721px) { .card-float .way-fold { display: inline-flex; width: 36px; height: 36px; margin: -4px -2px 0 0; } }
+@media (min-width: 721px) { .card-float .card > .way-head > .way-fold { display: inline-flex; width: 36px; height: 36px; margin: -4px -2px 0 0; } }
+.card-peek .card[data-back="no"] > .way-head > .way-fold, .card-peek .card[data-back="yes"] > .way-bar > :is(.way-fold, [data-k="set"]) { display: inline-flex; width: 44px; height: 44px; }
+.card-peek .card[data-back="yes"] > .way-head > .card-set { display: none; }
+.card-peek .card > .way-head > .way-fold { margin-top: -6px; } /* (level with ✕) */
+.way-bar .way-fold + .way-x { margin-left: 0; }
+/* (narrow, 200 %: the top row has ⋯, undo, redo and ✕, and ⌄ would wrap it; the swipe and the handle fold it) */
+@container card (max-width: 290px) { .card-peek .card[data-back] > :is(.way-head, .way-bar) > .way-fold { display: none; } }
 .card.rolled > :not(.way-bar, .way-head) { display: none; }
 /* …its name and its first two numbers on one line (its own line under it waits) */
 .card .way-facts, .card.rolled .way-hint > small { display: none; }

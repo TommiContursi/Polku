@@ -148,8 +148,9 @@ export class CardHost {
   // keep(): how the planner is before the first card opens (its sheet, its list's scroll); restore(it) puts it back.
   // dock(): undo and redo for a narrow card's top row ({ undo, redo, canUndo, canRedo }), or null.
   // settings(card): Card settings, ⋯ beside ✕ (#690): a function opening its menu at ⋯, or null with nothing to set.
-  constructor(map, { peek, where, onChange = () => {}, onPop = () => {}, pad = () => ({}), keep = () => null, restore = () => {}, dock = () => null, settings = () => null }) {
-    Object.assign(this, { map, peek, where, onChange, onPop, pad, keepState: keep, restoreState: restore, dock, settings });
+  // fold(instant): ⌄ beside ✕ in a phone's peek folds the sheet to its line (#889), where elsewhere it folds the card to its title.
+  constructor(map, { peek, where, onChange = () => {}, onPop = () => {}, pad = () => ({}), keep = () => null, restore = () => {}, dock = () => null, settings = () => null, fold = () => {} }) {
+    Object.assign(this, { map, peek, where, onChange, onPop, pad, keepState: keep, restoreState: restore, dock, settings, foldSheet: fold });
     this.stack = []; // [{ card, at, beside, from }], the open one last
     this.depth = 0; // steps of history the cards pushed
     this.skip = 0; // steps back of our own still to come (history.go() is asynchronous)
@@ -364,18 +365,21 @@ export class CardHost {
     }
   }
   rollLabel(box) {
-    const b = box.querySelector('.way-fold');
-    if (!b) return;
-    b.innerHTML = icon(this.rolled ? 'chevronUp' : 'chevronDown', 20);
-    b.setAttribute('aria-expanded', String(!this.rolled));
-    b.setAttribute('aria-label', this.rolled ? 'Open the card' : 'Fold the card to its title');
-    b.title = b.getAttribute('aria-label');
+    const peek = this.where() === 'peek';
+    for (const b of box.querySelectorAll(':scope > * > .way-fold')) {
+      b.innerHTML = icon(this.rolled && !peek ? 'chevronUp' : 'chevronDown', 20);
+      if (peek) b.removeAttribute('aria-expanded'); else b.setAttribute('aria-expanded', String(!this.rolled));
+      b.setAttribute('aria-label', peek ? 'Fold the card to a line' : this.rolled ? 'Open the card' : 'Fold the card to its title');
+      b.title = b.getAttribute('aria-label');
+    }
   }
 
-  // the top row: Back (in words, when there's somewhere to go back to), undo and redo (narrow), ✕; then the thing's
-  // own mark and its name with its line. Wide and without Back, ✕ is in the name's row.
+  // the top row: Back (in words, when there's somewhere to go back to), undo and redo (narrow), ⌄ and ✕; then the thing's
+  // own mark and its name with its line. Wide and without Back, ⌄ and ✕ are in the name's row (one row, #889)
   cardBox(card, back) {
     const x = () => h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', title: 'Close (Esc)', onclick: () => this.close(), html: icon('close', 20) });
+    // (a click with no pointer, from the keyboard: at once)
+    const fold = () => h('button', { type: 'button', class: 'tool way-fold', onclick: (e) => (this.where() === 'peek' ? this.foldSheet(!e.detail) : this.roll(!this.rolled, { motion: !!e.detail })) });
     const d = this.dock();
     // ⋯, Card settings: beside the name, or in the top row on a narrow card, as ✕ is (kept from one drawing of the card to
     // the next, so its menu, open while the card changes, stays at it)
@@ -388,14 +392,12 @@ export class CardHost {
       set ? this.setBtns[1] : null,
       d ? h('button', { type: 'button', class: 'tool', 'data-k': 'undo', 'aria-label': 'Undo', disabled: !d.canUndo, onclick: d.undo, html: icon('undo', 20) }) : null,
       d ? h('button', { type: 'button', class: 'tool', 'data-k': 'redo', 'aria-label': 'Redo', disabled: !d.canRedo, onclick: d.redo, html: icon('redo', 20) }) : null,
-      x());
+      fold(), x());
     const name = card.title instanceof Node ? card.title : h('b', {}, card.title);
     const head = h('div', { class: 'way-head' },
       h('h3', { class: 'way-hint', tabindex: '-1' }, name, card.sub ? h('small', {}, card.sub) : null),
       card.mark ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, card.mark()) : null,
-      card.save || null, set ? this.setBtns[0] : null,
-      h('button', { type: 'button', class: 'tool way-fold', onclick: (e) => this.roll(!this.rolled, { motion: !!e.detail }) }), // (the keyboard's: at once)
-      x());
+      card.save || null, set ? this.setBtns[0] : null, fold(), x());
     const body = h('div', { class: 'pl-way card', role: 'region', 'aria-label': typeof card.title === 'string' ? card.title : card.label || '' }, bar, head);
     body.dataset.kind = card.kind;
     body.dataset.back = back ? 'yes' : 'no';
