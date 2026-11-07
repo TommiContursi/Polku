@@ -18,6 +18,10 @@ _Avoid_: point, via
 Anything on the map you can find or tap: a search result, a LIPAS site, a lean-to. Added to the route, it becomes a waypoint.
 _Avoid_: POI
 
+**Spot**:
+A point on the map that isn't a place or your route: where you held the map, or tapped it while browsing. Its card is "This spot".
+_Avoid_: location, pin (a pin is the mark a card puts on the map)
+
 **Leg**:
 The way from one waypoint to the next, in one sport and one drawing mode.
 _Avoid_: segment
@@ -98,6 +102,18 @@ What the route is made of: its gradient, surface, way type and width, for exampl
 
 **Colour by**:
 The choice of what colours the route and the profile.
+
+**Card**:
+What opens for one thing on the map (a waypoint, a leg, a place, a way, a spot, a warning), one at a time, with ‹ Back to the one before. A tap opens it, and a hold the same card.
+_Avoid_: popup, panel, sheet (the sheet is what a card sits in on a phone)
+
+**Hold**:
+Touching the map and keeping the finger still for half a second; on a desktop, a right click. A shortcut to the card a tap opens, never the only way to anything, so the screen doesn't need to name it.
+_Avoid_: long press, long tap
+
+**Readout**:
+The few words a desktop's pointer shows on the route or a way before a click: where it is, its height and grade, the way and its surface.
+_Avoid_: tooltip (a tooltip names a button), hover card
 
 **Size**:
 How far the planner is raised on a phone: the line, the peek, half or full.

@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Cards and taps</title>
+<meta name="description" content="Mock-up for #690: the map's cards and what a tap, a click, a hold and a right click do. Today's cards from main beside the new ones, on a real multisport route in Helsinki.">
+<!--
+  #690 (with #876, #760, #647), 2026-11-07. The plan: docs/plans/cards-and-taps.md. Not wired to the app: nothing here is
+  loaded by Polku. The cards are drawn with css/app.css's own classes (pl-way card, way-head, sheet-sum, rows, row,
+  warn-row, insp-row, bd-legend, seg, mode-select, btn primary big, card-pill, heads-step); what's new is in the block
+  marked "new". The map is a screenshot of main at babbafd with the route drawn by a local BRouter; the route's numbers
+  (heights, grades, surfaces, way types, times, warnings) are its own analysis, exported from the app.
+
+  ?v=today|new  &kind=leg|waypoint|way|place|warning|spot  &frame=390|360|200|desk  &acts=buttons|row  &peek=acts|profile
+  &data=real|late|missing  &mode=drawing|browsing
+  #574's version (built as #623) is mockups/cards-rethought.html; Today here is main as it is now.
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; }
+* { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; } /* (app.css holds the app's page still; this page scrolls) */
+body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+.mk h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: -0.01em; }
+.mk .lede { max-width: 72ch; margin: 0 0 14px; color: var(--page-cap); }
+.mk a { color: var(--page-link); text-underline-offset: 2px; }
+.mk-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 16px; }
+.mk-sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 10px; background: var(--switch-bg); }
+.mk-sw > b { align-self: center; padding: 0 8px 0 6px; font-size: 12px; font-weight: 600; color: var(--page-cap); }
+.mk-sw button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--switch-fg); font: inherit; font-size: 13px; cursor: pointer; }
+.mk-sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.mk-sw button:focus-visible { outline: 2px solid var(--page-link); outline-offset: 1px; }
+.mk-sw[hidden] { display: none; }
+.mk-main { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.mk-notes { flex: 1 1 300px; max-width: 64ch; color: var(--page-cap); }
+.mk-notes h2 { margin: 0 0 6px; font-size: 15px; color: var(--page-fg); }
+.mk-notes ul { margin: 0 0 12px; padding-left: 18px; }
+.mk-notes li { margin: 3px 0; }
+.mk-shots { display: flex; flex-wrap: wrap; gap: 16px; }
+.mk-shots figure { margin: 0; }
+.mk-shots img { display: block; width: 300px; max-width: 100%; height: auto; border-radius: 18px; box-shadow: 0 2px 12px rgba(0,0,0,.18); }
+.mk-shots.desk img { width: 720px; border-radius: 8px; }
+.mk-shots figcaption { margin-top: 6px; max-width: 300px; font-size: 12.5px; color: var(--page-cap); }
+
+/* ---- a phone or a desktop, drawn at its size; the map a screenshot of main */
+.mk-frame { position: relative; flex: none; overflow: hidden; border-radius: 28px; background: #a9cbe9; box-shadow: 0 0 0 1px rgba(0,0,0,.1), 0 8px 30px rgba(0,0,0,.25); transform: translateZ(0); }
+.mk-frame.desk { border-radius: 8px; }
+.mk-frame > .mk-map { position: absolute; left: 0; top: 0; width: var(--mw); height: auto; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.mk-frame > svg.mk-ov { position: absolute; left: 0; top: 0; width: var(--mw); height: var(--mh); touch-action: none; }
+.mk-hit { fill: transparent; stroke: transparent; cursor: pointer; }
+.mk-toast { position: absolute; left: 50%; bottom: 18px; z-index: 9; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 12px; background: #1f2622; color: #fff; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.mk-toast b { color: #7fdcae; margin-left: 10px; }
+.mk-hover { position: absolute; z-index: 6; display: grid; gap: 1px; padding: 7px 10px; border-radius: 10px; background: var(--surface-solid); color: var(--text); font-size: 12.5px; line-height: 1.35; box-shadow: 0 4px 14px rgba(0,0,0,.25); pointer-events: none; white-space: nowrap; }
+.mk-hover b { font-size: 13px; }
+.mk-hover small { color: var(--muted); }
+
+/* ---- the card's sheet on a phone (the app's sheet with a card in it, #603's sizes), and the desktop's card beside the planner */
+.mk-sheet { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 5; display: flex; flex-direction: column; height: var(--h, 240px); max-height: calc(100% - 70px); border-radius: 18px; background: var(--surface-solid); color: var(--text); box-shadow: 0 -2px 18px rgba(0,0,0,.22); transition: height var(--t-sheet) var(--ease-drawer); }
+.mk-sheet.dragging { transition: none; }
+.mk-grip { flex: none; display: grid; place-items: center; height: 22px; border: 0; background: none; cursor: grab; touch-action: none; }
+.mk-grip::before { content: ""; width: 38px; height: 5px; border-radius: 3px; background: var(--line); }
+.mk-sheet > .pl-way.card { flex: 1; min-height: 0; padding: 0 14px 12px; margin: 0; }
+.mk-dock { position: absolute; left: 412px; top: 64px; z-index: 5; width: 352px; max-height: 824px; display: flex; flex-direction: column; padding: 12px 14px; border-radius: 16px; background: var(--surface-solid); color: var(--text); box-shadow: 0 6px 24px rgba(0,0,0,.22); }
+.mk-dock > .pl-way.card { min-height: 0; margin: 0; padding: 0; }
+@media (prefers-reduced-motion: reduce) { .mk-sheet { transition: none; } }
+
+/* ======================================================= new (proposed; everything else is css/app.css's) */
+/* Q7 B: a card's first actions as the desktop's buttons (.card-float .rows.acts), on a phone too: two a row, an icon and
+   a word each; the dangerous one red */
+.card .rows.acts.mk-btns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.card .rows.acts.mk-btns > .row { min-height: 44px; padding: 0 10px; gap: 8px; border: 1px solid var(--line); border-radius: 10px; box-shadow: none; background: var(--surface-solid); }
+.card .rows.acts.mk-btns > .row b { font-size: 14.5px; }
+.card .rows.acts.mk-btns > .row.danger { border: 1.5px solid var(--bad); }
+.card .rows.acts.mk-btns > .row:only-child, .card .rows.acts.mk-btns > .row.wide { grid-column: 1 / -1; }
+.card .rows.acts.mk-btns.with-more { grid-template-columns: repeat(2, minmax(0, 1fr)) 44px; }
+.card .rows.acts.mk-btns > .row.wide { grid-column: 1 / -1; }
+@container card (max-width: 290px) { .card .rows.acts.mk-btns { grid-template-columns: minmax(0, 1fr); } } /* (200 %: one to a row, words whole) */
+.card .rows.acts.mk-btns > .mk-more { grid-column: -2; grid-row: 1; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 10px; }
+.card .rows.acts.mk-btns > .mk-more[aria-expanded="true"] { background: var(--surface-2); }
+/* Q7 A: an action row (a new control): round buttons with their word under them, the main one filled green, ⋯ More last */
+.mk-ar { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 4px; margin: 0 -4px; }
+.mk-ar button { display: grid; justify-items: center; gap: 4px; min-height: 64px; padding: 4px 2px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.2; text-align: center; cursor: pointer; overflow-wrap: anywhere; }
+.mk-ar button > span:first-child { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); }
+.mk-ar button.main > span:first-child { background: var(--accent-bg); color: #fff; }
+.mk-ar button.danger { color: var(--bad); }
+.mk-ar button:active > span:first-child { transform: scale(.97); }
+/* a value picked here, as a pill: the When pill's and a part's sport (#869), in a card's head */
+.mk-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.mk-pills > .tool { margin-left: auto; }
+.mk-pill { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 10px 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.mk-pill .caret { width: 0; height: 0; border-left: 4.5px solid transparent; border-right: 4.5px solid transparent; border-top: 5.5px solid currentColor; }
+@media (pointer: coarse) { .mk-pill { min-height: 44px; } }
+.mk-view { margin-top: 2px; }
+/* the spot you tapped or scrub to, in words, over the profile */
+.mk-at { margin: 0; font-size: 13.5px; line-height: 1.35; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mk-at b { color: var(--text); font-weight: 600; }
+/* a piece's own profile: its route's chart, scrubbed by a finger or the pointer (role="slider") */
+.mk-prof { display: grid; gap: 6px; }
+.mk-prof svg { display: block; width: 100%; height: 92px; border-radius: 8px; background: var(--surface-2); touch-action: none; cursor: crosshair; }
+.mk-prof svg:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mk-prof .ax { font-size: 10px; fill: var(--muted); }
+.mk-step { display: flex; align-items: center; gap: 4px; margin: 0 -8px; }
+.mk-step > span { flex: 1; text-align: center; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mk-step > .seg { flex: 1; justify-content: center; }
+.mk-step > .seg button { flex: 1 1 auto; }
+.mk-hidden-note { margin: 0; font-size: 13px; color: var(--muted); }
+.mk-skel { height: 92px; border-radius: 8px; background: var(--surface-2); animation: mk-breathe 1.6s ease-in-out infinite; }
+@keyframes mk-breathe { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .mk-skel { animation: none; } }
+</style>
+</head>
+<body class="mk">
+<h1>The cards and what a tap does</h1>
+<p class="lede">#690's design, after two rounds of questions (2026-11-07). <b>Today</b> is <code>main</code> as it is; <b>New</b> is what's decided so far, with the open choices as switches. The route is real: Eira to Kaivopuisto by MTB, a sea kayak to Suomenlinna across the Särkän väylä, a hike on the island. Tap the line, a waypoint, the path north of the route, the campfire site on Uunisaari or a warning; hold one (half a second) for the same card. <a href="../cards-and-taps.md">The plan</a> · <a href="cards-rethought.html">#574's version</a>.</p>
+<div class="mk-bar" id="bar"></div>
+<div class="mk-main"><div id="stage"></div><div class="mk-notes" id="notes"></div></div>
+<script type="application/json" id="route">{"pts":[[24.938,60.1585],[24.93835,60.15862],[24.93883,60.15879],[24.93914,60.15858],[24.93951,60.15832],[24.94008,60.15828],[24.94072,60.1583],[24.9409,60.15827],[24.94101,60.15822],[24.94116,60.15807],[24.94123,60.15798],[24.94138,60.15768],[24.94154,60.15735],[24.9417,60.15701],[24.94186,60.15668],[24.94221,60.15662],[24.94279,60.15669],[24.94325,60.15674],[24.94372,60.1568],[24.94438,60.15688],[24.94499,60.15696],[24.94536,60.15701],[24.94593,60.15707],[24.94652,60.15714],[24.94717,60.15722],[24.94768,60.15728],[24.94819,60.15734],[24.94883,60.15742],[24.94937,60.15748],[24.9497,60.15747],[24.94981,60.15724],[24.94992,60.15699],[24.95002,60.15677],[24.95001,60.15658],[24.95017,60.15625],[24.95029,60.15601],[24.95043,60.15571],[24.95063,60.1556],[24.95084,60.15548],[24.95131,60.15533],[24.95185,60.15515],[24.95245,60.15496],[24.95296,60.15479],[24.95347,60.15462],[24.95403,60.15444],[24.95459,60.15426],[24.95508,60.1541],[24.9556,60.15396],[24.95619,60.15388],[24.95677,60.15385],[24.95724,60.15388],[24.95773,60.15402],[24.95807,60.15421],[24.95835,60.15446],[24.95859,60.15473],[24.95883,60.15471],[24.95867,60.15442],[24.95863,60.1541],[24.95858,60.15397],[24.95923,60.15382],[24.95988,60.15368],[24.96053,60.15353],[24.96118,60.15339],[24.96183,60.15324],[24.96248,60.1531],[24.96313,60.15295],[24.96378,60.15281],[24.96443,60.15266],[24.96508,60.15252],[24.96573,60.15237],[24.96638,60.15223],[24.96703,60.15208],[24.96768,60.15194],[24.96836,60.15187],[24.96908,60.15187],[24.9697,60.15173],[24.9703,60.15155],[24.9709,60.15136],[24.9715,60.15117],[24.9721,60.15098],[24.97269,60.15078],[24.97329,60.15059],[24.9739,60.1504],[24.97452,60.15021],[24.97513,60.15003],[24.97575,60.14985],[24.97637,60.14966],[24.97688,60.14943],[24.9773,60.14914],[24.97771,60.14885],[24.97813,60.14855],[24.97854,60.14826],[24.97896,60.14797],[24.97955,60.14795],[24.97966,60.14813],[24.97999,60.14837],[24.98039,60.14862],[24.98069,60.14886],[24.98096,60.14913],[24.9812,60.1493],[24.98159,60.14925],[24.9822,60.14917],[24.98283,60.14908],[24.98336,60.149],[24.98354,60.14889],[24.98371,60.14869],[24.98425,60.14858],[24.98492,60.14848],[24.98517,60.14825],[24.98536,60.14795],[24.98557,60.14761],[24.98595,60.14733],[24.98639,60.14707],[24.98676,60.14687],[24.98735,60.14671],[24.98779,60.14658],[24.98803,60.1464],[24.98812,60.14622],[24.98781,60.14598],[24.98749,60.14567],[24.98753,60.14539],[24.98753,60.14516],[24.98724,60.14488],[24.98701,60.14464],[24.9868,60.1444],[24.98652,60.14425],[24.98613,60.14438],[24.98574,60.14448],[24.98555,60.14439],[24.98539,60.14419],[24.98576,60.14398],[24.98591,60.14393]],"along":[0,23,56,85,120,155,191,206,214,232,244,278,316,354,392,421,454,480,507,544,579,600,632,667,703,732,761,798,828,853,880,908,933,960,997,1025,1059,1081,1103,1134,1170,1209,1243,1277,1314,1351,1383,1416,1450,1482,1509,1540,1569,1601,1634,1661,1694,1730,1749,1789,1828,1868,1907,1946,1986,2025,2065,2104,2144,2183,2222,2262,2301,2341,2380,2419,2458,2497,2536,2576,2615,2655,2695,2734,2774,2814,2854,2894,2933,2973,3012,3052,3092,3129,3150,3184,3219,3251,3285,3308,3330,3366,3402,3433,3455,3479,3512,3551,3584,3618,3658,3695,3734,3764,3802,3830,3855,3879,3911,3949,3981,4006,4041,4071,4100,4125,4150,4178,4192,4217,4252,4262],"ele":[11,11,10,10,10,9,8,8,8,9,9,8,8,8,8,8,8,9,9,10,10,10,11,12,12,12,12,11,10,10,9,8,7,6,4,4,3,3,2,2,2,2,2,2,2,2,3,3,5,7,7,6,5,4,3,3,3,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,2,2,2,2,0,0,2,3,4,5,6,7,8,9,10,8,7,7,8,10,10,9,8,4,3,3,1,3,3,5,7,9,9,11,14,15],"grade":[0,-1,-1,-1,-1,-2,-1,0,1,0,0,-1,-1,-1,0,1,1,1,1,2,1,2,3,1,0,-1,-2,-3,-1,-3,-4,-3,-4,-4,-3,-1,-3,-2,-1,0,0,0,0,0,0,0,2,4,5,2,-1,-3,-4,-3,-2,1,-4,-4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,1,1,1,-5,-4,4,5,2,6,5,3,2,3,2,-3,-3,-1,2,5,1,0,-2,-9,-6,-2,-9,6,3,5,7,7,6,6,10,6,5],"surf":["sett","sett","sett","fine_gravel","fine_gravel","fine_gravel","fine_gravel","asphalt","asphalt","sett","sett","sett","sett","sett","sett","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","fine_gravel","fine_gravel","fine_gravel","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","ground","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","wood","wood","pebblestone","pebblestone","pebblestone","pebblestone","pebblestone","pebblestone","compacted","compacted","compacted","compacted","compacted","compacted","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","wood","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone"],"way":["footway","footway","footway","footway","footway","footway","footway","cycleway","cycleway","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","footway","footway","footway","footway","minor road","minor road","minor road","minor road","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","footway","footway","footway","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","portage","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","footway","footway","footway","footway","footway","footway","footway"],"g":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,2,2,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,1,1,0,1,1,0,0,1,0,0,0,0,0,1,0,0,0,2,2,0,2,3,0,1,3,3,1,1,3,3,1],"s":[4,4,4,5,5,5,5,6,6,4,4,4,4,4,4,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,5,5,5,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,9,9,9,9,9,10,10,9,9,9,9,9,9,11,11,11,11,11,11,9,9,9,9,9,9,9,9,10,9,9,9,9,9,9,9,9,9],"w":[12,12,12,12,12,12,12,13,13,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,12,12,12,12,6,6,6,6,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,12,12,12,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,14,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,12,12,12,12,12,12,12],"pal":["#8fb996","#a3d977","#7cb7f2","#facc15","#94a3b8","#e0b84a","#64748b","#0ea5e9","#8b5e34","#cbd5e1","#a16207","#d4a017","#b45309","#2563eb","#ea580c"],"t":[0,4,10,17,25,33,41,45,46,49,51,58,64,71,78,83,89,94,99,106,112,116,122,128,134,139,145,151,157,161,167,174,179,183,189,194,200,204,208,213,220,227,233,239,246,253,258,265,275,283,287,292,297,302,307,314,321,329,1236,1258,1279,1301,1323,1345,1367,1389,1410,1432,1454,1476,1498,1520,1542,1563,1585,1607,1628,1650,1672,1694,1715,1737,1759,1781,1803,1825,1848,1870,1891,1913,1935,1957,1979,2000,2024,2653,2678,2702,2726,2741,2755,2781,2812,2836,2855,2876,2901,2932,2958,2985,3013,3037,3062,3084,3115,3137,3155,3172,3192,3218,3239,3256,3282,3307,3330,3352,3376,3400,3413,3437,3469,3478],"legsAt":[0,908,1743,3157,4262],"names":["Start","Waypoint 1","Waypoint 2","Waypoint 3","End"],"sports":["mtb","mtb","paddle","hike"],"modes":["auto","auto","water","auto"],"points":[[24.938,60.1585],[24.949923,60.156991],[24.9585,60.154],[24.979681,60.14819],[24.98591,60.143931]],"clock":["10:56","10:58","11:00","11:26","11:49"],"start":1794041760,"items":[{"g":"read","text":"Cycling not allowed here","at":0,"len":56,"note":"bicycle=no \u00b7 Bikes aren\u2019t allowed. Walk the bike through, or find another way."},{"g":"read","text":"Cycling not allowed here","at":853,"len":80,"note":"bicycle=no \u00b7 Bikes aren\u2019t allowed. Walk the bike through, or find another way."},{"g":"read","text":"Cycling not allowed here","at":1661,"len":82,"note":"bicycle=no \u00b7 Bikes aren\u2019t allowed. Walk the bike through, or find another way."},{"g":"read","text":"Crosses the S\u00e4rk\u00e4n v\u00e4yl\u00e4","at":2313,"len":78,"note":"cross quickly and straight, after looking both ways: ships can\u2019t stop or turn"},{"g":"look","text":"Gates with no access \u00d75","at":869,"len":0,"note":"access=private \u00b7 locked or private"},{"g":"look","text":"Your bike stays at Waypoint 2","at":1743,"len":0,"note":"the route doesn\u2019t come back for it \u00b7 taken along? Switch it on in Waypoint 2\u2019s menu"},{"g":"look","text":"Close to a marked rock or shoal","at":2661,"len":3,"note":"the only way here passes near a danger mark or a rock in OpenStreetMap"},{"g":"look","text":"Carry / portage 14 m","at":3144,"len":14,"note":"portage=yes \u00b7 Carry the boat and your gear over land here."},{"g":"look","text":"Your sea kayak stays at Waypoint 3","at":3157,"len":0,"note":"the route doesn\u2019t come back for it \u00b7 taken along? Switch it on in Waypoint 3\u2019s menu"}],"stretches":[{"from":0,"to":2},{"from":0,"to":2},{"from":2,"to":3},{"from":3,"to":4}],"up":31,"down":26,"total":4262,"time":3478}</script>
+<script type="module">
+import { icon, h, popMenu, tooltip } from '../../../js/ui.js';
+
+const R = JSON.parse(document.getElementById('route').textContent);
+const IMG = {"bg-desk": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/bg-desk.jpg", "bg-desk-noroute": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/bg-desk-noroute.jpg", "bg-phone": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/bg-phone.jpg", "bg-phone-noroute": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/bg-phone-noroute.jpg", "t-desk-route": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-desk-route.jpg", "t-desk-warning": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-desk-warning.jpg", "t-desk-way-tap": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-desk-way-tap.jpg", "t-desk-wp-hold": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-desk-wp-hold.jpg", "t-phone-edit": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-edit.jpg", "t-phone-place-tap": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-place-tap.jpg", "t-phone-route": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-route.jpg", "t-phone-route-full": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-route-full.jpg", "t-phone-stretch-full": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-stretch-full.jpg", "t-phone-warning": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-warning.jpg", "t-phone-way-hold-full": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-way-hold-full.jpg", "t-phone-way-line": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-way-line.jpg", "t-phone-way-tap": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-way-tap.jpg", "t-phone-wp-hold": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-wp-hold.jpg", "t-phone-wp-hold-full": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-wp-hold-full.jpg", "t-phone-wp-tap": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-wp-tap.jpg"};
+const Q = new URLSearchParams(location.search);
+const S = { v: Q.get('v') || 'new', kind: Q.get('kind') || 'leg', frame: Q.get('frame') || '390', acts: Q.get('acts') || 'buttons', peek: Q.get('peek') || 'acts', data: Q.get('data') || 'real', mode: Q.get('mode') || 'drawing',
+  look: document.documentElement.dataset.theme, view: 'leg', leg: 0, at: 300, colour: 'grade', more: false, hidden: false, size: 'peek', pin: null, wp: 1 };
+const save = () => { const u = new URL(location.href); for (const k of ['v', 'kind', 'frame', 'acts', 'peek', 'data', 'mode']) u.searchParams.set(k, S[k]); try { history.replaceState(null, '', u); } catch {} };
+
+// ------------------------------------------------------------------ the route's numbers (main's analysis, every 4th sample)
+const N = R.along.length, LEN = R.along[N - 1];
+if (S.data === 'long') R.names = ['Sepänkatu', 'Neitsytpolku', 'Suomenlinnan huoltotunneli', 'Waypoint 3', 'End'] // (main's own names at a desktop's zoom);
+const SPORT = { mtb: ['MTB', 'bike'], paddle: ['Sea kayak', 'paddle'], hike: ['Hike', 'hike'] };
+const MODE = { auto: 'Follow paths', water: 'Over water', line: 'Freehand' };
+const km = (m) => (m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 2)} km` : `${Math.round(m)} m`);
+const mins = (s) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`);
+const near = (m) => { let k = 0; for (let i = 1; i < N; i++) if (Math.abs(R.along[i] - m) < Math.abs(R.along[k] - m)) k = i; return k; };
+const clockAt = (m) => { const [hh, mm] = R.clock[0].split(':').map(Number), s = R.t[near(m)] || 0, t = hh * 60 + mm + Math.floor(s / 60); return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
+const legOf = (m) => { for (let i = 0; i < R.legsAt.length - 1; i++) if (m < R.legsAt[i + 1]) return i; return R.legsAt.length - 2; };
+const STRETCH = R.stretches; // { from, to } for each leg
+const range = () => S.view === 'route' ? [0, LEN] : S.view === 'stretch' ? [R.legsAt[STRETCH[S.leg].from], R.legsAt[STRETCH[S.leg].to]] : [R.legsAt[S.leg], R.legsAt[S.leg + 1]];
+const ends = () => S.view === 'route' ? [0, R.names.length - 1] : S.view === 'stretch' ? [STRETCH[S.leg].from, STRETCH[S.leg].to] : [S.leg, S.leg + 1];
+function stats([a, b]) {
+  const i0 = near(a), i1 = near(b);
+  let up = 0; for (let i = i0 + 1; i <= i1; i++) up += Math.max(0, R.ele[i] - R.ele[i - 1]);
+  return { len: b - a, sec: (R.t[i1] || 0) - (R.t[i0] || 0), up: Math.round(up), i0, i1 };
+}
+const COLOUR = { grade: ['g', 'Gradient'], surface: ['s', 'Surface'], way: ['w', 'Way type'] };
+const sg = (x) => { const r = Math.round(x); return r > 0 ? `+${r}` : r < 0 ? `−${-r}` : '0'; };
+function legend([a, b], mode) {
+  const key = COLOUR[mode][0], by = new Map(), i0 = near(a), i1 = near(b);
+  for (let i = i0 + 1; i <= i1; i++) {
+    const c = R[key][i], name = mode === 'grade' ? null : mode === 'surface' ? R.surf[i].replace('_', ' ') : R.way[i];
+    const e = by.get(c) || { c: R.pal[c], len: 0, name, lo: 99, hi: -99 };
+    e.len += R.along[i] - R.along[i - 1]; e.lo = Math.min(e.lo, R.grade[i]); e.hi = Math.max(e.hi, R.grade[i]);
+    by.set(c, e);
+  }
+  return [...by.values()].sort((x, y) => y.len - x.len).map((e) => ({ ...e, name: e.name || (Math.round(e.lo) === Math.round(e.hi) ? `${sg(e.lo)} %` : `${sg(e.lo)} to ${sg(e.hi)} %`) }));
+}
+const itemsIn = ([a, b]) => R.items.filter((x) => x.at >= a - 1 && x.at <= b + 1);
+const readout = (m) => { const i = near(m), g = R.grade[i]; return [`${km(R.along[i])}`, clockAt(m), `${Math.round(R.ele[i])} m`, R.surf[i] === 'water' ? 'open water' : `${g >= 0 ? '+' : '−'}${Math.abs(g)} %`, R.surf[i] === 'water' ? '' : `${R.way[i]}, ${R.surf[i].replace('_', ' ')}`].filter(Boolean); };
+
+// ------------------------------------------------------------------ the map: the frame's view, as Web Mercator with 512 px tiles
+const VIEW = { phone: { c: [24.962, 60.1446], z: 12.3, w: 390, h: 844 }, desk: { c: [24.9495, 60.1512], z: 13.5, w: 1440, h: 900 } };
+function project(v, [lon, lat]) {
+  const ws = 512 * 2 ** v.z, mx = (x) => ((x + 180) / 360) * ws, my = (y) => { const s = Math.sin((y * Math.PI) / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * ws; };
+  return [mx(lon) - mx(v.c[0]) + v.w / 2, my(lat) - my(v.c[1]) + v.h / 2];
+}
+const PLACES = { campfire: { ll: [24.95251, 60.1527], name: 'Uunisaari / Grillipaikka' }, path: { ll: [24.95503, 60.15886], name: 'Footpath' } };
+
+// ------------------------------------------------------------------ the cards (css/app.css's classes, as js/cards.js builds them)
+const mark = (inner) => h('span', { class: 'card-mark' }, inner);
+const frag = (...k) => { const f = document.createDocumentFragment(); f.append(...k); return f; };
+const wayMark = () => h('span', { html: `<svg width="34" height="30" viewBox="0 0 34 30" aria-hidden="true"><path d="M2 23C13 23 19 7 32 7" fill="none" style="stroke:var(--route)" stroke-width="4.5" stroke-linecap="round"/><circle cx="16.5" cy="15" r="5.5" style="fill:var(--accent-bg);stroke:#fff" stroke-width="2.6"/></svg>` });
+const wpMark = (i) => h('span', { class: `wp ${i === 0 ? 'wp-start' : i === R.names.length - 1 ? 'wp-end' : 'wp-via'}` }, i === 0 || i === R.names.length - 1 ? '' : String(i));
+function head(m, title, line, extra = []) {
+  const more = S.acts === 'buttons' ? h('button', { type: 'button', class: 'tool', 'aria-haspopup': 'menu', 'aria-label': 'More actions', html: icon('more', 22),
+    onclick: (e) => popMenu(e.currentTarget, REST.map((a) => ({ icon: a.ic, label: a.label, desc: a.line, cls: a.danger ? 'danger' : '', fn: a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) })), { label: 'More actions' }) }) : null;
+  if (more && desk()) tooltip(more, { name: 'More actions' });
+  return frag(h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close', 22), onclick: () => close() })), h('div', { class: 'way-head' }, h('h3', { class: 'way-hint', tabindex: '-1' }, h('b', {}, title), line ? h('small', {}, line) : null), mark(m), ...extra, more,
+    h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close', 22), onclick: () => close() })));
+}
+const nums = (list) => h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map((x) => h('span', { class: `sum-item${x.miss ? ' miss' : ''}${x.wait ? ' wait' : ''}` }, h('b', {}, x.wait ? '–' : x.value), h('small', {}, x.label))));
+const row = ({ ic, label, line, chev, danger, val, fn }) => {
+  const b = h('button', { type: 'button', class: `row${danger ? ' danger' : ''}`, onclick: fn || (() => toast(`${label}: not drawn in the mock-up`)) },
+    h('span', { html: icon(ic, 20) }), h('span', {}, h('b', {}, label), line ? h('small', {}, line) : null), val ? h('span', { class: 'val' }, val) : null, chev ? h('span', { class: 'way-chev', html: icon('chevronRight', 18) }) : null);
+  if (line && desk()) tooltip(b, { name: label, text: line }); // (Q9: a desktop says what a button does before you press it)
+  return b;
+};
+const rows = (...r) => h('div', { class: 'rows' }, ...r.filter(Boolean));
+const group = (title, list) => list.length ? [h('h4', { class: 'menu-h' }, title), h('div', { class: 'pick-facts' }, ...list.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))))] : [];
+
+let REST = []; // the actions behind ⋯ (B: in the head, the app's menu)
+// Q7: the card's actions. `main` green (or none), `first` the next two or three in sight, `rest` behind More
+function actions({ main, first, rest }) {
+  const out = [];
+  if (S.acts === 'row') {
+    const all = [main && { ...main, main: true }, ...first, rest.length && { ic: 'more', label: 'More', more: true }].filter(Boolean).slice(0, 5);
+    out.push(h('div', { class: 'mk-ar', role: 'group', 'aria-label': 'Actions' }, ...all.map((a) => {
+      const b = h('button', { type: 'button', class: `${a.main ? 'main' : ''}${a.danger ? ' danger' : ''}`, 'aria-expanded': a.more ? String(S.more) : null, onclick: a.more ? () => { S.more = !S.more; draw(); } : a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) }, h('span', { html: icon(a.ic, 20) }), h('span', {}, a.label));
+      if (desk() && a.line) tooltip(b, { name: a.label, text: a.line });
+      return b;
+    })));
+  } else {
+    if (main) out.push(h('button', { type: 'button', class: 'btn primary big', onclick: main.fn || (() => toast(`${main.label}${main.done ? ` · ${main.done}` : ''}`, main.undo)) }, h('span', { html: icon(main.ic, 20) }), h('span', {}, main.label)));
+    out.push(h('div', { class: 'rows acts mk-btns' }, ...first.map((a) => { const b = row({ ...a, line: null, fn: a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) }); if (desk() && a.line) tooltip(b, { name: a.label, text: a.line }); if (a.wide) b.classList.add('wide'); return b; })));
+  }
+  if (S.acts === 'row' && S.more && rest.length) out.push(rows(...rest.map((a) => row({ ...a, fn: a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) }))));
+  REST = rest;
+  return out;
+}
+
+// a piece's own profile (Q3): the route's heights between its ends, coloured by Colour by, the spot marked; a finger or the
+// pointer on it moves the spot (and its dot on the map), the arrow keys too
+function profile([a, b], { mark: pm = null } = {}) {
+  if (S.data === 'late') return h('div', { class: 'mk-prof' }, h('div', { class: 'mk-skel', 'aria-hidden': 'true' }), h('p', { class: 'pick-note', role: 'status' }, 'Working out the heights…'));
+  const W = 300, H = 92, i0 = near(a), i1 = near(b), lo = Math.min(...R.ele.slice(i0, i1 + 1)), hi = Math.max(...R.ele.slice(i0, i1 + 1)) + 2, span = Math.max(8, hi - lo);
+  const x = (m) => ((m - a) / Math.max(1, b - a)) * W, y = (e) => H - 14 - ((e - lo) / span) * (H - 24), key = COLOUR[S.colour][0];
+  let bars = ''; for (let i = i0 + 1; i <= i1; i++) bars += `<path d="M${x(R.along[i - 1]).toFixed(1)} ${y(R.ele[i - 1]).toFixed(1)}L${x(R.along[i]).toFixed(1)} ${y(R.ele[i]).toFixed(1)}L${x(R.along[i]).toFixed(1)} ${H - 12}L${x(R.along[i - 1]).toFixed(1)} ${H - 12}Z" fill="${R.pal[R[key][i]]}"/>`;
+  const line = R.ele.slice(i0, i1 + 1).map((e, k) => `${k ? 'L' : 'M'}${x(R.along[i0 + k]).toFixed(1)} ${y(e).toFixed(1)}`).join('');
+  const missing = S.data === 'missing' && S.kind === 'leg';
+  const svg = h('div', { html: `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="slider" tabindex="0" aria-label="The profile: move along it" aria-valuemin="${Math.round(a)}" aria-valuemax="${Math.round(b)}" aria-valuenow="${Math.round(S.at)}">${missing ? '' : bars}<path d="${line}" fill="none" stroke="currentColor" stroke-opacity=".55" stroke-width="1.3" vector-effect="non-scaling-stroke"/>
+      ${pm != null ? `<line x1="${x(pm)}" x2="${x(pm)}" y1="4" y2="${H - 12}" stroke="currentColor" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>` : ''}
+      <line class="mk-cur" x1="${x(S.at)}" x2="${x(S.at)}" y1="2" y2="${H - 12}" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      <text class="ax" x="2" y="${H - 2}">${km(0)}</text><text class="ax" x="${W - 2}" y="${H - 2}" text-anchor="end">${km(b - a)}</text><text class="ax" x="2" y="10">${Math.round(hi)} m</text></svg>` }).firstElementChild;
+  const at = h('p', { class: 'mk-at', 'aria-live': 'polite' });
+  const say = () => { const r = readout(S.at); at.replaceChildren(h('b', {}, `${r[0]} · ${r[1]}`), ` · ${r.slice(2).join(' · ')}`); };
+  const move = (m) => { S.at = Math.max(a, Math.min(b, m)); svg.querySelector('.mk-cur').setAttribute('x1', x(S.at)); svg.querySelector('.mk-cur').setAttribute('x2', x(S.at)); svg.setAttribute('aria-valuenow', Math.round(S.at)); say(); drawDot(); };
+  const fromX = (e) => { const r = svg.getBoundingClientRect(); return a + ((e.clientX - r.left) / r.width) * (b - a); };
+  svg.addEventListener('pointerdown', (e) => { svg.setPointerCapture(e.pointerId); move(fromX(e)); });
+  svg.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'mouse') move(fromX(e)); });
+  svg.addEventListener('keydown', (e) => { const d = { ArrowLeft: -1, ArrowRight: 1, ArrowDown: -1, ArrowUp: 1 }[e.key]; if (d) { e.preventDefault(); move(S.at + d * Math.max(25, (b - a) / 40)); } });
+  say();
+  const lg = missing ? [] : legend([a, b], S.colour);
+  return h('div', { class: 'mk-prof' }, at, svg, missing ? h('p', { class: 'pick-fail' }, 'The terrain didn’t load: no profile or grades yet. ', h('button', { type: 'button', class: 'btn quiet' }, 'Try again')) : null,
+    h('div', { class: 'seg small', role: 'group', 'aria-label': 'Colour by' }, ...Object.entries(COLOUR).map(([k, [, label]]) => h('button', { type: 'button', 'aria-pressed': String(S.colour === k), onclick: () => { S.colour = k; draw(); } }, label))),
+    h('div', { class: 'bd-legend' }, ...lg.slice(0, 5).map((e) => h('div', { class: 'bd-item' }, h('i', { style: `width:9px;height:9px;border-radius:2px;background:${e.c}` }), h('span', {}, e.name), h('b', {}, km(e.len))))));
+}
+const warnRow = (x) => h('button', { type: 'button', class: `warn-row ${x.g === 'read' ? 'danger' : 'look'}`, onclick: () => open('warning', { item: x }) },
+  h('span', { 'aria-hidden': 'true', html: icon(x.g === 'read' ? 'warnf' : 'eye', 20) }), h('span', {}, h('em', {}, x.g === 'read' ? 'Warning' : 'Good to know'), h('b', {}, x.text), h('small', {}, `at km ${(x.at / 1000).toFixed(1)}`)), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+const sportMenu = (btn) => popMenu(btn, Object.entries(SPORT).map(([k, [label, ic]]) => ({ icon: ic, label, radio: true, checked: R.sports[S.leg] === k, fn: () => toast(`${S.view === 'leg' ? 'This leg' : S.view === 'stretch' ? 'This stretch' : 'The whole route'} is ${label} now`, true) })), { label: 'Sport' });
+const modeMenu = (btn) => popMenu(btn, Object.entries(MODE).map(([k, label]) => ({ icon: { auto: 'auto', water: 'water', line: 'straight' }[k], label, radio: true, checked: R.modes[S.leg] === k, fn: () => toast(`${label}, ${S.view === 'leg' ? 'this leg' : 'this stretch'}`, true) })), { label: 'How it’s drawn' });
+
+// ---- a leg (a tap on the line), its stretch or the route: Q3, Q9, Q10
+function legCard() {
+  const r = range(), [p0, p1] = ends(), st = stats(r), sp = R.sports[S.leg], one = STRETCH[S.leg].to - STRETCH[S.leg].from === 1;
+  const title = S.view === 'route' ? 'Eira → Suomenlinna' : `${R.names[p0]} → ${R.names[p1]}`;
+  const pill = (label, ic, fn) => { const b = h('button', { type: 'button', class: 'mk-pill', 'aria-haspopup': 'menu' }, h('span', { html: icon(ic, 18) }), h('span', {}, label), h('span', { class: 'caret', 'aria-hidden': 'true' })); b.onclick = () => fn(b); return b; };
+  const eye = h('button', { type: 'button', class: 'tool', 'aria-pressed': String(S.hidden), 'aria-label': S.hidden ? 'Show the route' : 'Hide the route for a moment', html: icon(S.hidden ? 'eyeOff' : 'eye', 20), onclick: () => { S.hidden = !S.hidden; draw(); } });
+  if (desk()) tooltip(eye, { name: S.hidden ? 'Show the route' : 'Hide the route', keys: 'H', text: 'To see the map under it (#756)' });
+  const kids = [head(wayMark(), title, null),
+    h('div', { class: 'mk-pills' }, S.view === 'route' ? null : pill(SPORT[sp][0], SPORT[sp][1], sportMenu), S.view === 'route' ? null : pill(MODE[R.modes[S.leg]], { auto: 'auto', water: 'water', line: 'straight' }[R.modes[S.leg]], modeMenu), eye),
+    nums(S.data === 'late' ? [{ label: 'distance', wait: true }, { label: 'time', wait: true }, { label: 'climb', wait: true }]
+      : [{ value: km(st.len), label: 'distance' }, { value: mins(st.sec), label: 'time' }, S.data === 'missing' ? { value: '?', label: 'climb: the terrain didn’t load', miss: true } : { value: `↑${st.up} m`, label: 'climb' }]),
+    ...actions({ main: { ic: 'plus', label: 'Add a waypoint here', line: 'At the spot you tapped, on the line', done: `Waypoint added at ${km(S.at)}`, undo: true },
+      first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', done: 'The route goes around it', undo: true }, { ic: 'route', label: 'Other ways', line: 'Up to two, on the map' }],
+      rest: [{ ic: 'pause', label: 'Stop here', line: 'A break or a night at this spot' }, { ic: 'trash', label: S.view === 'leg' ? 'Remove this leg' : 'Remove this stretch', line: 'Its end waypoint goes; Undo brings it back (#627)', danger: true }, { ic: 'sliders', label: 'Route style', line: `${SPORT[sp][0]}’s style`, val: 'Balanced', chev: true }, { ic: 'more', label: 'The whole route', line: 'Share, export, save offline, reverse or clear it', chev: true }] })];
+  const insp = [h('div', { class: 'mk-step' },
+    h('button', { type: 'button', class: 'tool', 'aria-label': `The ${S.view} before`, disabled: S.view === 'route' || S.leg === 0, html: icon('chevronLeft', 20), onclick: () => step(-1) }),
+    h('div', { class: 'seg small mk-view', role: 'group', 'aria-label': `Show: ${S.view === 'leg' ? `leg ${S.leg + 1} of ${R.sports.length}` : S.view}` }, ...[['leg', `Leg ${S.leg + 1}/${R.sports.length}`], one ? null : ['stretch', 'Stretch'], ['route', 'Route']].filter(Boolean).map(([k, label]) => h('button', { type: 'button', 'aria-pressed': String(S.view === k), onclick: () => { S.view = k; const [a, b] = range(); if (S.at < a || S.at > b) S.at = (a + b) / 2; draw(); fit(); } }, label))),
+    h('button', { type: 'button', class: 'tool', 'aria-label': `The next ${S.view}`, disabled: S.view === 'route' || (S.view === 'leg' ? S.leg >= R.sports.length - 1 : STRETCH[S.leg].to >= R.names.length - 1), html: icon('chevronRight', 20), onclick: () => step(1) })), profile(r, { mark: null })];
+  const warns = [...(S.data === 'missing' ? [h('button', { type: 'button', class: 'warn-row unk' }, h('span', { 'aria-hidden': 'true', html: icon('unk', 20) }), h('span', {}, h('em', {}, 'Not checked'), h('b', {}, 'Fintraffic didn’t answer: road works aren’t checked'), h('small', {}, 'Check has a Retry')), h('span', { html: icon('chevronRight', 18) }))] : []), ...itemsIn(r).map(warnRow)];
+  if (S.peek === 'profile') kids.push(...insp, h('i', { 'data-peek-end': '' }), ...warns); else kids.push(h('i', { 'data-peek-end': '' }), ...warns, ...insp);
+  const i = near(S.at), on = R.surf[i] === 'water';
+  kids.push(rows(row({ ic: on ? 'water' : 'road', label: on ? 'Under it: open water' : `Under it: ${R.way[i]}, ${R.surf[i].replace('_', ' ')}`, line: on ? 'Its depth from Traficom (shown, never routed on)' : 'Its card: the whole way, its facts and its profile', chev: true, fn: () => open('way', { from: 'leg' }) }),
+      row({ ic: 'route', label: 'Part of a marked route', line: 'Shown where the leg follows a LIPAS route (none here)', chev: true })));
+  return kids;
+}
+function step(d) {
+  if (S.view === 'leg') S.leg = Math.max(0, Math.min(R.sports.length - 1, S.leg + d));
+  else { const s = STRETCH[S.leg]; S.leg = d > 0 ? s.to : STRETCH.findIndex((x) => x.to === s.from); }
+  const [a, b] = range(); S.at = (a + b) / 2; draw(); fit();
+}
+
+// ---- a waypoint: Q8 (no green action), Q12 (when you're there, the weather then, its legs around it, what's here)
+function waypointCard() {
+  const i = S.wp, at = R.legsAt[i], k = near(at), change = i > 0 && i < R.sports.length && R.sports[i] !== R.sports[i - 1];
+  const r = [R.legsAt[Math.max(0, i - 1)], R.legsAt[Math.min(R.names.length - 1, i + 1)]];
+  S.at = at;
+  const kids = [head(wpMark(i), R.names[i], `${change ? `Changeover, ${SPORT[R.sports[i - 1]][0]} to ${SPORT[R.sports[i]][0]}, 15 min · ` : ''}Then 6 °C, wind 6 m/s NW, dry`),
+    nums([{ value: R.clock[i], label: i === 0 ? 'you leave' : 'there at' }, i ? { value: km(at), label: 'from the start' } : null, { value: `${Math.round(R.ele[k])} m`, label: 'height' }]),
+    ...actions({ main: null, first: [{ ic: 'move', label: 'Move', line: 'Tap where it goes (or drag it on the map)' }, { ic: 'pencil', label: 'Rename', line: 'Give it a name of your own' }, i ? { ic: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, done: `${R.names[i]} removed`, undo: true, wide: true } : { ic: 'loop', label: 'Back to start', line: 'Adds a leg back to the start' }],
+      rest: [i && i < R.names.length - 1 ? { ic: 'pause', label: 'Stop or night', line: 'Pass by · Stop · Night', val: 'Pass by', chev: true } : null, i < R.sports.length ? { ic: SPORT[R.sports[i]][1], label: 'Sport from here', line: 'To the next change of sport, or the end', val: SPORT[R.sports[i]][0], chev: true } : null,
+        i && i < R.names.length - 1 ? { ic: 'flag', label: 'Start here', line: 'The part before it is removed, Undo brings it back' } : null, i && i < R.names.length - 1 ? { ic: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back' } : null, { ic: 'reverse', label: 'Reverse', line: 'The route runs the other way' }].filter(Boolean) })];
+  const insp = [profile(r, { mark: at })];
+  if (S.peek === 'profile') kids.push(...insp, h('i', { 'data-peek-end': '' })); else kids.push(h('i', { 'data-peek-end': '' }), ...insp);
+  kids.push(...R.items.filter((x) => Math.abs(x.at - at) < 5 && x.g === 'look').map(warnRow),
+    rows(row({ ic: 'road', label: `Here: ${R.way[k]}, ${R.surf[k].replace('_', ' ')}`, line: 'The way at this waypoint', chev: true, fn: () => open('way', { from: 'waypoint' }) }),
+      row({ ic: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km: asked when you tap', chev: true }), row({ ic: 'drop', label: 'Water nearby', line: 'Taps and springs within 1 km: asked when you tap', chev: true }),
+      row({ ic: 'pencil', label: 'Add a note', line: 'Your own words, kept with the route (#854)', chev: true })));
+  return kids;
+}
+
+// ---- a way you tap while browsing (#574's pick, as main shows it), with its actions first: Q8
+function wayCard() {
+  const kids = [head(h('span', { class: 'pick-mark', style: '--c:#8fb996' }), 'Footpath', 'Cycling: footway, for walking · asphalt · lit'),
+    nums(S.data === 'late' ? [{ label: 'long', wait: true }, { label: 'up', wait: true }, { label: 'down', wait: true }] : [{ value: '6 m', label: 'long' }, { value: '0 m', label: 'up' }, { value: '0 m', label: 'down' }]),
+    ...actions({ main: { ic: 'plus', label: 'Add to my route', line: 'In your route, where it fits', done: 'Added after Waypoint 1', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', done: 'Avoided', undo: true }, { ic: 'share', label: 'Share', line: 'A link to this spot' }],
+      rest: [{ ic: 'flag', label: 'Start here', line: 'Adds a new start' }, { ic: 'flagend', label: 'End here', line: 'Adds a new end' }, { ic: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose' }, { ic: 'cloudSun', label: 'Weather here', line: 'The timeline, held at the spot', chev: true }, { ic: 'pin', label: 'Copy', line: '60.15886, 24.95503' }, { ic: 'camera', label: 'Look around here', line: 'Street View or Mapillary, in a new tab (#757)', chev: true }] }),
+    h('i', { 'data-peek-end': '' }),
+    S.data === 'late' ? h('p', { class: 'pick-note', role: 'status' }, 'Loading the whole way from OpenStreetMap…') : null,
+    ...group('The way', [['Cycling', 'footway, for walking'], ['Lit', 'yes']]), ...group('Surface', [['Surface', 'asphalt']]), ...group('Weather here now', [['Wind', '6 m/s from the NW'], ['Temperature', '5 °C'], ['Rain', 'dry']]),
+    h('p', { class: 'pick-unmapped' }, h('span', {}, 'Not mapped: width.'), h('button', { type: 'button', class: 'btn quiet', onclick: () => toast('MapComplete opens at this way, asking its width (#855)') }, 'Add what’s missing ›'), h('button', { type: 'button', class: 'btn quiet' }, 'Not right?'))];
+  return kids;
+}
+
+// ---- a place: Q5 (its facts asked for when it opens), Q12 (off your route, its hours, the links that fix the map)
+function placeCard() {
+  const late = S.data === 'late';
+  return [head(h('span', { html: icon('hut', 24) }), 'Uunisaari / Grillipaikka', 'Campfire site, Helsinki · from LIPAS'),
+    nums([{ value: '208 m', label: 'off your route' }, { value: '4 m', label: 'height' }, late ? { label: 'opening hours', wait: true } : { value: '?', label: 'opening hours not mapped', miss: true }]),
+    ...actions({ main: { ic: 'plus', label: 'Add to my route', line: 'Your route goes by it, between Waypoint 1 and Waypoint 2', done: 'Added after Waypoint 1', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m' }, { ic: 'share', label: 'Share', line: 'A link to this place' }],
+      rest: [{ ic: 'flag', label: 'Start here' }, { ic: 'flagend', label: 'End here' }, { ic: 'roundtrip', label: 'Round trip from here' }, { ic: 'cloudSun', label: 'Weather here', chev: true }, { ic: 'pin', label: 'Copy', line: '60.15270, 24.95251' }, { ic: 'check', label: 'Save this place', line: 'Saved places, on this device (#156)' }] }),
+    h('i', { 'data-peek-end': '' }),
+    ...group('From LIPAS', [['Kind', 'Campfire site'], ['Where', 'Helsinki']]),
+    late ? h('p', { class: 'pick-note', role: 'status' }, 'Asking OpenStreetMap for its details…') : h('p', { class: 'pick-unmapped' }, h('span', {}, 'OpenStreetMap: not mapped here yet (in the mock-up, an answer of nothing; the build asks for it as the card opens).'),
+      h('button', { type: 'button', class: 'btn quiet', onclick: () => toast('MapComplete opens at the spot, asking what a campfire site has (#855)') }, 'Add what’s missing ›')),
+    rows(row({ ic: 'external', label: 'LIPAS', line: 'LIPAS’s page for this place', chev: true }), row({ ic: 'external', label: 'Website', line: 'liikunta.hel.fi', chev: true }), row({ ic: 'camera', label: 'Look around here', line: 'Street View or Mapillary, in a new tab (#757)', chev: true })),
+    h('div', { class: 'insp-actions card-foot' }, h('button', { type: 'button', class: 'btn quiet' }, 'Not right?'))];
+}
+
+// ---- a warning (Check's item, as main has it) with its leg a step away: Q8
+function warningCard() {
+  const x = S.item || R.items.find((y) => y.text.startsWith('Crosses')), k = R.items.indexOf(x), li = legOf(x.at);
+  return [head(h('span', { class: `heads-mark ${x.g}`, html: icon(x.g === 'read' ? 'warnf' : 'eye', 18) }), x.text, x.g === 'read' ? 'Warning' : 'Good to know'),
+    nums([{ value: km(x.at), label: 'from the start' }, x.len > 5 ? { value: km(x.len), label: 'long' } : null]),
+    ...actions({ main: x.text.startsWith('Cycling') ? { ic: 'avoid', label: 'Avoid it', line: 'The route goes around it', done: 'Avoided', undo: true } : null, first: [{ ic: 'check', label: 'Got it', line: 'Marked read' }, { ic: 'route', label: 'Its leg', line: `${R.names[li]} → ${R.names[li + 1]}`, fn: () => { S.leg = li; S.view = 'leg'; S.at = x.at; open('leg'); } }],
+      rest: [{ ic: 'eyeOff', label: 'Hide in Check', line: 'Listed at the end of Check' }, { ic: 'external', label: 'Not right?', line: 'Leave a note on OpenStreetMap' }] }),
+    h('i', { 'data-peek-end': '' }),
+    h('p', { class: 'heads-src' }, h('span', { 'aria-hidden': 'true', html: icon('mapsrc', 14) }), h('span', {}, x.text.startsWith('Crosses') ? 'From the map · Väylävirasto' : 'From the map · OpenStreetMap')),
+    h('p', { class: 'heads-note' }, x.note.charAt(0).toUpperCase() + x.note.slice(1) + '.'),
+    h('div', { class: 'mk-step' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Previous', disabled: k <= 0, html: icon('chevronLeft', 20), onclick: () => { S.item = R.items[k - 1]; draw(); } }),
+      h('span', { 'aria-live': 'polite' }, `${k + 1} of ${R.items.length}`), h('button', { type: 'button', class: 'tool', 'aria-label': 'Next', disabled: k >= R.items.length - 1, html: icon('chevronRight', 20), onclick: () => { S.item = R.items[k + 1]; draw(); } }))];
+}
+
+// ---- a spot: a hold on the empty map (or a tap while browsing): what's there and the route's actions
+function spotCard() {
+  const ll = S.pin ? S.pin.ll : [24.96, 60.15];
+  return [head(h('span', { class: 'pick-mark', style: '--c:#374151' }), 'This spot', `${ll[1].toFixed(5)}, ${ll[0].toFixed(5)}`),
+    nums([{ value: '0 m', label: 'height here' }]),
+    ...actions({ main: { ic: 'plus', label: 'Add to my route', line: 'In your route, where it fits', done: 'Added after Waypoint 2', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot' }, { ic: 'share', label: 'Share' }],
+      rest: [{ ic: 'flag', label: 'Start here' }, { ic: 'flagend', label: 'End here' }, { ic: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here' }, { ic: 'cloudSun', label: 'Weather here', chev: true }, { ic: 'pin', label: 'Copy' }] }),
+    h('i', { 'data-peek-end': '' }), ...group('About it', [['Depth', 'Asking Traficom (shown, never routed on)']])];
+}
+
+// ------------------------------------------------------------------ the stage
+const desk = () => S.frame === 'desk';
+let stage, sheet, card, ov, dot, hoverEl;
+function open(kind, o = {}) {
+  S.kind = kind; S.more = false;
+  if (o.item) S.item = o.item;
+  if (kind === 'leg' && o.at != null) { S.at = o.at; S.leg = legOf(o.at); S.view = 'leg'; }
+  if (kind === 'waypoint' && o.i != null) S.wp = o.i;
+  S.pin = o.pin || (kind === 'leg' ? { ll: R.pts[near(S.at)] } : null);
+  S.size = 'peek'; draw(); save();
+}
+function close() { S.kind = 'none'; S.pin = null; draw(); }
+function toast(msg, undo = false) {
+  stage.querySelector('.mk-toast')?.remove();
+  const t = h('div', { class: 'mk-toast', role: 'status' }, msg, undo ? h('b', {}, 'Undo') : null);
+  stage.querySelector('.mk-frame').append(t); setTimeout(() => t.remove(), 3200);
+}
+function build() {
+  return { leg: legCard, waypoint: waypointCard, way: wayCard, place: placeCard, warning: warningCard, spot: spotCard }[S.kind]?.() || null;
+}
+function draw() {
+  stage = document.getElementById('stage');
+  document.getElementById('notes').replaceChildren(...notes());
+  drawBar();
+  if (S.v === 'today') { stage.replaceChildren(today()); return; }
+  const v = desk() ? VIEW.desk : VIEW.phone, k = S.frame === '360' ? 360 / 390 : 1, zoom = S.frame === '200' ? 2 : 1;
+  const W = desk() ? 1440 : S.frame === '360' ? 360 : 390, H = desk() ? 900 : S.frame === '360' ? 740 : 844;
+  let frame = stage.querySelector('.mk-frame');
+  if (!frame || frame.dataset.f !== S.frame) {
+    frame = h('div', { class: `mk-frame${desk() ? ' desk' : ''}`, 'data-f': S.frame });
+    stage.replaceChildren(frame);
+  }
+  // the desktop is drawn at its size and scaled to the page; a phone at 200 % is a 195 px wide screen drawn twice as big
+  const fit = desk() ? Math.min(1, (document.body.clientWidth - 32) / W) : 1;
+  Object.assign(frame.style, { width: `${W / zoom}px`, height: `${H / zoom}px`, zoom: String(zoom * fit) });
+  frame.style.setProperty('--mw', `${(v.w * k) / zoom}px`); frame.style.setProperty('--mh', `${(v.h * k) / zoom}px`);
+  const src = IMG[`bg-${desk() ? 'desk' : 'phone'}${S.hidden ? '-noroute' : ''}`];
+  let img = frame.querySelector('.mk-map'); if (!img) { img = h('img', { class: 'mk-map', alt: 'The map with the route, from main' }); frame.prepend(img); } if (img.getAttribute('src') !== src) img.src = src;
+  drawOverlay(frame, v, k / zoom);
+  frame.querySelector('.mk-sheet, .mk-dock')?.remove();
+  sheet = null;
+  if (S.kind === 'none') return;
+  card = h('div', { class: 'pl-way card', role: 'region', 'aria-label': 'Card', 'data-back': 'no' }, ...build().filter(Boolean));
+  sheet = desk() ? h('section', { class: 'mk-dock' }, card) : h('section', { class: 'mk-sheet' }, h('button', { type: 'button', class: 'mk-grip', 'aria-label': 'Card size: peek, half, full' }), card);
+  frame.append(sheet);
+  if (!desk()) sizeSheet(frame);
+}
+function sizeSheet(frame) {
+  const g = sheet.querySelector('.mk-grip'), end = card.querySelector('[data-peek-end]'), H = frame.clientHeight;
+  const z = parseFloat(frame.style.zoom) || 1, top = card.getBoundingClientRect().top, peek = Math.min(H * 0.62, (end ? (end.getBoundingClientRect().top - top) / z : 200) + 22 + 4), sizes = { peek, half: Math.max(peek, H * 0.55), full: H - 70 };
+  sheet.style.setProperty('--h', `${sizes[S.size]}px`);
+  card.style.overflowY = S.size === 'peek' && peek < H * 0.62 ? 'hidden' : 'auto'; // (a peek cut short, at 200 %: it scrolls to its actions)
+  const order = ['peek', 'half', 'full'];
+  g.onclick = () => { if (g.moved) return; S.size = order[(order.indexOf(S.size) + 1) % 3]; sizeSheet(frame); };
+  g.onpointerdown = (e) => {
+    g.setPointerCapture(e.pointerId); g.moved = false; const y0 = e.clientY, h0 = sheet.offsetHeight; sheet.classList.add('dragging');
+    g.onpointermove = (m) => { const d = (y0 - m.clientY) / (parseFloat(frame.style.zoom) || 1); if (Math.abs(d) > 4) g.moved = true; sheet.style.setProperty('--h', `${Math.max(80, h0 + d)}px`); };
+    g.onpointerup = () => { g.onpointermove = null; sheet.classList.remove('dragging'); if (g.moved) { const now = sheet.offsetHeight; S.size = order.reduce((b, s) => (Math.abs(sizes[s] - now) < Math.abs(sizes[b] - now) ? s : b), 'peek'); sizeSheet(frame); setTimeout(() => { g.moved = false; }, 0); } };
+  };
+}
+function fit() { /* (the build frames the piece with frame(); the mock-up's map is a picture, so its view stays) */ }
+
+// the map's overlay: the pick drawn like a route (dark shadow, white casing, Colour by's colours), the spot's dot, and
+// what a tap, a click, a hold or a right click can land on
+function drawOverlay(frame, v, k) {
+  ov?.remove();
+  const P = (ll) => project(v, ll).map((x) => x * k), pts = R.pts.map(P), NS = 'http://www.w3.org/2000/svg';
+  ov = document.createElementNS(NS, 'svg'); ov.setAttribute('class', 'mk-ov'); ov.setAttribute('viewBox', `0 0 ${v.w * k} ${v.h * k}`);
+  let html = '';
+  if (S.kind === 'leg' && !S.hidden) {
+    const [a, b] = range(), i0 = near(a), i1 = near(b), key = COLOUR[S.colour][0], d = pts.slice(i0, i1 + 1).map((p, j) => `${j ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('');
+    html += `<path d="${d}" fill="none" stroke="#0b1220" stroke-opacity=".35" stroke-width="${13 * k}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#fff" stroke-width="${9 * k}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    for (let i = i0 + 1; i <= i1; i++) html += `<path d="M${pts[i - 1].join(' ')}L${pts[i].join(' ')}" stroke="${R.pal[R[key][i]]}" stroke-width="${5 * k}" stroke-linecap="round"/>`;
+  }
+  if (S.kind === 'waypoint' && !S.hidden) { const p = P(R.points[S.wp]); html += `<circle cx="${p[0]}" cy="${p[1]}" r="${17 * k}" fill="none" stroke="var(--accent-bg)" stroke-width="${3 * k}"/>`; }
+  if (S.kind === 'warning') { const p = pts[near((S.item || R.items[3]).at)]; html += `<circle cx="${p[0]}" cy="${p[1]}" r="${20 * k}" fill="none" stroke="#b91c1c" stroke-width="${3 * k}"/>`; }
+  if (S.kind === 'place' || S.kind === 'way') { const p = P(PLACES[S.kind === 'place' ? 'campfire' : 'path'].ll); html += `<circle cx="${p[0]}" cy="${p[1]}" r="${16 * k}" fill="none" stroke="var(--accent-bg)" stroke-width="${3 * k}"/>`; }
+  // what can be tapped: the line (in the route's gaps too), the waypoints, the warnings' markers, a path, a place
+  const line = pts.map((p, j) => `${j ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('');
+  html += `<path class="mk-hit" data-t="line" d="${line}" stroke-width="${24 * k}" fill="none"/>`;
+  R.items.filter((x) => x.g === 'read').forEach((x) => { const p = pts[near(x.at)]; html += `<circle class="mk-hit" data-t="warn" data-i="${R.items.indexOf(x)}" cx="${p[0]}" cy="${p[1] - 18 * k}" r="${16 * k}"/>`; });
+  R.points.forEach((q, i) => { const p = P(q); html += `<circle class="mk-hit" data-t="wp" data-i="${i}" cx="${p[0]}" cy="${p[1]}" r="${18 * k}"/>`; });
+  for (const [id, pl] of Object.entries(PLACES)) { const p = P(pl.ll); html += `<circle class="mk-hit" data-t="${id}" cx="${p[0]}" cy="${p[1]}" r="${16 * k}"/>`; }
+  ov.innerHTML = html;
+  dot = document.createElementNS(NS, 'circle'); dot.setAttribute('r', String(8 * k)); dot.setAttribute('fill', 'var(--accent-bg)'); dot.setAttribute('stroke', '#fff'); dot.setAttribute('stroke-width', String(3 * k)); ov.append(dot);
+  ov.dataset.k = k; ov.P = P; ov.pts = pts;
+  frame.querySelector('.mk-map').after(ov);
+  drawDot();
+  bindMap(ov, frame, k);
+}
+function drawDot() {
+  if (!dot) return;
+  const on = (S.kind === 'leg' || S.kind === 'waypoint') && !S.hidden, p = ov.pts[near(S.at)];
+  dot.style.display = on ? '' : 'none'; if (on) { dot.setAttribute('cx', p[0]); dot.setAttribute('cy', p[1]); }
+}
+// #876's rule: a tap or a click opens the card, a hold or a right click the same card; while drawing, a tap on the empty map
+// adds a waypoint, and a hold there opens the spot's card
+function bindMap(svg, frame, k) {
+  const target = (e) => { const t = e.target.closest?.('[data-t]'); return t ? { t: t.dataset.t, i: +t.dataset.i } : null; };
+  const atLine = (e) => { const r = svg.getBoundingClientRect(), z = r.width / svg.viewBox.baseVal.width, x = (e.clientX - r.left) / z, y = (e.clientY - r.top) / z; let b = 0, d = 1e9; svg.pts.forEach((p, j) => { const q = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (q < d) { d = q; b = j; } }); return R.along[b]; };
+  const act = (e, held) => {
+    const t = target(e);
+    if (!t) {
+      if (held || S.mode === 'browsing') { const r = svg.getBoundingClientRect(); open('spot', { pin: { ll: [24.96 + (e.clientX - r.left) / r.width * 0.02, 60.15] } }); if (held) toast('Held: the spot’s card, as a tap on a thing opens its own'); return; }
+      if (S.kind !== 'none') { close(); return; } // (a tap beside an open card closes it, and adds nothing)
+      toast('A waypoint is added here', true); return;
+    }
+    if (t.t === 'line') open('leg', { at: atLine(e) });
+    else if (t.t === 'wp') open('waypoint', { i: t.i });
+    else if (t.t === 'warn') open('warning', { item: R.items[t.i] });
+    else if (t.t === 'campfire') open('place');
+    else if (t.t === 'path') open('way');
+    if (held) toast('Held: the same card a tap opens');
+    if (desk() && t.t === 'line') pillAt(e, frame);
+  };
+  let timer = null, ring = null, start = null;
+  svg.onpointerdown = (e) => {
+    start = [e.clientX, e.clientY]; svg.held = false;
+    ring = h('div', { class: 'hold-ring', style: `left:${e.clientX}px;top:${e.clientY}px`, 'aria-hidden': 'true' });
+    const r = setTimeout(() => document.body.append(ring), 150);
+    timer = setTimeout(() => { svg.held = true; ring.remove(); act(e, true); }, 500); timer.r = r;
+  };
+  const cancel = () => { clearTimeout(timer); clearTimeout(timer?.r); ring?.remove(); };
+  svg.onpointermove = (e) => { if (start && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 10) cancel(); if (desk() && e.pointerType === 'mouse') hover(e, frame, svg); };
+  svg.onpointerup = (e) => { cancel(); if (start && !svg.held && Math.hypot(e.clientX - start[0], e.clientY - start[1]) <= 10) act(e, false); start = null; };
+  svg.onpointerleave = () => { cancel(); hoverEl?.remove(); };
+  svg.oncontextmenu = (e) => { e.preventDefault(); cancel(); start = null; act(e, true); };
+}
+// a desktop's readout on the route (kept, #749's "works well"), and the main action at the pointer (Q8: no long trip to the card)
+function hover(e, frame, svg) {
+  hoverEl?.remove();
+  const t = e.target.closest?.('[data-t]'); if (!t || t.dataset.t !== 'line') return;
+  const r = svg.getBoundingClientRect(), z = parseFloat(frame.style.zoom) || 1, x = (e.clientX - r.left) / z, y = (e.clientY - r.top) / z;
+  let b = 0, d = 1e9; svg.pts.forEach((p, j) => { const q = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (q < d) { d = q; b = j; } });
+  const ro = readout(R.along[b]);
+  hoverEl = h('div', { class: 'mk-hover', style: `left:${x + 16}px;top:${y + 12}px` }, h('b', {}, `${ro[0]} · ${ro[1]}`), h('span', {}, ro.slice(2).join(' · ')), h('small', {}, 'Click for its card · drag to reshape'));
+  frame.append(hoverEl);
+}
+function pillAt(e, frame) {
+  const r = frame.getBoundingClientRect(), z = parseFloat(frame.style.zoom) || 1;
+  const pill = h('button', { type: 'button', class: 'card-pill', style: `position:absolute;left:${(e.clientX - r.left) / z + 6}px;top:${(e.clientY - r.top) / z + 6}px`, html: icon('plus', 18), onclick: () => { pill.remove(); toast('Waypoint added', true); } }, h('span', {}, 'Add a waypoint here'));
+  frame.querySelector('.card-pill')?.remove(); frame.append(pill); setTimeout(() => pill.remove(), 5000);
+}
+
+// ------------------------------------------------------------------ Today: main's own cards, captured at babbafd
+const TODAY = {
+  leg: [['phone-route', 'A tap on the line: the route\'s card at the peek'], ['phone-route-full', 'Raised: This stretch ›, What\'s here ›, Edit this stretch ›; Add a waypoint here is a pill on the map'], ['phone-stretch-full', 'This stretch ›: three numbers, its warnings; no profile of its own'], ['phone-edit', 'Edit this stretch ›: the sport two levels further']],
+  waypoint: [['phone-wp-tap', 'A tap on a waypoint: its facts, no actions'], ['phone-wp-hold', 'A hold: the actions, out of sight at the peek'], ['phone-wp-hold-full', 'Raised: Move, Rename, Remove at the bottom']],
+  way: [['phone-way-line', 'Browsing, a tap on a path: the line at the spot'], ['phone-way-tap', 'A tap on the line: the card, no route actions'], ['phone-way-hold-full', 'A hold: Your route first, raised']],
+  place: [['phone-place-tap', 'A tap on a place: its height, Share, Weather here ›, Not right?']],
+  warning: [['phone-warning', 'A warning: its main action, Got it, ‹ ›; no way to its leg']],
+  spot: [['phone-way-hold', 'A hold on the map: Your route below the numbers, out of sight']],
+};
+const TODAY_DESK = [['desk-route', 'A click on the line: the card at the spot, over the line it\'s about (#647)'], ['desk-wp-hold', 'A right click on a waypoint: every action in sight, a grid of buttons'], ['desk-way-tap', 'A click on a way with the planner open'], ['desk-warning', 'A warning\'s card']];
+function today() {
+  const list = desk() ? TODAY_DESK : TODAY[S.kind] || TODAY.leg;
+  return h('div', { class: `mk-shots${desk() ? ' desk' : ''}` }, ...list.map(([f, cap]) => h('figure', {}, h('img', { src: IMG[`t-${f}`], alt: cap }), h('figcaption', {}, cap))));
+}
+
+// ------------------------------------------------------------------ the bar and the notes
+function sw(label, key, opts, hide = false) {
+  return h('div', { class: 'mk-sw', role: 'group', 'aria-label': label, hidden: hide }, h('b', {}, label), ...opts.map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(S[key] === v), onclick: () => { S[key] = v; if (key === 'data') { location.search = new URLSearchParams({ ...Object.fromEntries(new URL(location.href).searchParams), data: v }); return; } if (key === 'kind') open(v); else { if (key === 'frame') stage.replaceChildren(); draw(); save(); } } }, t)));
+}
+function drawBar() {
+  document.documentElement.dataset.theme = S.look;
+  const n = S.v !== 'new';
+  document.getElementById('bar').replaceChildren(
+    sw('Version', 'v', [['today', 'Today'], ['new', 'New']]),
+    sw('Card', 'kind', [['leg', 'Leg'], ['waypoint', 'Waypoint'], ['way', 'Way'], ['place', 'Place'], ['warning', 'Warning'], ['spot', 'Spot']]),
+    sw('Frame', 'frame', [['390', 'Phone 390'], ['360', '360'], ['200', '200 %'], ['desk', 'Desktop']]),
+    sw('Actions (Q7)', 'acts', [['buttons', 'B: buttons'], ['row', 'A: action row']], n),
+    sw('Peek (Q6)', 'peek', [['acts', 'To the actions'], ['profile', 'With the profile']], n),
+    sw('Data', 'data', [['real', 'Real'], ['late', 'Late'], ['missing', 'Missing'], ['long', 'Long names']], n),
+    sw('Look', 'look', [['light', 'Light'], ['dark', 'Dark']]),
+    sw('Map', 'mode', [['drawing', 'Drawing'], ['browsing', 'Browsing']], n));
+}
+const NOTES = {
+  leg: ['A tap on the line opens the leg you tapped (round 1, Q3): today\'s route card, This stretch and What\'s here in one.', 'Leg · Stretch · Route under its name; ‹ › to the leg before and after; Under it › for the way beneath (Q9).', 'MTB ▾ and Follow paths ▾ change this leg (or the stretch or the route the switch shows), with Undo: two taps from the line, today four (Q10).', 'Its own profile, scrubbed by a finger, the pointer or the arrow keys; the dot follows on the map, the words over it say where.', 'The eye hides the route for a moment, to see the map under it (#756).', 'On a desktop the card sits beside the planner, the readout stays on hover, and Add a waypoint here comes up at the pointer on a click.'],
+  waypoint: ['No green action: Move, Rename and Remove are in sight at once (Q8).', 'There at, from the start, height; the weather then; its two legs\' profile with the waypoint marked (Q12).', 'Places to sleep and water nearby ask only when tapped.', 'Dragging a waypoint stays the quickest move; Move is its tap-and-tap alternative (WCAG 2.5.7).'],
+  way: ['#574\'s card as main has it, with its actions in sight first; a hold opens the same card (round 1, Q2).', 'Add what\'s missing › opens MapComplete at the way (#855).'],
+  place: ['Its facts asked for when it opens (round 1, Q5); how far off your route; its opening hours, or "not mapped" (missing data never looks complete).', 'Add to my route says where it goes; the links that fix the map in its foot (#855, #757).'],
+  warning: ['As main has it, with Its leg › a step away (#749\'s point 9).'],
+  spot: ['A hold on the empty map while drawing (a tap adds a waypoint), or a tap while browsing.'],
+};
+function notes() {
+  if (S.v === 'today') return [h('h2', {}, 'Today, on main at babbafd'), h('p', {}, 'Screenshots of the app at 390 × 844 and 1440 × 900, the route drawn by a local BRouter. A tap and a hold open different cards; on a phone each card shows only its head and numbers at first.')];
+  return [h('h2', {}, 'New: what\'s on this card'), h('ul', {}, ...(NOTES[S.kind] || []).map((t) => h('li', {}, t))),
+    h('h2', {}, 'Try'), h('ul', {}, h('li', {}, 'Tap or click the line, a waypoint, a red warning, the path north of Kaivopuisto, the campfire on Uunisaari; hold or right-click for the same card.'), h('li', {}, 'The grip: tap or drag it through peek, half and full.'), h('li', {}, 'Drawing: a tap on the empty map adds a waypoint, a hold there opens the spot\'s card. Browsing: a tap opens it.')),
+    h('h2', {}, 'Not drawn'), h('ul', {}, h('li', {}, 'The planner\'s sheet behind the card, the toolbar, and motion (decided with /animate when built).'), h('li', {}, 'The map doesn\'t move: it\'s a picture. Taps add nothing for real.'), h('li', {}, 'A carry, sea marks, road works; a LIPAS route under a leg (none on this route).'))];
+}
+draw();
+addEventListener('resize', () => { if (desk()) draw(); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.kind !== 'none' && !document.querySelector('.menu')) close(); });
+</script>
+</body>
+</html>
