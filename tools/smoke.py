@@ -1397,9 +1397,6 @@ WATER_LATE = """(async () => {
   const G = await import(location.origin + '/js/geo.js');
   const n = await import(location.origin + '/js/net.js');
   const { OVERPASS } = await import(location.origin + '/js/config.js');
-  // the rocks come from Overpass, the fallback, whose answer the test holds: Polku's hosted OSM data (#696) left out
-  const { StaticOSM } = await import(location.origin + '/js/osm-data.js'), tile = StaticOSM.prototype.tile;
-  StaticOSM.prototype.tile = function (...args) { return this.dataset === 'hazards' ? Promise.reject(new Error('no hosted hazards in this test')) : tile.apply(this, args); };
   // the rocks are made up: no answer cached by an earlier run before, none kept after
   const forget = () => new Promise((ok) => {
     const r = indexedDB.open('polku');
@@ -1504,7 +1501,6 @@ WATER_LATE = """(async () => {
     return errs;
   } finally {
     window.fetch = realFetch;
-    StaticOSM.prototype.tile = tile;
     release();
     p.clear();
     polku.set({ activity: 'mtb' });
