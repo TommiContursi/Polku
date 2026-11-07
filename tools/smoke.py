@@ -13455,7 +13455,7 @@ PC_LOOK = """((phone) => {
   // DEVELOPING's "Shared controls", and the cards' new ones (25d's "How every card is built")
   const ok = new Set(['pl-way', 'card', 'way-bar', 'way-back', 'btn', 'small', 'quiet', 'tool', 'way-x', 'way-head', 'way-hint', 'card-mark', 'wp', 'wp-start', 'wp-via', 'wp-end', 'wp-loop',
     'sheet-sum', 'sum-item', 'miss', 'wait', 'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-step', 'ring', 'rt-len', 'rt-cost', 'tg', 'tg-text', 'tg-ui',
-    'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'stylebtn', 'way-chips', 'chip', 'way-fold', 'way-facts', 'pick-prof', 'ax', 'top', 'bot']);
+    'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'btns', 'card-set', 'peek-end', 'stylebtn', 'way-chips', 'chip', 'way-fold', 'way-facts', 'pick-prof', 'ax', 'top', 'bot']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   // targets: 44 px by touch, 36 px with a mouse (the user, 2026-10-22, #380)
@@ -14201,7 +14201,7 @@ RC_LOOK = """((phone) => {
   if (!c) return ['no card'];
   const ok = new Set(['pl-way', 'card', 'way-bar', 'way-back', 'btn', 'small', 'quiet', 'tool', 'way-x', 'way-head', 'way-hint', 'card-mark', 'sheet-sum', 'sum-item', 'miss', 'wait',
     'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-cost', 'pl-viewnote', 'primary', 'big', 'acts', 'warn-row', 'look', 'unk', 'insp-row', 'insp-info', 'insp-more', 'link', 'way-chips', 'chip', 'way-fold', 'way-facts',
-    'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-chart', 'profile-box', 'profile-tip', 'chart-reset', 'pick-skel', 'pick-skel-nums', 'pick-skel-chart', 'pick-skel-by', 'sr-only', 'sec', 'sec-head', 'sec-title', 'sec-sum', 'sec-chev', 'sec-body', 'pick-by', 'mode-select', 'mode-select-label', 'mode-select-box', 'mode-select-chev', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot']);
+    'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-chart', 'profile-box', 'profile-tip', 'chart-reset', 'pick-skel', 'pick-skel-nums', 'pick-skel-chart', 'pick-skel-by', 'sr-only', 'sec', 'sec-head', 'sec-title', 'sec-sum', 'sec-chev', 'sec-body', 'pick-by', 'mode-select', 'mode-select-label', 'mode-select-box', 'mode-select-chev', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot', 'btns', 'card-acts', 'main', 'card-set', 'peek-end']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   const least = phone ? 44 : 36;

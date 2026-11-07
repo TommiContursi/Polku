@@ -4,6 +4,19 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-07
 
+### A card's actions first ([#690](https://github.com/TommiContursi/Polku/issues/690))
+
+- A card now shows what you can do right under its numbers, in sight as it opens on a phone, with the top of what comes next showing under them.
+- A waypoint's card has **Move**, **Rename** and **Remove** there. **Start here**, **End here**, **Reverse** and **Back to start** are further down, under **More for this waypoint**, with **At this waypoint** and **Sport from here** above them.
+- The route's card has **Add a waypoint here** in green, with **Avoid this spot** beside it, and **Other ways** where the leg has them. On a phone it's on the card now, not in a pill over the map, and a pin marks the spot. **On the profile** and **The whole route** are under **More for this leg**.
+- A place's, a spot's and a way's cards have a row of four round buttons: **Add to my route** in green, **Avoid this spot**, **Share** and **Weather here**. The rest, such as **Start here**, **End here**, **Copy** and **All OpenStreetMap details**, are under **More for this place** (or spot, or way). **Not right?** stays at the card's foot.
+- A warning's card has its action and **Got it** right under where it is, then where it comes from.
+- **⋯** beside a card's **✕** is **Card settings**: **Colour by** for the card's profile, and **Colours on the map** for your route.
+
+### A place added to your route keeps its name ([#886](https://github.com/TommiContursi/Polku/issues/886))
+
+- A waypoint made from a place, such as a lean-to or a hut from LIPAS, now takes the place's name, in the list, on its card, on the map and in a GPX export. So does a place found by search. **Undo** takes back the waypoint and its name together, and **Rename** changes it as any name.
+
 ### A tap and a hold open the same card ([#876](https://github.com/TommiContursi/Polku/issues/876))
 
 - A tap or a click on a waypoint opens its card with everything you can do there: **At this waypoint**, **Sport from here**, **Move**, **Rename**, **Remove** and the rest. Holding it, or right-clicking it, opens the same card. **On the profile** is under the waypoint's profile.
