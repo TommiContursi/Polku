@@ -8,7 +8,7 @@
 // row and heading (way-bar, way-head, way-hint), the route's numbers (sheet-sum, sum-item), the ⋯ menu's headings
 // (menu-h), the one main action (btn primary big) and the planner's note (pl-viewnote, Move's banner). New for the cards:
 // card-mark (the thing's own mark), row (a plain row in a list of rows), seg icons (a switch with icons), sum-item
-// miss (a number the map doesn't have) and card-pill (the action at the spot, on a phone).
+// miss (a number the map doesn't have), and for their actions rows acts btns and card-acts (#690).
 import { icon, h } from './ui.js';
 import { keepInView, overColumn } from './inspect.js';
 
@@ -95,6 +95,27 @@ export function mainButton(label, ic, onclick) {
   return h('button', { type: 'button', class: 'btn primary big', onclick, html: icon(ic, 20) }, h('span', {}, label));
 }
 
+// A card's actions in sight, under its numbers (#690): for the route's own things the main one green and full width, then
+// buttons two a row (`rows acts btns`: buttons on a phone too, their line a tooltip; a red one on a row of its own); for
+// places, spots and ways the action row, four round buttons with their word under them, the main one green (`card-acts`).
+// `main` and each of `items`: { icon, label, line, k, onclick, danger }.
+export function actions(main, ...items) {
+  const list = acts(...items.filter(Boolean).map((a) => Object.assign(item({ ...a, line: '' }), { title: a.line || '' })));
+  if (list) list.classList.add('btns');
+  const m = main && mainButton(main.label, main.icon, main.onclick);
+  if (m) m.dataset.k = main.k || 'main';
+  return [m, list].filter(Boolean);
+}
+export function actRow(...items) {
+  return h('div', { class: 'card-acts', role: 'group', 'aria-label': 'Actions' }, ...items.filter(Boolean).map((a, i) =>
+    h('button', { type: 'button', class: i === 0 && a.main ? 'main' : null, 'data-k': a.k || a.label, title: a.line || null, onclick: a.onclick },
+      h('span', { 'aria-hidden': 'true', html: icon(a.icon, 22) }), h('span', {}, a.label))));
+}
+// More for this …: the rest of a card's actions, rows with their lines, on the card (never behind ⋯ or a hold)
+export const moreFor = (what, ...items) => group(`More for this ${what}`, ...items) || [];
+// Where a phone's peek ends: after the card's actions (measureSheet() reads it)
+export const peekEnd = () => h('i', { class: 'peek-end', 'aria-hidden': 'true' });
+
 // A switch whose choices have icons over (or beside) their words; the chosen one has aria-checked. The arrow keys
 // move along it and choose, as a radio group does.
 export function segIcons(label, choices, pick) {
@@ -128,14 +149,14 @@ export class CardHost {
   // onPop: a step of history went back (the map stays where it is); pad(): the room the planner takes { left, bottom }.
   // keep(): how the planner is before the first card opens (its sheet, its list's scroll); restore(it) puts it back.
   // dock(): undo and redo for a narrow card's top row ({ undo, redo, canUndo, canRedo }), or null.
-  constructor(map, { peek, where, onChange = () => {}, onPop = () => {}, pad = () => ({}), keep = () => null, restore = () => {}, dock = () => null }) {
-    Object.assign(this, { map, peek, where, onChange, onPop, pad, keepState: keep, restoreState: restore, dock });
+  // settings(card): Card settings, ⋯ beside ✕ (#690): a function opening its menu at ⋯, or null with nothing to set.
+  constructor(map, { peek, where, onChange = () => {}, onPop = () => {}, pad = () => ({}), keep = () => null, restore = () => {}, dock = () => null, settings = () => null }) {
+    Object.assign(this, { map, peek, where, onChange, onPop, pad, keepState: keep, restoreState: restore, dock, settings });
     this.stack = []; // [{ card, at, beside, from }], the open one last
     this.depth = 0; // steps of history the cards pushed
     this.skip = 0; // steps back of our own still to come (history.go() is asynchronous)
     this.backing = 0; // Back's steps (history.back()) still to come
     this.popup = null;
-    this.pill = null;
     this.folded = null;
     this.focusBack = null;
     this.saved = null;
@@ -281,13 +302,6 @@ export class CardHost {
     const focused = was && was.contains(document.activeElement) ? keyOf(document.activeElement) : null, scroll = was ? was.scrollTop : 0;
     const box = this.cardBox(card, back);
     const where = entry.beside ? 'float' : this.where();
-    // the card's one action at the spot, away from a phone's peek: its first button, at the pointer (floatAt() moves it
-    // to the foot of a card that opens upwards, so it stays by the pointer)
-    if (where !== 'peek' && card.pill && at) {
-      const b = mainButton(card.pill.label, card.pill.icon, () => card.pill.fn());
-      b.dataset.k = 'pill';
-      box.prepend(b);
-    }
     if (where === 'peek') {
       if (this.popup) { const p = this.popup; this.popup = null; p.remove(); }
       this.peek.replaceChildren(box);
@@ -297,10 +311,10 @@ export class CardHost {
       this.peek.hidden = true;
       box.classList.toggle('rolled', this.rolled);
       if (entry.beside || !at) this.besideAt(box, this.rolled ? null : entry.beside); // (folded, it stays where it folded)
-      else this.floatAt(box, at, fresh, card.pill && !card.pinned ? 4 : OFFSET); // (an action at the pointer: the card's corner right there)
+      else this.floatAt(box, at, fresh);
     }
     this.box = box;
-    this.placePill(card, at, where);
+    this.placePin(card, at);
     this.onChange(card, fresh);
     if (was) {
       box.scrollTop = scroll;
@@ -329,7 +343,7 @@ export class CardHost {
     const { card } = entry, at = card.at ? card.at() : entry.at;
     if (!on) {
       if (entry.beside || !at) this.besideAt(box, entry.beside);
-      else this.floatAt(box, at, true, card.pill && !card.pinned ? 4 : OFFSET);
+      else this.floatAt(box, at, true);
     } else if (this.popup.besideEl) el.style.top = `${Math.round(r0.bottom - el.offsetHeight)}px`;
     else {
       const R = this.map.getCanvas().getBoundingClientRect(), pt = this.map.project(this.popup.getLngLat()), x = R.left + pt.x;
@@ -364,10 +378,14 @@ export class CardHost {
       d ? h('button', { type: 'button', class: 'tool', 'data-k': 'redo', 'aria-label': 'Redo', disabled: !d.canRedo, onclick: d.redo, html: icon('redo', 20) }) : null,
       x());
     const name = card.title instanceof Node ? card.title : h('b', {}, card.title);
+    // (⋯ is kept from one drawing of the card to the next, so its menu, open while the card changes, stays at it)
+    const set = this.settings(card);
+    if (set && !this.setBtn) this.setBtn = h('button', { type: 'button', class: 'tool card-set', 'aria-label': 'Card settings', 'aria-haspopup': 'menu', title: 'Card settings', html: icon('more', 22) });
+    if (set) this.setBtn.onclick = (e) => set(e.currentTarget);
     const head = h('div', { class: 'way-head' },
       h('h3', { class: 'way-hint', tabindex: '-1' }, name, card.sub ? h('small', {}, card.sub) : null),
       card.mark ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, card.mark()) : null,
-      card.save || null,
+      card.save || null, set ? this.setBtn : null,
       h('button', { type: 'button', class: 'tool way-fold', onclick: (e) => this.roll(!this.rolled, { motion: !!e.detail }) }), // (the keyboard's: at once)
       x());
     const body = h('div', { class: 'pl-way card', role: 'region', 'aria-label': typeof card.title === 'string' ? card.title : card.label || '' }, bar, head);
@@ -389,37 +407,22 @@ export class CardHost {
       h('button', { type: 'button', class: 'btn small', onclick: () => this.escape() }, 'Cancel'));
   }
 
-  // The pill: the card's one action at the spot. On a phone a pin marks the spot and the pill sits just above it, clear
-  // of the finger; on a desktop it's the card's first button (render(); 1b and 5 give cards one).
-  placePill(card, at, where) {
-    if (this.pill) { this.pill.remove(); this.pill = null; document.body.classList.remove('card-pill-on'); }
+  // A spot's mark while its card is open (a tap on the line, a pick, a shared spot): its actions are on the card (#690)
+  placePin(card, at) {
     if (this.pin) { this.pin.remove(); this.pin = null; }
-    // (a spot's pin: with its pill on a phone, or for a shared spot wherever its card is)
-    if (!at || !(card.pinned || (card.pill && where === 'peek'))) return;
-    this.pin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(at).addTo(this.map);
-    if (!card.pill || where !== 'peek') return;
-    const p = card.pill;
-    const el = h('button', { type: 'button', class: 'card-pill', onclick: () => p.fn(), html: icon(p.icon, 20) }, h('span', {}, p.label));
-    this.pill = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -22] }).setLngLat(at).addTo(this.map);
-    document.body.classList.add('card-pill-on'); // (the zoom note steps aside meanwhile: the spot and its pill need the map)
-  }
-  // the action by the pointer: the card's first button, or its last when the card opens upwards
-  actAt(box) {
-    const b = box.querySelector(':scope > [data-k=pill]');
-    if (!b || !this.popup || this.popup.besideEl) return;
-    if (String(this.popup.options.anchor).startsWith('bottom')) box.append(b); else box.prepend(b);
+    if (at && card.pinned) this.pin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(at).addTo(this.map);
   }
 
   // at the spot: the corner at the point, opening to the left or upwards where there's no room
-  floatAt(box, at, fresh, off = OFFSET) {
-    const offsets = { 'top-left': [off, off], 'top-right': [-off, off], 'bottom-left': [off, -off], 'bottom-right': [-off, -off] };
+  floatAt(box, at, fresh) {
+    const off = OFFSET, offsets = { 'top-left': [off, off], 'top-right': [-off, off], 'bottom-left': [off, -off], 'bottom-right': [-off, -off] };
     if (!this.popup || this.popup.besideEl) {
       this.remove();
       this.popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: 'none', anchor: 'top-left', className: 'polku-popup card-float', offset: offsets });
       this.popup.setLngLat(at).setDOMContent(box).addTo(this.map);
       fresh = true;
     } else { if (fresh) this.popup.setOffset(offsets); this.popup.setLngLat(at).setDOMContent(box); }
-    if (!fresh) { this.actAt(box); return; }
+    if (!fresh) return;
     const pt = this.map.project(at), R = this.map.getCanvas().getBoundingClientRect(), x = R.left + pt.x, y = R.top + pt.y;
     const w = box.offsetWidth, ht = box.offsetHeight;
     // a narrow screen (a phone with the planner put away): above its spot, moved sideways to stay whole on the screen
@@ -430,7 +433,6 @@ export class CardHost {
       this.popup.options.anchor = 'bottom';
       this.popup.setOffset({ bottom: [Math.round(dx), -OFFSET] });
       this.popup.setLngLat(at);
-      this.actAt(box);
       // (room above it under the top bar: the map moves down, never sideways, which would take it off the screen)
       const top = this.popup.getElement().getBoundingClientRect().top, bar = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 8;
       if (top < bar) this.map.panBy([0, top - bar], { duration: 0 });
@@ -442,7 +444,6 @@ export class CardHost {
     const right = innerWidth - x - (innerWidth < 720 ? 64 : 84), below = innerHeight - 8 - (this.pad().bottom || 0) - y;
     const anchor = `${below < ht + OFFSET && y - 120 > below ? 'bottom' : 'top'}-${right < w + OFFSET && x - (this.pad().left || 0) > right ? 'right' : 'left'}`;
     if (anchor !== this.popup.options.anchor) { this.popup.options.anchor = anchor; this.popup.setLngLat(at); }
-    this.actAt(box);
     this.keep();
   }
 
@@ -491,24 +492,21 @@ export class CardHost {
     const go = () => {
       if (moved || !this.box || !this.box.isConnected || this.popup || this.folded) return;
       const sheet = this.peek.closest('.sheet') || this.peek, R = this.map.getCanvas().getBoundingClientRect();
-      // (with a pill, room for it too: it stands 22 px above the spot)
-      const pill = this.pill && this.pill.getElement(), head = pill ? pill.offsetHeight + 26 : 0;
-      const top = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 24 + head, wx = document.getElementById('wx-bar');
+      const top = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 24, wx = document.getElementById('wx-bar');
       // above the sheet, and above the timeline when it's open over the map
       const bottom = Math.min(sheet.getBoundingClientRect().top, wx && wx.offsetParent && !wx.hidden ? wx.getBoundingClientRect().top : Infinity) - 24;
       const pt = this.map.project(at), x = R.left + pt.x, y = R.top + pt.y;
       const dy = y > bottom || y < top ? y - (bottom > top ? (top + bottom) / 2 : top) : 0;
       let dx = x < 24 ? x - 24 : x > innerWidth - 72 ? x - (innerWidth - 72) : 0;
       // …and clear of what floats over the map there: the toolbox's undo and redo, the zoom note, the map's buttons, its
-      // scale and credits (over the pill, they'd take its tap). If the spot (and its pill) is over one, the nearest place
+      // scale and credits. If the spot is over one, the nearest place
       // that isn't, in steps of 8 px, with the spot still between the top bar and the card (a little more for a sideways
       // move than for an upward one, as a map's nicer to nudge sideways)
       let ddy = dy;
-      const half = pill ? pill.offsetWidth / 2 : 0;
       const box = (el) => (el && !el.hidden && el.getClientRects().length ? el.getBoundingClientRect() : null); // (the toolbox is fixed: no offsetParent)
       const base = [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls')].map(box).filter(Boolean);
       const credits = box(document.querySelector('.maplibregl-ctrl-bottom-left'));
-      const clear = (list) => (nx, ny) => list.every((b) => nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20);
+      const clear = (list) => (nx, ny) => list.every((b) => nx < b.left - 20 || nx > b.right + 20 || ny < b.top - 20 || ny > b.bottom + 20);
       // (with no room under the top bar and above the card, the spot goes where it meets the top bar, as it did)
       const hi = Math.max(bottom, top + 8);
       const nearest = (ok) => {
@@ -520,7 +518,7 @@ export class CardHost {
         }
         return best;
       };
-      // the scale and credits too, the whole pill clear of them where there's room; else at least the spot itself (a tiny screen
+      // the scale and credits too, where there's room; else at least the spot itself (a tiny screen
       // has none to spare, and then it's as before)
       const spotClear = credits ? (nx, ny) => clear(base)(nx, ny) && (nx < credits.left - 8 || nx > credits.right + 8 || ny < credits.top - 8 || ny > credits.bottom + 8) : clear(base);
       for (const ok of [clear(credits ? [...base, credits] : base), spotClear, clear(base)]) {
@@ -537,7 +535,6 @@ export class CardHost {
 
   remove() {
     if (this.popup) { const p = this.popup; this.popup = null; p.remove(); }
-    if (this.pill) { this.pill.remove(); this.pill = null; document.body.classList.remove('card-pill-on'); }
     if (this.pin) { this.pin.remove(); this.pin = null; }
     if (this.box && this.peek.contains(this.box)) { this.peek.replaceChildren(); this.peek.hidden = true; }
     if (this.box && this.box.classList.contains('card-banner')) this.box.remove();
