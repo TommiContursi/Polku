@@ -5524,7 +5524,7 @@ export class Planner {
     // scrolled it back, bindSheet()'s unscroll)
     if (was > 0 && !this.keyed && !p.classList.contains('instant')) this.els.head.animate([{ opacity: 0 }, { opacity: 1 }], { duration: token('--t-open'), easing: cssVar('--ease-out') });
     p.scrollTop = 0;
-    p.classList.remove('sum-on');
+    p.classList.remove('sum-on', 'scrolled');
   }
   // one stop up or down (the line from the peek, never away); from a size as tall as a stop under it, from that one
   stepSheet(dir, instant) {
@@ -5719,9 +5719,14 @@ export class Planner {
       if (this.sheetMove) { this.moveSheet(from); this.panel.dispatchEvent(new Event('sheetstate')); }
     };
     this.measureSheet = sizes;
-    // D: the top row takes the numbers once they've scrolled under it
-    const sumOn = () => this.panel.classList.toggle('sum-on', this.panel.classList.contains('scroll-all') && this.panel.scrollTop > 0 && !!this.els.sum.offsetParent
-      && this.els.sum.getBoundingClientRect().bottom <= (this.layout() === 'side' ? this.els.topSum : this.els.top).getBoundingClientRect().bottom + 1);
+    // D: the top row takes the numbers once they've scrolled under it, and a background of its own once anything has (#889:
+    // the sheet's glass, not a solid bar, while nothing is under it)
+    const sumOn = () => {
+      const under = this.panel.classList.contains('scroll-all') && this.panel.scrollTop > 0;
+      this.panel.classList.toggle('scrolled', under);
+      this.panel.classList.toggle('sum-on', under && !!this.els.sum.offsetParent
+        && this.els.sum.getBoundingClientRect().bottom <= (this.layout() === 'side' ? this.els.topSum : this.els.top).getBoundingClientRect().bottom + 1);
+    };
     this.panel.addEventListener('scroll', sumOn, { passive: true });
     this.panel.addEventListener('sheetstate', sumOn);
     new ResizeObserver(sizes).observe(this.els.head);

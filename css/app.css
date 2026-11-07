@@ -1860,7 +1860,8 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .sheet.scroll-all[data-state="peek"] > .sheet-body { display: none; }
 /* its top row stays, over what scrolls (the docked toolbox too, #598), and a finger there moves the sheet (js/sheet.js);
    a finger on the numbers scrolls it (#597); the routing bar stays on its top edge */
-.sheet.scroll-all > .sheet-top { position: sticky; top: 0; z-index: 6; background: var(--surface-solid); border-radius: 18px 18px 0 0; touch-action: none; }
+.sheet.scroll-all > .sheet-top { position: sticky; top: 0; z-index: 6; border-radius: 18px 18px 0 0; touch-action: none; transition: background-color var(--t-press) var(--ease-out); }
+.sheet.scroll-all.scrolled > .sheet-top { background: var(--surface-solid); } /* (only once something has scrolled under it, #889) */
 .sheet.scroll-all > .sheet-head { touch-action: pan-y; }
 .sheet.scroll-all > .route-bar { position: sticky; order: -1; flex: none; margin: 0 18px -3px; z-index: 7; }
 /* D of the sheet's stops (#233): once the numbers have scrolled under the top row, it takes them and the route's name,
