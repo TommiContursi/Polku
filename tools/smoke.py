@@ -6982,11 +6982,11 @@ def quick_swipe(chrome):
     pg.js(PLAN_TWO)
     pg.js(SETTLED)
     head = pg.js("(() => { const b = document.querySelector('#planner .sheet-sum').getBoundingClientRect(); return [b.left + 30, b.top + b.height / 2]; })()")
-    pg.swipe(head[0], head[1], head[1] - 300, ms=700, hold=0.2)  # slowly up from peek: the nearest size
+    pg.swipe(head[0], head[1], head[1] - 150, ms=700, hold=0.2)  # slowly up from peek: the nearest size
     pg.js(SETTLED)
     s1 = st()
     if s1['st'] != 'half':
-        fails.append(f'planner: a slow drag up 300 px from peek came to {s1["st"]}, not half')
+        fails.append(f'planner: a slow drag up 150 px from peek came to {s1["st"]}, not half')
     if pg.js("document.querySelector('#planner').classList.contains('dragging') || !!document.querySelector('#planner').style.transform"):
         fails.append('planner: still dragging after it came to rest')
     sheet_h = pg.js("parseFloat(document.documentElement.style.getPropertyValue('--sheet-h'))")
@@ -13108,6 +13108,7 @@ def route_view(chrome):
         e = pg.js("(() => { const p = polku.planner; return { view: p.inView(), mode: !!p.els.modeBtn.offsetParent, undo: !p.els.undo.disabled && !!p.els.undo.offsetParent, past: p.past.length, done: !!p.els.toolDone.offsetParent, ghosts: p.ghosts.length }; })()")
         if e['view'] or not e['mode'] or not e['undo'] or e['past'] != s0['past'] or not e['done'] or not e['ghosts']:
             fails.append(f'{name}: after Edit: {e} (undo steps before Done: {s0["past"]})')
+        spot = pg.js(RV_SPOT)  # (again: the drawing tools are back over the map, and the peek with its profile is taller, #889)
         if spot:
             press(pg, spot, f'{name}: a way on the map, editing', touch)
             if state(pg)['n'] != s0['n'] + 1:
