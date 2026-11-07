@@ -34,7 +34,7 @@ Read the section the task needs, not the whole file. The files after a section a
 - [Files](#files)
 - [Working on it](#working-on-it)
   - [Shared controls](#shared-controls)
-  - [Design skills](#design-skills)
+  - [Skills](#skills)
 
 ## Bugs and reviews
 
@@ -357,7 +357,7 @@ profiles/           Polku's own BRouter profiles (road cycling; short cuts throu
 tools/              dev only: smoke.py, shoot.py, readme_shots.py, probes, cdp.py (headless Chrome), brouter-local.sh, fixtures
 img/base/           base map pictures, 240 × 160 (tools/thumbs.py); Aerial's is Esri's tile, not stored
 docs/               ROADMAP (how phases work), plans/ (phase designs), retros/, reviews/, this file, screenshots
-.agents/skills/     dev only: design skills for coding agents (below); .claude/skills/ links to them
+.agents/skills/     dev only: skills for coding agents (below); .claude/skills/ links to them
 ```
 
 ## Working on it
@@ -433,12 +433,13 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 - **A mock-up** copies the CSS of the controls it uses from `css/app.css`, with the same class names, in a marked block (as `docs/plans/mockups/issue-345-map-cards.html` does), so what the user approves is what gets built. When the app's controls change, the copy is made again.
 - **No copies:** no second class for a control that exists (a `card-row` beside `way-tile`, say). A variant of one is a modifier on its class, said in this table.
 
-### Design skills
+### Skills
 
 - **Emil Kowalski's skills** ([emilkowal.ski/skill](https://emilkowal.ski/skill), MIT: `.agents/skills/LICENSE`) are kept in `.agents/skills/`, so every checkout and worktree has them, for Claude Code and Codex alike. Claude Code finds them through the links in `.claude/skills/`. `skills-lock.json` records each one's source and hash.
 - **Eleven of the fifteen,** the ones [phase 24's plan](plans/24-design-review.md#the-skills) uses. animate-expo and write-swift (React Native, Swift), ask-sonner (a React library) and pick-ui-library (choosing dependencies) don't fit Polku.
 - **Updating them is a tooling PR:** the new versions from [emilkowalski/skill](https://github.com/emilkowalski/skill), `skills-lock.json` to match, and the diff read through.
 - **Impeccable** ([impeccable.style](https://impeccable.style)) is installed per user, not here. Its hooks and local settings are in `.gitignore`; what it writes about Polku is committed: [PRODUCT.md](../PRODUCT.md), and [DESIGN.md](../DESIGN.md) with the tokens (colours, type, shapes, spacing, depth and motion) from `css/app.css`. DESIGN.md leaves the controls to "Shared controls" above, and `css/app.css` stays the source: when a token changes there, run `/impeccable document` again (or edit DESIGN.md to match) in the same PR. `tools/smoke.py values` fails when a colour in DESIGN.md's frontmatter isn't the CSS's.
+- **`lessons` is Polku's own** (`/lessons`, run by the user weekly and when a milestone closes): it reads the Hand-overs, reviews and new issues since its last run and moves what they learned into DEVELOPING, AGENTS.md proposals and issues, as one Docs PR. It isn't in `skills-lock.json`, which is for the skills from elsewhere.
 
 `inspectionAt()` in `js/inspect.js` reads z14 hosted raw objects in the requested 12/40 m neighbourhood, deduplicating by type/ID. `wayNear()` filters by an exact ID before measuring; an absent ID cannot become a nearer substitute. If the optional inspection product is unavailable, an exact way can reuse the original ways archive's full tags. Nearby way selection needs the all-highway inspection dataset. Node/relation exact tags and unambiguous nearby places use the same object archive; unsupported or ambiguous objects retain one 15-second Overpass round. `areaAt()` retains the same bounded round pending #696's clipped area representation.
 
