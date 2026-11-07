@@ -47,6 +47,15 @@
         ],
         "createdAt": "2026-11-07T18:28:07.727Z",
         "reason": "Claude: no marquee in the file; the only scroll is a one-time scrollTop to the card's On the map section when opened from Weather (line 318)"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/issue-182-weather-look.html"
+        ],
+        "createdAt": "2026-11-07T20:47:52.260Z",
+        "reason": "Claude: no marquee; the motion is the map's falling rain and drifting clouds, the subject of the mock-up (#182), as weather-card.html's ignore"
       }
     ]
   }
