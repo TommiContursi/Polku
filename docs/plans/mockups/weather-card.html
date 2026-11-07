@@ -96,7 +96,9 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wc-card { position: absolute; z-index: 5; display: flex; flex-direction: column; min-height: 0; background: var(--surface-solid); color: var(--text); border-radius: 18px; box-shadow: var(--shadow); }
 .frame.desk .wc-card { left: 424px; top: 64px; width: 340px; bottom: 12px; }
 .wc-top { position: relative; display: flex; align-items: center; gap: 4px; min-height: 52px; padding: 14px 6px 0 4px; }
-.wc-top h3 { flex: 1; min-width: 0; margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.wc-card { container: wcc / inline-size; }
+.wc-top h3 { flex: 1; min-width: 0; margin: 0; font-size: 17px; overflow-wrap: break-word; }
+@container wcc (max-width: 260px) { .wc-top { flex-wrap: wrap; } .wc-top h3 { order: 3; flex: 1 1 100%; padding: 0 10px; } .wc-top .tool { margin-left: auto; } }
 .wc-back { color: var(--accent); font-weight: var(--weight-name); }
 .wc-body { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 16px; display: flex; flex-direction: column; gap: 12px; overscroll-behavior: contain; }
 .wc-body h4 { margin: 8px 0 -4px; font-size: 13px; font-weight: var(--weight-strong); color: var(--muted); }
@@ -124,7 +126,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wc-wave { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
 .wc-wave > span:first-child { color: var(--sport-paddle); flex: none; }
 /* the graph (B): the hours around the trip, the trip shaded, the dark behind */
-.wc-card { --wc-dark: color-mix(in srgb, var(--text) 9%, transparent); }
+.wc-card, .wx-line { --wc-dark: color-mix(in srgb, var(--text) 9%, transparent); }
 .wc-graph { display: block; width: 100%; height: auto; overflow: visible; }
 .wc-graph text { font: 600 10px/1 system-ui, sans-serif; fill: var(--muted); }
 .wc-graph text.t { fill: var(--text); font-size: 11px; }
@@ -137,12 +139,49 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wc-play input { flex: 1; min-width: 0; accent-color: var(--accent); }
 .wc-play > span { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rows.wc-rows { grid-template-columns: minmax(0, 1fr); }
+
+/* ---- C, together (2026-11-07): the big numbers and the graph, a colour for each kind of data, in both themes */
+.wc-card, .wx-line { --wc-temp: #c2410c; --wc-feel: #9a3412; --wc-rain: #1d4ed8; --wc-wind: #0f766e; --wc-wave: var(--sport-paddle); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.wc-card, .wx-line) { --wc-temp: #fb923c; --wc-feel: #fdba74; --wc-rain: #60a5fa; --wc-wind: #2dd4bf; } }
+:root[data-theme="dark"] :is(.wc-card, .wx-line) { --wc-temp: #fb923c; --wc-feel: #fdba74; --wc-rain: #60a5fa; --wc-wind: #2dd4bf; }
+.wc-body { container: card / inline-size; }
+.wc-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@container card (min-width: 330px) { .wc-tiles.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container card (max-width: 220px) { .wc-tiles { grid-template-columns: minmax(0, 1fr); } }
+.wc-tile { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); }
+.wc-tile > small { color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.wc-tile > b { display: flex; align-items: baseline; gap: 4px; font-size: 26px; line-height: 1.05; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.wc-tile > b > i { font-style: normal; font-size: 14px; font-weight: 600; letter-spacing: 0; }
+.wc-tile > span { font-size: 13px; overflow-wrap: anywhere; }
+.wc-tile.temp > b { color: var(--wc-temp); } .wc-tile.temp > span b { color: var(--wc-feel); }
+.wc-tile.wind > b { color: var(--wc-wind); }
+.wc-tile.rain > b { color: var(--wc-rain); }
+.wc-tile.wave > b { color: var(--wc-wave); }
+.wc-tile .wc-arrow { display: inline-block; font-size: 18px; line-height: 1; }
+.wc-darkline { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.wc-sunline { display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--muted); font-size: 13px; }
+.wc-sunline > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+/* the weather line: the card folded (#233's step 3, chosen 2026-10-27), the map's hour set by a drag along its strip */
+.wx-line { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 6; padding: 4px 4px 6px; border-radius: 18px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); container-type: inline-size; }
+.frame.desk .wx-line { left: auto; right: 72px; bottom: 12px; width: 440px; }
+.wl-row { display: flex; align-items: center; gap: 4px; min-height: 44px; }
+.wl-row .tool { width: 44px; height: 44px; flex: none; }
+.wl-read { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.wl-read > b { font-size: 22px; color: var(--wc-temp); font-variant-numeric: tabular-nums; }
+.wl-read > span { min-width: 0; font-size: 13px; line-height: 1.25; }
+.wl-read small b { color: var(--wc-wind); } .wl-read small em { font-style: normal; color: var(--wc-rain); font-weight: 600; }
+.wl-read small { display: block; color: var(--text); font-size: 13px; }
+.wl-time { display: block; font-style: normal; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.wl-scrub { padding: 10px 6px 10px; cursor: ew-resize; touch-action: pan-y; } /* (the strip 24 px, its target 44 px) */
+.wx-line.wl-in { position: static; padding: 0; box-shadow: none; background: none; }
+.wl-scrub svg { display: block; width: 100%; height: 24px; border-radius: 6px; overflow: visible; }
+@container (max-width: 240px) { .wl-read small { display: none; } }
 </style>
 </head>
 <body class="mk">
 <div class="cv">
   <h1>The weather card</h1>
-  <p>#431, step 6 of #869’s order: the trip’s box over the list, and the weather card it opens. The card takes Go’s contents and the weather timeline’s: <b>it replaces the floating timeline window</b>, whose 48 hours become the card’s last part, <i>On the map</i>. Go’s tab goes. The question now (Q1) is how the card shows the trip’s weather: <b>Rows</b> in words, or a <b>Graph</b> of the hours around the trip. Tap the trip’s box to open the card; switch Size to see what fits at half on a phone. The plan is <a href="../trip-box-and-weather-card.md">docs/plans/trip-box-and-weather-card.md</a>.</p>
+  <p>#431, step 6 of #869’s order: the trip’s box over the list, and the weather card it opens. The card takes Go’s contents and the weather timeline’s: <b>it replaces the floating timeline window</b>, whose 48 hours become the card’s last part, <i>On the map</i>. Go’s tab goes. <b>C: Together</b> (2026-11-07, from the user’s answer to Q1) puts each day’s big numbers first, a colour for each kind of data, and the graph under them; the map’s hours are the <b>weather line</b>, the card folded, so the map shows while the hour moves. A and B, the first round’s two answers, stay on the bar. Tap the trip’s box to open the card; switch Size to see what fits at half on a phone. The plan is <a href="../trip-box-and-weather-card.md">docs/plans/trip-box-and-weather-card.md</a>.</p>
   <div class="bars" id="bars"></div>
   <div class="stage" id="stage"></div>
   <div class="notes">
@@ -161,7 +200,7 @@ import { icon, h } from '../../../js/ui.js';
 const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/design-weather-card/';
 const q = new URLSearchParams(location.search);
 const pick = (k, vals, d) => (vals.includes(q.get(k)) ? q.get(k) : d);
-const S = { v: pick('v', ['today', 'rows', 'graph'], 'rows'), s: pick('s', ['route', 'card', 'map'], 'route'), size: pick('size', ['half', 'full'], 'half'),
+const S = { v: pick('v', ['today', 'rows', 'graph', 'together'], 'together'), s: pick('s', ['route', 'card', 'map', 'line'], 'route'), hr: 1, size: pick('size', ['half', 'full'], 'half'),
   trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100') };
 
 // ---------------------------------------------------------------- the forecast, at the start, from 19:00 on Sat 7 Nov (local)
@@ -196,12 +235,16 @@ const TIME = [['Paved', '2.42 km', '9 min', '16.5 km/h'], ['Gravel & unpaved', '
 const BYSPORT = [['MTB', '2.97 km', '9 min', '20.7 km/h'], ['Paddle', '1.97 km', '18 min', '6.4 km/h'], ['Hike', '540 m', '6 min', '5.3 km/h'], ['Changeovers (2)', '', '25 min', '']];
 
 // a day's weather in words, over the hours it's on the way (the route's own samples in the app; here the start's hours)
+// feels like: the wind chill at 10 m (Environment Canada's formula) where it's 10 °C or colder and the wind blows; the build asks
+// Open-Meteo for apparent_temperature, its ninth variable (a request counts as one call up to ten)
+const feel = (t, v) => { const k = v * 3.6; return t <= 10 && k > 4.8 ? 13.12 + 0.6215 * t - 11.37 * k ** 0.16 + 0.3965 * t * k ** 0.16 : t; };
 function dayWx(d) {
   const hs = []; for (let i = Math.floor(d.i0); i <= Math.ceil(d.i1); i++) hs.push(wx(i));
   const t0 = Math.round(Math.min(...hs.map((x) => x[3]))), t1 = Math.round(Math.max(...hs.map((x) => x[3])));
   const w0 = Math.round(Math.min(...hs.map((x) => x[0]))), w1 = Math.round(Math.max(...hs.map((x) => x[0]))), g = Math.round(Math.max(...hs.map((x) => x[1])));
   const wet = hs.filter((x) => x[4] >= 0.1), peak = Math.max(0, ...hs.map((x) => x[4]));
-  return { t: t0 === t1 ? `${t0} °C` : `${t0}…${t1} °C`, big: `${Math.round(hs[0][3])}°`, wind: `${w0 === w1 ? w0 : `${w0}–${w1}`} m/s from ${compass(hs[0][2])}, gusts ${g}`, rate: w1 >= 8 ? 'Windy' : w1 >= 4 ? 'Breezy' : 'Light',
+  const f = Math.round(Math.min(...hs.map((x) => feel(x[3], x[0])))), mm = hs.reduce((a, x) => a + x[4], 0) * (d.i1 - d.i0) / Math.max(1, hs.length - 1);
+  return { t0, t1, w0, w1, g, f, dir: hs[0][2], peak, mm, wet: wet.length > 0, t: t0 === t1 ? `${t0} °C` : `${t0}…${t1} °C`, big: `${Math.round(hs[0][3])}°`, wind: `${w0 === w1 ? w0 : `${w0}–${w1}`} m/s from ${compass(hs[0][2])}, gusts ${g}`, rate: w1 >= 8 ? 'Windy' : w1 >= 4 ? 'Breezy' : 'Light',
     rain: wet.length ? `Rain from km 2, up to ${peak.toFixed(1)} mm/h · about 1 mm on you` : 'Dry the whole way', rainShort: wet.length ? 'rain from km 2' : 'dry', sky: wet.length ? 'rain' : dark(Math.floor(d.i0)) ? 'moon' : 'cloud' };
 }
 
@@ -246,7 +289,8 @@ function planner() {
 }
 
 // ---------------------------------------------------------------- the graph (B): 12 hours around a day's trip, a column an hour
-function graph(d) {
+function graph(d, c = S.v === 'together') {
+  const TC = c ? 'var(--wc-temp)' : '#ea580c', RC = c ? 'var(--wc-rain)' : '#3b82f6', WC = c ? 'var(--wc-wind)' : 'var(--text)';
   const a = Math.max(0, Math.floor(d.i0) - 2), n = 12, W = 340, cw = W / n, top = 26, th = 52, rb = 104, H = 132;
   const hs = Array.from({ length: n }, (_, k) => wx(a + k)), ts = hs.map((x) => x[3]), lo = Math.min(...ts) - 1, hi = Math.max(...ts) + 1;
   const ty = (t) => top + 4 + (1 - (t - lo) / (hi - lo)) * (th - 8);
@@ -254,15 +298,16 @@ function graph(d) {
   for (let k = 0; k < n; k++) if (dark(a + k)) s += `<rect x="${k * cw}" y="0" width="${cw}" height="${rb}" fill="var(--wc-dark)"/>`;
   const x0 = (d.i0 - a) * cw, x1 = Math.max(x0 + 4, (d.i1 - a) * cw);
   s += `<rect x="${x0}" y="0" width="${x1 - x0}" height="${rb}" fill="var(--accent)" opacity=".18"/><rect x="${x0}" y="0" width="2" height="${rb}" fill="var(--accent)"/>`;
-  s += `<text x="${x0 + 4}" y="${rb - 6}" style="fill: var(--accent)">you</text>`;
+  s += `<text x="${x0 + 4}" y="${top + th + 8}" style="fill: var(--accent)">you</text>`;
   hs.forEach((x, k) => { const cx = k * cw + cw / 2;
-    s += `<g transform="translate(${cx},9) rotate(${x[2] + 180})"><path d="M0,-6 L0,6 M-3,-2 L0,-6 L3,-2" stroke="var(--text)" stroke-width="1.4" fill="none"/></g>`;
-    s += `<text x="${cx}" y="${top - 1}" text-anchor="middle" class="t">${Math.round(x[0])}</text>`;
-    if (x[4] > 0) { const bh = Math.min(28, x[4] * 16); s += `<rect x="${k * cw + 4}" y="${rb - bh}" width="${cw - 8}" height="${bh}" rx="2" fill="#3b82f6"/>`; } });
-  s += `<path d="${ts.map((t, k) => `${k ? 'L' : 'M'}${(k * cw + cw / 2).toFixed(1)},${ty(t).toFixed(1)}`).join('')}" fill="none" stroke="#ea580c" stroke-width="2"/>`;
-  ts.forEach((t, k) => { if (k % 3 === 1) s += `<text x="${k * cw + cw / 2}" y="${ty(t) - 5}" text-anchor="middle" style="fill:#ea580c">${Math.round(t)}°</text>`; });
+    s += `<g transform="translate(${cx},9) rotate(${x[2] + 180})"><path d="M0,-6 L0,6 M-3,-2 L0,-6 L3,-2" stroke="${WC}" stroke-width="1.4" fill="none"/></g>`;
+    s += `<text x="${cx}" y="${top - 1}" text-anchor="middle" class="t" style="fill:${WC}">${Math.round(x[0])}${c ? `<tspan style="font-size:8px;font-weight:500"> ${Math.round(x[1])}</tspan>` : ''}</text>`;
+    if (x[4] > 0) { const bh = Math.min(28, x[4] * 16); s += `<rect x="${k * cw + 4}" y="${rb - bh}" width="${cw - 8}" height="${bh}" rx="2" fill="${RC}"/>`; if (c) s += `<text x="${cx}" y="${rb - bh - 3}" text-anchor="middle" style="fill:${RC}">${x[4].toFixed(1)}</text>`; } });
+  s += `<path d="${ts.map((t, k) => `${k ? 'L' : 'M'}${(k * cw + cw / 2).toFixed(1)},${ty(t).toFixed(1)}`).join('')}" fill="none" stroke="${TC}" stroke-width="2"/>`;
+  ts.forEach((t, k) => { if (k % 3 === 1) s += `<text x="${k * cw + cw / 2}" y="${ty(t) - 5}" text-anchor="middle" style="fill:${TC}">${Math.round(t)}°</text>`; });
   for (let k = 0; k <= n; k += 3) s += `<text x="${Math.min(W - 14, k * cw + 2)}" y="${H - 14}">${k === 0 || hr(a + k) === 0 ? `${dayOf(a + k)} ` : ''}${String(hr(a + k)).padStart(2, '0')}</text>`;
-  s += `<text x="0" y="${H - 1}">m/s at the top · °C · rain · the dark shaded</text></svg>`;
+  s += c ? `<text x="0" y="${H - 1}"><tspan style="fill:${WC}">wind m/s, gusts</tspan> · <tspan style="fill:${TC}">°C</tspan> · <tspan style="fill:${RC}">rain mm/h</tspan> · the dark shaded</text></svg>`
+    : `<text x="0" y="${H - 1}">m/s at the top · °C · rain · the dark shaded</text></svg>`;
   return h('div', { html: s });
 }
 
@@ -277,6 +322,35 @@ function strip48() {
   s += `<rect x="0" y="0" width="2" height="${H}" fill="var(--text)"/>`;
   [[0, 'Now'], [4, 'Sun'], [16, '12'], [28, 'Mon'], [40, '12']].forEach(([k, l]) => { s += `<text x="${k * cw + 3}" y="${H + 12}">${l}</text>`; });
   return h('div', { html: `${s}</svg>` });
+}
+
+// ---------------------------------------------------------------- the weather line: the card folded, the map's hour (#233's step 3)
+const hourWords = (i) => `${i === 1 ? 'Now · ' : `${dayOf(i)} `}${i === 1 ? '20:21' : `${String(hr(i)).padStart(2, '0')}:00`}`;
+function lineStrip() {
+  const W = 340, H = 24, cw = W / 48, ts = WX.slice(1, 49).map((x) => x[3]), lo = Math.min(...ts) - 1, hi = Math.max(...ts) + 1;
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><rect width="${W}" height="${H}" rx="6" fill="var(--surface-2)"/>`;
+  for (let k = 0; k < 48; k++) if (dark(k + 1)) s += `<rect x="${k * cw}" y="0" width="${cw + .2}" height="${H}" fill="var(--wc-dark)"/>`;
+  for (const d of T().days) s += `<rect x="${(d.i0 - 1) * cw}" y="0" width="${Math.max(3, (d.i1 - d.i0) * cw)}" height="${H}" fill="var(--accent)" opacity=".35"/>`;
+  for (let k = 0; k < 48; k++) { const r = wx(k + 1)[4]; if (r > 0) s += `<rect x="${k * cw}" y="${H - Math.min(H, r * 10)}" width="${cw}" height="${Math.min(H, r * 10)}" fill="var(--wc-rain)" opacity=".8"/>`; }
+  s += `<path d="${ts.map((t, k) => `${k ? 'L' : 'M'}${(k * cw).toFixed(1)},${(3 + (1 - (t - lo) / (hi - lo)) * (H - 6)).toFixed(1)}`).join('')}" fill="none" stroke="var(--wc-temp)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
+  s += `<rect x="${(S.hr - 1) * cw - 1}" y="-3" width="3" height="${H + 6}" rx="1.5" fill="var(--text)"/></svg>`;
+  return s;
+}
+function wxLine(inCard) {
+  const x = wx(S.hr), el = h('div', { class: inCard ? 'wx-line wl-in' : 'wx-line', role: 'group', 'aria-label': 'The map’s weather' });
+  const read = h('span', { class: 'wl-read', title: 'At the map’s middle' }, h('b', {}, `${Math.round(x[3])}°`), h('span', { html: `<i class="wl-time">${hourWords(S.hr)}</i><small><b>${Math.round(x[0])} m/s ${compass(x[2])}</b> · gusts ${Math.round(x[1])} · ${x[4] > 0 ? `<em>${x[4].toFixed(1)} mm/h</em>` : 'dry'}</small>` }));
+  el.append(h('div', { class: 'wl-row' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Play the hours', html: icon('play', 18) }), read,
+    inCard ? null : h('button', { type: 'button', class: 'tool', 'aria-label': 'Open the weather card', onclick: go('card'), html: icon('chevronUp', 20) }),
+    inCard ? null : h('button', { type: 'button', class: 'tool', 'aria-label': 'Weather off', onclick: go('route'), html: icon('close', 20) })));
+  const scrub = h('div', { class: 'wl-scrub', role: 'slider', tabindex: '0', 'aria-label': 'The map’s hour', 'aria-valuemin': '0', 'aria-valuemax': '47', 'aria-valuenow': String(S.hr - 1), 'aria-valuetext': hourWords(S.hr), html: lineStrip() });
+  const at = (e) => { const r = scrub.getBoundingClientRect(); return Math.max(1, Math.min(48, 1 + Math.round(((e.clientX - r.left - 6) / (r.width - 12)) * 47))); };
+  const set = (i) => { if (i === S.hr) return; S.hr = i; const n = wxLine(inCard); el.replaceWith(n); if (!inCard) n.querySelector('.wl-scrub').focus({ preventScroll: true }); };
+  scrub.addEventListener('pointerdown', (e) => { if (inCard) { S.hr = at(e); S.s = 'line'; draw(); return; } scrub.setPointerCapture(e.pointerId); set(at(e));
+    const move = (m) => set(at(m)), up = () => { scrub.removeEventListener('pointermove', move); scrub.removeEventListener('pointerup', up); };
+    scrub.addEventListener('pointermove', move); scrub.addEventListener('pointerup', up); });
+  scrub.addEventListener('keydown', (e) => { const k = { ArrowRight: 1, ArrowLeft: -1, PageUp: 6, PageDown: -6 }[e.key]; if (k) { e.preventDefault(); if (inCard) { S.s = 'line'; S.hr = Math.max(1, Math.min(48, S.hr + k)); draw(); } else set(Math.max(1, Math.min(48, S.hr + k))); } });
+  el.append(scrub);
+  return el;
 }
 
 // ---------------------------------------------------------------- the weather card
@@ -294,6 +368,20 @@ function card() {
     const w = dayWx(d);
     const dayH = R.days.length > 1 ? h('div', { class: 'wc-dayh' }, `Day ${d.n} · ${d.name}`, h('small', {}, d.what)) : null;
     const sun = h('span', { class: 'wc-sun', html: `${icon(d.inDark ? 'moon' : 'sunset', 14)}${d.inDark ? `<span class="wc-dark">${d.inDark}</span> · ` : ''}${d.sun}` });
+    if (S.v === 'together') {
+      const paddles = S.trip === 'day' || d.n === 1, arrow = `<span class="wc-arrow" style="transform: rotate(${w.dir + 180}deg)" aria-hidden="true">↑</span>`;
+      const tile = (k, label, big, sub, aria) => h('div', { class: `wc-tile ${k}`, role: 'group', 'aria-label': aria }, h('small', {}, label), h('b', { html: big }), h('span', { html: sub }));
+      body.append(h('div', { class: 'wc-day' }, dayH,
+        h('div', { class: `wc-tiles n${paddles ? 4 : 3}` },
+          tile('temp', 'Temperature', `${w.t0 === w.t1 ? w.t0 : `${w.t0}…${w.t1}`}°`, `feels like <b>${w.f}°</b>`, `Temperature ${w.t}, feels like ${w.f} °C`),
+          tile('wind', 'Wind', `${w.w1}<i>m/s</i>${arrow}`, `gusts <b>${w.g}</b> · from ${compass(w.dir)}`, `Wind up to ${w.w1} m/s from ${compass(w.dir)}, gusts ${w.g}`),
+          tile('rain', 'Rain', w.wet ? `${Math.max(1, Math.round(w.mm))}<i>mm</i>` : `0<i>mm</i>`, w.wet ? `km 2–4 · up to ${w.peak.toFixed(1)} mm/h` : 'dry the whole way', w.wet ? `Rain about ${Math.max(1, Math.round(w.mm))} mm, up to ${w.peak.toFixed(1)} mm an hour` : 'Dry the whole way'),
+          paddles ? tile('wave', 'Waves', `${R.wave[0].replace(' m', '')}<i>m</i>`, 'paddle, an estimate', `Waves up to about ${R.wave[0]} on the paddle, an estimate`) : null),
+        d.inDark ? h('div', { class: 'wc-darkline', html: `${icon('moon', 16)}${d.inDark}` }) : null,
+        h('div', { class: 'wc-sunline', html: d.sun.split(' · ').map((x, i) => `<span>${icon(['sunrise', 'sunset', 'moon'][/^sunrise/i.test(x) ? 0 : /^sunset/i.test(x) ? 1 : 2], 14)}${x[0].toUpperCase()}${x.slice(1)}</span>`).join('') }),
+        graph(d)));
+      continue;
+    }
     if (S.v === 'graph') body.append(h('div', { class: 'wc-day' }, dayH, h('div', { class: 'wc-read' }, h('span', {}, h('b', { style: 'font-size: 15px' }, `${w.t} · ${w.wind} · ${w.rainShort}`))), graph(d), sun));
     else body.append(h('div', { class: 'wc-day' }, dayH,
       h('div', { class: 'wc-read' }, h('span', { 'aria-hidden': 'true', style: 'flex: none; color: var(--muted)', html: icon(w.sky, 30) }), h('b', {}, w.big), h('span', {}, `${w.wind} · ${w.rate}`, h('small', {}, `${w.t} · ${w.rain}`))), sun));
@@ -302,13 +390,16 @@ function card() {
     h('div', {}, h('div', { class: 'wc-share', 'aria-hidden': 'true' }, ...R.share.map((x, i) => h('i', { style: `width: ${x}%; background: ${['#ef4444', '#f59e0b', '#22a447'][i]}` }))),
       h('div', { class: 'wc-key' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', {}, h('i', { style: `background: ${['#ef4444', '#f59e0b', '#22a447'][i]}` }), `${k} ${R.share[i]} %`)))),
     h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('wind', 20) }), h('span', {}, h('b', {}, R.strongest)), chevR())),
-    h('div', { class: 'wc-wave' }, h('span', { html: icon('paddle', 18) }), h('span', {}, h('b', {}, `Paddle: waves up to about ${R.wave[0]}`), h('small', { class: 'wc-note' }, `An estimate from the wind at ${R.wave[1]}, over the open water upwind`))),
+    ...(S.v === 'together' ? [] : [h('div', { class: 'wc-wave' }, h('span', { html: icon('paddle', 18) }), h('span', {}, h('b', {}, `Paddle: waves up to about ${R.wave[0]}`), h('small', { class: 'wc-note' }, `An estimate from the wind at ${R.wave[1]}, over the open water upwind`)))]),
     h('h4', {}, 'Colour the route by'),
     h('div', { class: 'wc-links' }, ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([ic, k]) => h('button', { type: 'button', class: 'btn small quiet', html: `${icon(ic, 16)} ${k}` }))),
     h('details', { class: 'wc-time' }, h('summary', { html: `Time on the way: ${R.nums[1][1]} ${icon('chevronDown', 16)}` }),
       h('div', { class: 'wc-tt' }, ...TIME.flatMap((r) => r.map((x) => h('span', {}, x))), h('span', { class: 'h' }, 'By sport'), ...BYSPORT.flatMap((r) => r.map((x) => h('span', {}, x))),
         ...(S.trip === 'night' ? ['Nights (1)', '', '21 h 08 min', ''].map((x) => h('span', {}, x)) : []), ...['Total time', '5.48 km', R.nums[1][0], '9.9 km/h'].map((x) => h('span', { class: 'tot' }, x)))));
-  const map = h('div', { class: 'wc-map', id: 'wc-onmap' }, h('h4', {}, 'On the map'), strip48(),
+  const map = S.v === 'together' ? h('div', { class: 'wc-map', id: 'wc-onmap' }, h('h4', {}, 'On the map'), wxLine(true),
+    h('span', { class: 'wc-note' }, 'Drag the hours and the card folds down to this line, so the map shows while the hour moves. Road works and road conditions follow the hour too.'),
+    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('layers', 20) }), h('span', {}, h('b', {}, 'Weather layers')), h('span', { class: 'val' }, 'Wind'), chevR())))
+  : h('div', { class: 'wc-map', id: 'wc-onmap' }, h('h4', {}, 'On the map'), strip48(),
     h('div', { class: 'wc-reading' }, h('span', { style: 'color: var(--muted)', html: icon('cloud', 26) }), h('b', {}, '6°'), h('span', {}, '4 m/s W, gusts 7 · dry', h('small', {}, 'at the map’s middle'))),
     h('div', { class: 'wc-play' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Play', html: icon('play', 18) }), h('input', { type: 'range', min: 0, max: 48, value: 0, 'aria-label': 'The map’s hour' }), h('span', {}, 'Now · 20:21')),
     h('span', { class: 'wc-note' }, 'Your trip is shaded. Road works and road conditions follow this hour too.'),
@@ -329,8 +420,8 @@ function today() {
 
 // ---------------------------------------------------------------- the page
 const SW = [
-  ['Version', 'v', [['today', 'Today'], ['rows', 'A: Rows'], ['graph', 'B: Graph']]],
-  ['Screen', 's', [['route', 'The planner'], ['card', 'Card, from the box'], ['map', 'Card, from Weather']]],
+  ['Version', 'v', [['today', 'Today'], ['rows', 'A: Rows'], ['graph', 'B: Graph'], ['together', 'C: Together']]],
+  ['Screen', 's', [['route', 'The planner'], ['card', 'Card, from the box'], ['map', 'Card, at On the map'], ['line', 'The weather line (Weather)']]],
   ['Size', 'size', [['half', 'Half'], ['full', 'Full']]],
   ['Trip', 'trip', [['day', 'A day trip'], ['night', 'With a night']]],
   ['Data', 'data', [['real', 'That evening’s'], ['rain', 'Rain (illustrative)']]],
@@ -347,7 +438,8 @@ function bars() {
 const CAP = {
   route: 'The planner at half: the numbers, the profile, each sport’s row, then the trip’s box. Its first line is When, “Leave now ▾ → there at …”; under it the day’s weather without the wind, which Paddle’s row says. A tap on the weather line opens the card.',
   card: 'The weather card in the sheet’s place, ‹ Route back to the planner as it was. ',
-  map: 'Weather (the map’s button, or T) opens the same card at On the map: the map’s 48 hours, which no longer move the departure. ',
+  map: 'The same card at On the map: the map’s 48 hours, which no longer move the departure. ',
+  line: 'The weather line: the weather card folded, in the sheet’s place (#233’s step 3). Drag along its strip: the reading and the hour follow, and the map stays in view. ⌃ opens the card, ✕ turns the weather off. Your trip is shaded in green, rain in blue, the temperature in orange, the dark in grey.',
 };
 function draw() {
   const p = new URLSearchParams(); for (const [k, v] of Object.entries(S)) p.set(k, v); history.replaceState(null, '', `?${p}`);
@@ -356,9 +448,10 @@ function draw() {
   if (S.v === 'today') { stage.append(today()); return; }
   const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}` });
   fr.append(h('img', { class: 'mk-map', src: `${PIC}bg-${phone() ? 'phone' : 'desk'}.jpg`, alt: '' }));
-  if (phone() && S.s !== 'route') fr.append(card());
+  if (S.s === 'line') { if (!phone()) fr.append(planner()); fr.append(wxLine(false)); }
+  else if (phone() && S.s !== 'route') fr.append(card());
   else { fr.append(planner()); if (S.s !== 'route') fr.append(card()); }
-  const cap = S.s === 'route' ? CAP.route : CAP[S.s] + (S.v === 'graph' ? 'B: each day is a line in words and a graph of 12 hours at the start, a column an hour: the wind (m/s, its arrow), the temperature, rain, the dark shaded, your trip in green.' : 'A: each day in words: its reading (the sky, the temperature, the wind with its gusts, the rain) and its sun, saying when the trip is in the dark.')
+  const cap = S.s === 'route' || S.s === 'line' ? CAP[S.s] : CAP[S.s] + (S.v === 'together' ? 'C: each day’s big numbers first, a colour for each kind (the temperature and how it feels, the wind and its gusts, the rain, the waves on a paddle); the dark on a line of its own, the sun’s times on the next; then the 12 hours as a graph in the same colours. ' : S.v === 'graph' ? 'B: each day is a line in words and a graph of 12 hours at the start, a column an hour: the wind (m/s, its arrow), the temperature, rain, the dark shaded, your trip in green.' : 'A: each day in words: its reading (the sky, the temperature, the wind with its gusts, the rain) and its sun, saying when the trip is in the dark.')
     + (phone() && S.size === 'half' && S.s !== 'route' ? ' At half, this is all a phone shows before a swipe.' : '');
   stage.append(h('div', {}, fr, h('p', { class: 'cap' }, cap)));
 }

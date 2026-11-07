@@ -2,7 +2,7 @@
 
 The design of step 6 of [the one order](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784): the trip's box over the list, and the weather card it opens, with Go's tab gone ([#431](https://github.com/TommiContursi/Polku/issues/431), [#794](https://github.com/TommiContursi/Polku/issues/794), [#759](https://github.com/TommiContursi/Polku/issues/759), [#766](https://github.com/TommiContursi/Polku/issues/766)). Part of [#869](https://github.com/TommiContursi/Polku/issues/869); milestone [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): research and the inventory are done; the first round is with the user, with a first mock-up to choose from.** The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri) to try on a phone (built from this file with `css/app.css` and `js/ui.js` inlined and the screenshots embedded). **Today** shows Go and the timeline from `main`; **A: Rows** and **B: Graph** are the two answers to Q1, at half and full, for a day trip and a trip with a night. No app code is written here.
+**Where it stands (2026-11-07): research and the inventory are done; the first round is with the user, with a first mock-up to choose from.** The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri) to try on a phone (built from this file with `css/app.css` and `js/ui.js` inlined and the screenshots embedded). **Today** shows Go and the timeline from `main`; **C: Together** is the card after the user's answer to Q1, with the weather line for the map's hours; **A: Rows** and **B: Graph**, the first two answers, stay to compare. Each at half and full, for a day trip and a trip with a night. No app code is written here.
 
 ## Already decided
 
@@ -121,6 +121,17 @@ Asked on 2026-11-07 in the session, nine questions with a recommendation each: r
 
 - **Q1, rows or a graph:** not decided from words. Asked to see it, keeping in mind that a phone shows far less at once than a desktop. Drawn as A and B in the mock-up, with Size: Half showing what a phone shows before a swipe.
 - **The card and the timeline are one thing:** the weather card replaces the floating timeline window; its 48 hours are the card's last part, On the map.
+
+**The answer to Q1 (2026-11-07), after seeing A and B:** neither alone. Rows and a graph together, since a graph is easier for some people and words for others; the big numbers of A are good. Also asked for:
+- the temperature as it feels as well as the thermometer's;
+- colour to make each kind of data stand out, rather than grey text one after another, the way weather sites lay out a reading;
+- sunset and sunrise on a line of their own;
+- the map's hours usable with almost the whole map in view while the hour moves, as #233's step 3 drew it: the weather line, the weather card folded in the sheet's place (chosen 2026-10-27, [its plan](issue-233-calmer-planner.md#the-weather-as-a-card-chosen-2026-10-27)).
+
+Drawn as **C: Together** in the mock-up (A and B stay on its bar):
+- **Each day:** its big numbers as tiles, each in its own colour: Temperature (orange, with "feels like" under it), Wind (teal: the strongest wind, its arrow, the gusts and where it's from), Rain (blue: millimetres on you, where and how hard), and Waves on a day with a paddle (the paddle's colour, "an estimate"). Two tiles a row on a phone, three where a day has three and there's room, one a row at 200 %. Then "In the dark the whole way" on a line of its own when it is, the sun's times with their icons on the next, and the day's 12 hours as a graph in the same colours: the wind and the gusts in figures, the temperature as a line, rain as bars with their mm/h, the dark shaded, your trip in green.
+- **The map's hours:** the weather line, two rows tall: play, the temperature, the hour with the wind, the gusts and rain under it, ⌃ to open the card and ✕ to turn the weather off; under them a 24 px strip with a 44 px target, dragged to set the hour (the reading follows), with your trip shaded, rain in blue, the temperature in orange and the dark in grey. In the card, On the map shows the same line; dragging it folds the card down to the line.
+- **Feels like** isn't fetched today. The mock-up works it out as the wind chill; the build would ask Open-Meteo for `apparent_temperature`, its ninth variable, still one call (more than ten count as more).
 
 ## Not drawn yet
 
