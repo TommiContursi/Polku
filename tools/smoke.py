@@ -2282,11 +2282,13 @@ SHORTCUT = """(async () => {
   const routed = async () => { for (let k = 0; k < 100; k++) { if (p.legs.length && p.legs.every((l) => l.status === 'ok') && p.analysis) return true; await wait(200); } return false; };
   const settle = async () => { await wait(900); return routed(); };
 """ + CHECK_ROWS + """
-  const toastSays = () => { const t = document.querySelector('#toast'); return t && !t.hidden ? t.textContent : ''; };
   const calls = (re) => window.routerCalls.filter((u) => re.test(u));
   p.setActive(true);
   p.setMode('auto');
-  // the server won't take Polku's profile: the leg keeps off, and a toast says so
+  // the server won't take Polku's profile: the leg keeps off, and a toast says so (every note the page shows meanwhile: another
+  // service's may come after it, #264)
+  const shown = [], note = document.querySelector('#toast'), notes = new MutationObserver(() => { if (!note.hidden && shown.at(-1) !== note.textContent) shown.push(note.textContent); });
+  notes.observe(note, { childList: true, characterData: true, subtree: true, attributes: true });
   window.failUpload = true;
   const A0 = [24.930, 60.185], B0 = [24.934, 60.185];
   stub(A0, B0);
@@ -2294,7 +2296,8 @@ SHORTCUT = """(async () => {
   p.addPoint(A0.slice());
   p.addPoint(B0.slice());
   await settle();
-  if (!/Short cuts through ways marked private aren.t available/.test(toastSays())) errs.push(`no note when the profile can't be uploaded (toast: ${toastSays() || 'none'})`);
+  notes.disconnect();
+  if (!shown.some((t) => /Short cuts through ways marked private aren.t available/.test(t))) errs.push(`no note when the profile can't be uploaded (notes: ${shown.join(' / ') || 'none'})`);
   if (calls(/profile=hiking-mountain/).length < 1 || calls(/allow_private/).some((u) => /profile=hiking-mountain/.test(u))) errs.push('the fallback: not the stock profile without allow_private');
   window.failUpload = false;
   p.setStyle({ p: 'balanced', v: {}, wet: 'auto' });
