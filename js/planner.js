@@ -5664,16 +5664,15 @@ export class Planner {
       const rows = h; // (the planner's numbers and their rows, for the timeline over it)
       // One peek for the planner and every card (#889): as tall as the profile size was, or 40 % of the screen where that's
       // less, whatever it holds, so a swipe always lands in the same place. The planner's has its profile under the numbers
-      // (#742), filling what its rows leave, 40 px at least; the start's views keep their own
-      const P = Math.round(Math.min(PEEK, dvh() * 0.4));
-      const prof = !c && this.foldable() && !this.peekOnly();
+      // (#742), filling what its rows leave, where 40 px of it fits (not at 200 %: it waits for half); the start's views keep
+      // their own
+      const P = Math.round(Math.min(PEEK, dvh() * 0.4)), top = h - under(), pad = parseFloat(getComputedStyle(this.els.profZone).paddingBottom);
+      const prof = !c && this.foldable() && !this.peekOnly() && P - top - pad >= 40;
       this.panel.classList.toggle('prof-peek', prof);
       if (prof) {
-        const z = this.els.profZone, top = h - under(), pad = parseFloat(getComputedStyle(z).paddingBottom);
-        this.panel.style.setProperty('--prof-peek', `${Math.max(40, P - top - pad)}px`);
-        h = Math.max(P, top + pad + 40);
-        this.peekBare = Math.max(P, top - docked + pad + 40);
-      }
+        this.panel.style.setProperty('--prof-peek', `${P - top - pad}px`);
+        h = this.peekBare = P;
+      } else if (!c) this.panel.style.removeProperty('--prof-peek'); // (half's profile as it was, 64 px)
       // a card's peek is the same, with the top of what follows showing, faded (`cut`): never shorter than the card's name and
       // numbers, nor taller than 52 % of the window (#603, 200 %); a card that's shorter sits at its top with room under it
       if (c) {
