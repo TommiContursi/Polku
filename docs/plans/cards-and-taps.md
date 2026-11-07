@@ -2,7 +2,7 @@
 
 The design for [#690](https://github.com/TommiContursi/Polku/issues/690) (primary), [#876](https://github.com/TommiContursi/Polku/issues/876) (one rule for a tap, a click, a hold and a right click), [#760](https://github.com/TommiContursi/Polku/issues/760) (a spot's popup) and [#647](https://github.com/TommiContursi/Polku/issues/647) (on a desktop the card covers the way), looking at #107, #716, #845, #627, #796 and #859 too. Milestone: [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): two rounds decided, the mock-up drawn; the third round (the peek's height, the actions' look, the order of PRs) is with the user.** The mock-up is [mockups/cards-and-taps.html](mockups/cards-and-taps.html), also a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7) to try on a phone.
+**Where it stands (2026-11-07): three rounds decided; the mock-up's third version (New 3) draws them, and its open details are with the user.** Where "The design" below differs from round 3, round 3 wins until the design is rewritten from New 3. The mock-up is [mockups/cards-and-taps.html](mockups/cards-and-taps.html), also a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7) to try on a phone.
 
 It builds on what's decided and doesn't reopen it: cards one at a time with ‹ Back (#345, #574); the sheet's sizes (#603); nothing moves under the pointer (#594); backgrounds mean selection (#761); green means you can tap it, and the rule for controls (#869); a tap while drawing adds a waypoint (#345); short plain nouns; missing or late data never looks complete; don't redesign what works.
 
@@ -105,6 +105,22 @@ New research checked the apps #345's research ([issue-345-research.md](issue-345
 11. **On a desktop,** the card docked beside the planner, as tall as its content, folding to its head; dragging it (#647) decided after trying it.
 12. **Value at a glance** as drawn below; #855 and #757 as small PRs in this plan; #347, #854, #859, #160, #156 and #708 stay their own issues, with their place on the card drawn.
 13. **The words** Card, Spot, Hold and Readout go into CONTEXT.md (done in this PR).
+
+### Round 3 (2026-11-07, after trying the mock-up)
+
+14. **The first size ends after the actions** (A), and it must be plain that there's more below.
+15. **The buttons (B),** but **the rest of the actions stay on the card,** never hidden in ⋯ or anywhere else: more of them are important than ⋯ suggests (Not right? when the data is wrong, a waypoint's stop or night). A long card is fine. **The action row (A) fits some places too.**
+16. **A desktop's short ways** (A): the card beside the planner, each kind's main action at the pointer, drag, Delete on the waypoint under the pointer.
+17. **The order of the PRs** as listed (with what round 3 adds).
+18. **Pass by · Stop · Night on the waypoint's card,** in sight, as today's hold card has it.
+
+And from the same testing:
+- **A way's card keeps production's profile,** Colour by and facts, with its actions first; it was left without its profile in the first drawing.
+- **The warnings take a box beside the big numbers** (as the planner's warnings box is planned, #869): ⚠ 3 over "warnings", opening them; the list itself sits lower, after the profile.
+- **⋯ beside ✕ stays,** for the card's own settings, not its actions; the planner gets the same ⋯ with its settings, such as putting it down or to the left (#884).
+- **"Other ways" gets a name that says more:** Alternative routes is the first proposal.
+- **The profile's readout says the way's details** (its name, kind, surface, smoothness, difficulty), as production's readout on the route does.
+- **The weather is in sight on a card,** not behind a step.
 
 ## The design
 
