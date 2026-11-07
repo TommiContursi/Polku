@@ -5447,7 +5447,7 @@ export class Planner {
     if (!this.restingSheet) this.sheetSwipe?.stop(); // changed some other way while a swipe moved it
     instant ||= this.keyed;
     if (instant) this.panel.classList.add('instant');
-    const from = this.shownHeight();
+    const from = this.shownHeight(), scrolled = this.panel.scrollTop; // (before the new size clamps it)
     this.panel.dispatchEvent(new Event('sheetchange')); // (main.js: where what rides above it is, before anything moves)
     this.resting = rest;
     if (['folded', 'peek'].includes(st)) this.clearCategoryPreview();
@@ -5475,7 +5475,7 @@ export class Planner {
     if (st !== 'folded') requestAnimationFrame(() => this.chart.draw());
     // (folded, the toolbox is the mode, undo and redo; what comes back when it opens isn't new, so it doesn't fade in)
     if ((st === 'folded') !== (was === 'folded')) { this.toolsShown = null; this.renderTools(); }
-    this.scrollAll();
+    this.scrollAll(scrolled);
     // a card at its peek or line is at its top, its name and numbers in sight (a finger there moves the sheet, so it couldn't
     // scroll it back); as the planner's numbers do (scrollAll()), it fades in there, but not from the keyboard. A swipe has
     // already scrolled it back
@@ -5502,13 +5502,13 @@ export class Planner {
   // The whole sheet scrolls as one under its top row, which stays: on a phone at half and full and on the side panel (D of
   // the sheet's stops, #233), so a finger on the numbers scrolls it too; wider, at full where the header, the profile and the tabs take more
   // than half of it (#453), so the list can be reached; and a peek cut below the top bar
-  scrollAll() {
+  scrollAll(scrolled = this.panel.scrollTop) {
     const p = this.panel, st = p.dataset.state, on = this.layout() === 'side' ? st === 'open' && !this.peekOnly()
       : !this.cards.current && ((st === 'peek' && this.peekCut)
         || (innerWidth <= 720 && st === 'half')
         || (st === 'full' && (innerWidth <= 720 || this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2)));
     if (p.classList.contains('scroll-all') === on) return;
-    const was = p.scrollTop; // (before: a sheet that no longer scrolls reads 0)
+    const was = scrolled; // (read before: a sheet that no longer scrolls reads 0)
     p.classList.toggle('scroll-all', on);
     if (on) return;
     // (scrolled: the size it goes to hides the list at once, so the content can't scroll back with the sheet's move; the

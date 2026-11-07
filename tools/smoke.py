@@ -10044,16 +10044,18 @@ def fold_phone(chrome):
             fails.append(f"peek: ⌄ not at the sheet's top right, 44 px: {s['fold']} in {s['panel']}")
         if s['lineX'] or s['line']:
             fails.append('peek: ✕ or the folded line showing above the peek')
-        # (nothing under the key facts' line, a row with room of its own: ⌄'s row costs the map 8 px over the handle's, not 22;
-        # without it the numbers keep the header's 8 px)
-        if s['last'] and abs(s['panel']['b'] - s['last']['b']) > 1:
-            fails.append(f"peek: the sheet ends {s['panel']['b'] - s['last']['b']:.0f} px under its last row")
+        # (the peek ends at its profile's foot, the profile's own 6 px under it, #742; without the key facts' line the peek is as
+        # tall, its profile taller, #889)
+        foot = "(() => { const p = polku.planner; return [Math.round(p.panel.getBoundingClientRect().bottom - document.getElementById('profile-canvas').getBoundingClientRect().bottom), p.panel.offsetHeight]; })()"
+        gap, h0 = pg.js(foot)
+        if not 5 <= gap <= 7:  # (a px either way: the rows' sub-pixel heights)
+            fails.append(f"peek: the sheet ends {gap} px under its profile, not the profile's 6")
         pg.js("(() => { const s = document.createElement('style'); s.id = 'no-kf'; s.textContent = '.sheet-head-in > .kf { display: none !important; }'; document.head.append(s); })(); true")
         fold_settled(pg, fails, 'step 1a')
-        gap = pg.js("Math.round(polku.planner.panel.getBoundingClientRect().bottom - polku.planner.els.sum.closest('.sheet-row').getBoundingClientRect().bottom)")
+        gap, h1 = pg.js(foot)
         pg.js("document.getElementById('no-kf').remove(); true")
-        if not 7 <= gap <= 9:  # (a px either way: the rows' sub-pixel heights)
-            fails.append(f"peek without the key facts' line: {gap} px under the numbers, not the header's 8")
+        if not 5 <= gap <= 7 or abs(h1 - h0) > 1:
+            fails.append(f"peek without the key facts' line: {h1} px tall ({h0} with it), {gap} px under its profile, not the profile's 6")
         fold_settled(pg, fails, 'step 1b')
         # (the handle a button: Safari rings a div with tabindex after a tap, and it doesn't focus a button)
         if pg.js("polku.planner.els.handle.tagName") != 'BUTTON':
@@ -10983,22 +10985,22 @@ def stops_swipe(chrome):
         if st() != 'half':
             fails.append(f'let go 50 px above half at 0.9 px/ms: it came to {st()}, not half')
         # no marks while dragging (#889: the sizes are the same for the planner and every card, so a drag needs none): held still
-        # 300 px up from the peek, nothing over the map but the sheet, and let go there it comes to half, the nearest size
+        # 150 px up from the peek, nothing over the map but the sheet, and let go there it comes to half, the nearest size
         at('peek')
         x, y = handle()
         pg.touch('start', x, y)
-        for k in range(1, 13):
+        for k in range(1, 9):
             pg.touch('move', x, y - 25 * k)
             time.sleep(0.03)
         time.sleep(0.4)  # (still: no flick, so the nearest size)
-        pg.touch('move', x, y - 301)
+        pg.touch('move', x, y - 151)
         m = pg.js("[...document.querySelectorAll('.sheet-marks')].length")
         pg.touch('end')
         fold_settled(pg, fails, 'held and let go')
         if m:
-            fails.append(f'{m} marks over the map while dragging up 300 px from the peek')
+            fails.append(f'{m} marks over the map while dragging up 150 px from the peek')
         if st() != 'half':
-            fails.append(f'held 300 px up from the peek and let go: {st()}, not half')
+            fails.append(f'held 150 px up from the peek and let go: {st()}, not half')
         # the start's views: dragged up 200 px, the sheet goes less than half of it, and back to its peek
         pg.js("polku.planner.clear(); polku.planner.setActive(true, { edit: true }); true")
         fold_settled(pg, fails, 'the start')
@@ -11357,9 +11359,9 @@ def stops_card(chrome):
                 fails.append(f"{tag}: a short card swiped 150 px up: {info()['st']} at {info()['h']} px, not half ({h * 0.5:.0f})")
             pg.js("polku.planner.setSheetState('full', { remember: false }); true")
             fold_settled(pg, fails, f'{tag} the short card at full')
-            full, top = pg.js("(() => { const p = polku.planner; return [p.panel.offsetHeight, Math.round(p.cards.box.getBoundingClientRect().top - p.panel.getBoundingClientRect().top)]; })()")
-            if abs(full - (h - 76)) > 1 or top > 80:
-                fails.append(f"{tag}: a short card at full: {full} px, not the planner's full ({h - 76}), the card {top} px from the sheet's top")
+            full, top = pg.js("(() => { const p = polku.planner; return [p.panel.offsetHeight, Math.round(p.cards.box.getBoundingClientRect().top - p.els.head.getBoundingClientRect().top)]; })()")
+            if abs(full - (h - 76)) > 1 or top > 12:
+                fails.append(f"{tag}: a short card at full: {full} px, not the planner's full ({h - 76}), the card {top} px under the sheet's header's top")
             # with no route, a spot's card over the planner's start: its name and numbers in sight (#606: it opened under the screen's edge)
             # (a phone's tap shows the line at the spot first, #574: a tap on it opens the card)
             pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
@@ -14137,8 +14139,11 @@ RC_ROUTE = """(async (o) => {
   return p.analysisFits();
 })"""
 # where a fraction t of leg li's line is on the screen (and its [lng, lat]), the map zoomed in there (z16, the free
-# map's middle), so the tap is well clear of the points and the leg's handle, as a person zooms in to tap a line
+# map's middle), so the tap is well clear of the points and the leg's handle, as a person zooms in to tap a line, once a
+# note has gone
 RC_ON = """(async (li, t) => {
+  // (a note gone first, as a person waits for it: over the peek with the profile it sits on the map's middle, #889)
+  for (let k = 0; k < 100 && !document.getElementById('toast').hidden; k++) await new Promise((r) => setTimeout(r, 100));
   const p = polku.planner, m = polku.map, c = p.legs[li].result ? p.legs[li].result.coords : [p.points[li], p.points[li + 1]];
   const d = (a, b) => Math.hypot((b[0] - a[0]) * Math.cos((a[1] * Math.PI) / 180), b[1] - a[1]);
   let L = 0; for (let j = 1; j < c.length; j++) L += d(c[j - 1], c[j]);
@@ -14995,7 +15000,7 @@ def spot_card(chrome):
         # A, B, C: + Add to my route where it fits, the note naming the point it follows; one step of Undo
         route(pg, name, ROUTE)
         pg.js("polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 12 }); new Promise((r) => setTimeout(r, 800))")  # (all three spots on a 390 px map)
-        cam = "(() => { const v = polku.planner.viewPadding(0); polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 12, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }); })();  polku.planner.cards.close(); document.querySelector('#toast').classList.remove('show'); new Promise((r) => setTimeout(() => r(true), 900))"  # (the camera as the spots below assume it: an earlier card may have moved it)
+        cam = "(() => { const v = polku.planner.viewPadding(0); polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 12, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }); })();  polku.planner.cards.close(); document.querySelector('#toast').hidden = true; new Promise((r) => setTimeout(() => r(true), 900))"  # (the camera as the spots below assume it: an earlier card may have moved it)
         for what, lls, want in (('beside the middle of A–B', [[(A[0] + B[0]) / 2 - 0.0033, (A[1] + B[1]) / 2 + 0.0032], [(A[0] + B[0]) / 2 - 0.0028, (A[1] + B[1]) / 2 + 0.0036]], 1),
                                 ('past C', [[C[0] + 0.005, C[1] - 0.001], [C[0] + 0.005, C[1] + 0.001]], 3), ('behind A', [[A[0] - 0.005 + dx, A[1] + dy] for dx in (0, 0.001, -0.001) for dy in (-0.001, 0.001, -0.002, 0.002, 0)], 1)):
             pg.js(cam)
@@ -15024,7 +15029,7 @@ def spot_card(chrome):
         # a spot 20 m from the line: Add a waypoint here, on the line, no routing call
         mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]
         near = [mid[0] - 0.00012, mid[1] + 0.00016]  # (about 20 m from A–B)
-        pg.js(f"(() => {{ const v = polku.planner.viewPadding(0); polku.map.jumpTo({{ center: {json.dumps(near)}, zoom: 17, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }}); }})(); polku.planner.cards.close(); document.querySelector('#toast').classList.remove('show'); new Promise((r) => setTimeout(() => r(true), 900))")
+        pg.js(f"(() => {{ const v = polku.planner.viewPadding(0); polku.map.jumpTo({{ center: {json.dumps(near)}, zoom: 17, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }}); }})(); polku.planner.cards.close(); document.querySelector('#toast').hidden = true; new Promise((r) => setTimeout(() => r(true), 900))")
         s = pg.js(f'sc.at({json.dumps(near)}, {{ line: 0 }})')
         if not s:
             fails.append(f"{name}: the spot 20 m from the line is not on the free map: {pg.js('sc.why')}")
@@ -18962,7 +18967,7 @@ def sheet_card_peek(chrome):
                     st = pg.js(CA_STATE)
                     if not st or st['place'] != 'peek' or st['sheet'] != 'peek' or abs(st['h'] - plan) > 1:
                         fails.append(f"{name}: {kind}'s card at {st and st['place']}, the sheet {st and st['sheet']} at {st and st['h']} px, not the planner's peek ({plan} px)")
-                    elif st['actsBottom'] is not None:
+                    elif kind != 'a stretch':  # (a stretch's card has no actions in sight, #690: the peek is its name and numbers)
                         _ca_peek(st, f'{name} {kind}', fails)
                 continue
             pg.js("polku.planner.openPointCard(polku.planner.points[1])")
