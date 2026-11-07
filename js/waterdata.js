@@ -40,7 +40,10 @@ const late = new Set();
 let lateCount = 0; // late answers so far: water.js routes a leg again if one came while it was being routed
 export function onWaterData(fn) { late.add(fn); return () => late.delete(fn); }
 export const lateAnswers = () => lateCount;
-const lateArrived = () => { lateCount++; for (const fn of late) fn(); };
+// (also when a source that failed may be asked again: the planner routes the legs that went without it, which asks)
+const tell = () => { for (const fn of late) fn(); };
+const lateArrived = () => { lateCount++; tell(); };
+const AGAIN_MS = 120e3; // a source that failed is asked again after this (#129)
 
 // Rocks, reefs, shoals and wrecks in OSM (points; reefs and shoals also as
 // areas), one Overpass query per z11 tile (about 10 × 10 km), kept a week.
@@ -70,7 +73,7 @@ way["seamark:type"~"^(rock|obstruction)$"](${bb});
   };
   const p = hostedTile(OSM_DATA_MANIFEST, 'hazards', HZ, [x, y],
     () => cachedOverpass(`waterhaz/${HZ}/${id}`, q, slim, { race: true, oneRound: true, timeoutMs: 15000 }), { slim });
-  p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) hazTiles.delete(id); failedHaz.delete(id); }, 120e3); }); // ask again in a couple of minutes
+  p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) { hazTiles.delete(id); tell(); } failedHaz.delete(id); }, AGAIN_MS); }); // ask again in a couple of minutes
   hazTiles.set(id, p);
   return p;
 }
@@ -90,8 +93,8 @@ function hazTilesIn([w, s, e, n], max) {
   return list;
 }
 async function osmHazards(box) {
-  const tiles = hazTilesIn(box, 16); // a very long leg: skip rather than ask for half a province
-  if (!tiles) throw new Error('Water hazard area exceeds the OSM tile budget');
+  const tiles = hazTilesIn(box, 16); // a very long leg: skip rather than ask for half a province (null: skipped)
+  if (!tiles) return null;
   const all = Promise.all(tiles);
   try {
     const got = await waitFor('osm', all);
@@ -124,7 +127,8 @@ async function windAt(mid, at) {
 /**
  * What to draw into the router's grid for a leg's box. `want`: { fairways, hazards,
  * wind } (booleans) and `at` (epoch seconds, for the wind). Returns GeoJSON for
- * the grid plus the wind, and `missing`: sources that didn't answer.
+ * the grid plus the wind, `missing`: sources that didn't answer, and `skipped`:
+ * sources not asked, the box being too big for them (#490).
  */
 // Tests answer from recorded files: fn(box, want, at) → what waterInputs returns, or null to ask the services.
 let seeded = null;
@@ -135,10 +139,11 @@ export async function waterInputs(box, want, at) {
   if (fx) return fx;
   const [w, s, e, n] = box;
   const mid = [(w + e) / 2, (s + n) / 2];
-  const missing = [];
+  const missing = [], skipped = [];
+  const skip = (src) => (got) => { if (!got) skipped.push(src); return got; };
   const [ways, osm, wind] = await Promise.all([
-    want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return waitFor('vayla', p).catch(() => { missing.push('Väylävirasto'); p.then(lateArrived, () => {}); return null; }); })() : null,
-    want.hazards ? osmHazards(box).catch(() => { missing.push('OpenStreetMap'); return null; }) : null,
+    want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return waitFor('vayla', p).then(skip('Väylävirasto'), () => { missing.push('Väylävirasto'); p.then(lateArrived, () => setTimeout(tell, AGAIN_MS)); return null; }); })() : null,
+    want.hazards ? osmHazards(box).then(skip('OpenStreetMap'), () => { missing.push('OpenStreetMap'); return null; }) : null,
     want.wind ? waitFor('wind', windAt(mid, at)).catch(() => { missing.push('the wind forecast'); return null; }) : null,
   ]);
   const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -153,7 +158,7 @@ export async function waterInputs(box, want, at) {
       hazards.push({ type: 'Feature', properties: { kind: a.kind, src: 'osm' }, geometry: closed ? { type: 'Polygon', coordinates: [c] } : { type: 'LineString', coordinates: c } });
     }
   }
-  return { fairways, hazards: fc(hazards), wind, missing };
+  return { fairways, hazards: fc(hazards), wind, missing, skipped };
 }
 
 // Waves a craft is comfortable in (significant height, m), from the wind over open water

@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-07
 
+### Paddling: what wasn't checked on the water ([#490](https://github.com/TommiContursi/Polku/issues/490), [#129](https://github.com/TommiContursi/Polku/issues/129), [#80](https://github.com/TommiContursi/Polku/issues/80), [#400](https://github.com/TommiContursi/Polku/issues/400))
+
+- A leg over water too long for Polku to ask about its rocks and shoals, or its fairways and marks, now says so in Check's **Not checked** and in **What Polku looked at**: "Rocks and shoals: not checked, the leg is too long". Add a point to split the leg, and each part is checked. Before, a long leg was routed without them while Check said they had been looked at. **Polku doesn't know depths: keep a lookout on any leg.**
+- When OpenStreetMap's rocks or Väylävirasto's fairways fail to load, Polku asks again two minutes later, and routes the legs that went without them again once they answer. Before, only a slow answer did that, not one that failed.
+- **Undo** and **Redo** route again a leg over water that went without the rocks or the fairways, so it doesn't come back with a warning the data has since answered.
+- A leg over water no longer stays "routing…" for good when a tile of the water map fails to load at the wrong moment.
+
 ### A card's actions first ([#690](https://github.com/TommiContursi/Polku/issues/690))
 
 - A card now shows what you can do right under its numbers, in sight as it opens on a phone, with the top of what comes next showing under them.
