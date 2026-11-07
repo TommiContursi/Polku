@@ -7,6 +7,7 @@ Polku's planner from a blank map to the trip, as a whole: research on other plan
 - **Decided (2026-11-06): B, the route and a card for each detail,** with every choice settled in three rounds of questions with the user ([#869's comment](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6694631770), and "Decided" at this plan's end). The mock-up's **B, as decided** draws it; the first round's A, B and C stay on its bar to compare.
 - **Asked for on 2026-11-06,** from testing: the planner does a great deal, and its controls follow no one rule. Parts 22 of #761 (the trip's box and the weather card) is built in it.
 - **Milestone:** Calmer planner. No app code is written here; the build is the PRs below, one at a time.
+- **One order with the cards' plan** (the user's choice, 2026-11-07, [#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784)): the two plans take turns, one PR at a time, and similar work from both goes into one PR. After #889 (the sizes and the profile in the peek) come the cards' PR 3, then the list's top (Show all on the right with #761's 6b), the ▾ pill, the leg's card, and then the trip's box with the weather card.
 
 ## How it's built
 
