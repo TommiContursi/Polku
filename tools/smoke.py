@@ -15610,7 +15610,8 @@ def share_spot(chrome):
     name = '1440x900'
     pg = chrome.page(1440, 900, False)
     wait_card = lambda: pg.js("new Promise((ok) => { const t0 = Date.now(), f = () => (polku.planner.cards.current || Date.now() - t0 > 20000 ? ok(polku.planner.cards.current ? polku.planner.cards.current.kind : null) : setTimeout(f, 100)); f(); })")
-    btn = lambda label: pg.js(f"(() => {{ const b = [...document.querySelectorAll('.pl-way.card .btn')].find((x) => x.textContent.trim() === {json.dumps(label)}); if (b) b.click(); return !!b; }})()")
+    # (a spot's Share and Weather here are in its action row, #690)
+    btn = lambda label: pg.js(f"(() => {{ const b = [...document.querySelectorAll('.pl-way.card .btn, .pl-way.card .card-acts button')].find((x) => x.textContent.trim() === {json.dumps(label)}); if (b) b.click(); return !!b; }})()")
     try:
         pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.5025/23.76')
         pg.js("""(() => { window.reqs = []; const real = window.fetch.bind(window); window.fetch = (i, o) => { window.reqs.push(String(i && i.url ? i.url : i)); return real(i, o); };
@@ -15638,7 +15639,7 @@ def share_spot(chrome):
         link = pg.js('copied[0]')
         # ---- Weather here: the timeline open, held at the spot, released when it closes; no request carries the spot
         pg.js("window.reqs.length = 0; true")
-        btn('Weather here ›')
+        btn('Weather here')
         time.sleep(2.0)
         r = pg.js("({ open: polku.weather.open, held: polku.weather.heldLL, card: !!polku.planner.cards.current, pin: !!document.querySelector('.maplibregl-marker.card-pin'), bar: !!document.querySelector('#wx-bar') && !document.querySelector('#wx-bar').hidden })")
         if not r['open'] or not r['held'] or abs(r['held'][0] - 23.76123) > 1e-6 or abs(r['held'][1] - 61.50251) > 1e-6 or r['card'] or not r['pin']:
