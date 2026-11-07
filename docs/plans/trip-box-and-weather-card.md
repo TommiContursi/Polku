@@ -189,6 +189,10 @@ Drawn as **C: Together** in the mock-up (A and B stay on its bar):
 
 The mock-up's own pieces aren't production's: the When pill's look is planner-rethought's drawing of step 4's pill, the toolbar is drawn simply, and the profile is a shape.
 
+### The design critique (2026-11-07)
+
+A fresh subagent (Sonnet) looked at six screenshots of D beside yr.no's app, and nothing else. Fixed in the mock-up: the wind in purple, as yr draws it, so green means only the trip; the strip with a round handle at the hour and ticks at midnight; "Feels" in plain ink; the hours outside the trip muted without fading; the legend and the graph's labels at 11–12.5 px in the text's ink; the moon once (no sky mark in the card's head); the box's weather line a 44 px row; the layer pill's word kept down to 340 px; "not in Polku yet" for the water's temperature; no break in "24 cm". **Left for the build:** the graph split into a temperature and rain panel with an axis and the wind as its own band (as yr does), a day heading that stays over each day's graph on a trip of days, and what shows at half (fewer facts, a small graph above the table). Dates stay as production writes them ("Sun 08/11"), since the app is in English.
+
 ## How step 6 is built
 
 Two PRs, each tried on a phone before the next; both in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16), referring to #869 and fixing what they finish (#431, #794, #759, #766).
@@ -217,7 +221,6 @@ Two PRs, each tried on a phone before the next; both in [Calmer planner](https:/
 - **Best time to leave and Arrive by** (step 9): the room under When in the card (the mock-up's dashed box) and the When menu's two items; the strip of departures is Best time to leave's, the map's hours stay the line's.
 - **The chance of rain** (one more variable), **MET Norway's ranges and the chance of thunder** (a second source): issues only if the user wants them.
 - **Water temperature** (#862), **observations, cameras, warnings, the next 90 minutes, the map's legend** (#903), **clouds and thunder on the map** (#182).
-- **A design critique by a fresh subagent** of the mock-up's screenshots wasn't run in this round; it's worth doing on the built card.
 
 ## Not drawn, or not known
 

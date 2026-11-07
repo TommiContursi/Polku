@@ -83,7 +83,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .p22-box { margin: 10px 0 2px; display: grid; gap: 6px; }
 .p22-box .day { width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; }
 .rt-dayline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 700; }
-.rt-dayweather { display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.rt-dayweather { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .rt-dayweather > span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .rt-dayweather b { color: var(--text); font-weight: 600; }
 .rt-dayweather .ic { display: inline-block; margin-right: 4px; vertical-align: -2px; }
@@ -128,7 +128,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 /* the graph (B): the hours around the trip, the trip shaded, the dark behind */
 .wc-card, .wx-line { --wc-dark: color-mix(in srgb, var(--text) 9%, transparent); }
 .wc-graph { display: block; width: 100%; height: auto; overflow: visible; }
-.wc-graph text { font: 600 10px/1 system-ui, sans-serif; fill: var(--muted); }
+.wc-graph text { font: 600 11px/1 system-ui, sans-serif; fill: var(--text); }
 .wc-graph text.t { fill: var(--text); font-size: 11px; }
 /* the map's 48 hours (today's timeline strip, now the card's last part) */
 .wc-map { display: flex; flex-direction: column; gap: 6px; }
@@ -141,9 +141,9 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .rows.wc-rows { grid-template-columns: minmax(0, 1fr); }
 
 /* ---- C, together (2026-11-07): the big numbers and the graph, a colour for each kind of data, in both themes */
-.wc-card, .wx-line { --wc-temp: #c2410c; --wc-feel: #9a3412; --wc-rain: #1d4ed8; --wc-wind: #0f766e; --wc-wave: var(--sport-paddle); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.wc-card, .wx-line) { --wc-temp: #fb923c; --wc-feel: #fdba74; --wc-rain: #60a5fa; --wc-wind: #2dd4bf; } }
-:root[data-theme="dark"] :is(.wc-card, .wx-line) { --wc-temp: #fb923c; --wc-feel: #fdba74; --wc-rain: #60a5fa; --wc-wind: #2dd4bf; }
+.wc-card, .wx-line { --wc-temp: #c2410c; --wc-feel: #9a3412; --wc-rain: #1d4ed8; --wc-wind: #6d28d9; --wc-wave: var(--sport-paddle); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.wc-card, .wx-line) { --wc-temp: #fb923c; --wc-feel: #fdba74; --wc-rain: #60a5fa; --wc-wind: #c4b5fd; } }
+:root[data-theme="dark"] :is(.wc-card, .wx-line) { --wc-temp: #fb923c; --wc-feel: #fdba74; --wc-rain: #60a5fa; --wc-wind: #c4b5fd; }
 .wc-body { container: card / inline-size; }
 .wc-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 @container card (min-width: 330px) { .wc-tiles.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -183,12 +183,12 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wd-tbl th { padding: 0 4px 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-align: right; white-space: nowrap; }
 .wd-tbl td { height: 38px; padding: 0 4px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
 .wd-tbl :is(th, td):first-child { text-align: left; } .wd-tbl :is(th, td):nth-child(2) { text-align: center; }
-.wd-tbl tr.off td { color: var(--muted); } .wd-tbl tr.off td :is(.wd-warm, .wd-cold, .wd-rain, .wd-wind) { opacity: .7; }
+.wd-tbl tr.off td { color: var(--muted); }
 .wd-tbl tr.on td:first-child b { display: inline-flex; align-items: center; gap: 4px; }
 .wd-tbl tr.on td:first-child b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .wd-tbl .g { color: var(--muted); font-weight: 400; }
 .wd-tbl svg.arw { vertical-align: -2px; margin-left: 2px; color: var(--wc-wind); }
-.wd-key { font-size: 12px; color: var(--muted); }
+.wd-key { font-size: 12.5px; color: var(--text); }
 .wd-seg { align-self: flex-start; }
 .wd-shell { flex: none; padding: 0 14px; margin: 0; }
 .wd-handle { position: absolute; left: 50%; top: 4px; margin-left: -36px; }
@@ -218,13 +218,15 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wl-read small { display: block; color: var(--text); font-size: 13px; }
 .wl-time { display: block; font-style: normal; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
 .wl-scrub { padding: 10px 6px 10px; cursor: ew-resize; touch-action: pan-y; } /* (the strip 24 px, its target 44 px) */
-.wl-days { position: relative; height: 14px; margin: -8px 6px 0; font-size: 11.5px; color: var(--muted); }
+.wl-days { position: relative; height: 15px; margin: -8px 6px 0; font-size: 12px; color: var(--text); overflow: hidden; }
 .wl-days > span { position: absolute; top: 0; }
 .rt-pill.wl-layer { min-height: 36px; padding: 2px 8px; gap: 4px; font-size: 13px; flex: none; }
 .frame.phone .rt-pill.wl-layer { min-height: 36px; }
-@container (max-width: 420px) { .rt-pill.wl-layer > span:nth-child(2) { display: none; } }
+@container (max-width: 340px) { .rt-pill.wl-layer > span:nth-child(2) { display: none; } }
 .wl-days > span { transform: translateX(-50%); }
 .wx-line.wl-in { position: static; padding: 0; box-shadow: none; background: none; }
+.wl-scrub { position: relative; }
+.wl-knob { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--surface-solid); border: 2px solid var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); pointer-events: none; }
 .wl-scrub svg { display: block; width: 100%; height: 24px; border-radius: 6px; overflow: visible; }
 @container (max-width: 240px) { .wl-read small { display: none; } }
 </style>
@@ -393,9 +395,9 @@ function dayD(d, R) {
     h('span', { html: `${icon('temp', 16)}Feels like <b class="${tCls(fMin)}">${deg(fMin)}</b>` }),
     h('span', { html: `${icon(snowMm ? 'snow' : 'drop', 16)}<b class="wd-rain">${w.wet ? `${Math.max(1, Math.round(w.mm))} mm` : '0 mm'}</b>${w.wet ? `&nbsp;· up to ${w.peak.toFixed(1)} mm/h${snowMm ? ', as snow' : ''}` : '&nbsp;· dry'}` }),
     h('span', { html: `${icon('wind', 16)}<b class="wd-wind">${w.w1} (${w.g}) m/s</b>${arrow(w.dir)} from ${compass(w.dir)}` }),
-    winter ? h('span', { html: `${icon('flake', 16)}Snow on the ground <b>${SNOW_CM} cm</b>` }) : null,
+    winter ? h('span', { html: `${icon('flake', 16)}Snow on the ground <b>${SNOW_CM}&nbsp;cm</b>` }) : null,
     paddles ? h('span', { html: `${icon('paddle', 16)}Waves about <b style="color: var(--sport-paddle)">${R.wave[0]}</b> <span class="unk">an estimate</span>` }) : null,
-    paddles ? h('span', { html: `${icon('water', 16)}Water <b>${winter ? '1' : '9'} °C</b> <span class="unk">needs a new source</span>` }) : null);
+    paddles ? h('span', { html: `${icon('water', 16)}Water <b>${winter ? '1' : '9'} °C</b> <span class="unk">· not in Polku yet</span>` }) : null);
   const read = h('div', { class: 'wd-read' }, h('span', { class: 'wd-now' }, h('span', { class: `wd-sky ${sky(x0, i0)}`, html: icon(sky(x0, i0), 34) }),
     h('b', { class: tCls(tMax) }, Math.round(tMin) === Math.round(tMax) ? deg(tMin) : `${deg(tMin).replace('°', '')}…${deg(tMax)}`)), facts);
   const sun = h('div', { class: 'wd-sunline', html: d.sun.split(' · ').map((x) => `<span>${icon(/^sunrise/i.test(x) ? 'sunrise' : /^sunset/i.test(x) ? 'sunset' : 'moon', 15)}${x[0].toUpperCase()}${x.slice(1)}</span>`).join('') });
@@ -404,7 +406,7 @@ function dayD(d, R) {
   for (let i = a; i <= b; i++) { const x = wx(i), on = i >= i0 && i <= Math.floor(d.i1);
     rows.push(h('tr', { class: on ? 'on' : 'off' }, h('td', { html: on ? `<b>${String(hr(i)).padStart(2, '0')}</b>` : String(hr(i)).padStart(2, '0') }),
       h('td', { html: `<span class="wd-sky ${sky(x, i)}" style="display:inline-grid">${icon(sky(x, i), 20)}</span>` }),
-      h('td', { class: tCls(x[3]), html: `<b>${deg(x[3])}</b>` }), h('td', { class: 'feel', html: `<span class="${tCls(feel(x[3], x[0]))}">${deg(feel(x[3], x[0]))}</span>` }),
+      h('td', { class: tCls(x[3]), html: `<b>${deg(x[3])}</b>` }), h('td', { class: 'feel', html: deg(feel(x[3], x[0])) }),
       h('td', { html: x[4] > 0 ? `<span class="wd-rain">${x[4].toFixed(1)}</span>` : '<span class="g">–</span>' }),
       h('td', { html: `<span class="wd-wind">${Math.round(x[0])}</span> <span class="g">(${Math.round(x[1])})</span>${arrow(x[2])}` }))); }
   const tbl = h('table', { class: 'wd-tbl' }, h('thead', {}, h('tr', {}, ...['Time', '', 'Temp', 'Feels', 'mm', 'Wind (gust) m/s'].map((t, k) => h('th', { class: k === 3 ? 'feel' : null, scope: 'col' }, t)))), h('tbody', {}, ...rows));
@@ -444,6 +446,7 @@ function lineStrip() {
   for (const d of T().days) s += `<rect x="${(d.i0 - 1) * cw}" y="0" width="${Math.max(3, (d.i1 - d.i0) * cw)}" height="${H}" fill="var(--accent)" opacity=".35"/>`;
   for (let k = 0; k < 48; k++) { const r = wx(k + 1)[4]; if (r > 0) s += `<rect x="${k * cw}" y="${H - Math.min(H, r * 10)}" width="${cw}" height="${Math.min(H, r * 10)}" fill="var(--wc-rain)" opacity=".8"/>`; }
   s += `<path d="${ts.map((t, k) => `${k ? 'L' : 'M'}${(k * cw).toFixed(1)},${(3 + (1 - (t - lo) / (hi - lo)) * (H - 6)).toFixed(1)}`).join('')}" fill="none" stroke="var(--wc-temp)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
+  for (const k of [4, 28]) s += `<rect x="${k * cw}" y="0" width="1" height="${H}" fill="var(--muted)"/>`;
   s += `<rect x="${(S.hr - 1) * cw - 1}" y="-3" width="3" height="${H + 6}" rx="1.5" fill="var(--text)"/></svg>`;
   return s;
 }
@@ -461,6 +464,7 @@ function wxLine(inCard) {
     const move = (m) => set(at(m)), up = () => { scrub.removeEventListener('pointermove', move); scrub.removeEventListener('pointerup', up); };
     scrub.addEventListener('pointermove', move); scrub.addEventListener('pointerup', up); });
   scrub.addEventListener('keydown', (e) => { const k = { ArrowRight: 1, ArrowLeft: -1, PageUp: 6, PageDown: -6 }[e.key]; if (k) { e.preventDefault(); if (inCard) { S.s = 'line'; S.hr = Math.max(1, Math.min(48, S.hr + k)); draw(); } else set(Math.max(1, Math.min(48, S.hr + k))); } });
+  scrub.append(h('span', { class: 'wl-knob', 'aria-hidden': 'true', style: `left: calc(6px + (100% - 12px) * ${(S.hr - 1) / 47})` }));
   el.append(scrub, h('div', { class: 'wl-days', 'aria-hidden': 'true' }, ...[[16, 'Sun'], [40, 'Mon']].map(([k, t]) => h('span', { style: `left: calc(6px + (100% - 12px) * ${k / 47})` }, t))));
   return el;
 }
@@ -473,7 +477,7 @@ function card() {
   if (S.v === 'site') el.append(phone() ? h('button', { type: 'button', class: 'sheet-handle wd-handle', 'aria-label': 'Card size' }) : null,
     h('div', { class: 'pl-way card wd-shell' }, h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: go('route'), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
       h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) })),
-      h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, 'Weather on the way')), h('span', { class: 'card-mark', 'aria-hidden': 'true', html: icon(sky(wx(Math.floor(R.days[0].i0)), Math.floor(R.days[0].i0)), 22) }))));
+      h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, 'Weather on the way')))));
   else el.append(h('div', { class: 'wc-top' }, phone() ? h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Card size' }) : null,
     h('button', { type: 'button', class: 'btn small quiet wc-back', onclick: go('route'), html: `${icon('chevronLeft', 16)}Route` }),
     h('h3', {}, atMap && S.size === 'half' ? 'Weather' : 'Weather on the way'), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) })));
