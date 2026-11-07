@@ -188,11 +188,20 @@ const frag = (...k) => { const f = document.createDocumentFragment(); f.append(.
 const wayMark = () => h('span', { html: `<svg width="34" height="30" viewBox="0 0 34 30" aria-hidden="true"><path d="M2 23C13 23 19 7 32 7" fill="none" style="stroke:var(--route)" stroke-width="4.5" stroke-linecap="round"/><circle cx="16.5" cy="15" r="5.5" style="fill:var(--accent-bg);stroke:#fff" stroke-width="2.6"/></svg>` });
 const wpMark = (i) => h('span', { class: `wp ${i === 0 ? 'wp-start' : i === R.names.length - 1 ? 'wp-end' : 'wp-via'}` }, i === 0 || i === R.names.length - 1 ? '' : String(i));
 function head(m, title, line, extra = []) {
-  const settings = R3() ? h('button', { type: 'button', class: 'tool', 'aria-haspopup': 'menu', 'aria-label': 'This card’s settings', html: icon('more', 22),
-    onclick: (e) => popMenu(e.currentTarget, [{ group: 'Colour by', items: Object.entries(COLOUR).map(([k, [, label]]) => ({ label, radio: true, checked: S.colour === k, fn: () => { S.colour = k; draw(); } })) },
-      { label: 'Colours on the map', checked: true, fn: () => toast('The pick in plain colour on the map') }, { label: S.hidden ? 'Show the route' : 'Hide the route', fn: () => { S.hidden = !S.hidden; draw(); } },
-      desk() ? { label: 'Card at the spot', desc: 'Instead of beside the planner (#647)', fn: () => toast('The card at the spot, as today') } : null].filter(Boolean), { label: 'This card’s settings' }) }) : null;
-  if (settings && desk()) tooltip(settings, { name: 'This card’s settings', text: 'Colour by, colours on the map, hide the route' });
+  // round 4: the card's settings in the app's menu, as the route's list's settings are built (listMenu() in js/planner.js): its
+  // name and ✕ on a row of their own, groups with ticks and switches, and a tap outside closes it alone
+  const settings = R3() ? h('button', { type: 'button', class: 'tool', 'aria-haspopup': 'menu', 'aria-label': 'Card settings', html: icon('more', 22), onclick: (e) => {
+    const anchor = e.currentTarget, sw = (label, on, fn) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: on, onchange: fn }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    const x = h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close Card settings', html: icon('close', 20), onclick: () => { menu.close(); anchor.focus(); } });
+    const menu = popMenu(anchor, [
+      { node: h('div', { class: 'way-bar' }, h('b', {}, 'Card settings'), x) },
+      { group: 'Colour by', items: Object.entries(COLOUR).map(([k, [, label]]) => ({ icon: { grade: 'mountain', surface: 'road', way: 'route' }[k], label, radio: true, checked: S.colour === k, fn: () => { S.colour = k; draw(); } })) },
+      { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, sw('Colours on the map', true, () => {}), sw('Your route', !S.hidden, () => { S.hidden = !S.hidden; draw(); })) }] },
+      desk() ? { group: 'The card', items: [['panelLeft', 'Beside the planner', true], ['pin', 'At the spot', false]].map(([ic, label, on]) => ({ icon: ic, label, radio: true, checked: on, fn: () => toast(on ? 'Beside the planner' : 'At the spot, as today (#647)') })) } : null,
+      { note: 'Kept for every card, on this device.' },
+    ].filter(Boolean), { label: 'Card settings', modal: true });
+  } }) : null;
+  if (settings && desk()) tooltip(settings, { name: 'Card settings', text: 'Colour by, colours on the map, your route' });
   const more = settings || (S.acts === 'buttons' ? h('button', { type: 'button', class: 'tool', 'aria-haspopup': 'menu', 'aria-label': 'More actions', html: icon('more', 22),
     onclick: (e) => popMenu(e.currentTarget, REST.map((a) => ({ icon: a.ic, label: a.label, desc: a.line, cls: a.danger ? 'danger' : '', fn: a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) })), { label: 'More actions' }) }) : null);
   if (more && !settings && desk()) tooltip(more, { name: 'More actions' });

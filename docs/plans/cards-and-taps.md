@@ -2,7 +2,7 @@
 
 The design for [#690](https://github.com/TommiContursi/Polku/issues/690) (primary), [#876](https://github.com/TommiContursi/Polku/issues/876) (one rule for a tap, a click, a hold and a right click), [#760](https://github.com/TommiContursi/Polku/issues/760) (a spot's popup) and [#647](https://github.com/TommiContursi/Polku/issues/647) (on a desktop the card covers the way), looking at #107, #716, #845, #627, #796 and #859 too. Milestone: [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): three rounds decided; the mock-up's New 3 draws them; four small details (round 4) are with the user.** Where "The design" below differs from round 3, round 3 wins until the design is rewritten from New 3. The mock-up is [mockups/cards-and-taps.html](mockups/cards-and-taps.html), also a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7) to try on a phone.
+**Where it stands (2026-11-07): four rounds decided, and the mock-up's New 3 draws them; the plan is ready to build from, PR 1 first.**  The mock-up is [mockups/cards-and-taps.html](mockups/cards-and-taps.html), also a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7) to try on a phone.
 
 It builds on what's decided and doesn't reopen it: cards one at a time with ‹ Back (#345, #574); the sheet's sizes (#603); nothing moves under the pointer (#594); backgrounds mean selection (#761); green means you can tap it, and the rule for controls (#869); a tap while drawing adds a waypoint (#345); short plain nouns; missing or late data never looks complete; don't redesign what works.
 
@@ -122,6 +122,13 @@ And from the same testing:
 - **The profile's readout says the way's details** (its name, kind, surface, smoothness, difficulty), as production's readout on the route does.
 - **The weather is in sight on a card,** not behind a step.
 
+### Round 4 (2026-11-07)
+
+19. **Card settings (⋯):** Colour by, colours on the map, your route, and on a desktop where the card sits: a start that can grow, in the style of the route's list's settings menu.
+20. **The action row** for places, spots and ways; buttons for a leg, a waypoint and a warning.
+21. **Other ways becomes Alternative routes,** everywhere at once.
+22. **The eye and Your route in Card settings, both.**
+
 ## The design
 
 ### The gesture rule (#876)
@@ -141,21 +148,33 @@ What goes: the tap's facts-only cards (`actions: false`, `spot.hold`), and the p
 
 ### The card, kind by kind
 
-Every card: its head (mark, name, one line, ⋯, ✕), its numbers, its actions, then what you inspect with. Green is the one main action and the values you pick (▾); everything you can tap has a visible label or ▾ or ›.
+Every card, top to bottom (New 3):
+1. **Its head:** its mark, its name, one line (for the route's things, the weather then), ⋯ (Card settings) and ✕.
+2. **Its numbers,** up to three, and where there are any, the **warnings box** beside them (⚠ 3 over "warnings", as the planner's box will be, #869), opening the list lower in the card.
+3. **Its actions in sight:** for the route's own things (a leg, a waypoint, a warning) the main one green and full width, then two buttons; for places, spots and ways an **action row** of four (the main one green, each with its word).
+4. **The first size ends there,** with the top of what follows showing and fading.
+5. **What you inspect with:** for a leg, ‹ Leg 1/4 · Stretch · Route › and its profile; over every profile production's own readout of the spot (the way's name and kind, surface, smoothness, difficulty, and the weather then), Colour by and its words with lengths.
+6. **What it knows:** facts in groups, its warnings, the way under it.
+7. **More for this …:** the rest of its actions, as rows with their lines. Nothing is hidden in ⋯.
+8. **Its foot:** where the facts come from, Add what's missing › (#855), Not right?.
 
-| Card | Its line | Numbers | Main | Then | Behind ⋯ | To inspect |
-|---|---|---|---|---|---|---|
-| **A leg** (a tap on the line) | MTB ▾ · Follow paths ▾, and the eye (hide the route, #756) | distance, time, climb | Add a waypoint here | Avoid this spot · Other ways | Stop here, Remove this leg (#627), Route style, The whole route | its warnings; ‹ Leg 1/4 · Stretch · Route ›; its profile, scrubbed, with the spot in words over it ("316 m · 10:57 · 8 m · −1 % · minor road, sett"); Colour by and its words with lengths; Under it: the way ›; Part of a LIPAS route › |
-| **A waypoint** | the weather then; at a changeover, its sports and minutes | there at, from the start, height | none | Move · Rename · Remove (red) | Stop or night, Sport from here, Start here, End here, Reverse | its two legs' profile, the waypoint marked; Here: the way ›; Places to sleep nearby ›, Water nearby › (asked when tapped); Add a note › (#854) |
-| **A way** | how you get along it | long, up, down | Add to my route (none: Start a route here) | Avoid this spot · Share | Start here, End here, Round trip from here, Weather here, Copy, Look around here (#757) | #574's card as it is: profile, Colour by, the facts in groups; Not mapped: … Add what's missing › (#855) |
-| **A place** | its kind, town, where it's from | off your route, height, opening hours (or "not mapped") | Add to my route | Avoid this spot · Share | Start here, End here, Round trip, Weather here, Copy, Save this place (#156) | its facts (LIPAS's, and OpenStreetMap's asked when it opens); Add what's missing ›; LIPAS, Website, Look around here ›; Not right? |
-| **A warning** | Warning or Good to know | from the start, how long | its own (Avoid it, Retry), or none | Got it · Its leg | Hide in Check, Not right? | where it comes from, its note; ‹ 1 of 7 › |
-| **A spot** | its coordinates | height here | Add to my route | Avoid this spot · Share | Start here, End here, Paddle from here (on water), Weather here, Copy | what's there (the water's depth from Traficom, shown, never routed on) |
-| **A thing** (road works, a sea mark) | its kind | its dates or numbers | none | Share · Weather here | its source's page | its facts, where they come from |
+**Card settings (⋯),** built as the route's list's settings are (`listMenu()`: its name and ✕ on a row of their own, a tap outside closes it alone): Colour by (a tick), Show (Colours on the map, Your route), and on a desktop where the card sits (Beside the planner, At the spot); kept for every card on this device. A start that can grow; the planner gets the same ⋯ (#884).
 
-**The first size** (a phone's peek) ends after the actions: 290 px of 844 for a leg at 390 × 844, against today's 178 px that held no action. The alternative draws the profile into it too (about 420 px). At 200 % the peek is cut at 62 % of the screen and scrolls to its actions; the head's ✕ moves to its own row and the buttons go one to a row, as production's narrow cards do.
+Green is the one main action and the values you pick (▾); everything you can tap has a visible label, ▾ or ›.
 
-**On a desktop** the card is docked right of the planner (412 px from the left, as wide as 352 px), so the map loses 352 px more on its left: the build frames the pick in what's left (`frame()`), which the mock-up's still map can't show.
+| Card | Its line | Numbers | In sight | More for this … (on the card) | To inspect, and what it knows |
+|---|---|---|---|---|---|
+| **A leg** (a tap on the line) | the weather then; MTB ▾ · Follow paths ▾ and the eye (#756) under it | distance, time, climb, ⚠ box | **Add a waypoint here** · Avoid this spot · Alternative routes | Stop here, Remove this leg (#627), Route style, On the route's profile, The whole route | ‹ Leg · Stretch · Route ›; its profile with production's readout; Under it: the way ›; Part of a LIPAS route ›; its warnings |
+| **A waypoint** | the weather then; at a changeover, its sports | there at, from the start, height | Move · Rename · Remove (red) | Start here, End here, Reverse, Back to start (the end) | Pass by · Stop · Night and a stop's minutes; a changeover's minutes and Take … along; Leave › (the start); Sport from here ›; Next stretch ›; its legs' profile; Here: the way ›; Places to sleep, Water nearby (asked when tapped); Add a note (#854) |
+| **A way** | how you get along it | long, up, down | action row: **Add to my route**, Avoid this spot, Share, Weather here | Start here, End here, Round trip from here, Copy, Look around here (#757), All OpenStreetMap details | production's card: its profile, Colour by, the facts in groups; Not mapped: … Add what's missing › |
+| **A place** | its kind, town, where it's from | off your route, height, opening hours (or "not mapped") | action row: **Add to my route**, Avoid this spot, Share, Weather here | Start here, End here, Round trip, Copy, Save this place (#156), Look around here | the weather when you'd pass it; its facts (LIPAS's; OpenStreetMap's asked when it opens); Add what's missing ›; LIPAS, Website |
+| **A warning** | Warning or Good to know | from the start, how long | its own (Avoid it, Retry), or none · Got it · Its leg | Hide in Check, Not right? | where it comes from, its note; ‹ 1 of 7 › |
+| **A spot** | its coordinates | height here | action row: **Add to my route**, Avoid this spot, Share, Weather here | Start here, End here, Paddle from here (on water), Copy | what's there, asked as it opens (the way, or the water's depth from Traficom, shown, never routed on) |
+| **A thing** (road works, a sea mark) | its kind | its dates or numbers | Share · Weather here | its source's page | its facts, where they come from |
+
+**The first size** (a phone's peek) holds a leg's head, pills, numbers and actions: 361 px of 844 at 390 × 844 (a waypoint's and a place's about 288 px), against today's 178 px that held no action. At 200 % it's cut at 62 % of the screen and scrolls; the head's ✕ moves to its own row and the buttons go one to a row, as production's narrow cards do.
+
+**On a desktop** the card is docked right of the planner (412 px from the left, 352 px wide), so the map loses 352 px more on its left: the build frames the pick in what's left (`frame()`), which the mock-up's still map can't show. Each kind's main action also comes up at the pointer on a click.
 
 ### Where today's actions go
 
@@ -164,23 +183,23 @@ PRODUCT.md: nothing is removed, and nothing takes more taps or a new hidden view
 | Today | Where | New |
 |---|---|---|
 | A waypoint's Move, Rename, Remove (hold only) | its card, in sight at once | the tap's card |
-| Start here, End here (a via) | ⋯ | the same card, one tap more than a hold's rows but no hold |
-| Pass by · Stop · Night | Stop or night › behind ⋯ | one tap more than today's hold card, which showed the switch; round 3 asks whether the switch stays on the card |
-| Sport from here › | ⋯ on the waypoint; the leg's MTB ▾ | two taps from the line, today four |
+| Start here, End here (a via) | More for this waypoint, on the card | no hold |
+| Pass by · Stop · Night | the card, as today's hold card has it | no hold |
+| Sport from here › | the waypoint's card; the leg's MTB ▾ | two taps from the line, today four |
 | A changeover's minutes and Take … along | the card, under its actions | as today |
-| The start's Leave ›, Back to start, Reverse | the card (Leave), ⋯ (Back to start, Reverse) | Leave stays a row; When on the first screen (#878) is the other way |
-| The end's Back to start | ⋯ | |
+| The start's Leave ›, Back to start, Reverse | the card: Leave a row, Back to start and Reverse under More for this waypoint | When on the first screen (#878) is the other way |
+| The end's Back to start | More for this waypoint | |
 | Next stretch › | the waypoint's card, a row | as today |
 | The route's card: This stretch ›, What's here ›, Edit this stretch › | the leg's card: Leg · Stretch · Route, Under it ›, the pills | one card instead of four |
-| Edit this stretch's How it's drawn and Route style | Follow paths ▾; Route style behind ⋯ | |
-| Other ways, Stop here, Avoid a spot here | Other ways and Avoid this spot in sight; Stop here behind ⋯ | |
-| On the profile | the leg's own profile; On the route's profile behind ⋯ | |
+| Edit this stretch's How it's drawn and Route style | Follow paths ▾; Route style under More for this leg | |
+| Other ways, Stop here, Avoid a spot here | Alternative routes and Avoid this spot in sight; Stop here under More for this leg | Other ways is now Alternative routes |
+| On the profile | the leg's own profile; On the route's profile under More for this leg | |
 | What's here's All OpenStreetMap details | Under it › | as today, a step from the leg |
-| The whole route › | ⋯ on the leg | |
-| A spot's Your route (hold only) | the card, the main action in sight, the rest behind ⋯ | no hold |
-| Share, Weather here ›, Not right?, Copy, All OpenStreetMap details | Share in sight; the rest behind ⋯ and in the foot | Copy and All OpenStreetMap details no longer need a hold |
+| The whole route › | More for this leg | |
+| A spot's Your route (hold only) | the card: the main action and three in its action row, the rest under More for this spot | no hold |
+| Share, Weather here ›, Not right?, Copy, All OpenStreetMap details | Share and Weather here in the action row; Copy and All OpenStreetMap details under More; Not right? in the foot | Copy and All OpenStreetMap details no longer need a hold |
 | A warning's main action, Got it, Hide in Check, Fix the map, Not right?, ‹ › | as today, with Its leg | |
-| Paddle from here | the spot's ⋯ over water | |
+| Paddle from here | More for this spot, over water | |
 | A LIPAS route's Follow this route, Add to my route, Start a route here | its card as today, in this order | not redrawn |
 
 ### Taps for common jobs, today and new (phone, drawing)
@@ -222,16 +241,17 @@ From emil-design-eng: picking a thing happens tens of times a day, so a card rep
 Small, each tried on a phone before the next, starting from production. Motion in each is decided with /animate; one that moves something stops for /review-animations. **What each closes:** PR 1 fixes #876 and #716 (both gestures open one card), and #760 (its rule, with PR 2's layout); PR 2 is #690's discoverable actions; PR 4 fixes #107's planning half (the way under the route) with PR 6; PR 6 fixes #756; PR 7 is #647's first step, so #647 stays open for the drag; the leg's Remove this leg (PR 4's ⋯) fixes #627's first part; PR 11 fixes #855 and #757. The last PR of the order fixes #690.
 
 1. **A tap and a hold open the same card** (#876, #760's rule): the tap's card gains the hold's actions (a waypoint's, a spot's and a place's Your route), in the order of "The card, kind by kind", and a hold or a right click open the same; a waypoint's marker takes the focus. `openPointCard()`, `openSpotCard()`, `openPlaceCard()`, `pickBody()`, `spotBody()`, `renderMarkers()`. Checks: `spotcard`, `pointcard`, `crosshair`.
-2. **The actions first:** under the numbers, the main one green, two buttons, the rest behind ⋯ (the app's menu); the peek ends after them. `js/cards.js`, `measureSheet()`. Checks: `spotcard`, `pointcard`, `routecard`, `sheetstops`, at 360 px and 200 %.
+2. **The actions first:** under the numbers, the main one green and two buttons (an action row for places, spots and ways), the rest under them on the card as "More for this …"; ⋯ beside ✕ with Card settings, as the list's settings menu; the peek ends after them, showing the top of what follows. `js/cards.js`, `measureSheet()`. Checks: `spotcard`, `pointcard`, `routecard`, `sheetstops`, at 360 px and 200 %.
 3. **The line at the spot goes:** a phone's tap opens the card at its peek. `showLine()`, `pickLine()`. Checks: `spotcard`.
-4. **The leg's card:** a tap on the line opens the leg, with its numbers, its warnings, its profile (the pick's chart on the leg's slice of the route's analysis, no new request), ‹ › and Leg · Stretch · Route; the route's card, This stretch and What's here go into it. `routeCard()`, `stretchCard()`, `hereCard()`. Checks: `routecard`, `pickcard`.
+4. **The leg's card:** a tap on the line opens the leg, with the weather then in its first line, its numbers, its warnings (as a box beside them, sharing #869's control for the planner, its PR 9), its profile (the pick's chart on the leg's slice of the route's analysis, no new request), ‹ › and Leg · Stretch · Route; the route's card, This stretch and What's here go into it. `routeCard()`, `stretchCard()`, `hereCard()`. Checks: `routecard`, `pickcard`.
 5. **The pills on the leg's card:** MTB ▾ · Follow paths ▾, after #869's caret and pill (its PR 11). `setStretch()`. Checks: `routecard`, `multi`.
 6. **Under it ›, a LIPAS route ›, and the eye** (#756). Checks: `routecard`.
 7. **On a desktop, the card beside the planner** (#647's first step) with the main action at the pointer. `card.js`'s `float`, `frame()`. Checks: `routecard`, `onroute`, at 1440 × 900 in both docks.
 8. **A place's facts when it opens,** how far off the route, its hours in words. `osmOnCard()`. Checks: `spotcard`.
-9. **A waypoint's value:** the weather then, its legs' profile, Places to sleep and Water nearby. Checks: `pointcard`.
+9. **A waypoint's value:** the weather then, Pass by · Stop · Night on the card, its legs' profile, Places to sleep and Water nearby. Checks: `pointcard`.
 10. **A warning's Its leg ›.** Checks: `heads`.
 11. **Add what's missing › (#855) and Look around here › (#757).**
+12. **Other ways becomes Alternative routes,** everywhere at once (the leg's card, the toolbar's menu, Check; PRODUCT.md's and CONTEXT.md's words).
 
 ## Round 3's questions, as asked (answered under "Decided")
 
@@ -240,18 +260,3 @@ Small, each tried on a phone before the next, starting from production. Motion i
 16. A desktop's short ways. The card beside the planner keeps the map clear, but every action on it is a long trip from where you clicked, and it covers the map's left (here the route's start, which the build would frame aside). The mock-up puts each kind's main action at the pointer too (Add a waypoint here on the line, Add to my route on a place, a way or a spot); dragging a waypoint stays; Delete on the waypoint under the pointer would make removing one a key. Or: the card at the spot as today, its actions in reach, covering what it's about (#647).
 17. The order of the PRs above.
 18. A waypoint's Pass by · Stop · Night: behind ⋯ (as drawn), or the switch on the card as today's hold card has it.
-
-## For the user to choose (round 4)
-
-19. **What ⋯ holds on a card:** Colour by, colours on the map, Hide the route, and on a desktop where the card sits (at the spot or beside the planner). Nothing else?
-20. **Where the action row goes:** places, spots and ways (their actions are a few equals, as Apple Maps' place card has them), and buttons for the route's own things (a leg, a waypoint, a warning), whose main action leads.
-21. **The new name for Other ways:** Alternative routes. It renames the action everywhere it appears (the leg's card, the toolbar's menu, Check), and PRODUCT.md's and CONTEXT.md's words.
-22. **The eye and Hide the route:** both, as drawn (the eye a tap away on a leg's card, Hide the route in ⋯ on every card), or only one of them.
-
-### What round 3 adds to the PRs
-
-- PR 2 becomes: the main action and two more in sight; the rest under them on the card, under "More for this …", with their lines; ⋯ beside ✕ with the card's settings.
-- PR 4 gains the weather in the leg's first line and production's readout over its profile; its warnings box comes with #869's box for the planner (its PR 9), so they share one control.
-- PR 9 keeps Pass by · Stop · Night on the waypoint's card.
-- A new small PR: Other ways renamed (round 4's Q21), everywhere at once.
-- #884: the planner's ⋯ beside its ✕, with its settings.
