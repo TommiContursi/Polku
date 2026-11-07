@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Cards and taps</title>
+<meta name="description" content="Mock-up for #690: the map's cards and what a tap, a click, a hold and a right click do. Today's cards from main beside the new ones, on a real multisport route in Helsinki.">
+<!--
+  #690 (with #876, #760, #647), 2026-11-07. The plan: docs/plans/cards-and-taps.md. Not wired to the app: nothing here is
+  loaded by Polku. The cards are drawn with css/app.css's own classes (pl-way card, way-head, sheet-sum, rows, row,
+  warn-row, insp-row, bd-legend, seg, mode-select, btn primary big, card-pill, heads-step); what's new is in the block
+  marked "new". The map is a screenshot of main at babbafd with the route drawn by a local BRouter; the route's numbers
+  (heights, grades, surfaces, way types, times, warnings) are its own analysis, exported from the app.
+
+  ?v=today|new  &kind=leg|waypoint|way|place|warning|spot  &frame=390|360|200|desk  &acts=buttons|row  &peek=acts|profile
+  &data=real|late|missing  &mode=drawing|browsing
+  #574's version (built as #623) is mockups/cards-rethought.html; Today here is main as it is now.
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; }
+* { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; } /* (app.css holds the app's page still; this page scrolls) */
+body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+.mk h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: -0.01em; }
+.mk .lede { max-width: 72ch; margin: 0 0 14px; color: var(--page-cap); }
+.mk a { color: var(--page-link); text-underline-offset: 2px; }
+.mk-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 16px; }
+.mk-sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 10px; background: var(--switch-bg); }
+.mk-sw > b { align-self: center; padding: 0 8px 0 6px; font-size: 12px; font-weight: 600; color: var(--page-cap); }
+.mk-sw button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--switch-fg); font: inherit; font-size: 13px; cursor: pointer; }
+.mk-sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.mk-sw button:focus-visible { outline: 2px solid var(--page-link); outline-offset: 1px; }
+.mk-sw[hidden] { display: none; }
+.mk-main { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.mk-notes { flex: 1 1 300px; max-width: 64ch; color: var(--page-cap); }
+.mk-notes h2 { margin: 0 0 6px; font-size: 15px; color: var(--page-fg); }
+.mk-notes ul { margin: 0 0 12px; padding-left: 18px; }
+.mk-notes li { margin: 3px 0; }
+.mk-shots { display: flex; flex-wrap: wrap; gap: 16px; }
+.mk-shots figure { margin: 0; }
+.mk-shots img { display: block; width: 300px; max-width: 100%; height: auto; border-radius: 18px; box-shadow: 0 2px 12px rgba(0,0,0,.18); }
+.mk-shots.desk img { width: 720px; border-radius: 8px; }
+.mk-shots figcaption { margin-top: 6px; max-width: 300px; font-size: 12.5px; color: var(--page-cap); }
+
+/* ---- a phone or a desktop, drawn at its size; the map a screenshot of main */
+.mk-frame { position: relative; flex: none; overflow: hidden; border-radius: 28px; background: #a9cbe9; box-shadow: 0 0 0 1px rgba(0,0,0,.1), 0 8px 30px rgba(0,0,0,.25); transform: translateZ(0); }
+.mk-frame.desk { border-radius: 8px; }
+.mk-frame > .mk-map { position: absolute; left: 0; top: 0; width: var(--mw); height: auto; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.mk-frame > svg.mk-ov { position: absolute; left: 0; top: 0; width: var(--mw); height: var(--mh); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.mk-hit { fill: transparent; stroke: transparent; cursor: pointer; }
+.mk-toast { position: absolute; left: 50%; bottom: 18px; z-index: 9; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 12px; background: #1f2622; color: #fff; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.mk-toast b { color: #7fdcae; margin-left: 10px; }
+.mk-hover { position: absolute; z-index: 6; display: grid; gap: 1px; padding: 7px 10px; border-radius: 10px; background: var(--surface-solid); color: var(--text); font-size: 12.5px; line-height: 1.35; box-shadow: 0 4px 14px rgba(0,0,0,.25); pointer-events: none; white-space: nowrap; }
+.mk-hover b { font-size: 13px; }
+.mk-hover small { color: var(--muted); }
+
+/* ---- the card's sheet on a phone (the app's sheet with a card in it, #603's sizes), and the desktop's card beside the planner */
+.mk-sheet { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 5; display: flex; flex-direction: column; height: var(--h, 240px); max-height: calc(100% - 70px); border-radius: 18px; background: var(--surface-solid); color: var(--text); box-shadow: 0 -2px 18px rgba(0,0,0,.22); transition: height var(--t-sheet) var(--ease-drawer); }
+.mk-sheet.dragging { transition: none; }
+.mk-grip { flex: none; display: grid; place-items: center; height: 22px; border: 0; background: none; cursor: grab; touch-action: none; }
+.mk-grip::before { content: ""; width: 38px; height: 5px; border-radius: 3px; background: var(--line); }
+.mk-sheet > .pl-way.card { flex: 1; min-height: 0; padding: 0 14px 12px; margin: 0; }
+.mk-dock { position: absolute; left: 412px; top: 64px; z-index: 5; width: 352px; max-height: 824px; display: flex; flex-direction: column; padding: 12px 14px; border-radius: 16px; background: var(--surface-solid); color: var(--text); box-shadow: 0 6px 24px rgba(0,0,0,.22); }
+.mk-dock > .pl-way.card { min-height: 0; margin: 0; padding: 0; }
+@media (prefers-reduced-motion: reduce) { .mk-sheet { transition: none; } }
+
+/* ======================================================= new (proposed; everything else is css/app.css's) */
+/* Q7 B: a card's first actions as the desktop's buttons (.card-float .rows.acts), on a phone too: two a row, an icon and
+   a word each; the dangerous one red */
+.card .rows.acts.mk-btns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.card .rows.acts.mk-btns > .row { min-height: 44px; padding: 0 10px; gap: 8px; border: 1px solid var(--line); border-radius: 10px; box-shadow: none; background: var(--surface-solid); }
+.card .rows.acts.mk-btns > .row b { font-size: 14.5px; }
+.card .rows.acts.mk-btns > .row.danger { border: 1.5px solid var(--bad); }
+.card .rows.acts.mk-btns > .row:only-child, .card .rows.acts.mk-btns > .row.wide { grid-column: 1 / -1; }
+.card .rows.acts.mk-btns.with-more { grid-template-columns: repeat(2, minmax(0, 1fr)) 44px; }
+.card .rows.acts.mk-btns > .row.wide { grid-column: 1 / -1; }
+@container card (max-width: 290px) { .card .rows.acts.mk-btns { grid-template-columns: minmax(0, 1fr); } } /* (200 %: one to a row, words whole) */
+.card .rows.acts.mk-btns > .mk-more { grid-column: -2; grid-row: 1; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 10px; }
+.card .rows.acts.mk-btns > .mk-more[aria-expanded="true"] { background: var(--surface-2); }
+/* Q7 A: an action row (a new control): round buttons with their word under them, the main one filled green, ⋯ More last */
+.mk-ar { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 4px; margin: 0 -4px; }
+.mk-ar button { display: grid; justify-items: center; gap: 4px; min-height: 64px; padding: 4px 2px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.2; text-align: center; cursor: pointer; overflow-wrap: anywhere; }
+.mk-ar button > span:first-child { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); }
+.mk-ar button.main > span:first-child { background: var(--accent-bg); color: #fff; }
+.mk-ar button.danger { color: var(--bad); }
+.mk-ar button:active > span:first-child { transform: scale(.97); }
+/* a value picked here, as a pill: the When pill's and a part's sport (#869), in a card's head */
+.mk-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.mk-pills > .tool { margin-left: auto; }
+/* round 3: the warnings as a box beside the numbers (the planner's planned box, #869), opening the list lower in the card */
+.sum-item.mk-warnbox { align-self: stretch; justify-content: center; margin-left: auto; padding: 4px 12px; border: 1.5px solid color-mix(in srgb, var(--bad) 45%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--bad) 9%, var(--surface-solid)); color: var(--bad); font: inherit; text-align: left; cursor: pointer; }
+.sum-item.mk-warnbox b { display: inline-flex; align-items: center; gap: 4px; color: var(--bad); }
+.sum-item.mk-warnbox small { color: var(--bad); }
+/* round 3: at its first size a card shows the top of what's below, fading, so there's plainly more */
+.mk-sheet.at-peek > .pl-way.card { -webkit-mask-image: linear-gradient(#000 calc(100% - 34px), transparent); mask-image: linear-gradient(#000 calc(100% - 34px), transparent); }
+.mk-more-h { display: flex; align-items: center; justify-content: space-between; }
+.mk-pill { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 10px 0 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.mk-pill .caret { width: 0; height: 0; border-left: 4.5px solid transparent; border-right: 4.5px solid transparent; border-top: 5.5px solid currentColor; }
+@media (pointer: coarse) { .mk-pill { min-height: 44px; } }
+.mk-view { margin-top: 2px; }
+/* the spot you tapped or scrub to, in words, over the profile */
+.mk-at { margin: 0; font-size: 13.5px; line-height: 1.35; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mk-at b { color: var(--text); font-weight: 600; }
+.mk-at .mk-at-l { display: block; }
+/* a piece's own profile: its route's chart, scrubbed by a finger or the pointer (role="slider") */
+.mk-prof { display: grid; gap: 6px; }
+.mk-prof svg { display: block; width: 100%; height: 92px; border-radius: 8px; background: var(--surface-2); touch-action: pan-y; cursor: crosshair; } /* (sideways scrubs, up and down is the sheet's) */
+.mk-prof svg:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mk-prof .ax { font-size: 10px; fill: var(--muted); }
+.mk-step { display: flex; align-items: center; gap: 4px; margin: 0 -8px; }
+.mk-step > span { flex: 1; text-align: center; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mk-step > .seg { flex: 1; justify-content: center; }
+.mk-step > .seg button { flex: 1 1 auto; }
+.mk-hidden-note { margin: 0; font-size: 13px; color: var(--muted); }
+.mk-skel { height: 92px; border-radius: 8px; background: var(--surface-2); animation: mk-breathe 1.6s ease-in-out infinite; }
+@keyframes mk-breathe { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .mk-skel { animation: none; } }
+</style>
+</head>
+<body class="mk">
+<h1>The cards and what a tap does</h1>
+<p class="lede">#690's design, after two rounds of questions (2026-11-07). <b>Today</b> is <code>main</code> as it is; <b>New</b> is what's decided so far, with the open choices as switches. The route is real: Eira to Kaivopuisto by MTB, a sea kayak to Suomenlinna across the Särkän väylä, a hike on the island. Tap the line, a waypoint, the path north of the route, the campfire site on Uunisaari or a warning; hold one (half a second) for the same card. <a href="../cards-and-taps.md">The plan</a> · <a href="cards-rethought.html">#574's version</a>.</p>
+<div class="mk-bar" id="bar"></div>
+<div class="mk-main"><div id="stage"></div><div class="mk-notes" id="notes"></div></div>
+<script type="application/json" id="route">{"pts":[[24.938,60.1585],[24.93835,60.15862],[24.93883,60.15879],[24.93914,60.15858],[24.93951,60.15832],[24.94008,60.15828],[24.94072,60.1583],[24.9409,60.15827],[24.94101,60.15822],[24.94116,60.15807],[24.94123,60.15798],[24.94138,60.15768],[24.94154,60.15735],[24.9417,60.15701],[24.94186,60.15668],[24.94221,60.15662],[24.94279,60.15669],[24.94325,60.15674],[24.94372,60.1568],[24.94438,60.15688],[24.94499,60.15696],[24.94536,60.15701],[24.94593,60.15707],[24.94652,60.15714],[24.94717,60.15722],[24.94768,60.15728],[24.94819,60.15734],[24.94883,60.15742],[24.94937,60.15748],[24.9497,60.15747],[24.94981,60.15724],[24.94992,60.15699],[24.95002,60.15677],[24.95001,60.15658],[24.95017,60.15625],[24.95029,60.15601],[24.95043,60.15571],[24.95063,60.1556],[24.95084,60.15548],[24.95131,60.15533],[24.95185,60.15515],[24.95245,60.15496],[24.95296,60.15479],[24.95347,60.15462],[24.95403,60.15444],[24.95459,60.15426],[24.95508,60.1541],[24.9556,60.15396],[24.95619,60.15388],[24.95677,60.15385],[24.95724,60.15388],[24.95773,60.15402],[24.95807,60.15421],[24.95835,60.15446],[24.95859,60.15473],[24.95883,60.15471],[24.95867,60.15442],[24.95863,60.1541],[24.95858,60.15397],[24.95923,60.15382],[24.95988,60.15368],[24.96053,60.15353],[24.96118,60.15339],[24.96183,60.15324],[24.96248,60.1531],[24.96313,60.15295],[24.96378,60.15281],[24.96443,60.15266],[24.96508,60.15252],[24.96573,60.15237],[24.96638,60.15223],[24.96703,60.15208],[24.96768,60.15194],[24.96836,60.15187],[24.96908,60.15187],[24.9697,60.15173],[24.9703,60.15155],[24.9709,60.15136],[24.9715,60.15118],[24.97209,60.15098],[24.97269,60.15079],[24.97328,60.15059],[24.97389,60.15041],[24.97451,60.15022],[24.97513,60.15004],[24.97575,60.14985],[24.97637,60.14967],[24.97688,60.14943],[24.9773,60.14914],[24.97771,60.14885],[24.97813,60.14855],[24.97854,60.14826],[24.97896,60.14797],[24.97955,60.14795],[24.97966,60.14813],[24.97999,60.14837],[24.98039,60.14862],[24.98069,60.14886],[24.98096,60.14913],[24.9812,60.1493],[24.98159,60.14925],[24.9822,60.14917],[24.98283,60.14908],[24.98336,60.149],[24.98354,60.14889],[24.98371,60.14869],[24.98425,60.14858],[24.98492,60.14848],[24.98517,60.14825],[24.98536,60.14795],[24.98557,60.14761],[24.98595,60.14733],[24.98639,60.14707],[24.98676,60.14687],[24.98735,60.14671],[24.98779,60.14658],[24.98803,60.1464],[24.98812,60.14622],[24.98781,60.14598],[24.98749,60.14567],[24.98753,60.14539],[24.98753,60.14516],[24.98724,60.14488],[24.98701,60.14464],[24.9868,60.1444],[24.98652,60.14425],[24.98613,60.14438],[24.98574,60.14448],[24.98555,60.14439],[24.98539,60.14419],[24.98576,60.14398],[24.98591,60.14393]],"along":[0,23,56,85,120,155,191,206,214,232,244,278,316,354,392,421,454,480,507,544,579,600,632,667,703,732,761,798,828,853,880,908,933,960,997,1025,1059,1081,1103,1134,1170,1209,1243,1277,1314,1351,1383,1416,1450,1482,1509,1540,1569,1601,1634,1661,1694,1730,1749,1789,1828,1868,1907,1946,1986,2025,2065,2104,2144,2183,2222,2262,2301,2341,2380,2419,2458,2497,2536,2575,2615,2654,2694,2734,2774,2814,2854,2894,2933,2973,3012,3052,3092,3129,3150,3184,3219,3251,3285,3308,3330,3365,3402,3433,3455,3479,3512,3551,3584,3618,3658,3695,3734,3764,3802,3830,3855,3879,3911,3949,3981,4006,4041,4071,4100,4125,4150,4177,4192,4217,4252,4262],"ele":[11,11,10,10,10,9,8,8,8,9,9,8,8,8,8,8,8,9,9,10,10,10,11,12,12,12,12,11,10,10,9,8,7,6,4,4,3,3,2,2,2,2,2,2,2,2,3,3,5,7,7,6,5,4,3,3,3,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,2,2,2,2,0,0,2,3,4,5,6,7,8,9,10,8,7,7,8,10,10,9,8,4,3,3,1,3,3,5,7,9,9,11,14,15],"grade":[0,-1,-1,-1,-1,-2,-1,0,1,0,0,-1,-1,-1,0,1,1,1,1,2,1,2,3,1,0,-1,-2,-3,-1,-3,-4,-3,-4,-4,-3,-1,-3,-2,-1,0,0,0,0,0,0,0,2,4,5,2,-1,-3,-4,-3,-2,1,-4,-4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,1,1,1,-5,-4,4,5,2,6,5,3,2,3,2,-3,-3,-1,2,5,1,0,-2,-9,-6,-2,-9,6,3,5,7,7,6,6,10,6,5],"surf":["sett","sett","sett","fine_gravel","fine_gravel","fine_gravel","fine_gravel","asphalt","asphalt","sett","sett","sett","sett","sett","sett","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","fine_gravel","fine_gravel","fine_gravel","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","ground","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","wood","wood","pebblestone","pebblestone","pebblestone","pebblestone","pebblestone","pebblestone","compacted","compacted","compacted","compacted","compacted","compacted","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","wood","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone","cobblestone"],"way":["footway","footway","footway","footway","footway","footway","footway","cycleway","cycleway","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","footway","footway","footway","footway","minor road","minor road","minor road","minor road","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","footway","footway","footway","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","water","portage","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","footway","footway","footway","footway","footway","footway","footway"],"g":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,2,2,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,1,1,0,1,1,0,0,1,0,0,0,0,0,1,0,0,0,2,2,0,2,3,0,1,3,3,1,1,3,3,1],"s":[4,4,4,5,5,5,5,6,6,4,4,4,4,4,4,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,5,5,5,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,9,9,9,9,9,10,10,9,9,9,9,9,9,11,11,11,11,11,11,9,9,9,9,9,9,9,9,10,9,9,9,9,9,9,9,9,9],"w":[[6,-3.5,6,0],[6,-3.4,6,0],[6,-5.6,6,0],[6,-4.9,6,0],[6,-5.5,6,0],[6,-5.4,6,0],[6,-5.4,6,0],[6,-3.8,6,0],[6,-5,6,0],[6,-4.2,6,0],[6,-3.3,6,0],[6,-3.2,6,0],[6,-3.2,6,0],[6,-3.2,6,0],[6,-3.2,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-5,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-5,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-4.9,6,0],[6,-4.4,6,0],[6,-3.2,6,0],[6,-3.2,6,0],[6,-1.7,6,0],[6,-3.2,6,0],[6,-3.2,6,0],[6,-3.3,6,0],[6,-4.1,6,0],[6,-3.8,6,0],[6,-5.9,6,0],[6,-5.8,6,0],[6,-5.7,6,0],[6,-5.7,6,0],[6,-5.7,6,0],[6,-5.7,6,0],[6,-5.7,6,0],[6,-5.7,6,0],[6,-5.8,6,0],[6,-5.9,6,0],[6,-5.8,6,0],[6,-5.6,6,0],[6,-4.6,6,0],[6,-3.1,6,0],[6,-1.3,6,0],[6,-0.7,6,0],[6,-2.1,6,0],[6,-0.9,6,0],[6,-1.3,6,0],[6,-0.3,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.9,6,0],[6,-5.5,6,0],[6,-5.7,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5.8,6,0],[6,-5,6,0],[6,-5,6,0],[6,-5,6,0],[6,-5,6,0],[6,-5,6,0],[6,-5.6,6,0],[6,-3.9,6,0],[6,0.3,6,0],[6,-1.6,6,0],[6,-1.2,6,0],[6,-0.3,6,0],[6,-0.3,6,0],[6,-5.3,6,0],[6,-6.2,6,0],[6,-6.2,6,0],[6,-6.2,6,0],[6,-6,6,0],[6,-3.2,6,0],[6,-6.2,6,0],[6,-6.2,6,0],[6,-6.3,6,0],[6,-4.1,6,0],[6,-4.2,6,0],[6,-4.8,6,0],[6,-5.6,6,0],[6,-5.7,6,0],[6,-6.2,6,0],[6,-6.3,6,0],[6,-6.2,6,0],[6,-4.5,6,0],[6,-0.1,6,0],[6,0.4,6,0],[6,-1.7,6,0],[6,-2.5,6,0],[6,-1.3,6,0],[6,0.2,6,0],[6,-0.3,6,0],[6,-0.1,6,0],[6,6,6,0],[6,6.2,6,0],[6,4.8,6,0],[6,2.1,6,0],[6,-3.6,6,0],[6,-6.2,6,0],[6,-6.2,6,0]],"pal":["#8fb996","#a3d977","#7cb7f2","#facc15","#94a3b8","#e0b84a","#64748b","#0ea5e9","#8b5e34","#cbd5e1","#a16207","#d4a017","#b45309","#2563eb","#ea580c","#3b82f6","#b07d3a","#f59e0b"],"t":[0,4,10,17,25,33,41,45,46,49,51,58,64,71,78,83,89,94,99,106,112,116,122,128,134,139,145,151,157,161,167,174,179,183,189,194,200,204,208,213,220,227,233,239,246,253,258,265,275,283,287,292,297,302,307,314,321,329,1236,1258,1279,1301,1323,1345,1367,1389,1410,1432,1454,1476,1498,1520,1542,1563,1585,1607,1628,1650,1672,1693,1715,1737,1759,1781,1803,1825,1847,1870,1891,1913,1935,1957,1979,2000,2024,2653,2678,2702,2726,2741,2755,2781,2812,2836,2855,2876,2901,2932,2958,2985,3013,3037,3062,3084,3115,3137,3155,3172,3192,3218,3239,3256,3282,3307,3330,3352,3376,3400,3413,3437,3469,3478],"legsAt":[0,908,1743,3157,4262],"names":["Start","Waypoint 1","Waypoint 2","Waypoint 3","End"],"sports":["mtb","mtb","paddle","hike"],"modes":["auto","auto","water","auto"],"points":[[24.938,60.1585],[24.949923,60.156991],[24.9585,60.154],[24.979681,60.14819],[24.98591,60.143931]],"clock":["12:02","12:04","12:06","12:32","12:55"],"start":1794045720,"items":[{"g":"read","text":"Cycling not allowed here","at":0,"len":56,"note":"bicycle=no · Bikes aren’t allowed. Walk the bike through, or find another way."},{"g":"read","text":"Cycling not allowed here","at":853,"len":80,"note":"bicycle=no · Bikes aren’t allowed. Walk the bike through, or find another way."},{"g":"read","text":"Cycling not allowed here","at":1661,"len":82,"note":"bicycle=no · Bikes aren’t allowed. Walk the bike through, or find another way."},{"g":"read","text":"Crosses the Särkän väylä","at":2313,"len":78,"note":"cross quickly and straight, after looking both ways: ships can’t stop or turn"},{"g":"look","text":"Gates with no access ×5","at":869,"len":0,"note":"access=private · locked or private"},{"g":"look","text":"Your bike stays at Waypoint 2","at":1743,"len":0,"note":"the route doesn’t come back for it · taken along? Switch it on in Waypoint 2’s menu"},{"g":"look","text":"Carry / portage 14 m","at":3143,"len":14,"note":"portage=yes · Carry the boat and your gear over land here."},{"g":"look","text":"Your sea kayak stays at Waypoint 3","at":3157,"len":0,"note":"the route doesn’t come back for it · taken along? Switch it on in Waypoint 3’s menu"}],"stretches":[{"from":0,"to":2},{"from":0,"to":2},{"from":2,"to":3},{"from":3,"to":4}],"up":31,"down":26,"total":4262,"time":3478,"ro":[["0 m · 11 m · -0.2 %","footway · sett","Tailwind 6 m/s · 6 °C · dry · at 12:02"],["23 m · 11 m · -1.0 %","footway · sett","Tailwind 6 m/s · 6 °C · dry · at 12:02"],["56 m · 10 m · -0.5 %","footway · sett","Strong tailwind 6 m/s · 6 °C · dry · at 12:02"],["85 m · 10 m · -0.6 %","footway · fine gravel","Strong tailwind 6 m/s · 6 °C · dry · at 12:02"],["120 m · 10 m · -1.2 %","footway · fine gravel","Strong tailwind 6 m/s · 6 °C · dry · at 12:02"],["155 m · 9 m · -2.3 %","footway · fine gravel","Strong tailwind 6 m/s · 6 °C · dry · at 12:02"],["191 m · 8 m · -0.8 %","footway · fine gravel","Strong tailwind 6 m/s · 6 °C · dry · at 12:02"],["206 m · 8 m · +0.4 %","cycleway · asphalt","Tailwind 6 m/s · 6 °C · dry · at 12:02"],["214 m · 8 m · +0.6 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:02"],["232 m · 9 m · +0.3 %","minor road · sett","Strong tailwind 6 m/s · 6 °C · dry · at 12:02"],["244 m · 9 m · -0.2 %","minor road · sett","Tailwind 6 m/s · 6 °C · dry · at 12:02"],["278 m · 8 m · -0.7 %","minor road · sett","Tailwind 6 m/s · 6 °C · dry · at 12:02"],["316 m · 8 m · -0.7 %","minor road · sett","Tailwind 6 m/s · 6 °C · dry · at 12:02"],["354 m · 8 m · -0.8 %","minor road · sett","Tailwind 6 m/s · 6 °C · dry · at 12:03"],["392 m · 8 m · +0.0 %","minor road · sett","Tailwind 6 m/s · 6 °C · dry · at 12:03"],["421 m · 8 m · +1.2 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["454 m · 8 m · +1.4 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["480 m · 9 m · +1.2 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["507 m · 9 m · +1.4 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["544 m · 10 m · +1.6 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["579 m · 10 m · +1.4 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["600 m · 10 m · +1.9 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["632 m · 11 m · +3.2 %","↑S0 · minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["667 m · 12 m · +0.9 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["703 m · 12 m · -0.4 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["732 m · 12 m · -0.6 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["761 m · 12 m · -2.1 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:03"],["798 m · 11 m · -2.8 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:04"],["828 m · 10 m · -1.5 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:04"],["853 m · 10 m · -2.5 %","footway · asphalt · smoothness good","Strong tailwind 6 m/s · 6 °C · dry · at 12:04"],["880 m · 9 m · -3.5 %","footway · asphalt · smoothness good","Tailwind 6 m/s · 6 °C · dry · at 12:04"],["908 m · 8 m · -3.4 %","footway · asphalt · smoothness good","Tailwind 6 m/s · 6 °C · dry · at 12:04"],["933 m · 7 m · -3.5 %","footway · asphalt · smoothness good","Tailwind 6 m/s · 6 °C · dry · at 12:04"],["960 m · 6 m · -4.0 %","minor road · asphalt","Tailwind 6 m/s · 6 °C · dry · at 12:04"],["997 m · 4 m · -3.2 %","minor road · asphalt","Tailwind 6 m/s · 6 °C · dry · at 12:04"],["1.03 km · 4 m · -1.1 %","minor road · asphalt","Tailwind 6 m/s · 6 °C · dry · at 12:04"],["1.06 km · 3 m · -2.6 %","minor road · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:04"],["1.08 km · 3 m · -1.6 %","cycleway · asphalt","Tailwind 6 m/s · 6 °C · dry · at 12:04"],["1.10 km · 2 m · -0.9 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:04"],["1.13 km · 2 m · -0.1 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:04"],["1.17 km · 2 m · +0.1 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.21 km · 2 m · +0.4 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.24 km · 2 m · -0.1 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.28 km · 2 m · +0.0 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.31 km · 2 m · -0.1 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.35 km · 2 m · +0.5 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.38 km · 3 m · +2.2 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.42 km · 3 m · +3.7 %","↑S0 · cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.45 km · 5 m · +5.4 %","↑S0 · cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.48 km · 7 m · +2.4 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.51 km · 7 m · -0.6 %","cycleway · asphalt","Strong tailwind 6 m/s · 6 °C · dry · at 12:05"],["1.54 km · 6 m · -3.2 %","cycleway · asphalt","Tailwind 6 m/s · 6 °C · dry · at 12:06"],["1.57 km · 5 m · -4.2 %","cycleway · asphalt","Crosswind 6 m/s · 6 °C · dry · at 12:06"],["1.60 km · 4 m · -2.6 %","cycleway · asphalt","Crosswind 6 m/s · 6 °C · dry · at 12:06"],["1.63 km · 3 m · -1.7 %","cycleway · asphalt","Tailwind 6 m/s · 6 °C · dry · at 12:06"],["1.66 km · 3 m · +1.4 %","footway · fine gravel","Crosswind 6 m/s · 6 °C · dry · at 12:06"],["1.69 km · 3 m · -3.6 %","footway · fine gravel","Crosswind 6 m/s · 6 °C · dry · at 12:06"],["1.73 km · 1 m · -3.7 %","footway · fine gravel","Crosswind 6 m/s · 6 °C · dry · at 12:06"],["1.75 km · 1 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:21"],["1.79 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:22"],["1.83 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:22"],["1.87 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:22"],["1.91 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:22"],["1.95 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:23"],["1.99 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:23"],["2.03 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:23"],["2.06 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:23"],["2.10 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:24"],["2.14 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:24"],["2.18 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:24"],["2.22 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:25"],["2.26 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:25"],["2.30 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:25"],["2.34 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:25"],["2.38 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:26"],["2.42 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:26"],["2.46 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:26"],["2.50 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:26"],["2.54 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:27"],["2.58 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:27"],["2.61 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:27"],["2.65 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:28"],["2.69 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:28"],["2.73 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:28"],["2.77 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:28"],["2.81 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:29"],["2.85 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:29"],["2.89 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:29"],["2.93 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:30"],["2.97 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:30"],["3.01 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:30"],["3.05 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:30"],["3.09 km · 0 m · +0.0 %","water · water","Strong tailwind 6 m/s · 6 °C · dry · at 12:31"],["3.13 km · 0 m · +0.0 %","water · water","Tailwind 6 m/s · 6 °C · dry · at 12:31"],["3.15 km · 2 m · +2.5 %","portage · ground","Crosswind 6 m/s · 6 °C · dry · at 12:31"],["3.18 km · 1 m · -0.5 %","minor road · cobblestone","Tailwind 6 m/s · 6 °C · dry · at 12:42"],["3.22 km · 2 m · +1.1 %","minor road · cobblestone","Crosswind 6 m/s · 6 °C · dry · at 12:42"],["3.25 km · 2 m · +0.6 %","minor road · cobblestone","Crosswind 6 m/s · 6 °C · dry · at 12:43"],["3.28 km · 2 m · +0.6 %","minor road · cobblestone","Crosswind 6 m/s · 6 °C · dry · at 12:43"],["3.31 km · 2 m · -5.3 %","minor road · cobblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:43"],["3.33 km · 0 m · -4.1 %","minor road · wood","Strong tailwind 6 m/s · 6 °C · dry · at 12:44"],["3.37 km · 0 m · +3.6 %","↑S0 · minor road · wood","Strong tailwind 6 m/s · 6 °C · dry · at 12:44"],["3.40 km · 2 m · +5.0 %","↑S0 · minor road · pebblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:44"],["3.43 km · 3 m · +2.4 %","minor road · pebblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:45"],["3.45 km · 4 m · +5.7 %","↑S0 · minor road · pebblestone","Tailwind 6 m/s · 6 °C · dry · at 12:45"],["3.48 km · 5 m · +4.8 %","↑S0 · minor road · pebblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:45"],["3.51 km · 6 m · +2.6 %","minor road · pebblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:46"],["3.55 km · 7 m · +2.3 %","minor road · pebblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:46"],["3.58 km · 8 m · +3.4 %","↑S0 · minor road · compacted","Strong tailwind 6 m/s · 6 °C · dry · at 12:47"],["3.62 km · 9 m · +2.2 %","minor road · compacted","Strong tailwind 6 m/s · 6 °C · dry · at 12:47"],["3.66 km · 10 m · -2.6 %","minor road · compacted","Strong tailwind 6 m/s · 6 °C · dry · at 12:48"],["3.70 km · 8 m · -2.9 %","minor road · compacted","Strong tailwind 6 m/s · 6 °C · dry · at 12:48"],["3.73 km · 7 m · -1.3 %","minor road · compacted","Strong tailwind 6 m/s · 6 °C · dry · at 12:48"],["3.76 km · 7 m · +2.0 %","minor road · compacted","Strong tailwind 6 m/s · 6 °C · dry · at 12:49"],["3.80 km · 8 m · +4.9 %","↑S0 · minor road · cobblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:49"],["3.83 km · 10 m · +1.1 %","minor road · cobblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:49"],["3.86 km · 10 m · -0.5 %","minor road · cobblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:50"],["3.88 km · 9 m · -1.6 %","minor road · cobblestone","Crosswind 6 m/s · 6 °C · dry · at 12:50"],["3.91 km · 8 m · -9.3 %","minor road · cobblestone","Crosswind 6 m/s · 6 °C · dry · at 12:50"],["3.95 km · 4 m · -6.2 %","minor road · cobblestone","Tailwind 6 m/s · 6 °C · dry · at 12:51"],["3.98 km · 3 m · -2.2 %","minor road · cobblestone","Tailwind 6 m/s · 6 °C · dry · at 12:51"],["4.01 km · 3 m · -8.8 %","minor road · cobblestone","Crosswind 6 m/s · 6 °C · dry · at 12:51"],["4.04 km · 1 m · +6.2 %","↑S0 · minor road · wood","Crosswind 6 m/s · 6 °C · dry · at 12:52"],["4.07 km · 3 m · +2.6 %","minor road · cobblestone","Crosswind 6 m/s · 6 °C · dry · at 12:52"],["4.10 km · 3 m · +4.5 %","↑S0 · minor road · cobblestone","Crosswind 6 m/s · 6 °C · dry · at 12:53"],["4.12 km · 5 m · +7.3 %","↑S0 · footway · cobblestone","Strong headwind 6 m/s · 6 °C · dry · at 12:53"],["4.15 km · 7 m · +7.2 %","↑S0 · footway · cobblestone","Strong headwind 6 m/s · 6 °C · dry · at 12:53"],["4.18 km · 9 m · +5.7 %","↑S0 · footway · cobblestone","Strong headwind 6 m/s · 6 °C · dry · at 12:54"],["4.19 km · 9 m · +5.7 %","↑S0 · footway · cobblestone","Headwind 6 m/s · 6 °C · dry · at 12:54"],["4.22 km · 11 m · +9.5 %","↑S0 · footway · cobblestone","Tailwind 6 m/s · 6 °C · dry · at 12:55"],["4.25 km · 14 m · +6.4 %","↑S0 · footway · cobblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:55"],["4.26 km · 15 m · +4.8 %","↑S0 · footway · cobblestone","Strong tailwind 6 m/s · 6 °C · dry · at 12:55"]],"pick":{"title":"EuroVelo 10 - Baltic Sea Cycle Route - part Finland","line":"Cycling: shared with walkers · asphalt · 2 m wide · lit","len":25123,"up":156,"down":150,"facts":[["menu-h","THE WAY"],["insp-row","Cycling Shared with walkers 11.5 km, with traffic, no bicycle lane 6.85 km, bike path 3.67 km, separated from walkers 2.74 km, footway, for walking 411 m"],["insp-row","One way Both ways 4.30 km, One way for cars, both ways for bikes 266 m, One way, bikes too 99 m"],["insp-row","Width 2 m 461 m, 5.6 m 165 m, 1.2 m 65 m Not mapped for 24.4 km of 25.1 km"],["insp-row","Lit Yes 21.5 km, no 2.06 km Not mapped for 1.61 km of 25.1 km"],["insp-row","Speed limit 30 km/h 6.19 km, 40 km/h 400 m, 50 km/h 14 m, 80 km/h 11 m Not mapped for 18.5 km of 25.1 km"],["insp-row","Not allowed Walking (the pavement is mapped apart) on 2.88 km, horses on 425 m"],["menu-h","SURFACE"],["insp-row","Surface Asphalt 15.7 km, fine gravel 4.04 km, unpaved 3.08 km, compacted 1.08 km, paved 866 m, paving stones 134 m, dirt 113 m, wood 58 m, sett 29 m"],["insp-row","Smoothness Excellent: thin road tyres 1.66 km, Good: road tyres 1.44 km, Intermediate: city bikes 632 m, Bad: sturdy tyres 29 m Not mapped for 21.4 km of 25.1 km"],["insp-row","Winter care Ploughed 6.26 km, a ski track: keep off on foot and by bike 5.24 km, not ploughed 289 m Not mapped for 13.3 km of 25.1 km"],["menu-h","DIFFICULTY"],["insp-row","Grade here +0 % uphill, where you tapped"],["insp-row","Uphill ↑S5 Extremely difficult uphill Steepest 19 % over 50 m, worked out from the terrain"],["menu-h","WEATHER HERE NOW"],["insp-row","Wind 6 m/s from the W Gusts 9 m/s"],["insp-row","Rain Dry"],["insp-row","Temperature 6 °C Open-Meteo’s forecast for its 3 km square"],["menu-h","AT THIS SPOT"],["pick-unmapped","From OpenStreetMap. Not right?"]],"along":[0,130,230,318,400,494,612,698,778,878,1000,1080,1130,1215,1285,1376,1440,1575,1734,1828,1891,1949,2052,2084,2172,2199,2333,2384,2452,2502,2576,2647,2688,2727,2852,2955,3109,3230,3337,3406,3487,3565,3615,3689,3769,3869,4012,4103,4215,4319,4467,4551,4693,4806,4829,4854,4944,4996,5140,5273,5318,5395,5495,5636,5690,5757,5886,6012,6128,6200,6304,6386,6511,6568,6715,6780,6899,6997,7111,7212,7312,7454,7510,7605,7727,7833,7920,7954,8073,8128,8220,8310,8434,8490,8579,8641,8732,8857,8950,9101,9230,9310,9397,9477,9564,9632,9678,9758,9854,9895,9982,10044,10115,10163,10284,10365,10494,10592,10667,10724,10790,10866,10948,11016,11088,11147,11219,11340,11444,11513,11617,11690,11755,11841,11973,12075,12170,12290,12388,12466,12555,12649,12724,12871,12935,13019,13117,13195,13274,13351,13419,13478,13528,13609,13689,13778,13836,13923,13997,14081,14147,14201,14267,14323,14396,14449,14499,14563,14630,14725,14845,14944,15012,15095,15192,15270,15360,15456,15511,15588,15696,15777,15882,15964,16021,16071,16125,16238,16293,16371,16507,16541,16625,16708,16742,16820,16879,16946,17071,17190,17288,17403,17519,17627,17725,17810,17921,18023,18133,18222,18283,18382,18469,18573,18662,18759,18858,18930,19019,19125,19275,19414,19536,19622,19708,19785,19858,19990,20119,20177,20241,20322,20399,20472,20499,20575,20696,20820,20918,21036,21136,21232,21309,21362,21502,21613,21689,21805,21879,21973,22094,22220,22288,22342,22451,22510,22594,22689,22792,22879,23006,23142,23267,23397,23520,23616,23718,23837,23950,24020,24101,24151,24268,24343,24439,24599,24730,24830,24968,25123],"ele":[2.4000000953674316,2.700000047683716,6.699999809265137,4.599999904632568,2.799999952316284,2.5,2.4000000953674316,1.899999976158142,2,1.899999976158142,1.899999976158142,2.0999999046325684,2.5,6,8.300000190734863,9,5.599999904632568,4.5,3.200000047683716,2.5999999046325684,2.4000000953674316,2.200000047683716,2.0999999046325684,1.7999999523162842,2.299999952316284,2.5,2.700000047683716,2,2.799999952316284,4.199999809265137,2.0999999046325684,2,1.899999976158142,1.7999999523162842,2.299999952316284,2.5,2,2.0999999046325684,2.9000000953674316,3.0999999046325684,2.799999952316284,2.5999999046325684,0.30000001192092896,0,2.4000000953674316,1.7999999523162842,1.7999999523162842,0,0,0,2.799999952316284,3.0999999046325684,9.399999618530273,4,3,2.700000047683716,3.299999952316284,2.5,3,3.299999952316284,3.5,3.4000000953674316,0,9.600000381469727,8.5,8.300000190734863,14.199999809265137,11.5,11.899999618530273,11.600000381469727,11.100000381469727,8.600000381469727,6.800000190734863,4.400000095367432,4.300000190734863,6.400000095367432,6.900000095367432,12.100000381469727,10.5,8.899999618530273,3.299999952316284,1.7000000476837158,2.200000047683716,5,1.7999999523162842,5.5,10,10,12.800000190734863,7.400000095367432,7.400000095367432,10.699999809265137,10.699999809265137,10.300000190734863,9.699999809265137,4.599999904632568,1.5,3.5,5.5,7.099999904632568,6.300000190734863,4.5,9.300000190734863,8.899999618530273,7.400000095367432,5.199999809265137,3,3.200000047683716,3.5999999046325684,3.200000047683716,2.299999952316284,2.5,2.200000047683716,2.700000047683716,2.9000000953674316,2.5,2.0999999046325684,2.200000047683716,2.4000000953674316,2.299999952316284,1.899999976158142,1.2999999523162842,1.7000000476837158,1.5,2,2.0999999046325684,1.2999999523162842,1.2000000476837158,1,1.2999999523162842,1.2999999523162842,2,1.5,1.7000000476837158,1.2000000476837158,1.399999976158142,1.5,1,1.100000023841858,1.899999976158142,1.7000000476837158,1.399999976158142,1.2000000476837158,1.399999976158142,2.299999952316284,1.5,1.899999976158142,1.7000000476837158,1.600000023841858,1.7999999523162842,1.7000000476837158,1.399999976158142,1.600000023841858,4.199999809265137,2,2.4000000953674316,2.799999952316284,9.300000190734863,5.400000095367432,3.700000047683716,4.599999904632568,5.199999809265137,4,4.800000190734863,5.400000095367432,5.5,5,5.699999809265137,6.199999809265137,5.099999904632568,6.300000190734863,6.400000095367432,7.300000190734863,8.199999809265137,7.800000190734863,5.699999809265137,2.799999952316284,2.0999999046325684,1.7999999523162842,1.399999976158142,2.299999952316284,5.699999809265137,10.100000381469727,7.599999904632568,5.199999809265137,3.200000047683716,4.599999904632568,5.199999809265137,4.400000095367432,3.299999952316284,3.200000047683716,3.200000047683716,4.099999904632568,4.400000095367432,1.899999976158142,1.100000023841858,2,3.299999952316284,1.5,2.5,2.299999952316284,2.0999999046325684,1.100000023841858,0.8999999761581421,1.2999999523162842,1,1,0.699999988079071,0.800000011920929,0.800000011920929,0.699999988079071,0.800000011920929,0.800000011920929,1,1.100000023841858,1.2999999523162842,1.7000000476837158,2.700000047683716,2.200000047683716,1.2999999523162842,1.2999999523162842,1.100000023841858,1.2999999523162842,2,5.400000095367432,5.699999809265137,2,2.799999952316284,3.299999952316284,7.199999809265137,9.399999618530273,14.199999809265137,14.100000381469727,13.600000381469727,14.5,16.299999237060547,12.100000381469727,14,12.199999809265137,12.699999809265137,9.899999618530273,8.899999618530273,5.599999904632568,3.9000000953674316,1.7999999523162842,2.299999952316284,2.200000047683716,5.199999809265137,6.400000095367432,3.200000047683716,3.5,1.2999999523162842,1.899999976158142,2,3.200000047683716,6.5,7,8.899999618530273,9.899999618530273,8,6.199999809265137,8.800000190734863,13.5,9.199999809265137,10.699999809265137,10.100000381469727,11.899999618530273,9.899999618530273,6.099999904632568,5.5,8.600000381469727,7.599999904632568,7.800000190734863,8.300000190734863,9.600000381469727,12.5,12.100000381469727,13.199999809265137,8.300000190734863,7.300000190734863],"grade":[1,3,1,-5,-1,2,-1,0,0,0,0,1,2,8,1,-1,-3,-1,-1,-1,1,0,-1,0,1,0,-1,0,2,-3,0,0,0,0,0,0,-1,1,1,0,0,-1,-4,1,0,0,1,0,0,0,0,-1,-1,-2,-2,-1,-1,-1,1,0,-1,-1,0,5,-4,2,0,1,3,-4,1,-3,0,-18,2,-1,1,2,-3,-4,-1,-6,7,-1,-1,4,1,2,-9,-5,4,2,0,-1,-4,-4,7,3,-10,1,-4,4,1,-1,-2,-8,-2,0,0,-2,0,-5,1,1,-1,-2,0,-1,0,-1,-1,0,0,-1,1,-1,0,-1,0,0,-3,0,0,0,0,0,0,0,0,1,0,-1,-2,1,-1,1,0,-1,0,-1,0,-1,7,-5,0,0,4,1,-5,1,1,-1,1,1,1,-1,0,1,-1,1,0,1,1,2,-4,-5,-1,0,-1,0,3,5,1,-5,-6,0,3,-3,-1,-1,-1,1,1,-8,-4,0,2,1,0,-1,0,-1,0,0,-1,1,0,-1,0,0,0,0,1,0,1,0,3,0,-3,0,0,1,2,0,7,-8,2,0,7,6,5,2,-3,2,5,-3,0,0,-2,0,-3,-1,-5,-4,0,1,-1,2,2,0,0,-2,-1,2,7,1,1,2,-1,-4,2,2,3,-5,6,-1,-1,-5,-3,3,-1,-2,1,2,5,-3,3,0,-4,0],"surf":["asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","paved","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","sett","sett","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","unpaved","unpaved","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","paving_stones","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","paved","asphalt","fine_gravel","fine_gravel","fine_gravel","fine_gravel","asphalt","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","wood","dirt","dirt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","fine_gravel","fine_gravel","compacted","compacted","compacted","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","fine_gravel","compacted","compacted","compacted","compacted","compacted","compacted","compacted","fine_gravel","fine_gravel","fine_gravel","unpaved","unpaved","unpaved","unpaved","asphalt","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","fine_gravel","unpaved","unpaved","unpaved","unpaved","unpaved","unpaved","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","asphalt","paved","paved","paved","paved","paved","paved"],"way":["cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","minor road","minor road","minor road","minor road","minor road","minor road","main road","main road","main road","main road","cycleway","minor road","minor road","minor road","minor road","minor road","minor road","cycleway","minor road","minor road","minor road","minor road","main road","main road","minor road","minor road","minor road","minor road","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","footway","footway","footway","footway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","main road","main road","main road","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","minor road","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","minor road","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway"],"g":[0,0,0,2,0,0,0,0,0,0,0,0,0,3,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,0,2,0,2,0,15,0,0,0,0,0,2,0,2,3,0,0,1,0,0,2,2,1,0,0,0,2,2,3,1,15,0,2,1,0,0,0,2,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,2,0,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,1,1,0,2,2,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,3,2,0,0,3,1,1,0,0,0,1,2,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,2,0,0,0,2,3,0,0,2,2,1,0,0,0,0,1,2,0,0,2,0],"s":[6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,4,4,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,16,16,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,4,5,5,5,5,5,5,5,5,6,6,5,5,5,5,6,5,5,5,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,10,8,8,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,5,5,11,11,11,16,16,16,16,16,16,16,5,11,11,11,11,11,11,11,5,5,5,16,16,16,16,6,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,5,5,5,5,5,5,5,5,5,5,5,5,16,16,16,16,16,16,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6],"w":[13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,6,6,6,6,6,6,17,17,17,17,13,6,6,6,6,6,6,13,6,6,6,6,17,17,6,6,6,6,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,12,12,12,12,13,13,13,13,13,13,13,13,13,13,13,13,13,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,17,17,17,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,6,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,13,13,13,13,13,13],"pts":[[24.95319,60.15471],[24.95516,60.15408],[24.95688,60.15384],[24.95814,60.15427],[24.95878,60.15493],[24.96029,60.15525],[24.96225,60.15564],[24.96303,60.15627],[24.96271,60.15697],[24.96248,60.15785],[24.96164,60.15886],[24.96113,60.15954],[24.96066,60.15992],[24.95933,60.16027],[24.95817,60.16049],[24.95708,60.16109],[24.95662,60.16161],[24.95534,60.16264],[24.95363,60.16379],[24.95296,60.16456],[24.95288,60.16513],[24.95268,60.16563],[24.95256,60.16655],[24.9526,60.16684],[24.95253,60.16763],[24.95286,60.16778],[24.95528,60.16784],[24.95619,60.1679],[24.95734,60.16803],[24.95781,60.1684],[24.9586,60.16893],[24.95872,60.16956],[24.95943,60.16961],[24.95984,60.16985],[24.96037,60.17094],[24.96083,60.17184],[24.96148,60.17318],[24.96202,60.17424],[24.96189,60.1752],[24.96164,60.1758],[24.96059,60.17628],[24.95928,60.17653],[24.95854,60.17677],[24.95803,60.17738],[24.95802,60.17809],[24.95975,60.17814],[24.96233,60.17817],[24.96394,60.17832],[24.96587,60.17862],[24.96774,60.17862],[24.97038,60.17843],[24.97188,60.17837],[24.97446,60.1784],[24.97648,60.17845],[24.97681,60.17857],[24.97699,60.17874],[24.97806,60.17935],[24.97852,60.17975],[24.97911,60.18101],[24.97961,60.18218],[24.97967,60.18258],[24.9807,60.18268],[24.98228,60.1823],[24.9839,60.18132],[24.98424,60.18089],[24.9854,60.18082],[24.98771,60.18065],[24.9899,60.18036],[24.99201,60.18035],[24.9931,60.18059],[24.99298,60.18152],[24.99318,60.18214],[24.99537,60.1823],[24.99611,60.18263],[24.99751,60.18374],[24.99838,60.18402],[25.00053,60.18401],[25.00215,60.18377],[25.0037,60.1831],[25.00522,60.18265],[25.00687,60.18228],[25.00828,60.1815],[25.00926,60.18138],[25.01085,60.1811],[25.01236,60.1819],[25.0137,60.18258],[25.0135,60.1833],[25.0133,60.18356],[25.0141,60.18455],[25.01503,60.18438],[25.01633,60.18489],[25.01694,60.18564],[25.01835,60.18649],[25.01893,60.18688],[25.01872,60.18765],[25.01781,60.18795],[25.01637,60.18828],[25.01657,60.1892],[25.01743,60.18991],[25.01968,60.19067],[25.02176,60.19121],[25.02307,60.19151],[25.02456,60.19174],[25.02507,60.19107],[25.02553,60.19033],[25.02572,60.18973],[25.02599,60.18934],[25.02716,60.18903],[25.02886,60.18886],[25.02928,60.18858],[25.02987,60.18786],[25.0294,60.1875],[25.03015,60.187],[25.03077,60.18677],[25.03209,60.18607],[25.03287,60.1857],[25.03405,60.18509],[25.03571,60.18533],[25.0365,60.18586],[25.03729,60.18613],[25.03845,60.18611],[25.03956,60.18583],[25.041,60.18573],[25.04202,60.18605],[25.0432,60.18616],[25.0441,60.18642],[25.04508,60.18677],[25.04611,60.18773],[25.0474,60.18841],[25.04804,60.18891],[25.04806,60.18983],[25.04755,60.19037],[25.04745,60.19094],[25.04818,60.19161],[25.04988,60.19243],[25.05129,60.193],[25.05299,60.193],[25.05506,60.19316],[25.05663,60.19347],[25.05779,60.19373],[25.05935,60.19372],[25.06098,60.19358],[25.06199,60.19399],[25.06335,60.19512],[25.06358,60.19566],[25.06408,60.19637],[25.0643,60.19724],[25.06435,60.19794],[25.06517,60.19851],[25.06654,60.19857],[25.06743,60.19897],[25.0684,60.19916],[25.06924,60.19932],[25.07067,60.19931],[25.07203,60.1991],[25.07326,60.19859],[25.07406,60.19886],[25.07548,60.19896],[25.07677,60.19881],[25.07816,60.1991],[25.07918,60.1994],[25.07932,60.19987],[25.07985,60.20039],[25.08068,60.20053],[25.08196,60.20067],[25.0829,60.20062],[25.08376,60.20074],[25.08458,60.20114],[25.08568,60.20136],[25.08737,60.20152],[25.08952,60.2017],[25.09129,60.20166],[25.09249,60.20153],[25.09392,60.20173],[25.09568,60.20174],[25.09601,60.20236],[25.09621,60.20316],[25.09517,60.20384],[25.09461,60.20425],[25.09449,60.20492],[25.09574,60.20566],[25.09471,60.20616],[25.09436,60.20685],[25.09528,60.20742],[25.09569,60.20788],[25.0961,60.20823],[25.097,60.20804],[25.09895,60.20778],[25.09994,60.20771],[25.10135,60.20771],[25.10374,60.208],[25.10433,60.20806],[25.10582,60.20815],[25.10725,60.20796],[25.10781,60.2079],[25.10884,60.20802],[25.10885,60.20847],[25.10835,60.20901],[25.10921,60.21005],[25.1094,60.21111],[25.11013,60.2119],[25.11091,60.21285],[25.11228,60.21364],[25.11396,60.21412],[25.11532,60.21468],[25.11607,60.21534],[25.11705,60.21619],[25.1184,60.21681],[25.11902,60.21775],[25.12004,60.21836],[25.12077,60.21876],[25.12205,60.21939],[25.12313,60.21992],[25.12394,60.22076],[25.12435,60.22153],[25.12459,60.22238],[25.12563,60.22302],[25.12677,60.22328],[25.12821,60.22362],[25.12973,60.22418],[25.13152,60.2252],[25.13291,60.22623],[25.13428,60.22702],[25.13537,60.22753],[25.13654,60.22803],[25.13686,60.22868],[25.13654,60.22929],[25.13711,60.23044],[25.13796,60.23148],[25.13848,60.23188],[25.13946,60.23166],[25.14075,60.23179],[25.14129,60.23116],[25.14202,60.23064],[25.14242,60.23069],[25.1428,60.23128],[25.14447,60.23059],[25.14586,60.22976],[25.14596,60.22888],[25.14749,60.22883],[25.14901,60.22927],[25.15008,60.22868],[25.15116,60.22831],[25.1521,60.22835],[25.15453,60.22871],[25.15614,60.22917],[25.15602,60.22982],[25.15644,60.23082],[25.15661,60.23148],[25.15706,60.23228],[25.15892,60.23284],[25.1612,60.23291],[25.16183,60.23342],[25.16277,60.23336],[25.16473,60.23328],[25.16579,60.23333],[25.16718,60.23304],[25.16731,60.23382],[25.16831,60.23459],[25.16859,60.23535],[25.16816,60.23646],[25.16732,60.23759],[25.16602,60.23851],[25.16426,60.23928],[25.16295,60.24017],[25.16219,60.24092],[25.16105,60.24164],[25.15987,60.24254],[25.1593,60.24351],[25.15833,60.24385],[25.15699,60.24412],[25.15613,60.24403],[25.15462,60.24477],[25.15415,60.2454],[25.15409,60.24614],[25.15635,60.24702],[25.15783,60.24795],[25.15928,60.24847],[25.16161,60.24892],[25.16425,60.2494]]}}</script>
+<script type="module">
+import { icon, h, popMenu, tooltip } from '../../../js/ui.js';
+
+const R = JSON.parse(document.getElementById('route').textContent);
+const IMG = {"bg-desk": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/bg-desk.jpg", "bg-desk-noroute": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/bg-desk-noroute.jpg", "bg-phone": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/bg-phone.jpg", "bg-phone-noroute": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/bg-phone-noroute.jpg", "t-desk-route": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-desk-route.jpg", "t-desk-warning": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-desk-warning.jpg", "t-desk-way-tap": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-desk-way-tap.jpg", "t-desk-wp-hold": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-desk-wp-hold.jpg", "t-phone-edit": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-edit.jpg", "t-phone-place-tap": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-place-tap.jpg", "t-phone-route": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-route.jpg", "t-phone-route-full": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-route-full.jpg", "t-phone-stretch-full": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-stretch-full.jpg", "t-phone-warning": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-warning.jpg", "t-phone-way-hold-full": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-way-hold-full.jpg", "t-phone-way-line": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-way-line.jpg", "t-phone-way-tap": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-way-tap.jpg", "t-phone-wp-hold": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-wp-hold.jpg", "t-phone-wp-hold-full": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-wp-hold-full.jpg", "t-phone-wp-tap": "https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/cards-and-taps-d4b7c4/t-phone-wp-tap.jpg"};
+const Q = new URLSearchParams(location.search);
+const S = { v: Q.get('v') || 'new3', kind: Q.get('kind') || 'leg', frame: Q.get('frame') || '390', acts: Q.get('acts') || (Q.get('v') === 'new' ? 'buttons' : 'auto'), peek: Q.get('peek') || 'acts', data: Q.get('data') || 'real', mode: Q.get('mode') || 'drawing',
+  look: document.documentElement.dataset.theme, view: 'leg', leg: 0, at: 300, colour: 'grade', more: false, hidden: false, size: 'peek', pin: null, wp: 1 };
+const R3 = () => S.v === 'new3'; // round 3's version; Round 2 (v=new) stays as it was drawn
+const save = () => { const u = new URL(location.href); for (const k of ['v', 'kind', 'frame', 'acts', 'peek', 'data', 'mode']) u.searchParams.set(k, S[k]); try { history.replaceState(null, '', u); } catch {} };
+
+// ------------------------------------------------------------------ the route's numbers (main's analysis, every 4th sample)
+const N = R.along.length, LEN = R.along[N - 1];
+if (S.data === 'long') R.names = ['Sepänkatu', 'Neitsytpolku', 'Suomenlinnan huoltotunneli', 'Waypoint 3', 'End'] // (main's own names at a desktop's zoom);
+const SPORT = { mtb: ['MTB', 'bike'], paddle: ['Sea kayak', 'paddle'], hike: ['Hike', 'hike'] };
+const MODE = { auto: 'Follow paths', water: 'Over water', line: 'Freehand' };
+const km = (m) => (m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 2)} km` : `${Math.round(m)} m`);
+const mins = (s) => (s < 3600 ? `${Math.max(1, Math.round(s / 60))} min` : `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min`);
+const nearIn = (D, m) => { let k = 0; for (let i = 1; i < D.along.length; i++) if (Math.abs(D.along[i] - m) < Math.abs(D.along[k] - m)) k = i; return k; };
+const near = (m) => nearIn(R, m);
+const clockAt = (m) => { const [hh, mm] = R.clock[0].split(':').map(Number), s = R.t[near(m)] || 0, t = hh * 60 + mm + Math.floor(s / 60); return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
+const legOf = (m) => { for (let i = 0; i < R.legsAt.length - 1; i++) if (m < R.legsAt[i + 1]) return i; return R.legsAt.length - 2; };
+const STRETCH = R.stretches; // { from, to } for each leg
+const range = () => S.view === 'route' ? [0, LEN] : S.view === 'stretch' ? [R.legsAt[STRETCH[S.leg].from], R.legsAt[STRETCH[S.leg].to]] : [R.legsAt[S.leg], R.legsAt[S.leg + 1]];
+const ends = () => S.view === 'route' ? [0, R.names.length - 1] : S.view === 'stretch' ? [STRETCH[S.leg].from, STRETCH[S.leg].to] : [S.leg, S.leg + 1];
+function stats([a, b]) {
+  const i0 = near(a), i1 = near(b);
+  let up = 0; for (let i = i0 + 1; i <= i1; i++) up += Math.max(0, R.ele[i] - R.ele[i - 1]);
+  return { len: b - a, sec: (R.t[i1] || 0) - (R.t[i0] || 0), up: Math.round(up), i0, i1 };
+}
+const COLOUR = { grade: ['g', 'Gradient'], surface: ['s', 'Surface'], way: ['w', 'Way type'] };
+const sg = (x) => { const r = Math.round(x); return r > 0 ? `+${r}` : r < 0 ? `−${-r}` : '0'; };
+function legend([a, b], mode, D = R) {
+  const key = COLOUR[mode][0], by = new Map(), i0 = nearIn(D, a), i1 = nearIn(D, b);
+  for (let i = i0 + 1; i <= i1; i++) {
+    const c = D[key][i], name = mode === 'grade' ? null : mode === 'surface' ? D.surf[i].replace('_', ' ') : D.way[i];
+    const e = by.get(c) || { c: R.pal[c], len: 0, name, lo: 99, hi: -99 };
+    e.len += D.along[i] - D.along[i - 1]; e.lo = Math.min(e.lo, D.grade[i]); e.hi = Math.max(e.hi, D.grade[i]);
+    by.set(c, e);
+  }
+  return [...by.values()].sort((x, y) => y.len - x.len).map((e) => ({ ...e, name: e.name || (Math.round(e.lo) === Math.round(e.hi) ? `${sg(e.lo)} %` : `${sg(e.lo)} to ${sg(e.hi)} %`) }));
+}
+const itemsIn = ([a, b]) => R.items.filter((x) => x.at >= a - 1 && x.at <= b + 1);
+const readout = (m) => { const i = near(m), g = R.grade[i]; return [`${km(R.along[i])}`, clockAt(m), `${Math.round(R.ele[i])} m`, R.surf[i] === 'water' ? 'open water' : `${g >= 0 ? '+' : '−'}${Math.abs(g)} %`, R.surf[i] === 'water' ? '' : `${R.way[i]}, ${R.surf[i].replace('_', ' ')}`].filter(Boolean); };
+
+// ------------------------------------------------------------------ the map: the frame's view, as Web Mercator with 512 px tiles
+const VIEW = { phone: { c: [24.962, 60.1446], z: 12.3, w: 390, h: 844 }, desk: { c: [24.9495, 60.1512], z: 13.5, w: 1440, h: 900 } };
+function project(v, [lon, lat]) {
+  const ws = 512 * 2 ** v.z, mx = (x) => ((x + 180) / 360) * ws, my = (y) => { const s = Math.sin((y * Math.PI) / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * ws; };
+  return [mx(lon) - mx(v.c[0]) + v.w / 2, my(lat) - my(v.c[1]) + v.h / 2];
+}
+const PLACES = { campfire: { ll: [24.95251, 60.1527], name: 'Uunisaari / Grillipaikka' }, path: { ll: [24.95503, 60.15886], name: 'Footpath' } };
+
+// ------------------------------------------------------------------ the cards (css/app.css's classes, as js/cards.js builds them)
+const mark = (inner) => h('span', { class: 'card-mark' }, inner);
+const frag = (...k) => { const f = document.createDocumentFragment(); f.append(...k); return f; };
+const wayMark = () => h('span', { html: `<svg width="34" height="30" viewBox="0 0 34 30" aria-hidden="true"><path d="M2 23C13 23 19 7 32 7" fill="none" style="stroke:var(--route)" stroke-width="4.5" stroke-linecap="round"/><circle cx="16.5" cy="15" r="5.5" style="fill:var(--accent-bg);stroke:#fff" stroke-width="2.6"/></svg>` });
+const wpMark = (i) => h('span', { class: `wp ${i === 0 ? 'wp-start' : i === R.names.length - 1 ? 'wp-end' : 'wp-via'}` }, i === 0 || i === R.names.length - 1 ? '' : String(i));
+function head(m, title, line, extra = []) {
+  // round 4: the card's settings in the app's menu, as the route's list's settings are built (listMenu() in js/planner.js): its
+  // name and ✕ on a row of their own, groups with ticks and switches, and a tap outside closes it alone
+  const settings = R3() ? h('button', { type: 'button', class: 'tool', 'aria-haspopup': 'menu', 'aria-label': 'Card settings', html: icon('more', 22), onclick: (e) => {
+    const anchor = e.currentTarget, sw = (label, on, fn) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: on, onchange: fn }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    const x = h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close Card settings', html: icon('close', 20), onclick: () => { menu.close(); anchor.focus(); } });
+    const menu = popMenu(anchor, [
+      { node: h('div', { class: 'way-bar' }, h('b', {}, 'Card settings'), x) },
+      { group: 'Colour by', items: Object.entries(COLOUR).map(([k, [, label]]) => ({ icon: { grade: 'mountain', surface: 'road', way: 'route' }[k], label, radio: true, checked: S.colour === k, fn: () => { S.colour = k; draw(); } })) },
+      { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, sw('Colours on the map', true, () => {}), sw('Your route', !S.hidden, () => { S.hidden = !S.hidden; draw(); })) }] },
+      desk() ? { group: 'The card', items: [['panelLeft', 'Beside the planner', true], ['pin', 'At the spot', false]].map(([ic, label, on]) => ({ icon: ic, label, radio: true, checked: on, fn: () => toast(on ? 'Beside the planner' : 'At the spot, as today (#647)') })) } : null,
+      { note: 'Kept for every card, on this device.' },
+    ].filter(Boolean), { label: 'Card settings', modal: true });
+  } }) : null;
+  if (settings && desk()) tooltip(settings, { name: 'Card settings', text: 'Colour by, colours on the map, your route' });
+  const more = settings || (S.acts === 'buttons' ? h('button', { type: 'button', class: 'tool', 'aria-haspopup': 'menu', 'aria-label': 'More actions', html: icon('more', 22),
+    onclick: (e) => popMenu(e.currentTarget, REST.map((a) => ({ icon: a.ic, label: a.label, desc: a.line, cls: a.danger ? 'danger' : '', fn: a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) })), { label: 'More actions' }) }) : null);
+  if (more && !settings && desk()) tooltip(more, { name: 'More actions' });
+  return frag(h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close', 22), onclick: () => close() })), h('div', { class: 'way-head' }, h('h3', { class: 'way-hint', tabindex: '-1' }, h('b', {}, title), line ? h('small', {}, line) : null), mark(m), ...extra, more,
+    h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close', 22), onclick: () => close() })));
+}
+const nums = (list, warn = 0) => h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map((x) => h('span', { class: `sum-item${x.miss ? ' miss' : ''}${x.wait ? ' wait' : ''}` }, h('b', {}, x.wait ? '–' : x.value), h('small', {}, x.label))),
+  R3() && warn ? h('button', { type: 'button', class: 'sum-item mk-warnbox', 'aria-label': `${warn} warning${warn === 1 ? '' : 's'} on it: show them`, onclick: () => { S.size = 'full'; draw(); requestAnimationFrame(() => card.querySelector('#mk-warns')?.scrollIntoView({ block: 'start' })); } },
+    h('b', {}, h('span', { 'aria-hidden': 'true', html: icon('warnf', 17) }), String(warn)), h('small', {}, warn === 1 ? 'warning' : 'warnings')) : null);
+const row = ({ ic, label, line, chev, danger, val, fn }) => {
+  const b = h('button', { type: 'button', class: `row${danger ? ' danger' : ''}`, onclick: fn || (() => toast(`${label}: not drawn in the mock-up`)) },
+    h('span', { html: icon(ic, 20) }), h('span', {}, h('b', {}, label), line ? h('small', {}, line) : null), val ? h('span', { class: 'val' }, val) : null, chev ? h('span', { class: 'way-chev', html: icon('chevronRight', 18) }) : null);
+  if (line && desk()) tooltip(b, { name: label, text: line }); // (Q9: a desktop says what a button does before you press it)
+  return b;
+};
+const rows = (...r) => h('div', { class: 'rows' }, ...r.filter(Boolean));
+const group = (title, list) => list.length ? [h('h4', { class: 'menu-h' }, title), h('div', { class: 'pick-facts' }, ...list.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))))] : [];
+
+let REST = []; // the actions behind ⋯ (B: in the head, the app's menu)
+// round 3: the rest of a card's actions as rows with their lines, in sight on the card under a heading
+const restRows = (title) => REST.length ? [h('h4', { class: 'menu-h' }, title), rows(...REST.map((a) => row({ ...a, fn: a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) })))] : [];
+// Q7: the card's actions. `main` green (or none), `first` the next two or three in sight, `rest` behind More
+function actions({ main, first, rest, row: asRow = false }) {
+  const out = [], useRow = S.acts === 'row' || (S.acts === 'auto' && asRow);
+  if (useRow) {
+    const all = R3() ? [main && { ...main, main: true }, ...first].filter(Boolean).slice(0, 4) : [main && { ...main, main: true }, ...first, rest.length && { ic: 'more', label: 'More', more: true }].filter(Boolean).slice(0, 5);
+    out.push(h('div', { class: 'mk-ar', role: 'group', 'aria-label': 'Actions' }, ...all.map((a) => {
+      const b = h('button', { type: 'button', class: `${a.main ? 'main' : ''}${a.danger ? ' danger' : ''}`, 'aria-expanded': a.more ? String(S.more) : null, onclick: a.more ? () => { S.more = !S.more; draw(); } : a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) }, h('span', { html: icon(a.ic, 20) }), h('span', {}, a.label));
+      if (desk() && a.line) tooltip(b, { name: a.label, text: a.line });
+      return b;
+    })));
+  } else {
+    if (main) out.push(h('button', { type: 'button', class: 'btn primary big', onclick: main.fn || (() => toast(`${main.label}${main.done ? ` · ${main.done}` : ''}`, main.undo)) }, h('span', { html: icon(main.ic, 20) }), h('span', {}, main.label)));
+    out.push(h('div', { class: 'rows acts mk-btns' }, ...first.map((a) => { const b = row({ ...a, line: null, fn: a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) }); if (desk() && a.line) tooltip(b, { name: a.label, text: a.line }); if (a.wide) b.classList.add('wide'); return b; })));
+  }
+  if (!R3() && S.acts === 'row' && S.more && rest.length) out.push(rows(...rest.map((a) => row({ ...a, fn: a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo)) }))));
+  REST = rest;
+  return out;
+}
+
+// a piece's own profile (Q3): the route's heights between its ends, coloured by Colour by, the spot marked; a finger or the
+// pointer on it moves the spot (and its dot on the map), the arrow keys too
+function profile([a, b], { mark: pm = null, D = R } = {}) {
+  const at0 = D === R ? S.at : S.pat ?? (a + b) / 2;
+  if (S.data === 'late') return h('div', { class: 'mk-prof' }, h('div', { class: 'mk-skel', 'aria-hidden': 'true' }), h('p', { class: 'pick-note', role: 'status' }, 'Working out the heights…'));
+  const W = 300, H = 92, i0 = nearIn(D, a), i1 = nearIn(D, b), lo = Math.min(...D.ele.slice(i0, i1 + 1)), hi = Math.max(...D.ele.slice(i0, i1 + 1)) + 2, span = Math.max(8, hi - lo);
+  const x = (m) => ((m - a) / Math.max(1, b - a)) * W, y = (e) => H - 14 - ((e - lo) / span) * (H - 24), key = COLOUR[S.colour][0];
+  let bars = ''; for (let i = i0 + 1; i <= i1; i++) bars += `<path d="M${x(D.along[i - 1]).toFixed(1)} ${y(D.ele[i - 1]).toFixed(1)}L${x(D.along[i]).toFixed(1)} ${y(D.ele[i]).toFixed(1)}L${x(D.along[i]).toFixed(1)} ${H - 12}L${x(D.along[i - 1]).toFixed(1)} ${H - 12}Z" fill="${R.pal[D[key][i]]}"/>`;
+  const line = D.ele.slice(i0, i1 + 1).map((e, k) => `${k ? 'L' : 'M'}${x(D.along[i0 + k]).toFixed(1)} ${y(e).toFixed(1)}`).join('');
+  const missing = S.data === 'missing' && S.kind === 'leg';
+  const svg = h('div', { html: `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="slider" tabindex="0" aria-label="The profile: move along it" aria-valuemin="${Math.round(a)}" aria-valuemax="${Math.round(b)}" aria-valuenow="${Math.round(at0)}">${missing ? '' : bars}<path d="${line}" fill="none" stroke="currentColor" stroke-opacity=".55" stroke-width="1.3" vector-effect="non-scaling-stroke"/>
+      ${pm != null ? `<line x1="${x(pm)}" x2="${x(pm)}" y1="4" y2="${H - 12}" stroke="currentColor" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>` : ''}
+      <line class="mk-cur" x1="${x(at0)}" x2="${x(at0)}" y1="2" y2="${H - 12}" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      <text class="ax" x="2" y="${H - 2}">${km(0)}</text><text class="ax" x="${W - 2}" y="${H - 2}" text-anchor="end">${km(b - a)}</text><text class="ax" x="2" y="10">${Math.round(hi)} m</text></svg>` }).firstElementChild;
+  const at = h('p', { class: 'mk-at', 'aria-live': 'polite' });
+  const cur = () => (D === R ? S.at : S.pat ?? (a + b) / 2);
+  // (round 3: production's own readout on the route, every line of it, the weather then too; a way's from its own data)
+  const say = () => {
+    if (R3() && D === R) { const l = R.ro[near(S.at)]; at.replaceChildren(h('b', {}, l[0]), ...l.slice(1).map((t) => h('span', { class: 'mk-at-l' }, t))); return; }
+    if (D !== R) { const i = nearIn(D, cur()); at.replaceChildren(h('b', {}, `${km(D.along[i])} · ${Math.round(D.ele[i])} m · ${sg(D.grade[i])} %`), h('span', { class: 'mk-at-l' }, `${D.way[i]} · ${D.surf[i].replace('_', ' ')}`)); return; }
+    const r = readout(S.at); at.replaceChildren(h('b', {}, `${r[0]} · ${r[1]}`), ` · ${r.slice(2).join(' · ')}`);
+  };
+  const move = (m) => { const v = Math.max(a, Math.min(b, m)); if (D === R) S.at = v; else S.pat = v; svg.querySelector('.mk-cur').setAttribute('x1', x(v)); svg.querySelector('.mk-cur').setAttribute('x2', x(v)); svg.setAttribute('aria-valuenow', Math.round(v)); say(); drawDot(); };
+  const fromX = (e) => { const r = svg.getBoundingClientRect(); return a + ((e.clientX - r.left) / r.width) * (b - a); };
+  svg.addEventListener('pointerdown', (e) => { svg.setPointerCapture(e.pointerId); move(fromX(e)); });
+  svg.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'mouse') move(fromX(e)); });
+  svg.addEventListener('keydown', (e) => { const d = { ArrowLeft: -1, ArrowRight: 1, ArrowDown: -1, ArrowUp: 1 }[e.key]; if (d) { e.preventDefault(); move(cur() + d * Math.max(25, (b - a) / 40)); } });
+  say();
+  const lg = missing ? [] : legend([a, b], S.colour, D);
+  return h('div', { class: 'mk-prof' }, at, svg, missing ? h('p', { class: 'pick-fail' }, 'The terrain didn’t load: no profile or grades yet. ', h('button', { type: 'button', class: 'btn quiet' }, 'Try again')) : null,
+    h('div', { class: 'seg small', role: 'group', 'aria-label': 'Colour by' }, ...Object.entries(COLOUR).map(([k, [, label]]) => h('button', { type: 'button', 'aria-pressed': String(S.colour === k), onclick: () => { S.colour = k; draw(); } }, label))),
+    h('div', { class: 'bd-legend' }, ...lg.slice(0, 5).map((e) => h('div', { class: 'bd-item' }, h('i', { style: `width:9px;height:9px;border-radius:2px;background:${e.c}` }), h('span', {}, e.name), h('b', {}, km(e.len))))));
+}
+const warnRow = (x) => h('button', { type: 'button', class: `warn-row ${x.g === 'read' ? 'danger' : 'look'}`, onclick: () => open('warning', { item: x }) },
+  h('span', { 'aria-hidden': 'true', html: icon(x.g === 'read' ? 'warnf' : 'eye', 20) }), h('span', {}, h('em', {}, x.g === 'read' ? 'Warning' : 'Good to know'), h('b', {}, x.text), h('small', {}, `at km ${(x.at / 1000).toFixed(1)}`)), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+const sportMenu = (btn) => popMenu(btn, Object.entries(SPORT).map(([k, [label, ic]]) => ({ icon: ic, label, radio: true, checked: R.sports[S.leg] === k, fn: () => toast(`${S.view === 'leg' ? 'This leg' : S.view === 'stretch' ? 'This stretch' : 'The whole route'} is ${label} now`, true) })), { label: 'Sport' });
+const modeMenu = (btn) => popMenu(btn, Object.entries(MODE).map(([k, label]) => ({ icon: { auto: 'auto', water: 'water', line: 'straight' }[k], label, radio: true, checked: R.modes[S.leg] === k, fn: () => toast(`${label}, ${S.view === 'leg' ? 'this leg' : 'this stretch'}`, true) })), { label: 'How it’s drawn' });
+
+// ---- a leg (a tap on the line), its stretch or the route: Q3, Q9, Q10
+function legCard() {
+  const r = range(), [p0, p1] = ends(), st = stats(r), sp = R.sports[S.leg], one = STRETCH[S.leg].to - STRETCH[S.leg].from === 1;
+  const title = S.view === 'route' ? 'Eira → Suomenlinna' : `${R.names[p0]} → ${R.names[p1]}`;
+  const pill = (label, ic, fn) => { const b = h('button', { type: 'button', class: 'mk-pill', 'aria-haspopup': 'menu' }, h('span', { html: icon(ic, 18) }), h('span', {}, label), h('span', { class: 'caret', 'aria-hidden': 'true' })); b.onclick = () => fn(b); return b; };
+  const eye = h('button', { type: 'button', class: 'tool', 'aria-pressed': String(S.hidden), 'aria-label': S.hidden ? 'Show the route' : 'Hide the route for a moment', html: icon(S.hidden ? 'eyeOff' : 'eye', 20), onclick: () => { S.hidden = !S.hidden; draw(); } });
+  if (desk()) tooltip(eye, { name: S.hidden ? 'Show the route' : 'Hide the route', keys: 'H', text: 'To see the map under it (#756)' });
+  const kids = [head(wayMark(), title, null),
+    h('div', { class: 'mk-pills' }, S.view === 'route' ? null : pill(SPORT[sp][0], SPORT[sp][1], sportMenu), S.view === 'route' ? null : pill(MODE[R.modes[S.leg]], { auto: 'auto', water: 'water', line: 'straight' }[R.modes[S.leg]], modeMenu), eye),
+    nums(S.data === 'late' ? [{ label: 'distance', wait: true }, { label: 'time', wait: true }, { label: 'climb', wait: true }]
+      : [{ value: km(st.len), label: 'distance' }, { value: mins(st.sec), label: 'time' }, S.data === 'missing' ? { value: '?', label: 'climb: the terrain didn’t load', miss: true } : { value: `↑${st.up} m`, label: 'climb' }]),
+    ...actions({ main: { ic: 'plus', label: 'Add a waypoint here', line: 'At the spot you tapped, on the line', done: `Waypoint added at ${km(S.at)}`, undo: true },
+      first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', done: 'The route goes around it', undo: true }, { ic: 'route', label: 'Other ways', line: 'Up to two, on the map' }],
+      rest: [{ ic: 'pause', label: 'Stop here', line: 'A break or a night at this spot' }, { ic: 'trash', label: S.view === 'leg' ? 'Remove this leg' : 'Remove this stretch', line: 'Its end waypoint goes; Undo brings it back (#627)', danger: true }, { ic: 'sliders', label: 'Route style', line: `${SPORT[sp][0]}’s style`, val: 'Balanced', chev: true }, { ic: 'mountain', label: 'On the route’s profile', line: 'Zooms the planner’s profile to it' }, { ic: 'more', label: 'The whole route', line: 'Share, export, save offline, reverse or clear it', chev: true }] })];
+  const insp = [h('div', { class: 'mk-step' },
+    h('button', { type: 'button', class: 'tool', 'aria-label': `The ${S.view} before`, disabled: S.view === 'route' || S.leg === 0, html: icon('chevronLeft', 20), onclick: () => step(-1) }),
+    h('div', { class: 'seg small mk-view', role: 'group', 'aria-label': `Show: ${S.view === 'leg' ? `leg ${S.leg + 1} of ${R.sports.length}` : S.view}` }, ...[['leg', `Leg ${S.leg + 1}/${R.sports.length}`], one ? null : ['stretch', 'Stretch'], ['route', 'Route']].filter(Boolean).map(([k, label]) => h('button', { type: 'button', 'aria-pressed': String(S.view === k), onclick: () => { S.view = k; const [a, b] = range(); if (S.at < a || S.at > b) S.at = (a + b) / 2; draw(); fit(); } }, label))),
+    h('button', { type: 'button', class: 'tool', 'aria-label': `The next ${S.view}`, disabled: S.view === 'route' || (S.view === 'leg' ? S.leg >= R.sports.length - 1 : STRETCH[S.leg].to >= R.names.length - 1), html: icon('chevronRight', 20), onclick: () => step(1) })), profile(r, { mark: null })];
+  const warns = [...(S.data === 'missing' ? [h('button', { type: 'button', class: 'warn-row unk' }, h('span', { 'aria-hidden': 'true', html: icon('unk', 20) }), h('span', {}, h('em', {}, 'Not checked'), h('b', {}, 'Fintraffic didn’t answer: road works aren’t checked'), h('small', {}, 'Check has a Retry')), h('span', { html: icon('chevronRight', 18) }))] : []), ...itemsIn(r).map(warnRow)];
+  if (S.peek === 'profile') kids.push(...insp, h('i', { 'data-peek-end': '' }), ...warns); else kids.push(h('i', { 'data-peek-end': '' }), ...warns, ...insp);
+  const i = near(S.at), on = R.surf[i] === 'water';
+  kids.push(rows(row({ ic: on ? 'water' : 'road', label: on ? 'Under it: open water' : `Under it: ${R.way[i]}, ${R.surf[i].replace('_', ' ')}`, line: on ? 'Its depth from Traficom (shown, never routed on)' : 'Its facts, as the route’s own data has them', chev: true, fn: () => open('here', { back: 'leg' }) }),
+      row({ ic: 'route', label: 'Part of a marked route', line: 'Shown where the leg follows a LIPAS route (none here)', chev: true })));
+  return kids;
+}
+function step(d) {
+  if (S.view === 'leg') S.leg = Math.max(0, Math.min(R.sports.length - 1, S.leg + d));
+  else { const s = STRETCH[S.leg]; S.leg = d > 0 ? s.to : STRETCH.findIndex((x) => x.to === s.from); }
+  const [a, b] = range(); S.at = (a + b) / 2; draw(); fit();
+}
+
+// ---- the way under the line at the spot (today's What's here ›): the route's own tags there, OpenStreetMap's on demand; ‹ Back
+function hereCard() {
+  const i = near(S.at), water = R.surf[i] === 'water', back = S.back;
+  const bar = h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => { S.kind = back; S.back = null; draw(); }, html: icon('chevronLeft', 18) }, h('span', {}, back === 'leg' ? 'Leg' : R.names[S.wp])),
+    h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close', 22), onclick: () => close() }));
+  return [bar, h('div', { class: 'way-head' }, h('h3', { class: 'way-hint', tabindex: '-1' }, h('b', {}, water ? 'Open water' : R.way[i].charAt(0).toUpperCase() + R.way[i].slice(1)), h('small', {}, `Under your route, ${km(R.along[i])} from the start`)), mark(wayMark())),
+    nums([{ value: `${Math.round(R.ele[i])} m`, label: 'height' }, water ? null : { value: `${R.grade[i] >= 0 ? '+' : '−'}${Math.abs(R.grade[i])} %`, label: R.grade[i] >= 0 ? 'uphill' : 'downhill' }]),
+    h('i', { 'data-peek-end': '' }),
+    ...(water ? group('About it', [['Depth', 'From Traficom’s chart (shown, never routed on)']]) : [...group('The way', [['Way type', R.way[i]]]), ...group('Surface', [['Surface', R.surf[i].replace('_', ' ')]])]),
+    h('p', { class: 'rt-cost' }, 'From OpenStreetMap, along your route'),
+    rows(row({ ic: 'details', label: 'All OpenStreetMap details', line: 'The map’s own data, as tags' }))];
+}
+
+// ---- a waypoint: Q8 (no green action), Q12 (when you're there, the weather then, its legs around it, what's here)
+function waypointCard() {
+  const i = S.wp, at = R.legsAt[i], k = near(at), change = i > 0 && i < R.sports.length && R.sports[i] !== R.sports[i - 1];
+  const r = [R.legsAt[Math.max(0, i - 1)], R.legsAt[Math.min(R.names.length - 1, i + 1)]];
+  S.at = Math.max(0, at - 15);
+  const kids = [head(wpMark(i), R.names[i], `${change ? `Changeover, ${SPORT[R.sports[i - 1]][0]} to ${SPORT[R.sports[i]][0]}, 15 min · ` : ''}Then 6 °C, wind 6 m/s NW, dry`),
+    nums([{ value: R.clock[i], label: i === 0 ? 'you leave' : 'there at' }, i ? { value: km(at), label: 'from the start' } : null, { value: `${Math.round(R.ele[k])} m`, label: 'height' }]),
+    ...actions({ main: null, first: [{ ic: 'move', label: 'Move', line: 'Tap where it goes (or drag it on the map)' }, { ic: 'pencil', label: 'Rename', line: 'Give it a name of your own' }, i ? { ic: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, done: `${R.names[i]} removed`, undo: true, wide: true } : { ic: 'loop', label: 'Back to start', line: 'Adds a leg back to the start' }],
+      rest: [i && i < R.names.length - 1 ? { ic: 'pause', label: 'Stop or night', line: 'Pass by · Stop · Night', val: 'Pass by', chev: true } : null, i < R.sports.length ? { ic: SPORT[R.sports[i]][1], label: 'Sport from here', line: 'To the next change of sport, or the end', val: SPORT[R.sports[i]][0], chev: true } : null,
+        i && i < R.names.length - 1 ? { ic: 'flag', label: 'Start here', line: 'The part before it is removed, Undo brings it back' } : null, i && i < R.names.length - 1 ? { ic: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back' } : null, { ic: 'reverse', label: 'Reverse', line: 'The route runs the other way' }, i === R.names.length - 1 ? { ic: 'loop', label: 'Back to start', line: 'Adds a leg back to the start' } : null].filter(Boolean) })];
+  const keep = [i === 0 ? row({ ic: 'clock', label: 'Leave', line: 'Sets the times and the weather along the route', val: 'Now', chev: true }) : null,
+    change ? h('div', { class: 'rt-step' }, h('span', {}, 'Changeover'), h('button', { type: 'button', class: 'tool', 'aria-label': '5 minutes less', html: icon('minus', 18) }), h('b', {}, '15 min'), h('button', { type: 'button', class: 'tool', 'aria-label': '5 minutes more', html: icon('plus', 18) })) : null,
+    change ? h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, `Take your ${R.sports[i - 1] === 'mtb' ? 'bike' : 'gear'} along`, h('small', {}, 'Off: it stays here, and Check makes sure you come back for it')), h('input', { type: 'checkbox', role: 'switch' }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' })) : null,
+    i < R.names.length - 1 ? row({ ic: 'route', label: `Next stretch, to ${R.names[STRETCH[Math.min(i, STRETCH.length - 1)].to]}`, line: 'Its card, its profile and its sport', chev: true, fn: () => { S.leg = i; S.view = 'stretch'; S.at = R.legsAt[i] + 1; open('leg'); S.view = 'stretch'; draw(); } }) : null].filter(Boolean);
+  const insp = [...(keep.length ? [rows(...keep.filter((x) => x.classList.contains('row'))), ...keep.filter((x) => !x.classList.contains('row'))] : []), profile(r, { mark: at })];
+  if (S.peek === 'profile') kids.push(...insp, h('i', { 'data-peek-end': '' })); else kids.push(h('i', { 'data-peek-end': '' }), ...insp);
+  kids.push(...R.items.filter((x) => Math.abs(x.at - at) < 5 && x.g === 'look').map(warnRow),
+    rows(row({ ic: 'road', label: `Here: ${R.way[k]}, ${R.surf[k].replace('_', ' ')}`, line: 'The way at this waypoint', chev: true, fn: () => open('here', { back: 'waypoint' }) }),
+      row({ ic: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km: asked when you tap', chev: true }), row({ ic: 'drop', label: 'Water nearby', line: 'Taps and springs within 1 km: asked when you tap', chev: true }),
+      row({ ic: 'pencil', label: 'Add a note', line: 'Your own words, kept with the route (#854)', chev: true })));
+  return kids;
+}
+
+// ---- a way you tap while browsing (#574's pick, as main shows it), with its actions first: Q8
+function wayCard() {
+  const kids = [head(h('span', { class: 'pick-mark', style: '--c:#8fb996' }), 'Footpath', 'Cycling: footway, for walking · asphalt · lit'),
+    nums(S.data === 'late' ? [{ label: 'long', wait: true }, { label: 'up', wait: true }, { label: 'down', wait: true }] : [{ value: '6 m', label: 'long' }, { value: '0 m', label: 'up' }, { value: '0 m', label: 'down' }]),
+    ...actions({ main: { ic: 'plus', label: 'Add to my route', line: 'In your route, where it fits', done: 'Added after Waypoint 1', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', done: 'Avoided', undo: true }, { ic: 'share', label: 'Share', line: 'A link to this spot' }],
+      rest: [{ ic: 'flag', label: 'Start here', line: 'Adds a new start' }, { ic: 'flagend', label: 'End here', line: 'Adds a new end' }, { ic: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose' }, { ic: 'cloudSun', label: 'Weather here', line: 'The timeline, held at the spot', chev: true }, { ic: 'pin', label: 'Copy', line: '60.15886, 24.95503' }, { ic: 'camera', label: 'Look around here', line: 'Street View or Mapillary, in a new tab (#757)', chev: true }] }),
+    h('i', { 'data-peek-end': '' }),
+    S.data === 'late' ? h('p', { class: 'pick-note', role: 'status' }, 'Loading the whole way from OpenStreetMap…') : null,
+    ...group('The way', [['Cycling', 'footway, for walking'], ['Lit', 'yes']]), ...group('Surface', [['Surface', 'asphalt']]), ...group('Weather here now', [['Wind', '6 m/s from the NW'], ['Temperature', '5 °C'], ['Rain', 'dry']]),
+    h('p', { class: 'pick-unmapped' }, h('span', {}, 'Not mapped: width.'), h('button', { type: 'button', class: 'btn quiet', onclick: () => toast('MapComplete opens at this way, asking its width (#855)') }, 'Add what’s missing ›'), h('button', { type: 'button', class: 'btn quiet' }, 'Not right?'))];
+  return kids;
+}
+
+// ---- a place: Q5 (its facts asked for when it opens), Q12 (off your route, its hours, the links that fix the map)
+function placeCard() {
+  const late = S.data === 'late';
+  return [head(h('span', { html: icon('hut', 24) }), 'Uunisaari / Grillipaikka', 'Campfire site, Helsinki · from LIPAS'),
+    nums([{ value: '208 m', label: 'off your route' }, { value: '4 m', label: 'height' }, late ? { label: 'opening hours', wait: true } : { value: '?', label: 'opening hours not mapped', miss: true }]),
+    ...actions({ main: { ic: 'plus', label: 'Add to my route', line: 'Your route goes by it, between Waypoint 1 and Waypoint 2', done: 'Added after Waypoint 1', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m' }, { ic: 'share', label: 'Share', line: 'A link to this place' }],
+      rest: [{ ic: 'flag', label: 'Start here' }, { ic: 'flagend', label: 'End here' }, { ic: 'roundtrip', label: 'Round trip from here' }, { ic: 'cloudSun', label: 'Weather here', chev: true }, { ic: 'pin', label: 'Copy', line: '60.15270, 24.95251' }, { ic: 'check', label: 'Save this place', line: 'Saved places, on this device (#156)' }] }),
+    h('i', { 'data-peek-end': '' }),
+    ...group('From LIPAS', [['Kind', 'Campfire site'], ['Where', 'Helsinki']]),
+    late ? h('p', { class: 'pick-note', role: 'status' }, 'Asking OpenStreetMap for its details…') : h('p', { class: 'pick-unmapped' }, h('span', {}, 'OpenStreetMap: not mapped here yet (in the mock-up, an answer of nothing; the build asks for it as the card opens).'),
+      h('button', { type: 'button', class: 'btn quiet', onclick: () => toast('MapComplete opens at the spot, asking what a campfire site has (#855)') }, 'Add what’s missing ›')),
+    rows(row({ ic: 'external', label: 'LIPAS', line: 'LIPAS’s page for this place', chev: true }), row({ ic: 'external', label: 'Website', line: 'liikunta.hel.fi', chev: true }), row({ ic: 'camera', label: 'Look around here', line: 'Street View or Mapillary, in a new tab (#757)', chev: true })),
+    h('div', { class: 'insp-actions card-foot' }, h('button', { type: 'button', class: 'btn quiet' }, 'Not right?'))];
+}
+
+// ---- a warning (Check's item, as main has it) with its leg a step away: Q8
+function warningCard() {
+  const x = S.item || R.items.find((y) => y.text.startsWith('Crosses')), k = R.items.indexOf(x), li = legOf(x.at);
+  return [head(h('span', { class: `heads-mark ${x.g}`, html: icon(x.g === 'read' ? 'warnf' : 'eye', 18) }), x.text, x.g === 'read' ? 'Warning' : 'Good to know'),
+    nums([{ value: km(x.at), label: 'from the start' }, x.len > 5 ? { value: km(x.len), label: 'long' } : null]),
+    ...actions({ main: x.text.startsWith('Cycling') ? { ic: 'avoid', label: 'Avoid it', line: 'The route goes around it', done: 'Avoided', undo: true } : null, first: [{ ic: 'check', label: 'Got it', line: 'Marked read' }, { ic: 'route', label: 'Its leg', line: `${R.names[li]} → ${R.names[li + 1]}`, fn: () => { S.leg = li; S.view = 'leg'; S.at = x.at; open('leg'); } }],
+      rest: [{ ic: 'eyeOff', label: 'Hide in Check', line: 'Listed at the end of Check' }, { ic: 'external', label: 'Not right?', line: 'Leave a note on OpenStreetMap' }] }),
+    h('i', { 'data-peek-end': '' }),
+    h('p', { class: 'heads-src' }, h('span', { 'aria-hidden': 'true', html: icon('mapsrc', 14) }), h('span', {}, x.text.startsWith('Crosses') ? 'From the map · Väylävirasto' : 'From the map · OpenStreetMap')),
+    h('p', { class: 'heads-note' }, x.note.charAt(0).toUpperCase() + x.note.slice(1) + '.'),
+    h('div', { class: 'mk-step' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Previous', disabled: k <= 0, html: icon('chevronLeft', 20), onclick: () => { S.item = R.items[k - 1]; draw(); } }),
+      h('span', { 'aria-live': 'polite' }, `${k + 1} of ${R.items.length}`), h('button', { type: 'button', class: 'tool', 'aria-label': 'Next', disabled: k >= R.items.length - 1, html: icon('chevronRight', 20), onclick: () => { S.item = R.items[k + 1]; draw(); } }))];
+}
+
+// ---- a spot: a hold on the empty map (or a tap while browsing): what's there and the route's actions
+function spotCard() {
+  const ll = S.pin ? S.pin.ll : [24.96, 60.15];
+  return [head(h('span', { class: 'pick-mark', style: '--c:#374151' }), 'This spot', `${ll[1].toFixed(5)}, ${ll[0].toFixed(5)}`),
+    nums([{ label: 'height here', wait: true }]),
+    ...actions({ main: { ic: 'plus', label: 'Add to my route', line: 'In your route, where it fits', done: 'Added after Waypoint 2', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot' }, { ic: 'share', label: 'Share' }],
+      rest: [{ ic: 'flag', label: 'Start here' }, { ic: 'flagend', label: 'End here' }, { ic: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here' }, { ic: 'cloudSun', label: 'Weather here', chev: true }, { ic: 'pin', label: 'Copy' }] }),
+    h('i', { 'data-peek-end': '' }), h('p', { class: 'pick-note', role: 'status' }, 'Asking what’s here: the way, or over water its depth from Traficom (shown, never routed on)…')];
+}
+
+// ================================================================== New 3 (round 3, 2026-11-07): the same cards, as the user's answers have them
+const weatherOf = (i) => (R.ro[i] && R.ro[i][R.ro[i].length - 1]) || '';
+const say = (a) => a.fn || (() => toast(`${a.label}${a.done ? ` · ${a.done}` : ''}`, a.undo));
+const ALT = { ic: 'route', label: 'Alternative routes', line: 'Up to two other ways for this leg, on the map' }; // (was Other ways)
+function legCard3() {
+  const r = range(), [p0, p1] = ends(), st = stats(r), sp = R.sports[S.leg], one = STRETCH[S.leg].to - STRETCH[S.leg].from === 1, mid = near((r[0] + r[1]) / 2);
+  const title = S.view === 'route' ? 'Eira → Suomenlinna' : `${R.names[p0]} → ${R.names[p1]}`;
+  const pill = (label, ic, fn) => { const b = h('button', { type: 'button', class: 'mk-pill', 'aria-haspopup': 'menu' }, h('span', { html: icon(ic, 18) }), h('span', {}, label), h('span', { class: 'caret', 'aria-hidden': 'true' })); b.onclick = () => fn(b); return b; };
+  const eye = h('button', { type: 'button', class: 'tool', 'aria-pressed': String(S.hidden), 'aria-label': S.hidden ? 'Show the route' : 'Hide the route for a moment', html: icon(S.hidden ? 'eyeOff' : 'eye', 20), onclick: () => { S.hidden = !S.hidden; draw(); } });
+  if (desk()) tooltip(eye, { name: S.hidden ? 'Show the route' : 'Hide the route', keys: 'H', text: 'To see the map under it (#756)' });
+  const warns = itemsIn(r), late = S.data === 'late';
+  return [head(wayMark(), title, late ? 'Asking the weather for then…' : `Then: ${weatherOf(mid)}`),
+    h('div', { class: 'mk-pills' }, S.view === 'route' ? null : pill(SPORT[sp][0], SPORT[sp][1], sportMenu), S.view === 'route' ? null : pill(MODE[R.modes[S.leg]], { auto: 'auto', water: 'water', line: 'straight' }[R.modes[S.leg]], modeMenu), eye),
+    nums(late ? [{ label: 'distance', wait: true }, { label: 'time', wait: true }, { label: 'climb', wait: true }]
+      : [{ value: km(st.len), label: 'distance' }, { value: mins(st.sec), label: 'time' }, S.data === 'missing' ? { value: '?', label: 'climb: the terrain didn’t load', miss: true } : { value: `↑${st.up} m`, label: 'climb' }], warns.length + (S.data === 'missing' ? 1 : 0)),
+    ...actions({ main: { ic: 'plus', label: 'Add a waypoint here', line: 'At the spot you tapped, on the line', done: `Waypoint added at ${km(S.at)}`, undo: true },
+      first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', done: 'The route goes around it', undo: true }, ALT],
+      rest: [{ ic: 'pause', label: 'Stop here', line: 'A break or a night at this spot' }, { ic: 'trash', label: S.view === 'leg' ? 'Remove this leg' : 'Remove this stretch', line: 'Its end waypoint goes; Undo brings it back (#627)', danger: true }, { ic: 'sliders', label: 'Route style', line: `${SPORT[sp][0]}’s style`, val: 'Balanced', chev: true }, { ic: 'mountain', label: 'On the route’s profile', line: 'Zooms the planner’s profile to it' }, { ic: 'more', label: 'The whole route', line: 'Share, export, save offline, reverse or clear it', chev: true }] }),
+    h('i', { 'data-peek-end': '' }),
+    h('div', { class: 'mk-step' },
+      h('button', { type: 'button', class: 'tool', 'aria-label': `The ${S.view} before`, disabled: S.view === 'route' || S.leg === 0, html: icon('chevronLeft', 20), onclick: () => step(-1) }),
+      h('div', { class: 'seg small mk-view', role: 'group', 'aria-label': `Show: ${S.view === 'leg' ? `leg ${S.leg + 1} of ${R.sports.length}` : S.view}` }, ...[['leg', `Leg ${S.leg + 1}/${R.sports.length}`], one ? null : ['stretch', 'Stretch'], ['route', 'Route']].filter(Boolean).map(([k, label]) => h('button', { type: 'button', 'aria-pressed': String(S.view === k), onclick: () => { S.view = k; const [a, b] = range(); if (S.at < a || S.at > b) S.at = (a + b) / 2; draw(); } }, label))),
+      h('button', { type: 'button', class: 'tool', 'aria-label': `The next ${S.view}`, disabled: S.view === 'route' || (S.view === 'leg' ? S.leg >= R.sports.length - 1 : STRETCH[S.leg].to >= R.names.length - 1), html: icon('chevronRight', 20), onclick: () => step(1) })),
+    profile(r),
+    (() => { const i = near(S.at), on = R.surf[i] === 'water'; return rows(row({ ic: on ? 'water' : 'road', label: on ? 'Under it: open water' : `Under it: ${R.way[i]}, ${R.surf[i].replace('_', ' ')}`, line: on ? 'Its depth from Traficom (shown, never routed on)' : 'Its facts, as the route’s own data has them', chev: true, fn: () => open('here', { back: 'leg' }) }),
+      row({ ic: 'route', label: 'Part of a marked route', line: 'Shown where the leg follows a LIPAS route (none here)', chev: true })); })(),
+    ...(warns.length || S.data === 'missing' ? [h('h4', { class: 'menu-h', id: 'mk-warns' }, `On this ${S.view}`),
+      ...(S.data === 'missing' ? [h('button', { type: 'button', class: 'warn-row unk' }, h('span', { 'aria-hidden': 'true', html: icon('unk', 20) }), h('span', {}, h('em', {}, 'Not checked'), h('b', {}, 'Fintraffic didn’t answer: road works aren’t checked'), h('small', {}, 'Check has a Retry')), h('span', { html: icon('chevronRight', 18) }))] : []), ...warns.map(warnRow)] : []),
+    ...restRows(`More for this ${S.view}`),
+    h('div', { class: 'insp-actions card-foot' }, h('button', { type: 'button', class: 'btn quiet' }, 'Not right?'))];
+}
+function waypointCard3() {
+  const i = S.wp, at = R.legsAt[i], k = near(Math.max(0, at - 15)), change = i > 0 && i < R.sports.length && R.sports[i] !== R.sports[i - 1], via = i > 0 && i < R.names.length - 1;
+  const r = [R.legsAt[Math.max(0, i - 1)], R.legsAt[Math.min(R.names.length - 1, i + 1)]];
+  S.at = Math.max(0, at - 15);
+  const stop = S.stop ?? 'pass';
+  const seg = via ? h('div', { class: 'seg icons', role: 'radiogroup', 'aria-label': 'At this waypoint' }, ...[['pass', 'Pass by', 'pass'], ['stop', 'Stop', 'pause'], ['night', 'Night', 'moon']].map(([v, label, ic]) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(stop === v), onclick: () => { S.stop = v; draw(); } }, h('span', { class: 'ic', html: icon(ic, 18) }), h('span', {}, label)))) : null;
+  return [head(wpMark(i), R.names[i], `${change ? `Changeover, ${SPORT[R.sports[i - 1]][0]} to ${SPORT[R.sports[i]][0]} · ` : ''}Then: ${weatherOf(k)}`),
+    nums([{ value: R.clock[i], label: i === 0 ? 'you leave' : 'there at' }, i ? { value: km(at), label: 'from the start' } : null, { value: `${Math.round(R.ele[k])} m`, label: 'height' }]),
+    ...actions({ main: null, first: [{ ic: 'move', label: 'Move', line: 'Tap where it goes (or drag it on the map)' }, { ic: 'pencil', label: 'Rename', line: 'Give it a name of your own' }, i ? { ic: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, done: `${R.names[i]} removed`, undo: true, wide: true } : { ic: 'loop', label: 'Back to start', line: 'Adds a leg back to the start' }],
+      rest: [via ? { ic: 'flag', label: 'Start here', line: 'The part before it is removed, Undo brings it back' } : null, via ? { ic: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back' } : null, { ic: 'reverse', label: 'Reverse', line: 'The route runs the other way' }, i === R.names.length - 1 ? { ic: 'loop', label: 'Back to start', line: 'Adds a leg back to the start' } : null].filter(Boolean) }),
+    h('i', { 'data-peek-end': '' }),
+    via ? h('h4', { class: 'menu-h' }, 'At this waypoint') : null, seg,
+    stop === 'stop' ? h('div', { class: 'rt-step' }, h('span', {}, 'Stop'), h('button', { type: 'button', class: 'tool', 'aria-label': '5 minutes less', html: icon('minus', 18) }), h('b', {}, '30 min'), h('button', { type: 'button', class: 'tool', 'aria-label': '5 minutes more', html: icon('plus', 18) })) : null,
+    change ? h('div', { class: 'rt-step' }, h('span', {}, 'Changeover'), h('button', { type: 'button', class: 'tool', 'aria-label': '5 minutes less', html: icon('minus', 18) }), h('b', {}, '15 min'), h('button', { type: 'button', class: 'tool', 'aria-label': '5 minutes more', html: icon('plus', 18) })) : null,
+    change ? h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, `Take your ${R.sports[i - 1] === 'mtb' ? 'bike' : 'gear'} along`, h('small', {}, 'Off: it stays here, and Check makes sure you come back for it')), h('input', { type: 'checkbox', role: 'switch' }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' })) : null,
+    rows(i === 0 ? row({ ic: 'clock', label: 'Leave', line: 'Sets the times and the weather along the route', val: 'Now', chev: true }) : null,
+      i < R.sports.length ? row({ ic: SPORT[R.sports[i]][1], label: 'Sport from here', line: 'To the next change of sport, or the end', val: SPORT[R.sports[i]][0], chev: true }) : null,
+      i < R.names.length - 1 ? row({ ic: 'route', label: `Next stretch, to ${R.names[STRETCH[Math.min(i, STRETCH.length - 1)].to]}`, line: 'Its card, its profile and its sport', chev: true, fn: () => { S.leg = i; S.view = 'stretch'; S.at = R.legsAt[i] + 1; open('leg'); S.view = 'stretch'; draw(); } }) : null),
+    profile(r, { mark: at }),
+    ...R.items.filter((x) => Math.abs(x.at - at) < 5 && x.g === 'look').map(warnRow),
+    rows(row({ ic: 'road', label: `Here: ${R.way[k]}, ${R.surf[k].replace('_', ' ')}`, line: 'The way at this waypoint', chev: true, fn: () => open('here', { back: 'waypoint' }) }),
+      row({ ic: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km: asked when you tap', chev: true }), row({ ic: 'drop', label: 'Water nearby', line: 'Taps and springs within 1 km: asked when you tap', chev: true }),
+      row({ ic: 'pencil', label: 'Add a note', line: 'Your own words, kept with the route (#854)', chev: true })),
+    ...restRows('More for this waypoint')];
+}
+// a way you tap: main's own card for it (EuroVelo 10 as the app joined it, its facts as the app wrote them), its actions first
+const factRow = (t) => { const m = t.match(/^(One way|Speed limit|Not allowed|Winter care|Grade here|MTB grade|Hiking grade|[A-Z][a-z]+)\s+(.*)$/); return m ? h('div', { class: 'insp-row' }, h('span', {}, m[1]), h('b', {}, m[2])) : h('div', { class: 'insp-row' }, h('b', {}, t)); };
+function wayCard3() {
+  const P = R.pick, late = S.data === 'late';
+  return [head(h('span', { class: 'pick-mark', style: `--c:${R.pal[P.w[0]]}` }), P.title, P.line),
+    nums(late ? [{ label: 'long', wait: true }, { label: 'up', wait: true }, { label: 'down', wait: true }] : [{ value: km(P.len), label: 'long' }, { value: `${P.up} m`, label: 'up' }, { value: `${P.down} m`, label: 'down' }]),
+    ...actions({ row: true, main: { ic: 'plus', label: 'Add to my route', line: 'In your route, where it fits', done: 'Added after Waypoint 1', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', done: 'Avoided', undo: true }, { ic: 'share', label: 'Share', line: 'A link to this spot' }, { ic: 'cloudSun', label: 'Weather here', line: 'The timeline, held at the spot' }],
+      rest: [{ ic: 'flag', label: 'Start here', line: 'Adds a new start' }, { ic: 'flagend', label: 'End here', line: 'Adds a new end' }, { ic: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose' }, { ic: 'pin', label: 'Copy', line: 'The spot’s coordinates' }, { ic: 'camera', label: 'Look around here', line: 'Street View or Mapillary, in a new tab (#757)', chev: true }, { ic: 'details', label: 'All OpenStreetMap details', line: 'The map’s own data, as tags' }] }),
+    h('i', { 'data-peek-end': '' }),
+    late ? h('p', { class: 'pick-note', role: 'status' }, 'Loading the whole way from OpenStreetMap…') : profile([0, P.len], { D: P }),
+    ...P.facts.flatMap(([cls, t]) => cls === 'menu-h' ? [h('h4', { class: 'menu-h' }, t.charAt(0) + t.slice(1).toLowerCase())] : cls === 'insp-row' ? [h('div', { class: 'pick-facts' }, factRow(t))] : [h('p', { class: 'pick-unmapped' }, h('span', {}, t.replace(/\s*Not right\?$/, '')), h('button', { type: 'button', class: 'btn quiet', onclick: () => toast('MapComplete opens at this way, asking what’s missing (#855)') }, 'Add what’s missing ›'), h('button', { type: 'button', class: 'btn quiet' }, 'Not right?'))]),
+    ...restRows('More for this way')];
+}
+function placeCard3() {
+  const late = S.data === 'late', k = near(R.legsAt[1] + 120);
+  return [head(h('span', { html: icon('hut', 24) }), 'Uunisaari / Grillipaikka', `Campfire site, Helsinki · from LIPAS`),
+    nums([{ value: '208 m', label: 'off your route' }, { value: '4 m', label: 'height' }, late ? { label: 'opening hours', wait: true } : { value: '?', label: 'opening hours not mapped', miss: true }]),
+    ...actions({ row: true, main: { ic: 'plus', label: 'Add to my route', line: 'Your route goes by it, between Waypoint 1 and Waypoint 2', done: 'Added after Waypoint 1', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m' }, { ic: 'share', label: 'Share', line: 'A link to this place' }, { ic: 'cloudSun', label: 'Weather here', line: 'The timeline, held at the place' }],
+      rest: [{ ic: 'flag', label: 'Start here', line: 'Adds a new start' }, { ic: 'flagend', label: 'End here', line: 'Adds a new end' }, { ic: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose' }, { ic: 'pin', label: 'Copy', line: '60.15270, 24.95251' }, { ic: 'check', label: 'Save this place', line: 'Saved places, on this device (#156)' }, { ic: 'camera', label: 'Look around here', line: 'Street View or Mapillary, in a new tab (#757)', chev: true }] }),
+    h('i', { 'data-peek-end': '' }),
+    h('p', { class: 'mk-at' }, h('b', {}, 'When you pass it: '), weatherOf(k)),
+    ...group('From LIPAS', [['Kind', 'Campfire site'], ['Where', 'Helsinki']]),
+    late ? h('p', { class: 'pick-note', role: 'status' }, 'Asking OpenStreetMap for its details…') : h('p', { class: 'pick-unmapped' }, h('span', {}, 'OpenStreetMap: not mapped here yet (in the mock-up, an answer of nothing; the build asks for it as the card opens).'),
+      h('button', { type: 'button', class: 'btn quiet', onclick: () => toast('MapComplete opens at the spot, asking what a campfire site has (#855)') }, 'Add what’s missing ›')),
+    rows(row({ ic: 'external', label: 'LIPAS', line: 'LIPAS’s page for this place', chev: true }), row({ ic: 'external', label: 'Website', line: 'liikunta.hel.fi', chev: true })),
+    ...restRows('More for this place'),
+    h('div', { class: 'insp-actions card-foot' }, h('button', { type: 'button', class: 'btn quiet' }, 'Not right?'))];
+}
+function spotCard3() {
+  const ll = S.pin ? S.pin.ll : [24.96, 60.15];
+  return [head(h('span', { class: 'pick-mark', style: '--c:#374151' }), 'This spot', `${ll[1].toFixed(5)}, ${ll[0].toFixed(5)}`),
+    nums([{ label: 'height here', wait: true }]),
+    ...actions({ row: true, main: { ic: 'plus', label: 'Add to my route', line: 'In your route, where it fits', done: 'Added after Waypoint 2', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot' }, { ic: 'share', label: 'Share' }, { ic: 'cloudSun', label: 'Weather here' }],
+      rest: [{ ic: 'flag', label: 'Start here', line: 'Adds a new start' }, { ic: 'flagend', label: 'End here', line: 'Adds a new end' }, { ic: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here' }, { ic: 'pin', label: 'Copy', line: 'The coordinates' }] }),
+    h('i', { 'data-peek-end': '' }), h('p', { class: 'pick-note', role: 'status' }, 'Asking what’s here: the way, or over water its depth from Traficom (shown, never routed on), and the weather now…'),
+    ...restRows('More for this spot')];
+}
+function warningCard3() {
+  const x = S.item || R.items.find((y) => y.text.startsWith('Crosses')), k = R.items.indexOf(x), li = legOf(x.at);
+  return [head(h('span', { class: `heads-mark ${x.g}`, html: icon(x.g === 'read' ? 'warnf' : 'eye', 18) }), x.text, x.g === 'read' ? 'Warning' : 'Good to know'),
+    nums([{ value: km(x.at), label: 'from the start' }, x.len > 5 ? { value: km(x.len), label: 'long' } : null]),
+    ...actions({ main: x.text.startsWith('Cycling') ? { ic: 'avoid', label: 'Avoid it', line: 'The route goes around it', done: 'Avoided', undo: true } : null, first: [{ ic: 'check', label: 'Got it', line: 'Marked read' }, { ic: 'route', label: 'Its leg', line: `${R.names[li]} → ${R.names[li + 1]}`, fn: () => { S.leg = li; S.view = 'leg'; S.at = x.at; open('leg'); } }],
+      rest: [{ ic: 'eyeOff', label: 'Hide in Check', line: 'Listed at the end of Check' }, { ic: 'external', label: 'Not right?', line: 'Leave a note on OpenStreetMap' }] }),
+    h('i', { 'data-peek-end': '' }),
+    h('p', { class: 'heads-src' }, h('span', { 'aria-hidden': 'true', html: icon('mapsrc', 14) }), h('span', {}, x.text.startsWith('Crosses') ? 'From the map · Väylävirasto' : 'From the map · OpenStreetMap')),
+    h('p', { class: 'heads-note' }, x.note.charAt(0).toUpperCase() + x.note.slice(1) + '.'),
+    h('div', { class: 'mk-step' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Previous', disabled: k <= 0, html: icon('chevronLeft', 20), onclick: () => { S.item = R.items[k - 1]; draw(); } }),
+      h('span', { 'aria-live': 'polite' }, `${k + 1} of ${R.items.length}`), h('button', { type: 'button', class: 'tool', 'aria-label': 'Next', disabled: k >= R.items.length - 1, html: icon('chevronRight', 20), onclick: () => { S.item = R.items[k + 1]; draw(); } })),
+    ...restRows('More for this warning')];
+}
+
+// ------------------------------------------------------------------ the stage
+const desk = () => S.frame === 'desk';
+let stage, sheet, card, ov, dot, hoverEl;
+function open(kind, o = {}) {
+  S.kind = kind; S.more = false;
+  if (o.item) S.item = o.item;
+  if (o.back) S.back = o.back;
+  if (kind === 'leg' && o.at != null) { S.at = o.at; S.leg = legOf(o.at); S.view = 'leg'; }
+  if (kind === 'waypoint' && o.i != null) S.wp = o.i;
+  S.pin = o.pin || (kind === 'leg' ? { ll: R.pts[near(S.at)] } : null);
+  S.size = 'peek'; draw(); save();
+}
+function close() { S.kind = 'none'; S.pin = null; draw(); }
+function toast(msg, undo = false) {
+  stage.querySelector('.mk-toast')?.remove();
+  const t = h('div', { class: 'mk-toast', role: 'status' }, msg, undo ? h('b', {}, 'Undo') : null);
+  stage.querySelector('.mk-frame').append(t); setTimeout(() => t.remove(), 3200);
+}
+function build() {
+  if (R3() && S.kind !== 'here') return { leg: legCard3, waypoint: waypointCard3, way: wayCard3, place: placeCard3, warning: warningCard3, spot: spotCard3 }[S.kind]?.() || null;
+  return { here: hereCard, leg: legCard, waypoint: waypointCard, way: wayCard, place: placeCard, warning: warningCard, spot: spotCard }[S.kind]?.() || null;
+}
+function draw() {
+  stage = document.getElementById('stage');
+  document.getElementById('notes').replaceChildren(...notes());
+  drawBar();
+  if (S.v === 'today') { stage.replaceChildren(today()); return; }
+  const v = desk() ? VIEW.desk : VIEW.phone, k = S.frame === '360' ? 360 / 390 : 1, zoom = S.frame === '200' ? 2 : 1;
+  const W = desk() ? 1440 : S.frame === '360' ? 360 : 390, H = desk() ? 900 : S.frame === '360' ? 740 : 844;
+  let frame = stage.querySelector('.mk-frame');
+  if (!frame || frame.dataset.f !== S.frame) {
+    frame = h('div', { class: `mk-frame${desk() ? ' desk' : ''}`, 'data-f': S.frame });
+    stage.replaceChildren(frame);
+  }
+  // the desktop is drawn at its size and scaled to the page; a phone at 200 % is a 195 px wide screen drawn twice as big
+  const fit = desk() ? Math.min(1, (document.body.clientWidth - 32) / W) : 1;
+  Object.assign(frame.style, { width: `${W / zoom}px`, height: `${H / zoom}px`, zoom: String(zoom * fit) });
+  frame.style.setProperty('--mw', `${(v.w * k) / zoom}px`); frame.style.setProperty('--mh', `${(v.h * k) / zoom}px`);
+  const src = IMG[`bg-${desk() ? 'desk' : 'phone'}${S.hidden ? '-noroute' : ''}`];
+  let img = frame.querySelector('.mk-map'); if (!img) { img = h('img', { class: 'mk-map', alt: 'The map with the route, from main' }); frame.prepend(img); } if (img.getAttribute('src') !== src) img.src = src;
+  drawOverlay(frame, v, k / zoom);
+  frame.querySelector('.mk-sheet, .mk-dock')?.remove();
+  sheet = null;
+  if (S.kind === 'none') return;
+  card = h('div', { class: 'pl-way card', role: 'region', 'aria-label': 'Card', 'data-back': S.kind === 'here' ? 'yes' : 'no' }, ...build().filter(Boolean));
+  sheet = desk() ? h('section', { class: 'mk-dock' }, card) : h('section', { class: 'mk-sheet' }, h('button', { type: 'button', class: 'mk-grip', 'aria-label': 'Card size: peek, half, full' }), card);
+  frame.append(sheet);
+  if (!desk()) sizeSheet(frame);
+}
+function sizeSheet(frame) {
+  const g = sheet.querySelector('.mk-grip'), end = card.querySelector('[data-peek-end]'), H = frame.clientHeight;
+  const z = parseFloat(frame.style.zoom) || 1, top = card.getBoundingClientRect().top, peek = Math.min(H * 0.62, (end ? (end.getBoundingClientRect().top - top) / z : 200) + 22 + 4 + (R3() ? 34 : 0)), sizes = { peek, half: Math.max(peek, H * 0.55), full: H - 70 };
+  sheet.style.setProperty('--h', `${sizes[S.size]}px`);
+  card.style.overflowY = S.size === 'peek' && peek < H * 0.62 ? 'hidden' : 'auto';
+  sheet.classList.toggle('at-peek', R3() && S.size === 'peek'); // (a peek cut short, at 200 %: it scrolls to its actions)
+  const order = ['peek', 'half', 'full'];
+  g.onclick = () => { if (g.moved) return; S.size = order[(order.indexOf(S.size) + 1) % 3]; sizeSheet(frame); };
+  g.onpointerdown = (e) => {
+    g.setPointerCapture(e.pointerId); g.moved = false; const y0 = e.clientY, h0 = sheet.offsetHeight; sheet.classList.add('dragging');
+    g.onpointermove = (m) => { const d = (y0 - m.clientY) / (parseFloat(frame.style.zoom) || 1); if (Math.abs(d) > 4) g.moved = true; sheet.style.setProperty('--h', `${Math.max(80, h0 + d)}px`); };
+    g.onpointerup = () => { g.onpointermove = null; sheet.classList.remove('dragging'); if (g.moved) { const now = sheet.offsetHeight; S.size = order.reduce((b, s) => (Math.abs(sizes[s] - now) < Math.abs(sizes[b] - now) ? s : b), 'peek'); sizeSheet(frame); setTimeout(() => { g.moved = false; }, 0); } };
+  };
+}
+function fit() { /* (the build frames the piece with frame(); the mock-up's map is a picture, so its view stays) */ }
+
+// the map's overlay: the pick drawn like a route (dark shadow, white casing, Colour by's colours), the spot's dot, and
+// what a tap, a click, a hold or a right click can land on
+function drawOverlay(frame, v, k) {
+  ov?.remove();
+  const P = (ll) => project(v, ll).map((x) => x * k), pts = R.pts.map(P), NS = 'http://www.w3.org/2000/svg';
+  ov = document.createElementNS(NS, 'svg'); ov.setAttribute('class', 'mk-ov'); ov.setAttribute('viewBox', `0 0 ${v.w * k} ${v.h * k}`);
+  let html = '';
+  if (S.kind === 'leg' && !S.hidden) {
+    const [a, b] = range(), i0 = near(a), i1 = near(b), key = COLOUR[S.colour][0], d = pts.slice(i0, i1 + 1).map((p, j) => `${j ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('');
+    html += `<path d="${d}" fill="none" stroke="#0b1220" stroke-opacity=".35" stroke-width="${13 * k}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#fff" stroke-width="${9 * k}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    for (let i = i0 + 1; i <= i1; i++) html += `<path d="M${pts[i - 1].join(' ')}L${pts[i].join(' ')}" stroke="${R.pal[R[key][i]]}" stroke-width="${5 * k}" stroke-linecap="round"/>`;
+  }
+  if (S.kind === 'waypoint' && !S.hidden) { const p = P(R.points[S.wp]); html += `<circle cx="${p[0]}" cy="${p[1]}" r="${17 * k}" fill="none" stroke="var(--accent-bg)" stroke-width="${3 * k}"/>`; }
+  if (S.kind === 'warning') { const p = pts[near((S.item || R.items[3]).at)]; html += `<circle cx="${p[0]}" cy="${p[1]}" r="${20 * k}" fill="none" stroke="#b91c1c" stroke-width="${3 * k}"/>`; }
+  if (R3() && S.kind === 'way' && !S.hidden) {
+    const d = R.pick.pts.map((q, j) => { const p = P(q); return `${j ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`; }).join('');
+    html += `<path d="${d}" fill="none" stroke="#0b1220" stroke-opacity=".35" stroke-width="${13 * k}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#fff" stroke-width="${9 * k}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const pp = R.pick.pts.map(P), key = COLOUR[S.colour][0];
+    for (let i = 1; i < pp.length; i++) html += `<path d="M${pp[i - 1].join(' ')}L${pp[i].join(' ')}" stroke="${R.pal[R.pick[key][i]]}" stroke-width="${5 * k}" stroke-linecap="round"/>`;
+  } else if (S.kind === 'place' || S.kind === 'way') { const p = P(PLACES[S.kind === 'place' ? 'campfire' : 'path'].ll); html += `<circle cx="${p[0]}" cy="${p[1]}" r="${16 * k}" fill="none" stroke="var(--accent-bg)" stroke-width="${3 * k}"/>`; }
+  // what can be tapped: the line (in the route's gaps too), the waypoints, the warnings' markers, a path, a place
+  const line = pts.map((p, j) => `${j ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('');
+  html += `<path class="mk-hit" data-t="line" d="${line}" stroke-width="${24 * k}" fill="none"/>`;
+  R.items.filter((x) => x.g === 'read').forEach((x) => { const p = pts[near(x.at)]; html += `<circle class="mk-hit" data-t="warn" data-i="${R.items.indexOf(x)}" cx="${p[0]}" cy="${p[1] - 18 * k}" r="${16 * k}"/>`; });
+  R.points.forEach((q, i) => { const p = P(q); html += `<circle class="mk-hit" data-t="wp" data-i="${i}" cx="${p[0]}" cy="${p[1]}" r="${18 * k}"/>`; });
+  for (const [id, pl] of Object.entries(PLACES)) { const p = P(pl.ll); html += `<circle class="mk-hit" data-t="${id}" cx="${p[0]}" cy="${p[1]}" r="${16 * k}"/>`; }
+  ov.innerHTML = html;
+  dot = document.createElementNS(NS, 'circle'); dot.setAttribute('r', String(8 * k)); dot.setAttribute('fill', 'var(--accent-bg)'); dot.setAttribute('stroke', '#fff'); dot.setAttribute('stroke-width', String(3 * k)); ov.append(dot);
+  ov.dataset.k = k; ov.P = P; ov.pts = pts;
+  frame.querySelector('.mk-map').after(ov);
+  drawDot();
+  bindMap(ov, frame, k);
+}
+function drawDot() {
+  if (!dot) return;
+  const on = (S.kind === 'leg' || S.kind === 'waypoint') && !S.hidden, p = ov.pts[near(S.at)];
+  dot.style.display = on ? '' : 'none'; if (on) { dot.setAttribute('cx', p[0]); dot.setAttribute('cy', p[1]); }
+}
+// the map's spot under a pointer: the frame's view inverted
+function unproject(e, svg) {
+  const v = desk() ? VIEW.desk : VIEW.phone, r = svg.getBoundingClientRect(), k = (r.width / svg.viewBox.baseVal.width) * (+svg.dataset.k || 1);
+  const x = (e.clientX - r.left) / k - v.w / 2, y = (e.clientY - r.top) / k - v.h / 2, ws = 512 * 2 ** v.z;
+  const lon = v.c[0] + (x / ws) * 360, s = Math.sin((v.c[1] * Math.PI) / 180), my = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) + y / ws;
+  return [lon, (Math.atan(Math.sinh(Math.PI * (1 - 2 * my))) * 180) / Math.PI];
+}
+// #876's rule: a tap or a click opens the card, a hold or a right click the same card; while drawing, a tap on the empty map
+// adds a waypoint, and a hold there opens the spot's card
+function bindMap(svg, frame, k) {
+  const target = (e) => { const t = e.target.closest?.('[data-t]'); return t ? { t: t.dataset.t, i: +t.dataset.i } : null; };
+  const atLine = (e) => { const r = svg.getBoundingClientRect(), z = r.width / svg.viewBox.baseVal.width, x = (e.clientX - r.left) / z, y = (e.clientY - r.top) / z; let b = 0, d = 1e9; svg.pts.forEach((p, j) => { const q = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (q < d) { d = q; b = j; } }); return R.along[b]; };
+  const act = (e, held) => {
+    const t = target(e);
+    if (!t) {
+      if (held || S.mode === 'browsing') { open('spot', { pin: { ll: unproject(e, svg) } }); if (desk() && !held) pillAt(e, frame, 'Add to my route'); if (held) toast('Held: the spot’s card, as a tap on a thing opens its own'); return; }
+      if (S.kind !== 'none') { close(); return; } // (a tap beside an open card closes it, and adds nothing)
+      toast('A waypoint is added here', true); return;
+    }
+    if (t.t === 'line') open('leg', { at: atLine(e) });
+    else if (t.t === 'wp') open('waypoint', { i: t.i });
+    else if (t.t === 'warn') open('warning', { item: R.items[t.i] });
+    else if (t.t === 'campfire') open('place');
+    else if (t.t === 'path') open('way');
+    if (held) toast('Held: the same card a tap opens');
+    if (desk() && !held) { const lab = { line: 'Add a waypoint here', campfire: 'Add to my route', path: 'Add to my route' }[t.t]; if (lab) pillAt(e, frame, lab); }
+  };
+  let timer = null, ring = null, start = null;
+  svg.onpointerdown = (e) => {
+    start = [e.clientX, e.clientY]; svg.held = false;
+    ring = h('div', { class: 'hold-ring', style: `left:${e.clientX}px;top:${e.clientY}px`, 'aria-hidden': 'true' });
+    const r = setTimeout(() => document.body.append(ring), 150);
+    timer = setTimeout(() => { svg.held = true; ring.remove(); act(e, true); }, 500); timer.r = r;
+  };
+  const cancel = () => { clearTimeout(timer); clearTimeout(timer?.r); ring?.remove(); };
+  svg.onpointermove = (e) => { if (start && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 10) cancel(); if (desk() && e.pointerType === 'mouse') hover(e, frame, svg); };
+  svg.onpointerup = (e) => { cancel(); if (start && !svg.held && Math.hypot(e.clientX - start[0], e.clientY - start[1]) <= 10) act(e, false); start = null; };
+  svg.onpointerleave = () => { cancel(); hoverEl?.remove(); };
+  svg.oncontextmenu = (e) => { e.preventDefault(); cancel(); start = null; act(e, true); };
+}
+// a desktop's readout on the route (kept, #749's "works well"), and the main action at the pointer (Q8: no long trip to the card)
+function hover(e, frame, svg) {
+  hoverEl?.remove();
+  const t = e.target.closest?.('[data-t]'); if (!t || t.dataset.t !== 'line') return;
+  const r = svg.getBoundingClientRect(), z = parseFloat(frame.style.zoom) || 1, x = (e.clientX - r.left) / z, y = (e.clientY - r.top) / z;
+  let b = 0, d = 1e9; svg.pts.forEach((p, j) => { const q = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (q < d) { d = q; b = j; } });
+  const ro = readout(R.along[b]);
+  hoverEl = h('div', { class: 'mk-hover', style: `left:${x + 16}px;top:${y + 12}px` }, h('b', {}, `${ro[0]} · ${ro[1]}`), h('span', {}, ro.slice(2).join(' · ')), h('small', {}, 'Click for its card · drag to reshape'));
+  frame.append(hoverEl);
+}
+function pillAt(e, frame, label) {
+  const r = frame.getBoundingClientRect(), z = parseFloat(frame.style.zoom) || 1;
+  const pill = h('button', { type: 'button', class: 'card-pill', style: `position:absolute;left:${(e.clientX - r.left) / z + 6}px;top:${(e.clientY - r.top) / z + 6}px`, html: icon('plus', 18), onclick: () => { pill.remove(); toast(label === 'Add to my route' ? 'Added after Waypoint 1' : 'Waypoint added', true); } }, h('span', {}, label));
+  frame.querySelector('.card-pill')?.remove(); frame.append(pill); setTimeout(() => pill.remove(), 5000);
+}
+
+// ------------------------------------------------------------------ Today: main's own cards, captured at babbafd
+const TODAY = {
+  leg: [['phone-route', 'A tap on the line: the route\'s card at the peek'], ['phone-route-full', 'Raised: This stretch ›, What\'s here ›, Edit this stretch ›; Add a waypoint here is a pill on the map'], ['phone-stretch-full', 'This stretch ›: three numbers, its warnings; no profile of its own'], ['phone-edit', 'Edit this stretch ›: the sport two levels further']],
+  waypoint: [['phone-wp-tap', 'A tap on a waypoint: its facts, no actions'], ['phone-wp-hold', 'A hold: the actions, out of sight at the peek'], ['phone-wp-hold-full', 'Raised: Move, Rename, Remove at the bottom']],
+  way: [['phone-way-line', 'Browsing, a tap on a path: the line at the spot'], ['phone-way-tap', 'A tap on the line: the card, no route actions'], ['phone-way-hold-full', 'A hold: Your route first, raised']],
+  place: [['phone-place-tap', 'A tap on a place: its height, Share, Weather here ›, Not right?']],
+  warning: [['phone-warning', 'A warning: its main action, Got it, ‹ ›; no way to its leg']],
+  spot: [['phone-way-hold', 'A hold on the map: Your route below the numbers, out of sight']],
+};
+const TODAY_DESK = [['desk-route', 'A click on the line: the card at the spot, over the line it\'s about (#647)'], ['desk-wp-hold', 'A right click on a waypoint: every action in sight, a grid of buttons'], ['desk-way-tap', 'A click on a way with the planner open'], ['desk-warning', 'A warning\'s card']];
+function today() {
+  const list = desk() ? TODAY_DESK : TODAY[S.kind] || TODAY.leg;
+  return h('div', { class: `mk-shots${desk() ? ' desk' : ''}` }, ...list.map(([f, cap]) => h('figure', {}, h('img', { src: IMG[`t-${f}`], alt: cap }), h('figcaption', {}, cap))));
+}
+
+// ------------------------------------------------------------------ the bar and the notes
+function sw(label, key, opts, hide = false) {
+  return h('div', { class: 'mk-sw', role: 'group', 'aria-label': label, hidden: hide }, h('b', {}, label), ...opts.map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(S[key] === v), onclick: () => { S[key] = v; if (key === 'data') { location.search = new URLSearchParams({ ...Object.fromEntries(new URL(location.href).searchParams), data: v }); return; } if (key === 'v' && v === 'new3' && S.acts !== 'auto') S.acts = 'auto'; if (key === 'v' && v === 'new' && S.acts === 'auto') S.acts = 'buttons'; if (key === 'kind') open(v); else { if (key === 'frame') stage.replaceChildren(); draw(); save(); } } }, t)));
+}
+function drawBar() {
+  document.documentElement.dataset.theme = S.look;
+  const n = S.v === 'today';
+  document.getElementById('bar').replaceChildren(
+    sw('Version', 'v', [['today', 'Today'], ['new', 'Round 2'], ['new3', 'New 3']]),
+    sw('Card', 'kind', [['leg', 'Leg'], ['waypoint', 'Waypoint'], ['way', 'Way'], ['place', 'Place'], ['warning', 'Warning'], ['spot', 'Spot']]),
+    sw('Frame', 'frame', [['390', 'Phone 390'], ['360', '360'], ['200', '200 %'], ['desk', 'Desktop']]),
+    sw('Actions', 'acts', [...(R3() ? [['auto', 'By kind']] : []), ['buttons', 'B: buttons'], ['row', 'A: action row']], n),
+    sw('Peek (Q6)', 'peek', [['acts', 'To the actions'], ['profile', 'With the profile']], n || R3()),
+    sw('Data', 'data', [['real', 'Real'], ['late', 'Late'], ['missing', 'Missing'], ['long', 'Long names']], n),
+    sw('Look', 'look', [['light', 'Light'], ['dark', 'Dark']]),
+    sw('Map', 'mode', [['drawing', 'Drawing'], ['browsing', 'Browsing']], n));
+}
+const NOTES3 = {
+  leg: ['The weather then in its first line; a box beside the numbers, ⚠ and how many, opens this leg’s warnings lower down.', 'Avoid this spot and Alternative routes (was Other ways) under the main action; the rest of its actions on the card, under More for this leg, with their lines: nothing hidden in ⋯.', '⋯ beside ✕ holds the card’s own settings: Colour by, colours on the map, hiding the route, and on a desktop where the card sits.', 'The profile’s words are production’s own readout on the route: the way’s name, kind, surface, smoothness, difficulty, and the weather then.', 'At its first size the card shows the top of what follows, fading: there’s more below.'],
+  waypoint: ['Pass by · Stop · Night on the card again, as today’s hold card has it; a stop’s minutes under it.', 'Move, Rename and Remove first; Start here, End here and Reverse on the card, lower down.', 'The weather then in its first line.'],
+  way: ['Main’s own card for EuroVelo 10 (25.1 km, joined from its pieces), with its profile, Colour by and facts, as production has it; its actions first, as an action row.', 'The rest of its actions on the card: Copy, All OpenStreetMap details, Look around here.'],
+  place: ['An action row, as Apple Maps has for places: Add to my route, Avoid this spot, Share, Weather here.', 'The weather when you’d pass it, its facts, and the links that fix the map.'],
+  warning: ['As main has it, with Its leg ›; the rest of its actions on the card.'],
+  spot: ['An action row; the rest on the card.'],
+};
+const NOTES = {
+  leg: ['A tap on the line opens the leg you tapped (round 1, Q3): today\'s route card, This stretch and What\'s here in one.', 'Leg · Stretch · Route under its name; ‹ › to the leg before and after; Under it › for the way beneath (Q9).', 'MTB ▾ and Follow paths ▾ change this leg (or the stretch or the route the switch shows), with Undo: two taps from the line, today four (Q10).', 'Its own profile, scrubbed by a finger, the pointer or the arrow keys; the dot follows on the map, the words over it say where.', 'The eye hides the route for a moment, to see the map under it (#756).', 'On a desktop the card sits beside the planner, the readout stays on hover, and Add a waypoint here comes up at the pointer on a click.'],
+  waypoint: ['No green action: Move, Rename and Remove are in sight at once (Q8).', 'There at, from the start, height; the weather then; its two legs\' profile with the waypoint marked (Q12).', 'Places to sleep and water nearby ask only when tapped.', 'Dragging a waypoint stays the quickest move; Move is its tap-and-tap alternative (WCAG 2.5.7).'],
+  way: ['#574\'s card as main has it, with its actions in sight first; a hold opens the same card (round 1, Q2).', 'Add what\'s missing › opens MapComplete at the way (#855).'],
+  place: ['Its facts asked for when it opens (round 1, Q5); how far off your route; its opening hours, or "not mapped" (missing data never looks complete).', 'Add to my route says where it goes; the links that fix the map in its foot (#855, #757).'],
+  warning: ['As main has it, with Its leg › a step away (#749\'s point 9).'],
+  spot: ['A hold on the empty map while drawing (a tap adds a waypoint), or a tap while browsing.'],
+};
+function notes() {
+  if (S.v === 'today') return [h('h2', {}, 'Today, on main at babbafd'), h('p', {}, 'Screenshots of the app at 390 × 844 and 1440 × 900, the route drawn by a local BRouter. A tap and a hold open different cards; on a phone each card shows only its head and numbers at first.')];
+  return [h('h2', {}, R3() ? 'New 3: what\'s on this card' : 'Round 2: what\'s on this card'), h('ul', {}, ...((R3() ? NOTES3 : NOTES)[S.kind] || []).map((t) => h('li', {}, t))),
+    h('h2', {}, 'Try'), h('ul', {}, h('li', {}, 'Tap or click the line, a waypoint, a red warning, the path north of Kaivopuisto, the campfire on Uunisaari; hold or right-click for the same card.'), h('li', {}, 'The grip: tap or drag it through peek, half and full.'), h('li', {}, 'Drawing: a tap on the empty map adds a waypoint, a hold there opens the spot\'s card. Browsing: a tap opens it.')),
+    h('h2', {}, 'Not drawn'), h('ul', {}, h('li', {}, 'The planner\'s sheet behind the card, the toolbar, and motion (decided with /animate when built).'), h('li', {}, 'The map doesn\'t move: it\'s a picture. Taps add nothing for real.'), h('li', {}, 'A carry, sea marks, road works; a LIPAS route under a leg (none on this route).'))];
+}
+draw();
+addEventListener('resize', () => { if (desk()) draw(); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.kind !== 'none' && !document.querySelector('.menu')) close(); });
+</script>
+</body>
+</html>
