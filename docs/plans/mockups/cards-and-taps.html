@@ -52,7 +52,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .mk-frame { position: relative; flex: none; overflow: hidden; border-radius: 28px; background: #a9cbe9; box-shadow: 0 0 0 1px rgba(0,0,0,.1), 0 8px 30px rgba(0,0,0,.25); transform: translateZ(0); }
 .mk-frame.desk { border-radius: 8px; }
 .mk-frame > .mk-map { position: absolute; left: 0; top: 0; width: var(--mw); height: auto; user-select: none; -webkit-user-drag: none; pointer-events: none; }
-.mk-frame > svg.mk-ov { position: absolute; left: 0; top: 0; width: var(--mw); height: var(--mh); touch-action: none; }
+.mk-frame > svg.mk-ov { position: absolute; left: 0; top: 0; width: var(--mw); height: var(--mh); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .mk-hit { fill: transparent; stroke: transparent; cursor: pointer; }
 .mk-toast { position: absolute; left: 50%; bottom: 18px; z-index: 9; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 12px; background: #1f2622; color: #fff; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
 .mk-toast b { color: #7fdcae; margin-left: 10px; }
@@ -102,7 +102,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .mk-at b { color: var(--text); font-weight: 600; }
 /* a piece's own profile: its route's chart, scrubbed by a finger or the pointer (role="slider") */
 .mk-prof { display: grid; gap: 6px; }
-.mk-prof svg { display: block; width: 100%; height: 92px; border-radius: 8px; background: var(--surface-2); touch-action: none; cursor: crosshair; }
+.mk-prof svg { display: block; width: 100%; height: 92px; border-radius: 8px; background: var(--surface-2); touch-action: pan-y; cursor: crosshair; } /* (sideways scrubs, up and down is the sheet's) */
 .mk-prof svg:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .mk-prof .ax { font-size: 10px; fill: var(--muted); }
 .mk-step { display: flex; align-items: center; gap: 4px; margin: 0 -8px; }
@@ -258,7 +258,7 @@ function legCard() {
       : [{ value: km(st.len), label: 'distance' }, { value: mins(st.sec), label: 'time' }, S.data === 'missing' ? { value: '?', label: 'climb: the terrain didn’t load', miss: true } : { value: `↑${st.up} m`, label: 'climb' }]),
     ...actions({ main: { ic: 'plus', label: 'Add a waypoint here', line: 'At the spot you tapped, on the line', done: `Waypoint added at ${km(S.at)}`, undo: true },
       first: [{ ic: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', done: 'The route goes around it', undo: true }, { ic: 'route', label: 'Other ways', line: 'Up to two, on the map' }],
-      rest: [{ ic: 'pause', label: 'Stop here', line: 'A break or a night at this spot' }, { ic: 'trash', label: S.view === 'leg' ? 'Remove this leg' : 'Remove this stretch', line: 'Its end waypoint goes; Undo brings it back (#627)', danger: true }, { ic: 'sliders', label: 'Route style', line: `${SPORT[sp][0]}’s style`, val: 'Balanced', chev: true }, { ic: 'more', label: 'The whole route', line: 'Share, export, save offline, reverse or clear it', chev: true }] })];
+      rest: [{ ic: 'pause', label: 'Stop here', line: 'A break or a night at this spot' }, { ic: 'trash', label: S.view === 'leg' ? 'Remove this leg' : 'Remove this stretch', line: 'Its end waypoint goes; Undo brings it back (#627)', danger: true }, { ic: 'sliders', label: 'Route style', line: `${SPORT[sp][0]}’s style`, val: 'Balanced', chev: true }, { ic: 'mountain', label: 'On the route’s profile', line: 'Zooms the planner’s profile to it' }, { ic: 'more', label: 'The whole route', line: 'Share, export, save offline, reverse or clear it', chev: true }] })];
   const insp = [h('div', { class: 'mk-step' },
     h('button', { type: 'button', class: 'tool', 'aria-label': `The ${S.view} before`, disabled: S.view === 'route' || S.leg === 0, html: icon('chevronLeft', 20), onclick: () => step(-1) }),
     h('div', { class: 'seg small mk-view', role: 'group', 'aria-label': `Show: ${S.view === 'leg' ? `leg ${S.leg + 1} of ${R.sports.length}` : S.view}` }, ...[['leg', `Leg ${S.leg + 1}/${R.sports.length}`], one ? null : ['stretch', 'Stretch'], ['route', 'Route']].filter(Boolean).map(([k, label]) => h('button', { type: 'button', 'aria-pressed': String(S.view === k), onclick: () => { S.view = k; const [a, b] = range(); if (S.at < a || S.at > b) S.at = (a + b) / 2; draw(); fit(); } }, label))),
@@ -266,7 +266,7 @@ function legCard() {
   const warns = [...(S.data === 'missing' ? [h('button', { type: 'button', class: 'warn-row unk' }, h('span', { 'aria-hidden': 'true', html: icon('unk', 20) }), h('span', {}, h('em', {}, 'Not checked'), h('b', {}, 'Fintraffic didn’t answer: road works aren’t checked'), h('small', {}, 'Check has a Retry')), h('span', { html: icon('chevronRight', 18) }))] : []), ...itemsIn(r).map(warnRow)];
   if (S.peek === 'profile') kids.push(...insp, h('i', { 'data-peek-end': '' }), ...warns); else kids.push(h('i', { 'data-peek-end': '' }), ...warns, ...insp);
   const i = near(S.at), on = R.surf[i] === 'water';
-  kids.push(rows(row({ ic: on ? 'water' : 'road', label: on ? 'Under it: open water' : `Under it: ${R.way[i]}, ${R.surf[i].replace('_', ' ')}`, line: on ? 'Its depth from Traficom (shown, never routed on)' : 'Its card: the whole way, its facts and its profile', chev: true, fn: () => open('way', { from: 'leg' }) }),
+  kids.push(rows(row({ ic: on ? 'water' : 'road', label: on ? 'Under it: open water' : `Under it: ${R.way[i]}, ${R.surf[i].replace('_', ' ')}`, line: on ? 'Its depth from Traficom (shown, never routed on)' : 'Its facts, as the route’s own data has them', chev: true, fn: () => open('here', { back: 'leg' }) }),
       row({ ic: 'route', label: 'Part of a marked route', line: 'Shown where the leg follows a LIPAS route (none here)', chev: true })));
   return kids;
 }
@@ -276,20 +276,37 @@ function step(d) {
   const [a, b] = range(); S.at = (a + b) / 2; draw(); fit();
 }
 
+// ---- the way under the line at the spot (today's What's here ›): the route's own tags there, OpenStreetMap's on demand; ‹ Back
+function hereCard() {
+  const i = near(S.at), water = R.surf[i] === 'water', back = S.back;
+  const bar = h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => { S.kind = back; S.back = null; draw(); }, html: icon('chevronLeft', 18) }, h('span', {}, back === 'leg' ? 'Leg' : R.names[S.wp])),
+    h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close', 22), onclick: () => close() }));
+  return [bar, h('div', { class: 'way-head' }, h('h3', { class: 'way-hint', tabindex: '-1' }, h('b', {}, water ? 'Open water' : R.way[i].charAt(0).toUpperCase() + R.way[i].slice(1)), h('small', {}, `Under your route, ${km(R.along[i])} from the start`)), mark(wayMark())),
+    nums([{ value: `${Math.round(R.ele[i])} m`, label: 'height' }, water ? null : { value: `${R.grade[i] >= 0 ? '+' : '−'}${Math.abs(R.grade[i])} %`, label: R.grade[i] >= 0 ? 'uphill' : 'downhill' }]),
+    h('i', { 'data-peek-end': '' }),
+    ...(water ? group('About it', [['Depth', 'From Traficom’s chart (shown, never routed on)']]) : [...group('The way', [['Way type', R.way[i]]]), ...group('Surface', [['Surface', R.surf[i].replace('_', ' ')]])]),
+    h('p', { class: 'rt-cost' }, 'From OpenStreetMap, along your route'),
+    rows(row({ ic: 'details', label: 'All OpenStreetMap details', line: 'The map’s own data, as tags' }))];
+}
+
 // ---- a waypoint: Q8 (no green action), Q12 (when you're there, the weather then, its legs around it, what's here)
 function waypointCard() {
   const i = S.wp, at = R.legsAt[i], k = near(at), change = i > 0 && i < R.sports.length && R.sports[i] !== R.sports[i - 1];
   const r = [R.legsAt[Math.max(0, i - 1)], R.legsAt[Math.min(R.names.length - 1, i + 1)]];
-  S.at = at;
+  S.at = Math.max(0, at - 15);
   const kids = [head(wpMark(i), R.names[i], `${change ? `Changeover, ${SPORT[R.sports[i - 1]][0]} to ${SPORT[R.sports[i]][0]}, 15 min · ` : ''}Then 6 °C, wind 6 m/s NW, dry`),
     nums([{ value: R.clock[i], label: i === 0 ? 'you leave' : 'there at' }, i ? { value: km(at), label: 'from the start' } : null, { value: `${Math.round(R.ele[k])} m`, label: 'height' }]),
     ...actions({ main: null, first: [{ ic: 'move', label: 'Move', line: 'Tap where it goes (or drag it on the map)' }, { ic: 'pencil', label: 'Rename', line: 'Give it a name of your own' }, i ? { ic: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, done: `${R.names[i]} removed`, undo: true, wide: true } : { ic: 'loop', label: 'Back to start', line: 'Adds a leg back to the start' }],
       rest: [i && i < R.names.length - 1 ? { ic: 'pause', label: 'Stop or night', line: 'Pass by · Stop · Night', val: 'Pass by', chev: true } : null, i < R.sports.length ? { ic: SPORT[R.sports[i]][1], label: 'Sport from here', line: 'To the next change of sport, or the end', val: SPORT[R.sports[i]][0], chev: true } : null,
-        i && i < R.names.length - 1 ? { ic: 'flag', label: 'Start here', line: 'The part before it is removed, Undo brings it back' } : null, i && i < R.names.length - 1 ? { ic: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back' } : null, { ic: 'reverse', label: 'Reverse', line: 'The route runs the other way' }].filter(Boolean) })];
-  const insp = [profile(r, { mark: at })];
+        i && i < R.names.length - 1 ? { ic: 'flag', label: 'Start here', line: 'The part before it is removed, Undo brings it back' } : null, i && i < R.names.length - 1 ? { ic: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back' } : null, { ic: 'reverse', label: 'Reverse', line: 'The route runs the other way' }, i === R.names.length - 1 ? { ic: 'loop', label: 'Back to start', line: 'Adds a leg back to the start' } : null].filter(Boolean) })];
+  const keep = [i === 0 ? row({ ic: 'clock', label: 'Leave', line: 'Sets the times and the weather along the route', val: 'Now', chev: true }) : null,
+    change ? h('div', { class: 'rt-step' }, h('span', {}, 'Changeover'), h('button', { type: 'button', class: 'tool', 'aria-label': '5 minutes less', html: icon('minus', 18) }), h('b', {}, '15 min'), h('button', { type: 'button', class: 'tool', 'aria-label': '5 minutes more', html: icon('plus', 18) })) : null,
+    change ? h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, `Take your ${R.sports[i - 1] === 'mtb' ? 'bike' : 'gear'} along`, h('small', {}, 'Off: it stays here, and Check makes sure you come back for it')), h('input', { type: 'checkbox', role: 'switch' }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' })) : null,
+    i < R.names.length - 1 ? row({ ic: 'route', label: `Next stretch, to ${R.names[STRETCH[Math.min(i, STRETCH.length - 1)].to]}`, line: 'Its card, its profile and its sport', chev: true, fn: () => { S.leg = i; S.view = 'stretch'; S.at = R.legsAt[i] + 1; open('leg'); S.view = 'stretch'; draw(); } }) : null].filter(Boolean);
+  const insp = [...(keep.length ? [rows(...keep.filter((x) => x.classList.contains('row'))), ...keep.filter((x) => !x.classList.contains('row'))] : []), profile(r, { mark: at })];
   if (S.peek === 'profile') kids.push(...insp, h('i', { 'data-peek-end': '' })); else kids.push(h('i', { 'data-peek-end': '' }), ...insp);
   kids.push(...R.items.filter((x) => Math.abs(x.at - at) < 5 && x.g === 'look').map(warnRow),
-    rows(row({ ic: 'road', label: `Here: ${R.way[k]}, ${R.surf[k].replace('_', ' ')}`, line: 'The way at this waypoint', chev: true, fn: () => open('way', { from: 'waypoint' }) }),
+    rows(row({ ic: 'road', label: `Here: ${R.way[k]}, ${R.surf[k].replace('_', ' ')}`, line: 'The way at this waypoint', chev: true, fn: () => open('here', { back: 'waypoint' }) }),
       row({ ic: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km: asked when you tap', chev: true }), row({ ic: 'drop', label: 'Water nearby', line: 'Taps and springs within 1 km: asked when you tap', chev: true }),
       row({ ic: 'pencil', label: 'Add a note', line: 'Your own words, kept with the route (#854)', chev: true })));
   return kids;
@@ -341,10 +358,10 @@ function warningCard() {
 function spotCard() {
   const ll = S.pin ? S.pin.ll : [24.96, 60.15];
   return [head(h('span', { class: 'pick-mark', style: '--c:#374151' }), 'This spot', `${ll[1].toFixed(5)}, ${ll[0].toFixed(5)}`),
-    nums([{ value: '0 m', label: 'height here' }]),
+    nums([{ label: 'height here', wait: true }]),
     ...actions({ main: { ic: 'plus', label: 'Add to my route', line: 'In your route, where it fits', done: 'Added after Waypoint 2', undo: true }, first: [{ ic: 'avoid', label: 'Avoid this spot' }, { ic: 'share', label: 'Share' }],
       rest: [{ ic: 'flag', label: 'Start here' }, { ic: 'flagend', label: 'End here' }, { ic: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here' }, { ic: 'cloudSun', label: 'Weather here', chev: true }, { ic: 'pin', label: 'Copy' }] }),
-    h('i', { 'data-peek-end': '' }), ...group('About it', [['Depth', 'Asking Traficom (shown, never routed on)']])];
+    h('i', { 'data-peek-end': '' }), h('p', { class: 'pick-note', role: 'status' }, 'Asking what’s here: the way, or over water its depth from Traficom (shown, never routed on)…')];
 }
 
 // ------------------------------------------------------------------ the stage
@@ -353,6 +370,7 @@ let stage, sheet, card, ov, dot, hoverEl;
 function open(kind, o = {}) {
   S.kind = kind; S.more = false;
   if (o.item) S.item = o.item;
+  if (o.back) S.back = o.back;
   if (kind === 'leg' && o.at != null) { S.at = o.at; S.leg = legOf(o.at); S.view = 'leg'; }
   if (kind === 'waypoint' && o.i != null) S.wp = o.i;
   S.pin = o.pin || (kind === 'leg' ? { ll: R.pts[near(S.at)] } : null);
@@ -365,7 +383,7 @@ function toast(msg, undo = false) {
   stage.querySelector('.mk-frame').append(t); setTimeout(() => t.remove(), 3200);
 }
 function build() {
-  return { leg: legCard, waypoint: waypointCard, way: wayCard, place: placeCard, warning: warningCard, spot: spotCard }[S.kind]?.() || null;
+  return { here: hereCard, leg: legCard, waypoint: waypointCard, way: wayCard, place: placeCard, warning: warningCard, spot: spotCard }[S.kind]?.() || null;
 }
 function draw() {
   stage = document.getElementById('stage');
@@ -389,7 +407,7 @@ function draw() {
   frame.querySelector('.mk-sheet, .mk-dock')?.remove();
   sheet = null;
   if (S.kind === 'none') return;
-  card = h('div', { class: 'pl-way card', role: 'region', 'aria-label': 'Card', 'data-back': 'no' }, ...build().filter(Boolean));
+  card = h('div', { class: 'pl-way card', role: 'region', 'aria-label': 'Card', 'data-back': S.kind === 'here' ? 'yes' : 'no' }, ...build().filter(Boolean));
   sheet = desk() ? h('section', { class: 'mk-dock' }, card) : h('section', { class: 'mk-sheet' }, h('button', { type: 'button', class: 'mk-grip', 'aria-label': 'Card size: peek, half, full' }), card);
   frame.append(sheet);
   if (!desk()) sizeSheet(frame);
@@ -442,6 +460,13 @@ function drawDot() {
   const on = (S.kind === 'leg' || S.kind === 'waypoint') && !S.hidden, p = ov.pts[near(S.at)];
   dot.style.display = on ? '' : 'none'; if (on) { dot.setAttribute('cx', p[0]); dot.setAttribute('cy', p[1]); }
 }
+// the map's spot under a pointer: the frame's view inverted
+function unproject(e, svg) {
+  const v = desk() ? VIEW.desk : VIEW.phone, r = svg.getBoundingClientRect(), k = (r.width / svg.viewBox.baseVal.width) * (+svg.dataset.k || 1);
+  const x = (e.clientX - r.left) / k - v.w / 2, y = (e.clientY - r.top) / k - v.h / 2, ws = 512 * 2 ** v.z;
+  const lon = v.c[0] + (x / ws) * 360, s = Math.sin((v.c[1] * Math.PI) / 180), my = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) + y / ws;
+  return [lon, (Math.atan(Math.sinh(Math.PI * (1 - 2 * my))) * 180) / Math.PI];
+}
 // #876's rule: a tap or a click opens the card, a hold or a right click the same card; while drawing, a tap on the empty map
 // adds a waypoint, and a hold there opens the spot's card
 function bindMap(svg, frame, k) {
@@ -450,7 +475,7 @@ function bindMap(svg, frame, k) {
   const act = (e, held) => {
     const t = target(e);
     if (!t) {
-      if (held || S.mode === 'browsing') { const r = svg.getBoundingClientRect(); open('spot', { pin: { ll: [24.96 + (e.clientX - r.left) / r.width * 0.02, 60.15] } }); if (held) toast('Held: the spot’s card, as a tap on a thing opens its own'); return; }
+      if (held || S.mode === 'browsing') { open('spot', { pin: { ll: unproject(e, svg) } }); if (desk() && !held) pillAt(e, frame, 'Add to my route'); if (held) toast('Held: the spot’s card, as a tap on a thing opens its own'); return; }
       if (S.kind !== 'none') { close(); return; } // (a tap beside an open card closes it, and adds nothing)
       toast('A waypoint is added here', true); return;
     }
@@ -460,7 +485,7 @@ function bindMap(svg, frame, k) {
     else if (t.t === 'campfire') open('place');
     else if (t.t === 'path') open('way');
     if (held) toast('Held: the same card a tap opens');
-    if (desk() && t.t === 'line') pillAt(e, frame);
+    if (desk() && !held) { const lab = { line: 'Add a waypoint here', campfire: 'Add to my route', path: 'Add to my route' }[t.t]; if (lab) pillAt(e, frame, lab); }
   };
   let timer = null, ring = null, start = null;
   svg.onpointerdown = (e) => {
@@ -485,9 +510,9 @@ function hover(e, frame, svg) {
   hoverEl = h('div', { class: 'mk-hover', style: `left:${x + 16}px;top:${y + 12}px` }, h('b', {}, `${ro[0]} · ${ro[1]}`), h('span', {}, ro.slice(2).join(' · ')), h('small', {}, 'Click for its card · drag to reshape'));
   frame.append(hoverEl);
 }
-function pillAt(e, frame) {
+function pillAt(e, frame, label) {
   const r = frame.getBoundingClientRect(), z = parseFloat(frame.style.zoom) || 1;
-  const pill = h('button', { type: 'button', class: 'card-pill', style: `position:absolute;left:${(e.clientX - r.left) / z + 6}px;top:${(e.clientY - r.top) / z + 6}px`, html: icon('plus', 18), onclick: () => { pill.remove(); toast('Waypoint added', true); } }, h('span', {}, 'Add a waypoint here'));
+  const pill = h('button', { type: 'button', class: 'card-pill', style: `position:absolute;left:${(e.clientX - r.left) / z + 6}px;top:${(e.clientY - r.top) / z + 6}px`, html: icon('plus', 18), onclick: () => { pill.remove(); toast(label === 'Add to my route' ? 'Added after Waypoint 1' : 'Waypoint added', true); } }, h('span', {}, label));
   frame.querySelector('.card-pill')?.remove(); frame.append(pill); setTimeout(() => pill.remove(), 5000);
 }
 

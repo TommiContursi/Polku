@@ -141,20 +141,69 @@ Every card: its head (mark, name, one line, ⋯, ✕), its numbers, its actions,
 
 **On a desktop** the card is docked right of the planner (412 px from the left, as wide as 352 px), so the map loses 352 px more on its left: the build frames the pick in what's left (`frame()`), which the mock-up's still map can't show.
 
-### The mock-up
+### Where today's actions go
+
+PRODUCT.md: nothing is removed, and nothing takes more taps or a new hidden view. Every action today's cards have, and its home in the new ones:
+
+| Today | Where | New |
+|---|---|---|
+| A waypoint's Move, Rename, Remove (hold only) | its card, in sight at once | the tap's card |
+| Start here, End here (a via) | ⋯ | the same card, one tap more than a hold's rows but no hold |
+| Pass by · Stop · Night | Stop or night › behind ⋯ | one tap more than today's hold card, which showed the switch; **open: keep the switch on the card** at a via that's a stop already |
+| Sport from here › | ⋯ on the waypoint; the leg's MTB ▾ | two taps from the line, today four |
+| A changeover's minutes and Take … along | the card, under its actions | as today |
+| The start's Leave ›, Back to start, Reverse | the card (Leave), ⋯ (Back to start, Reverse) | Leave stays a row; When on the first screen (#878) is the other way |
+| The end's Back to start | ⋯ | |
+| Next stretch › | the waypoint's card, a row | as today |
+| The route's card: This stretch ›, What's here ›, Edit this stretch › | the leg's card: Leg · Stretch · Route, Under it ›, the pills | one card instead of four |
+| Edit this stretch's How it's drawn and Route style | Follow paths ▾; Route style behind ⋯ | |
+| Other ways, Stop here, Avoid a spot here | Other ways and Avoid this spot in sight; Stop here behind ⋯ | |
+| On the profile | the leg's own profile; On the route's profile behind ⋯ | |
+| What's here's All OpenStreetMap details | Under it › | as today, a step from the leg |
+| The whole route › | ⋯ on the leg | |
+| A spot's Your route (hold only) | the card, the main action in sight, the rest behind ⋯ | no hold |
+| Share, Weather here ›, Not right?, Copy, All OpenStreetMap details | Share in sight; the rest behind ⋯ and in the foot | Copy and All OpenStreetMap details no longer need a hold |
+| A warning's main action, Got it, Hide in Check, Fix the map, Not right?, ‹ › | as today, with Its leg | |
+| Paddle from here | the spot's ⋯ over water | |
+| A LIPAS route's Follow this route, Add to my route, Start a route here | its card as today, in this order | not redrawn |
+
+### Taps for common jobs, today and new (phone, drawing)
+
+| Job | Today | New |
+|---|---|---|
+| Change a leg's sport | 4 | 2: the line, MTB ▾, the sport |
+| Add a place as a waypoint | hold, swipe, 1 | 2: the place, Add to my route |
+| Avoid a spot | tap, swipe, 1 (on the line); else a hold | 2: the thing, Avoid this spot |
+| Move a waypoint | drag; or hold, swipe, Move, tap | drag; or the waypoint, Move, a tap |
+| Remove a waypoint | hold, swipe, 1 | 2: the waypoint, Remove |
+| See a way's surface | the line, What's here › (and a swipe) | the line, Under it › (and a swipe); the leg's own Colour by Surface at once |
+| See a stretch's climb | 2, one number | 2, with its own profile |
+
+### Motion (for /animate in each PR)
+
+From emil-design-eng: picking a thing happens tens of times a day, so a card replacing another changes at once; only the sheet's first rise from the map moves (today's `--t-sheet` on `--ease-drawer`), and a card opened from the keyboard doesn't move. The pill at the pointer grows from the click's corner (from 0.97, `--t-open`). The hold's ring stays as it is. Scrubbing a profile never animates. With reduced motion, each only fades.
+
+### Touch (from apple-design and mobile-native)
+
+- **A profile scrubs sideways, and leaves up and down to the sheet** (`touch-action: pan-y` on it), so a swipe on a card's profile still raises the sheet: needs a phone to check.
+- **Press feedback on the press,** as every shared control has it; a hold's ring from 150 ms.
+- **A hold never selects text or calls out** over the map (`-webkit-touch-callout: none`).
+- **The small size holds the actions,** as Apple Maps' smallest detent holds a place's action row: the case for "to the actions" in round 3.
+
 
 [mockups/cards-and-taps.html](mockups/cards-and-taps.html) (served at `/docs/plans/mockups/cards-and-taps.html`), and the same page as a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7). **Today** is `main` at babbafd: screenshots of each card by tap and by hold, phone and desktop. **New** draws the cards with `css/app.css`'s and `js/ui.js`'s own classes and menus, over a screenshot of the map with the route; the route's heights, grades, surfaces, way types, times and warnings are main's own analysis. #574's version stays in [cards-rethought.html](mockups/cards-rethought.html).
 
 - **To try:** tap, click, hold or right-click the line, a waypoint, a warning, the path north of Kaivopuisto, the campfire site on Uunisaari; drag or tap the grip through peek, half and full; scrub a profile; ‹ › and Leg · Stretch · Route; MTB ▾ and ⋯ open the app's menu; the eye hides the route.
 - **Switches:** the card; Phone 390, 360, 200 % and Desktop; the actions B or A; the peek to the actions or with the profile; the data real, late, missing or with long names (main's own street names); drawing or browsing; light or dark.
+- **Changed after the advice of 2026-11-07:** Under it › opens the way under the leg from the route's own data (not a way elsewhere); the spot says its real coordinates and asks what's there; the changeover's minutes and Take along, the start's Leave, Next stretch › and the end's Back to start are on the waypoint's card.
 - **Not drawn:** the planner's sheet behind the card and the toolbar; motion (decided with /animate as each PR is built; the sheet keeps today's); the map moving; a carry, sea marks, road works and a LIPAS route under a leg.
 - **Its screenshots** are on `pr-screenshots`, under `claude/cards-and-taps-d4b7c4/` (`new-*.jpg`, and `t-*.jpg` for Today). The template and its build script are in the session's notes; the page itself is self-contained.
 
-**A fresh critique** (a subagent on the mock-up's screenshots) found, and the mock-up now does: at 200 % the peek cut its actions off (it scrolls now) and the buttons broke their words (one to a row now); a leg's warnings sat under its profile (now right under its actions, what's wrong with a leg first). Not taken: making Add a waypoint here quieter on a leg (the user chose it as the main action); the numbers' small grey labels and the route's mark by the title (production's own look, kept).
+**The design skills:** apple-design, mobile-native and emil-design-eng ran on the mock-up (their findings above, under Motion and Touch); break-ui's cases are the mock-up's worst case: 360 px, 200 %, long names, late and missing data, dark. **A fresh critique** (a subagent on the mock-up's screenshots) found, and the mock-up now does: at 200 % the peek cut its actions off (it scrolls now) and the buttons broke their words (one to a row now); a leg's warnings sat under its profile (now right under its actions, what's wrong with a leg first). Not taken: making Add a waypoint here quieter on a leg (the user chose it as the main action); the numbers' small grey labels and the route's mark by the title (production's own look, kept).
 
 ## The PRs
 
-Small, each tried on a phone before the next, starting from production. Motion in each is decided with /animate; one that moves something stops for /review-animations.
+Small, each tried on a phone before the next, starting from production. Motion in each is decided with /animate; one that moves something stops for /review-animations. **What each closes:** PR 1 fixes #876 and #716 (both gestures open one card), and #760 (its rule, with PR 2's layout); PR 2 is #690's discoverable actions; PR 4 fixes #107's planning half (the way under the route) with PR 6; PR 6 fixes #756; PR 7 is #647's first step, so #647 stays open for the drag; the leg's Remove this leg (PR 4's ⋯) fixes #627's first part; PR 11 fixes #855 and #757. The last PR of the order fixes #690.
 
 1. **A tap and a hold open the same card** (#876, #760's rule): the tap's card gains the hold's actions (a waypoint's, a spot's and a place's Your route), in the order of "The card, kind by kind", and a hold or a right click open the same; a waypoint's marker takes the focus. `openPointCard()`, `openSpotCard()`, `openPlaceCard()`, `pickBody()`, `spotBody()`, `renderMarkers()`. Checks: `spotcard`, `pointcard`, `crosshair`.
 2. **The actions first:** under the numbers, the main one green, two buttons, the rest behind ⋯ (the app's menu); the peek ends after them. `js/cards.js`, `measureSheet()`. Checks: `spotcard`, `pointcard`, `routecard`, `sheetstops`, at 360 px and 200 %.
@@ -172,5 +221,5 @@ Small, each tried on a phone before the next, starting from production. Motion i
 
 14. The first size: to the actions, or with the profile.
 15. The actions' look: B (buttons) or A (the action row).
-16. A desktop's short ways: the action at the pointer, drag, and Delete on a waypoint the pointer is on.
+16. A desktop's short ways. The card beside the planner keeps the map clear, but every action on it is a long trip from where you clicked, and it covers the map's left (here the route's start, which the build would frame aside). The mock-up puts each kind's main action at the pointer too (Add a waypoint here on the line, Add to my route on a place, a way or a spot); dragging a waypoint stays; Delete on the waypoint under the pointer would make removing one a key. Or: the card at the spot as today, its actions in reach, covering what it's about (#647).
 17. The order of the PRs above.
