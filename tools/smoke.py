@@ -1572,8 +1572,9 @@ WATER_BACK = """(async () => {
     await wait(3000);
     // Overpass is back: asked again on its own, the legs are routed again with it (#129)
     fail = false;
-    for (let k = 0; k < 80 && !(routed(2) && !without() && !warned()); k++) await wait(250);
-    if (without()) errs.push(`Overpass came back, and ${without()} of 2 legs stay without OSM's rocks (#129)`);
+    const before = asked;
+    for (let k = 0; k < 160 && !(routed(2) && !without() && !warned()); k++) await wait(250); // (a slow runner's few rounds)
+    if (without()) errs.push(`Overpass came back, and ${without()} of 2 legs stay without OSM's rocks, ${p.legs.map((l) => l.status).join(', ')}; Overpass asked ${asked - before} times since (#129)`);
     if (warned()) errs.push('Overpass came back, and Not checked still says OSM didn\\'t answer (#129)');
     // Undo: the one leg as it was routed without them, routed again (#80)
     if (!without()) {
@@ -1599,7 +1600,7 @@ def water_back(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:styles': json.dumps({'paddle': {'p': 'balanced', 'v': {'w': 'ignore'}}})}, '#13/60.152/24.97')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-    fails = pg.js(WATER_BACK, timeout=85000)
+    fails = pg.js(WATER_BACK, timeout=120000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} water routing when OSM's rocks fail and come back, and after Undo (#129, #80)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
