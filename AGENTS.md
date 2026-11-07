@@ -158,9 +158,9 @@ conversation again
 - **Saved routes, settings and share links:** update the current readers,
   writers and tests together when formats change (clarity over
   compatibility, above).
-- **Keep working:** weather along the route, Heads-up and Avoid, water routing
-  and carries, round trips, offline save and preview, GPX/KML import and GPX
-  export, share links, 3D and hover.
+- **Keep these working:** weather along the route, Heads-up and Avoid, water
+  routing and carries, round trips, offline save and preview, GPX/KML import
+  and GPX export, share links, 3D and hover.
 - Follow the module that already does the job (DEVELOPING has the list), in
   its style, and keep the change free of **bloat** (Code Review Rules, below:
   the same bar the review applies). Older dead code is a noticed line, unless

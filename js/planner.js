@@ -5042,29 +5042,39 @@ export class Planner {
     this.els.when.put();
     return this.els.when.el;
   }
-  // When's menu: Leave now, and Leave at…, whose date field lies unseen over it, so a tap opens the phone's own picker
-  // (an iPhone has no showPicker()) and the field is what the keyboard and a screen reader reach, as pickRow()'s. The
-  // menu stays while the picker is open, and goes once a time is picked and the picker is put away.
+  // When's menu: Leave now, and Leave at…. On a phone, Leave at…'s date field lies unseen over it, so a tap opens the
+  // phone's own picker (an iPhone has no showPicker()), and the field is what the keyboard and a screen reader reach, as
+  // pickRow()'s; the menu stays while the picker is open, and goes once a time is picked and the picker is put away. A
+  // desktop browser's picker has no OK, so there Leave at… shows the field itself in the menu, with Set (and Enter).
   whenMenu(anchor) {
     if (this.whenPop) { this.whenPop.close(); return; }
-    const at = this.leaveAt, now = Date.now() / 1000, day = at != null ? `${this.dayOf(at, true)}, ${this.timeOf(at)}` : '';
-    const field = h('input', { type: 'datetime-local', step: '900', class: 'menu-item', value: leaveLocal(at ?? Math.ceil(now / 900) * 900), min: leaveLocal(Math.floor(now / 900) * 900),
-      'aria-label': `Leave at…${at != null ? ` ${day}.` : ''} Pick a day and a time` });
-    let picked = false;
-    const open = () => { try { field.showPicker(); } catch { /* the phone opens its own */ } };
-    field.addEventListener('click', open);
-    field.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
-    field.addEventListener('change', () => { picked = true; leaveFrom(this, field.value); });
-    field.addEventListener('blur', () => { if (picked) this.whenPop?.close(this.keyed); }); // (left by a key: the focus back on the row)
-    const pick = h('div', { class: `menu-pick${at != null ? ' on' : ''}` },
-      h('span', { 'aria-hidden': 'true', html: `${icon('calendar', 17)}<span>Leave at…${at != null ? `<small>${escapeHtml(day)}</small>` : ''}</span>${at != null ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}` }), field);
+    const at = this.leaveAt, now = Date.now() / 1000, day = at != null ? `${this.dayOf(at, true)}, ${this.timeOf(at)}` : '', phone = this.coarse();
+    const field = h('input', { type: 'datetime-local', step: '900', class: phone ? 'menu-item' : 'name-field', value: leaveLocal(at ?? Math.ceil(now / 900) * 900), min: leaveLocal(Math.floor(now / 900) * 900),
+      'aria-label': phone ? `Leave at…${at != null ? ` ${day}.` : ''} Pick a day and a time` : 'Leave at: a day and a time' });
+    let leaveAt;
+    if (phone) {
+      let picked = false;
+      const open = () => { try { field.showPicker(); } catch { /* the phone opens its own */ } };
+      field.addEventListener('click', open);
+      field.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      field.addEventListener('change', () => { picked = true; leaveFrom(this, field.value); });
+      field.addEventListener('blur', () => { if (picked) this.whenPop?.close(this.keyed); }); // (left by a key: the focus back on the row)
+      leaveAt = { node: h('div', { class: `menu-pick${at != null ? ' on' : ''}` },
+        h('span', { 'aria-hidden': 'true', html: `${icon('calendar', 17)}<span>Leave at…${at != null ? `<small>${escapeHtml(day)}</small>` : ''}</span>${at != null ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}` }), field) };
+    } else {
+      const set = () => { if (!field.value) return; leaveFrom(this, field.value); this.whenPop?.close(this.keyed); };
+      field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); set(); } });
+      const form = h('div', { class: 'menu-when' }, field, h('button', { type: 'button', class: 'btn primary', 'data-k': 'when-set', onclick: set }, 'Set'));
+      leaveAt = { icon: 'calendar', label: 'Leave at…', desc: escapeHtml(day), radio: true, checked: at != null, keep: true,
+        fn: () => { this.whenPop.refill([{ group: 'Leave at', items: [{ node: form }] }]); field.focus(); } };
+    }
     const keyed = anchor.matches(':focus-visible');
     anchor.setAttribute('aria-expanded', 'true');
-    this.whenPop = popMenu(anchor, [{ group: 'When', items: [{ icon: 'clock', label: 'Leave now', radio: true, checked: at == null, fn: () => this.setLeave(null) }, { node: pick }] }],
+    this.whenPop = popMenu(anchor, [{ group: 'When', items: [{ icon: 'clock', label: 'Leave now', radio: true, checked: at == null, fn: () => this.setLeave(null) }, leaveAt] }],
       { label: 'When', align: 'left', sheet: true, onClose: () => { this.whenPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
-    // with a time set, the focus on Leave at… from the keyboard, and on neither from a tap: on Leave now it reads as
-    // picked, and a field focused under a finger opens an iPhone's picker
-    if (at != null) { if (keyed) field.focus({ preventScroll: true }); else this.whenPop.el.querySelector(':focus')?.blur(); }
+    // a phone's, with a time set: the focus on Leave at… from the keyboard, and on neither from a tap: on Leave now it
+    // reads as picked, and a field focused under a finger opens an iPhone's picker
+    if (phone && at != null) { if (keyed) field.focus({ preventScroll: true }); else this.whenPop.el.querySelector(':focus')?.blur(); }
   }
   // a step's top row: Back on the left; on the right the panel's place (desktops) and ✕
   backRow(label = 'Ways to begin', fn = () => this.wayBack()) {
