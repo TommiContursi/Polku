@@ -838,10 +838,8 @@ function pickFoot(pl, card, spot) {
 }
 
 // Your route: only what can be done now (with no route, a round trip from here). `add`: the spot's one action first, as the
-// pill was (Add to my route, Add a point here by the line, Start a route here with no route). None on a pin's card while
-// browsing (a search's or a shared link's, #871).
+// pill was (Add to my route, Add a point here by the line, Start a route here with no route).
 function yourRoute(pl, spot, { add = false } = {}) {
-  if (spot.pin && !pl.active) return [];
   const n = pl.points.length, undo = { label: 'Undo', fn: () => pl.undo() };
   const pill = !add ? null : !n ? { label: 'Start a route here', fn: () => pl.startRouteAt(spot.ll) } : { label: pl.byTheLine(spot.ll) ? 'Add a waypoint here' : 'Add to my route', fn: () => pl.addWhereItFits(spot.ll) };
   const yours = acts(

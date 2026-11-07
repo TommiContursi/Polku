@@ -894,8 +894,8 @@ LIPAS_RIDE = """(async () => {
 })()"""
 
 
-# A place picked from search (#871): its card at the spot with a pin, its name and kind; Your route's start only while
-# planning. Photon and LIPAS answer from stubs: a tower (a point) and a lake (an area, with its extent).
+# A place picked from search (#871): its card at the spot with a pin, its name and kind; Your route's start, browsing
+# or planning (#876). Photon and LIPAS answer from stubs: a tower (a point) and a lake (an area, with its extent).
 SEARCH_PLACE = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], real = window.fetch;
   const L = await import(location.origin + '/js/lipas.js');
@@ -928,13 +928,13 @@ SEARCH_PLACE = """(async () => {
     const r = pin.getBoundingClientRect(), a = polku.map.project(ll), m = polku.map.getContainer().getBoundingClientRect();
     if (Math.hypot(r.left + r.width / 2 - m.left - a.x, r.top + r.height / 2 - m.top - a.y) > 12) errs.push(`${name}: the pin is ${Math.round(r.left + r.width / 2 - m.left - a.x)}, ${Math.round(r.top + r.height / 2 - m.top - a.y)} px off the spot`);
   };
-  // browsing: its facts, no Your route
+  // browsing: its facts, and Your route as on the map's cards (#876)
   p.setActive(false, { instant: true });
   let c = await pick('Pyynikin', 'Pyynikin näkötorni');
   if (c) {
     pinAt(tower, 'the tower');
     if (!/Tower/.test(c.textContent)) errs.push('the tower\\'s card doesn\\'t say it\\'s a tower');
-    if (c.querySelector('[data-k=add]')) errs.push('browsing, the card offers to start a route');
+    if (!c.querySelector('[data-k=add]')) errs.push('browsing, the card has no Start a route here');
   }
   // an area: the card at Photon's point for it
   c = await pick('Pyhäjärvi', 'Pyhäjärvi');

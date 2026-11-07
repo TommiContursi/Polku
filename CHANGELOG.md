@@ -8,6 +8,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - A tap or a click on a waypoint opens its card with everything you can do there: **At this waypoint**, **Sport from here**, **Move**, **Rename**, **Remove** and the rest. Holding it, or right-clicking it, opens the same card. **On the profile** is under the waypoint's profile.
 - A tap or a click on the map, on a way or on a place's icon opens its card with **Your route** (**Add to my route**, **Start here**, **End here**, **Round trip from here** and **Avoid this spot**) and, in its last row, **All OpenStreetMap details** and **Copy**. Holding or right-clicking opens the same card. On a phone, a tap on the map while you're not drawing still shows the line above the spot first.
+- A place, coordinates or a trail picked from search, and a spot opened from a shared link, have **Your route** on their card too, with the planner put away: **Start a route here** starts one there.
 - With a keyboard, Tab from the map goes on to the waypoints, and **Enter** on one opens its card. **Enter** and **Shift+F10** at the map's crosshair open the same card.
 
 ### Leave at… on a desktop ([#869](https://github.com/TommiContursi/Polku/issues/869))

@@ -507,7 +507,7 @@ initSearch(map, $('#search-input'), $('#search-results'), {
     inspector.openLipas(props, ll, near);
     if (planner.cards.current) planner.cards.current.gone = () => setData('lipasPick', { type: 'FeatureCollection', features: [] });
   },
-  // a place's card at a pin (#871): its name and kind, and while planning Your route, as the map's cards have
+  // a place's card at a pin (#871): its name and kind, and Your route, as the map's cards have
   // coordinates or a trail: the spot's card at a pin (#875), what's there and its way drawn
   openSpot: (ll, name) => planner.openSpotCard(ll, { pin: true, name }),
   openPlace: (r) => planner.openPlaceCard({ layer: { id: 'search' }, properties: { name: r.label, class: r.osm && r.osm.key, subclass: r.osm && r.osm.value }, geometry: { type: 'Point', coordinates: r.center } }, r.center, { pin: true }),
