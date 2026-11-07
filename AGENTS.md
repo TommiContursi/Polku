@@ -52,10 +52,11 @@ November 2026").
 - **Start from the task the user picked, or the latest Hand-over** on the
   phase issue; otherwise from the Project's Now column, top first (Later and
   Someday need the user's OK). Trust a Hand-over for what ran on which
-  commit, and check it against its PR and branch. What comes next is the
-  user's latest choice and the plan's order on `main`, however recent the
-  Hand-over. A review, an audit or a proposal decides nothing until the user
-  chooses it. When unsure, ask.
+  commit, and check it against its PR and branch.
+- **The user decides** what comes next: their latest choice, then the plan's
+  order on `main`, however recent a Hand-over. Scope, order and any larger
+  investigation are theirs too, and a review, an audit or a proposal decides
+  nothing until they choose it. When what comes next is unclear, ask.
 - **Claim it first:** a comment on the issue with your branch, saying which
   agent you are (Claude or Codex: all post as the user's GitHub account).
   For a work package, claim it on the primary issue, list the issues it
@@ -70,29 +71,26 @@ November 2026").
   Small fixes get their own Fix PR in the month's Fixes milestone, so
   people don't wait for a phase to get them. Related fixes can share one
   Fix PR. One exception: if a phase is already rebuilding the code a fix
-  touches, propose moving the fix into that phase; the user decides. Ideas
-  wait in Someday.
-- **The user decides** a larger investigation and any change of scope or
-  order.
+  touches, propose moving the fix into that phase. Ideas wait in Someday.
 - **Plan, then build.** The user or a planning session groups related issues
   (same cause, screen, code or tests) into a work package on the primary
   issue: the issues it includes, and their order, scope or model only when
   they aren't obvious. The planning session reads the milestone to do it; a
   build session starts from the package and doesn't regroup. Ask before a
   package spans milestones, and use sub-issues only for a real parent and
-  child. One PR may close several issues, each with its own `Fixes #N`. A
-  session carries its PR through to ready, across as many checkpoints as it
-  takes: a token count never stops it mid-part. Start a new session (or
-  Codex thread) from the Hand-over when the package is done, when a part is
-  done and the context is past about 300k tokens, when the session reaches
-  its usage limit, or when its context has been compacted and it starts
-  losing track (repeating work, forgetting a decision). Write the Hand-over
-  first.
-- **Sessions side by side,** as many as the user starts: each has a claim
-  and a branch of its own, and leaves alone the files another open PR
-  changes. When one reaches its usage limit, the next continues from its
-  last Hand-over. No "status" session. A subagent can do a wide search, but
-  not verify the work or run the suite: those stay with the session.
+  child. One PR may close several issues, each with its own `Fixes #N`.
+- **A session carries its PR through to ready,** across as many checkpoints
+  as it takes: a token count never stops it mid-part. Start a new session
+  (or Codex thread) from the Hand-over when the package is done, when a part
+  is done and the context is past about 300k tokens, when the session
+  reaches its usage limit, or when its context has been compacted and it
+  starts losing track (repeating work, forgetting a decision). Write the
+  Hand-over first.
+- **Sessions side by side,** as many as the user starts: each works on a
+  claim and a branch of its own, and leaves alone the files another open PR
+  changes. Status lives in the Hand-overs. When one reaches its usage limit,
+  the next continues from its last Hand-over. A subagent can do a wide
+  search; verifying the work and running the suite stay with the session.
 - **Lead with what the user must do:** every reply and Hand-over opens with
   **Needs you** (merge, decide, test, or nothing), **Next** and **Left** (in
   sessions or PRs). An issue or PR that waits on the user is assigned to
@@ -101,21 +99,20 @@ November 2026").
   posts as them.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
-  issue, headed "Hand-over", in 6–8 short lines after the three above, no
-  prose: who you are and whether the claim is released; branch, commit and
+  issue, headed "Hand-over", in 6–8 short lines after the three above:
+  who you are and whether the claim is released; branch, commit and
   PR; done; verified, with the exact commands and the commit they ran on;
   not verified; decisions, with links; next step, from the plan's order,
   with the model and effort it needs (below); what to watch out for;
   noticed, one line each.
   Write one too before a turn that waits for the user, so the answer can
-  start a fresh session. Never end a turn with uncommitted work.
-- Docs and tooling PRs stay on their one subject.
+  start a fresh session. End every turn with the work committed.
 
 **Model and effort,** picked when the session starts: Sonnet, or Opus at
 medium, for docs, small fixes, rebases, filing issues and `/lessons`;
 Opus at high for a phase's part, multi-file work and hard bugs, including
 anything touching routing, saved data or share links. Raise it to xhigh
-only when high is stuck on the same problem; never `max` as a habit.
+only when high is stuck on the same problem.
 Mid-session, change effort, not models: a new model sends the whole
 conversation again
 ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
@@ -159,20 +156,18 @@ conversation again
   happens when a source fails, answers late, answers out of order, or comes
   back, not only the first good answer.
 - **Saved routes, settings and share links:** update the current readers,
-  writers and tests together when formats change; don't retain old formats
-  solely for backward compatibility.
-- **Don't break:** weather along the route, Heads-up and Avoid, water routing
-  and carries, round trips, offline save and preview, GPX/KML import and GPX
-  export, share links, 3D and hover.
+  writers and tests together when formats change (clarity over
+  compatibility, above).
+- **Keep these working:** weather along the route, Heads-up and Avoid, water
+  routing and carries, round trips, offline save and preview, GPX/KML import
+  and GPX export, share links, 3D and hover.
 - Follow the module that already does the job (DEVELOPING has the list), in
-  its style. Keep changes to the point: every changed line is there for the
-  task, tidy only what makes the change simpler, and add a helper,
-  abstraction, option or dependency only when the task needs one. Remove what
-  your own change left unused; older dead code is a noticed line, unless
-  removing it makes the change simpler. Use skills where they help. Where one
-  differs from this file, this file wins: same-commit runs count, the user
-  decides scope and order (not a ledger), progress goes in Hand-overs, and
-  only the user merges.
+  its style, and keep the change free of **bloat** (Code Review Rules, below:
+  the same bar the review applies). Older dead code is a noticed line, unless
+  removing it makes the change simpler.
+- **Where a skill differs from this file, this file wins:** same-commit runs
+  count, the user decides scope and order (not a ledger), progress goes in
+  Hand-overs, and only the user merges.
 - Think of the phone outdoors: touch, one thumb, small screens, bright sun,
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
@@ -236,6 +231,7 @@ conversation again
 - Branch from `main`, or from the PR below yours if it isn't merged yet ("after
   #N" in the PR's first line). First check the branch and any uncommitted
   changes. Never work on another agent's branch unless it was handed over.
+- Docs and tooling PRs stay on their one subject.
 - **The repo squash-merges:** the PR's title and description become its one
   commit on `main`, so keep the description true as the PR changes. When the
   PR below yours is merged, rebase yours onto `main` without its commits
@@ -252,6 +248,11 @@ conversation again
   (`Co-Authored-By`, session links) in commits or PR bodies.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
+  When a milestone's last issue closes, ask the user to run `/lessons` on it
+  (only the user can start it): its Docs PR adds the milestone's short retro
+  in `docs/retros/` (what cost time, what to keep and what changes in
+  AGENTS.md, with the PRs and issues as evidence). Then the milestone is
+  closed.
 - **Screenshots** of a change people see, before and after, on the
   `pr-screenshots` branch (DEVELOPING, "Running it"). No images in `main`.
 - **In the same PR:**
@@ -271,10 +272,6 @@ conversation again
 - **Never push to `main` or merge** unless the user says so. The user merges:
   say which PRs are ready (the ones not in draft, in their "after #N" order),
   and which wait and why.
-- **When a milestone's last issue closes,** ask the user to run `/lessons` on
-  it (only the user can start it). Its Docs PR adds the milestone's short retro
-  in `docs/retros/`: what cost time, what to keep and what changes in
-  AGENTS.md, with the PRs and issues as evidence. Then the milestone is closed.
 
 ## Code Review Rules
 
