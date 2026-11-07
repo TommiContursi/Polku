@@ -18032,8 +18032,10 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
   },
   // the route's list said once (#764): no hint, a one-part route's heading beside Reorder with no numbers line under it,
   // Start and End without their distance, and from the list's top the Start row and the first stretch's first words in sight
-  list() {
-    const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
+  // scrolled: the sheet scrolled as a finger does, until the tabs are under its top row (at half, the profile as tall as
+  // at the peek puts the list a scroll away, #889)
+  list(scrolled = false) {
+    const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = scrolled && s === p.panel ? p.els.tabs.offsetTop - p.els.top.offsetHeight : 0;
     // (a row's line: the weather and its label at most, never a distance; its time in its column, #761)
     const line = (row, first) => { const t = row?.querySelector('.wx-line')?.textContent || ''; return (t.startsWith(first) && !/\\d k?m\\b(?!\\/)/.test(t)) || t; };
     const L = p.els.points, rows = [...L.querySelectorAll('.wpl-point')], start = rows[0], end = rows[rows.length - 1], b = p.els.body.getBoundingClientRect(), v = s.getBoundingClientRect();
@@ -18107,11 +18109,12 @@ def tabs(chrome):
             if r != {'focus': 'how-mtb', 'seen': True}:
                 fails.append(f"{name}: Back from Route style, {where}: {r} (want the focus on its row, in sight)")
         if phone:
-            # the route's list at half says things once (#764), leaving at 10:00 so no "In the dark" row comes between
+            # the route's list at half says things once (#764), leaving at 10:00 so no "In the dark" row comes between; its
+            # start a scroll down, under the profile as tall as at the peek (#889)
             r = pg.js("""(async () => { const p = polku.planner, ten = new Date(); ten.setHours(10, 0, 0, 0); if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
-              p.setLeave(ten / 1000); p.setTab('route'); p.setSheetState('half'); await new Promise((ok) => setTimeout(ok, 800)); const r = TB.list(); p.setLeave(null); return r; })()""")
+              p.setLeave(ten / 1000); p.setTab('route'); p.setSheetState('half'); await new Promise((ok) => setTimeout(ok, 800)); const r = TB.list(true); p.setLeave(null); return r; })()""")
             if r != {'hint': False, 'nums': False, 'reorder': True, 'beside': False, 'head': True, 'warn': False, 'start': True, 'end': True, 'seen': True, 'stretch': True}:
-                fails.append(f"{name}: the route's list at half: {r} (want no hint, the part's heading in the list with its totals (#761), Start and End without their distance, Start and the first stretch's first words in sight)")
+                fails.append(f"{name}: the route's list at half: {r} (want no hint, the part's heading in the list with its totals (#761), Start and End without their distance, Start and the first stretch's first words in sight, a scroll down, #889)")
         pg.js("(async () => { const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('left'); p.setSheetState(p.layout() === 'side' ? 'open' : 'full'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()")
         # Route style ›: the route style alone, with Back to Route; a preset there changes the row's value
         press(pg, at(pg, "TB.row('route', 'Route style')"), f'{name}: Route style', touch)
