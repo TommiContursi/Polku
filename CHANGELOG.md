@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-07
 
+### One set of sizes, and the profile in the peek ([#889](https://github.com/TommiContursi/Polku/issues/889), [#742](https://github.com/TommiContursi/Polku/issues/742))
+
+- On a phone the planner and every card now have the same four sizes: the line, the peek, half and full. A swipe lands in the same place whatever is open, and full is always full; a short card sits at the top with room under it.
+- The planner's peek shows the route's profile under its numbers, while you draw and in the route's view. A tap on it opens the planner at half, where you can run a finger along it. The peek is as tall as a card's, with its actions in sight.
+- While you drag the planner or a card, no marks show at the screen's edge any more. A flick still moves it one size.
+
 ### A card's actions first ([#690](https://github.com/TommiContursi/Polku/issues/690))
 
 - A card now shows what you can do right under its numbers, in sight as it opens on a phone, with the top of what comes next showing under them.

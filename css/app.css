@@ -983,9 +983,10 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-state="peek"]:not(.dragging) .pl-tabs, .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile #profile-canvas { height: var(--prof-peek, 64px); }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .profile-top { display: none; }
-/* at the peek a tap on the profile opens it at half, and a drag moves the sheet: scrubbing it waits for half (.prof-open) */
+/* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
+   for half (.prof-open); a mouse, which moves the sheet only by its top rows, reads it at the peek as anywhere */
 .prof-open { display: none; }
-.sheet[data-layout="sheet"][data-state="peek"].prof-peek:not(.dragging) .prof-open { display: block; position: absolute; inset: 0; z-index: 1; width: 100%; padding: 0; border: 0; border-radius: var(--radius-control); background: none; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+@media (pointer: coarse) { .sheet[data-layout="sheet"][data-state="peek"].prof-peek:not(.dragging) .prof-open { display: block; position: absolute; inset: 0; z-index: 1; width: 100%; padding: 0; border: 0; border-radius: var(--radius-control); background: none; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; } }
 .prof-open:active { background: color-mix(in srgb, var(--surface-2) 60%, transparent); } /* (a row's press, see-through over the profile) */
 .prof-open:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* The start (A with 25b, #233): before there's a route, and while a round trip is open, the header holds the
