@@ -9,7 +9,7 @@ import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
@@ -25,7 +25,7 @@ import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
 import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, leaveLocal, leaveFrom, spotCard, lipasCard, pickLine, thingCard, nearestSample } from './cards.js';
-import { pickData } from './pick.js';
+import { pickData, modesOf, modeOf, setMode as setPickMode } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -524,10 +524,12 @@ export class Planner {
   undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.leaveAt ?? this.leavePassed; this.future.push(t); this.restoreSnap(s); } }
   redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.leaveAt ?? this.leavePassed; this.past.push(t); this.restoreSnap(s); } }
 
-  addPoint(ll) {
+  // `name`: a place's own name for it (#886), in the same step of Undo
+  addPoint(ll, { name = '' } = {}) {
     this.commit();
     if (!this.points.length) this.readKeys = new Set(); // a new route: nothing read yet
     this.points.push(ll);
+    if (name) this.pname.set(ll, name.slice(0, 60));
     const since = Date.now() - (this.lastAddAt || 0);
     this.lastAddAt = Date.now();
     if (this.points.length > 1) {
@@ -540,10 +542,11 @@ export class Planner {
   }
 
   // exact: the point at ll itself, its two legs routed again (Add to my route); else on the line nearest it (no call)
-  insertPoint(legIdx, ll, { exact = false } = {}) {
-    if (!this.legs[legIdx]) return this.addPoint(ll);
+  insertPoint(legIdx, ll, { exact = false, name = '' } = {}) {
+    if (!this.legs[legIdx]) return this.addPoint(ll, { name });
     this.commit();
-    this.splitLeg(legIdx, ll, null, { exact });
+    const i = this.splitLeg(legIdx, ll, null, { exact });
+    if (name) this.pname.set(this.points[i], name.slice(0, 60));
     this.update();
   }
 
@@ -2978,6 +2981,26 @@ export class Planner {
       { note: 'Hidden items stay in Check and the cards.' },
     ], { label: 'List settings', modal: true });
   }
+  // Card settings (#690), ⋯ beside a card's ✕: Colour by, what colours the card's profile (a pick's own, else the route's,
+  // which a point's profile shows), and Colours on the map, the route's; kept for every card on this device. Built as the
+  // list's settings: its name and ✕ on a row of their own, and a tap outside closes it alone. None with nothing to set.
+  cardMenu(card) {
+    const pick = card.kind === 'spot' && card.pick.a && card.pick.a !== 'failed' ? card.pick : null, a = this.analysis;
+    const modes = pick ? modesOf(pick.a).flatMap(([, keys]) => keys).map((k) => [k, PICK_MODES[k]]) : a ? COLOR_GROUPS.flatMap(([, keys]) => keys).filter((k) => this.modeApplies(k)).map((k) => [k, COLOR_MODES[k]]) : [];
+    if (!modes.length && !a) return null;
+    return (anchor) => {
+      const now = pick ? modeOf(pick.a) : this.colorMode;
+      const pickMode = (k) => { if (pick) { setPickMode(k); this.drawPick(pick); } else this.showMode(k); this.cards.refresh(); };
+      const x = h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close Card settings', html: icon('close', 20), onclick: () => { menu.close(); anchor.focus(); } });
+      const menu = popMenu(anchor, [
+        { node: h('div', { class: 'way-bar' }, h('b', {}, 'Card settings'), x) },
+        modes.length ? { group: 'Colour by', items: modes.map(([k, label]) => ({ label, radio: true, checked: now === k, fn: () => pickMode(k) })) } : null,
+        a ? { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, 'Colours on the map'),
+          h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => this.setColorOnMap(e.target.checked) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }))) }] } : null,
+        { note: 'Kept for every card, on this device.' },
+      ].filter(Boolean), { label: 'Card settings', modal: true });
+    };
+  }
   // A part's ⚙ (#761): its sport, which opens the list of sports in its place and changes this part's legs alone; its
   // sport's speed, whose editor opens in place; and its sport's route style, as the drawing menu has the next leg's. Its
   // name and ✕ on a row of their own, and a tap outside closes it alone, as the list's settings.
@@ -4212,38 +4235,40 @@ export class Planner {
   }
 
   // + Add to my route (part 5) [p-added]: by the line (30 m) a point on it, as Add a point here (no call); else where it
-  // fits (bestInsert()), its two new legs routed. One step of Undo; the note names the point it follows.
-  addWhereItFits(ll) {
+  // fits (bestInsert()), its two new legs routed. One step of Undo; the note names the point it follows. `name`: a place's,
+  // which the point takes (#886), as Start here, End here and Start a route here give it
+  addWhereItFits(ll, name = '') {
     this.cards.close();
     if (!this.active) this.setActive(true); // (editing or the route's view as it was: a card's edit doesn't switch drawing on, #745)
     const near = this.nearLine(ll), on = near && near.d <= NEAR_LINE, k = on ? near.li : this.bestInsert(ll).after;
-    const name = this.nameOf(k);
-    if (on) this.insertPoint(k, ll);
-    else if (k >= this.points.length - 1) this.addPoint(ll);
-    else this.insertPoint(k, ll, { exact: true });
-    toast(`Added after ${name}`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+    const prev = this.nameOf(k);
+    if (on) this.insertPoint(k, ll, { name });
+    else if (k >= this.points.length - 1) this.addPoint(ll, { name });
+    else this.insertPoint(k, ll, { exact: true, name });
+    toast(`Added after ${prev}`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
   // + Start a route here, with no route: its first point, drawing
-  startRouteAt(ll) {
+  startRouteAt(ll, name = '') {
     this.cards.close();
     this.setActive(true, { edit: true });
-    this.addPoint(ll);
+    this.addPoint(ll, { name });
     this.autoPeek();
   }
   // Start here on a spot: a new start before the old one, which is Waypoint 1 now; nothing is removed
-  startFrom(ll) {
+  startFrom(ll, name = '') {
     this.cards.close();
     if (!this.active) this.setActive(true);
     this.commit();
     this.points.unshift(ll);
+    if (name) this.pname.set(ll, name.slice(0, 60));
     this.legs.unshift({ mode: this.mode, sport: this.legs[0] ? this.legs[0].sport : this.next || undefined });
     this.update();
     toast('A new start is added', { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
   // End here on a spot: a new end after the old one
-  endAt(ll) {
+  endAt(ll, name = '') {
     if (!this.active) this.setActive(true);
-    this.addPoint(ll);
+    this.addPoint(ll, { name });
   }
 
   // A point's card (25d, #345, Revision 4 of #355): built in js/cards.js. `p` is the point itself, not its index: the
@@ -4685,14 +4710,12 @@ export class Planner {
         }
         const swap = !!this.cardSeen; // (a card in the peek before this one: opened from it, Back to it, or another pick)
         this.cardSeen = this.cards.place === 'peek' ? this.cards.box : null;
-        // a card opens at its own size; tapped on the map while the sheet is folded, it opens folded (its line), so the map
-        // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had. One that takes
-        // the place of a card at half or full keeps that size, or its tallest under it (#692)
-        const st = this.panel.dataset.state, entry = this.cards.stack[this.cards.stack.length - 1];
+        // a card opens at its own size, its actions in sight, the sheet folded too (#690: no longer folded, step 3 of #233);
+        // with the planner put away, at its own size whatever size the planner had. One that takes the place of a card at
+        // half or full keeps that size, or its tallest under it (#692)
+        const st = this.panel.dataset.state;
         const keep = card && fresh && this.cards.place === 'peek' && swap && ['half', 'full'].includes(st);
-        if (!keep && card && fresh && this.cards.place === 'peek' && (!this.active || (st !== 'peek' && !(st === 'folded' && entry.from === 'map')))) this.setSheetState('peek', { remember: false });
-        // (opened on the line, the line opens it at its own size: the planner's comes back with the planner, restore())
-        else if (card && fresh && this.cards.place === 'peek' && st === 'folded') this.unfoldTo = null;
+        if (!keep && card && fresh && this.cards.place === 'peek' && (!this.active || st !== 'peek')) this.setSheetState('peek', { remember: false });
         // the card's point ringed on the map, while its card (or Move's banner) is open
         const ringed = card && card.key && this.points.includes(card.key) ? card.key : null;
         this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
@@ -4727,6 +4750,7 @@ export class Planner {
         requestAnimationFrame(() => { this.listScroller().scrollTop = was.scroll; });
       },
       // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox
+      settings: (card) => this.cardMenu(card),
       dock: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView()
         ? { undo: () => this.undo(), redo: () => this.redo(), canUndo: !!this.past.length, canRedo: !!this.future.length } : null),
     });
@@ -5639,14 +5663,16 @@ export class Planner {
       const c = this.cards.place === 'peek' && this.cards.box, cardAt = c ? c.getBoundingClientRect().top - hd.getBoundingClientRect().top : 0;
       this.peekBare = Math.ceil(hd.offsetTop - take + (c ? cardAt : hd.offsetHeight + grow) + under());
       let h = this.peekBare + (this.panel.dataset.state === 'peek' ? take : shown && this.peekDocks ? this.dockTake || 0 : 0);
-      // a card's peek is no taller than the planner's own with a route, nor than 52 % of the window: the rest of it is a swipe
-      // up, at half (#603). It always has the card's name and numbers, as the planner's has its route's: where the planner's
-      // is shorter (no key facts' line yet), and before the planner has had a route (not a share of the screen, which text
-      // outgrows at 200 %). A card that fits in less is as tall as it is
+      // a card's peek ends after its actions (#690), with the top of what follows showing, faded (`cut`); one with no actions
+      // in sight (a step's card: Sport from here, Edit this stretch) is the planner's own peek with a route. Either is no
+      // taller than 52 % of the window: the rest is a swipe up, at half (#603). It always has the card's name and numbers, as
+      // the planner's has its route's: where the planner's is shorter (no key facts' line yet), and before the planner has
+      // had a route (not a share of the screen, which text outgrows at 200 %). A card that fits in less is as tall as it is
       if (c) {
-        const end = c.querySelector(':scope > .sheet-sum') || c.querySelector(':scope > .way-head');
+        const acts = c.querySelector(':scope > .peek-end')?.previousElementSibling, end = acts || c.querySelector(':scope > .sheet-sum') || c.querySelector(':scope > .way-head');
         const named = end.getBoundingClientRect().bottom - c.getBoundingClientRect().top + c.scrollTop + parseFloat(getComputedStyle(c).paddingBottom);
-        const room = Math.floor(Math.min(dvh() * 0.52 - 8, Math.max(named, (this.planPeek || 0) - h))), card = Math.min(c.scrollHeight, room);
+        const room = Math.floor(Math.min(dvh() * 0.52 - 8, acts ? named + Math.min(40, c.scrollHeight - named) : Math.max(named, (this.planPeek || 0) - h))), card = Math.min(c.scrollHeight, room);
+        c.classList.toggle('cut', c.scrollHeight > card + 1);
         this.panel.style.setProperty('--card-peek', `${room}px`);
         this.peekBare += card;
         h += card;

@@ -162,14 +162,14 @@ button { font: inherit; color: inherit; }
 html { -webkit-tap-highlight-color: transparent; }
 /* a press answers at once: buttons, chips, tiles and switches shrink a little while held, with no grey flash; a row
    keeps its grey instead (the user's choice 3 of #382). A chosen look fades in, with reduced motion too. */
-:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back) {
+:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button) {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
   transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease;
 }
-:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back):active:not(:disabled) { transform: scale(0.97); }
+:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) {
-  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back) { transition: background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease; }
-  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back):active:not(:disabled) { transform: none; }
+  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button) { transition: background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease; }
+  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: none; }
 }
 /* a small heading, everywhere: 12 px capitals in grey (#356) */
 .menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .speed-route h4, .wind-title, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
@@ -1632,7 +1632,8 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
    A card is the planner's step container (.pl-way) holding the app's own controls: the start's top row (way-bar,
    way-back, way-x) and heading (way-head, way-hint), the route's numbers (sheet-sum, sum-item), the ⋯ menu's
    headings (menu-h) and line (hr), the round trip's stepper (rt-step), a toggle (tg) and the planner's note
-   (pl-viewnote, Move's banner). New for the cards: card-mark, row (in rows), seg icons, name-field, sum-item miss, card-pill.
+   (pl-viewnote, Move's banner). New for the cards: card-mark, row (in rows), seg icons, name-field, sum-item miss, and for
+   their actions rows acts btns and card-acts (#690).
    Where a card sits: card-peek (a phone's peek), card-float (at its spot), card-banner (Move's "Tap where it goes"). */
 .pl-way.card { container: card / inline-size; overflow-y: auto; overscroll-behavior: contain; margin-inline: -8px; padding-inline: 8px; } /* (room for the rows' hover, inside the card) */
 .card h3.way-hint { margin: 0; padding-top: 3px; font: inherit; } /* (a heading for screen readers; its line regular, as the start's) */
@@ -1642,6 +1643,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .card .way-hint b { line-height: 1.25; hyphens: manual; }
 .card .way-head { align-items: flex-start; }
 .card .way-head > .way-x { margin: -6px -8px 0 0; }
+.card .way-head > .card-set { margin-top: -6px; } /* (level with ✕) */
 /* the top row: only with Back (in words), or narrow; otherwise ✕ is in the name's row */
 .card > .way-bar { margin-bottom: -6px; }
 .card[data-back="no"] > .way-bar { display: none; }
@@ -1652,6 +1654,24 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .card-mark { flex: none; order: -1; display: grid; place-items: center; width: var(--mark); height: var(--mark); margin-top: -2px; }
 .card-mark .wp { width: 28px; height: 28px; font-size: 13.5px; border-width: 3px; box-shadow: none; }
 .card-mark .wp-start, .card-mark .wp-end { border-color: var(--surface-solid); box-shadow: 0 0 0 1px var(--line); }
+/* a card's actions in sight, under its numbers (#690). For the route's own things the main one (btn primary big) and then
+   buttons, two a row with their icon and name, as the float's (rows acts btns, a phone's too), Remove red on a row of its
+   own; for places, spots and ways the action row: round buttons with their word under them, the main one green. The
+   peek ends after them (peek-end, measureSheet()), and what follows shows, fading (cut) */
+.card .rows.acts.btns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.card .rows.acts.btns:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+.card .rows.acts.btns > .row { min-height: var(--target); padding: 0 10px; gap: 8px; border: 1px solid var(--line); border-radius: 10px; box-shadow: none; background: var(--surface-solid); }
+.card .rows.acts.btns > .row.danger { grid-column: 1 / -1; justify-content: center; border: 1.5px solid var(--bad); }
+.card .rows.acts.btns > .row.danger > span:nth-child(2) { flex: none; }
+@container card (max-width: 290px) { .card .rows.acts.btns { grid-template-columns: minmax(0, 1fr); } } /* (200 %: one to a row, words whole) */
+.card-acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 4px; margin: 0 -6px; }
+.card-acts button { display: grid; justify-items: center; align-content: start; gap: 4px; min-width: 0; min-height: 68px; padding: 4px 2px 6px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; font-size: 13px; font-weight: var(--weight-name); line-height: 1.2; text-align: center; overflow-wrap: anywhere; hyphens: auto; cursor: pointer; }
+.card-acts button > span:first-child { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.card-acts button.main > span:first-child { background: var(--accent-bg); box-shadow: none; color: #fff; }
+.card-acts button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (hover: hover) { .card-acts button:hover { background: var(--surface-2); } }
+.peek-end { display: contents; }
+.sheet.carded[data-state="peek"]:not(.dragging) .card-peek .card.cut { -webkit-mask-image: linear-gradient(#000 calc(100% - 30px), transparent); mask-image: linear-gradient(#000 calc(100% - 30px), transparent); }
 /* a number the map doesn't have: a dashed box that says so */
 .sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
 .sum-item.miss b { color: var(--muted); }
@@ -1809,8 +1829,9 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 @container card (max-width: 290px) {
   .card[data-back] > .way-bar { display: flex; flex-wrap: wrap; } /* (Back on a line of its own where undo, redo and ✕ don't fit beside it) */
   .card > .way-bar [data-k] { display: inline-flex; width: 44px; height: 44px; }
-  .card > .way-bar [data-k="undo"] { margin-left: auto; }
-  .card > .way-head > .way-x { display: none; }
+  .card > .way-bar [data-k="undo"], .card > .way-bar [data-k="set"] { margin-left: auto; }
+  .card > .way-bar [data-k="set"] + [data-k="undo"] { margin-left: 0; }
+  .card > .way-head > :is(.way-x, .card-set) { display: none; }
   .card .sheet-sum { flex-direction: column; flex-wrap: nowrap; gap: 0; }
   .card .sum-item { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 6px 0; box-shadow: inset 0 1px 0 var(--line); }
   .card .sum-item:first-child { box-shadow: none; }
@@ -1902,7 +1923,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .card { width: 320px; max-width: calc(100vw - 32px); max-height: min(480px, var(--card-max, 70vh)); gap: 8px; }
 .card-float .card > .way-bar { min-height: 36px; margin-bottom: -4px; }
 .card-float .way-back { min-height: 36px; font-size: 14px; }
-.card-float .way-x { width: 36px; height: 36px; }
+.card-float :is(.way-x, .card-set) { width: 36px; height: 36px; }
 /* a desktop's card folds to its title row (step 3 of #233); on a phone the sheet's ⌄ folds the card in the peek */
 .card .way-fold { display: none; }
 @media (min-width: 721px) { .card-float .way-fold { display: inline-flex; width: 36px; height: 36px; margin: -4px -2px 0 0; } }
@@ -1938,7 +1959,6 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .rows.acts > .row > span:nth-child(2) { display: block; }
 .card-float .rows.acts > .row.danger { justify-content: center; border: 1.5px solid var(--bad); background: transparent; }
 .card-float .rows.acts > .row.danger > span:nth-child(2) { flex: none; }
-.card-float .rows.acts > [data-k="start"], .card-float .rows.acts > [data-k="end"] { order: -1; } /* (Start here and End here first, Move and Rename under them) */
 @media (hover: hover) { .card-float .rows.acts > .row:hover { background: var(--surface-2); } .card-float .rows.acts > .row.danger:hover { background: color-mix(in srgb, var(--bad) 10%, transparent); } }
 /* the point's row in the planner's list: no hairline, the stretch's line is between two points (#761); lit while its
    card is open */
@@ -2020,10 +2040,8 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .pick-unmapped .btn { color: var(--accent); }
 .card .insp-row .btn { flex: none; }
 .maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
 body[data-activity="paddle"] #zoom-hint { display: none; } /* (Paddle's map isn't about trails, #613) */
 .card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
-.card-pill { z-index: 5; /* over the map's credits where a narrow screen leaves no room beside them */ display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }
 @media (pointer: coarse) {
   .card .btn, .card .tool { min-height: 44px; min-width: 44px; }
   .card .rt-len { min-height: 44px; }
