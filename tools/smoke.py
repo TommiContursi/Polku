@@ -13623,7 +13623,7 @@ def point_card(chrome):
         s = tap_marker(pg, 1, name, touch, hold=False)
         tapped = (s['heads'], s['rows'])
         grey = pg.js("!!document.querySelector('.pl-way.card .pick-prof path[fill=\"#d6dde3\"]')")
-        if s['kind'] != 'point' or s['labels'] != ['there at', 'from the start', 'height'] or s['heads'] != ['At this waypoint', 'Edit this waypoint'] or 'Remove' not in s['rows'] or not grey or 'On the profile' not in s['text']:
+        if s['kind'] != 'point' or s['labels'] != ['there at', 'from the start', 'height'] or s['heads'] != ['At this waypoint', 'More for this waypoint'] or 'Remove' not in s['rows'] or not grey or 'On the profile' not in s['text']:
             fails.append(f"{name}: a tap on via 1: card {s['kind']}, numbers {s['labels']}, groups {s['heads']}, rows {s['rows']}, {'' if grey else 'no '}profile grey after it, {'' if 'On the profile' in s['text'] else 'no '}On the profile")
         pg.js("polku.planner.cards.close(); true")
         time.sleep(0.4)
@@ -14104,7 +14104,7 @@ def point_card(chrome):
 # The route's card and a stretch's card (25d's 1b, Journey D): a tap on the route shows what's there, with Add a point
 # here at the spot (on a phone the card's under its numbers, the spot pinned, #690; the card's first button on a desktop); This stretch, What's here
 # and Edit this stretch a row away; On the profile, Avoid this spot and The whole route › on it too (#364's 2 B and
-# 3 B, #90's B); the start's card with Back to start first while drawing (#334's A); End, never Finish (#353).
+# 3 B, #90's B); the start's card with Back to start under More for this waypoint (#690); End, never Finish (#353).
 # BRouter is answered here, with a way's tags, where a leg follows paths; the water's sources are answered empty.
 RC_ROUTER = """(() => {
   const real = window.fetch.bind(window), calls = (window.routerCalls = []);
@@ -14390,14 +14390,16 @@ def route_card(chrome):
         time.sleep(0.6)
         if pg.js("polku.planner.points.length") != n:
             fails.append(f'{name}: Undo after Clear route: {pg.js("polku.planner.points.length")} points, not {n}')
-        # the start's card while drawing: Back to start first; it closes the loop, one step of Undo; a loop has none
+        # the start's card while drawing: Back to start, under More for this waypoint (#690); it closes the loop, one step of
+        # Undo; a loop has none
         close(pg)
         pg.js("polku.planner.markers[0].getElement().dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })); true")
         time.sleep(0.4)
         s = st(pg)
-        if s['kind'] != 'point' or not s['rows'] or s['rows'][0] != 'Back to start':
-            fails.append(f"{name}: the start's card while drawing: rows {s['rows']}")
+        if s['kind'] != 'point' or s['rows'][-2:] != ['Reverse', 'Back to start'] or 'More for this waypoint' not in s['heads']:
+            fails.append(f"{name}: the start's card while drawing: rows {s['rows']}, groups {s['heads']}")
         else:
+            pg.js(f"{row('Back to start')}.scrollIntoView({{ block: 'center' }}); true")
             tap_row(pg, 'Back to start', name, touch)
             r = pg.js("(() => { const p = polku.planner; return { n: p.points.length, loop: p.isLoop(), past: p.past.length }; })()")
             if r['n'] != s['n'] + 1 or not r['loop'] or r['past'] != s['past'] + 1:
@@ -15150,8 +15152,8 @@ def spot_card(chrome):
             if c['kind'] != 'place' or c['n'] != 0:
                 fails.append(f"{name}: a tap on {pl['name']}: {c['kind'] or 'no'} card, {c['n']} points (the finger at {pl.get('x')},{pl.get('y')} on {under}; the cards: {pg.js('sc.log()')})")
             # the tap's card has its actions and Copy, and a hold on the place opens the same card (#876, #690)
-            elif 'More for this place' not in c['heads'] or c['rows'][:1] != ['Add to my route'] or 'Copy' not in c['rows']:
-                fails.append(f"{name}: a tap on {pl['name']}: groups {c['heads']}, {'' if 'Copy' in c['text'] else 'no '}Copy")
+            elif 'More for this place' not in c['heads'] or not {'Share', 'Weather here', 'Copy'} <= set(c['rows']):
+                fails.append(f"{name}: a tap on {pl['name']}: groups {c['heads']}, rows {c['rows']}")
             else:
                 tapped = (c['title'], c['heads'], c['rows'])
                 pg.js('polku.planner.cards.close(); true')
@@ -18904,7 +18906,7 @@ def pick_card_settings(chrome):
         else:
             if st['row'][:1] != ['Add to my route*'] or 'Share' not in st['row']:
                 fails.append(f"{name}: a spot's action row {st['row']}")
-            if not st['set'] or not _ca_tap(pg, "document.querySelector('.pl-way.card .card-set')"):
+            if not st['set'] or not _ca_tap(pg, "document.querySelector('.pl-way.card .way-head .card-set')"):
                 fails.append(f"{name}: no ⋯ beside the card's ✕")
             else:
                 m = pg.js("""(() => { const m = document.querySelector('.menu-pop'); return m && { bar: m.querySelector('.way-bar b')?.textContent, x: !!m.querySelector('.way-bar .way-x'),
@@ -18918,7 +18920,7 @@ def pick_card_settings(chrome):
                 if after != [False, 'spot', 4]:
                     fails.append(f"{name}: a tap outside Card settings: menu open, card, points {after} (closed, spot, 4)")
                 # Colour by, picked from it
-                _ca_tap(pg, "document.querySelector('.pl-way.card .card-set')")
+                _ca_tap(pg, "document.querySelector('.pl-way.card .way-head .card-set')")
                 _ca_tap(pg, "[...document.querySelectorAll('.menu-pop .menu-item')].find((e) => e.textContent.trim() === 'Surface')")
                 if pg.js('polku.planner.colorMode') != 'surface':
                     fails.append(f"{name}: Colour by Surface from Card settings: the route's is {pg.js('polku.planner.colorMode')}")
