@@ -10186,32 +10186,32 @@ def fold_phone(chrome):
             s = info()
             if s['card'] or s['st'] != 'peek' or not s['active']:
                 fails.append(f"a swipe down from the card's line: card {s['card']}, {s['st']} (the planner as it was: peek), open {s['active']}")
-        # folded, a tap on a point opens its card folded, and ✕ there closes it, back to the planner's line
+        # folded, a tap on a point opens its card at its peek, its actions in sight (#690), and ✕ closes it, back to the
+        # planner's line
         pg.js("polku.planner.fold(); true")
         fold_settled(pg, fails, 'step 19')
         pg.tap(*fold_at(pg, "polku.planner.markers[1].getElement().querySelector('.wp')"))
         time.sleep(0.6)
         fold_settled(pg, fails, 'step 20')
         s = info()
-        if s['card'] != 'point' or s['st'] != 'folded':
-            fails.append(f"a tap on point 1 with the planner folded: card {s['card']}, {s['st']} (folded, its line)")
+        acts = pg.js("(() => { const b = document.querySelector('.pl-way.card > .rows.btns'); return !!b && b.getBoundingClientRect().bottom <= Math.min(innerHeight, polku.planner.cards.box.getBoundingClientRect().bottom); })()")
+        if s['card'] != 'point' or s['st'] != 'peek' or not acts:
+            fails.append(f"a tap on point 1 with the planner folded: card {s['card']}, {s['st']}, its actions in sight {acts} (its peek, #690)")
         else:
-            pg.tap(*(fold_at(pg, 'polku.planner.els.foldX') or (0, 0)))
+            pg.tap(*(fold_at(pg, "polku.planner.cards.box.querySelector('.way-head .way-x')") or (0, 0)))
             fold_settled(pg, fails, 'step 21')
             s = info()
             if s['card'] or s['st'] != 'folded' or not s['active'] or 'km' not in s['lineText']:
-                fails.append(f"✕ on the card's line: card {s['card']}, {s['st']}, open {s['active']}, the line “{s['lineText']}”")
-        # folded from half, a card's line opens the card at its own size, not the planner's half
+                fails.append(f"✕ on the card: card {s['card']}, {s['st']}, open {s['active']}, the line “{s['lineText']}”")
+        # folded from half, a card opens at its own size too, not the planner's half
         pg.js("polku.planner.setSheetState('half'); polku.planner.fold(); true")
         fold_settled(pg, fails, 'step 22')
         pg.tap(*fold_at(pg, "polku.planner.markers[1].getElement().querySelector('.wp')"))
         time.sleep(0.6)
         fold_settled(pg, fails, 'step 23')
-        pg.tap(*(fold_at(pg, 'polku.planner.els.foldGo') or (0, 0)))
-        fold_settled(pg, fails, 'step 24')
         s = info()
         if s['card'] != 'point' or s['st'] != 'peek':
-            fails.append(f"the card's line, the planner folded from half: card {s['card']}, {s['st']} (the card at its own size)")
+            fails.append(f"a tap on point 1, the planner folded from half: card {s['card']}, {s['st']} (the card at its own size)")
         # the card closed, the planner's line opens to half, the size it left, not the card's
         pg.js("polku.planner.cards.close(); true")
         fold_settled(pg, fails, 'step 24b')
@@ -14060,8 +14060,6 @@ def point_card(chrome):
         pg.js(f"(() => {{ const p = polku.planner; p.setName(1, {json.dumps(LONG)}); p.setName(0, 'Lielahden kartanon uimaranta'); p.setStop(1, {{ min: 30 }}); return true; }})()")
         opened = time.time()
         pg.js(f"(() => {{ const p = polku.planner; p.openPointCard(p.points[1], {{ from: {json.dumps('list' if 'list' in label else 'map')} }}); return true; }})()")
-        # (at 200 % the planner rests at its line, and a card from the map opens folded, step 3 of #233: open it, as a tap on its line does)
-        pg.js("(() => { const p = polku.planner; if (p.panel.dataset.state === 'folded') p.unfold(); return true; })()")
         # the sheet at the card's size, and the card's own last look for its point (inSight(), 900 ms after it opens)
         pg.js(SETTLED)
         time.sleep(max(0, opened + 1.2 - time.time()))

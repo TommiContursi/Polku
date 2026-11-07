@@ -4710,14 +4710,12 @@ export class Planner {
         }
         const swap = !!this.cardSeen; // (a card in the peek before this one: opened from it, Back to it, or another pick)
         this.cardSeen = this.cards.place === 'peek' ? this.cards.box : null;
-        // a card opens at its own size; tapped on the map while the sheet is folded, it opens folded (its line), so the map
-        // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had. One that takes
-        // the place of a card at half or full keeps that size, or its tallest under it (#692)
-        const st = this.panel.dataset.state, entry = this.cards.stack[this.cards.stack.length - 1];
+        // a card opens at its own size, its actions in sight, the sheet folded too (#690: no longer folded, step 3 of #233);
+        // with the planner put away, at its own size whatever size the planner had. One that takes the place of a card at
+        // half or full keeps that size, or its tallest under it (#692)
+        const st = this.panel.dataset.state;
         const keep = card && fresh && this.cards.place === 'peek' && swap && ['half', 'full'].includes(st);
-        if (!keep && card && fresh && this.cards.place === 'peek' && (!this.active || (st !== 'peek' && !(st === 'folded' && entry.from === 'map')))) this.setSheetState('peek', { remember: false });
-        // (opened on the line, the line opens it at its own size: the planner's comes back with the planner, restore())
-        else if (card && fresh && this.cards.place === 'peek' && st === 'folded') this.unfoldTo = null;
+        if (!keep && card && fresh && this.cards.place === 'peek' && (!this.active || st !== 'peek')) this.setSheetState('peek', { remember: false });
         // the card's point ringed on the map, while its card (or Move's banner) is open
         const ringed = card && card.key && this.points.includes(card.key) ? card.key : null;
         this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });

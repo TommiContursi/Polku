@@ -11,6 +11,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The route's card has **Avoid this spot** under its numbers, and **Other ways** where the leg has them. On a phone **Add a waypoint here** is there too, in green, not in a pill over the map, and a pin marks the spot; on a desktop it stays the card's first button, by the pointer. **On the profile** and **The whole route** are under **More for this leg**.
 - A place's, a spot's and a way's cards have a row of four round buttons: **Add to my route** in green, **Avoid this spot**, **Share** and **Weather here**. The rest, such as **Start here**, **End here**, **Copy** and **All OpenStreetMap details**, are under **More for this place** (or spot, or way). **Not right?** stays at the card's foot.
 - A warning's card has its action and **Got it** right under where it is, then where it comes from.
+- On a phone, a card opens with its actions in sight even when the planner is folded to its line. Closing it folds the planner back.
 - **⋯** beside a card's **✕** is **Card settings**: **Colour by** for the card's profile, and **Colours on the map** for your route.
 
 ### A place added to your route keeps its name ([#886](https://github.com/TommiContursi/Polku/issues/886))
