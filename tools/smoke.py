@@ -991,6 +991,53 @@ SEARCH_CLICKED = """(async () => {
 })()"""
 
 
+# Coordinates and a trail from search (#875): the spot's card at a pin, on the trail. A trail is one the loaded map has a
+# name for; Photon answers nothing, LIPAS nothing, and Overpass is held (the card says what the tile knows).
+SEARCH_SPOT = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], real = window.fetch;
+  const L = await import(location.origin + '/js/lipas.js'), W = await import(location.origin + '/js/ways.js');
+  L.seedLipas(() => ({ type: 'FeatureCollection', features: [] }));
+  W.holdWays();
+  window.fetch = async (input, init) => (/^https:\\/\\/photon\\.komoot\\.io\\//.test(String(input && input.url ? input.url : input)) ? new Response('{"type":"FeatureCollection","features":[]}') : real(input, init));
+  const p = polku.planner, map = polku.map, input = document.querySelector('#search-input');
+  const pinPx = () => { const e = document.querySelector('.card-pin'); if (!e) return null; const r = e.getBoundingClientRect(), m = map.getContainer().getBoundingClientRect(); return [r.left + r.width / 2 - m.left, r.top + r.height / 2 - m.top]; };
+  const pick = async (q, kind) => {
+    p.cards.close();
+    input.focus();
+    input.value = q;
+    input.dispatchEvent(new Event('input'));
+    let li = null;
+    for (let k = 0; k < 40 && !li; k++) { await wait(150); li = document.querySelector(`#search-results li[data-kind=${kind}]`); }
+    if (!li) { errs.push(`${q}: not in the results`); return false; }
+    li.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    for (let k = 0; k < 60 && !(p.cards.current && pinPx()); k++) await wait(150);
+    if (!p.cards.current || !pinPx()) { errs.push(`${q}: no card at a pin (${p.cards.current ? p.cards.current.title : 'no card'})`); return false; }
+    return true;
+  };
+  // coordinates: the pin on them
+  if (await pick('62.4300, 25.9100', 'coords')) {
+    const a = map.project([25.91, 62.43]), at = pinPx();
+    if (Math.hypot(at[0] - a.x, at[1] - a.y) > 30) errs.push(`coordinates: the pin is ${Math.round(at[0] - a.x)}, ${Math.round(at[1] - a.y)} px off them`);
+  }
+  // a trail: the pin on its line
+  const named = map.querySourceFeatures('ofm', { sourceLayer: 'transportation_name', filter: ['in', ['get', 'class'], ['literal', ['path', 'track']]] }).find((f) => f.properties.name && f.properties.name.length >= 3);
+  if (!named) errs.push('no named trail on the loaded map to search for');
+  else if (await pick(named.properties.name, 'trails')) {
+    const name = named.properties.name, at = pinPx();
+    const pts = map.querySourceFeatures('ofm', { sourceLayer: 'transportation_name' }).filter((f) => f.properties.name === name)
+      .flatMap((f) => (f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates.flat() : []));
+    const d = Math.min(...pts.map((c) => { const q = map.project(c); return Math.hypot(q.x - at[0], q.y - at[1]); }));
+    if (!(d <= 12)) errs.push(`the trail ${name}: the pin is ${Math.round(d)} px from its line`);
+  }
+  p.cards.close();
+  window.fetch = real;
+  W.holdWays(false);
+  L.seedLipas(null);
+  localStorage.removeItem('polku:recentSearches');
+  return errs;
+})()"""
+
+
 # LIPAS's lines against the route (#560): the route's magenta has a hue of 329°. A pink or a violet line (250°–350°) beside
 # it reads as its family on the night map, where a thin line's white edge makes every colour pale, so the ski tracks (pink)
 # and the violet routes are blue-violet (about 240°), which reads as a different colour
@@ -1019,9 +1066,10 @@ def lipas(chrome):
         for kind in ('mousePressed', 'mouseReleased'):
             pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
     fails += pg.js(SEARCH_CLICKED)
+    fails += pg.js(SEARCH_SPOT)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} LIPAS search & ride, no pink or violet line beside the route, a place from search gets its card" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} LIPAS search & ride, no pink or violet line beside the route, a place, coordinates or a trail from search gets its card" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -18485,7 +18533,7 @@ GROUPS = [
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
-    ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place from search gets its pin and card (#871)'),
+    ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
     ('water', [water, water_late, paddle_map], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late (mocked), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),

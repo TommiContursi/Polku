@@ -148,6 +148,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
   - **Share links** carry those legs as references (`lr=`), not as lines.
   - **Search** asks LIPAS's combined layers by name: three small requests per query.
   - **A place from search** (Photon, #871): `choose()` opens its card once the map has moved (`app.openPlace()` in `js/main.js`), through `openPlaceCard()` with a pin, its kind from Photon's `osm_key` and `osm_value` (kept in recent searches too), and `hold` while planning for Your route. Photon sends no other tags, as a map icon's tile doesn't; an area's pin is Photon's point for it.
+  - **Coordinates and a trail from search** (#875): `choose()` opens the spot's card at `r.at` once the map is idle (`app.openSpot()` → `openSpotCard(…, { pin: true })`, as a link to a spot does), so the tiles under it are drawn. A trail's `at` is its point nearest the middle of its bounds (`trailsNamed()`).
   - **Marked routes in view** (the planner's start, `routesIn()`): the layer's own z9 tiles for the sport's route types, asked for whether the layer is on or not and kept in the same cache, so turning the layer on costs nothing more; one entry a place, nearest the map's middle first. A tile that didn't answer counts as failed (said, with Retry, never as none in view); a pause in `net.js` says when it asks again, and the list is made again when LIPAS is back (`lipasBack()`).
 
 ### Check's warnings
