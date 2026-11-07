@@ -113,8 +113,6 @@ export function actRow(...items) {
 }
 // More for this …: the rest of a card's actions, rows with their lines, on the card (never behind ⋯ or a hold)
 export const moreFor = (what, ...items) => group(`More for this ${what}`, ...items) || [];
-// Where a phone's peek ends: after the card's actions (measureSheet() reads it)
-export const peekEnd = () => h('i', { class: 'peek-end', 'aria-hidden': 'true' });
 
 // A switch whose choices have icons over (or beside) their words; the chosen one has aria-checked. The arrow keys
 // move along it and choose, as a radio group does.

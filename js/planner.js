@@ -102,6 +102,9 @@ const LOOP_CALLS = 6; // per generation
 const LOOP_CAP = 5; // generations per 10 minutes
 // bottom sheet sizes: folded to one line, the summary, + the elevation profile, half the screen, nearly all of it
 const SHEET_STATES = ['folded', 'peek', 'half', 'full'];
+// the peek's height on a phone, for the planner and every card (#889): the profile size's before 2026-10-30, which held
+// every card's actions at 360 and 390 px wide (40 % of the screen where that's less: measureSheet())
+const PEEK = 296;
 // a token from css/app.css (--t-sheet: 260ms), and how far a move has slid the sheet down over its foot
 const cssVar = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 const token = (k) => parseFloat(cssVar(k));
@@ -4711,8 +4714,8 @@ export class Planner {
         const swap = !!this.cardSeen; // (a card in the peek before this one: opened from it, Back to it, or another pick)
         this.cardSeen = this.cards.place === 'peek' ? this.cards.box : null;
         // a card opens at its own size, its actions in sight, the sheet folded too (#690: no longer folded, step 3 of #233);
-        // with the planner put away, at its own size whatever size the planner had. One that takes the place of a card at
-        // half or full keeps that size, or its tallest under it (#692)
+        // with the planner put away, at its peek whatever size the planner had. One that takes the place of a card at half or
+        // full keeps that size (#692), which every card has (#889)
         const st = this.panel.dataset.state;
         const keep = card && fresh && this.cards.place === 'peek' && swap && ['half', 'full'].includes(st);
         if (!keep && card && fresh && this.cards.place === 'peek' && (!this.active || st !== 'peek')) this.setSheetState('peek', { remember: false });
@@ -4731,13 +4734,6 @@ export class Planner {
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.renderFold();
         this.measureSheet?.();
-        // (each size's stops measured at that size: a full sheet docks the toolbox, so a short card has a half there)
-        if (keep) {
-          for (const to of st === 'full' ? ['full', 'half', 'peek'] : ['half', 'peek']) {
-            if (to !== this.panel.dataset.state) this.setSheetState(to, { remember: false });
-            if (to === 'peek' || this.stops().some((z) => z.name === to)) break;
-          }
-        }
       },
       onPop: () => this.keepView(),
       pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
@@ -4777,7 +4773,9 @@ export class Planner {
     const profTitle = h('span', { class: 'sr-only' }, 'Profile');
     this.els.profZone = h('section', { class: `pl-profile${this.profCompact ? ' compact' : ''}`, 'data-sec': 'profile', 'aria-label': 'Profile' },
       h('div', { class: 'profile-top' }, profTitle, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow, this.els.profSize),
-      h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas', role: 'img' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })));
+      h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas', role: 'img' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true }),
+        // at a phone's peek (#742): a tap opens the profile at half, where it's scrubbed, and a drag moves the sheet
+        h('button', { type: 'button', class: 'prof-open', 'aria-label': 'Open the profile', title: 'Open the profile', onclick: () => this.setSheetState('half') })));
     this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
     this.renderProfileSize();
 
@@ -5474,7 +5472,7 @@ export class Planner {
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { folded: 'Open it as it was', peek: 'Show more', half: 'Drag up for everything, down for the map', full: 'Drag down for the map' }[st] || '';
     this.renderOnRoute(); // (Good to know's markers while Check is in sight; and the folded line)
-    if (!['folded', 'peek'].includes(st)) requestAnimationFrame(() => this.chart.draw());
+    if (st !== 'folded') requestAnimationFrame(() => this.chart.draw());
     // (folded, the toolbox is the mode, undo and redo; what comes back when it opens isn't new, so it doesn't fade in)
     if ((st === 'folded') !== (was === 'folded')) { this.toolsShown = null; this.renderTools(); }
     this.scrollAll();
@@ -5527,14 +5525,13 @@ export class Planner {
     if (to === 'folded' && st !== 'folded') this.fold({ instant });
     else if (to !== st) this.setSheetState(to, { instant });
   }
-  // The sheet's stops, lowest first, at the heights they rest at: the line, the peek, half and full; the start's views have
-  // their peek alone. A card's are the planner's, each as tall as the card at most (sizes(), #603). Only ever up: a stop no
-  // taller than one under it isn't one (a peek as tall as the screen has none above it, a short card its peek alone)
+  // The sheet's sizes, lowest first, at the heights they rest at: the line, the peek, half and full, the same for the planner
+  // and every card (#889); the start's views have their peek alone. Only ever up: a size no taller than one under it isn't
+  // one (a peek as tall as the screen has none above it)
   stops() {
-    const px = (v) => parseFloat(this.panel.style.getPropertyValue(v)) || 0, D = dvh(), card = this.cards.place === 'peek', peek = px('--peek-h');
-    const S = this.peekOnly() && !card ? [{ name: 'peek', at: peek }]
-      : [...(this.foldable() ? [{ name: 'folded', at: px('--fold-h') }] : []), { name: 'peek', at: peek },
-        { name: 'half', at: card ? px('--card-half') : D * 0.5 }, { name: 'full', at: card ? px('--card-full') : D - 76 }];
+    const px = (v) => parseFloat(this.panel.style.getPropertyValue(v)) || 0, D = dvh(), peek = px('--peek-h');
+    const S = this.peekOnly() && this.cards.place !== 'peek' ? [{ name: 'peek', at: peek }]
+      : [...(this.foldable() ? [{ name: 'folded', at: px('--fold-h') }] : []), { name: 'peek', at: peek }, { name: 'half', at: D * 0.5 }, { name: 'full', at: D - 76 }];
     return S.filter((z, i) => i === 0 || z.at > Math.max(...S.slice(0, i).map((y) => y.at)) + 1);
   }
   // what scrolls the list: its body, or the sheet where it scrolls as one
@@ -5662,30 +5659,40 @@ export class Planner {
       // (a card is measured from what it holds, as it fills the sheet at half and full: its peek is the same at every size)
       const c = this.cards.place === 'peek' && this.cards.box, cardAt = c ? c.getBoundingClientRect().top - hd.getBoundingClientRect().top : 0;
       this.peekBare = Math.ceil(hd.offsetTop - take + (c ? cardAt : hd.offsetHeight + grow) + under());
-      let h = this.peekBare + (this.panel.dataset.state === 'peek' ? take : shown && this.peekDocks ? this.dockTake || 0 : 0);
-      // a card's peek ends after its actions (#690), with the top of what follows showing, faded (`cut`); one with no actions
-      // in sight (a step's card: Sport from here, Edit this stretch) is the planner's own peek with a route. Either is no
-      // taller than 52 % of the window: the rest is a swipe up, at half (#603). It always has the card's name and numbers, as
-      // the planner's has its route's: where the planner's is shorter (no key facts' line yet), and before the planner has
-      // had a route (not a share of the screen, which text outgrows at 200 %). A card that fits in less is as tall as it is
+      const docked = this.panel.dataset.state === 'peek' ? take : shown && this.peekDocks ? this.dockTake || 0 : 0;
+      let h = this.peekBare + docked;
+      const rows = h; // (the planner's numbers and their rows, for the timeline over it)
+      // One peek for the planner and every card (#889): as tall as the profile size was, or 40 % of the screen where that's
+      // less, whatever it holds, so a swipe always lands in the same place. The planner's has its profile under the numbers
+      // (#742), filling what its rows leave, 40 px at least; the start's views keep their own
+      const P = Math.round(Math.min(PEEK, dvh() * 0.4));
+      const prof = !c && this.foldable() && !this.peekOnly();
+      this.panel.classList.toggle('prof-peek', prof);
+      if (prof) {
+        const z = this.els.profZone, top = h - under(), pad = parseFloat(getComputedStyle(z).paddingBottom);
+        this.panel.style.setProperty('--prof-peek', `${Math.max(40, P - top - pad)}px`);
+        h = Math.max(P, top + pad + 40);
+        this.peekBare = Math.max(P, top - docked + pad + 40);
+      }
+      // a card's peek is the same, with the top of what follows showing, faded (`cut`): never shorter than the card's name and
+      // numbers, nor taller than 52 % of the window (#603, 200 %); a card that's shorter sits at its top with room under it
       if (c) {
-        const acts = c.querySelector(':scope > .peek-end')?.previousElementSibling, end = acts || c.querySelector(':scope > .sheet-sum') || c.querySelector(':scope > .way-head');
+        const end = c.querySelector(':scope > .sheet-sum') || c.querySelector(':scope > .way-head');
         const named = end.getBoundingClientRect().bottom - c.getBoundingClientRect().top + c.scrollTop + parseFloat(getComputedStyle(c).paddingBottom);
-        const room = Math.floor(Math.min(dvh() * 0.52 - 8, acts ? named + Math.min(40, c.scrollHeight - named) : Math.max(named, (this.planPeek || 0) - h))), card = Math.min(c.scrollHeight, room);
-        c.classList.toggle('cut', c.scrollHeight > card + 1);
+        const room = Math.floor(Math.min(dvh() * 0.52 - 8, Math.max(named, P - h)));
+        c.classList.toggle('cut', c.scrollHeight > room + 1);
         this.panel.style.setProperty('--card-peek', `${room}px`);
-        this.peekBare += card;
-        h += card;
+        this.peekBare += room;
+        h += room;
       }
       // never under the top bar (a phone on its side at 200 %, ⌄'s row too): the peek stops below it, and scrolls as one
       this.peekCut = this.layout() === 'sheet' && h > dvh() - 76;
       if (this.peekCut) h = Math.floor(dvh() - 76);
-      if (!c && this.active && this.layout() === 'sheet' && this.foldable()) this.planPeek = h;
       const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
       // a phone's timeline over a raised sheet goes under its header: the planner's numbers, or a card's title row (#572)
       const ch = this.cards.place === 'peek' && this.cards.box && this.cards.box.querySelector('.way-head');
-      document.documentElement.style.setProperty('--sheet-head', ch ? `${Math.round(ch.getBoundingClientRect().bottom - this.panel.getBoundingClientRect().top)}px` : peek);
+      document.documentElement.style.setProperty('--sheet-head', `${ch ? Math.round(ch.getBoundingClientRect().bottom - this.panel.getBoundingClientRect().top) : Math.min(rows, h)}px`);
       // the route's numbers came in just after it was framed and wrap onto a second line (#242), or the row of what
       // to read came once a source didn't answer (25d part 3, which can take a while): the peek is taller now, so
       // frame it once more, unless the map has been moved or framed on something else since, or a card is open:
@@ -5699,12 +5706,6 @@ export class Planner {
       if (this.resting && this.panel.dataset.state === 'peek' && this.layout() === 'sheet' && this.peekTooTall()) requestAnimationFrame(() => { if (this.resting && this.panel.dataset.state === 'peek' && this.peekTooTall()) this.setSheetState('folded'); });
       // the folded line, over the top row: one row, the handle drawn in its top padding
       this.panel.style.setProperty('--fold-h', `${this.els.fold.offsetHeight}px`);
-      // a card swiped up: half and full, each as tall as the card at most (step 3 of #233, #603)
-      if (c) {
-        const own = hd.offsetTop + cardAt + c.scrollHeight;
-        this.panel.style.setProperty('--card-half', `${Math.round(Math.min(dvh() * 0.5, own))}px`);
-        this.panel.style.setProperty('--card-full', `${Math.round(Math.min(dvh() - 76, own))}px`);
-      }
       // only what you asked for moves: a size that changes from its content alone (a point added) changes at once, and
       // one that changes while the sheet moves turns that move to it, what rides above it with it
       if (this.sheetMove) { this.moveSheet(from); this.panel.dispatchEvent(new Event('sheetstate')); }
@@ -5725,20 +5726,6 @@ export class Planner {
     // moves, the sheet is as tall as its full size and follows the finger with transform; its size, and
     // --sheet-h that the map's buttons follow, change once, when it comes to rest (restSheet()).
     const px = (v) => parseFloat(this.panel.style.getPropertyValue(v)) || 0;
-    // While a finger drags it, the sheet's stops are marked at the screen's left edge, and a line names the one a release
-    // now would go to (C of the sheet's stops, #233). They fade in as the drag starts and out as it lets go; the line moves
-    // from stop to stop at once, as it says where the sheet will go.
-    const marks = h('div', { class: 'sheet-marks', 'aria-hidden': 'true' }), named = h('b');
-    document.body.append(marks);
-    let foot = 0;
-    const markTo = (name) => {
-      const i = [...marks.children].find((m) => m.dataset.n === name);
-      if (!i || i.classList.contains('to')) return;
-      for (const m of marks.children) m.classList.toggle('to', m === i);
-      named.textContent = { closed: 'Away', folded: 'Line', peek: 'Peek', half: 'Half', full: 'Full' }[name];
-      named.style.transform = `translate(-50%, ${Math.round(Math.min(parseFloat(i.style.top), foot - 24)) - 26}px)`;
-    };
-    const unmark = () => marks.classList.remove('on');
     // let go towards the peek or the line with the sheet scrolled as one: its content goes back to its top with the spring,
     // so it lands there and nothing jumps at rest (scrollAll()). A scrolled card does too, and at half and full as far as it
     // scrolls there (to its top where it fits whole)
@@ -5763,10 +5750,6 @@ export class Planner {
         this.panel.style.height = `${full}px`;
         const up = this.stops();
         if (from === 'folded' && this.foldable()) up.unshift({ name: 'closed', at: -14 });
-        foot = this.panel.getBoundingClientRect().bottom;
-        named.textContent = '';
-        marks.replaceChildren(...up.filter((z) => z.at > 0).map((z) => h('i', { 'data-n': z.name, style: `top:${Math.round(foot - z.at)}px` })), named);
-        marks.classList.add('on');
         // (from a size as tall as a stop under it, that stop; above the last stop it resists: the start's views above their
         // peek, a card above its own height)
         return { H: full, now, from: up.some((z) => z.name === from) ? from : (up.findLast((z) => z.at <= now + 1) || up[0]).name, sizes: up, min: up[0].at, max: up[up.length - 1].at };
@@ -5782,7 +5765,6 @@ export class Planner {
       },
       // the line and what it folds cross-fade as the sheet passes between them, so nothing jumps at rest
       moved: (v, ride) => {
-        if (ride.to && marks.classList.contains('on')) markTo(ride.to);
         if (unscroll) { const u = unscroll, d = u.v0 - u.to; u.el.scrollTop = u.T + (u.S - u.T) * (Math.abs(d) < 1 ? 0 : Math.max(0, Math.min(1, (v - u.to) / d))); }
         if (!this.foldable()) return;
         const top = px('--peek-h'), line = px('--fold-h'), f = Math.max(0, Math.min(1, (top - v) / Math.max(1, top - line)));
@@ -5790,14 +5772,13 @@ export class Planner {
         for (const el of [this.els.top, this.els.head, this.els.profZone, this.els.tabs, this.els.body]) el.style.opacity = 1 - f;
       },
       aim: (name, ride) => {
-        unmark();
         const p = this.panel, to = ride.sizes.find((z) => z.name === name), open = ['half', 'full'].includes(name), c = p.classList.contains('carded') && this.cards.box;
         // (a card scrolls at most its whole height, from its top in the sheet, less the stop's)
         const el = c || p, S = el.scrollTop, T = c && open && to ? Math.min(S, Math.max(0, c.getBoundingClientRect().top - p.getBoundingClientRect().top + c.scrollHeight - to.at)) : 0;
         unscroll = to && S > T && (c || (p.classList.contains('scroll-all') && !open)) ? { el, S, T, v0: ride.v, to: to.at } : null;
       },
       end: (name) => { unscroll = null; this.restSheet(name); },
-      cancel: () => { unscroll = null; unmark(); this.restSheet(null); },
+      cancel: () => { unscroll = null; this.restSheet(null); },
     });
     // a tap on the handle, or on the header outside its buttons, folds the sheet or opens it again; folded, the handle
     // opens it as it was (not when the target has gone from it: a control that re-rendered itself, #251)
@@ -5899,8 +5880,7 @@ export class Planner {
   // above the sheet would chase it (#540): they take the size it's going to, at once.
   settledHeight() {
     const pl = this.panel, css = (k, d) => parseFloat(pl.style.getPropertyValue(k)) || d;
-    const card = pl.classList.contains('carded');
-    return { folded: css('--fold-h', 64), peek: css('--peek-h', 116), half: card ? css('--card-half', dvh() * 0.5) : dvh() * 0.5, full: card ? css('--card-full', dvh() - 76) : dvh() - 76 }[pl.dataset.state] ?? pl.offsetHeight;
+    return { folded: css('--fold-h', 64), peek: css('--peek-h', 116), half: dvh() * 0.5, full: dvh() - 76 }[pl.dataset.state] ?? pl.offsetHeight;
   }
   sheetTop() {
     const pl = this.panel, r = pl.getBoundingClientRect();
@@ -6220,7 +6200,7 @@ export class Planner {
     // the sheet's height without a docked toolbox in it (the peek's, peekBare)
     const px = (v) => parseFloat(this.panel.style.getPropertyValue(v)) || 0;
     const st = this.panel.dataset.state;
-    const sheetH = { folded: px('--fold-h'), peek: this.peekBare, half: carded ? px('--card-half') : innerHeight * 0.5, full: carded ? px('--card-full') : innerHeight - 76 }[st] ?? this.panel.offsetHeight;
+    const sheetH = { folded: px('--fold-h'), peek: this.peekBare, half: innerHeight * 0.5, full: innerHeight - 76 }[st] ?? this.panel.offsetHeight;
     const wxH = parseFloat(document.documentElement.style.getPropertyValue('--wx-h')) || 0; // an open timeline under it
     const topBar = $('.topbar').getBoundingClientRect().bottom, docks = (sh) => innerHeight - sh - wxH - 16 - th < topBar + 8;
     if (!folded) this.peekDocks = docks(this.peekBare); // (at any size but the line, whose toolbox is smaller: the peek is measured with it there or not, #586)

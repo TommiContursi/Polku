@@ -10,8 +10,7 @@
 // - The sheet follows the finger 1:1 with transform (the caller changes its real size once, at the
 //   end); past its first or last size it resists (rubber band) instead of stopping dead.
 // - On release it aims for where a flick would come to rest (Apple's projection) and goes to the
-//   size nearest that; a quick flick moves at least one size in its direction. While the finger holds it, ride.to is
-//   where a release now would go.
+//   size nearest that; a quick flick moves at least one size in its direction.
 // - It settles with a spring that starts at the finger's speed, and can be grabbed again mid-way.
 // - Reduced motion: the sheet still follows the finger, but sizes change without travel.
 
@@ -60,8 +59,7 @@ const own = (t, type) => !!t.closest('input[type=range], [contenteditable=""], [
  *                       min, max: the range it moves freely (rubber band outside) }
  *  pick(aim, ride, v) optional: the size for a release at v px/ms (+ up) that would come to rest at aim; default the nearest
  *  aim(name, ride)    optional: on release, before the spring (a view that changes at once)
- *  moved(v, ride)     optional: the sheet is at visible height v now, under the finger or the spring (a cross-fade);
- *                     under the finger, ride.to is the size a release now would go to
+ *  moved(v, ride)     optional: the sheet is at visible height v now, under the finger or the spring (a cross-fade)
  *  end(name, ride)    it has come to rest at that size; the transform is cleared just before
  *  cancel(ride)       stopped from outside (stop()), mid-way
  * Returns { stop(), busy }.
@@ -135,7 +133,6 @@ export function swipeSheet(el, o) {
     }
     const want = g.base - dy;
     ride.v = want > ride.max ? ride.max + rubber(want - ride.max, ride.H) : want < ride.min ? ride.min - rubber(ride.min - want, ride.H) : want;
-    ride.to = landing(speed(e.timeStamp)).name;
     place(ride.v);
   });
 
