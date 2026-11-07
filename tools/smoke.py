@@ -717,7 +717,7 @@ CARD_FIT = """(async (sel, acts) => {
     const r = b.getBoundingClientRect(), o = over((r.left + r.right) / 2, (r.top + r.bottom) / 2);
     if (o || r.left < R.left || r.right > R.right) errs.push(`${b.textContent.trim().slice(0, 40)}: ${o ? `${o} over it` : `out of the card at ${box(r)}`}`);
   }
-  if (acts && !c.querySelector('.insp-actions button')) errs.push('no buttons at the card’s foot');
+  if (acts && !c.querySelector('.card-acts button')) errs.push('no action row on the card'); // (#690)
   c.scrollTop = 0; // (a card's ✕ scrolls with it)
   await frames();
   const x = [...pop.querySelectorAll('.maplibregl-popup-close-button, .way-x')].find((e) => e.getClientRects().length).getBoundingClientRect();
@@ -1397,6 +1397,9 @@ WATER_LATE = """(async () => {
   const G = await import(location.origin + '/js/geo.js');
   const n = await import(location.origin + '/js/net.js');
   const { OVERPASS } = await import(location.origin + '/js/config.js');
+  // the rocks come from Overpass, the fallback, whose answer the test holds: Polku's hosted OSM data (#696) left out
+  const { StaticOSM } = await import(location.origin + '/js/osm-data.js'), tile = StaticOSM.prototype.tile;
+  StaticOSM.prototype.tile = function (...args) { return this.dataset === 'hazards' ? Promise.reject(new Error('no hosted hazards in this test')) : tile.apply(this, args); };
   // the rocks are made up: no answer cached by an earlier run before, none kept after
   const forget = () => new Promise((ok) => {
     const r = indexedDB.open('polku');
@@ -1501,6 +1504,7 @@ WATER_LATE = """(async () => {
     return errs;
   } finally {
     window.fetch = realFetch;
+    StaticOSM.prototype.tile = tile;
     release();
     p.clear();
     polku.set({ activity: 'mtb' });
@@ -1888,6 +1892,10 @@ def stops(chrome):
 # mock answers brouter.de and Valhalla in every page it's added to.
 AVOID_ROUTER = """(() => {
   const real = window.fetch.bind(window), calls = (window.routerCalls = []);
+  // every note the page shows, as it shows it: a slow runner's route can outlast a note's 8 s, or a later note replace it
+  const said = (window.toastsSaid = []);
+  document.addEventListener('DOMContentLoaded', () => { const t = document.querySelector('#toast'); // (none on sw.js)
+    if (t) new MutationObserver(() => { if (!t.hidden && said.at(-1) !== t.textContent) said.push(t.textContent); }).observe(t, { childList: true, characterData: true, subtree: true, attributes: true }); });
   window.fetch = async (input, init) => {
     const url = String(input && input.url ? input.url : input);
     if (!/^https:\\/\\/(brouter\\.de|valhalla1\\.openstreetmap\\.de)\\//.test(url)) return real(input, init);
@@ -1963,7 +1971,7 @@ AVOID_BAD = """(async () => {
   if (!(await routed(2))) errs.push(`the route from a link with bad circles: ${p.legs.map((l) => l.status).join(', ') || 'no legs'}`);
   if (p.points.length !== 3) errs.push(`${p.points.length} points from a link with bad circles`);
   if (p.nogos.length) errs.push(`circles from a bad value: ${circles(p.nogos)}`);
-  if (!/couldn/.test(toastSays())) errs.push(`nothing says the circles couldn't be read (toast: ${toastSays() || 'none'})`);
+  if (!toastsSaid.some((t) => /couldn/.test(t))) errs.push(`nothing says the circles couldn't be read (notes: ${toastsSaid.join(' / ') || 'none'})`);
   if (new URL(p.shareUrl()).searchParams.has('av')) errs.push('a route without circles shares av=');
   return errs;
 })()"""
@@ -7448,7 +7456,8 @@ MARKS = r"""(async () => {
   a.tAt = Float64Array.from(a.along, (d) => d * 4); p.drawMarks();
   if (!/1 h 6 min 40 s elapsed/.test(label())) errs.push(`hour/minute/second duration: ${label()}`);
   // Arrival times move immediately, while the old weather is still in memory.
-  a.wind = { startSec: p.startSec() }; a.tAtWind = a.tAt;
+  const fill = (v) => new Float32Array(a.along.length).fill(v);  // (a whole forecast: the waypoints' tooltips read it, #761)
+  a.wind = { startSec: p.startSec(), head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) }; a.tAtWind = a.tAt;
   p.setLeave(Date.now() / 1000 + 3 * 3600);
   const arrival = p.clockOf(p.startSec() + 4000);
   if (!label().includes(`1 km · ${arrival}`)) errs.push(`departure did not move the mark immediately: ${label()}`);
@@ -7487,8 +7496,8 @@ MARKS = r"""(async () => {
     const r = leave.querySelector('.row').getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('Go’s Leave is out of view');
     if (r.height < 44 || parseFloat(getComputedStyle(input).fontSize) < 16) errs.push('Go’s Leave is too small, or its field zooms a phone');
-    // (Route's list says it on the start's row, 25d's part 4; the start's card and Go set it)
-    const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.textContent || '';
+    // (Route's list says it on the start's row, 25d's part 4, to a screen reader since #761; the start's card and Go set it)
+    const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
     if (!waypoint().includes(`Leave ${p.leaveWords()}`) || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.startSec() + (p.analysis.timeWind || p.analysis.time)))) errs.push('Go departure did not update the start’s row or There at immediately');
     p.setLeave(hour(6), { fromMap: true });
     if (leave.querySelector('.val').textContent !== p.timeOf(hour(6)) || !waypoint().includes(`Leave ${p.leaveWords()}`)) errs.push('timeline departure did not update Go’s Leave and the start’s row');
@@ -15170,8 +15179,8 @@ def spot_card(chrome):
                 time.sleep(0.25)
             if st(pg)['n'] != 1:
                 fails.append(f"{name}: a tap beside {pl['name']}: {st(pg)['n']} points, not 1")
-        # a quick tap on a busy page with the planner put away, near the top (#293): a tap, so the card of the tapped spot, though
-        # the hold's timer had opened its card first and moved the map to make room; once, whole on the screen
+        # a quick tap on a busy page with the planner put away, near the top (#293): a tap, though the hold's timer had opened its
+        # card first and moved the map to make room, so a phone's line at the tapped spot (#574) and no card; whole on the screen
         pg.js('sc.places(false)')
         pg.js("polku.planner.cards.close(); polku.planner.setActive(false); polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 15 }); new Promise((r) => setTimeout(() => r(true), 1800))")
         s = pg.js('sc.wayAt(0.2)')
@@ -15182,10 +15191,10 @@ def spot_card(chrome):
             pg.quick_tap(s['x'], s['y'], ms=50, after='sc.untilCard()')
             time.sleep(1.2)
             pg.js('sc.calm()')
-            r = pg.js("(() => { const c = polku.planner.cards.current, e = polku.planner.cards.box, b = e && e.getBoundingClientRect(); return { kind: c && c.kind, key: c && c.key, box: b && [b.top, b.bottom] }; })()")
+            r = pg.js("(() => { const p = polku.planner, c = p.cards.current, e = document.querySelector('.spot-line'), b = e && e.getBoundingClientRect(); return { kind: c && c.kind, key: p.picked && p.picked.spot.ll, box: b && [b.top, b.bottom] }; })()")
             d = r['key'] and max(abs(r['key'][0] - s['ll'][0]), abs(r['key'][1] - s['ll'][1]))
-            if r['kind'] != 'spot' or d is None or d > 2e-4 or not r['box'] or r['box'][0] < 0 or r['box'][1] > 844:
-                fails.append(f"{name}: a quick tap near the top with the planner put away: {r['kind'] or 'no'} card at {r['key']} (the tap's {s['ll']}), its box {r['box']}; the cards: {pg.js('sc.log()')}")
+            if r['kind'] or d is None or d > 2e-4 or not r['box'] or r['box'][0] < 0 or r['box'][1] > 844:
+                fails.append(f"{name}: a quick tap near the top with the planner put away: {r['kind'] or 'no'} card, the line at {r['key']} (the tap's {s['ll']}), its box {r['box']}; the cards: {pg.js('sc.log()')}")
             pg.js('polku.planner.cards.close(); true')
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
@@ -17960,10 +17969,11 @@ def tabs(chrome):
           if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
           await new Promise((ok) => setTimeout(ok, 500));
           const g = [...document.querySelectorAll('#layers-body .lg-group')].find((x) => x.querySelector('.lg-title')?.textContent === 'Your route');
-          const sw = g ? [...g.querySelectorAll('.tg')].map((t) => t.querySelector('.tg-text').firstChild.textContent.trim()) : [];
-          const km = g && g.querySelector('input'); if (km) km.click();
+          // (the marks' switches, after Moving arrows on the route since #806)
+          const sw = g ? [...g.querySelectorAll('.onmap .tg')].map((t) => t.querySelector('.tg-text').firstChild.textContent.trim()) : [];
+          const km = g && g.querySelector('.onmap input'); if (km) km.click();
           const off = p.marks.km;
-          if (km) g.querySelector('input').click(); // (drawn again by the first: found afresh)
+          if (km) g.querySelector('.onmap input').click(); // (drawn again by the first: found afresh)
           return { inCheck, sw, toggled: off === false && p.marks.km === true }; })()""")
         if r['inCheck'] or r['sw'][:3] != ['Distance marks', 'Arrival times at marks', 'Elapsed time at marks'] or not r['toggled']:
             fails.append(f"{name}: the marks in Layers: {r}")
@@ -18706,7 +18716,7 @@ def osm_data(chrome):
             failures.extend(pg.errors())
         finally:
             pg.close()
-    print('FAIL osmdata: ' + '; '.join(failures) if failures else 'ok osmdata: whole ways, Range decoding, cache and offline failures')
+    print('FAIL osmdata: ' + '; '.join(failures) if failures else 'ok   osmdata: whole ways, Range decoding, cache and offline failures')
     return not failures
 
 
