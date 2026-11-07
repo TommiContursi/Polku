@@ -4,6 +4,8 @@ The design for [#690](https://github.com/TommiContursi/Polku/issues/690) (primar
 
 **Where it stands (2026-11-07): four rounds decided, and the mock-up's New 3 draws them; the plan is ready to build from, PR 1 first.**  The mock-up is [mockups/cards-and-taps.html](mockups/cards-and-taps.html), also a [private Artifact](https://claude.ai/artifact/V1QqdwcbGRdhtiNYFE74C7) to try on a phone.
 
+**The order, with the planner's (2026-11-07):** this plan's PRs and #869's take turns, one at a time, and similar work from both goes into one PR. The one order is [on #690](https://github.com/TommiContursi/Polku/issues/690#issuecomment-6710401166): after the sizes (#889), this plan's PR 3, then the list's top, the ▾ pill, and the leg's card with this plan's PRs 4 and 5 together.
+
 It builds on what's decided and doesn't reopen it: cards one at a time with ‹ Back (#345, #574); the sheet's sizes (#603); nothing moves under the pointer (#594); backgrounds mean selection (#761); green means you can tap it, and the rule for controls (#869); a tap while drawing adds a waypoint (#345); short plain nouns; missing or late data never looks complete; don't redesign what works.
 
 ## Why
