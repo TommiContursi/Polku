@@ -1,5 +1,5 @@
 // Local original fragments and containment seeds. Seeds are never display geometry.
-import { tileBounds } from './geo.js';
+import { tileBounds, lonLatToTile, dist, pointSegment } from './geo.js';
 
 const id = v => Number.isSafeInteger(v) && v > 0;
 const hash = v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
@@ -81,4 +81,76 @@ export function containsArea(element, [z, tx, ty], [x, y]) {
     if (inside) return true;
   }
   return false;
+}
+
+/** Match the existing named-first, then smallest-original-bounds area choice. */
+export function selectArea(json, ll) {
+  if (json.areas_complete !== true) throw new Error('Incomplete OSM area coverage');
+  const candidates = [];
+  for (const e of json.elements) {
+    if (!e.area) continue;
+    const b = e.area.bounds;
+    if (!e.area.complete && (!b || ll[0]>=b[0] && ll[0]<=b[2] && ll[1]>=b[1] && ll[1]<=b[3])) throw new Error('Incomplete OSM area geometry');
+    if (e.area.complete && containsArea(e,json.tile,ll)) candidates.push(e);
+  }
+  const size = e => (e.area.bounds[2]-e.area.bounds[0])*(e.area.bounds[3]-e.area.bounds[1]);
+  return candidates.sort((a,b)=>!a.tags.name-!b.tags.name || size(a)-size(b))[0] || null;
+}
+
+/** A relation qualifies by its real members, never by a distant bounding-box centre. */
+export function nearestGeometry(tiles, ll, metres) {
+  const eligible=new Map();
+  for (const tile of tiles) {
+    if(tile.nearby_complete!==true)throw new Error('Incomplete nearby OSM coverage');
+    for (const e of tile.elements) {
+      if(!e.inspection)continue;
+      if(e.incomplete)throw new Error('Incomplete nearby OSM geometry');
+      const near=e.fragments.some(f=>f.type==='node' ? dist(f.point,ll)<=metres
+        : f.geometry.some((p,i,g)=>i && pointSegment(ll,g[i-1],p).d<=metres));
+      if(near)eligible.set(`${e.type}/${e.id}`,e);
+    }
+  }
+  const distance=e=>dist([(e.bounds[0]+e.bounds[2])/2,(e.bounds[1]+e.bounds[3])/2],ll);
+  return [...eligible.values()].sort((a,b)=>distance(a)-distance(b) || types.indexOf(a.type)-types.indexOf(b.type) || a.id-b.id)[0] || null;
+}
+
+/** Draw real source edges only; tile seeds and clipping-box sides are never lines. */
+export function areaOutline(tiles, selected, window) {
+  const bounds=selected.area.bounds;
+  const clipped=[Math.max(bounds[0],window[0]),Math.max(bounds[1],window[1]),Math.min(bounds[2],window[2]),Math.min(bounds[3],window[3])];
+  const [x0,y0]=lonLatToTile(clipped[0],clipped[3],13).map(Math.floor), [x1,y1]=lonLatToTile(clipped[2],clipped[1],13).map(Math.floor);
+  const covered=new Set(tiles.filter(t=>t.tile[0]===13 && t.tile[1]>=x0 && t.tile[1]<=x1 && t.tile[2]>=y0 && t.tile[2]<=y1).map(t=>t.tile.join('/')));
+  if (covered.size!==(x1-x0+1)*(y1-y0+1)) throw new Error('Incomplete OSM outline window');
+  const segments = new Map();
+  for (const tile of tiles) {
+    if (tile.areas_complete !== true) throw new Error('Incomplete OSM area coverage');
+    for (const e of tile.elements) {
+      if (e.type!==selected.type || e.id!==selected.id) continue;
+      if (e.identity!==selected.identity || !e.area?.complete) throw new Error('Conflicting OSM area geometry');
+      for (const p of e.area.polygons) for (const [fi,offset,inner] of p.edges) {
+        const f=e.fragments[fi], key=`${f.ref}/${f.start+offset}`, a=f.geometry[offset], b=f.geometry[offset+1];
+        const original={identity:f.identity,nodes:f.nodes.slice(offset,offset+2),a,b,inner}, prev=segments.get(key);
+        if (prev && (prev.identity!==original.identity || prev.nodes.some((v,i)=>v!==original.nodes[i])
+          || prev.a.some((v,i)=>v!==a[i]) || prev.b.some((v,i)=>v!==b[i]))) throw new Error('Conflicting original OSM segment');
+        segments.set(key,{...original,inner:prev ? prev.inner && inner : inner});
+      }
+    }
+  }
+  const lines=[], outer=[];
+  for (const {a,b,inner} of segments.values()) {
+    let lo=0, hi=1;
+    for (const axis of [0,1]) {
+      const delta=b[axis]-a[axis];
+      if (!delta) { if(a[axis]<window[axis] || a[axis]>window[axis+2]) hi=-1; }
+      else {
+        const ts=[(window[axis]-a[axis])/delta,(window[axis+2]-a[axis])/delta].sort((x,y)=>x-y);
+        lo=Math.max(lo,ts[0]);hi=Math.min(hi,ts[1]);
+      }
+    }
+    if (lo>=hi) continue;
+    const line=[lo,hi].map(t=>a.map((v,i)=>Math.max(window[i],Math.min(window[i+2],v+t*(b[i]-v)))));
+    lines.push(line);if(!inner)outer.push(line);
+  }
+  const b=selected.area.bounds;
+  return {lines,outer,whole:b[0]>window[0] && b[1]>window[1] && b[2]<window[2] && b[3]<window[3]};
 }

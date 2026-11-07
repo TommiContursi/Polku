@@ -239,3 +239,9 @@ manifest compatibility; exact epoch and root digest agreement; native reference
 completion limits; temp-source/index disk peaks and free public-runner limits;
 no hidden country download; failure/timeout/cache mutation; no monitoring gap or
 false published-coverage claim. Compare local predicates to whole original rings.
+
+## Execution checkpoints
+
+- PR1 [#771](https://github.com/TommiContursi/Polku/pull/771) merged the compiler and format.
+- PR2 [#772](https://github.com/TommiContursi/Polku/pull/772) merged source completion, optional shared reader, build and monitoring support. Its main build [41776459874](https://github.com/TommiContursi/Polku/actions/runs/41776459874) is the complete resource/publication gate.
+- PR3 [#778](https://github.com/TommiContursi/Polku/pull/778) implements existing area/nearby consumers and full-tag reuse. Compiled fixture regressions cover named/smallest selection, islands, whole and clipped original edges, relation member proximity, timestamps, source failure and public failure. Actual four-country publication and deployed acceptance remain separate gates until the main build completes.
