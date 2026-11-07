@@ -839,11 +839,12 @@ const skeleton = (pick, say, ...shapes) => h('div', { class: 'pick-skel', style:
 // What a spot, a place or a way's card can do (#876, #690): the action row under its numbers, only what can be done now: the
 // spot's one action first, green (Add to my route, Add a waypoint here by the line, Start a route here with no route),
 // Avoid this spot with a route, Share and Weather here; the rest under More for this …, as rows with their lines. A
-// waypoint made from a place, or a found or shared spot, takes its name (#886): LIPAS's or OpenStreetMap's, one step of Undo.
+// waypoint made from a place takes the place's own name (#886), LIPAS's or OpenStreetMap's, in one step of Undo; a spot, a way
+// or a pin's words ("Water", a shared link's) give none.
 // [the row and the peek's end, More for this …]
 function spotActs(pl, card, spot, what) {
   const n = pl.points.length, undo = { label: 'Undo', fn: () => pl.undo() }, water = spot.area === 'water' && !(card.pick && card.pick.ways && typeof card.pick.ways === 'object');
-  const name = spot.lipas ? spot.lipas.name : spot.place ? (spot.tags || {}).name : spot.name;
+  const name = spot.lipas ? spot.lipas.name : spot.place ? (spot.tags || {}).name : '';
   const main = !n ? { label: 'Start a route here', fn: () => pl.startRouteAt(spot.ll, name) } : { label: pl.byTheLine(spot.ll) ? 'Add a waypoint here' : 'Add to my route', fn: () => pl.addWhereItFits(spot.ll, name) };
   return [[actRow({ main: true, icon: 'plus', label: main.label, line: n ? 'In your route, where it fits' : 'A new route, from here', k: 'add', onclick: main.fn },
     n ? { icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); if (!pl.active) pl.setActive(true); pl.addNogo(spot.ll, 40, spot.place ? spot.title : 'Avoided place'); } } : null,

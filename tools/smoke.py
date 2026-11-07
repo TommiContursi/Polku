@@ -18821,7 +18821,7 @@ LIPAS_KOTA = {'name': 'Haukanlammen kota', 'typeName': 'Laavu, kota tai kammi', 
 def spot_card_actions(chrome):
     """A place's card (#690): the action row of four under its numbers, Add to my route first and green, inside the peek;
     Start here, End here and Copy under More for this place; Not right? alone in its foot. Add to my route gives the
-    waypoint the place's name, and one Undo takes back both (#886)."""
+    waypoint the place's name, and one Undo takes back both (#886); a shared pin's words give none."""
     fails = []
     name = '390x844'
     pg = _ca_page(chrome, 390, 844, True, fails, name)
@@ -18851,6 +18851,13 @@ def spot_card_actions(chrome):
             back = pg.js("polku.planner.points.map((_, i) => polku.planner.nameOf(i))")
             if len(back) != n or 'Haukanlammen kota' in back:
                 fails.append(f"{name}: after one Undo: {back}")
+            # a shared link's pin says the spot's title, "Water" here: no name of its own, so none for the waypoint (#886)
+            pg.js("polku.planner.cards.closeNow(); polku.planner.openSpotCard([23.81, 61.52], { pin: true, name: 'Water' })")
+            pg.js(SETTLED)
+            _ca_tap(pg, "document.querySelector('.pl-way.card .card-acts button.main')")
+            got = pg.js("polku.planner.points.map((_, i) => polku.planner.pname.get(polku.planner.points[i]) || '')")
+            if len(got) != n + 1 or any(got):
+                fails.append(f"{name}: Add to my route on a shared pin called Water: the waypoints' own names {got} (none)")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
