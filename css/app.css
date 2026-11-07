@@ -803,12 +803,14 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet-top-end { display: flex; justify-content: flex-end; }
 :is(.sheet-top-start, .sheet-top-end) > .tool { display: none; width: 44px; height: 44px; }
 .sheet[data-layout="side"] .sheet-top { display: none; }
-/* on a phone, ⌄ (with a mouse ⌃ too) at the top row's left and ✕ at its right, one row (#889); a card has its own ⋯ ⌄ ✕
-   beside its name, so over one the row is the handle alone */
+/* on a phone, and over a card in the peek, one row: ⌄ (with a mouse ⌃ too) at the top row's left, the handle in the
+   middle, and ✕ at its right, with a card's ⋯ beside it (#889) */
 @media (max-width: 720px) {
-  .sheet.foldable:not(.carded) .sheet-top { height: 40px; }
-  .sheet.foldable:not(.carded) :is(.sheet-fold, .sheet-x) { display: inline-flex; }
+  .sheet.foldable .sheet-top { height: 40px; }
+  .sheet.foldable :is(.sheet-fold, .sheet-x) { display: inline-flex; }
 }
+.sheet.carded .sheet-top { height: 40px; grid-template-columns: max(88px, var(--top-side, 0px)) 1fr max(88px, var(--top-side, 0px)); }
+.sheet.carded :is(.sheet-fold, .sheet-x, .sheet-set:not([hidden])) { display: inline-flex; }
 /* the folded line: one row over the top row, the handle drawn in its top padding; the planner's numbers (or a card's
    mark, name and first two numbers), one button that opens it as it was, and ✕ at its end. It and what it folds
    cross-fade while the sheet moves between them (js/planner.js, moved()) */
@@ -920,12 +922,12 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 /* A of the sheet's stops (#233): with a mouse or trackpad, ⌃ beside ⌄, each one size (planner.js stepSheet()) */
 .sheet-up-min { display: none; }
 @media (hover: hover) and (pointer: fine) and (max-width: 720px) {
-  .sheet.foldable:not(.carded) .sheet-up { display: inline-flex; }
-  .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: max(88px, var(--top-side, 0px)) 1fr max(88px, var(--top-side, 0px)); }
-  .sheet.foldable:not(.carded) .top-sum { left: 96px; }
+  .sheet.foldable .sheet-up { display: inline-flex; }
+  .sheet.foldable .sheet-top { grid-template-columns: max(88px, var(--top-side, 0px)) 1fr max(88px, var(--top-side, 0px)); }
+  .sheet.foldable .top-sum { left: 96px; }
 }
-@media (hover: hover) and (pointer: fine) and (max-width: 359px) { .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: auto minmax(0, 1fr) auto; } .sheet.foldable:not(.carded) .sheet-handle { max-width: 100%; } }
-@media (hover: hover) and (pointer: fine) and (min-width: 721px) { .sheet[data-layout="sheet"].foldable:not(.carded) .sheet-up-min { display: inline-flex; } }
+@media (max-width: 359px) { .sheet.foldable .sheet-top { grid-template-columns: auto minmax(0, 1fr) auto; } .sheet.foldable .sheet-handle { max-width: 100%; } }
+@media (hover: hover) and (pointer: fine) and (min-width: 721px) { .sheet[data-layout="sheet"].foldable:not(.carded) .sheet-up-min, .sheet.carded .sheet-up { display: inline-flex; } }
 /* the panel's place (left or bottom): wide screens, where there's a choice */
 .sheet-dock { display: none; }
 @media (min-width: 900px) { .sheet-dock { display: inline-flex; } }
@@ -1919,16 +1921,10 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .card > .way-bar { min-height: 36px; margin-bottom: -4px; }
 .card-float .way-back { min-height: 36px; font-size: 14px; }
 .card-float :is(.way-x, .card-set) { width: 36px; height: 36px; }
-/* a desktop's card folds to its title row (step 3 of #233); in a phone's peek its ⌄ folds the sheet to its line, beside ✕
-   wherever ✕ is, ⋯ ⌄ ✕ on one row (#889) */
+/* a desktop's card folds to its title row (step 3 of #233); in a phone's peek the sheet's top row has its ⌄, ⋯ and ✕ (#889) */
 .card .way-fold { display: none; }
-@media (min-width: 721px) { .card-float .card > .way-head > .way-fold { display: inline-flex; width: 36px; height: 36px; margin: -4px -2px 0 0; } }
-.card-peek .card[data-back="no"] > .way-head > .way-fold, .card-peek .card[data-back="yes"] > .way-bar > :is(.way-fold, [data-k="set"]) { display: inline-flex; width: 44px; height: 44px; }
-.card-peek .card[data-back="yes"] > .way-head > .card-set { display: none; }
-.card-peek .card > .way-head > .way-fold { margin-top: -6px; } /* (level with ✕) */
-.way-bar .way-fold + .way-x { margin-left: 0; }
-/* (narrow, 200 %: the top row has ⋯, undo, redo and ✕, and ⌄ would wrap it; the swipe and the handle fold it) */
-@container card (max-width: 290px) { .card-peek .card[data-back] > :is(.way-head, .way-bar) > .way-fold { display: none; } }
+@media (min-width: 721px) { .card-float .way-fold { display: inline-flex; width: 36px; height: 36px; margin: -4px -2px 0 0; } }
+.card-peek .card > :is(.way-head, .way-bar) > :is(.way-x, .card-set, [data-k="set"]) { display: none; }
 .card.rolled > :not(.way-bar, .way-head) { display: none; }
 /* …its name and its first two numbers on one line (its own line under it waits) */
 .card .way-facts, .card.rolled .way-hint > small { display: none; }

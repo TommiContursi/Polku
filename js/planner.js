@@ -4667,7 +4667,7 @@ export class Planner {
     // (from the keyboard, a click with no pointer, at once: nothing animates for it)
     // With a mouse or trackpad ⌃ beside it, and each moves one size (A of the sheet's stops, #233; renderFold() says so)
     this.arrowsMQ = matchMedia('(hover: hover) and (pointer: fine)');
-    const lower = (e) => (this.arrowsMQ.matches && this.layout() === 'sheet' && this.cards.place !== 'peek' ? this.stepSheet(-1, !e.detail) : this.fold({ instant: !e.detail }));
+    const lower = (e) => (this.arrowsMQ.matches && this.layout() === 'sheet' ? this.stepSheet(-1, !e.detail) : this.fold({ instant: !e.detail }));
     this.els.min = tool('chevronDown', 'Fold the planner down to a line', lower, 'sheet-min');
     this.els.foldBtn = tool('chevronDown', 'Fold the planner to a line', lower, 'sheet-fold');
     this.els.upMin = tool('chevronUp', 'Raise the planner one size', (e) => this.stepSheet(1, !e.detail), 'sheet-up-min');
@@ -4675,7 +4675,10 @@ export class Planner {
     // folded: the line, one button that opens it as it was, and ✕ at its end
     this.els.foldGo = h('button', { type: 'button', class: 'fold-go', onclick: (e) => this.unfold({ instant: !e.detail }), onkeydown: (e) => { if (e.key === 'ArrowUp') { e.preventDefault(); this.unfold({ instant: true }); } } });
     this.els.foldX = tool('close', 'Put the planner away: your route stays', () => this.foldAway(), 'fold-x');
-    this.els.topX = tool('close', 'Put the planner away: your route stays', () => this.close(), 'sheet-x'); // (the top row's, #889)
+    // the top row's ✕, and a card's ⋯ beside it (#889): one row for the planner and every card in the peek
+    this.els.topX = tool('close', 'Put the planner away: your route stays', () => this.foldAway(), 'sheet-x');
+    this.els.topSet = tool('more', 'Card settings', (e) => this.cardMenu(this.cards.current)?.(e.currentTarget), 'sheet-set');
+    this.els.topSet.setAttribute('aria-haspopup', 'menu');
     this.els.fold = h('div', { class: 'fold-line' }, this.els.foldGo, this.els.foldX);
     this.els.topSum = h('div', { class: 'top-sum', 'aria-hidden': 'true' }); // (D: the numbers in the top row, renderTopSum())
     this.els.dockBtn = tool('panelBottom', 'Move to the bottom', () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), 'sheet-dock');
@@ -4751,7 +4754,6 @@ export class Planner {
       },
       // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox
       settings: (card) => this.cardMenu(card),
-      fold: (instant) => this.fold({ instant }),
       dock: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView()
         ? { undo: () => this.undo(), redo: () => this.redo(), canUndo: !!this.past.length, canRedo: !!this.future.length } : null),
     });
@@ -4838,8 +4840,8 @@ export class Planner {
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clearCategoryPreview(); });
     this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
-    // ⌃ and ⌄ at its left, the route's view's Edit and More docked after them at full, ✕ at its right (#889)
-    this.els.top = h('div', { class: 'sheet-top' }, h('span', { class: 'sheet-top-start' }, this.els.up, this.els.foldBtn), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.topX), this.els.topSum);
+    // ⌃ and ⌄ at its left, the route's view's Edit and More docked after them at full, a card's ⋯ and ✕ at its right (#889)
+    this.els.top = h('div', { class: 'sheet-top' }, h('span', { class: 'sheet-top-start' }, this.els.up, this.els.foldBtn), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.topSet, this.els.topX), this.els.topSum);
     this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
     // (the tabs' headings, h3, under one of the planner's own: its title row has the route's name only in the route's view)
     p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, h('h2', { class: 'sr-only' }, 'Planner'), this.els.tabs, this.els.body, this.els.bar);
@@ -5564,7 +5566,7 @@ export class Planner {
   foldable() { return this.cards.place === 'peek' || (this.points.length > 1 && !this.peekOnly()); }
   // the keyboard's focus goes with it: from ⌄ or the handle to the line, and back to where it came from
   fold({ instant = false } = {}) {
-    this.foldFocus = [this.els.foldBtn, this.els.min, this.els.handle].find((b) => b === document.activeElement) || (document.activeElement?.matches('.card .way-fold') ? document.activeElement : null);
+    this.foldFocus = [this.els.foldBtn, this.els.min, this.els.handle].find((b) => b === document.activeElement) || null;
     this.setSheetState('folded', { instant });
     if (this.foldFocus) this.els.foldGo.focus({ preventScroll: true });
   }
@@ -5592,10 +5594,11 @@ export class Planner {
     // each number whole, with its unit: the line breaks only between them, at " · " (200 %)
     const line = (items) => items.flatMap((t, i) => [i ? ' ' : '', h('span', {}, i < items.length - 1 ? `${t} ·` : t)]);
     const x = card ? 'Close' : 'Put the planner away: your route stays';
-    this.els.foldX.setAttribute('aria-label', x);
-    this.els.foldX.title = x;
-    const st = this.panel.dataset.state, steps = !card && this.arrowsMQ.matches && this.panel.dataset.layout === 'sheet' && st !== 'peek';
-    const f = card ? 'Fold the card to a line' : steps ? 'Lower the planner one size' : 'Fold the planner to a line';
+    for (const b of [this.els.foldX, this.els.topX]) { b.setAttribute('aria-label', x); b.title = x; }
+    this.els.topSet.hidden = !card || !this.cardMenu(card);
+    const st = this.panel.dataset.state, steps = this.arrowsMQ.matches && this.panel.dataset.layout === 'sheet' && st !== 'peek';
+    const what = card ? 'the card' : 'the planner', f = steps ? `Lower ${what} one size` : `Fold ${what} to a line`;
+    for (const b of [this.els.up, this.els.upMin]) { b.setAttribute('aria-label', `Raise ${what} one size`); b.title = b.getAttribute('aria-label'); }
     const m = steps ? f : 'Fold the planner down to a line';
     this.els.foldBtn.setAttribute('aria-label', f);
     this.els.foldBtn.title = f;
