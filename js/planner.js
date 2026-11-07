@@ -317,6 +317,9 @@ export class Planner {
     this.carryAll(s.carry);
     this.spotAll(s.spots);
     this.legs = s.legs.map((l) => ({ ...l }));
+    // a leg on the water routed without a source is routed again (#80): it may have answered since, and no late
+    // answer would come to route it then. Offline it keeps its line (the water router draws from OpenFreeMap).
+    if (navigator.onLine) for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) l.key = null;
     // legs that followed the map's sport then keep that sport, if the map has moved on since
     const now = this.app.activity();
     if (s.map && s.map !== now) {
@@ -7113,17 +7116,21 @@ export class Planner {
         ...place(!ter.all && a.eleGap ? runsAlong(a.along, (i) => a.eleGap[i] && !onWater(i)) : null),
         retry: ter.retry ? async () => { await this.retryTerrain(a, 0, true); if (this.analysis === a) toast('The terrain still didn’t load: Polku keeps trying'); } : null });
     }
-    // the water router's sources: the legs routed without each
-    const lost = new Map();
-    this.legs.forEach((l, i) => {
-      const wr = l.mode === 'water' && l.result && l.result.water; // (being routed again: until the new answer)
-      for (const m of (wr && wr.missing) || []) { if (!lost.has(m)) lost.set(m, []); lost.get(m).push([this.lengthTo(i), this.lengthTo(i + 1) - this.lengthTo(i)]); }
-    });
-    for (const [m, legs] of lost) {
-      const [text, note] = WATER_LOST[m] || [`${m} didn’t answer on the water`, 'Routed without it.'];
-      const ranges = legs.reduce((r, [at, len]) => { const p = r[r.length - 1]; if (p && at - (p[0] + p[1]) < 1) p[1] = at + len - p[0]; else r.push([at, len]); return r; }, []);
-      const whole = ranges.length === 1 && ranges[0][0] < 1 && ranges[0][0] + ranges[0][1] >= end - 1; // (every leg: the whole route, no place)
-      out.push({ key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(whole ? null : ranges), retry: () => this.retryWater() });
+    // the water router's sources: the legs routed without each, as it didn't answer (`missing`), or wasn't asked, the leg
+    // being too long to ask it for (`skipped`, #490: nothing to try again, a point splits the leg)
+    for (const [kind, texts] of [['missing', WATER_LOST], ['skipped', WATER_LONG]]) {
+      const lost = new Map();
+      this.legs.forEach((l, i) => {
+        const wr = l.mode === 'water' && l.result && l.result.water; // (being routed again: until the new answer)
+        for (const m of (wr && wr[kind]) || []) { if (!lost.has(m)) lost.set(m, []); lost.get(m).push([this.lengthTo(i), this.lengthTo(i + 1) - this.lengthTo(i)]); }
+      });
+      for (const [m, legs] of lost) {
+        const [text, note] = texts[m] || [`${m} didn’t answer on the water`, 'Routed without it.'];
+        const ranges = legs.reduce((r, [at, len]) => { const p = r[r.length - 1]; if (p && at - (p[0] + p[1]) < 1) p[1] = at + len - p[0]; else r.push([at, len]); return r; }, []);
+        const whole = ranges.length === 1 && ranges[0][0] < 1 && ranges[0][0] + ranges[0][1] >= end - 1; // (every leg: the whole route, no place)
+        out.push(kind === 'missing' ? { key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(whole ? null : ranges), retry: () => this.retryWater() }
+          : { key: 'waterlong', by: m, text, note, ...place(whole ? null : ranges) });
+      }
     }
     if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents, road conditions and busy roads on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
     // road works and busy roads it couldn't ask for on a route this long, or Digiroad not answering (#491)
@@ -7167,7 +7174,9 @@ export class Planner {
     }
     const wr = this.legs.filter((l) => l.mode === 'water' && l.result && l.result.water).map((l) => l.result.water);
     const asked = (k) => wr.some((w) => (w.checked || {})[k]), missing = (m) => wr.some((w) => (w.missing || []).includes(m));
-    const source = (what, k, name) => row(what, !asked(k) ? 'not used for this route' : missing(name) ? `${name} didn’t answer` : name, !asked(k) ? 'na' : missing(name) ? 'bad' : 'ok');
+    const skipped = (m) => wr.some((w) => (w.skipped || []).includes(m)); // (older saved routes have no `skipped`)
+    const source = (what, k, name) => row(what, !asked(k) ? 'not used for this route' : missing(name) ? `${name} didn’t answer` : skipped(name) ? 'not checked: a leg too long to ask for' : name,
+      !asked(k) ? 'na' : missing(name) || skipped(name) ? 'bad' : 'ok');
     if (water) {
       source('Rocks and shoals', 'hazards', 'OpenStreetMap');
       source('Fairways and marks', 'fairways', 'Väylävirasto');
@@ -7722,6 +7731,11 @@ const WATER_LOST = {
   OpenStreetMap: ['Rocks and shoals from OpenStreetMap didn’t answer', 'Routed without them: the line may pass close to a rock the map knows.'],
   Väylävirasto: ['Fairways and marks from Väylävirasto didn’t answer', 'Routed without them: the line may cross a shipping lane or pass a danger mark without saying so.'],
   'the wind forecast': ['The wind forecast didn’t answer on the water', 'Routed without the wind: how rough the water gets isn’t known.'],
+};
+// ...and for each that wasn't asked, the leg being too long for it (#490)
+const WATER_LONG = {
+  OpenStreetMap: ['Rocks and shoals: not checked, the leg is too long', 'Routed without OpenStreetMap’s rocks and shoals: the line may pass close to one. Add a point to split the leg.'],
+  Väylävirasto: ['Fairways and marks: not checked, the leg is too long', 'Routed without Väylävirasto’s fairways and marks: the line may cross a shipping lane or pass a danger mark without saying so. Add a point to split the leg.'],
 };
 
 // "2 h 13" or "54 min": a duration where there's little room
