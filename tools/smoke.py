@@ -10160,8 +10160,9 @@ def fold_phone(chrome):
         if s['card'] != 'point' or s['st'] != 'peek' or not s['fold']:
             fails.append(f"a hold on point 1: card {s['card']}, {s['st']}, ⌄ {bool(s['fold'])}")
         else:
-            y = s['panel']['t'] + 30
-            pg.swipe(120, y, y - 300, ms=500, hold=0.1)
+            # (a drag from its peek to about half: the peek ends after its actions, #690, so how far that is depends on the card)
+            y, d = s['panel']['t'] + 30, pg.js("Math.round(parseFloat(getComputedStyle(polku.planner.panel).getPropertyValue('--card-half')) - polku.planner.panel.offsetHeight)")
+            pg.swipe(120, y, y - max(60, d), ms=500, hold=0.1)
             fold_settled(pg, fails, 'step 16')
             s = info()
             if s['st'] != 'half' or s['card'] != 'point':
