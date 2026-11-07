@@ -149,7 +149,7 @@ PRODUCT.md: nothing is removed, and nothing takes more taps or a new hidden view
 |---|---|---|
 | A waypoint's Move, Rename, Remove (hold only) | its card, in sight at once | the tap's card |
 | Start here, End here (a via) | ⋯ | the same card, one tap more than a hold's rows but no hold |
-| Pass by · Stop · Night | Stop or night › behind ⋯ | one tap more than today's hold card, which showed the switch; **open: keep the switch on the card** at a via that's a stop already |
+| Pass by · Stop · Night | Stop or night › behind ⋯ | one tap more than today's hold card, which showed the switch; round 3 asks whether the switch stays on the card |
 | Sport from here › | ⋯ on the waypoint; the leg's MTB ▾ | two taps from the line, today four |
 | A changeover's minutes and Take … along | the card, under its actions | as today |
 | The start's Leave ›, Back to start, Reverse | the card (Leave), ⋯ (Back to start, Reverse) | Leave stays a row; When on the first screen (#878) is the other way |
@@ -223,3 +223,4 @@ Small, each tried on a phone before the next, starting from production. Motion i
 15. The actions' look: B (buttons) or A (the action row).
 16. A desktop's short ways. The card beside the planner keeps the map clear, but every action on it is a long trip from where you clicked, and it covers the map's left (here the route's start, which the build would frame aside). The mock-up puts each kind's main action at the pointer too (Add a waypoint here on the line, Add to my route on a place, a way or a spot); dragging a waypoint stays; Delete on the waypoint under the pointer would make removing one a key. Or: the card at the spot as today, its actions in reach, covering what it's about (#647).
 17. The order of the PRs above.
+18. A waypoint's Pass by · Stop · Night: behind ⋯ (as drawn), or the switch on the card as today's hold card has it.
