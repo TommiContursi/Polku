@@ -56,6 +56,10 @@ The sport the map shows its layers for, chosen beside the search.
 How a leg follows the map: Follow paths, Freehand or Over water.
 _Avoid_: routing mode
 
+**Alternative routes**:
+Up to two other ways for a leg, drawn on the map to pick from.
+_Avoid_: Other ways (its old name, until the rename's PR)
+
 **Route style**:
 How the router weighs the ways for the whole route: Balanced or Flowy trails, for example.
 
