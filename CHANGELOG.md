@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-07
 
+### A tap and a hold open the same card ([#876](https://github.com/TommiContursi/Polku/issues/876))
+
+- A tap or a click on a waypoint opens its card with everything you can do there: **At this waypoint**, **Sport from here**, **Move**, **Rename**, **Remove** and the rest. Holding it, or right-clicking it, opens the same card. **On the profile** is under the waypoint's profile.
+- A tap or a click on the map, on a way or on a place's icon opens its card with **Your route** (**Add to my route**, **Start here**, **End here**, **Round trip from here** and **Avoid this spot**) and, in its last row, **All OpenStreetMap details** and **Copy**. Holding or right-clicking opens the same card. On a phone, a tap on the map while you're not drawing still shows the line above the spot first.
+- With a keyboard, Tab from the map goes on to the waypoints, and **Enter** on one opens its card. **Enter** and **Shift+F10** at the map's crosshair open the same card.
+
 ### Leave at… on a desktop ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - On a desktop, **When**'s **Leave at…** shows a date and time field in its menu, with **Set**. Type the time or pick it from the field's calendar, then **Set** or Enter sets it and closes the menu. Before, the browser's own picker had no OK, and the menu stayed open after a pick.

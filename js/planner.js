@@ -3465,8 +3465,12 @@ export class Planner {
       m.on('dragstart', () => this.beginEdit(i, this.snapshot(), m));
       m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
       m.on('dragend', () => this.endEdit());
-      // a tap: when you're there and the profile up to it; a hold (0.5 s, still) or a right-click: its card with the actions (#574)
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointCard(p, { actions: false }); });
+      // a tap, a hold (0.5 s, still), a right-click, and Enter on it with the focus: its card (#876)
+      el.tabIndex = 0;
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', el.title);
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointCard(p); });
+      el.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); this.openPointCard(p); } });
       el.addEventListener('contextmenu', (ev) => { ev.preventDefault(); ev.stopPropagation(); if (!held) this.openPointCard(p); }); // (Android sends one after a hold)
       let hold = null, ring = null, t0 = null, held = false;
       const cancel = () => { clearTimeout(hold); hold = null; ring?.remove(); ring = null; };
@@ -4039,7 +4043,7 @@ export class Planner {
   openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '', hold = false } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
-    if (place) { this.openPlaceCard(place, ll, { from, pin, hold }); return; }
+    if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
     const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
@@ -4052,7 +4056,7 @@ export class Planner {
     const near = lines.map((c) => [nearestOnLine(ll, c).d, c]).sort((a, b) => a[0] - b[0])[0];
     const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
-      partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch, area });
+      partOf: route && route.properties.name ? { props: route.properties, ll } : null, touch, area });
     // a phone's tap while browsing: the line at the spot first (#574); a hold, a click and the rest: the card
     if (card.kind === 'spot' && touch && !hold && !pin && from === 'map' && this.cards.where() === 'peek') { this.showLine(card); return; }
     this.hideLine();
@@ -4150,7 +4154,7 @@ export class Planner {
     this.openCard(c, c.spot.ll);
   }
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
-  openPlaceCard(f, ll, { from = 'map', pin = false, hold = false } = {}) {
+  openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
     const p = f.properties, id = f.layer.id, at = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates.map((x) => +x.toFixed(6)) : ll;
     const kind = id === 'label-peak' ? 'peak' : p.subclass || p.class || '', words = (s) => { const t = String(s).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
     const o = /^td-/.test(id) ? obstacleText(p, groupOf(this.app.activity()) === 'bike') : null;
@@ -4158,7 +4162,7 @@ export class Planner {
       : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
         : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', osm: { type: 'place', id: null } };
     this.hideLine();
-    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p, hold }), at, from);
+    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p }), at, from);
   }
   // A LIPAS route's card (part 6): Follow it, add it to your route or start one from it, its facts and pages
   openLipasCard(props, ll, { click = null, near = null } = {}) {
@@ -4244,13 +4248,13 @@ export class Planner {
 
   // A point's card (25d, #345, Revision 4 of #355): built in js/cards.js. `p` is the point itself, not its index: the
   // card follows it through a move, Undo and a new order, and closes when it's gone. From the map there's no Back.
-  openPointCard(p, { from = 'map', el = null, actions = true } = {}) {
+  openPointCard(p, { from = 'map', el = null } = {}) {
     if (!this.points.includes(p)) return;
     if (this.menu) this.menu.remove();
     this.stopPicking();
     const beside = this.besideRow(el);
     if (beside) this.focusPoint(this.points.indexOf(p)); // (from the list: the point in sight, the card at its row)
-    this.cards.open(pointCard(this, p, { actions }), { at: p, beside, from });
+    this.cards.open(pointCard(this, p), { at: p, beside, from });
   }
   // a desktop's card from the list (part 4): beside the panel, level with its row; elsewhere null (at its place)
   besideRow(el) {
