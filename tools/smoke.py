@@ -10329,14 +10329,15 @@ def fold_phone(chrome):
             if info()['st'] != want or not info()['active']:
                 fails.append(f"the handle's {k}: {info()['st']}, open {info()['active']} (wanted {want})")
                 break
-        # the route's view at full: Edit and More join ⌄'s row at its left (#745, where ⋯ was), after ⌄ (#889), the grip in the middle
+        # the route's view at full: Edit and More in a row of their own under ⌄'s, at its left (#745): beside ⌄ (#889) and
+        # mirrored at the right for the grip in the middle, they'd need 408 px of a 390 px phone's 374
         pg.js("polku.planner.setEditing(false); polku.planner.setSheetState('full'); true")
         fold_settled(pg, fails, 'step 11b')
         s = info()
         row, grip = pg.js("[polku.planner.els.top.getBoundingClientRect().bottom, ((r, p) => Math.abs(r.left + r.width / 2 - (p.left + p.width / 2)))(polku.planner.els.handle.getBoundingClientRect(), polku.planner.panel.getBoundingClientRect())]")
         b = s['toolBtns'] or []
-        if s['toolsIn'] != 'top' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or any((t['t'] + t['b']) / 2 > row for t in b) or b[0]['l'] > s['fold']['r'] + 16 or grip > 1:
-            fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the grip {grip:.0f} px off the middle (Edit and More at the left of ⌄'s row, #745)")
+        if s['toolsIn'] != 'row' or [t['name'].split(':')[0] for t in b] != ['Edit', 'More'] or any(t['t'] < row - 1 for t in b) or b[0]['l'] > s['panel']['l'] + 16 or grip > 1:
+            fails.append(f"the route's view at full: the toolbox {b} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the grip {grip:.0f} px off the middle (Edit and More in a row of their own under ⌄'s, at its left, #745, #889)")
         pg.js("polku.planner.setEditing(true); true")
         # the map's buttons don't chase the sheet (#540): with motion, a fold changes their place once, and they go with the
         # sheet there in one move (#569), so their place in the layout (their bottom, the move left out) changes once
@@ -13720,7 +13721,7 @@ PC_FIT = """((narrow) => {
   if (narrow) {
     const bar = c.querySelector(':scope > .way-bar'), t = r(c.querySelector('.way-hint'));
     // (✕ in the sheet's top row in the peek, #889)
-    if (!vis(document.querySelector('#planner .sheet-x'))) out.push('no ✕ in the sheet\'s top row');
+    if (!vis(document.querySelector('#planner .sheet-x'))) out.push('no ✕ in the sheet’s top row');
     for (const k of ['[data-k=undo]', '[data-k=redo]']) { const b = bar && bar.querySelector(k); if (!vis(b)) out.push(`no ${k} in the top row`); else if (r(b).bottom > t.top + 1) out.push(`${k} beside the title, not above it`); }
     if (vis(c.querySelector(':scope > .way-head > .way-x'))) out.push('a second ✕ beside the title');
     const n = [...c.querySelectorAll('.sum-item')].map(r);

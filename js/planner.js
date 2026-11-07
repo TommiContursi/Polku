@@ -6220,10 +6220,10 @@ export class Planner {
     if (!folded) this.peekDocks = docks(this.peekBare); // (at any size but the line, whose toolbox is smaller: the peek is measured with it there or not, #586)
     // (folded, it floats: the line has no room for it; a card swiped up is as tall as it is, so it floats while there's room)
     const dock = !folded && ((st === 'full' && !carded) || docks(sheetH));
-    // after Done, Edit and More go into ⌄'s row at its left, where ⋯ alone was before #745, where they fit with the grip in
-    // the middle (both sides as wide as them); else a row of their own (200 %)
+    // after Done, Edit and More go into ⌄'s row at its left, after ⌄ (#745, #889), where they fit with the grip in the middle
+    // (both sides as wide as them: a wide phone held sideways); else a row of their own (a phone upright, 200 %)
     const arrows = [this.els.up, this.els.foldBtn].reduce((a, b) => a + b.offsetWidth, 0); // (beside them, at the row's left)
-    this.dockTools(dock, dock && this.inView() && this.els.top.offsetHeight > 18 && 2 * (w + arrows) + 40 <= this.els.top.clientWidth ? w + arrows : 0); // (40: the grip's 32 px bar, and a little room)
+    this.dockTools(dock, dock && this.inView() && this.els.top.offsetHeight > 18 && 2 * (w + arrows) + 48 <= this.els.top.clientWidth ? w + arrows : 0);
     if (dock) {
       // as many as fit without another row (the sheet's size follows once, below)
       setOpts(box, 0);
