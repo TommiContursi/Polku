@@ -12235,9 +12235,10 @@ def weather_menu(chrome):
 
 
 
-# #916, the towns' weather: zoomed out, the sky, °C and wind at the towns the map names, from the grid (WX_FIXED: +4 °C,
-# 4 m/s from 220°); apart from each other; none over the route (a straight line through Tampere); gone when zoomed in,
-# where the legend says to zoom out; the menu's Points item names it, and the pill says "Towns".
+# #916, the towns' weather: the sky, °C and wind at the places the map names, from the grid (WX_FIXED: +4 °C,
+# 4 m/s from 220°); apart from each other; none over the route (a straight line through Tampere); zoomed in too, at the
+# villages and suburbs; the menu's Points item names it, and the pill says "Towns". A press on a town's symbol (a real
+# mouse's, below) pins the reading there and isn't the map's click (a card).
 WX_TOWNS = """(async () => {
   const out = [], w = polku.weather, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const idle = () => new Promise((r) => { map.once('idle', r); map.triggerRepaint(); });
@@ -12246,11 +12247,9 @@ WX_TOWNS = """(async () => {
   const t = towns();
   if (t.length < 4) return [`${t.length} towns' symbols at zoom ${map.getZoom().toFixed(1)}: ${t.map((x) => x.name).join(', ')}`];
   if (!t.some((x) => x.name === 'Tampere')) out.push(`no Tampere among ${t.map((x) => x.name).join(', ')}`);
-  const bad = t.filter((x) => !/^\\S+: [a-z ]+, 4 °C, wind 4 m\\/s from the SW$/.test(x.label) || !/^4°4$/.test(x.text));
+  const bad = t.filter((x) => !/^\\S+: [a-z ]+, 4 °C, wind 4 m\\/s from the SW$/.test(x.label) || !/^4°4 m\\/s$/.test(x.text));
   if (bad.length) out.push(`a town's symbol says “${bad[0].text}” (${bad[0].label})`);
   t.forEach((a, i) => t.slice(i + 1).forEach((b) => { if (a.r.left < b.r.right && b.r.left < a.r.right && a.r.top < b.r.bottom && b.r.top < a.r.bottom) out.push(`${a.name} and ${b.name} over each other`); }));
-  const legend = document.querySelector('.map-hints .wx-legend');
-  if (!/Towns the sky, °C and wind in m\\/s/.test(legend.textContent)) out.push(`the legend: ${legend.textContent}`);
   const pill = document.querySelector('#wx-bar .wl-layer');
   if (pill.textContent.trim() !== 'Towns') out.push(`the pill says “${pill.textContent.trim()}”`);
   pill.click(); await wait(300);
@@ -12264,10 +12263,21 @@ WX_TOWNS = """(async () => {
   p.setActive(false); await wait(400); await idle(); await wait(200);
   if (towns().some((x) => x.name === 'Tampere')) out.push('Tampere’s symbol is over the route');
   p.clear();
-  // zoomed in: none, and the legend says why
-  map.jumpTo({ zoom: 10.5 }); await idle(); await wait(400);
-  if (towns().length) out.push(`zoomed in to 10.5, still ${towns().length} towns' symbols`);
-  if (!/Zoom out to see the towns’ weather/.test(legend.textContent)) out.push(`zoomed in, the legend: ${legend.textContent}`);
+  // zoomed in: still there, at the places named nearer (one of them pressed below, by its centre)
+  map.jumpTo({ zoom: 12 }); await idle(); await wait(400);
+  const near = towns();
+  if (!near.length) out.push('zoomed in to 12, no towns’ symbols');
+  window.__mapClicks = 0; map.on('click', () => window.__mapClicks++);
+  const r = near[0]?.r;
+  return { out, at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2, name: near[0].name } };
+})()"""
+WX_TOWN_PRESSED = """(async () => {
+  const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  await wait(400);
+  const el = [...document.querySelectorAll('.wx-town')].find((e) => e.getAttribute('aria-label').startsWith(__at.name + ':'));
+  if (!w.heldLL) out.push(`pressing ${__at.name}'s symbol didn't pin the reading there`);
+  else if (el && Math.hypot(...[0, 1].map((i) => w.heldLL[i] - el.__ll?.[i] || 0)) > 1e-6 && !/the spot/.test(document.querySelector('.tl-now')?.textContent || '')) out.push(`the reading isn't at ${__at.name}: ${document.querySelector('.tl-now')?.textContent}`);
+  if (window.__mapClicks) out.push(`pressing a town's symbol was the map's click too (${window.__mapClicks})`);
   return out;
 })()"""
 
@@ -12278,11 +12288,72 @@ def towns_weather(chrome):
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
         pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'towns': True}}, {'polku:winter': '"off"'}, '#8.6/61.5/23.8')
         pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
-        fails = pg.js(WX_TOWNS, timeout=90000)
+        res = pg.js(WX_TOWNS, timeout=90000)
+        fails = res if isinstance(res, list) else res['out']
+        at = None if isinstance(res, list) else res['at']
+        if at:
+            for kind in ('mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+            fails += pg.js(WX_TOWN_PRESSED.replace('__at.name', json.dumps(at['name'])), timeout=20000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the towns' weather, zoomed out, apart and off the route (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the towns' weather, at every zoom, apart and off the route, a press pins the reading (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The weather's layers have their switches in Layers too (Clouds, Thunder, Towns' weather, and Weather effects, which
+# Settings › Display has as well), and a quick tile for each in Edit's list; a switch there turns the layer the
+# timeline's menu ticks. The legend folds to "Legend": folded at first on a phone, open on a desktop, remembered.
+WX_LAYERS = """(async (phone) => {
+  const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const legend = () => document.querySelector('.map-hints .wx-legend'), rows = () => legend().querySelectorAll('.lgl').length;
+  for (let k = 0; k < 100 && !(legend() && !legend().hidden); k++) await wait(200);
+  const fold = legend().querySelector('.lg-fold');
+  if (!fold) return ['the legend has no Legend button to fold it'];
+  if (phone) {
+    if (fold.getAttribute('aria-expanded') !== 'false' || rows()) out.push(`on a phone the legend starts open (${rows()} rows)`);
+    fold.click(); await wait(200);
+    if (!rows()) out.push('a tap on Legend doesn’t open it');
+    if (localStorage.getItem('polku:wxLegendOpen') !== 'true') out.push('the legend’s fold isn’t remembered');
+    return out;
+  }
+  if (fold.getAttribute('aria-expanded') !== 'true' || !rows()) out.push('on a desktop the legend starts folded');
+  fold.click(); await wait(200);
+  if (rows()) out.push('a click on Legend doesn’t fold it');
+  document.querySelector('#btn-layers').click(); await wait(200); document.querySelector('#quick-layers .qt-more').click(); await wait(300);
+  const grp = document.querySelector('#layers-body .lg-group[data-group="weather"]');
+  grp.open = true;
+  const sw = (root, l) => [...root.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === l)?.querySelector('input');
+  for (const l of ['Rain', 'Clouds', 'Thunder', 'Wind', 'Temperature', 'Snow depth', 'Towns’ weather', 'Weather effects']) if (!sw(grp, l)) out.push(`Layers’ weather has no ${l} switch`);
+  sw(grp, 'Clouds')?.click(); await wait(300);
+  if (!polku.state.weather.cloud || !w.on.cloud) out.push('Layers’ Clouds switch doesn’t turn the clouds on');
+  const fx = w.effects;
+  sw(document.querySelector('#layers-body .lg-group[data-group="weather"]'), 'Weather effects')?.click(); await wait(300);
+  if (w.effects === fx) out.push('Layers’ Weather effects switch doesn’t turn Effects');
+  if (sw(document.querySelector('#layers-body .lg-group[data-group="weather"]'), 'Weather effects')?.checked !== w.effects) out.push('Layers’ Weather effects switch isn’t drawn as Effects is');
+  const { QUICK_TILE } = await import(location.origin + '/js/config.js');
+  for (const id of ['wx:cloud', 'wx:thunder', 'wx:towns']) if (!QUICK_TILE[id]) out.push(`no quick tile ${id}`);
+  document.querySelector('#btn-settings').click(); await wait(300);
+  const st = sw(document.querySelector('#settings-body'), 'Weather effects');
+  if (!st) out.push('Settings has no Weather effects switch');
+  else if (st.checked !== w.effects) out.push('Settings’ Weather effects isn’t drawn as Effects is');
+  return out;
+})"""
+
+
+def weather_layers(chrome):
+    fails = []
+    for width, height, phone in ((1440, 900, False), (390, 844, True)):
+        pg = chrome.page(width, height, phone)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+            pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'thunder': True}}, {'polku:winter': '"off"'}, '#9/61.5/23.8')
+            fails += [f'{width} px: {f}' for f in pg.js(f'{WX_LAYERS}({str(phone).lower()})', timeout=60000)]
+            fails += [f'{width} px: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the weather's layers in Layers, quick tiles and Settings, and the legend's fold" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -19881,7 +19952,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, clouds, thunder, no_radar, radar_past], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916); the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

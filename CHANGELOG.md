@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### The towns' weather up close, and the weather's switches in Layers
+
+- **Towns' weather** now shows at every zoom: zoomed in, at the villages and suburbs the map names too, where the forecast is finer, so nearby places can differ. Its wind says its unit (4 m/s).
+- Tap a town's weather to read its hours on the timeline, as **Weather here** does for a spot on the map.
+- The legend over the map folds to **Legend**: on a phone it starts folded, so it doesn't cover the map, and a tap opens it. Polku remembers whether you keep it open.
+- **Layers** has switches for **Clouds**, **Thunder**, **Towns' weather** and **Weather effects** in its weather group, and each layer can be one of your sport's tiles. **Settings → Display** has **Weather effects** too.
+
 ### The radar's last 90 minutes ([#182](https://github.com/TommiContursi/Polku/issues/182))
 
 - The timeline now starts with the radar's last 90 minutes, marked **Radar** under the strip: drag back, or press play from there, to see where the rain came from. In Finland it's FMI's scans, every 5 minutes; outside Finland RainViewer's, every 10.
