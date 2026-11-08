@@ -12177,7 +12177,7 @@ WX_MENU = """(async () => {
   pill.click(); await wait(300);
   const item = (k) => document.querySelector(`.menu-pop .wx-${k}`);
   const items = [...document.querySelectorAll('.menu-pop [role=menuitemcheckbox]')].map((b) => `${b.textContent.trim().split(/(?=[A-Z])/)[0]}:${b.getAttribute('aria-checked')}`);
-  if (items.join() !== 'Rain and snowfall:true,Wind:false,Temperature:false,Snow on the ground:false,Effects:true') out.push(`the menu: ${items.join()}`);
+  if (items.join() !== 'Rain and snowfall:true,Wind:false,Temperature:false,Snow on the ground:false,Towns’ weather:false,Effects:true') out.push(`the menu: ${items.join()}`);
   if (!item('rain')?.querySelector('.menu-tick') || item('wind')?.querySelector('.menu-tick')) out.push('a ticked layer has no tick, or one off has');
   item('wind').click(); await wait(300);
   if (!item('wind') || item('wind').getAttribute('aria-checked') !== 'true' || document.activeElement !== item('wind')) out.push('Wind: not ticked, or the menu closed, or the focus left it');
