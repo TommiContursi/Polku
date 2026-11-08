@@ -6058,6 +6058,49 @@ OBJECT_SHADOWS = """(async () => {
 })()"""
 
 
+# The sky in 3D (#644): from the sun's height at the map's hour, and the weather only while a forecast is loaded (WX_FIXED:
+# clear south of 63°, rain north of it). No forecast: the pale sky that claims no weather. The buildings lit by the sun.
+SKY_3D = """(async () => {
+  const m = polku.map, w = polku.weather, out = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const { sunPosition } = await import(location.origin + '/js/sun.js'), { timeAtHour } = await import(location.origin + '/js/wxmap.js');
+  const alt = (k) => sunPosition(Math.round(timeAtHour(k) / 600) * 600, m.getCenter().toArray()).alt, hours = [...Array(40).keys()];
+  const day = hours.find((k) => alt(k) > 8), dusk = hours.find((k) => alt(k) > 0.5 && alt(k) < 4), night = hours.find((k) => alt(k) < -12);
+  const sky = () => m.getStyle().sky['sky-color'];
+  const expect = async (where, hour, want) => {
+    w.setHour(hour);
+    for (let k = 0; k < 40 && sky() !== want; k++) await wait(250);
+    if (sky() !== want) out.push(`${where} (+${hour} h): the sky ${sky()}, not ${want}`);
+  };
+  await expect('day, no forecast', day, '#bcd8f0');
+  const light = m.getStyle().light;
+  if (!light || light.anchor !== 'map' || Math.abs(light.position[1] - sunPosition(Math.round(timeAtHour(day) / 600) * 600, m.getCenter().toArray()).az) > 2) out.push(`the buildings' light by day: ${JSON.stringify(light)}`);
+  await expect('dusk', dusk, '#2c3e66');
+  await expect('night', night, '#0b1426');
+  document.getElementById('btn-time').click();
+  for (let k = 0; k < 80 && !w.sample(m.getCenter().toArray()); k++) await wait(250);
+  await expect('day, a clear forecast', day, '#5f9cdb');
+  const moved = new Promise((r) => m.once('moveend', r)); m.jumpTo({ center: [25.47, 65.01] }); await moved;
+  for (let k = 0; k < 80 && !(w.sample(m.getCenter().toArray()) || {}).rain; k++) await wait(250);
+  await expect('day, rain at the map’s middle', day, '#8d969e');
+  return out;
+})()"""
+
+
+def sky_3d(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + "window.__wx.temp = 5; window.__wx.precip = (lat) => (lat > 63 ? 2 : 0); window.__wx.cloud = (lat) => (lat > 63 ? 100 : 0);"}, pg.s)
+        pg.open_app({'activity': 'hike', 'terrain3d': True}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#11/61.4985/23.7640/0/60')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        fails += pg.js(SKY_3D, timeout=180000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the sky in 3D: day, dusk and night at the map's hour, the forecast's weather only once it's loaded" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def sunlight(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
@@ -12198,7 +12241,7 @@ WX_FIXED = """(() => {
     const q = new URL(url).searchParams, lats = q.get('latitude').split(',').map(Number), lons = q.get('longitude').split(',').map(Number);
     const n = 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
     const hourly = (lat, lon) => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(4), wind_direction_10m: fill(220), wind_gusts_10m: fill(9),
-      temperature_2m: fill(W.temp), precipitation: fill(0.4), cloud_cover: fill(60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: fill(W.code(lat, lon)) });
+      temperature_2m: fill(W.temp), precipitation: fill(W.precip ? W.precip(lat, lon) : 0.4), cloud_cover: fill(W.cloud ? W.cloud(lat, lon) : 60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: fill(W.code(lat, lon)) });
     const answer = () => new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly(lat, lons[i]) }))), { headers: { 'Content-Type': 'application/json' } });
     return W.hold ? new Promise((ok) => W.held.push(() => ok(answer()))) : Promise.resolve(answer());
   };
@@ -20055,7 +20098,7 @@ GROUPS = [
     ('backtostart', [back_to_start], 'Back to start buttons, closing leg and undo (straight legs)'),
     ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun, the routing bar and the folded line while a leg is held (no routing)'),
     ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
-    ('sunlight', [sunlight], 'the hills lit by the sun at the timeline\'s hour and their shadows (#910): the sun\'s place, a wall\'s shadow, the light and the switch over the hours and a reload'),
+    ('sunlight', [sunlight, sky_3d], 'the hills lit by the sun at the timeline\'s hour and their shadows (#910): the sun\'s place, a wall\'s shadow, the light and the switch over the hours and a reload; the sky in 3D by the hour and the forecast (#644)'),
     ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),

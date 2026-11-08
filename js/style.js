@@ -17,6 +17,25 @@ const FONT_I = ['Noto Sans Italic'];
 const zi = (...stops) => ['interpolate', ['linear'], ['zoom'], ...stops];
 const ze = (base, ...stops) => ['interpolate', ['exponential', base], ['zoom'], ...stops];
 
+// The sky in 3D (#644), [top, horizon]: from the sun's height and, only where a forecast is loaded, its weather.
+// With no forecast, day is the pale sky that claims no weather; the night map's sky is dark at any hour.
+const SKIES = {
+  night: ['#0b1426', '#24344c'],
+  dusk: ['#2c3e66', '#f2a35e'], // the sun within 6° of the horizon
+  duskGrey: ['#4b5566', '#b9a698'], // the same under cloud, rain or snow
+  day: ['#bcd8f0', '#eef4f8'],
+  sun: ['#5f9cdb', '#dcebf5'],
+  cloud: ['#a3aeb8', '#dde2e6'],
+  rain: ['#8d969e', '#c4cacf'],
+  snow: ['#c3cad1', '#edf0f3'],
+};
+const skyOf = ({ alt, wx }, nightMap) => {
+  if (nightMap || alt < -6) return 'night';
+  const grey = wx === 'cloud' || wx === 'rain' || wx === 'snow';
+  if (alt < 6) return grey ? 'duskGrey' : 'dusk';
+  return !wx ? 'day' : grey ? wx : 'sun';
+};
+
 // a building's height in metres: one place, for when a better source than OSM's comes (#648)
 const BUILDING_HEIGHT = ['get', 'render_height'];
 
@@ -653,7 +672,11 @@ export function buildStyle(s, ctx) {
   };
   if (s.terrain3d) {
     if (raised) style.terrain = { source: 'terrain', exaggeration: s.exaggeration || 1.5 };
-    style.sky = { 'sky-color': '#bcd8f0', 'horizon-color': '#eef4f8', 'fog-color': '#eef2f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.85 };
+    const sky = ctx.skyAt ? ctx.skyAt() : { alt: 30, az: 180, wx: null }; // (the first style, before the timeline: day)
+    const [top, horizon] = SKIES[skyOf(sky, s.base === 'night')], wet = sky.wx === 'rain' || sky.wx === 'snow';
+    style.sky = { 'sky-color': top, 'horizon-color': horizon, 'fog-color': horizon, 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': wet ? 0.35 : 0.85 };
+    // the buildings lit from where the sun is, while it's up (the hillshade keeps its own light: #642)
+    if (sky.alt > 0) style.light = { anchor: 'map', position: [1.15, sky.az, Math.min(85, 90 - sky.alt)] };
   }
   return style;
 }
