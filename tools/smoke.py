@@ -12548,8 +12548,9 @@ WX_PAST = """(async () => {
   w.setHour(-1.5); const from = scans.length; w.togglePlay();
   await settle(() => w.hour >= 0.2, 400); // (6 s at 60 frames a second; a slow page plays slower)
   w.togglePlay();
+  // (requests are paced, so the press's scans can come in here too; the clock can pass a scan's time)
   const played = [...new Set(scans.slice(from))].map((t) => Date.parse(t) / 1000).sort();
-  if (played.length < 10 || played.length > 18 || played.some((t, i) => i && (t - played[i - 1]) % 300)) out.push(`playing asked for ${played.length} scans: ${scans.slice(from).join(' ')}`);
+  if (played.length < 10 || played[played.length - 1] - played[0] > 100 * 60 || played.some((t, i) => i && (t - played[i - 1]) % 300)) out.push(`playing asked for ${played.length} scans: ${scans.slice(from).join(' ')}`);
   if (!(w.hour >= 0.2)) out.push(`playing stopped at ${w.hour} h`);
   // back to Now: Now's radar and the clouds
   w.setHour(0); await settle(() => map.getSource('wxCloud') && map.getStyle().sources.wxRadarFi?.url === nowUrl, 50); await wait(200); // (the legend: next frame)
