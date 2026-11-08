@@ -645,14 +645,16 @@ function fitColumn() {
   if (!phoneMQ.matches) { document.body.classList.remove('kf-off'); if (off) planner.renderReadRow(); return; }
   if (!off) factsH = planner.els.facts.offsetHeight + (parseFloat(getComputedStyle(planner.els.facts).marginTop) || 0); // (all the room it takes: else, at the edge, it comes and goes every frame)
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0, peek = planner.panel.dataset.state === 'peek';
-  const back = off && peek ? factsH : 0; // (the room the line would take back)
+  // (a peek with the profile is as tall without the line, its profile taller: the line gives the map no room, #889)
+  const fixed = peek && planner.panel.classList.contains('prof-peek');
+  const back = off && peek && !fixed ? factsH : 0; // (the room the line would take back)
   const room = (extra = back) => innerHeight - css('--sheet-h') - extra - css('--wx-h') - css('--col-lift') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
   const facts = (on) => { if (peek && document.body.classList.toggle('kf-off', !on) !== off) planner.renderReadRow(); }; // (what to read: the count where the line isn't)
   if (room()) { facts(true); return; }
   if (Math.abs(map.getBearing()) < 0.5) col.classList.add('no-compass');
   if (room()) { facts(true); return; }
   col.classList.add('no-3d');
-  facts(room());
+  facts(fixed || room());
   for (const c of LETS_GO) { if (room(0)) break; col.classList.add(c); }
 }
 new ResizeObserver(fitColumn).observe($('#map-ctrls'));

@@ -120,7 +120,7 @@ The few words a desktop's pointer shows on the route or a way before a click: wh
 _Avoid_: tooltip (a tooltip names a button), hover card
 
 **Size**:
-How far the planner is raised on a phone: the line, the peek, half or full.
+How far the planner or a card is raised on a phone: the line, the peek, half or full, the same for both.
 _Avoid_: stop (a stop is a wait at a waypoint), fold level
 
 **Weather card**:

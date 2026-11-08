@@ -2,7 +2,7 @@
 // the planner keeps the actions. A card shows only what can be done now, editing or in the route's view alike: Done
 // and Edit decide only whether a tap on the map adds a point (#745).
 import { h, icon, sign, toast, store } from './ui.js';
-import { nums, group, rows, acts, item, pickRow, segIcons, mainButton, actions, actRow, moreFor, peekEnd } from './card.js';
+import { nums, group, rows, acts, item, pickRow, segIcons, mainButton, actions, actRow, moreFor } from './card.js';
 import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unmapped, areaFacts } from './facts.js';
 import { newPick, resolvePick, modesOf, modeOf, setMode, loadWeather } from './pick.js';
 import { breakdownRows, colorAt, PICK_MODES, COLOR_MODES, NO_TERRAIN, ProfileChart } from './chart.js';
@@ -98,7 +98,7 @@ function pointBody(pl, card, body) {
   body.append(...actions(null,
     { icon: 'move', label: 'Move', line: `${pl.coarse() ? 'Tap' : 'Click'} where it goes`, k: 'move', onclick: () => pl.moveOnCard(card) },
     { icon: 'pencil', label: 'Rename', line: 'Give it a name of your own', k: 'rename', onclick: () => { card.renaming = true; pl.cards.refresh(); card.input?.focus(); card.input?.select(); } },
-    { icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, k: 'remove', onclick: () => pl.removeWithUndo(card.i) }), peekEnd());
+    { icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, k: 'remove', onclick: () => pl.removeWithUndo(card.i) }));
   // At this point: Pass by · Stop · Night, and the stop's minutes or the night's morning hour under it
   if (via) {
     const stop = pl.stopAt(i), night = isNight(stop);
@@ -312,7 +312,7 @@ function routeBody(pl, card, body) {
   const leg = pl.legs[card.li], other = leg && leg.mode === 'auto' && leg.status === 'ok' && leg.result && leg.result.provider !== 'valhalla';
   body.append(...actions(pl.cards.where() === 'peek' ? { icon: 'plus', label: 'Add a waypoint here', k: 'add', onclick: () => pl.addOnCard(card) } : null,
     { icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); pl.addNogo(card.key, 40, 'Avoided place'); } },
-    other ? { icon: 'route', label: 'Other ways', line: 'Up to two, on the map', k: 'other', onclick: () => { pl.cards.close(); pl.offerAlts(card.li, true); } } : null), peekEnd());
+    other ? { icon: 'route', label: 'Other ways', line: 'Up to two, on the map', k: 'other', onclick: () => { pl.cards.close(); pl.offerAlts(card.li, true); } } : null));
   // the most serious warning on its stretch
   const warn = pl.itemsOn(s)[0];
   if (warn) body.append(warnBox(pl, warn, card));
@@ -540,7 +540,6 @@ function itemBody(pl, card, body) {
   // Got it: marked read, and on a phone the next unread along the route; once read, it says so and can be undone
   const read = pl.isRead(it);
   body.append(h('button', { type: 'button', class: `btn heads-got${read ? ' on' : ''}`, 'aria-pressed': String(read), onclick: () => pl.gotIt(card), html: icon('check', 20) }, h('span', {}, read ? 'Read · Mark unread' : 'Got it')));
-  body.append(peekEnd());
   // where it comes from (Not checked says it in its group's name)
   if (g !== 'not' && w.src) {
     const [say, ic] = SRC[w.src.kind] || SRC.map, by = `${w.src.by}${w.src.kind === 'live' && w.src.at ? `, ${new Date(w.src.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`;
@@ -849,7 +848,7 @@ function spotActs(pl, card, spot, what) {
   return [[actRow({ main: true, icon: 'plus', label: main.label, line: n ? 'In your route, where it fits' : 'A new route, from here', k: 'add', onclick: main.fn },
     n ? { icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); if (!pl.active) pl.setActive(true); pl.addNogo(spot.ll, 40, spot.place ? spot.title : 'Avoided place'); } } : null,
     { icon: 'share', label: 'Share', line: 'A link to this spot', k: 'share', onclick: () => pl.shareSpot(spot) },
-    { icon: 'cloudSun', label: 'Weather here', line: 'The timeline, held at the spot', k: 'weather', onclick: () => pl.weatherHere(spot.ll) }), peekEnd()],
+    { icon: 'cloudSun', label: 'Weather here', line: 'The timeline, held at the spot', k: 'weather', onclick: () => pl.weatherHere(spot.ll) })],
   moreFor(what,
     n ? item({ icon: 'flag', label: 'Start here', line: 'Adds a new start', k: 'start', onclick: () => pl.startFrom(spot.ll, name) }) : null,
     n ? item({ icon: 'flagend', label: 'End here', line: 'Adds a new end', k: 'end', onclick: () => { pl.cards.close(); pl.endAt(spot.ll, name); toast('A new end is added', { ms: 7000, action: undo }); } }) : null,
