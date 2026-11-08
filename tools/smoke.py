@@ -6011,17 +6011,20 @@ SUNLIGHT_APP = """(async (step) => {
   const at = (k) => sunPosition(Math.round(timeAtHour(k) / 600) * 600, m.getCenter().toArray());
   const hours = [...Array(48).keys()], up = hours.find((k) => at(k).alt > 5), down = hours.find((k) => at(k).alt < -1);
   const read = () => ({ method: m.getPaintProperty('hillshade', 'hillshade-method'), dir: m.getPaintProperty('hillshade', 'hillshade-illumination-direction'),
-    shadows: !!m.getLayer('sun-shadow'), light: polku.state.hillLight });
+    shadows: !!m.getLayer('sun-shadow'), objects: !!m.getLayer('obj-shadow'), light: polku.state.hillLight });
   const out = [], expect = (where, want) => { const got = read(); if (Object.keys(want).some((k) => JSON.stringify(got[k]) !== JSON.stringify(want[k]))) out.push(`${where}: ${JSON.stringify(got)}, not ${JSON.stringify(want)}`); };
   if (step === 'before') {
     expect('the fixed light at first', { method: 'multidirectional', shadows: false, light: 'fixed' });
     polku.set({ hillLight: 'sun' }); w.setHour(up); await wait(1500);
-    expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true });
+    expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true, objects: true });
     const tiles = m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0];
     if (!tiles || !tiles.endsWith(`t=${Math.round(timeAtHour(up) / 600) * 600}`)) out.push(`the shadows' tiles: ${tiles}`);
+    // each its own switch: the hills' off keeps the trees' and buildings', and the other way round
     polku.set({ hillShadows: false }); await wait(800);
-    expect('Shadows off', { method: 'combined', shadows: false });
-    polku.set({ hillShadows: true }); w.setHour(down); await wait(1500);
+    expect('Hills’ shadows off', { method: 'combined', shadows: false, objects: true });
+    polku.set({ hillShadows: true, objectShadows: false }); await wait(800);
+    expect('Trees’ and buildings’ shadows off', { method: 'combined', shadows: true, objects: false });
+    polku.set({ objectShadows: true }); w.setHour(down); await wait(1500);
     expect(`the sun down, +${down} h`, { method: 'multidirectional', shadows: false, light: 'sun' });
     w.setHour(up); await wait(1500);
   } else {
@@ -10289,7 +10292,7 @@ def pad3d(chrome):
             pg.js("[...document.querySelectorAll('.menu-pop .seg button')].find((b) => b.textContent === 'The sun').click(), true")
             time.sleep(0.6)
             got = pg.js(PAD3D)
-            if not got['open'] or 'Shadows' not in got['text'] or pg.js("polku.state.hillLight") != 'sun':
+            if not got['open'] or 'Hills’ shadows' not in got['text'] or 'buildings’ shadows' not in got['text'] or pg.js("polku.state.hillLight") != 'sun':
                 fails.append(f"The sun in the menu: {got['text'] or 'the menu closed'}")
             key('Escape', 'Escape', 27)
             got = pg.js(PAD3D)
@@ -10393,6 +10396,17 @@ def hills_3d(chrome):
             expect(f"3D {'on' if on else 'off'}", on)
             pg.reload()
             expect(f"3D {'on' if on else 'off'}, after a reload", on)
+        # Raised hills off: the 3D button only tilts the map, flat, with the flat map's light, kept after a reload
+        pg.js("polku.set({ raiseHills: false }); document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
+        for where in ('3D without raised hills', 'after a reload'):
+            if where != '3D without raised hills':
+                pg.reload()
+            got = pg.js(f"({{ ...{HILLS_3D}, pitch: polku.map.getPitch() }})")
+            if not got['on'] or got['ex'] is not None or got['method'] != 'multidirectional' or got['pitch'] < 55:
+                fails.append(f'{where}: {got}')
+        pg.js("polku.set({ raiseHills: true }); true")
+        if pg.js(HILLS_3D)['ex'] != 1.5:
+            fails.append('Raised hills on again: the terrain did not come back')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
