@@ -8447,6 +8447,34 @@ def fewer_effects(chrome):
     return not fails
 
 
+def flat_offer(chrome):
+    """Frames slower than 30 a second in 3D with the hills raised (#936): Polku offers flat hills, once, before Fewer
+    effects; its action lays the hills flat and keeps 3D on. The terrain is taken off the map behind the app's back while
+    the frames are slowed: SwiftShader draws raised hills at a frame in several seconds, and gaps over 1 s don't count."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb', 'terrain3d': True, 'flatOffered': False, 'fewerOffered': False}, {'polku:seen3dHint2': 'true'})
+        pg.js('polku.map.setTerrain(null); true')
+        pg.js(SLOW_FRAMES)
+        offered = pg.js("new Promise((ok) => { const t0 = performance.now(), f = () => { const t = document.querySelector('#toast:not([hidden])'); if (t && /slowly/.test(t.textContent)) ok(t.textContent); else if (performance.now() - t0 > 20000) ok(null); else setTimeout(f, 100); }; f(); })", timeout=25000)
+        pg.js('window.__slow = false; true')
+        if not offered or 'Use flat hills' not in offered:
+            fails.append(f'frames at about 20 a second for 20 s in 3D: the offer was {offered!r}, not flat hills')
+        else:
+            at = pg.js("(() => { const r = document.querySelector('#toast .toast-act').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
+            pg.tap(*at)
+            time.sleep(1.5)
+            r = pg.js("({ saved: JSON.parse(localStorage.getItem('polku:settings')), terrain: !!polku.map.getTerrain() })")
+            if r['terrain'] or (r['saved'].get('raiseHills'), r['saved'].get('flatOffered'), r['saved'].get('terrain3d'), r['saved'].get('fewerOffered')) != (False, True, True, False):
+                fails.append(f"Use flat hills: terrain {r['terrain']}, saved {r['saved']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Flat hills: offered once when frames are slow in 3D, before Fewer effects, and its action by touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Idea D: every text in these scenes of tools/shoot.py, against the solid colour behind it, at 4.5:1 (3:1 for large text),
 # in light and then in dark, measured by tools/census.py. Text over the map itself isn't measured (census.py says why).
 CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-point-card', 'desk-acts', 'desk-settings', 'desk-quick',
@@ -20009,7 +20037,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239); the search field\'s hint in the glass\'s grey (#551)'),
     ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
-    ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
+    ('effects', [fewer_effects, flat_offer], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),

@@ -55,6 +55,7 @@ const DEFAULTS = {
   highContrast: false,
   fewerEffects: false, // Settings → Fewer effects: solid panels instead of the glass over the map (#330, #632)
   fewerOffered: false, // Polku has offered Fewer effects on this device, once, as frames were slow
+  flatOffered: false, // Polku has offered flat hills on this device, once, as frames were slow in 3D
   hillshade: true,
   hillLight: 'fixed', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910)
   hillShadows: true, // with the sun's light, the shadows the hills cast
@@ -273,7 +274,8 @@ function applyTheme() {
 deviceDark.addEventListener('change', applyTheme);
 deviceMore.addEventListener('change', applyTheme);
 
-// Polku offers Fewer effects once on this device when it draws slowly here (#632): over 3 s of frames timed while the
+// Polku offers Fewer effects once on this device when it draws slowly here (#632), and before that, in 3D with the
+// hills raised, flat hills (#936): over 3 s of frames timed while the
 // map moves or something scrolls, more than half of it in frames slower than 30 a second. A gap over 1 s (a hidden
 // tab, a style loading) doesn't count, and a shorter long task alone can't fill half of it. Rows a browser draws late as they scroll in don't slow the frames: this can't see those.
 {
@@ -283,7 +285,11 @@ deviceMore.addEventListener('change', applyTheme);
     if (last && d < 1000) { moved += d; if (d > 34) slow += d; }
     last = t;
     if (moved >= 3000) {
-      if (slow > moved / 2 && !state.fewerEffects && !state.fewerOffered) {
+      if (slow > moved / 2 && offerFlat()) {
+        state.flatOffered = true;
+        saveSettings();
+        toast('3D is drawing slowly on this device.', { ms: 12000, action: { label: 'Use flat hills', fn: () => setRaiseHills(false) } });
+      } else if (slow > moved / 2 && !state.fewerEffects && !state.fewerOffered) {
         state.fewerOffered = true;
         saveSettings();
         toast('Polku is drawing slowly in this browser.', { ms: 12000, action: { label: 'Use fewer effects', fn: () => setFewerEffects(true) } });
@@ -293,8 +299,9 @@ deviceMore.addEventListener('change', applyTheme);
     if (performance.now() < until) raf = requestAnimationFrame(frame);
     else raf = last = 0;
   };
+  const offerFlat = () => state.terrain3d && state.raiseHills && !state.flatOffered;
   const moving = () => {
-    if (state.fewerEffects || state.fewerOffered) return;
+    if ((state.fewerEffects || state.fewerOffered) && !offerFlat()) return;
     until = performance.now() + 300;
     if (!raf) raf = requestAnimationFrame(frame);
   };
@@ -917,6 +924,12 @@ function set3d(on) {
   map.easeTo({ pitch: on ? Math.max(60, map.getPitch()) : 0, duration: 800 });
   renderLayersPanel();
 }
+// the hills raised in 3D, or 3D only tilting the map, flat (#936)
+function setRaiseHills(on) {
+  state.raiseHills = on;
+  applyStyle();
+  renderLayersPanel();
+}
 
 // ------------------------------------------------------------------ layers panel
 function setTrail(key, value) {
@@ -1118,12 +1131,12 @@ const heightRange = () => {
 const arrowsToggle = () => toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery');
 // the hills raised in 3D, and how tall, or 3D only tilting the map, flat
 const hillsControls = () => [
-  toggle('Raised hills', state.raiseHills, rerender((v) => { state.raiseHills = v; applyStyle(); })),
+  toggle('Raised hills', state.raiseHills, setRaiseHills),
   state.raiseHills ? heightRange() : null,
 ];
 const terrain3dControls = () => [
   toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
-  ...(state.terrain3d ? hillsControls() : []),
+  ...hillsControls(), // (found before 3D is on, too)
 ];
 function trailControls() {
   const act = ACTIVITIES[state.activity];
