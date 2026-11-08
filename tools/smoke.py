@@ -720,7 +720,7 @@ CARD_FIT = """(async (sel, acts) => {
   if (acts && !c.querySelector('.card-acts button')) errs.push('no action row on the card'); // (#690)
   c.scrollTop = 0; // (a card's ✕ scrolls with it)
   await frames();
-  const x = [...pop.querySelectorAll('.maplibregl-popup-close-button, .way-x')].find((e) => e.getClientRects().length).getBoundingClientRect();
+  const x = [...pop.querySelectorAll('.maplibregl-popup-close-button, .way-x, .sheet-x')].find((e) => e.getClientRects().length).getBoundingClientRect(); // (in the peek the sheet's top row has the card's ✕, #889)
   return { errs, shown, close: [(x.left + x.right) / 2, (x.top + x.bottom) / 2] };
 })"""
 
