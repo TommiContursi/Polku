@@ -42,6 +42,7 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 // the weather menu's layers, in its order: [key, its name, its line, the pill's word, icon]
 const LAYERS = [
   ['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'],
+  ['cloud', 'Clouds', 'A white veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
   ['wind', 'Wind', 'Moving lines, coloured by its speed', 'Wind', 'wind'],
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
@@ -84,7 +85,7 @@ export class WeatherOverlay {
   constructor(map, app) {
     this.map = map;
     this.app = app; // { setImage(id, img|null), setRadar(r|null), setData(id, fc), dark() }
-    this.on = { wind: false, temp: false, rain: false, snow: false, towns: false };
+    this.on = { wind: false, temp: false, rain: false, snow: false, cloud: false, towns: false };
     this.townMarks = new Map();
     this.effects = store.get('wxEffects', true); // softer edges and falling rain, over the steps (#182)
     this.open = false; // timeline bar visible
@@ -113,11 +114,12 @@ export class WeatherOverlay {
     onStatus((src, s) => { if (src === 'openmeteo' && (!s || s.retry) && this.active) this.maybeFetch(); });
   }
 
-  get layersOn() { return this.on.wind || this.on.temp || this.on.rain || this.on.snow || this.on.towns; }
+  get layersOn() { return Object.values(this.on).some(Boolean); }
   // forecast data is needed for the weather layers and for the timeline strip
   get active() { return this.open || !!this.docked || this.layersOn; }
-  get animated() { return this.on.wind || this.falling; }
+  get animated() { return this.on.wind || this.falling || this.drifting; }
   get falling() { return this.on.rain && this.effects; } // Effects' thin rain and snow
+  get drifting() { return this.on.cloud && this.effects && !REDUCED.matches; } // Effects' clouds, sliding with the wind
 
   // Effects on or off: the steps' edges soft or crisp, rain falling or not; remembered
   setEffects(on) {
@@ -256,6 +258,7 @@ export class WeatherOverlay {
 
   onMoveStart() {
     clearTimeout(this.fetchTimer);
+    this.cloudWoke = Date.now();
     if (!this.animated) return;
     this.moving = true;
     this.windCv.classList.add('wx-hide');
@@ -275,6 +278,8 @@ export class WeatherOverlay {
     this.fetchTimer = setTimeout(() => { this.maybeFetch(); this.loadFiRadar(); }, out ? 1200 : 600);
     this.renderStrip();
     this.readout();
+    clearTimeout(this.townTimer);
+    this.townTimer = setTimeout(() => this.renderTowns(true), 700); // (the map's own idle waits while the clouds drift)
     if (!this.animated) return;
     this.buildCam();
     this.buildField();
@@ -490,6 +495,12 @@ export class WeatherOverlay {
     this.app.setImage('wxField', fieldOn ? draw((at) => [...(this.on.temp ? ramp(TEMP_RAMP, at(c.temp)) : ramp(WIND_RAMP, Math.hypot(at(c.u), at(c.v)))), 255]) : null);
     // snow on the ground: its steps where there's 1 cm or more (bare ground stays clear; cells from before snow was asked for aren't known)
     this.app.setImage('wxSnow', this.on.snow ? draw((at) => stepRgba(SNOW_STEPS, at(c.snow)), STEP_IMG, this.effects ? 1 : 0) : null);
+    // clouds: a white veil (a pale grey one on dark maps), thicker where the cover is; a copy of it to slide with Effects
+    const dark = this.app.dark(), veil = this.on.cloud ? draw((at) => { const v = at(c.cloud) / 100; return v > 0 ? (dark ? [148, 163, 184, 77 * v ** 1.3] : [241, 245, 249, 128 * v ** 1.3]) : null; }) : null;
+    this.app.setImage('wxCloud', veil);
+    this.app.setImage('wxCloud2', this.drifting ? veil : null);
+    this.cloudBase = veil && veil.coordinates;
+    this.cloudWoke = Date.now();
     const forecastRain = this.on.rain && this.hour >= 0.5;
     this.app.setImage('wxRain', forecastRain ? draw((at) => fallRgba(at(c.rain), at(c.temp) < 0.5), STEP_IMG, this.effects ? 1 : 0) : null);
     this.syncRadar();
@@ -785,6 +796,7 @@ export class WeatherOverlay {
       }
 
       if (this.falling) this.drawPrecip(k, f, cellAt);
+      if (this.on.cloud) this.driftClouds(now);
     };
     this.anim = requestAnimationFrame(tick);
   }
@@ -853,12 +865,36 @@ export class WeatherOverlay {
     if (!dark) { ctx.lineWidth = 0.7; ctx.strokeStyle = 'rgba(71,85,105,0.4)'; ctx.stroke(flakes); }
   }
 
+  // Effects' clouds (#182): the veil drawn once, as two copies sliding with the wind at the map's middle, each fading
+  // in and out in turn (16 s), so it flows on without ever being more than 3 % of the view from where the forecast
+  // puts it. Ten moves a second: the map draws again for each.
+  driftClouds(now) {
+    const a = this.map.getSource('wxCloud'), b = this.map.getSource('wxCloud2'), base = this.cloudBase;
+    if (!a || !b || !base || now - (this.cloudMoved || 0) < 100) return;
+    // it rests 30 s after the map, the hour or the layers last changed (as the route's chevrons do): one veil, where it
+    // belongs, and the map can settle
+    const rest = !this.drifting || Date.now() - this.cloudWoke > 30e3; // (and when reduced motion comes on)
+    if (rest && this.cloudRests) return;
+    this.cloudRests = rest;
+    this.cloudMoved = now;
+    if (rest) { a.setCoordinates(base); this.map.setPaintProperty('wx-cloud', 'raster-opacity', 1); this.map.setPaintProperty('wx-cloud-2', 'raster-opacity', 0); return; }
+    const s = this.sample(this.map.getCenter().toArray());
+    const len = s && Math.hypot(s.u, s.v), w = base[1][0] - base[0][0], lat = (base[0][1] + base[2][1]) / 2;
+    const dx = len ? (s.u / len) * w * 0.03 : 0, dy = len ? (s.v / len) * w * 0.03 * Math.cos((lat * Math.PI) / 180) : 0;
+    [a, b].forEach((src, i) => {
+      const ph = (now / 16000 + i / 2) % 1;
+      src.setCoordinates(base.map(([lon, la]) => [lon + dx * ph, la + dy * ph]));
+      this.map.setPaintProperty(i ? 'wx-cloud-2' : 'wx-cloud', 'raster-opacity', 1 - Math.abs(2 * ph - 1));
+    });
+  }
+
   // Remove what the switched-off layers drew (images, labels, particles).
   clearLayers() {
     if (!this.on.wind) { this.clearCanvas(this.windCtx, this.windCv); this.windCv.hidden = true; }
     if (!this.falling) { this.clearCanvas(this.rainCtx, this.rainCv); this.rainCv.hidden = true; }
     if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
     if (!this.on.snow) this.app.setImage('wxSnow', null);
+    if (!this.on.cloud) { this.app.setImage('wxCloud', null); this.app.setImage('wxCloud2', null); }
     if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; }
     if (!this.on.towns) this.renderTowns();
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
@@ -872,7 +908,7 @@ export class WeatherOverlay {
     this.anim = 0;
   }
 
-  stop() { this.on = { wind: false, temp: false, rain: false, snow: false, towns: false }; this.clearLayers(); this.renderLegend(); this.stopClock(); }
+  stop() { this.on = { wind: false, temp: false, rain: false, snow: false, cloud: false, towns: false }; this.clearLayers(); this.renderLegend(); this.stopClock(); }
 
   // ------------------------------------------------------------------ time bar
   buildBar() {
@@ -919,7 +955,7 @@ export class WeatherOverlay {
       'hr',
       { group: 'Points', items: [layer(TOWNS)] },
       'hr',
-      { icon: 'sparkle', label: 'Effects', desc: 'Softer edges and falling rain', checked: this.effects, keep: true, cls: 'wx-fx', fn: () => tick('fx', () => this.setEffects(!this.effects)) },
+      { icon: 'sparkle', label: 'Effects', desc: 'Softer edges, falling rain and drifting clouds', checked: this.effects, keep: true, cls: 'wx-fx', fn: () => tick('fx', () => this.setEffects(!this.effects)) },
       { note: 'Forecast by Open-Meteo. Radar and measured snow by FMI, and by RainViewer outside Finland.' },
     ];
     const layer = ([k, label, desc, , ic]) => ({ icon: ic, label, desc, checked: this.on[k], keep: true, cls: `wx-${k}`, fn: () => tick(k, () => this.app.onToggle({ [k]: !this.on[k] })) });
@@ -1159,6 +1195,7 @@ export class WeatherOverlay {
       // snowfall where it's cold enough somewhere on the map at this hour
       if (c && c.temp.some((t) => t < 0.5)) rows.push(scale(stepsCss(SNOWFALL_STEPS), `<b>Snowfall</b> ${SNOWFALL_STEPS.map(([v]) => v).join(' · ')} mm/h`));
     }
+    if (this.on.cloud) rows.push(scale('linear-gradient(90deg, #7d8a84, #f1f5f9)', '<b>Clouds</b> the whiter, the cloudier'));
     if (this.on.snow) {
       rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`));
       rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>');

@@ -655,6 +655,15 @@ function addWeather(s, ctx, sources, layers) {
     sources.wxSnow = { type: 'image', url: d.wxSnow.url, coordinates: d.wxSnow.coordinates };
     layers.push({ id: 'wx-snow', type: 'raster', source: 'wxSnow', paint: { 'raster-opacity': op('wx:snow', 0.5), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
+  // clouds under the rain; with Effects a second copy that wxmap.js slides and fades in turn with the first
+  if (wx.cloud && d.wxCloud) {
+    sources.wxCloud = { type: 'image', url: d.wxCloud.url, coordinates: d.wxCloud.coordinates };
+    layers.push({ id: 'wx-cloud', type: 'raster', source: 'wxCloud', paint: { 'raster-opacity': 1, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    if (d.wxCloud2) {
+      sources.wxCloud2 = { type: 'image', url: d.wxCloud2.url, coordinates: d.wxCloud2.coordinates };
+      layers.push({ id: 'wx-cloud-2', type: 'raster', source: 'wxCloud2', paint: { 'raster-opacity': 0, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    }
+  }
   if (wx.rain && d.wxRain) {
     sources.wxRain = { type: 'image', url: d.wxRain.url, coordinates: d.wxRain.coordinates };
     layers.push({ id: 'wx-rain', type: 'raster', source: 'wxRain', paint: { 'raster-opacity': op('wx:rain', 0.55), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });

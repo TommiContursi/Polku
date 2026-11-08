@@ -1225,7 +1225,7 @@ function renderLayersPanel() {
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
-  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['snow', 'Snow depth'], ['towns', 'Towns’ weather']].filter(([k]) => state.weather[k]);
+  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['snow', 'Snow depth'], ['towns', 'Towns’ weather']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
   // On now and Base map fold away like the other groups (open unless you close them)
