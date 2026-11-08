@@ -208,7 +208,7 @@ Two PRs, each tried on a phone before the next; both in [Calmer planner](https:/
 - **Docs:** CHANGELOG (Go's tab gone, the weather card), USING (the box and the card), README (Go's mentions), DEVELOPING (Weather: the card; the shared controls' new rows).
 
 **6b. The weather line; the map's hour apart from the departure.**
-- `js/wxmap.js`: the window becomes the card's folded line (▷, the reading, the hour, the layer's pill opening its menu, ⌃, ✕, the strip); the four chips go into the pill's menu (Wind, Temperature, Rain, Snow); `onHour` no longer calls `planner.setLeave`, nor `setLeave` the map's hour; the "Also the departure" flag goes; road works and road conditions still follow the map's hour.
+- `js/wxmap.js`: the window becomes the card's folded line (▷, the reading, the hour, the layer's pill opening its menu, ⌃, ✕, the strip); the four chips go into the pill's menu (Wind, Temperature, Rain, Snow), the menu as #182's mock-up draws it ([17-weather.md](17-weather.md#weather-service-with-effects-2026-11-08-chosen)): items that tick, more than one layer at a time (the pill says "Rain +1"), Points (the towns' weather), and Effects at its end, on by default. Clouds and Thunder join the menu with #182's build; `onHour` no longer calls `planner.setLeave`, nor `setLeave` the map's hour; the "Also the departure" flag goes; road works and road conditions still follow the map's hour.
 - `js/main.js`: `syncWxH()`, `body.wx-over` and `columnFits()` for the line in the sheet's place on a phone; on a desktop the short piece at the toolbar's right end (`placeTools()`, which gives nothing up for it), its strip opening above it; Weather and T open the line.
 - **Removed:** the floating window's placement and resize grip; the chips' row; the departure's link both ways (and with it the water legs routing again when the hour moves).
 - **Checks:** `weather` (the line's reading whole at 390 px and 200 %), `fold` (the card folds to the line, ⌃ opens it, ✕ turns the weather off), `leave` (the map's hour leaves the departure alone, and the other way), `quick` (the pill's menu), `controls`.
@@ -220,7 +220,7 @@ Two PRs, each tried on a phone before the next; both in [Calmer planner](https:/
 
 - **Best time to leave and Arrive by** (step 9): the room under When in the card (the mock-up's dashed box) and the When menu's two items; the strip of departures is Best time to leave's, the map's hours stay the line's.
 - **The chance of rain** (one more variable), **MET Norway's ranges and the chance of thunder** (a second source): issues only if the user wants them.
-- **Water temperature** (#862), **observations, cameras, warnings, the next 90 minutes, the map's legend** (#903), **clouds and thunder on the map** (#182).
+- **Water temperature** (#862), **observations, cameras, warnings, the next 90 minutes** (#903), **clouds, thunder, the legend over the map and Effects** (#182): in [Richer weather](https://github.com/TommiContursi/Polku/milestone/21), whose look was chosen on 2026-11-08 (Weather service, with Effects on top). Its order is in [17-weather.md](17-weather.md#the-order-2026-11-08); the legend over the map and the rain's look may come before 6b, the user's choice.
 
 ## Not drawn, or not known
 
