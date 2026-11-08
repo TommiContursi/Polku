@@ -1161,7 +1161,10 @@ const HILL_LIGHTS = [['fixed', 'Fixed light'], ['sun', 'The sun']];
 const SIDES = { N: 'north', NE: 'north-east', E: 'east', SE: 'south-east', S: 'south', SW: 'south-west', W: 'west', NW: 'north-west' };
 const sunNote = () => {
   const t = sunHour(), p = sunPosition(t, map.getCenter().toArray()), at = clock(t * 1000);
-  return p.alt > 0.5 ? `At ${at} the sun is ${Math.round(p.alt)}° up, in the ${SIDES[side(p.az)]}.` : `At ${at} the sun is down, so the hills have the fixed light.`;
+  if (p.alt <= 0.5) return `At ${at} the sun is down, so the hills have the fixed light.`;
+  // a shadow is drawn only as far as one tile beyond its own, which a sun this low outreaches
+  const low = state.hillShadows && p.alt < 3 ? ' It’s so low that the shadows reach farther than the map shows.' : '';
+  return `At ${at} the sun is ${Math.round(p.alt)}° up, in the ${SIDES[side(p.az)]}.${low}`;
 };
 const hillshadeControls = () => {
   const sun = state.hillLight === 'sun';
@@ -1169,7 +1172,7 @@ const hillshadeControls = () => {
   if (!state.hillshade) return tg;
   return h('div', { class: 'tg-group' }, tg,
     seg(HILL_LIGHTS, state.hillLight, (v) => { state.hillLight = v; applyStyle(); renderLayersPanel(); }),
-    sun ? toggle('Shadows', state.hillShadows, (v) => { state.hillShadows = v; applyStyle(); }, 'Cast by the hills, from zoom 10') : null,
+    sun ? toggle('Shadows', state.hillShadows, (v) => { state.hillShadows = v; applyStyle(); renderLayersPanel(); }, 'Cast by the hills, from zoom 10') : null,
     sun && ctx.sunAt ? h('p', { class: 'note' }, sunNote()) : null);
 };
 // weather on the map: the same switches as on the Weather button's timeline
