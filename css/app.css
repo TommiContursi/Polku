@@ -1441,6 +1441,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 @media (prefers-reduced-motion: reduce) { .wpl-all .ic { transition: none; } }
 .sec2-set { flex: none; align-self: center; display: inline-flex; margin-right: 8px; color: var(--muted); } /* (a part's ⚙ at its heading's end, where a waypoint's › is) */
 .wpl-shows { padding: 0 8px; } /* (the list's settings' switches, in the app's menu) */
+.menu-3d { width: 300px; max-width: 100%; } /* (the 3D pad's settings: as narrow as the list's, whatever the sun's line says) */
 .menu-pop > .way-bar { margin: 0; padding-left: 10px; } /* (its name and ✕, on a row of their own) */
 .wpl .rows { margin: 0; } /* (inside the list: no room for a hover past its edge, as a card has) */
 .wpl-point > span:first-child { position: relative; width: 22px; align-self: stretch; place-items: center; }

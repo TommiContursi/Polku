@@ -4,7 +4,7 @@
 
 import { h, icon, toast, store } from './ui.js';
 
-export function initView3d(map, root) {
+export function initView3d(map, root, settings) {
   const pad = h('div', { class: 'orbit', role: 'slider', tabindex: '0', 'aria-label': 'Tilt and rotate: drag, or use the arrow keys', title: 'Drag to tilt and rotate' },
     h('span', { class: 'orbit-dot' }), h('span', { class: 'orbit-label' }, 'Drag'));
   const btn = (name, label, fn) => h('button', { type: 'button', class: 'tool', title: label, 'aria-label': label, onclick: fn, html: icon(name, 18) });
@@ -16,7 +16,9 @@ export function initView3d(map, root) {
       btn('tiltUp', 'Tilt more', () => ease({ pitch: Math.min(map.getMaxPitch(), map.getPitch() + 15) })),
       btn('tiltDown', 'Tilt less', () => ease({ pitch: Math.max(0, map.getPitch() - 15) })),
       btn('rotR', 'Rotate right', () => ease({ bearing: map.getBearing() + 30 }))),
-    btn('compass', 'Reset to north, flat', () => ease({ bearing: 0, pitch: 0, duration: 600 })),
+    h('div', { class: 'v3-row' },
+      btn('compass', 'Reset to north, flat', () => ease({ bearing: 0, pitch: 0, duration: 600 })),
+      h('button', { type: 'button', class: 'tool', title: '3D settings', 'aria-label': '3D settings', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: (e) => settings(e.currentTarget), html: icon('more', 18) })),
   );
 
   const dot = pad.firstChild;
