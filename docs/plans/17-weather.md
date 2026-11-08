@@ -51,7 +51,7 @@ An idea from 2026-11-07: make the weather on the map look much better, with clou
 
 ### Beside other services (2026-11-08)
 
-The mock-up's A and B, each weather on a phone, beside screenshots of Windy (radar, rain, thunder, clouds), RainViewer, yr.no's map and Blitzortung taken the same day, and a design critique (the design-critique skill):
+The mock-up's A and B, each weather on a phone, beside screenshots of Windy (radar, rain, thunder, clouds), RainViewer, yr.no's map, Blitzortung, FMI and Foreca taken the same day, and a design critique (the design-critique skill):
 
 - **Rain:** every one of them says the strength by colour, in a ramp or in steps, and animates time, not drops; Windy's particles show the wind. B is that convention, so it reads at once, and it holds in a still picture and in reduced motion. A's streaks say it only while they move, and its light colour leaves drizzle and rain hard to tell apart in a still picture.
 - **Lightning:** Blitzortung and Windy draw strikes as dots or flashes by age, white or yellow to red: B's dots. A's bolts read as lightning without the legend, but crowd where strikes are dense.
@@ -60,6 +60,8 @@ The mock-up's A and B, each weather on a phone, beside screenshots of Windy (rad
 - **The legend and the time:** yr's legend sits top left, as here; Windy's radar strip runs from an hour ago to the next hour, as the line's radar part and #915 would.
 - **Colour vision:** B's two top steps (dark blue, magenta) are close in lightness, so they part by hue only; their edges help, a lighter last step would help more.
 - **Snow on the ground:** faint in both near the route; the measured labels carry it there.
+- **FMI and Foreca (looked at 2026-11-08, at the user's ask):** both show the radar in clear colour steps, as B does: FMI from blue through green and yellow to red with the words "Heikkoa · Kohtalaista · Voimakasta" under the scale, Foreca from light blue through violet and red to black. Both split the time bar into what was seen and what's forecast ("Havainto | Ennuste"), as the line's radar part does. Foreca draws lightning as yellow crosses, and has a switch for the precipitation's type (rain or snow), as the violet snowfall here does. FMI's warnings are coloured areas with a symbol in each, with a list by region and a greyscale switch (for #911).
+- **Words on the scale:** FMI's legend names the steps, not only their numbers; Polku's legend could say "light · moderate · heavy" beside the mm/h.
 - **A suggestion, for the user to choose:** B's rain and lightning dots, A's hatched thunder area, A's cloud shadows on the light maps and the veil on the night map, and the streaks kept, fewer, as today's.
 
 ### For the user to decide
