@@ -682,6 +682,11 @@ function addWeather(s, ctx, sources, layers) {
     sources.wxRadarFi = { type: 'image', url: d.wxRadarFi.url, coordinates: d.wxRadarFi.coordinates };
     layers.push({ id: 'wx-radar-fi', type: 'raster', source: 'wxRadarFi', paint: { 'raster-opacity': op('wx:rain', 0.55), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
+  // where no radar reaches, at Now: hatched (#182, js/wxmap.js)
+  if (wx.rain && d.wxNoRadar) {
+    sources.wxNoRadar = { type: 'image', url: d.wxNoRadar.url, coordinates: d.wxNoRadar.coordinates };
+    layers.push({ id: 'wx-noradar', type: 'raster', source: 'wxNoRadar', paint: { 'raster-opacity': 1, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+  }
 }
 
 function addRasterOverlays(s, sources, layers, slot) {

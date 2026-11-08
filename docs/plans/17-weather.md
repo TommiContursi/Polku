@@ -115,6 +115,13 @@ The user's choice on 2026-11-08: **Weather service** is the look, and **Effects*
 - **The forecast's thunder** is Open-Meteo's weather code 95–99 at the timeline's nearer hour: a light amber area (18 %) with a dashed edge (amber-brown, light amber on dark maps). CAPE isn't used: the code is the forecast's own thunder, and a CAPE threshold would be a guess.
 - Checked with `tools/fixtures/lightning-tampere.xml`, FMI's strikes off Lofoten on 2026-11-02 moved to Tampere.
 
+### Built: where there's no radar (PR 5, 2026-11-08)
+
+- At Now with Rain on, hatched where no radar reaches, with the legend's row "No radar here: rain and snow not shown". Nothing at later hours; the radar's past (PR 6) will be hatched as Now is.
+- **The edge is the radars' own.** FMI's composite marks where it has no data (white in its palette), and that is its edge zoomed in. Zoomed out, Polku draws RainViewer under FMI, and RainViewer has Sweden's, Norway's and the Baltics' radars, so FMI's edge alone would hatch rain that's shown. There the hatch also needs RainViewer's coverage tiles to say no radar reaches (`/v2/coverage/…`, opaque where none does; CORS open, cached two days).
+- Light: slate stripes (1.5 px every 8 px) over a 16 % slate wash; dark maps: light stripes over a dark wash, as in the mock-up. With Effects the edge is blurred (8 px), so the hatch fades in over it.
+- Zoomed in near the border, RainViewer isn't drawn where FMI's composite stops, so the fells beyond it are hatched although RainViewer has their rain: #930.
+
 ### For the user to decide
 
 - Whether Effects also has a place in Settings, beside the pill's menu.

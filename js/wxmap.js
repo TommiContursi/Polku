@@ -17,7 +17,7 @@ import { strikesIn } from './lightning.js';
 import { STRIKE_COLOURS } from './icons.js';
 import { h, icon, store, popMenu } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
-import { fmiRadar, FI_BOUNDS } from './radar.js';
+import { fmiRadar, FI_BOUNDS, rainviewerCoverage } from './radar.js';
 import { sunPosition } from './sun.js';
 
 const MAX_CELLS = 60; // forecast points per grid (the view plus a margin); the field is smooth
@@ -276,7 +276,7 @@ export class WeatherOverlay {
     clearTimeout(this.fetchTimer);
     // A slow first forecast has no grid yet: still recognise zooming out.
     const out = zoom < Math.max(previousZoom, this.grid?.zoom ?? zoom) - 0.3;
-    this.fetchTimer = setTimeout(() => { this.maybeFetch(); this.loadFiRadar(); if (this.on.thunder) this.loadStrikes(); }, out ? 1200 : 600);
+    this.fetchTimer = setTimeout(() => { this.maybeFetch(); if (this.on.rain) this.syncRadar(); if (this.on.thunder) this.loadStrikes(); }, out ? 1200 : 600);
     this.renderStrip();
     this.readout();
     if (!this.animated) return;
@@ -703,7 +703,7 @@ export class WeatherOverlay {
   // for everywhere else; RainViewer is left out when Finland's image covers the view.
   syncRadar() {
     const now = this.on.rain && this.hour < 0.5;
-    if (!now) { this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; return; }
+    if (!now) { this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; this.renderNoRadar(); return; }
     this.syncRadarRv();
     this.loadFiRadar();
   }
@@ -748,6 +748,7 @@ export class WeatherOverlay {
       this.fiFailed = 0;
     } catch {
       this.fiFailed = Date.now(); // RainViewer still shows; net.js has the notice
+      this.renderNoRadar();
     } finally {
       this.fiLoading = false;
     }
@@ -769,6 +770,57 @@ export class WeatherOverlay {
     const c = this.fi;
     const covers = c && !c.rv && v[0] >= c.box[0] && v[2] <= c.box[2] && v[1] >= c.box[1] && v[3] <= c.box[3];
     this.app.setRadar(this.on.rain && this.hour < 0.5 && !covers ? this.radar || {} : null);
+    this.rvShown = !covers && !!this.radar?.rv;
+    this.renderNoRadar();
+  }
+
+  // Where no radar reaches (#182), hatched as yr hatches where it has no data, at Now (the forecast covers everywhere):
+  // outside FMI's composite (its own no-data pixels) and, where RainViewer's radar is drawn, outside its coverage too.
+  // Only once both have answered (or failed): the view and a quarter around it, a pixel of the image a pixel on screen.
+  async renderNoRadar() {
+    const fi = this.fi, v = this.viewBox(), z = Math.min(6, Math.max(1, Math.floor(this.map.getZoom()) - 1));
+    const f = FI_BOUNDS, overFi = !(v[2] < f[0] || v[0] > f[2] || v[3] < f[1] || v[1] > f[3]);
+    const known = this.on.rain && this.hour < 0.5 && this.radar && (fi || this.fiFailed || !overFi);
+    const key = known && `${fi?.t || this.fiFailed}|${this.rvShown}|${this.effects}|${this.app.dark()}|${z}`, last = this.noRadarAt;
+    if (known && last && last.key === key && v[0] >= last.box[0] && v[2] <= last.box[2] && v[1] >= last.box[1] && v[3] <= last.box[3]) return;
+    const token = (this.noRadarToken = (this.noRadarToken || 0) + 1);
+    if (!known) { this.noRadarAt = null; this.app.setImage('wxNoRadar', null); this.renderLegend(); return; }
+    const px = (v[2] - v[0]) / 4, py = (v[3] - v[1]) / 4, box = [v[0] - px, Math.max(-85, v[1] - py), v[2] + px, Math.min(85, v[3] + py)];
+    const rv = this.rvShown ? await rainviewerCoverage(box, z) : null;
+    if (token !== this.noRadarToken) return;
+    const W = Math.min(2048, Math.round(this.W * 1.5)), H = Math.min(2048, Math.round(this.H * 1.5)), S = 6, mw = Math.ceil(W / S), mh = Math.ceil(H / S);
+    const x0 = mx(box[0]), x1 = mx(box[2]), y0 = my(box[3]), y1 = my(box[1]), mask = new ImageData(mw, mh);
+    let shown = false;
+    for (let j = 0; j < mh; j++) {
+      const lat = latOf(y0 + ((y1 - y0) * (j + 0.5)) / mh);
+      for (let i = 0; i < mw; i++) {
+        const lon = lonOf(x0 + ((x1 - x0) * (i + 0.5)) / mw);
+        const byFmi = fi && lon >= fi.box[0] && lon <= fi.box[2] && lat >= fi.box[1] && lat <= fi.box[3] && fi.img.rateAt(lon, lat) !== null;
+        if (byFmi || (rv && rv(lon, lat) !== false)) continue; // (RainViewer's coverage not known: not said to be missing)
+        mask.data[(j * mw + i) * 4 + 3] = 255;
+        shown ||= lon >= v[0] && lon <= v[2] && lat >= v[1] && lat <= v[3];
+      }
+    }
+    let img = null;
+    if (shown) {
+      const m = Object.assign(document.createElement('canvas'), { width: mw, height: mh }), cv = Object.assign(document.createElement('canvas'), { width: W, height: H });
+      m.getContext('2d').putImageData(mask, 0, 0);
+      const ctx = cv.getContext('2d'), dark = this.app.dark();
+      ctx.fillStyle = dark ? 'rgba(15,23,42,.35)' : 'rgba(71,85,105,.16)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = dark ? 'rgba(226,232,240,.32)' : 'rgba(51,65,85,.38)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let x = -H; x < W; x += 8) { ctx.moveTo(x, 0); ctx.lineTo(x + H, H); }
+      ctx.stroke();
+      ctx.globalCompositeOperation = 'destination-in'; // the stripes kept where there's no radar
+      if (this.effects) ctx.filter = 'blur(8px)'; // Effects: the hatch fades in over its edge
+      ctx.drawImage(m, 0, 0, W, H);
+      img = { url: cv.toDataURL('image/png'), coordinates: [[box[0], box[3]], [box[2], box[3]], [box[2], box[1]], [box[0], box[1]]] };
+    }
+    this.noRadarAt = { key, box, shown };
+    this.app.setImage('wxNoRadar', img);
+    this.renderLegend();
   }
 
   async loadRadarMeta() {
@@ -991,7 +1043,7 @@ export class WeatherOverlay {
     if (!this.on.snow) this.app.setImage('wxSnow', null);
     if (!this.on.cloud) this.app.setImage('wxCloud', null);
     if (!this.on.thunder) { this.app.setImage('wxThunderArea', null); this.app.setData('wxThunder', { type: 'FeatureCollection', features: [] }); clearTimeout(this.strikeTimer); this.lightning = null; this.renderStrikes(); }
-    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; }
+    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; this.renderNoRadar(); }
     if (!this.on.towns) this.renderTowns();
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
   }
@@ -1288,6 +1340,7 @@ export class WeatherOverlay {
     if (this.on.rain) {
       rows.push(scale(stepsCss(RAIN_STEPS), `<b>Rain</b> ${RAIN_STEPS.map(([v]) => v).join(' · ')} mm/h`));
       rows.push('<div class="lgl lg-note">light · moderate · heavy · very heavy</div>');
+      if (this.hour < 0.5 && this.noRadarAt?.shown) rows.push('<div class="lgl"><i class="lg-nodata"></i><span><b>No radar</b> here: rain and snow not shown</span></div>');
       // snowfall where it's cold enough somewhere on the map at this hour
       if (c && c.temp.some((t) => t < 0.5)) rows.push(scale(stepsCss(SNOWFALL_STEPS), `<b>Snowfall</b> ${SNOWFALL_STEPS.map(([v]) => v).join(' · ')} mm/h`));
     }

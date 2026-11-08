@@ -12405,6 +12405,90 @@ def thunder(chrome):
     return not fails
 
 
+# #182's hatch where no radar reaches, at Now. FMI's composite (a made-up one: no radar west of 22°E) and, where
+# RainViewer's radar is drawn (zoomed out, around Finland), RainViewer's coverage (made up: none east of 30°E).
+# Zoomed in, FMI's edge alone; zoomed out, only where neither reaches; at a later hour and with Rain off, nothing.
+WX_NORADAR = """(async () => {
+  const out = [], map = polku.map, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), real = window.fetch;
+  const lonX = (x) => (x / 20037508.34) * 180;
+  const tiff = (W, H, bbox) => { // FMI's 16-bit palette GeoTIFF: index 0 white (no radar), 1 dry
+    const pal = 122, px = pal + 65536 * 6, buf = new ArrayBuffer(px + W * H * 2), d = new DataView(buf), u16 = (o, v) => d.setUint16(o, v, true), u32 = (o, v) => d.setUint32(o, v, true);
+    u16(0, 0x4949); u16(2, 42); u32(4, 8); u16(8, 9);
+    [[256, 4, 1, W], [257, 4, 1, H], [258, 3, 1, 16], [259, 3, 1, 1], [262, 3, 1, 3], [273, 4, 1, px], [277, 3, 1, 1], [279, 4, 1, W * H * 2], [320, 3, 65536 * 3, pal]].forEach(([tag, type, n, v], i) => {
+      const o = 10 + i * 12; u16(o, tag); u16(o + 2, type); u32(o + 4, n); if (type === 3 && n === 1) u16(o + 8, v); else u32(o + 8, v); });
+    [255, 255, 255].forEach((c, k) => u16(pal + k * 65536 * 2, c * 257)); [0, 0, 1].forEach((c, k) => u16(pal + (1 + k * 65536) * 2, c * 257));
+    for (let x = 0; x < W; x++) { const v = lonX(bbox[0] + ((bbox[2] - bbox[0]) * (x + 0.5)) / W) < 22 ? 0 : 1; for (let y = 0; y < H; y++) u16(px + (y * W + x) * 2, v); }
+    return buf;
+  };
+  const cover = async (z, x, y) => { // RainViewer's: opaque where no radar reaches
+    const cv = new OffscreenCanvas(256, 256), ctx = cv.getContext('2d');
+    for (let i = 0; i < 256; i++) if (((x + (i + 0.5) / 256) / 2 ** z) * 360 - 180 > 30) { ctx.fillRect(i, 0, 1, 256); }
+    return new Response(await cv.convertToBlob({ type: 'image/png' }));
+  };
+  const asked = [];
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (url.startsWith('https://openwms.fmi.fi/')) {
+      const q = new URL(url).searchParams;
+      return Promise.resolve(new Response(tiff(+q.get('width'), +q.get('height'), q.get('bbox').split(',').map(Number))));
+    }
+    if (url.startsWith('https://api.rainviewer.com/')) return Promise.resolve(new Response(JSON.stringify({ host: 'https://tilecache.rainviewer.com', radar: { past: [{ time: Date.now() / 1000, path: '/v2/radar/none' }] } })));
+    const m = url.match(/rainviewer\\.com\\/v2\\/coverage\\/0\\/256\\/(\\d+)\\/(\\d+)\\/(\\d+)\\//);
+    if (m) { asked.push(url); return cover(+m[1], +m[2], +m[3]); }
+    return real(input, init);
+  };
+  const hatched = async (ll) => { // the hatch's alpha at [lon, lat], from its image
+    const src = map.getStyle().sources.wxNoRadar;
+    if (!src) return 0;
+    const img = new Image(); img.src = src.url; await img.decode();
+    const cv = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height }), ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
+    const [[w0, n0], , [e0, s0]] = src.coordinates, Y = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+    const x = Math.round(((ll[0] - w0) / (e0 - w0)) * img.width), y = Math.round(((Y(n0) - Y(ll[1])) / (Y(n0) - Y(s0))) * img.height);
+    let a = 0; for (const [dx, dy] of [[0, 0], [3, 0], [0, 3], [5, 5]]) a = Math.max(a, ctx.getImageData(x + dx, y + dy, 1, 1).data[3]); // (between the stripes too)
+    return a;
+  };
+  const settle = async (ok) => { for (let k = 0; k < 150 && !ok(); k++) await wait(200); await wait(400); };
+  const row = () => /No radar here: rain and snow not shown/.test(document.querySelector('.map-hints .wx-legend')?.textContent || '');
+  // zoomed in on FMI's west edge: its composite alone decides
+  w.app.onToggle({ rain: true });
+  await settle(() => w.noRadarAt?.shown && map.getSource('wxNoRadar'));
+  if (!map.getSource('wxNoRadar')) return ['no hatch zoomed in at FMI’s edge after 30 s'];
+  if (w.rvShown) out.push('zoomed in over Finland, RainViewer is drawn too');
+  const west = await hatched([21.2, 61.5]), east = await hatched([23.6, 61.5]);
+  if (!(west > 0) || east) out.push(`zoomed in: the hatch's alpha ${west} west of FMI's edge, ${east} east of it`);
+  if (!row()) out.push('zoomed in: no legend row for the hatch');
+  const ids = map.getStyle().layers.map((l) => l.id);
+  if (!(ids.indexOf('wx-noradar') > ids.indexOf('wx-radar-fi') && ids.indexOf('wx-noradar') < ids.indexOf('route-casing'))) out.push('the hatch isn’t over the radar and under the route');
+  // a later hour: the forecast covers everywhere
+  w.setHour(2); await wait(500);
+  if (map.getSource('wxNoRadar') || row()) out.push('at a later hour the map is still hatched');
+  // zoomed out: only where neither FMI nor RainViewer reaches
+  w.setHour(0); map.jumpTo({ center: [26, 63], zoom: 5 });
+  await settle(() => w.rvShown && w.noRadarAt?.key && w.noRadarAt.key.includes('|true|') && map.getSource('wxNoRadar'));
+  const sweden = await hatched([18, 63]), border = await hatched([31.2, 63]), russia = await hatched([35, 63]);
+  if (sweden || border || !(russia > 0)) out.push(`zoomed out: the hatch's alpha ${sweden} in Sweden (RainViewer), ${border} at 31°E (FMI), ${russia} at 35°E (neither)`);
+  if (!asked.length) out.push('RainViewer’s coverage wasn’t asked for');
+  if (!row()) out.push('zoomed out: no legend row for the hatch');
+  w.app.onToggle({ rain: false }); await wait(400);
+  if (map.getSource('wxNoRadar') || row()) out.push('with Rain off the map is still hatched');
+  window.fetch = real;
+  return out;
+})()"""
+
+
+def no_radar(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#8.2/61.5/22.4')
+        fails = pg.js(WX_NORADAR, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the hatch where no radar reaches: FMI's edge, RainViewer's coverage, at Now only (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Every group: its name, its checks in the order they run, and its line for --list.
 # No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
 # 25a, the toolbox and the header (#233). Phones: the toolbox floats beside the map's buttons or docks into
@@ -19706,7 +19790,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, clouds, thunder], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916); the clouds\' veil and the thunder (#182)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, clouds, thunder, no_radar], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916); the clouds\' veil, the thunder and the hatch where no radar reaches (#182)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

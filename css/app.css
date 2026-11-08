@@ -468,6 +468,8 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .wx-legend .lg-mark { width: 14px; height: 14px; flex: none; display: block; margin-top: 1px; } .wx-legend .lg-mark + .lg-mark { margin-left: -4px; }
 .wx-legend .lg-dash { width: 22px; height: 10px; flex: none; display: block; margin-top: 3px; border-radius: 3px; background: rgba(245, 158, 11, .18); outline: 1.5px dashed #b45309; outline-offset: -1.5px; }
 :root[data-theme="dark"] .wx-legend .lg-dash { outline-color: #fbbf24; }
+.wx-legend .lg-nodata { width: 22px; height: 10px; flex: none; display: block; margin-top: 3px; border-radius: 3px; background: repeating-linear-gradient(135deg, rgba(51, 65, 85, .55) 0 1.5px, rgba(71, 85, 105, .16) 1.5px 6px); } /* (where no radar reaches) */
+:root[data-theme="dark"] .wx-legend .lg-nodata { background: repeating-linear-gradient(135deg, rgba(226, 232, 240, .5) 0 1.5px, rgba(15, 23, 42, .35) 1.5px 6px); }
 .wx-legend .warn-text { color: var(--warn-text); font-weight: 600; }
 /* the towns' weather on the map, zoomed out (#916): the sky, °C and wind over the town's name */
 .wx-town { display: flex; align-items: center; gap: 3px; padding: 2px 7px 2px 4px; border-radius: var(--radius-pill); background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow-marker), 0 0 0 1px var(--line); font-size: 13px; font-weight: 700; white-space: nowrap; pointer-events: none; }
