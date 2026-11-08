@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Weather on the map</title>
-<meta name="description" content="Mock-up for #182's look: rain by its strength, cloud, thunder (lightning seen apart from thunder forecast), snowfall and snow on the ground over the map, with the weather line, its layer menu, a legend over the map, the radar's last 90 minutes and the towns' weather.">
+<meta name="description" content="Mock-up for #182's look, a weather service's look and a vivid one: rain by its strength, cloud, thunder (lightning seen apart from thunder forecast), snowfall and snow on the ground over the map, with the weather line, its layer menu, a legend over the map, the radar's last 90 minutes and the towns' weather.">
 <!--
   #182, the look of the weather layers, 2026-11-07. The plan: docs/plans/17-weather.md, "The look (2026-11-07)".
   Not wired to the app: nothing here is loaded by Polku. The maps are screenshots of main at c9fe8d4 (Kauppi's MTB
@@ -82,6 +82,10 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wx-lg .lg-mark { width: 14px; height: 14px; flex: none; display: block; }
 .wx-lg .lg-hatch { width: 22px; height: 10px; border-radius: 3px; flex: none; display: block;
   background: repeating-linear-gradient(135deg, rgba(217,119,6,.75) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1.5px rgba(217,119,6,.9); }
+.wx-lg .lg-dash { width: 22px; height: 10px; border-radius: 3px; flex: none; display: block; background: rgba(245,158,11,.18); outline: 1.5px dashed #b45309; outline-offset: -1.5px; }
+.wx-lg .lg-nodata { width: 22px; height: 10px; border-radius: 3px; flex: none; display: block; background: repeating-linear-gradient(135deg, rgba(51,65,85,.55) 0 1.5px, rgba(71,85,105,.16) 1.5px 6px); }
+:root[data-theme="dark"] .wx-lg .lg-nodata { background: repeating-linear-gradient(135deg, rgba(226,232,240,.5) 0 1.5px, rgba(15,23,42,.35) 1.5px 6px); }
+.mk-legend .lgl .lg-mark { width: 14px; height: 14px; } .mk-legend .lgl .lg-mark + .lg-mark { margin-left: -4px; }
 .wx-lg .lg-glow { width: 22px; height: 10px; border-radius: 999px; flex: none; display: block; background: linear-gradient(90deg, rgba(250,204,21,.35), rgba(234,88,12,.6)); }
 .wx-lg small b { color: var(--text); font-weight: 650; }
 .wx-legend { flex-wrap: wrap; row-gap: 4px; }
@@ -143,13 +147,16 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 <body class="mk">
 <div class="cv">
   <h1>Weather on the map: rain, cloud, thunder, snow</h1>
-  <p>For <a href="https://github.com/TommiContursi/Polku/issues/182">#182</a>: how the weather layers could look. <b>Today</b> is main as it is. <b>A</b> lets the motion say how hard it rains, with light colours under it. <b>B</b> lets the colours say it, in clear steps, with less motion. Both add <b>Clouds</b>, <b>Thunder</b> and the <b>Towns' weather</b>. Thunder keeps the lightning that was seen apart from the thunder the forecast expects. <b>Snow</b> shows the snowfall and the snow on the ground together. The map's hours are the <b>weather line</b> of the weather card's plan (step 6b): its pill (“Rain ▾”) opens the layers' menu, and its strip starts with the radar's last 90 minutes. A <b>legend</b> sits over the map while a layer is on. <b>Timeline today</b> on the Bar switch keeps the old timeline to compare. The weather is made up, placed in the middle of what the map shows (Kauppi's MTB route in Tampere, and the region around it); the maps are main's.</p>
+  <p>For <a href="https://github.com/TommiContursi/Polku/issues/182">#182</a>: how the weather layers could look. Two looks from 2026-11-08: <b>Weather service</b> shows the weather as FMI, Foreca and yr do (colour steps, lightning as crosses by age, nothing moving but new strikes), and <b>Vivid</b> makes it lively (rain and snow falling in depth, cloud shadows drifting, a lightning bolt that flashes and settles into a dot). Both hatch where the radar doesn't reach, as yr hatches the countries it has no data for. <b>Today</b> is main as it is; <b>A</b> and <b>B</b> are the first two directions (2026-11-07), kept to compare. All of them add <b>Clouds</b>, <b>Thunder</b> and the <b>Towns' weather</b>. Thunder keeps the lightning that was seen apart from the thunder the forecast expects. <b>Snow</b> shows the snowfall and the snow on the ground together. The map's hours are the <b>weather line</b> of the weather card's plan (step 6b): its pill (“Rain ▾”) opens the layers' menu, and its strip starts with the radar's last 90 minutes. A <b>legend</b> sits over the map while a layer is on. <b>Timeline today</b> on the Bar switch keeps the old timeline to compare. The weather is made up, placed in the middle of what the map shows (Kauppi's MTB route in Tampere, and the region around it); the maps are main's.</p>
   <div class="bars" id="bars"></div>
   <div class="stage" id="stage"></div>
   <p class="cap" id="cap"></p>
   <div class="notes">
     <h2>What each look does</h2>
     <ul>
+      <li><b>Weather service:</b> the rain in five colour steps (0.1, 0.5, 2, 5 and 15 mm/h, light blue to violet) with words under the scale (light, moderate, heavy, very heavy), as FMI's legend has. Nothing falls. Clouds are a still white veil. Lightning is a cross per strike, coloured by age as yr's app does (orange under 1 min, violet under 10, light violet under 60), and a new strike fades in. The forecast's thunder is a light amber area with a dashed edge and its label.</li>
+      <li><b>Vivid:</b> the rain in a smooth ramp, lighter, with drops falling in three depths (the far ones small, faint and slow), and snow drifting as flakes. Clouds are two layers of shadows drifting with the wind at different speeds. Lightning: a new strike flashes as a branching bolt with a short sheet of light around it, flickers twice and settles into a glowing dot by age; now and then a new one strikes. The forecast's thunder is a warm glow with an amber edge.</li>
+      <li><b>Where there's no data:</b> FMI's radars reach about 250 km, so beyond that (the Baltic, Russia further east, Sweden's north) the map is hatched and the legend says “No radar here: rain and snow not shown”, as yr hatches Russia and Belarus. The forecast covers everywhere, so at a later hour nothing is hatched. Try the Scale “Finland and around”. The radars' places and reach here are approximate; lightning and warnings have edges of their own still to check.</li>
       <li><b>Rain, A:</b> drizzle is a few short, slow, faint streaks; rain is today's streaks; heavy rain is long, thick and dense, so the three read apart in motion. The colour under it stays light (at most 38 % covering, today 85 %), so trails, words and the route stay readable.</li>
       <li><b>Rain, B:</b> the colour in steps (drizzle, rain, heavy, very heavy), each with its edge drawn, like a radar map. The streaks are half as many and fainter.</li>
       <li><b>Cloud, A:</b> soft shadows drifting with the wind, darker where the cover is thicker. <b>B:</b> a white veil, drifting the same way. On the night map both turn into a faint light veil.</li>
@@ -161,7 +168,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li><b>The towns' weather,</b> zoomed out: the sky, the temperature and the wind at towns, as yr's map shows them, at the line's hour. Only at a region's scale; near the route the route's own weather is the line's reading.</li>
       <li><b>Moving the time:</b> lightning is seen, not forecast, so it shows at Now only (its last hour); at a later hour the forecast's thunder is all there is, and the legend says so.</li>
       <li><b>When a source fails:</b> the legend says which (“Lightning couldn't be loaded”); the map never looks calm because a source is missing.</li>
-      <li><b>Reduced motion:</b> the rain and snow are drawn still, the clouds don't drift and nothing flashes. Today the particles move in reduced motion too.</li>
+      <li><b>Reduced motion:</b> the rain and snow are drawn still, the clouds don't drift and nothing flashes: in Vivid a new strike is its dot, at once. Today the particles move in reduced motion too.</li>
     </ul>
     <h2>What isn't decided here</h2>
     <ul>
@@ -169,18 +176,19 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li>Whether thunder near the route belongs in Heads-up: not in #182, an idea of its own if it's wanted.</li>
       <li>Warnings on the map as areas, and in the weather card: the warning's row here is a placeholder for that issue's design.</li>
       <li>Where the towns' symbols come from: one forecast call per town would burst Open-Meteo, so they come from the map's own weather grid (the nearest cell), or not at all.</li>
-      <li>The motion is decided with /animate when it's built, and checked with /review-animations before its PR opens.</li>
+      <li>Which look, or whether both stay as a setting (“Weather look: Weather service · Vivid”).</li>
+      <li>The motion was drafted with /animate; it's checked with /review-animations before the build's PR opens.</li>
     </ul>
   </div>
 </div>
 <script>
-const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/project-thread-q87u51/weather-look/', VER = '?v=90f3b9c';
+const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/project-thread-q87u51/weather-look/', VER = '?v=ec006e8';
 const SW = {
-  look: [['today', 'Today'], ['a', 'A: motion leads'], ['b', 'B: colour leads']],
+  look: [['service', 'Weather service'], ['vivid', 'Vivid'], ['today', 'Today'], ['a', 'A (11-07)'], ['b', 'B (11-07)']],
   wx: [['drizzle', 'Drizzle'], ['rain', 'Rain'], ['heavy', 'Heavy rain'], ['cloud', 'Cloud'], ['thunder', 'Thunder'], ['snow', 'Snow']],
   bar: [['line', 'Weather line (step 6b)'], ['old', 'Timeline today']],
   map: [['trail', 'Trail map'], ['night', 'Night map']],
-  scale: [['near', 'Near the route'], ['region', 'The region']],
+  scale: [['near', 'Near the route'], ['region', 'The region'], ['country', 'Finland and around']],
   f: [['390', 'Phone'], ['360', 'Phone 360'], ['desk', 'Desktop']],
   z: [['100', '100 %'], ['200', '200 %']],
   t: [['now', 'Now'], ['past', 'An hour ago (radar)'], ['3h', 'In 3 hours']],
@@ -230,7 +238,10 @@ const SCENES = {
   'region-desk': { w: 1440, h: 900, b: [[22.81123, 61.22391], [24.78877, 61.81329]] },
   'near-phone': { w: 390, h: 844, b: [[23.79378, 61.47811], [23.84901, 61.53513]] },
   'region-phone': { w: 390, h: 844, b: [[23.33375, 61.03511], [24.26625, 61.99744]] },
+  'country-desk': { w: 1440, h: 900, b: [[17.122104, 58.975372], [34.077896, 64.019665]] },
+  'country-phone': { w: 390, h: 844, b: [[24.797038, 57.663383], [32.002962, 65.092924]] },
 };
+const isNew = () => S.look === 'service' || S.look === 'vivid';
 const KX = 111.32 * Math.cos(61.5 * Math.PI / 180), MIDDLE = { desk: [885, 335], phone: [165, 240] }; // (the map between the panels)
 // the interface around the map, cut from a screenshot of the app (the old timeline left out)
 // (each control's box, measured in the app at that view; the timeline is drawn live)
@@ -279,7 +290,7 @@ function makeStrikes(seed) {
   for (const c of THUNDER_CELLS) {
     for (let i = 0; i < c.n; i++) {
       const g1 = rnd(), g2 = rnd(), rr = Math.sqrt(-2 * Math.log(g1 + 1e-6)) * c.r * 0.6, th = g2 * Math.PI * 2;
-      const age = Math.pow(rnd(), 0.8) * 60; // minutes; newer towards the cell's leading (north-east) edge
+      const age = i < 2 && c.n > 5 ? rnd() * 0.9 : Math.pow(rnd(), 0.8) * 60; // minutes, two in each big cell under one; newer towards the cell's leading (north-east) edge
       out.push({ x: c.x + rr * Math.cos(th) + (30 - age) * 0.05, y: c.y + rr * Math.sin(th) + (30 - age) * 0.05, age, born: 0 });
     }
   }
@@ -292,9 +303,10 @@ function newStrikes() {
   batch++;
   for (const s of strikes) s.age += 5;
   strikes = strikes.filter((s) => s.age < 60);
-  const fresh = makeStrikes(batch).filter((s) => s.age < 5).slice(0, 8).map((s) => ({ ...s, age: s.age, born: performance.now() }));
+  const fresh = makeStrikes(batch).filter((s) => s.age < 5).slice(0, 8).map((s, i) => ({ ...s, age: s.age, born: performance.now() + i * 140, bolt: i < 3 ? makeBolt() : null }));
   strikes.push(...fresh);
   if (scene) scene.flash = performance.now();
+  if (scene && isNew()) { cancelAnimationFrame(anim); startNew(); } // (wake the drawing up for the new strikes)
 }
 const nearest = () => strikes.reduce((m, s) => { const d = Math.hypot(s.x, s.y); return d < m.d && s.age < 30 ? { d, age: s.age } : m; }, { d: Infinity });
 
@@ -322,6 +334,9 @@ const depthAt = (x, y) => 30 * fbm((x + 40) / 13, (y + 5) / 13) - 7 + y * 0.1 - 
 const TOWNS = [['Tampere', 23.761, 61.498], ['Nokia', 23.51, 61.478], ['Ylöjärvi', 23.596, 61.556], ['Kangasala', 24.065, 61.464], ['Lempäälä', 23.753, 61.314],
   ['Valkeakoski', 24.031, 61.264], ['Akaa', 23.866, 61.167], ['Orivesi', 24.357, 61.677], ['Pälkäne', 24.268, 61.339], ['Kuru', 23.735, 61.869], ['Hämeenkyrö', 23.196, 61.639],
   ['Sastamala', 22.909, 61.341], ['Mänttä', 24.623, 62.03], ['Ruovesi', 24.07, 61.986]];
+const BIG_TOWNS = [['Helsinki', 24.94, 60.17], ['Turku', 22.27, 60.45], ['Tampere', 23.76, 61.5], ['Jyväskylä', 25.73, 62.24], ['Kuopio', 27.68, 62.89], ['Lappeenranta', 28.19, 61.06],
+  ['Joensuu', 29.76, 62.6], ['Vaasa', 21.62, 63.1], ['Pori', 21.8, 61.48], ['Oulu', 25.47, 65.01], ['Kajaani', 27.73, 64.23], ['Seinäjoki', 22.84, 62.79], ['Mikkeli', 27.27, 61.69],
+  ['Tallinn', 24.75, 59.44], ['Tartu', 26.72, 58.38], ['St Petersburg', 30.31, 59.94], ['Petrozavodsk', 34.36, 61.79], ['Umeå', 20.26, 63.83], ['Stockholm', 18.07, 59.33], ['Savonlinna', 28.88, 61.87]];
 const STATIONS = [[23.828, 61.512], [23.81, 61.488], [23.747, 61.466], [23.604, 61.42], [24.0, 61.47], [24.35, 61.66], [24.03, 61.28], [23.55, 61.6], [23.73, 61.85], [23.2, 61.5]];
 
 // ---------------------------------------------------------------- colours (js/wxmap.js's)
@@ -345,10 +360,49 @@ const rampCss = (stops) => `linear-gradient(90deg, ${stops.map(([, c], i) => `${
 const STEPS = [[0.1, '#a5cdfb'], [0.5, '#4f8ff7'], [2, '#2747c4'], [8, '#a3268f']];
 const stepOf = (r, st = STEPS) => { let k = -1; for (let i = 0; i < st.length; i++) if (r >= st[i][0]) k = i; return k; };
 
+// the new looks' colours: steps as the weather services draw them (yr, FMI, Foreca), light to dark, the top step violet
+const SERVICE_STEPS = [[0.1, '#a5e4fb'], [0.5, '#38bdf8'], [2, '#1d6fe0'], [5, '#1e3a8a'], [15, '#a855f7']];
+const AGE_COLOURS = [[1, '#f97316'], [10, '#a855f7'], [60, '#d8b4fe']]; // yr's lightning: under 1, 10 and 60 minutes
+
+// ---------------------------------------------------------------- where the data reaches
+// FMI's weather radars (places approximate) and a 250 km reach: outside it there's no radar, only the forecast later on.
+// Lightning's and the warnings' reach aren't drawn here: lightning is FMI's Nordic network (its edge to check),
+// the warnings are Finland's.
+const RADARS = [[24.87, 60.27], [27.11, 60.9], [29.8, 61.91], [22.5, 61.81], [25.44, 62.3], [27.38, 62.86], [23.82, 63.1], [29.45, 63.84], [26.32, 64.77], [26.9, 67.14], [21.64, 60.13]];
+function coverage() {
+  const { W, H, pxLl } = scene, step = 6, mw = Math.ceil(W / step), mh = Math.ceil(H / step);
+  const m = document.createElement('canvas'); m.width = mw; m.height = mh;
+  const c = m.getContext('2d'), im = c.createImageData(mw, mh);
+  let out = 0;
+  const grid = new Uint8Array(mw * mh);
+  for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) {
+    const [lon, lat] = pxLl(i * step, j * step);
+    const inside = RADARS.some(([x, y]) => Math.hypot((lon - x) * 111.32 * Math.cos(((lat + y) / 2) * Math.PI / 180), (lat - y) * 110.57) < 250);
+    if (!inside) { im.data[(j * mw + i) * 4 + 3] = 255; grid[j * mw + i] = 1; out++; }
+  }
+  c.putImageData(im, 0, 0);
+  // no radar at this pixel (now and the last 90 minutes): the rain isn't drawn there, the hatch says why
+  const noRadar = (px, py) => isNew() && S.t !== '3h' && grid[Math.min(mh - 1, Math.max(0, Math.round(py / step))) * mw + Math.min(mw - 1, Math.max(0, Math.round(px / step)))] === 1;
+  return { mask: m, step, out: out > 0, noRadar };
+}
+// the hatch where there's no radar (yr's way): drawn while the rain layer shows the radar (now and the last 90 minutes)
+const noRadarShown = () => isNew() && on('rain') && S.t !== '3h' && scene?.cov?.out;
+function drawNoData(ctx) {
+  const { W, H, dark, cov } = scene;
+  const m = document.createElement('canvas'); m.width = W; m.height = H;
+  const mc = m.getContext('2d');
+  mc.fillStyle = dark ? 'rgba(15,23,42,.35)' : 'rgba(71,85,105,.16)'; mc.fillRect(0, 0, W, H);
+  mc.strokeStyle = dark ? 'rgba(226,232,240,.32)' : 'rgba(51,65,85,.38)'; mc.lineWidth = 1.5;
+  mc.beginPath(); for (let s = -H; s < W + H; s += 8) { mc.moveTo(s, 0); mc.lineTo(s + H, H); } mc.stroke();
+  mc.globalCompositeOperation = 'destination-in'; mc.imageSmoothingEnabled = true; mc.drawImage(cov.mask, 0, 0, cov.mask.width * cov.step, cov.mask.height * cov.step);
+  ctx.drawImage(m, 0, 0);
+}
+
 // ---------------------------------------------------------------- the frame
 let scene = null, anim = 0, legendOpen = null;
 function build() {
   cancelAnimationFrame(anim);
+  clearTimeout(scene?.timer);
   const dark = S.map === 'night';
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   document.documentElement.dataset.page = dark ? 'dark' : 'light';
@@ -402,17 +456,21 @@ function build() {
   const k = (sc.b[1][0] - sc.b[0][0]) * KX / sc.w; // km per CSS pixel of the picture
   const [mx, my] = MIDDLE[dev];
   // at 200 % the picture is twice the size and centred as .z2 > .mk-map places it
-  const zk = k, ox = z2 ? (cw - sc.w) * 0.5 : 0, oy = z2 ? (chh - sc.h) * 0.3 : 0;
+  // (Finland and around: the made-up weather six times larger, so its systems read at that scale)
+  const zk = S.scale === 'country' ? k / 6 : k, ox = z2 ? (cw - sc.w) * 0.5 : 0, oy = z2 ? (chh - sc.h) * 0.3 : 0;
   const toKm = (px, py) => [(px - ox - mx) * zk, -(py - oy - my) * zk];
   const toPx = (x, y) => [ox + mx + x / zk, oy + my - y / zk];
   const merc = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
   const llPx = (lon, lat) => [ox + ((lon - sc.b[0][0]) / (sc.b[1][0] - sc.b[0][0])) * sc.w, oy + ((merc(sc.b[1][1]) - merc(lat)) / (merc(sc.b[1][1]) - merc(sc.b[0][1]))) * sc.h];
-  scene = { fr, field, sky, parts, W: cw, H: chh, toKm, toPx, k: zk, dark, flash: 0 };
+  const pxLl = (px, py) => [sc.b[0][0] + ((px - ox) / sc.w) * (sc.b[1][0] - sc.b[0][0]),
+    (2 * Math.atan(Math.exp(merc(sc.b[1][1]) - ((py - oy) / sc.h) * (merc(sc.b[1][1]) - merc(sc.b[0][1])))) - Math.PI / 2) * 180 / Math.PI];
+  scene = { fr, field, sky, parts, W: cw, H: chh, toKm, toPx, llPx, pxLl, k: zk, dark, flash: 0 };
+  scene.cov = coverage();
   // points on the map, kept clear of the panels and the line (the room between them)
   const room = phone ? [8, 110, cw - (z2 ? 8 : 60), chh - (z2 ? 120 : 250)] : z2 ? [8, 60, cw - 8, chh - 70] : [430, 110, 1350, 760];
   const inRoom = ([x, y]) => x > room[0] && y > room[1] && x < room[2] && y < room[3];
   const routeAt = llPx(23.81, 61.51); // (the route's own weather is the line's reading: no town's symbol over it)
-  if (on('towns') && S.scale === 'region') for (const [name, lon, lat] of TOWNS) {
+  if (on('towns') && S.scale !== 'near') for (const [name, lon, lat] of S.scale === 'country' ? BIG_TOWNS : TOWNS) {
     const p = llPx(lon, lat); if (!inRoom(p) || Math.hypot(p[0] - routeAt[0], p[1] - routeAt[1]) < 45) continue;
     const [x, y] = toKm(...p), w = WX[S.wx], r = rainAt(x, y);
     const sky = S.wx === 'thunder' && S.t !== 'past' && riskAt(x, y) > 0.35 ? 'thunder' : r >= 0.1 ? (w.snow ? 'snow' : 'rain') : cloudAt(x, y) > 0.6 ? 'cloud' : 'cloudSun';
@@ -440,7 +498,7 @@ function build() {
     }
   }
   drawField();
-  startParticles();
+  if (isNew()) startNew(); else startParticles();
   caption();
 }
 
@@ -479,26 +537,36 @@ function legendRows(line) {
   if (on('rain')) {
     const what = past ? '<b>Radar</b>, an hour ago,' : w.snow ? '<b>Snowfall</b>' : '<b>Rain</b>';
     if (today) out.push(lgRow(`<i style="background:${rampCss(RAIN_RAMP)}"></i>`, `${what} 0.1–10 mm/h`));
+    else if (isNew()) { // the services' way: the steps, with their words (FMI's legend names them)
+      const st = w.snow ? SNOWFALL : SERVICE_STEPS, bar = S.look === 'service' ? `<i class="steps" style="background:${stepsCss(st)}"></i>` : `<i style="background:${rampCss(st)}"></i>`;
+      out.push(lgRow(bar, `${what} ${w.snow ? '0.1 · 0.5 · 2' : '0.1 · 0.5 · 2 · 5 · 15'} mm/h`));
+      out.push(note(`<span>${w.snow ? 'light · moderate · heavy' : 'light · moderate · heavy · very heavy'}</span>`));
+    }
     else if (w.snow) out.push(S.look === 'a' ? lgRow(`<i style="background:${rampCss(SNOWFALL)};opacity:.7"></i>`, `${what} 0.1–2 mm/h`)
       : lgRow(`<i class="steps" style="background:${stepsCss(SNOWFALL)}"></i>`, `${what} 0.1 · 0.5 · 2 mm/h`));
     else if (S.look === 'a') out.push(lgRow(`<i style="background:${rampCss(RAIN_RAMP)};opacity:.6"></i>`, `${what} drizzle · rain · heavy`));
     else out.push(lgRow(`<i class="steps" style="background:${stepsCss(STEPS)}"></i>`, `${what} 0.1 · 0.5 · 2 · 8 mm/h`));
   }
-  if (on('cloud')) out.push(lgRow(`<i style="background:linear-gradient(90deg, transparent, ${S.look === 'a' && !scene?.dark ? 'rgba(15,23,42,.45)' : 'rgba(148,163,184,.9)'})"></i>`, '<b>Clouds</b> 0–100 %'));
+  if (on('cloud')) out.push(lgRow(`<i style="background:linear-gradient(90deg, transparent, ${(S.look === 'a' || S.look === 'vivid') && !scene?.dark ? 'rgba(15,23,42,.45)' : 'rgba(148,163,184,.9)'})"></i>`, '<b>Clouds</b> 0–100 %'));
   if (on('thunder')) {
-    if (!later && S.data === 'ok') out.push(S.look === 'a'
+    if (!later && S.data === 'ok' && isNew()) {
+      const mark = (c) => S.look === 'vivid' ? `<svg class="lg-mark" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="${c}" stroke="#1f2937" stroke-width="1.2"/></svg>`
+        : `<svg class="lg-mark" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7h9M7 2.5v9" stroke="#1f2937" stroke-width="4.2" stroke-linecap="round"/><path d="M2.5 7h9M7 2.5v9" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+      out.push(`<div class="lgl">${AGE_COLOURS.map(([, c]) => mark(c)).join('')}<span><b>Lightning</b> &lt;1 · 10 · 60 min ago</span></div>`);
+    } else if (!later && S.data === 'ok') out.push(S.look === 'a'
       ? lgRow(`<svg class="lg-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="${BOLT_PATH}" fill="#facc15" stroke="#1f2937" stroke-width="1.6" stroke-linejoin="round"/></svg>`, '<b>Lightning</b> &lt;10 · 30 · 60 min ago')
       : lgRow('<svg class="lg-mark" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="#fde047" stroke="#1f2937" stroke-width="1.4"/></svg>', '<b>Lightning</b> &lt;10 · 30 · 60 min ago'));
-    out.push(lgRow(S.look === 'a' ? '<i class="lg-hatch"></i>' : '<i class="lg-glow"></i>', '<b>Thunder</b> possible'));
+    out.push(lgRow(S.look === 'a' ? '<i class="lg-hatch"></i>' : S.look === 'service' ? '<i class="lg-dash"></i>' : '<i class="lg-glow"></i>', '<b>Thunder</b> possible'));
     if (line && !later && S.data === 'ok') { const n = nearest(); out.push(note(`${ic('bolt', 14, 'bolt')}<span>Nearest lightning ${n.d.toFixed(0)} km, ${Math.max(1, Math.round(n.age))} min ago</span>`, '')); }
     if (later) out.push(note('Lightning is seen, not forecast: it shows at Now.'));
   }
   if (on('depth')) {
     out.push(today ? lgRow(`<i style="background:${rampCss(SNOW_RAMP)};opacity:.7"></i>`, '<b>Snow</b> on the ground 1–120 cm')
-      : S.look === 'a' ? lgRow(`<i style="background:${rampCss(SNOW_RAMP)};opacity:.55"></i>`, '<b>Snow</b> on the ground 1–120 cm')
+      : S.look === 'a' || S.look === 'vivid' ? lgRow(`<i style="background:${rampCss(SNOW_RAMP)};opacity:.55"></i>`, '<b>Snow</b> on the ground 1–120 cm')
         : lgRow(`<i class="steps" style="background:${stepsCss(SNOW_STEPS)}"></i>`, '<b>Snow</b> 1 · 10 · 25 · 50 cm'));
     out.push(note(`<span class="lg-obs">24</span><span>cm measured by FMI; the wash is the forecast</span>`, ''));
   }
+  if (noRadarShown()) out.push(lgRow('<i class="lg-nodata"></i>', '<b>No radar</b> here: rain and snow not shown'));
   if (past && ['cloud', 'thunder', 'depth'].some((k) => L[k] && !(S.look === 'today' && k !== 'depth'))) out.push(note('Only the rain has a past (the radar): the other layers start at Now.'));
   if (on('thunder') && S.data === 'nolightning' && !later) out.push(note('⚠ Lightning couldn’t be loaded (FMI) · Retry', 'warn-text'));
   return out;
@@ -644,7 +712,7 @@ function drawStrip(cv) {
 function drawField(t = 0) {
   const { field, W, H, toKm, dark } = scene, ctx = field.getContext('2d');
   ctx.clearRect(0, 0, W, H);
-  const step = S.look === 'b' ? 2 : 4, cols = Math.ceil(W / step), rows = Math.ceil(H / step);
+  const step = S.look === 'b' || S.look === 'service' ? 2 : 4, cols = Math.ceil(W / step), rows = Math.ceil(H / step);
   const small = document.createElement('canvas'); small.width = cols; small.height = rows;
   const sctx = small.getContext('2d'), im = sctx.createImageData(cols, rows), d = im.data;
   const w = WX[S.wx], lv = new Int8Array(cols * rows).fill(-1), lvD = new Int8Array(cols * rows).fill(-1);
@@ -657,14 +725,20 @@ function drawField(t = 0) {
       const cm = depthAt(x, y);
       if (cm >= 1) {
         if (S.look === 'today') rgba = [...ramp(SNOW_RAMP, cm), Math.min(220, 120 + cm * 2) * 0.7];
-        else if (S.look === 'a') rgba = [...ramp(SNOW_RAMP, cm), Math.min(0.5, 0.26 + cm * 0.006) * 255];
-        else { const sI = stepOf(cm, SNOW_STEPS); lvD[p] = sI; rgba = [...hex(SNOW_STEPS[sI][1]), 0.5 * 255]; }
+        else if (S.look === 'a' || S.look === 'vivid') rgba = [...ramp(SNOW_RAMP, cm), Math.min(0.5, 0.26 + cm * 0.006) * 255];
+        else { const sI = stepOf(cm, SNOW_STEPS); if (S.look === 'b') lvD[p] = sI; rgba = [...hex(SNOW_STEPS[sI][1]), 0.5 * 255]; }
       }
     }
+    if (on('thunder') && isNew()) { // the forecast's thunder: a warm tint (vivid: a glow), its edge drawn after
+      const rk = riskAt(x, y);
+      if (rk > 0.12) rgba = mix(rgba, S.look === 'vivid' ? [250 - rk * 20, 170 - rk * 90, 30, Math.min(0.4, rk * 0.55) * 255] : [245, 158, 11, 0.16 * 255]);
+    }
     if (riskOn) { const rk = riskAt(x, y); if (rk > 0.05) { const a = Math.min(0.42, rk * 0.6); rgba = mix(rgba, [250 - rk * 30, 160 - rk * 90, 20, a * 255]); } }
-    if (rainOn) {
+    if (rainOn && !scene.cov.noRadar(i * step + 2, j * step + 2)) {
       const r = rainAt(x, y);
       if (S.look === 'today') { if (r >= 0.05) rgba = mix(rgba, [...ramp(RAIN_RAMP, r), Math.min(235, 150 + r * 45) * 0.85]); }
+      else if (S.look === 'service') { const st = fall || SERVICE_STEPS, sI = stepOf(r, st); if (sI >= 0) rgba = mix(rgba, [...hex(st[sI][1]), 0.55 * 255]); }
+      else if (S.look === 'vivid') { if (r >= 0.1) rgba = mix(rgba, [...ramp(fall || SERVICE_STEPS, r), Math.min(0.5, 0.18 + r * 0.05) * 255]); }
       else if (S.look === 'a') { if (r >= 0.1) rgba = mix(rgba, [...ramp(fall || RAIN_RAMP, r), Math.min(0.38, 0.12 + r * 0.04) * 255]); }
       else { const st = fall || STEPS, sI = stepOf(r, st); lv[p] = sI; if (sI >= 0) rgba = mix(rgba, [...hex(st[sI][1]), 0.42 * 255]); }
     }
@@ -683,6 +757,8 @@ function drawField(t = 0) {
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(small, 0, 0, cols * step, rows * step);
   if (on('thunder') && S.look === 'a') drawHatch(ctx);
+  if (on('thunder') && isNew()) drawRiskEdge(ctx);
+  if (noRadarShown()) drawNoData(ctx);
   scene.fieldReady = true;
 }
 const mix = (under, over) => {
@@ -724,6 +800,33 @@ function drawHatch(ctx) {
   }
 }
 
+// the new looks: the forecast's thunder gets its edge and its words (the hatch now means "no data", as yr draws it)
+function drawRiskEdge(ctx) {
+  const { W, H, toKm, dark } = scene, step = 4;
+  const mask = document.createElement('canvas'); mask.width = Math.ceil(W / step); mask.height = Math.ceil(H / step);
+  const kc = mask.getContext('2d'), kd = kc.createImageData(mask.width, mask.height);
+  for (let j = 0; j < mask.height; j++) for (let i = 0; i < mask.width; i++) { const [x, y] = toKm(i * step, j * step); if (riskAt(x, y) > 0.12) kd.data[(j * mask.width + i) * 4 + 3] = 255; }
+  kc.putImageData(kd, 0, 0);
+  const e = document.createElement('canvas'); e.width = W; e.height = H; const ec = e.getContext('2d');
+  ec.imageSmoothingEnabled = true; ec.filter = 'blur(1px)';
+  for (const [dx, dy] of [[-1.5, 0], [1.5, 0], [0, -1.5], [0, 1.5]]) ec.drawImage(mask, dx, dy, W, H);
+  ec.filter = 'none'; ec.globalCompositeOperation = 'destination-out'; ec.drawImage(mask, 0, 0, W, H);
+  ec.globalCompositeOperation = 'source-in'; ec.fillStyle = dark ? '#fbbf24' : '#b45309'; ec.fillRect(0, 0, W, H);
+  if (S.look === 'service') { // dashed, as a forecast's edge (cut into dashes along the diagonal)
+    ec.globalCompositeOperation = 'destination-out'; ec.strokeStyle = '#000'; ec.lineWidth = 4;
+    ec.beginPath(); for (let s = -H; s < W + H; s += 10) { ec.moveTo(s, 0); ec.lineTo(s - H, H); } ec.stroke();
+  }
+  ctx.drawImage(e, 0, 0);
+  let best = null;
+  for (let j = 40; j < H - 260; j += 20) for (let i = 30; i < W - 160; i += 20) { const [x, y] = toKm(i, j); const v = riskAt(x, y); if (v > 0.35 && (!best || v > best.v)) best = { i, j, v }; }
+  if (best) {
+    ctx.font = '600 12.5px system-ui, sans-serif'; ctx.lineJoin = 'round';
+    const txt = S.t === '3h' ? 'Thunder possible 22–01' : 'Thunder possible till 23';
+    ctx.lineWidth = 3.5; ctx.strokeStyle = dark ? 'rgba(15,23,42,.9)' : 'rgba(255,255,255,.95)'; ctx.strokeText(txt, best.i, best.j);
+    ctx.fillStyle = dark ? '#fcd34d' : '#92400e'; ctx.fillText(txt, best.i, best.j);
+  }
+}
+
 // ---------------------------------------------------------------- motion: rain, snow, clouds, lightning
 const BOLT_PATH = 'M13 2 5 13h6l-1 9 8-11h-6Z';
 function startParticles() {
@@ -732,7 +835,7 @@ function startParticles() {
   const fall = w.snow && S.look !== 'today'; // (A and B: violet flakes' edge, apart from the snow on the ground)
   // a coarse cache of the rain and the wind on screen, as the app's buildField()
   const CELL = 24, cols = Math.ceil(W / CELL) + 1, rows = Math.ceil(H / CELL) + 1, rainC = new Float32Array(cols * rows);
-  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const [x, y] = toKm(i * CELL, j * CELL); rainC[j * cols + i] = on('rain') ? rainAt(x, y) : 0; }
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const [x, y] = toKm(i * CELL, j * CELL); rainC[j * cols + i] = on('rain') && !sc.cov.noRadar(i * CELL, j * CELL) ? rainAt(x, y) : 0; }
   const cellAt = (x, y) => Math.max(0, Math.min(rainC.length - 1, Math.round(y / CELL) * cols + Math.round(x / CELL)));
   const wet = rainC.some((r) => r >= 0.05);
   const vx = 0.25 + WIND.ms * 0.13; // the app's constant on-screen wind speed, towards the north-east
@@ -838,6 +941,170 @@ function startParticles() {
   }
   anim = requestAnimationFrame(tick);
 }
+// ---------------------------------------------------------------- the new looks' motion (2026-11-08, decided with /animate)
+// Weather service: nothing falls and nothing drifts; time moves when ▷ plays it, as yr, FMI and Foreca do, and new
+// strikes fade in (180 ms). Vivid: rain and snow in three depths, cloud shadows in two layers drifting with the wind,
+// and the one authored moment, a strike: a branching bolt that flickers twice, lights the cloud around it and settles
+// into its mark (about 420 ms). Reduced motion: everything drawn still; a new strike only fades in.
+function jag(a, b, depth, amp) {
+  let pts = [a, b];
+  for (let d = 0; d < depth; d++, amp *= 0.55) {
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], len = Math.hypot(x1 - x0, y1 - y0) || 1, off = (Math.random() - 0.5) * amp;
+      out.push([(x0 + x1) / 2 - ((y1 - y0) / len) * off, (y0 + y1) / 2 + ((x1 - x0) / len) * off], pts[i]);
+    }
+    pts = out;
+  }
+  return pts;
+}
+function makeBolt() { // from the cloud above (up the screen) down to the strike, with a few branches
+  const sx = -30 - Math.random() * 50, sy = -110 - Math.random() * 70, main = jag([sx, sy], [0, 0], 5, 26), lines = [main];
+  for (let b = 0; b < 3; b++) {
+    const [x0, y0] = main[3 + Math.floor(Math.random() * (main.length - 10))], ang = Math.atan2(-sy, -sx) + (b % 2 ? 1 : -1) * (0.5 + Math.random() * 0.6), L = 22 + Math.random() * 34;
+    lines.push(jag([x0, y0], [x0 + Math.cos(ang) * L, y0 + Math.sin(ang) * L], 3, 9));
+  }
+  return lines;
+}
+const flicker = (t) => t < 50 ? 1 : t < 100 ? 0.2 : t < 160 ? 0.95 : t < 420 ? 0.95 * (1 - (t - 160) / 260) : 0;
+const ageColour = (age) => (AGE_COLOURS.find(([m]) => age < m) || AGE_COLOURS[AGE_COLOURS.length - 1])[1];
+function startNew() {
+  const sc = scene, { parts, sky, W, H, toKm, toPx, dark } = sc, ctx = parts.getContext('2d'), kc = sky.getContext('2d');
+  const w = WX[S.wx], reduced = S.motion === 'reduced', vivid = S.look === 'vivid', later = S.t === '3h';
+  const strikesOn = on('thunder') && !later && S.data === 'ok', cloudOn = on('cloud');
+  // the clouds, under the words and the route
+  const CS = 8, cCv = document.createElement('canvas'); cCv.width = Math.ceil(W / CS); cCv.height = Math.ceil(H / CS);
+  const cCtx = cCv.getContext('2d'), cIm = cCtx.createImageData(cCv.width, cCv.height);
+  const clouds = (drift) => {
+    kc.clearRect(0, 0, W, H);
+    const layers = vivid ? [[1, 0], [1.7, 1]] : [[0, 0]];
+    for (const [speed, n] of layers) {
+      const dd = cIm.data;
+      for (let j = 0; j < cCv.height; j++) for (let i = 0; i < cCv.width; i++) {
+        const [x, y] = toKm(i * CS, j * CS), c = n ? cloudAt(x * 1.6 + 11 - drift * speed, y * 1.6 - drift * speed) : cloudAt(x - drift, y - drift), o = (j * cCv.width + i) * 4;
+        let a, rgb;
+        if (vivid && !dark) { a = (n ? 0.14 : 0.26) * c; rgb = [15, 23, 42]; }
+        else if (vivid) { a = (n ? 0.2 : 0.36) * c; rgb = [203, 213, 225]; }
+        else if (!dark) { a = 0.5 * Math.pow(c, 1.3); rgb = [241, 245, 249]; }
+        else { a = 0.3 * Math.pow(c, 1.3); rgb = [148, 163, 184]; }
+        dd[o] = rgb[0]; dd[o + 1] = rgb[1]; dd[o + 2] = rgb[2]; dd[o + 3] = Math.round(a * 255);
+      }
+      cCtx.putImageData(cIm, 0, 0);
+      kc.imageSmoothingEnabled = true; kc.drawImage(cCv, 0, 0, cCv.width * CS, cCv.height * CS);
+    }
+  };
+  // vivid: the rain and snow, in three depths (far ones small, faint and slow)
+  const CELL = 24, cols = Math.ceil(W / CELL) + 1, rows = Math.ceil(H / CELL) + 1, rainC = new Float32Array(cols * rows);
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const [x, y] = toKm(i * CELL, j * CELL); rainC[j * cols + i] = on('rain') && !sc.cov.noRadar(i * CELL, j * CELL) ? rainAt(x, y) : 0; }
+  const cellAt = (x, y) => Math.max(0, Math.min(rainC.length - 1, Math.round(y / CELL) * cols + Math.round(x / CELL)));
+  const wet = vivid && rainC.some((r) => r >= 0.1), wxp = (0.25 + WIND.ms * 0.13) * Math.SQRT1_2;
+  const drops = [];
+  if (wet) for (let i = 0, n = Math.round(Math.min(2000, (W * H) / 520)); i < n; i++) drops.push({ age: Math.random() * 30, max: 0, x: -1, z: [0.4, 0.7, 1][i % 3] });
+  const spawn = (d) => {
+    const x = Math.random() * W, y = Math.random() * H, r = rainC[cellAt(x, y)];
+    if (r >= 0.1 && Math.random() < Math.min(1, 0.12 + r / 3)) {
+      Object.assign(d, { x, y, age: 0, r, snow: !!w.snow, phase: Math.random() * 6.28 });
+      d.max = d.snow ? 150 + Math.random() * 120 : 14 + Math.random() * 16;
+      d.fall = d.snow ? 0.3 + 0.55 * d.z : (5.5 + Math.min(6, r * 0.7)) * (0.45 + 0.7 * d.z);
+      d.len = (3.5 + Math.min(10, r * 1.4)) * (0.5 + 0.8 * d.z);
+      d.size = 0.7 + 1.9 * d.z;
+      return;
+    }
+    d.age = 0; d.max = 4 + Math.random() * 10; d.x = -1;
+  };
+  const rainCol = (z) => dark ? `rgba(224,242,254,${0.16 + 0.5 * z})` : `rgba(30,58,138,${0.14 + 0.46 * z})`;
+  const drawDrops = (k, move) => {
+    const segs = [[], [], []], flakes = [];
+    for (const d of drops) {
+      if (move && (d.age += k) > d.max) { spawn(d); continue; }
+      if (d.x < 0) continue;
+      const zi = d.z < 0.5 ? 0 : d.z < 0.8 ? 1 : 2;
+      if (d.snow) { if (move) { d.x += (wxp * 2 * d.z + Math.sin(d.phase + d.age * 0.06) * 0.35) * k; d.y += d.fall * k; } flakes.push(d); }
+      else {
+        const dx = wxp * 4.5, dy = d.fall, l = d.len / Math.hypot(dx, dy);
+        segs[zi].push([d.x, d.y, d.x - dx * l, d.y - dy * l]);
+        if (move) { d.x += dx * k * (0.5 + 0.5 * d.z); d.y += dy * k; }
+      }
+      if (d.y > H || d.x < 0 || d.x > W) d.age = d.max + 1;
+    }
+    ctx.lineCap = 'round';
+    segs.forEach((g, zi) => {
+      if (!g.length) return;
+      const z = [0.4, 0.7, 1][zi];
+      ctx.lineWidth = 0.6 + 1.1 * z; ctx.strokeStyle = rainCol(z); ctx.beginPath();
+      for (const [a, b, c, e] of g) { ctx.moveTo(a, b); ctx.lineTo(c, e); }
+      ctx.stroke();
+    });
+    if (flakes.length) {
+      for (const d of flakes) {
+        ctx.beginPath(); ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.55 + 0.4 * d.z})`; ctx.fill();
+        if (!dark) { ctx.lineWidth = 0.7; ctx.strokeStyle = `rgba(91,33,182,${0.2 + 0.35 * d.z})`; ctx.stroke(); }
+      }
+    }
+  };
+  // the strikes: marks by age (yr's colours); vivid gets the flash, and new ones keep coming while the storm is on
+  const marks = (now) => {
+    const sorted = strikes.slice().sort((a, b) => b.age - a.age);
+    for (const s of sorted) {
+      const [px, py] = toPx(s.x, s.y);
+      if (px < -10 || py < -10 || px > W + 10 || py > H + 10) continue;
+      const t = s.born ? now - s.born : 1e9, col = ageColour(s.age);
+      if (vivid && s.bolt && !reduced && t < 420) { // the flash
+        const f = flicker(t);
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createRadialGradient(px, py - 40, 0, px, py - 40, 170);
+        g.addColorStop(0, `rgba(237,233,254,${(dark ? 0.42 : 0.3) * f})`); g.addColorStop(1, 'rgba(237,233,254,0)');
+        ctx.fillStyle = g; ctx.fillRect(px - 170, py - 210, 340, 340);
+        s.bolt.forEach((line, i) => {
+          ctx.beginPath(); line.forEach(([x, y], k) => (k ? ctx.lineTo(px + x, py + y) : ctx.moveTo(px + x, py + y)));
+          ctx.shadowColor = '#a78bfa'; ctx.shadowBlur = 14; ctx.lineJoin = 'round';
+          ctx.strokeStyle = `rgba(196,181,253,${0.6 * f})`; ctx.lineWidth = i ? 3 : 5; ctx.stroke();
+          ctx.shadowBlur = 0; ctx.strokeStyle = `rgba(255,255,255,${f})`; ctx.lineWidth = i ? 0.9 : 1.6; ctx.stroke();
+        });
+        ctx.restore();
+      }
+      const a = Math.min(1, Math.max(0, (vivid && s.bolt && !reduced ? t - 160 : t) / 180));
+      if (a <= 0) continue;
+      ctx.globalAlpha = a;
+      if (vivid) {
+        const r = s.age < 1 ? 4.5 : s.age < 10 ? 4 : 3.2;
+        if (s.age < 10) { ctx.shadowColor = col; ctx.shadowBlur = 10; }
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+        ctx.shadowBlur = 0; ctx.lineWidth = 1.2; ctx.strokeStyle = dark ? '#0f172a' : '#1f2937'; ctx.stroke();
+      } else { // a cross, as the services draw a strike
+        const r = s.age < 10 ? 5 : 4;
+        ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(px - r, py); ctx.lineTo(px + r, py); ctx.moveTo(px, py - r); ctx.lineTo(px, py + r);
+        ctx.lineWidth = 4.2; ctx.strokeStyle = dark ? '#0f172a' : '#1f2937'; ctx.stroke();
+        ctx.lineWidth = 2.2; ctx.strokeStyle = col; ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  };
+  const addStrike = () => {
+    const pool = THUNDER_CELLS.flatMap((c) => Array(c.n).fill(c)), c = pool[Math.floor(Math.random() * pool.length)];
+    const rr = Math.sqrt(-2 * Math.log(Math.random() + 1e-6)) * c.r * 0.5, th = Math.random() * 6.28;
+    for (const s of strikes) s.age += 0.05;
+    strikes.push({ x: c.x + rr * Math.cos(th) + 1.2, y: c.y + rr * Math.sin(th) + 1.2, age: 0, born: performance.now(), bolt: makeBolt() });
+    while (strikes.length > 140) strikes.shift();
+  };
+  sc.addStrike = addStrike;
+  if (vivid && strikesOn && !reduced) { const next = () => { sc.timer = setTimeout(() => { if (scene === sc) { addStrike(); next(); } }, 1400 + Math.random() * 2600); }; next(); }
+  if (cloudOn) clouds(0);
+  if (wet && reduced) for (let i = 0; i < 70; i++) drawDrops(1, true);
+  const t0 = performance.now();
+  let last = t0;
+  const tick = (now) => {
+    const k = Math.min(3, Math.max(0.25, (now - last) / 16.7)); last = now;
+    ctx.clearRect(0, 0, W, H);
+    if (cloudOn && vivid && !reduced) clouds(((now - t0) / 1000) * 7 * sc.k);
+    if (wet) drawDrops(k, !reduced);
+    if (strikesOn) marks(now);
+    const fading = strikes.some((s) => s.born && now - s.born < 600);
+    if ((vivid && !reduced && (wet || cloudOn || strikesOn)) || fading) anim = requestAnimationFrame(tick);
+  };
+  anim = requestAnimationFrame(tick);
+}
 function drawStrikes(ctx, now, reduced) {
   const { toPx, W, H, dark } = scene;
   const bolt = new Path2D(BOLT_PATH);
@@ -889,6 +1156,8 @@ function caption() {
   if (S.wx === 'snow') bits.push(today ? 'Snow: today’s snow depth wash and the snowfall in the rain’s colours.' : 'Snow: the snowfall in violet over the snow on the ground; FMI’s measured depths as small labels. Turn Rain and snowfall off in the pill’s menu to see the ground alone.');
   if (S.scale === 'region' && on('towns')) bits.push('The region: the towns’ weather at the line’s hour (the sky, temperature and wind).');
   if (S.bar === 'line') bits.push('Tap the pill (“Rain ▾”) for the layers; drag the strip to the radar’s part or 3 hours ahead.');
+  if (S.look === 'vivid' && S.wx === 'thunder' && S.t === 'now') bits.push('Vivid: a new strike flashes now and then; press “A new batch of lightning arrives” for a burst.');
+  if (isNew() && S.scale === 'country') bits.push('Finland and around: hatched where FMI’s radars don’t reach (about 250 km, places approximate).');
   if (S.motion === 'reduced') bits.push('Reduced motion: the rain and snow are still, the clouds don’t drift, nothing flashes.');
   if (S.z === '200') bits.push('200 %: the map, the legend and the line twice the size; the rest of the interface is left out.');
   bits.push('The weather is made up. Its colours and the clouds sit under the map’s words and the route, as in the app; the rain and the lightning move over everything, as the app’s canvas does.');
