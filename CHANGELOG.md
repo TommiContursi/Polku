@@ -2,6 +2,13 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-08
+
+### Hills that look like hills in 3D ([#642](https://github.com/TommiContursi/Polku/issues/642))
+
+- In 3D the hills are lit by one light from the north-west, so the slopes facing away from it are darker and a fell or a ridge stands out when you tilt the map. The flat map keeps its softer light from four directions. This works on the trail map, the night map and Maastokartta; the aerial photos have no hillshade.
+- **3D height** now starts at 1.5, a little taller than before, as Finland's hills are low. Where Polku has already saved your settings, it keeps the height you had: change it in **Layers** under **3D terrain**.
+
 ## 2026-11-07
 
 ### One set of sizes, and the profile in the peek ([#889](https://github.com/TommiContursi/Polku/issues/889), [#742](https://github.com/TommiContursi/Polku/issues/742))

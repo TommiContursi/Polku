@@ -63,7 +63,7 @@ const DEFAULTS = {
   labelsDown: false,
   labelsUp: false,
   weather: { wind: false, temp: false, rain: false },
-  exaggeration: 1.4,
+  exaggeration: 1.5,
   mmlKey: '',
   overlaysByActivity: {},
   trailsByActivity: {}, // trail colours and numbers you chose, per sport (the sport only sets the defaults)

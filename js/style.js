@@ -191,16 +191,26 @@ export function buildStyle(s, ctx) {
   }
 
   if (s.hillshade && !aerialBase) {
+    const night = s.base === 'night';
     add({
       id: 'hillshade', type: 'hillshade', source: 'dem', minzoom: 4,
-      paint: {
+      paint: s.terrain3d ? {
+        // 3D: one light from the north-west, fixed to the map, so a tilted slope facing away from it is darker
+        'hillshade-method': 'standard',
+        'hillshade-illumination-direction': 315,
+        'hillshade-illumination-anchor': 'map',
+        'hillshade-shadow-color': night ? 'rgba(0,0,0,0.7)' : 'rgba(45,35,25,0.6)',
+        'hillshade-highlight-color': night ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,240,0.4)',
+        'hillshade-accent-color': night ? 'rgba(0,0,0,0.35)' : 'rgba(45,35,25,0.3)',
+        'hillshade-exaggeration': 1,
+      } : {
         'hillshade-method': 'multidirectional',
         'hillshade-illumination-direction': [270, 315, 0, 45],
         'hillshade-illumination-altitude': [30, 30, 30, 30],
-        'hillshade-shadow-color': s.base === 'night'
+        'hillshade-shadow-color': night
           ? ['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.5)']
           : ['rgba(70,50,35,0.32)', 'rgba(70,50,35,0.32)', 'rgba(70,50,35,0.22)', 'rgba(70,50,35,0.22)'],
-        'hillshade-highlight-color': s.base === 'night'
+        'hillshade-highlight-color': night
           ? ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.03)']
           : ['rgba(255,255,240,0.35)', 'rgba(255,255,240,0.35)', 'rgba(255,255,240,0.2)', 'rgba(255,255,240,0.2)'],
         'hillshade-exaggeration': zi(5, 0.75, 11, 0.55, 15, 0.45),
@@ -612,7 +622,7 @@ export function buildStyle(s, ctx) {
     layers,
   };
   if (s.terrain3d) {
-    style.terrain = { source: 'terrain', exaggeration: s.exaggeration || 1.4 };
+    style.terrain = { source: 'terrain', exaggeration: s.exaggeration || 1.5 };
     style.sky = { 'sky-color': '#bcd8f0', 'horizon-color': '#eef4f8', 'fog-color': '#eef2f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.85 };
   }
   return style;

@@ -10196,6 +10196,38 @@ def labels_3d(chrome):
     return not fails
 
 
+
+# Hills in 3D (#642): while 3D is on the hillshade has one light from the north-west, fixed to the map; off, the flat
+# map's light from four directions comes back. Both kept after a reload. 3D height starts at 1.5.
+HILLS_3D = """(() => { const m = polku.map, p = (k) => m.getPaintProperty('hillshade', k);
+  return { on: polku.state.terrain3d, ex: m.getTerrain() ? m.getTerrain().exaggeration : null, method: p('hillshade-method'), dir: p('hillshade-illumination-direction'), anchor: p('hillshade-illumination-anchor') }; })()"""
+
+
+def hills_3d(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#13/61.8790/25.0650')
+
+        def expect(where, on):
+            got = pg.js(HILLS_3D)
+            want = {'on': True, 'ex': 1.5, 'method': 'standard', 'dir': 315, 'anchor': 'map'} if on else {'on': False, 'ex': None, 'method': 'multidirectional', 'dir': [270, 315, 0, 45]}
+            if any(got.get(k) != v for k, v in want.items()):
+                fails.append(f'{where}: the hillshade is {got}, not {want}')
+
+        expect('flat', False)
+        for on in (True, False):
+            pg.js("document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
+            expect(f"3D {'on' if on else 'off'}", on)
+            pg.reload()
+            expect(f"3D {'on' if on else 'off'}, after a reload", on)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the hills in 3D: one light from the north-west, the flat map's back without 3D" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 # Fold, then away (step 3 of #233: #338, #303, #434): the planner and every card fold to one line and come back as
 # they were; a second swipe, or ✕ at the line, puts the planner away or closes the card. Phones by touch, desktops by mouse.
 FOLD_INFO = """(() => { const p = polku.planner, b = (e) => { if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; };
@@ -19315,7 +19347,7 @@ GROUPS = [
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
-    ('button3d', [button3d, labels_3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels)'),
+    ('button3d', [button3d, labels_3d, hills_3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels); the hills\' one light in 3D (#642)'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
