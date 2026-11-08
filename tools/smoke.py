@@ -5976,9 +5976,12 @@ def terrain(chrome):
 # a wall of the test's (shadows.js), and in the app Hillshade's light following the timeline's hour, the fixed light
 # back when the sun is down or Fixed light is picked, the shadows' switch, all kept after a reload.
 SUNLIGHT_MATHS = """(async () => {
-  const { sunPosition } = await import(location.origin + '/js/sun.js'), { castShadows } = await import(location.origin + '/js/shadows.js');
-  const out = [], noon = sunPosition(Date.UTC(2026, 10, 8, 10, 23) / 1000, [24.94, 60.17]); // Helsinki's solar noon, 2026-11-08
-  if (Math.abs(noon.alt - 13.2) > 0.5 || Math.abs(noon.az - 180) > 2) out.push(`Helsinki's noon sun: ${JSON.stringify(noon)}`);
+  const { sunPosition, sunTimes } = await import(location.origin + '/js/sun.js'), { castShadows } = await import(location.origin + '/js/shadows.js');
+  // Helsinki on 2026-11-08: due south and 13.2° up at noon, on the horizon in the south-east at sunrise
+  const hel = [24.94, 60.17], day = sunTimes(Date.UTC(2026, 10, 8, 10) / 1000, hel), noon = sunPosition(day.noon, hel), rise = sunPosition(day.rise, hel);
+  const out = [];
+  if (Math.abs(noon.alt - 13.2) > 0.5 || Math.abs(noon.az - 180) > 1) out.push(`Helsinki's noon sun: ${JSON.stringify(noon)}`);
+  if (Math.abs(rise.alt + 0.8) > 0.6 || Math.abs(rise.az - 123) > 2) out.push(`Helsinki's sun at sunrise: ${JSON.stringify(rise)}`);
   // a 100 m wall north to south through the middle tile, 10 m pixels: the sun 10° up casts 567 m of shadow
   const S = 256, N = 3 * S, g = new Float32Array(N * N);
   for (let y = 0; y < N; y++) g[y * N + 384] = 100;
