@@ -1196,12 +1196,12 @@ const wxToggle = (k) => ({
   temp: () => withOpacity('wx:temp', toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
   rain: () => withOpacity('wx:rain', toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
   snow: () => withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
-  cloud: () => toggle('Clouds', state.weather.cloud, (v) => setWeather({ cloud: v }), 'A grey veil, thicker where it’s cloudier'),
-  thunder: () => toggle('Thunder', state.weather.thunder, (v) => setWeather({ thunder: v }), 'FMI’s lightning in the last hour, and the forecast’s thunder'),
-  towns: () => toggle('Towns’ weather', state.weather.towns, (v) => setWeather({ towns: v }), 'The sky, °C and wind where the map names a place; tap one to read its weather'),
+  cloud: () => toggle('Clouds', state.weather.cloud, (v) => setWeather({ cloud: v })),
+  thunder: () => toggle('Thunder', state.weather.thunder, (v) => setWeather({ thunder: v })),
+  towns: () => toggle('Towns’ weather', state.weather.towns, (v) => setWeather({ towns: v })),
 })[k]();
 // the weather's Effects, also at the end of the timeline's layer menu (and in Settings › Display)
-const effectsToggle = () => toggle('Weather effects', weather.effects, (v) => weather.setEffects(v), 'Softer edges, falling rain and a ring on new lightning');
+const effectsToggle = () => toggle('Weather effects', weather.effects, (v) => weather.setEffects(v));
 const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
 // What the On now chips list and More counts: the layers drawn over the base map
 const onNowIds = () => [
