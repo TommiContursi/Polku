@@ -10198,9 +10198,9 @@ def labels_3d(chrome):
 
 
 # Hills in 3D (#642): while 3D is on the hillshade has one light from the north-west, fixed to the map; off, the flat
-# map's light from four directions comes back. Both kept after a reload.
+# map's light from four directions comes back. Both kept after a reload. 3D height starts at 1.5.
 HILLS_3D = """(() => { const m = polku.map, p = (k) => m.getPaintProperty('hillshade', k);
-  return { on: polku.state.terrain3d, method: p('hillshade-method'), dir: p('hillshade-illumination-direction'), anchor: p('hillshade-illumination-anchor') }; })()"""
+  return { on: polku.state.terrain3d, ex: m.getTerrain() ? m.getTerrain().exaggeration : null, method: p('hillshade-method'), dir: p('hillshade-illumination-direction'), anchor: p('hillshade-illumination-anchor') }; })()"""
 
 
 def hills_3d(chrome):
@@ -10212,7 +10212,7 @@ def hills_3d(chrome):
 
         def expect(where, on):
             got = pg.js(HILLS_3D)
-            want = {'on': True, 'method': 'standard', 'dir': 315, 'anchor': 'map'} if on else {'on': False, 'method': 'multidirectional', 'dir': [270, 315, 0, 45]}
+            want = {'on': True, 'ex': 1.5, 'method': 'standard', 'dir': 315, 'anchor': 'map'} if on else {'on': False, 'ex': None, 'method': 'multidirectional', 'dir': [270, 315, 0, 45]}
             if any(got.get(k) != v for k, v in want.items()):
                 fails.append(f'{where}: the hillshade is {got}, not {want}')
 
