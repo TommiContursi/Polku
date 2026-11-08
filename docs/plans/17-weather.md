@@ -56,7 +56,7 @@ An idea from 2026-11-07: make the weather on the map look much better, with clou
 ### When it's built
 
 - **Lightning:** FMI's open data (the `fmi::observations::lightning::simple` stored query answered on 2026-11-07), for the map's view and the last hour, through `request()` in `js/net.js` like every source, with its entry in Settings → Data sources. It sends the view's corners, never a position.
-- **Forecast thunder:** Open-Meteo's weather code (95–99) and CAPE are in its hourly forecast; whether `lightning_potential` covers Finland is unknown.
+- **Forecast thunder:** Open-Meteo's weather code (95–99) and CAPE are in its hourly forecast; its `lightning_potential` is empty in Finland ([the weather card's plan](trip-box-and-weather-card.md#the-data-met-norway-open-meteo-and-fmi)). MET Norway's Locationforecast has a chance of thunder, but answers one point a request.
 - **Missing data:** when lightning fails, the map shows the forecast's thunder only and says so; it never looks like a calm sky.
 - The motion is decided with /animate, and the user runs /review-animations before the PR opens.
 - Model: Opus at high (a new source, `js/wxmap.js` and `js/style.js`, smoke checks with recorded lightning).
