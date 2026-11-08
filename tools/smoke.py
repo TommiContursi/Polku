@@ -12177,7 +12177,7 @@ WX_MENU = """(async () => {
   pill.click(); await wait(300);
   const item = (k) => document.querySelector(`.menu-pop .wx-${k}`);
   const items = [...document.querySelectorAll('.menu-pop [role=menuitemcheckbox]')].map((b) => `${b.textContent.trim().split(/(?=[A-Z])/)[0]}:${b.getAttribute('aria-checked')}`);
-  if (items.join() !== 'Rain and snowfall:true,Wind:false,Temperature:false,Snow on the ground:false,Towns’ weather:false,Effects:true') out.push(`the menu: ${items.join()}`);
+  if (items.join() !== 'Rain and snowfall:true,Clouds:false,Wind:false,Temperature:false,Snow on the ground:false,Towns’ weather:false,Effects:true') out.push(`the menu: ${items.join()}`);
   if (!item('rain')?.querySelector('.menu-tick') || item('wind')?.querySelector('.menu-tick')) out.push('a ticked layer has no tick, or one off has');
   item('wind').click(); await wait(300);
   if (!item('wind') || item('wind').getAttribute('aria-checked') !== 'true' || document.activeElement !== item('wind')) out.push('Wind: not ticked, or the menu closed, or the focus left it');
@@ -12283,6 +12283,41 @@ def towns_weather(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the towns' weather, zoomed out, apart and off the route (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #182's clouds: a still grey veil from Open-Meteo's cover (WX_FIXED: 60 %), under the rain and the route, with its
+# legend's row; it doesn't drift, so the map settles (moving an image source kept the map from ever being idle).
+WX_CLOUDS = """(async () => {
+  const out = [], w = polku.weather, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let k = 0; k < 100 && !(w.cur && map.getSource('wxCloud')); k++) await wait(200);
+  if (!map.getSource('wxCloud')) return ['no clouds drawn after 20 s'];
+  const img = new Image(); img.src = map.getStyle().sources.wxCloud.url; await img.decode();
+  const cv = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height }), ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
+  const px = [...ctx.getImageData(img.width >> 1, img.height >> 1, 1, 1).data];
+  if ([71, 85, 105, 50].some((v, i) => Math.abs(px[i] - v) > 3)) out.push(`60 % cloud is drawn ${px.join()}, not 71,85,105,50`);
+  const legend = document.querySelector('.map-hints .wx-legend');
+  if (!/Clouds the greyer, the cloudier/.test(legend.textContent)) out.push(`the legend: ${legend.textContent}`);
+  const ids = map.getStyle().layers.map((l) => l.id);
+  if (!(ids.indexOf('wx-cloud') < ids.indexOf('route-casing'))) out.push('the clouds aren’t under the route');
+  w.setHour(2); await wait(300);
+  if (!(await new Promise((r) => { map.once('idle', () => r(true)); map.triggerRepaint(); setTimeout(() => r(false), 10000); }))) out.push('with the clouds on, the map doesn’t settle in 10 s');
+  return out;
+})()"""
+
+
+def clouds(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)  # (Effects' motion on)
+        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'cloud': True}}, {'polku:winter': '"off"'}, '#9/61.5/23.8')
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
+        fails = pg.js(WX_CLOUDS, timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the clouds: a still veil from the cover, under the route, and the map settles (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # Every group: its name, its checks in the order they run, and its line for --list.
@@ -19586,7 +19621,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, clouds], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916); the clouds\' veil (#182)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

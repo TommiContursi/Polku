@@ -102,6 +102,11 @@ The user's choice on 2026-11-08: **Weather service** is the look, and **Effects*
 - **The legend** has a row for it ("Towns the sky, °C and wind in m/s"); zoomed in, it says to zoom out.
 - **Not like the mock-up:** the temperature is the text's colour (blue at 0 °C and below), not red, which DESIGN.md keeps for danger; the wind has its arrow, so the number reads as wind.
 
+### Built: clouds (PR 3, 2026-11-08)
+
+- **Clouds** in the pill's menu, after Rain and snowfall: Open-Meteo's cover from the grid as a grey veil (slate at most 38 %, thicker where it's cloudier; on dark maps a pale grey at most 30 %), under the rain, the map's words and the route, with its legend's row ("the greyer, the cloudier", or "the paler" on dark maps). The mock-up's white veil barely showed on the light map, so it's grey there.
+- **Still, not drifting** (2026-11-08): sliding the veil (an image source's `setCoordinates()`, ten times a second) kept MapLibre from ever being idle, so the search's and a shared spot's cards, which wait for `idle`, waited 30 s for the drift to rest. At the grid's coarse cells a drift of a few per cent of the view barely shows. A drift would be a small WebGL layer like the route's chevrons; the user decides.
+
 ### For the user to decide
 
 - Whether Effects also has a place in Settings, beside the pill's menu.
