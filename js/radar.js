@@ -216,3 +216,36 @@ function readTiff(buf, width, height) {
   tags[273].forEach((off, i) => { for (let b = 0; b + 1 < tags[279][i] && k < n; b += 2) px[k++] = dv.getUint16(off + b, le); });
   return { px, ...meta };
 }
+
+// RainViewer's coverage (#182): a tile is opaque where no radar reaches and clear where one does. For the hatch where
+// there's no radar, where RainViewer's radar is the one drawn. 256 px tiles at zoom z, kept for the session (a failed
+// one is asked for again next time). → (lon, lat) → true covered, false not, null not known.
+const coverTiles = new Map();
+const coverTile = (k) => {
+  if (!coverTiles.has(k)) {
+    coverTiles.set(k, (async () => {
+      const res = await request('rainviewer', `https://tilecache.rainviewer.com/v2/coverage/0/256/${k}/0/0_0.png`);
+      if (!res.ok) throw new Error(`RainViewer coverage ${res.status}`);
+      const cv = new OffscreenCanvas(256, 256), ctx = cv.getContext('2d');
+      ctx.drawImage(await createImageBitmap(await res.blob()), 0, 0);
+      const d = ctx.getImageData(0, 0, 256, 256).data, a = new Uint8Array(256 * 256);
+      for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3];
+      return a;
+    })().catch(() => { coverTiles.delete(k); return null; }));
+  }
+  return coverTiles.get(k);
+};
+
+export async function rainviewerCoverage(box, z) {
+  const n = 2 ** z, tx = (lon) => ((lon + 180) / 360) * n;
+  const ty = (lat) => ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * n;
+  const keys = [];
+  for (let x = Math.floor(tx(box[0])); x <= Math.floor(tx(box[2])); x++) {
+    for (let y = Math.max(0, Math.floor(ty(box[3]))); y <= Math.min(n - 1, Math.floor(ty(box[1]))); y++) keys.push(`${z}/${((x % n) + n) % n}/${y}`);
+  }
+  const got = new Map(await Promise.all(keys.map(async (k) => [k, await coverTile(k)])));
+  return (lon, lat) => {
+    const fx = tx(lon), fy = ty(lat), x = Math.floor(fx), y = Math.floor(fy), a = got.get(`${z}/${((x % n) + n) % n}/${y}`);
+    return a ? a[Math.min(255, Math.floor((fy - y) * 256)) * 256 + Math.min(255, Math.floor((fx - x) * 256))] < 128 : null;
+  };
+}

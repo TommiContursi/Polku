@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### Where there's no radar ([#182](https://github.com/TommiContursi/Polku/issues/182))
+
+- With **Rain and snowfall** on at Now, the map is hatched where no radar reaches: beyond FMI's radars, and zoomed out, beyond RainViewer's too. The legend says "No radar here: rain and snow not shown", so a dry-looking map there isn't mistaken for a dry sky. At a later hour the forecast covers everywhere, so nothing is hatched.
+- The hatch's edge comes from the radars' own coverage, not a guess. With **Effects** it fades in over its edge.
+
 ### Thunder on the map ([#182](https://github.com/TommiContursi/Polku/issues/182))
 
 - **Thunder** in the timeline's weather menu shows FMI's lightning of the last hour as small crosses coloured by age: orange under a minute, violet under 10 and light violet under 60. A new strike's cross fades in, and with **Effects** a ring grows and fades once around it, so you see where it just struck; with reduced motion nothing flashes. Lightning is seen, not forecast, so it shows only at Now.
