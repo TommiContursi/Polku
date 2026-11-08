@@ -757,9 +757,15 @@ export class WeatherOverlay {
     const spawn = (d) => {
       const x = Math.random() * this.W, y = Math.random() * this.H;
       const i = cellAt(x, y);
-      // the radar's scattered echoes are finer than a cell (100 km zoomed out): asked where the drop would be
+      // the radar's scattered echoes are finer than a cell (100 km zoomed out): asked where the drop would be,
+      // its place eased between the grid's four corners (in 3D, map.unproject() reads a pixel back from the GPU)
       let r = f.rain[i];
-      if (r >= 0.1 && this.fiRate && this.hour < 0.5) { const p = this.map.unproject([x, y]); r = this.nowRate(p.lng, p.lat) ?? r; }
+      const { cols, ll, ok } = this.cam, c = Math.floor(x / CELL), w = Math.floor(y / CELL), a = w * cols + c;
+      if (r >= 0.1 && this.fiRate && this.hour < 0.5 && ok[a] && ok[a + 1] && ok[a + cols] && ok[a + cols + 1]) {
+        const u = x / CELL - c, v = y / CELL - w;
+        const mix = (o) => (ll[2 * a + o] * (1 - u) + ll[2 * a + 2 + o] * u) * (1 - v) + (ll[2 * (a + cols) + o] * (1 - u) + ll[2 * (a + cols) + 2 + o] * u) * v;
+        r = this.nowRate(mix(0), mix(1)) ?? r;
+      }
       // 0.1 mm/h: about one drop in eight tries; 3.6 mm/h and up: all of them
       if (r >= 0.1 && Math.random() < Math.min(1, 0.1 + r / 4)) {
         d.x = x; d.y = y; d.age = 0; d.snow = !!f.snow[i];
