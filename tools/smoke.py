@@ -5971,6 +5971,70 @@ def terrain(chrome):
     return not fails
 
 
+
+# The hills lit by the sun at the map's hour, with their shadows (#910): the sun's place (sun.js), the shadows' sweep on
+# a wall of the test's (shadows.js), and in the app Hillshade's light following the timeline's hour, the fixed light
+# back when the sun is down or Fixed light is picked, the shadows' switch, all kept after a reload.
+SUNLIGHT_MATHS = """(async () => {
+  const { sunPosition } = await import(location.origin + '/js/sun.js'), { castShadows } = await import(location.origin + '/js/shadows.js');
+  const out = [], noon = sunPosition(Date.UTC(2026, 10, 8, 10, 23) / 1000, [24.94, 60.17]); // Helsinki's solar noon, 2026-11-08
+  if (Math.abs(noon.alt - 13.2) > 0.5 || Math.abs(noon.az - 180) > 2) out.push(`Helsinki's noon sun: ${JSON.stringify(noon)}`);
+  // a 100 m wall north to south through the middle tile, 10 m pixels: the sun 10° up casts 567 m of shadow
+  const S = 256, N = 3 * S, g = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) g[y * N + 384] = 100;
+  const span = (az, alt) => { const o = castShadows(g, N, az, alt, 10), r = [...o.subarray(128 * S, 129 * S)]; return [r.indexOf(1), r.lastIndexOf(1)]; };
+  for (const [az, alt, want] of [[270, 10, [129, 185]], [90, 10, [71, 127]], [225, 10, [129, 168]], [270, 45, [129, 138]], [180, 10, [-1, -1]]]) {
+    const got = span(az, alt);
+    if (Math.abs(got[0] - want[0]) > 2 || Math.abs(got[1] - want[1]) > 2) out.push(`a wall's shadow with the sun at ${az}°, ${alt}° up: columns ${got}, not about ${want}`);
+  }
+  return out;
+})()"""
+SUNLIGHT_APP = """(async (step) => {
+  const m = polku.map, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const { sunPosition } = await import(location.origin + '/js/sun.js'), { timeAtHour } = await import(location.origin + '/js/wxmap.js');
+  const at = (k) => sunPosition(Math.round(timeAtHour(k) / 600) * 600, m.getCenter().toArray());
+  const hours = [...Array(48).keys()], up = hours.find((k) => at(k).alt > 5), down = hours.find((k) => at(k).alt < -1);
+  const read = () => ({ method: m.getPaintProperty('hillshade', 'hillshade-method'), dir: m.getPaintProperty('hillshade', 'hillshade-illumination-direction'),
+    shadows: !!m.getLayer('sun-shadow'), light: polku.state.hillLight });
+  const out = [], expect = (where, want) => { const got = read(); if (Object.keys(want).some((k) => JSON.stringify(got[k]) !== JSON.stringify(want[k]))) out.push(`${where}: ${JSON.stringify(got)}, not ${JSON.stringify(want)}`); };
+  if (step === 'before') {
+    expect('the fixed light at first', { method: 'multidirectional', shadows: false, light: 'fixed' });
+    polku.set({ hillLight: 'sun' }); w.setHour(up); await wait(1500);
+    expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true });
+    const tiles = m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0];
+    if (!tiles || !tiles.endsWith(`t=${Math.round(timeAtHour(up) / 600) * 600}`)) out.push(`the shadows' tiles: ${tiles}`);
+    polku.set({ hillShadows: false }); await wait(800);
+    expect('Shadows off', { method: 'combined', shadows: false });
+    polku.set({ hillShadows: true }); w.setHour(down); await wait(1500);
+    expect(`the sun down, +${down} h`, { method: 'multidirectional', shadows: false, light: 'sun' });
+    w.setHour(up); await wait(1500);
+  } else {
+    expect('after a reload, the sun kept', { light: 'sun' });
+    polku.set({ hillLight: 'fixed' }); await wait(1000);
+    expect('Fixed light', { method: 'multidirectional', shadows: false, light: 'fixed' });
+  }
+  return out;
+})"""
+
+
+def sunlight(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:winter': '"off"'}, '#12.5/61.8790/25.0650')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        fails += pg.js(SUNLIGHT_MATHS)
+        fails += pg.js(f"({SUNLIGHT_APP})('before')", timeout=120000)
+        pg.idle()  # the shadows' tiles worked out from the DEM, as on the screen
+        pg.reload()
+        fails += pg.js(f"({SUNLIGHT_APP})('after')", timeout=120000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the hills lit by the sun at the map's hour, and their shadows" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 # The planner's header never spills out of the sheet, and its toolbox stays in the window, clear of
 # the map's buttons where it's level with them (25a, planner.js placeTools()). Narrow desktop windows
 # with the bottom dock, a small phone.
@@ -19308,6 +19372,7 @@ GROUPS = [
     ('backtostart', [back_to_start], 'Back to start buttons, closing leg and undo (straight legs)'),
     ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun, the routing bar and the folded line while a leg is held (no routing)'),
     ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
+    ('sunlight', [sunlight], 'the hills lit by the sun at the timeline\'s hour and their shadows (#910): the sun\'s place, a wall\'s shadow, the light and the switch over the hours and a reload'),
     ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),

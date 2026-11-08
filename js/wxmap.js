@@ -16,6 +16,7 @@ import { compass } from './geo.js';
 import { h, icon, store } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 import { fmiRadar, FI_BOUNDS } from './radar.js';
+import { sunPosition } from './sun.js';
 
 const MAX_CELLS = 60; // forecast points per grid (the view plus a margin); the field is smooth
 const IMG = 72; // field image resolution
@@ -51,21 +52,6 @@ export function timeAtHour(hr) {
   const now = Date.now() / 1000;
   if (hr < 0.01) return now;
   return Math.max(now, Math.floor(now / 3600) * 3600 + hr * 3600);
-}
-
-// Sun altitude in degrees (good to ~0.5°), for night shading on the timeline.
-function sunAltitude(lat, lon, tSec) {
-  const R = Math.PI / 180;
-  const d = tSec / 86400 + 2440587.5 - 2451545.0;
-  const g = (357.529 + 0.98560028 * d) * R;
-  const q = 280.459 + 0.98564736 * d;
-  const L = (q + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * R;
-  const e = (23.439 - 0.00000036 * d) * R;
-  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L));
-  const dec = Math.asin(Math.sin(e) * Math.sin(L));
-  const gmst = ((18.697374558 + 24.06570982441908 * d) % 24 + 24) % 24;
-  const ha = (gmst * 15 + lon) * R - ra;
-  return Math.asin(Math.sin(lat * R) * Math.sin(dec) + Math.cos(lat * R) * Math.cos(dec) * Math.cos(ha)) / R;
 }
 
 // Web Mercator helpers (0..1 world units)
@@ -875,7 +861,7 @@ export class WeatherOverlay {
     // night
     ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
     for (let hr = 0; hr < HOURS; hr++) {
-      if (sunAltitude(d.lat, d.lon, (d.t[hr] + d.t[hr + 1]) / 2) < -0.8) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
+      if (sunPosition((d.t[hr] + d.t[hr + 1]) / 2, [d.lon, d.lat]).alt < -0.8) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
     }
     // your ride, from departure to arrival
     const ride = this.app.routeHours && this.app.routeHours();
@@ -1071,7 +1057,7 @@ export class WeatherOverlay {
         this.nowEl.title = this.nowEl.textContent; // (a long note shows three lines)
         return;
       }
-      const night = sunAltitude(ll[1], ll[0], this.cur.t) < -3;
+      const night = sunPosition(this.cur.t, ll).alt < -3;
       const kind = skyKind(s.rain, s.temp, s.cloud, night);
       const sky = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' }[kind];
       const sum = this.accum(ll, 6);
