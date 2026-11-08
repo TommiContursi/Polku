@@ -6,8 +6,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Clouds on the map ([#182](https://github.com/TommiContursi/Polku/issues/182))
 
-- **Clouds** in the timeline's weather menu draws the forecast's cloud cover as a white veil, thicker where it's cloudier, at the timeline's hour. On the night map and the aerial photos it's a pale grey one. It sits under the map's names, the rain and your route, so they stay readable.
-- The legend says what it means: the whiter, the cloudier.
+- **Clouds** in the timeline's weather menu draws the forecast's cloud cover as a grey veil, thicker where it's cloudier, at the timeline's hour. On the night map and the aerial photos it's a pale one. It sits under the map's names, the rain and your route, so they stay readable.
+- The legend says what it means: the greyer, the cloudier (on the night map and the aerial photos, the paler).
 
 ### The towns' weather on the map ([#916](https://github.com/TommiContursi/Polku/issues/916))
 

@@ -42,7 +42,7 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 // the weather menu's layers, in its order: [key, its name, its line, the pill's word, icon]
 const LAYERS = [
   ['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'],
-  ['cloud', 'Clouds', 'A white veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
+  ['cloud', 'Clouds', 'A grey veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
   ['wind', 'Wind', 'Moving lines, coloured by its speed', 'Wind', 'wind'],
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
@@ -491,10 +491,10 @@ export class WeatherOverlay {
     this.app.setImage('wxField', fieldOn ? draw((at) => [...(this.on.temp ? ramp(TEMP_RAMP, at(c.temp)) : ramp(WIND_RAMP, Math.hypot(at(c.u), at(c.v)))), 255]) : null);
     // snow on the ground: its steps where there's 1 cm or more (bare ground stays clear; cells from before snow was asked for aren't known)
     this.app.setImage('wxSnow', this.on.snow ? draw((at) => stepRgba(SNOW_STEPS, at(c.snow)), STEP_IMG, this.effects ? 1 : 0) : null);
-    // clouds: a still white veil (a pale grey one on dark maps), thicker where the cover is. It doesn't drift: moving an
+    // clouds: a still grey veil (a pale one on dark maps, where white shows), thicker where the cover is. It doesn't drift: moving an
     // image source makes the map reload it, so the map never settles while it moves (its 'idle' waits, and what waits for it)
     const dark = this.app.dark();
-    this.app.setImage('wxCloud', this.on.cloud ? draw((at) => { const v = at(c.cloud) / 100; return v > 0 ? (dark ? [148, 163, 184, 77 * v ** 1.3] : [241, 245, 249, 128 * v ** 1.3]) : null; }) : null);
+    this.app.setImage('wxCloud', this.on.cloud ? draw((at) => { const v = at(c.cloud) / 100; return v > 0 ? (dark ? [148, 163, 184, 77 * v ** 1.3] : [71, 85, 105, 97 * v ** 1.3]) : null; }) : null);
     const forecastRain = this.on.rain && this.hour >= 0.5;
     this.app.setImage('wxRain', forecastRain ? draw((at) => fallRgba(at(c.rain), at(c.temp) < 0.5), STEP_IMG, this.effects ? 1 : 0) : null);
     this.syncRadar();
@@ -1165,7 +1165,7 @@ export class WeatherOverlay {
       // snowfall where it's cold enough somewhere on the map at this hour
       if (c && c.temp.some((t) => t < 0.5)) rows.push(scale(stepsCss(SNOWFALL_STEPS), `<b>Snowfall</b> ${SNOWFALL_STEPS.map(([v]) => v).join(' · ')} mm/h`));
     }
-    if (this.on.cloud) rows.push(scale('linear-gradient(90deg, #7d8a84, #f1f5f9)', '<b>Clouds</b> the whiter, the cloudier'));
+    if (this.on.cloud) rows.push(this.app.dark() ? scale('linear-gradient(90deg, #7d8a84, #f1f5f9)', '<b>Clouds</b> the paler, the cloudier') : scale('linear-gradient(90deg, #f1f5f9, #9aa3ae)', '<b>Clouds</b> the greyer, the cloudier'));
     if (this.on.snow) {
       rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`));
       rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>');

@@ -12286,7 +12286,7 @@ def towns_weather(chrome):
     return not fails
 
 
-# #182's clouds: a still white veil from Open-Meteo's cover (WX_FIXED: 60 %), under the rain and the route, with its
+# #182's clouds: a still grey veil from Open-Meteo's cover (WX_FIXED: 60 %), under the rain and the route, with its
 # legend's row; it doesn't drift, so the map settles (moving an image source kept the map from ever being idle).
 WX_CLOUDS = """(async () => {
   const out = [], w = polku.weather, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -12295,9 +12295,9 @@ WX_CLOUDS = """(async () => {
   const img = new Image(); img.src = map.getStyle().sources.wxCloud.url; await img.decode();
   const cv = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height }), ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
   const px = [...ctx.getImageData(img.width >> 1, img.height >> 1, 1, 1).data];
-  if ([241, 245, 249, 66].some((v, i) => Math.abs(px[i] - v) > 3)) out.push(`60 % cloud is drawn ${px.join()}, not 241,245,249,66`);
+  if ([71, 85, 105, 50].some((v, i) => Math.abs(px[i] - v) > 3)) out.push(`60 % cloud is drawn ${px.join()}, not 71,85,105,50`);
   const legend = document.querySelector('.map-hints .wx-legend');
-  if (!/Clouds the whiter, the cloudier/.test(legend.textContent)) out.push(`the legend: ${legend.textContent}`);
+  if (!/Clouds the greyer, the cloudier/.test(legend.textContent)) out.push(`the legend: ${legend.textContent}`);
   const ids = map.getStyle().layers.map((l) => l.id);
   if (!(ids.indexOf('wx-cloud') < ids.indexOf('route-casing'))) out.push('the clouds aren’t under the route');
   w.setHour(2); await wait(300);
