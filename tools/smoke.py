@@ -12489,6 +12489,97 @@ def no_radar(chrome):
     return not fails
 
 
+# #182's radar's past: the strip starts with the radar's last 90 minutes. FMI's scans (made up: rain west of 23.8°E an
+# hour ago, east of it now) at the timeline's 5 minutes, asked for with their time; only the rain has a past; the
+# route's departure stays Now's; playing goes through the scans; one that fails says so; Now comes back.
+WX_PAST = """(async () => {
+  const out = [], map = polku.map, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), real = window.fetch;
+  const lonX = (x) => (x / 20037508.34) * 180, scans = [];
+  let failScans = false;
+  const tiff = (W, H, bbox, past) => { // FMI's 16-bit palette GeoTIFF: index 1 dry, 2 rain (5.5 mm/h)
+    const pal = 122, px = pal + 65536 * 6, buf = new ArrayBuffer(px + W * H * 2), d = new DataView(buf), u16 = (o, v) => d.setUint16(o, v, true), u32 = (o, v) => d.setUint32(o, v, true);
+    u16(0, 0x4949); u16(2, 42); u32(4, 8); u16(8, 9);
+    [[256, 4, 1, W], [257, 4, 1, H], [258, 3, 1, 16], [259, 3, 1, 1], [262, 3, 1, 3], [273, 4, 1, px], [277, 3, 1, 1], [279, 4, 1, W * H * 2], [320, 3, 65536 * 3, pal]].forEach(([tag, type, n, v], i) => {
+      const o = 10 + i * 12; u16(o, tag); u16(o + 2, type); u32(o + 4, n); if (type === 3 && n === 1) u16(o + 8, v); else u32(o + 8, v); });
+    [[1, [0, 0, 1]], [2, [0, 255, 128]]].forEach(([i, rgb]) => rgb.forEach((c, k) => u16(pal + (i + k * 65536) * 2, c * 257)));
+    for (let x = 0; x < W; x++) { const v = (lonX(bbox[0] + ((bbox[2] - bbox[0]) * (x + 0.5)) / W) < 23.8) === past ? 2 : 1; for (let y = 0; y < H; y++) u16(px + (y * W + x) * 2, v); }
+    return buf;
+  };
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (url.startsWith('https://openwms.fmi.fi/')) {
+      const q = new URL(url).searchParams, time = q.get('time');
+      if (time) { scans.push(time); if (failScans) return Promise.resolve(new Response('<ServiceExceptionReport/>', { headers: { 'Content-Type': 'application/vnd.ogc.se_xml' } })); }
+      return Promise.resolve(new Response(tiff(+q.get('width'), +q.get('height'), q.get('bbox').split(',').map(Number), !!time)));
+    }
+    if (url.startsWith('https://api.rainviewer.com/')) return Promise.resolve(new Response(JSON.stringify({ host: 'https://tilecache.rainviewer.com', radar: { past: [{ time: Date.now() / 1000 - 3600, path: '/v2/radar/a' }, { time: Date.now() / 1000, path: '/v2/radar/b' }] } })));
+    if (/rainviewer\\.com\\/v2\\/coverage\\//.test(url)) return new OffscreenCanvas(256, 256).convertToBlob({ type: 'image/png' }).then((b) => new Response(b));
+    return real(input, init);
+  };
+  const emitted = [], onHour = w.app.onHour;
+  w.app.onHour = (k) => { emitted.push(k); onHour(k); };
+  const settle = async (ok, n = 100) => { for (let k = 0; k < n && !ok(); k++) await wait(100); };
+  const slider = document.querySelector('#wx-bar input[type=range]'), label = () => document.querySelector('.wx-time').textContent;
+  const legend = () => document.querySelector('.map-hints .wx-legend')?.textContent || '';
+  const wet = (fi, ll) => fi && fi.img.rateAt(...ll) > 0;
+  w.app.onToggle({ rain: true, cloud: true });
+  await settle(() => w.fiNow && map.getSource('wxCloud'), 200);
+  if (!w.fiNow) return ['no radar now after 20 s'];
+  if (slider.min !== '-9') out.push(`the slider starts at ${slider.min}, not the radar's 90 minutes (-9)`);
+  const nowUrl = map.getStyle().sources.wxRadarFi?.url;
+  // an hour ago, by the slider as a keyboard moves it
+  slider.value = '-6'; slider.dispatchEvent(new Event('input', { bubbles: true }));
+  await settle(() => w.fiPast && w.fiPast.t === w.scanAt(-1));
+  const want = new Date(w.scanAt(-1) * 1000).toISOString().replace('.000', '');
+  if (!scans.includes(want)) out.push(`an hour ago, FMI wasn't asked for ${want} (${scans.join(' ')})`);
+  if (!(wet(w.fiPast, [23.5, 61.5]) && !wet(w.fiPast, [24.1, 61.5]))) out.push('an hour ago, the scan isn’t the past one');
+  if (map.getStyle().sources.wxRadarFi?.url === nowUrl) out.push('an hour ago, the map still shows Now’s radar');
+  if (!/^\\d\\d[:.]\\d\\d( [AP]M)? · radar$/.test(label())) out.push(`an hour ago, the time says “${label()}”`);
+  if (!/only the rain has one/.test(legend())) out.push(`an hour ago, the legend: ${legend()}`);
+  if (map.getSource('wxCloud')) out.push('an hour ago, the clouds are still drawn');
+  if (!/60 minutes ago/.test(slider.getAttribute('aria-valuetext') || '')) out.push(`the slider in words: ${slider.getAttribute('aria-valuetext')}`);
+  if (emitted.some((k) => k !== 0)) out.push(`the route's departure moved to ${emitted.join()} h`);
+  if (document.querySelector('.fab-time-label')?.textContent !== 'Weather') out.push(`the Weather button says ${document.querySelector('.fab-time-label')?.textContent}`);
+  // a press on the strip's first slice: the radar's past
+  const cv = document.querySelector('.tl-strip'), r = cv.getBoundingClientRect(), x = r.left + 9 + (r.width - 18) * 0.02, y = r.top + r.height / 2;
+  cv.dispatchEvent(new PointerEvent('pointerdown', { clientX: x, clientY: y, pointerId: 1, bubbles: true })); cv.dispatchEvent(new PointerEvent('pointerup', { clientX: x, clientY: y, pointerId: 1, bubbles: true }));
+  if (!(w.hour < -1.2 && w.hour > -1.5)) out.push(`a press on the strip's start goes to ${w.hour} h`);
+  // playing from the start: through the scans, 5 minutes apart, then on into the forecast
+  w.setHour(-1.5); const from = scans.length; w.togglePlay();
+  await settle(() => w.hour >= 0.2, 400); // (6 s at 60 frames a second; a slow page plays slower)
+  w.togglePlay();
+  // (requests are paced, so the press's scans can come in here too; the clock can pass a scan's time)
+  const played = [...new Set(scans.slice(from))].map((t) => Date.parse(t) / 1000).sort();
+  if (played.length < 10 || played[played.length - 1] - played[0] > 100 * 60 || played.some((t, i) => i && (t - played[i - 1]) % 300)) out.push(`playing asked for ${played.length} scans: ${scans.slice(from).join(' ')}`);
+  if (!(w.hour >= 0.2)) out.push(`playing stopped at ${w.hour} h`);
+  // back to Now: Now's radar and the clouds
+  w.setHour(0); await settle(() => map.getSource('wxCloud') && map.getStyle().sources.wxRadarFi?.url === nowUrl, 50); await wait(200); // (the legend: next frame)
+  if (map.getStyle().sources.wxRadarFi?.url !== nowUrl) out.push('back at Now, the map doesn’t show Now’s radar');
+  if (!map.getSource('wxCloud')) out.push('back at Now, no clouds');
+  if (/only the rain has one/.test(legend())) out.push(`back at Now (${w.hour} h), the legend still speaks of the past: ${legend()}`);
+  // a scan that fails says so, and isn't drawn
+  failScans = true; w.scans = null; w.setHour(-0.5); // (the scans played are kept: a new view's are asked for again)
+  await settle(() => /couldn’t be loaded/.test(label()));
+  if (!/couldn’t be loaded/.test(label()) || map.getSource('wxRadarFi')) out.push(`a failed scan: “${label()}”, its image ${!!map.getSource('wxRadarFi')}`);
+  w.setHour(0); w.app.onHour = onHour; window.fetch = real;
+  return out;
+})()"""
+
+
+def radar_past(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#8.2/61.5/23.8')
+        pg.js("import(location.origin + '/js/wxmap.js').then((m) => { polku.weather.scanAt = m.scanAt; return true; })")
+        fails = pg.js(WX_PAST, timeout=120000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the radar's last 90 minutes: past scans, only the rain, the departure kept, playing, a failed scan (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Every group: its name, its checks in the order they run, and its line for --list.
 # No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
 # 25a, the toolbox and the header (#233). Phones: the toolbox floats beside the map's buttons or docks into
@@ -19790,7 +19881,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, clouds, thunder, no_radar], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916); the clouds\' veil, the thunder and the hatch where no radar reaches (#182)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, clouds, thunder, no_radar, radar_past], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916); the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

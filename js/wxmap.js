@@ -24,6 +24,13 @@ const MAX_CELLS = 60; // forecast points per grid (the view plus a margin); the 
 const IMG = 72; // field image resolution
 const STEP_IMG = 360; // the steps' image resolution: their edges stay edges
 const HOURS = 48;
+const PAST = 1.5; // the radar's last 90 minutes, before Now (#182): its scans every 5 minutes
+// The slider's and the strip's units: an hour ahead, and 10 minutes in the radar's past, so its 90 minutes take a slice
+// of the strip a thumb can hit (a sixth of it); in the past the strip goes by the radar's 5 minutes
+const unitOf = (hr) => (hr < 0 ? hr * 6 : hr);
+const hourOf = (u) => (u < 0 ? Math.round(u * 2) / 12 : Math.round(u));
+// FMI's scan at a past hour (unix s): a scan is there some minutes after its time, so the newest asked for is 10 minutes old
+export const scanAt = (hr) => Math.floor((Date.now() / 1000 - 600) / 300) * 300 + (Math.round(hr * 12) + 1) * 300;
 const CELL = 24; // px, screen cache resolution
 
 const WIND_RAMP = [[0, '#3b82f6'], [3, '#22d3ee'], [6, '#4ade80'], [9, '#facc15'], [12, '#fb923c'], [16, '#ef4444'], [22, '#a855f7']];
@@ -121,6 +128,8 @@ export class WeatherOverlay {
   // forecast data is needed for the weather layers and for the timeline strip
   get active() { return this.open || !!this.docked || this.layersOn; }
   get animated() { return this.on.wind || this.falling; }
+  get fi() { return this.hour < 0 ? this.fiPast : this.fiNow; } // the radar image the map shows: Now's, or a past scan
+
   get falling() { return this.on.rain && this.effects; } // Effects' thin rain and snow
 
   // Effects on or off: the steps' edges soft or crisp, rain falling or not; remembered
@@ -405,10 +414,10 @@ export class WeatherOverlay {
     this.buildField();
     if (images) this.stripData = null; // new grid → rebuild the strip
     this.renderStrip();
-    if (images || Math.abs((this.lastImgHour ?? -9) - this.hour) >= 0.25) {
+    if (images || Math.abs((this.lastImgHour ?? -9) - this.hour) >= 0.25 || (this.lastImgHour < 0) !== (this.hour < 0)) {
       this.lastImgHour = this.hour;
       this.renderImages();
-    }
+    } else if (this.hour < 0 && this.on.rain && scanAt(this.hour) !== this.fi?.t) this.syncRadar(); // (the radar's next scan)
     this.renderTowns();
     this.renderTime();
     this.readout();
@@ -492,17 +501,19 @@ export class WeatherOverlay {
       }
       return { url: cv.toDataURL('image/png'), coordinates: coords };
     };
-    const fieldOn = this.on.temp || this.on.wind;
-    this.app.setImage('wxField', fieldOn ? draw((at) => [...(this.on.temp ? ramp(TEMP_RAMP, at(c.temp)) : ramp(WIND_RAMP, Math.hypot(at(c.u), at(c.v)))), 255]) : null);
+    const on = this.hour < 0 ? { rain: this.on.rain } : this.on; // only the rain has a past (the radar): the rest start at Now
+    this.windCv.hidden = !on.wind;
+    const fieldOn = on.temp || on.wind;
+    this.app.setImage('wxField', fieldOn ? draw((at) => [...(on.temp ? ramp(TEMP_RAMP, at(c.temp)) : ramp(WIND_RAMP, Math.hypot(at(c.u), at(c.v)))), 255]) : null);
     // snow on the ground: its steps where there's 1 cm or more (bare ground stays clear; cells from before snow was asked for aren't known)
-    this.app.setImage('wxSnow', this.on.snow ? draw((at) => stepRgba(SNOW_STEPS, at(c.snow)), STEP_IMG, this.effects ? 1 : 0) : null);
+    this.app.setImage('wxSnow', on.snow ? draw((at) => stepRgba(SNOW_STEPS, at(c.snow)), STEP_IMG, this.effects ? 1 : 0) : null);
     // clouds: a still grey veil (a pale one on dark maps, where white shows), thicker where the cover is. It doesn't drift: moving an
     // image source makes the map reload it, so the map never settles while it moves (its 'idle' waits, and what waits for it)
     const dark = this.app.dark();
-    this.app.setImage('wxCloud', this.on.cloud ? draw((at) => { const v = at(c.cloud) / 100; return v > 0 ? (dark ? [148, 163, 184, 77 * v ** 1.3] : [71, 85, 105, 97 * v ** 1.3]) : null; }) : null);
+    this.app.setImage('wxCloud', on.cloud ? draw((at) => { const v = at(c.cloud) / 100; return v > 0 ? (dark ? [148, 163, 184, 77 * v ** 1.3] : [71, 85, 105, 97 * v ** 1.3]) : null; }) : null);
     // the forecast's thunder (WMO's 95–99): a light amber area, its dashed edge a line on the map; and FMI's lightning
-    this.app.setImage('wxThunderArea', this.on.thunder ? draw((at) => (at(c.thunder) >= 0.5 ? [245, 158, 11, 46] : null), STEP_IMG) : null);
-    this.app.setData('wxThunder', { type: 'FeatureCollection', features: this.on.thunder ? this.thunderEdge() : [] });
+    this.app.setImage('wxThunderArea', on.thunder ? draw((at) => (at(c.thunder) >= 0.5 ? [245, 158, 11, 46] : null), STEP_IMG) : null);
+    this.app.setData('wxThunder', { type: 'FeatureCollection', features: on.thunder ? this.thunderEdge() : [] });
     if (this.on.thunder) this.loadStrikes();
     const forecastRain = this.on.rain && this.hour >= 0.5;
     this.app.setImage('wxRain', forecastRain ? draw((at) => fallRgba(at(c.rain), at(c.temp) < 0.5), STEP_IMG, this.effects ? 1 : 0) : null);
@@ -518,12 +529,12 @@ export class WeatherOverlay {
     const g = this.grid;
     if (!g || !this.cur) return;
     const feats = [];
-    const nowRain = this.on.rain && this.hour < 0.5;
+    const nowRain = this.on.rain && this.hour < 0.5, rate = this.hour < 0 ? this.fi?.img.rateAt : this.fiRate;
     for (let r = 1; r < g.rows - 1; r++) {
       for (let c = 1; c < g.cols - 1; c++) {
         const k = r * g.cols + c;
-        if (this.on.temp) feats.push({ type: 'Feature', properties: { kind: 'temp', t: `${Math.round(this.cur.temp[k])}°` }, geometry: { type: 'Point', coordinates: g.pts[k] } });
-        const rr = nowRain ? (this.fiRate ? this.fiRate(g.pts[k][0], g.pts[k][1]) : null) : this.cur.rain[k];
+        if (this.on.temp && this.hour >= 0) feats.push({ type: 'Feature', properties: { kind: 'temp', t: `${Math.round(this.cur.temp[k])}°` }, geometry: { type: 'Point', coordinates: g.pts[k] } });
+        const rr = nowRain ? (rate ? rate(g.pts[k][0], g.pts[k][1]) : null) : this.cur.rain[k];
         if (this.on.rain && rr >= 0.1) {
           const snow = this.cur.temp[k] < 0.5;
           feats.push({ type: 'Feature', properties: { kind: 'rain', t: `${snow ? 'snow ' : ''}${rr < 1 ? rr.toFixed(1) : Math.round(rr)} mm/h` }, geometry: { type: 'Point', coordinates: g.pts[k] } });
@@ -600,7 +611,7 @@ export class WeatherOverlay {
   // newer than the last answer's is new (it fades in, and with Effects rings once). Ages are drawn again every 20 s.
   async loadStrikes() {
     clearTimeout(this.strikeTimer);
-    if (this.on.thunder && this.hour < 0.5) {
+    if (this.on.thunder && this.hour >= 0 && this.hour < 0.5) {
       this.strikeTimer = setTimeout(() => this.loadStrikes(), 20e3);
       const v = this.viewBox(), L = this.lightning;
       const fresh = L && Date.now() - L.t < 60e3 && v[0] >= L.box[0] && v[2] <= L.box[2] && v[1] >= L.box[1] && v[3] <= L.box[3];
@@ -625,7 +636,7 @@ export class WeatherOverlay {
   }
 
   renderStrikes() {
-    const L = this.on.thunder && this.hour < 0.5 && this.lightning, now = Date.now(), feats = [];
+    const L = this.on.thunder && this.hour >= 0 && this.hour < 0.5 && this.lightning, now = Date.now(), feats = [];
     if (L) L.list.forEach((s, i) => {
       const m = (now - s.t) / 60e3;
       s.id = i;
@@ -665,7 +676,7 @@ export class WeatherOverlay {
   // `pick`: choose the towns again (the map's labels have moved): the larger first, kept apart, none over the route.
   renderTowns(pick = false) {
     const marks = this.townMarks;
-    if (!this.on.towns || !this.cur || this.map.getZoom() >= TOWNS_Z) { for (const m of marks.values()) m.remove(); marks.clear(); this.townList = null; return; }
+    if (!this.on.towns || this.hour < 0 || !this.cur || this.map.getZoom() >= TOWNS_Z) { for (const m of marks.values()) m.remove(); marks.clear(); this.townList = null; return; }
     if (pick || !this.townList) {
       const big = (f) => (f.layer.id === 'label-city' ? 0 : 100) + (f.properties.rank ?? 50);
       const route = ['route-casing'].filter((id) => this.map.getLayer(id));
@@ -703,40 +714,44 @@ export class WeatherOverlay {
   // for everywhere else; RainViewer is left out when Finland's image covers the view.
   syncRadar() {
     const now = this.on.rain && this.hour < 0.5;
-    if (!now) { this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; this.renderNoRadar(); return; }
+    if (!now) { this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fiNow = this.fiPast = this.radarShown = null; this.fiRate = null; this.renderNoRadar(); return; }
     this.syncRadarRv();
     this.loadFiRadar();
   }
 
-  async loadFiRadar() {
-    if (!this.on.rain || this.hour >= 0.5) return;
-    const v = this.viewBox();
-    const fi = FI_BOUNDS;
-    if (v[2] < fi[0] || v[0] > fi[2] || v[3] < fi[1] || v[1] > fi[3]) return; // not over Finland
-    const z = this.map.getZoom();
-    // Zoomed out: all of Finland. Zoomed in: the view and a margin, sharper.
+  // FMI's image's box and size for the view: zoomed out, all of Finland; zoomed in, the view and a margin, sharper. Not
+  // over Finland: null. About 1 km a pixel, the radar's own: finer would just repeat its cells (and let false echoes
+  // pass the speckle filter); the map smooths it.
+  radarBox() {
+    const v = this.viewBox(), fi = FI_BOUNDS, z = this.map.getZoom();
+    if (v[2] < fi[0] || v[0] > fi[2] || v[3] < fi[1] || v[1] > fi[3]) return null;
     let box = fi;
     if (z >= 7.5) {
       const px = (v[2] - v[0]) * 0.5, py = (v[3] - v[1]) * 0.5;
       box = [Math.max(fi[0], v[0] - px), Math.max(fi[1], v[1] - py), Math.min(fi[2], v[2] + px), Math.min(fi[3], v[3] + py)];
     }
-    const c = this.fi;
+    const aspect = (my(box[1]) - my(box[3])) / (mx(box[2]) - mx(box[0]));
+    const km = (box[2] - box[0]) * 111.32 * Math.cos((((box[1] + box[3]) / 2) * Math.PI) / 180);
+    const width = Math.max(24, Math.min(1024, Math.round(km)));
+    return { box, zoomed: z >= 7.5, full: box === fi, width, height: Math.max(24, Math.min(2048, Math.round(width * Math.abs(aspect)))) };
+  }
+
+  async loadFiRadar() {
+    if (this.on.rain && this.hour < 0) { this.loadPastScan(); return; }
+    if (!this.on.rain || this.hour >= 0.5) return;
+    const v = this.viewBox(), b = this.radarBox(), z = this.map.getZoom();
+    if (!b) return; // not over Finland
+    const { box } = b;
+    const c = this.fiNow;
     const inside = c && v[0] >= c.box[0] && v[2] <= c.box[2] && v[1] >= c.box[1] && v[3] <= c.box[3];
     // the all-Finland image serves every zoomed-out view; a zoomed-in one, views inside it
     if (c && (c.zoomed ? inside && z >= 7.5 : z < 7.5) && Date.now() - c.t < 5 * 60e3) return;
     if (this.fiLoading || Date.now() - (this.fiFailed || 0) < 60e3) return; // one try a minute after a failure
     this.fiLoading = true;
     try {
-      // ~1 km per pixel, about the radar's own resolution: finer would just repeat
-      // its cells (and let false echoes pass the speckle filter); the map smooths it
-      const aspect = (my(box[1]) - my(box[3])) / (mx(box[2]) - mx(box[0]));
-      const km = (box[2] - box[0]) * 111.32 * Math.cos((((box[1] + box[3]) / 2) * Math.PI) / 180);
-      const width = Math.max(24, Math.min(1024, Math.round(km)));
-      const height = Math.max(24, Math.min(2048, Math.round(width * Math.abs(aspect))));
-      const img = await fmiRadar(box, width, height);
+      const img = await fmiRadar(box, b.width, b.height);
       if (!this.on.rain || this.hour >= 0.5) return;
-      const full = box === fi;
-      this.fi = { box, t: Date.now(), zoomed: z >= 7.5, rv: full, img }; // rv: RainViewer still needed around it
+      this.fiNow = { box, t: Date.now(), zoomed: b.zoomed, rv: b.full, img }; // rv: RainViewer still needed around it
       this.paintRadar();
       this.fiRate = img.rateAt;
       this.renderLabels(); // the amounts at "now" are the radar's
@@ -744,7 +759,7 @@ export class WeatherOverlay {
       this.buildField();
       this.syncRadarRv();
       clearTimeout(this.fiTimer);
-      this.fiTimer = setTimeout(() => { if (this.fi) this.fi.t = 0; this.loadFiRadar(); }, 5 * 60e3); // new scans every 5 min
+      this.fiTimer = setTimeout(() => { if (this.fiNow) this.fiNow.t = 0; this.loadFiRadar(); }, 5 * 60e3); // new scans every 5 min
       this.fiFailed = 0;
     } catch {
       this.fiFailed = Date.now(); // RainViewer still shows; net.js has the notice
@@ -759,17 +774,51 @@ export class WeatherOverlay {
   paintRadar() {
     const fi = this.fi;
     const key = `${this.effects}|${this.grid ? this.grid.t : ''}`;
-    if (!fi || fi.painted === key) return;
-    fi.painted = key;
-    const snowAt = this.cur && ((lon, lat) => this.sample([lon, lat])?.temp < 0.5);
-    this.app.setImage('wxRadarFi', { url: fi.img.paint(fallRgba, { snowAt, blur: this.effects ? 1.5 : 0.5 }), coordinates: fi.img.coordinates });
+    if (!fi || (fi === this.radarShown && fi.painted === key)) return;
+    if (fi.painted !== key) { // (painted once, so a past scan played again costs nothing)
+      const snowAt = this.cur && ((lon, lat) => this.sample([lon, lat])?.temp < 0.5);
+      fi.url = fi.img.paint(fallRgba, { snowAt, blur: this.effects ? 1.5 : 0.5 });
+      fi.painted = key;
+    }
+    this.radarShown = fi;
+    this.app.setImage('wxRadarFi', { url: fi.url, coordinates: fi.img.coordinates });
+  }
+
+  // The radar's past (#182): FMI's scan at the timeline's 5 minutes, at half Now's detail, kept while the view stays in
+  // its box (18 of them at most); while playing, the next two are asked for ahead. Until one comes the last stays, and
+  // the time says it's loading; one that fails is taken off, and the time says so.
+  async loadPastScan() {
+    const t = scanAt(this.hour), b = this.radarBox();
+    if (!b) { this.fiPast = null; this.app.setImage('wxRadarFi', null); this.radarShown = null; this.syncRadarRv(); return; } // (RainViewer's)
+    const key = b.box.join();
+    if (this.scans?.key !== key) this.scans = { key, at: new Map() };
+    const get = (at) => {
+      const m = this.scans.at;
+      if (!m.has(at)) m.set(at, fmiRadar(b.box, Math.max(24, b.width >> 1), Math.max(24, b.height >> 1), at).then((img) => ({ box: b.box, t: at, zoomed: b.zoomed, rv: b.full, img }), () => null));
+      return m.get(at);
+    };
+    const want = get(t);
+    if (this.playing) for (const n of [1, 2]) if (t + n * 300 <= scanAt(-1 / 12)) get(t + n * 300);
+    this.scanLoading = t;
+    this.renderTime();
+    const scan = await want;
+    if (scanAt(this.hour) !== t || this.hour >= 0 || !this.on.rain) return;
+    this.scanLoading = 0;
+    this.scanFailed = scan ? 0 : t;
+    this.fiPast = scan;
+    if (scan) this.paintRadar(); else { this.app.setImage('wxRadarFi', null); this.radarShown = null; }
+    this.syncRadarRv();
+    this.renderLabels(); // (the scan's amounts)
+    this.renderTime();
   }
 
   syncRadarRv() {
     const v = this.viewBox();
     const c = this.fi;
     const covers = c && !c.rv && v[0] >= c.box[0] && v[2] <= c.box[2] && v[1] >= c.box[1] && v[3] <= c.box[3];
-    this.app.setRadar(this.on.rain && this.hour < 0.5 && !covers ? this.radar || {} : null);
+    // in the past, RainViewer's frame from before the scan's time (they come every 10 minutes)
+    const rv = this.hour < 0 && this.radar?.frames ? [...this.radar.frames].reverse().find((f) => f.time <= scanAt(this.hour)) || this.radar.frames[0] : this.radar;
+    this.app.setRadar(this.on.rain && this.hour < 0.5 && !covers ? (rv ? { rv: rv.rv, time: rv.time } : {}) : null);
     this.rvShown = !covers && !!this.radar?.rv;
     this.renderNoRadar();
   }
@@ -778,10 +827,10 @@ export class WeatherOverlay {
   // outside FMI's composite (its own no-data pixels) and, where RainViewer's radar is drawn, outside its coverage too.
   // Only once both have answered (or failed): the view and a quarter around it, a pixel of the image a pixel on screen.
   async renderNoRadar() {
-    const fi = this.fi, v = this.viewBox(), z = Math.min(6, Math.max(1, Math.floor(this.map.getZoom()) - 1));
+    const fi = this.fi || this.fiNow, v = this.viewBox(), z = Math.min(6, Math.max(1, Math.floor(this.map.getZoom()) - 1)); // (a past scan's coverage, or Now's while it loads)
     const f = FI_BOUNDS, overFi = !(v[2] < f[0] || v[0] > f[2] || v[3] < f[1] || v[1] > f[3]);
     const known = this.on.rain && this.hour < 0.5 && this.radar && (fi || this.fiFailed || !overFi);
-    const key = known && `${fi?.t || this.fiFailed}|${this.rvShown}|${this.effects}|${this.app.dark()}|${z}`, last = this.noRadarAt;
+    const key = known && `${(this.fiNow || fi)?.t || this.fiFailed}|${this.rvShown}|${this.effects}|${this.app.dark()}|${z}`, last = this.noRadarAt;
     if (known && last && last.key === key && v[0] >= last.box[0] && v[2] <= last.box[2] && v[1] >= last.box[1] && v[3] <= last.box[3]) return;
     const token = (this.noRadarToken = (this.noRadarToken || 0) + 1);
     if (!known) { this.noRadarAt = null; this.app.setImage('wxNoRadar', null); this.renderLegend(); return; }
@@ -827,8 +876,8 @@ export class WeatherOverlay {
     if (this.radar && Date.now() - this.radar.t < 5 * 60 * 1000) return;
     try {
       const j = await request('rainviewer', 'https://api.rainviewer.com/public/weather-maps.json').then((r) => r.json());
-      const last = j.radar.past[j.radar.past.length - 1];
-      this.radar = { t: Date.now(), rv: `${j.host}${last.path}/512/{z}/{x}/{y}/2/1_1.png`, time: last.time };
+      const frames = j.radar.past.map((f) => ({ rv: `${j.host}${f.path}/512/{z}/{x}/{y}/2/1_1.png`, time: f.time }));
+      this.radar = { t: Date.now(), ...frames[frames.length - 1], frames }; // (its past, every 10 minutes, for the radar's past)
     } catch {
       this.radar = { t: Date.now() };
     }
@@ -942,7 +991,7 @@ export class WeatherOverlay {
       const f = this.field, cols = this.cam.cols;
       const cellAt = (x, y) => Math.round(y / CELL) * cols + Math.round(x / CELL);
 
-      if (this.on.wind) {
+      if (this.on.wind && this.hour >= 0) {
         const ctx = this.windCtx;
         ctx.globalCompositeOperation = 'destination-in';
         ctx.fillStyle = `rgba(0,0,0,${Math.pow(0.86, k).toFixed(3)})`;
@@ -1043,7 +1092,7 @@ export class WeatherOverlay {
     if (!this.on.snow) this.app.setImage('wxSnow', null);
     if (!this.on.cloud) this.app.setImage('wxCloud', null);
     if (!this.on.thunder) { this.app.setImage('wxThunderArea', null); this.app.setData('wxThunder', { type: 'FeatureCollection', features: [] }); clearTimeout(this.strikeTimer); this.lightning = null; this.renderStrikes(); }
-    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; this.renderNoRadar(); }
+    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fiNow = this.fiPast = this.radarShown = null; this.fiRate = null; this.renderNoRadar(); }
     if (!this.on.towns) this.renderTowns();
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
   }
@@ -1064,7 +1113,7 @@ export class WeatherOverlay {
     this.bar = bar;
     bar.hidden = true;
     this.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => this.togglePlay(), html: icon('play', 18) });
-    this.slider = h('input', { type: 'range', min: '0', max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time, hours from now', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(+e.target.value); } });
+    this.slider = h('input', { type: 'range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(hourOf(+e.target.value)); } });
     this.timeEl = h('div', { class: 'wx-time' });
     // the map's layers: one pill naming what's on, opening their menu (#182; the weather line's, step 6b)
     this.pill = h('button', { type: 'button', class: 'rt-pill wl-layer', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.layerMenu() });
@@ -1074,7 +1123,7 @@ export class WeatherOverlay {
     this.foldMQ = matchMedia('(max-width: 340px), (max-height: 480px)'); // (a small screen, or 200 %: it folds to its name)
     this.foldMQ.addEventListener('change', () => { this.legendKey = null; this.renderLegend(); });
     this.noteEl = h('div', { class: 'tl-note' });
-    this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': '48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
+    this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': 'The radar’s last 90 minutes, then the 48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
     this.nowEl = h('div', { class: 'tl-now' });
     this.bindStrip();
     bar.append(
@@ -1162,7 +1211,7 @@ export class WeatherOverlay {
     const accent = css.getPropertyValue('--route').trim();
     const d = this.stripSeries();
     const PAD = 9; // matches the range thumb so strip and slider line up
-    const X = (hr) => PAD + (hr / HOURS) * (W - 2 * PAD);
+    const U0 = unitOf(-PAST), X = (hr) => PAD + ((unitOf(hr) - U0) / (HOURS - U0)) * (W - 2 * PAD);
     ctx.font = '10px system-ui, sans-serif';
     if (!d) { ctx.fillStyle = muted; ctx.fillText(this.loading ? 'Loading the forecast…' : 'Zoom in to see the forecast here', PAD, H / 2); return; }
     // night
@@ -1170,14 +1219,17 @@ export class WeatherOverlay {
     for (let hr = 0; hr < HOURS; hr++) {
       if (sunPosition((d.t[hr] + d.t[hr + 1]) / 2, [d.lon, d.lat]).alt < -0.8) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
     }
-    // your ride, from departure to arrival
-    const ride = this.app.routeHours && this.app.routeHours();
+    // the radar's last 90 minutes, before Now: only the rain has a past
+    ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(96,165,250,0.16)' : 'rgba(59,130,246,0.08)';
+    ctx.fillRect(X(-PAST), 0, X(0) - X(-PAST), H);
+    // your ride, from departure to arrival (the radar's past isn't a departure: it's Now's)
+    const ride = this.app.routeHours && this.app.routeHours(), go = Math.max(0, this.hour);
     if (ride > 0) {
       ctx.fillStyle = accent;
       ctx.globalAlpha = 0.16;
-      ctx.fillRect(X(this.hour), 0, Math.max(3, X(Math.min(HOURS, this.hour + ride)) - X(this.hour)), H);
+      ctx.fillRect(X(go), 0, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), H);
       ctx.globalAlpha = 1;
-      ctx.fillRect(X(this.hour), H - 3, Math.max(3, X(Math.min(HOURS, this.hour + ride)) - X(this.hour)), 3);
+      ctx.fillRect(X(go), H - 3, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), 3);
     }
     // rain bars
     const top = 14, bottom = H - 14;
@@ -1225,19 +1277,19 @@ export class WeatherOverlay {
       if (dt.getHours() === 0) {
         ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(X(hr), 0); ctx.lineTo(X(hr), H); ctx.stroke(); ctx.globalAlpha = 1;
         ctx.fillText(dt.toLocaleDateString([], { weekday: 'short' }), X(hr) + 3, H - 4);
-      } else if (dt.getHours() % every === 0 && X(hr) > 30) {
+      } else if (dt.getHours() % every === 0 && X(hr) > X(0) + 18) {
         ctx.fillText(String(dt.getHours()), X(hr) - 4, H - 4);
       }
     }
-    ctx.fillText('Now', 2, H - 4);
+    ctx.fillText('Radar', X(-PAST) - 6, H - 4);
     // cursor
     const cx = X(this.hour);
     ctx.strokeStyle = ink;
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
-    const ti = Math.min(HOURS, Math.round(this.hour));
+    const ti = Math.min(HOURS, Math.round(go));
     ctx.fillStyle = ink;
-    ctx.beginPath(); ctx.arc(cx, Y(d.temp[ti]), 3.2, 0, Math.PI * 2); ctx.fill();
+    if (this.hour >= 0) { ctx.beginPath(); ctx.arc(cx, Y(d.temp[ti]), 3.2, 0, Math.PI * 2); ctx.fill(); }
   }
 
   bindStrip() {
@@ -1248,7 +1300,7 @@ export class WeatherOverlay {
       const x = Math.max(0, Math.min(1, (e.clientX - r.left - 9) / (r.width - 18)));
       this.playing = false;
       this.syncPlay();
-      this.setHour(Math.round(x * HOURS));
+      this.setHour(hourOf(unitOf(-PAST) + x * (HOURS - unitOf(-PAST))));
     };
     cv.addEventListener('pointerdown', (e) => {
       down = true;
@@ -1262,8 +1314,8 @@ export class WeatherOverlay {
 
   // `silent`: change came from the route's departure picker, don't echo back
   setHour(hr, { silent = false } = {}) {
-    this.hour = Math.max(0, Math.min(HOURS, hr));
-    this.slider.value = String(Math.round(this.hour));
+    this.hour = Math.max(-PAST, Math.min(HOURS, hr));
+    this.syncSlider();
     if (this.grid) this.applyHour(); else this.renderTime();
     this.readout();
     if (!silent) this.emitHour();
@@ -1271,7 +1323,7 @@ export class WeatherOverlay {
 
   // Tell the app (and so the planner) whenever the whole hour changes.
   emitHour() {
-    const k = Math.round(this.hour);
+    const k = Math.max(0, Math.round(this.hour)); // (the radar's past isn't a departure: it's Now's)
     if (k === this.lastEmit) return;
     this.lastEmit = k;
     if (this.app.onHour) this.app.onHour(k);
@@ -1283,6 +1335,13 @@ export class WeatherOverlay {
     this.syncPlay();
     if (!this.anim) this.startAnim();
   }
+  // the slider in the strip's units, and in words
+  syncSlider() {
+    this.slider.value = String(unitOf(this.hour) < 0 ? Math.round(unitOf(this.hour)) : Math.round(this.hour));
+    const t = new Date((this.hour < 0 ? scanAt(this.hour) : timeAtHour(this.hour)) * 1000), clock = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    this.slider.setAttribute('aria-valuetext', this.hour < 0 ? `${clock}, the radar ${Math.round(-this.hour * 60)} minutes ago` : this.hour < 0.5 ? `Now, ${clock}` : `${t.toLocaleDateString([], { weekday: 'long' })} ${clock}, in ${Math.round(this.hour)} hours`);
+  }
+
   syncPlay() {
     if (!this.playBtn) return;
     this.playBtn.innerHTML = icon(this.playing ? 'pause' : 'play', 18);
@@ -1290,10 +1349,10 @@ export class WeatherOverlay {
   }
 
   advancePlay(k = 1) {
-    const next = this.hour + k / 60; // ~1 s per forecast hour
+    const next = this.hour + k / (this.hour < 0 ? 240 : 60); // ~1 s per forecast hour, and per 15 minutes of the radar's past
     if (next >= HOURS) { this.playing = false; this.syncPlay(); }
     this.hour = Math.min(HOURS, next);
-    this.slider.value = String(Math.round(this.hour));
+    this.syncSlider();
     this.applyHour();
     this.emitHour();
   }
@@ -1306,11 +1365,14 @@ export class WeatherOverlay {
 
   renderTime() {
     if (!this.timeEl) return;
-    const t = new Date(timeAtHour(this.hour) * 1000);
+    const past = this.hour < 0, t = new Date((past ? scanAt(this.hour) : timeAtHour(this.hour)) * 1000);
     const day = t.toLocaleDateString([], { weekday: 'short' });
     const clock = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    let label = this.hour < 0.5 ? `Now · ${clock}` : `${day} ${clock} · +${Math.round(this.hour)} h`;
-    if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? ' · FMI radar' : ' · radar';
+    let label = past ? `${clock} · radar` : this.hour < 0.5 ? `Now · ${clock}` : `${day} ${clock} · +${Math.round(this.hour)} h`;
+    if (past && !this.on.rain) label += ' (Rain is off)';
+    else if (past && this.scanFailed === scanAt(this.hour)) label += ' couldn’t be loaded';
+    else if (past && this.scanLoading === scanAt(this.hour)) label += ' · loading…';
+    else if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? (past ? '' : ' · FMI radar') : past ? '' : ' · radar';
     if (this.loading) label += ' · loading…';
     this.timeEl.textContent = label;
     // linked with the route's departure time
@@ -1348,7 +1410,7 @@ export class WeatherOverlay {
     if (this.on.thunder) {
       const L = this.lightning, mark = (col) => `<svg class="lg-mark" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7h9M7 2.5v9" stroke="#1f2937" stroke-width="4.2" stroke-linecap="round"/><path d="M2.5 7h9M7 2.5v9" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/></svg>`;
       let note;
-      if (this.hour >= 0.5) note = 'Shown at Now: it’s seen, not forecast';
+      if (this.hour >= 0.5 || this.hour < 0) note = 'Shown at Now: it’s seen, not forecast';
       else if (!this.inFinland()) note = 'FMI’s, seen over Finland and nearby only';
       else if (!L) note = 'Loading…';
       else if (L.failed) note = '<span class="warn-text">Lightning couldn’t be loaded</span>';
@@ -1366,6 +1428,7 @@ export class WeatherOverlay {
     }
     if (this.on.towns) rows.push(this.map.getZoom() < TOWNS_Z ? '<div class="lgl"><span><b>Towns</b> the sky, °C and wind in m/s</span></div>'
       : '<div class="lgl lg-note">Zoom out to see the towns’ weather</div>');
+    if (this.hour < 0 && rows.length) rows.unshift('<div class="lgl lg-note">The radar’s past: only the rain has one, the other layers start at Now</div>');
     const fold = this.foldMQ.matches, open = !fold || !!this.legendOpen;
     const key = `${rows.join('')}|${fold}|${open}`;
     this.legendEl.hidden = !rows.length;

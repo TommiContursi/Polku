@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### The radar's last 90 minutes ([#182](https://github.com/TommiContursi/Polku/issues/182))
+
+- The timeline now starts with the radar's last 90 minutes, marked **Radar** under the strip: drag back, or press play from there, to see where the rain came from. In Finland it's FMI's scans, every 5 minutes; outside Finland RainViewer's, every 10.
+- Only the rain has a past: the other layers start at Now, and the legend says so. The time shows the scan's own clock, and says when a scan is still loading or couldn't be loaded.
+- Going back into the radar's past doesn't move your route's departure: it stays Now.
+
 ### Where there's no radar ([#182](https://github.com/TommiContursi/Polku/issues/182))
 
 - With **Rain and snowfall** on at Now, the map is hatched where no radar reaches: beyond FMI's radars, and zoomed out, beyond RainViewer's too. The legend says "No radar here: rain and snow not shown", so a dry-looking map there isn't mistaken for a dry sky. At a later hour the forecast covers everywhere, so nothing is hatched.
