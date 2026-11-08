@@ -57,9 +57,10 @@ const LAYERS = [
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
 ];
-// the menu's points: the towns' weather (#916), zoomed out to a region; nearer, the timeline's reading says it
-const TOWNS = ['towns', 'Towns’ weather', 'The sky, temperature and wind at towns, zoomed out', 'Towns', 'cloudSun'];
-const TOWNS_Z = 9.5;
+// the menu's points: the towns' weather (#916), at the places the map names at any zoom; a tap pins the reading there
+const TOWNS = ['towns', 'Towns’ weather', 'The sky, temperature and wind where the map names a place', 'Towns', 'cloudSun'];
+// the places it marks, the larger first: zoomed in, the map names villages and suburbs too
+const PLACE_LAYERS = ['label-city', 'label-town', 'label-village', 'label-suburb'];
 
 const hex = (c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 export function ramp(stops, v) {
@@ -136,7 +137,7 @@ export class WeatherOverlay {
   setEffects(on) {
     this.effects = on;
     store.set('wxEffects', on);
-    this.set({});
+    this.app.onToggle({}); // (its switches in Layers and Settings drawn again)
   }
 
   set(layers) {
@@ -671,21 +672,21 @@ export class WeatherOverlay {
     return true;
   }
 
-  // The towns' weather (#916): the sky, °C and wind at the towns and cities the map names, at the timeline's hour,
-  // zoomed out. From the grid, so a town costs no request; one with no grid near shows nothing rather than a guess.
+  // The towns' weather (#916): the sky, °C and wind at the places the map names (cities and towns, and zoomed in villages
+  // and suburbs), at the timeline's hour. The grid is finer zoomed in, so nearby places can differ. From the grid, so a town costs no request; one with no grid near shows nothing rather than a guess.
   // `pick`: choose the towns again (the map's labels have moved): the larger first, kept apart, none over the route.
   renderTowns(pick = false) {
     const marks = this.townMarks;
-    if (!this.on.towns || this.hour < 0 || !this.cur || this.map.getZoom() >= TOWNS_Z) { for (const m of marks.values()) m.remove(); marks.clear(); this.townList = null; return; }
+    if (!this.on.towns || this.hour < 0 || !this.cur) { for (const m of marks.values()) m.remove(); marks.clear(); this.townList = null; return; }
     if (pick || !this.townList) {
-      const big = (f) => (f.layer.id === 'label-city' ? 0 : 100) + (f.properties.rank ?? 50);
+      const big = (f) => PLACE_LAYERS.indexOf(f.layer.id) * 100 + (f.properties.rank ?? 50);
       const route = ['route-casing'].filter((id) => this.map.getLayer(id));
       this.townList = [];
       const box = this.map.getContainer().getBoundingClientRect(), cv = this.map.getCanvasContainer();
       const free = (x, y) => { const e = document.elementFromPoint(box.left + x, box.top + y); return !!e && (cv.contains(e) || !!e.closest('.menu-pop, .menu-leaving')); };
-      for (const f of this.map.queryRenderedFeatures({ layers: ['label-city', 'label-town'].filter((id) => this.map.getLayer(id)) }).sort((a, b) => big(a) - big(b))) {
+      for (const f of this.map.queryRenderedFeatures({ layers: PLACE_LAYERS.filter((id) => this.map.getLayer(id)) }).sort((a, b) => big(a) - big(b))) {
         const name = f.properties.name, ll = f.geometry.coordinates, p = this.map.project(ll);
-        if (!name || this.townList.some((t) => t.name === name || (Math.abs(t.p.x - p.x) < 84 && Math.abs(t.p.y - p.y) < 40))) continue;
+        if (!name || this.townList.some((t) => t.name === name || (Math.abs(t.p.x - p.x) < 150 && Math.abs(t.p.y - p.y) < 100))) continue; // (a few, not a wall of the same numbers)
         if ([-32, 0, 32].some((dx) => !free(p.x + dx, p.y - 14) || !free(p.x + dx, p.y - 34))) continue; // (not under the map's buttons or panels)
         if (route.length && this.map.queryRenderedFeatures([[p.x - 48, p.y - 40], [p.x + 48, p.y + 2]], { layers: route }).length) continue;
         this.townList.push({ name, ll, p });
@@ -699,11 +700,12 @@ export class WeatherOverlay {
       const t = Math.round(s.temp), ms = Math.round(s.speed);
       const label = `${name}: ${SKY[kind].toLowerCase()}, ${t} °C, wind ${ms} m/s from the ${compass(s.dir)}`;
       let m = marks.get(name);
-      if (!m) marks.set(name, m = new maplibregl.Marker({ element: h('div', { class: 'wx-town', role: 'img' }), anchor: 'bottom', offset: [0, -10] }).setLngLat(ll).addTo(this.map));
+      // a tap pins the timeline's reading there, as a spot on the map does (not the map's click under it: a card)
+      if (!m) marks.set(name, m = new maplibregl.Marker({ element: h('button', { type: 'button', class: 'wx-town', onclick: (e) => { e.stopPropagation(); this.holdAt(ll); } }), anchor: 'bottom', offset: [0, -10] }).setLngLat(ll).addTo(this.map));
       const el = m.getElement();
       if (el.getAttribute('aria-label') !== label) {
         el.setAttribute('aria-label', label);
-        el.innerHTML = `${icon(kind, 18)}<b class="${t <= 0 ? 'cold' : ''}">${t}°</b><small><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${Math.round(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${ms}</small>`;
+        el.innerHTML = `${icon(kind, 18)}<b class="${t <= 0 ? 'cold' : ''}">${t}°</b><small><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${Math.round(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${ms} m/s</small>`;
       }
       shown.add(name);
     }
@@ -1120,7 +1122,9 @@ export class WeatherOverlay {
     // the legend over the map, top left, while a layer is on: apart from the timeline, wherever that is
     this.legendEl = h('div', { class: 'wx-legend', role: 'region', 'aria-label': 'Map legend', hidden: true });
     document.querySelector('.map-hints').append(this.legendEl);
-    this.foldMQ = matchMedia('(max-width: 340px), (max-height: 480px)'); // (a small screen, or 200 %: it folds to its name)
+    // it folds to its name and opens with a tap; folded at first on a phone (or 200 %), open on a desktop; remembered
+    this.foldMQ = matchMedia('(max-width: 720px), (max-height: 480px)');
+    this.legendOpen = store.get('wxLegendOpen', null);
     this.foldMQ.addEventListener('change', () => { this.legendKey = null; this.renderLegend(); });
     this.noteEl = h('div', { class: 'tl-note' });
     this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': 'The radar’s last 90 minutes, then the 48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
@@ -1426,17 +1430,16 @@ export class WeatherOverlay {
       rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`));
       rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>');
     }
-    if (this.on.towns) rows.push(this.map.getZoom() < TOWNS_Z ? '<div class="lgl"><span><b>Towns</b> the sky, °C and wind in m/s</span></div>'
-      : '<div class="lgl lg-note">Zoom out to see the towns’ weather</div>');
     if (this.hour < 0 && rows.length) rows.unshift('<div class="lgl lg-note">The radar’s past: only the rain has one, the other layers start at Now</div>');
-    const fold = this.foldMQ.matches, open = !fold || !!this.legendOpen;
-    const key = `${rows.join('')}|${fold}|${open}`;
+    const open = this.legendOpen ?? !this.foldMQ.matches;
+    const key = `${rows.join('')}|${open}`;
     this.legendEl.hidden = !rows.length;
     if (key === this.legendKey) return;
     this.legendKey = key;
-    this.legendEl.innerHTML = (fold ? `<button type="button" class="lg-fold" aria-expanded="${open}">Legend ${icon(open ? 'chevronUp' : 'chevronDown', 14)}</button>` : '') + (open ? rows.join('') : '');
-    this.legendEl.querySelector('.lg-fold')?.addEventListener('click', () => {
+    this.legendEl.innerHTML = `<button type="button" class="lg-fold" aria-expanded="${open}">Legend ${icon(open ? 'chevronUp' : 'chevronDown', 14)}</button>` + (open ? rows.join('') : '');
+    this.legendEl.querySelector('.lg-fold').addEventListener('click', () => {
       this.legendOpen = !open;
+      store.set('wxLegendOpen', this.legendOpen);
       this.renderLegend();
       this.legendEl.querySelector('.lg-fold').focus();
     });

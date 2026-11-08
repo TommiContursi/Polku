@@ -1196,14 +1196,19 @@ const wxToggle = (k) => ({
   temp: () => withOpacity('wx:temp', toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
   rain: () => withOpacity('wx:rain', toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
   snow: () => withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
+  cloud: () => toggle('Clouds', state.weather.cloud, (v) => setWeather({ cloud: v }), 'A grey veil, thicker where it’s cloudier'),
+  thunder: () => toggle('Thunder', state.weather.thunder, (v) => setWeather({ thunder: v }), 'FMI’s lightning in the last hour, and the forecast’s thunder'),
+  towns: () => toggle('Towns’ weather', state.weather.towns, (v) => setWeather({ towns: v }), 'The sky, °C and wind where the map names a place; tap one to read its weather'),
 })[k]();
+// the weather's Effects, also at the end of the timeline's layer menu (and in Settings › Display)
+const effectsToggle = () => toggle('Weather effects', weather.effects, (v) => weather.setEffects(v), 'Softer edges, falling rain and a ring on new lightning');
 const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
 // What the On now chips list and More counts: the layers drawn over the base map
 const onNowIds = () => [
   ...(state.trailColors !== 'off' ? ['trailColors'] : []),
   ...(state.trailDetails ? ['trailDetails'] : []),
   ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]),
-  ...['wind', 'temp', 'rain', 'snow'].filter((k) => state.weather[k]).map((k) => `wx:${k}`),
+  ...['wind', 'temp', 'rain', 'cloud', 'thunder', 'snow', 'towns'].filter((k) => state.weather[k]).map((k) => `wx:${k}`),
 ];
 
 function renderLayersPanel() {
@@ -1302,8 +1307,8 @@ function renderLayersPanel() {
 
   // weather on the map — the same switches as on the Weather button's timeline
   p.append(layerGroup('weather', 'Weather on the map', wx.length + (state.timeline ? 1 : 0),
-    timelineToggle(), wxToggle('wind'), wxToggle('temp'), wxToggle('rain'), wxToggle('snow'),
-    h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
+    timelineToggle(), wxToggle('rain'), wxToggle('cloud'), wxToggle('thunder'), wxToggle('wind'), wxToggle('temp'), wxToggle('snow'), wxToggle('towns'), effectsToggle(),
+    h('p', { class: 'note' }, 'Forecast by Open-Meteo. Radar, lightning and measured snow by FMI, and by RainViewer outside Finland. Scrub or play the next 48 hours on the timeline.')));
   refreshLitStatus();
   settle();
 }
@@ -1361,7 +1366,7 @@ function setTile(id, on) {
 const TILE_SOURCES = {
   lipasRoutes: ['lipas'], lipasPoints: ['lipas'], lipasWinter: ['lipas'], nautical: ['vayla'], sfTraffic: ['digiroad'],
   sfIncidents: ['digitraffic'], sfRoadworks: ['digitraffic'], sfRoadcond: ['digitraffic'], sfShips: ['digitraffic'], sfCameras: ['digitraffic'],
-  'wx:wind': ['openmeteo'], 'wx:temp': ['openmeteo'], 'wx:snow': ['openmeteo'], 'wx:rain': ['fmi', 'rainviewer'], seaIce: ['copernicus'],
+  'wx:wind': ['openmeteo'], 'wx:temp': ['openmeteo'], 'wx:snow': ['openmeteo'], 'wx:rain': ['fmi', 'rainviewer'], 'wx:cloud': ['openmeteo'], 'wx:thunder': ['fmi', 'openmeteo'], 'wx:towns': ['openmeteo'], seaIce: ['copernicus'],
 };
 const tileTrouble = {}; // a map source → { bad, ok }: when its tiles last failed, and last came in
 let detailsBusyAt = 0; // Overpass, which takes turns between mirrors, says so to the trail details
@@ -1726,7 +1731,8 @@ function renderSettingsPanel() {
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails, solid panels and darker grey words, for bright sunlight'),
         comingToggle('Colours for colour blindness', 'Difficulty, the profile and warnings in colours that stay apart'),
     comingToggle('Less motion', 'Panels appear without sliding; the route’s arrows stand still'),
-    toggle('Fewer effects', state.fewerEffects, setFewerEffects, 'Solid panels instead of the see-through glass, for a phone or browser that scrolls or moves the map slowly')));
+    toggle('Fewer effects', state.fewerEffects, setFewerEffects, 'Solid panels instead of the see-through glass, for a phone or browser that scrolls or moves the map slowly'),
+    effectsToggle()));
 
   p.append(group('language', 'Language and units',
     comingChoice('Language', ['Automatic', 'English', 'Suomi', 'Svenska']),
