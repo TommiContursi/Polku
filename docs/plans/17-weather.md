@@ -44,14 +44,17 @@ An idea from 2026-11-07: make the weather on the map look much better, with clou
 
 - **A, motion leads:** drizzle, rain and heavy rain fall differently (short and slow, today's streaks, long and dense), so they read apart without the colour. The colour under them covers at most 38 %. Clouds are soft shadows drifting with the wind. Lightning strikes are small bolts by age (under 10, 10–30 and 30–60 minutes), and the forecast's thunder an amber hatched area with a label.
 - **B, colour leads:** the rain in four clear steps (0.1, 0.5, 2 and 8 mm/h), each with its edge, at 42 %, and half the streaks. Clouds are a white veil. Strikes are dots by age, the forecast's thunder a warm glow, and a new batch of strikes flashes once.
-- **Both:** **Clouds** and **Thunder** chips on the timeline; the nearest strike in the reading ("⚡ 6 km · 4 min ago"); a legend that names each mark; lightning only at Now, since it is seen, not forecast; the timeline's note says when lightning couldn't be loaded; in reduced motion the rain is drawn still, clouds don't drift and nothing flashes.
+- **Both:** **Clouds** and **Thunder** in the weather pill's menu; the nearest strike in the legend ("6 km, 4 min ago"); lightning only at Now, since it is seen, not forecast; the legend says when lightning couldn't be loaded; in reduced motion the rain is drawn still, clouds don't drift and nothing flashes.
+- **Snow:** A draws the snowfall in violet over a light wash of the snow on the ground; B draws the depth in steps (1, 10, 25 and 50 cm) with their edges. FMI's measured depths sit on top as small labels in every look. Bare ground stays clear.
+- **Added 2026-11-08, from #903 and the weather card's plan:** the map's hours are step 6b's weather line, whose pill ("Rain ▾") opens the layers' menu (more than one at a time; the pill says "Rain +1"); a legend over the map at the top left while a layer is on; the radar's last 90 minutes at the start of the line's strip (only the rain has a past, and the legend says so); the towns' weather at a region's scale (#916); a warning's row in the legend (#911). **Bar: Timeline today** keeps the old timeline to compare.
 - The colours sit under the map's words and the route, where `addWeather()` puts them; the motion is drawn over everything, as the app's canvas is.
 
 ### For the user to decide
 
 - A or B, or parts of each (for example A's rain with B's strikes).
 - Cloud as shadows or as a veil: shadows read on the light maps, a veil on the night map.
-- The chips: six don't fit one row. On a 390 px phone they take two rows, and at 200 % the timeline fills the screen. One pill that picks the layer, as yr.no's app does (#903, item 6), could replace them on phones.
+- The chips are settled: six didn't fit one row (two rows at 390 px, the whole screen at 200 %), and step 6b's pill replaces them, as yr.no's app does (#903, item 6).
+- The legend at 200 %: folded to its name until tapped (a warning stays out), or open.
 
 ### When it's built
 
@@ -60,3 +63,18 @@ An idea from 2026-11-07: make the weather on the map look much better, with clou
 - **Missing data:** when lightning fails, the map shows the forecast's thunder only and says so; it never looks like a calm sky.
 - The motion is decided with /animate, and the user runs /review-animations before the PR opens.
 - Model: Opus at high (a new source, `js/wxmap.js` and `js/style.js`, smoke checks with recorded lightning).
+
+## The order (2026-11-08)
+
+The [Richer weather](https://github.com/TommiContursi/Polku/milestone/21) milestone, after [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16)'s weather card (step 6a) and weather line (step 6b, #431), which build the card, the line and its pill. Each part is a PR of its own; a mock-up and the user's choice come first where it says so. #903's ideas from yr.no's app are all here, each with its issue.
+
+1. **#182, the weather's look.** Waits on the user's choice of A or B in the mock-up. The rain's colours and motion, Clouds, Thunder (FMI's lightning and the forecast's thunder), the snow's look, the legend over the map, and the radar's last 90 minutes on the line (#903, items 4 and 8). Opus at high.
+2. **#911, warnings** on the map and in the weather card: safety, so first after the look. A new source (FMI's warnings): its feed, CORS and terms checked, then a mock-up. Opus at high.
+3. **#916, the towns' weather** on the map, zoomed out, from the map's own weather grid (no new calls). An item of the pill's menu, drawn in #182's mock-up. Opus at medium.
+4. **#915, the rain in the next 90 minutes:** first a check for a radar nowcast that answers from a browser; a new source needs the user's OK. Opus at high.
+5. **#912, the weather measured nearby** in the weather card (FMI's stations), with a mock-up. Opus at high.
+6. **#913, road cameras near the trip** in the weather card, from the cameras Polku already has. Sonnet, or Opus at medium.
+7. **#914, the sun, the moon, UV and aurora** in the weather card. The sun and moon need no service; UV may cost a call; aurora needs a source and the user's OK. Sonnet, or Opus at high with a new source.
+8. **#862, the water's temperature** (and blue-green algae) for paddlers and swimmers, as yr shows the sea's: a new source. Opus at high.
+
+Already elsewhere: the forecast's table and graph (#903, item 7) are the weather card itself (#431); wet trails are #860, and the best departures #273 (step 9).

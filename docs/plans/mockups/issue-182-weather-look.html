@@ -5,18 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Weather on the map</title>
-<meta name="description" content="Mock-up for #182's look: rain by its strength, cloud, thunder (lightning seen apart from thunder forecast) and snowfall over the map, today's look beside two directions.">
+<meta name="description" content="Mock-up for #182's look: rain by its strength, cloud, thunder (lightning seen apart from thunder forecast), snowfall and snow on the ground over the map, with the weather line, its layer menu, a legend over the map, the radar's last 90 minutes and the towns' weather.">
 <!--
   #182, the look of the weather layers, 2026-11-07. The plan: docs/plans/17-weather.md, "The look (2026-11-07)".
   Not wired to the app: nothing here is loaded by Polku. The maps are screenshots of main at c9fe8d4 (Kauppi's MTB
   route from tools/fixtures), split where js/style.js's addWeather() puts the weather: the map under it, and over it the
   words, the route and its marks (a transparent picture). The interface around them is cut from a screenshot of the
-  same view; the timeline is css/app.css's own markup (wx-bar, tl-head, chip, tl-now, wx-row, wx-info, wx-lg, tl-note).
+  same view. The weather line and its layer pill are copied from weather-card.html (Calmer planner's step 6b); "Timeline
+  today" keeps css/app.css's own markup (wx-bar, tl-head, chip, tl-now, wx-row, wx-info, wx-lg, tl-note) to compare.
+  2026-11-08: the weather line, the layer menu, the legend over the map, the radar's last 90 minutes, snow on the
+  ground, the towns' weather and a warning's row (from #903 and the weather card's plan).
   The weather is made up: shower cells, a band of rain, cloud and lightning placed around the route by hand.
   "Today" copies js/wxmap.js's drawPrecip() and the rain layer's colours and opacity (js/style.js, js/radar.js).
 
-  ?look=today|a|b  &wx=drizzle|rain|heavy|cloud|thunder|snow  &map=trail|night  &scale=near|region
-  &f=390|360|desk  &z=100|200  &t=now|3h  &data=ok|nolightning  &motion=on|reduced
+  ?look=today|a|b  &wx=drizzle|rain|heavy|cloud|thunder|snow  &bar=line|old  &map=trail|night  &scale=near|region
+  &f=390|360|desk  &z=100|200  &t=now|past|3h  &data=ok|nolightning  &motion=on|reduced
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <style>
@@ -85,12 +88,62 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wx-lg i.steps { background-size: 100% 100%; }
 .tl-now .ic.bolt { color: #b45309; }
 :root[data-theme="dark"] .tl-now .ic.bolt { color: #fbbf24; }
+
+/* the weather line (Calmer planner's step 6b, copied from weather-card.html): the timeline folded to one line */
+.frame { --wc-temp: #c2410c; --wc-rain: #1d4ed8; --wc-wind: #6d28d9; --wc-snow: #6d28d9; --wd-warm: #b91c1c; --wd-sun: #ca8a04; --wc-dark: color-mix(in srgb, var(--text) 9%, transparent); }
+:root[data-theme="dark"] .frame { --wc-temp: #fb923c; --wc-rain: #60a5fa; --wc-wind: #c4b5fd; --wc-snow: #c4b5fd; --wd-warm: #f87171; --wd-sun: #facc15; }
+.rt-pill { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); max-width: 100%; padding: 4px 10px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.rt-pill > span { min-width: 0; display: grid; }
+.wx-line { display: block; position: absolute; z-index: 6; padding: 4px 4px 6px; border-radius: 18px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); container-type: inline-size; }
+.wl-row { display: flex; align-items: center; gap: 4px; min-height: 44px; }
+.wl-row .tool { width: 44px; height: 44px; flex: none; }
+.wl-read { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.wl-read > b { font-size: 22px; color: var(--wd-warm); font-variant-numeric: tabular-nums; }
+.wl-read > span { min-width: 0; font-size: 13px; line-height: 1.25; }
+.wl-read small { display: block; color: var(--text); font-size: 13px; }
+.wl-read small b { color: var(--wc-wind); } .wl-read small em { font-style: normal; color: var(--wc-rain); font-weight: 600; }
+.wl-read .nw, .wl-time { white-space: nowrap; }
+.wl-time { display: block; font-style: normal; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.wd-sky { display: grid; color: var(--muted); } .wd-sky.sun, .wd-sky.cloudSun { color: var(--wd-sun); }
+.rt-pill.wl-layer { min-height: 36px; padding: 2px 8px; gap: 4px; font-size: 13px; flex: none; }
+@container (max-width: 340px) { .rt-pill.wl-layer > span:nth-child(2) { display: none; } }
+@container (max-width: 420px) { .wx-line.many .wl-read > .wd-sky { display: none; } } /* (with “Rain +1” the pill is wider: at 390 px the sky's icon gives way, the time and wind keep their room) */
+@container (max-width: 300px) { .wl-time { white-space: normal; } .wl-row { flex-wrap: wrap; } .wl-read { flex-basis: calc(100% - 48px); } .rt-pill.wl-layer { margin-right: auto; } } /* (200 % on a phone: the reading gets a row of its own) */
+.wl-scrub { position: relative; padding: 10px 6px; cursor: ew-resize; touch-action: pan-y; }
+.wl-scrub svg { display: block; width: 100%; height: 24px; border-radius: 6px; overflow: visible; }
+.wl-knob { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--surface-solid); border: 2px solid var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); pointer-events: none; }
+.wl-days { position: relative; height: 15px; margin: -8px 6px 0; font-size: 12px; color: var(--text); overflow: hidden; }
+.wl-days > span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.mk-menu { min-width: 260px; max-width: min(320px, calc(100vw - 16px)); max-height: calc(100vh - 16px); }
+.mk-menu .menu-item[aria-checked="true"] .menu-tick { display: grid; } .mk-menu .menu-tick { display: none; }
+/* the legend over the map, top left, while a layer is on (as yr's app shows it, #903) */
+.mk-legend { position: absolute; z-index: 5; display: flex; flex-direction: column; gap: 4px; max-width: 300px; padding: 7px 10px 8px; border-radius: 12px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); }
+.frame.phone .mk-legend { max-width: calc(100% - 82px); }
+.frame.z2 .mk-legend { max-width: calc(100% - 12px); }
+.mk-legend .lg-fold { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; margin: -4px -4px -4px; padding: 0 6px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; align-self: flex-start; }
+.mk-legend .wx-lg { display: flex; } .mk-legend .wx-lg i { width: 84px; }
+.mk-legend .wx-lg small { font-size: 12px; color: var(--text); }
+.mk-legend .lgl { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; }
+.mk-legend .lgl .ic, .mk-legend .lgl .lg-obs { flex: none; margin-top: 1px; }
+.mk-legend .lg-warn { padding: 3px 6px; margin: -2px -4px 2px; border-radius: 6px; background: #fef3c7; color: #78350f; font-weight: 600; }
+:root[data-theme="dark"] .mk-legend .lg-warn { background: #451a03; color: #fde68a; }
+.mk-legend .lg-note { color: var(--muted); }
+.mk-legend .warn-text { color: #b45309; font-weight: 600; } :root[data-theme="dark"] .mk-legend .warn-text { color: #fbbf24; }
+/* points on the map: the towns' weather (yr's symbols) and FMI's measured snow depths */
+.mk-town { position: absolute; z-index: 4; transform: translate(-50%, calc(-100% - 6px)); display: flex; align-items: center; gap: 3px; padding: 2px 7px 2px 4px; border-radius: 999px; background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.28); font-size: 13px; font-weight: 700; white-space: nowrap; pointer-events: none; }
+.wl-read > b.cold { color: var(--wc-rain); }
+.mk-town b { color: var(--wd-warm); font-variant-numeric: tabular-nums; } .mk-town b.cold { color: var(--wc-rain); }
+.mk-town small { font-size: 11px; font-weight: 650; color: var(--wc-wind); }
+.mk-town::after { content: ''; position: absolute; left: 50%; bottom: -6px; width: 2px; height: 6px; margin-left: -1px; background: var(--text); opacity: .55; }
+.mk-obs, .lg-obs { padding: 0 5px; border-radius: 6px; background: var(--surface-solid); border: 1.5px solid #0369a1; color: var(--text); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mk-obs { position: absolute; z-index: 3; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none; }
+:root[data-theme="dark"] :is(.mk-obs, .lg-obs) { border-color: #7dd3fc; }
 </style>
 </head>
 <body class="mk">
 <div class="cv">
-  <h1>Weather on the map: rain, cloud, thunder</h1>
-  <p>For <a href="https://github.com/TommiContursi/Polku/issues/182">#182</a>: how the weather layers could look. <b>Today</b> is main as it is. <b>A</b> lets the motion say how hard it rains, with light colours under it. <b>B</b> lets the colours say it, in clear steps, with less motion. Both add <b>Clouds</b> and <b>Thunder</b> to the timeline's chips. Thunder keeps the lightning that was seen apart from the thunder the forecast expects. The weather is made up, placed in the middle of what the map shows (Kauppi's MTB route in Tampere, and the region around it); the maps are main's.</p>
+  <h1>Weather on the map: rain, cloud, thunder, snow</h1>
+  <p>For <a href="https://github.com/TommiContursi/Polku/issues/182">#182</a>: how the weather layers could look. <b>Today</b> is main as it is. <b>A</b> lets the motion say how hard it rains, with light colours under it. <b>B</b> lets the colours say it, in clear steps, with less motion. Both add <b>Clouds</b>, <b>Thunder</b> and the <b>Towns' weather</b>. Thunder keeps the lightning that was seen apart from the thunder the forecast expects. <b>Snow</b> shows the snowfall and the snow on the ground together. The map's hours are the <b>weather line</b> of the weather card's plan (step 6b): its pill (“Rain ▾”) opens the layers' menu, and its strip starts with the radar's last 90 minutes. A <b>legend</b> sits over the map while a layer is on. <b>Timeline today</b> on the Bar switch keeps the old timeline to compare. The weather is made up, placed in the middle of what the map shows (Kauppi's MTB route in Tampere, and the region around it); the maps are main's.</p>
   <div class="bars" id="bars"></div>
   <div class="stage" id="stage"></div>
   <p class="cap" id="cap"></p>
@@ -101,15 +154,21 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li><b>Rain, B:</b> the colour in steps (drizzle, rain, heavy, very heavy), each with its edge drawn, like a radar map. The streaks are half as many and fainter.</li>
       <li><b>Cloud, A:</b> soft shadows drifting with the wind, darker where the cover is thicker. <b>B:</b> a white veil, drifting the same way. On the night map both turn into a faint light veil.</li>
       <li><b>Thunder, A:</b> each lightning strike as a small bolt, by its age: under 10 min, 10–30 min and 30–60 min, in size and colour, and the words in the legend. Where the forecast expects thunder, an amber hatched area. <b>B:</b> strikes as dots by age, and the forecast's thunder as a warm glow. A new batch of strikes flashes once.</li>
-      <li><b>The reading</b> beside the strip gets the nearest strike in words (“⚡ 6 km · 4 min ago”), and the legend names each mark.</li>
-      <li><b>Moving the time:</b> lightning is seen, not forecast, so it shows at Now only; at a later hour the forecast's thunder is all there is, and the legend says so.</li>
-      <li><b>When a source fails:</b> the legend and the timeline's note say which (“Lightning couldn't be loaded”); the map never looks calm because a source is missing.</li>
+      <li><b>Snow, A:</b> the snowfall in violet, so it reads apart from the snow on the ground, whose cool wash stays light; bare ground stays clear. <b>B:</b> the depth in steps (1, 10, 25, 50 cm) with their edges. In every look FMI's measured depths sit on top as small labels (“24”), and the legend says which are measured.</li>
+      <li><b>The weather line</b> (step 6b): ▷, the sky, the temperature, the hour with the wind (gust) and rain, the layer's pill, ⌃ and ✕, over the strip. The pill names the layer that's on (“Rain +1” for two) and opens the menu: Rain and snowfall, Clouds, Thunder, Snow on the ground, Wind, Temperature, and the Towns' weather. On a phone the line takes the sheet's place; on a desktop it opens above the toolbar's right end.</li>
+      <li><b>The legend</b> sits over the map, top left, while a layer is on, as yr's app does: each layer's colours in words, the nearest lightning (“6 km, 4 min ago”), a warning when FMI has one for the area, and what's missing.</li>
+      <li><b>The radar's last 90 minutes</b> start the strip (“Radar”): drag back to see where the rain came from. Only the rain has a past: clouds, thunder and snow depth start at Now, and the legend says so. Ahead of Now the forecast goes on; a radar nowcast for the next 90 minutes is a source still to check.</li>
+      <li><b>The towns' weather,</b> zoomed out: the sky, the temperature and the wind at towns, as yr's map shows them, at the line's hour. Only at a region's scale; near the route the route's own weather is the line's reading.</li>
+      <li><b>Moving the time:</b> lightning is seen, not forecast, so it shows at Now only (its last hour); at a later hour the forecast's thunder is all there is, and the legend says so.</li>
+      <li><b>When a source fails:</b> the legend says which (“Lightning couldn't be loaded”); the map never looks calm because a source is missing.</li>
       <li><b>Reduced motion:</b> the rain and snow are drawn still, the clouds don't drift and nothing flashes. Today the particles move in reduced motion too.</li>
     </ul>
     <h2>What isn't decided here</h2>
     <ul>
       <li>Which forecast says thunder: Open-Meteo's weather code (95–99), its CAPE, or both; lightning from FMI's open data (flashes with their time and place).</li>
       <li>Whether thunder near the route belongs in Heads-up: not in #182, an idea of its own if it's wanted.</li>
+      <li>Warnings on the map as areas, and in the weather card: the warning's row here is a placeholder for that issue's design.</li>
+      <li>Where the towns' symbols come from: one forecast call per town would burst Open-Meteo, so they come from the map's own weather grid (the nearest cell), or not at all.</li>
       <li>The motion is decided with /animate when it's built, and checked with /review-animations before its PR opens.</li>
     </ul>
   </div>
@@ -118,16 +177,17 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/project-thread-q87u51/weather-look/', VER = '?v=90f3b9c';
 const SW = {
   look: [['today', 'Today'], ['a', 'A: motion leads'], ['b', 'B: colour leads']],
-  wx: [['drizzle', 'Drizzle'], ['rain', 'Rain'], ['heavy', 'Heavy rain'], ['cloud', 'Cloud'], ['thunder', 'Thunder'], ['snow', 'Snowfall']],
+  wx: [['drizzle', 'Drizzle'], ['rain', 'Rain'], ['heavy', 'Heavy rain'], ['cloud', 'Cloud'], ['thunder', 'Thunder'], ['snow', 'Snow']],
+  bar: [['line', 'Weather line (step 6b)'], ['old', 'Timeline today']],
   map: [['trail', 'Trail map'], ['night', 'Night map']],
   scale: [['near', 'Near the route'], ['region', 'The region']],
   f: [['390', 'Phone'], ['360', 'Phone 360'], ['desk', 'Desktop']],
   z: [['100', '100 %'], ['200', '200 %']],
-  t: [['now', 'Now'], ['3h', 'In 3 hours']],
+  t: [['now', 'Now'], ['past', 'An hour ago (radar)'], ['3h', 'In 3 hours']],
   data: [['ok', 'All loaded'], ['nolightning', 'Lightning missing']],
   motion: [['on', 'Moving'], ['reduced', 'Reduced motion']],
 };
-const NAMES = { look: 'Look', wx: 'Weather', map: 'Map', scale: 'Scale', f: 'Frame', z: 'Zoom', t: 'Time', data: 'Data', motion: 'Motion' };
+const NAMES = { look: 'Look', wx: 'Weather', bar: 'Bar', map: 'Map', scale: 'Scale', f: 'Frame', z: 'Zoom', t: 'Time', data: 'Data', motion: 'Motion' };
 const q = new URLSearchParams(location.search);
 const S = Object.fromEntries(Object.entries(SW).map(([k, v]) => [k, v.some(([x]) => x === q.get(k)) ? q.get(k) : v[0][0]]));
 if (!q.get('motion') && matchMedia('(prefers-reduced-motion: reduce)').matches) S.motion = 'reduced';
@@ -143,12 +203,12 @@ const h = (tag, attrs = {}, ...kids) => {
 function renderBars() {
   const bars = document.getElementById('bars');
   bars.innerHTML = '';
-  const groups = [['look', 'wx'], ['map', 'scale', 't'], ['f', 'z', 'data', 'motion']];
+  const groups = [['look', 'wx'], ['bar', 'map', 'scale', 't'], ['f', 'z', 'data', 'motion']];
   for (const g of groups) {
     const row = h('div', { class: 'bar' });
     for (const k of g) {
       row.append(h('span', {}, NAMES[k]), h('div', { class: 'sw', role: 'group', 'aria-label': NAMES[k] },
-        ...SW[k].map(([v, label]) => h('button', { type: 'button', 'aria-pressed': String(S[k] === v), onclick: () => { S[k] = v; sync(); } }, label))));
+        ...SW[k].map(([v, label]) => h('button', { type: 'button', 'aria-pressed': String(S[k] === v), onclick: () => { S[k] = v; if (k === 'wx') resetLayers(); if (k === 'z') legendOpen = null; sync(); } }, label))));
     }
     bars.append(row);
   }
@@ -228,7 +288,7 @@ function makeStrikes(seed) {
 strikes = makeStrikes(1);
 let batch = 1;
 function newStrikes() {
-  if (S.wx !== 'thunder') { S.wx = 'thunder'; sync(); }
+  if (S.wx !== 'thunder') { S.wx = 'thunder'; resetLayers(); sync(); }
   batch++;
   for (const s of strikes) s.age += 5;
   strikes = strikes.filter((s) => s.age < 60);
@@ -237,6 +297,32 @@ function newStrikes() {
   if (scene) scene.flash = performance.now();
 }
 const nearest = () => strikes.reduce((m, s) => { const d = Math.hypot(s.x, s.y); return d < m.d && s.age < 30 ? { d, age: s.age } : m; }, { d: Infinity });
+
+// ---------------------------------------------------------------- the layers that are on (the pill's menu, or the old chips)
+// each weather starts with its own layers on; the menu then turns any of them on or off
+const LAYERS = [ // [key, the menu's words, its line, the pill's word, icon, new]
+  ['rain', 'Rain and snowfall', 'The radar’s last 90 minutes, then the forecast', 'Rain', 'rain', false],
+  ['cloud', 'Clouds', 'The forecast’s cloud cover', 'Clouds', 'cloud', true],
+  ['thunder', 'Thunder', 'Lightning seen in the last hour, and where the forecast expects thunder', 'Thunder', 'thunder', true],
+  ['depth', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow', false],
+  ['wind', 'Wind', 'As today (not drawn in this mock-up)', 'Wind', 'wind', false],
+  ['temp', 'Temperature', 'As today (not drawn in this mock-up)', 'Temperature', 'temp', false],
+];
+let L = {};
+function resetLayers() {
+  L = { rain: S.wx !== 'cloud', cloud: S.wx === 'cloud', thunder: S.wx === 'thunder', depth: S.wx === 'snow', towns: true };
+}
+// a layer that's on and drawn: Today has no clouds, thunder or towns; the radar's past has only the rain
+const on = (k) => !!L[k] && !(S.look === 'today' && ['cloud', 'thunder', 'towns'].includes(k)) && !(S.t === 'past' && k !== 'rain');
+// the rain at the line's hour: an hour ago it was 15 km south-west (the wind's way); in 3 hours the storm has moved on
+const rainAt = (x, y) => S.t === 'past' ? WX[S.wx].rain(x + 15, y + 15) : S.t === '3h' && S.wx === 'thunder' ? WX[S.wx].rain(x - 8, y - 10) : WX[S.wx].rain(x, y);
+const cloudAt = (x, y) => S.wx === 'cloud' ? WX.cloud.cloud(x, y) : Math.min(1, Math.max(0, 0.3 + 0.7 * fbm((x + 5) / 9, (y + 3) / 9) + rainAt(x, y) * 0.2));
+const depthAt = (x, y) => 30 * fbm((x + 40) / 13, (y + 5) / 13) - 7 + y * 0.1 - (S.wx === 'snow' ? 0 : 16); // cm; bare in patches
+// towns and FMI's snow stations, by their place (the stations' places and depths made up)
+const TOWNS = [['Tampere', 23.761, 61.498], ['Nokia', 23.51, 61.478], ['Ylöjärvi', 23.596, 61.556], ['Kangasala', 24.065, 61.464], ['Lempäälä', 23.753, 61.314],
+  ['Valkeakoski', 24.031, 61.264], ['Akaa', 23.866, 61.167], ['Orivesi', 24.357, 61.677], ['Pälkäne', 24.268, 61.339], ['Kuru', 23.735, 61.869], ['Hämeenkyrö', 23.196, 61.639],
+  ['Sastamala', 22.909, 61.341], ['Mänttä', 24.623, 62.03], ['Ruovesi', 24.07, 61.986]];
+const STATIONS = [[23.828, 61.512], [23.81, 61.488], [23.747, 61.466], [23.604, 61.42], [24.0, 61.47], [24.35, 61.66], [24.03, 61.28], [23.55, 61.6], [23.73, 61.85], [23.2, 61.5]];
 
 // ---------------------------------------------------------------- colours (js/wxmap.js's)
 const RAIN_RAMP = [[0.1, '#93c5fd'], [0.5, '#3b82f6'], [2, '#1d4ed8'], [5, '#7c3aed'], [10, '#db2777']];
@@ -249,13 +335,18 @@ function ramp(stops, v) {
   }
   return hex(stops[stops.length - 1][1]);
 }
+const SNOW_RAMP = [[1, '#e0f2fe'], [10, '#bae6fd'], [25, '#7dd3fc'], [50, '#60a5fa'], [80, '#6366f1'], [120, '#7c3aed']]; // (js/wxmap.js's)
+// new: the snowfall in violet (apart from the snow on the ground), and B's steps for the depth
+const SNOWFALL = [[0.1, '#ddd6fe'], [0.5, '#a78bfa'], [2, '#7c3aed']];
+const SNOW_STEPS = [[1, '#e0f2fe'], [10, '#a5d8fb'], [25, '#5cb8f2'], [50, '#2f7fd6']];
+const stepsCss = (st) => `linear-gradient(90deg, ${st.map(([, c], i) => `${c} ${(i * 100) / st.length}% ${((i + 1) * 100) / st.length}%`).join(', ')})`;
 const rampCss = (stops) => `linear-gradient(90deg, ${stops.map(([, c], i) => `${c} ${(i / (stops.length - 1)) * 100}%`).join(', ')})`;
 // B's steps: drizzle, rain, heavy, very heavy (RAIN_BANDS' edges, and 8 mm/h)
 const STEPS = [[0.1, '#a5cdfb'], [0.5, '#4f8ff7'], [2, '#2747c4'], [8, '#a3268f']];
-const stepOf = (r) => { let k = -1; for (let i = 0; i < STEPS.length; i++) if (r >= STEPS[i][0]) k = i; return k; };
+const stepOf = (r, st = STEPS) => { let k = -1; for (let i = 0; i < st.length; i++) if (r >= st[i][0]) k = i; return k; };
 
 // ---------------------------------------------------------------- the frame
-let scene = null, anim = 0;
+let scene = null, anim = 0, legendOpen = null;
 function build() {
   cancelAnimationFrame(anim);
   const dark = S.map === 'night';
@@ -279,10 +370,13 @@ function build() {
   const full = !z2 && S.f !== '360';
   const column = [];
   if (full) for (const r of [...UI[dev], ...(S.scale === 'near' ? [UI.hint[dev]] : [])]) { const p = piece(r); fr.append(p); if (phone && r[1] > 100) column.push([p, r[1]]); }
-  if (phone && !z2) fr.append(piece(UI.sheet, UI.sheet[1] - (844 - H)));
-  // the timeline (app.css's own markup), its foot where the app puts it
-  const bar = timeline(phone);
-  if (phone) Object.assign(bar.style, { left: z2 ? '6px' : '12px', right: z2 ? '6px' : '12px', bottom: z2 ? '8px' : '146px' });
+  const line = S.bar === 'line';
+  if (phone && !z2 && !line) fr.append(piece(UI.sheet, UI.sheet[1] - (844 - H))); // (the line takes the sheet's place)
+  // the map's hours: the weather line (step 6b), or the old timeline (app.css's own markup), its foot where the app puts it
+  const bar = line ? weatherLine() : timeline(phone);
+  if (line && phone) Object.assign(bar.style, { left: z2 ? '4px' : '8px', right: z2 ? '4px' : '8px', bottom: z2 ? '4px' : '8px' });
+  else if (line) Object.assign(bar.style, { left: z2 ? '120px' : '808px', width: z2 ? '480px' : '440px', bottom: z2 ? '8px' : '77px' }); // (above the toolbar's right end)
+  else if (phone) Object.assign(bar.style, { left: z2 ? '6px' : '12px', right: z2 ? '6px' : '12px', bottom: z2 ? '8px' : '146px' });
   else Object.assign(bar.style, { left: z2 ? '120px' : '602px', width: z2 ? '480px' : '640px', bottom: z2 ? '8px' : '108px' });
   fr.append(bar);
   if (phone && full) {
@@ -310,7 +404,40 @@ function build() {
   const zk = k, ox = z2 ? (cw - sc.w) * 0.5 : 0, oy = z2 ? (chh - sc.h) * 0.3 : 0;
   const toKm = (px, py) => [(px - ox - mx) * zk, -(py - oy - my) * zk];
   const toPx = (x, y) => [ox + mx + x / zk, oy + my - y / zk];
+  const merc = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+  const llPx = (lon, lat) => [ox + ((lon - sc.b[0][0]) / (sc.b[1][0] - sc.b[0][0])) * sc.w, oy + ((merc(sc.b[1][1]) - merc(lat)) / (merc(sc.b[1][1]) - merc(sc.b[0][1]))) * sc.h];
   scene = { fr, field, parts, W: cw, H: chh, toKm, toPx, k: zk, dark, flash: 0 };
+  // points on the map, kept clear of the panels and the line (the room between them)
+  const room = phone ? [8, 110, cw - (z2 ? 8 : 60), chh - (z2 ? 120 : 250)] : z2 ? [8, 60, cw - 8, chh - 70] : [430, 110, 1350, 760];
+  const inRoom = ([x, y]) => x > room[0] && y > room[1] && x < room[2] && y < room[3];
+  const routeAt = llPx(23.81, 61.51); // (the route's own weather is the line's reading: no town's symbol over it)
+  if (on('towns') && S.scale === 'region') for (const [name, lon, lat] of TOWNS) {
+    const p = llPx(lon, lat); if (!inRoom(p) || Math.hypot(p[0] - routeAt[0], p[1] - routeAt[1]) < 45) continue;
+    const [x, y] = toKm(...p), w = WX[S.wx], r = rainAt(x, y);
+    const sky = S.wx === 'thunder' && S.t !== 'past' && riskAt(x, y) > 0.35 ? 'thunder' : r >= 0.1 ? (w.snow ? 'snow' : 'rain') : cloudAt(x, y) > 0.6 ? 'cloud' : 'cloudSun';
+    const t = Math.round(w.temp + (fbm(x / 20 + 4, y / 20) - 0.5) * 5 - (S.t === 'past' ? 0.5 : 0)), ms = Math.round(WIND.ms + (fbm(x / 15 + 3, y / 15) - 0.5) * 5);
+    fr.append(h('div', { class: 'mk-town', style: `left:${p[0]}px;top:${p[1]}px`, role: 'img', 'aria-label': `${name}: ${sky === 'cloudSun' ? 'partly cloudy' : sky}, ${t} °C, wind ${ms} m/s`,
+      html: `<span class="wd-sky ${sky}">${ic(sky, 18)}</span><b class="${t <= 0 ? 'cold' : ''}">${t}°</b><small>${ms}</small>` }));
+  }
+  scene.obs = [];
+  if (on('depth')) for (const [lon, lat] of STATIONS) {
+    const p = llPx(lon, lat); if (!inRoom(p)) continue;
+    const cm = Math.max(0, Math.round(depthAt(...toKm(...p)) + (hash(lon * 100, lat * 100) - 0.5) * 4));
+    scene.obs.push(cm);
+    fr.append(h('div', { class: 'mk-obs', style: `left:${p[0]}px;top:${p[1]}px`, role: 'img', 'aria-label': `Measured snow depth ${cm} cm` }, String(cm)));
+  }
+  // the legend over the map, top left (with the weather line; the old timeline has it in its own row)
+  if (line) {
+    const rows = legendRows(true);
+    if (rows.length) {
+      const top = z2 ? 6 : S.scale === 'near' && full ? 100 : 61, left = z2 ? 6 : phone ? 11 : 415;
+      // at 200 % it starts folded to its name (a warning stays out); a tap opens it
+      const open = legendOpen ?? !z2, warn = rows.filter((x) => x.includes('lg-warn')), rest = rows.filter((x) => !x.includes('lg-warn'));
+      const lg = h('div', { class: 'mk-legend', role: 'region', 'aria-label': 'Map legend', style: `left:${left}px;top:${top}px`, html: warn.join('') + (z2 ? `<button type="button" class="lg-fold" aria-expanded="${open}">Legend ${CARET}</button>` : '') + (open ? rest.join('') : '') });
+      lg.querySelector('.lg-fold')?.addEventListener('click', () => { legendOpen = !open; build(); document.querySelector('.lg-fold')?.focus(); });
+      fr.append(lg);
+    }
+  }
   drawField();
   startParticles();
   caption();
@@ -329,51 +456,161 @@ const ICON = {
   drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"></path>',
   close: '<path d="M6 6l12 12M18 6 6 18"></path>',
   play: '<path d="M7 4v16l13-8Z" fill="currentColor"></path>',
+  chevronUp: '<path d="m6 15 6-6 6 6"></path>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7"></path>',
+  warn: '<path d="M12 3 2 20h20Z"></path><path d="M12 10v4.5M12 17.5h.01"></path>',
+  layers: '<path d="m12 3 9 5-9 5-9-5Z"></path><path d="m3 13 9 5 9-5"></path>',
+  sun: '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>',
+  cloudSun: '<path d="M8 3.5v1.2M3.6 8H2.4M4.8 4.8l.9.9M11.2 4.8l-.9.9"></path><path d="M5.3 10.6A3.5 3.5 0 1 1 11 6.4"></path><path d="M9 20a4 4 0 1 1 1.3-7.8A5 5 0 0 1 20 14a3 3 0 0 1-1 6Z"></path>',
 };
 const ic = (n, s, cls = '') => `<svg class="ic ${cls}" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+const CARET = '<svg class="ic caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3h8L5 8.5z" fill="currentColor"/></svg>';
+const skyNow = () => S.wx === 'thunder' && S.look !== 'today' ? 'thunder' : S.wx === 'cloud' ? 'cloud' : S.wx === 'snow' ? 'snow' : 'rain';
+const rainNow = () => S.t === '3h' && S.wx === 'thunder' ? 3.2 : rainAt(0, 0);
+const toggle = (k) => { L[k] = !L[k]; build(); };
+
+// the legend: each layer's colours in words, and what's missing (over the map with the line, in the old timeline's row)
+function legendRows(line) {
+  const today = S.look === 'today', w = WX[S.wx], later = S.t === '3h', past = S.t === 'past', out = [];
+  const lgRow = (bar, words) => `<span class="wx-lg">${bar}<small>${words}</small></span>`;
+  const note = (html, cls = 'lg-note') => `<div class="lgl ${cls}">${html}</div>`;
+  if (line && on('thunder') && !past) out.push(note(`${ic('warn', 14)}<span>Yellow warning: thunderstorms in Pirkanmaa till 23:00 · FMI</span>`, 'lg-warn'));
+  if (on('rain')) {
+    const what = past ? '<b>Radar</b>, an hour ago,' : w.snow ? '<b>Snowfall</b>' : '<b>Rain</b>';
+    if (today) out.push(lgRow(`<i style="background:${rampCss(RAIN_RAMP)}"></i>`, `${what} 0.1–10 mm/h`));
+    else if (w.snow) out.push(S.look === 'a' ? lgRow(`<i style="background:${rampCss(SNOWFALL)};opacity:.7"></i>`, `${what} 0.1–2 mm/h`)
+      : lgRow(`<i class="steps" style="background:${stepsCss(SNOWFALL)}"></i>`, `${what} 0.1 · 0.5 · 2 mm/h`));
+    else if (S.look === 'a') out.push(lgRow(`<i style="background:${rampCss(RAIN_RAMP)};opacity:.6"></i>`, `${what} drizzle · rain · heavy`));
+    else out.push(lgRow(`<i class="steps" style="background:${stepsCss(STEPS)}"></i>`, `${what} 0.1 · 0.5 · 2 · 8 mm/h`));
+  }
+  if (on('cloud')) out.push(lgRow(`<i style="background:linear-gradient(90deg, transparent, ${S.look === 'a' && !scene?.dark ? 'rgba(15,23,42,.45)' : 'rgba(148,163,184,.9)'})"></i>`, '<b>Clouds</b> 0–100 %'));
+  if (on('thunder')) {
+    if (!later && S.data === 'ok') out.push(S.look === 'a'
+      ? lgRow(`<svg class="lg-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="${BOLT_PATH}" fill="#facc15" stroke="#1f2937" stroke-width="1.6" stroke-linejoin="round"/></svg>`, '<b>Lightning</b> &lt;10 · 30 · 60 min ago')
+      : lgRow('<svg class="lg-mark" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="#fde047" stroke="#1f2937" stroke-width="1.4"/></svg>', '<b>Lightning</b> &lt;10 · 30 · 60 min ago'));
+    out.push(lgRow(S.look === 'a' ? '<i class="lg-hatch"></i>' : '<i class="lg-glow"></i>', '<b>Thunder</b> possible'));
+    if (line && !later && S.data === 'ok') { const n = nearest(); out.push(note(`${ic('bolt', 14, 'bolt')}<span>Nearest lightning ${n.d.toFixed(0)} km, ${Math.max(1, Math.round(n.age))} min ago</span>`, '')); }
+    if (later) out.push(note('Lightning is seen, not forecast: it shows at Now.'));
+  }
+  if (on('depth')) {
+    out.push(today ? lgRow(`<i style="background:${rampCss(SNOW_RAMP)};opacity:.7"></i>`, '<b>Snow</b> on the ground 1–120 cm')
+      : S.look === 'a' ? lgRow(`<i style="background:${rampCss(SNOW_RAMP)};opacity:.55"></i>`, '<b>Snow</b> on the ground 1–120 cm')
+        : lgRow(`<i class="steps" style="background:${stepsCss(SNOW_STEPS)}"></i>`, '<b>Snow</b> 1 · 10 · 25 · 50 cm'));
+    out.push(note(`<span class="lg-obs">24</span><span>cm measured by FMI; the wash is the forecast</span>`, ''));
+  }
+  if (past && ['cloud', 'thunder', 'depth'].some((k) => L[k] && !(S.look === 'today' && k !== 'depth'))) out.push(note('Only the rain has a past (the radar): the other layers start at Now.'));
+  if (on('thunder') && S.data === 'nolightning' && !later) out.push(note('⚠ Lightning couldn’t be loaded (FMI) · Retry', 'warn-text'));
+  return out;
+}
+
+// the weather line: the card folded (weather-card.html's wxLine(), Calmer planner's step 6b), with the radar's past
+const TIMES = ['past', 'now', '3h'], SW_W = 340, PAST_W = 44; // the strip: 90 minutes of radar, then 48 hours
+const posOf = (t) => t === 'past' ? PAST_W / 3 : t === 'now' ? PAST_W : PAST_W + (3 / 48) * (SW_W - PAST_W);
+const hourWords = (t) => t === 'past' ? '19:22 · radar' : t === 'now' ? 'Now · 20:22' : 'Sat 23:00';
+function lineStrip() {
+  const W = SW_W, H = 24, P = PAST_W, cw = (W - P) / 48, w = WX[S.wx], dark = S.map === 'night';
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><rect width="${W}" height="${H}" rx="6" fill="var(--surface-2)"/>`;
+  s += `<rect width="${P}" height="${H}" rx="6" fill="var(--wc-rain)" opacity=".1"/>`; // the radar's part
+  for (let k = 0; k < 18; k++) { const r = w.rain(15 - k * 0.83, 15 - k * 0.83); if (r >= 0.1) s += `<rect x="${k * (P / 18)}" y="${H - Math.min(H, r * 6)}" width="${P / 18 + .2}" height="${Math.min(H, r * 6)}" fill="${w.snow ? 'var(--wc-snow)' : 'var(--wc-rain)'}" opacity=".85"/>`; }
+  for (let i = 0; i < 48; i++) { const hr = (20 + i) % 24; if (hr >= 17 || hr < 8) s += `<rect x="${P + i * cw}" y="0" width="${cw + .2}" height="${H}" fill="var(--wc-dark)"/>`; }
+  if (S.wx === 'thunder' && S.look !== 'today' && L.thunder) s += `<rect x="${P + cw}" y="0" width="${cw * 6}" height="${H}" fill="${dark ? '#fbbf24' : '#d97706'}" opacity=".25"/>`;
+  for (let i = 0; i < 48; i++) { const r = Math.max(0, w.rain(i * 1.4 - 8, i * 1.1 - 5) * (i < 14 ? 1 : 0.25)); if (r >= 0.1) s += `<rect x="${P + i * cw}" y="${H - Math.min(H, r * 6)}" width="${cw}" height="${Math.min(H, r * 6)}" fill="${w.snow ? 'var(--wc-snow)' : 'var(--wc-rain)'}" opacity=".8"/>`; }
+  const ts = Array.from({ length: 49 }, (_, i) => w.temp + 3 * Math.sin(((i - 6) / 24) * Math.PI * 2)), lo = Math.min(...ts) - 1, hi = Math.max(...ts) + 1;
+  s += `<path d="${ts.map((t, i) => `${i ? 'L' : 'M'}${(P + i * cw).toFixed(1)},${(3 + (1 - (t - lo) / (hi - lo)) * (H - 6)).toFixed(1)}`).join('')}" fill="none" stroke="var(--wc-temp)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
+  for (const k of [3.6, 27.6]) s += `<rect x="${P + k * cw}" y="0" width="1" height="${H}" fill="var(--muted)"/>`; // midnights
+  s += `<rect x="${P - 1}" y="-3" width="2" height="${H + 6}" fill="var(--text)" opacity=".6"/></svg>`; // Now
+  return s;
+}
+function weatherLine() {
+  const w = WX[S.wx], r = rainNow(), sky = skyNow(), gust = S.wx === 'thunder' ? 14 : 10;
+  const shown = LAYERS.filter(([k]) => on(k)), pillWord = shown.length ? `${shown[0][3]}${shown.length > 1 ? ` +${shown.length - 1}` : ''}` : 'Layers';
+  const el = h('div', { class: `wx-line${shown.length > 1 ? ' many' : ''}`, role: 'group', 'aria-label': 'The map’s weather' });
+  const pill = h('button', { type: 'button', class: 'rt-pill wl-layer', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `The map’s weather layers: ${shown.map((x) => x[3]).join(', ') || 'none'}`,
+    html: `<span>${ic(shown[0] ? shown[0][4] : 'layers', 16)}</span><span>${pillWord}</span><span>${CARET}</span>`, onclick: (e) => layerMenu(e.currentTarget) });
+  el.append(h('div', { class: 'wl-row' },
+    h('button', { type: 'button', class: 'tool', 'aria-label': 'Play the hours', html: ic('play', 18) }),
+    h('span', { class: 'wl-read', title: 'At the map’s middle', html: `<span class="wd-sky ${sky}">${ic(sky, 22)}</span><b class="${w.temp <= 0 ? 'cold' : ''}">${w.temp}°</b><span><i class="wl-time">${hourWords(S.t)}</i><small><b class="nw">${WIND.ms} (${gust}) m/s</b> <span class="nw">· ${r >= 0.05 ? `<em>${r.toFixed(1)} mm/h</em>` : 'dry'}</span></small></span>` }),
+    pill,
+    h('button', { type: 'button', class: 'tool', 'aria-label': 'Open the weather card', html: ic('chevronUp', 20) }),
+    h('button', { type: 'button', class: 'tool', 'aria-label': 'Weather off', html: ic('close', 20) })));
+  const frac = (t) => posOf(t) / SW_W;
+  const scrub = h('div', { class: 'wl-scrub', role: 'slider', tabindex: '0', 'aria-label': 'The map’s hour', 'aria-valuemin': '-90', 'aria-valuemax': '2880', 'aria-valuenow': String({ past: -60, now: 0, '3h': 180 }[S.t]), 'aria-valuetext': hourWords(S.t), html: lineStrip() });
+  const setT = (t) => { if (t !== S.t) { S.t = t; sync(); document.querySelector('.wl-scrub')?.focus({ preventScroll: true }); } };
+  scrub.addEventListener('pointerdown', (e) => { // (the mock-up has three hours: the nearest of them)
+    const b = scrub.getBoundingClientRect(), f = (e.clientX - b.left - 6) / (b.width - 12);
+    setT(TIMES.reduce((m, t) => Math.abs(frac(t) - f) < Math.abs(frac(m) - f) ? t : m, 'now'));
+  });
+  scrub.addEventListener('keydown', (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); setT(TIMES[Math.max(0, Math.min(2, TIMES.indexOf(S.t) + d))]); } });
+  scrub.append(h('span', { class: 'wl-knob', 'aria-hidden': 'true', style: `left: calc(6px + (100% - 12px) * ${frac(S.t)})` }));
+  el.append(scrub, h('div', { class: 'wl-days', 'aria-hidden': 'true' },
+    ...[[PAST_W / 2 / SW_W, 'Radar'], [(PAST_W + 15.6 * (SW_W - PAST_W) / 48) / SW_W, 'Sun'], [(PAST_W + 39.6 * (SW_W - PAST_W) / 48) / SW_W, 'Mon']].map(([f, t]) => h('span', { style: `left: calc(6px + (100% - 12px) * ${f})` }, t))));
+  return el;
+}
+
+// the pill's menu: the layers, more than one at a time (ui.js popMenu()'s markup: groups, menuitemcheckbox)
+function layerMenu(anchor, focusKey) {
+  document.querySelector('.mk-menu')?.remove();
+  const item = ([k, label, desc, , icon, isNew]) => {
+    const off = (S.look === 'today' && isNew) || (S.t === 'past' && k !== 'rain');
+    const b = h('button', { type: 'button', role: 'menuitemcheckbox', class: 'menu-item two-line', 'aria-checked': String(!!L[k]), 'data-k': k,
+      html: `${ic(icon, 17)}<span>${label}<small>${S.look === 'today' && isNew ? 'Not in today’s look' : desc}</small></span><span class="menu-tick">${ic('check', 17)}</span>` });
+    if (off && S.look === 'today' && isNew) b.disabled = true;
+    b.addEventListener('click', () => { const k2 = k; toggle(k2); const p = document.querySelector('.wl-layer'); if (p) layerMenu(p, k2); });
+    return b;
+  };
+  const g1 = h('div', { role: 'group', 'aria-labelledby': 'mh-wx' }, ...LAYERS.map(item));
+  const g2 = h('div', { role: 'group', 'aria-labelledby': 'mh-pts' }, item(['towns', 'Towns’ weather', 'The sky, temperature and wind at towns, zoomed out', 'Towns', 'cloudSun', true]));
+  const el = h('div', { class: 'menu menu-pop mk-menu', role: 'menu', 'aria-label': 'Weather layers' },
+    h('div', { class: 'menu-h', id: 'mh-wx' }, 'Weather on the map'), g1, h('hr'), h('div', { class: 'menu-h', id: 'mh-pts' }, 'Points'), g2,
+    h('p', { class: 'menu-note' }, 'Forecast by Open-Meteo; radar, lightning, warnings and measured snow by FMI.'));
+  document.body.append(el);
+  const r = anchor.getBoundingClientRect(), mw = el.offsetWidth, mh = el.offsetHeight;
+  el.style.left = `${Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8))}px`;
+  el.style.top = `${r.top - mh - 8 >= 8 ? r.top - mh - 8 : Math.min(r.bottom + 8, innerHeight - mh - 8)}px`;
+  anchor.setAttribute('aria-expanded', 'true');
+  const items = [...el.querySelectorAll('.menu-item:not(:disabled)')];
+  (items.find((b) => b.dataset.k === focusKey) || items[0]).focus({ preventScroll: true });
+  const close = () => { el.remove(); anchor.setAttribute('aria-expanded', 'false'); removeEventListener('pointerdown', outside, true); };
+  const outside = (e) => { if (!el.contains(e.target) && e.target !== anchor && !anchor.contains(e.target)) close(); };
+  addEventListener('pointerdown', outside, true);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { close(); anchor.focus(); return; }
+    const d = { ArrowDown: 1, ArrowUp: -1 }[e.key]; if (!d) return;
+    e.preventDefault(); items[(items.indexOf(document.activeElement) + d + items.length) % items.length].focus();
+  });
+}
+
+// the old timeline (Bar: Timeline today), css/app.css's own markup
 function timeline(phone) {
-  const today = S.look === 'today', w = WX[S.wx];
-  const on = { rain: ['drizzle', 'rain', 'heavy', 'thunder', 'snow'].includes(S.wx), cloud: S.wx === 'cloud' && !today, thunder: S.wx === 'thunder' && !today };
-  const chips = [['wind', 'Wind', 'wind'], ['temp', 'Temperature', 'temp'], ['rain', 'Rain', 'rain'], ['snow', 'Snow', 'snow']];
+  const today = S.look === 'today', w = WX[S.wx], later = S.t === '3h';
+  const chips = [['wind', 'Wind', 'wind'], ['temp', 'Temperature', 'temp'], ['rain', 'Rain', 'rain'], ['depth', 'Snow depth', 'snow']];
   if (!today) chips.push(['cloud', 'Clouds', 'cloud'], ['thunder', 'Thunder', 'thunder']);
   // the reading at the map's middle (the route's)
-  const r = S.t === '3h' && S.wx === 'thunder' ? 3.2 : w.rain(0, 0), later = S.t === '3h';
+  const r = rainNow();
   const lines = [
-    `<div class="tl-now-main">${ic(S.wx === 'thunder' && !today ? 'thunder' : S.wx === 'cloud' ? 'cloud' : S.wx === 'snow' ? 'snow' : 'rain', 24)}<b>${w.temp}°</b><small>map centre</small></div>`,
+    `<div class="tl-now-main">${ic(skyNow(), 24)}<b>${w.temp}°</b><small>map centre</small></div>`,
     `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(45deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"></path></svg>${WIND.ms} m/s ${WIND.from} <span>gusts ${S.wx === 'thunder' ? 14 : 10}</span></div>`,
     `<div>${ic('drop', 12)}${r >= 0.05 ? `${r.toFixed(1)} mm/h` : 'dry'}</div>`,
   ];
   if (S.wx === 'cloud') lines.push(`<div>${ic('cloud', 12)}${Math.round(WX.cloud.cloud(0, 0) * 100)} % cloud</div>`);
-  if (S.wx === 'thunder' && !today) {
+  if (on('thunder')) {
     const n = nearest();
     lines.push(later ? `<div>${ic('bolt', 12, 'bolt')}thunder possible</div>`
       : S.data === 'nolightning' ? `<div>${ic('bolt', 12, 'bolt')}<span>no lightning</span></div>`
         : `<div>${ic('bolt', 12, 'bolt')}${n.d.toFixed(0)} km · ${Math.max(1, Math.round(n.age))} min ago</div>`);
   }
-  // the legend while a layer is on (the timeline's wx-info row)
-  const lg = [];
-  if (on.rain) {
-    if (today) lg.push(`<span class="wx-lg"><i style="background:${rampCss(RAIN_RAMP)}"></i><small>0.1–10 mm/h</small></span>`);
-    else if (S.look === 'a') lg.push(`<span class="wx-lg"><i style="background:${rampCss(RAIN_RAMP)};opacity:.6"></i><small>${w.snow ? 'snow' : 'drizzle · rain · heavy'}, mm/h</small></span>`);
-    else lg.push(`<span class="wx-lg"><i class="steps" style="background:linear-gradient(90deg, ${STEPS.map(([, c], i) => `${c} ${i * 25}% ${(i + 1) * 25}%`).join(', ')})"></i><small>0.1 · 0.5 · 2 · 8 mm/h</small></span>`);
-  }
-  if (on.cloud) lg.push(`<span class="wx-lg"><i style="background:linear-gradient(90deg, transparent, ${S.look === 'a' && !scene?.dark ? 'rgba(15,23,42,.45)' : 'rgba(148,163,184,.9)'})"></i><small>cloud 0–100 %</small></span>`);
-  if (on.thunder) {
-    if (!later && S.data === 'ok') lg.push(S.look === 'a'
-      ? `<span class="wx-lg"><svg class="lg-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="${BOLT_PATH}" fill="#facc15" stroke="#1f2937" stroke-width="1.6" stroke-linejoin="round"/></svg><small><b>lightning</b> &lt;10 · 30 · 60 min ago</small></span>`
-      : `<span class="wx-lg"><svg class="lg-mark" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="#fde047" stroke="#1f2937" stroke-width="1.4"/></svg><small><b>lightning</b> &lt;10 · 30 · 60 min ago</small></span>`);
-    lg.push(S.look === 'a' ? `<span class="wx-lg"><i class="lg-hatch"></i><small><b>thunder</b> possible</small></span>` : `<span class="wx-lg"><i class="lg-glow"></i><small><b>thunder</b> possible</small></span>`);
-  }
-  const note = on.thunder && S.data === 'nolightning' && !later ? `<div class="tl-note warn">⚠ Lightning couldn't be loaded (FMI) · Retry</div>`
-    : on.thunder && later ? `<div class="tl-note">Lightning is seen, not forecast: it shows at Now. Later, the forecast's thunder.</div>`
+  const lg = legendRows(false);
+  const note = on('thunder') && S.data === 'nolightning' && !later ? `<div class="tl-note warn">⚠ Lightning couldn't be loaded (FMI) · Retry</div>`
+    : on('thunder') && later ? `<div class="tl-note">Lightning is seen, not forecast: it shows at Now. Later, the forecast's thunder.</div>`
       : `<div class="tl-note">Also your route’s departure — the shaded band is your ride. Road works and road conditions follow this time too.</div>`;
   const bar = h('div', { class: 'wx-bar', role: 'region', 'aria-label': 'Timeline', html:
     `<div class="tl-head"><span class="tl-title">${ic('clock', 15)} Timeline</span><div class="chips tl-layers" role="group" aria-label="Weather layers">${
-      chips.map(([k, label, icon]) => `<button type="button" class="chip" data-k="${k}" aria-pressed="${!!on[k]}">${ic(icon, 14)}${label}</button>`).join('')
+      chips.map(([k, label, icon]) => `<button type="button" class="chip" data-k="${k}" aria-pressed="${!!L[k]}">${ic(icon, 14)}${label}</button>`).join('')
     }</div><button type="button" class="tool tl-close" aria-label="Close timeline">${ic('close', 16)}</button></div>` +
     `<div class="tl-main"><canvas class="tl-strip" role="img" aria-label="48-hour forecast here: temperature, rain and wind. Drag to change the time."></canvas><div class="tl-now" style="--tl-lines: ${lines.length};">${lines.join('')}</div></div>` +
     `<div class="wx-row"><button type="button" class="tool" aria-label="Play forecast">${ic('play', 18)}</button><input type="range" min="0" max="48" step="1" value="${later ? 3 : 0}" aria-label="Time, hours from now"><div class="wx-time linked" title="Also the departure time of your route">${later ? 'Sat 23:00' : 'Now · 20:22'}</div></div>` +
-    (lg.length ? `<div class="wx-row wx-info"><div class="wx-legend">${lg.join('')}</div></div>` : '') + note });
+    (lg.length ? `<div class="wx-row wx-info"><div class="wx-legend">${lg.filter((x) => x.startsWith('<span')).join('')}</div></div>` : '') + note });
+  bar.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => toggle(c.dataset.k)));
   requestAnimationFrame(() => drawStrip(bar.querySelector('.tl-strip')));
   return bar;
 }
@@ -409,28 +646,34 @@ function drawField(t = 0) {
   const step = S.look === 'b' ? 2 : 4, cols = Math.ceil(W / step), rows = Math.ceil(H / step);
   const small = document.createElement('canvas'); small.width = cols; small.height = rows;
   const sctx = small.getContext('2d'), im = sctx.createImageData(cols, rows), d = im.data;
-  const w = WX[S.wx], lv = new Int8Array(cols * rows);
-  const rainOn = S.wx !== 'cloud';
+  const w = WX[S.wx], lv = new Int8Array(cols * rows).fill(-1), lvD = new Int8Array(cols * rows).fill(-1);
+  const rainOn = on('rain'), depthOn = on('depth'), riskOn = on('thunder') && S.look === 'b';
+  const fall = w.snow && S.look !== 'today' ? SNOWFALL : null; // (the snowfall's own colours in A and B)
   for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-    const [x, y] = toKm(i * step + 2, j * step + 2), o = (j * cols + i) * 4;
+    const [x, y] = toKm(i * step + 2, j * step + 2), o = (j * cols + i) * 4, p = j * cols + i;
     let rgba = null;
-    if (S.wx === 'thunder' && S.look !== 'today') {
-      const rk = riskAt(x, y);
-      if (S.look === 'b' && rk > 0.05) { const a = Math.min(0.42, rk * 0.6); rgba = [250 - rk * 30, 160 - rk * 90, 20, a * 255]; }
+    if (depthOn) { // snow on the ground: under everything else
+      const cm = depthAt(x, y);
+      if (cm >= 1) {
+        if (S.look === 'today') rgba = [...ramp(SNOW_RAMP, cm), Math.min(220, 120 + cm * 2) * 0.7];
+        else if (S.look === 'a') rgba = [...ramp(SNOW_RAMP, cm), Math.min(0.5, 0.26 + cm * 0.006) * 255];
+        else { const sI = stepOf(cm, SNOW_STEPS); lvD[p] = sI; rgba = [...hex(SNOW_STEPS[sI][1]), 0.5 * 255]; }
+      }
     }
+    if (riskOn) { const rk = riskAt(x, y); if (rk > 0.05) { const a = Math.min(0.42, rk * 0.6); rgba = mix(rgba, [250 - rk * 30, 160 - rk * 90, 20, a * 255]); } }
     if (rainOn) {
-      const r = S.t === '3h' && S.wx === 'thunder' ? w.rain(x - 8, y - 10) : w.rain(x, y);
+      const r = rainAt(x, y);
       if (S.look === 'today') { if (r >= 0.05) rgba = mix(rgba, [...ramp(RAIN_RAMP, r), Math.min(235, 150 + r * 45) * 0.85]); }
-      else if (S.look === 'a') { if (r >= 0.1) rgba = mix(rgba, [...ramp(RAIN_RAMP, r), Math.min(0.38, 0.12 + r * 0.04) * 255]); }
-      else { const s = stepOf(r); lv[j * cols + i] = s; if (s >= 0) rgba = mix(rgba, [...hex(STEPS[s][1]), 0.42 * 255]); }
+      else if (S.look === 'a') { if (r >= 0.1) rgba = mix(rgba, [...ramp(fall || RAIN_RAMP, r), Math.min(0.38, 0.12 + r * 0.04) * 255]); }
+      else { const st = fall || STEPS, sI = stepOf(r, st); lv[p] = sI; if (sI >= 0) rgba = mix(rgba, [...hex(st[sI][1]), 0.42 * 255]); }
     }
     if (rgba) { d[o] = rgba[0]; d[o + 1] = rgba[1]; d[o + 2] = rgba[2]; d[o + 3] = rgba[3]; }
   }
-  if (S.look === 'b' && rainOn) { // each step's edge
-    for (let j = 1; j < rows - 1; j++) for (let i = 1; i < cols - 1; i++) {
-      const p = j * cols + i, s = lv[p];
-      if (s >= 0 && (lv[p - 1] < s || lv[p + 1] < s || lv[p - cols] < s || lv[p + cols] < s)) {
-        const c = hex(STEPS[s][1]).map((v) => Math.round(v * 0.62)), o = p * 4;
+  if (S.look === 'b') { // each step's edge (the rain's over the snow's)
+    for (const [levels, st] of [[lvD, SNOW_STEPS], [lv, fall || STEPS]]) for (let j = 1; j < rows - 1; j++) for (let i = 1; i < cols - 1; i++) {
+      const p = j * cols + i, sI = levels[p];
+      if (sI >= 0 && (levels[p - 1] < sI || levels[p + 1] < sI || levels[p - cols] < sI || levels[p + cols] < sI) && (levels === lv || lv[p] < 0)) {
+        const c = hex(st[sI][1]).map((v) => Math.round(v * 0.62)), o = p * 4;
         d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 200;
       }
     }
@@ -438,7 +681,7 @@ function drawField(t = 0) {
   sctx.putImageData(im, 0, 0);
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(small, 0, 0, cols * step, rows * step);
-  if (S.wx === 'thunder' && S.look === 'a') drawHatch(ctx);
+  if (on('thunder') && S.look === 'a') drawHatch(ctx);
   scene.fieldReady = true;
 }
 const mix = (under, over) => {
@@ -485,9 +728,10 @@ const BOLT_PATH = 'M13 2 5 13h6l-1 9 8-11h-6Z';
 function startParticles() {
   const sc = scene, { parts, W, H, toKm, toPx, dark } = sc, ctx = parts.getContext('2d');
   const w = WX[S.wx], reduced = S.motion === 'reduced', later = S.t === '3h';
+  const fall = w.snow && S.look !== 'today'; // (A and B: violet flakes' edge, apart from the snow on the ground)
   // a coarse cache of the rain and the wind on screen, as the app's buildField()
   const CELL = 24, cols = Math.ceil(W / CELL) + 1, rows = Math.ceil(H / CELL) + 1, rainC = new Float32Array(cols * rows);
-  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const [x, y] = toKm(i * CELL, j * CELL); rainC[j * cols + i] = S.wx === 'cloud' ? 0 : (later && S.wx === 'thunder' ? w.rain(x - 8, y - 10) : w.rain(x, y)); }
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const [x, y] = toKm(i * CELL, j * CELL); rainC[j * cols + i] = on('rain') ? rainAt(x, y) : 0; }
   const cellAt = (x, y) => Math.max(0, Math.min(rainC.length - 1, Math.round(y / CELL) * cols + Math.round(x / CELL)));
   const wet = rainC.some((r) => r >= 0.05);
   const vx = 0.25 + WIND.ms * 0.13; // the app's constant on-screen wind speed, towards the north-east
@@ -520,13 +764,13 @@ function startParticles() {
     d.age = 0; d.max = 4 + Math.random() * 10; d.x = -1;
   };
   // clouds: a coarse cover field, sampled where the drift has moved it
-  const cloudOn = S.wx === 'cloud' && S.look !== 'today';
+  const cloudOn = on('cloud');
   const cCv = document.createElement('canvas'), CS = 8; cCv.width = Math.ceil(W / CS); cCv.height = Math.ceil(H / CS);
   const cCtx = cCv.getContext('2d'), cIm = cCtx.createImageData(cCv.width, cCv.height);
   const drawClouds = (drift) => {
     const dd = cIm.data;
     for (let j = 0; j < cCv.height; j++) for (let i = 0; i < cCv.width; i++) {
-      const [x, y] = toKm(i * CS, j * CS), c = WX.cloud.cloud(x - drift, y - drift), o = (j * cCv.width + i) * 4;
+      const [x, y] = toKm(i * CS, j * CS), c = cloudAt(x - drift, y - drift), o = (j * cCv.width + i) * 4;
       let a;
       if (S.look === 'a' && !dark) { a = 0.34 * c; dd[o] = 15; dd[o + 1] = 23; dd[o + 2] = 42; }
       else if (S.look === 'a') { a = 0.2 * c; dd[o] = 203; dd[o + 1] = 213; dd[o + 2] = 225; }
@@ -549,7 +793,7 @@ function startParticles() {
         draw();
       } else { step(k, false); draw(); }
     }
-    if (S.wx === 'thunder' && S.look !== 'today' && !later && S.data === 'ok') drawStrikes(ctx, now, reduced);
+    if (on('thunder') && !later && S.data === 'ok') drawStrikes(ctx, now, reduced);
     if (!reduced || frame < 3 || strikes.some((s) => s.born && now - s.born < 1200)) anim = requestAnimationFrame(tick);
   };
   const heavyP = [], lightP = [], kinds = [[], [], []], flakes = [];
@@ -585,7 +829,7 @@ function startParticles() {
       stroke(heavyP, 1.3, dark ? `rgba(186,230,253,${0.8 * f})` : `rgba(29,78,216,${0.6 * f})`);
     }
     if (flakes.length) {
-      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = dark ? 'rgba(255,255,255,0.4)' : 'rgba(51,65,85,0.55)'; ctx.lineWidth = 0.8; ctx.beginPath();
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = fall ? (dark ? 'rgba(196,181,253,0.6)' : 'rgba(91,33,182,0.6)') : dark ? 'rgba(255,255,255,0.4)' : 'rgba(51,65,85,0.55)'; ctx.lineWidth = 0.8; ctx.beginPath();
       for (const d of flakes) { const s = S.look === 'a' ? d.size : 1.8; ctx.moveTo(d.x + s, d.y); ctx.arc(d.x, d.y, s, 0, Math.PI * 2); }
       ctx.fill(); ctx.stroke();
     }
@@ -638,13 +882,18 @@ function caption() {
   if (today && S.wx === 'cloud') bits.push('Today there is no cloud layer: the forecast’s cloud cover is fetched, and only the reading’s icon uses it.');
   if (today && S.wx === 'thunder') bits.push('Today there is no thunder layer: the storm’s rain shows, its lightning doesn’t.');
   if (S.wx === 'thunder' && !today && S.t === '3h') bits.push('In 3 hours: the lightning is gone (it is seen, not forecast) and the forecast’s thunder has moved north-east with the wind.');
-  if (S.wx === 'thunder' && !today && S.data === 'nolightning' && S.t === 'now') bits.push('Lightning missing: the map shows the forecast’s thunder only, and the timeline says the lightning couldn’t be loaded.');
+  if (S.wx === 'thunder' && !today && S.data === 'nolightning' && S.t === 'now') bits.push('Lightning missing: the map shows the forecast’s thunder only, and the legend says the lightning couldn’t be loaded.');
+  if (S.t === 'past') bits.push('An hour ago: the radar’s rain, 15 km south-west of where it is now; the other layers start at Now, and the legend says so.');
+  if (S.wx === 'snow') bits.push(today ? 'Snow: today’s snow depth wash and the snowfall in the rain’s colours.' : 'Snow: the snowfall in violet over the snow on the ground; FMI’s measured depths as small labels. Turn Rain and snowfall off in the pill’s menu to see the ground alone.');
+  if (S.scale === 'region' && on('towns')) bits.push('The region: the towns’ weather at the line’s hour (the sky, temperature and wind).');
+  if (S.bar === 'line') bits.push('Tap the pill (“Rain ▾”) for the layers; drag the strip to the radar’s part or 3 hours ahead.');
   if (S.motion === 'reduced') bits.push('Reduced motion: the rain and snow are still, the clouds don’t drift, nothing flashes.');
-  if (S.z === '200') bits.push('200 %: the map and the timeline twice the size; the rest of the interface is left out.');
+  if (S.z === '200') bits.push('200 %: the map, the legend and the line twice the size; the rest of the interface is left out.');
   bits.push('The weather is made up. Its colours sit under the map’s words and the route, as in the app; the rain, the clouds and the lightning move over everything, as the app’s canvas does.');
   document.getElementById('cap').textContent = bits.join(' ');
 }
 
+resetLayers();
 renderBars();
 build();
 addEventListener('resize', () => { if (S.f === 'desk') build(); });
