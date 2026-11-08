@@ -120,7 +120,7 @@ The few words a desktop's pointer shows on the route or a way before a click: wh
 _Avoid_: tooltip (a tooltip names a button), hover card
 
 **Size**:
-How far the planner is raised on a phone: the line, the peek, half or full.
+How far the planner or a card is raised on a phone: the line, the peek, half or full, the same for both.
 _Avoid_: stop (a stop is a wait at a waypoint), fold level
 
 **Weather card**:
@@ -129,3 +129,6 @@ _Avoid_: weather window
 
 **Weather timeline**:
 The map's weather hour by hour, not tied to the route.
+
+**Weather line**:
+The weather card folded to one line: the map's weather at its hour, and the strip that sets the hour. At the toolbar's end on a desktop.

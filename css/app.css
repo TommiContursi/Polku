@@ -789,15 +789,6 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet[data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); }
 @media (min-width: 721px) { .sheet[data-layout="sheet"][data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); } }
 .sheet.dragging { transition: none; user-select: none; }
-/* C of the sheet's stops (#233): while a finger drags the sheet, a tick at each stop at the screen's left edge, and a line
-   with its name at the one a release now would go to (bindSheet() in js/planner.js); in over --t-open once the drag has
-   lasted that long too, so a flick, which goes one stop anyway, never shows them; out over --t-press */
-.sheet-marks { position: fixed; inset: 0; z-index: 8; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity var(--t-press) var(--ease-out), visibility 0s var(--t-press); }
-.sheet-marks.on { opacity: 1; visibility: visible; transition: opacity var(--t-open) var(--ease-out) var(--t-open), visibility 0s var(--t-open); }
-.sheet-marks i { position: absolute; left: 0; width: 14px; height: 4px; margin-top: -2px; border-radius: 0 2px 2px 0; background: var(--muted); }
-.sheet-marks i.to { width: 100%; height: 2px; margin-top: -1px; border-radius: 0; background: var(--accent); }
-.sheet-marks b { position: absolute; top: 0; left: 50%; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--accent-bg); color: #fff; font-size: var(--font-small); font-weight: var(--weight-strong); line-height: 18px; white-space: nowrap; }
-.sheet-marks b:empty { display: none; }
 .sheet-handle { flex: none; position: relative; width: 72px; height: 18px; margin: 0 auto; padding: 0; border: 0; background: none; cursor: grab; touch-action: none; border-radius: 9px; -webkit-tap-highlight-color: transparent; }
 .sheet-handle::before, .sheet[data-layout="sheet"] .fold-line::before { content: ""; position: absolute; left: 20px; right: 20px; top: 7px; height: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
 .sheet-handle:focus-visible { outline: 2px solid var(--focus); }
@@ -808,15 +799,18 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
    (planner.js dockTools(), #745) */
 .sheet-top { flex: none; display: grid; grid-template-columns: max(44px, var(--top-side, 0px)) 1fr max(44px, var(--top-side, 0px)); align-items: center; height: 18px; }
 .sheet-top .pl-tools.docked { flex-wrap: nowrap; margin: 0; padding: 0 0 0 6px; border: 0; } /* (off the sheet's rounded corner) */
+.sheet-top-start { display: flex; min-width: 0; }
 .sheet-top-end { display: flex; justify-content: flex-end; }
-.sheet-top-end .tool { display: none; width: 44px; height: 44px; }
+:is(.sheet-top-start, .sheet-top-end) > .tool { display: none; width: 44px; height: 44px; }
 .sheet[data-layout="side"] .sheet-top { display: none; }
+/* on a phone, and over a card in the peek, one row: ⌄ (with a mouse ⌃ too) at the top row's left, the handle in the
+   middle, and ✕ at its right, with a card's ⋯ beside it (#889) */
 @media (max-width: 720px) {
   .sheet.foldable .sheet-top { height: 40px; }
-  .sheet.foldable .sheet-fold { display: inline-flex; }
+  .sheet.foldable :is(.sheet-fold, .sheet-x) { display: inline-flex; }
 }
-/* (a card in the peek of a window 721–899 px wide hides the header row and its ⌄: the card's is in the top row) */
-@media (min-width: 721px) { .sheet.carded .sheet-top { height: 40px; } .sheet.carded .sheet-fold { display: inline-flex; } }
+.sheet.carded .sheet-top { height: 40px; grid-template-columns: max(88px, var(--top-side, 0px)) 1fr max(88px, var(--top-side, 0px)); }
+.sheet.carded :is(.sheet-fold, .sheet-x, .sheet-set:not([hidden])) { display: inline-flex; }
 /* the folded line: one row over the top row, the handle drawn in its top padding; the planner's numbers (or a card's
    mark, name and first two numbers), one button that opens it as it was, and ✕ at its end. It and what it folds
    cross-fade while the sheet moves between them (js/planner.js, moved()) */
@@ -928,12 +922,12 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 /* A of the sheet's stops (#233): with a mouse or trackpad, ⌃ beside ⌄, each one size (planner.js stepSheet()) */
 .sheet-up-min { display: none; }
 @media (hover: hover) and (pointer: fine) and (max-width: 720px) {
-  .sheet.foldable:not(.carded) .sheet-up { display: inline-flex; }
-  .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: max(88px, var(--top-side, 0px)) 1fr max(88px, var(--top-side, 0px)); }
-  .sheet.foldable:not(.carded) .top-sum { right: 96px; }
+  .sheet.foldable .sheet-up { display: inline-flex; }
+  .sheet.foldable .sheet-top { grid-template-columns: max(88px, var(--top-side, 0px)) 1fr max(88px, var(--top-side, 0px)); }
+  .sheet.foldable .top-sum { left: 96px; }
 }
-@media (hover: hover) and (pointer: fine) and (max-width: 359px) { .sheet.foldable:not(.carded) .sheet-top { grid-template-columns: auto minmax(0, 1fr) auto; } .sheet.foldable:not(.carded) .sheet-handle { max-width: 100%; } }
-@media (hover: hover) and (pointer: fine) and (min-width: 721px) { .sheet[data-layout="sheet"].foldable:not(.carded) .sheet-up-min { display: inline-flex; } }
+@media (max-width: 359px) { .sheet.foldable .sheet-top { grid-template-columns: auto minmax(0, 1fr) auto; } .sheet.foldable .sheet-handle { max-width: 100%; } }
+@media (hover: hover) and (pointer: fine) and (min-width: 721px) { .sheet[data-layout="sheet"].foldable:not(.carded) .sheet-up-min, .sheet.carded .sheet-up { display: inline-flex; } }
 /* the panel's place (left or bottom): wide screens, where there's a choice */
 .sheet-dock { display: none; }
 @media (min-width: 900px) { .sheet-dock { display: inline-flex; } }
@@ -987,11 +981,17 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-tab-t { font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pl-pane[hidden] { display: none !important; }
 .pl-empty { margin: 14px 0; }
-/* the sheet's sizes: peek is the header; half and full add the profile and the tabs */
-.sheet[data-state="peek"]:not(.dragging) :is(.pl-profile, .pl-tabs) { display: none; }
-/* half a sheet: a short profile, so the tab has room (full shows it whole) */
-.sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile #profile-canvas { height: 64px; }
-.sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile .profile-top { display: none; }
+/* the sheet's sizes: the peek is the header and the profile (#742), as tall as it leaves room for (--prof-peek, measureSheet()),
+   and so is half's, so it doesn't move when the sheet does; half and full add the tabs, full the profile's own row */
+.sheet[data-state="peek"]:not(.dragging) .pl-tabs, .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
+.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile #profile-canvas { height: var(--prof-peek, 64px); }
+.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .profile-top { display: none; }
+/* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
+   for half (.prof-open); a mouse, which moves the sheet only by its top rows, reads it at the peek as anywhere */
+.prof-open { display: none; }
+@media (pointer: coarse) { .sheet[data-layout="sheet"][data-state="peek"].prof-peek:not(.dragging) .prof-open { display: block; position: absolute; inset: 0; z-index: 1; width: 100%; padding: 0; border: 0; border-radius: var(--radius-control); background: none; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; } }
+.prof-open:active { background: color-mix(in srgb, var(--surface-2) 60%, transparent); } /* (a row's press, see-through over the profile) */
+.prof-open:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* The start (A with 25b, #233): before there's a route, and while a round trip is open, the header holds the
    start instead of the route's numbers: the ways to begin, a step (Draw it, Round trip, Marked routes) or the
    first point's peek. On a phone the peek is as tall as it, and the rest of the sheet waits for a route. */
@@ -1656,8 +1656,8 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .card-mark .wp-start, .card-mark .wp-end { border-color: var(--surface-solid); box-shadow: 0 0 0 1px var(--line); }
 /* a card's actions in sight, under its numbers (#690). For the route's own things the main one (btn primary big) and then
    buttons, two a row with their icon and name, as the float's (rows acts btns, a phone's too), Remove red on a row of its
-   own; for places, spots and ways the action row: round buttons with their word under them, the main one green. The
-   peek ends after them (peek-end, measureSheet()), and what follows shows, fading (cut) */
+   own; for places, spots and ways the action row: round buttons with their word under them, the main one green. What
+   follows them shows at the peek, fading (cut) */
 .card .rows.acts.btns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
 .card .rows.acts.btns:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
 .card .rows.acts.btns > .row { min-height: var(--target); padding: 0 10px; gap: 8px; border: 1px solid var(--line); border-radius: 10px; box-shadow: none; background: var(--surface-solid); }
@@ -1670,7 +1670,6 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .card-acts button.main > span:first-child { background: var(--accent-bg); box-shadow: none; color: #fff; }
 .card-acts button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (hover: hover) and (pointer: fine) { .card-acts button:hover { background: var(--surface-2); } }
-.peek-end { display: contents; }
 .sheet.carded[data-state="peek"]:not(.dragging) .card-peek .card.cut { -webkit-mask-image: linear-gradient(#000 calc(100% - 30px), transparent); mask-image: linear-gradient(#000 calc(100% - 30px), transparent); }
 /* a number the map doesn't have: a dashed box that says so */
 .sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
@@ -1861,7 +1860,8 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .sheet.scroll-all[data-state="peek"] > .sheet-body { display: none; }
 /* its top row stays, over what scrolls (the docked toolbox too, #598), and a finger there moves the sheet (js/sheet.js);
    a finger on the numbers scrolls it (#597); the routing bar stays on its top edge */
-.sheet.scroll-all > .sheet-top { position: sticky; top: 0; z-index: 6; background: var(--surface-solid); border-radius: 18px 18px 0 0; touch-action: none; }
+.sheet.scroll-all > .sheet-top { position: sticky; top: 0; z-index: 6; border-radius: 18px 18px 0 0; touch-action: none; transition: background-color var(--t-press) var(--ease-out); }
+.sheet.scroll-all.scrolled > .sheet-top { background: var(--surface-solid); } /* (only once something has scrolled under it, #889) */
 .sheet.scroll-all > .sheet-head { touch-action: pan-y; }
 .sheet.scroll-all > .route-bar { position: sticky; order: -1; flex: none; margin: 0 18px -3px; z-index: 7; }
 /* D of the sheet's stops (#233): once the numbers have scrolled under the top row, it takes them and the route's name,
@@ -1870,7 +1870,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .top-sum { display: none; }
 @media (max-width: 720px) {
   .sheet.foldable:has(> .sheet-top .pl-tools.docked) .top-sum { left: calc(var(--top-side) + 12px); }
-  .sheet.foldable .top-sum { display: flex; position: absolute; top: 0; left: 14px; right: 52px; height: 40px; flex-wrap: wrap; align-items: center; column-gap: 6px; overflow: hidden;
+  .sheet.foldable .top-sum { display: flex; position: absolute; top: 0; left: 52px; right: 52px; height: 40px; flex-wrap: wrap; align-items: center; column-gap: 6px; overflow: hidden;
     pointer-events: none; opacity: 0; transition: opacity var(--t-press) var(--ease-out); font-variant-numeric: tabular-nums; }
   .sheet.sum-on .top-sum { opacity: 1; transition-duration: var(--t-open); }
   .sheet-handle::before { transition: transform var(--t-press) var(--ease-out); }
@@ -1890,12 +1890,12 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
   background: var(--surface-solid); border-radius: 18px 18px 0 0; font-variant-numeric: tabular-nums; }
 .sheet[data-layout="side"] .top-sum > * { line-height: 1.4; }
 .sheet[data-layout="side"] .top-sum i { order: -1; flex-basis: 100%; white-space: normal; overflow-wrap: anywhere; }
-.sheet[data-layout="side"].scroll-all > .sheet-top .sheet-top-end { position: absolute; top: 5px; right: 6px; z-index: 1; }
+.sheet[data-layout="side"].scroll-all > .sheet-top .sheet-top-start { position: absolute; top: 5px; right: 6px; z-index: 1; }
 .sheet[data-layout="side"].scroll-all > .sheet-top .sheet-fold { display: inline-flex; }
 @media (prefers-reduced-motion: reduce) { .sheet-handle::before { transition: none; } }
 /* a phone's peek: the card is the peek, 52 % of the window at most (it scrolls inside), the point in sight above it */
 .card-peek .card { max-height: 52dvh; touch-action: pan-y; padding-bottom: 6px; }
-/* in the sheet, the card's peek is its top, no taller than the planner's peek (--card-peek, planner.js, #603), with its own
+/* in the sheet, the card's peek is its top, as tall as the planner's peek (--card-peek, planner.js, #889), with its own
    6 px under it (none of the header's); a finger on it moves the sheet rather than scrolling it there (a wheel and the keyboard
    still do: js/sheet.js), and while it's dragged it shows itself from where it's scrolled to its end (--card-drag,
    planner.js), so the sheet never shows empty under it and its content doesn't move */
@@ -1905,10 +1905,8 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .sheet.carded.dragging .card-peek .card { max-height: none; height: var(--card-drag, auto); }
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
 /* the card has the whole sheet (step 3 of #233): the planner's profile, tabs and list wait behind it; swiped up, the sheet
-   is half and full, each as tall as the card at most (--card-half, --card-full, planner.js), and the card scrolls inside it */
+   is the planner's half and full (#889), and the card scrolls inside it, or sits at its top with room under it */
 .sheet.carded > :is(.pl-profile, .pl-tabs, .sheet-body) { display: none; }
-.sheet.carded[data-state="half"] { height: var(--card-half, 50dvh); }
-.sheet.carded[data-state="full"] { height: var(--card-full, calc(100dvh - 76px)); }
 .sheet.carded:is([data-state="half"], [data-state="full"]) > .sheet-head, .sheet.carded:is([data-state="half"], [data-state="full"]) :is(.sheet-head-in, .card-peek) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sheet.carded:is([data-state="half"], [data-state="full"]) .card-peek .card { flex: 0 1 auto; min-height: 0; max-height: none; }
 /* at its spot (desktops, the planner put away), Revision 5: a quick look, not a sheet. 320 px wide and 480 px tall at
@@ -1924,9 +1922,10 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .card > .way-bar { min-height: 36px; margin-bottom: -4px; }
 .card-float .way-back { min-height: 36px; font-size: 14px; }
 .card-float :is(.way-x, .card-set) { width: 36px; height: 36px; }
-/* a desktop's card folds to its title row (step 3 of #233); on a phone the sheet's ⌄ folds the card in the peek */
+/* a desktop's card folds to its title row (step 3 of #233); in a phone's peek the sheet's top row has its ⌄, ⋯ and ✕ (#889) */
 .card .way-fold { display: none; }
 @media (min-width: 721px) { .card-float .way-fold { display: inline-flex; width: 36px; height: 36px; margin: -4px -2px 0 0; } }
+.card-peek .card > :is(.way-head, .way-bar) > :is(.way-x, .card-set, [data-k="set"]) { display: none; }
 .card.rolled > :not(.way-bar, .way-head) { display: none; }
 /* …its name and its first two numbers on one line (its own line under it waits) */
 .card .way-facts, .card.rolled .way-hint > small { display: none; }

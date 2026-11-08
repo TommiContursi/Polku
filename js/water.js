@@ -61,6 +61,9 @@ function ensureHidden() {
     center: [24, 61],
     zoom: 5,
   });
+  // a tile that fails (not a 404) asks for no frame, and `load` comes at the end of one: without this, a failed last
+  // tile left every water leg waiting (#400, as #393 on the main map)
+  map.on('error', (e) => { if (e.tile) map.triggerRepaint(); });
   hidden = { map, el, ready: new Promise((r) => map.once('load', r)) };
   return hidden;
 }
@@ -463,7 +466,7 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
   const events = eventsAlong(grid, coords, comfort, got);
   lap('events');
   delete T.t;
-  return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wind: got && got.wind, missing: got ? got.missing : [], times: T };
+  return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
 }
 
 // Where the finished line meets what costs: shipping lanes and harbours it
@@ -594,7 +597,7 @@ export async function routeWater(from, to, { allowPortage = true, shore, carry, 
   const out = {
     coords: best.coords, tags: best.tags, portage: best.portage, note,
     // (at: the departure its wind is for)
-    water: { events: best.events, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
+    water: { events: best.events, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, skipped: best.skipped, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
   };
   if (!best.missing.length) memo.set(key, out); // a leg routed without a source is routed again when it answers
   if (memo.size > 60) memo.delete(memo.keys().next().value);

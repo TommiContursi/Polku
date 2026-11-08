@@ -7,6 +7,7 @@ Polku's planner from a blank map to the trip, as a whole: research on other plan
 - **Decided (2026-11-06): B, the route and a card for each detail,** with every choice settled in three rounds of questions with the user ([#869's comment](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6694631770), and "Decided" at this plan's end). The mock-up's **B, as decided** draws it; the first round's A, B and C stay on its bar to compare.
 - **Asked for on 2026-11-06,** from testing: the planner does a great deal, and its controls follow no one rule. Parts 22 of #761 (the trip's box and the weather card) is built in it.
 - **Milestone:** Calmer planner. No app code is written here; the build is the PRs below, one at a time.
+- **One order with the cards' plan** (the user's choice, 2026-11-07, [#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784)): the two plans take turns, one PR at a time, and similar work from both goes into one PR. After #889 (the sizes and the profile in the peek) come the cards' PR 3, then the list's top (Show all on the right with #761's 6b), the ▾ pill, the leg's card, and then the trip's box with the weather card.
 
 ## How it's built
 
@@ -333,8 +334,9 @@ Each is small and tried on a phone before the next, in this order (decided 2026-
 
    The start's sport row and every pill in it end in ▾, the caret (rule 2). It sets `setLeave()` as Leave's row does; Go's Leave row stays until PR 5. `renderStart()`, `renderLeave()`, the numbers (`js/planner.js`). Checks: `start`, `leave`, `keyfacts`, `sections`, at 360 px and 200 %.
 3. **The profile in the peek** (#742): under the route's numbers, about 70 px, while you draw and in the route's view; a quiet line over it, "Profile · Way type ›"; it and the profile open the profile at half (the profile card in PR 8), where Colour by and On map stay until PR 8 moves them into the card. `measureSheet()`'s peek, `fitColumn()` at 200 %. Checks: `sheetstops`, `keyfacts`, `routeview`, at 360 px and 200 %.
+   **Built (2026-11-07, with #889):** one set of sizes for the planner and every card. The peek is the profile size's height before 2026-10-30 (296 px, or 40 % of a shorter screen), which holds every card's actions at 360 and 390 px wide, so the profile under the numbers is as tall as the peek leaves room for (about 150 px at 390 × 844, not 70), and as tall at half. A tap on it opens half; a finger dragged on it moves the sheet. Not built yet: the quiet line over it naming the colouring, asked of the user on #890. At 200 % the peek is the numbers alone and the profile waits for half, rather than the key facts stepping aside for it.
 4. **Show all on the right,** after a "Waypoints" heading in sentence case (with #767). `sections`.
-5. **The trip's box's weather line, and the weather card it opens** (Parts 22, #431, #794): Go's time and weather move into the card, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`.
+5. **The trip's box's weather line, and the weather card it opens** (Parts 22, #431, #794): Go's time and weather move into the card, and Go's tab goes; the hour chips go (#759). `weather`, `tabs`, `sections`. **Designed (2026-11-07):** [trip-box-and-weather-card.md](trip-box-and-weather-card.md), as two PRs, 6a and 6b.
 6. **Best time to leave** (#273, parts 1, 3 and 5; #856):
    - the departure's day in the weather card, ‹ › a day at a time up to ten days;
    - a bar an hour, scrubbed by a finger, with the day's best named;

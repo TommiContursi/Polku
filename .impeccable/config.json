@@ -38,6 +38,15 @@
         ],
         "createdAt": "2026-11-04T04:45:11.657Z",
         "reason": "Claude: the mock-up has no animation, keyframes or scrolling content; the only moving rows are static CSS stand-ins for the map's line"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/weather-card.html"
+        ],
+        "createdAt": "2026-11-07T18:28:07.727Z",
+        "reason": "Claude: no marquee in the file; the only scroll is a one-time scrollTop to the card's On the map section when opened from Weather (line 318)"
       }
     ]
   }
