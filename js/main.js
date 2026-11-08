@@ -553,7 +553,7 @@ const weather = new WeatherOverlay(map, {
       renderLayersPanel(); // (its note says where the sun is)
     }
     // the Weather button shows how far ahead the map is looking
-    const k = Math.round(hr);
+    const k = Math.max(0, Math.round(hr)); // (the radar's past: Now's)
     $('.fab-time-label').textContent = k ? `+${k} h` : 'Weather';
     $('#btn-time').classList.toggle('ahead', k > 0);
     $('#btn-time').setAttribute('aria-label', k ? `Time & weather, ${k} h ahead` : 'Time & weather');

@@ -35,9 +35,9 @@ const latOf = (y) => (2 * Math.atan(Math.exp((y * Math.PI) / 20037508.34)) * 180
 
 /**
  * Radar for box [w, s, e, n] at width × height px → { coordinates, paint() } for an
- * image source, plus rateAt(lon, lat) in mm/h (null outside coverage).
+ * image source, plus rateAt(lon, lat) in mm/h (null outside coverage). `time` (unix s): a past scan.
  */
-const fetchLayer = async (layer, box, width, height) => {
+const fetchLayer = async (layer, box, width, height, time) => {
   const url = `${FMI}?service=WMS&version=1.1.1&request=GetMap&layers=${layer}&styles=raster&srs=EPSG:3857` +
     `&bbox=${mx(box[0]).toFixed(0)},${my(box[1]).toFixed(0)},${mx(box[2]).toFixed(0)},${my(box[3]).toFixed(0)}` +
     `&width=${width}&height=${height}&format=image/geotiff`;
@@ -47,6 +47,7 @@ const fetchLayer = async (layer, box, width, height) => {
   query.searchParams.set('interpolations', 'nearest neighbor');
   query.searchParams.set('bgcolor', '0xffffff');
   query.searchParams.set('transparent', 'false');
+  if (time) query.searchParams.set('time', new Date(time * 1000).toISOString().replace('.000', '')); // a past scan (the latest without)
   const res = await request('fmi', query);
   if (!res.ok) throw new Error(`FMI radar ${res.status}`);
   return readTiff(await res.arrayBuffer(), width, height);
@@ -79,11 +80,11 @@ function measurements({ px, palette, photo }, levels) {
   return rate;
 }
 
-export async function fmiRadar(box, width, height) {
+export async function fmiRadar(box, width, height, time) {
   // value → mm/h for each source, and which value means "outside coverage"
   let px, rate, speckle;
   try {
-    const image = await fetchLayer(RATE, box, width, height);
+    const image = await fetchLayer(RATE, box, width, height, time);
     rate = measurements(image, RATE_LEVELS);
     for (let i = 0; i < rate.length; i++) if (Number.isFinite(rate[i])) {
       const rounded = Math.round(rate[i] * 100) / 100;
@@ -92,7 +93,7 @@ export async function fmiRadar(box, width, height) {
     px = image.px;
     speckle = 3; // FMI has already cleaned this product: only lone dots go
   } catch {
-    const image = await fetchLayer(DBZ, box, width, height);
+    const image = await fetchLayer(DBZ, box, width, height, time);
     px = image.px;
     rate = measurements(image, DBZ_LEVELS);
     for (let v = 0; v < rate.length; v++) if (Number.isFinite(rate[v])) {

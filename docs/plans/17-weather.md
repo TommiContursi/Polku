@@ -122,6 +122,14 @@ The user's choice on 2026-11-08: **Weather service** is the look, and **Effects*
 - Light: slate stripes (1.5 px every 8 px) over a 16 % slate wash; dark maps: light stripes over a dark wash, as in the mock-up. With Effects the edge is blurred (8 px), so the hatch fades in over it.
 - Zoomed in near the border, RainViewer isn't drawn where FMI's composite stops, so the fells beyond it are hatched although RainViewer has their rain: #930.
 
+### Built: the radar's last 90 minutes (PR 6, 2026-11-08)
+
+- The timeline's strip starts with the radar's last 90 minutes, a light blue slice a sixth of the strip wide, "Radar" under it (today's timeline: step 6b moves it into the weather line). The slider goes there too: 10 minutes a step by keyboard, in words ("16:10, the radar 60 minutes ago"); the strip goes by the radar's 5 minutes.
+- **FMI's scans** with WMS `time=` (an exact 5-minute time; the newest that's there is 5 to 10 minutes old, so the newest asked for is 10 minutes old), at half Now's detail, kept while the view stays in its box. Playing goes through the past at 15 minutes a second (the forecast's hour a second), asking for the next two scans ahead. Until a scan comes the last stays and the time says "loading…"; a scan that fails is taken off and the time says it "couldn’t be loaded". Outside Finland, RainViewer's frame before the scan's time (every 10 minutes).
+- **Only the rain has a past:** the other layers, the lightning and the towns start at Now, and the legend's first row says so. The timeline's reading on the right stays Now's forecast.
+- **The route's departure stays Now** in the past, and so do road works, the sun on the hills and the Weather button.
+- The hatch where there's no radar shows in the past as at Now.
+
 ### For the user to decide
 
 - Whether Effects also has a place in Settings, beside the pill's menu.
