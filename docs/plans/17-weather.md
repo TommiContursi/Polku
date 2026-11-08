@@ -107,6 +107,14 @@ The user's choice on 2026-11-08: **Weather service** is the look, and **Effects*
 - **Clouds** in the pill's menu, after Rain and snowfall: Open-Meteo's cover from the grid as a grey veil (slate at most 38 %, thicker where it's cloudier; on dark maps a pale grey at most 30 %), under the rain, the map's words and the route, with its legend's row ("the greyer, the cloudier", or "the paler" on dark maps). The mock-up's white veil barely showed on the light map, so it's grey there.
 - **Still, not drifting** (2026-11-08): sliding the veil (an image source's `setCoordinates()`, ten times a second) kept MapLibre from ever being idle, so the search's and a shared spot's cards, which wait for `idle`, waited 30 s for the drift to rest. At the grid's coarse cells a drift of a few per cent of the view barely shows. A drift would be a small WebGL layer like the route's chevrons; the user decides.
 
+### Built: thunder (PR 4, 2026-11-08)
+
+- **Thunder** in the pill's menu, after Clouds. FMI's lightning of the last hour (CORS open, CC BY 4.0) for the view and a quarter around it, the corners rounded out to 0.1°, asked again each minute while Thunder is on at Now. Crosses by age in yr's colours (orange under 1 minute, violet under 10, light violet under 60) over the map's words.
+- **A new strike** (newer than the last answer's) fades in over 180 ms, easing out; with Effects and motion a short white glow and one orange ring that grows and fades over 600 ms. The first answer doesn't ring: those strikes aren't new to the person, only to the map.
+- **The legend:** the crosses' ages, the nearest strike to the held spot or the map's centre ("Nearest 1.3 km away, 5 min ago"), "None in the last hour", "Lightning couldn’t be loaded" in the warning colour, "Shown at Now: it’s seen, not forecast" at later hours, and outside Finland "FMI’s, seen over Finland and nearby only".
+- **The forecast's thunder** is Open-Meteo's weather code 95–99 at the timeline's nearer hour: a light amber area (18 %) with a dashed edge (amber-brown, light amber on dark maps). CAPE isn't used: the code is the forecast's own thunder, and a CAPE threshold would be a guess.
+- Checked with `tools/fixtures/lightning-tampere.xml`, FMI's strikes off Lofoten on 2026-11-02 moved to Tampere.
+
 ### For the user to decide
 
 - Whether Effects also has a place in Settings, beside the pill's menu.

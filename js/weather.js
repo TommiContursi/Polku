@@ -145,6 +145,7 @@ export function alignSeries(s, t0, n) {
     speed: pick(s.speed), dir: pick(s.dir), gust: pick(s.gust), temp: pick(s.temp), precip: pick(s.precip),
     cloud: s.cloud ? pick(s.cloud) : null, // cells cached before cloud cover was asked for
     snow: s.snow ? pick(s.snow) : null, snowfall: s.snowfall ? pick(s.snowfall) : null, // and before snow (phase 15)
+    code: s.code ? pick(s.code) : null, // and before thunder (#182)
   };
 }
 
@@ -156,7 +157,7 @@ async function fetchPoints(points, hours = 49) {
   const lat = points.map((p) => p[1].toFixed(3)).join(',');
   const lon = points.map((p) => p[0].toFixed(3)).join(',');
   const url = `${OPEN_METEO}?latitude=${lat}&longitude=${lon}` +
-    '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover,snow_depth,snowfall' +
+    '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover,snow_depth,snowfall,weather_code' +
     `&forecast_hours=${hours}&past_hours=1&wind_speed_unit=ms&timeformat=unixtime&timezone=UTC`;
   const res = await request('openmeteo', url, { weight: points.length }); // Open-Meteo counts each location
   if (!res.ok) throw new Error('Weather unavailable');
@@ -174,6 +175,7 @@ async function fetchPoints(points, hours = 49) {
     cloud: r.hourly.cloud_cover,
     snow: r.hourly.snow_depth ? r.hourly.snow_depth.map((m) => (m == null ? null : Math.round(m * 1000) / 10)) : null, // cm
     snowfall: r.hourly.snowfall || null, // cm in the hour
+    code: r.hourly.weather_code || null, // WMO's: 95–99 thunder (#182)
   }));
   return v;
 }

@@ -12,7 +12,9 @@
 
 import { measuredSnow } from './winter.js';
 import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind } from './weather.js';
-import { compass } from './geo.js';
+import { compass, dist } from './geo.js';
+import { strikesIn } from './lightning.js';
+import { STRIKE_COLOURS } from './icons.js';
 import { h, icon, store, popMenu } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 import { fmiRadar, FI_BOUNDS } from './radar.js';
@@ -43,6 +45,7 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 const LAYERS = [
   ['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'],
   ['cloud', 'Clouds', 'A grey veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
+  ['thunder', 'Thunder', 'Lightning in the last hour, and the forecast’s thunder', 'Thunder', 'thunder'],
   ['wind', 'Wind', 'Moving lines, coloured by its speed', 'Wind', 'wind'],
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
@@ -85,7 +88,7 @@ export class WeatherOverlay {
   constructor(map, app) {
     this.map = map;
     this.app = app; // { setImage(id, img|null), setRadar(r|null), setData(id, fc), dark() }
-    this.on = { wind: false, temp: false, rain: false, snow: false, cloud: false, towns: false };
+    this.on = { wind: false, temp: false, rain: false, snow: false, cloud: false, thunder: false, towns: false };
     this.townMarks = new Map();
     this.effects = store.get('wxEffects', true); // softer edges and falling rain, over the steps (#182)
     this.open = false; // timeline bar visible
@@ -273,7 +276,7 @@ export class WeatherOverlay {
     clearTimeout(this.fetchTimer);
     // A slow first forecast has no grid yet: still recognise zooming out.
     const out = zoom < Math.max(previousZoom, this.grid?.zoom ?? zoom) - 0.3;
-    this.fetchTimer = setTimeout(() => { this.maybeFetch(); this.loadFiRadar(); }, out ? 1200 : 600);
+    this.fetchTimer = setTimeout(() => { this.maybeFetch(); this.loadFiRadar(); if (this.on.thunder) this.loadStrikes(); }, out ? 1200 : 600);
     this.renderStrip();
     this.readout();
     if (!this.animated) return;
@@ -379,7 +382,7 @@ export class WeatherOverlay {
     if (!g) return;
     const t = timeAtHour(this.hour);
     const N = g.series.length;
-    const u = new Float32Array(N), v = new Float32Array(N), gust = new Float32Array(N), temp = new Float32Array(N), rain = new Float32Array(N), cloud = new Float32Array(N), snow = new Float32Array(N);
+    const u = new Float32Array(N), v = new Float32Array(N), gust = new Float32Array(N), temp = new Float32Array(N), rain = new Float32Array(N), cloud = new Float32Array(N), snow = new Float32Array(N), thunder = new Float32Array(N);
     const times = g.series[0].time;
     let i = 0;
     while (i < times.length - 2 && times[i + 1] <= t) i++;
@@ -395,8 +398,10 @@ export class WeatherOverlay {
       u[k] = (ux / len) * sp; v[k] = (vy / len) * sp;
       gust[k] = lin(s.gust); temp[k] = lin(s.temp); rain[k] = lin(s.precip); cloud[k] = s.cloud ? lin(s.cloud) : NaN;
       snow[k] = s.snow ? lin(s.snow) : NaN; // cm (cells from before snow was asked for: not known)
+      const code = s.code ? s.code[f < 0.5 ? i : i + 1] : null; // (WMO's code: the nearer hour's)
+      thunder[k] = code == null ? NaN : code >= 95 ? 1 : 0;
     }
-    this.cur = { u, v, gust, temp, rain, cloud, snow, t, i, f };
+    this.cur = { u, v, gust, temp, rain, cloud, snow, thunder, t, i, f };
     this.buildField();
     if (images) this.stripData = null; // new grid → rebuild the strip
     this.renderStrip();
@@ -495,6 +500,10 @@ export class WeatherOverlay {
     // image source makes the map reload it, so the map never settles while it moves (its 'idle' waits, and what waits for it)
     const dark = this.app.dark();
     this.app.setImage('wxCloud', this.on.cloud ? draw((at) => { const v = at(c.cloud) / 100; return v > 0 ? (dark ? [148, 163, 184, 77 * v ** 1.3] : [71, 85, 105, 97 * v ** 1.3]) : null; }) : null);
+    // the forecast's thunder (WMO's 95–99): a light amber area, its dashed edge a line on the map; and FMI's lightning
+    this.app.setImage('wxThunderArea', this.on.thunder ? draw((at) => (at(c.thunder) >= 0.5 ? [245, 158, 11, 46] : null), STEP_IMG) : null);
+    this.app.setData('wxThunder', { type: 'FeatureCollection', features: this.on.thunder ? this.thunderEdge() : [] });
+    if (this.on.thunder) this.loadStrikes();
     const forecastRain = this.on.rain && this.hour >= 0.5;
     this.app.setImage('wxRain', forecastRain ? draw((at) => fallRgba(at(c.rain), at(c.temp) < 0.5), STEP_IMG, this.effects ? 1 : 0) : null);
     this.syncRadar();
@@ -535,6 +544,120 @@ export class WeatherOverlay {
       this.snowObs = await measuredSnow();
       if (this.on.snow) this.renderImages();
     } catch { /* the model's wash still shows */ }
+  }
+
+  // The forecast thunder's edge, where the grid's thunder (1 or 0, bilinear, as its area's image is drawn) crosses ½:
+  // marching squares on a lattice four times finer than the grid's, so the dashes follow the area's own edge, its
+  // pieces joined into lines so the dashes run on
+  thunderEdge() {
+    const g = this.grid, t = this.cur.thunder, F = 4, nx = (g.cols - 1) * F, ny = (g.rows - 1) * F;
+    const val = (x, y) => {
+      const cx = Math.min(g.cols - 2, Math.floor(x / F)), cy = Math.min(g.rows - 2, Math.floor(y / F)), tx = x / F - cx, ty = y / F - cy, k = cy * g.cols + cx;
+      const v = t[k] * (1 - tx) * (1 - ty) + t[k + 1] * tx * (1 - ty) + t[k + g.cols] * (1 - tx) * ty + t[k + g.cols + 1] * tx * ty;
+      return v >= 0 ? v : 0; // (not known: no thunder drawn)
+    };
+    const ll = ([x, y]) => [g.lon0 + (x / F) * g.dLon, g.lat0 - (y / F) * g.dLat];
+    // each piece of edge crosses two of a square's sides; a side is named by its corners, so pieces meet by name
+    const segs = [], by = new Map();
+    const side = (p, q) => (p[1] === q[1] ? `h${Math.min(p[0], q[0])},${p[1]}` : `v${p[0]},${Math.min(p[1], q[1])}`);
+    for (let y = 0; y < ny; y++) {
+      for (let x = 0; x < nx; x++) {
+        const cs = [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]], vs = cs.map(([a, b]) => val(a, b)), inn = vs.map((v) => v >= 0.5);
+        const s = inn.indexOf(true);
+        if (s < 0 || inn.every(Boolean)) continue;
+        let exit = null;
+        for (let j = 0; j < 4; j++) { // round the square from a corner inside: where the edge leaves it, then where it comes back
+          const i = (s + j) % 4, n = (i + 1) % 4;
+          if (inn[i] === inn[n]) continue;
+          const f = (0.5 - vs[i]) / (vs[n] - vs[i]);
+          const pt = { p: [cs[i][0] + (cs[n][0] - cs[i][0]) * f, cs[i][1] + (cs[n][1] - cs[i][1]) * f], k: side(cs[i], cs[n]) };
+          if (inn[i]) { exit = pt; continue; }
+          const at = segs.push([exit, pt]) - 1;
+          for (const e of [exit, pt]) by.set(e.k, [...(by.get(e.k) || []), at]);
+        }
+      }
+    }
+    const used = new Uint8Array(segs.length), lines = [];
+    for (let i = 0; i < segs.length; i++) {
+      if (used[i]) continue;
+      used[i] = 1;
+      const l = [...segs[i]];
+      for (const tail of [true, false]) { // grow the line at its tail, then at its head
+        for (;;) {
+          const end = tail ? l[l.length - 1] : l[0], j = (by.get(end.k) || []).find((n) => !used[n]);
+          if (j === undefined) break;
+          used[j] = 1;
+          const next = segs[j][0].k === end.k ? segs[j][1] : segs[j][0];
+          if (tail) l.push(next); else l.unshift(next);
+        }
+      }
+      lines.push(l.map((e) => e.p));
+    }
+    return lines.map((l) => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: l.map(ll) } }));
+  }
+
+  // FMI's lightning, at Now only (it's seen, not forecast): the view and a quarter around it, again each minute; a strike
+  // newer than the last answer's is new (it fades in, and with Effects rings once). Ages are drawn again every 20 s.
+  async loadStrikes() {
+    clearTimeout(this.strikeTimer);
+    if (this.on.thunder && this.hour < 0.5) {
+      this.strikeTimer = setTimeout(() => this.loadStrikes(), 20e3);
+      const v = this.viewBox(), L = this.lightning;
+      const fresh = L && Date.now() - L.t < 60e3 && v[0] >= L.box[0] && v[2] <= L.box[2] && v[1] >= L.box[1] && v[3] <= L.box[3];
+      if (!fresh && !this.strikesLoading) {
+        const px = (v[2] - v[0]) / 4, py = (v[3] - v[1]) / 4, box = [v[0] - px, v[1] - py, v[2] + px, v[3] + py];
+        this.strikesLoading = true;
+        try {
+          const list = await strikesIn(box), last = L && !L.failed ? L.latest : Infinity, now = performance.now();
+          for (const s of list) if (s.t > last) s.born = now;
+          this.lightning = { box, t: Date.now(), list, latest: Math.max(0, ...list.map((s) => s.t)) };
+          this.map.removeFeatureState({ source: 'wxStrikes' }); // (the ids are the new list's)
+          if (list.some((s) => s.born)) this.startAnim();
+        } catch {
+          this.lightning = { box, t: Date.now(), list: [], failed: true }; // (the legend says so; again in a minute)
+        } finally {
+          this.strikesLoading = false;
+        }
+      }
+    }
+    this.renderStrikes();
+    this.renderLegend();
+  }
+
+  renderStrikes() {
+    const L = this.on.thunder && this.hour < 0.5 && this.lightning, now = Date.now(), feats = [];
+    if (L) L.list.forEach((s, i) => {
+      const m = (now - s.t) / 60e3;
+      s.id = i;
+      if (m < 60) feats.push({ type: 'Feature', id: i, properties: { age: m < 1 ? 'a' : m < 10 ? 'b' : 'c', sort: s.t / 1e3 - now / 1e3 }, geometry: { type: 'Point', coordinates: s.ll } });
+      if (s.born && !s.shown) this.map.setFeatureState({ source: 'wxStrikes', id: i }, { a: 0 }); // (it fades in: flashStrikes())
+    });
+    this.app.setData('wxStrikes', { type: 'FeatureCollection', features: feats });
+  }
+
+  // A new strike fades in over 180 ms, easing out; with Effects (and motion) one white glow and one ring in its age's
+  // colour, growing and fading over 600 ms, so the eye finds where it just struck. Over the map, on the rain's canvas.
+  flashStrikes(now) {
+    const fresh = (this.lightning?.list || []).filter((s) => s.born && !s.shown);
+    if (!fresh.length) return false;
+    const ring = this.effects && !REDUCED.matches, ctx = this.rainCtx;
+    if (ring) { this.rainCv.hidden = false; if (!this.falling) ctx.clearRect(0, 0, this.W, this.H); }
+    for (const s of fresh) {
+      const t = Math.max(0, now - s.born), out = (p) => 1 - (1 - Math.min(1, p)) ** 3; // (a frame can be timed before the answer came)
+      this.map.setFeatureState({ source: 'wxStrikes', id: s.id }, { a: out(t / 180) });
+      if (t >= (ring ? 600 : 180)) { s.shown = true; continue; }
+      if (!ring) continue;
+      const p = this.map.project(s.ll), e = out(t / 600);
+      if (t < 260) {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 26);
+        g.addColorStop(0, `rgba(255,255,255,${0.7 * (1 - t / 260)})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.fillRect(p.x - 26, p.y - 26, 52, 52);
+      }
+      ctx.globalAlpha = 0.9 * (1 - t / 600); ctx.lineWidth = 2; ctx.strokeStyle = STRIKE_COLOURS.a;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 6 + e * 20, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    if (ring && !this.falling && fresh.every((s) => s.shown)) { ctx.clearRect(0, 0, this.W, this.H); this.rainCv.hidden = true; }
+    return true;
   }
 
   // The towns' weather (#916): the sky, °C and wind at the towns and cities the map names, at the timeline's hour,
@@ -761,6 +884,8 @@ export class WeatherOverlay {
       const k = Math.min(3, Math.max(0.25, (now - last) / 16.7));
       last = now;
       if (this.playing) this.advancePlay(k);
+      const flashing = this.moving ? !!this.lightning?.list.some((s) => s.born && !s.shown) : this.flashStrikes(now);
+      if (!flashing && !this.playing && !this.animated) { cancelAnimationFrame(this.anim); this.anim = 0; return; } // (nothing moves)
       if (this.moving || !this.field) return;
       const f = this.field, cols = this.cam.cols;
       const cellAt = (x, y) => Math.round(y / CELL) * cols + Math.round(x / CELL);
@@ -865,6 +990,7 @@ export class WeatherOverlay {
     if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
     if (!this.on.snow) this.app.setImage('wxSnow', null);
     if (!this.on.cloud) this.app.setImage('wxCloud', null);
+    if (!this.on.thunder) { this.app.setImage('wxThunderArea', null); this.app.setData('wxThunder', { type: 'FeatureCollection', features: [] }); clearTimeout(this.strikeTimer); this.lightning = null; this.renderStrikes(); }
     if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; }
     if (!this.on.towns) this.renderTowns();
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
@@ -878,7 +1004,7 @@ export class WeatherOverlay {
     this.anim = 0;
   }
 
-  stop() { this.on = { wind: false, temp: false, rain: false, snow: false, cloud: false, towns: false }; this.clearLayers(); this.renderLegend(); this.stopClock(); }
+  stop() { this.on = { wind: false, temp: false, rain: false, snow: false, cloud: false, thunder: false, towns: false }; this.clearLayers(); this.renderLegend(); this.stopClock(); }
 
   // ------------------------------------------------------------------ time bar
   buildBar() {
@@ -1166,6 +1292,21 @@ export class WeatherOverlay {
       if (c && c.temp.some((t) => t < 0.5)) rows.push(scale(stepsCss(SNOWFALL_STEPS), `<b>Snowfall</b> ${SNOWFALL_STEPS.map(([v]) => v).join(' · ')} mm/h`));
     }
     if (this.on.cloud) rows.push(this.app.dark() ? scale('linear-gradient(90deg, #7d8a84, #f1f5f9)', '<b>Clouds</b> the paler, the cloudier') : scale('linear-gradient(90deg, #f1f5f9, #9aa3ae)', '<b>Clouds</b> the greyer, the cloudier'));
+    if (this.on.thunder) {
+      const L = this.lightning, mark = (col) => `<svg class="lg-mark" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7h9M7 2.5v9" stroke="#1f2937" stroke-width="4.2" stroke-linecap="round"/><path d="M2.5 7h9M7 2.5v9" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+      let note;
+      if (this.hour >= 0.5) note = 'Shown at Now: it’s seen, not forecast';
+      else if (!this.inFinland()) note = 'FMI’s, seen over Finland and nearby only';
+      else if (!L) note = 'Loading…';
+      else if (L.failed) note = '<span class="warn-text">Lightning couldn’t be loaded</span>';
+      else {
+        const at = this.heldLL || this.map.getCenter().toArray(), recent = L.list.filter((s) => Date.now() - s.t < 3600e3);
+        const n = recent.length && recent.reduce((a, s) => { const d = dist(at, s.ll); return d < a.d ? { d, s } : a; }, { d: Infinity });
+        note = n ? `Nearest ${n.d < 10e3 ? (n.d / 1000).toFixed(1) : Math.round(n.d / 1000)} km away, ${Math.max(1, Math.round((Date.now() - n.s.t) / 60e3))} min ago` : 'None in the last hour';
+      }
+      rows.push(`<div class="lgl">${Object.values(STRIKE_COLOURS).map(mark).join('')}<span><b>Lightning</b> &lt;1 · 10 · 60 min ago<br><small>${note}</small></span></div>`);
+      rows.push('<div class="lgl"><i class="lg-dash"></i><span><b>Thunder</b> possible (forecast)</span></div>');
+    }
     if (this.on.snow) {
       rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`));
       rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>');

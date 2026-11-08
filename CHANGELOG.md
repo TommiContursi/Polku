@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### Thunder on the map ([#182](https://github.com/TommiContursi/Polku/issues/182))
+
+- **Thunder** in the timeline's weather menu shows FMI's lightning of the last hour as small crosses coloured by age: orange under a minute, violet under 10 and light violet under 60. A new strike's cross fades in, and with **Effects** a ring grows and fades once around it, so you see where it just struck; with reduced motion nothing flashes. Lightning is seen, not forecast, so it shows only at Now.
+- The legend names the nearest strike to the map's centre (or the spot you hold), how far and how many minutes ago, or says there were none in the last hour. **When FMI's lightning can't be loaded, the legend says so**, and the map shows only the forecast's thunder.
+- The forecast's thunder is a light amber area with a dashed edge, at the timeline's hour.
+- FMI sees lightning over Finland and its neighbours: elsewhere the legend says so. Polku asks FMI for the strikes in the map's view, rounded out, never for your position.
+
 ### Clouds on the map ([#182](https://github.com/TommiContursi/Polku/issues/182))
 
 - **Clouds** in the timeline's weather menu draws the forecast's cloud cover as a grey veil, thicker where it's cloudier, at the timeline's hour. On the night map and the aerial photos it's a pale one. It sits under the map's names, the rain and your route, so they stay readable.

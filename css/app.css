@@ -464,6 +464,11 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .wx-legend .lgl { display: flex; align-items: flex-start; gap: 6px; }
 .wx-legend .lg-note { color: var(--muted); }
 .wx-legend .lg-obs { flex: none; color: #4338ca; font-weight: 700; font-variant-numeric: tabular-nums; } /* (the map's measured depths) */
+/* the lightning's crosses by age and the forecast thunder's dashed area (#182) */
+.wx-legend .lg-mark { width: 14px; height: 14px; flex: none; display: block; margin-top: 1px; } .wx-legend .lg-mark + .lg-mark { margin-left: -4px; }
+.wx-legend .lg-dash { width: 22px; height: 10px; flex: none; display: block; margin-top: 3px; border-radius: 3px; background: rgba(245, 158, 11, .18); outline: 1.5px dashed #b45309; outline-offset: -1.5px; }
+:root[data-theme="dark"] .wx-legend .lg-dash { outline-color: #fbbf24; }
+.wx-legend .warn-text { color: var(--warn-text); font-weight: 600; }
 /* the towns' weather on the map, zoomed out (#916): the sky, °C and wind over the town's name */
 .wx-town { display: flex; align-items: center; gap: 3px; padding: 2px 7px 2px 4px; border-radius: var(--radius-pill); background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow-marker), 0 0 0 1px var(--line); font-size: 13px; font-weight: 700; white-space: nowrap; pointer-events: none; }
 .wx-town b { font-variant-numeric: tabular-nums; } .wx-town b.cold { color: var(--wx-text); }

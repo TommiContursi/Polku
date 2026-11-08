@@ -12100,10 +12100,10 @@ def weather_requests(chrome):
 
 
 # Before the page loads: Open-Meteo's forecast answers at once with the same weather everywhere (__wx.temp, −12 °C:
-# the widest reading), so a check of the timeline doesn't wait for the service or depend on its weather. With
+# the widest reading; __wx.code(lat, lon), WMO's code, overcast unless a check says so), so a check of the timeline doesn't wait for the service or depend on its weather. With
 # __wx.hold set, the answers wait until __wx.release().
 WX_FIXED = """(() => {
-  const real = window.fetch.bind(window), W = window.__wx = { temp: -12, asked: 0, hold: false, held: [] };
+  const real = window.fetch.bind(window), W = window.__wx = { temp: -12, code: () => 3, asked: 0, hold: false, held: [] };
   W.release = () => { W.hold = false; W.held.splice(0).forEach((go) => go()); return true; };
   window.fetch = (input, init) => {
     const url = String(input && input.url ? input.url : input);
@@ -12111,9 +12111,9 @@ WX_FIXED = """(() => {
     W.asked++;
     const q = new URL(url).searchParams, lats = q.get('latitude').split(',').map(Number), lons = q.get('longitude').split(',').map(Number);
     const n = 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
-    const hourly = () => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(4), wind_direction_10m: fill(220), wind_gusts_10m: fill(9),
-      temperature_2m: fill(W.temp), precipitation: fill(0.4), cloud_cover: fill(60), snow_depth: fill(0.1), snowfall: fill(0) });
-    const answer = () => new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly() }))), { headers: { 'Content-Type': 'application/json' } });
+    const hourly = (lat, lon) => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(4), wind_direction_10m: fill(220), wind_gusts_10m: fill(9),
+      temperature_2m: fill(W.temp), precipitation: fill(0.4), cloud_cover: fill(60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: fill(W.code(lat, lon)) });
+    const answer = () => new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly(lat, lons[i]) }))), { headers: { 'Content-Type': 'application/json' } });
     return W.hold ? new Promise((ok) => W.held.push(() => ok(answer()))) : Promise.resolve(answer());
   };
 })();"""
@@ -12177,7 +12177,7 @@ WX_MENU = """(async () => {
   pill.click(); await wait(300);
   const item = (k) => document.querySelector(`.menu-pop .wx-${k}`);
   const items = [...document.querySelectorAll('.menu-pop [role=menuitemcheckbox]')].map((b) => `${b.textContent.trim().split(/(?=[A-Z])/)[0]}:${b.getAttribute('aria-checked')}`);
-  if (items.join() !== 'Rain and snowfall:true,Clouds:false,Wind:false,Temperature:false,Snow on the ground:false,Towns’ weather:false,Effects:true') out.push(`the menu: ${items.join()}`);
+  if (items.join() !== 'Rain and snowfall:true,Clouds:false,Thunder:false,Wind:false,Temperature:false,Snow on the ground:false,Towns’ weather:false,Effects:true') out.push(`the menu: ${items.join()}`);
   if (!item('rain')?.querySelector('.menu-tick') || item('wind')?.querySelector('.menu-tick')) out.push('a ticked layer has no tick, or one off has');
   item('wind').click(); await wait(300);
   if (!item('wind') || item('wind').getAttribute('aria-checked') !== 'true' || document.activeElement !== item('wind')) out.push('Wind: not ticked, or the menu closed, or the focus left it');
@@ -12319,6 +12319,91 @@ def clouds(chrome):
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the clouds: a still veil from the cover, under the route, and the map settles (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
+
+
+# #182's thunder. FMI's lightning (tools/fixtures/lightning-tampere.xml, its times moved to the last minutes): crosses by
+# age, the nearest in the legend, asked for with the view's corners rounded to 0.1° (never a position); a new strike
+# fades in and, with Effects, rings once; at a later hour none (it's seen, not forecast); when FMI fails, the legend
+# says so. The forecast's thunder (WX_FIXED's code 95 north of 61.55°) is an amber area with a dashed edge.
+WX_THUNDER = """(async () => {
+  const out = [], map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const xml = await (await fetch(location.origin + '/tools/fixtures/lightning-tampere.xml')).text();
+  const asked = [], real = window.fetch, L = { fail: false, upTo: Infinity, shift: 0 };
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/opendata\\.fmi\\.fi\\/wfs.*lightning/.test(url)) return real(input, init);
+    asked.push(url);
+    if (L.fail) return Promise.resolve(new Response('', { status: 503 }));
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    for (const m of [...doc.getElementsByTagNameNS('*', 'member')]) {
+      const t = m.getElementsByTagNameNS('*', 'Time')[0], at = Date.parse(t.textContent);
+      if (at > L.upTo) m.remove(); else t.textContent = new Date(at + L.shift).toISOString();
+    }
+    return Promise.resolve(new Response(new XMLSerializer().serializeToString(doc), { headers: { 'Content-Type': 'text/xml' } }));
+  };
+  // the recording's last strikes (15:48:31) 20 s ago; the first answer stops at 15:46:17
+  L.shift = Date.now() - 20e3 - Date.parse('2026-11-02T15:48:31Z'); L.upTo = Date.parse('2026-11-02T15:46:17Z');
+  const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false);
+  const w = polku.weather; w.app.onToggle({ thunder: true }); // (as the menu does; it opens the timeline)
+  for (let k = 0; k < 100 && !(w.lightning && map.getSource('wxThunderArea')); k++) await wait(200);
+  if (!w.lightning) return ['no lightning asked for after 20 s'];
+  const feats = () => map.getSource('wxStrikes')._data.features || map.getSource('wxStrikes')._data.geojson?.features || [];
+  const ages = () => feats().map((f) => f.properties.age).sort().join('');
+  if (ages() !== 'bbbbbbbbbbb') out.push(`the first answer's crosses: ${ages()}, not 11 under 10 minutes`);
+  const bbox = new URL(asked[0]).searchParams.get('bbox');
+  if (!bbox || bbox.split(',').some((v) => !/^-?\\d+(\\.\\d)?$/.test(v))) out.push(`FMI was asked for ${bbox}, not the view's corners to 0.1°`);
+  const legend = () => document.querySelector('.map-hints .wx-legend').textContent;
+  if (!/Lightning.*Nearest 1\\.3 km away, 5 min ago/.test(legend())) out.push(`the legend: ${legend()}`);
+  // a new answer: 15:48:31's seven are new, fade in and ring (what's drawn, recorded: frames come when they come)
+  const states = {}, setFS = map.setFeatureState.bind(map), arc = w.rainCtx.arc.bind(w.rainCtx);
+  let rings = 0;
+  map.setFeatureState = (f, st) => { if (f.source === 'wxStrikes') (states[f.id] = states[f.id] || []).push(st.a); return setFS(f, st); };
+  w.rainCtx.arc = (...a) => { rings++; return arc(...a); };
+  L.upTo = Infinity; w.lightning.t = 0; await w.loadStrikes();
+  const ids = feats().filter((f) => f.properties.age === 'a').map((f) => f.id);
+  if (ids.length !== 7) out.push(`the new answer's strikes under a minute: ${ids.length}, not 7`);
+  for (let k = 0; k < 100 && w.lightning.list.some((s) => s.born && !s.shown); k++) await wait(50); // (frames come when they come)
+  await wait(100);
+  map.setFeatureState = setFS; delete w.rainCtx.arc;
+  const a0 = states[ids[0]] || [];
+  if (a0[0] !== 0 || a0[a0.length - 1] !== 1) out.push(`a new strike's opacity went ${a0.join(' → ')}, not from 0 to 1`);
+  if (Object.keys(states).length !== 7) out.push(`${Object.keys(states).length} strikes faded in, not the 7 new ones`);
+  if (!rings) out.push(`a new strike didn’t ring (Effects ${w.effects}, reduced motion ${matchMedia('(prefers-reduced-motion: reduce)').matches})`);
+  if (!w.rainCv.hidden) out.push('the ring’s canvas stays shown');
+  for (let k = 0; k < 40 && w.anim; k++) await wait(50); // (opening the timeline wakes it for a frame)
+  if (w.anim) out.push('the animation loop still runs when nothing moves');
+  // the forecast's thunder: amber north of 61.55°, a dashed edge between
+  const img = new Image(); img.src = map.getStyle().sources.wxThunderArea.url; await img.decode();
+  const c2 = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height }).getContext('2d'); c2.drawImage(img, 0, 0);
+  const top = [...c2.getImageData(img.width >> 1, 2, 1, 1).data], bottom = c2.getImageData(img.width >> 1, img.height - 3, 1, 1).data[3];
+  if (Math.abs(top[3] - 46) > 3 || bottom) out.push(`the forecast's thunder: ${top.join()} north, alpha ${bottom} south`);
+  const edge = map.getSource('wxThunder')._data, lines = (edge.features || edge.geojson?.features || []).map((f) => f.geometry.coordinates);
+  if (lines.length < 1 || lines.flat().some(([, lat]) => Math.abs(lat - 61.55) > 0.15)) out.push(`the forecast thunder's edge: ${lines.length} lines, ${JSON.stringify(lines.flat().slice(0, 3))}`);
+  if (!map.getLayer('wx-thunder-edge') || !map.getPaintProperty('wx-thunder-edge', 'line-dasharray')) out.push('the edge isn’t dashed');
+  // at a later hour: no crosses, and the legend says why
+  w.setHour(2); await wait(400);
+  if (feats().length) out.push(`at a later hour ${feats().length} crosses`);
+  if (!/Shown at Now/.test(legend())) out.push(`the legend at a later hour: ${legend()}`);
+  // FMI fails: the legend says so
+  w.setHour(0); L.fail = true; w.lightning.t = 0; await w.loadStrikes();
+  if (!/Lightning couldn’t be loaded/.test(legend())) out.push(`the legend when FMI fails: ${legend()}`);
+  return out;
+})()"""
+
+
+def thunder(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4; window.__wx.code = (lat) => (lat > 61.55 ? 95 : 3);'}, pg.s)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)  # (Effects' ring on)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#10/61.5/23.8')  # (the cache emptied first: WX_THUNDER)
+        fails = pg.js(WX_THUNDER, timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} thunder: FMI's lightning by age, a new strike's ring, Now only, the forecast's dashed area (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 
 # Every group: its name, its checks in the order they run, and its line for --list.
 # No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
@@ -19621,7 +19706,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, clouds], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916); the clouds\' veil (#182)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, clouds, thunder], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916); the clouds\' veil and the thunder (#182)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

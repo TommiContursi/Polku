@@ -122,6 +122,8 @@ export function buildStyle(s, ctx) {
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
     lipasPick: { type: 'geojson', data: ctx.data.lipasPick || EMPTY }, // a route picked in search, while its card is open
     wxLabels: { type: 'geojson', data: ctx.data.wxLabels || EMPTY },
+    wxThunder: { type: 'geojson', data: ctx.data.wxThunder || EMPTY },
+    wxStrikes: { type: 'geojson', data: ctx.data.wxStrikes || EMPTY },
     sfAadt: { type: 'geojson', data: ctx.data.sfAadt || EMPTY, attribution: '© Fintraffic / Digiroad' },
     sfLines: { type: 'geojson', data: ctx.data.sfLines || EMPTY, attribution: '© Fintraffic / Digitraffic' },
     sfPoints: { type: 'geojson', data: ctx.data.sfPoints || EMPTY },
@@ -659,6 +661,12 @@ function addWeather(s, ctx, sources, layers) {
     sources.wxCloud = { type: 'image', url: d.wxCloud.url, coordinates: d.wxCloud.coordinates };
     layers.push({ id: 'wx-cloud', type: 'raster', source: 'wxCloud', paint: { 'raster-opacity': 1, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
+  // the forecast's thunder (#182): a light amber area with a dashed edge, a forecast's
+  if (wx.thunder && d.wxThunderArea) {
+    sources.wxThunderArea = { type: 'image', url: d.wxThunderArea.url, coordinates: d.wxThunderArea.coordinates };
+    layers.push({ id: 'wx-thunder-area', type: 'raster', source: 'wxThunderArea', paint: { 'raster-opacity': 1, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    layers.push({ id: 'wx-thunder-edge', type: 'line', source: 'wxThunder', paint: { 'line-color': isAerial(s.base) || s.base === 'night' ? '#fbbf24' : '#b45309', 'line-width': 1.6, 'line-dasharray': [3, 2] } });
+  }
   if (wx.rain && d.wxRain) {
     sources.wxRain = { type: 'image', url: d.wxRain.url, coordinates: d.wxRain.coordinates };
     layers.push({ id: 'wx-rain', type: 'raster', source: 'wxRain', paint: { 'raster-opacity': op('wx:rain', 0.55), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
@@ -989,6 +997,10 @@ function addLabels(s, P, hc, layers) {
     // the snow FMI's stations measured: the real thing beside the model's wash
     // (a bare station is a small grey 0: measured, no snow)
     layers.push({ id: 'wx-snow-label', type: 'symbol', source: 'wxLabels', filter: ['==', ['get', 'kind'], 'snowobs'], layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': ['case', ['==', ['get', 'bare'], 1], 10, 12], 'text-padding': 12, 'symbol-sort-key': ['get', 'bare'] }, paint: { 'text-color': ['case', ['==', ['get', 'bare'], 1], '#94a3b8', '#4338ca'], 'text-halo-color': 'rgba(255,255,255,0.95)', 'text-halo-width': 2 } });
+  }
+  if (s.weather && s.weather.thunder) {
+    // FMI's lightning: a cross by its age, over the words; a new one fades in (its feature-state, js/wxmap.js)
+    layers.push({ id: 'wx-strikes', type: 'symbol', source: 'wxStrikes', layout: { 'icon-image': ['concat', 'strike-', ['get', 'age']], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'sort'] }, paint: { 'icon-opacity': ['coalesce', ['feature-state', 'a'], 1] } });
   }
   if (s.weather && s.weather.rain) {
     // precipitation amount where it rains, nudged below the °C label
