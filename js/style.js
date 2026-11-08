@@ -192,18 +192,25 @@ export function buildStyle(s, ctx) {
 
   if (s.hillshade && !aerialBase) {
     const night = s.base === 'night';
+    // lit by the sun at the map's hour (#910) while it's up, else by the map's own light
+    const sun = s.hillLight === 'sun' && ctx.sunAt ? ctx.sunAt() : null, sunUp = sun && sun.alt > 0.5;
+    // (no fade between one light's colours and four lights' lists: MapLibre can't blend them, it throws)
+    const now = { 'hillshade-shadow-color-transition': { duration: 0 }, 'hillshade-highlight-color-transition': { duration: 0 } };
     add({
       id: 'hillshade', type: 'hillshade', source: 'dem', minzoom: 4,
-      paint: s.terrain3d ? {
-        // 3D: one light from the north-west, fixed to the map, so a tilted slope facing away from it is darker
-        'hillshade-method': 'standard',
-        'hillshade-illumination-direction': 315,
+      paint: sunUp || s.terrain3d ? {
+        ...now,
+        // one light, fixed to the map: the sun, or in 3D the north-west, so a tilted slope facing away from it is darker
+        'hillshade-method': sunUp ? 'combined' : 'standard',
+        'hillshade-illumination-direction': sunUp ? Math.round(sun.az) : 315,
+        ...(sunUp && { 'hillshade-illumination-altitude': Math.round(sun.alt) }),
         'hillshade-illumination-anchor': 'map',
         'hillshade-shadow-color': night ? 'rgba(0,0,0,0.7)' : 'rgba(45,35,25,0.6)',
         'hillshade-highlight-color': night ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,240,0.4)',
         'hillshade-accent-color': night ? 'rgba(0,0,0,0.35)' : 'rgba(45,35,25,0.3)',
         'hillshade-exaggeration': 1,
       } : {
+        ...now,
         'hillshade-method': 'multidirectional',
         'hillshade-illumination-direction': [270, 315, 0, 45],
         'hillshade-illumination-altitude': [30, 30, 30, 30],
@@ -216,6 +223,11 @@ export function buildStyle(s, ctx) {
         'hillshade-exaggeration': zi(5, 0.75, 11, 0.55, 15, 0.45),
       },
     });
+    // the shadows the hills cast (js/shadows.js), from zoom 10
+    if (sunUp && s.hillShadows) {
+      sources.sunshadow = { type: 'raster', tiles: [`sunshadow://{z}/{x}/{y}?t=${sun.t}`], tileSize: 512, minzoom: 10, maxzoom: 13 };
+      add({ id: 'sun-shadow', type: 'raster', source: 'sunshadow', minzoom: 10, paint: { 'raster-fade-duration': 0 } });
+    }
   }
 
   // ---- Water --------------------------------------------------------------

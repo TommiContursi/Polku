@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### The hills lit by the sun, with their shadows ([#910](https://github.com/TommiContursi/Polku/issues/910))
+
+- **Hillshade** has a choice of light, under its switch in **Layers** and behind its **›** in the drawer: **Fixed light**, as before, or **The sun**. With the sun, the hills are lit from where the sun is at the map's hour, the one the timeline shows, so you can see which slopes get the low winter sun and which stay dark. It works on the flat map and in 3D, and the setting says where the sun is.
+- With the sun, **Shadows** draws the shadows the hills cast, from zoom 10. They're worked out on your device from the same elevation data as the hillshade. A shadow reaches about 2 km from its hill up close (about 5 km at zoom 12), and buildings cast none yet. When the sun is under 3°, its shadows reach farther than that, and the setting says so.
+- When the sun is down at that hour, the hills keep the fixed light, and the setting says so.
+
 ### Hills that look like hills in 3D ([#642](https://github.com/TommiContursi/Polku/issues/642))
 
 - In 3D the hills are lit by one light from the north-west, so the slopes facing away from it are darker and a fell or a ridge stands out when you tilt the map. The flat map keeps its softer light from four directions. This works on the trail map, the night map and Maastokartta; the aerial photos have no hillshade.

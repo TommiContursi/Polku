@@ -24,7 +24,7 @@ import { initHover, hoverCapable } from './hover.js';
 import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
-import { lineLength, bbox, fmtDist } from './geo.js';
+import { lineLength, bbox, fmtDist, compass as side } from './geo.js';
 import { $, $$, h, icon, toast, store, popMenu, settleControls } from './ui.js';
 import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
@@ -41,6 +41,8 @@ import { isAerial } from './style.js';
 import { RouteFlow } from './routeflow.js';
 import { openChangelog } from './changelog.js';
 import { onTheme } from './palette.js';
+import { sunPosition } from './sun.js';
+import { shadowProtocol } from './shadows.js';
 
 // ------------------------------------------------------------------ state
 const APPEARANCES = [['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark'], ['map', 'Match the map']];
@@ -54,6 +56,8 @@ const DEFAULTS = {
   fewerEffects: false, // Settings → Fewer effects: solid panels instead of the glass over the map (#330, #632)
   fewerOffered: false, // Polku has offered Fewer effects on this device, once, as frames were slow
   hillshade: true,
+  hillLight: 'fixed', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910)
+  hillShadows: true, // with the sun's light, the shadows the hills cast
   contours: true,
   terrain3d: false,
   trackpadTilt: true,
@@ -116,6 +120,12 @@ const demSource = new mlcontour.DemSource({
 });
 demSource.setupMaplibre(maplibregl);
 seaIceProtocol(maplibregl); // FMI's sea-ice charts with the open water left clear (winter.js)
+let shadowFailAt = 0;
+shadowProtocol(maplibregl, demSource, () => {
+  if (Date.now() - shadowFailAt < 60000) return;
+  shadowFailAt = Date.now();
+  toast('Some of the hills’ shadows are missing: their elevation data didn’t load.');
+});
 const ctx = {
   demTiles: demSource.sharedDemProtocolUrl,
   contourTiles: demSource.contourProtocolUrl({
@@ -537,6 +547,11 @@ const weather = new WeatherOverlay(map, {
   onToggle: (patch) => setWeather(patch),
   onClose: () => setTimeline(false),
   onTime: (hr) => {
+    // the hills lit by the sun at the map's hour follow it
+    if (ctx.sunAt && state.hillshade && state.hillLight === 'sun' && sunHour() !== litFor) { // (none before the timeline is made)
+      applyStyle();
+      renderLayersPanel(); // (its note says where the sun is)
+    }
     // the Weather button shows how far ahead the map is looking
     const k = Math.round(hr);
     $('.fab-time-label').textContent = k ? `+${k} h` : 'Weather';
@@ -544,6 +559,11 @@ const weather = new WeatherOverlay(map, {
     $('#btn-time').setAttribute('aria-label', k ? `Time & weather, ${k} h ahead` : 'Time & weather');
   },
 });
+// the sun at the map's hour (to ten minutes, so the shadows' tiles keep), from the map's middle, for style.js
+// shortcut: the light is worked out when the style is built, so after a long pan or ten minutes without a rebuild it's a little off
+const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
+let litFor = 0;
+ctx.sunAt = () => { litFor = sunHour(); return { t: litFor, ...sunPosition(litFor, map.getCenter().toArray()) }; };
 
 function setTimeline(on) {
   state.timeline = on;
@@ -1136,6 +1156,25 @@ const overlayToggle = (id) => {
   if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
   return h('div', { class: 'tg-group' }, tg, seg(LIT_LOOKS, state.litLook, (v) => { state.litLook = v; applyStyle(); renderLayersPanel(); }), opacityRow(id));
 };
+// the hillshade's switch and, while it's on, its light (#910): fixed, or the sun at the map's hour with the hills' shadows
+const HILL_LIGHTS = [['fixed', 'Fixed light'], ['sun', 'The sun']];
+const SIDES = { N: 'north', NE: 'north-east', E: 'east', SE: 'south-east', S: 'south', SW: 'south-west', W: 'west', NW: 'north-west' };
+const sunNote = () => {
+  const t = sunHour(), p = sunPosition(t, map.getCenter().toArray()), at = clock(t * 1000);
+  if (p.alt <= 0.5) return `At ${at} the sun is down, so the hills have the fixed light.`;
+  // a shadow is drawn only as far as one tile beyond its own, which a sun this low outreaches
+  const low = state.hillShadows && p.alt < 3 ? ' It’s so low that the shadows reach farther than the map shows.' : '';
+  return `At ${at} the sun is ${Math.round(p.alt)}° up, in the ${SIDES[side(p.az)]}.${low}`;
+};
+const hillshadeControls = () => {
+  const sun = state.hillLight === 'sun';
+  const tg = toggle('Hillshade', state.hillshade, rerender((v) => { state.hillshade = v; applyStyle(); }), sun ? 'Lit by the sun at the map’s hour' : 'Lidar-based, lit from the north-west in 3D');
+  if (!state.hillshade) return tg;
+  return h('div', { class: 'tg-group' }, tg,
+    seg(HILL_LIGHTS, state.hillLight, (v) => { state.hillLight = v; applyStyle(); renderLayersPanel(); }),
+    sun ? toggle('Shadows', state.hillShadows, (v) => { state.hillShadows = v; applyStyle(); renderLayersPanel(); }, 'Cast by the hills, from zoom 10') : null,
+    sun && ctx.sunAt ? h('p', { class: 'note' }, sunNote()) : null);
+};
 // weather on the map: the same switches as on the Weather button's timeline
 const timelineToggle = () => toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
 const wxToggle = (k) => ({
@@ -1209,7 +1248,7 @@ function renderLayersPanel() {
 
   // terrain shading right after the base maps and 3D, open unless you close it
   p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0, true,
-    toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
+    hillshadeControls(),
     toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
     withOpacity('maastoOverlay', toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
     state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null));
@@ -1407,6 +1446,7 @@ const QUICK_OPTS = {
   trailColors: trailControls,
   depths: () => [...DEPTHS.map(overlayToggle), h('p', { class: 'note' }, 'Traficom’s nautical chart data: shown, never used for routing. Not for navigation.')],
   lit: () => [overlayToggle('lit'), mapKey(...KEYS.dark())],
+  hillshade: () => [hillshadeControls()],
   'wx:rain': () => [wxToggle('rain'), timelineToggle()],
   'wx:temp': () => [wxToggle('temp'), timelineToggle()],
 };

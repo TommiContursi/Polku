@@ -431,7 +431,7 @@ export const QUICK_MAX = 5;
 // label: the tile's (soft hyphens, U+00AD, where a long word may break); note: its small print;
 // opts: it has a › with more settings; zoom: where its layer starts to show.
 export const QUICK_TILE = {
-  hillshade: { group: 'Terrain', label: 'Hill­shade', icon: 'mountain' },
+  hillshade: { group: 'Terrain', label: 'Hill­shade', icon: 'mountain', opts: true },
   contours: { group: 'Terrain', label: 'Contour lines', icon: 'contours' },
   maastoOverlay: { group: 'Terrain', label: 'Maasto­kartta on top', icon: 'pin', zoom: 8 },
   mmlMaastoOverlay: { group: 'Terrain', label: 'MML terrain map on top', icon: 'pin', mml: true },
