@@ -145,6 +145,17 @@ The user's choice on 2026-11-08: **Weather service** is the look, and **Effects*
 - The motion is decided with /animate, and the user runs /review-animations before the PR opens.
 - Model: Opus at high (a new source, `js/wxmap.js` and `js/style.js`, smoke checks with recorded lightning).
 
+### The layer menu: one map colour at a time (2026-11-08, to choose)
+
+From testing on a phone (2026-11-08): with every layer ticked, the colour washes cover each other and the legend fills half the screen. Two washes (temperature under rain, say) can't both be read; lightning, the wind's lines and the towns' weather sit fine over one. The user chose the direction: one map colour at a time, extras on top. The mock-up's **Menu: One colour** draws it; **Menu: Any mix** is the menu built in #182.
+
+- **Map colour**, radios: Rain and snowfall, Clouds, Temperature, Snow on the ground, None. A pick swaps the one before.
+- **On top**, ticks: Thunder, Wind, Towns' weather. Then **Effects**.
+- One line a row, its icon and its name: no small print under them (the user's rule for Polku's words). The same `.menu-item` rows, `menuitemradio` and `menuitemcheckbox`.
+- The pill names the colour, and an extra by name when there's one ("Rain + Thunder").
+- Layers' weather group would follow: the colours as one segmented choice, the extras as switches.
+- Not built: the user chooses from the mock-up first.
+
 ## The order (2026-11-08)
 
 The [Richer weather](https://github.com/TommiContursi/Polku/milestone/21) milestone, after [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16)'s weather card (step 6a) and weather line (step 6b, #431), which build the card, the line and its pill. Each part is a PR of its own; a mock-up and the user's choice come first where it says so. #903's ideas from yr.no's app are all here, each with its issue.
