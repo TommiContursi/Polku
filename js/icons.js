@@ -353,6 +353,18 @@ function warnMark(g) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// a lightning strike (#182): a cross in its age's colour (yr's: under 1, 10 and 60 minutes) on a dark edge
+export const STRIKE_COLOURS = { a: '#f97316', b: '#a855f7', c: '#d8b4fe' };
+function strike(age) {
+  const [c, ctx] = canvas(14, 14);
+  ctx.lineCap = 'round';
+  for (const [w, col] of [[4.2, '#1f2937'], [2.2, STRIKE_COLOURS[age]]]) {
+    ctx.beginPath(); ctx.moveTo(2.5, 7); ctx.lineTo(11.5, 7); ctx.moveTo(7, 2.5); ctx.lineTo(7, 11.5);
+    ctx.lineWidth = w; ctx.strokeStyle = col; ctx.stroke();
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 const SDF = new Set(['wind-arrow', 'ship']);
 
 export function makeIcon(id) {
@@ -374,6 +386,7 @@ export function makeIcon(id) {
   if (id === 'sf-roadwork') return sign('diamond', '#f59e0b', '⚒');
   if (id === 'sf-slippery') return sign('triangle', '#a855f7', '❄');
   if (id === 'route-arrow') return chevron('#ffffff', 'rgba(0,0,0,0.35)');
+  if (id.startsWith('strike-')) return strike(id.slice(7));
   if (id === 'uphill-arrow') return doubleChevron();
   if (id.startsWith('td-') && TRAIL_ICONS[id.slice(3)]) return trailIcon(id.slice(3));
   if (id.startsWith('lipas-')) {

@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FMI's lightning (fmi::observations::lightning::simple, parameters=multiplicity), CC BY 4.0: the strikes seen
+     2026-11-02 15:43–15:48 UTC off Lofoten, moved 7.42° south and 8.62° east to Tampere. The checks move their
+     times to the last minutes (tools/smoke.py, thunder). -->
+<wfs:FeatureCollection
+  timeStamp="2026-11-08T16:39:37Z"
+  numberReturned="18"
+  numberMatched="18"
+      xmlns:wfs="http://www.opengis.net/wfs/2.0"
+    xmlns:gml="http://www.opengis.net/gml/3.2"
+    xmlns:BsWfs="http://xml.fmi.fi/schema/wfs/2.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd
+                        http://xml.fmi.fi/schema/wfs/2.0 https://xml.fmi.fi/schema/wfs/2.0/fmi_wfs_simplefeature.xsd"
+>
+  
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.1.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.1.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.50790 23.78160</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:43:47Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.2.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.2.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.51030 23.74050</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:43:47Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.3.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.3.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.50840 23.89120</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:43:47Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.4.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.4.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.49180 23.73330</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:43:47Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.5.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.5.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.50150 23.70310</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:43:47Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.6.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.6.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.49910 23.76450</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:43:47Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.7.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.7.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.49860 23.73850</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:43:47Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.8.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.8.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.52260 23.76820</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:43:47Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.9.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.9.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.49090 23.91830</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:46:17Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.10.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.10.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.52380 23.82060</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:46:17Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.11.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.11.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.54230 24.56670</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:46:17Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.12.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.12.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.50220 23.78370</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:48:31Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.13.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.13.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.51750 23.90790</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:48:31Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.14.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.14.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.50140 23.83990</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:48:31Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.15.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.15.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.49840 23.53390</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:48:31Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.16.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.16.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.49040 24.00480</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:48:31Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.17.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.17.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.50810 23.86240</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:48:31Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+<wfs:member>
+ <BsWfs:BsWfsElement gml:id="BsWfsElement.18.1">
+  <BsWfs:Location>
+   <gml:Point gml:id="BsWfsElementP.18.1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4258">
+    <gml:pos>61.52030 23.84740</gml:pos>
+   </gml:Point>
+  </BsWfs:Location>
+  <BsWfs:Time>2026-11-02T15:48:31Z</BsWfs:Time>
+  <BsWfs:ParameterName>multiplicity</BsWfs:ParameterName>
+  <BsWfs:ParameterValue>1</BsWfs:ParameterValue>
+ </BsWfs:BsWfsElement>
+</wfs:member>
+</wfs:FeatureCollection>
