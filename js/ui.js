@@ -71,6 +71,7 @@ const P = {
   sunset: '<path d="M2 20h20"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0"/><path d="M3.5 15.5 5 16.5M20.5 15.5 19 16.5"/><path d="M12 2.5V9M9 6l3 3 3-3"/>',
   sunrise: '<path d="M2 20h20"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0"/><path d="M3.5 15.5 5 16.5M20.5 15.5 19 16.5"/><path d="M12 9V2.5M9 5.5l3-3 3 3"/>',
   cloud: '<path d="M7 19a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 13a3.5 3.5 0 0 1-2 6H7Z"/>',
+  sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
   cloudSun: '<path d="M8 2.5v1.5M2.5 8H4M3.9 3.9l1 1M12.1 3.9l-1 1"/><path d="M5 10.5a3.5 3.5 0 0 1 6.3-3.4"/><path d="M8 20a4 4 0 1 1 1.3-7.8A5 5 0 0 1 19 14a3 3 0 0 1-1 6H8Z"/>',
   snow: '<path d="M7 15a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 9a4 4 0 0 1-2 6"/><path d="M8 18.5h.01M12 18h.01M16 18.5h.01M10 21.5h.01M14 21.5h.01" stroke-width="2.6"/>',
   drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/>',
@@ -257,7 +258,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     if (it.chips) { const c = h('div', { class: 'menu-chips' }); for (const x of it.chips) add(c, x, true); to.append(c); return; }
     const role = it.radio ? 'menuitemradio' : it.checked != null ? 'menuitemcheckbox' : 'menuitem';
     const html = chip ? `${it.checked ? icon('check', 15) : ''}<span>${it.label}</span>`
-      : `${icon(it.icon, 17)}<span>${it.label}${it.desc ? `<small>${it.desc}</small>` : ''}</span>${it.radio && it.checked ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}${it.after || ''}`;
+      : `${icon(it.icon, 17)}<span>${it.label}${it.desc ? `<small>${it.desc}</small>` : ''}</span>${it.checked ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}${it.after || ''}`;
     // `keep`: the menu stays open (a part that opens in place, a choice that changes what it lists)
     const b = h('button', { type: 'button', role, class: `menu-item${chip ? ' chip' : ''}${it.desc ? ' two-line' : ''} ${it.cls || ''}`, html, onclick: () => { if (!it.keep) close(); it.fn(); } });
     if (it.disabled) b.disabled = true;

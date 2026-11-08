@@ -5150,8 +5150,10 @@ WINTER = """(async () => {
     [...t2.querySelectorAll('.seg button')].find((b) => b.textContent === 'Difficulty').click();
     await wait(500);
   }
-  // the snow chip on the timeline
-  if (!document.querySelector('.tl-layers [data-k=snow]')) errs.push('no Snow on the timeline');
+  // Snow on the ground in the timeline's weather menu
+  document.querySelector('#wx-bar .wl-layer').click();
+  if (!document.querySelector('.menu-pop .wx-snow')) errs.push('no Snow on the ground in the weather menu');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
   W.setWinterSetting('auto');
   return errs;
 })()"""
@@ -7972,7 +7974,7 @@ RADAR = r"""(async () => {
     return buf;
   };
   const center = i => [-1 + (i*8+4.5)*2/w, -0.125];
-  const colour = v => [Math.min(255,Math.round(v*20)),40,80];
+  const colour = v => [Math.min(255,Math.round(v*20)),40,80,200];
   window.fetch = (input, init) => {
     const url = String(input?.url || input);
     if (!url.startsWith('https://openwms.fmi.fi/')) return real(input, init);
@@ -7998,14 +8000,14 @@ RADAR = r"""(async () => {
     const before=net.usage().find(s=>s.id==='fmi').session;
     for(const variant of ['little endian','big endian, reordered palette']) {
       le=variant==='little endian'; remap=!le;
-      const from=calls.length, image=await fmiRadar(box,w,h,colour);
+      const from=calls.length, image=await fmiRadar(box,w,h);
       if(calls.length!==from+1 || calls[from]!=='Radar:radar_finland_cappi_rate') errs.push(`${variant}: did not use the replacement alone`);
       for(let i=0;i<fx.samples.length;i++) {
         const s=fx.samples[i], got=image.rateAt(...center(i));
         if(s.expectedMmh===null ? got!==null : got===null || Math.abs(got-s.expectedMmh)>.001) errs.push(`${variant} ${s.name}: ${got} mm/h (expected ${s.expectedMmh})`);
       }
       if(image.rateAt(2,0)!==null) errs.push(`${variant}: outside the image is dry`);
-      const img=new Image();img.src=image.url;await img.decode();
+      const img=new Image();img.src=image.paint(colour);await img.decode();
       const cv=document.createElement('canvas');cv.width=w;cv.height=h;const ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
       const px=ctx.getImageData(0,0,w,h).data;
       for(let i=0;i<fx.samples.length;i++) {
@@ -8018,19 +8020,19 @@ RADAR = r"""(async () => {
       if(px[a]!==px[b] || px[a+3]!==px[b+3]) errs.push(`${variant}: extreme rain colour depends on palette order`);
     }
     for(const failure of ['404','raw','bad','truncated']) {
-      mode=failure; const from=calls.length, image=await fmiRadar(box,w,h,colour);
+      mode=failure; const from=calls.length, image=await fmiRadar(box,w,h);
       if(calls.slice(from).join(',')!=='Radar:radar_finland_cappi_rate,Radar:radar_finland_cappi_dbzh') errs.push(`${failure}: no reflectivity fallback`);
       const rain=image.rateAt(...center(2));
       if(!(rain>.3 && rain<2) || image.rateAt(...center(0))!==0 || image.rateAt(...center(1))!==0 || image.rateAt(...center(4))!==null) errs.push(`${failure}: fallback units/dry/no-data are wrong`);
     }
     mode='both404';let rejected=false;
-    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    try { await fmiRadar(box,w,h); } catch { rejected=true; }
     if(!rejected) errs.push('both radar layers failed but returned a complete image');
     mode='fallbackraw';rejected=false;
-    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    try { await fmiRadar(box,w,h); } catch { rejected=true; }
     if(!rejected) errs.push('unstyled fallback bytes were interpreted as dBZ');
     mode='limited';const from=calls.length;rejected=false;
-    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    try { await fmiRadar(box,w,h); } catch { rejected=true; }
     if(!rejected || calls.length!==from+1 || net.sourceStatus('fmi')?.reason!=='limit') errs.push('FMI request limit was bypassed for the fallback');
     if(net.usage().find(s=>s.id==='fmi').session!==before+calls.length) errs.push('radar requests did not all go through request()');
   } finally { window.fetch=real; }
@@ -12156,6 +12158,79 @@ def timeline_reading(chrome):
         finally:
             pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the timeline's reading on phones: its first line whole in its box (#243)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #182's weather menu, legend and look: the timeline's pill opens the layers' menu (they tick, it stays open, the pill
+# names them), the legend over the map comes and goes with the layers, the rain is drawn in its steps (0.4 mm/h is the
+# first step's colour), Effects is on at first and remembered, its rain falls at a later hour from the forecast even
+# where the radar is dry now (before, the drops kept the radar's rates until the map moved), and in reduced motion it
+# is drawn once, still. Open-Meteo's answer is WX_FIXED's (0.4 mm/h, +4 °C).
+WX_MENU = """(async () => {
+  const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), pill = document.querySelector('#wx-bar .wl-layer');
+  for (let k = 0; k < 100 && !w.cur; k++) await wait(200);
+  if (!w.cur) return ['no forecast after 20 s'];
+  if (pill.textContent.trim() !== 'Rain') out.push(`the pill says “${pill.textContent.trim()}”, not “Rain”`);
+  const legend = () => document.querySelector('.map-hints .wx-legend');
+  if (!legend() || legend().hidden || !/Rain 0\\.1 · 0\\.5 · 2 · 5 · 15 mm\\/h/.test(legend().textContent) || !/light · moderate · heavy · very heavy/.test(legend().textContent))
+    out.push(`the legend over the map: ${legend() && !legend().hidden ? legend().textContent : 'not shown'}`);
+  pill.click(); await wait(300);
+  const item = (k) => document.querySelector(`.menu-pop .wx-${k}`);
+  const items = [...document.querySelectorAll('.menu-pop [role=menuitemcheckbox]')].map((b) => `${b.textContent.trim().split(/(?=[A-Z])/)[0]}:${b.getAttribute('aria-checked')}`);
+  if (items.join() !== 'Rain and snowfall:true,Wind:false,Temperature:false,Snow on the ground:false,Effects:true') out.push(`the menu: ${items.join()}`);
+  if (!item('rain')?.querySelector('.menu-tick') || item('wind')?.querySelector('.menu-tick')) out.push('a ticked layer has no tick, or one off has');
+  item('wind').click(); await wait(300);
+  if (!item('wind') || item('wind').getAttribute('aria-checked') !== 'true' || document.activeElement !== item('wind')) out.push('Wind: not ticked, or the menu closed, or the focus left it');
+  if (pill.textContent.trim() !== 'Rain +1' || !w.on.wind) out.push(`with Wind on, the pill says “${pill.textContent.trim()}”`);
+  item('wind').click(); await wait(300);
+  // the rain's steps: Effects off, the forecast's image at +3 h is the first step's colour, as it is
+  w.setHour(3); item('fx').click(); await wait(600);
+  if (localStorage.getItem('polku:wxEffects') !== 'false' || !w.rainCv.hidden) out.push('Effects off: not remembered, or the rain still falls');
+  const img = new Image(); img.src = polku.map.getStyle().sources.wxRain.url; await img.decode();
+  const cv = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height }), ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
+  const px = [...ctx.getImageData(img.width >> 1, img.height >> 1, 1, 1).data];
+  if (px.join() !== '165,228,251,255') out.push(`0.4 mm/h is drawn ${px.join()}, not the first step (165,228,251,255)`);
+  item('fx').click(); await wait(300);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await wait(200);
+  if (document.querySelector('.menu-pop') || pill.getAttribute('aria-expanded') !== 'false') out.push('Escape left the menu open');
+  // a dry radar now, raining later: at +3 h the drops follow the forecast
+  w.setHour(0); await wait(300); w.fiRate = () => 0; w.setHour(3); await wait(400);
+  const drawn = () => w.rainCv.getContext('2d').getImageData(0, 0, w.rainCv.width, w.rainCv.height).data.some((v, i) => i % 4 === 3 && v);
+  if (!(w.field.wet > 0.5) || !drawn()) out.push(`at +3 h the rain doesn't fall where the forecast has it (wet ${w.field.wet})`);
+  return out;
+})()"""
+
+WX_STILL = """(async () => {
+  const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  w.setHour(4); await wait(800);
+  const cv = w.rainCv, px = () => cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, a = px();
+  if (!a.some((v, i) => i % 4 === 3 && v)) out.push('reduced motion: the rain isn’t drawn');
+  await wait(600);
+  const b = px();
+  if (!a.every((v, i) => v === b[i])) out.push('reduced motion: the rain moves');
+  // the last layer off: no legend
+  const pill = document.querySelector('#wx-bar .wl-layer');
+  pill.click(); await wait(300); document.querySelector('.menu-pop .wx-rain').click(); await wait(300);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  const lg = document.querySelector('.map-hints .wx-legend');
+  if (lg && !lg.hidden) out.push('no layer on, and the legend is still over the map');
+  return out;
+})()"""
+
+
+def weather_menu(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True}}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
+        fails = pg.js(WX_MENU, timeout=60000)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+        fails += pg.js(WX_STILL, timeout=30000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the weather's menu, the legend over the map and the rain's steps (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -17010,11 +17085,11 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const way = document.querySelector('.pl-way'), box = way.appendChild(document.createElement('div'));
   const chip = (e) => { const c = cs(e); return `${c.backgroundColor} ${c.borderTopWidth} ${c.borderTopColor} ${c.color}`; };
   const ref = way.querySelector('.rt-chips .chip[aria-pressed=true]');
-  box.innerHTML = `<div class="chips"><button class="chip" aria-pressed="true">Grade</button></div><div class="chips tl-layers"><button class="chip" aria-pressed="true">Wind</button></div>
+  box.innerHTML = `<div class="chips"><button class="chip" aria-pressed="true">Grade</button></div>
     <div class="style-presets"><span class="chip chip-on">Custom</span></div><div class="act-chips"><button class="act-chip" aria-pressed="true">Canoe</button></div>
     <div class="menu-chips"><button class="menu-item chip" aria-checked="true"><span>Flowy</span></button></div>`;
   if (!ref) out.push('no chosen length in the round trip');
-  else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.tl-layers .chip', 'the timeline’s chip'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
+  else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
     if (chip(box.querySelector(sel)) !== chip(ref)) out.push(`${what}, chosen: ${chip(box.querySelector(sel))}, not the round trip's ${chip(ref)}`);
   // switches: one height in a place, --target; the chosen one white (--seg-on), with black words and a green icon (the green where
   // it sits: the glass's on the glass, #547)
@@ -17289,14 +17364,11 @@ TG_LOOK = """(() => {
   for (const [what, sel] of [['the search', '#search-input'], ['the sport pill', '#activity-bar .act-current'], ['Settings', '#btn-settings'],
     ['the Polku mark', '.topbar .brand'], ['Zoom in to see every trail', '#zoom-hint'], ["the credits' (i)", '.maplibregl-ctrl-attrib-button'],
     ['the compass', '.ctrl-compass button'], ['Locate', '#btn-locate'], ['3D', '.ctrl-3d'], ['Weather', '#btn-time'], ['Layers', '#btn-layers'],
-    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
+    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the weather menu's pill", '#wx-bar .wl-layer'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
     ["a map popup's ✕", '.polku-popup .maplibregl-popup-close-button']]) {
     const e = document.querySelector(sel);
     if (!e || !e.getClientRects().length) fails.push(`${what} isn't there (${sel})`); else hit(what, e);
   }
-  const chips = [...document.querySelectorAll('#wx-bar .tl-layers .chip')];
-  if (chips.length !== 4) fails.push(`the timeline has ${chips.length} layer chips, not 4`);
-  for (const e of chips) hit(`the timeline's ${e.textContent.trim()}`, e);
   pop.remove();
   // words: 11 px or more, outside the planner; the map's buttons' labels 12
   const small = new Map(), walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -19463,7 +19535,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

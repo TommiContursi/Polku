@@ -4,6 +4,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### The weather's menu, a legend over the map and the rain in steps ([#182](https://github.com/TommiContursi/Polku/issues/182))
+
+- The timeline's weather layers are now in one menu. Its pill names what's on (**Rain**, or **Rain +1** with two), and the menu ticks **Rain and snowfall**, **Wind**, **Temperature** and **Snow on the ground**. It stays open while you tick.
+- The rain is drawn in five colour steps, from light blue to violet, as weather services draw it, on the radar now and in the forecast later. Snowfall has violet steps of its own, so it reads apart from rain, and the snow on the ground has steps too.
+- A legend sits over the map at the top left while a layer is on. It says what each colour means, with the rain's steps in words. On a small screen, or with text at 200 %, it folds to **Legend** until you open it.
+- **Effects**, at the end of the menu and on at first, softens the steps' edges and lets thin white rain and small flakes fall over them. Without it the steps are crisp and nothing falls. With reduced motion the rain is drawn still.
+- Rain now falls on the map at a later hour wherever the forecast has it. Before, after moving the time ahead, it could keep following the radar's dry areas until the map moved.
+
 ### Trees and buildings cast shadows too ([#919](https://github.com/TommiContursi/Polku/issues/919))
 
 - With **Hillshade** lit by **The sun** and **Shadows** on, trees and buildings cast their shadows at the map's hour from zoom 14, so you can see whether a trail, a beach or a camp spot is in the sun. In Finland the forest casts most of the shade.

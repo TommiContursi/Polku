@@ -162,14 +162,14 @@ button { font: inherit; color: inherit; }
 html { -webkit-tap-highlight-color: transparent; }
 /* a press answers at once: buttons, chips, tiles and switches shrink a little while held, with no grey flash; a row
    keeps its grey instead (the user's choice 3 of #382). A chosen look fades in, with reduced motion too. */
-:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button) {
+:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button) {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
   transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease;
 }
-:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: scale(0.97); }
+:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) {
-  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button) { transition: background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease; }
-  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: none; }
+  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button) { transition: background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease; }
+  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: none; }
 }
 /* a small heading, everywhere: 12 px capitals in grey (#356) */
 .menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .speed-route h4, .wind-title, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
@@ -182,7 +182,7 @@ html { -webkit-tap-highlight-color: transparent; }
 /* What you read sits on the reading glass (the card at a point on a desktop too), the map's buttons on theirs; menus,
    popups and dialogs stay solid. Each glass surface has the edge, and its grey, green and red take the glass's (words, icons, lines and rings
    alike: they're read over the map too). */
-.brand, .search, .top-btn, .zoom-hint, .lit-status, .wx-bar, .panel, .qd, .sheet, .track-card, .pl-tools, .polku-popup.card-float .maplibregl-popup-content, .card-beside {
+.brand, .search, .top-btn, .zoom-hint, .lit-status, .wx-legend, .wx-bar, .panel, .qd, .sheet, .track-card, .pl-tools, .polku-popup.card-float .maplibregl-popup-content, .card-beside {
   background: var(--glass-read); -webkit-backdrop-filter: var(--glass-read-filter); backdrop-filter: var(--glass-read-filter);
   box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); --bad: var(--bad-glass);
 }
@@ -404,9 +404,11 @@ body:not(.ready) .map-ctrls { display: none; }
 body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-head { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px 8px; }
 .tl-title { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 13px; white-space: nowrap; }
-.tl-layers { flex: 1; }
-.tl-layers .chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; }
-.tl-layers .chip .ic { width: 14px; height: 14px; }
+/* a pill naming what's on, opening its menu (#182's weather layers; the weather line's, step 6b) */
+.rt-pill { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); max-width: 100%; padding: 4px 10px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.rt-pill > span { min-width: 0; display: grid; }
+.rt-pill.wl-layer { min-height: 36px; padding: 2px 8px; gap: 4px; font-size: 13px; flex: none; margin-right: auto; }
+.rt-pill:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .tl-close { width: 28px; height: 28px; }
 /* lines up with the slider: play button (34) + gap (8) on the left, gap (8) + time (132) on the right */
 .tl-main { display: flex; gap: 8px; align-items: stretch; }
@@ -452,12 +454,18 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .wx-row input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
 .wx-time.linked::before { content: "⚑ "; color: var(--route-text); }
 .wx-time { font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; width: 132px; flex: none; text-align: right; overflow: hidden; text-overflow: ellipsis; }
-.wx-info { justify-content: space-between; padding-left: 8px; flex-wrap: wrap; gap: 4px 14px; }
-.wx-legend { display: flex; gap: 12px; }
-.wx-lg { display: inline-flex; align-items: center; gap: 6px; }
-.wx-lg i { display: block; width: 110px; height: 7px; border-radius: 999px; }
-.wx-lg small, .wx-read { font-size: 11px; color: var(--muted); }
-.wx-read { font-variant-numeric: tabular-nums; }
+/* the legend over the map, top left, while a weather layer is on (#182, as yr's app shows it) */
+.wx-legend { display: flex; flex-direction: column; gap: 4px; max-width: min(300px, calc(100vw - var(--pl-left) - 88px)); padding: 7px 10px 8px; border-radius: 12px; color: var(--text); }
+.wx-legend[hidden] { display: none; }
+.wx-lg { display: flex; align-items: center; gap: 6px; }
+.wx-lg i { display: block; flex: none; width: 84px; height: 7px; border-radius: 999px; }
+.wx-lg small, .wx-legend .lgl { font-size: 12px; color: var(--text); }
+.wx-lg small b, .wx-legend .lgl b { font-weight: 650; }
+.wx-legend .lgl { display: flex; align-items: flex-start; gap: 6px; }
+.wx-legend .lg-note { color: var(--muted); }
+.wx-legend .lg-obs { flex: none; color: #4338ca; font-weight: 700; font-variant-numeric: tabular-nums; } /* (the map's measured depths) */
+:root[data-theme="dark"] .wx-legend .lg-obs { color: #a5b4fc; }
+.wx-legend .lg-fold { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; margin: -4px; padding: 0 6px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; align-self: flex-start; }
 
 /* 3D tilt & rotate */
 .view3d {
@@ -512,11 +520,10 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 /* a finger's 44 px around the smaller controls outside the planner, which keep their look (#235) */
 @media (pointer: coarse) {
   .search input { height: 44px; margin: -2px 0; } /* (taller than its pill, which draws it) */
-  :is(.act-current, .top-btn, .tl-layers .chip, .tl-close, .wx-row > .tool) { position: relative; }
-  :is(.act-current, .top-btn, .tl-layers .chip, .tl-close, .wx-row > .tool, .polku-popup .maplibregl-popup-close-button)::after {
+  :is(.act-current, .top-btn, .wl-layer, .lg-fold, .tl-close, .wx-row > .tool) { position: relative; }
+  :is(.act-current, .top-btn, .wl-layer, .lg-fold, .tl-close, .wx-row > .tool, .polku-popup .maplibregl-popup-close-button)::after {
     content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%);
   }
-  .chips.tl-layers { row-gap: 18px; } /* (two rows of chips, each 44 px for a finger) */
   .maplibregl-ctrl-attrib-button::after { content: ""; position: absolute; inset: -14px -10px -6px; } /* (more above: the timeline is just under it) */
   .wx-row input[type=range] { height: 44px; }
 }

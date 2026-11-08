@@ -1048,9 +1048,9 @@ const seg = (options, value, fn) => h('div', { class: 'seg small full' },
 // A raster layer's opacity, right under its switch while it's on; remembered per layer
 // (overlays by id, the weather fields as wx:rain and wx:temp; style.js reads the same keys).
 const WX_OPACITY = {
-  'wx:rain': { label: 'Rain', opacity: 0.85, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.rain },
+  'wx:rain': { label: 'Rain', opacity: 0.55, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.rain },
   'wx:temp': { label: 'Temperature', opacity: 0.5, layers: ['wx-field'], on: () => state.weather.temp },
-  'wx:snow': { label: 'Snow depth', opacity: 0.7, layers: ['wx-snow'], on: () => state.weather.snow },
+  'wx:snow': { label: 'Snow depth', opacity: 0.5, layers: ['wx-snow'], on: () => state.weather.snow },
 };
 const opacitySpec = (id) => (RASTER_OVERLAYS[id]
   ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }

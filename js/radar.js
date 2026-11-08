@@ -31,9 +31,10 @@ export const FI_BOUNDS = [19, 59.3, 32.5, 70.3];
 
 const mx = (lon) => (lon * 20037508.34) / 180;
 const my = (lat) => (Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) * 20037508.34) / Math.PI;
+const latOf = (y) => (2 * Math.atan(Math.exp((y * Math.PI) / 20037508.34)) * 180) / Math.PI - 90;
 
 /**
- * Radar for box [w, s, e, n] at width × height px → { url, coordinates } for an
+ * Radar for box [w, s, e, n] at width × height px → { coordinates, paint() } for an
  * image source, plus rateAt(lon, lat) in mm/h (null outside coverage).
  */
 const fetchLayer = async (layer, box, width, height) => {
@@ -78,11 +79,7 @@ function measurements({ px, palette, photo }, levels) {
   return rate;
 }
 
-// How strongly to paint a rate: the same as the forecast layer (wxmap.js), so "now" and the
-// hours after read alike: drizzle a clear light blue, a shower solid (0.03 → 151, 1 → 195, 2+ → 235)
-const alphaFor = (mmh) => Math.round(Math.min(235, 150 + mmh * 45));
-
-export async function fmiRadar(box, width, height, colour) {
+export async function fmiRadar(box, width, height) {
   // value → mm/h for each source, and which value means "outside coverage"
   let px, rate, speckle;
   try {
@@ -104,30 +101,9 @@ export async function fmiRadar(box, width, height, colour) {
     }
     speckle = 5; // raw reflectivity: ships, turbines and waves echo as dots and lines
   }
-  const lut = new Uint8ClampedArray(rate.length * 4);
-  for (let v = 0; v < rate.length; v++) {
-    const mmh = rate[v];
-    if (!mmh) continue;
-    const [r, g, b] = colour(Math.min(mmh, 100)); // palette indexes need not be in rate order
-    lut.set([r, g, b, alphaFor(mmh)], v * 4);
-  }
   const keep = despeckle(px, rate, width, height, speckle);
-  const lut32 = new Uint32Array(lut.buffer);
-  const raw = document.createElement('canvas');
-  raw.width = width;
-  raw.height = height;
-  const img = raw.getContext('2d').createImageData(width, height);
-  const out = new Uint32Array(img.data.buffer);
   let rain = 0;
-  for (let i = 0; i < px.length; i++) if (keep[i]) { out[i] = lut32[px[i]]; rain++; }
-  raw.getContext('2d').putImageData(img, 0, 0);
-  // soft edges (browsers without canvas filters just skip it); the map's linear resampling does the rest
-  const cv = document.createElement('canvas');
-  cv.width = width;
-  cv.height = height;
-  const ctx = cv.getContext('2d');
-  ctx.filter = 'blur(0.5px)'; // just the edges: at ~1 km a pixel, more smears scattered drizzle cells away
-  ctx.drawImage(raw, 0, 0);
+  for (let i = 0; i < px.length; i++) if (keep[i] && rate[px[i]]) rain++;
   const x0 = mx(box[0]), x1 = mx(box[2]), y0 = my(box[3]), y1 = my(box[1]);
   const rateAt = (lon, lat) => {
     const x = Math.floor(((mx(lon) - x0) / (x1 - x0)) * width), y = Math.floor(((y0 - my(lat)) / (y0 - y1)) * height);
@@ -135,7 +111,44 @@ export async function fmiRadar(box, width, height, colour) {
     const i = y * width + x;
     return Number.isNaN(rate[px[i]]) ? null : keep[i] ? rate[px[i]] : 0;
   };
-  return { url: cv.toDataURL('image/png'), coordinates: [[box[0], box[3]], [box[2], box[3]], [box[2], box[1]], [box[0], box[1]]], rain, rateAt };
+  // Drawn in the caller's colours: colour(mm/h, snow) → [r, g, b, a] or null; snowAt(lon, lat) says where it
+  // falls as snow (asked for each 8 px block); blur softens the edges (browsers without canvas filters skip it).
+  // Again when the colours' inputs change (Effects, the forecast's temperatures), with no new request.
+  const paint = (colour, { snowAt = null, blur = 0.5 } = {}) => {
+    const lut = (snow) => {
+      const t = new Uint8ClampedArray(rate.length * 4);
+      for (let v = 0; v < rate.length; v++) {
+        const c = rate[v] ? colour(Math.min(rate[v], 100), snow) : null; // palette indexes need not be in rate order
+        if (c) t.set(c, v * 4);
+      }
+      return new Uint32Array(t.buffer);
+    };
+    const wet = lut(false), white = snowAt ? lut(true) : wet;
+    const B = 8, bw = Math.ceil(width / B), snowy = new Uint8Array(snowAt ? bw * Math.ceil(height / B) : 0);
+    for (let k = 0; k < snowy.length; k++) {
+      const x = ((k % bw) * B + B / 2) / width, y = (Math.floor(k / bw) * B + B / 2) / height;
+      snowy[k] = snowAt(box[0] + (box[2] - box[0]) * x, latOf(y0 + (y1 - y0) * y)) ? 1 : 0;
+    }
+    const raw = document.createElement('canvas');
+    raw.width = width;
+    raw.height = height;
+    const img = raw.getContext('2d').createImageData(width, height);
+    const out = new Uint32Array(img.data.buffer);
+    for (let i = 0; i < px.length; i++) {
+      if (!keep[i]) continue;
+      const x = i % width, y = (i - x) / width;
+      out[i] = (snowy.length && snowy[Math.floor(y / B) * bw + Math.floor(x / B)] ? white : wet)[px[i]];
+    }
+    raw.getContext('2d').putImageData(img, 0, 0);
+    const cv = document.createElement('canvas');
+    cv.width = width;
+    cv.height = height;
+    const ctx = cv.getContext('2d');
+    ctx.filter = `blur(${blur}px)`; // at ~1 km a pixel, much more smears scattered drizzle cells away
+    ctx.drawImage(raw, 0, 0);
+    return cv.toDataURL('image/png');
+  };
+  return { coordinates: [[box[0], box[3]], [box[2], box[3]], [box[2], box[1]], [box[0], box[1]]], rain, rateAt, paint };
 }
 
 // Ships, wind turbines, waves and the like echo as dots and thin lines; rain
