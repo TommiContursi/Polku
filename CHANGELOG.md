@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### Trees and buildings cast shadows too ([#919](https://github.com/TommiContursi/Polku/issues/919))
+
+- With **Hillshade** lit by **The sun** and **Shadows** on, trees and buildings cast their shadows at the map's hour from zoom 14, so you can see whether a trail, a beach or a camp spot is in the sun. In Finland the forest casts most of the shade.
+- The trees' heights come from Meta and WRI's canopy height map, made from aerial and satellite pictures taken up to 2020: a forest felled since then still casts a shadow, and there's no difference between summer and winter. The buildings' heights come from OpenStreetMap. Where a building has no height there, it's taken as 5 m tall.
+- Up close the shadows have pixels of about 2.5 m, so a single tree shows but a narrow path under the trees may not. Where the trees' heights or the buildings don't load, a note says that some shadows are missing.
+- The hills' shadows now also fall on lakes and the sea.
+
 ### 3D's settings on the 3D pad ([#920](https://github.com/TommiContursi/Polku/issues/920))
 
 - The tilt and rotate pad in 3D has a **⋯** that opens **3D settings**: **3D height** and the hills' light, **Fixed light** or **The sun** with its **Shadows**. They're the same settings as in **Layers**.
@@ -12,7 +19,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### The hills lit by the sun, with their shadows ([#910](https://github.com/TommiContursi/Polku/issues/910))
 
 - **Hillshade** has a choice of light, under its switch in **Layers** and behind its **›** in the drawer: **Fixed light**, as before, or **The sun**. With the sun, the hills are lit from where the sun is at the map's hour, the one the timeline shows, so you can see which slopes get the low winter sun and which stay dark. It works on the flat map and in 3D, and the setting says where the sun is.
-- With the sun, **Shadows** draws the shadows the hills cast, from zoom 10. They're worked out on your device from the same elevation data as the hillshade. A shadow reaches about 2 km from its hill up close (about 5 km at zoom 12), and buildings cast none yet. When the sun is under 3°, its shadows reach farther than that, and the setting says so.
+- With the sun, **Shadows** draws the shadows the hills cast, from zoom 10. They're worked out on your device from the same elevation data as the hillshade. A shadow reaches about 2 km from its hill up close (about 5 km at zoom 12). When the sun is under 3°, its shadows reach farther than that, and the setting says so.
 - When the sun is down at that hour, the hills keep the fixed light, and the setting says so.
 
 ### Hills that look like hills in 3D ([#642](https://github.com/TommiContursi/Polku/issues/642))

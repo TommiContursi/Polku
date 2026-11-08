@@ -223,11 +223,8 @@ export function buildStyle(s, ctx) {
         'hillshade-exaggeration': zi(5, 0.75, 11, 0.55, 15, 0.45),
       },
     });
-    // the shadows the hills cast (js/shadows.js), from zoom 10
-    if (sunUp && s.hillShadows) {
-      sources.sunshadow = { type: 'raster', tiles: [`sunshadow://{z}/{x}/{y}?t=${sun.t}`], tileSize: 512, minzoom: 10, maxzoom: 13 };
-      add({ id: 'sun-shadow', type: 'raster', source: 'sunshadow', minzoom: 10, paint: { 'raster-fade-duration': 0 } });
-    }
+    // the shadows the hills cast (js/shadows.js), from zoom 10: drawn with the buildings, below
+    if (sunUp && s.hillShadows) sources.sunshadow = { type: 'raster', tiles: [`sunshadow://{z}/{x}/{y}?t=${sun.t}`], tileSize: 512, minzoom: 10, maxzoom: 13 };
   }
 
   // ---- Water --------------------------------------------------------------
@@ -277,6 +274,12 @@ export function buildStyle(s, ctx) {
   if (vectorFills) {
     add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': P.building, 'fill-outline-color': P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
+  }
+  // the hills' shadows, and the trees' and buildings' (js/shadows.js, #919) from zoom 14: over water, fields and roofs
+  if (sources.sunshadow) {
+    add({ id: 'sun-shadow', type: 'raster', source: 'sunshadow', minzoom: 10, paint: { 'raster-fade-duration': 0 } });
+    sources.objshadow = { type: 'raster', tiles: [`${sources.sunshadow.tiles[0]}&objects`], tileSize: 512, minzoom: 14, maxzoom: 15, attribution: 'Tree heights © Meta & WRI, via TGE Labs' };
+    add({ id: 'obj-shadow', type: 'raster', source: 'objshadow', minzoom: 14, paint: { 'raster-fade-duration': 0 } });
   }
 
   addRoads(s, P, hc, layers, ctx);

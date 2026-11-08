@@ -5983,7 +5983,7 @@ def terrain(chrome):
 # a wall of the test's (shadows.js), and in the app Hillshade's light following the timeline's hour, the fixed light
 # back when the sun is down or Fixed light is picked, the shadows' switch, all kept after a reload.
 SUNLIGHT_MATHS = """(async () => {
-  const { sunPosition, sunTimes } = await import(location.origin + '/js/sun.js'), { castShadows } = await import(location.origin + '/js/shadows.js');
+  const { sunPosition, sunTimes } = await import(location.origin + '/js/sun.js'), { castShadows } = await import(location.origin + '/js/shadow-sweep.js');
   // Helsinki on 2026-11-08: due south and 13.2° up at noon, on the horizon in the south-east at sunrise
   const hel = [24.94, 60.17], day = sunTimes(Date.UTC(2026, 10, 8, 10) / 1000, hel), noon = sunPosition(day.noon, hel), rise = sunPosition(day.rise, hel);
   const out = [];
@@ -5997,6 +5997,10 @@ SUNLIGHT_MATHS = """(async () => {
     const got = span(az, alt);
     if (Math.abs(got[0] - want[0]) > 2 || Math.abs(got[1] - want[1]) > 2) out.push(`a wall's shadow with the sun at ${az}°, ${alt}° up: columns ${got}, not about ${want}`);
   }
+  // a 20 m tree on that ground, west of the wall (#919): with the ground given, only the tree's 11 pixels are marked, not the wall's
+  const t = Float32Array.from(g); t[384 * N + 300] = 20;
+  const r = [...castShadows(t, N, 270, 10, 10, g).subarray(128 * S, 129 * S)], tree = [r.indexOf(1), r.lastIndexOf(1)];
+  if (Math.abs(tree[0] - 45) > 1 || Math.abs(tree[1] - 54) > 1) out.push(`a tree's shadow on the ground: columns ${tree}, not about 45,54`);
   return out;
 })()"""
 SUNLIGHT_APP = """(async (step) => {
@@ -6027,6 +6031,28 @@ SUNLIGHT_APP = """(async (step) => {
 })"""
 
 
+# The trees' and buildings' shadows from zoom 14 (#919): OpenFreeMap's footprints read with their heights, and in the
+# app the second shadow layer's tiles all drawn, with Meta's canopy heights asked for.
+OBJECT_SHADOWS = """(async () => {
+  const m = polku.map, out = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const { decodeBuildings } = await import(location.origin + '/js/shadows.js'), { ofmTemplate } = await import(location.origin + '/js/offline.js');
+  const { usage } = await import(location.origin + '/js/net.js'), calls = () => usage().find((u) => u.id === 'canopy').session;
+  // central Helsinki's zoom 14 tile
+  const b = decodeBuildings(new Uint8Array(await (await fetch((await ofmTemplate()).replace('{z}', 14).replace('{x}', 9327).replace('{y}', 4742))).arrayBuffer()));
+  const tall = b.filter((f) => f.h >= 15).length, inside = b.every((f) => f.rings.every((r) => r.length >= 6 && r.every((v) => v > -200 && v < 712)));
+  if (b.length < 100 || !tall || !inside) out.push(`Helsinki's buildings: ${b.length}, ${tall} of 15 m or more, all within the tile: ${inside}`);
+  const before = calls();
+  m.jumpTo({ zoom: 15 });
+  const ready = () => { const tm = m.style.tileManagers.objshadow; return tm && tm.getIds().length && tm.loaded(); };
+  for (let t0 = Date.now(); Date.now() - t0 < 120000 && !ready(); ) await wait(500);
+  const tm = m.style.tileManagers.objshadow, states = tm ? tm.getIds().map((id) => tm.getTileByID(id).state) : [];
+  if (!m.getLayer('obj-shadow') || !states.length || states.some((s) => s !== 'loaded')) out.push(`the trees' and buildings' shadows at zoom 15: layer ${!!m.getLayer('obj-shadow')}, tiles ${states}`);
+  if (calls() === before) out.push('no canopy heights asked for');
+  m.jumpTo({ zoom: 12.5 });
+  return out;
+})()"""
+
+
 def sunlight(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
@@ -6036,13 +6062,14 @@ def sunlight(chrome):
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         fails += pg.js(SUNLIGHT_MATHS)
         fails += pg.js(f"({SUNLIGHT_APP})('before')", timeout=120000)
+        fails += pg.js(OBJECT_SHADOWS, timeout=180000)
         pg.idle()  # the shadows' tiles worked out from the DEM, as on the screen
         pg.reload()
         fails += pg.js(f"({SUNLIGHT_APP})('after')", timeout=120000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the hills lit by the sun at the map's hour, and their shadows" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the hills lit by the sun at the map's hour, their shadows, and the trees' and buildings'" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # The planner's header never spills out of the sheet, and its toolbox stays in the window, clear of

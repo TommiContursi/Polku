@@ -121,10 +121,10 @@ const demSource = new mlcontour.DemSource({
 demSource.setupMaplibre(maplibregl);
 seaIceProtocol(maplibregl); // FMI's sea-ice charts with the open water left clear (winter.js)
 let shadowFailAt = 0;
-shadowProtocol(maplibregl, demSource, () => {
+shadowProtocol(maplibregl, demSource, (objects) => {
   if (Date.now() - shadowFailAt < 60000) return;
   shadowFailAt = Date.now();
-  toast('Some of the hills’ shadows are missing: their elevation data didn’t load.');
+  toast(objects ? 'Some of the trees’ and buildings’ shadows are missing: their heights didn’t load.' : 'Some of the hills’ shadows are missing: their elevation data didn’t load.');
 });
 const ctx = {
   demTiles: demSource.sharedDemProtocolUrl,
@@ -1176,7 +1176,7 @@ const hillshadeControls = () => {
   if (!state.hillshade) return tg;
   return h('div', { class: 'tg-group' }, tg,
     seg(HILL_LIGHTS, state.hillLight, (v) => { state.hillLight = v; applyStyle(); renderLayersPanel(); }),
-    sun ? toggle('Shadows', state.hillShadows, (v) => { state.hillShadows = v; applyStyle(); renderLayersPanel(); }, 'Cast by the hills, from zoom 10') : null,
+    sun ? toggle('Shadows', state.hillShadows, (v) => { state.hillShadows = v; applyStyle(); renderLayersPanel(); }, 'Cast by the hills from zoom 10, by trees and buildings from zoom 14') : null,
     sun && ctx.sunAt ? h('p', { class: 'note' }, sunNote()) : null);
 };
 // the 3D pad's ⋯ (#920): 3D's own settings in the app's menu, the same controls as Layers' (drawn again with it)
