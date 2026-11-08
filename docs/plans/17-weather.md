@@ -85,6 +85,15 @@ The user's choice on 2026-11-08: **Weather service** is the look, and **Effects*
 - **Off,** and in reduced motion, nothing moves: the edges stay soft (they don't move), the rain is drawn still, and a new strike's cross only fades in.
 - **/review-animations (2026-11-08):** run on the mock-up's effects. It found a timer that doubled with each new batch of lightning, a linear fade on the cross, a ring longer than it needed (800 ms) and the cloud veil redrawn every frame; all four are fixed in the mock-up. The ring stays over 300 ms: it explains a change on the map, not the interface's answer to a tap.
 
+### Built: the menu, the legend and the rain's look (PR 1, 2026-11-08)
+
+- **The menu:** the timeline's four chips became one pill (`rt-pill wl-layer`: "Rain ▾", "Rain +1") opening `popMenu()` with ticking items: Rain and snowfall, Wind, Temperature, Snow on the ground, then Effects. It stays open while you tick. Step 6b moves the pill into the weather line and keeps the menu.
+- **The legend** sits in `.map-hints`, over the map at the top left, apart from the timeline: the temperature's or the wind's scale, the rain's five steps with their words, the snowfall's steps when it's below +0.5 °C somewhere on the map, and the snow's steps with FMI's measured depths. Under 340 px wide or 480 px tall (a phone or a desktop at 200 %) it folds to **Legend**.
+- **The steps:** rain 0.1 · 0.5 · 2 · 5 · 15 mm/h, snowfall 0.1 · 0.5 · 2 mm/h in violet, snow on the ground 1 · 10 · 25 · 50 cm, each one solid colour at the layer's opacity (rain 0.55, snow 0.5), for FMI's radar and the forecast alike. RAIN_RAMP's magenta is gone.
+- **Effects** (on by default, remembered): the steps' edges blurred (1 px on the forecast's 360 px image, 1.5 px on the radar's ~1 km pixels) and `drawPrecip()`'s thin white streaks and white flakes. Off: crisp steps, nothing falls. Reduced motion: drawn once, still.
+- **Found and fixed:** after moving the time ahead, the drops followed the radar's rates of Now until the map moved, so a dry radar left the forecast's rain without any. Zoomed out, a radar echo at a cell's middle filled its 100 km with drops; each drop now asks the radar at its own spot.
+- **RainViewer outside Finland** (checked 2026-11-08, Norway's coast at Finland's scale): its Universal Blue tiles are blue like the steps, but drizzle is beige and the heaviest cells yellow, which the legend doesn't list. Filed as #923; nothing changed here.
+
 ### For the user to decide
 
 - Whether Effects also has a place in Settings, beside the pill's menu.
