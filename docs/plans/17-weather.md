@@ -113,4 +113,6 @@ The [Richer weather](https://github.com/TommiContursi/Polku/milestone/21) milest
 7. **#914, the sun, the moon, UV and aurora** in the weather card. The sun and moon need no service; UV may cost a call; aurora needs a source and the user's OK. Sonnet, or Opus at high with a new source.
 8. **#862, the water's temperature** (and blue-green algae) for paddlers and swimmers, as yr shows the sea's: a new source. Opus at high.
 
+**Built now (the user's choice, 2026-11-08):** #182 goes before Calmer planner's weather card, menu included, as six PRs: the menu, the legend over the map and the rain's look; #916; clouds; thunder; where there's no radar; the radar's last 90 minutes. Step 6b then moves the pill into the weather line and keeps the menu. The package and its order are on #182.
+
 Already elsewhere: the forecast's table and graph (#903, item 7) are the weather card itself (#431); wet trails are #860, and the best departures #273 (step 9).
