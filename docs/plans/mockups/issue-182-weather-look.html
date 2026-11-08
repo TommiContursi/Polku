@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Weather on the map</title>
-<meta name="description" content="Mock-up for #182's look, a weather service's look and a vivid one: rain by its strength, cloud, thunder (lightning seen apart from thunder forecast), snowfall and snow on the ground over the map, with the weather line, its layer menu, a legend over the map, the radar's last 90 minutes and the towns' weather.">
+<meta name="description" content="Mock-up for #182's look, a weather service's look with Effects on top: rain by its strength, cloud, thunder (lightning seen apart from thunder forecast), snowfall and snow on the ground over the map, with the weather line, its layer menu, a legend over the map, the radar's last 90 minutes and the towns' weather.">
 <!--
   #182, the look of the weather layers, 2026-11-07. The plan: docs/plans/17-weather.md, "The look (2026-11-07)".
   Not wired to the app: nothing here is loaded by Polku. The maps are screenshots of main at c9fe8d4 (Kauppi's MTB
@@ -147,13 +147,14 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 <body class="mk">
 <div class="cv">
   <h1>Weather on the map: rain, cloud, thunder, snow</h1>
-  <p>For <a href="https://github.com/TommiContursi/Polku/issues/182">#182</a>: how the weather layers could look. Two looks from 2026-11-08: <b>Weather service</b> shows the weather as FMI, Foreca and yr do (colour steps, lightning as crosses by age, nothing moving but new strikes), and <b>Vivid</b> makes it lively (rain and snow falling in depth, cloud shadows drifting, a lightning bolt that flashes and settles into a dot). Both hatch where the radar doesn't reach, as yr hatches the countries it has no data for. <b>Today</b> is main as it is; <b>A</b> and <b>B</b> are the first two directions (2026-11-07), kept to compare. All of them add <b>Clouds</b>, <b>Thunder</b> and the <b>Towns' weather</b>. Thunder keeps the lightning that was seen apart from the thunder the forecast expects. <b>Snow</b> shows the snowfall and the snow on the ground together. The map's hours are the <b>weather line</b> of the weather card's plan (step 6b): its pill (“Rain ▾”) opens the layers' menu, and its strip starts with the radar's last 90 minutes. A <b>legend</b> sits over the map while a layer is on. <b>Timeline today</b> on the Bar switch keeps the old timeline to compare. The weather is made up, placed in the middle of what the map shows (Kauppi's MTB route in Tampere, and the region around it); the maps are main's.</p>
+  <p>For <a href="https://github.com/TommiContursi/Polku/issues/182">#182</a>: how the weather layers could look. The look from 2026-11-08 is <b>Weather service</b>: the weather as FMI, Foreca and yr show it (colour steps, lightning as crosses by age). <b>Effects</b>, one tick in the pill's menu and on by default, adds softer edges, thin falling rain, slowly drifting clouds and a ring where lightning just struck, without changing what the colours say. <b>Vivid</b> (2026-11-08) was a livelier look, kept to compare. They hatch where the radar doesn't reach, as yr hatches the countries it has no data for. <b>Today</b> is main as it is; <b>A</b> and <b>B</b> are the first two directions (2026-11-07), kept to compare. All of them add <b>Clouds</b>, <b>Thunder</b> and the <b>Towns' weather</b>. Thunder keeps the lightning that was seen apart from the thunder the forecast expects. <b>Snow</b> shows the snowfall and the snow on the ground together. The map's hours are the <b>weather line</b> of the weather card's plan (step 6b): its pill (“Rain ▾”) opens the layers' menu, and its strip starts with the radar's last 90 minutes. A <b>legend</b> sits over the map while a layer is on. <b>Timeline today</b> on the Bar switch keeps the old timeline to compare. The weather is made up, placed in the middle of what the map shows (Kauppi's MTB route in Tampere, and the region around it); the maps are main's.</p>
   <div class="bars" id="bars"></div>
   <div class="stage" id="stage"></div>
   <p class="cap" id="cap"></p>
   <div class="notes">
     <h2>What each look does</h2>
     <ul>
+      <li><b>Effects</b> (Weather service only, on by default, a tick at the end of the pill's menu): the steps' edges are feathered, so the rain reads as rain, not tiles, and the colours still mean the same. Thin white streaks fall where it rains, a few, at the wind's angle. The cloud veil drifts slowly with the wind. A new strike's cross fades in with a short glow and one ring that grows and fades (600 ms), so the eye finds where it just struck. The hatch where there's no radar fades in over its edge. Off, the look is still: only a new strike's cross fades in.</li>
       <li><b>Weather service:</b> the rain in five colour steps (0.1, 0.5, 2, 5 and 15 mm/h, light blue to violet) with words under the scale (light, moderate, heavy, very heavy), as FMI's legend has. Nothing falls. Clouds are a still white veil. Lightning is a cross per strike, coloured by age as yr's app does (orange under 1 min, violet under 10, light violet under 60), and a new strike fades in. The forecast's thunder is a light amber area with a dashed edge and its label.</li>
       <li><b>Vivid:</b> the rain in a smooth ramp, lighter, with drops falling in three depths (the far ones small, faint and slow), and snow drifting as flakes. Clouds are two layers of shadows drifting with the wind at different speeds. Lightning: a new strike flashes as a branching bolt with a short sheet of light around it, flickers twice and settles into a glowing dot by age; now and then a new one strikes. The forecast's thunder is a warm glow with an amber edge.</li>
       <li><b>Where there's no data:</b> FMI's radars reach about 250 km, so beyond that (the Baltic, Russia further east, Sweden's north) the map is hatched and the legend says “No radar here: rain and snow not shown”, as yr hatches Russia and Belarus. The forecast covers everywhere, so at a later hour nothing is hatched. Try the Scale “Finland and around”. The radars' places and reach here are approximate; lightning and warnings have edges of their own still to check.</li>
@@ -176,7 +177,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li>Whether thunder near the route belongs in Heads-up: not in #182, an idea of its own if it's wanted.</li>
       <li>Warnings on the map as areas, and in the weather card: the warning's row here is a placeholder for that issue's design.</li>
       <li>Where the towns' symbols come from: one forecast call per town would burst Open-Meteo, so they come from the map's own weather grid (the nearest cell), or not at all.</li>
-      <li>Which look, or whether both stay as a setting (“Weather look: Weather service · Vivid”).</li>
+      <li>Whether Effects also lives in Settings, beside the pill's menu.</li>
       <li>The motion was drafted with /animate; it's checked with /review-animations before the build's PR opens.</li>
     </ul>
   </div>
@@ -184,7 +185,8 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 <script>
 const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/project-thread-q87u51/weather-look/', VER = '?v=ec006e8';
 const SW = {
-  look: [['service', 'Weather service'], ['vivid', 'Vivid'], ['today', 'Today'], ['a', 'A (11-07)'], ['b', 'B (11-07)']],
+  look: [['service', 'Weather service'], ['today', 'Today'], ['vivid', 'Vivid (11-08)'], ['a', 'A (11-07)'], ['b', 'B (11-07)']],
+  fx: [['on', 'On'], ['off', 'Off']],
   wx: [['drizzle', 'Drizzle'], ['rain', 'Rain'], ['heavy', 'Heavy rain'], ['cloud', 'Cloud'], ['thunder', 'Thunder'], ['snow', 'Snow']],
   bar: [['line', 'Weather line (step 6b)'], ['old', 'Timeline today']],
   map: [['trail', 'Trail map'], ['night', 'Night map']],
@@ -195,7 +197,7 @@ const SW = {
   data: [['ok', 'All loaded'], ['nolightning', 'Lightning missing']],
   motion: [['on', 'Moving'], ['reduced', 'Reduced motion']],
 };
-const NAMES = { look: 'Look', wx: 'Weather', bar: 'Bar', map: 'Map', scale: 'Scale', f: 'Frame', z: 'Zoom', t: 'Time', data: 'Data', motion: 'Motion' };
+const NAMES = { look: 'Look', fx: 'Effects', wx: 'Weather', bar: 'Bar', map: 'Map', scale: 'Scale', f: 'Frame', z: 'Zoom', t: 'Time', data: 'Data', motion: 'Motion' };
 const q = new URLSearchParams(location.search);
 const S = Object.fromEntries(Object.entries(SW).map(([k, v]) => [k, v.some(([x]) => x === q.get(k)) ? q.get(k) : v[0][0]]));
 if (!q.get('motion') && matchMedia('(prefers-reduced-motion: reduce)').matches) S.motion = 'reduced';
@@ -211,10 +213,11 @@ const h = (tag, attrs = {}, ...kids) => {
 function renderBars() {
   const bars = document.getElementById('bars');
   bars.innerHTML = '';
-  const groups = [['look', 'wx'], ['bar', 'map', 'scale', 't'], ['f', 'z', 'data', 'motion']];
+  const groups = [['look', 'fx', 'wx'], ['bar', 'map', 'scale', 't'], ['f', 'z', 'data', 'motion']];
   for (const g of groups) {
     const row = h('div', { class: 'bar' });
     for (const k of g) {
+      if (k === 'fx' && S.look !== 'service') continue;
       row.append(h('span', {}, NAMES[k]), h('div', { class: 'sw', role: 'group', 'aria-label': NAMES[k] },
         ...SW[k].map(([v, label]) => h('button', { type: 'button', 'aria-pressed': String(S[k] === v), onclick: () => { S[k] = v; if (k === 'wx') resetLayers(); if (k === 'z') legendOpen = null; sync(); } }, label))));
     }
@@ -242,6 +245,7 @@ const SCENES = {
   'country-phone': { w: 390, h: 844, b: [[24.797038, 57.663383], [32.002962, 65.092924]] },
 };
 const isNew = () => S.look === 'service' || S.look === 'vivid';
+const fxOn = () => S.look === 'service' && S.fx === 'on'; // Effects: softer edges and gentle motion over the weather service's look
 const KX = 111.32 * Math.cos(61.5 * Math.PI / 180), MIDDLE = { desk: [885, 335], phone: [165, 240] }; // (the map between the panels)
 // the interface around the map, cut from a screenshot of the app (the old timeline left out)
 // (each control's box, measured in the app at that view; the timeline is drawn live)
@@ -306,7 +310,7 @@ function newStrikes() {
   const fresh = makeStrikes(batch).filter((s) => s.age < 5).slice(0, 8).map((s, i) => ({ ...s, age: s.age, born: performance.now() + i * 140, bolt: i < 3 ? makeBolt() : null }));
   strikes.push(...fresh);
   if (scene) scene.flash = performance.now();
-  if (scene && isNew()) { cancelAnimationFrame(anim); startNew(); } // (wake the drawing up for the new strikes)
+  if (scene && isNew()) { cancelAnimationFrame(anim); clearTimeout(scene.timer); startNew(); } // (wake the drawing up for the new strikes)
 }
 const nearest = () => strikes.reduce((m, s) => { const d = Math.hypot(s.x, s.y); return d < m.d && s.age < 30 ? { d, age: s.age } : m; }, { d: Infinity });
 
@@ -394,7 +398,9 @@ function drawNoData(ctx) {
   mc.fillStyle = dark ? 'rgba(15,23,42,.35)' : 'rgba(71,85,105,.16)'; mc.fillRect(0, 0, W, H);
   mc.strokeStyle = dark ? 'rgba(226,232,240,.32)' : 'rgba(51,65,85,.38)'; mc.lineWidth = 1.5;
   mc.beginPath(); for (let s = -H; s < W + H; s += 8) { mc.moveTo(s, 0); mc.lineTo(s + H, H); } mc.stroke();
-  mc.globalCompositeOperation = 'destination-in'; mc.imageSmoothingEnabled = true; mc.drawImage(cov.mask, 0, 0, cov.mask.width * cov.step, cov.mask.height * cov.step);
+  mc.globalCompositeOperation = 'destination-in'; mc.imageSmoothingEnabled = true;
+  if (fxOn()) mc.filter = 'blur(10px)'; // Effects: the hatch fades in over its edge
+  mc.drawImage(cov.mask, 0, 0, cov.mask.width * cov.step, cov.mask.height * cov.step);
   ctx.drawImage(m, 0, 0);
 }
 
@@ -512,6 +518,7 @@ const ICON = {
   cloud: '<path d="M7 19a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 13a3.5 3.5 0 0 1-2 6H7Z"></path>',
   thunder: '<path d="M7 15a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 9a4 4 0 0 1-3 5"></path><path d="m13 11-3 5h4l-3 5"></path>',
   bolt: '<path d="M13 2 5 13h6l-1 9 8-11h-6Z" fill="currentColor"></path>',
+  sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"></path>',
   drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"></path>',
   close: '<path d="M6 6l12 12M18 6 6 18"></path>',
   play: '<path d="M7 4v16l13-8Z" fill="currentColor"></path>',
@@ -629,13 +636,18 @@ function layerMenu(anchor, focusKey) {
   };
   const g1 = h('div', { role: 'group', 'aria-labelledby': 'mh-wx' }, ...LAYERS.map(item));
   const g2 = h('div', { role: 'group', 'aria-labelledby': 'mh-pts' }, item(['towns', 'Towns’ weather', 'The sky, temperature and wind at towns, zoomed out', 'Towns', 'cloudSun', true]));
+  const fxItem = S.look === 'service' ? h('button', { type: 'button', role: 'menuitemcheckbox', class: 'menu-item two-line', 'aria-checked': String(S.fx === 'on'), 'data-k': 'fx',
+    html: `${ic('sparkle', 17)}<span>Effects<small>Softer edges, falling rain, drifting clouds and lightning flashes</small></span><span class="menu-tick">${ic('check', 17)}</span>` }) : null;
+  fxItem?.addEventListener('click', () => { S.fx = S.fx === 'on' ? 'off' : 'on'; sync(); const p = document.querySelector('.wl-layer'); if (p) layerMenu(p, 'fx'); });
   const el = h('div', { class: 'menu menu-pop mk-menu', role: 'menu', 'aria-label': 'Weather layers' },
     h('div', { class: 'menu-h', id: 'mh-wx' }, 'Weather on the map'), g1, h('hr'), h('div', { class: 'menu-h', id: 'mh-pts' }, 'Points'), g2,
+    fxItem && h('hr'), fxItem,
     h('p', { class: 'menu-note' }, 'Forecast by Open-Meteo; radar, lightning, warnings and measured snow by FMI.'));
   document.body.append(el);
   const r = anchor.getBoundingClientRect(), mw = el.offsetWidth, mh = el.offsetHeight;
   el.style.left = `${Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8))}px`;
-  el.style.top = `${r.top - mh - 8 >= 8 ? r.top - mh - 8 : Math.min(r.bottom + 8, innerHeight - mh - 8)}px`;
+  if (mh > r.top - 16) { el.style.maxHeight = `${r.top - 16}px`; el.style.overflowY = 'auto'; } // above the pill, scrolling when it's taller than the room
+  el.style.top = `${Math.max(8, r.top - el.offsetHeight - 8)}px`;
   anchor.setAttribute('aria-expanded', 'true');
   const items = [...el.querySelectorAll('.menu-item:not(:disabled)')];
   (items.find((b) => b.dataset.k === focusKey) || items[0]).focus({ preventScroll: true });
@@ -755,7 +767,9 @@ function drawField(t = 0) {
   }
   sctx.putImageData(im, 0, 0);
   ctx.imageSmoothingEnabled = true;
+  if (fxOn()) ctx.filter = 'blur(2.5px)'; // Effects: the steps' edges feathered, their colours as they are
   ctx.drawImage(small, 0, 0, cols * step, rows * step);
+  ctx.filter = 'none';
   if (on('thunder') && S.look === 'a') drawHatch(ctx);
   if (on('thunder') && isNew()) drawRiskEdge(ctx);
   if (noRadarShown()) drawNoData(ctx);
@@ -970,7 +984,7 @@ const flicker = (t) => t < 50 ? 1 : t < 100 ? 0.2 : t < 160 ? 0.95 : t < 420 ? 0
 const ageColour = (age) => (AGE_COLOURS.find(([m]) => age < m) || AGE_COLOURS[AGE_COLOURS.length - 1])[1];
 function startNew() {
   const sc = scene, { parts, sky, W, H, toKm, toPx, dark } = sc, ctx = parts.getContext('2d'), kc = sky.getContext('2d');
-  const w = WX[S.wx], reduced = S.motion === 'reduced', vivid = S.look === 'vivid', later = S.t === '3h';
+  const w = WX[S.wx], reduced = S.motion === 'reduced', vivid = S.look === 'vivid', fx = fxOn(), lively = vivid || fx, later = S.t === '3h';
   const strikesOn = on('thunder') && !later && S.data === 'ok', cloudOn = on('cloud');
   // the clouds, under the words and the route
   const CS = 8, cCv = document.createElement('canvas'); cCv.width = Math.ceil(W / CS); cCv.height = Math.ceil(H / CS);
@@ -993,16 +1007,35 @@ function startNew() {
       kc.imageSmoothingEnabled = true; kc.drawImage(cCv, 0, 0, cCv.width * CS, cCv.height * CS);
     }
   };
+  // Effects: the veil drawn once with a margin, then slid with the wind (no redraw each frame)
+  let veil = null;
+  const slide = (drift) => {
+    const M = 160, off = drift / sc.k;
+    if (!veil || Math.abs(off - veil.off) > M) {
+      const cv = document.createElement('canvas'); cv.width = Math.ceil((W + 2 * M) / CS); cv.height = Math.ceil((H + 2 * M) / CS);
+      const c2 = cv.getContext('2d'), im = c2.createImageData(cv.width, cv.height);
+      for (let j = 0; j < cv.height; j++) for (let i = 0; i < cv.width; i++) {
+        const [x, y] = toKm(i * CS - M, j * CS - M), c = cloudAt(x - drift, y - drift), o = (j * cv.width + i) * 4;
+        im.data.set(dark ? [148, 163, 184, Math.round(0.3 * Math.pow(c, 1.3) * 255)] : [241, 245, 249, Math.round(0.5 * Math.pow(c, 1.3) * 255)], o);
+      }
+      c2.putImageData(im, 0, 0);
+      const big = document.createElement('canvas'); big.width = W + 2 * M; big.height = H + 2 * M;
+      const bc = big.getContext('2d'); bc.imageSmoothingEnabled = true; bc.drawImage(cv, 0, 0, cv.width * CS, cv.height * CS);
+      veil = { off, big };
+    }
+    const d = off - veil.off;
+    kc.clearRect(0, 0, W, H); kc.drawImage(veil.big, -M + d, -M - d); // east and north, as the wind goes
+  };
   // vivid: the rain and snow, in three depths (far ones small, faint and slow)
   const CELL = 24, cols = Math.ceil(W / CELL) + 1, rows = Math.ceil(H / CELL) + 1, rainC = new Float32Array(cols * rows);
   for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) { const [x, y] = toKm(i * CELL, j * CELL); rainC[j * cols + i] = on('rain') && !sc.cov.noRadar(i * CELL, j * CELL) ? rainAt(x, y) : 0; }
   const cellAt = (x, y) => Math.max(0, Math.min(rainC.length - 1, Math.round(y / CELL) * cols + Math.round(x / CELL)));
-  const wet = vivid && rainC.some((r) => r >= 0.1), wxp = (0.25 + WIND.ms * 0.13) * Math.SQRT1_2;
+  const wet = lively && rainC.some((r) => r >= 0.1), wxp = (0.25 + WIND.ms * 0.13) * Math.SQRT1_2;
   const drops = [];
-  if (wet) for (let i = 0, n = Math.round(Math.min(2000, (W * H) / 520)); i < n; i++) drops.push({ age: Math.random() * 30, max: 0, x: -1, z: [0.4, 0.7, 1][i % 3] });
+  if (wet) for (let i = 0, n = Math.round(Math.min(2000, (W * H) / (fx ? 1500 : 520))); i < n; i++) drops.push({ age: Math.random() * 30, max: 0, x: -1, z: fx ? 0.75 : [0.4, 0.7, 1][i % 3] });
   const spawn = (d) => {
     const x = Math.random() * W, y = Math.random() * H, r = rainC[cellAt(x, y)];
-    if (r >= 0.1 && Math.random() < Math.min(1, 0.12 + r / 3)) {
+    if (r >= 0.1 && Math.random() < Math.min(1, fx ? 0.1 + r / 4 : 0.12 + r / 3)) {
       Object.assign(d, { x, y, age: 0, r, snow: !!w.snow, phase: Math.random() * 6.28 });
       d.max = d.snow ? 150 + Math.random() * 120 : 14 + Math.random() * 16;
       d.fall = d.snow ? 0.3 + 0.55 * d.z : (5.5 + Math.min(6, r * 0.7)) * (0.45 + 0.7 * d.z);
@@ -1012,7 +1045,7 @@ function startNew() {
     }
     d.age = 0; d.max = 4 + Math.random() * 10; d.x = -1;
   };
-  const rainCol = (z) => dark ? `rgba(224,242,254,${0.16 + 0.5 * z})` : `rgba(30,58,138,${0.14 + 0.46 * z})`;
+  const rainCol = (z) => fx ? (dark ? 'rgba(226,232,240,.5)' : 'rgba(255,255,255,.75)') : dark ? `rgba(224,242,254,${0.16 + 0.5 * z})` : `rgba(30,58,138,${0.14 + 0.46 * z})`;
   const drawDrops = (k, move) => {
     const segs = [[], [], []], flakes = [];
     for (const d of drops) {
@@ -1031,7 +1064,7 @@ function startNew() {
     segs.forEach((g, zi) => {
       if (!g.length) return;
       const z = [0.4, 0.7, 1][zi];
-      ctx.lineWidth = 0.6 + 1.1 * z; ctx.strokeStyle = rainCol(z); ctx.beginPath();
+      ctx.lineWidth = fx ? 1.1 : 0.6 + 1.1 * z; ctx.strokeStyle = rainCol(z); ctx.beginPath();
       for (const [a, b, c, e] of g) { ctx.moveTo(a, b); ctx.lineTo(c, e); }
       ctx.stroke();
     });
@@ -1039,7 +1072,7 @@ function startNew() {
       for (const d of flakes) {
         ctx.beginPath(); ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255,255,255,${0.55 + 0.4 * d.z})`; ctx.fill();
-        if (!dark) { ctx.lineWidth = 0.7; ctx.strokeStyle = `rgba(91,33,182,${0.2 + 0.35 * d.z})`; ctx.stroke(); }
+        if (!dark) { ctx.lineWidth = 0.7; ctx.strokeStyle = fx ? 'rgba(71,85,105,.4)' : `rgba(91,33,182,${0.2 + 0.35 * d.z})`; ctx.stroke(); }
       }
     }
   };
@@ -1064,7 +1097,12 @@ function startNew() {
         });
         ctx.restore();
       }
-      const a = Math.min(1, Math.max(0, (vivid && s.bolt && !reduced ? t - 160 : t) / 180));
+      if (fx && !reduced && t >= 0 && t < 600) { // Effects: a new strike's one soft glow and ring, easing out (it says where it just struck)
+        const p = t / 600, e = 1 - Math.pow(1 - p, 3);
+        if (t < 260) { const g = ctx.createRadialGradient(px, py, 0, px, py, 26); g.addColorStop(0, `rgba(255,255,255,${0.7 * (1 - t / 260)})`); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(px - 26, py - 26, 52, 52); }
+        ctx.globalAlpha = 0.9 * (1 - p); ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.beginPath(); ctx.arc(px, py, 6 + e * 20, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      const a = 1 - Math.pow(1 - Math.min(1, Math.max(0, (vivid && s.bolt && !reduced ? t - 160 : t) / 180)), 3); // fades in, easing out
       if (a <= 0) continue;
       ctx.globalAlpha = a;
       if (vivid) {
@@ -1089,20 +1127,24 @@ function startNew() {
     while (strikes.length > 140) strikes.shift();
   };
   sc.addStrike = addStrike;
-  if (vivid && strikesOn && !reduced) { const next = () => { sc.timer = setTimeout(() => { if (scene === sc) { addStrike(); next(); } }, 1400 + Math.random() * 2600); }; next(); }
+  // new strikes keep coming while the storm is on (the mock-up's stand-in for each new load of FMI's lightning)
+  if (lively && strikesOn && !reduced) { const next = () => { sc.timer = setTimeout(() => { if (scene === sc) { addStrike(); wake(); next(); } }, fx ? 3000 + Math.random() * 4000 : 1400 + Math.random() * 2600); }; next(); }
   if (cloudOn) clouds(0);
   if (wet && reduced) for (let i = 0; i < 70; i++) drawDrops(1, true);
   const t0 = performance.now();
-  let last = t0;
+  let last = t0, running = true;
   const tick = (now) => {
     const k = Math.min(3, Math.max(0.25, (now - last) / 16.7)); last = now;
     ctx.clearRect(0, 0, W, H);
     if (cloudOn && vivid && !reduced) clouds(((now - t0) / 1000) * 7 * sc.k);
+    if (cloudOn && fx && !reduced) slide(((now - t0) / 1000) * 0.35);
     if (wet) drawDrops(k, !reduced);
     if (strikesOn) marks(now);
-    const fading = strikes.some((s) => s.born && now - s.born < 600);
-    if ((vivid && !reduced && (wet || cloudOn || strikesOn)) || fading) anim = requestAnimationFrame(tick);
+    const fading = strikes.some((s) => s.born && now - s.born < 700);
+    // the loop stops when nothing moves; a new strike wakes it
+    if ((lively && !reduced && (wet || cloudOn || (vivid && strikesOn))) || fading) anim = requestAnimationFrame(tick); else running = false;
   };
+  const wake = () => { if (!running && scene === sc) { running = true; last = performance.now(); anim = requestAnimationFrame(tick); } };
   anim = requestAnimationFrame(tick);
 }
 function drawStrikes(ctx, now, reduced) {
@@ -1156,7 +1198,8 @@ function caption() {
   if (S.wx === 'snow') bits.push(today ? 'Snow: today’s snow depth wash and the snowfall in the rain’s colours.' : 'Snow: the snowfall in violet over the snow on the ground; FMI’s measured depths as small labels. Turn Rain and snowfall off in the pill’s menu to see the ground alone.');
   if (S.scale === 'region' && on('towns')) bits.push('The region: the towns’ weather at the line’s hour (the sky, temperature and wind).');
   if (S.bar === 'line') bits.push('Tap the pill (“Rain ▾”) for the layers; drag the strip to the radar’s part or 3 hours ahead.');
-  if (S.look === 'vivid' && S.wx === 'thunder' && S.t === 'now') bits.push('Vivid: a new strike flashes now and then; press “A new batch of lightning arrives” for a burst.');
+  if ((S.look === 'vivid' || fxOn()) && S.wx === 'thunder' && S.t === 'now') bits.push('A new strike comes every few seconds here, standing in for each new load of FMI’s lightning; press “A new batch of lightning arrives” for a burst.');
+  if (S.look === 'service') bits.push(fxOn() ? 'Effects on: softer edges, falling rain, drifting clouds, a ring where lightning just struck. Untick Effects in the pill’s menu to compare.' : 'Effects off: the weather service’s look, still.');
   if (isNew() && S.scale === 'country') bits.push('Finland and around: hatched where FMI’s radars don’t reach (about 250 km, places approximate).');
   if (S.motion === 'reduced') bits.push('Reduced motion: the rain and snow are still, the clouds don’t drift, nothing flashes.');
   if (S.z === '200') bits.push('200 %: the map, the legend and the line twice the size; the rest of the interface is left out.');

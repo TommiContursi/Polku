@@ -74,9 +74,20 @@ An idea from 2026-11-08: two looks instead of A and B, one that shows the weathe
 - **Where there's no data:** beyond FMI's radars' reach (about 250 km) the map is hatched and the legend says rain and snow aren't shown there. Only at Now and in the past: the forecast covers everywhere. The mock-up's radar places are approximate; when it's built, the reach comes from FMI's own radar composite (its edge), not a guess. Lightning's reach (FMI's network sees Finland and its neighbours) and the warnings' (Finland only) have edges of their own, to check with their sources.
 - **A setting or one look:** both could stay, as **Weather look** in Settings (Weather service, Vivid), or the user picks one. Today's and B's top steps are magenta, which DESIGN.md keeps for the route; both new looks end in violet.
 
+### Weather service, with Effects (2026-11-08, chosen)
+
+The user's choice on 2026-11-08: **Weather service** is the look, and **Effects** sits on top of it, one tick at the end of the pill's menu, on by default. Vivid's effects didn't look good enough, and the effects must never make the weather harder to read. Vivid, A and B stay in the mock-up to compare.
+
+- **Softer edges:** the colour steps are feathered (a 2.5 px blur), so the rain reads as rain, not tiles; each step's colour still means the same. The hatch where there's no radar fades in over its edge.
+- **Rain and snow:** a few thin white streaks at the wind's angle where it rains, one depth only; snow as small white flakes with a grey edge.
+- **Clouds:** the white veil drifts slowly with the wind. It is drawn once and slid, not redrawn each frame.
+- **Lightning:** a new strike's cross fades in (180 ms, easing out) with a short white glow and one ring in its age colour that grows and fades (600 ms, easing out), so the eye finds where it just struck. Only new strikes ring, and only once.
+- **Off,** and in reduced motion, nothing moves: the edges stay soft (they don't move), the rain is drawn still, and a new strike's cross only fades in.
+- **/review-animations (2026-11-08):** run on the mock-up's effects. It found a timer that doubled with each new batch of lightning, a linear fade on the cross, a ring longer than it needed (800 ms) and the cloud veil redrawn every frame; all four are fixed in the mock-up. The ring stays over 300 ms: it explains a change on the map, not the interface's answer to a tap.
+
 ### For the user to decide
 
-- Weather service or Vivid, or both as a setting (A and B were the first round).
+- Whether Effects also has a place in Settings, beside the pill's menu.
 - Cloud as shadows or as a veil: shadows read on the light maps, a veil on the night map.
 - The chips are settled: six didn't fit one row (two rows at 390 px, the whole screen at 200 %), and step 6b's pill replaces them, as yr.no's app does (#903, item 6).
 - The legend at 200 %: folded to its name until tapped (a warning stays out), or open.
@@ -93,7 +104,7 @@ An idea from 2026-11-08: two looks instead of A and B, one that shows the weathe
 
 The [Richer weather](https://github.com/TommiContursi/Polku/milestone/21) milestone, after [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16)'s weather card (step 6a) and weather line (step 6b, #431), which build the card, the line and its pill. Each part is a PR of its own; a mock-up and the user's choice come first where it says so. #903's ideas from yr.no's app are all here, each with its issue.
 
-1. **#182, the weather's look.** Waits on the user's choice of a look in the mock-up (Weather service, Vivid, or both as a setting), and the hatch where there's no data. The rain's colours and motion, Clouds, Thunder (FMI's lightning and the forecast's thunder), the snow's look, the legend over the map, and the radar's last 90 minutes on the line (#903, items 4 and 8). Opus at high.
+1. **#182, the weather's look.** Weather service with Effects on top (the user's choice, 2026-11-08), and the hatch where there's no data. The rain's colours and motion, Clouds, Thunder (FMI's lightning and the forecast's thunder), the snow's look, the legend over the map, and the radar's last 90 minutes on the line (#903, items 4 and 8). Opus at high.
 2. **#911, warnings** on the map and in the weather card: safety, so first after the look. A new source (FMI's warnings): its feed, CORS and terms checked, then a mock-up. Opus at high.
 3. **#916, the towns' weather** on the map, zoomed out, from the map's own weather grid (no new calls). An item of the pill's menu, drawn in #182's mock-up. Opus at medium.
 4. **#915, the rain in the next 90 minutes:** first a check for a radar nowcast that answers from a browser; a new source needs the user's OK. Opus at high.
