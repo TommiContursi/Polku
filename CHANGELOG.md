@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### The towns' weather on the map ([#916](https://github.com/TommiContursi/Polku/issues/916))
+
+- Zoomed out to a region or further, **Towns' weather** in the timeline's weather menu shows the sky, the temperature and the wind at the towns and cities the map names, at the timeline's hour. One glance says where it's dry and warm for a day trip.
+- The larger towns come first and the symbols stay apart, out from under the map's buttons and never over your route, whose weather is the timeline's reading. Zoomed in, the legend says to zoom out to see them.
+- They come from the same forecast as the map's other weather, so they cost no extra requests. A town with no forecast near it shows nothing rather than a guess.
+- **Snow on the ground**, left on alone, is drawn again when Polku opens. Before, it stayed off until another weather layer was turned on.
+
 ### The weather's menu, a legend over the map and the rain in steps ([#182](https://github.com/TommiContursi/Polku/issues/182))
 
 - The timeline's weather layers are now in one menu. Its pill names what's on (**Rain**, or **Rain +1** with two), and the menu ticks **Rain and snowfall**, **Wind**, **Temperature** and **Snow on the ground**. It stays open while you tick.

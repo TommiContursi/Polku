@@ -12177,7 +12177,7 @@ WX_MENU = """(async () => {
   pill.click(); await wait(300);
   const item = (k) => document.querySelector(`.menu-pop .wx-${k}`);
   const items = [...document.querySelectorAll('.menu-pop [role=menuitemcheckbox]')].map((b) => `${b.textContent.trim().split(/(?=[A-Z])/)[0]}:${b.getAttribute('aria-checked')}`);
-  if (items.join() !== 'Rain and snowfall:true,Wind:false,Temperature:false,Snow on the ground:false,Effects:true') out.push(`the menu: ${items.join()}`);
+  if (items.join() !== 'Rain and snowfall:true,Wind:false,Temperature:false,Snow on the ground:false,Towns’ weather:false,Effects:true') out.push(`the menu: ${items.join()}`);
   if (!item('rain')?.querySelector('.menu-tick') || item('wind')?.querySelector('.menu-tick')) out.push('a ticked layer has no tick, or one off has');
   item('wind').click(); await wait(300);
   if (!item('wind') || item('wind').getAttribute('aria-checked') !== 'true' || document.activeElement !== item('wind')) out.push('Wind: not ticked, or the menu closed, or the focus left it');
@@ -12233,6 +12233,57 @@ def weather_menu(chrome):
     print(f"{'ok  ' if not fails else 'FAIL'} the weather's menu, the legend over the map and the rain's steps (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
+
+
+# #916, the towns' weather: zoomed out, the sky, °C and wind at the towns the map names, from the grid (WX_FIXED: +4 °C,
+# 4 m/s from 220°); apart from each other; none over the route (a straight line through Tampere); gone when zoomed in,
+# where the legend says to zoom out; the menu's Points item names it, and the pill says "Towns".
+WX_TOWNS = """(async () => {
+  const out = [], w = polku.weather, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const idle = () => new Promise((r) => { map.once('idle', r); map.triggerRepaint(); });
+  const towns = () => [...document.querySelectorAll('.wx-town')].map((e) => ({ name: e.getAttribute('aria-label').split(':')[0], label: e.getAttribute('aria-label'), text: e.textContent.trim(), r: e.getBoundingClientRect() }));
+  for (let k = 0; k < 150 && !towns().length; k++) await wait(200);
+  const t = towns();
+  if (t.length < 4) return [`${t.length} towns' symbols at zoom ${map.getZoom().toFixed(1)}: ${t.map((x) => x.name).join(', ')}`];
+  if (!t.some((x) => x.name === 'Tampere')) out.push(`no Tampere among ${t.map((x) => x.name).join(', ')}`);
+  const bad = t.filter((x) => !/^\\S+: [a-z ]+, 4 °C, wind 4 m\\/s from the SW$/.test(x.label) || !/^4°4$/.test(x.text));
+  if (bad.length) out.push(`a town's symbol says “${bad[0].text}” (${bad[0].label})`);
+  t.forEach((a, i) => t.slice(i + 1).forEach((b) => { if (a.r.left < b.r.right && b.r.left < a.r.right && a.r.top < b.r.bottom && b.r.top < a.r.bottom) out.push(`${a.name} and ${b.name} over each other`); }));
+  const legend = document.querySelector('.map-hints .wx-legend');
+  if (!/Towns the sky, °C and wind in m\\/s/.test(legend.textContent)) out.push(`the legend: ${legend.textContent}`);
+  const pill = document.querySelector('#wx-bar .wl-layer');
+  if (pill.textContent.trim() !== 'Towns') out.push(`the pill says “${pill.textContent.trim()}”`);
+  pill.click(); await wait(300);
+  const item = document.querySelector('.menu-pop .wx-towns');
+  if (!item || item.getAttribute('aria-checked') !== 'true' || !/Points/.test(document.querySelector('.menu-pop').textContent)) out.push('no ticked Towns’ weather under Points in the menu');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await wait(200);
+  // a route through Tampere: no symbol over it
+  const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line');
+  for (const q of [[23.45, 61.5], [23.761, 61.498], [24.1, 61.5]]) p.addPoint(q);
+  for (let k = 0; k < 100 && !p.analysis; k++) await wait(100);
+  p.setActive(false); await wait(400); await idle(); await wait(200);
+  if (towns().some((x) => x.name === 'Tampere')) out.push('Tampere’s symbol is over the route');
+  p.clear();
+  // zoomed in: none, and the legend says why
+  map.jumpTo({ zoom: 10.5 }); await idle(); await wait(400);
+  if (towns().length) out.push(`zoomed in to 10.5, still ${towns().length} towns' symbols`);
+  if (!/Zoom out to see the towns’ weather/.test(legend.textContent)) out.push(`zoomed in, the legend: ${legend.textContent}`);
+  return out;
+})()"""
+
+
+def towns_weather(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'towns': True}}, {'polku:winter': '"off"'}, '#8.6/61.5/23.8')
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
+        fails = pg.js(WX_TOWNS, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the towns' weather, zoomed out, apart and off the route (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 # Every group: its name, its checks in the order they run, and its line for --list.
 # No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
@@ -19535,7 +19586,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather, zoomed out (#916)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

@@ -1225,7 +1225,7 @@ function renderLayersPanel() {
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
-  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['snow', 'Snow depth']].filter(([k]) => state.weather[k]);
+  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['snow', 'Snow depth'], ['towns', 'Towns’ weather']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
   // On now and Base map fold away like the other groups (open unless you close them)
@@ -2021,7 +2021,7 @@ renderSettingsPanel();
 // buttons ride above the timeline, and they'd move up under a finger once the map had loaded (#292).
 // The forecast needs only the view. The buttons show once the timeline has its rows (a frame of its
 // own, before this one), in their place, without sliding there.
-if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
+if (Object.values(state.weather).some(Boolean)) weather.set(state.weather);
 if (state.timeline) setTimeline(true);
 requestAnimationFrame(() => { syncWxH(); document.body.classList.add('ready'); });
 // MapLibre fires `load` (and `idle`) at the end of a frame it draws once every tile is in or has failed, but a tile

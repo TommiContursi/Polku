@@ -37,6 +37,7 @@ const stepRgba = (steps, v) => { let c = null; for (const [from, col] of steps) 
 // what falls: as snow below +0.5 °C (the timeline's and the labels' line too)
 const fallRgba = (mmh, snow) => stepRgba(snow ? SNOWFALL_STEPS : RAIN_STEPS, mmh);
 const stepsCss = (steps) => `linear-gradient(90deg, ${steps.map(([, c], i) => `${c} ${(i * 100) / steps.length}% ${((i + 1) * 100) / steps.length}%`).join(', ')})`;
+const SKY = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 // the weather menu's layers, in its order: [key, its name, its line, the pill's word, icon]
 const LAYERS = [
@@ -45,6 +46,9 @@ const LAYERS = [
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
 ];
+// the menu's points: the towns' weather (#916), zoomed out to a region; nearer, the timeline's reading says it
+const TOWNS = ['towns', 'Towns’ weather', 'The sky, temperature and wind at towns, zoomed out', 'Towns', 'cloudSun'];
+const TOWNS_Z = 9.5;
 
 const hex = (c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 export function ramp(stops, v) {
@@ -80,7 +84,8 @@ export class WeatherOverlay {
   constructor(map, app) {
     this.map = map;
     this.app = app; // { setImage(id, img|null), setRadar(r|null), setData(id, fc), dark() }
-    this.on = { wind: false, temp: false, rain: false, snow: false };
+    this.on = { wind: false, temp: false, rain: false, snow: false, towns: false };
+    this.townMarks = new Map();
     this.effects = store.get('wxEffects', true); // softer edges and falling rain, over the steps (#182)
     this.open = false; // timeline bar visible
     this.hour = 0;
@@ -98,6 +103,7 @@ export class WeatherOverlay {
     this.buildBar();
     map.on('movestart', () => this.onMoveStart());
     map.on('moveend', () => this.onMoveEnd());
+    map.on('idle', () => this.renderTowns(true)); // (the map's own place labels are placed by then)
     map.on('resize', () => { this.resizeCanvases(); this.onMoveEnd(); });
     // the card shows the spot under the mouse, else the map centre
     map.on('mousemove', (e) => { this.pointerLL = [e.lngLat.lng, e.lngLat.lat]; this.readout(); });
@@ -107,7 +113,7 @@ export class WeatherOverlay {
     onStatus((src, s) => { if (src === 'openmeteo' && (!s || s.retry) && this.active) this.maybeFetch(); });
   }
 
-  get layersOn() { return this.on.wind || this.on.temp || this.on.rain || this.on.snow; }
+  get layersOn() { return this.on.wind || this.on.temp || this.on.rain || this.on.snow || this.on.towns; }
   // forecast data is needed for the weather layers and for the timeline strip
   get active() { return this.open || !!this.docked || this.layersOn; }
   get animated() { return this.on.wind || this.falling; }
@@ -133,6 +139,7 @@ export class WeatherOverlay {
     if (this.animated) this.startAnim();
     if (this.on.rain) this.loadRadarMeta();
     if (this.on.snow) this.loadSnowObs();
+    this.renderTowns(true);
     this.readout();
   }
 
@@ -396,6 +403,7 @@ export class WeatherOverlay {
       this.lastImgHour = this.hour;
       this.renderImages();
     }
+    this.renderTowns();
     this.renderTime();
     this.readout();
   }
@@ -522,6 +530,45 @@ export class WeatherOverlay {
       this.snowObs = await measuredSnow();
       if (this.on.snow) this.renderImages();
     } catch { /* the model's wash still shows */ }
+  }
+
+  // The towns' weather (#916): the sky, °C and wind at the towns and cities the map names, at the timeline's hour,
+  // zoomed out. From the grid, so a town costs no request; one with no grid near shows nothing rather than a guess.
+  // `pick`: choose the towns again (the map's labels have moved): the larger first, kept apart, none over the route.
+  renderTowns(pick = false) {
+    const marks = this.townMarks;
+    if (!this.on.towns || !this.cur || this.map.getZoom() >= TOWNS_Z) { for (const m of marks.values()) m.remove(); marks.clear(); this.townList = null; return; }
+    if (pick || !this.townList) {
+      const big = (f) => (f.layer.id === 'label-city' ? 0 : 100) + (f.properties.rank ?? 50);
+      const route = ['route-casing'].filter((id) => this.map.getLayer(id));
+      this.townList = [];
+      const box = this.map.getContainer().getBoundingClientRect(), cv = this.map.getCanvasContainer();
+      const free = (x, y) => { const e = document.elementFromPoint(box.left + x, box.top + y); return !!e && (cv.contains(e) || !!e.closest('.menu-pop, .menu-leaving')); };
+      for (const f of this.map.queryRenderedFeatures({ layers: ['label-city', 'label-town'].filter((id) => this.map.getLayer(id)) }).sort((a, b) => big(a) - big(b))) {
+        const name = f.properties.name, ll = f.geometry.coordinates, p = this.map.project(ll);
+        if (!name || this.townList.some((t) => t.name === name || (Math.abs(t.p.x - p.x) < 84 && Math.abs(t.p.y - p.y) < 40))) continue;
+        if ([-32, 0, 32].some((dx) => !free(p.x + dx, p.y - 14) || !free(p.x + dx, p.y - 34))) continue; // (not under the map's buttons or panels)
+        if (route.length && this.map.queryRenderedFeatures([[p.x - 48, p.y - 40], [p.x + 48, p.y + 2]], { layers: route }).length) continue;
+        this.townList.push({ name, ll, p });
+      }
+    }
+    const shown = new Set();
+    for (const { name, ll } of this.townList) {
+      const s = this.sample(ll);
+      if (!s) continue;
+      const rain = this.nowRate(...ll) ?? s.rain, kind = skyKind(rain, s.temp, s.cloud, sunPosition(this.cur.t, ll).alt < -3);
+      const t = Math.round(s.temp), ms = Math.round(s.speed);
+      const label = `${name}: ${SKY[kind].toLowerCase()}, ${t} °C, wind ${ms} m/s from the ${compass(s.dir)}`;
+      let m = marks.get(name);
+      if (!m) marks.set(name, m = new maplibregl.Marker({ element: h('div', { class: 'wx-town', role: 'img' }), anchor: 'bottom', offset: [0, -10] }).setLngLat(ll).addTo(this.map));
+      const el = m.getElement();
+      if (el.getAttribute('aria-label') !== label) {
+        el.setAttribute('aria-label', label);
+        el.innerHTML = `${icon(kind, 18)}<b class="${t <= 0 ? 'cold' : ''}">${t}°</b><small><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${Math.round(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${ms}</small>`;
+      }
+      shown.add(name);
+    }
+    for (const [name, m] of marks) if (!shown.has(name)) { m.remove(); marks.delete(name); }
   }
 
   // Radar "now": FMI's composite over Finland (sharp, our colours) and RainViewer
@@ -813,6 +860,7 @@ export class WeatherOverlay {
     if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
     if (!this.on.snow) this.app.setImage('wxSnow', null);
     if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; }
+    if (!this.on.towns) this.renderTowns();
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
   }
 
@@ -824,7 +872,7 @@ export class WeatherOverlay {
     this.anim = 0;
   }
 
-  stop() { this.on = { wind: false, temp: false, rain: false, snow: false }; this.clearLayers(); this.renderLegend(); this.stopClock(); }
+  stop() { this.on = { wind: false, temp: false, rain: false, snow: false, towns: false }; this.clearLayers(); this.renderLegend(); this.stopClock(); }
 
   // ------------------------------------------------------------------ time bar
   buildBar() {
@@ -859,7 +907,7 @@ export class WeatherOverlay {
   }
 
   renderPill() {
-    const shown = LAYERS.filter(([k]) => this.on[k]);
+    const shown = [...LAYERS, TOWNS].filter(([k]) => this.on[k]);
     this.pill.innerHTML = `<span>${icon(shown[0] ? shown[0][4] : 'layers', 16)}</span><span>${shown.length ? `${shown[0][3]}${shown.length > 1 ? ` +${shown.length - 1}` : ''}` : 'Layers'}</span><span>${icon('chevronDown', 14)}</span>`;
     this.pill.setAttribute('aria-label', `Weather layers: ${shown.map((x) => x[3]).join(', ') || 'none'}`);
   }
@@ -867,11 +915,14 @@ export class WeatherOverlay {
   // The pill's menu: the layers, any of them at once, and Effects at the end; it stays open while you tick
   layerMenu() {
     const items = () => [
-      { group: 'Weather on the map', items: LAYERS.map(([k, label, desc, , ic]) => ({ icon: ic, label, desc, checked: this.on[k], keep: true, cls: `wx-${k}`, fn: () => tick(k, () => this.app.onToggle({ [k]: !this.on[k] })) })) },
+      { group: 'Weather on the map', items: LAYERS.map(layer) },
+      'hr',
+      { group: 'Points', items: [layer(TOWNS)] },
       'hr',
       { icon: 'sparkle', label: 'Effects', desc: 'Softer edges and falling rain', checked: this.effects, keep: true, cls: 'wx-fx', fn: () => tick('fx', () => this.setEffects(!this.effects)) },
       { note: 'Forecast by Open-Meteo. Radar and measured snow by FMI, and by RainViewer outside Finland.' },
     ];
+    const layer = ([k, label, desc, , ic]) => ({ icon: ic, label, desc, checked: this.on[k], keep: true, cls: `wx-${k}`, fn: () => tick(k, () => this.app.onToggle({ [k]: !this.on[k] })) });
     const tick = (k, fn) => { fn(); menu.refill(items()); menu.el.querySelector(`.wx-${k}`).focus({ preventScroll: true }); };
     if (this.menu) { this.menu.close(); return; } // (the pill again: it closes)
     this.pill.setAttribute('aria-expanded', 'true');
@@ -1112,6 +1163,8 @@ export class WeatherOverlay {
       rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`));
       rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>');
     }
+    if (this.on.towns) rows.push(this.map.getZoom() < TOWNS_Z ? '<div class="lgl"><span><b>Towns</b> the sky, °C and wind in m/s</span></div>'
+      : '<div class="lgl lg-note">Zoom out to see the towns’ weather</div>');
     const fold = this.foldMQ.matches, open = !fold || !!this.legendOpen;
     const key = `${rows.join('')}|${fold}|${open}`;
     this.legendEl.hidden = !rows.length;
@@ -1143,7 +1196,7 @@ export class WeatherOverlay {
       }
       const night = sunPosition(this.cur.t, ll).alt < -3;
       const kind = skyKind(s.rain, s.temp, s.cloud, night);
-      const sky = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' }[kind];
+      const sky = SKY[kind];
       const sum = this.accum(ll, 6);
       const rainTxt = s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry';
       const gust = s.gust > s.speed + 2 ? ` <span>gusts ${s.gust.toFixed(0)}</span>` : '';
