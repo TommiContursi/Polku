@@ -622,7 +622,7 @@ export function buildStyle(s, ctx) {
     layers,
   };
   if (s.terrain3d) {
-    style.terrain = { source: 'terrain', exaggeration: s.exaggeration || 1.4 };
+    style.terrain = { source: 'terrain', exaggeration: s.exaggeration || 1.5 };
     style.sky = { 'sky-color': '#bcd8f0', 'horizon-color': '#eef4f8', 'fog-color': '#eef2f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.85 };
   }
   return style;
