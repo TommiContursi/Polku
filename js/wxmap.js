@@ -13,22 +13,38 @@
 import { measuredSnow } from './winter.js';
 import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind } from './weather.js';
 import { compass } from './geo.js';
-import { h, icon, store } from './ui.js';
+import { h, icon, store, popMenu } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 import { fmiRadar, FI_BOUNDS } from './radar.js';
 import { sunPosition } from './sun.js';
 
 const MAX_CELLS = 60; // forecast points per grid (the view plus a margin); the field is smooth
 const IMG = 72; // field image resolution
+const STEP_IMG = 360; // the steps' image resolution: their edges stay edges
 const HOURS = 48;
 const CELL = 24; // px, screen cache resolution
 
 const WIND_RAMP = [[0, '#3b82f6'], [3, '#22d3ee'], [6, '#4ade80'], [9, '#facc15'], [12, '#fb923c'], [16, '#ef4444'], [22, '#a855f7']];
 // snow on the ground, cm (the model): a cool wash that leaves bare ground clear
-const SNOW_RAMP = [[1, '#e0f2fe'], [10, '#bae6fd'], [25, '#7dd3fc'], [50, '#60a5fa'], [80, '#6366f1'], [120, '#7c3aed']];
 const TEMP_RAMP = [[-25, '#7c3aed'], [-15, '#2563eb'], [-5, '#38bdf8'], [0, '#e0f2fe'], [5, '#a7f3d0'], [10, '#fde047'], [18, '#fb923c'], [25, '#ef4444'], [32, '#9f1239']];
-export const RAIN_RAMP = [[0.1, '#93c5fd'], [0.5, '#3b82f6'], [2, '#1d4ed8'], [5, '#7c3aed'], [10, '#db2777']];
-export { TEMP_RAMP, SNOW_RAMP };
+export { TEMP_RAMP };
+// Rain, snowfall and snow on the ground in steps, as the weather services draw them (#182's Weather service look):
+// each step one colour, light to dark, and the top step violet (never the route's magenta). [from, colour]
+const RAIN_STEPS = [[0.1, '#a5e4fb'], [0.5, '#38bdf8'], [2, '#1d6fe0'], [5, '#1e3a8a'], [15, '#a855f7']]; // mm/h
+const SNOWFALL_STEPS = [[0.1, '#ddd6fe'], [0.5, '#a78bfa'], [2, '#7c3aed']]; // mm/h, as water
+const SNOW_STEPS = [[1, '#e0f2fe'], [10, '#a5d8fb'], [25, '#5cb8f2'], [50, '#2f7fd6']]; // cm on the ground
+const stepRgba = (steps, v) => { let c = null; for (const [from, col] of steps) if (v >= from) c = col; return c && [...hex(c), 255]; };
+// what falls: as snow below +0.5 °C (the timeline's and the labels' line too)
+const fallRgba = (mmh, snow) => stepRgba(snow ? SNOWFALL_STEPS : RAIN_STEPS, mmh);
+const stepsCss = (steps) => `linear-gradient(90deg, ${steps.map(([, c], i) => `${c} ${(i * 100) / steps.length}% ${((i + 1) * 100) / steps.length}%`).join(', ')})`;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+// the weather menu's layers, in its order: [key, its name, its line, the pill's word, icon]
+const LAYERS = [
+  ['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'],
+  ['wind', 'Wind', 'Moving lines, coloured by its speed', 'Wind', 'wind'],
+  ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
+  ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
+];
 
 const hex = (c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 export function ramp(stops, v) {
@@ -65,6 +81,7 @@ export class WeatherOverlay {
     this.map = map;
     this.app = app; // { setImage(id, img|null), setRadar(r|null), setData(id, fc), dark() }
     this.on = { wind: false, temp: false, rain: false, snow: false };
+    this.effects = store.get('wxEffects', true); // softer edges and falling rain, over the steps (#182)
     this.open = false; // timeline bar visible
     this.hour = 0;
     this.grid = null;
@@ -93,16 +110,24 @@ export class WeatherOverlay {
   get layersOn() { return this.on.wind || this.on.temp || this.on.rain || this.on.snow; }
   // forecast data is needed for the weather layers and for the timeline strip
   get active() { return this.open || !!this.docked || this.layersOn; }
-  get animated() { return this.on.wind || this.on.rain; }
+  get animated() { return this.on.wind || this.falling; }
+  get falling() { return this.on.rain && this.effects; } // Effects' thin rain and snow
+
+  // Effects on or off: the steps' edges soft or crisp, rain falling or not; remembered
+  setEffects(on) {
+    this.effects = on;
+    store.set('wxEffects', on);
+    this.set({});
+  }
 
   set(layers) {
     Object.assign(this.on, layers);
     this.windCv.hidden = !this.on.wind;
-    this.rainCv.hidden = !this.on.rain;
-    this.renderChips();
+    this.rainCv.hidden = !this.falling;
+    this.renderPill();
     this.clearLayers();
-    if (!this.active) { this.stopClock(); return; }
     this.renderLegend();
+    if (!this.active) { this.stopClock(); return; }
     if (this.grid) { this.buildCam(); this.applyHour(true); }
     this.maybeFetch();
     if (this.animated) this.startAnim();
@@ -151,7 +176,7 @@ export class WeatherOverlay {
   wake() {
     if (this.active) {
       this.maybeFetch();
-      this.renderChips();
+      this.renderPill();
       this.renderTime();
       requestAnimationFrame(() => this.renderStrip());
       if (!this.anim) this.startAnim();
@@ -413,34 +438,54 @@ export class WeatherOverlay {
 
   // ------------------------------------------------------------------ map images
   renderImages() {
-    const g = this.grid;
-    if (!g) return;
+    const g = this.grid, c = this.cur;
+    if (!g || !c) return;
     const coords = [[g.box[0], g.box[3]], [g.box[2], g.box[3]], [g.box[2], g.box[1]], [g.box[0], g.box[1]]];
     const [x0, y0, x1, y1] = g.merc;
-    const draw = (fn) => {
+    // fn(at) → [r, g, b, a] or null, where at(array) is the selected hour's value there, bilinear between the grid's
+    // points; size: the image's pixels a side (the steps' edges need more than a smooth field)
+    const draw = (fn, size = IMG, blur = 0) => {
+      const gx = Float32Array.from({ length: size }, (_, px) => (lonOf(x0 + ((x1 - x0) * (px + 0.5)) / size) - g.lon0) / g.dLon);
+      const gy = Float32Array.from({ length: size }, (_, py) => (g.lat0 - latOf(y0 + ((y1 - y0) * (py + 0.5)) / size)) / g.dLat);
       const cv = document.createElement('canvas');
-      cv.width = IMG; cv.height = IMG;
+      cv.width = cv.height = size;
       const ctx = cv.getContext('2d');
-      const img = ctx.createImageData(IMG, IMG);
-      for (let py = 0; py < IMG; py++) {
-        for (let px = 0; px < IMG; px++) {
-          const s = this.sample([lonOf(x0 + ((x1 - x0) * (px + 0.5)) / IMG), latOf(y0 + ((y1 - y0) * (py + 0.5)) / IMG)]);
-          const rgba = s ? fn(s) : null;
-          if (!rgba) continue;
-          const o = (py * IMG + px) * 4;
-          img.data[o] = rgba[0]; img.data[o + 1] = rgba[1]; img.data[o + 2] = rgba[2]; img.data[o + 3] = rgba[3];
+      const img = ctx.createImageData(size, size);
+      let k = 0, tx = 0, ty = 0;
+      const at = (a) => a[k] * (1 - tx) * (1 - ty) + a[k + 1] * tx * (1 - ty) + a[k + g.cols] * (1 - tx) * ty + a[k + g.cols + 1] * tx * ty;
+      for (let py = 0; py < size; py++) {
+        const y = gy[py];
+        if (!(y >= 0 && y <= g.rows - 1)) continue;
+        const cy = Math.min(g.rows - 2, Math.floor(y));
+        ty = y - cy;
+        for (let px = 0; px < size; px++) {
+          const x = gx[px];
+          if (!(x >= 0 && x <= g.cols - 1)) continue;
+          const cx = Math.min(g.cols - 2, Math.floor(x));
+          tx = x - cx; k = cy * g.cols + cx;
+          const rgba = fn(at);
+          if (rgba) img.data.set(rgba, (py * size + px) * 4);
         }
       }
       ctx.putImageData(img, 0, 0);
+      if (blur) { // Effects: the steps' edges feathered, their colours as they are
+        const soft = document.createElement('canvas');
+        soft.width = soft.height = size;
+        const sc = soft.getContext('2d');
+        sc.filter = `blur(${blur}px)`;
+        sc.drawImage(cv, 0, 0);
+        return { url: soft.toDataURL('image/png'), coordinates: coords };
+      }
       return { url: cv.toDataURL('image/png'), coordinates: coords };
     };
     const fieldOn = this.on.temp || this.on.wind;
-    this.app.setImage('wxField', fieldOn ? draw((s) => (this.on.temp ? [...ramp(TEMP_RAMP, s.temp), 255] : [...ramp(WIND_RAMP, s.speed), 255])) : null);
-    // snow on the ground: a wash where there's 1 cm or more (bare ground stays clear)
-    this.app.setImage('wxSnow', this.on.snow ? draw((x) => (!(x.snow >= 1) ? null : [...ramp(SNOW_RAMP, x.snow), Math.round(Math.min(220, 120 + x.snow * 2))])) : null);
+    this.app.setImage('wxField', fieldOn ? draw((at) => [...(this.on.temp ? ramp(TEMP_RAMP, at(c.temp)) : ramp(WIND_RAMP, Math.hypot(at(c.u), at(c.v)))), 255]) : null);
+    // snow on the ground: its steps where there's 1 cm or more (bare ground stays clear; cells from before snow was asked for aren't known)
+    this.app.setImage('wxSnow', this.on.snow ? draw((at) => stepRgba(SNOW_STEPS, at(c.snow)), STEP_IMG, this.effects ? 1 : 0) : null);
     const forecastRain = this.on.rain && this.hour >= 0.5;
-    this.app.setImage('wxRain', forecastRain ? draw((s) => (s.rain < 0.05 ? null : [...ramp(RAIN_RAMP, s.rain), Math.round(Math.min(235, 150 + s.rain * 45))])) : null);
+    this.app.setImage('wxRain', forecastRain ? draw((at) => fallRgba(at(c.rain), at(c.temp) < 0.5), STEP_IMG, this.effects ? 1 : 0) : null);
     this.syncRadar();
+    this.paintRadar();
     this.renderLabels();
   }
 
@@ -513,11 +558,11 @@ export class WeatherOverlay {
       const km = (box[2] - box[0]) * 111.32 * Math.cos((((box[1] + box[3]) / 2) * Math.PI) / 180);
       const width = Math.max(24, Math.min(1024, Math.round(km)));
       const height = Math.max(24, Math.min(2048, Math.round(width * Math.abs(aspect))));
-      const img = await fmiRadar(box, width, height, (mmh) => ramp(RAIN_RAMP, mmh));
+      const img = await fmiRadar(box, width, height);
       if (!this.on.rain || this.hour >= 0.5) return;
       const full = box === fi;
-      this.fi = { box, t: Date.now(), zoomed: z >= 7.5, rv: full }; // rv: RainViewer still needed around it
-      this.app.setImage('wxRadarFi', img);
+      this.fi = { box, t: Date.now(), zoomed: z >= 7.5, rv: full, img }; // rv: RainViewer still needed around it
+      this.paintRadar();
       this.fiRate = img.rateAt;
       this.renderLabels(); // the amounts at "now" are the radar's
       this.renderTime();
@@ -531,6 +576,17 @@ export class WeatherOverlay {
     } finally {
       this.fiLoading = false;
     }
+  }
+
+  // FMI's radar in the steps, as snowfall where the forecast says below +0.5 °C now; drawn again only when
+  // Effects or the forecast changes (no new request)
+  paintRadar() {
+    const fi = this.fi;
+    const key = `${this.effects}|${this.grid ? this.grid.t : ''}`;
+    if (!fi || fi.painted === key) return;
+    fi.painted = key;
+    const snowAt = this.cur && ((lon, lat) => this.sample([lon, lat])?.temp < 0.5);
+    this.app.setImage('wxRadarFi', { url: fi.img.paint(fallRgba, { snowAt, blur: this.effects ? 1.5 : 0.5 }), coordinates: fi.img.coordinates });
   }
 
   syncRadarRv() {
@@ -629,13 +685,18 @@ export class WeatherOverlay {
         vx[i] = (dx / len) * v; vy[i] = (dy / len) * v;
       }
       // "now": the drops follow the radar where it covers, else the forecast
-      const radar = this.fiRate ? this.fiRate(cam.ll[2 * i], cam.ll[2 * i + 1]) : null;
+      const radar = this.nowRate(cam.ll[2 * i], cam.ll[2 * i + 1]);
       rain[i] = radar != null ? radar : s.rain;
       snow[i] = s.temp < 0.5 ? 1 : 0;
-      if (rain[i] >= 0.05) wet++;
+      if (rain[i] >= 0.1) wet++;
     }
     this.field = { vx, vy, rain, snow, wet: wet / n };
+    this.precipStill = false; // (reduced motion: the still rain is drawn again for the new field)
   }
+
+  // FMI's radar rate now (mm/h), or null where it doesn't reach or at a later hour (its fiRate is
+  // dropped only in renderImages(), after the field for the new hour is built)
+  nowRate(lon, lat) { return this.fiRate && this.hour < 0.5 ? this.fiRate(lon, lat) : null; }
 
   // ------------------------------------------------------------------ animation
   startAnim() {
@@ -676,83 +737,73 @@ export class WeatherOverlay {
         ctx.stroke();
       }
 
-      if (this.on.rain) this.drawPrecip(k, f, cellAt);
+      if (this.falling) this.drawPrecip(k, f, cellAt);
     };
     this.anim = requestAnimationFrame(tick);
   }
 
-  // Falling rain streaks (slanted by the wind) and drifting snowflakes. How many
-  // follows the rate: drizzle is a few short, faint streaks; from about 4 mm/h
-  // it's the full shower (before, drizzle looked like pouring: four tries a drop
-  // at a fixed 15 % floor filled the screen).
+  // Effects' rain (#182): a few thin white streaks at the wind's angle where it rains, more where it rains
+  // harder, and small white flakes where it snows; the steps under them say how much. In reduced motion
+  // they're drawn once, still, until the field changes.
   drawPrecip(k, f, cellAt) {
+    const still = REDUCED.matches;
+    if (still && this.precipStill) return;
     const ctx = this.rainCtx;
     ctx.clearRect(0, 0, this.W, this.H);
     if (f.wet <= 0) return;
-    const n = Math.min(1600, Math.round((this.W * this.H) / 650));
-    while (this.drops.length < n) this.drops.push({ age: 1, max: 0 });
+    const n = Math.min(1000, Math.round((this.W * this.H) / 1500));
+    while (this.drops.length < n) this.drops.push({ age: 1, max: 0, x: -1 });
     this.drops.length = n;
-    const dark = this.app.dark();
     const spawn = (d) => {
       const x = Math.random() * this.W, y = Math.random() * this.H;
       const i = cellAt(x, y);
-      const r = f.rain[i];
-      // 0.1 mm/h ≈ 5 % of the drops, 1 mm/h ≈ 33 %, 2 mm/h ≈ 57 %, 4 mm/h and up: all
-      if (r >= 0.05 && Math.random() < Math.min(1, Math.max(0.02, r / 4) ** 0.8)) {
-        d.x = x; d.y = y; d.age = 0; d.snow = !!f.snow[i]; d.light = r < 1;
-        d.max = d.snow ? 90 + Math.random() * 90 : 18 + Math.random() * 22;
-        d.len = (r < 1 ? 3.5 : r < 4 ? 6 : 8) + Math.random() * 4;
-        d.fall = d.snow ? 0.7 + Math.random() * 0.6 : (r < 1 ? 5.5 : 7) + Math.random() * 4;
+      // the radar's scattered echoes are finer than a cell (100 km zoomed out): asked where the drop would be
+      let r = f.rain[i];
+      if (r >= 0.1 && this.fiRate && this.hour < 0.5) { const p = this.map.unproject([x, y]); r = this.nowRate(p.lng, p.lat) ?? r; }
+      // 0.1 mm/h: about one drop in eight tries; 3.6 mm/h and up: all of them
+      if (r >= 0.1 && Math.random() < Math.min(1, 0.1 + r / 4)) {
+        d.x = x; d.y = y; d.age = 0; d.snow = !!f.snow[i];
+        d.max = d.snow ? 150 + Math.random() * 120 : 14 + Math.random() * 16;
+        d.len = 3.9 + Math.min(11, r * 1.5);
+        d.fall = d.snow ? 0.85 : 5.4 + Math.min(5.8, r * 0.7);
         d.phase = Math.random() * 6.28;
-        return true;
+        return;
       }
       d.age = 0; d.max = 4 + Math.random() * 10; d.x = -1; // dormant: try again soon
-      return false;
     };
-    ctx.lineCap = 'round';
-    const heavy = new Path2D(), light = new Path2D();
-    const flakes = [];
-    for (const d of this.drops) {
-      if ((d.age += k) > d.max) { spawn(d); continue; }
-      if (d.x < 0) continue;
-      const i = cellAt(d.x, d.y);
-      const wx = (f.vx[i] || 0) * (d.snow ? 2 : 3);
-      if (d.snow) {
-        d.x += (wx + Math.sin(d.phase + d.age * 0.08) * 0.4) * k;
+    const move = (k) => {
+      for (const d of this.drops) {
+        if ((d.age += k) > d.max) { spawn(d); continue; }
+        if (d.x < 0) continue;
+        const wx = f.vx[cellAt(d.x, d.y)] || 0;
+        if (d.snow) d.x += (wx * 1.5 + Math.sin(d.phase + d.age * 0.06) * 0.35) * k;
+        else d.x += wx * 4.5 * k;
         d.y += d.fall * k;
-        flakes.push(d);
-      } else {
-        const dx = wx * 1.5, dy = d.fall;
-        const l = d.len / Math.hypot(dx, dy);
-        const path = d.light ? light : heavy;
-        path.moveTo(d.x, d.y);
-        path.lineTo(d.x - dx * l, d.y - dy * l);
-        d.x += dx * k; d.y += dy * k;
+        if (d.y > this.H || d.x < 0 || d.x > this.W) d.age = d.max + 1;
       }
-      if (d.y > this.H || d.x < 0 || d.x > this.W) d.age = d.max + 1;
+    };
+    if (still) { for (let j = 0; j < 70; j++) move(1); this.precipStill = true; } else move(k);
+    const dark = this.app.dark(), streaks = new Path2D(), flakes = new Path2D();
+    for (const d of this.drops) {
+      if (d.x < 0) continue;
+      if (d.snow) { flakes.moveTo(d.x + 2.1, d.y); flakes.arc(d.x, d.y, 2.1, 0, Math.PI * 2); continue; }
+      const dx = (f.vx[cellAt(d.x, d.y)] || 0) * 4.5, l = d.len / Math.hypot(dx, d.fall);
+      streaks.moveTo(d.x, d.y);
+      streaks.lineTo(d.x - dx * l, d.y - d.fall * l);
     }
-    // drizzle and light rain fainter and thinner than a real shower
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = dark ? 'rgba(186,230,253,0.45)' : 'rgba(29,78,216,0.32)';
-    ctx.stroke(light);
-    ctx.lineWidth = 1.3;
-    ctx.strokeStyle = dark ? 'rgba(186,230,253,0.8)' : 'rgba(29,78,216,0.6)';
-    ctx.stroke(heavy);
-    if (flakes.length) {
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = dark ? 'rgba(255,255,255,0.4)' : 'rgba(51,65,85,0.55)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      for (const d of flakes) { ctx.moveTo(d.x + 1.8, d.y); ctx.arc(d.x, d.y, 1.8, 0, Math.PI * 2); }
-      ctx.fill();
-      ctx.stroke();
-    }
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = dark ? 'rgba(226,232,240,0.5)' : 'rgba(255,255,255,0.75)';
+    ctx.stroke(streaks);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fill(flakes);
+    if (!dark) { ctx.lineWidth = 0.7; ctx.strokeStyle = 'rgba(71,85,105,0.4)'; ctx.stroke(flakes); }
   }
 
   // Remove what the switched-off layers drew (images, labels, particles).
   clearLayers() {
     if (!this.on.wind) { this.clearCanvas(this.windCtx, this.windCv); this.windCv.hidden = true; }
-    if (!this.on.rain) { this.clearCanvas(this.rainCtx, this.rainCv); this.rainCv.hidden = true; }
+    if (!this.falling) { this.clearCanvas(this.rainCtx, this.rainCv); this.rainCv.hidden = true; }
     if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
     if (!this.on.snow) this.app.setImage('wxSnow', null);
     if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; }
@@ -767,7 +818,7 @@ export class WeatherOverlay {
     this.anim = 0;
   }
 
-  stop() { this.on = { wind: false, temp: false, rain: false, snow: false }; this.clearLayers(); this.stopClock(); }
+  stop() { this.on = { wind: false, temp: false, rain: false, snow: false }; this.clearLayers(); this.renderLegend(); this.stopClock(); }
 
   // ------------------------------------------------------------------ time bar
   buildBar() {
@@ -777,12 +828,13 @@ export class WeatherOverlay {
     this.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => this.togglePlay(), html: icon('play', 18) });
     this.slider = h('input', { type: 'range', min: '0', max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time, hours from now', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(+e.target.value); } });
     this.timeEl = h('div', { class: 'wx-time' });
-    this.legendEl = h('div', { class: 'wx-legend' });
-    this.readEl = h('div', { class: 'wx-read' });
-    // weather layers right on the timeline
-    this.chipsEl = h('div', { class: 'chips tl-layers', role: 'group', 'aria-label': 'Weather layers' },
-      ...[['wind', 'wind', 'Wind'], ['temp', 'temp', 'Temperature'], ['rain', 'rain', 'Rain'], ['snow', 'snow', 'Snow']].map(([k, ic, label]) =>
-        h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': 'false', onclick: () => this.app.onToggle({ [k]: !this.on[k] }), html: `${icon(ic, 14)}${label}` })));
+    // the map's layers: one pill naming what's on, opening their menu (#182; the weather line's, step 6b)
+    this.pill = h('button', { type: 'button', class: 'rt-pill wl-layer', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.layerMenu() });
+    // the legend over the map, top left, while a layer is on: apart from the timeline, wherever that is
+    this.legendEl = h('div', { class: 'wx-legend', role: 'region', 'aria-label': 'Map legend', hidden: true });
+    document.querySelector('.map-hints').append(this.legendEl);
+    this.foldMQ = matchMedia('(max-width: 340px), (max-height: 480px)'); // (a small screen, or 200 %: it folds to its name)
+    this.foldMQ.addEventListener('change', () => { this.legendKey = null; this.renderLegend(); });
     this.noteEl = h('div', { class: 'tl-note' });
     this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': '48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
     this.nowEl = h('div', { class: 'tl-now' });
@@ -790,20 +842,34 @@ export class WeatherOverlay {
     bar.append(
       h('div', { class: 'tl-head' },
         h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` }),
-        this.chipsEl,
+        this.pill,
         h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) })),
       h('div', { class: 'tl-main' }, this.stripCv, this.nowEl),
       h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl),
-      this.infoEl = h('div', { class: 'wx-row wx-info', hidden: true }, this.legendEl, this.readEl),
       this.noteEl,
     );
     new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);
     this.bindFloat();
   }
 
-  renderChips() {
-    if (!this.chipsEl) return;
-    for (const b of this.chipsEl.children) b.setAttribute('aria-pressed', String(!!this.on[b.dataset.k]));
+  renderPill() {
+    const shown = LAYERS.filter(([k]) => this.on[k]);
+    this.pill.innerHTML = `<span>${icon(shown[0] ? shown[0][4] : 'layers', 16)}</span><span>${shown.length ? `${shown[0][3]}${shown.length > 1 ? ` +${shown.length - 1}` : ''}` : 'Layers'}</span><span>${icon('chevronDown', 14)}</span>`;
+    this.pill.setAttribute('aria-label', `Weather layers: ${shown.map((x) => x[3]).join(', ') || 'none'}`);
+  }
+
+  // The pill's menu: the layers, any of them at once, and Effects at the end; it stays open while you tick
+  layerMenu() {
+    const items = () => [
+      { group: 'Weather on the map', items: LAYERS.map(([k, label, desc, , ic]) => ({ icon: ic, label, desc, checked: this.on[k], keep: true, cls: `wx-${k}`, fn: () => tick(k, () => this.app.onToggle({ [k]: !this.on[k] })) })) },
+      'hr',
+      { icon: 'sparkle', label: 'Effects', desc: 'Softer edges and falling rain', checked: this.effects, keep: true, cls: 'wx-fx', fn: () => tick('fx', () => this.setEffects(!this.effects)) },
+      { note: 'Forecast by Open-Meteo. Radar and measured snow by FMI, and by RainViewer outside Finland.' },
+    ];
+    const tick = (k, fn) => { fn(); menu.refill(items()); menu.el.querySelector(`.wx-${k}`).focus({ preventScroll: true }); };
+    if (this.menu) { this.menu.close(); return; } // (the pill again: it closes)
+    this.pill.setAttribute('aria-expanded', 'true');
+    const menu = this.menu = popMenu(this.pill, items(), { label: 'Weather layers', onClose: () => { this.menu = null; this.pill.setAttribute('aria-expanded', 'false'); } });
   }
 
   // ------------------------------------------------------------------ timeline strip
@@ -1023,21 +1089,34 @@ export class WeatherOverlay {
     if (this.app.onTime) this.app.onTime(this.hour);
   }
 
+  // What the colours mean, in words, over the map while a layer is on (#182, as yr's app has it). On a small
+  // screen or at 200 % it folds to its name until it's opened.
   renderLegend() {
-    const parts = [];
-    if (this.on.temp) parts.push(['°C', TEMP_RAMP]);
-    else if (this.on.wind) parts.push(['m/s', WIND_RAMP]);
-    if (this.on.rain) parts.push(['mm/h', RAIN_RAMP]);
-    if (this.on.snow) parts.push(['cm snow', SNOW_RAMP]);
-    const key = parts.map((p) => p[0]).join();
+    const c = this.cur, rows = [];
+    const scale = (bar, words) => `<span class="wx-lg"><i style="background:${bar}"></i><small>${words}</small></span>`;
+    if (this.on.temp) rows.push(scale(rampCss(TEMP_RAMP), `<b>Temperature</b> ${TEMP_RAMP[0][0]}–${TEMP_RAMP[TEMP_RAMP.length - 1][0]} °C`));
+    else if (this.on.wind) rows.push(scale(rampCss(WIND_RAMP), `<b>Wind</b> ${WIND_RAMP[0][0]}–${WIND_RAMP[WIND_RAMP.length - 1][0]} m/s`));
+    if (this.on.rain) {
+      rows.push(scale(stepsCss(RAIN_STEPS), `<b>Rain</b> ${RAIN_STEPS.map(([v]) => v).join(' · ')} mm/h`));
+      rows.push('<div class="lgl lg-note">light · moderate · heavy · very heavy</div>');
+      // snowfall where it's cold enough somewhere on the map at this hour
+      if (c && c.temp.some((t) => t < 0.5)) rows.push(scale(stepsCss(SNOWFALL_STEPS), `<b>Snowfall</b> ${SNOWFALL_STEPS.map(([v]) => v).join(' · ')} mm/h`));
+    }
+    if (this.on.snow) {
+      rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`));
+      rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>');
+    }
+    const fold = this.foldMQ.matches, open = !fold || !!this.legendOpen;
+    const key = `${rows.join('')}|${fold}|${open}`;
+    this.legendEl.hidden = !rows.length;
     if (key === this.legendKey) return;
     this.legendKey = key;
-    this.legendEl.innerHTML = '';
-    for (const [unit, stops] of parts) {
-      this.legendEl.append(h('span', { class: 'wx-lg' },
-        h('i', { style: `background:${rampCss(stops)}` }),
-        h('small', {}, `${stops[0][0]}–${stops[stops.length - 1][0]} ${unit}`)));
-    }
+    this.legendEl.innerHTML = (fold ? `<button type="button" class="lg-fold" aria-expanded="${open}">Legend ${icon(open ? 'chevronUp' : 'chevronDown', 14)}</button>` : '') + (open ? rows.join('') : '');
+    this.legendEl.querySelector('.lg-fold')?.addEventListener('click', () => {
+      this.legendOpen = !open;
+      this.renderLegend();
+      this.legendEl.querySelector('.lg-fold').focus();
+    });
   }
 
   // The weather card beside the strip: the selected time at the spot under the
@@ -1048,7 +1127,6 @@ export class WeatherOverlay {
       this.readFrame = 0;
       if (!this.active || !this.nowEl) return;
       this.renderLegend();
-      this.infoEl.hidden = !this.legendKey;
       const ll = this.heldLL || this.pointerLL || this.map.getCenter().toArray();
       const s = this.sample(ll);
       this.nowEl.style.setProperty('--tl-lines', this.on.snow ? 4 : 3); // (its room from the start: css/app.css, #301)

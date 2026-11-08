@@ -653,11 +653,11 @@ function addWeather(s, ctx, sources, layers) {
   }
   if (wx.snow && d.wxSnow) {
     sources.wxSnow = { type: 'image', url: d.wxSnow.url, coordinates: d.wxSnow.coordinates };
-    layers.push({ id: 'wx-snow', type: 'raster', source: 'wxSnow', paint: { 'raster-opacity': op('wx:snow', 0.7), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    layers.push({ id: 'wx-snow', type: 'raster', source: 'wxSnow', paint: { 'raster-opacity': op('wx:snow', 0.5), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
   if (wx.rain && d.wxRain) {
     sources.wxRain = { type: 'image', url: d.wxRain.url, coordinates: d.wxRain.coordinates };
-    layers.push({ id: 'wx-rain', type: 'raster', source: 'wxRain', paint: { 'raster-opacity': op('wx:rain', 0.85), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    layers.push({ id: 'wx-rain', type: 'raster', source: 'wxRain', paint: { 'raster-opacity': op('wx:rain', 0.55), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
   if (wx.rain && d.wxRadar) {
     if (d.wxRadar.rv) {
@@ -668,7 +668,7 @@ function addWeather(s, ctx, sources, layers) {
   // Finland: FMI's composite, fetched as data and drawn by js/radar.js
   if (wx.rain && d.wxRadarFi) {
     sources.wxRadarFi = { type: 'image', url: d.wxRadarFi.url, coordinates: d.wxRadarFi.coordinates };
-    layers.push({ id: 'wx-radar-fi', type: 'raster', source: 'wxRadarFi', paint: { 'raster-opacity': op('wx:rain', 0.85), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    layers.push({ id: 'wx-radar-fi', type: 'raster', source: 'wxRadarFi', paint: { 'raster-opacity': op('wx:rain', 0.55), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
 }
 

@@ -5150,8 +5150,10 @@ WINTER = """(async () => {
     [...t2.querySelectorAll('.seg button')].find((b) => b.textContent === 'Difficulty').click();
     await wait(500);
   }
-  // the snow chip on the timeline
-  if (!document.querySelector('.tl-layers [data-k=snow]')) errs.push('no Snow on the timeline');
+  // Snow on the ground in the timeline's weather menu
+  document.querySelector('#wx-bar .wl-layer').click();
+  if (!document.querySelector('.menu-pop .wx-snow')) errs.push('no Snow on the ground in the weather menu');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
   W.setWinterSetting('auto');
   return errs;
 })()"""
@@ -7972,7 +7974,7 @@ RADAR = r"""(async () => {
     return buf;
   };
   const center = i => [-1 + (i*8+4.5)*2/w, -0.125];
-  const colour = v => [Math.min(255,Math.round(v*20)),40,80];
+  const colour = v => [Math.min(255,Math.round(v*20)),40,80,200];
   window.fetch = (input, init) => {
     const url = String(input?.url || input);
     if (!url.startsWith('https://openwms.fmi.fi/')) return real(input, init);
@@ -7998,14 +8000,14 @@ RADAR = r"""(async () => {
     const before=net.usage().find(s=>s.id==='fmi').session;
     for(const variant of ['little endian','big endian, reordered palette']) {
       le=variant==='little endian'; remap=!le;
-      const from=calls.length, image=await fmiRadar(box,w,h,colour);
+      const from=calls.length, image=await fmiRadar(box,w,h);
       if(calls.length!==from+1 || calls[from]!=='Radar:radar_finland_cappi_rate') errs.push(`${variant}: did not use the replacement alone`);
       for(let i=0;i<fx.samples.length;i++) {
         const s=fx.samples[i], got=image.rateAt(...center(i));
         if(s.expectedMmh===null ? got!==null : got===null || Math.abs(got-s.expectedMmh)>.001) errs.push(`${variant} ${s.name}: ${got} mm/h (expected ${s.expectedMmh})`);
       }
       if(image.rateAt(2,0)!==null) errs.push(`${variant}: outside the image is dry`);
-      const img=new Image();img.src=image.url;await img.decode();
+      const img=new Image();img.src=image.paint(colour);await img.decode();
       const cv=document.createElement('canvas');cv.width=w;cv.height=h;const ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
       const px=ctx.getImageData(0,0,w,h).data;
       for(let i=0;i<fx.samples.length;i++) {
@@ -8018,19 +8020,19 @@ RADAR = r"""(async () => {
       if(px[a]!==px[b] || px[a+3]!==px[b+3]) errs.push(`${variant}: extreme rain colour depends on palette order`);
     }
     for(const failure of ['404','raw','bad','truncated']) {
-      mode=failure; const from=calls.length, image=await fmiRadar(box,w,h,colour);
+      mode=failure; const from=calls.length, image=await fmiRadar(box,w,h);
       if(calls.slice(from).join(',')!=='Radar:radar_finland_cappi_rate,Radar:radar_finland_cappi_dbzh') errs.push(`${failure}: no reflectivity fallback`);
       const rain=image.rateAt(...center(2));
       if(!(rain>.3 && rain<2) || image.rateAt(...center(0))!==0 || image.rateAt(...center(1))!==0 || image.rateAt(...center(4))!==null) errs.push(`${failure}: fallback units/dry/no-data are wrong`);
     }
     mode='both404';let rejected=false;
-    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    try { await fmiRadar(box,w,h); } catch { rejected=true; }
     if(!rejected) errs.push('both radar layers failed but returned a complete image');
     mode='fallbackraw';rejected=false;
-    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    try { await fmiRadar(box,w,h); } catch { rejected=true; }
     if(!rejected) errs.push('unstyled fallback bytes were interpreted as dBZ');
     mode='limited';const from=calls.length;rejected=false;
-    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    try { await fmiRadar(box,w,h); } catch { rejected=true; }
     if(!rejected || calls.length!==from+1 || net.sourceStatus('fmi')?.reason!=='limit') errs.push('FMI request limit was bypassed for the fallback');
     if(net.usage().find(s=>s.id==='fmi').session!==before+calls.length) errs.push('radar requests did not all go through request()');
   } finally { window.fetch=real; }
@@ -17010,11 +17012,11 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const way = document.querySelector('.pl-way'), box = way.appendChild(document.createElement('div'));
   const chip = (e) => { const c = cs(e); return `${c.backgroundColor} ${c.borderTopWidth} ${c.borderTopColor} ${c.color}`; };
   const ref = way.querySelector('.rt-chips .chip[aria-pressed=true]');
-  box.innerHTML = `<div class="chips"><button class="chip" aria-pressed="true">Grade</button></div><div class="chips tl-layers"><button class="chip" aria-pressed="true">Wind</button></div>
+  box.innerHTML = `<div class="chips"><button class="chip" aria-pressed="true">Grade</button></div>
     <div class="style-presets"><span class="chip chip-on">Custom</span></div><div class="act-chips"><button class="act-chip" aria-pressed="true">Canoe</button></div>
     <div class="menu-chips"><button class="menu-item chip" aria-checked="true"><span>Flowy</span></button></div>`;
   if (!ref) out.push('no chosen length in the round trip');
-  else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.tl-layers .chip', 'the timeline’s chip'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
+  else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
     if (chip(box.querySelector(sel)) !== chip(ref)) out.push(`${what}, chosen: ${chip(box.querySelector(sel))}, not the round trip's ${chip(ref)}`);
   // switches: one height in a place, --target; the chosen one white (--seg-on), with black words and a green icon (the green where
   // it sits: the glass's on the glass, #547)
@@ -17289,14 +17291,11 @@ TG_LOOK = """(() => {
   for (const [what, sel] of [['the search', '#search-input'], ['the sport pill', '#activity-bar .act-current'], ['Settings', '#btn-settings'],
     ['the Polku mark', '.topbar .brand'], ['Zoom in to see every trail', '#zoom-hint'], ["the credits' (i)", '.maplibregl-ctrl-attrib-button'],
     ['the compass', '.ctrl-compass button'], ['Locate', '#btn-locate'], ['3D', '.ctrl-3d'], ['Weather', '#btn-time'], ['Layers', '#btn-layers'],
-    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
+    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the weather menu's pill", '#wx-bar .wl-layer'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
     ["a map popup's ✕", '.polku-popup .maplibregl-popup-close-button']]) {
     const e = document.querySelector(sel);
     if (!e || !e.getClientRects().length) fails.push(`${what} isn't there (${sel})`); else hit(what, e);
   }
-  const chips = [...document.querySelectorAll('#wx-bar .tl-layers .chip')];
-  if (chips.length !== 4) fails.push(`the timeline has ${chips.length} layer chips, not 4`);
-  for (const e of chips) hit(`the timeline's ${e.textContent.trim()}`, e);
   pop.remove();
   // words: 11 px or more, outside the planner; the map's buttons' labels 12
   const small = new Map(), walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
