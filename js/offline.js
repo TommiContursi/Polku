@@ -34,7 +34,8 @@ export function registerServiceWorker() {
 
 // ------------------------------------------------------------------ planning
 let tilejson = null;
-const ofmTemplate = () => (tilejson ||= fetch(OFM_TILEJSON).then((r) => r.json()).then((j) => j.tiles[0]).catch((e) => { tilejson = null; throw e; }));
+/** OpenFreeMap's tile URL, from its TileJSON (as the map's), asked for once. */
+export const ofmTemplate = () => (tilejson ||= fetch(OFM_TILEJSON).then((r) => r.json()).then((j) => j.tiles[0]).catch((e) => { tilejson = null; throw e; }));
 
 /** Tiles covering `buffer` metres either side of the line, zoom 5–14. */
 export async function planArea(line, { buffer = 1000, terrain = true } = {}) {
