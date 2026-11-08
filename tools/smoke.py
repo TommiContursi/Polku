@@ -10593,8 +10593,8 @@ def fold_desktop(chrome):
                 fails.append(f'the card opened again: {c2} (was {c0})')
             # from the keyboard (Enter on ⌄: a click with no pointer) it folds and opens at once, with reduced motion too
             for what in ('folded', 'opened'):
-                m = pg.js("(async () => { const b = polku.planner.cards.box; b.querySelector('.way-fold').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })); await new Promise((r) => setTimeout(r, 30)); return b.getAnimations().map((a) => `${a.transitionProperty || a.animationName} at ${Math.round(a.currentTime)} of ${a.effect.getTiming().duration} ms`); })()")
-                if m:  # (which, and how far along: one left from the clicks before on a slow runner, or the Enter's own, #605)
+                m = pg.js("(async () => { const b = polku.planner.cards.box; b.getAnimations().forEach((a) => a.finish()); b.querySelector('.way-fold').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })); await new Promise((r) => setTimeout(r, 30)); return b.getAnimations().map((a) => `${a.transitionProperty || a.animationName} at ${Math.round(a.currentTime)} of ${a.effect.getTiming().duration} ms`); })()")
+                if m:  # (the clicks' own are finished first: GitHub's runner left the last one pending at 0 of 180 ms, #605)
                     fails.append(f'the card {what} with Enter: {len(m)} animation(s), not at once: {m}')
                 time.sleep(0.3)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
