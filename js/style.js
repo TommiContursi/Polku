@@ -17,6 +17,9 @@ const FONT_I = ['Noto Sans Italic'];
 const zi = (...stops) => ['interpolate', ['linear'], ['zoom'], ...stops];
 const ze = (base, ...stops) => ['interpolate', ['exponential', base], ['zoom'], ...stops];
 
+// a building's height in metres: one place, for when a better source than OSM's comes (#648)
+const BUILDING_HEIGHT = ['get', 'render_height'];
+
 const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
@@ -311,6 +314,15 @@ export function buildStyle(s, ctx) {
   if (!topoBase) add({ id: 'boundary', type: 'line', source: 'ofm', 'source-layer': 'boundary', filter: ['all', ['<=', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': P.boundary, 'line-width': zi(3, 0.8, 10, 2), 'line-dasharray': [3, 1.5, 1, 1.5] } });
 
   addRasterOverlays(s, sources, layers, 'overlay');
+
+  // In 3D the buildings stand up (#643), over the roads and trails, under the routes, the names and your route.
+  // Their heights are OpenFreeMap's from OSM's height or floors, about 5 m where it has neither; they rise from zoom 14.
+  if (vectorFills && s.terrain3d) {
+    add({ id: 'building-3d', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 14, paint: {
+      'fill-extrusion-color': P.building, 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true,
+      'fill-extrusion-height': zi(14, 0, 15, BUILDING_HEIGHT), 'fill-extrusion-base': zi(14, 0, 15, ['get', 'render_min_height']),
+    } });
+  }
 
   // ---- Official routes (LIPAS) -----------------------------------------
   if (s.overlays.lipasRoutes || (s.winterOn && s.overlays.lipasWinter)) {

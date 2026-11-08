@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-09
 
+### Buildings stand up in 3D ([#643](https://github.com/TommiContursi/Polku/issues/643))
+
+- In 3D the buildings stand up from zoom 14, so a town, a ski centre or a harbour reads at a glance. Their heights come from OpenStreetMap's heights and floor counts; a building with neither stands about 5 m tall.
+- They're on the Trail map, Plain and the night map, not over the aerial photos or the terrain maps. Where a building stands in front of your route, it hides that piece of it.
+
 ### 3D without raised hills, and the shadows' two switches ([#936](https://github.com/TommiContursi/Polku/issues/936))
 
 - **Raised hills**, in the 3D pad's **⋯**, **Layers** under 3D terrain and **Settings → Map and planner**, can be turned off. Then **3D** only tilts the map and keeps the ground flat, as tilting it with two fingers does. Raised hills stay the default.
