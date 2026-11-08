@@ -49,6 +49,19 @@ An idea from 2026-11-07: make the weather on the map look much better, with clou
 - **Added 2026-11-08, from #903 and the weather card's plan:** the map's hours are step 6b's weather line, whose pill ("Rain ▾") opens the layers' menu (more than one at a time; the pill says "Rain +1"); a legend over the map at the top left while a layer is on; the radar's last 90 minutes at the start of the line's strip (only the rain has a past, and the legend says so); the towns' weather at a region's scale (#916); a warning's row in the legend (#911). **Bar: Timeline today** keeps the old timeline to compare.
 - The colours sit under the map's words and the route, where `addWeather()` puts them; the motion is drawn over everything, as the app's canvas is.
 
+### Beside other services (2026-11-08)
+
+The mock-up's A and B, each weather on a phone, beside screenshots of Windy (radar, rain, thunder, clouds), RainViewer, yr.no's map and Blitzortung taken the same day, and a design critique (the design-critique skill):
+
+- **Rain:** every one of them says the strength by colour, in a ramp or in steps, and animates time, not drops; Windy's particles show the wind. B is that convention, so it reads at once, and it holds in a still picture and in reduced motion. A's streaks say it only while they move, and its light colour leaves drizzle and rain hard to tell apart in a still picture.
+- **Lightning:** Blitzortung and Windy draw strikes as dots or flashes by age, white or yellow to red: B's dots. A's bolts read as lightning without the legend, but crowd where strikes are dense.
+- **The forecast's thunder:** A's hatched area with its label reads apart from the rain; B's warm glow is close to the rain's magenta step.
+- **Clouds:** drawn over the route, B's veil washed the route out. Both now sit under the map's words and the route, as Windy's do.
+- **The legend and the time:** yr's legend sits top left, as here; Windy's radar strip runs from an hour ago to the next hour, as the line's radar part and #915 would.
+- **Colour vision:** B's two top steps (dark blue, magenta) are close in lightness, so they part by hue only; their edges help, a lighter last step would help more.
+- **Snow on the ground:** faint in both near the route; the measured labels carry it there.
+- **A suggestion, for the user to choose:** B's rain and lightning dots, A's hatched thunder area, A's cloud shadows on the light maps and the veil on the night map, and the streaks kept, fewer, as today's.
+
 ### For the user to decide
 
 - A or B, or parts of each (for example A's rain with B's strikes).

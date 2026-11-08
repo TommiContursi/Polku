@@ -364,7 +364,8 @@ function build() {
   const pic = (file) => { const i = h('img', { class: 'mk-map', alt: '', src: PIC + file + VER }); if (z2) i.style.width = `${sc.w}px`; return i; };
   const field = h('canvas', { width: cw, height: chh, style: `width:${cw}px;height:${chh}px` });
   const parts = h('canvas', { width: cw, height: chh, style: `width:${cw}px;height:${chh}px` });
-  fr.append(pic(`${key}-under.jpg`), field, pic(`${key}-over.png`), parts);
+  const sky = h('canvas', { width: cw, height: chh, style: `width:${cw}px;height:${chh}px` }); // the clouds: under the words and the route too (2026-11-08)
+  fr.append(pic(`${key}-under.jpg`), field, sky, pic(`${key}-over.png`), parts);
   // the interface, cut from the app's screenshot of the same view (left out at 360 px and at 200 %, where it wouldn't fit)
   const piece = ([x, y, w, hh], top = y) => h('div', { class: 'ui', style: `left:${x}px;top:${top}px;width:${w}px;height:${hh}px;border-radius:${Math.min(hh / 2, 16)}px;background-image:url(${PIC}${key}-ui.jpg${VER});background-size:${sc.w}px ${sc.h}px;background-position:${-x}px ${-y}px` });
   const full = !z2 && S.f !== '360';
@@ -406,7 +407,7 @@ function build() {
   const toPx = (x, y) => [ox + mx + x / zk, oy + my - y / zk];
   const merc = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
   const llPx = (lon, lat) => [ox + ((lon - sc.b[0][0]) / (sc.b[1][0] - sc.b[0][0])) * sc.w, oy + ((merc(sc.b[1][1]) - merc(lat)) / (merc(sc.b[1][1]) - merc(sc.b[0][1]))) * sc.h];
-  scene = { fr, field, parts, W: cw, H: chh, toKm, toPx, k: zk, dark, flash: 0 };
+  scene = { fr, field, sky, parts, W: cw, H: chh, toKm, toPx, k: zk, dark, flash: 0 };
   // points on the map, kept clear of the panels and the line (the room between them)
   const room = phone ? [8, 110, cw - (z2 ? 8 : 60), chh - (z2 ? 120 : 250)] : z2 ? [8, 60, cw - 8, chh - 70] : [430, 110, 1350, 760];
   const inRoom = ([x, y]) => x > room[0] && y > room[1] && x < room[2] && y < room[3];
@@ -779,7 +780,8 @@ function startParticles() {
       dd[o + 3] = Math.round(a * 255);
     }
     cCtx.putImageData(cIm, 0, 0);
-    ctx.imageSmoothingEnabled = true; ctx.drawImage(cCv, 0, 0, cCv.width * CS, cCv.height * CS);
+    const kc = sc.sky.getContext('2d'); kc.clearRect(0, 0, W, H);
+    kc.imageSmoothingEnabled = true; kc.drawImage(cCv, 0, 0, cCv.width * CS, cCv.height * CS);
   };
   const t0 = performance.now();
   let last = t0, frame = 0;
@@ -889,7 +891,7 @@ function caption() {
   if (S.bar === 'line') bits.push('Tap the pill (“Rain ▾”) for the layers; drag the strip to the radar’s part or 3 hours ahead.');
   if (S.motion === 'reduced') bits.push('Reduced motion: the rain and snow are still, the clouds don’t drift, nothing flashes.');
   if (S.z === '200') bits.push('200 %: the map, the legend and the line twice the size; the rest of the interface is left out.');
-  bits.push('The weather is made up. Its colours sit under the map’s words and the route, as in the app; the rain, the clouds and the lightning move over everything, as the app’s canvas does.');
+  bits.push('The weather is made up. Its colours and the clouds sit under the map’s words and the route, as in the app; the rain and the lightning move over everything, as the app’s canvas does.');
   document.getElementById('cap').textContent = bits.join(' ');
 }
 
