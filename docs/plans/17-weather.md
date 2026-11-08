@@ -94,6 +94,14 @@ The user's choice on 2026-11-08: **Weather service** is the look, and **Effects*
 - **Found and fixed:** after moving the time ahead, the drops followed the radar's rates of Now until the map moved, so a dry radar left the forecast's rain without any. Zoomed out, a radar echo at a cell's middle filled its 100 km with drops; each drop now asks the radar at its own spot.
 - **RainViewer outside Finland** (checked 2026-11-08, Norway's coast at Finland's scale): its Universal Blue tiles are blue like the steps, but drizzle is beige and the heaviest cells yellow, which the legend doesn't list. Filed as #923; nothing changed here.
 
+### Built: the towns' weather (PR 2, #916, 2026-11-08)
+
+- **Towns' weather** under **Points** in the pill's menu, as the mock-up's Scale: The region draws it: below zoom 9.5, the sky's icon, the temperature and the wind's arrow and speed in a small solid pill above each town's name, at the timeline's hour. The pill says "Towns" when it's the only one on.
+- **The towns** are the map's own city and town labels as placed (so a town shown is a town named), cities first, then OpenMapTiles' rank, kept 84 × 40 px apart, out from under the map's buttons and panels, and never over the route.
+- **From the grid:** each town is the grid's bilinear sample, the readout's, with FMI's rate at Now. No request of its own; a town outside the grid shows nothing.
+- **The legend** has a row for it ("Towns the sky, °C and wind in m/s"); zoomed in, it says to zoom out.
+- **Not like the mock-up:** the temperature is the text's colour (blue at 0 °C and below), not red, which DESIGN.md keeps for danger; the wind has its arrow, so the number reads as wind.
+
 ### For the user to decide
 
 - Whether Effects also has a place in Settings, beside the pill's menu.
