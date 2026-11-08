@@ -160,7 +160,7 @@ const map = new maplibregl.Map({
 installIcons(map);
 initGestures(map, { trackpadRotate: () => state.trackpadTilt });
 bindCrosshair(map);
-const view3d = initView3d(map, $('#view3d'));
+const view3d = initView3d(map, $('#view3d'), (anchor) => open3dMenu(anchor));
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.
 // The 3D button in the map's column (#226) is pressed while 3D terrain is on.
@@ -1107,8 +1107,12 @@ function layerGroup(id, title, count, ...kids) {
 // quick drawer (#123), so the two are always the same switches. A change renders both again.
 const rerender = (fn) => (v) => { fn(v); renderLayersPanel(); };
 // Settings has these too (#321): the same controls, so either place finds them
-const heightRange = () => h('label', { class: 'range' }, '3D height',
-  h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), 'aria-label': '3D height', oninput: (e) => { state.exaggeration = +e.target.value; if (state.terrain3d) map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } }));
+const heightRange = () => {
+  const val = h('span', { class: 'op-val' }, `${state.exaggeration.toFixed(1)}×`);
+  return h('label', { class: 'range op-row' }, h('span', {}, '3D height'),
+    h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), 'aria-label': '3D height',
+      oninput: (e) => { state.exaggeration = +e.target.value; val.textContent = `${state.exaggeration.toFixed(1)}×`; if (state.terrain3d) map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } }), val);
+};
 const arrowsToggle = () => toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery');
 const terrain3dControls = () => [
   toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
@@ -1175,6 +1179,16 @@ const hillshadeControls = () => {
     sun ? toggle('Shadows', state.hillShadows, (v) => { state.hillShadows = v; applyStyle(); renderLayersPanel(); }, 'Cast by the hills, from zoom 10') : null,
     sun && ctx.sunAt ? h('p', { class: 'note' }, sunNote()) : null);
 };
+// the 3D pad's ⋯ (#920): 3D's own settings in the app's menu, the same controls as Layers' (drawn again with it)
+let menu3d = null;
+const items3d = () => [
+  { node: h('div', { class: 'way-bar' }, h('b', {}, '3D settings'), h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close 3D settings', html: icon('close', 20), onclick: () => menu3d.close(true) })) },
+  { node: h('div', { class: 'wpl-shows menu-3d' }, heightRange(), hillshadeControls()) },
+];
+function open3dMenu(anchor) {
+  menu3d = popMenu(anchor, items3d(), { label: '3D settings', modal: true, sheet: true, onClose: () => { menu3d = null; anchor.setAttribute('aria-expanded', 'false'); } });
+  anchor.setAttribute('aria-expanded', 'true');
+}
 // weather on the map: the same switches as on the Weather button's timeline
 const timelineToggle = () => toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
 const wxToggle = (k) => ({
@@ -1195,6 +1209,7 @@ const onNowIds = () => [
 function renderLayersPanel() {
   syncLayersButton();
   renderQuickLayers();
+  if (menu3d) { const settle = settleControls(menu3d.el); menu3d.refill(items3d()); settle(); }
   const p = $('#layers-body');
   const keepScroll = p.scrollTop; // re-rendering after a toggle must not jump to the top
   requestAnimationFrame(() => { p.scrollTop = keepScroll; });

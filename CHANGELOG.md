@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-08
 
+### 3D's settings on the 3D pad ([#920](https://github.com/TommiContursi/Polku/issues/920))
+
+- The tilt and rotate pad in 3D has a **⋯** that opens **3D settings**: **3D height** and the hills' light, **Fixed light** or **The sun** with its **Shadows**. They're the same settings as in **Layers**.
+- **3D height** now shows its value beside the slider ("1.5×"), in **Layers**, **Settings** and **3D settings**.
+
 ### The hills lit by the sun, with their shadows ([#910](https://github.com/TommiContursi/Polku/issues/910))
 
 - **Hillshade** has a choice of light, under its switch in **Layers** and behind its **›** in the drawer: **Fixed light**, as before, or **The sun**. With the sun, the hills are lit from where the sun is at the map's hour, the one the timeline shows, so you can see which slopes get the low winter sun and which stay dark. It works on the flat map and in 3D, and the setting says where the sun is.

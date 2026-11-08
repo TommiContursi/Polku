@@ -10214,6 +10214,73 @@ def button3d(chrome, phones=False):
     return not fails
 
 
+# The 3D pad's ⋯ (#920): its settings in the app's menu, by mouse and keyboard; 3D height shows its value there and in
+# Layers, and keeps it after a reload; a choice in it (the sun's light) draws the menu again, open
+PAD3D = """(() => {
+  const m = document.querySelector('.menu-pop'), b = document.querySelector('#view3d button[aria-label="3D settings"]'), r = b && b.getBoundingClientRect();
+  return { at: r && [r.x + r.width / 2, r.y + r.height / 2], expanded: b && b.getAttribute('aria-expanded'), open: !!m,
+    text: m ? m.innerText.replace(/\\s+/g, ' ') : '', val: m && m.querySelector('.op-val') ? m.querySelector('.op-val').textContent : null,
+    layers: [...document.querySelectorAll('#layers-body .op-val')].map((e) => e.textContent).find((t) => t.endsWith('×')) || null,
+    ex: polku.state.exaggeration, terrain: polku.map.getTerrain() && polku.map.getTerrain().exaggeration, focus: document.activeElement.getAttribute('aria-label') };
+})()"""
+
+
+def pad3d(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+
+    def key(k, code, vk):
+        for event in ('rawKeyDown', 'keyUp'):
+            chrome.send('Input.dispatchKeyEvent', {'type': event, 'key': k, 'code': code, 'windowsVirtualKeyCode': vk}, pg.s)
+        time.sleep(0.3)
+
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb', 'terrain3d': True}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'})
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        got = pg.js(PAD3D)
+        if not got['at']:
+            fails.append('no ⋯ on the 3D pad')
+        else:
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': got['at'][0], 'y': got['at'][1], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                      'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                time.sleep(0.06)
+            time.sleep(0.5)
+            got = pg.js(PAD3D)
+            if not got['open'] or got['expanded'] != 'true' or not got['text'].startswith('3D settings') or 'Hillshade' not in got['text']:
+                fails.append(f"a click on ⋯: {got['text'] or 'no menu'} (aria-expanded {got['expanded']})")
+            if got['val'] != '1.5×':
+                fails.append(f"3D height in the menu says {got['val']}, not 1.5×")
+            pg.js("document.querySelector('.menu-pop input[type=range]').focus(), true")
+            key('ArrowRight', 'ArrowRight', 39)
+            got = pg.js(PAD3D)
+            if got['val'] != '1.6×' or got['ex'] != 1.6 or got['terrain'] != 1.6:
+                fails.append(f"→ on 3D height: it says {got['val']}, the setting {got['ex']}, the map's terrain {got['terrain']}, not 1.6")
+            pg.js("[...document.querySelectorAll('.menu-pop .seg button')].find((b) => b.textContent === 'The sun').click(), true")
+            time.sleep(0.6)
+            got = pg.js(PAD3D)
+            if not got['open'] or 'Shadows' not in got['text'] or pg.js("polku.state.hillLight") != 'sun':
+                fails.append(f"The sun in the menu: {got['text'] or 'the menu closed'}")
+            key('Escape', 'Escape', 27)
+            got = pg.js(PAD3D)
+            if got['open'] or got['focus'] != '3D settings' or got['expanded'] != 'false':
+                fails.append(f"Escape: the menu {'open' if got['open'] else 'closed'}, the focus on {got['focus']}, aria-expanded {got['expanded']}")
+            pg.reload()
+            pg.js("document.querySelector('#btn-layers').click(), true")
+            time.sleep(0.4)
+            pg.js("[...document.querySelectorAll('#quick-layers button')].find((x) => /More/.test(x.textContent)).click(), true")
+            time.sleep(0.8)
+            got = pg.js(PAD3D)
+            if got['layers'] != '1.6×' or got['terrain'] != 1.6:
+                fails.append(f"after a reload, Layers' 3D height says {got['layers']} and the terrain is {got['terrain']}, not 1.6")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the 3D pad's settings, and 3D height's value" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def button3d_phones(chrome):
     return button3d(chrome, phones=True)
 
@@ -19426,7 +19493,7 @@ GROUPS = [
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
-    ('button3d', [button3d, labels_3d, hills_3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels); the hills\' one light in 3D (#642)'),
+    ('button3d', [button3d, labels_3d, hills_3d, pad3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels); the hills\' one light in 3D (#642); the 3D pad\'s ⋯ and 3D height\'s value (#920)'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
