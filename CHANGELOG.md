@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-09
 
+### A switch for the 3D buildings, and smoother shadows ([#942](https://github.com/TommiContursi/Polku/issues/942))
+
+- **3D buildings**, beside **Raised hills** in the 3D pad's **⋯**, **Layers** under 3D terrain and **Settings → Map and planner**, lays the buildings flat in 3D. It's on by default.
+- The shadows of trees and buildings have smooth edges up close, instead of blocky steps. The hills' shadows are smoother too.
+- While the sun is down, the buildings in 3D are lit evenly from above, so their walls no longer change as you turn the map.
+
 ### The sky in 3D follows the hour and the weather ([#644](https://github.com/TommiContursi/Polku/issues/644))
 
 - In 3D the sky over the horizon follows the hour on the timeline: blue by day, orange at sunrise and sunset, and dark at night. On the night map it's dark at any hour.

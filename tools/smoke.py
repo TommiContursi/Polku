@@ -10486,10 +10486,26 @@ def buildings_3d(chrome):
         fails += pg.js(f"({BUILDINGS_3D})(false)")
         pg.js("document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
         fails += pg.js(f"({BUILDINGS_3D})(true)", timeout=120000)
+        # 3D buildings off in the 3D pad's ⋯ (#942): they lie flat, kept after a reload, and stand up again from Layers' switch
+        pg.js("document.querySelector('#view3d button[aria-label=\"3D settings\"]').click(); new Promise((ok) => setTimeout(() => ok(true), 500))")
+        pg.js("[...document.querySelectorAll('.menu-pop label.tg')].find((l) => l.textContent.startsWith('3D buildings')).click(); new Promise((ok) => setTimeout(() => ok(true), 800))")
+        for where in ('3D buildings off', 'after a reload'):
+            if where != '3D buildings off':
+                pg.reload()
+            got = pg.js("({ on: polku.state.terrain3d, b: polku.state.buildings3d, layer: !!polku.map.getLayer('building-3d'), flat: !!polku.map.getLayer('building') })")
+            if got != {'on': True, 'b': False, 'layer': False, 'flat': True}:
+                fails.append(f'{where}: {got}')
+        pg.js("document.querySelector('#btn-layers').click(), true")
+        time.sleep(0.4)
+        pg.js("[...document.querySelectorAll('#quick-layers button')].find((x) => /More/.test(x.textContent)).click(), true")
+        time.sleep(0.8)
+        pg.js("[...document.querySelectorAll('#layers-body label.tg')].find((l) => l.textContent.startsWith('3D buildings')).click(); new Promise((ok) => setTimeout(() => ok(true), 800))")
+        if not pg.js("polku.state.buildings3d && !!polku.map.getLayer('building-3d')"):
+            fails.append("Layers' 3D buildings switch: the buildings did not stand up again")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the buildings in 3D: standing at their heights, under the route, none flat" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the buildings in 3D: standing at their heights, under the route, none flat; their switch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # Hills in 3D (#642): while 3D is on the hillshade has one light from the north-west, fixed to the map; off, the flat

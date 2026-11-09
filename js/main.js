@@ -63,6 +63,7 @@ const DEFAULTS = {
   contours: true,
   terrain3d: false, // the 3D button: tilted, with the hills raised while raiseHills is on
   raiseHills: true, // off: 3D only tilts the map, flat, as tilting it by hand does
+  buildings3d: true, // in 3D the buildings stand up (#643); off, they lie flat
   trackpadTilt: true,
   hoverInfo: true,
   routeFlow: true, // the route's moving chevrons (#198)
@@ -1139,10 +1140,11 @@ const heightRange = () => {
       oninput: (e) => { state.exaggeration = +e.target.value; val.textContent = `${state.exaggeration.toFixed(1)}×`; if (map.getTerrain()) map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } }), val);
 };
 const arrowsToggle = () => toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery');
-// the hills raised in 3D, and how tall, or 3D only tilting the map, flat
+// the hills raised in 3D, and how tall, or 3D only tilting the map, flat; and the buildings standing up or flat
 const hillsControls = () => [
   toggle('Raised hills', state.raiseHills, setRaiseHills),
   state.raiseHills ? heightRange() : null,
+  toggle('3D buildings', state.buildings3d, rerender((v) => { state.buildings3d = v; applyStyle(); })),
 ];
 const terrain3dControls = () => [
   toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
