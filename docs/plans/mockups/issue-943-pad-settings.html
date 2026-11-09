@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>3D pad settings</title>
+<meta name="description" content="Mock-up for #943: some of 3D's settings right on the 3D pad, as icon switches, beside today's pad.">
+<!--
+  #943, 2026-11-09. Not wired to the app. The pad copies js/view3d.js's markup and css/app.css's .view3d, .orbit,
+  .v3-row and .tool; the switches' pressed look copies the 3D button's (.ctrl-3d: filled and underlined, so it isn't
+  told by colour alone). The map behind is a plain wash, not a picture.
+  ?v=today|row|wide  &f=390|360|desk  &z=100|200  &theme=light|dark
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<style>
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --switch-bg: #d4d8d5; --switch-on: #fff; }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --switch-bg: #2a302c; --switch-on: #48514c; }
+* { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; }
+body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); }
+.cv { max-width: 1100px; margin: 0 auto; }
+.cv h1 { margin: 0 0 4px; font-size: 22px; }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 6px 0; }
+.bar > span { min-width: 60px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 28px; padding: 3px 11px; border: 0; border-radius: 18px; background: none; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 650; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.notes { margin-top: 24px; max-width: 760px; }
+.notes li { margin: 3px 0; }
+
+/* the frame: a phone at its size, or a desktop's corner; the map a wash of the trail map's colours */
+.frame { position: relative; overflow: hidden; margin-top: 16px; border-radius: 26px; box-shadow: 0 0 0 1px rgba(0,0,0,.18), 0 18px 40px rgba(0,0,0,.18);
+  background: radial-gradient(60% 40% at 30% 70%, #cfe3c2 0 60%, transparent 61%), radial-gradient(50% 30% at 75% 25%, #a9cbe9 0 70%, transparent 71%),
+    repeating-linear-gradient(115deg, transparent 0 46px, rgba(255,255,255,.75) 46px 52px), #ece6dc; }
+:root[data-theme="dark"] .frame { background: radial-gradient(50% 30% at 75% 25%, #0d3b5e 0 70%, transparent 71%), repeating-linear-gradient(115deg, transparent 0 46px, rgba(255,255,255,.12) 46px 52px), #1c2321; }
+.frame.f390 { width: 390px; height: 560px; }
+.frame.f360 { width: 360px; height: 520px; }
+.frame.fdesk { width: 640px; height: 420px; border-radius: 10px; }
+.frame.z2 { zoom: 2; }
+.frame .view3d { position: absolute; left: 12px; bottom: 24px; }
+
+/* ---- the pad's switches (#943): the 3D button's pressed look, at the pad's tool size */
+.view3d .v3-tg { position: relative; }
+.view3d .v3-tg[aria-pressed="true"] { background: var(--accent-bg); color: #fff; }
+.view3d .v3-tg[aria-pressed="true"]::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 12px; height: 2px; margin-left: -6px; border-radius: 1px; background: currentColor; }
+.view3d .v3-tgs { gap: 2px; padding-top: 6px; border-top: 1px solid var(--line); }
+.view3d.wide .v3-row:last-child { gap: 2px; }
+.view3d .v3-sep { width: 1px; align-self: stretch; margin: 4px 3px; background: var(--line); }
+</style>
+</head>
+<body class="mk">
+<div class="cv">
+  <h1>3D pad: settings on the pad (#943)</h1>
+  <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="row">B · A row of switches</button><button data-v="wide">C · On the compass row</button></div></div>
+  <div class="bar"><span>Frame</span><div class="sw" data-k="f"><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button><button data-v="desk">Desktop</button></div></div>
+  <div class="bar"><span>Zoom</span><div class="sw" data-k="z"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
+  <div class="bar"><span>Theme</span><div class="sw" data-k="theme"><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+  <div id="frame" class="frame"></div>
+  <div class="notes">
+    <ul>
+      <li>The switches: <b>Raised hills</b> (a hill), <b>3D buildings</b> (buildings) and <b>The sun</b> (the light and its shadows at the map's hour). Their names are in each one's label and tooltip, nothing written on the pad.</li>
+      <li>Pressed: filled green and underlined, as the 3D button is. Each is the same setting as in ⋯, Layers and Settings.</li>
+      <li>⋯ keeps the rest: 3D height, the hillshade and the shadows' own switches.</li>
+      <li>B makes the pad 36 px taller; C makes it 34 px wider and no taller.</li>
+    </ul>
+  </div>
+</div>
+<script type="module">
+import { icon } from '../../../js/ui.js';
+const BUILDINGS = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10h6v11M11 21V4h8v17"/><path d="M14 8h2M14 12h2M14 16h2M7.5 14h1M7.5 17.5h1"/></svg>';
+const q = new URLSearchParams(location.search), st = { v: q.get('v') || 'row', f: q.get('f') || '390', z: q.get('z') || '100', theme: q.get('theme') || 'light' };
+const on = { hills: true, buildings: true, sun: false };
+const tool = (name, label, extra = '') => `<button type="button" class="tool" title="${label}" aria-label="${label}" ${extra}>${icon(name, 18)}</button>`;
+const tg = (k, label, svg) => `<button type="button" class="tool v3-tg" data-tg="${k}" title="${label}" aria-label="${label}" aria-pressed="${on[k]}">${svg}</button>`;
+const switches = () => tg('hills', 'Raised hills', icon('mountain', 18)) + tg('buildings', '3D buildings', BUILDINGS) + tg('sun', 'The sun', icon('sun', 18));
+function render() {
+  document.documentElement.dataset.theme = st.theme;
+  for (const s of document.querySelectorAll('.sw')) for (const b of s.children) b.setAttribute('aria-pressed', String(st[s.dataset.k] === b.dataset.v));
+  const rot = `<div class="v3-row">${tool('rotL', 'Rotate left')}${tool('tiltUp', 'Tilt more')}${tool('tiltDown', 'Tilt less')}${tool('rotR', 'Rotate right')}</div>`;
+  const more = tool('more', '3D settings', 'aria-haspopup="menu" aria-expanded="false"');
+  const rows = {
+    today: `${rot}<div class="v3-row">${tool('compass', 'Reset to north, flat')}${more}</div>`,
+    row: `${rot}<div class="v3-row v3-tgs">${switches()}</div><div class="v3-row">${tool('compass', 'Reset to north, flat')}${more}</div>`,
+    wide: `${rot}<div class="v3-row">${tool('compass', 'Reset to north, flat')}<span class="v3-sep"></span>${switches()}<span class="v3-sep"></span>${more}</div>`,
+  }[st.v];
+  const fr = document.getElementById('frame');
+  fr.className = `frame f${st.f}${st.z === '200' ? ' z2' : ''}`;
+  fr.innerHTML = `<div class="view3d${st.v === 'wide' ? ' wide' : ''}" aria-label="3D view controls"><div class="orbit" role="slider" tabindex="0" aria-label="Tilt and rotate"><span class="orbit-dot" style="transform: translate(9px, -18px)"></span><span class="orbit-label">Drag</span></div>${rows}</div>`;
+  history.replaceState(null, '', `?${new URLSearchParams(st)}`);
+}
+document.addEventListener('click', (e) => {
+  const s = e.target.closest('.sw button');
+  if (s) { st[s.parentElement.dataset.k] = s.dataset.v; render(); return; }
+  const t = e.target.closest('[data-tg]');
+  if (t) { on[t.dataset.tg] = !on[t.dataset.tg]; t.setAttribute('aria-pressed', String(on[t.dataset.tg])); }
+});
+render();
+</script>
+</body>
+</html>
