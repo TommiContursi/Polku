@@ -126,10 +126,23 @@ demSource.setupMaplibre(maplibregl);
 seaIceProtocol(maplibregl); // FMI's sea-ice charts with the open water left clear (winter.js)
 const SHADOWS = ['sunshadow', 'objshadow']; // their sources in js/style.js
 let shadowFailAt = 0;
+// how much of each building is in shadow, summed over the tiles it's in, for the hour the shadows are drawn for: its
+// roof's share, or its sunny wall's if more; the 3D buildings take it as their feature state (js/style.js darkens them)
+const roofs = new Map();
+let roofsFor = 0;
 shadowProtocol(maplibregl, demSource, (objects) => {
   if (Date.now() - shadowFailAt < 60000) return;
   shadowFailAt = Date.now();
   toast(objects ? 'Some of the trees’ and buildings’ shadows are missing: their heights didn’t load.' : 'Some of the hills’ shadows are missing: their elevation data didn’t load.');
+}, (t, list) => {
+  if (t !== roofsFor) { roofs.clear(); roofsFor = t; }
+  if (!map.getLayer('building-3d')) return;
+  for (const { id, s, n, w, k } of list) {
+    const r = roofs.get(id) || { s: 0, n: 0, w: 0, k: 0 };
+    r.s += s; r.n += n; r.w += w; r.k += k;
+    roofs.set(id, r);
+    map.setFeatureState({ source: 'ofm', sourceLayer: 'building', id }, { shade: Math.max(r.n && r.s / r.n, r.k && r.w / r.k) });
+  }
 });
 const ctx = {
   demTiles: demSource.sharedDemProtocolUrl,

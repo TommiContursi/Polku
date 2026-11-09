@@ -338,7 +338,9 @@ export function buildStyle(s, ctx) {
   // Their heights are OpenFreeMap's from OSM's height or floors, about 5 m where it has neither; they rise from zoom 14.
   if (vectorFills && s.terrain3d && s.buildings3d) {
     add({ id: 'building-3d', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 14, paint: {
-      'fill-extrusion-color': P.building, 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true,
+      // in the trees' and buildings' shadows (js/shadows.js) as much as its roof is, in the ground's shadow colour
+      'fill-extrusion-color': sources.objshadow ? ['interpolate', ['linear'], ['*', 0.43, ['coalesce', ['feature-state', 'shade'], 0]], 0, P.building, 1, 'rgb(20,30,50)'] : P.building,
+      'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true,
       'fill-extrusion-height': zi(14, 0, 15, BUILDING_HEIGHT), 'fill-extrusion-base': zi(14, 0, 15, ['get', 'render_min_height']),
     } });
   }

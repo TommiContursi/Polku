@@ -6005,8 +6005,13 @@ SUNLIGHT_MATHS = """(async () => {
   if (Math.abs(tree[0] - 45) > 1 || Math.abs(tree[1] - 54) > 1) out.push(`a tree's shadow on the ground: columns ${tree}, not about 45,54`);
   // a diagonal wall's shadow: the tile's picture at twice the grid's pixels, its edges softened, not steps of one shade
   const d = new Float32Array(N * N); for (let i = 0; i < N; i++) d[i * N + i] = 30;
-  const img = shadowPicture(d, N, 225, 20, 10), shades = new Set(); for (let i = 3; i < img.data.length; i += 4) shades.add(img.data[i]);
+  const { img } = shadowPicture(d, N, 225, 20, 10), shades = new Set(); for (let i = 3; i < img.data.length; i += 4) shades.add(img.data[i]);
   if (img.width !== 2 * S || shades.size < 8) out.push(`a diagonal wall's shadow: ${img.width} px wide, ${shades.size} shades, not ${2 * S} px with soft edges`);
+  // a 10 m building a few pixels east of the 100 m wall (#947): in its shadow, roof and wall, with the sun in the west; in the sun with it in the east
+  const sq = [[390, 380, 400, 380, 400, 390, 390, 390]], hb = Float32Array.from(g); for (let y = 380; y < 390; y++) for (let x = 390; x < 400; x++) hb[y * N + x] = 10;
+  const bOf = (az) => shadowPicture(hb, N, az, 10, 10, new Float32Array(N * N), [{ id: 7, h: 10, rings: sq }]).roofs[0];
+  const west = bOf(270), east = bOf(90);
+  if (!west || west.s / west.n < 0.9 || west.w / west.k < 0.9 || east.s || east.w / east.k > 0.1) out.push(`a building beside a tall wall: sun in the west ${JSON.stringify(west)}, in the east ${JSON.stringify(east)}`);
   return out;
 })()"""
 SUNLIGHT_APP = """(async (step) => {
