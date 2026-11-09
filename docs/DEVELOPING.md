@@ -363,7 +363,7 @@ js/shadows.js       the shadows hills, trees and buildings cast at an hour: the 
 js/shadow-sweep.js  the shadows' sweep, run as a worker (#919)
 js/sun.js           sunrise, sunset, the dark and where the sun is, from the solar position
 js/gestures.js      pinch / wheel over the UI → map zoom, Shift+scroll tilt, trackpad rotate; the keyboard's crosshair
-js/view3d.js        tilt and rotate pad
+js/view3d.js        tilt and rotate pad, and 3D's switches on it (#943)
 js/locate.js        where you are: the dot, its accuracy circle and cone, Follow me (the GPS watched here, never stored or sent)
 js/heading.js       which way you face: the compass standing, the GPS's course moving
 js/compass.js       the compass button: north up, drag to rotate, heading up
@@ -417,6 +417,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | Facts as rows | `insp-row`, `insp-info` for the source | the map's card |
 | A card's mark: the thing's own mark from the map, left of its name | `card-mark` (holding the map's `wp`, …) | 25d's cards (#355) |
 | A plain row: its icon (black), its name, its line, a value in the accent colour (`val`), ›; a hairline between rows; Remove in red (`danger`); grey while its menu or editor is open (`aria-expanded`) | `row` in a `rows` list (`item()` in `js/card.js` builds one); `rows acts` for actions, buttons with their icon and name on a desktop (Revision 5). Under about 220 px of card the value goes under the name | 25d's cards (#355, #363); the start's sport (`sport-row`), Fine-tune (`way-srow`) and Settings' speeds (`speed-sport-row`) are rows too (#356) |
+| An icon that switches a setting on and off, on the map's glass | `tool v3-tg` with `aria-pressed`; on, filled in `--accent-bg` and underlined, as the 3D button (`ctrl-3d`); its name in its label and tooltip | the 3D pad's Raised hills, 3D buildings and The sun (#943) |
 | A switch with icons | `seg icons`, `role="radio"`, the chosen one `aria-checked`: white, black words, a green icon (#356); `--target` tall | At this waypoint: Pass by · Stop · Night |
 | A warning | `warn-row` with `danger` (Warning), `look` (Good to know) or `unk` (Not checked, dashed): its icon in a first `span`, then a `span` with its group in `em`, `b` and `small`; as a button in Check's Read before you go (no `em`: the heading says it) | 25d's Journey C (#366) |
 | An item's card: its group's mark, where it comes from, ‹ › and All in Check, Got it | `heads-mark` (`read`, `look`, `not`), `heads-src`, `heads-note`, `heads-where`, `heads-step`, `heads-all`, `btn heads-got` | 25d's Journey C |

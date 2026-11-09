@@ -10390,10 +10390,18 @@ def pad3d(chrome):
             got = pg.js(PAD3D)
             if got['layers'] != '1.6×' or got['terrain'] != 1.6:
                 fails.append(f"after a reload, Layers' 3D height says {got['layers']} and the terrain is {got['terrain']}, not 1.6")
+            # the pad's own switches (#943): pressed as their settings are, a tap changes the map and Layers' switch with it
+            pad = "[...document.querySelectorAll('#view3d .v3-tg')].map((b) => b.getAttribute('aria-label') + ':' + b.getAttribute('aria-pressed')).join(' ')"
+            if pg.js(pad) != 'Raised hills:true 3D buildings:true The sun:true':
+                fails.append(f"the pad's switches: {pg.js(pad)}")
+            pg.js("document.querySelector('#view3d [aria-label=\"3D buildings\"]').click(); document.querySelector('#view3d [aria-label=\"The sun\"]').click(); new Promise((ok) => setTimeout(() => ok(true), 800))")
+            got = pg.js(f"({{ pad: {pad}, b: !!polku.map.getLayer('building-3d'), light: polku.state.hillLight, layers: [...document.querySelectorAll('#layers-body label.tg')].find((l) => l.textContent.startsWith('3D buildings')).querySelector('input').checked }})")
+            if got != {'pad': 'Raised hills:true 3D buildings:false The sun:false', 'b': False, 'light': 'fixed', 'layers': False}:
+                fails.append(f"a tap on the pad's 3D buildings and The sun: {got}")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the 3D pad's settings, and 3D height's value" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the 3D pad's settings, its switches, and 3D height's value" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

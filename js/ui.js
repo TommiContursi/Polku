@@ -18,6 +18,7 @@ const P = {
   offline: '<path d="M7 18.5a4.5 4.5 0 1 1 1-8.9 6 6 0 0 1 11.3 1.9 3.8 3.8 0 0 1-1.3 7"/><path d="M12 11v9M8.8 16.8 12 20l3.2-3.2"/>',
   share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
   mountain: '<path d="m3 20 6.5-11 4 6.5L16 12l5 8H3Z"/>',
+  buildings: '<path d="M3 21h18M5 21V10h6v11M11 21V4h8v17"/><path d="M14 8h2M14 12h2M14 16h2M7.5 14h1M7.5 17.5h1"/>',
   chevronDown: '<path d="m6 9 6 6 6-6"/>',
   chevronRight: '<path d="m9 6 6 6-6 6"/>',
   chevronUp: '<path d="m6 15 6-6 6 6"/>',

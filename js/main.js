@@ -164,7 +164,12 @@ const map = new maplibregl.Map({
 installIcons(map);
 initGestures(map, { trackpadRotate: () => state.trackpadTilt });
 bindCrosshair(map);
-const view3d = initView3d(map, $('#view3d'), (anchor) => open3dMenu(anchor));
+const view3d = initView3d(map, $('#view3d'), (anchor) => open3dMenu(anchor), [
+  { name: 'mountain', label: 'Raised hills', on: () => state.raiseHills, set: setRaiseHills },
+  { name: 'buildings', label: '3D buildings', on: () => state.buildings3d, set: (v) => setBuildings3d(v) },
+  // the hills lit by the sun at the map's hour, with their shadows as set; off, the fixed light
+  { name: 'sun', label: 'The sun', on: () => state.hillshade && state.hillLight === 'sun', set: (v) => { state.hillshade ||= v; state.hillLight = v ? 'sun' : 'fixed'; applyStyle(); renderLayersPanel(); } },
+]);
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.
 // The 3D button in the map's column (#226) is pressed while 3D terrain is on.
@@ -941,6 +946,12 @@ function setRaiseHills(on) {
   applyStyle();
   renderLayersPanel();
 }
+// the buildings standing up in 3D, or flat (#942)
+function setBuildings3d(on) {
+  state.buildings3d = on;
+  applyStyle();
+  renderLayersPanel();
+}
 
 // ------------------------------------------------------------------ layers panel
 function setTrail(key, value) {
@@ -1144,7 +1155,7 @@ const arrowsToggle = () => toggle('Moving arrows on the route', state.routeFlow,
 const hillsControls = () => [
   toggle('Raised hills', state.raiseHills, setRaiseHills),
   state.raiseHills ? heightRange() : null,
-  toggle('3D buildings', state.buildings3d, rerender((v) => { state.buildings3d = v; applyStyle(); })),
+  toggle('3D buildings', state.buildings3d, setBuildings3d),
 ];
 const terrain3dControls = () => [
   toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
