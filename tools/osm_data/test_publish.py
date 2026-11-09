@@ -360,6 +360,20 @@ class PublishTests(unittest.TestCase):
         self.assertLess(transfer + retries, step * 60, 'leave time for checksum and polygon downloads')
         self.assertGreaterEqual(job - step, 100, 'leave time for the measured 86-minute build and its checks')
 
+    def test_reference_download_leaves_time_to_compile(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        geometry = workflow.split('\n  geometry:\n', 1)[1].split('\n  bundle:', 1)[0]
+        download = geometry.split('      - name: Download dated reference and checksum', 1)[1].split('\n      - name:', 1)[0]
+        curl = next(line for line in download.splitlines() if line.endswith('-o osm-build/europe.osm.pbf')).split()
+        transfer = int(curl[curl.index('--max-time') + 1])
+        self.assertGreaterEqual(transfer, 100 * 60, 'the measured Europe transfer rate needs about 94 minutes')
+        retries = int(curl[curl.index('--retry-max-time') + 1])
+        step = int(download.split('timeout-minutes: ', 1)[1].splitlines()[0])
+        job = int(geometry.split('timeout-minutes: ', 1)[1].splitlines()[0])
+        self.assertGreater(retries, 0, 'a stalled reference transfer must not restart late')
+        self.assertLess(transfer + retries, step * 60, 'leave time for the checksum')
+        self.assertGreaterEqual(job - step, 160, 'leave a separate compilation and artifact budget')
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
