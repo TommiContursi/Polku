@@ -47,7 +47,7 @@ def bundle(releases, output, *, geometry=None):
             geo['source']['timestamp']!=stamp or not re.fullmatch(r'https://download\.geofabrik\.de/europe-(latest|[0-9]{6})\.osm\.pbf',geo['source']['url']) or
             d.get('kind')!='geometry' or d.get('format')!='pmtiles-json' or d.get('schema')!=2 or d.get('zoom')!=13 or
             d.get('source')!=geo['source'] or d.get('coverage')!=expected_coverage or geo.get('coverage')!=expected_coverage or
-            d.get('areas_complete') is not True or d.get('nearby_complete') is not True):
+            d.get('areas_complete') is not True or type(d.get('nearby_complete')) is not bool):
             raise ValueError('Geometry does not match the complete same-epoch country inputs')
         with (geo_root/d['url']).open('rb') as stream:
             reader = Reader(MmapSource(stream));header=reader.header();metadata=reader.metadata()

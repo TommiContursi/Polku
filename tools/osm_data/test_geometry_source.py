@@ -73,7 +73,7 @@ class GeometrySourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             paths=self.inputs(Path(tmp));inputs=module.load_inputs(paths)
             roots,expected=module.collect_roots(inputs)
-            self.assertEqual(roots,{('way',10):{'area':True,'inspection':True}})
+            self.assertEqual(roots,{('way',10):{'area':True,'inspection':False}})
             self.assertEqual(expected,{('way',10):'a'*64})
             receipt=module.input_receipt(inputs)
             self.assertEqual(set(receipt),set(builder.COUNTRIES))
@@ -117,27 +117,33 @@ class GeometrySourceTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError,'identity'):module.build_geometry(src,module.load_inputs(paths),out,source_info)
                     self.assertFalse(out.exists())
                 else:
-                    m=module.build_geometry(src,module.load_inputs(paths),out,source_info,remove_source=remove)
+                    inputs=module.load_inputs(paths)
+                    roots,_=module.collect_roots(inputs)
+                    self.assertEqual(set(roots),{('way',10),('relation',100)})
+                    m=module.build_geometry(src,inputs,out,source_info,remove_source=remove)
                     local_release(out)
                     self.assertEqual(m['inputs'],module.input_receipt(module.load_inputs(paths)))
                     self.assertEqual(m['datasets']['geometry']['schema'],2)
                     self.assertEqual(m['datasets']['geometry']['coverage']['type'],'GeometryCollection')
                     self.assertEqual(len(m['datasets']['geometry']['coverage']['geometries']),4)
                     self.assertTrue(m['datasets']['geometry']['areas_complete'])
+                    self.assertIs(m['datasets']['geometry']['nearby_complete'],False)
                     self.assertEqual(src.exists(),not remove,'only an explicitly selected temporary input is removed')
                     from tools.osm_data.bundle import bundle
                     combined=bundle(paths,root/'combined',geometry=out)
                     self.assertEqual(len(combined['datasets']),29)
                     self.assertEqual(combined['datasets']['geometry']['source'],source_info)
+                    self.assertIs(combined['datasets']['geometry']['nearby_complete'],False)
                     self.assertFalse(any(f['path'].endswith('jsonl.gz') for f in combined['files']))
                     local_release(root/'combined')
                     manifest_file=out/'manifest.json'
-                    for mode in ['epoch','coverage','inputs','incomplete']:
+                    for mode in ['epoch','coverage','inputs','incomplete','missing-nearby-flag']:
                         bad=json.loads(json.dumps(m))
                         if mode=='epoch':bad['source']['timestamp']='2026-11-02T00:00:00Z'
                         elif mode=='coverage':bad['datasets']['geometry']['coverage']={'type':'GeometryCollection','geometries':[]}
                         elif mode=='inputs':bad['inputs']['finland']['manifest_sha256']='f'*64
-                        else:bad['datasets']['geometry']['areas_complete']=False
+                        elif mode=='incomplete':bad['datasets']['geometry']['areas_complete']=False
+                        else:del bad['datasets']['geometry']['nearby_complete']
                         manifest_file.write_text(json.dumps(bad))
                         with self.assertRaisesRegex(ValueError,'geometry|Geometry'):
                             bundle(paths,root/('bad-'+mode),geometry=out)

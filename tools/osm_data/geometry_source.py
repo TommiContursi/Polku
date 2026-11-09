@@ -84,12 +84,17 @@ def root_rows(path):
 
 def collect_roots(inputs):
     roots, expected = {},{}
-    for kind,ref,area,inspection,sha in heapq.merge(*(root_rows(root/'geometry-roots.jsonl.gz') for root,_ in inputs.values())):
-        key = kind,ref
-        purpose = {'area':area,'inspection':inspection}
-        if key in roots and (roots[key]!=purpose or expected[key]!=sha):
-            raise ValueError(f'Conflicting original geometry root: {kind}/{ref}')
-        roots[key] = purpose;expected[key] = sha
+    previous = None
+    for row in heapq.merge(*(root_rows(root/'geometry-roots.jsonl.gz') for root,_ in inputs.values())):
+        kind,ref,area,_,sha = row
+        if previous and row[:2] == previous[:2]:
+            if row != previous:
+                raise ValueError(f'Conflicting original geometry root: {kind}/{ref}')
+            continue
+        previous = row
+        if area:
+            roots[kind,ref] = {'area':True,'inspection':False}
+            expected[kind,ref] = sha
     return roots,expected
 
 
@@ -105,7 +110,7 @@ def build_geometry(source, inputs, output, source_info, *, remove_source=False, 
     if progress:progress('collect_roots')
     roots,expected = collect_roots(inputs)
     if not roots:
-        raise ValueError('Country inputs contain no geometry roots')
+        raise ValueError('Country inputs contain no area roots')
     output.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.'+output.name+'-',dir=output.parent) as tmp:
         tmp = Path(tmp)
@@ -135,10 +140,10 @@ def build_geometry(source, inputs, output, source_info, *, remove_source=False, 
         stage = tmp/'release';stage.mkdir()
         coverages = [m['coverage'] for _,m in inputs.values()]
         report = compile_geometry(subset,roots,expected,stage/'geometry.pmtiles',source_info,coverages,progress=progress)
-        if not report['dataset']['areas_complete'] or not report['dataset']['nearby_complete']:
-            print(encoded({'incomplete_areas':report['incomplete_areas'][:20],
-                           'incomplete_inspection':report['incomplete_inspection'][:20]}).decode(),flush=True)
-            raise ValueError('Unlocated source geometry cannot certify shared coverage')
+        if not report['dataset']['areas_complete']:
+            print(encoded({'incomplete_areas':report['incomplete_areas'][:20]}).decode(),flush=True)
+            raise ValueError('Unlocated source areas cannot certify shared coverage')
+        report['dataset']['nearby_complete'] = False
         coverage = {'type':'GeometryCollection','geometries':coverages}
         box = combine_bounds([b for c in coverages for b in coverage_bounds(c)])
         record = file_record(stage/'geometry.pmtiles')
