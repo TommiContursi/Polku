@@ -6021,8 +6021,10 @@ SUNLIGHT_APP = """(async (step) => {
     expect('the fixed light at first', { method: 'multidirectional', shadows: false, light: 'fixed' });
     polku.set({ hillLight: 'sun' }); w.setHour(up); await wait(1500);
     expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true, objects: true });
-    const tiles = m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0];
-    if (!tiles || !tiles.endsWith(`t=${Math.round(timeAtHour(up) / 600) * 600}`)) out.push(`the shadows' tiles: ${tiles}`);
+    // (once the hour before's are drawn, #945)
+    const tiles = () => m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0], want = `t=${Math.round(timeAtHour(up) / 600) * 600}`;
+    for (let k = 0; k < 120 && !(tiles() || '').endsWith(want); k++) await wait(500);
+    if (!(tiles() || '').endsWith(want)) out.push(`the shadows' tiles: ${tiles()}`);
     // each its own switch: the hills' off keeps the trees' and buildings', and the other way round
     polku.set({ hillShadows: false }); await wait(800);
     expect('Hills’ shadows off', { method: 'combined', shadows: false, objects: true });
@@ -6057,6 +6059,14 @@ OBJECT_SHADOWS = """(async () => {
   const tm = m.style.tileManagers.objshadow, states = tm ? tm.getIds().map((id) => tm.getTileByID(id).state) : [];
   if (!m.getLayer('obj-shadow') || !states.length || states.some((s) => s !== 'loaded')) out.push(`the trees' and buildings' shadows at zoom 15: layer ${!!m.getLayer('obj-shadow')}, tiles ${states}`);
   if (calls() === before) out.push('no canopy heights asked for');
+  // the timeline playing on (#945): the shadows on screen stay while the next hours' are worked out, then follow the hour
+  const w = polku.weather, h0 = w.hour, { timeAtHour } = await import(location.origin + '/js/wxmap.js');
+  const shown = () => { const tm = m.style.tileManagers.objshadow; return tm ? tm.getIds().filter((id) => tm.getTileByID(id).hasData()).length : 0; };
+  w.setHour(h0 + 1); w.setHour(h0 + 2);
+  if (!shown()) out.push('an hour on, the trees’ and buildings’ shadows were dropped from the screen');
+  const want = `t=${Math.round(timeAtHour(h0 + 2) / 600) * 600}`;
+  for (let t0 = Date.now(); Date.now() - t0 < 120000 && !(m.getSource('objshadow').tiles[0].endsWith(want) && ready()); ) await wait(500);
+  if (!m.getSource('objshadow').tiles[0].endsWith(want)) out.push(`two hours on, the shadows are for ${m.getSource('objshadow').tiles[0]}, not ${want}`);
   m.jumpTo({ zoom: 12.5 });
   return out;
 })()"""

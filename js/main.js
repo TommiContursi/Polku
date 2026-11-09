@@ -124,6 +124,7 @@ const demSource = new mlcontour.DemSource({
 });
 demSource.setupMaplibre(maplibregl);
 seaIceProtocol(maplibregl); // FMI's sea-ice charts with the open water left clear (winter.js)
+const SHADOWS = ['sunshadow', 'objshadow']; // their sources in js/style.js
 let shadowFailAt = 0;
 shadowProtocol(maplibregl, demSource, (objects) => {
   if (Date.now() - shadowFailAt < 60000) return;
@@ -323,7 +324,13 @@ function setFewerEffects(on) {
 
 function applyStyle() {
   applyTheme(); // (the base map may have changed: Match the map)
-  map.setStyle(buildStyle(state, ctx), { diff: true });
+  const style = buildStyle(state, ctx);
+  // the shadows' new hour given to their sources, not swapped in by the diff, which would drop the ones on screen
+  for (const id of SHADOWS) {
+    const src = map.getSource(id), tiles = style.sources[id] && style.sources[id].tiles;
+    if (src && tiles && src.tiles && src.tiles[0] !== tiles[0]) src.setTiles(tiles);
+  }
+  map.setStyle(style, { diff: true });
   syncView3d();
   saveSettings();
 }
@@ -577,8 +584,15 @@ const weather = new WeatherOverlay(map, {
 // the sun at the map's hour (to ten minutes, so the shadows' tiles keep), from the map's middle, for style.js
 // shortcut: the light is worked out when the style is built, so after a long pan or ten minutes without a rebuild it's a little off
 const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
-let litFor = 0;
-ctx.sunAt = () => { litFor = sunHour(); return { t: litFor, ...sunPosition(litFor, map.getCenter().toArray()) }; };
+let litFor = 0, shadeFor = 0;
+// the shadows' tiles move on to the hour once the last hour's are all drawn: MapLibre keeps those on screen while the
+// next ones are worked out (setTiles() in applyStyle()), so a playing timeline steps them as fast as the device can
+const shadowsDrawn = () => SHADOWS.every((id) => !map.getSource(id) || map.isSourceLoaded(id));
+ctx.sunAt = () => {
+  litFor = sunHour();
+  if (shadowsDrawn()) shadeFor = litFor;
+  return { t: shadeFor, ...sunPosition(litFor, map.getCenter().toArray()) };
+};
 // the sky in 3D (#644): the sun's place at the map's hour, and the weather at the map's middle only while a forecast is loaded
 const skyNow = () => {
   const ll = map.getCenter().toArray(), p = sunPosition(sunHour(), ll), w = weather.active && weather.sample(ll);
@@ -587,8 +601,10 @@ const skyNow = () => {
 let skyFor = '';
 ctx.skyAt = () => { const k = skyNow(); skyFor = JSON.stringify(k); return k; };
 // the hills' light or the sky built for another hour, place or forecast
-const lightStale = () => (state.hillshade && state.hillLight === 'sun' && sunHour() !== litFor) || (state.terrain3d && JSON.stringify(skyNow()) !== skyFor);
+const lightStale = () => (state.hillshade && state.hillLight === 'sun' && (sunHour() !== litFor || (shadeFor !== litFor && shadowsDrawn())))
+  || (state.terrain3d && JSON.stringify(skyNow()) !== skyFor);
 map.on('moveend', () => { if (lightStale()) applyStyle(); });
+map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)
 
 function setTimeline(on) {
   state.timeline = on;
