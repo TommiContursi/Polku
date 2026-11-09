@@ -6065,8 +6065,8 @@ OBJECT_SHADOWS = """(async () => {
   w.setHour(h0 + 1); w.setHour(h0 + 2);
   if (!shown()) out.push('an hour on, the trees’ and buildings’ shadows were dropped from the screen');
   const want = `t=${Math.round(timeAtHour(h0 + 2) / 600) * 600}`;
-  for (let t0 = Date.now(); Date.now() - t0 < 120000 && !(m.getSource('objshadow').tiles[0].endsWith(want) && ready()); ) await wait(500);
-  if (!m.getSource('objshadow').tiles[0].endsWith(want)) out.push(`two hours on, the shadows are for ${m.getSource('objshadow').tiles[0]}, not ${want}`);
+  for (let t0 = Date.now(); Date.now() - t0 < 120000 && !(m.getSource('objshadow').tiles[0].includes(`${want}&`) && ready()); ) await wait(500);
+  if (!m.getSource('objshadow').tiles[0].includes(`${want}&`)) out.push(`two hours on, the shadows are for ${m.getSource('objshadow').tiles[0]}, not ${want}`);
   m.jumpTo({ zoom: 12.5 });
   return out;
 })()"""
