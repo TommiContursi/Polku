@@ -19762,6 +19762,7 @@ def osm_data(chrome):
               'test_sftp_resume_uses_nontruncating_seek_and_surfaces_close_errors',
               'test_resume_complete_stage_does_not_reupload_payload',
               'test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix',
+              'test_country_download_leaves_time_to_build',
               'test_resume_rejects_corrupt_or_oversized_prefix_without_writing')
     result = subprocess.run([sys.executable, '-m', 'unittest',
                              *(f'tools.osm_data.test_publish.PublishTests.{name}' for name in checks),
