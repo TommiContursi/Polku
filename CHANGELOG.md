@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-09
 
+### The sky in 3D follows the hour and the weather ([#644](https://github.com/TommiContursi/Polku/issues/644))
+
+- In 3D the sky over the horizon follows the hour on the timeline: blue by day, orange at sunrise and sunset, and dark at night. On the night map it's dark at any hour.
+- When the forecast is loaded (the timeline or a weather layer is on), the sky also turns grey under cloud and hazy in rain or snow, from the weather at the map's middle. Without a forecast the daytime sky stays pale and says nothing about the weather.
+- The buildings are lit from where the sun is.
+
 ### Buildings stand up in 3D ([#643](https://github.com/TommiContursi/Polku/issues/643))
 
 - In 3D the buildings stand up from zoom 14, so a town, a ski centre or a harbour reads at a glance. Their heights come from OpenStreetMap's heights and floor counts; a building with neither stands about 5 m tall.

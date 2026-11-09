@@ -7,7 +7,7 @@ import {
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
 import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
-import { pointForecasts, sampleAt } from './weather.js';
+import { pointForecasts, sampleAt, skyKind } from './weather.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
 import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
@@ -557,7 +557,7 @@ const weather = new WeatherOverlay(map, {
   onClose: () => setTimeline(false),
   onTime: (hr) => {
     // the hills lit by the sun at the map's hour follow it
-    if (ctx.sunAt && state.hillshade && state.hillLight === 'sun' && sunHour() !== litFor) { // (none before the timeline is made)
+    if (ctx.sunAt && lightStale()) { // (none before the timeline is made)
       applyStyle();
       renderLayersPanel(); // (its note says where the sun is)
     }
@@ -573,6 +573,16 @@ const weather = new WeatherOverlay(map, {
 const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
 let litFor = 0;
 ctx.sunAt = () => { litFor = sunHour(); return { t: litFor, ...sunPosition(litFor, map.getCenter().toArray()) }; };
+// the sky in 3D (#644): the sun's place at the map's hour, and the weather at the map's middle only while a forecast is loaded
+const skyNow = () => {
+  const ll = map.getCenter().toArray(), p = sunPosition(sunHour(), ll), w = weather.active && weather.sample(ll);
+  return { alt: Math.round(p.alt), az: Math.round(p.az), wx: w ? skyKind(w.rain, w.temp, w.cloud, false) : null };
+};
+let skyFor = '';
+ctx.skyAt = () => { const k = skyNow(); skyFor = JSON.stringify(k); return k; };
+// the hills' light or the sky built for another hour, place or forecast
+const lightStale = () => (state.hillshade && state.hillLight === 'sun' && sunHour() !== litFor) || (state.terrain3d && JSON.stringify(skyNow()) !== skyFor);
+map.on('moveend', () => { if (lightStale()) applyStyle(); });
 
 function setTimeline(on) {
   state.timeline = on;
@@ -2062,6 +2072,7 @@ map.on('load', () => {
   configureLayers();
   syncZoomHint();
   syncView3d();
+  if (lightStale()) applyStyle(); // (the first style was built before the sun's clock)
   // a first visit: show where you are, if the browser may tell (Helsinki stays otherwise)
   if (firstVisit && navigator.geolocation) setTimeout(() => locate.start({ quiet: true }), 600);
   if (shared && shared.points.length) {
