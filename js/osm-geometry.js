@@ -1,5 +1,5 @@
 // Local original fragments and containment seeds. Seeds are never display geometry.
-import { tileBounds, lonLatToTile, dist, pointSegment } from './geo.js';
+import { tileBounds, lonLatToTile } from './geo.js';
 
 const id = v => Number.isSafeInteger(v) && v > 0;
 const hash = v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
@@ -95,23 +95,6 @@ export function selectArea(json, ll) {
   }
   const size = e => (e.area.bounds[2]-e.area.bounds[0])*(e.area.bounds[3]-e.area.bounds[1]);
   return candidates.sort((a,b)=>!a.tags.name-!b.tags.name || size(a)-size(b))[0] || null;
-}
-
-/** A relation qualifies by its real members, never by a distant bounding-box centre. */
-export function nearestGeometry(tiles, ll, metres) {
-  const eligible=new Map();
-  for (const tile of tiles) {
-    if(tile.nearby_complete!==true)throw new Error('Incomplete nearby OSM coverage');
-    for (const e of tile.elements) {
-      if(!e.inspection)continue;
-      if(e.incomplete)throw new Error('Incomplete nearby OSM geometry');
-      const near=e.fragments.some(f=>f.type==='node' ? dist(f.point,ll)<=metres
-        : f.geometry.some((p,i,g)=>i && pointSegment(ll,g[i-1],p).d<=metres));
-      if(near)eligible.set(`${e.type}/${e.id}`,e);
-    }
-  }
-  const distance=e=>dist([(e.bounds[0]+e.bounds[2])/2,(e.bounds[1]+e.bounds[3])/2],ll);
-  return [...eligible.values()].sort((a,b)=>distance(a)-distance(b) || types.indexOf(a.type)-types.indexOf(b.type) || a.id-b.id)[0] || null;
 }
 
 /** Draw real source edges only; tile seeds and clipping-box sides are never lines. */

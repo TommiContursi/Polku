@@ -267,6 +267,7 @@ export async function checkHostedConsumers() {
 export async function checkHostedInspection() {
   const { StaticOSM } = await import('/js/osm-data.js'), I = await import('/js/inspect.js');
   const original = StaticOSM.prototype.tile, real = window.fetch, fails = [];
+  let areaReads = 0;
   const ll = [25.22,62.22], geometry = [{lon:25.219,lat:62.22005},{lon:25.221,lat:62.22005}];
   const elements = [
     {type:'way',id:81001,nodes:[1,2],geometry,tags:{highway:'motorway','custom:tag':'original way'}},
@@ -275,7 +276,10 @@ export async function checkHostedInspection() {
     {type:'relation',id:81001,members:[{type:'way',ref:81001,role:'outer'}],center:{lon:25.22,lat:62.22},tags:{tourism:'camp_site','custom:tag':'original relation'}},
   ];
   StaticOSM.prototype.tile = async function() {
-    if (this.dataset==='geometry') throw Object.assign(new Error('Optional geometry not published'),{code:'OSM_DATASET_MISSING'});
+    if (this.dataset==='geometry') {
+      areaReads++;
+      throw new Error('Inspection must use its own hosted datasets');
+    }
     return {schema:1,elements:this.dataset==='ways' ? elements.filter(e=>e.type==='way' && e.tags.highway!=='motorway') : elements,nearby_complete:true,source:{provider:'Polku OSM data',timestamp:'2026-11-01T00:00:00Z'}};
   };
   window.fetch = async (url,init) => { if (/overpass|maps.mail.ru/.test(String(url))) throw new DOMException('Unexpected public query','AbortError'); return real(url,init); };
@@ -316,6 +320,7 @@ export async function checkHostedInspection() {
     release();
     await Promise.all([raw,indexed]);
     if (W.nearestWay(ll,100)?.id!==81002) fails.push('concurrent raw inspection broke the adapted ways index');
+    if (areaReads) fails.push('ordinary inspection unnecessarily opened the area archive');
   } catch(e) { fails.push(String(e)); }
   finally { StaticOSM.prototype.tile=original;window.fetch=real; }
   return fails;
@@ -324,7 +329,7 @@ export async function checkHostedInspection() {
 
 export async function checkAreaConsumers() {
   const { StaticOSM } = await import('/js/osm-data.js'), { PMTiles } = await import('/js/vendor/pmtiles-4.5.0.js');
-  const W = await import('/js/ways.js?area-consumers='+Date.now()), I = await import('/js/inspect.js'), { idb } = await import('/js/idb.js');
+  const W = await import('/js/ways.js?area-consumers='+Date.now()), { idb } = await import('/js/idb.js');
   const archive = await (await fetch('/tools/fixtures/osm-area-consumers.pmtiles')).arrayBuffer();
   const data = new PMTiles({getKey:()=>`area-consumers-${Date.now()}`,getBytes:async(offset,length)=>({data:archive.slice(offset,offset+length)})});
   const original=StaticOSM.prototype.tile, real=window.fetch, fails=[], calls=[];
@@ -336,18 +341,18 @@ export async function checkAreaConsumers() {
       return {schema:1,elements:[{type:'node',id:777,lon:.06,lat:-.06,tags:{amenity:'toilets'}}],nearby_complete:true,source};
     }
     geometryReads++;
-    if(mode==='missing') throw Object.assign(new Error('Optional dataset absent'),{code:'OSM_DATASET_MISSING'});
+    if(mode==='missing') throw new Error('Optional dataset absent');
     if(mode==='failed' || mode==='uncovered') throw new Error(mode==='failed'?'Hosted source unavailable':'Outside OSM coverage');
     const raw=await data.getZxy(13,x,y), json=raw ? JSON.parse(new TextDecoder().decode(raw.data)) : {schema:2,tile:[13,x,y],elements:[]};
-    return {...json,areas_complete:mode!=='incomplete',nearby_complete:mode!=='incomplete',source};
+    return {...json,areas_complete:mode!=='incomplete',nearby_complete:false,source};
   };
   window.fetch=async(url,init)=>{
     if(!/overpass|maps.mail.ru/.test(String(url)))return real(url,init);
     calls.push(String(url));
     if(publicFails)throw new DOMException('Public source unavailable','AbortError');
-    return Response.json({osm3s:{timestamp_osm_base:source.timestamp},elements:[String(init?.body).includes('is_in')
-      ? {type:'way',id:901,tags:{natural:'water',name:'Fallback lake'},bounds:{minlon:.05,minlat:-.07,maxlon:.07,maxlat:-.05},geometry:[{lon:.05,lat:-.07},{lon:.07,lat:-.07},{lon:.07,lat:-.05},{lon:.05,lat:-.05},{lon:.05,lat:-.07}]}
-      : {type:'node',id:902,tags:{amenity:'toilets'},lon:.06,lat:-.06}]});
+    return Response.json({osm3s:{timestamp_osm_base:source.timestamp},elements:[
+      {type:'way',id:901,tags:{natural:'water',name:'Fallback lake'},bounds:{minlon:.05,minlat:-.07,maxlon:.07,maxlat:-.05},geometry:[{lon:.05,lat:-.07},{lon:.07,lat:-.07},{lon:.07,lat:-.05},{lon:.05,lat:-.05},{lon:.05,lat:-.07}]}
+    ]});
   };
   const clear=ll=>idb('overpass').del(`area/${ll[1].toFixed(4)}/${ll[0].toFixed(4)}`);
   try {
@@ -357,27 +362,17 @@ export async function checkAreaConsumers() {
     if(await W.areaAt([.02,-.02])!==null)fails.push('an island becomes a containing lake');
     const interior=await W.areaAt([-.005,.05]);
     if(interior?.id!=='relation/100' || interior.whole || interior.lines.length || interior.outer.length)fails.push('large-lake interior invents a rectangular shoreline');
-    const nearby=await I.osmDetails({type:'node',ll:[.06,-.06]});
-    if(nearby?.type!=='relation' || nearby.id!==200 || nearby.tags.name!=='Nearby member')fails.push('nearby relation eligibility uses its centre instead of original members');
-    const exact=await I.osmDetails({type:'relation',id:200,ll:[.06,-.06]});
-    if(exact?.tags.name!=='Nearby member' || exact.source?.timestamp!==source.timestamp || legacyReads)fails.push('exact relation full tags do not reuse hosted local geometry');
-    if(await I.osmDetails({type:'node',ll:[.25,.25]})!==null)fails.push('valid empty nearby geometry is not empty');
     const card={pick:{area:small}}, before=geometryReads;
     await polku.planner.osmOnCard(card,[.06,-.06],{type:'way',id:200});
     if(card.osm?.w?.tags.name!=='Small lake' || !(card.osm.w.len>8000) || geometryReads!==before || legacyReads)fails.push('area full-tag action does not reuse its original tags and complete perimeter');
-    if(calls.length)fails.push('healthy area/nearby consumers queried public Overpass');
-    for(const failure of ['failed','uncovered','incomplete']) {
+    if(calls.length)fails.push('healthy area consumers queried public Overpass');
+    for(const failure of ['failed','uncovered','incomplete','missing']) {
       mode=failure;await clear([.06,-.06]);const n=calls.length;
       const fallback=await W.areaAt([.06,-.06]);
       if(fallback?.id!=='way/901' || fallback.source?.provider!=='Overpass' || calls.length===n || calls.length-n>3)fails.push(`${failure} area does not use one bounded public mirror round`);
-      const detail=await I.osmDetails({type:'node',ll:[.06,-.06]});
-      if(detail?.id!==902 || detail.source?.provider!=='Overpass')fails.push(`${failure} nearby geometry does not use public fallback`);
     }
-    mode='missing';
-    if((await I.osmDetails({type:'node',ll:[.06,-.06]}))?.id!==777)fails.push('an old manifest loses its supported hosted inspection fallback');
     mode='failed';publicFails=true;await clear([.06,-.06]);
     try {await W.areaAt([.06,-.06]);fails.push('both failed area sources look like an empty result');}catch{ /* failure remains unavailable */ }
-    try {await I.osmDetails({type:'node',ll:[.06,-.06]});fails.push('both failed nearby sources look like an empty result');}catch{ /* failure remains unavailable */ }
   } catch(e) {fails.push(String(e));}
   finally {StaticOSM.prototype.tile=original;window.fetch=real;await clear([.06,-.06]);}
   return fails;

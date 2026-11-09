@@ -189,7 +189,7 @@ export class StaticOSM {
     }
     const manifest = await releases.get(this.url).promise;
     const records = Object.entries(manifest.datasets).filter(([name,d])=>name===this.dataset || d.kind===this.dataset).map(([,d])=>d);
-    if (!records.length) throw Object.assign(new Error('Unsupported OSM dataset'),{code:'OSM_DATASET_MISSING'});
+    if (!records.length) throw new Error('Unsupported OSM dataset');
     if (this.dataset==='geometry' && records.length!==1) throw new Error('Unsupported shared OSM geometry dataset');
     let archives=records.map((d) => {
       if (d?.format!=='pmtiles-json' || d.schema!==(this.dataset==='geometry' ? 2 : 1) || d.zoom!==this.zoom || !Number.isSafeInteger(d.bytes) || d.bytes<127) throw new Error('Unsupported OSM dataset');

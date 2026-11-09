@@ -57,19 +57,6 @@ test('selects the named smallest containing area and rejects an uncertain candid
   assert.equal(selectArea(j, [.06,-.06]).id, 200, 'a located incomplete area elsewhere does not poison this point');
 });
 
-test('nearby eligibility uses original members, then ranks eligible objects by original centre', async () => {
-  const { nearestGeometry } = await import('../../js/osm-geometry.js');
-  assert.equal(typeof nearestGeometry,'function');
-  const member={type:'relation',id:200,tags:{amenity:'shelter'},inspection:true,incomplete:false,bounds:[.0598,-.06,.2,.2],fragments:[{type:'node',point:[.0598,-.06]}]};
-  const centreOnly={...member,id:201,bounds:[0,-.12,.12,0],fragments:[{type:'node',point:[0,-.12]},{type:'node',point:[.12,0]}]};
-  const tile={nearby_complete:true,elements:[centreOnly,member]};
-  assert.equal(nearestGeometry([tile],[.06,-.06],40).id,200);
-  assert.equal(nearestGeometry([{...tile,elements:[centreOnly]}],[.06,-.06],40),null);
-  assert.throws(()=>nearestGeometry([{...tile,nearby_complete:false}],[.06,-.06],40),/incomplete/i);
-  assert.throws(()=>nearestGeometry([{...tile,elements:[{...member,incomplete:true}]}],[.06,-.06],40),/incomplete/i);
-});
-
-
 test('outline uses original edge pointers, clips real segments and measures only a complete whole area', async () => {
   const { areaOutline } = await import('../../js/osm-geometry.js');
   assert.equal(typeof areaOutline, 'function');

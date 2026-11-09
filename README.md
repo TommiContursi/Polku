@@ -100,8 +100,7 @@ mapped winter maintenance/access, OSM water hazards, overnight places and
 lighting use hosted OpenStreetMap snapshots for Finland, Sweden, Norway and
 Estonia, from Geofabrik and served by ducksoft.fi. Full-tag inspection uses the
 same original objects; selected-way tags reuse the already loaded ways. Releases
-with local area geometry also supply lake, park and protected-area selection and
-nearby tagged objects, including relations selected by their real members.
+with local area geometry also supply lake, park and protected-area selection.
 Large areas download only nearby original outlines; area details reuse their tags.
 Only local tiles are downloaded. Valid hosted cache comes first, followed by
 covered hosted tiles and bounded cached/public Overpass fallback. Actual extract

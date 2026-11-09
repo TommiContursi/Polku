@@ -4,8 +4,7 @@
 
 import { TRAFICOM_WMS, isLipasRoute, OSM_DATA_MANIFEST } from './config.js';
 import { overpass } from './osm.js';
-import { hostedTile, hostedAttempt, geometryTiles } from './osm-data.js';
-import { nearestGeometry } from './osm-geometry.js';
+import { hostedTile, hostedAttempt } from './osm-data.js';
 import { dist, pointSegment, lonLatToTile } from './geo.js';
 import { NAV_TEXT } from './nautical.js';
 import { WINTER_TEXT } from './winter.js';
@@ -171,7 +170,7 @@ async function inspectionAt([lon,lat], metres, dataset = 'inspection', signal) {
   for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++) reads.push(hostedTile(OSM_DATA_MANIFEST,dataset,14,[x,y],()=>{throw new Error('Hosted inspection unavailable');},{signal}));
   const tiles = await Promise.all(reads), unique = new Map();
   for (const tile of tiles) for (const e of tile.elements) unique.set(`${e.type}/${e.id}`,e);
-  return {elements:[...unique.values()],source:tiles[0]?.source,nearby_complete:tiles.every(t=>t.nearby_complete===true)};
+  return {elements:[...unique.values()],source:tiles[0]?.source,nearby_complete:tiles.every(t=>t.nearby_complete!==false)};
 }
 
 // OpenStreetMap's way at a spot, asked once (Overpass): the way given (a trail drawn from OSM knows its own), else the
@@ -212,15 +211,6 @@ export async function osmDetails({ type = 'way', id = null, ll }) {
   if (type === 'way') { const w = await wayNear(ll, id); return w && { type: 'way', ...w }; }
   try {
     return await hostedAttempt(async signal=>{
-      try {
-        const dy=40/111000, dx=dy/Math.cos(ll[1]*Math.PI/180);
-        const local=await geometryTiles(OSM_DATA_MANIFEST,[ll[0]-dx,ll[1]-dy,ll[0]+dx,ll[1]+dy],signal);
-        const e=id ? local.tiles.flatMap(t=>t.elements).find(e=>e.type===type && e.id===+id) : nearestGeometry(local.tiles,ll,40);
-        if(id && !e)throw new Error('Object not in hosted local geometry');
-        return e ? {type:e.type,id:e.id,tags:e.tags,len:0,source:local.source} : null;
-      } catch(err) {
-        if(!id && err.code!=='OSM_DATASET_MISSING')throw err;
-      }
       const json = await inspectionAt(ll,40,'inspection',signal);
       if (id) {
         const e = json.elements.find(e=>e.type===type && e.id===+id);
