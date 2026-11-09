@@ -279,18 +279,18 @@ deviceMore.addEventListener('change', applyTheme);
 // map moves or something scrolls, more than half of it in frames slower than 30 a second. A gap over 1 s (a hidden
 // tab, a style loading) doesn't count, and a shorter long task alone can't fill half of it. Rows a browser draws late as they scroll in don't slow the frames: this can't see those.
 {
-  let moved = 0, slow = 0, last = 0, until = 0, raf = 0;
+  let moved = 0, slow = 0, last = 0, until = 0, raf = 0, offered = false; // one offer a visit, so a second toast can't replace it
   const frame = (t) => {
     const d = t - last;
     if (last && d < 1000) { moved += d; if (d > 34) slow += d; }
     last = t;
     if (moved >= 3000) {
       if (slow > moved / 2 && offerFlat()) {
-        state.flatOffered = true;
+        offered = state.flatOffered = true;
         saveSettings();
         toast('3D is drawing slowly on this device.', { ms: 12000, action: { label: 'Use flat hills', fn: () => setRaiseHills(false) } });
       } else if (slow > moved / 2 && !state.fewerEffects && !state.fewerOffered) {
-        state.fewerOffered = true;
+        offered = state.fewerOffered = true;
         saveSettings();
         toast('Polku is drawing slowly in this browser.', { ms: 12000, action: { label: 'Use fewer effects', fn: () => setFewerEffects(true) } });
       }
@@ -301,7 +301,7 @@ deviceMore.addEventListener('change', applyTheme);
   };
   const offerFlat = () => state.terrain3d && state.raiseHills && !state.flatOffered;
   const moving = () => {
-    if ((state.fewerEffects || state.fewerOffered) && !offerFlat()) return;
+    if (offered || ((state.fewerEffects || state.fewerOffered) && !offerFlat())) return;
     until = performance.now() + 300;
     if (!raf) raf = requestAnimationFrame(frame);
   };

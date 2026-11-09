@@ -8449,15 +8449,22 @@ def fewer_effects(chrome):
 
 def flat_offer(chrome):
     """Frames slower than 30 a second in 3D with the hills raised (#936): Polku offers flat hills, once, before Fewer
-    effects; its action lays the hills flat and keeps 3D on. The terrain is taken off the map behind the app's back while
+    effects, and nothing else that visit: slow frames for 6 s more leave its toast as it is. Its action lays the hills flat
+    and keeps 3D on. The terrain is taken off the map behind the app's back while
     the frames are slowed: SwiftShader draws raised hills at a frame in several seconds, and gaps over 1 s don't count."""
     fails = []
     pg = chrome.page(390, 844, True)
     try:
         pg.open_app({'activity': 'mtb', 'terrain3d': True, 'flatOffered': False, 'fewerOffered': False}, {'polku:seen3dHint2': 'true'})
         pg.js('polku.map.setTerrain(null); true')
+        pg.idle()  # the tilted map's first frames take tens of seconds on a cold start
         pg.js(SLOW_FRAMES)
         offered = pg.js("new Promise((ok) => { const t0 = performance.now(), f = () => { const t = document.querySelector('#toast:not([hidden])'); if (t && /slowly/.test(t.textContent)) ok(t.textContent); else if (performance.now() - t0 > 20000) ok(null); else setTimeout(f, 100); }; f(); })", timeout=25000)
+        if offered and 'Use flat hills' in offered:
+            time.sleep(6)
+            still = pg.js("document.querySelector('#toast:not([hidden])')?.textContent || null")
+            if not still or 'Use flat hills' not in still:
+                fails.append(f'6 s more of slow frames after the offer of flat hills: the toast says {still!r}')
         pg.js('window.__slow = false; true')
         if not offered or 'Use flat hills' not in offered:
             fails.append(f'frames at about 20 a second for 20 s in 3D: the offer was {offered!r}, not flat hills')
