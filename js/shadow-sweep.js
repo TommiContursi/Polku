@@ -40,13 +40,43 @@ export function castShadows(grid, N, az, alt, m, ground) {
   return out;
 }
 
+// The heights at twice the grid's pixels, each between its four nearest, so the crowns and roofs have round
+// edges, not the grid's steps.
+function twice(a, N) {
+  const M = 2 * N, o = new Float32Array(M * M), at = (v) => Math.min(N - 1, Math.max(0, (v - 0.5) / 2));
+  for (let y = 0; y < M; y++) {
+    const fy = at(y), y0 = Math.floor(fy), y1 = Math.min(N - 1, y0 + 1), wy = fy - y0;
+    for (let x = 0; x < M; x++) {
+      const fx = at(x), x0 = Math.floor(fx), x1 = Math.min(N - 1, x0 + 1), wx = fx - x0;
+      const a0 = a[y0 * N + x0] + (a[y0 * N + x1] - a[y0 * N + x0]) * wx, a1 = a[y1 * N + x0] + (a[y1 * N + x1] - a[y1 * N + x0]) * wx;
+      o[y * M + x] = a0 + (a1 - a0) * wy;
+    }
+  }
+  return o;
+}
+
+/**
+ * The middle tile's picture, (2N / 3)² pixels: the sweep at twice the grid's pixels, its edges softened over 3 × 3
+ * of them, so they stay smooth when the map zooms past the tile.
+ */
+export function shadowPicture(grid, N, az, alt, m, ground) {
+  const M = 2 * N, S = M / 3, shade = castShadows(twice(grid, N), M, az, alt, m / 2, ground && twice(ground, N));
+  const img = new ImageData(S, S), c = (v) => Math.min(S - 1, Math.max(0, v));
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      let a = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) a += shade[c(y + dy) * S + c(x + dx)] * (2 - Math.abs(dx)) * (2 - Math.abs(dy));
+      if (a) img.data.set([SHADE[0], SHADE[1], SHADE[2], Math.round((SHADE[3] * a) / 16)], (y * S + x) * 4);
+    }
+  }
+  return img;
+}
+
 // as the worker js/shadows.js starts (imported on a page, for its tests, it only exports the sweep)
 if (typeof window === 'undefined') {
   onmessage = async ({ data: { id, grid, ground, N, az, alt, m } }) => {
     try {
-      const S = N / 3, shade = castShadows(grid, N, az, alt, m, ground), img = new ImageData(S, S);
-      for (let i = 0; i < shade.length; i++) if (shade[i]) img.data.set(SHADE, i * 4);
-      const canvas = new OffscreenCanvas(S, S);
+      const img = shadowPicture(grid, N, az, alt, m, ground), canvas = new OffscreenCanvas(img.width, img.height);
       canvas.getContext('2d').putImageData(img, 0, 0);
       const png = await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer();
       postMessage({ id, png }, [png]);

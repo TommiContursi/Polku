@@ -5985,7 +5985,7 @@ def terrain(chrome):
 # a wall of the test's (shadows.js), and in the app Hillshade's light following the timeline's hour, the fixed light
 # back when the sun is down or Fixed light is picked, the shadows' switch, all kept after a reload.
 SUNLIGHT_MATHS = """(async () => {
-  const { sunPosition, sunTimes } = await import(location.origin + '/js/sun.js'), { castShadows } = await import(location.origin + '/js/shadow-sweep.js');
+  const { sunPosition, sunTimes } = await import(location.origin + '/js/sun.js'), { castShadows, shadowPicture } = await import(location.origin + '/js/shadow-sweep.js');
   // Helsinki on 2026-11-08: due south and 13.2° up at noon, on the horizon in the south-east at sunrise
   const hel = [24.94, 60.17], day = sunTimes(Date.UTC(2026, 10, 8, 10) / 1000, hel), noon = sunPosition(day.noon, hel), rise = sunPosition(day.rise, hel);
   const out = [];
@@ -6003,6 +6003,10 @@ SUNLIGHT_MATHS = """(async () => {
   const t = Float32Array.from(g); t[384 * N + 300] = 20;
   const r = [...castShadows(t, N, 270, 10, 10, g).subarray(128 * S, 129 * S)], tree = [r.indexOf(1), r.lastIndexOf(1)];
   if (Math.abs(tree[0] - 45) > 1 || Math.abs(tree[1] - 54) > 1) out.push(`a tree's shadow on the ground: columns ${tree}, not about 45,54`);
+  // a diagonal wall's shadow: the tile's picture at twice the grid's pixels, its edges softened, not steps of one shade
+  const d = new Float32Array(N * N); for (let i = 0; i < N; i++) d[i * N + i] = 30;
+  const img = shadowPicture(d, N, 225, 20, 10), shades = new Set(); for (let i = 3; i < img.data.length; i += 4) shades.add(img.data[i]);
+  if (img.width !== 2 * S || shades.size < 8) out.push(`a diagonal wall's shadow: ${img.width} px wide, ${shades.size} shades, not ${2 * S} px with soft edges`);
   return out;
 })()"""
 SUNLIGHT_APP = """(async (step) => {
@@ -6076,6 +6080,8 @@ SKY_3D = """(async () => {
   if (!light || light.anchor !== 'map' || Math.abs(light.position[1] - sunPosition(Math.round(timeAtHour(day) / 600) * 600, m.getCenter().toArray()).az) > 2) out.push(`the buildings' light by day: ${JSON.stringify(light)}`);
   await expect('dusk', dusk, '#2c3e66');
   await expect('night', night, '#0b1426');
+  const dark = m.getStyle().light; // (not MapLibre's own, which turns with the camera)
+  if (!dark || dark.anchor !== 'map' || dark.position[2] !== 0) out.push(`the buildings' light at night: ${JSON.stringify(dark)}, not from straight above`);
   document.getElementById('btn-time').click();
   for (let k = 0; k < 80 && !w.sample(m.getCenter().toArray()); k++) await wait(250);
   await expect('day, a clear forecast', day, '#5f9cdb');
