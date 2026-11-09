@@ -128,7 +128,7 @@ jobs:
     needs: snapshot
     if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build' && inputs.release == '')
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
@@ -146,6 +146,7 @@ jobs:
           python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
           node --test tools/osm_data/client.test.mjs
       - name: Download one complete country, checksum and clipping polygon
+        timeout-minutes: 40
         env:
           COUNTRY: ${{ matrix.country }}
           SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
@@ -153,7 +154,7 @@ jobs:
           mkdir -p osm-build
           df -h .
           python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "Complete OSM country builds require 25 GiB free disk"'
-          curl --fail --location --retry 3 --connect-timeout 30 --max-time 900 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf
+          curl --fail --location --retry 3 --retry-max-time 300 --connect-timeout 30 --max-time 1800 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf
           curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf.md5" -o osm-build/source.md5
           curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY.poly" -o osm-build/coverage.poly
       - name: Transform, validate and measure
