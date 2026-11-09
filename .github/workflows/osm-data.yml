@@ -230,7 +230,7 @@ jobs:
   geometry:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'geometry-candidate'
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -288,10 +288,11 @@ jobs:
           assert size>0 and free>=size+25*1024**3, 'Insufficient reference download/staging disk on this runner'
           PYCODE
       - name: Download dated reference and checksum
+        timeout-minutes: 130
         env:
           SOURCE_URL: https://download.geofabrik.de/europe-${{ steps.reference.outputs.stamp }}.osm.pbf
         run: |
-          curl --fail --location --retry 3 --connect-timeout 30 --max-time 3600 "$SOURCE_URL" -o osm-build/europe.osm.pbf
+          curl --fail --location --retry 3 --retry-max-time 300 --connect-timeout 30 --max-time 7200 "$SOURCE_URL" -o osm-build/europe.osm.pbf
           curl --fail --location --retry 3 --max-time 60 "$SOURCE_URL.md5" -o osm-build/europe.md5
           df -h .
       - name: Complete original references and compile local geometry

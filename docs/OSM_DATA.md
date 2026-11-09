@@ -592,7 +592,11 @@ candidate before uploading. Enable a verified automatic geometry build before
 making it part of the ongoing production release. Explicit rollback can still
 restore an earlier manifest.
 
-The geometry job has a 240-minute limit on the same standard runner. The first
+The geometry candidate has a 300-minute limit on the same standard runner,
+with 130 minutes for the download and checksum. Each transfer gets up to 120
+minutes and can restart only in its first five minutes. A November 9 candidate
+received 22.7 of 35.4 GB in 60 minutes, which projects to about 94 minutes at
+that transfer rate. The first
 complete attempt spent nearly 42 minutes downloading Europe, leaving only
 78 minutes to compile under the previous 120-minute limit. CLI progress logs
 record native indexing, current object/tile progress, large original IDs, peak
