@@ -336,7 +336,7 @@ export function buildStyle(s, ctx) {
 
   // In 3D the buildings stand up (#643), over the roads and trails, under the routes, the names and your route.
   // Their heights are OpenFreeMap's from OSM's height or floors, about 5 m where it has neither; they rise from zoom 14.
-  if (vectorFills && s.terrain3d) {
+  if (vectorFills && s.terrain3d && s.buildings3d) {
     add({ id: 'building-3d', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 14, paint: {
       'fill-extrusion-color': P.building, 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true,
       'fill-extrusion-height': zi(14, 0, 15, BUILDING_HEIGHT), 'fill-extrusion-base': zi(14, 0, 15, ['get', 'render_min_height']),
@@ -675,8 +675,9 @@ export function buildStyle(s, ctx) {
     const sky = ctx.skyAt ? ctx.skyAt() : { alt: 30, az: 180, wx: null }; // (the first style, before the timeline: day)
     const [top, horizon] = SKIES[skyOf(sky, s.base === 'night')], wet = sky.wx === 'rain' || sky.wx === 'snow';
     style.sky = { 'sky-color': top, 'horizon-color': horizon, 'fog-color': horizon, 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': wet ? 0.35 : 0.85 };
-    // the buildings lit from where the sun is, while it's up (the hillshade keeps its own light: #642)
-    if (sky.alt > 0) style.light = { anchor: 'map', position: [1.15, sky.az, Math.min(85, 90 - sky.alt)] };
+    // the buildings lit from where the sun is while it's up, from straight above when it's down: never from the
+    // camera, as MapLibre's own light is (the hillshade keeps its own light: #642)
+    style.light = { anchor: 'map', position: sky.alt > 0 ? [1.15, sky.az, Math.min(85, 90 - sky.alt)] : [1.15, 0, 0] };
   }
   return style;
 }

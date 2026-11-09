@@ -63,6 +63,7 @@ const DEFAULTS = {
   contours: true,
   terrain3d: false, // the 3D button: tilted, with the hills raised while raiseHills is on
   raiseHills: true, // off: 3D only tilts the map, flat, as tilting it by hand does
+  buildings3d: true, // in 3D the buildings stand up (#643); off, they lie flat
   trackpadTilt: true,
   hoverInfo: true,
   routeFlow: true, // the route's moving chevrons (#198)
@@ -123,6 +124,7 @@ const demSource = new mlcontour.DemSource({
 });
 demSource.setupMaplibre(maplibregl);
 seaIceProtocol(maplibregl); // FMI's sea-ice charts with the open water left clear (winter.js)
+const SHADOWS = ['sunshadow', 'objshadow']; // their sources in js/style.js
 let shadowFailAt = 0;
 shadowProtocol(maplibregl, demSource, (objects) => {
   if (Date.now() - shadowFailAt < 60000) return;
@@ -163,7 +165,12 @@ const map = new maplibregl.Map({
 installIcons(map);
 initGestures(map, { trackpadRotate: () => state.trackpadTilt });
 bindCrosshair(map);
-const view3d = initView3d(map, $('#view3d'), (anchor) => open3dMenu(anchor));
+const view3d = initView3d(map, $('#view3d'), (anchor) => open3dMenu(anchor), [
+  { name: 'mountain', label: 'Raised hills', on: () => state.raiseHills, set: setRaiseHills },
+  { name: 'buildings', label: '3D buildings', on: () => state.buildings3d, set: (v) => setBuildings3d(v) },
+  // the hills lit by the sun at the map's hour, with their shadows as set; off, the fixed light
+  { name: 'sun', label: 'The sun', on: () => state.hillshade && state.hillLight === 'sun', set: (v) => { state.hillshade ||= v; state.hillLight = v ? 'sun' : 'fixed'; applyStyle(); renderLayersPanel(); } },
+]);
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.
 // The 3D button in the map's column (#226) is pressed while 3D terrain is on.
@@ -317,7 +324,13 @@ function setFewerEffects(on) {
 
 function applyStyle() {
   applyTheme(); // (the base map may have changed: Match the map)
-  map.setStyle(buildStyle(state, ctx), { diff: true });
+  const style = buildStyle(state, ctx);
+  // the shadows' new hour given to their sources, not swapped in by the diff, which would drop the ones on screen
+  for (const id of SHADOWS) {
+    const src = map.getSource(id), tiles = style.sources[id] && style.sources[id].tiles;
+    if (src && tiles && src.tiles && src.tiles[0] !== tiles[0]) src.setTiles(tiles);
+  }
+  map.setStyle(style, { diff: true });
   syncView3d();
   saveSettings();
 }
@@ -571,8 +584,15 @@ const weather = new WeatherOverlay(map, {
 // the sun at the map's hour (to ten minutes, so the shadows' tiles keep), from the map's middle, for style.js
 // shortcut: the light is worked out when the style is built, so after a long pan or ten minutes without a rebuild it's a little off
 const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
-let litFor = 0;
-ctx.sunAt = () => { litFor = sunHour(); return { t: litFor, ...sunPosition(litFor, map.getCenter().toArray()) }; };
+let litFor = 0, shadeFor = 0;
+// the shadows' tiles move on to the hour once the last hour's are all drawn: MapLibre keeps those on screen while the
+// next ones are worked out (setTiles() in applyStyle()), so a playing timeline steps them as fast as the device can
+const shadowsDrawn = () => SHADOWS.every((id) => !map.getSource(id) || map.isSourceLoaded(id));
+ctx.sunAt = () => {
+  litFor = sunHour();
+  if (shadowsDrawn()) shadeFor = litFor;
+  return { t: shadeFor, ...sunPosition(litFor, map.getCenter().toArray()) };
+};
 // the sky in 3D (#644): the sun's place at the map's hour, and the weather at the map's middle only while a forecast is loaded
 const skyNow = () => {
   const ll = map.getCenter().toArray(), p = sunPosition(sunHour(), ll), w = weather.active && weather.sample(ll);
@@ -581,8 +601,10 @@ const skyNow = () => {
 let skyFor = '';
 ctx.skyAt = () => { const k = skyNow(); skyFor = JSON.stringify(k); return k; };
 // the hills' light or the sky built for another hour, place or forecast
-const lightStale = () => (state.hillshade && state.hillLight === 'sun' && sunHour() !== litFor) || (state.terrain3d && JSON.stringify(skyNow()) !== skyFor);
+const lightStale = () => (state.hillshade && state.hillLight === 'sun' && (sunHour() !== litFor || (shadeFor !== litFor && shadowsDrawn())))
+  || (state.terrain3d && JSON.stringify(skyNow()) !== skyFor);
 map.on('moveend', () => { if (lightStale()) applyStyle(); });
+map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)
 
 function setTimeline(on) {
   state.timeline = on;
@@ -940,6 +962,12 @@ function setRaiseHills(on) {
   applyStyle();
   renderLayersPanel();
 }
+// the buildings standing up in 3D, or flat (#942)
+function setBuildings3d(on) {
+  state.buildings3d = on;
+  applyStyle();
+  renderLayersPanel();
+}
 
 // ------------------------------------------------------------------ layers panel
 function setTrail(key, value) {
@@ -1139,10 +1167,11 @@ const heightRange = () => {
       oninput: (e) => { state.exaggeration = +e.target.value; val.textContent = `${state.exaggeration.toFixed(1)}×`; if (map.getTerrain()) map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } }), val);
 };
 const arrowsToggle = () => toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery');
-// the hills raised in 3D, and how tall, or 3D only tilting the map, flat
+// the hills raised in 3D, and how tall, or 3D only tilting the map, flat; and the buildings standing up or flat
 const hillsControls = () => [
   toggle('Raised hills', state.raiseHills, setRaiseHills),
   state.raiseHills ? heightRange() : null,
+  toggle('3D buildings', state.buildings3d, setBuildings3d),
 ];
 const terrain3dControls = () => [
   toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),

@@ -5985,7 +5985,7 @@ def terrain(chrome):
 # a wall of the test's (shadows.js), and in the app Hillshade's light following the timeline's hour, the fixed light
 # back when the sun is down or Fixed light is picked, the shadows' switch, all kept after a reload.
 SUNLIGHT_MATHS = """(async () => {
-  const { sunPosition, sunTimes } = await import(location.origin + '/js/sun.js'), { castShadows } = await import(location.origin + '/js/shadow-sweep.js');
+  const { sunPosition, sunTimes } = await import(location.origin + '/js/sun.js'), { castShadows, shadowPicture } = await import(location.origin + '/js/shadow-sweep.js');
   // Helsinki on 2026-11-08: due south and 13.2° up at noon, on the horizon in the south-east at sunrise
   const hel = [24.94, 60.17], day = sunTimes(Date.UTC(2026, 10, 8, 10) / 1000, hel), noon = sunPosition(day.noon, hel), rise = sunPosition(day.rise, hel);
   const out = [];
@@ -6003,6 +6003,10 @@ SUNLIGHT_MATHS = """(async () => {
   const t = Float32Array.from(g); t[384 * N + 300] = 20;
   const r = [...castShadows(t, N, 270, 10, 10, g).subarray(128 * S, 129 * S)], tree = [r.indexOf(1), r.lastIndexOf(1)];
   if (Math.abs(tree[0] - 45) > 1 || Math.abs(tree[1] - 54) > 1) out.push(`a tree's shadow on the ground: columns ${tree}, not about 45,54`);
+  // a diagonal wall's shadow: the tile's picture at twice the grid's pixels, its edges softened, not steps of one shade
+  const d = new Float32Array(N * N); for (let i = 0; i < N; i++) d[i * N + i] = 30;
+  const img = shadowPicture(d, N, 225, 20, 10), shades = new Set(); for (let i = 3; i < img.data.length; i += 4) shades.add(img.data[i]);
+  if (img.width !== 2 * S || shades.size < 8) out.push(`a diagonal wall's shadow: ${img.width} px wide, ${shades.size} shades, not ${2 * S} px with soft edges`);
   return out;
 })()"""
 SUNLIGHT_APP = """(async (step) => {
@@ -6017,8 +6021,10 @@ SUNLIGHT_APP = """(async (step) => {
     expect('the fixed light at first', { method: 'multidirectional', shadows: false, light: 'fixed' });
     polku.set({ hillLight: 'sun' }); w.setHour(up); await wait(1500);
     expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true, objects: true });
-    const tiles = m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0];
-    if (!tiles || !tiles.endsWith(`t=${Math.round(timeAtHour(up) / 600) * 600}`)) out.push(`the shadows' tiles: ${tiles}`);
+    // (once the hour before's are drawn, #945)
+    const tiles = () => m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0], want = `t=${Math.round(timeAtHour(up) / 600) * 600}`;
+    for (let k = 0; k < 120 && !(tiles() || '').endsWith(want); k++) await wait(500);
+    if (!(tiles() || '').endsWith(want)) out.push(`the shadows' tiles: ${tiles()}`);
     // each its own switch: the hills' off keeps the trees' and buildings', and the other way round
     polku.set({ hillShadows: false }); await wait(800);
     expect('Hills’ shadows off', { method: 'combined', shadows: false, objects: true });
@@ -6053,6 +6059,14 @@ OBJECT_SHADOWS = """(async () => {
   const tm = m.style.tileManagers.objshadow, states = tm ? tm.getIds().map((id) => tm.getTileByID(id).state) : [];
   if (!m.getLayer('obj-shadow') || !states.length || states.some((s) => s !== 'loaded')) out.push(`the trees' and buildings' shadows at zoom 15: layer ${!!m.getLayer('obj-shadow')}, tiles ${states}`);
   if (calls() === before) out.push('no canopy heights asked for');
+  // the timeline playing on (#945): the shadows on screen stay while the next hours' are worked out, then follow the hour
+  const w = polku.weather, h0 = w.hour, { timeAtHour } = await import(location.origin + '/js/wxmap.js');
+  const shown = () => { const tm = m.style.tileManagers.objshadow; return tm ? tm.getIds().filter((id) => tm.getTileByID(id).hasData()).length : 0; };
+  w.setHour(h0 + 1); w.setHour(h0 + 2);
+  if (!shown()) out.push('an hour on, the trees’ and buildings’ shadows were dropped from the screen');
+  const want = `t=${Math.round(timeAtHour(h0 + 2) / 600) * 600}`;
+  for (let t0 = Date.now(); Date.now() - t0 < 120000 && !(m.getSource('objshadow').tiles[0].includes(`${want}&`) && ready()); ) await wait(500);
+  if (!m.getSource('objshadow').tiles[0].includes(`${want}&`)) out.push(`two hours on, the shadows are for ${m.getSource('objshadow').tiles[0]}, not ${want}`);
   m.jumpTo({ zoom: 12.5 });
   return out;
 })()"""
@@ -6076,6 +6090,8 @@ SKY_3D = """(async () => {
   if (!light || light.anchor !== 'map' || Math.abs(light.position[1] - sunPosition(Math.round(timeAtHour(day) / 600) * 600, m.getCenter().toArray()).az) > 2) out.push(`the buildings' light by day: ${JSON.stringify(light)}`);
   await expect('dusk', dusk, '#2c3e66');
   await expect('night', night, '#0b1426');
+  const dark = m.getStyle().light; // (not MapLibre's own, which turns with the camera)
+  if (!dark || dark.anchor !== 'map' || dark.position[2] !== 0) out.push(`the buildings' light at night: ${JSON.stringify(dark)}, not from straight above`);
   document.getElementById('btn-time').click();
   for (let k = 0; k < 80 && !w.sample(m.getCenter().toArray()); k++) await wait(250);
   await expect('day, a clear forecast', day, '#5f9cdb');
@@ -10384,10 +10400,18 @@ def pad3d(chrome):
             got = pg.js(PAD3D)
             if got['layers'] != '1.6×' or got['terrain'] != 1.6:
                 fails.append(f"after a reload, Layers' 3D height says {got['layers']} and the terrain is {got['terrain']}, not 1.6")
+            # the pad's own switches (#943): pressed as their settings are, a tap changes the map and Layers' switch with it
+            pad = "[...document.querySelectorAll('#view3d .v3-tg')].map((b) => b.getAttribute('aria-label') + ':' + b.getAttribute('aria-pressed')).join(' ')"
+            if pg.js(pad) != 'Raised hills:true 3D buildings:true The sun:true':
+                fails.append(f"the pad's switches: {pg.js(pad)}")
+            pg.js("document.querySelector('#view3d [aria-label=\"3D buildings\"]').click(); document.querySelector('#view3d [aria-label=\"The sun\"]').click(); new Promise((ok) => setTimeout(() => ok(true), 800))")
+            got = pg.js(f"({{ pad: {pad}, b: !!polku.map.getLayer('building-3d'), light: polku.state.hillLight, layers: [...document.querySelectorAll('#layers-body label.tg')].find((l) => l.textContent.startsWith('3D buildings')).querySelector('input').checked }})")
+            if got != {'pad': 'Raised hills:true 3D buildings:false The sun:false', 'b': False, 'light': 'fixed', 'layers': False}:
+                fails.append(f"a tap on the pad's 3D buildings and The sun: {got}")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the 3D pad's settings, and 3D height's value" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the 3D pad's settings, its switches, and 3D height's value" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -10480,10 +10504,26 @@ def buildings_3d(chrome):
         fails += pg.js(f"({BUILDINGS_3D})(false)")
         pg.js("document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
         fails += pg.js(f"({BUILDINGS_3D})(true)", timeout=120000)
+        # 3D buildings off in the 3D pad's ⋯ (#942): they lie flat, kept after a reload, and stand up again from Layers' switch
+        pg.js("document.querySelector('#view3d button[aria-label=\"3D settings\"]').click(); new Promise((ok) => setTimeout(() => ok(true), 500))")
+        pg.js("[...document.querySelectorAll('.menu-pop label.tg')].find((l) => l.textContent.startsWith('3D buildings')).click(); new Promise((ok) => setTimeout(() => ok(true), 800))")
+        for where in ('3D buildings off', 'after a reload'):
+            if where != '3D buildings off':
+                pg.reload()
+            got = pg.js("({ on: polku.state.terrain3d, b: polku.state.buildings3d, layer: !!polku.map.getLayer('building-3d'), flat: !!polku.map.getLayer('building') })")
+            if got != {'on': True, 'b': False, 'layer': False, 'flat': True}:
+                fails.append(f'{where}: {got}')
+        pg.js("document.querySelector('#btn-layers').click(), true")
+        time.sleep(0.4)
+        pg.js("[...document.querySelectorAll('#quick-layers button')].find((x) => /More/.test(x.textContent)).click(), true")
+        time.sleep(0.8)
+        pg.js("[...document.querySelectorAll('#layers-body label.tg')].find((l) => l.textContent.startsWith('3D buildings')).click(); new Promise((ok) => setTimeout(() => ok(true), 800))")
+        if not pg.js("polku.state.buildings3d && !!polku.map.getLayer('building-3d')"):
+            fails.append("Layers' 3D buildings switch: the buildings did not stand up again")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the buildings in 3D: standing at their heights, under the route, none flat" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the buildings in 3D: standing at their heights, under the route, none flat; their switch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # Hills in 3D (#642): while 3D is on the hillshade has one light from the north-west, fixed to the map; off, the flat
