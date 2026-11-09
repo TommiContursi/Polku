@@ -55,11 +55,14 @@ const DEFAULTS = {
   highContrast: false,
   fewerEffects: false, // Settings → Fewer effects: solid panels instead of the glass over the map (#330, #632)
   fewerOffered: false, // Polku has offered Fewer effects on this device, once, as frames were slow
+  flatOffered: false, // Polku has offered flat hills on this device, once, as frames were slow in 3D
   hillshade: true,
   hillLight: 'fixed', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910)
   hillShadows: true, // with the sun's light, the shadows the hills cast
+  objectShadows: true, // with the sun's light, the shadows trees and buildings cast (#919)
   contours: true,
-  terrain3d: false,
+  terrain3d: false, // the 3D button: tilted, with the hills raised while raiseHills is on
+  raiseHills: true, // off: 3D only tilts the map, flat, as tilting it by hand does
   trackpadTilt: true,
   hoverInfo: true,
   routeFlow: true, // the route's moving chevrons (#198)
@@ -271,18 +274,23 @@ function applyTheme() {
 deviceDark.addEventListener('change', applyTheme);
 deviceMore.addEventListener('change', applyTheme);
 
-// Polku offers Fewer effects once on this device when it draws slowly here (#632): over 3 s of frames timed while the
+// Polku offers Fewer effects once on this device when it draws slowly here (#632), and before that, in 3D with the
+// hills raised, flat hills (#936): over 3 s of frames timed while the
 // map moves or something scrolls, more than half of it in frames slower than 30 a second. A gap over 1 s (a hidden
 // tab, a style loading) doesn't count, and a shorter long task alone can't fill half of it. Rows a browser draws late as they scroll in don't slow the frames: this can't see those.
 {
-  let moved = 0, slow = 0, last = 0, until = 0, raf = 0;
+  let moved = 0, slow = 0, last = 0, until = 0, raf = 0, offered = false; // one offer a visit, so a second toast can't replace it
   const frame = (t) => {
     const d = t - last;
     if (last && d < 1000) { moved += d; if (d > 34) slow += d; }
     last = t;
     if (moved >= 3000) {
-      if (slow > moved / 2 && !state.fewerEffects && !state.fewerOffered) {
-        state.fewerOffered = true;
+      if (slow > moved / 2 && offerFlat()) {
+        offered = state.flatOffered = true;
+        saveSettings();
+        toast('3D is drawing slowly on this device.', { ms: 12000, action: { label: 'Use flat hills', fn: () => setRaiseHills(false) } });
+      } else if (slow > moved / 2 && !state.fewerEffects && !state.fewerOffered) {
+        offered = state.fewerOffered = true;
         saveSettings();
         toast('Polku is drawing slowly in this browser.', { ms: 12000, action: { label: 'Use fewer effects', fn: () => setFewerEffects(true) } });
       }
@@ -291,8 +299,9 @@ deviceMore.addEventListener('change', applyTheme);
     if (performance.now() < until) raf = requestAnimationFrame(frame);
     else raf = last = 0;
   };
+  const offerFlat = () => state.terrain3d && state.raiseHills && !state.flatOffered;
   const moving = () => {
-    if (state.fewerEffects || state.fewerOffered) return;
+    if (offered || ((state.fewerEffects || state.fewerOffered) && !offerFlat())) return;
     until = performance.now() + 300;
     if (!raf) raf = requestAnimationFrame(frame);
   };
@@ -915,6 +924,12 @@ function set3d(on) {
   map.easeTo({ pitch: on ? Math.max(60, map.getPitch()) : 0, duration: 800 });
   renderLayersPanel();
 }
+// the hills raised in 3D, or 3D only tilting the map, flat (#936)
+function setRaiseHills(on) {
+  state.raiseHills = on;
+  applyStyle();
+  renderLayersPanel();
+}
 
 // ------------------------------------------------------------------ layers panel
 function setTrail(key, value) {
@@ -1111,12 +1126,17 @@ const heightRange = () => {
   const val = h('span', { class: 'op-val' }, `${state.exaggeration.toFixed(1)}×`);
   return h('label', { class: 'range op-row' }, h('span', {}, '3D height'),
     h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), 'aria-label': '3D height',
-      oninput: (e) => { state.exaggeration = +e.target.value; val.textContent = `${state.exaggeration.toFixed(1)}×`; if (state.terrain3d) map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } }), val);
+      oninput: (e) => { state.exaggeration = +e.target.value; val.textContent = `${state.exaggeration.toFixed(1)}×`; if (map.getTerrain()) map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } }), val);
 };
 const arrowsToggle = () => toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery');
+// the hills raised in 3D, and how tall, or 3D only tilting the map, flat
+const hillsControls = () => [
+  toggle('Raised hills', state.raiseHills, setRaiseHills),
+  state.raiseHills ? heightRange() : null,
+];
 const terrain3dControls = () => [
   toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
-  state.terrain3d ? heightRange() : null,
+  ...hillsControls(), // (found before 3D is on, too)
 ];
 function trailControls() {
   const act = ACTIVITIES[state.activity];
@@ -1167,7 +1187,7 @@ const sunNote = () => {
   const t = sunHour(), p = sunPosition(t, map.getCenter().toArray()), at = clock(t * 1000);
   if (p.alt <= 0.5) return `At ${at} the sun is down, so the hills have the fixed light.`;
   // a shadow is drawn only as far as one tile beyond its own, which a sun this low outreaches
-  const low = state.hillShadows && p.alt < 3 ? ' It’s so low that the shadows reach farther than the map shows.' : '';
+  const low = (state.hillShadows || state.objectShadows) && p.alt < 3 ? ' It’s so low that the shadows reach farther than the map shows.' : '';
   return `At ${at} the sun is ${Math.round(p.alt)}° up, in the ${SIDES[side(p.az)]}.${low}`;
 };
 const hillshadeControls = () => {
@@ -1176,14 +1196,15 @@ const hillshadeControls = () => {
   if (!state.hillshade) return tg;
   return h('div', { class: 'tg-group' }, tg,
     seg(HILL_LIGHTS, state.hillLight, (v) => { state.hillLight = v; applyStyle(); renderLayersPanel(); }),
-    sun ? toggle('Shadows', state.hillShadows, (v) => { state.hillShadows = v; applyStyle(); renderLayersPanel(); }, 'Cast by the hills from zoom 10, by trees and buildings from zoom 14') : null,
+    sun ? toggle('Hills’ shadows', state.hillShadows, rerender((v) => { state.hillShadows = v; applyStyle(); })) : null,
+    sun ? toggle('Trees’ and buildings’ shadows', state.objectShadows, rerender((v) => { state.objectShadows = v; applyStyle(); })) : null,
     sun && ctx.sunAt ? h('p', { class: 'note' }, sunNote()) : null);
 };
 // the 3D pad's ⋯ (#920): 3D's own settings in the app's menu, the same controls as Layers' (drawn again with it)
 let menu3d = null;
 const items3d = () => [
   { node: h('div', { class: 'way-bar' }, h('b', {}, '3D settings'), h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close 3D settings', html: icon('close', 20), onclick: () => menu3d.close(true) })) },
-  { node: h('div', { class: 'wpl-shows menu-3d' }, heightRange(), hillshadeControls()) },
+  { node: h('div', { class: 'wpl-shows menu-3d' }, ...hillsControls(), hillshadeControls()) },
 ];
 function open3dMenu(anchor) {
   menu3d = popMenu(anchor, items3d(), { label: '3D settings', modal: true, sheet: true, onClose: () => { menu3d = null; anchor.setAttribute('aria-expanded', 'false'); } });
@@ -1215,6 +1236,7 @@ function renderLayersPanel() {
   syncLayersButton();
   renderQuickLayers();
   if (menu3d) { const settle = settleControls(menu3d.el); menu3d.refill(items3d()); settle(); }
+  if (!$('#settings-panel').hidden) renderSettingsPanel(); // (it has 3D's and the hillshade's controls too)
   const p = $('#layers-body');
   const keepScroll = p.scrollTop; // re-rendering after a toggle must not jump to the top
   requestAnimationFrame(() => { p.scrollTop = keepScroll; });
@@ -1753,8 +1775,8 @@ function renderSettingsPanel() {
 
   p.append(group('map', 'Map and planner',
     h('div', { class: 'rows' }, item({ icon: 'layers', label: 'Layers', line: 'The base map, trails, 3D, the timeline and weather on the map', chev: true, onclick: () => openPanel('quick-layers') })),
-    heightRange(),
-    h('p', { class: 'note' }, 'How tall the hills stand in 3D. Layers turns 3D on and off, and has this too.'),
+    ...hillsControls(),
+    hillshadeControls(),
     hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
     hoverCapable() ? toggle('Trackpad rotates', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates. Up/down and pinch zoom; Shift+scroll tilts') : null,
     comingToggle('Turn the map with two fingers', 'Off keeps north up; a pinch only zooms', true),

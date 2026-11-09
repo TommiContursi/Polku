@@ -81,6 +81,7 @@ export function buildStyle(s, ctx) {
   const vectorFills = s.base === 'trail' || s.base === 'plain' || s.base === 'night';
   const aerialBase = isAerial(s.base);
   const topoBase = isTopo(s.base);
+  const raised = s.terrain3d && s.raiseHills; // the hills raised in 3D, or 3D flat, only tilted
   const sources = {
     ofm: { type: 'vector', url: OFM_TILEJSON },
     // the same tiles again (from the HTTP cache), for the trail lines alone: with trail details on,
@@ -200,7 +201,7 @@ export function buildStyle(s, ctx) {
     const now = { 'hillshade-shadow-color-transition': { duration: 0 }, 'hillshade-highlight-color-transition': { duration: 0 } };
     add({
       id: 'hillshade', type: 'hillshade', source: 'dem', minzoom: 4,
-      paint: sunUp || s.terrain3d ? {
+      paint: sunUp || raised ? {
         ...now,
         // one light, fixed to the map: the sun, or in 3D the north-west, so a tilted slope facing away from it is darker
         'hillshade-method': sunUp ? 'combined' : 'standard',
@@ -226,7 +227,10 @@ export function buildStyle(s, ctx) {
       },
     });
     // the shadows the hills cast (js/shadows.js), from zoom 10: drawn with the buildings, below
-    if (sunUp && s.hillShadows) sources.sunshadow = { type: 'raster', tiles: [`sunshadow://{z}/{x}/{y}?t=${sun.t}`], tileSize: 512, minzoom: 10, maxzoom: 13 };
+    // and the trees' and buildings' (#919) from zoom 14: each its own setting
+    const shade = sunUp && `sunshadow://{z}/{x}/{y}?t=${sun.t}`;
+    if (shade && s.hillShadows) sources.sunshadow = { type: 'raster', tiles: [shade], tileSize: 512, minzoom: 10, maxzoom: 13 };
+    if (shade && s.objectShadows) sources.objshadow = { type: 'raster', tiles: [`${shade}&objects`], tileSize: 512, minzoom: 14, maxzoom: 15, attribution: 'Tree heights © Meta & WRI, via TGE Labs' };
   }
 
   // ---- Water --------------------------------------------------------------
@@ -278,11 +282,8 @@ export function buildStyle(s, ctx) {
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
   }
   // the hills' shadows, and the trees' and buildings' (js/shadows.js, #919) from zoom 14: over water, fields and roofs
-  if (sources.sunshadow) {
-    add({ id: 'sun-shadow', type: 'raster', source: 'sunshadow', minzoom: 10, paint: { 'raster-fade-duration': 0 } });
-    sources.objshadow = { type: 'raster', tiles: [`${sources.sunshadow.tiles[0]}&objects`], tileSize: 512, minzoom: 14, maxzoom: 15, attribution: 'Tree heights © Meta & WRI, via TGE Labs' };
-    add({ id: 'obj-shadow', type: 'raster', source: 'objshadow', minzoom: 14, paint: { 'raster-fade-duration': 0 } });
-  }
+  if (sources.sunshadow) add({ id: 'sun-shadow', type: 'raster', source: 'sunshadow', minzoom: 10, paint: { 'raster-fade-duration': 0 } });
+  if (sources.objshadow) add({ id: 'obj-shadow', type: 'raster', source: 'objshadow', minzoom: 14, paint: { 'raster-fade-duration': 0 } });
 
   addRoads(s, P, hc, layers, ctx);
 
@@ -639,7 +640,7 @@ export function buildStyle(s, ctx) {
     layers,
   };
   if (s.terrain3d) {
-    style.terrain = { source: 'terrain', exaggeration: s.exaggeration || 1.5 };
+    if (raised) style.terrain = { source: 'terrain', exaggeration: s.exaggeration || 1.5 };
     style.sky = { 'sky-color': '#bcd8f0', 'horizon-color': '#eef4f8', 'fog-color': '#eef2f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.85 };
   }
   return style;

@@ -6011,17 +6011,20 @@ SUNLIGHT_APP = """(async (step) => {
   const at = (k) => sunPosition(Math.round(timeAtHour(k) / 600) * 600, m.getCenter().toArray());
   const hours = [...Array(48).keys()], up = hours.find((k) => at(k).alt > 5), down = hours.find((k) => at(k).alt < -1);
   const read = () => ({ method: m.getPaintProperty('hillshade', 'hillshade-method'), dir: m.getPaintProperty('hillshade', 'hillshade-illumination-direction'),
-    shadows: !!m.getLayer('sun-shadow'), light: polku.state.hillLight });
+    shadows: !!m.getLayer('sun-shadow'), objects: !!m.getLayer('obj-shadow'), light: polku.state.hillLight });
   const out = [], expect = (where, want) => { const got = read(); if (Object.keys(want).some((k) => JSON.stringify(got[k]) !== JSON.stringify(want[k]))) out.push(`${where}: ${JSON.stringify(got)}, not ${JSON.stringify(want)}`); };
   if (step === 'before') {
     expect('the fixed light at first', { method: 'multidirectional', shadows: false, light: 'fixed' });
     polku.set({ hillLight: 'sun' }); w.setHour(up); await wait(1500);
-    expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true });
+    expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true, objects: true });
     const tiles = m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0];
     if (!tiles || !tiles.endsWith(`t=${Math.round(timeAtHour(up) / 600) * 600}`)) out.push(`the shadows' tiles: ${tiles}`);
+    // each its own switch: the hills' off keeps the trees' and buildings', and the other way round
     polku.set({ hillShadows: false }); await wait(800);
-    expect('Shadows off', { method: 'combined', shadows: false });
-    polku.set({ hillShadows: true }); w.setHour(down); await wait(1500);
+    expect('Hills’ shadows off', { method: 'combined', shadows: false, objects: true });
+    polku.set({ hillShadows: true, objectShadows: false }); await wait(800);
+    expect('Trees’ and buildings’ shadows off', { method: 'combined', shadows: true, objects: false });
+    polku.set({ objectShadows: true }); w.setHour(down); await wait(1500);
     expect(`the sun down, +${down} h`, { method: 'multidirectional', shadows: false, light: 'sun' });
     w.setHour(up); await wait(1500);
   } else {
@@ -8444,6 +8447,41 @@ def fewer_effects(chrome):
     return not fails
 
 
+def flat_offer(chrome):
+    """Frames slower than 30 a second in 3D with the hills raised (#936): Polku offers flat hills, once, before Fewer
+    effects, and nothing else that visit: slow frames for 6 s more leave its toast as it is. Its action lays the hills flat
+    and keeps 3D on. The terrain is taken off the map behind the app's back while
+    the frames are slowed: SwiftShader draws raised hills at a frame in several seconds, and gaps over 1 s don't count."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb', 'terrain3d': True, 'flatOffered': False, 'fewerOffered': False}, {'polku:seen3dHint2': 'true'})
+        pg.js('polku.map.setTerrain(null); true')
+        pg.idle()  # the tilted map's first frames take tens of seconds on a cold start
+        pg.js(SLOW_FRAMES)
+        offered = pg.js("new Promise((ok) => { const t0 = performance.now(), f = () => { const t = document.querySelector('#toast:not([hidden])'); if (t && /slowly/.test(t.textContent)) ok(t.textContent); else if (performance.now() - t0 > 20000) ok(null); else setTimeout(f, 100); }; f(); })", timeout=25000)
+        if offered and 'Use flat hills' in offered:
+            time.sleep(6)
+            still = pg.js("document.querySelector('#toast:not([hidden])')?.textContent || null")
+            if not still or 'Use flat hills' not in still:
+                fails.append(f'6 s more of slow frames after the offer of flat hills: the toast says {still!r}')
+        pg.js('window.__slow = false; true')
+        if not offered or 'Use flat hills' not in offered:
+            fails.append(f'frames at about 20 a second for 20 s in 3D: the offer was {offered!r}, not flat hills')
+        else:
+            at = pg.js("(() => { const r = document.querySelector('#toast .toast-act').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
+            pg.tap(*at)
+            time.sleep(1.5)
+            r = pg.js("({ saved: JSON.parse(localStorage.getItem('polku:settings')), terrain: !!polku.map.getTerrain() })")
+            if r['terrain'] or (r['saved'].get('raiseHills'), r['saved'].get('flatOffered'), r['saved'].get('terrain3d'), r['saved'].get('fewerOffered')) != (False, True, True, False):
+                fails.append(f"Use flat hills: terrain {r['terrain']}, saved {r['saved']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Flat hills: offered once when frames are slow in 3D, before Fewer effects, and its action by touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Idea D: every text in these scenes of tools/shoot.py, against the solid colour behind it, at 4.5:1 (3:1 for large text),
 # in light and then in dark, measured by tools/census.py. Text over the map itself isn't measured (census.py says why).
 CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-point-card', 'desk-acts', 'desk-settings', 'desk-quick',
@@ -10289,7 +10327,7 @@ def pad3d(chrome):
             pg.js("[...document.querySelectorAll('.menu-pop .seg button')].find((b) => b.textContent === 'The sun').click(), true")
             time.sleep(0.6)
             got = pg.js(PAD3D)
-            if not got['open'] or 'Shadows' not in got['text'] or pg.js("polku.state.hillLight") != 'sun':
+            if not got['open'] or 'Hills’ shadows' not in got['text'] or 'buildings’ shadows' not in got['text'] or pg.js("polku.state.hillLight") != 'sun':
                 fails.append(f"The sun in the menu: {got['text'] or 'the menu closed'}")
             key('Escape', 'Escape', 27)
             got = pg.js(PAD3D)
@@ -10393,6 +10431,17 @@ def hills_3d(chrome):
             expect(f"3D {'on' if on else 'off'}", on)
             pg.reload()
             expect(f"3D {'on' if on else 'off'}, after a reload", on)
+        # Raised hills off: the 3D button only tilts the map, flat, with the flat map's light, kept after a reload
+        pg.js("polku.set({ raiseHills: false }); document.getElementById('btn-3d').click(); new Promise((ok) => setTimeout(() => ok(true), 1500))")
+        for where in ('3D without raised hills', 'after a reload'):
+            if where != '3D without raised hills':
+                pg.reload()
+            got = pg.js(f"({{ ...{HILLS_3D}, pitch: polku.map.getPitch() }})")
+            if not got['on'] or got['ex'] is not None or got['method'] != 'multidirectional' or got['pitch'] < 55:
+                fails.append(f'{where}: {got}')
+        pg.js("polku.set({ raiseHills: true }); true")
+        if pg.js(HILLS_3D)['ex'] != 1.5:
+            fails.append('Raised hills on again: the terrain did not come back')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -19995,7 +20044,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239); the search field\'s hint in the glass\'s grey (#551)'),
     ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
-    ('effects', [fewer_effects], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint'),
+    ('effects', [fewer_effects, flat_offer], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),

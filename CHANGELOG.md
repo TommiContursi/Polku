@@ -2,6 +2,14 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-09
+
+### 3D without raised hills, and the shadows' two switches ([#936](https://github.com/TommiContursi/Polku/issues/936))
+
+- **Raised hills**, in the 3D pad's **⋯**, **Layers** under 3D terrain and **Settings → Map and planner**, can be turned off. Then **3D** only tilts the map and keeps the ground flat, as tilting it with two fingers does. Raised hills stay the default.
+- When 3D draws slowly on your device, Polku offers flat hills once, before it offers **Fewer effects**.
+- The shadows of trees and buildings now have a switch of their own, beside **Hills' shadows**, under **Hillshade → The sun**. Settings has them too.
+
 ## 2026-11-08
 
 ### The towns' weather up close, and the weather's switches in Layers

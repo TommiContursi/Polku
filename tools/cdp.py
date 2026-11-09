@@ -267,8 +267,8 @@ class Page:
                  # are checked on a page of their own, #761)
                  'polku:listShow': json.dumps({'warnings': True, 'look': True, 'drawing': True, 'dark': True, 'weather': True, 'speed': False})}
         items.update(storage or {})
-        # Polku's offer of Fewer effects when frames are slow (#632) would come up in every test on SwiftShader
-        items['polku:settings'] = json.dumps({'fewerOffered': True, **json.loads(items['polku:settings'])})
+        # Polku's offers of Fewer effects and flat hills when frames are slow (#632, #936) would come up in every test on SwiftShader
+        items['polku:settings'] = json.dumps({'fewerOffered': True, 'flatOffered': True, **json.loads(items['polku:settings'])})
         self.js('localStorage.clear(); ' + ''.join(f'localStorage.setItem({json.dumps(k)}, {json.dumps(v)}); ' for k, v in items.items()) + 'true')
         self.goto(BASE + hash_)
         self.map_loaded()
