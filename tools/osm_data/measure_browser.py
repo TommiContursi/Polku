@@ -85,7 +85,7 @@ SCRIPT = """(async () => {
        at = performance.now(); begin = calls.length;
        const repeat = await reader.tile(tile), repeat_ms = performance.now()-at;
        if (JSON.stringify(first)!==JSON.stringify(repeat) || calls.length!==begin) throw new Error(name+': '+product+' cache not reused');
-       if (product==='geometry' && (first.schema!==2 || first.areas_complete!==true || first.nearby_complete!==true)) throw new Error(name+': incomplete shared geometry');
+       if (product==='geometry' && (first.schema!==2 || first.areas_complete!==true)) throw new Error(name+': incomplete shared area coverage');
        details[product]={source:first.source,cold_ms:ms,repeat_ms,elements:first.elements.length,requests:requests.length,bytes:requests.reduce((s,r)=>s+r.bytes,0),network:requests};
      }
      const trail=await T.trailTile(...G.lonLatToTile(...ll,13).map(Math.floor)), winter=await V.winterTile(...G.lonLatToTile(...ll,12).map(Math.floor));
@@ -158,7 +158,7 @@ GEOMETRY_SCRIPT = """(async()=>{
  try {
   for(const [name,ll,id] of [['Inari',[27.7,68.95],402543],['Saimaa',[29.68505859375,61.928610725008284],7379046],['Vattern',[14.5,58.2],null],['Sognsvann',[10.73,59.974],null],['Ulemiste',[24.76,59.39],967594],['Kadrioru park',[24.79,59.44],9259639]]) {
    const xy=lonLatToTile(...ll,13).map(Math.floor), start=performance.now(), begin=calls.length, j=await reader.tile(xy), cold_ms=performance.now()-start;
-   if(!j.areas_complete || !j.nearby_complete)throw new Error(name+': unlocated geometry');
+   if(!j.areas_complete)throw new Error(name+': unlocated area geometry');
    const matches=j.elements.filter(e=>e.area?.complete && containsArea(e,j.tile,ll));
    if(!matches.some(e=>id ? e.id===id : e.tags.natural==='water'))throw new Error(name+': original lake/park area not found');
    const count=calls.length, repeat=performance.now();await reader.tile(xy);

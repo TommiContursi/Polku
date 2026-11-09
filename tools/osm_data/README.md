@@ -169,8 +169,10 @@ The retained Inari/Saimaa sample measurements are in
 Each country build now exports `geometry-roots.jsonl.gz`: sorted rows
 `[type,id,area,inspection,originalSHA256]`. This catalog and the existing original
 identity evidence are checksummed build inputs, excluded from browser releases.
-The shared job downloads those small inputs, verifies their hashes and common
-epoch, and completes their references from the dated Europe PBF. Original tags
+The shared job downloads those inputs, verifies their hashes and common
+epoch, and completes the area roots' references from the dated Europe PBF.
+The archive reports `nearby_complete:false`; the country inspection archives
+continue to serve full tags and supported nearby objects. Original area tags
 are retained; native reference completion uses explicit depth 10. Selected copies
 must agree with every available original country identity.
 
@@ -208,7 +210,9 @@ by a completed run; the small retained-source measurements do not establish them
 
 The shared geometry CLI emits phase, object/tile progress and resource records
 to stderr without changing its JSON result or archive bytes. The workflow allows
-240 minutes for its download and compilation. If country jobs passed, `build`
+240 minutes for its download and compilation. If country jobs passed, `geometry-candidate`
 with the existing `release` input set to their run ID reuses the eight verified
 country artifacts; it does not download country PBFs or rebuild those archives.
-The same-epoch reference, completeness, size and publication checks remain.
+The separate candidate concurrency group keeps the experiment independent of
+live checks and weekly country updates. The same-epoch reference, area
+completeness, size and publication checks remain.
