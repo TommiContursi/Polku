@@ -441,6 +441,8 @@ def publish(directory, resume=False):
     config = settings()
     with connection(config) as ftp:
         previous = previous_pointer(ftp)
+        if previous and 'geometry' in json.loads(previous)['datasets']:
+            require('geometry' in manifest['datasets'], 'Publication would remove live geometry')
         release = manifest['release']
         final = f'releases/{release}'
         expected = {f['path']: f['bytes'] for f in manifest['files']} | {'manifest.json': len(raw)}

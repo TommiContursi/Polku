@@ -222,6 +222,7 @@ export async function checkHostedConsumers() {
   const { lonLatToTile } = await import('/js/geo.js');
   const original = StaticOSM.prototype.tile, real = window.fetch, fails = [], publicCalls = [];
   const ll = [25.12345, 62.12345], xy = (z) => lonLatToTile(...ll,z).map(Math.floor);
+  let hazardReads = 0;
   const geometry = [{lon:ll[0],lat:ll[1]},{lon:ll[0]+0.001,lat:ll[1]}];
   const answers = {
     trails: [{type:'way',id:70001,tags:{highway:'path',width:'0.4'},nodes:[1,2],geometry},
@@ -231,6 +232,7 @@ export async function checkHostedConsumers() {
     places: [{type:'relation',id:70005,center:{lon:ll[0],lat:ll[1]},tags:{tourism:'camp_site',name:'Hosted campsite'}}],
   };
   StaticOSM.prototype.tile = async function() {
+    if (this.dataset === 'hazards') hazardReads++;
     return {schema:1,elements:answers[this.dataset] || [],source:{provider:'Polku OSM data',timestamp:'2026-11-01T00:00:00Z'}};
   };
   window.fetch = async (url,init) => {
@@ -247,9 +249,13 @@ export async function checkHostedConsumers() {
     const winter = await W.winterTile(...xy(12));
     if (W.winterClass(winter.w[0]?.[1] || {}) !== 'ski') fails.push('hosted ski-only way missing');
     const water = await H.waterInputs([ll[0]-.001,ll[1]-.001,ll[0]+.001,ll[1]+.001],{hazards:true});
-    if (!water.hazards.features.some(f=>f.properties.src==='osm' && f.properties.kind==='reef') || water.missing.includes('OpenStreetMap')) fails.push('hosted water hazard is missing or marked unavailable');
+    if (!water.hazards.features.some(f=>f.properties.src==='osm' && f.properties.kind==='reef') ||
+        [...water.missing,...water.skipped].includes('OpenStreetMap')) fails.push('hosted water hazard is missing or marked unavailable');
+    const reads = hazardReads;
     const broad = await H.waterInputs([ll[0]-1,ll[1]-1,ll[0]+1,ll[1]+1],{hazards:true});
-    if (!broad.missing.includes('OpenStreetMap')) fails.push('an uncheckable large water area looks like a complete empty hazard result');
+    if (!broad.skipped.includes('OpenStreetMap') || broad.missing.includes('OpenStreetMap') || hazardReads !== reads) {
+      fails.push('an oversized water area must report skipped OSM hazards without requesting them');
+    }
     const stays = await S.staysNear(ll,0.1);
     if (!stays.some(p=>p.name==='Hosted campsite')) fails.push('hosted overnight relation missing');
     if (publicCalls.length) fails.push('healthy hosted consumers queried public Overpass');
