@@ -252,6 +252,7 @@ class PublishTests(unittest.TestCase):
             ('workflow_dispatch','refs/heads/main','build','true',True),
             ('workflow_dispatch','refs/heads/feature','build','true',False),
             ('workflow_dispatch','refs/heads/main','build','',False),
+            ('workflow_dispatch','refs/heads/main','geometry-candidate','true',False),
             ('workflow_dispatch','refs/heads/main','rollback','true',False),
             ('pull_request','refs/heads/main','build','true',False)]:
             expression=condition.removeprefix('${{').removesuffix('}}').replace('!cancelled()','True').replace('needs.bundle.result',repr('success'))
@@ -328,6 +329,23 @@ class PublishTests(unittest.TestCase):
             with self.subTest(artifacts=invalid),self.assertRaises(ValueError):
                 publish.recovery_countries('TommiContursi/Polku',run,jobs,invalid)
 
+    def test_bundle_requires_all_countries_or_successful_geometry_recovery(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        job = workflow.split('\n  bundle:\n', 1)[1].split('\n  verify-candidate:', 1)[0]
+        condition = next(line.strip()[4:] for line in job.splitlines() if line.strip().startswith('if:'))
+        for cancelled, build, geometry, expected in [
+            (False, 'success', 'skipped', True), (False, 'skipped', 'success', True),
+            (False, 'failure', 'skipped', False), (False, 'cancelled', 'skipped', False),
+            (False, 'success', 'failure', False), (False, 'skipped', 'skipped', False),
+            (True, 'success', 'skipped', False), (True, 'skipped', 'success', False),
+        ]:
+            with self.subTest(cancelled=cancelled, build=build, geometry=geometry):
+                expr = condition.removeprefix('${{').removesuffix('}}').strip()
+                for name, value in [('always()', True), ('!cancelled()', not cancelled),
+                                    ('needs.build.result', build), ('needs.geometry.result', geometry)]:
+                    expr = expr.replace(name, repr(value))
+                self.assertEqual(eval(expr.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -352,6 +370,23 @@ class PublishTests(unittest.TestCase):
         self.assertTrue(any(p.read_bytes() == self.previous for p in self.release_dir.glob('rollback*.json')))
         self.assertEqual(self.host.files[ROOT + '/releases/new-release/LICENSE.txt'], LICENSE)
         self.assertFalse(any(p.endswith('.htaccess') for p in self.host.files))
+
+    def test_publication_cannot_remove_live_geometry(self):
+        geometry = {**self.old['datasets']['ways'], 'url': 'geometry.pmtiles'}
+        self.old['datasets']['geometry'] = geometry
+        self.old['files'].append({**self.old['files'][0], 'path': geometry['url']})
+        self.host.add_release(self.old)
+        self.host.files[ROOT + '/releases/previous-release/geometry.pmtiles'] = ARCHIVE
+        current = encoded(publish.current(self.old))
+        for resume in (False, True):
+            with self.subTest(resume=resume):
+                self.host.files[ROOT + '/current.json'] = current
+                if resume:
+                    self.stage({'ways.pmtiles': ARCHIVE, 'LICENSE.txt': LICENSE, 'manifest.json': encoded(self.new)})
+                with self.assertRaisesRegex(RuntimeError, 'remove live geometry'):
+                    publish.publish(self.release_dir, resume=resume)
+                self.assertEqual(self.host.files[ROOT + '/current.json'], current)
+                self.assertEqual(self.host.uploads, [])
 
     def test_publication_and_monitor_verify_the_lighting_archive_too(self):
         data = b'PMTiles lighting' + bytes(range(256)) * 5
