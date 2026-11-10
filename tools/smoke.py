@@ -3059,7 +3059,7 @@ HEADS = """(async () => {
   // winter: snow, snowing, the cold, slippery, the ways' winter tags, the ice season
   const fill = (v) => new Float32Array(n).fill(v), F = ['estimate', 'the forecast'], T = ['map', 'winter tags'];
   const cls = Array.from({ length: n }, (_, i) => ['closed', 'groomed', 'unploughed', 'open3'][Math.floor(i / 15)]);
-  const wa = { along, pts, tAt, activity: 'mtb', attr: attrs('mtb', []), snow: { cm: fill(15) }, winterCls: cls, snowSec: 0,
+  const wa = { along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), snow: { cm: fill(15) }, winterCls: cls, snowSec: 0,
     wind: { temp: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0 : -30)), precip: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0.5 : 0)), speed: fill(10), snowfall: fill(5), snow: fill(15) } };
   const wt = { app: { winter: () => ({ on: true, setting: 'on' }) } };
   expect('winterWarnings', p.winterWarnings.call(wt, wa), [[/^Snow on the way/, 'look', ...F], [/^Snowing on the way/, 'look', ...F], [/^Slippery/, 'read', ...F], [/^Frostbite risk/, 'read', ...F],
@@ -18372,6 +18372,7 @@ LV_NIGHTS = """(async () => {
       list: hhmm((row?.getAttribute('aria-label') || '').match(/Arrive [^,]*/)?.[0]), gpx: hhmm(gpxNow[n - 1].match(/There at [^.]*/)?.[0]) };
   };
   const agree = (v) => v.go && (!v.tab || v.go === v.tab) && v.go === v.list && v.go === v.gpx; // (a phone has no tab with the time)
+  const windRow = () => p.analysis.timeWind - p.analysis.time, wind0 = windRow(); // (Go's "the wind": a shorter night isn't the wind)
   try {
     Date.now = () => realNow() + 20 * 60000;
     document.dispatchEvent(new Event('visibilitychange'));
@@ -18379,6 +18380,7 @@ LV_NIGHTS = """(async () => {
     if (!(p.arriveAt(0) >= Date.now() / 1000 - 60)) errs.push(`20 minutes on, leaving now still counts from ${LV.clock(p.arriveAt(0))}, not ${LV.clock(Date.now() / 1000)}`);
     const shown = await views();
     if (!agree(shown)) errs.push(`20 minutes on, the trip's arrival: ${JSON.stringify(shown)}`);
+    if (Math.abs(windRow() - wind0) > 120) errs.push(`20 minutes on, the wind's part of the time went from ${wind0} s to ${windRow()} s`);
     p.renderAnalysis();
     const redrawn = await views();
     if (!agree(redrawn)) errs.push(`20 minutes on and redrawn, the trip's arrival: ${JSON.stringify(redrawn)}`);

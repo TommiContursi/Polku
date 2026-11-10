@@ -2552,11 +2552,11 @@ export class Planner {
   // The route timed from `start`: with wind `w`'s head- and tailwinds (and `snow`) its wind's times, else its own. These
   // are the times every view reads (js/trip.js).
   setTimes(a, start, w = null, snow = null) {
-    const t = this.timed(a, w && w.head, snow, start);
-    if (w) Object.assign(a, { timeWind: t.total, tAtWind: t.tAt });
-    else Object.assign(a, { time: t.total, tAt: t.tAt, timeWind: null, tAtWind: null });
-    a.waits = t.waits;
-    a.start = start;
+    const t = this.timed(a, null, null, start); // (without the wind too, from the same start: Go's wind row is the difference)
+    Object.assign(a, { time: t.total, tAt: t.tAt, timeWind: null, tAtWind: null, waits: t.waits, start });
+    if (!w) return;
+    const tw = this.timed(a, w.head, snow, start);
+    Object.assign(a, { timeWind: tw.total, tAtWind: tw.tAt, waits: tw.waits });
   }
   // The route timed again from the departure, at once, with the wind as it was sampled (the forecast follows: loadWind).
   restart(a) {
@@ -2565,13 +2565,13 @@ export class Planner {
     this.renderSpeed(); this.renderTabTimes(); this.renderWaypoints(); this.renderTake(); // (the list's times and the share link's line too)
   }
   // Leave now moves on with the clock (#956): every 5 minutes while Polku's on screen, and when it's shown again, the
-  // route's timed from the new minute and its forecast sampled again (cached), but not under a drag, a name being
-  // typed or an open card.
+  // route's timed from the new minute and its forecast sampled again (cached for an hour), but not under a drag, a name
+  // being typed or an open card. Fintraffic isn't asked again: road works and road weather don't change by the minute.
   moveOn() {
     const a = this.analysis;
     if (!a || this.leaveAt != null || a.start === this.startSec() || document.hidden || this.edit || this.renamingRow || this.cards.stack.length) return;
     this.restart(a);
-    this.loadWind(a);
+    this.loadWind(a, { hazards: false });
   }
   // the trip's times (js/trip.js), or null until the route is timed
   trip() { return tripTimes(this.analysis); }
@@ -2634,7 +2634,7 @@ export class Planner {
 
   // Wind at the time each part of the route is reached: time the route without
   // wind, fetch the forecast, re-time it with the wind, and sample again.
-  async loadWind(a) {
+  async loadWind(a, { hazards = true } = {}) {
     const start = this.startSec();
     a.darkWarn = this.darkWarnings(a); // the departure may have moved (without the wind's times, these do)
     try {
@@ -2655,7 +2655,7 @@ export class Planner {
       a.windError = err && err.name === 'Limited' ? err.message : true; // says which service and when
     }
     this.renderAnalysis();
-    this.loadHazards(a);
+    if (hazards) this.loadHazards(a);
   }
 
   // Road works, incidents, slippery roads and busy roads along the route. No answer: Not checked, until
@@ -2663,7 +2663,7 @@ export class Planner {
   async loadHazards(a) {
     if (!this.app.hazards) return;
     try {
-      const hz = await this.app.hazards(a, { activity: this.mainSport(), }); // each leg's own sport (#71)
+      const hz = await this.app.hazards(a, { activity: this.mainSport() }); // each leg's own sport (#71)
       if (this.analysis !== a) return;
       a.hazards = hz;
       a.hazardsAt = hz.answeredAt || Date.now();
