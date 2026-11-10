@@ -1,7 +1,7 @@
 // Immutable OSM releases: only the selected tiles are downloaded, through the app's network door.
 import { request } from './net.js';
 import { idb } from './idb.js';
-import { tileBounds } from './geo.js';
+import { tileBounds, lonLatToTile } from './geo.js';
 import { validateGeometry } from './osm-geometry.js';
 
 const cache = idb('overpass');
@@ -21,17 +21,19 @@ function deadline(run) {
   const expired = new Promise((_, no) => { timer = setTimeout(() => {
     ctrl.abort(); no(new Error('Hosted OSM request timed out'));
   }, TIMEOUT); });
-  return Promise.race([run(ctrl.signal), expired]).finally(() => clearTimeout(timer));
+  return Promise.race([run(ctrl.signal), expired]).catch(err=>{ctrl.abort();throw err;}).finally(() => clearTimeout(timer));
 }
 
+export { deadline as hostedAttempt };
+
 /** Share raw reads; each caller keeps its adapter and public fallback shape. */
-export function hostedTile(url, dataset, zoom, xy, fallback, { force = false, slim = (j) => j } = {}) {
+export function hostedTile(url, dataset, zoom, xy, fallback, { force = false, slim = (j) => j, signal } = {}) {
   const key = `${url}/${dataset}/${zoom}/${xy.join('/')}`;
   let entry = !force && pending.get(key);
   if (!entry) {
     const readerKey = `${url}/${dataset}/${zoom}`;
     if (!readers.has(readerKey)) readers.set(readerKey, new StaticOSM(url, dataset, zoom));
-    entry = { raw: url ? readers.get(readerKey).tile(xy, { force }) : Promise.reject(new Error('Hosted OSM unavailable')), fallbacks: new Map() };
+    entry = { raw: url ? readers.get(readerKey).tile(xy, { force, signal }) : Promise.reject(new Error('Hosted OSM unavailable')), fallbacks: new Map() };
     pending.set(key, entry);
   }
   return entry.raw.then((json) => ({ ...slim(json), source: json.source })).catch((err) => {
@@ -217,7 +219,7 @@ export class StaticOSM {
 
   tile(xy, options = {}) {
     if (options.force) forgetHostedFailures(this.url);
-    return deadline((signal) => this.readTile(xy, options, signal));
+    return deadline((signal) => this.readTile(xy, options, options.signal ? AbortSignal.any([signal,options.signal]) : signal));
   }
 
   async readTile([x, y], { force = false }, signal) {
@@ -280,4 +282,25 @@ export class StaticOSM {
     if (this.tiles.size > 64) this.tiles.delete(this.tiles.keys().next().value);
     return promise;
   }
+}
+
+
+/** One bounded geographic window, with all tile failures kept distinct from valid empties. */
+export async function geometryTiles(url, box, signal) {
+  if (!Array.isArray(box) || box.length!==4 || !box.every(Number.isFinite) || box[0]>box[2] || box[1]>box[3] || box[0]<-180 || box[2]>180 || box[1]<-90 || box[3]>90) throw new Error('Invalid OSM geometry window');
+  const [x0,y0]=lonLatToTile(box[0],box[3],13).map(Math.floor), [x1,y1]=lonLatToTile(box[2],box[1],13).map(Math.floor);
+  if (![x0,y0,x1,y1].every(Number.isSafeInteger)) throw new Error('Invalid OSM geometry window');
+  const count=(x1-x0+1)*(y1-y0+1);
+  if (!Number.isSafeInteger(count) || count<1 || count>256) throw new Error('OSM geometry window is too large');
+  const reads=[];
+  for (let x=x0;x<=x1;x++) for (let y=y0;y<=y1;y++) reads.push(hostedTile(url,'geometry',13,[x,y],err=>{throw err;},{signal}));
+  const tiles=await Promise.all(reads), seen=new Map();
+  for (const tile of tiles) for (const e of tile.elements) {
+    const {fragments,area,...base}=e;
+    if(area)base.area={complete:area.complete,bounds:area.bounds};
+    const key=`${e.type}/${e.id}`;
+    if(seen.has(key) && !sameObject(seen.get(key),base)) throw new Error('Conflicting original OSM geometry metadata');
+    seen.set(key,base);
+  }
+  return {tiles,source:tiles[0].source};
 }

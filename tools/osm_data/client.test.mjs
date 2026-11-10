@@ -510,3 +510,26 @@ test('static reader decodes local schema 2 through real ranges, caches and disti
     assert.ok(calls.every(u => u.startsWith('https://data.example/')),'no public fallback is hidden in the reader');
   } finally { globalThis.fetch = real; }
 });
+
+test('a multi-stage hosted geometry attempt shares one deadline and cancels its outstanding read', async () => {
+  const { hostedAttempt, geometryTiles } = await import('../../js/osm-data.js');
+  assert.equal(typeof hostedAttempt,'function'); assert.equal(typeof geometryTiles,'function');
+  await assert.rejects(geometryTiles('https://data.example/invalid-window/current.json',[1e100,0,1e100,0],new AbortController().signal),/Invalid/);
+  const original=StaticOSM.prototype.readTile;let aborted=false;
+  StaticOSM.prototype.readTile=async function(xy,options,signal) {
+    if(xy[0]===4097) {
+      await new Promise(ok=>setTimeout(ok,1500));
+      return {schema:2,tile:[13,...xy],elements:[],areas_complete:true,nearby_complete:true,source:{timestamp:'2026-11-01T00:00:00Z'}};
+    }
+    return new Promise((ok,no)=>signal.addEventListener('abort',()=>{aborted=true;no(new DOMException('Cancelled','AbortError'));},{once:true}));
+  };
+  try {
+    const start=performance.now();
+    await assert.rejects(hostedAttempt(async signal=>{
+      await geometryTiles('https://data.example/geometry-budget/current.json',[.06,-.06,.06,-.06],signal);
+      await geometryTiles('https://data.example/geometry-budget/current.json',[.11,-.06,.11,-.06],signal);
+    }),/timed out/);
+    assert.ok(performance.now()-start<9000,'the second stage cannot start another eight-second UI wait');
+    assert.ok(aborted,'the expired operation cancels its outstanding hosted read');
+  } finally {StaticOSM.prototype.readTile=original;}
+});

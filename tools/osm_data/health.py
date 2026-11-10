@@ -38,7 +38,7 @@ def verify(output,release_dir=None):
                   'Browser consumers did not verify all current release archives')
         if extended:
             p.require(all(len(result.get('geometry_checks',{}).get(profile,[]))==6 and
-                          all(r.get('complete') is True for r in result['geometry_checks'][profile])
+                          all(r.get('complete') is True and r.get('consumers_verified') is True for r in result['geometry_checks'][profile])
                           for profile in ('desktop','phone_emulated')),
                       'Live geometry area checks are incomplete')
         receipt={'release':live['release'],'checked_at':datetime.now(timezone.utc).isoformat(),'archive_count':expected_count,'browser_cases':sum(map(len,result['cases'].values()))}

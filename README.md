@@ -99,7 +99,9 @@ Road/path selections and their route memberships, trail details and barriers,
 mapped winter maintenance/access, OSM water hazards, overnight places and
 lighting use hosted OpenStreetMap snapshots for Finland, Sweden, Norway and
 Estonia, from Geofabrik and served by ducksoft.fi. Full-tag inspection uses the
-same original objects; selected-way tags reuse the already loaded ways.
+same original objects; selected-way tags reuse the already loaded ways. Releases
+with local area geometry also supply lake, park and protected-area selection.
+Large areas download only nearby original outlines; area details reuse their tags.
 Only local tiles are downloaded. Valid hosted cache comes first, followed by
 covered hosted tiles and bounded cached/public Overpass fallback. Actual extract
 polygons determine coverage, including their proven union at shared borders;

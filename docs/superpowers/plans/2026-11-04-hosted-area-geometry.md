@@ -186,7 +186,7 @@ measure_browser.py, health.py/test_health.py and relevant docs.
 
 ## PR3 — existing consumers and actual live acceptance
 
-### Task4: area picks and nearby inspection together
+### Task4: area picks and original area tags
 
 Files: js/ways.js, js/inspect.js, js/osm-geometry.js, client.test.mjs,
 smoke_checks.js/measurement scripts, CHANGELOG/README/DEVELOPING/inventory.
@@ -194,17 +194,16 @@ smoke_checks.js/measurement scripts, CHANGELOG/README/DEVELOPING/inventory.
 1. Add RED tests through existing consumers for smallest named containing area,
    hole/island negative, a large interior with no nearby boundary, small whole
    perimeter, ~5km cut outline, no invented tile-edge line, original full tags,
-   relation eligibility by member distance, source timestamps/attribution,
+   source timestamps/attribution,
    incomplete candidates and both-source failure. Keep test seeds/held fetches.
 2. Implement selection from the point's certified geometry tile; fetch only the
    nearby outline tiles for that selected original object. Deduplicate original
    segments by member path/way/node position and reject conflicting copies;
    draw only true source edges, clipped for display. Preserve return shape.
-3. Generic nearby inspection uses the geometry product's existing tagged point/
-   way/relation classes in one bounded hosted lookup, with exact member distance
-   and current ranking. Exact known tags retain raw-way/inspection reuse. Missing
-   old geometry manifests retain existing hosted/public behavior without long
-   sequential source retries; published failure/incompleteness remains explicit.
+3. The area archive covers area picks and original tags. Other inspection
+   retains the country products, including exact tags, with one hosted deadline
+   and the existing bounded public query for ambiguous nearby relations. The
+   separate November 9 area-archive plan records the build-size evidence.
 4. Run focused `osmdata pickcard facts spotcard routecard changelog` plus any
    directly affected area group (inspect registration first); no complete local
    suite. Check 1440x900/390x844, MTB/paddle, route/timeline and actual map picking.
@@ -239,3 +238,9 @@ manifest compatibility; exact epoch and root digest agreement; native reference
 completion limits; temp-source/index disk peaks and free public-runner limits;
 no hidden country download; failure/timeout/cache mutation; no monitoring gap or
 false published-coverage claim. Compare local predicates to whole original rings.
+
+## Execution checkpoints
+
+- PR1 [#771](https://github.com/TommiContursi/Polku/pull/771) merged the compiler and format.
+- PR2 [#772](https://github.com/TommiContursi/Polku/pull/772) merged source completion, optional shared reader, build and monitoring support. Its main build [41776459874](https://github.com/TommiContursi/Polku/actions/runs/41776459874) is the complete resource/publication gate.
+- PR3 [#778](https://github.com/TommiContursi/Polku/pull/778) implements existing area/nearby consumers and full-tag reuse. Compiled fixture regressions cover named/smallest selection, islands, whole and clipped original edges, relation member proximity, timestamps, source failure and public failure. Actual four-country publication and deployed acceptance remain separate gates until the main build completes.

@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-10
+
+### Lakes and parks use Polku's OSM data ([#696](https://github.com/TommiContursi/Polku/issues/696))
+
+- Picking a lake, park or protected area uses Polku's hosted data where it covers the spot. Large lakes load only the nearby shoreline, and islands stay separate from water. **All OpenStreetMap details** reuses the area's loaded tags. When hosted data is unavailable or incomplete, Polku tries the public mirrors with a bounded wait.
+
 ## 2026-11-09
 
 ### 3D's switches on the 3D pad, and smoother shadows ([#942](https://github.com/TommiContursi/Polku/issues/942), [#943](https://github.com/TommiContursi/Polku/issues/943))

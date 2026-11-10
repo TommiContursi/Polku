@@ -299,5 +299,194 @@
     "Payload bytes exclude HTTP ranges/header/directory and cold manifest overhead; actual browser transfers are measured during reader/consumer integration.",
     "No Europe download, complete four-country build, hosting-limit validation, data publication or physical-phone check has run for this format.",
     "Saimaa point [28.4,61.12] is outside the lake/on an island, correctly empty; water/shore checks use the other recorded locations."
-  ]
+  ],
+  "consumer_sample": {
+    "commit": "499d7c25563d5fa6ee339aec4582bfdc20232df9",
+    "scope": "local two-lake sample only; not complete country or production coverage",
+    "method": "Sequential first selection per location on localhost; shared archive/index cache. Phone uses 4x CPU, 80 ms latency, 1.25 MB/s. Bytes are response bodies, not HTTP headers. Production/full-country acceptance remains separate.",
+    "overpass_requests": 0,
+    "repeat_network_requests": 0,
+    "profiles": {
+      "desktop": [
+        {
+          "name": "Inari interior",
+          "ll": [
+            27.7,
+            68.95
+          ],
+          "id": "relation/402543",
+          "source": {
+            "timestamp": "2026-10-31T21:23:06Z",
+            "provider": "Polku OSM data",
+            "attribution": "\u00a9 OpenStreetMap contributors"
+          },
+          "whole": false,
+          "segments": 3039,
+          "cold_ms": 850.6999999880791,
+          "repeat_ms": 8.5,
+          "requests": 37,
+          "bytes": 136489
+        },
+        {
+          "name": "Inari shoreline",
+          "ll": [
+            27.0149,
+            68.9101
+          ],
+          "id": "relation/402543",
+          "source": {
+            "timestamp": "2026-10-31T21:23:06Z",
+            "provider": "Polku OSM data",
+            "attribution": "\u00a9 OpenStreetMap contributors"
+          },
+          "whole": false,
+          "segments": 1625,
+          "cold_ms": 28.30000001192093,
+          "repeat_ms": 2.100000023841858,
+          "requests": 6,
+          "bytes": 31599
+        },
+        {
+          "name": "Saimaa interior",
+          "ll": [
+            29.6851,
+            61.9286
+          ],
+          "id": "relation/7379046",
+          "source": {
+            "timestamp": "2026-10-31T21:23:06Z",
+            "provider": "Polku OSM data",
+            "attribution": "\u00a9 OpenStreetMap contributors"
+          },
+          "whole": false,
+          "segments": 1615,
+          "cold_ms": 136,
+          "repeat_ms": 4.199999988079071,
+          "requests": 24,
+          "bytes": 50187
+        },
+        {
+          "name": "Saimaa shoreline",
+          "ll": [
+            27.2396,
+            61.5076
+          ],
+          "id": "relation/7379046",
+          "source": {
+            "timestamp": "2026-10-31T21:23:06Z",
+            "provider": "Polku OSM data",
+            "attribution": "\u00a9 OpenStreetMap contributors"
+          },
+          "whole": false,
+          "segments": 2127,
+          "cold_ms": 47.10000002384186,
+          "repeat_ms": 1.800000011920929,
+          "requests": 10,
+          "bytes": 49064
+        },
+        {
+          "name": "Saimaa outside/island",
+          "ll": [
+            28.4,
+            61.12
+          ],
+          "id": null,
+          "cold_ms": 1.5,
+          "repeat_ms": 0.09999996423721313,
+          "requests": 0,
+          "bytes": 0
+        }
+      ],
+      "phone_emulated": [
+        {
+          "name": "Inari interior",
+          "ll": [
+            27.7,
+            68.95
+          ],
+          "id": "relation/402543",
+          "source": {
+            "timestamp": "2026-10-31T21:23:06Z",
+            "provider": "Polku OSM data",
+            "attribution": "\u00a9 OpenStreetMap contributors"
+          },
+          "whole": false,
+          "segments": 3039,
+          "cold_ms": 1020.6000000238419,
+          "repeat_ms": 26,
+          "requests": 37,
+          "bytes": 136489
+        },
+        {
+          "name": "Inari shoreline",
+          "ll": [
+            27.0149,
+            68.9101
+          ],
+          "id": "relation/402543",
+          "source": {
+            "timestamp": "2026-10-31T21:23:06Z",
+            "provider": "Polku OSM data",
+            "attribution": "\u00a9 OpenStreetMap contributors"
+          },
+          "whole": false,
+          "segments": 1625,
+          "cold_ms": 260.30000001192093,
+          "repeat_ms": 13,
+          "requests": 6,
+          "bytes": 31599
+        },
+        {
+          "name": "Saimaa interior",
+          "ll": [
+            29.6851,
+            61.9286
+          ],
+          "id": "relation/7379046",
+          "source": {
+            "timestamp": "2026-10-31T21:23:06Z",
+            "provider": "Polku OSM data",
+            "attribution": "\u00a9 OpenStreetMap contributors"
+          },
+          "whole": false,
+          "segments": 1615,
+          "cold_ms": 487,
+          "repeat_ms": 12.399999976158142,
+          "requests": 24,
+          "bytes": 50187
+        },
+        {
+          "name": "Saimaa shoreline",
+          "ll": [
+            27.2396,
+            61.5076
+          ],
+          "id": "relation/7379046",
+          "source": {
+            "timestamp": "2026-10-31T21:23:06Z",
+            "provider": "Polku OSM data",
+            "attribution": "\u00a9 OpenStreetMap contributors"
+          },
+          "whole": false,
+          "segments": 2127,
+          "cold_ms": 342.7000000476837,
+          "repeat_ms": 10.099999964237213,
+          "requests": 10,
+          "bytes": 49064
+        },
+        {
+          "name": "Saimaa outside/island",
+          "ll": [
+            28.4,
+            61.12
+          ],
+          "id": null,
+          "cold_ms": 7.5,
+          "repeat_ms": 0.699999988079071,
+          "requests": 0,
+          "bytes": 0
+        }
+      ]
+    }
+  }
 }

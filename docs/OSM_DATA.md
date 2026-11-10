@@ -270,7 +270,7 @@ when `OSM_PUBLIC_URL` is configured, independently of unattended publication.
 Source age over 14 days, changed manifests and broken browser headers fail the
 job. It also exercises the actual deployed selection/detail consumers at 16
 locations in two browser profiles, forbidding normal covered Overpass calls
-and checking every archive in the actual manifest (28 existing products, or 29 with shared geometry). An extended release additionally requires six lake/park containment cases in each browser profile. Browser work stops after 180 seconds;
+and checking every archive in the actual manifest (28 existing products, or 29 with shared geometry). An extended release additionally requires six lake/park cases in each browser profile, exercising original containment, actual area selection and the full-tag card action. Browser work stops after 180 seconds;
 the monitor job has a ten-minute limit. Synthetic public sample coordinates
 are used; no saved user routes or positions are read.
 
@@ -382,7 +382,11 @@ honoring provider rate limits. Healthy pinned releases and cached tiles remain.
 
 The additive schema 2 compiler and static reader support one shared local geometry archive; see [the build instructions](../tools/osm_data/README.md#shared-reference-completion-and-optional-29th-archive). Source completion uses the same dated Europe export and exact country identity evidence, keeps downloads local in the app, and preserves the current release on failure. Published coverage still depends on the actual manifest and deployed consumers.
 
-Area selection remains on one 15-second public round. Its different data representation is tracked in [#696](https://github.com/TommiContursi/Polku/issues/696). The actual Finland geometry probe is in `docs/measurements/osm-areas-2026-11-02.json`: Saimaa's compact geometry alone is 4.67 MB gzip and has 654,393 points. Correct local transfers require clipped containment and nearby original outlines, with holes and incomplete relation geometry preserved. Whole-polygon repetition is not being shipped as a substitute.
+When the published release includes `geometry.pmtiles`, `areaAt()` selects a named containing lake, park or protected area from one z13 tile, then reads only the selected area's bounds intersected with the existing nearby outline window. Exact containment preserves islands and nested rings. Display lines contain only original boundary segments; containment seeds never draw rectangular shorelines. A small whole area's original perimeter can be measured; a clipped large outline cannot. The full-tag action reuses the selected area's tags.
+
+Both phases share one eight-second hosted deadline, including cancellation of outstanding reads. Valid empty hosted answers do not query Overpass. Absent coverage, incomplete geometry or source failure retains the existing one 15-second public mirror round and its cache rules. General inspection continues to use the country archives. Ambiguous nearby relations still use the public query because the area archive does not cover their full member geometry. Actual deployment still requires a successful complete build, publication and browser verification; client support alone is not published coverage. [#696](https://github.com/TommiContursi/Polku/issues/696) records acceptance.
+
+The original Finland geometry probe is in `docs/measurements/osm-areas-2026-11-02.json`: Saimaa's whole compact geometry alone is 4.67 MB gzip and has 654,393 points. Local fragments and certified containment avoid repeating that whole polygon at every tap. The reference-complete two-lake compiler and transfer measurements are in `docs/measurements/osm-local-geometry-2026-11-04.json`.
 
 
 ## Four-country rollout and limits

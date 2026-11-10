@@ -214,6 +214,23 @@ class GeometryTests(unittest.TestCase):
         self.assertTrue(g.contains_area(e,tile['tile'],[.09,0]))
         self.assertTrue(all(f['path']==[] and f['identity']==e['identity'] for f in e['fragments']))
 
+    def consumer_objects(self):
+        self.nodes.update({20:(.05,-.07),21:(.07,-.07),22:(.07,-.05),23:(.05,-.05),
+                           24:(.055,-.065),25:(.065,-.065),26:(.065,-.055),27:(.055,-.055)})
+        self.ways[200]=([20,21,22,23,20],{'natural':'water','name':'Small lake'})
+        self.ways[201]=([24,25,26,27,24],{'natural':'water'})
+        self.roots = {key:{'area':True,'inspection':False} for key in [('relation',100),('way',200),('way',201)]}
+
+    def test_consumer_fixture_retains_small_named_area_and_only_area_roots(self):
+        self.consumer_objects();out,_=self.build()
+        fixture=Path(__file__).parent.parent/'fixtures/osm-area-consumers.pmtiles'
+        for ll in [[.06,-.06],[-.005,.05],[.02,-.02],[.2,.2]]:
+            self.assertEqual(self.read(fixture,ll),self.read(out,ll))
+        tile=self.read(out,[.06,-.06])
+        self.assertTrue(all(e.get('area') and not e['inspection'] for e in tile['elements']))
+        small=next(e for e in tile['elements'] if e['type']=='way' and e['id']==200)
+        self.assertTrue(g.contains_area(small,tile['tile'],[.06,-.06]))
+
     def test_source_and_archive_bytes_are_deterministic(self):
         a,_=self.build(suffix='a');b,_=self.build(suffix='b');self.assertEqual(a.read_bytes(),b.read_bytes())
 

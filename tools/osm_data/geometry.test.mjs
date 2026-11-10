@@ -42,3 +42,35 @@ for (const [name, breakIt] of [
   const xy = [...json.tile]; breakIt(json);
   assert.throws(() => validateGeometry(json, xy), /geometry|OSM/i);
 });
+
+test('selects the named smallest containing area and rejects an uncertain candidate', async () => {
+  const { selectArea } = await import('../../js/osm-geometry.js');
+  assert.equal(typeof selectArea, 'function');
+  const j = { ...structuredClone(fixture[0].json), areas_complete: true }, large = j.elements[0];
+  const small = { ...structuredClone(large), type: 'way', id: 200, tags: { name: 'Small' }, area: { ...large.area, bounds: [.04,-.08,.08,-.04] } };
+  const unnamed = { ...structuredClone(small), id: 201, tags: {}, area: { ...small.area, bounds: [.05,-.07,.07,-.05] } };
+  j.elements.push(small, unnamed);
+  assert.equal(selectArea(j, [.06,-.06]).id, 200);
+  unnamed.area.complete = false; unnamed.area.polygons = [];
+  assert.throws(() => selectArea(j, [.06,-.06]), /incomplete/i);
+  unnamed.area.bounds = [.2,.2,.3,.3];
+  assert.equal(selectArea(j, [.06,-.06]).id, 200, 'a located incomplete area elsewhere does not poison this point');
+});
+
+test('outline uses original edge pointers, clips real segments and measures only a complete whole area', async () => {
+  const { areaOutline } = await import('../../js/osm-geometry.js');
+  assert.equal(typeof areaOutline, 'function');
+  const j = structuredClone(fixture.find(f => f.point[0]===.09).json);
+  j.areas_complete = true;
+  const e = j.elements.find(e => e.type === 'relation');
+  const cut = areaOutline([j,j],e,[.09,-.02,.11,-.005]);
+  assert.equal(cut.whole,false);
+  assert.equal(cut.lines.length,1);
+  assert.ok(cut.lines[0].every((p,i)=>p.every((v,j)=>Math.abs(v-[[.1,-.02],[.1,-.005]][i][j])<1e-12)));
+  assert.ok(cut.lines.every(line => line.every(p => p[0]>=.09 && p[0]<=.11 && p[1]>=-.02 && p[1]<=-.005)));
+  assert.throws(()=>areaOutline([j],e,[-.2,-.2,.2,.2]),/incomplete/i);
+  const single = areaOutline([j],e,[.09,-.02,.11,-.005]), repeat = areaOutline([j,j],e,[.09,-.02,.11,-.005]);
+  assert.deepEqual(single,repeat,'overlapping tile copies do not duplicate perimeter');
+  const bad = structuredClone(j);bad.elements[0].fragments[0].geometry[0][0]+=.001;
+  assert.throws(()=>areaOutline([j,bad],e,[.09,-.02,.11,-.005]),/conflict/i);
+});
