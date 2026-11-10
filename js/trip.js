@@ -27,8 +27,9 @@ export function sampleAt(a, m) {
 
 /**
  * The times of a timed analysis, or null before it's timed: { start, end, tAt, at(i), arrive(m), days(), clock(sec),
- * planned(along) }, epoch seconds but `tAt`, the seconds from the start at each sample. `at(i)`: when you're at sample i; `arrive(m)`: when you reach m metres along,
- * before any wait there; `planned(along)`: each waypoint's planned times in words for the GPX, `along` their metres.
+ * planned(along) }, in epoch seconds but `tAt`, the seconds from the start at each sample. `at(i)`: when you're at
+ * sample i; `arrive(m)`: when you reach m metres along, before any wait there; `planned(along)`: each waypoint's
+ * planned times in words for the GPX, `along` their metres.
  */
 export function tripTimes(a) {
   const tAt = a && (a.tAtWind || a.tAt);
