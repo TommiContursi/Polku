@@ -10,7 +10,7 @@ How `js/planner.js` is split, and when: what it holds, which parts really collid
 
 ## In short
 
-- **Moving code by itself won't let the two plans run side by side.** In the last 45 PRs that changed `js/planner.js`, the two plans met in its sheet and panel code, not in the parts a move PR would take out. Every PR also changes `tools/smoke.py`, `css/app.css` and CHANGELOG.
+- **Moving code by itself won't let the two plans run side by side.** In the last 45 PRs that changed `js/planner.js`, the two plans met in five methods: the panel and the sheet, the list's menu, the markers and Start here. Those are spread over the parts a move PR would take out, so they'd come along into the new files. Every PR also changes `tools/smoke.py`, `css/app.css` and CHANGELOG.
 - **So deepen at the steps rather than move before them.** Two modules pay back across several steps: one place for a stretch's numbers (before step 2 or step 5), and Check's items (before step 10). Step 1 can build When as a module of its own, since it makes one control for three places.
 - **The route's one reader and writer (`js/route.js`)** can run beside the list's and cards' work. It shouldn't overlap steps 1–4, which change the departure it saves.
 - **Loading rare parts later saves about 2 %** of a phone's first load and makes offline worse. Not worth it.
@@ -50,13 +50,14 @@ The file's own section comments don't always match what's under them, so this gr
 - For each PR and the one merged just before it: had it been built from the same `main`, would git have conflicted? That's `git merge-tree` with the earlier PR taken out. It's only exact for neighbours, so pairs further apart weren't counted.
 
 **What it shows.**
-- **The route's list is where the work was:** 22 of the 45 PRs changed it. All of them were the planner's.
+- **The route's list is where the work was:** 22 of the 45 PRs changed it. 21 were the planner's; the cards' #887 changed the list's menu.
 - **`planner.js` conflicted only between neighbours of the same plan,** each built on the one before (#790, #791 and #792; #799, #802 and #805; #844 and #847; #850 and #853; #878 and #879). Those would be stacked "after #N" PRs anyway.
 - **CHANGELOG conflicted in almost every pair,** often with DEVELOPING and USING too. That's mechanical: both entries stay. `tools/smoke.py` (20,268 lines) and `css/app.css` conflicted in most pairs of the same plan.
-- **The cards' PRs (#885, #887, #890) changed 25 methods.** Seven of those were also changed by the planner's PRs: the sheet (`bindSheet`, `setSheetState`, `renderFold`), `buildPanel`, `listMenu`, `renderMarkers` and `startRouteAt`. The imports at the file's top were changed by both too.
+- **The cards' PRs (#885, #887) changed 17 methods.** Five of those were also changed by the planner's PRs: `bindSheet`, `buildPanel`, `listMenu`, `renderMarkers` and `startRouteAt`. The imports at the file's top were changed by both too.
+- **#890, one set of sizes, was for both plans:** the sheet's sizes for the planner and every card. It changed ten methods, all in the sheet and the panel (`setSheetState`, `renderFold`, `bindSheet`, `buildPanel` and others).
 
 **What that means.**
-- **The two plans share the sheet and the panel because they share the screen.** Moving the list, the start or Check into files of their own wouldn't separate that.
+- **The two plans share the sheet and the panel because they share the screen.** Moving the list, the start or Check into files of their own wouldn't separate that. The list's one shared method, `listMenu`, would move with the list, and both plans would still edit it.
 - **Moving code adds a seam that both plans then edit:** the new file's imports, and the members it calls back on the `Planner`.
 - **Splitting `planner.js` can't by itself let the two plans run side by side.** Two PRs can run at once when they change different behaviour, whatever the files. The route's reader and writer is one such PR (below).
 
@@ -72,7 +73,7 @@ So each slot in the one order gets either a deepening or nothing:
 |---|---|---|
 | **Before step 1** (the ▾ pill, one When) | **No move PR.** Step 1 builds When as a module of its own, `js/when.js` | The departure lives in four places today: the state and its expiry (`setLeave` 2614, `openLeave` 4491, `expireLeave` 4502, `leaveHour` 2606, `startSec` 2603), the start's row (`whenRow` 5067, `whenMenu` 5086), Go's Leave (`renderLeave` 6702, `revealDeparture` 6694) and the card's (`leaveBlock`, `leaveFrom` and `leaveLocal` in `js/cards.js`:205–216). Step 1 makes one control for three places, so building it as one module is the step's own work, not an extra PR. |
 | **Before step 2** (the trip's box and the weather card) | **No move PR.** Optionally, one place for a stretch's numbers (below) | Step 2 deletes Go's tab, `hourStrip`, `revealDeparture` and `renderTabTimes`. Moving them first would be wasted work. `renderWind` 7615 becomes the card's content and reads the wind's times, which is candidate 3's job. |
-| **Before step 5** (the list's top) | **One place for a stretch's numbers** if it didn't come before step 2. **No list move** | The list is the planner's own code. The collisions with the cards were in the sheet, not the list. The list's arithmetic (`sampleAtM`, `timesAt`, `wxOf`, `waitsAt`, `stretchNums`) is what the leg's card in step 6 needs too. |
+| **Before step 5** (the list's top) | **One place for a stretch's numbers** if it didn't come before step 2. **No list move** | The list is nearly all the planner's code. The cards' only change there was `listMenu`, which a move would carry along. The list's arithmetic (`sampleAtM`, `timesAt`, `wxOf`, `waitsAt`, `stretchNums`) is what the leg's card in step 6 needs too. |
 | **Before step 10** (the Check card) | **Check's items as one module** (below) | The tabs go and Check becomes a card. It's the moment to give the warnings one interface. |
 | **Beside steps 5–9** | **The route's one reader and writer** (below) | Saving and sharing had no PR change 3 or more of its lines in the last 45. It changes formats, not what's on the screen. |
 | **After step 7** | **The Route model** | The list and the cards' work on waypoints has landed by then. |
@@ -123,7 +124,7 @@ So each slot in the one order gets either a deepening or nothing:
 
 **Checked again on `main`:**
 - **The four writers and readers are still separate,** each listing the details by hand: `snapshot` 285 and `restoreSnap` 308, `save` 4424 and `loadSaved` 4453, `routeSnapshot` 4528 and `restoreSnapshot` 4547, and `shareUrl` 4580 and `parseShared` 7805.
-- **Each applies its own rules.** "Another way" is 1 to 3 only on routed legs, and `ice` only on Freehand legs.
+- **Each applies its own rules.** An alternative route is 1 to 3, only on Follow paths legs, and `ice` only on Freehand legs.
 - **Undo's snapshot still doesn't carry the departure.** `restoreSnapshot` patches it in afterwards, at 4549.
 
 **When.** The only overlap with the one order is the departure, which steps 1–4 rewrite: `leaveAt` in `save` and `shareUrl`, `openLeave`, and `'leave' in s` in `restoreSnap`. So it runs:
