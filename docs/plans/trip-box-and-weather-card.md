@@ -2,7 +2,7 @@
 
 The design of step 6 of [the one order](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784): the trip's box over the list, and the weather card it opens, with Go's tab gone ([#431](https://github.com/TommiContursi/Polku/issues/431), [#794](https://github.com/TommiContursi/Polku/issues/794), [#759](https://github.com/TommiContursi/Polku/issues/759), [#766](https://github.com/TommiContursi/Polku/issues/766)). Part of [#869](https://github.com/TommiContursi/Polku/issues/869); milestone [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-10): the direction changed, so step 6 is being designed again.** On 2026-11-10 the weather got three homes, each with one job (below, Round 4), and round 1 of the refresh was answered. Round 2, how the line's two layer choices look and how the wind is shown, waits on the mock-up's version **E: Three homes**. How 6a and 6b are built is rewritten once it's chosen; until then the build plan further down is the 2026-11-07 one. The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/X4VyAyhFQZ49xo9BHWzaKa) to try on a phone (built with `css/app.css` and `js/ui.js` inlined; the earlier one was [this Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri)). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2 of 2026-11-07; **C**, **A** and **B**, the earlier answers, stay to compare. No app code is written here.
+**Where it stands (2026-11-10): the direction changed, so step 6 is being designed again.** On 2026-11-10 the weather got three homes, each with one job (below, Round 4), and round 1 of the refresh was answered. Round 2 chose two dropdowns and the wind as its speed's colour with its lines on top; round 3 asks two small things. How step 6 is built is rewritten once they're answered; until then the build plan further down is the 2026-11-07 one. The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/X4VyAyhFQZ49xo9BHWzaKa) to try on a phone (built with `css/app.css` and `js/ui.js` inlined; the earlier one was [this Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri)). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2 of 2026-11-07; **C**, **A** and **B**, the earlier answers, stay to compare. No app code is written here.
 
 ## Already decided
 
@@ -213,7 +213,30 @@ The weather has three homes, each with one job, so a later feature has a place t
 
 **Version E of the mock-up** draws: the Weather button with the temperature; the line with **two dropdowns** on a row of their own at its foot, **two of the map's buttons at its corners** (On top at the left, the colour at the right, as Zoom Earth), and today's one menu to compare; the three winds over Rain with a menu open; The map at Now with the line closed; Layers' weather group (chips to pick the colour, switches for what goes on top); the card without On the map, with Later showing where #911–#914 and #862 go; long Finnish names at 360 px, and 200 %, where a menu becomes a sheet of its own.
 
-**Not settled yet:** the name for the towns' weather; which way the two choices look; the wind; when the Weather button's temperature is fetched (the map's middle, rounded to the forecast grid's nearest point, about 3 km, as PRODUCT.md says for the weather; the first weather request no one asked for); the desktop toolbar's weather piece, which now says what the Weather button says; the Layers drawer's weather tile, set by sport.
+**Round 2's answers (2026-11-10):**
+- **The two choices are two dropdowns** on a row of their own at the line's foot: the map's colour ("Rain ▾") and On top ("On top 2 ▾"), each the ▾ pill (`rt-pill wl-layer`) opening its menu above it. The colour's menu has radios (`menuitemradio`) and Effects at its end; On top's has ticks (`menuitemcheckbox`). Where there's no room (200 %), a menu is a sheet of its own, as `popMenu()` does.
+- **The wind is b:** Wind speed is one of the map's colours, and Wind lines go on top of any colour (white over a colour; the speed's colours only when the wind is the colour).
+- **The towns' weather is renamed Weather at places.**
+- **The Weather button shows the temperature once you've used the weather once** (Weather, or a layer from Layers or a tile). Until then it says Weather, as today, so no forecast is asked for at the map's middle before you ask for the weather.
+- **The desktop toolbar's weather piece goes.** The Weather button, with its temperature, is the one place on phones and desktops; the line opens above the toolbar's end, where the piece's strip opened.
+- **The Layers drawer's weather tile stays set by sport** (Rain for most sports, Wind for paddling): a shortcut that switches its layer on at Now, apart from what Weather turns on.
+
+### Motion (decided with /animate, 2026-11-10)
+
+DESIGN.md's Motion and its tokens (`--t-press` 120 ms, `--t-open` 180 ms, `--t-sheet` 260 ms, `--ease-out`, `--ease-drawer`); nothing new to add to them.
+
+| What | Moves? | How |
+|---|---|---|
+| Weather on a phone: the line takes the sheet's place | Yes, on a tap (a few times a trip): it shows where the planner went and where the line came from | The sheet goes down out of view as it folds today, and at the same time the line rises over it from the bottom edge (`translateY(100%)` to `0`), `--t-sheet` on `--ease-drawer`. ✕ is the other way: the line leaves in `--t-open`, and the sheet comes back to the size it had. CSS transitions, so a second tap catches it mid-way. From the keyboard (T), at once. With reduced motion both fade in place (`--t-open`). |
+| Weather on a desktop: the line above the toolbar's end | Yes, on a click | As a card: from 0.97 and opacity 0, growing from its foot (`transform-origin` at the toolbar), `--t-open` on `--ease-out`, leaving in `--t-press`. From the keyboard at once; with reduced motion it fades. |
+| The weather card from the trip's box | Nothing new | It opens as every card from the list does (the card host's own). A morph from the box would be a layout animation for one card. |
+| The two dropdowns' menus | Nothing new | `popMenu()`'s motion: each grows from its pill, a sheet of its own only fades, and one opened while the other leaves comes at once. |
+| A colour picked, a tick | No | The pill's word and the ticks change at once (`settleControls()`). The map changes with MapLibre's paint transitions, as today. |
+| The Weather button's temperature | No | It's data you read. It changes whenever the map stops and while you scrub, so a number never rolls. It appears at once after the weather's first use. |
+
+**To feel at the build:** the sheet falling while the line rises at the same edge. Play it at 2 to 5 times its length in DevTools, then try it on a phone. If the crossing looks busy, start the line 30 to 80 ms after the sheet, the skill's stagger. That stays under 300 ms in all. The user runs `/review-animations` before the PR that moves it opens (AGENTS.md).
+
+**Not settled yet (round 3):** what a sport's Wind tile switches on now that the wind is two things; whether step 6 is built in two PRs or three.
 
 ## How step 6 is built
 

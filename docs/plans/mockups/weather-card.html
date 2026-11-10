@@ -274,7 +274,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 <body class="mk">
 <div class="cv">
   <h1>The weather card</h1>
-  <p><b>E: Three homes</b> (2026-11-10), the newest: each part of the weather has one job. <b>The Weather button</b> shows the sky and the temperature at the map’s middle, and Weather at places is the map’s overview. <b>The weather line</b> is the map’s weather: the hour, play, the strip, and two choices on it, the map’s colour (one at a time) and what goes on top (any mix); Layers’ weather group has the same two. <b>The weather card</b> is the trip’s weather only. Switch Choices to compare two dropdowns with two buttons at the line’s corners, and Wind for its three versions; Later shows where the later parts go.</p>
+  <p><b>E: Three homes</b> (2026-11-10), the newest, with round 2 chosen the same day: two dropdowns, and Wind as b (its speed a colour, its lines on top). On a desktop the toolbar’s weather piece goes: the Weather button opens the line above the toolbar’s end. Each part of the weather has one job. <b>The Weather button</b> shows the sky and the temperature at the map’s middle, and Weather at places is the map’s overview. <b>The weather line</b> is the map’s weather: the hour, play, the strip, and two choices on it, the map’s colour (one at a time) and what goes on top (any mix); Layers’ weather group has the same two. <b>The weather card</b> is the trip’s weather only. Switch Choices to compare two dropdowns with two buttons at the line’s corners, and Wind for its three versions; Later shows where the later parts go.</p>
   <p>#431, step 6 of #869’s order: the trip’s box over the list, and the weather card it opens. The card takes Go’s contents and the weather timeline’s: <b>it replaces the floating timeline window</b>, whose 48 hours become the card’s last part, <i>On the map</i>. Go’s tab goes. <b>C: Together</b> (2026-11-07, from the user’s answer to Q1) puts each day’s big numbers first, a colour for each kind of data, and the graph under them; the map’s hours are the <b>weather line</b>, the card folded, so the map shows while the hour moves. A and B, the first round’s two answers, stay on the bar. Tap the trip’s box to open the card; switch Size to see what fits at half on a phone. The plan is <a href="../trip-box-and-weather-card.md">docs/plans/trip-box-and-weather-card.md</a>.</p>
   <div class="bars" id="bars"></div>
   <div class="stage" id="stage"></div>
@@ -753,9 +753,9 @@ function today() {
 const SW = [
   ['Version', 'v', [['today', 'Today'], ['rows', 'A: Rows'], ['graph', 'B: Graph'], ['together', 'C: Together'], ['site', 'D: Like a weather site'], ['trip', 'E: Three homes (11-10)']]],
   ['Screen', 's', [['route', 'The planner'], ['card', 'Card, from the box'], ['map', 'Card, at On the map'], ['line', 'The weather line (Weather)'], ['now', 'The map at Now'], ['layers', 'Layers']]],
-  ['Choices', 'lm', [['two', 'Two dropdowns'], ['corners', 'Two buttons at the corners'], ['today', 'Today: one menu']]],
+  ['Choices', 'lm', [['two', 'Two dropdowns (chosen 11-10)'], ['corners', 'Two buttons at the corners'], ['today', 'Today: one menu']]],
   ['Open', 'mo', [['colour', 'Map colour'], ['top', 'On top'], ['none', 'Closed']]],
-  ['Wind', 'wind', [['a', 'a) A colour only'], ['b', 'b) Its speed a colour, lines on top'], ['c', 'c) Lines on top only']]],
+  ['Wind', 'wind', [['a', 'a) A colour only'], ['b', 'b) Its speed a colour, lines on top (chosen 11-10)'], ['c', 'c) Lines on top only']]],
   ['Later', 'later', [['now', 'Now (6b)'], ['later', 'With #911–#914 and #862']]],
   ['Size', 'size', [['half', 'Half'], ['full', 'Full']]],
   ['Trip', 'trip', [['day', 'A day trip'], ['night', 'With a night']]],
@@ -786,7 +786,7 @@ const CAP = {
 // E's captions (2026-11-10)
 const CAP_E = {
   line: () => `The weather line is the map’s weather now, no longer the card folded: the hour, play, the strip, and ${{ two: 'two dropdowns on a row of their own at its foot: the map’s colour, one at a time, and what goes on top, any mix', corners: 'two of the map’s buttons over its corners, as Zoom Earth has them at its time bar’s: On top at the left, the map’s colour at the right, nearest the thumb; the line keeps its height', today: 'today’s one menu (main): every layer ticks, so Rain and Temperature go on together too' }[S.lm]}. ${S.lm === 'today' ? '' : { a: 'a) Wind is a colour only: with Rain on, the wind doesn’t show at all.', b: 'b) Wind speed is a colour, and Wind lines go on top of any colour: here white over Rain.', c: 'c) Wind is its lines on top only, coloured by its speed, over Rain’s blues.' }[S.wind]} ✕ closes the line and the map goes back to Now, keeping its layers. The Weather button, pressed, shows the hour’s temperature. Tap the map to close a menu.`,
-  now: () => 'The map at Now, the line closed: what’s on stays on, at Now (Q1). The Weather button shows the sky and the temperature at the map’s middle; Weather at places is the map’s overview, and what Weather turns on the first time (Q3). Tap Weather to open the line.',
+  now: () => 'The map at Now, the line closed: what’s on stays on, at Now (Q1). The Weather button shows the sky and the temperature at the map’s middle, once you’ve used the weather once; until then it says Weather, as today (Q8). Weather at places is the map’s overview, and what Weather turns on the first time (Q3). Tap Weather to open the line.',
   layers: () => 'Layers’ weather group: the same two choices by the same rule, as chips to pick one colour and switches for what goes on top. The Timeline switch goes (Q1): the Weather button opens the line.',
   card: () => `E: the trip’s weather only: the day’s reading, the hours, the wind on the way and Time on the way; On the map leaves the card for the weather line. ${S.later === 'later' ? 'Later: a row each, with a short line and ›: warnings first (#911), then Around the trip: measured nearby (#912), road cameras (#913), sun, moon and sky (#914) and the water (#862).' : 'Switch Later to see where #911–#914 and #862 go.'}`,
 };
@@ -808,11 +808,11 @@ function draw() {
       const x = wx(S.hr), tb = h('div', { class: 'mk-tb desk' }, h('button', { type: 'button', class: 'btn' }, 'Done'), h('button', { type: 'button', class: 'btn', html: `${icon('auto', 16)} Follow paths` }),
         h('button', { type: 'button', class: 'tool', 'aria-label': 'Straight line', html: icon('straight', 20) }), h('button', { type: 'button', class: 'tool', 'aria-label': 'Over water', html: icon('water', 20) }),
         ...[['undo', 'Undo'], ['redo', 'Redo'], ['more', 'More']].map(([ic, t]) => h('button', { type: 'button', class: 'tool', 'aria-label': t, html: icon(ic, 20) })),
-        h('span', { class: 'mk-tb-wx', role: 'group', 'aria-label': 'The map’s weather' }, h('span', { class: `wd-sky ${sky(x, S.hr)}`, html: icon(sky(x, S.hr), 18) }), h('b', {}, `${Math.round(x[3])}°`), h('span', {}, hourWords(S.hr).replace('Now · ', '')),
+        isE() ? null : h('span', { class: 'mk-tb-wx', role: 'group', 'aria-label': 'The map’s weather' }, h('span', { class: `wd-sky ${sky(x, S.hr)}`, html: icon(sky(x, S.hr), 18) }), h('b', {}, `${Math.round(x[3])}°`), h('span', {}, hourWords(S.hr).replace('Now · ', '')),
           h('button', { type: 'button', class: 'tool', 'aria-label': S.wl === 'open' ? 'Fold the weather' : 'Open the weather', 'aria-expanded': String(S.wl === 'open'), onclick: () => { S.wl = S.wl === 'open' ? 'line' : 'open'; draw(); }, html: icon(S.wl === 'open' ? 'chevronDown' : 'chevronUp', 18) }),
           h('button', { type: 'button', class: 'tool', 'aria-label': 'Weather off', onclick: go('route'), html: icon('close', 18) })));
       fr.append(planner(), tb);
-      if (S.wl === 'open') { const ln = wxLine(false); ln.classList.add('desk-open'); fr.append(ln); requestAnimationFrame(() => { const w = tb.querySelector('.mk-tb-wx'), r = w.getBoundingClientRect(), f = fr.getBoundingClientRect(), z = S.z === '200' ? 2 : 1; ln.style.left = `${Math.max(8, (r.right - f.left) / z - 440)}px`; }); }
+      if (S.wl === 'open' || isE()) { const ln = wxLine(false); ln.classList.add('desk-open'); fr.append(ln); requestAnimationFrame(() => { const w = tb.querySelector('.mk-tb-wx') || tb, r = w.getBoundingClientRect(), f = fr.getBoundingClientRect(), z = S.z === '200' ? 2 : 1; ln.style.left = `${Math.max(8, (r.right - f.left) / z - 440)}px`; }); }
     }
     else if (S.v === 'site' && S.at === 'above') {
       const pl = planner(); pl.classList.add('peek'); pl.classList.remove('half');
