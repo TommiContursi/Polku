@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-11
+
+### A tap outside a menu only closes it ([#845](https://github.com/TommiContursi/Polku/issues/845))
+
+- On a phone, a tap outside an open menu, such as the drawing menu, closes the menu and does nothing else, as phones' own menus do. A tap on the map to close it no longer adds a waypoint. With a mouse, a click outside a menu closes it and also does what it clicks on, as before.
+
 ## 2026-11-10
 
 ### A tap on a phone opens the card ([#690](https://github.com/TommiContursi/Polku/issues/690))

@@ -9485,6 +9485,48 @@ MENU_NOW = """(() => { const what = (e) => (e === document.body ? 'the page' : S
   badge: !!document.querySelector('#activity-bar .act-current .act-winter') }; })()"""
 
 
+# A tap outside a menu (#845): on a phone, a tap on the map with the drawing menu open closes it and adds no point. Two
+# points in straight legs; the tap on the map itself, clear of the menu, the route and the water (a tap there asks Paddle).
+MENU_SPOT = """(() => { const m = polku.map, c = m.getCanvas(), menu = document.querySelector('.menu-pop');
+  if (!menu) return null;
+  const r = menu.getBoundingClientRect();
+  // (at 390 × 844 the menu covers most of the map: a strip beside it is left)
+  for (let y = 80; y < innerHeight - 40; y += 10) for (let x = 10; x < innerWidth - 10; x += 10) {
+    if (x > r.left - 8 && x < r.right + 8 && y > r.top - 8 && y < r.bottom + 8) continue;
+    if (document.elementFromPoint(x, y) !== c) continue;
+    if (m.queryRenderedFeatures([[x - 20, y - 20], [x + 20, y + 20]]).some((f) => /route|point|leg|water/.test(f.layer.id))) continue;
+    return [x, y];
+  }
+  return null; })()"""
+
+
+def menu_tap_outside(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.4975/23.738')
+        pg.js("""(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.7355, 61.4972]); p.addPoint([23.7405, 61.4972]);
+          for (let k = 0; k < 100 && !p.analysis; k++) await new Promise((r) => setTimeout(r, 100)); return true; })()""")
+        b = pg.js("(() => { const r = document.querySelector('#pl-tools .modebtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+        pg.quick_tap(*b)
+        time.sleep(0.5)
+        at = pg.js(MENU_SPOT)
+        if not at:
+            fails.append('the drawing menu didn\'t open, or no spot on the map clear of it')
+        else:
+            pg.quick_tap(*at)
+            time.sleep(1)
+            got = pg.js("({ menu: !!document.querySelector('.menu-pop'), n: polku.planner.points.length })")
+            if got['menu'] or got['n'] != 2:
+                fails.append(f"a tap on the map at {at} with the drawing menu open: the menu {'still open' if got['menu'] else 'closed'}, {got['n']} points, not 2")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} sportmenu: a tap outside the drawing menu only closes it (#845)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def sport_menu(chrome):
     fails = []
 
@@ -20122,7 +20164,7 @@ GROUPS = [
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
-    ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
+    ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap outside the drawing menu only closes it (#845)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
