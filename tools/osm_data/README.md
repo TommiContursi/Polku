@@ -211,7 +211,9 @@ by a completed run; the small retained-source measurements do not establish them
 The shared geometry CLI emits phase, object/tile progress and resource records
 to stderr without changing its JSON result or archive bytes. The workflow allows
 300 minutes for download and compilation, with a 130-minute download step.
-If country jobs passed, `geometry-candidate`
+Weekly and manual production builds add the area archive after all four country
+jobs pass, then assemble the same-epoch bundle. If an earlier build's country
+jobs passed, `geometry-candidate`
 with the existing `release` input set to their run ID reuses the eight verified
 country artifacts; it does not download country PBFs or rebuild those archives.
 The separate candidate concurrency group keeps the experiment independent of

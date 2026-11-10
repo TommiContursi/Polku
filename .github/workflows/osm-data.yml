@@ -107,7 +107,7 @@ jobs:
       stamp: ${{ steps.snapshot.outputs.stamp }}
     steps:
       - id: snapshot
-        name: Pick a completed dated export shared by all four countries
+        name: Pick a completed dated export shared by all four countries and Europe
         run: |
           for osm_days in 1 2; do
             osm_stamp=$(date -u -d "$osm_days days ago" +%y%m%d)
@@ -115,13 +115,14 @@ jobs:
             for osm_country in finland sweden norway estonia; do
               curl --head --fail --silent --location --max-time 20 "https://download.geofabrik.de/europe/$osm_country-$osm_stamp.osm.pbf.md5" -o /dev/null || osm_ready=false
             done
+            curl --head --fail --silent --location --max-time 20 "https://download.geofabrik.de/europe-$osm_stamp.osm.pbf.md5" -o /dev/null || osm_ready=false
             if $osm_ready; then
               echo "stamp=$osm_stamp" >> "$GITHUB_OUTPUT"
               echo "Shared dated snapshot: $osm_stamp" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
           done
-          echo 'No completed common country snapshot within two days' >&2
+          echo 'No completed common country/reference snapshot within two days' >&2
           exit 1
 
   build:
@@ -228,9 +229,12 @@ jobs:
           retention-days: 14
 
   geometry:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'geometry-candidate'
+    needs: build
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'geometry-candidate')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 300
+    outputs:
+      run_id: ${{ steps.source.outputs.run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -239,20 +243,23 @@ jobs:
         with:
           python-version: '3.14.3'
       - run: python -m pip install -r tools/osm_data/requirements.txt
-      - name: Select a verified completed country run
+      - name: Select the current or a verified completed country run
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN: ${{ inputs.release }}
+          OPERATION: ${{ inputs.operation }}
         run: |
           python - <<'PYCODE'
           import json,os,re,subprocess
           from tools.osm_data.publish import recovery_countries,require
           source,repo=os.environ.get('SOURCE_RUN',''),os.environ['GITHUB_REPOSITORY']
-          require(re.fullmatch('[0-9]+',source),'Enter the numeric source build run ID from Actions')
-          def read(path):
-              return json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/actions/runs/'+source+path]))
-          selected=recovery_countries(repo,read(''),read('/jobs?filter=all&per_page=100')['jobs'],read('/artifacts?per_page=100')['artifacts'])
+          selected=os.environ['GITHUB_RUN_ID']
+          if os.environ['OPERATION']=='geometry-candidate':
+              require(re.fullmatch('[0-9]+',source),'Enter the numeric source build run ID from Actions')
+              def read(path):
+                  return json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/actions/runs/'+source+path]))
+              selected=recovery_countries(repo,read(''),read('/jobs?filter=all&per_page=100')['jobs'],read('/artifacts?per_page=100')['artifacts'])
           with open(os.environ['GITHUB_OUTPUT'],'a') as output:output.write('run_id='+selected+'\n')
           print('Country artifact source run: '+selected)
           PYCODE
@@ -330,8 +337,8 @@ jobs:
           if-no-files-found: error
 
   bundle:
-    needs: [build, geometry]
-    if: ${{ !cancelled() && (needs.geometry.result == 'success' || (needs.geometry.result == 'skipped' && needs.build.result == 'success')) }}
+    needs: geometry
+    if: ${{ !cancelled() && needs.geometry.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -349,19 +356,14 @@ jobs:
           pattern: osm-*-release
           path: osm-build/countries
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.release || github.run_id }}
+          run-id: ${{ needs.geometry.outputs.run_id }}
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
-        if: needs.geometry.result == 'success'
         with:
           name: osm-shared-geometry
           path: osm-build/geometry
       - name: Validate source epoch and all overlapping original object identities
-        env:
-          GEOMETRY_RESULT: ${{ needs.geometry.result }}
         run: |
-          geometry=()
-          if [ "$GEOMETRY_RESULT" = success ]; then geometry=(--geometry osm-build/geometry); fi
-          python -m tools.osm_data.bundle osm-build/release osm-build/countries/osm-finland-release osm-build/countries/osm-sweden-release osm-build/countries/osm-norway-release osm-build/countries/osm-estonia-release "${geometry[@]}"
+          python -m tools.osm_data.bundle osm-build/release osm-build/countries/osm-finland-release osm-build/countries/osm-sweden-release osm-build/countries/osm-norway-release osm-build/countries/osm-estonia-release --geometry osm-build/geometry
           df -h .
       - name: Verify the combined reader and browser transfers
         env:

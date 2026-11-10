@@ -429,7 +429,7 @@ Existing atomic promotion, full SFTP readback, Range probes, rollback pointers
 and daily monitoring remain. #701 makes manual rollback independent of the
 scheduled-publication flag; #703 repairs explicit retry after manifest failure.
 
-Weekly builds enforce country, source, resource and consumer gates,
+Weekly builds enforce country, source, area geometry, resource and consumer gates,
 and publication checks retained + incoming storage automatically. When changing
 the builder or capacity, compare measured transfer and recovery time with the
 protected 120-minute publication budget. After promotion the pipeline re-reads
@@ -579,17 +579,16 @@ of the existing immutable data releases.
 ### Retry geometry without rebuilding the countries
 
 Normal **build** with no release, including the weekly schedule, builds the
-28 country archives. Geometry runs separately so its experimental compiler
-cannot prevent a country update. To test the 29th archive, dispatch **geometry-candidate**
+28 country archives followed by the shared area archive from the same epoch.
+All 29 must pass before publication. To rebuild geometry independently, dispatch **geometry-candidate**
 with **release** set to a numeric run ID whose four country jobs passed. The
 workflow verifies a completed main OSM run and all eight distinct, unexpired
 country release/input artifacts before downloading. It derives one dated Europe
 source from their checksummed manifests, then rebuilds geometry and bundles the
 original countries. It produces a candidate without publishing or closing a
 production update incident. Existing publication, monitoring, rollback and
-retention gates apply to production. Once geometry is live, publication rejects a country-only
-candidate before uploading. Enable a verified automatic geometry build before
-making it part of the ongoing production release. Explicit rollback can still
+retention gates apply to production. Publication rejects a country-only
+candidate if the current pointer includes geometry. Explicit rollback can still
 restore an earlier manifest.
 
 The geometry candidate has a 300-minute limit on the same standard runner,
@@ -601,6 +600,9 @@ complete attempt spent nearly 42 minutes downloading Europe, leaving only
 78 minutes to compile under the previous 120-minute limit. CLI progress logs
 record native indexing, current object/tile progress, large original IDs, peak
 RSS, elapsed seconds and free disk. A candidate timeout leaves production untouched.
-Actual completed geometry size
-and resources still require the full recovered run; a longer budget alone is
-not evidence of four-country geometry capacity.
+The [November 10 candidate](https://github.com/TommiContursi/Polku/actions/runs/42725422212)
+completed on the standard runner. Its 1,507,642 area roots produced a
+1,304,593,528-byte archive. The geometry job took 2 h 14 min with 45 min
+downloading the dated reference, peak compiler RSS of 6.02 GB and 10.21 GB
+allocated staging. It reported 33 located incomplete areas. Their tiles keep
+the incomplete state so the affected selection can use the existing mirror query.
