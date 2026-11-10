@@ -329,22 +329,42 @@ class PublishTests(unittest.TestCase):
             with self.subTest(artifacts=invalid),self.assertRaises(ValueError):
                 publish.recovery_countries('TommiContursi/Polku',run,jobs,invalid)
 
-    def test_bundle_requires_all_countries_or_successful_geometry_recovery(self):
+    def test_weekly_and_candidate_geometry_are_gated(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        job = workflow.split('\n  geometry:\n', 1)[1].split('\n  bundle:', 1)[0]
+        condition = next(line.strip()[4:] for line in job.splitlines() if line.strip().startswith('if:'))
+        for event, ref, operation, build, cancelled, expected in [
+            ('schedule', 'main', '', 'success', False, True),
+            ('schedule', 'main', '', 'failure', False, False),
+            ('schedule', 'main', '', 'skipped', False, False),
+            ('schedule', 'main', '', 'success', True, False),
+            ('workflow_dispatch', 'main', 'build', 'success', False, True),
+            ('workflow_dispatch', 'main', 'geometry-candidate', 'skipped', False, True),
+            ('workflow_dispatch', 'main', 'geometry-candidate', 'skipped', True, False),
+            ('workflow_dispatch', 'feature', 'geometry-candidate', 'skipped', False, False),
+        ]:
+            with self.subTest(event=event, ref=ref, operation=operation, build=build, cancelled=cancelled):
+                expr = condition.removeprefix('${{').removesuffix('}}').strip()
+                for name, value in [('!cancelled()', not cancelled), ('needs.build.result', build),
+                                    ('github.event_name', event), ('github.ref', 'refs/heads/' + ref),
+                                    ('inputs.operation', operation)]:
+                    expr = expr.replace(name, repr(value))
+                self.assertEqual(eval(expr.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
+
+    def test_bundle_requires_successful_geometry_and_no_cancellation(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
         job = workflow.split('\n  bundle:\n', 1)[1].split('\n  verify-candidate:', 1)[0]
         condition = next(line.strip()[4:] for line in job.splitlines() if line.strip().startswith('if:'))
-        for cancelled, build, geometry, expected in [
-            (False, 'success', 'skipped', True), (False, 'skipped', 'success', True),
-            (False, 'failure', 'skipped', False), (False, 'cancelled', 'skipped', False),
-            (False, 'success', 'failure', False), (False, 'skipped', 'skipped', False),
-            (True, 'success', 'skipped', False), (True, 'skipped', 'success', False),
+        for cancelled, geometry, expected in [
+            (False, 'success', True), (False, 'failure', False), (False, 'cancelled', False),
+            (False, 'skipped', False), (True, 'success', False),
         ]:
-            with self.subTest(cancelled=cancelled, build=build, geometry=geometry):
+            with self.subTest(cancelled=cancelled, geometry=geometry):
                 expr = condition.removeprefix('${{').removesuffix('}}').strip()
-                for name, value in [('always()', True), ('!cancelled()', not cancelled),
-                                    ('needs.build.result', build), ('needs.geometry.result', geometry)]:
+                for name, value in [('!cancelled()', not cancelled), ('needs.geometry.result', geometry)]:
                     expr = expr.replace(name, repr(value))
                 self.assertEqual(eval(expr.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
+        self.assertIn('run-id: ${{ needs.geometry.outputs.run_id }}', job)
 
     def test_country_download_leaves_time_to_build(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
