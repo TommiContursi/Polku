@@ -6,6 +6,7 @@ import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, G
 import { fmtDist, fmtDuration, compass } from './geo.js';
 import { windClass, tempBand, rainBand, forecastKnown, skyKind, WIND_CLASSES, TEMP_BANDS, RAIN_BANDS } from './weather.js';
 import { nightAt } from './sun.js';
+import { tripTimes, timeOf } from './trip.js';
 import { WAY_SCALES, NOT_MAPPED } from './facts.js';
 import { escapeHtml, icon } from './ui.js';
 import { fromCss } from './palette.js';
@@ -175,7 +176,6 @@ export function breakdownRows(a, mode) {
   return rows;
 }
 
-const clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const dot = (color) => `<i class="dot" style="background:${color}"></i>`;
 
 // One profile point, compact, for the tooltip beside the cursor when the
@@ -202,7 +202,7 @@ export function routeReadout(a, i, road = '') {
     when.push(`${dot(c.color)}${c.label}${c.key === 'calm' ? '' : ` ${w.speed[i].toFixed(0)} m/s`}`, `${w.temp[i].toFixed(0)} °C`,
       w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry');
   }
-  if (a.wind && a.tAtWind) when.push(`at ${clock(a.wind.startSec + a.tAtWind[i])}`);
+  if (a.wind && a.tAtWind) when.push(`at ${timeOf(tripTimes(a).at(i))}`);
   else if (a.tAt) when.push(`${fmtDuration(a.tAt[i])} in`);
   if (isWater(a.activity)) {
     return { title: `${fmtDist(a.along[i])} · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : a.way[i]}`, lines: [when.join(' · ')].filter(Boolean) };
@@ -217,7 +217,7 @@ export function routeReadout(a, i, road = '') {
 // the weather; `water`, the wind and the weather alone. A waypoint's tooltip in the route's list says the same (#761).
 // the sky's icon at sample i, as the list's weather has it, a moon on a clear night: for a tip's weather line (#761)
 export function skyIcon(a, i) {
-  const w = a.wind, sec = a.tAtWind ? w.startSec + a.tAtWind[i] : null;
+  const w = a.wind, sec = a.tAtWind ? tripTimes(a).at(i) : null;
   return icon(skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, sec != null && nightAt(sec, a.pts[i])), 14);
 }
 
@@ -417,7 +417,7 @@ export class ProfileChart {
     const cond = this.kind === 'conditions';
     const rows = [cond ? `<b>${fmtDist(a.along[i])}</b> · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : escapeHtml(a.way[i])}`
       : `<b>${fmtDist(a.along[i])}</b> · ${noTerrain(a, i) ? 'no terrain here' : `${Math.round(a.ele[i])} m`}`, ...sampleRows(a, i, !cond && this.nameAt ? this.nameAt(i) : '', cond)];
-    if (!pastForecast(a, i) && a.wind && a.tAtWind) rows.push(`Reached ${clock(a.wind.startSec + a.tAtWind[i])}`);
+    if (!pastForecast(a, i) && a.wind && a.tAtWind) rows.push(`Reached ${timeOf(tripTimes(a).at(i))}`);
     this.tip.innerHTML = rows.join('<br>');
     this.tip.hidden = false;
     const tw = this.tip.offsetWidth;

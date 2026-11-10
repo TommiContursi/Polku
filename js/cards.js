@@ -15,6 +15,7 @@ import { STYLES, styleName } from './styles.js';
 import { fmtDist, fmtDuration, compass, bearing, lineLength } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
 import { LONG_HOURS } from './weather.js';
+import { timeOf, dayOf } from './trip.js';
 
 // the point's own marker, as the map draws it
 export function pointMark(pl, i) {
@@ -86,7 +87,7 @@ function pointBody(pl, card, body) {
   const name = pl.nameOf(i);
   // (while a leg is routed, or the analysis is of the route before it, what isn't known yet waits in its place)
   const pending = pl.points.length > 1 && !pl.analysisFits();
-  const when = i === 0 ? pl.startSec() : pl.analysis ? pl.arriveAt(i) : null;
+  const when = pl.analysis ? pl.arriveAt(i) : i === 0 ? pl.startSec() : null;
   body.append(nums(pointNums(pl.analysis, i, { when, along: pl.lengthTo(i), clock: (s) => pl.clockOf(s), pending })));
   // …and once routing has ended, numbers along a leg that couldn't be routed, or waits for the router, say so
   const before = pl.legs.slice(0, i), failed = before.some((l) => l.status === 'error'), waits = before.some((l) => l.status === 'waiting');
@@ -123,7 +124,7 @@ function pointBody(pl, card, body) {
         if (m != null && k >= 0) pl.setStop(k, { on: m, n });
         put();
       } });
-      const put = () => { const on = hhmm((pl.stopAt(card.i) || stop).on); goOn.put({ line: go ? `${pl.dayOf(go)}, ${after}` : `${after[0].toUpperCase()}${after.slice(1)}`, val: on, value: on, set: true }); };
+      const put = () => { const on = hhmm((pl.stopAt(card.i) || stop).on); goOn.put({ line: go ? `${dayOf(go)}, ${after}` : `${after[0].toUpperCase()}${after.slice(1)}`, val: on, value: on, set: true }); };
       put();
       body.append(rows(goOn.el));
       body.append(rows(item({ icon: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km', chev: true, onclick: () => pl.cards.open(staysCard(pl, card), { at: card.key, from: card }) })));
@@ -218,12 +219,12 @@ export function leaveBlock(pl) {
   const note = h('p', { class: 'pick-note', hidden: true });
   const put = () => {
     const at = pl.leaveAt, now = Date.now() / 1000, passed = at == null && pl.leavePassed, far = at != null && at - now >= LONG_HOURS * 3600;
-    row.put({ line: at == null ? 'Sets the times and the weather along the route' : pl.dayOf(at, true), val: at == null ? 'Now' : pl.timeOf(at),
+    row.put({ line: at == null ? 'Sets the times and the weather along the route' : dayOf(at, true), val: at == null ? 'Now' : timeOf(at),
       value: leaveLocal(at ?? Math.ceil(now / 900) * 900), min: leaveLocal(Math.floor(now / 900) * 900), set: at != null }); // (min on the clock's quarter hour: the field's steps count from it)
     note.hidden = !far && !passed;
     note.classList.toggle('info', !!passed);
     note.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(far ? 'cloudSun' : 'info', 16) }),
-      h('span', {}, far ? `No forecast yet for ${pl.dayOf(at)}. Sunset and the dark still count.` : passed ? `Planned for ${pl.dayOf(passed)}, ${pl.timeOf(passed)}. That’s passed, so it leaves now: pick a new time above.` : ''));
+      h('span', {}, far ? `No forecast yet for ${dayOf(at)}. Sunset and the dark still count.` : passed ? `Planned for ${dayOf(passed)}, ${timeOf(passed)}. That’s passed, so it leaves now: pick a new time above.` : ''));
   };
   return { el: h('div', { class: 'pick-leave' }, rows(row.el), note), put };
 }
