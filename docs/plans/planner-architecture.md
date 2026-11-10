@@ -5,7 +5,8 @@ How `js/planner.js` is split, and when: what it holds, which parts really collid
 ## Where it stands
 
 - **Audited on `main` at ccca179a** (2026-11-10). Its app code is 0d374b27's: `js/planner.js` has 7,827 lines, 522 kB and one `Planner` class with 455 methods. Line numbers below are from that commit, with the method's name, because the cards' PR 3 is moving lines right now.
-- **Read-only.** No app code changed. Nothing here is decided until the user chooses (see "Choices for the user").
+- **Read-only.** No app code changed.
+- **Decided (2026-11-10):** the user took the recommended order ([#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6779151280), and on [#690](https://github.com/TommiContursi/Polku/issues/690#issuecomment-6779151617)). "Decided" at the end has the details.
 - **Words:** CONTEXT.md's. A *module* is a file with a job. It is *deep* when a lot of behaviour sits behind a small interface, and *shallow* when the interface is about as big as the code. A *seam* is where one module hands over to another.
 
 ## In short
@@ -231,14 +232,26 @@ Checked on `main` at ccca179a. Each is small and changes nothing people see. The
 - **Saving and share links:** a PR that touches them gets a review offered.
 - **DEVELOPING:** its Files list (`docs/DEVELOPING.md`:314) and the section that describes the code ("Along the route", "Check's warnings", "Share links and offline") change in the same PR.
 
-## Choices for the user
+## Decided
 
-Asked one round at a time, on #496 and in the session:
-1. **The reader and writer:** right after the cards' PR 3, beside steps 5–9, or after step 4. And Now or Later on the Project.
-2. **The trip's times:** before step 1, as recommended, or before step 2.
-3. **Each slot:** deepen as recommended, move, or nothing. With it, the layout module.
-4. **Loading parts later:** no, as recommended, or measure the compile time on a phone first.
-5. **The cleanup:** one Fix PR after the cards' PR 3, or left in #496 and #486.
+The user's choices on 2026-11-10, after this audit ([the one order on #869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6779151280)):
+- **No PRs that only move code.** A module is made in the PR that needs it.
+- **The trip's times come next, in one place (#956).** One departure rule for every time on the trip.
+  - The dead code inside the time code goes in the same PR, such as the copied `clock` (`planner.js`:7731).
+  - #956's session asks the user whether Leave now counts from now or from the minute the forecast came.
+- **Then the ▾ pill and one When everywhere,** with When as its own module in that PR.
+- **Then the weather card, in three PRs:** 6a, 6b and 6c.
+- **Then Best time to leave and Arrive by,** on the trip's times.
+- **Then the list and the cards.** Check's items become one module in the Check card's PR, or the one just before it.
+- **The route's one reader and writer is #960,** in the Project's Later column.
+  - It runs alongside, from the list's top on, never during steps 1–4.
+  - It lands before Polku goes public. The user says when it starts.
+- **Dead code outside the time code** (`dropEdit`, the inline Finland box, and the copies in "What can go") goes in a small Fix PR between turns, while no planner PR is open.
+- **Not taken up:**
+  - loading parts later, as recommended;
+  - the layout module;
+  - the routing session;
+  - the Route model, which waits until after the list and cards' work on waypoints.
 
 ## Not checked
 
