@@ -738,9 +738,6 @@ def trail_card(chrome):
             fails.append(f'{name}: no trail from the recorded tile on the screen')
         else:
             pg.quick_tap(*at)  # (a tap by the touch's own times: pg.tap() on a busy page can be a hold, and the spot's menu)
-            line = pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const b = document.querySelector('.spot-line'), r = b && b.getBoundingClientRect(); r || Date.now() - t0 > 5000 ? ok(r && [r.left + r.width / 2, r.top + r.height / 2]) : setTimeout(go, 100); }; go(); })")
-            if line:
-                pg.quick_tap(*line)  # (the line at the spot first, its card from a tap on it: #574)
             r = pg.js(f"({CARD_FIT})('.sheet .pl-way.card', true)")  # (the way's card on the planner's card, 25d part 6, in the sheet: #570)
             fails += [f'{name}: {e}' for e in r['errs']]
             if w == 390 and not r.get('shown'):
@@ -1143,7 +1140,7 @@ MARKED_JS = """(() => {
   // what the pick holds (its parts as sent to the map), and whether it's drawn
   mk.picked = () => ({ parts: parts('lipasPick').length, keys: [...new Set(parts('lipasPick').map((f) => keyOf(f.properties)))].join(), drawn: drawn('lipas-pick').length > 0 });
   mk.card = () => { const c = polku.planner.cards.current; return c ? `${c.kind}${c.props ? ` ${keyOf(c.props)}` : ''}` : 'none'; };
-  mk.close = async () => { polku.planner.cards.close(); polku.planner.hideLine(); await wait(300); return true; };
+  mk.close = async () => { polku.planner.cards.close(); await wait(300); return true; };
   // a route of yours between two points (none for none), the planner put away again: its line is drawn over the marked route's
   mk.plan = async (ll) => {
     const p = polku.planner;
@@ -10802,8 +10799,7 @@ def fold_phone(chrome):
         if s['card'] or s['st'] != 'half':
             fails.append(f"the planner's line after a card opened from it: card {s['card']}, {s['st']} (half, as it was)")
         # a card over the start's view folds as every card does (the start's views keep their peek; a card has its own sizes)
-        # (a phone's tap shows the line at the spot first, #574: a tap on it opens the card)
-        pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
+        pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
         time.sleep(0.6)
         fold_settled(pg, fails, 'step 25')
         pg.tap(*(fold_at(pg, 'polku.planner.els.foldBtn') or (0, 0)))
@@ -11282,7 +11278,6 @@ FOLD_MOTION = """(async (reduced) => {
     p.close();
     await settle();
     p.openSpotCard(p.map.getCenter(), { touch: true });
-    if (p.picked) p.openLine(); // (a phone's tap shows the line at the spot first, #574)
     const cin = move();
     if (p.cards.place !== 'peek' || !cin || cin.effect.getTiming().duration !== 260) errs.push(`a card with the planner put away: ${p.cards.place}, the sheet ${cin ? `in ${cin.effect.getTiming().duration} ms` : 'there at once'} (up in 260 ms)`);
     await settle();
@@ -11372,7 +11367,7 @@ def fold_away_card(chrome):
                 pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
             fold_settled(pg, fails, f'{how}: step 2')
             # (a spot low on the screen, where the sheet comes: the map moves it into sight above the sheet)
-            pg.js("(() => { const p = polku.planner; p.spotAt = p.map.unproject([195, 760]); p.openSpotCard(p.spotAt, { touch: true }); if (p.picked) p.openLine(); return true; })()")
+            pg.js("(() => { const p = polku.planner; p.spotAt = p.map.unproject([195, 760]); p.openSpotCard(p.spotAt, { touch: true }); return true; })()")
             time.sleep(0.6)
             fold_settled(pg, fails, f'{how}: step 3')
             s, x = info(), pg.js(extra)
@@ -11409,7 +11404,7 @@ def fold_away_card(chrome):
         # a full planner, not off the screen above it
         pg.js("document.querySelector('#btn-time').click(); true")
         pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 20000 ? ok() : setTimeout(go, 100); go(); })")
-        pg.js("(() => { const p = polku.planner; p.close(); p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
+        pg.js("(() => { const p = polku.planner; p.close(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
         time.sleep(0.6)
         fold_settled(pg, fails, 'the timeline: step 1')
         pg.js("polku.planner.setSheetState('full'); true")
@@ -11941,8 +11936,7 @@ def stops_card(chrome):
             if abs(full - (h - 76)) > 1 or top > 12:
                 fails.append(f"{tag}: a short card at full: {full} px, not the planner's full ({h - 76}), the card {top} px under the sheet's header's top")
             # with no route, a spot's card over the planner's start: its name and numbers in sight (#606: it opened under the screen's edge)
-            # (a phone's tap shows the line at the spot first, #574: a tap on it opens the card)
-            pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
+            pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
             time.sleep(0.6)
             fold_settled(pg, fails, f"{tag} a spot's card over the start")
             s = pg.js("(() => { const p = polku.planner, b = p.cards.box, e = b.querySelector(':scope > .sheet-sum') || b.querySelector(':scope > .way-head'); return [p.panel.dataset.state, Math.round(e.getBoundingClientRect().bottom), p.panel.offsetHeight]; })()")
@@ -11953,7 +11947,7 @@ def stops_card(chrome):
             pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
             pg.js("(() => { const p = polku.planner; p.cards.close(); p.close(); return true; })()")
             time.sleep(0.6)
-            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
+            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
             time.sleep(0.6)
             fold_settled(pg, fails, f"{tag} a spot's card, the planner put away")
             x, y = body()
@@ -12048,7 +12042,7 @@ def stops_card_swap(chrome):
             # the planner put away: a spot's card raised to half, a long card from it at half, and Back to the spot's at half
             pg.js("(() => { const p = polku.planner; p.cards.close(); p.close(); return true; })()")
             time.sleep(0.6)
-            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
+            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
             time.sleep(0.6)
             fold_settled(pg, fails, f"{tag} a spot's card, the planner put away")
             pg.js("polku.planner.els.handle.focus(); true")
@@ -14094,8 +14088,8 @@ def route_view(chrome):
     # (where it is once the sheet has come to its size: ✕ measured while the planner came back after the note's Open had
     # something over it; settle=False for the note, which goes in 6 s)
     at = lambda pg, sel, settle=True: (settle and pg.js(SETTLED), pg.js(f"({TB_AT})({sel})"))[1]
-    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: ['spot', 'place', 'lipas', 'thing'].includes(p.cards.current && p.cards.current.kind) || !!p.picked, card: p.cards.current ? p.cards.current.kind : '', pill: !!document.querySelector('.card-pill, .pl-way.card .btn.primary.big') }; })()")
-    shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); polku.planner.hideLine(); return true; })()")
+    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: ['spot', 'place', 'lipas', 'thing'].includes(p.cards.current && p.cards.current.kind), card: p.cards.current ? p.cards.current.kind : '', pill: !!document.querySelector('.card-pill, .pl-way.card .btn.primary.big') }; })()")
+    shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
 
     def ready(pg, name):
         if not pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000):
@@ -16245,7 +16239,8 @@ def spot_card(chrome):
             if st(pg)['n'] != 1:
                 fails.append(f"{name}: a tap beside {pl['name']}: {st(pg)['n']} points, not 1")
         # a quick tap on a busy page with the planner put away, near the top (#293): a tap, though the hold's timer had opened its
-        # card first and moved the map to make room, so a phone's line at the tapped spot (#574) and no card; whole on the screen
+        # card first and moved the map to make room: the spot's card at its peek, for the tapped spot, which shows between the
+        # top bar and the sheet; no line at the spot first (#690's PR 3)
         pg.js('sc.places(false)')
         pg.js("polku.planner.cards.close(); polku.planner.setActive(false); polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 15 }); new Promise((r) => setTimeout(() => r(true), 1800))")
         s = pg.js('sc.wayAt(0.2)')
@@ -16256,10 +16251,11 @@ def spot_card(chrome):
             pg.quick_tap(s['x'], s['y'], ms=50, after='sc.untilCard()')
             time.sleep(1.2)
             pg.js('sc.calm()')
-            r = pg.js("(() => { const p = polku.planner, c = p.cards.current, e = document.querySelector('.spot-line'), b = e && e.getBoundingClientRect(); return { kind: c && c.kind, key: p.picked && p.picked.spot.ll, box: b && [b.top, b.bottom] }; })()")
+            r = pg.js("""(() => { const p = polku.planner, c = p.cards.current, at = c && p.map.project(c.key), sheet = p.panel.getBoundingClientRect().top, top = document.querySelector('.topbar').getBoundingClientRect().bottom;
+              return { kind: c && c.kind, place: p.cards.place, sheet: p.panel.dataset.state, key: c && c.key, y: at && [Math.round(top), Math.round(at.y), Math.round(sheet)], line: !!document.querySelector('.spot-line') }; })()""")
             d = r['key'] and max(abs(r['key'][0] - s['ll'][0]), abs(r['key'][1] - s['ll'][1]))
-            if r['kind'] or d is None or d > 2e-4 or not r['box'] or r['box'][0] < 0 or r['box'][1] > 844:
-                fails.append(f"{name}: a quick tap near the top with the planner put away: {r['kind'] or 'no'} card, the line at {r['key']} (the tap's {s['ll']}), its box {r['box']}; the cards: {pg.js('sc.log()')}")
+            if r['kind'] != 'spot' or r['place'] != 'peek' or r['sheet'] != 'peek' or d is None or d > 2e-4 or not (r['y'][0] < r['y'][1] < r['y'][2]) or r['line']:
+                fails.append(f"{name}: a quick tap near the top with the planner put away: {r['kind'] or 'no'} card in the {r['place']}, the sheet {r['sheet']}, at {r['key']} (the tap's {s['ll']}), the top bar, the spot and the sheet at y {r['y']}, a line at the spot {r['line']}; the cards: {pg.js('sc.log()')}")
             pg.js('polku.planner.cards.close(); true')
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
@@ -16803,7 +16799,7 @@ def spot_card_foot(chrome):
             pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")
             pg.js('sc.places(false)')  # (a spot is never a place's, whatever the tiles have under it)
             pg.js(f"({RC_ROUTE})({json.dumps({'mode': 'line', 'pts': [[23.8, 61.512], [23.815, 61.5155], [23.83, 61.513]]})})", timeout=60000)
-            for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true }); if (polku.planner.picked) polku.planner.openLine()"),
+            for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true })"),
                              ('a place', f"polku.planner.openPlaceCard({{ layer: {{ id: 'poi-minor' }}, properties: {{ class: 'toilets', name: {json.dumps(name_)} }}, geometry: {{ type: 'Point', coordinates: polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]).toArray() }} }}, [23.82, 61.516])")):
                 pg.js(f"{js}; new Promise((r) => setTimeout(() => r(true), 1500))")
                 pg.js('sc.calm()')
@@ -16831,7 +16827,7 @@ def spot_card_foot(chrome):
                 # pill, clear of the toolbox too, as of the map's buttons (#555); a card open first, so the sheet and the
                 # toolbox are where the next card leaves them
                 r = pg.js("""(async () => { const p = polku.planner, m = polku.map, t = document.getElementById('pl-tools'), R = m.getCanvas().getBoundingClientRect(), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
-                  const open = async (ll) => { p.openSpotCard(ll, { touch: true }); if (p.picked) p.openLine(); await wait(1500); };
+                  const open = async (ll) => { p.openSpotCard(ll, { touch: true }); await wait(1500); };
                   p.setSheetState('peek'); await open(m.unproject([R.width / 2, R.height * 0.3]));
                   const state = () => (t.hidden ? 'hidden' : t.classList.contains('docked') ? 'docked' : 'floating');
                   if (state() !== 'floating') return { tools: state() };
@@ -19629,7 +19625,8 @@ def pick_card(chrome):
         fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
     pg.close()
 
-    # a phone, browsing (#574): a tap shows the line at the spot, a tap on it the card; a tap elsewhere or Escape takes it away
+    # a phone, browsing: a tap opens the spot's card at its peek, with no line at the spot first (#690's PR 3, after #574's line);
+    # a tap elsewhere takes it away
     pg = chrome.page(390, 844, True)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': f"{DEM_MOCK.replace(chr(39) + 'fail' + chr(39) + ', asked', chr(39) + 'ok' + chr(39) + ', asked')};{EMPTY_DEPTHS};{WX_FIXED};"}, pg.s)
@@ -19638,98 +19635,46 @@ def pick_card(chrome):
         spot = lambda: pg.js("""(async () => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 1063593743), f = w[4], i = Math.floor(f.length / 4) * 2, ll = [f[i], f[i + 1]];
           polku.map.jumpTo({ center: ll, zoom: 16.5 }); await new Promise((r) => polku.map.once('idle', () => setTimeout(r, 400)));
           const q = polku.map.project(ll), r = polku.map.getCanvas().getBoundingClientRect(); return { x: r.left + q.x, y: r.top + q.y }; })()""")
-        line = "(() => { const b = document.querySelector('.spot-line'), r = b && b.getBoundingClientRect(), mk = b && b.closest('.maplibregl-marker'); return { still: !!mk && mk !== b && !/transform|all/.test(getComputedStyle(mk).transitionProperty), line: b ? [...b.querySelectorAll('b, small')].map((e) => e.textContent) : null, at: r && { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height }, card: polku.planner.cards.current && polku.planner.cards.current.kind, drawn: polku.map.querySourceFeatures('pick').length }; })()"
+        card = "(() => { const p = polku.planner, c = p.cards.current, e = document.querySelector('.sheet .pl-way.card'); return { card: c && c.kind, place: p.cards.place, sheet: p.panel.dataset.state, text: e ? e.innerText.replace(/\\s+/g, ' ') : '', line: !!document.querySelector('.spot-line'), drawn: polku.map.querySourceFeatures('pick').length }; })()"
         s = spot()
         # A busy click handler after the finger lifts must not turn the touch into a mouse click (#781).
         pg.js("document.addEventListener('click', () => { const t = performance.now(); while (performance.now() - t < 900) {} }, {capture: true, once: true}); true")
         pg.quick_tap(s['x'], s['y'])
         for _ in range(40):
             time.sleep(0.25)
-            r = pg.js(line)
-            if r['line'] and re.search(r'% here', ' '.join(r['line'])):
+            r = pg.js(card)
+            if re.search(r'Grade here', r['text']):
                 break
-        # (its marker a plain div that never animates: the map moves it by its transform, review of 2026-11-01)
-        if not r['line'] or r['card'] or not r['drawn'] or not re.search(r'dirt', ' '.join(r['line']), re.I) or not re.search(r'% here', ' '.join(r['line'])) or r['at']['h'] < 44 or not r['still']:
-            fails.append(f"390x844: a tap on the path: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn, its marker still {r['still']} (its name, how you get along it, the grade here; no card yet; 44 px at least; a marker that never animates)")
-        else:
-            pg.quick_tap(r['at']['x'], r['at']['y'])
-            time.sleep(1)
-            r = pg.js(line)
-            if r['line'] or r['card'] != 'spot' or not r['drawn']:
-                fails.append(f"390x844: a tap on the line: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn (the card, the pick still drawn)")
-            pg.js('polku.planner.cards.close(); true')
-        s = spot()
-        pg.quick_tap(s['x'], s['y'])
-        for _ in range(20):
-            time.sleep(0.25)
-            before = pg.js(line)
-            if before['line']:
-                break
-        pg.quick_tap(s['x'] + 60, s['y'] + 160)  # (anywhere: with the line showing, a tap only takes it away)
+        if r['card'] != 'spot' or r['place'] != 'peek' or r['sheet'] != 'peek' or r['line'] or not r['drawn'] or not re.search(r'dirt', r['text'], re.I) or not re.search(r'Grade here', r['text']):
+            fails.append(f"390x844: a tap on the path: {r['card'] or 'no'} card in the {r['place']}, the sheet {r['sheet']}, a line at the spot {r['line']}, {r['drawn']} lines drawn, the card says “{r['text'][:160]}” (the spot's card at its peek, how you get along it and the grade here, the pick drawn)")
+        pg.quick_tap(s['x'] + 60, s['y'] - 160)  # (anywhere on the map: with a card open, a tap only takes it away)
         time.sleep(1)
-        r = pg.js(line)
-        if not before['line'] or r['line'] or r['card'] or r['drawn']:
-            fails.append(f"390x844: a tap away from the line {before['line']}: the line {r['line']}, {r['card'] or 'no'} card, {r['drawn']} lines drawn (all gone)")
-        # another card opening (a point's, the route's: they open past openCard()) takes the line and its pick away (Codex on #623)
-        other = pg.js("""(async () => { const p = polku.planner, b = () => document.querySelector('.spot-line');
-          p.cards.close(); p.openSpotCard(polku.map.getCenter().toArray(), { touch: true });
-          for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
-          const had = !!b(); p.cards.open({ kind: 'note', key: 'other', title: 'Another card', build: () => {} }, { at: polku.map.getCenter().toArray() });
-          await new Promise((r) => setTimeout(r, 300)); const out = { had, line: !!b(), picked: !!p.picked }; p.cards.close(); return out; })()""")
-        if not other['had'] or other['line'] or other['picked']:
-            fails.append(f"390x844: another card opened over the line at the spot: {other} (the line and its pick gone)")
-        # the line grows as it fills in (a long name here): still whole on the screen, under the spot if there's no room above it now
-        # (Codex on #623: it was fitted only as it opened)
-        grow = pg.js("""(async () => {
-          const p = polku.planner, m = polku.map, ll = polku.map.getCenter().toArray(), b = () => document.querySelector('.spot-line'), frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-          p.cards.close(); p.openSpotCard(ll, { touch: true });
-          for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
-          if (!b()) return null;
-          const top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;
-          m.panBy([0, b().getBoundingClientRect().top - top - 4], { duration: 0 }); await frame();
-          p.picked.pick.title = 'Kuntokolmosen pohjoispuolen metsäpolku, jonka nimi ei mahdu yhdelle eikä kahdelle riville'; p.renderLine(); await frame();
-          const r = b().getBoundingClientRect(); p.hideLine(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), limit: Math.round(top), h: innerHeight }; })()""")
-        if not grow or grow['top'] < grow['limit'] - 1 or grow['bottom'] > grow['h']:
-            fails.append(f"390x844: the line grown with a long name: {grow} (whole on the screen, under the top bar)")
-        # a spot by the right edge (#674): the line steps left of the map's buttons, which all stay (it hid them all, only #435's 200 % needs that)
-        beside = pg.js("""(async () => {
-          const p = polku.planner, m = polku.map, b = () => document.querySelector('.spot-line'), c = m.getCanvas().getBoundingClientRect();
-          const k0 = document.getElementById('map-ctrls').getBoundingClientRect();  // (the spot level with the column's middle, so the line above it is beside the buttons)
-          p.cards.close(); p.openSpotCard(m.unproject([innerWidth * 0.8 - c.left, (k0.top + k0.bottom) / 2 - c.top]).toArray(), { touch: true });
-          for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
-          if (!b()) return null;
-          await new Promise((r) => setTimeout(r, 400));
-          const box = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom].map(Math.round); }, l = box(b()), col = box(document.getElementById('map-ctrls'));
-          const out = { buttons: getComputedStyle(document.querySelector('.map-ctrls')).visibility, over: document.body.classList.contains('card-over'), line: l, column: col,
-            crossing: l[0] < col[2] && l[2] > col[0] && l[1] < col[3] && l[3] > col[1] };
-          p.hideLine(); return out; })()""")
-        if not beside or beside['buttons'] != 'visible' or beside['over'] or beside['crossing']:
-            fails.append(f"390x844: the line at a spot by the right edge: {beside} (the map's buttons visible, the line beside them, not over)")
-        # #675: the ways still coming (here, never): the line says it's asking, the map's own way is drawn, and after 10 s that OpenStreetMap is slow
-        # (the line on a way of the map's own, as the phone's tap opens it)
-        on_a_way = """const p = polku.planner, m = polku.map, ll = [24.93773, 60.17055], b = () => document.querySelector('.spot-line'), words = () => (b() ? [...b().querySelectorAll('b, small')].map((e) => e.textContent) : null);
+        r = pg.js(card)
+        if r['card'] or r['drawn']:
+            fails.append(f"390x844: a tap away from the card: {r['card']} card, {r['drawn']} lines drawn (both gone)")
+        # #675: the ways still coming (here, never): the card says it's asking, the map's own way is drawn, and after 10 s that OpenStreetMap is slow
+        on_a_way = """const p = polku.planner, m = polku.map, ll = [24.93773, 60.17055], words = () => { const e = document.querySelector('.sheet .pl-way.card'); return e ? e.innerText.replace(/\\s+/g, ' ') : ''; };
           p.cards.close(); m.jumpTo({ center: ll, zoom: 16.5 });
           const q = m.project(ll), t0 = Date.now();
           while (Date.now() - t0 < 20000 && !m.queryRenderedFeatures([[q.x - 14, q.y - 14], [q.x + 14, q.y + 14]]).some((f) => /^(path|track|cycleway|road)-/.test(f.layer.id))) await new Promise((r) => setTimeout(r, 250));
           p.openSpotCard(ll, { touch: true });
-          for (let k = 0; k < 40 && !b(); k++) await new Promise((r) => setTimeout(r, 100));
           await new Promise((r) => setTimeout(r, 400));
-          const out = { line: words(), drawn: m.querySourceFeatures('pick').length };"""
-        # the ways failed (first: a tile still coming stays asked for, a failed one is asked again): the map's own way stays drawn, and the line says OpenStreetMap didn't answer, so it never reads as finished
+          const out = { card: p.cards.current && p.cards.current.kind, text: words(), drawn: m.querySourceFeatures('pick').length };"""
+        # the ways failed (first: a tile still coming stays asked for, a failed one is asked again): the map's own way stays drawn, and the card says OpenStreetMap didn't answer, so it never reads as finished
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
         gone = pg.js("(async () => {" + on_a_way + """
-          await new Promise((r) => setTimeout(r, 1500)); out.line = words(); out.drawn = m.querySourceFeatures('pick').length; p.hideLine();
+          await new Promise((r) => setTimeout(r, 1500)); out.text = words(); out.drawn = m.querySourceFeatures('pick').length; p.cards.close();
           return out; })()""", timeout=40000)
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
-        if not gone['line'] or not re.search(r'OpenStreetMap didn’t answer', ' '.join(gone['line'])) or not gone['drawn']:
-            fails.append(f"390x844: a tap on a way, its ways failed: the line {gone['line']}, {gone['drawn']} lines drawn (the map's own way still drawn, and “OpenStreetMap didn’t answer”)")
+        if gone['card'] != 'spot' or not re.search(r'OpenStreetMap didn’t answer', gone['text']) or not gone['drawn']:
+            fails.append(f"390x844: a tap on a way, its ways failed: {gone['card']} card saying “{gone['text'][:160]}”, {gone['drawn']} lines drawn (the map's own way still drawn, and “OpenStreetMap didn’t answer”)")
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, false, true); return true; })')
         wait = pg.js("(async () => {" + on_a_way + """
-          if (p.picked) { p.picked.pick.at -= 11000; p.renderLine(); out.slow = words(); p.hideLine(); }
+          if (p.cards.current) { p.cards.current.pick.at -= 11000; p.cards.refresh(); await new Promise((r) => setTimeout(r, 100)); out.slow = words(); p.cards.close(); }
           return out; })()""", timeout=40000)
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
-        if not wait['line'] or not re.search(r'Loading the whole way', ' '.join(wait['line'])) or not wait['drawn'] or not re.search(r'OpenStreetMap is slow', ' '.join(wait['slow'] or [])):
-            fails.append(f"390x844: a tap on a way while its ways come: the line {wait['line']}, {wait['drawn']} lines drawn, 11 s later {wait['slow']} (“Loading the whole way…” and the map's own way drawn; then “OpenStreetMap is slow: still asking…”)")
+        if wait['card'] != 'spot' or not re.search(r'Loading the whole way', wait['text']) or not wait['drawn'] or not re.search(r'OpenStreetMap is slow', wait.get('slow') or ''):
+            fails.append(f"390x844: a tap on a way while its ways come: {wait['card']} card saying “{wait['text'][:160]}”, {wait['drawn']} lines drawn, 11 s later “{(wait.get('slow') or '')[:160]}” (“Loading the whole way…” and the map's own way drawn; then “OpenStreetMap is slow…”)")
         # #656: Paddle from here says to tap where to go, as the planner's other notes do (read in the same call: the toast times out)
         said = pg.js("(() => { const p = polku.planner; p.paddleFrom([23.8129, 61.4844]); const t = document.querySelector('#toast').textContent; p.clear(); p.setActive(false); return t; })()")
         if said != 'Now tap where you want to go':
@@ -20186,7 +20131,7 @@ GROUPS = [
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
-    ('pickcard', [pick_card, pick_card_settings], 'a pick (#574): road works on the same card with their years (#564, #565), the line at the spot on a phone, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
+    ('pickcard', [pick_card, pick_card_settings], 'a pick (#574): road works on the same card with their years (#564, #565), a phone's tap opening the card at its peek, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
     ('spotcard', [spot_card, spot_card_foot, spot_card_actions], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),

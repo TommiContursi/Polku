@@ -522,8 +522,8 @@ const inspector = initInspector(map, {
     planner.cards.current.gone = () => { if (data.lipasPick === lit) setData('lipasPick', { type: 'FeatureCollection', features: [] }); };
   },
   openThing: (f, ll) => planner.openThing(f, ll),
-  cardOpen: () => !!planner.cards.current || !!planner.picked, // (the line at the spot too, #574)
-  closeCard: () => { planner.cards.close(); planner.hideLine(); },
+  cardOpen: () => !!planner.cards.current,
+  closeCard: () => planner.cards.close(),
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
@@ -2013,7 +2013,6 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') {
     if (layersEscape()) return;
     if (planner.cards.escape()) return; // a card: one back (from the first, closed); Move: cancelled
-    if (planner.hideLine()) return; // the line at the spot (#574)
     openPanel(null, { instant: true }); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
   }
 });

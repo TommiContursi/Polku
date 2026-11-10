@@ -24,7 +24,7 @@ import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, a
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, leaveLocal, leaveFrom, spotCard, lipasCard, pickLine, thingCard, nearestSample } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, leaveLocal, leaveFrom, spotCard, lipasCard, thingCard, nearestSample } from './cards.js';
 import { pickData, modesOf, modeOf, setMode as setPickMode } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -3990,7 +3990,7 @@ export class Planner {
         if (navigator.vibrate) navigator.vibrate(10);
         this.noClickUntil = Date.now() + 700;
         cam = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
-        this.openSpotCard(ll, { pt, touch: true, hold: true });
+        this.openSpotCard(ll, { pt, touch: true });
         held = this.cards.current;
       };
       timers = [
@@ -4052,7 +4052,7 @@ export class Planner {
       if (Date.now() - lastTouch < 1000 || this.edit || this.picking || onUi(e) || (d && Math.hypot(e.point.x - d.x, e.point.y - d.y) > 4)) return;
       const li = this.active ? this.lineAt(e.point, 6) : null;
       if (li != null) { if (this.drawing()) this.openStretchCard(this.stretchAt(li), { edit: true, at: [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)] }); else this.openRouteCard(li, e.lngLat); return; }
-      this.openSpotCard(e.lngLat, { pt: e.point, hold: true });
+      this.openSpotCard(e.lngLat, { pt: e.point });
     });
     map.on('rotatestart', () => { const c = this.cards.current; if (c && (c.kind === 'spot' || c.kind === 'place')) this.cards.close(); });
   }
@@ -4072,7 +4072,7 @@ export class Planner {
 
   // What's there (part 5): a place's card on its icon, else the spot's, with the way or what else the map has there.
   // `place`: a place to show (from search, part 6); `from`: the card it's opened from (Back goes back to it)
-  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '', hold = false } = {}) {
+  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '' } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
@@ -4089,9 +4089,6 @@ export class Planner {
     const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       partOf: route && route.properties.name ? { props: route.properties, ll } : null, touch, area });
-    // a phone's tap while browsing: the line at the spot first (#574); a hold, a click and the rest: the card
-    if (card.kind === 'spot' && touch && !hold && !pin && from === 'map' && this.cards.where() === 'peek') { this.showLine(card); return; }
-    this.hideLine();
     this.openCard(card, ll, from);
   }
   // What a tap picked, drawn on the map like a route (#574): its colours along it, a street's other side, an area's outline;
@@ -4111,7 +4108,6 @@ export class Planner {
   }
   // The map's other things (#564): their card, the thing highlighted (a line in amber, an area's outline, a ring at a point)
   openThing(f, ll) {
-    this.hideLine();
     this.openCard(thingCard(this, f, ll), ll);
     this.drawThing(f);
   }
@@ -4134,56 +4130,8 @@ export class Planner {
   }
   // A desktop's hover (#574): the way under the pointer drawn plainly, while no pick of its own is shown
   hoverPick(coords) {
-    if (this.picked || this.cards.current) return;
+    if (this.cards.current) return;
     this.app.setData('pick', coords ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: '#374151' }, geometry: { type: 'LineString', coordinates: coords } }] } : EMPTY);
-  }
-  // The line at the spot (#574): a phone's tap while browsing shows what it picked, with a pin at the spot; a tap on the
-  // line opens its card, and a tap elsewhere, Escape or the next pick takes it away
-  showLine(card) {
-    this.hideLine();
-    this.picked = card;
-    this.line = pickLine(card, () => this.openLine());
-    // (in a plain div: the map moves the marker by its transform, which the button's own press and entrance mustn't animate)
-    this.lineMk = new maplibregl.Marker({ element: h('div', {}, this.line.el), anchor: 'bottom', offset: [0, -22] }).setLngLat(card.spot.ll).addTo(this.map);
-    this.linePin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(card.spot.ll).addTo(this.map);
-    this.drawPick(card.pick);
-    this.fitLine();
-  }
-  renderLine() { if (this.line) { this.line.update(); this.fitLine(); } }
-  // As it opens and each time it grows (its heights, the weather, its name): whole on the screen for a tap by its edge (a phone
-  // at 200 %), in from the sides and under the spot with no room above it; left of the map's buttons, or, where it can't fit
-  // beside them (200 %), over them, and they step aside (#435, #674)
-  fitLine() {
-    this.lineMk.setOffset([0, -22]);
-    const r = this.line.el.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom + 8;
-    const dx = Math.max(0, 8 - r.left) - Math.max(0, r.right - (innerWidth - 8));
-    const dy = r.top < top ? r.height + 44 : 0, col = document.getElementById('map-ctrls').getBoundingClientRect();
-    if (dx || dy) this.lineMk.setOffset([dx, dy - 22]);
-    const hits = (b) => b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top;
-    let b = this.line.el.getBoundingClientRect();
-    const aside = b.right - (col.left - 8);
-    if (hits(b) && b.left - aside >= 8) {
-      this.lineMk.setOffset([dx - aside, dy - 22]);
-      b = this.line.el.getBoundingClientRect();
-    }
-    const over = hits(b);
-    if (over !== !!this.lineOver) { this.lineOver = over; document.body.classList.toggle('card-over', over); }
-  }
-  // keep: its card is opening, so the pick stays
-  hideLine({ keep = false } = {}) {
-    const c = this.picked;
-    if (!c) return false;
-    this.picked = this.line = null;
-    this.lineMk.remove();
-    this.linePin.remove();
-    if (this.lineOver) { this.lineOver = false; document.body.classList.remove('card-over'); }
-    if (!keep) c.gone();
-    return true;
-  }
-  openLine() {
-    const c = this.picked;
-    this.hideLine({ keep: true });
-    this.openCard(c, c.spot.ll);
   }
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
   openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
@@ -4193,13 +4141,11 @@ export class Planner {
     const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null, lipas: p }
       : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
         : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', osm: { type: 'place', id: null } };
-    this.hideLine();
     this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p }), at, from);
   }
   // A LIPAS route's card (part 6): Follow it, add it to your route or start one from it, its facts and pages
   openLipasCard(props, ll, { click = null, near = null } = {}) {
     const at = Array.isArray(ll) ? ll : [ll.lng, ll.lat];
-    this.hideLine();
     this.openCard(lipasCard(this, props, at, { click, near }), at);
   }
   openCard(card, at, from = 'map') {
@@ -4705,7 +4651,6 @@ export class Planner {
       peek: this.els.card,
       where: () => (this.layout() === 'sheet' && !this.sideMQ.matches ? 'peek' : 'float'),
       onChange: (card, fresh) => {
-        if (card && fresh && this.picked && card !== this.picked) this.hideLine(); // (another card: the line at the spot and its pick go)
         if (fresh && card?.pick) this.drawPick(card.pick);
         this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
         // the planner put away: the sheet comes for the card alone, and goes with it (#570)
