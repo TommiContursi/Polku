@@ -3187,7 +3187,7 @@ HEADS_UP = """(async () => {
     window.fetch = (input, init) => (/digiroad/.test(String(input && input.url ? input.url : input)) ? Promise.resolve(new Response(wfs, { status: 200 })) : f0(input, init));
     try {
       // Helsinki to Jyväskylä: more tiles than either asks for, so nothing is asked
-      const far = { pts: [[24.94, 60.17], [25.75, 62.24]], along: Float32Array.from([0, 240000]), attr: [{ sport: 'mtb', tags: {} }, { sport: 'mtb', tags: {} }], tAt: Float32Array.from([0, 36000]), activity: 'mtb' };
+      const far = { pts: [[24.94, 60.17], [25.75, 62.24]], along: Float32Array.from([0, 240000]), attr: [{ sport: 'mtb', tags: {} }, { sport: 'mtb', tags: {} }], tAt: Float32Array.from([0, 36000]), activity: 'mtb', start: Date.now() / 1000 };
       hz = (c, opt) => S.hazardsAlong(far, opt);
       await p.loadHazards(p.analysis);
       for (const [k, re] of [['roadworks', /^Road works: not checked on a route this long$/], ['busy', /^Busy roads: not checked on a route this long$/]]) {
