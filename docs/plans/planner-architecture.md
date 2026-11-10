@@ -1,6 +1,6 @@
 # Splitting the planner (#496)
 
-How `js/planner.js` is split, and when: what it holds, which parts really collide between the planner's and the cards' PRs, where a split makes the code deeper rather than only moving it, what a phone's first load would save, and what can go. It builds on the architecture run of 2026-11-06 and checks its findings again on `main`. Part of [#496](https://github.com/TommiContursi/Polku/issues/496), in the order of [#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6772432958).
+How `js/planner.js` is split, and when: what it holds, which parts really collide between the planner's and the cards' PRs, where a split makes the code deeper rather than only moving it, what a phone's first load would save, and what can go. It builds on two architecture reviews, of 2026-11-06 and 2026-11-09, and checks their findings again on `main`. Part of [#496](https://github.com/TommiContursi/Polku/issues/496), in the order of [#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6772432958).
 
 ## Where it stands
 
@@ -11,7 +11,10 @@ How `js/planner.js` is split, and when: what it holds, which parts really collid
 ## In short
 
 - **Moving code by itself won't let the two plans run side by side.** In the last 45 PRs that changed `js/planner.js`, the two plans met in five methods: the panel and the sheet, the list's menu, the markers and Start here. Those are spread over the parts a move PR would take out, so they'd come along into the new files. Every PR also changes `tools/smoke.py`, `css/app.css` and CHANGELOG.
-- **So deepen at the steps rather than move before them.** Two modules pay back across several steps: one place for a stretch's numbers (before step 2 or step 5), and Check's items (before step 10). Step 1 can build When as a module of its own, since it makes one control for three places.
+- **So deepen at the steps rather than move before them.** Two modules pay back across several steps:
+  - **The trip's times, before step 1.** Steps 1–6 all read them. Today they're worked out in many places, and Polku has two departure rules that disagree (#956).
+  - **Check's items, before step 10.**
+- **Step 1 can build When as a module of its own,** since it makes one control for three places.
 - **The route's one reader and writer (`js/route.js`)** can run beside the list's and cards' work. It shouldn't overlap steps 1–4, which change the departure it saves.
 - **Loading rare parts later saves about 2 %** of a phone's first load and makes offline worse. Not worth it.
 - **What can go:** one dead method, two copies inside `planner.js`, and the copies #496 and #486 listed, most still there.
@@ -71,14 +74,16 @@ So each slot in the one order gets either a deepening or nothing:
 
 | Slot | Recommendation | Why |
 |---|---|---|
-| **Before step 1** (the ▾ pill, one When) | **No move PR.** Step 1 builds When as a module of its own, `js/when.js` | The departure lives in four places today: the state and its expiry (`setLeave` 2614, `openLeave` 4491, `expireLeave` 4502, `leaveHour` 2606, `startSec` 2603), the start's row (`whenRow` 5067, `whenMenu` 5086), Go's Leave (`renderLeave` 6702, `revealDeparture` 6694) and the card's (`leaveBlock`, `leaveFrom` and `leaveLocal` in `js/cards.js`:205–216). Step 1 makes one control for three places, so building it as one module is the step's own work, not an extra PR. |
-| **Before step 2** (the trip's box and the weather card) | **No move PR.** Optionally, one place for a stretch's numbers (below) | Step 2 deletes Go's tab, `hourStrip`, `revealDeparture` and `renderTabTimes`. Moving them first would be wasted work. `renderWind` 7615 becomes the card's content and reads the wind's times, which is candidate 3's job. |
-| **Before step 5** (the list's top) | **One place for a stretch's numbers** if it didn't come before step 2. **No list move** | The list is nearly all the planner's code. The cards' only change there was `listMenu`, which a move would carry along. The list's arithmetic (`sampleAtM`, `timesAt`, `wxOf`, `waitsAt`, `stretchNums`) is what the leg's card in step 6 needs too. |
+| **Before step 1** (the ▾ pill, one When) | **One place for the trip's times** (below). Then step 1 builds When as a module of its own, `js/when.js` | The departure lives in four places today: the state and its expiry (`setLeave` 2614, `openLeave` 4491, `expireLeave` 4502, `leaveHour` 2606, `startSec` 2603), the start's row (`whenRow` 5067, `whenMenu` 5086), Go's Leave (`renderLeave` 6702, `revealDeparture` 6694) and the card's (`leaveBlock`, `leaveFrom` and `leaveLocal` in `js/cards.js`:205–216). Step 1 makes one control for three places, so building it as one module is the step's own work, not an extra PR. |
+| **Before step 2** (the trip's box and the weather card) | **No move PR** | Step 2 deletes Go's tab, `hourStrip`, `revealDeparture` and `renderTabTimes`. Moving them first would be wasted work. `renderWind` 7615 becomes the card's content and reads the trip's times. |
+| **Before step 5** (the list's top) | **No list move** | The list is nearly all the planner's code. The cards' only change there was `listMenu`, which a move would carry along. Its arithmetic (`sampleAtM`, `timesAt`, `wxOf`, `waitsAt`, `stretchNums`) is in the trip's times by then. |
 | **Before step 10** (the Check card) | **Check's items as one module** (below) | The tabs go and Check becomes a card. It's the moment to give the warnings one interface. |
 | **Beside steps 5–9** | **The route's one reader and writer** (below) | Saving and sharing had no PR change 3 or more of its lines in the last 45. It changes formats, not what's on the screen. |
 | **After step 7** | **The Route model** | The list and the cards' work on waypoints has landed by then. |
 
-### One place for a stretch's numbers (candidate 3, strong)
+### One place for the trip's times (strong)
+
+The 2026-11-06 review's candidate 3, "one place for a stretch's numbers", and the 2026-11-09 review's candidate 2, "the trip's timeline", are the same module seen from two sides. Here they're one.
 
 **The problem, on `main`:**
 - **"Which sample is this many metres along?"** is written in nine functions:
@@ -86,15 +91,30 @@ So each slot in the one order gets either a deepening or nothing:
   - `facts.js`:77, `stops.js`:91, `cards.js`:156.
 - **"The time at a sample, with the wind's or without"** (`a.tAtWind || a.tAt`) is written 11 times in `planner.js` (in `darkWarnings`, `winterWarnings`, `arriveAt`, `atSample`, `stretchNums`, `daysList`, `renderSpeed`, `keyFacts`, `drawMarks` and twice in `renderWind`) and once in `safety.js`:474.
 - **"When the timing starts"** (`a.wind ? a.wind.startSec : this.startSec()`) is written 6 times: in `arriveAt`, `atSample`, `daysList`, `plannedTimes`, `keyFacts` and `lookedAt`.
+- **Two departure rules disagree (#956).** With Leave now, `startSec()` 2603 is the current minute, and `a.wind.startSec` is the minute the forecast came (`loadWind` 2649).
+  - From now: Go's tab time (`renderTabTimes` 6523), Time on the way's arrival (`renderSpeed` 6434), `drawMarks`, `darkWarnings` and `clockOf`.
+  - From the forecast: the list's arrivals (`arriveAt` 2562), `atSample`, `daysList`, the GPX (`plannedTimes`, #512), `keyFacts` and `lookedAt`.
+  - With Polku left open, Go and the list drift apart by the minutes since the forecast came.
+- **The clock "13:40" is written ten times:**
+  - `planner.js`: 2307, 2335, 2574 (`timeOf`), 4407, 7705, 7731;
+  - `chart.js`:178, `net.js`:63, `wxmap.js`:1374, and in `cards.js`.
 - **The 2 m climb rule** is in three places: `analysis.js`:121, `facts.js`:158 (pasted there by #824) and `stretchNums` 3871.
+- **Not so:** the 2026-11-09 review says #813 fixed `shortDuration` but not `fmtDuration`. It changed both (`geo.js`:150).
 
-**The module:** `js/along.js`, built from an analysis and the departure. For a span in metres or between two waypoints, it gives the samples, the distance, the moving time, the waits, the climb, the arrival clock and the forecast's sample. The wind's or not is decided once.
+**The module:** `js/trip.js`, built from an analysis, the stops and the departure. With one departure rule, it gives:
+- each waypoint's arrival and leaving;
+- the days;
+- the planned times for the GPX;
+- for a span in metres or between two waypoints: the samples, the distance, the moving time, the waits, the climb and the forecast's sample;
+- the clock and duration words.
 
-**Who uses it:** the weather card (step 2), Best time to leave (step 4), the list (step 5), the leg's card (step 6), `facts.js` and `stops.js`.
+The wind's or not is decided once.
+
+**Who uses it:** When (step 1), the weather card (step 2), Best time to leave (step 4), the list (step 5), the leg's card (step 6), `chart.js`, `facts.js`, `stops.js` and `safety.js`. It fixes #956.
 
 **How it's tested:** a check in the `multi` smoke group, through `window.polku`, that a three-sport route's spans add up to the route's own numbers (distance, climb, and time less waits), at 0 m and at the end too. No map is needed.
 
-**Cost:** M. It changes no screen. It touches the list and the cards' glue, so it runs between the code PRs, not beside one.
+**Cost:** M to L. It changes no screen except #956's fix. It touches the list and the cards' glue, so it runs between the code PRs, not beside one.
 
 ### Check's items as one module (candidate 4, worth it before step 10)
 
@@ -127,17 +147,38 @@ So each slot in the one order gets either a deepening or nothing:
 - **Each applies its own rules.** An alternative route is 1 to 3, only on Follow paths legs, and `ice` only on Freehand legs.
 - **Undo's snapshot still doesn't carry the departure.** `restoreSnapshot` patches it in afterwards, at 4549.
 
+**The 2026-11-09 review** made this its top candidate, "the route document and its history". It goes further:
+- **Undo and redo, Clear, and about 20 methods** that write the route's fields directly, behind one change event.
+- **Three steps:**
+  1. one serialization instead of eight, which is the reader and writer above;
+  2. the route's edits and Undo in the module, with `points`, `legs` and `past` kept as getters for the smoke checks;
+  3. the six WeakMaps as plain records. That's the Route model, the riskiest step, done only if 1 and 2 aren't enough.
+- **The drift it names, checked on `main`:**
+  - `useShortCut` 1143 copies a waypoint's name, changeover, stop and gear to its new array, but not its id. `editTo` 3594 copies the id too.
+  - The id is what keeps a stretch unfolded in the list and a waypoint's card open (`pidOf` 4301, `findPoint` 4307). So taking a short cut may fold that stretch and close that card. Not run.
+  - Neither copies the moved-from spot, but that looks meant: a short cut puts the waypoint back on that spot, and a drag puts it where you let go.
+- **It also advises Node tests** (`node:test`). Those would be new tooling, an issue and the user's OK under AGENTS.md. The checks through `window.polku` need neither.
+- **It advises never running the refactor beside planner features:** `planner.js` frozen until each refactor PR merges, each PR small and merged the same day.
+  - The evidence here agrees for steps 2 and 3, which rewrite how the list and the cards edit the route.
+  - For step 1 it's too strict: no PR in the last 45 changed 3 or more lines of saving and sharing.
+
 **When.** The only overlap with the one order is the departure, which steps 1–4 rewrite: `leaveAt` in `save` and `shareUrl`, `openLeave`, and `'leave' in s` in `restoreSnap`. So it runs:
 - **beside steps 5–9:** a second session, with its own claim and branch;
 - **or after step 4.**
 
-It should land before Polku goes public, while formats can change freely. Its smoke rewrites will conflict mechanically with any UI PR's smoke edits at the same time. Saving and share links need a review offered before merging.
+Or right after the cards' PR 3, before step 1, one PR at a time, as the 2026-11-09 review advises. It should land before Polku goes public, while formats can change freely. Its smoke rewrites will conflict mechanically with any UI PR's smoke edits at the same time. Saving and share links need a review offered before merging.
 
-### The other candidates of 2026-11-06
+### The other candidates
 
 - **The Route model (candidate 2, strong):** after step 7, and after the reader and writer, whose format already gives each waypoint its own details. It is where the six WeakMaps keyed by the points array (`pname`, `pchange`, `pstop`, `pcarry`, `pspot`, `pid`) become one waypoint value.
 - **`cards.js` is shallow (candidate 5):** no PR of its own. It narrows as candidates 2 and 3 land.
-- **The sheet's states and round trips (candidate 6):** not recommended. The sheet is where the two plans collide, but because they share the screen, not because of the file. Round trips are self-contained, and no step changes them.
+- **The sheet's states and round trips (2026-11-06's candidate 6):** round trips aren't recommended. They're self-contained, and no step changes them. The 2026-11-09 review agrees: moving the round-trip search into `roundtrip.js` is speculative.
+- **The sheet, the dock and the toolbar as one layout module (2026-11-09's candidate 5, worth exploring):**
+  - About 835 lines (5433–6357), with `viewPadding` 5865 as the seam the map frames by.
+  - It's the one part where the two plans really collide (#887, #890), so it's the only move that targets that collision.
+  - It still needs a browser to test, and `tools/smoke.py` calls `setSheetState` 51 times through the `Planner`.
+  - A choice for round 2.
+- **A routing session over `router.js` (2026-11-09's candidate 4, worth exploring):** leg keys, waiting and retries, and Alternative routes in one place, with a fake router in tests. Fixes #798, #661 and #897 landed there. No step in the one order rebuilds routing, so it waits.
 
 ## A lighter first load
 
@@ -193,9 +234,9 @@ Checked on `main` at ccca179a. Each is small and changes nothing people see. The
 ## Choices for the user
 
 Asked one round at a time, on #496 and in the session:
-1. **The reader and writer:** beside steps 5–9, or after step 4. And Now or Later on the Project.
-2. **Each slot:** deepen as recommended, move, or nothing.
-3. **One place for a stretch's numbers:** before step 2, or before step 5.
+1. **The reader and writer:** right after the cards' PR 3, beside steps 5–9, or after step 4. And Now or Later on the Project.
+2. **The trip's times:** before step 1, as recommended, or before step 2.
+3. **Each slot:** deepen as recommended, move, or nothing. With it, the layout module.
 4. **Loading parts later:** no, as recommended, or measure the compile time on a phone first.
 5. **The cleanup:** one Fix PR after the cards' PR 3, or left in #496 and #486.
 
