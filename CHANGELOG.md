@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-10
 
+### A tap on a phone opens the card ([#690](https://github.com/TommiContursi/Polku/issues/690))
+
+- On a phone, a tap on a way, on water or on an empty spot opens its card at the foot of the screen straight away, with the spot pinned, as a hold does. The line that first showed above the spot is gone; its words are the card's first line, and the grade and the weather where you tapped are on the card. A tap elsewhere on the map closes the card.
+
 ### Lakes and parks use Polku's OSM data ([#696](https://github.com/TommiContursi/Polku/issues/696))
 
 - Picking a lake, park or protected area uses Polku's hosted data where it covers the spot. Large lakes load only the nearby shoreline, and islands stay separate from water. **All OpenStreetMap details** reuses the area's loaded tags. When hosted data is unavailable or incomplete, Polku tries the public mirrors with a bounded wait.
