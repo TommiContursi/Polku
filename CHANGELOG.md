@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-10
+
+### Lakes and parks use Polku's OSM data ([#696](https://github.com/TommiContursi/Polku/issues/696))
+
+- Picking a lake, park or protected area uses Polku's hosted data where it covers the spot. Large lakes load only the nearby shoreline, and islands stay separate from water. **All OpenStreetMap details** reuses the area's loaded tags. When hosted data is unavailable or incomplete, Polku tries the public mirrors with a bounded wait.
+
 ## 2026-11-09
 
 ### 3D's switches on the 3D pad, and smoother shadows ([#942](https://github.com/TommiContursi/Polku/issues/942), [#943](https://github.com/TommiContursi/Polku/issues/943))
@@ -397,10 +403,6 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The row above the numbers is gone, and so is its **✕**: **Got it** on a warning's card and **All read** in Check mark warnings read, and then the line shows the key fact again.
 - The warning shows in the same place in both of a desktop's docks. With the planner along the bottom it was missing before, and in the side panel it was a row inside the route's list, which no longer repeats it.
 - When only a source didn't answer, the line says so, as in "1 not checked". With large text on a small phone, on a phone on its side, or in a window under 520 px tall, the count sits beside the numbers instead.
-
-### Lakes and parks use Polku's OSM data ([#696](https://github.com/TommiContursi/Polku/issues/696))
-
-- Picking a lake, park or protected area uses Polku's hosted data when available. Large lakes load only nearby outlines; islands remain separate from water. The area's full details reuse its loaded tags. If the hosted data is unavailable or incomplete, the existing public sources are tried with a bounded wait.
 
 ### The route's list says things once ([#764](https://github.com/TommiContursi/Polku/issues/764))
 
