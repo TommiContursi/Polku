@@ -236,6 +236,31 @@ DESIGN.md's Motion and its tokens (`--t-press` 120 ms, `--t-open` 180 ms, `--t-s
 
 **To feel at the build:** the sheet falling while the line rises at the same edge. Play it at 2 to 5 times its length in DevTools, then try it on a phone. If the crossing looks busy, start the line 30 to 80 ms after the sheet, the skill's stagger. That stays under 300 ms in all. The user runs `/review-animations` before the PR that moves it opens (AGENTS.md).
 
+### The design review (2026-11-10)
+
+A fresh subagent looked at nine screenshots of E with the choices above, and at its code. It worked with impeccable, emil-design-eng, apple-design, mobile-native and break-ui, at 360 px, 200 % and long Finnish names, in both themes.
+
+**Fixed in the mock-up:**
+- The reading says "map centre".
+- At 200 % the reading gets a row of its own and keeps the wind and the rain.
+- The pills' names start with the words they show (WCAG 2.5.3).
+- Effects has a heading of its own, so it doesn't read as a second colour.
+- The menus' headings are plain, "Map colour" and "On top", and lines that only repeat an item's name are gone.
+- None has an icon of its own.
+- An open pill greys, as the app's open controls do, rather than a green ring that reads as focus.
+- On top's count is in words ("On top · 2"), not a new badge.
+- No warning sign shows when there are no warnings.
+- The desktop's line keeps its ✕ and stays right of the planner.
+
+**For the build:**
+- Until the forecast for the map's new centre arrives, the button and the line show "–" (loading, failed and stale too), never the old number.
+- The strip stays `main`'s native range under its drawing, so screen readers adjust it by swiping. It keeps the radar's last 90 minutes and "Radar" (#932). The trip and the night are marked by more than a tint: a bracket for the trip, the moon for the dark. A drag uses `touch-action: none` and handles `pointercancel`.
+- A warning on the card is the shared `warn-row`.
+- The wind's lines show which way they blow when still, with reduced motion.
+- "On top · 2" joins Shared controls with the ▾ pill.
+
+Not checked: a real phone, a screen reader, high contrast, and a desktop at 721–900 px.
+
 **Not settled yet (round 3):** what a sport's Wind tile switches on now that the wind is two things; whether step 6 is built in two PRs or three.
 
 ## How step 6 is built
