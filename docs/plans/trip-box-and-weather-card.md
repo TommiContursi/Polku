@@ -2,7 +2,7 @@
 
 The design of step 6 of [the one order](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784): the trip's box over the list, and the weather card it opens, with Go's tab gone ([#431](https://github.com/TommiContursi/Polku/issues/431), [#794](https://github.com/TommiContursi/Polku/issues/794), [#759](https://github.com/TommiContursi/Polku/issues/759), [#766](https://github.com/TommiContursi/Polku/issues/766)). Part of [#869](https://github.com/TommiContursi/Polku/issues/869); milestone [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-07): decided, ready to build as two PRs (6a and 6b) once step 5 is merged and tried on a phone.** The weather line's place on a phone was confirmed the same day. The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri) to try on a phone (built from this file with `css/app.css` and `js/ui.js` inlined and the screenshots embedded). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2, with the weather line for the map's hours in two places to compare; **C: Together**, **A: Rows** and **B: Graph**, the earlier answers, stay to compare. Each at half and full, for a day trip and a trip with a night. No app code is written here.
+**Where it stands (2026-11-10): the direction changed, so step 6 is being designed again.** On 2026-11-10 the weather got three homes, each with one job (below, Round 4), and round 1 of the refresh was answered. Round 2, how the line's two layer choices look and how the wind is shown, waits on the mock-up's version **E: Three homes**. How 6a and 6b are built is rewritten once it's chosen; until then the build plan further down is the 2026-11-07 one. The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/X4VyAyhFQZ49xo9BHWzaKa) to try on a phone (built with `css/app.css` and `js/ui.js` inlined; the earlier one was [this Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri)). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2 of 2026-11-07; **C**, **A** and **B**, the earlier answers, stay to compare. No app code is written here.
 
 ## Already decided
 
@@ -192,6 +192,28 @@ The mock-up's own pieces aren't production's: the When pill's look is planner-re
 ### The design critique (2026-11-07)
 
 A fresh subagent (Sonnet) looked at six screenshots of D beside yr.no's app, and nothing else. Fixed in the mock-up: the wind in purple, as yr draws it, so green means only the trip; the strip with a round handle at the hour and ticks at midnight; "Feels" in plain ink; the hours outside the trip muted without fading; the legend and the graph's labels at 11–12.5 px in the text's ink; the moon once (no sky mark in the card's head); the box's weather line a 44 px row; the layer pill's word kept down to 340 px; "not in Polku yet" for the water's temperature; no break in "24 cm". **Left for the build:** the graph split into a temperature and rain panel with an axis and the wind as its own band (as yr does), a day heading that stays over each day's graph on a trip of days, and what shows at half (fewer facts, a small graph above the table). Dates stay as production writes them ("Sun 08/11"), since the app is in English.
+
+## Round 4: three homes (2026-11-10)
+
+The weather has three homes, each with one job, so a later feature has a place to go:
+
+1. **The weather now, an overview.** The Weather button shows the sky and the temperature at the map's middle ("☁ 6°"), on phones and desktops. The towns' weather is the map's overview, under a new name (proposed: **Weather at places**).
+2. **The map's weather is the weather line:** the hour, play and the strip, and two choices on it, as Zoom Earth has them: **the map's colour**, one at a time (Rain and snowfall, Clouds, Temperature, Wind speed, Snow on the ground, None), and **what goes on top**, any mix (Thunder, Wind lines, Weather at places). Layers' weather group has the same choices by the same rule. None of it depends on the sport.
+3. **The trip's weather is the weather card,** the trip alone: the day's reading, the hours, the wind on the way, Time on the way. **On the map leaves the card.** A later part goes in as a row of its own with a short line and ›: warnings first (#911, which also go on top of the map), then measured nearby (#912), road cameras (#913), sun, moon and sky (#914) and the water (#862).
+
+**Round 1's answers:**
+- **A weather layer doesn't open the line.** Switched on in Layers or by a tile, it shows at Now. Only Weather (T) opens the line; ✕ closes it, and the map goes back to Now with its layers still on. Layers' Timeline switch goes.
+- **Weather (T) turns on what was on last;** the first time, Weather at places. Nothing is chosen by the sport.
+- **3D's sun and the hill shadows follow the map's hour,** as they do on `main` (#939).
+- **The wind** is chosen from drawings (round 2): a) a colour only; b) its speed a colour, and its lines on top of any colour; c) its lines on top only. Recommended: b.
+
+**What changes from 2026-11-07:** the card loses On the map (item 1 of Decided), and the line is no longer the card folded (item 3): it has no ⌃, and dragging the hours in the card no longer folds it, since the card has no hours of the map. The box, When, the card's day, its hours and the map's hour apart from the departure stay as decided.
+
+**Kept from `main`,** whatever round 2 decides (the inventory of 2026-11-10, at ccca179): the radar's last 90 minutes on the strip, with "Radar" under it (#932); 3D's sky following the hour (#939); clouds, thunder and the hatch where no radar reaches (#928, #929, #931); the legend over the map, folded at first on a phone; Effects (softer edges and falling rain), drawn here at the end of the colour's menu, since it changes how the colour is drawn; the sources' note; the opacity slider in Layers; Weather here on a card; road works and road conditions following the map's hour.
+
+**Version E of the mock-up** draws: the Weather button with the temperature; the line with **two dropdowns** on a row of their own at its foot, **two of the map's buttons at its corners** (On top at the left, the colour at the right, as Zoom Earth), and today's one menu to compare; the three winds over Rain with a menu open; The map at Now with the line closed; Layers' weather group (chips to pick the colour, switches for what goes on top); the card without On the map, with Later showing where #911–#914 and #862 go; long Finnish names at 360 px, and 200 %, where a menu becomes a sheet of its own.
+
+**Not settled yet:** the name for the towns' weather; which way the two choices look; the wind; when the Weather button's temperature is fetched (the map's middle, rounded to the forecast grid's nearest point, about 3 km, as PRODUCT.md says for the weather; the first weather request no one asked for); the desktop toolbar's weather piece, which now says what the Weather button says; the Layers drawer's weather tile, set by sport.
 
 ## How step 6 is built
 

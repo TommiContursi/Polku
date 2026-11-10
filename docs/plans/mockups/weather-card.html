@@ -13,7 +13,10 @@
   screens are screenshots of main at 1c23902 with the route drawn by a local BRouter; the weather is Open-Meteo's for
   that evening, read from the app. Illustrative: the waves, and everything under Data: Rain.
 
-  ?v=today|rows|graph  &s=route|card|map  &size=half|full  &trip=day|night  &data=real|rain  &f=390|360|desk  &z=100|200
+  ?v=today|rows|graph|together|site|trip  &s=route|card|map|line|now|layers  &size=half|full  &trip=day|night  &data=real|rain|winter  &f=390|360|desk  &z=100|200
+  E (2026-11-10): &lm=two|corners|today  &mo=colour|top|none  &wind=a|b|c  &later=now|later  &col=rain|cloud|wind|temp|snow|none  &top=thunder,windl,places,warn
+  E's map layers are drawn by hand over the screenshot (illustrative), with the app's colours (js/wxmap.js) and its classes
+  (wx-legend, wx-town, menu, menu-item, rt-pill wl-layer, fab, panel, lg-group, chip, tg).
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
@@ -222,18 +225,56 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wl-days > span { position: absolute; top: 0; }
 .rt-pill.wl-layer { min-height: 36px; padding: 2px 8px; gap: 4px; font-size: 13px; flex: none; }
 .frame.phone .rt-pill.wl-layer { min-height: 36px; }
-@container (max-width: 340px) { .rt-pill.wl-layer > span:nth-child(2) { display: none; } }
+@container (max-width: 340px) { .wl-row > .rt-pill.wl-layer > span:nth-child(2) { display: none; } }
 .wl-days > span { transform: translateX(-50%); }
 .wx-line.wl-in { position: static; padding: 0; box-shadow: none; background: none; }
 .wl-scrub { position: relative; }
 .wl-knob { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--surface-solid); border: 2px solid var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.3); pointer-events: none; }
 .wl-scrub svg { display: block; width: 100%; height: 24px; border-radius: 6px; overflow: visible; }
 @container (max-width: 240px) { .wl-read small { display: none; } }
+
+/* ======================================================= new, 2026-11-10 (E): three homes. The map's weather drawn, the line's two choices,
+   the Weather button with the temperature, Layers' weather group */
+.frame .wx-line { display: block; } /* (app.css has a .wx-line of its own, a flex row: here the line's parts go one under another) */
+.mk-wx { position: absolute; left: 0; top: 0; pointer-events: none; }
+.mk-places { position: absolute; inset: 0; pointer-events: none; }
+.mk-places .wx-town { position: absolute; transform: translate(-50%, -100%); pointer-events: auto; }
+.frame > .wx-legend.mk-legend { position: absolute; z-index: 4; left: 12px; top: 100px; }
+.frame.desk > .wx-legend.mk-legend { left: 424px; top: 100px; }
+.frame.z2 > :is(.mk-wx, .mk-places, .mk-legend, .mk-fab) { display: none; } /* (at 200 % the map isn't drawn) */
+.mk-fab { position: absolute; z-index: 4; }
+.frame.desk .mk-fab { right: 12px; top: 430px; }
+.mk-fab .fab-time-label, .wl-corner .fab-time-label { font-size: 14px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.wl-corner .fab-time-label { font-size: 11px; font-weight: 600; max-width: 56px; text-align: center; line-height: 1.1; overflow-wrap: anywhere; }
+/* two dropdowns: a row of their own at the line's foot */
+.wl-picks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 4px 0; }
+.wl-picks .rt-pill.wl-layer { min-height: 40px; margin-right: 0; }
+.wl-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent-bg); color: #fff; font-size: 11.5px; font-weight: 750; font-variant-numeric: tabular-nums; }
+/* the corners: two of the map's buttons over the line's corners, as Zoom Earth has them at its time bar's */
+.wl-corner { position: absolute; bottom: calc(100% + 10px); z-index: 1; }
+.wl-corner.l { left: 4px; } .wl-corner.r { right: 4px; }
+.wl-corner .wl-n { position: absolute; top: 3px; right: 3px; }
+.wl-corner[aria-expanded="true"], .rt-pill.wl-layer[aria-expanded="true"] { box-shadow: var(--shadow), 0 0 0 3px var(--accent); }
+/* the menus, placed in the frame by hand (popMenu() places them on the page, and as a sheet where there's no room) */
+.frame .menu.mk-menu { position: absolute; z-index: 20; width: min(310px, calc(100% - 16px)); overflow-y: auto; overscroll-behavior: contain; }
+.frame .menu.mk-menu.mk-sheet { left: 8px; right: 8px; top: 64px; bottom: 8px; width: auto; min-width: 0; max-height: none; }
+.frame.phone .mk-menu .menu-item { min-height: 44px; }
+.mk-menu > [role="group"] { display: flex; flex-direction: column; }
+/* Layers' weather group, in the frame */
+.frame .panel.mk-panel { position: absolute; left: 8px; right: 8px; top: 68px; bottom: 8px; width: auto; max-height: none; z-index: 6; }
+.frame.desk .panel.mk-panel { left: auto; right: 84px; top: 64px; bottom: 12px; width: 356px; }
+.mk-panel .panel-body { flex: 1; min-height: 0; }
+.mk-panel .menu-h.mk-sub { padding: 6px 0 6px; }
+.mk-panel .rt-chips { padding-bottom: 6px; }
+/* the card's later rows */
+.rows .row > .val.mk-soon { color: var(--muted); font-size: 12px; font-weight: 600; }
+.wc-card .rows .row > span.warn-icon { color: #ca8a04; }
 </style>
 </head>
 <body class="mk">
 <div class="cv">
   <h1>The weather card</h1>
+  <p><b>E: Three homes</b> (2026-11-10), the newest: each part of the weather has one job. <b>The Weather button</b> shows the sky and the temperature at the map’s middle, and Weather at places is the map’s overview. <b>The weather line</b> is the map’s weather: the hour, play, the strip, and two choices on it, the map’s colour (one at a time) and what goes on top (any mix); Layers’ weather group has the same two. <b>The weather card</b> is the trip’s weather only. Switch Choices to compare two dropdowns with two buttons at the line’s corners, and Wind for its three versions; Later shows where the later parts go.</p>
   <p>#431, step 6 of #869’s order: the trip’s box over the list, and the weather card it opens. The card takes Go’s contents and the weather timeline’s: <b>it replaces the floating timeline window</b>, whose 48 hours become the card’s last part, <i>On the map</i>. Go’s tab goes. <b>C: Together</b> (2026-11-07, from the user’s answer to Q1) puts each day’s big numbers first, a colour for each kind of data, and the graph under them; the map’s hours are the <b>weather line</b>, the card folded, so the map shows while the hour moves. A and B, the first round’s two answers, stay on the bar. Tap the trip’s box to open the card; switch Size to see what fits at half on a phone. The plan is <a href="../trip-box-and-weather-card.md">docs/plans/trip-box-and-weather-card.md</a>.</p>
   <div class="bars" id="bars"></div>
   <div class="stage" id="stage"></div>
@@ -245,6 +286,9 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
       <li>The weather is the forecast Polku had for that evening (Open-Meteo), at the start, hour by hour: dry, 4–7 °C, wind 4–7 m/s from the west.</li>
       <li>Illustrative: the waves (Polku’s router estimates them but doesn’t say them yet), feels like (the wind chill here; Open-Meteo’s <code>apparent_temperature</code> in the build), the water’s temperature (a new source), the sky between the hours, the profile’s shape, the list, and everything under Data: Rain and Winter.</li>
       <li>Not designed here: Best time to leave and Arrive by (step 9); the dashed box marks their room.</li>
+      <li>E’s map layers are drawn by hand over the screenshot, in the app’s colours: the rain, the clouds, the colour fields, thunder, the wind’s lines, the places’ readings and the warning are illustrative. The menus are built of <code>popMenu()</code>’s parts and placed in the frame by hand.</li>
+      <li>E’s later rows (warnings, measured nearby, road cameras, sun and moon, the water) are illustrative: none of their sources is in Polku yet, and the aurora needs your OK as a new source (#914).</li>
+      <li>The Weather button’s temperature asks for the forecast at the map’s middle whenever the map stops moving, the first weather request no one asked for: rounded to the forecast grid’s nearest point (about 3 km), as PRODUCT.md says for the weather. The plan raises it.</li>
     </ul>
   </div>
 </div>
@@ -254,15 +298,18 @@ import { icon, h } from '../../../js/ui.js';
 const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/design-weather-card/';
 const q = new URLSearchParams(location.search);
 const pick = (k, vals, d) => (vals.includes(q.get(k)) ? q.get(k) : d);
-const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site'], 'site'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line'], 'route'), hr: 1, tt: pick('tt', ['open'], ''), wl: pick('wl', ['open', 'line'], 'open'), size: pick('size', ['half', 'full'], 'half'),
-  trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain', 'winter'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100') };
+const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site', 'trip'], 'trip'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line', 'now', 'layers'], 'line'), hr: 1, tt: pick('tt', ['open'], ''), wl: pick('wl', ['open', 'line'], 'open'), size: pick('size', ['half', 'full'], 'half'),
+  trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain', 'winter', 'long'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100'),
+  // E (2026-11-10): the line's two choices (lm), which menu is open (mo), the three winds, the card's later rows; what's on the map
+  lm: pick('lm', ['today', 'two', 'corners'], 'two'), mo: pick('mo', ['none', 'colour', 'top'], 'colour'), wind: pick('wind', ['a', 'b', 'c'], 'b'), later: pick('later', ['now', 'later'], 'now'),
+  col: pick('col', ['rain', 'cloud', 'wind', 'temp', 'snow', 'none'], 'rain'), top: q.get('top') ?? 'windl,places', tday: q.get('tday') ?? 'rain,wind,towns', fx: pick('fx', ['on', 'off'], 'on'), lg: pick('lg', ['fold', 'open'], 'fold') };
 
 // ---------------------------------------------------------------- the forecast, at the start, from 19:00 on Sat 7 Nov (local)
 // [wind m/s, gust, from °, °C, rain mm/h], an hour each, as Polku had it (Open-Meteo, 2026-11-07 20:21)
 const WX = [[5.1,8.4,303,6.7,0],[4.3,7.7,277,6.5,0],[5,7.3,285,6.2,0],[5.3,7.8,281,6.2,0],[5.1,8,289,6.1,0],[4.9,7.7,296,6.1,0],[4.9,7.3,290,5.9,0],[5.2,7.8,288,5.7,0],[5.5,8.2,297,5.5,0],[5.4,8.2,301,5.1,0],[5.4,8.2,305,5,0],[5.4,8.1,308,4.9,0],[5.5,8.3,307,4.9,0],[5.5,8.4,307,4.9,0],[5.7,8.5,318,4.9,0],[5.4,8.7,314,5.1,0],[5,8.1,308,5.5,0],[4.6,7.6,305,5.8,0],[4.1,7.1,304,6,0],[3.9,6.4,292,6.1,0],[4.6,6.9,281,6.1,0],[5.1,7.5,282,5.8,0],[5.3,7.9,288,5.7,0],[5.2,7.8,285,5.7,0],[5.2,7.9,289,5.9,0],[4.9,7.8,288,5.9,0],[4.7,7.2,284,5.6,0],[5.2,7.7,286,5.2,0],[5.2,7.8,288,4.8,0],[4.7,7.7,288,4.6,0],[4.2,7,283,4.4,0],[4.2,6.3,278,4.4,0],[4.3,6.4,272,4.2,0],[4.8,7,271,4,0],[4.9,7.3,273,4.1,0],[4.9,7.6,274,4.3,0],[5.3,7.7,271,4.4,0],[5.4,7.9,269,4.7,0],[6.6,9.7,267,5.5,0],[7,10.3,273,6.2,0],[7.4,11.1,269,6.4,0],[7.3,11.2,266,6.6,0],[7.1,11,265,6.6,0],[6.9,10.5,266,6.5,0],[7.3,10.7,265,6.3,0],[6.9,10.7,261,6.1,0],[7.1,10.6,273,6,0],[7.5,11.1,264,5.9,0],[7.2,11.1,266,5.8,0],[6.7,10.7,271,5.8,0]];
 const H0 = 19; // WX[0] is Sat 19:00
 const RAIN = [0, 0.2, 0.6, 1.4, 0.9, 0.3, 0, 0, 0, 0]; // (Data: Rain, illustrative, from the hour before the trip)
-const wx = (i) => { const x = WX[Math.max(0, Math.min(WX.length - 1, i))].slice(); const k = i - Math.floor(T().days[0].i0) + 1; if (S.data !== 'real' && k >= 0 && k < RAIN.length) x[4] = RAIN[k] * (S.data === 'winter' ? 0.6 : 1); if (S.data === 'winter') x[3] -= 10; return x; };
+const wx = (i) => { const x = WX[Math.max(0, Math.min(WX.length - 1, i))].slice(); const k = i - Math.floor(T().days[0].i0) + 1; if ((S.data === 'rain' || S.data === 'winter') && k >= 0 && k < RAIN.length) x[4] = RAIN[k] * (S.data === 'winter' ? 0.6 : 1); if (S.data === 'winter') x[3] -= 10; return x; };
 const SNOW_CM = 24; // (Data: Winter, illustrative: the model's snow depth, FMI's measured depth near it in the build) // (the rain comes as the trip starts)
 const DAYS = ['Sat', 'Sun', 'Mon'];
 const hr = (i) => (H0 + i) % 24, dayOf = (i) => DAYS[Math.floor((H0 + i) / 24)];
@@ -397,7 +444,7 @@ function dayD(d, R) {
     h('span', { html: `${icon('wind', 16)}<b class="wd-wind">${w.w1} (${w.g}) m/s</b>${arrow(w.dir)} from ${compass(w.dir)}` }),
     winter ? h('span', { html: `${icon('flake', 16)}Snow on the ground <b>${SNOW_CM}&nbsp;cm</b>` }) : null,
     paddles ? h('span', { html: `${icon('paddle', 16)}Waves about <b style="color: var(--sport-paddle)">${R.wave[0]}</b> <span class="unk">an estimate</span>` }) : null,
-    paddles ? h('span', { html: `${icon('water', 16)}Water <b>${winter ? '1' : '9'} °C</b> <span class="unk">· not in Polku yet</span>` }) : null);
+    paddles && S.v !== 'trip' ? h('span', { html: `${icon('water', 16)}Water <b>${winter ? '1' : '9'} °C</b> <span class="unk">· not in Polku yet</span>` }) : null); // (E: a row of its own, later)
   const read = h('div', { class: 'wd-read' }, h('span', { class: 'wd-now' }, h('span', { class: `wd-sky ${sky(x0, i0)}`, html: icon(sky(x0, i0), 34) }),
     h('b', { class: tCls(tMax) }, Math.round(tMin) === Math.round(tMax) ? deg(tMin) : `${deg(tMin).replace('°', '')}…${deg(tMax)}`)), facts);
   const sun = h('div', { class: 'wd-sunline', html: d.sun.split(' · ').map((x) => `<span>${icon(/^sunrise/i.test(x) ? 'sunrise' : /^sunset/i.test(x) ? 'sunset' : 'moon', 15)}${x[0].toUpperCase()}${x.slice(1)}</span>`).join('') });
@@ -452,11 +499,13 @@ function lineStrip() {
 }
 function wxLine(inCard) {
   const x = wx(S.hr), el = h('div', { class: inCard ? 'wx-line wl-in' : 'wx-line', role: 'group', 'aria-label': 'The map’s weather' });
+  const e = S.v === 'trip', mode = e ? S.lm : 'old'; // (E: the line is the map's weather, no longer the card folded: no ⌃)
   const read = h('span', { class: 'wl-read', title: 'At the map’s middle' }, h('span', { class: `wd-sky ${sky(x, S.hr)}`, html: icon(sky(x, S.hr), 22) }), h('b', {}, `${Math.round(x[3])}°`), h('span', { html: `<i class="wl-time">${hourWords(S.hr)}</i><small><b>${Math.round(x[0])} (${Math.round(x[1])}) m/s</b> · ${x[4] > 0 ? `<em>${x[4].toFixed(1)} mm/h</em>` : 'dry'}</small>` }));
   el.append(h('div', { class: 'wl-row' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Play the hours', html: icon('play', 18) }), read,
-    h('button', { type: 'button', class: 'rt-pill wl-layer', 'aria-haspopup': 'menu', 'aria-label': 'The map’s weather layer: Rain' }, h('span', { html: icon('rain', 16) }), h('span', {}, 'Rain'), h('span', { html: CARET })),
-    inCard ? null : h('button', { type: 'button', class: 'tool', 'aria-label': 'Open the weather card', onclick: go('card'), html: icon('chevronUp', 20) }),
-    inCard ? null : h('button', { type: 'button', class: 'tool', 'aria-label': 'Weather off', onclick: go('route'), html: icon('close', 20) })));
+    mode === 'old' ? h('button', { type: 'button', class: 'rt-pill wl-layer', 'aria-haspopup': 'menu', 'aria-label': 'The map’s weather layer: Rain' }, h('span', { html: icon('rain', 16) }), h('span', {}, 'Rain'), h('span', { html: CARET }))
+      : mode === 'today' ? todayPill() : null,
+    inCard || e ? null : h('button', { type: 'button', class: 'tool', 'aria-label': 'Open the weather card', onclick: go('card'), html: icon('chevronUp', 20) }),
+    inCard ? null : h('button', { type: 'button', class: 'tool', 'aria-label': e ? 'Close the weather line: the map goes back to Now' : 'Weather off', onclick: () => { S.mo = 'none'; S.hr = 1; go(e ? 'now' : 'route')(); }, html: icon('close', 20) })));
   const scrub = h('div', { class: 'wl-scrub', role: 'slider', tabindex: '0', 'aria-label': 'The map’s hour', 'aria-valuemin': '0', 'aria-valuemax': '47', 'aria-valuenow': String(S.hr - 1), 'aria-valuetext': hourWords(S.hr), html: lineStrip() });
   const at = (e) => { const r = scrub.getBoundingClientRect(); return Math.max(1, Math.min(48, 1 + Math.round(((e.clientX - r.left - 6) / (r.width - 12)) * 47))); };
   const set = (i) => { if (i === S.hr) return; S.hr = i; const n = wxLine(inCard); el.replaceWith(n); if (!inCard) n.querySelector('.wl-scrub').focus({ preventScroll: true }); };
@@ -466,15 +515,164 @@ function wxLine(inCard) {
   scrub.addEventListener('keydown', (e) => { const k = { ArrowRight: 1, ArrowLeft: -1, PageUp: 6, PageDown: -6 }[e.key]; if (k) { e.preventDefault(); if (inCard) { S.s = 'line'; S.hr = Math.max(1, Math.min(48, S.hr + k)); draw(); } else set(Math.max(1, Math.min(48, S.hr + k))); } });
   scrub.append(h('span', { class: 'wl-knob', 'aria-hidden': 'true', style: `left: calc(6px + (100% - 12px) * ${(S.hr - 1) / 47})` }));
   el.append(scrub, h('div', { class: 'wl-days', 'aria-hidden': 'true' }, ...[[16, 'Sun'], [40, 'Mon']].map(([k, t]) => h('span', { style: `left: calc(6px + (100% - 12px) * ${k / 47})` }, t))));
+  if (mode === 'two') el.append(h('div', { class: 'wl-picks' }, ...picks('pill')));
+  if (mode === 'corners') el.append(...picks('corner'));
   return el;
 }
 
+// ---------------------------------------------------------------- E (2026-11-10): the map's weather, two choices
+// the map's colour, one at a time, in js/wxmap.js's LAYERS' words: [key, name, line, the pill's word, icon]. Wind by the switch:
+// a) a colour, b) its speed a colour and its lines on top, c) its lines on top only
+const COLOURS = () => [['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'], ['cloud', 'Clouds', 'A grey veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
+  ...(S.wind === 'c' ? [] : [['wind', S.wind === 'b' ? 'Wind speed' : 'Wind', 'Its speed in colours', 'Wind', 'wind']]),
+  ['temp', 'Temperature', 'A colour field, with °C', 'Tempera­ture', 'temp'], ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'], ['none', 'None', 'Only what’s on top', 'No colour', 'layers']];
+const col = () => (S.wind === 'c' && S.col === 'wind' ? 'rain' : S.col);
+// on top, any of them: [key, name, line, icon]
+const TOPS = () => [['thunder', 'Thunder', 'Lightning in the last hour, and the forecast’s thunder', 'thunder'],
+  ...(S.wind === 'a' ? [] : [['windl', S.wind === 'b' ? 'Wind lines' : 'Wind', S.wind === 'b' ? 'Moving lines: which way it blows' : 'Moving lines, coloured by its speed', 'wind']]),
+  ['places', 'Weather at places', 'The sky, temperature and wind where the map names a place', 'cloudSun'],
+  ...(S.later === 'later' ? [['warn', 'Warnings', 'FMI’s, coloured by their level (#911)', 'warnf']] : [])];
+const tops = () => new Set(S.top.split(',').filter((k) => TOPS().some(([t]) => t === k)));
+// today's one menu (main, #182): every layer ticks; Wind is its lines and, with no Temperature, its colour too
+const TODAY = [['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'], ['cloud', 'Clouds', 'A grey veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
+  ['thunder', 'Thunder', 'Lightning in the last hour, and the forecast’s thunder', 'Thunder', 'thunder'], ['wind', 'Wind', 'Moving lines, coloured by its speed', 'Wind', 'wind'],
+  ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'], ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow']];
+const NOTE = 'Forecast by Open-Meteo. Radar and measured snow by FMI, and by RainViewer outside Finland.';
+// what the map shows: its colours (one, or today's mix), the wind's lines (plain over a colour, or coloured by speed), thunder, places, warnings
+function shown() {
+  if (S.lm === 'today') { const t = new Set(S.tday.split(','));
+    return { fields: ['cloud', 'rain', 'snow'].filter((k) => t.has(k)).concat(t.has('temp') ? ['temp'] : t.has('wind') ? ['wind'] : []), lines: t.has('wind') ? 'speed' : null, thunder: t.has('thunder'), places: t.has('towns'), warn: false }; }
+  const c = col(), t = tops();
+  return { fields: c === 'none' ? [] : [c], lines: t.has('windl') ? (S.wind === 'b' ? 'plain' : 'speed') : null, thunder: t.has('thunder'), places: t.has('places'), warn: t.has('warn') };
+}
+const toggleMenu = (k) => (ev) => { ev.stopPropagation(); S.mo = S.mo === k ? 'none' : k; draw(); };
+function todayPill() {
+  const t = new Set(S.tday.split(',')), on = [...TODAY, ['towns', 'Towns’ weather', '', 'Towns', 'cloudSun']].filter(([k]) => t.has(k));
+  return h('button', { type: 'button', class: 'rt-pill wl-layer', 'data-mk': 'colour', 'aria-haspopup': 'menu', 'aria-expanded': String(S.mo !== 'none'), 'aria-label': `Weather layers: ${on.map((x) => x[3]).join(', ') || 'none'}`, onclick: toggleMenu('colour') },
+    h('span', { html: icon(on[0] ? on[0][4] : 'layers', 16) }), h('span', {}, on.length ? `${on[0][3]}${on.length > 1 ? ` +${on.length - 1}` : ''}` : 'Layers'), h('span', { html: CARET }));
+}
+// the two choices: as pills on the line's foot, or as the map's buttons at its corners
+function picks(kind) {
+  const c = COLOURS().find(([k]) => k === col()), t = TOPS().filter(([k]) => tops().has(k)), n = t.length ? h('span', { class: 'wl-n', 'aria-hidden': 'true' }, String(t.length)) : null;
+  const a1 = { type: 'button', 'data-mk': 'colour', 'aria-haspopup': 'menu', 'aria-expanded': String(S.mo === 'colour'), 'aria-label': `Map colour: ${c[1]}`, onclick: toggleMenu('colour') };
+  const a2 = { type: 'button', 'data-mk': 'top', 'aria-haspopup': 'menu', 'aria-expanded': String(S.mo === 'top'), 'aria-label': `On top: ${t.map((x) => x[1]).join(', ') || 'nothing'}`, onclick: toggleMenu('top') };
+  if (kind === 'pill') return [h('button', { ...a1, class: 'rt-pill wl-layer' }, h('span', { html: icon(c[4], 16) }), h('span', {}, c[3].replace('­', '')), h('span', { html: CARET })),
+    h('button', { ...a2, class: 'rt-pill wl-layer' }, h('span', { html: icon('layers', 16) }), h('span', {}, 'On top'), n, h('span', { html: CARET }))];
+  return [h('button', { ...a2, class: 'fab wl-corner l' }, h('span', { html: icon('layers', 22) }), h('span', { class: 'fab-time-label' }, 'On top'), n),
+    h('button', { ...a1, class: 'fab wl-corner r' }, h('span', { html: icon(c[4], 22) }), h('span', { class: 'fab-time-label' }, c[3]))];
+}
+// the open menu, built of popMenu()'s parts (js/ui.js): menu-h groups, menu-item two-line, radio or tick, menu-tick, hr, menu-note
+function menuEl() {
+  const el = h('div', { class: 'menu mk-menu', role: 'menu', 'aria-label': S.lm === 'today' ? 'Weather layers' : S.mo === 'colour' ? 'Map colour' : 'On top' });
+  const it = ({ ic, label, desc, on, radio, fn }) => h('button', { type: 'button', role: radio ? 'menuitemradio' : 'menuitemcheckbox', 'aria-checked': String(on), class: `menu-item${desc ? ' two-line' : ''}`,
+    onclick: (ev) => { ev.stopPropagation(); fn(); draw(); }, html: `${icon(ic, 17)}<span>${label}${desc ? `<small>${desc}</small>` : ''}</span>${on ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}` });
+  const grp = (name, items) => { const id = `mk-h-${name.replace(/\W/g, '')}`; return [h('div', { class: 'menu-h', id }, name), h('div', { role: 'group', 'aria-labelledby': id }, ...items)]; };
+  const fx = it({ ic: 'sparkle', label: 'Effects', desc: 'Softer edges and falling rain', on: S.fx === 'on', fn: () => { S.fx = S.fx === 'on' ? 'off' : 'on'; } });
+  if (S.lm === 'today') { const t = new Set(S.tday.split(',')), tog = (k) => () => { if (t.has(k)) t.delete(k); else t.add(k); S.tday = [...t].join(','); };
+    el.append(...grp('Weather on the map', TODAY.map(([k, label, desc, , ic]) => it({ ic, label, desc, on: t.has(k), fn: tog(k) }))), h('hr'),
+      ...grp('Points', [it({ ic: 'cloudSun', label: 'Towns’ weather', desc: 'The sky, temperature and wind where the map names a place', on: t.has('towns'), fn: tog('towns') })]), h('hr'), fx, h('p', { class: 'menu-note' }, NOTE));
+  } else if (S.mo === 'colour') el.append(...grp('Map colour, one at a time', COLOURS().map(([k, label, desc, , ic]) => it({ ic, label, desc, on: col() === k, radio: true, fn: () => { S.col = k; } }))), h('hr'), fx, h('p', { class: 'menu-note' }, NOTE));
+  else { const t = tops(); el.append(...grp('On top, any of them', TOPS().map(([k, label, desc, ic]) => it({ ic, label, desc, on: t.has(k), fn: () => { if (t.has(k)) t.delete(k); else t.add(k); S.top = [...t].join(','); } }))), h('p', { class: 'menu-note' }, 'Lightning by FMI.')); }
+  return el;
+}
+// beside its button, upward, scrolling inside when taller than the room; a sheet of its own where there's no room (popMenu()'s rule)
+function placeMenu(fr, menu, anchor) {
+  requestAnimationFrame(() => {
+    const z = S.z === '200' ? 2 : 1, f = fr.getBoundingClientRect(), a = anchor.getBoundingClientRect();
+    const room = (a.top - f.top) / z - 14, W = f.width / z;
+    if (room < Math.min(menu.scrollHeight, 240) || W - 16 < 240) { menu.classList.add('mk-sheet'); return; }
+    menu.style.bottom = `${(f.bottom - a.top) / z + 6}px`; menu.style.maxHeight = `${room}px`;
+    menu.style.left = `${Math.max(8, Math.min(W - menu.offsetWidth - 8, anchor.classList.contains('r') ? (a.right - f.left) / z - menu.offsetWidth : (a.left - f.left) / z))}px`;
+  });
+}
+
+// the map's weather, drawn over the screenshot (illustrative): in the picture's own pixels, 390 wide on a phone, 1440 × 900 on a desktop
+const SPOTS = {
+  phone: { rain: [[300, 230, 110], [215, 330, 80], [330, 420, 70], [120, 470, 55]], strikes: [[300, 225, 'a'], [282, 252, 'b'], [318, 205, 'c']], storm: [250, 280, 120, 70], clouds: [[100, 200, 150], [320, 300, 170], [200, 560, 160]],
+    places: [['Sompasaari', 236, 96, 7, 5], ['Korkeasaari', 290, 162, 6, 6], ['Kamppi', 52, 214, 7, 4], ['Eira', 62, 330, 6, 5]], warn: '0,560 390,515 390,844 0,844' },
+  desk: { rain: [[820, 260, 200], [650, 400, 130], [930, 470, 110], [520, 520, 90]], strikes: [[820, 255, 'a'], [800, 285, 'b'], [845, 230, 'c']], storm: [720, 300, 260, 120], clouds: [[600, 200, 260], [950, 380, 280], [500, 600, 220]],
+    places: [['Kamppi', 518, 165, 7, 4], ['Katajanokka', 960, 178, 6, 6], ['Punavuori', 625, 312, 7, 5], ['Kruununhaka', 800, 62, 6, 5]], warn: '420,620 1100,560 1100,900 420,900' },
+};
+const STRIKE = { a: '#f97316', b: '#a855f7', c: '#d8b4fe' }; // (STRIKE_COLOURS in js/icons.js)
+const picSize = () => (phone() ? [S.f === '360' ? 360 : 390, (S.f === '360' ? 360 : 390) * 844 / 390, (S.f === '360' ? 360 : 390) / 390] : [1440, 900, 1]);
+function mapWx() {
+  const L = shown(), [W, H, k] = picSize(), P = SPOTS[phone() ? 'phone' : 'desk'], soft = S.fx === 'on' ? ' filter="url(#mk-soft)"' : '';
+  let s = `<svg class="mk-wx" width="${W}" height="${H}" viewBox="0 0 ${W / k} ${H / k}" aria-hidden="true"><defs><filter id="mk-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${phone() ? 3 : 5}"/></filter>
+    <linearGradient id="mk-temp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a7f3d0"/><stop offset=".6" stop-color="#d9f99d"/><stop offset="1" stop-color="#fde047"/></linearGradient>
+    <linearGradient id="mk-wind" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset=".55" stop-color="#4ade80"/><stop offset="1" stop-color="#a3e635"/></linearGradient>
+    <linearGradient id="mk-snow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e0f2fe"/><stop offset="1" stop-color="#a5d8fb"/></linearGradient></defs>`;
+  const w = W / k, hh = H / k;
+  for (const f of L.fields) {
+    if (f === 'temp' || f === 'wind' || f === 'snow') s += `<rect width="${w}" height="${hh}" fill="url(#mk-${f})" opacity="${f === 'snow' ? .6 : .5}"/>`;
+    if (f === 'cloud') s += `<g opacity=".5"${soft}>${P.clouds.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#9aa3ae"/>`).join('')}</g>`;
+    if (f === 'rain') s += `<g opacity=".8"${soft}>${P.rain.map(([x, y, r]) => ['#a5e4fb', '#38bdf8', '#1d6fe0', '#1e3a8a'].map((c, i) => `<circle cx="${x + i * 4}" cy="${y - i * 3}" r="${r * [1, .68, .42, .2][i]}" fill="${c}"/>`).join('')).join('')}</g>`;
+  }
+  if (L.warn) s += `<polygon points="${P.warn}" fill="rgba(250,204,21,.28)" stroke="#ca8a04" stroke-width="2" stroke-dasharray="6 4"/>`;
+  if (L.thunder) { const [x, y, rx, ry] = P.storm; s += `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="rgba(245,158,11,.18)" stroke="#b45309" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    s += P.strikes.map(([sx, sy, a]) => `<path d="M${sx - 6} ${sy}h12M${sx} ${sy - 6}v12" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/><path d="M${sx - 6} ${sy}h12M${sx} ${sy - 6}v12" stroke="${STRIKE[a]}" stroke-width="2.6" stroke-linecap="round"/>`).join(''); }
+  if (L.lines) { // the wind from the west-north-west (290°), so its lines run east-south-east; plain over a colour, else in the speed's colours
+    const dx = Math.cos(.35), dy = Math.sin(.35), len = phone() ? 34 : 60, step = phone() ? [64, 58] : [120, 90];
+    for (let y = 30, r = 0; y < hh; y += step[1], r++) for (let x = (r % 2) * step[0] / 2 - 20; x < w; x += step[0]) {
+      const d = `M${x} ${y}q${len * .5 * dx - 1.5} ${len * .5 * dy + 2.5} ${len * dx} ${len * dy}`, c = ['#22d3ee', '#4ade80', '#4ade80', '#facc15'][(r + Math.round(x / step[0])) % 4];
+      s += L.lines === 'plain' ? `<path d="${d}" stroke="rgba(15,23,42,.45)" stroke-width="3.6" fill="none" stroke-linecap="round"/><path d="${d}" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>`
+        : `<path d="${d}" stroke="rgba(15,23,42,.4)" stroke-width="3.6" fill="none" stroke-linecap="round"/><path d="${d}" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`; }
+  }
+  const out = [h('div', { html: `${s}</svg>` }).firstChild];
+  if (L.places) out.push(h('div', { class: 'mk-places' }, ...P.places.map(([name, x, y, t, ms]) => h('button', { type: 'button', class: 'wx-town', style: `left:${x * k}px; top:${y * k}px`, 'aria-label': `${name}: ${t} °C, wind ${ms} m/s`,
+    html: `${icon(sky(wx(S.hr), S.hr), 18)}<b>${t}°</b><small><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(110deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${ms} m/s</small>` }))));
+  out.push(legend(L));
+  return out;
+}
+// the legend over the map, top left, as renderLegend() writes it: folded at first on a phone, open on a desktop
+function legend(L) {
+  const scale = (bar, words) => `<span class="wx-lg"><i style="background:${bar}"></i><small>${words}</small></span>`, rows = [];
+  if (L.fields.includes('temp')) rows.push(scale('linear-gradient(90deg,#7c3aed,#2563eb,#38bdf8,#e0f2fe,#a7f3d0,#fde047,#fb923c,#ef4444,#9f1239)', '<b>Temperature</b> −25–32 °C'));
+  else if (L.fields.includes('wind') || L.lines === 'speed') rows.push(scale('linear-gradient(90deg,#3b82f6,#22d3ee,#4ade80,#facc15,#fb923c,#ef4444,#a855f7)', '<b>Wind</b> 0–22 m/s'));
+  if (L.fields.includes('rain')) rows.push(scale('linear-gradient(90deg,#a5e4fb 0 20%,#38bdf8 20% 40%,#1d6fe0 40% 60%,#1e3a8a 60% 80%,#a855f7 80%)', '<b>Rain</b> 0.1 · 0.5 · 2 · 5 · 15 mm/h'), '<div class="lgl lg-note">light · moderate · heavy · very heavy</div>');
+  if (L.fields.includes('cloud')) rows.push(scale('linear-gradient(90deg,#f1f5f9,#9aa3ae)', '<b>Clouds</b> the greyer, the cloudier'));
+  if (L.fields.includes('snow')) rows.push(scale('linear-gradient(90deg,#e0f2fe 0 25%,#a5d8fb 25% 50%,#5cb8f2 50% 75%,#2f7fd6 75%)', '<b>Snow</b> on the ground 1 · 10 · 25 · 50 cm'));
+  if (L.thunder) rows.push(`<div class="lgl">${Object.values(STRIKE).map((c) => `<svg class="lg-mark" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7h9M7 2.5v9" stroke="#1f2937" stroke-width="4.2" stroke-linecap="round"/><path d="M2.5 7h9M7 2.5v9" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/></svg>`).join('')}<span><b>Lightning</b> &lt;1 · 10 · 60 min ago<br><small>${S.hr > 1 ? 'Shown at Now: it’s seen, not forecast' : 'Nearest 2.4 km away, 6 min ago'}</small></span></div>`, '<div class="lgl"><i class="lg-dash"></i><span><b>Thunder</b> possible (forecast)</span></div>');
+  if (L.warn) rows.push('<div class="lgl"><i class="lg-dash" style="background:rgba(250,204,21,.28);outline-color:#ca8a04"></i><span><b>Warning</b> yellow: wind at sea (later, #911)</span></div>');
+  const open = phone() ? S.lg === 'open' : true;
+  const el = h('div', { class: 'wx-legend mk-legend', role: 'region', 'aria-label': 'Map legend', hidden: !rows.length });
+  el.innerHTML = `<button type="button" class="lg-fold" aria-expanded="${open}">Legend ${icon(open ? 'chevronUp' : 'chevronDown', 14)}</button>${open ? rows.join('') : ''}`;
+  el.querySelector('.lg-fold').addEventListener('click', () => { S.lg = open ? 'fold' : 'open'; draw(); });
+  return el;
+}
+// the Weather button: the sky and the temperature at the map's middle (the map's hour while the line is open), pressed while it is
+function wxFab(fr) {
+  const on = S.s === 'line', i = on ? S.hr : 1, x = wx(i), [, , k] = picSize();
+  const b = h('button', { type: 'button', class: 'fab mk-fab', 'aria-pressed': String(on), 'aria-label': `Weather: ${Math.round(x[3])} °C at the map’s middle${on ? `, ${hourWords(i)}` : ''}`, title: 'Weather (T)',
+    onclick: () => { S.mo = 'none'; go(on ? 'now' : 'line')(); }, html: `${icon(sky(x, i), 22)}<span class="fab-time-label">${deg(x[3])}</span>` });
+  if (phone()) Object.assign(b.style, { left: `${322 * k}px`, top: `${441 * k}px`, width: `${58 * k}px`, height: `${58 * k}px` }); // (over the picture's own)
+  fr.append(b);
+}
+// Layers' weather group: the same two choices, by the same rule, in Layers' controls (chips to pick one, toggles)
+function layersPanel() {
+  const t = tops(), c = col();
+  const tg = (label, on, fn, note) => h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, label, note ? h('small', {}, note) : null),
+    h('input', { type: 'checkbox', role: 'switch', checked: on, onchange: () => { fn(); draw(); } }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+  const g = h('details', { class: 'lg-group', open: true }, h('summary', {}, h('span', { class: 'lg-title' }, 'Weather on the map'), h('span', { class: 'lg-count' }, `${(c !== 'none' ? 1 : 0) + t.size} on`)),
+    h('div', { class: 'menu-h mk-sub', id: 'mk-lc' }, 'Map colour, one at a time'),
+    h('div', { class: 'rt-chips', role: 'group', 'aria-labelledby': 'mk-lc' }, ...COLOURS().map(([k, label]) => h('button', { type: 'button', class: 'chip', 'aria-pressed': String(c === k), onclick: () => { S.col = k; draw(); } }, label))),
+    c === 'none' ? null : h('label', { class: 'range op-row' }, h('span', {}, 'Opacity'), h('input', { type: 'range', min: '10', max: '100', step: '5', value: '55', 'aria-label': `${COLOURS().find(([k]) => k === c)[1]} opacity` }), h('span', { class: 'op-val' }, '55 %')),
+    tg('Weather effects', S.fx === 'on', () => { S.fx = S.fx === 'on' ? 'off' : 'on'; }, 'Softer edges and falling rain'),
+    h('div', { class: 'menu-h mk-sub' }, 'On top, any of them'),
+    ...TOPS().map(([k, label, desc]) => tg(label, t.has(k), () => { if (t.has(k)) t.delete(k); else t.add(k); S.top = [...t].join(','); }, desc)),
+    h('p', { class: 'note' }, 'Forecast by Open-Meteo. Radar, lightning and measured snow by FMI, and by RainViewer outside Finland. Play the next 48 hours with the Weather button (T).'));
+  return h('aside', { class: 'panel mk-panel', 'aria-label': 'All map layers' }, h('div', { class: 'panel-head' }, h('h2', {}, 'All layers'), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('now'), html: icon('close', 18) })),
+    h('div', { class: 'panel-body' }, h('p', { class: 'note' }, 'On now, Base map and the other groups as on main, then:'), g));
+}
+
 // ---------------------------------------------------------------- the weather card
+// E's later parts, a row each: its name, a short line, › (the issue that builds it, for the mock-up)
+const laterRow = (ic, name, line, n) => h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { class: ic === 'warnf' ? 'warn-icon' : null, html: icon(ic, 20) }), h('span', {}, h('b', {}, name), h('small', {}, line)), h('span', { class: 'val mk-soon' }, `later, ${n}`), chevR()));
 function card() {
   const R = T(), atMap = S.s === 'map';
   const half = phone() && S.size === 'half';
   const el = h('section', { class: `wc-card${half ? ' half' : ''}`, 'aria-label': 'Weather on the way' });
-  if (S.v === 'site') el.append(phone() ? h('button', { type: 'button', class: 'sheet-handle wd-handle', 'aria-label': 'Card size' }) : null,
+  const site = S.v === 'site' || S.v === 'trip', E = S.v === 'trip', later = E && S.later === 'later';
+  if (site) el.append(phone() ? h('button', { type: 'button', class: 'sheet-handle wd-handle', 'aria-label': 'Card size' }) : null,
     h('div', { class: 'pl-way card wd-shell' }, h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: go('route'), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
       h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) })),
       h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, 'Weather on the way')))));
@@ -482,13 +680,15 @@ function card() {
     h('button', { type: 'button', class: 'btn small quiet wc-back', onclick: go('route'), html: `${icon('chevronLeft', 16)}Route` }),
     h('h3', {}, atMap && S.size === 'half' ? 'Weather' : 'Weather on the way'), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) })));
   const body = h('div', { class: 'wc-body' });
+  const LONG = S.data === 'long';
+  if (later) body.append(laterRow('warnf', 'Warnings', LONG ? 'Yellow: wind at sea, Suomenlahden­itäosan­merialue, Sun 06–18 · FMI' : S.trip === 'day' ? 'None for your area and hours · FMI' : 'Yellow: wind at sea, Sun 06–18 · FMI', '#911'));
   body.append(h('div', { class: 'wc-when' }, whenPill(), h('span', {}, `→ ${R.there}`)),
     h('div', { class: 'wc-room' }, 'Room for Best time to leave (step 9)'));
   for (const d of R.days) {
     const w = dayWx(d);
     const dayH = R.days.length > 1 ? h('div', { class: 'wc-dayh' }, `Day ${d.n} · ${d.name}`, h('small', {}, d.what)) : null;
     const sun = h('span', { class: 'wc-sun', html: `${icon(d.inDark ? 'moon' : 'sunset', 14)}${d.inDark ? `<span class="wc-dark">${d.inDark}</span> · ` : ''}${d.sun}` });
-    if (S.v === 'site') { body.append(dayD(d, R)); continue; }
+    if (site) { body.append(dayD(d, R)); continue; }
     if (S.v === 'together') {
       const paddles = S.trip === 'day' || d.n === 1, arrow = `<span class="wc-arrow" style="transform: rotate(${w.dir + 180}deg)" aria-hidden="true">↑</span>`;
       const tile = (k, label, big, sub, aria) => h('div', { class: `wc-tile ${k}`, role: 'group', 'aria-label': aria }, h('small', {}, label), h('b', { html: big }), h('span', { html: sub }));
@@ -507,11 +707,13 @@ function card() {
     else body.append(h('div', { class: 'wc-day' }, dayH,
       h('div', { class: 'wc-read' }, h('span', { 'aria-hidden': 'true', style: 'flex: none; color: var(--muted)', html: icon(w.sky, 30) }), h('b', {}, w.big), h('span', {}, `${w.wind} · ${w.rate}`, h('small', {}, `${w.t} · ${w.rain}`))), sun));
   }
-  if (S.v === 'site') {
+  if (site) {
     const COL = ['#ef4444', '#f59e0b', '#22a447'], open = S.tt === 'open';
     body.append(h('h4', {}, 'The wind on the way'),
       h('div', { class: 'exposure' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', { class: 'ex-item' }, h('i', { style: `background:${COL[i]};width:${Math.max(4, R.share[i])}%` }), `${k} ${R.share[i]} %`))),
       h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('wind', 20) }), h('span', {}, h('b', {}, R.strongest)), chevR())),
+      ...(later ? [h('h4', {}, 'Around the trip'), laterRow('temp', 'Measured nearby', `${LONG ? 'Pääkaupunkiseudunrannikkoasema' : 'Kaisaniemi'}, 2 km · 5.8 °C, 4 m/s W at 20:10`, '#912'), laterRow('camera', 'Road cameras', `2 near the start · ${LONG ? 'Mechelininkatu–Porkkalankatuliittymä' : 'Mechelininkatu'}, 20:15`, '#913'),
+        laterRow('moon', 'Sun, moon and sky', 'Moon 62 %, up from 23:40 · UV 0', '#914'), laterRow('water', 'Water', `9 °C at ${LONG ? 'Kustaanmiekansalmenuimaranta' : 'the nearest station'}, 6 km · SYKE, Sat`, '#862')] : []),
       h('label', { class: 'mode-select' }, h('span', { class: 'mode-select-label' }, 'Colour by'), h('span', { class: 'mode-select-box' }, h('select', {}, ...['Way type', 'Wind', 'Temperature', 'Rain'].map((o) => h('option', {}, o))), h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }))),
       h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row', 'aria-expanded': String(open), onclick: () => { S.tt = open ? '' : 'open'; draw(); } }, h('span', { html: icon('clock', 20) }), h('span', {}, h('b', {}, 'Time on the way'), h('small', {}, `${R.nums[1][0]} · ${R.nums[1][1]}`)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) }))),
       ...(open ? [h('div', { class: 'speed-table' }, ...[...TIME, ...BYSPORT, ...(S.trip === 'night' ? [['Nights (1)', '', '21 h 08 min', '']] : []), ['Total time', '5.48 km', R.nums[1][0], '9.9 km/h']].map((r) => h('div', { class: `speed-row${/^(of which|the wind)/.test(r[0]) ? ' sub' : ''}` }, h('span', {}, r[0]), h('b', {}, r[1]), h('b', {}, r[2]), h('small', {}, r[3]))))] : []));
@@ -525,7 +727,7 @@ function card() {
     h('details', { class: 'wc-time' }, h('summary', { html: `Time on the way: ${R.nums[1][1]} ${icon('chevronDown', 16)}` }),
       h('div', { class: 'wc-tt' }, ...TIME.flatMap((r) => r.map((x) => h('span', {}, x))), h('span', { class: 'h' }, 'By sport'), ...BYSPORT.flatMap((r) => r.map((x) => h('span', {}, x))),
         ...(S.trip === 'night' ? ['Nights (1)', '', '21 h 08 min', ''].map((x) => h('span', {}, x)) : []), ...['Total time', '5.48 km', R.nums[1][0], '9.9 km/h'].map((x) => h('span', { class: 'tot' }, x)))));
-  const map = S.v === 'together' || S.v === 'site' ? h('div', { class: 'wc-map', id: 'wc-onmap' }, h('h4', {}, 'On the map'), wxLine(true),
+  const map = E ? null : S.v === 'together' || S.v === 'site' ? h('div', { class: 'wc-map', id: 'wc-onmap' }, h('h4', {}, 'On the map'), wxLine(true),
     h('span', { class: 'wc-note' }, 'Drag the hours and the card folds down to this line, so the map shows while the hour moves. Road works and road conditions follow the hour too.'),
     h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('layers', 20) }), h('span', {}, h('b', {}, 'Weather layers')), h('span', { class: 'val' }, 'Wind'), chevR())))
   : h('div', { class: 'wc-map', id: 'wc-onmap' }, h('h4', {}, 'On the map'), strip48(),
@@ -533,9 +735,9 @@ function card() {
     h('div', { class: 'wc-play' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Play', html: icon('play', 18) }), h('input', { type: 'range', min: 0, max: 48, value: 0, 'aria-label': 'The map’s hour' }), h('span', {}, 'Now · 20:21')),
     h('span', { class: 'wc-note' }, 'Your trip is shaded. Road works and road conditions follow this hour too.'),
     h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('layers', 20) }), h('span', {}, h('b', {}, 'Weather layers')), h('span', { class: 'val' }, 'Wind'), chevR())));
-  body.append(map);
+  if (map) body.append(map); // (E: the map's hours leave the card, to the weather line)
   el.append(body);
-  if (atMap) requestAnimationFrame(() => { body.scrollTop = map.offsetTop - 8; });
+  if (atMap && map) requestAnimationFrame(() => { body.scrollTop = map.offsetTop - 8; });
   return el;
 }
 
@@ -549,22 +751,30 @@ function today() {
 
 // ---------------------------------------------------------------- the page
 const SW = [
-  ['Version', 'v', [['today', 'Today'], ['rows', 'A: Rows'], ['graph', 'B: Graph'], ['together', 'C: Together'], ['site', 'D: Like a weather site']]],
-  ['Screen', 's', [['route', 'The planner'], ['card', 'Card, from the box'], ['map', 'Card, at On the map'], ['line', 'The weather line (Weather)']]],
+  ['Version', 'v', [['today', 'Today'], ['rows', 'A: Rows'], ['graph', 'B: Graph'], ['together', 'C: Together'], ['site', 'D: Like a weather site'], ['trip', 'E: Three homes (11-10)']]],
+  ['Screen', 's', [['route', 'The planner'], ['card', 'Card, from the box'], ['map', 'Card, at On the map'], ['line', 'The weather line (Weather)'], ['now', 'The map at Now'], ['layers', 'Layers']]],
+  ['Choices', 'lm', [['two', 'Two dropdowns'], ['corners', 'Two buttons at the corners'], ['today', 'Today: one menu']]],
+  ['Open', 'mo', [['colour', 'Map colour'], ['top', 'On top'], ['none', 'Closed']]],
+  ['Wind', 'wind', [['a', 'a) A colour only'], ['b', 'b) Its speed a colour, lines on top'], ['c', 'c) Lines on top only']]],
+  ['Later', 'later', [['now', 'Now (6b)'], ['later', 'With #911–#914 and #862']]],
   ['Size', 'size', [['half', 'Half'], ['full', 'Full']]],
   ['Trip', 'trip', [['day', 'A day trip'], ['night', 'With a night']]],
   ['Hours', 'hrs', [['both', 'Table and graph'], ['switch', 'Table or graph']]],
   ['Line', 'at', [['sheet', 'In the sheet’s place (chosen 10-27)'], ['above', 'Above the toolbar (before)']]],
-  ['Data', 'data', [['real', 'That evening’s'], ['rain', 'Rain (illustrative)'], ['winter', 'Winter (illustrative)']]],
+  ['Data', 'data', [['real', 'That evening’s'], ['rain', 'Rain (illustrative)'], ['winter', 'Winter (illustrative)'], ['long', 'Long Finnish names (E)']]],
   ['Frame', 'f', [['390', '390'], ['360', '360'], ['desk', 'Desktop']]],
   ['Zoom', 'z', [['100', '100 %'], ['200', '200 %']]],
 ];
+const isE = () => S.v === 'trip';
+const WHEN = { hrs: () => S.v === 'site' || isE(), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
+  wind: () => isE() && (S.s === 'now' || S.s === 'layers' || (S.s === 'line' && S.lm !== 'today')), later: () => isE() };
+const HIDE = { s: (v) => (isE() ? v === 'map' : v === 'now' || v === 'layers'), mo: (v) => S.lm === 'today' && v === 'top' };
 function bars() {
   const el = document.getElementById('bars'); el.replaceChildren();
   for (const [label, k, opts] of SW) {
     if (S.v === 'today' && k !== 'v') continue;
-    if ((k === 'hrs' || k === 'at') && S.v !== 'site') continue;
-    el.append(h('div', { class: 'bar' }, h('span', {}, label), h('div', { class: 'sw' }, ...opts.map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(S[k] === v), onclick: () => { S[k] = v; draw(); } }, t)))));
+    if (!(WHEN[k] ?? (() => true))()) continue;
+    el.append(h('div', { class: 'bar' }, h('span', {}, label), h('div', { class: 'sw' }, ...opts.filter(([v]) => !(HIDE[k] && HIDE[k](v))).map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(S[k] === v), onclick: () => { S[k] = v; draw(); } }, t)))));
   }
 }
 const CAP = {
@@ -573,14 +783,25 @@ const CAP = {
   map: 'The same card at On the map: the map’s 48 hours, which no longer move the departure. ',
   line: 'The weather line: the weather card folded, in the sheet’s place (#233’s step 3). Drag along its strip: the reading and the hour follow, and the map stays in view. ⌃ opens the card, ✕ turns the weather off. Your trip is shaded in green, rain in blue, the temperature in orange, the dark in grey.',
 };
+// E's captions (2026-11-10)
+const CAP_E = {
+  line: () => `The weather line is the map’s weather now, no longer the card folded: the hour, play, the strip, and ${{ two: 'two dropdowns on a row of their own at its foot: the map’s colour, one at a time, and what goes on top, any mix', corners: 'two of the map’s buttons over its corners, as Zoom Earth has them at its time bar’s: On top at the left, the map’s colour at the right, nearest the thumb; the line keeps its height', today: 'today’s one menu (main): every layer ticks, so Rain and Temperature go on together too' }[S.lm]}. ${S.lm === 'today' ? '' : { a: 'a) Wind is a colour only: with Rain on, the wind doesn’t show at all.', b: 'b) Wind speed is a colour, and Wind lines go on top of any colour: here white over Rain.', c: 'c) Wind is its lines on top only, coloured by its speed, over Rain’s blues.' }[S.wind]} ✕ closes the line and the map goes back to Now, keeping its layers. The Weather button, pressed, shows the hour’s temperature. Tap the map to close a menu.`,
+  now: () => 'The map at Now, the line closed: what’s on stays on, at Now (Q1). The Weather button shows the sky and the temperature at the map’s middle; Weather at places is the map’s overview, and what Weather turns on the first time (Q3). Tap Weather to open the line.',
+  layers: () => 'Layers’ weather group: the same two choices by the same rule, as chips to pick one colour and switches for what goes on top. The Timeline switch goes (Q1): the Weather button opens the line.',
+  card: () => `E: the trip’s weather only: the day’s reading, the hours, the wind on the way and Time on the way; On the map leaves the card for the weather line. ${S.later === 'later' ? 'Later: a row each, with a short line and ›: warnings first (#911), then Around the trip: measured nearby (#912), road cameras (#913), sun, moon and sky (#914) and the water (#862).' : 'Switch Later to see where #911–#914 and #862 go.'}`,
+};
 function draw() {
+  if (isE() && S.s === 'map') S.s = 'card';
+  if (!isE() && (S.s === 'now' || S.s === 'layers')) S.s = 'route';
   const p = new URLSearchParams(); for (const [k, v] of Object.entries(S)) p.set(k, v); history.replaceState(null, '', `?${p}`);
   bars();
   const stage = document.getElementById('stage'); stage.replaceChildren();
   if (S.v === 'today') { stage.append(today()); return; }
   const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}` });
   fr.append(h('img', { class: 'mk-map', src: `${PIC}bg-${phone() ? 'phone' : 'desk'}.jpg`, alt: '' }));
-  if (S.s === 'line') {
+  if (isE()) fr.append(...mapWx());
+  if (S.s === 'now' || S.s === 'layers') { const pl = planner(); if (phone()) { pl.classList.add('peek'); pl.classList.remove('half'); } fr.append(pl); if (S.s === 'layers') fr.append(layersPanel()); }
+  else if (S.s === 'line') {
     if (!phone()) {
       // #594's desktop: the toolbar at the map's foot beside the planner, the weather folded to a short piece at its right end
       // ("☁ 8° 07:20 ⌃ ✕"); ⌃ opens the strip above it
@@ -603,7 +824,10 @@ function draw() {
   }
   else if (phone() && S.s !== 'route') fr.append(card());
   else { fr.append(planner()); if (S.s !== 'route') fr.append(card()); }
-  const cap = S.s === 'route' || S.s === 'line' ? CAP[S.s] : CAP[S.s] + (S.v === 'site' ? 'D: each day as weather sites read it (yr, FMI, Foreca at 390 px, 2026-11-07): the sky and the temperature, three small lines beside them (feels like, rain in mm, the wind and its gust with its arrow), and on a paddle the waves and the water; the dark, then the sun’s times on a line of their own; then the hours as FMI’s table and yr’s graph. ' : S.v === 'together' ? 'C: each day’s big numbers first, a colour for each kind (the temperature and how it feels, the wind and its gusts, the rain, the waves on a paddle); the dark on a line of its own, the sun’s times on the next; then the 12 hours as a graph in the same colours. ' : S.v === 'graph' ? 'B: each day is a line in words and a graph of 12 hours at the start, a column an hour: the wind (m/s, its arrow), the temperature, rain, the dark shaded, your trip in green.' : 'A: each day in words: its reading (the sky, the temperature, the wind with its gusts, the rain) and its sun, saying when the trip is in the dark.')
+  if (isE() && (!phone() || S.s === 'line' || S.s === 'now')) wxFab(fr);
+  if (isE() && S.s === 'line' && S.mo !== 'none') { const a = fr.querySelector(`[data-mk="${S.lm === 'today' ? 'colour' : S.mo}"]`); if (a) { const m = menuEl(); fr.append(m); placeMenu(fr, m, a); } }
+  fr.addEventListener('click', (ev) => { if (S.mo !== 'none' && !ev.target.closest('.mk-menu, [data-mk]')) { S.mo = 'none'; draw(); } });
+  const cap = isE() && CAP_E[S.s] ? CAP_E[S.s]() : S.s === 'route' || S.s === 'line' ? CAP[S.s] : CAP[S.s] + (S.v === 'site' ? 'D: each day as weather sites read it (yr, FMI, Foreca at 390 px, 2026-11-07): the sky and the temperature, three small lines beside them (feels like, rain in mm, the wind and its gust with its arrow), and on a paddle the waves and the water; the dark, then the sun’s times on a line of their own; then the hours as FMI’s table and yr’s graph. ' : S.v === 'together' ? 'C: each day’s big numbers first, a colour for each kind (the temperature and how it feels, the wind and its gusts, the rain, the waves on a paddle); the dark on a line of its own, the sun’s times on the next; then the 12 hours as a graph in the same colours. ' : S.v === 'graph' ? 'B: each day is a line in words and a graph of 12 hours at the start, a column an hour: the wind (m/s, its arrow), the temperature, rain, the dark shaded, your trip in green.' : 'A: each day in words: its reading (the sky, the temperature, the wind with its gusts, the rain) and its sun, saying when the trip is in the dark.')
     + (phone() && S.size === 'half' && S.s !== 'route' ? ' At half, this is all a phone shows before a swipe.' : '');
   stage.append(h('div', {}, fr, h('p', { class: 'cap' }, cap)));
 }
