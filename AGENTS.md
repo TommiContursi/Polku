@@ -168,7 +168,7 @@ conversation again
   removing it makes the change simpler.
 - **Where a skill differs from this file, this file wins:** same-commit runs
   count, the user decides scope and order (not a ledger), progress goes in
-  Hand-overs, and only the user merges.
+  Hand-overs, plans go in `docs/plans/`, and only the user merges.
 - Think of the phone outdoors: touch, one thumb, small screens, bright sun,
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
