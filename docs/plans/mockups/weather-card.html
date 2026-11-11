@@ -271,6 +271,32 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 /* the card's later rows */
 .rows .row > .val.mk-soon { color: var(--muted); font-size: 12px; font-weight: 600; }
 .wc-card .rows .row > span.warn-icon { color: #ca8a04; }
+/* ======================================================= F (2026-11-11): a verdict, then the numbers in their places */
+.wf-top { position: relative; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 6px 6px 0; }
+.wf-top > :last-child { display: flex; }
+.wf-body { gap: 10px; }
+.wf-day { display: grid; gap: 8px; min-width: 0; }
+.wf-dayh { margin: 6px 0 0; font-size: var(--font-row); }
+.wf-say { display: flex; align-items: center; gap: 8px; margin: 2px 0 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; }
+.wf-say > span:first-child { flex: none; }
+.wf-notes { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--font-body); }
+.wf-notes li { display: flex; align-items: flex-start; gap: 8px; }
+.wf-notes li > span:first-child { flex: none; display: grid; margin-top: 1px; color: var(--muted); }
+.wf-notes li.warn > span:first-child { color: var(--warn); }
+.wf-notes li.warn { font-weight: var(--weight-name); }
+/* the numbers in the same places every time: four equal columns (the fourth empty when there are no waves or snow), the
+   label under each wrapping in its column; two a row where the card is narrow (200 %) */
+.wf-nums.sheet-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 4px 8px; margin: 2px 0 0; }
+.wf-nums .sum-item { min-width: 0; }
+.wf-nums .sum-item small { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+@container card (max-width: 330px) { .wf-nums.sheet-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.wf-key { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: -2px 0 0; font-size: 11.5px; color: var(--muted); }
+.wf-key > span::before { content: ""; display: inline-block; vertical-align: 2px; margin-right: 4px; }
+.wf-key .k-temp::before { width: 12px; height: 2px; background: #f97316; }
+.wf-key .k-rain::before { width: 6px; height: 9px; vertical-align: -1px; background: #3b82f6; border-radius: 1px; }
+.wf-key .k-wind::before { content: "↖"; margin-right: 3px; }
+.wf-key .k-you::before { width: 8px; height: 9px; vertical-align: -1px; background: color-mix(in srgb, var(--route) 30%, transparent); border-left: 2px solid var(--route); }
+.wf-lead { margin: 4px 0 -4px; font-size: var(--font-body); }
 </style>
 </head>
 <body class="mk">
@@ -296,6 +322,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 </div>
 <script type="module">
 import { icon, h } from '../../../js/ui.js';
+import { dayStrip } from '../../../js/daygraph.js'; // (F: the app's own strip, as built)
 
 const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/design-weather-card/';
 const q = new URLSearchParams(location.search);
@@ -303,6 +330,7 @@ const pick = (k, vals, d) => (vals.includes(q.get(k)) ? q.get(k) : d);
 const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site', 'trip'], 'trip'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line', 'now', 'layers'], 'line'), hr: 1, tt: pick('tt', ['open'], ''), wl: pick('wl', ['open', 'line'], 'open'), size: pick('size', ['half', 'full'], 'half'),
   trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain', 'winter', 'long'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100'),
   // E (2026-11-10): the line's two choices (lm), which menu is open (mo), the three winds, the card's later rows; what's on the map
+  cf: pick('cf', ['e', 'f'], 'f'), // (2026-11-11: E's card as drawn, or F's: a verdict in words, then the numbers in their places)
   lm: pick('lm', ['today', 'two', 'corners'], 'two'), mo: pick('mo', ['none', 'colour', 'top'], 'colour'), wind: pick('wind', ['a', 'b', 'c'], 'b'), later: pick('later', ['now', 'later'], 'now'),
   col: pick('col', ['rain', 'cloud', 'wind', 'temp', 'snow', 'none'], 'rain'), top: q.get('top') ?? 'windl,places', tday: q.get('tday') ?? 'rain,wind,towns', fx: pick('fx', ['on', 'off'], 'on'), lg: pick('lg', ['fold', 'open'], 'fold') };
 
@@ -670,6 +698,7 @@ function layersPanel() {
 // E's later parts, a row each: its name, a short line, › (the issue that builds it, for the mock-up)
 const laterRow = (ic, name, line, n) => h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { class: ic === 'warnf' ? 'warn-icon' : null, html: icon(ic, 20) }), h('span', {}, h('b', {}, name), h('small', {}, line)), h('span', { class: 'val mk-soon' }, `later, ${n}`), chevR()));
 function card() {
+  if (isE() && S.cf === 'f') return cardF();
   const R = T(), atMap = S.s === 'map';
   const half = phone() && S.size === 'half';
   const el = h('section', { class: `wc-card${half ? ' half' : ''}`, 'aria-label': 'Weather on the way' });
@@ -743,6 +772,79 @@ function card() {
   return el;
 }
 
+// ---------------------------------------------------------------- F (2026-11-11): for people planning a run or a paddle, not engineers
+// The user's answers: a verdict in words first; the same order for every sport (bad weather is bad for all); clear numbers
+// in the same places every time, labelled; the hours as a strip of the weather timeline's look, full width under them,
+// never beside the words. Built from the app's own classes: the numbers row (sheet-sum, sum-item), rows, rt-chips,
+// exposure, the sun's line (wx-sunline) and the strip itself (js/daygraph.js). New: the verdict (wf-say, wf-notes).
+const BASE = new Date(2026, 10, 7, 19) / 1000; // (WX[0]: Sat 7 Nov 19:00)
+const WAVE_LIMIT = 0.5; // (m: what Check calls rough for a sea kayak here, illustrative)
+// the words for a day, from its numbers: the temperature as it feels, then rain, then the wind (fixed thresholds, said in
+// the plan); and what stands out, worst first, three at most: thunder, gusts, waves, the dark, the cold, slippery, rain
+function verdict(d, R) {
+  const w = dayWx(d), feel = w.f, winter = S.data === 'winter', snowing = winter && w.wet;
+  const temp = feel <= -10 ? 'Very cold' : feel <= 0 ? 'Freezing' : feel <= 7 ? 'Cold' : feel <= 14 ? 'Cool' : feel <= 22 ? 'Mild' : feel <= 27 ? 'Warm' : 'Hot';
+  const rain = !w.wet ? 'dry' : w.mm >= 5 || w.peak >= 4 ? (snowing ? 'heavy snow' : 'heavy rain') : w.mm >= 1 ? (snowing ? 'snow' : 'rain') : (snowing ? 'a little snow' : 'a little rain');
+  const wind = w.w1 < 2 ? 'little wind' : w.w1 < 5 ? 'a light wind' : w.w1 < 8 ? 'a fresh wind' : w.w1 < 11 ? 'a strong wind' : 'a gale';
+  const say = `${temp}${rain === 'dry' ? ' and dry' : `, ${rain}`}, ${wind}`;
+  const notes = [];
+  if (w.g >= 14) notes.push(['wind', 'warn', `Gusts up to ${w.g} m/s`]);
+  const paddles = S.trip === 'day' || d.n === 1;
+  if (paddles && parseFloat(R.wave[0]) >= WAVE_LIMIT) notes.push(['paddle', 'warn', `Waves up to about ${R.wave[0]} on the water`]);
+  if (d.inDark) notes.push(['moon', 'note', `${d.inDark}: take a light`]);
+  if (feel <= 0) notes.push(['temp', 'note', `Feels like ${deg(feel)}: dress warm`]);
+  if (w.wet && w.t0 <= 0.5) notes.push(['flake', 'warn', 'Wet and near freezing: slippery']);
+  else if (w.wet) notes.push([snowing ? 'snow' : 'rain', 'note', `${snowing ? 'Snow' : 'Rain'} from ${String(hr(Math.ceil(d.i0))).padStart(2, '0')}:00, about ${Math.max(1, Math.round(w.mm))} mm on you`]);
+  return { say, notes: notes.slice(0, 3) };
+}
+// the day's hours for the strip, as the app's dayHours() gives them
+function stripHours(d) {
+  const a = Math.max(0, Math.floor(d.i0) - 2), n = Math.max(12, Math.ceil(d.i1) - Math.floor(d.i0) + 4);
+  return Array.from({ length: n }, (_, k) => { const i = a + k, x = wx(i); return { t: BASE + i * 3600, night: dark(i), on: i + 1 > d.i0 && i <= d.i1, x: { temp: x[3], precip: x[4], speed: x[0], gust: x[1], dir: x[2] } }; });
+}
+function dayF(d, R, many) {
+  const w = dayWx(d), v = verdict(d, R), paddles = S.trip === 'day' || d.n === 1, winter = S.data === 'winter';
+  const num = (value, label) => h('span', { class: 'sum-item' }, h('b', {}, value), h('small', {}, label));
+  const hours = stripHours(d);
+  return h('section', { class: 'wf-day', 'aria-label': many ? `Day ${d.n}` : 'The weather' },
+    many ? h('h4', { class: 'wf-dayh' }, `Day ${d.n} · ${d.name}`) : null,
+    // 1. the verdict, in words: a line, then what stands out
+    h('p', { class: 'wf-say' }, h('span', { class: `wd-sky ${sky(wx(Math.floor(d.i0)), Math.floor(d.i0))}`, 'aria-hidden': 'true', html: icon(sky(wx(Math.floor(d.i0)), Math.floor(d.i0)), 24) }), h('span', {}, v.say)),
+    v.notes.length ? h('ul', { class: 'wf-notes' }, ...v.notes.map(([ic, tone, t]) => h('li', { class: tone }, h('span', { 'aria-hidden': 'true', html: icon(ic, 16) }), h('span', {}, t)))) : null,
+    // 2. the numbers, in the same places every time, each with what it is under it (the planner's numbers row)
+    h('div', { class: 'sheet-sum wf-nums' },
+      num(w.t0 === w.t1 ? deg(w.t0) : `${deg(w.t0).replace('°', '')}…${deg(w.t1)}`, `feels like ${deg(w.f)}`),
+      num(`${w.w1} m/s`, `wind, gusts ${w.g}`),
+      num(w.wet ? `${Math.max(1, Math.round(w.mm))} mm` : '0 mm', 'rain on you'),
+      paddles ? num(R.wave[0], 'waves (estimate)') : winter ? num(`${SNOW_CM} cm`, 'snow on the ground') : null),
+    // 3. the hours, the timeline's strip, full width under them, and what it shows in words
+    h('div', { class: 'wf-strip', html: dayStrip(hours, { t0: BASE + d.i0 * 3600, t1: BASE + d.i1 * 3600 }, `${w.t}, wind up to ${w.w1} m/s, ${w.rainShort}; your trip marked`) }),
+    h('p', { class: 'wf-key', 'aria-hidden': 'true' }, h('span', { class: 'k-temp' }, 'temperature'), h('span', { class: 'k-rain' }, 'rain'), h('span', { class: 'k-wind' }, 'wind'), h('span', { class: 'k-you' }, 'you’re out')),
+    // 4. the sun, one line; the hours row by row, folded
+    h('p', { class: 'wx-sunline', html: `${icon('sunset', 12)}${d.sun}` }),
+    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row', 'aria-expanded': 'false' }, h('span', { html: icon('cloudSun', 20) }), h('span', {}, h('b', {}, 'Hour by hour')), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronDown', 18) }))));
+}
+function cardF() {
+  const R = T(), half = phone() && S.size === 'half';
+  const el = h('section', { class: `wc-card wf${half ? ' half' : ''}`, 'aria-label': 'Weather on the way' });
+  // the head: When and there at, in the title's place (chosen 11-11); the sheet's ⋯ and ✕ in its top row
+  el.append(h('div', { class: 'wf-top' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Fold', html: icon('chevronDown', 20) }), phone() ? h('span', { class: 'sheet-handle wf-handle' }) : h('span'),
+    h('span', {}, h('button', { type: 'button', class: 'tool', 'aria-label': 'Card settings', html: icon('more', 22) }), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) }))));
+  const body = h('div', { class: 'wc-body wf-body' }, h('div', { class: 'wc-when' }, whenPill(), h('span', {}, `→ ${R.there}`)));
+  for (const d of R.days) body.append(dayF(d, R, R.days.length > 1));
+  // 5. the rest, each saying what it does
+  const COL = ['#ef4444', '#f59e0b', '#22a447'], most = R.share.indexOf(Math.max(...R.share));
+  body.append(
+    h('p', { class: 'wf-lead' }, h('b', {}, 'The wind on the way: '), `mostly ${['headwind', 'crosswind', 'tailwind'][most]}`),
+    h('div', { class: 'exposure' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', { class: 'ex-item' }, h('i', { style: `background:${COL[i]};width:${Math.max(4, R.share[i])}%` }), `${k} ${R.share[i]} %`))),
+    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('wind', 20) }), h('span', {}, h('b', {}, 'Show where the headwind is strongest'), h('small', {}, R.strongest.replace('Strongest headwind ', ''))), chevR())),
+    h('div', { class: 'rt-chips wx-colour', role: 'group', 'aria-label': 'Colour the route line by' }, h('span', { class: 'mode-select-label' }, 'Colour the route line by'),
+      ...['Wind', 'Temperature', 'Rain'].map((t) => h('button', { type: 'button', class: 'chip', 'aria-pressed': 'false' }, h('span', {}, t)))),
+    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row', 'aria-expanded': 'false' }, h('span', { html: icon('clock', 20) }), h('span', {}, h('b', {}, 'Time on the way'), h('small', {}, `${R.nums[1][0]} · ${R.nums[1][1]}`)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronDown', 18) }))));
+  el.append(body);
+  return el;
+}
+
 // ---------------------------------------------------------------- Today, from main: Go and the timeline window
 function today() {
   return h('div', { class: 'shots' },
@@ -758,6 +860,7 @@ const SW = [
   ['Choices', 'lm', [['two', 'Two dropdowns (chosen 11-10)'], ['corners', 'Two buttons at the corners'], ['today', 'Today: one menu']]],
   ['Open', 'mo', [['colour', 'Map colour'], ['top', 'On top'], ['none', 'Closed']]],
   ['Wind', 'wind', [['a', 'a) A colour only'], ['b', 'b) Its speed a colour, lines on top (chosen 11-10)'], ['c', 'c) Lines on top only']]],
+  ['Card', 'cf', [['f', 'F: a verdict, then numbers in place (11-11)'], ['e', 'E as drawn (11-10)']]],
   ['Later', 'later', [['now', 'Now (6b)'], ['later', 'With #911–#914 and #862']]],
   ['Size', 'size', [['half', 'Half'], ['full', 'Full']]],
   ['Trip', 'trip', [['day', 'A day trip'], ['night', 'With a night']]],
@@ -768,8 +871,8 @@ const SW = [
   ['Zoom', 'z', [['100', '100 %'], ['200', '200 %']]],
 ];
 const isE = () => S.v === 'trip';
-const WHEN = { hrs: () => S.v === 'site' || isE(), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
-  wind: () => isE() && (S.s === 'now' || S.s === 'layers' || (S.s === 'line' && S.lm !== 'today')), later: () => isE() };
+const WHEN = { cf: () => isE() && S.s === 'card', hrs: () => S.v === 'site' || (isE() && S.cf === 'e'), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
+  wind: () => isE() && (S.s === 'now' || S.s === 'layers' || (S.s === 'line' && S.lm !== 'today')), later: () => isE() && S.cf === 'e' };
 const HIDE = { s: (v) => (isE() ? v === 'map' : v === 'now' || v === 'layers'), mo: (v) => S.lm === 'today' && v === 'top' };
 function bars() {
   const el = document.getElementById('bars'); el.replaceChildren();
