@@ -13173,8 +13173,10 @@ def toolbox(chrome):
             pg.js("document.getElementById('tb-rerender').remove(); polku.planner.setSheetState('half'); true")
             pg.js(SETTLED)
             tap(pg, '#planner .sum-time', f'{name}: the time')
-            if pg.js("polku.planner.panel.dataset.state") == 'peek':
-                fails.append(f'{name}: a touch tap on the time folded the sheet (#251)')
+            # (it opens the weather card at Time on the way, #869's step 3: at its peek, as a first card opens; not a fold)
+            if pg.js("polku.planner.cards.current?.kind") != 'weather':
+                fails.append(f'{name}: a touch tap on the time opened no weather card, the sheet at {pg.js("polku.planner.panel.dataset.state")} (#251)')
+            pg.js("polku.planner.cards.close(); true")
             # a reload: the route is back, undo and redo can't do anything yet (#241)
             pg.reload()
             if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => polku.planner.points.length || Date.now() - t0 > 20000 ? ok(polku.planner.points.length) : setTimeout(go, 100); go(); })"):
