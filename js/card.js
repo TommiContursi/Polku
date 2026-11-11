@@ -329,8 +329,8 @@ export class CardHost {
       if (t) t.focus({ preventScroll: true });
       if (where === 'peek' && at) this.inSight(at);
       // a desktop's card with no room between the top bar and the map's foot opens folded to its title (step 3 of #233); not a
-      // pick's (#574): long by design, scrolling inside, and measured here while it still loads
-      if (where !== 'peek' && card.kind !== 'spot' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
+      // pick's (#574) nor the weather's: long by design, scrolling inside, and measured here while it still loads
+      if (where !== 'peek' && card.kind !== 'spot' && card.kind !== 'weather' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
     }
   }
 

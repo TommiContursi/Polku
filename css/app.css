@@ -145,8 +145,7 @@
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
 /* No browser pinch-zoom on the UI chrome (gestures.js sends it to the map). */
 html { touch-action: none; }
-.panel-body, .sheet-body, #search-results, .hours { touch-action: pan-y; }
-.hours { touch-action: pan-x; }
+.panel-body, .sheet-body, #search-results { touch-action: pan-y; }
 body {
   font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
@@ -1003,7 +1002,6 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; gap: 2px; border-radius: 9px; background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .pl-tab-n.read:not(:empty) { background: var(--danger); color: var(--surface-solid); box-shadow: none; }
 .pl-tab-unk { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--unk); box-shadow: inset 0 0 0 1.5px var(--unk); font-size: 11px; font-weight: 800; }
-.pl-tab-t { font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pl-pane[hidden] { display: none !important; }
 .pl-empty { margin: 14px 0; }
 /* the sheet's sizes: the peek is the header and the profile (#742), as tall as it leaves room for (--prof-peek, measureSheet()),
@@ -1144,10 +1142,6 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .speed-go { margin-top: 10px; }
 /* Settings' speeds: every sport a row, its speeds in one line; a tap opens the editor under it */
 .speed-list .speed-box { padding: 8px 8px 12px 42px; } /* (under the sport's name) */
-.when-box { grid-column: 1 / -1; display: grid; justify-items: start; gap: 6px; margin: 0 0 14px; scroll-margin: 8px; } /* Go's When pill and its note (scrolled to whole, its ring too) */
-.time-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 8px; }
-.time-head b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.time-head span { font-size: 12.5px; color: var(--muted); }
 .wpl-foot .btn { white-space: nowrap; }
 .onmap .tg { max-width: 360px; }
 /* Route's two rows, and their steps (#424's C): a step shows the route style or your speeds alone, with Back to Route */
@@ -1162,9 +1156,6 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .pl-pane[data-tab="route"][data-step] [data-sec=style] > .sec-body { display: block; }
 .pl-pane[data-step="how"] .speed-wrap, .pl-pane[data-step="speed"] [data-sec=style] .style-box { display: none; }
 .tg.off { opacity: .5; } /* a mark's time while there are no marks (Layers, Settings) */
-.take-along { display: flex; flex-wrap: wrap; gap: 8px; }
-.take-share > span { display: grid; text-align: left; }
-.take-share small { font-size: var(--font-small); font-weight: 400; color: var(--muted); }
 
 /* collapsible sections */
 /* a full-height sheet covers the map chrome: take it out of the way */
@@ -1299,7 +1290,6 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .speed-field small { font-weight: 500; }
 .speed-how { margin: 0; }
 .speed-sport { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-.speed-route h4 { margin: 12px 0 4px; }
 .speed-table { display: grid; font-size: 12.5px; }
 .speed-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 70px; gap: 12px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line); }
 .speed-row b { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
@@ -1307,7 +1297,6 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .speed-row.sub span { padding-left: 12px; color: var(--muted); }
 .speed-row.total { border-bottom: 0; }
 .speed-row.total span, .speed-row.total b { font-weight: 700; }
-.wind-title { margin: 12px 0 8px; }
 #profile-canvas { display: block; width: 100%; height: 150px; cursor: crosshair; touch-action: none; }
 .profile-tip {
   position: absolute; top: 4px; pointer-events: none; z-index: 2;
@@ -1359,14 +1348,8 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* black words where white doesn't read on the colour (#376: js/palette.js darkWords()) */
 .badge.ink, .loop-dot.ink { color: var(--ink); text-shadow: none; }
 
-.wind-body { font-size: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
 .start { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 600; }
-.wx-sum { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
-.wx-sum .link { font-weight: 500; color: var(--text); text-decoration: underline dotted; text-underline-offset: 3px; }
-.wx-links { display: flex; gap: 12px; flex-wrap: wrap; }
-.wind-now { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.wind-arrow { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: var(--surface-2); font-size: 16px; font-weight: 700; }
 .pill { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .pill.good { background: rgba(22,163,74,.14); color: var(--good-text); }
 .pill.ok { background: rgba(202,138,4,.14); color: var(--ok-text); }
@@ -1376,10 +1359,61 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* the shares' words as wide as the widest, so "Headwind 100 %" stays on one line and the bars start together (#388) */
 .ex-item { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; font-size: 12px; color: var(--muted); }
 .ex-item i { grid-column: 2; grid-row: 1; height: 7px; border-radius: 999px; display: block; }
-.hours { display: flex; gap: 4px; overflow-x: auto; }
-.hour { display: flex; flex-direction: column; align-items: center; min-width: 40px; padding: 4px; border-radius: 8px; background: var(--surface-2); font-size: 12px; }
-.hour i { font-style: normal; font-weight: 700; }
-.hour small { color: var(--muted); font-size: 10px; }
+/* ---------------------------------------------------------------- the trip's box and the weather card (#869's step 3) */
+/* the box over Route's list: When and when you're there, then a row a day ending in › */
+.trip-box { grid-column: 1 / -1; display: grid; gap: 2px; margin: 0 0 12px; padding: 8px 10px 0; border: 1px solid var(--line); border-radius: 14px; }
+.trip-box .trip-days { margin: 0 -10px; }
+.trip-box .trip-days > .row:last-child { border-radius: 0 0 14px 14px; }
+/* When's pill and "→ there at" on a line, the pill's note (past the forecast, a passed time) under both */
+.trip-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.trip-when .when-box { display: contents; }
+.trip-when .pick-note { order: 1; flex-basis: 100%; font-weight: 400; }
+/* the card: the colours of the weather, each kind its own, said in words too (the mock-up's D, 2026-11-07) */
+:root { --wx-warm: #b91c1c; --wx-cold: #1d4ed8; --wx-rain: #1d4ed8; --wx-wind: #6d28d9; --wx-sun: #a16207; --wx-dark: rgba(16, 24, 20, 0.08); }
+:root[data-theme="dark"] { --wx-warm: #f87171; --wx-cold: #60a5fa; --wx-rain: #60a5fa; --wx-wind: #c4b5fd; --wx-sun: #facc15; --wx-dark: rgba(232, 236, 233, 0.09); }
+.wx-warm { color: var(--wx-warm); } .wx-cold { color: var(--wx-cold); } .wx-rain { color: var(--wx-rain); } .wx-wind { color: var(--wx-wind); }
+.card[data-kind="weather"] { gap: 12px; }
+.card[data-kind="weather"] > .trip-when { margin-top: 2px; }
+.wx-note { margin: 0; font-size: 13px; }
+.wx-day { display: grid; gap: 8px; min-width: 0; }
+.wx-dayh { margin: 6px 0 0; font-size: var(--font-row); }
+.wx-dayh small { display: block; margin-top: 1px; font-size: 13px; font-weight: 400; color: var(--muted); }
+.wx-h { margin: 6px 0 -4px; font-size: 13px; color: var(--muted); }
+/* the reading: the sky and the temperature large, three small lines with icons beside them */
+.wx-read { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.wx-now { flex: none; display: flex; align-items: center; gap: 6px; }
+.wx-now > b { font-size: 30px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.wx-facts { flex: 1 1 170px; min-width: 0; display: grid; gap: 2px; font-size: 14px; line-height: 1.35; }
+.wx-facts > span { overflow-wrap: anywhere; }
+.wx-facts .ic { display: inline-block; vertical-align: -3px; margin-right: 6px; color: var(--muted); }
+.wx-facts small { color: var(--muted); font-size: 12.5px; }
+.wx-wave { color: var(--sport-paddle); }
+.wx-sky { display: inline-grid; color: var(--muted); }
+.wx-sky:is(.sun, .cloudSun) { color: var(--wx-sun); }
+svg.arw { display: inline-block; vertical-align: -2px; margin: 0 2px; color: var(--wx-wind); }
+.wx-dark { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 600; }
+.wx-sun { display: flex; flex-wrap: wrap; gap: 2px 14px; margin: 0; font-size: 13px; }
+.wx-sun > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.wx-sun .ic { color: var(--wx-sun); }
+/* the hours where you'll be, FMI's table; the trip's own marked ● (and said: ", on the way") */
+.wx-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.wx-hours { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.wx-hours thead th { padding: 0 4px 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-align: right; white-space: nowrap; }
+.wx-hours :is(td, tbody th) { height: 38px; padding: 0 4px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-weight: 400; }
+.wx-hours :is(th, td):first-child { text-align: left; }
+.wx-hours .sky { text-align: center; }
+.wx-hours .feel, .wx-hours td.none { color: var(--muted); }
+.wx-hours tbody tr:not(.on) :is(th, td) { color: var(--muted); }
+.wx-hours tr.on th b { display: inline-flex; align-items: center; gap: 4px; }
+.wx-hours tr.on th b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.wx-hours td.none { text-align: left; }
+@container card (max-width: 300px) { .wx-hours .feel { display: none; } }
+/* yr's graph: at least its drawn width, scrolling sideways in a narrow card (200 %) */
+.wx-graph { display: block; width: 100%; min-width: 300px; height: auto; }
+.wx-graph text { font: 600 11px/1 system-ui, sans-serif; fill: var(--text); }
+.wx-graph text.wx-warm { fill: var(--wx-warm); } .wx-graph text.wx-cold { fill: var(--wx-cold); } .wx-graph text.wx-rain { fill: var(--wx-rain); } .wx-graph text.wx-wind { fill: var(--wx-wind); }
+.wx-key { margin: -4px 0 0; font-size: 12.5px; }
+.card[data-kind="weather"] .speed-row small { white-space: normal; } /* (a note such as "included above" wraps in its column) */
 
 /* ---------------------------------------------------------------- waypoints */
 /* the dot sits in a bigger invisible target: 44 px where fingers tap */
@@ -1599,18 +1633,10 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wp-stop.night { background: #6366f1; }
 .wp-stop svg { width: 11px; height: 11px; }
 .polku-popup .pt-menu { overflow-y: auto; overscroll-behavior: contain; padding: 3px; margin: -3px; } /* room for focus rings */
-.days { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
-.day { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 1px; text-align: left; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
-@media (hover: hover) { .day:hover { border-color: var(--muted); } }
-.day b { grid-row: span 3; align-self: start; font-size: 13px; }
-.day-when { font-weight: 600; }
-.day-what, .day-wx { color: var(--muted); }
 /* the sport strip under the profile (chart.js), icons over its stretches */
 .chart-sports { position: absolute; inset: 0; pointer-events: none; }
 .chart-sport { position: absolute; transform: translate(-50%, -50%); width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center; color: #fff; box-shadow: 0 0 0 1.5px var(--surface-solid); }
 .chart-sport svg { width: 11px; height: 11px; }
-/* the sun at the start; the departure in the start's menu and row */
-.sun-line { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; font-size: 12.5px; color: var(--muted); }
 .speed-row.sub.head span { padding-left: 0; font-weight: 700; color: var(--text); }
 .speed-row.sub span svg { display: inline-block; vertical-align: -2px; margin-right: 4px; }
 .speed-row.sub span:has(svg) { white-space: nowrap; }

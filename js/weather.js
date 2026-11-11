@@ -146,6 +146,7 @@ export function alignSeries(s, t0, n) {
     cloud: s.cloud ? pick(s.cloud) : null, // cells cached before cloud cover was asked for
     snow: s.snow ? pick(s.snow) : null, snowfall: s.snowfall ? pick(s.snowfall) : null, // and before snow (phase 15)
     code: s.code ? pick(s.code) : null, // and before thunder (#182)
+    feel: s.feel ? pick(s.feel) : null, // and before feels like (#869's step 3)
   };
 }
 
@@ -157,8 +158,9 @@ async function fetchPoints(points, hours = 49) {
   const lat = points.map((p) => p[1].toFixed(3)).join(',');
   const lon = points.map((p) => p[0].toFixed(3)).join(',');
   const url = `${OPEN_METEO}?latitude=${lat}&longitude=${lon}` +
-    '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover,snow_depth,snowfall,weather_code' +
+    '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover,snow_depth,snowfall,weather_code,apparent_temperature' +
     `&forecast_hours=${hours}&past_hours=1&wind_speed_unit=ms&timeformat=unixtime&timezone=UTC`;
+  // (ten variables: one call a location; Open-Meteo counts more than ten as more)
   const res = await request('openmeteo', url, { weight: points.length }); // Open-Meteo counts each location
   if (!res.ok) throw new Error('Weather unavailable');
   let j = await res.json();
@@ -176,6 +178,7 @@ async function fetchPoints(points, hours = 49) {
     snow: r.hourly.snow_depth ? r.hourly.snow_depth.map((m) => (m == null ? null : Math.round(m * 1000) / 10)) : null, // cm
     snowfall: r.hourly.snowfall || null, // cm in the hour
     code: r.hourly.weather_code || null, // WMO's: 95–99 thunder (#182)
+    feel: r.hourly.apparent_temperature || null, // °C as it feels: the wind, the sun and the damp
   }));
   return v;
 }
@@ -208,6 +211,7 @@ export function sampleAt(s, t) {
     cloud: s.cloud ? lin(s.cloud) : null, // % (a cell from before cloud cover was asked for: none)
     snow: s.snow ? lin(s.snow) : null, // cm on the ground (the model)
     snowfall: s.snowfall ? lin(s.snowfall) : null, // cm an hour
+    feel: s.feel ? lin(s.feel) : null, // °C as it feels (a cell from before it was asked for: none)
   };
 }
 
@@ -233,8 +237,10 @@ export async function windAlong(pts, along, tAt, startSec) {
   const head = new Float32Array(n), cross = new Float32Array(n);
   const temp = new Float32Array(n), precip = new Float32Array(n), cloud = new Float32Array(n).fill(NaN);
   const snow = new Float32Array(n).fill(NaN), snowfall = new Float32Array(n).fill(NaN); // NaN: a cell from before snow was asked for
+  const feel = new Float32Array(n).fill(NaN), cell = new Uint8Array(n); // (feels like: and before it was); each sample's forecast
   for (let i = 0; i < n; i++) {
-    const s = series[Math.min(k - 1, Math.round((along[i] / total) * (k - 1)))];
+    cell[i] = Math.min(k - 1, Math.round((along[i] / total) * (k - 1)));
+    const s = series[cell[i]];
     const w = sampleAt(s, startSec + (tAt[i] || 0));
     // heading over ±2 samples keeps tiny zig-zags from flipping head/tail
     const a = pts[Math.max(0, i - 2)], b = pts[Math.min(n - 1, i + 2)];
@@ -245,6 +251,7 @@ export async function windAlong(pts, along, tAt, startSec) {
     if (w.cloud != null) cloud[i] = w.cloud;
     if (w.snow != null) snow[i] = w.snow;
     if (w.snowfall != null) snowfall[i] = w.snowfall;
+    if (w.feel != null) feel[i] = w.feel;
     // past the forecast's last hour its values are that hour's: shown grey, and the time leaves the wind out (#465)
     const known = startSec + (tAt[i] || 0) <= last;
     head[i] = known ? w.speed * Math.cos(d) : 0; // >0 wind against you
@@ -255,10 +262,11 @@ export async function windAlong(pts, along, tAt, startSec) {
   // it's more than three days ahead (less certain): sample indexes, or -1
   const at = (t) => { for (let i = 0; i < n; i++) if (startSec + (tAt[i] || 0) > t) return i; return -1; };
   return {
-    speed, gust, dir, head, cross, temp, precip, cloud, snow, snowfall, long,
+    speed, gust, dir, head, cross, temp, precip, cloud, snow, snowfall, feel, long,
     beyond: at(last), beyondSec: last, unsure: at(now + 72 * 3600),
     start: { ...first, time: startSec },
-    hourly: series[Math.floor(k / 2)],
+    // the hours where you are (the weather card): sample i's forecast is series[cell[i]]
+    series, cell,
     stale: !!series.stale,
     from: series.from || null,
   };

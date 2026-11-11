@@ -108,19 +108,27 @@ export function tripDays(a, tAt, start, waits) {
 
 /**
  * The weather of one day from the route's wind samples, as far as the forecast reaches (null without them; `none`
- * when the whole day is past it: its values there are the forecast's last hour's, #465).
+ * when the whole day is past it: its values there are the forecast's last hour's, #465). `dir`: where the strongest
+ * wind comes from; `mm`: what falls on you on the move; `feel` (°C as it feels) and `snow` (cm on the ground): null
+ * where the forecast doesn't say.
  */
 export function dayWeather(w, a, i0, i1) {
   if (!w) return null;
-  let tMin = Infinity, tMax = -Infinity, wind = 0, gust = 0, wetM = 0, peak = 0;
+  const tAt = a.tAtWind || a.tAt;
+  let tMin = Infinity, tMax = -Infinity, wind = 0, gust = 0, dir = 0, wetM = 0, snowM = 0, peak = 0, mm = 0, feel = Infinity, snow = -Infinity;
   const end = w.beyond >= 0 ? Math.min(i1, w.beyond - 1) : i1;
   for (let i = Math.max(1, i0); i <= end; i++) {
     tMin = Math.min(tMin, w.temp[i]); tMax = Math.max(tMax, w.temp[i]);
-    wind = Math.max(wind, w.speed[i]); gust = Math.max(gust, w.gust[i]);
-    if (w.precip[i] >= 0.1) { wetM += a.along[i] - a.along[i - 1]; peak = Math.max(peak, w.precip[i]); }
+    if (w.speed[i] > wind) { wind = w.speed[i]; dir = w.dir[i]; }
+    gust = Math.max(gust, w.gust[i]);
+    if (w.feel && w.feel[i] < feel) feel = w.feel[i]; // (NaN: a cell from before it was asked for)
+    if (w.snow && w.snow[i] > snow) snow = w.snow[i];
+    if (w.precip[i] >= 0.1) { const m = a.along[i] - a.along[i - 1]; wetM += m; if (w.temp[i] < 0.5) snowM += m; peak = Math.max(peak, w.precip[i]); }
+    if (tAt) mm += (w.precip[i] * (tAt[i] - tAt[i - 1] - (a.waitAt ? a.waitAt[i] : 0))) / 3600;
   }
   if (!Number.isFinite(tMin)) return w.beyond >= 0 && w.beyond <= i1 ? { none: true, beyond: true } : null;
-  return { tMin, tMax, wind, gust, wetM, peak, beyond: w.beyond >= 0 && w.beyond <= i1, unsure: w.unsure >= 0 && w.unsure <= i1 };
+  return { tMin, tMax, wind, gust, dir, wetM, snowM, peak, mm, feel: Number.isFinite(feel) ? feel : null, snow: snow >= 0 ? snow : null,
+    beyond: w.beyond >= 0 && w.beyond <= i1, unsure: w.unsure >= 0 && w.unsure <= i1 };
 }
 
 // ---------------------------------------------------------------- the gear check

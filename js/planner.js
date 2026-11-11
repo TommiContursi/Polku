@@ -27,7 +27,8 @@ import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
 import { When } from './when.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, spotCard, lipasCard, thingCard, nearestSample } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, spotCard, lipasCard, thingCard, weatherCard, nearestSample } from './cards.js';
+import { dayGraph } from './daygraph.js';
 import { pickData, modesOf, modeOf, setMode as setPickMode } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -114,13 +115,13 @@ const token = (k) => parseFloat(cssVar(k));
 const slid = (el) => parseFloat(getComputedStyle(el).translate.split(' ')[1]) || 0;
 // where the planner sits on a wide screen: on the left, unless you moved it to the bottom
 export const dockOf = () => store.get('plannerDock', 'left');
-// The drawer's tabs (22a): drawing, what's on the way, setting off. Each section lives in one.
+// The drawer's tabs (22a): drawing, and what's on the way. Each section lives in one. (Go's went to the trip's box and
+// the weather card, #869's step 3.)
 const TABS = [
   { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: waypoints, legs, round trips, route style' },
   { id: 'check', label: 'Check', icon: 'warn', title: 'What’s on the way: heads-up, climbs, the ground' },
-  { id: 'go', label: 'Go', icon: 'clock', title: 'When and how long, the weather, taking it along' },
 ];
-const TAB_OF = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check', speed: 'go', depart: 'go', take: 'go' };
+const TAB_OF = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check' };
 // "wet ground: auto" turns on after this much rain in the last 24 hours (mm)
 const WET_MM = 3;
 const MODE_CODE = { auto: 'a', line: 'l', water: 'w', fixed: 'a' };
@@ -2330,13 +2331,12 @@ export class Planner {
     return out;
   }
 
-  // the sun at the start on the departure day, for "Departure & weather"
-  sunLine() {
-    if (!this.points.length) return '';
-    const s = sunTimes(this.when.start(), this.points[0]);
-    if (s.day === 'polar-day') return 'Midnight sun: the sun doesn’t set';
-    if (s.day === 'polar-night') return s.dawn ? `Polar night: twilight ${timeOf(s.dawn)}–${timeOf(s.dusk)}` : 'Polar night: no daylight';
-    return `Sunrise ${timeOf(s.rise)} · sunset ${timeOf(s.set)} · dark from ${timeOf(s.dusk)}`;
+  // the sun on the day that holds `at`, at `ll`, for the weather card: [icon, words] for each of its times
+  sunLine(at, ll) {
+    const s = sunTimes(at, ll);
+    if (s.day === 'polar-day') return [['sun', 'Midnight sun: the sun doesn’t set']];
+    if (s.day === 'polar-night') return [['moon', s.dawn ? `Polar night: twilight ${timeOf(s.dawn)}–${timeOf(s.dusk)}` : 'Polar night: no daylight']];
+    return [['sunrise', `Sunrise ${timeOf(s.rise)}`], ['sunset', `Sunset ${timeOf(s.set)}`], ['moon', `Dark from ${timeOf(s.dusk)}`]];
   }
 
   // Heads-up from the water router (water.js events): shipping lanes and
@@ -2563,7 +2563,7 @@ export class Planner {
   restart(a) {
     this.setTimes(a, this.when.start(), a.tAtWind ? a.wind : null, a.tAtWind ? this.snowOf(a, a.wind) : null);
     this.drawMarks();
-    this.renderSpeed(); this.renderTabTimes(); this.renderWaypoints(); this.renderTake(); // (the list's times and the share link's line too)
+    this.renderSpeed(); this.renderBox(); this.renderWaypoints(); // (the box's and the list's times, and an open card's)
   }
   // Leave now moves on with the clock (#956): every 5 minutes while Polku's on screen, and when it's shown again, the
   // route's timed from the new minute and its forecast sampled again (cached for an hour), but not under a drag (on the
@@ -4315,24 +4315,6 @@ export class Planner {
     return out;
   }
 
-  // A trip with nights, day by day: when, how far, how long, and that day's weather
-  daysList(a) {
-    const days = tripTimes(a).days();
-    if (!days.length) return null;
-    const date = (sec) => new Date(sec * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'numeric' });
-    const nights = (a.waits || []).filter((w) => isNight(w.stop));
-    return h('div', { class: 'days' }, ...days.map((d, k) => {
-      const wx = dayWeather(a.wind, a, d.i0, d.i1);
-      const t = wx && (Math.round(wx.tMin) === Math.round(wx.tMax) ? `${Math.round(wx.tMin)} °C` : `${Math.round(wx.tMin)}…${Math.round(wx.tMax)} °C`);
-      const weather = wx && wx.none ? 'no forecast yet' : wx ? [t, `wind up to ${Math.round(wx.wind)} m/s`, wx.wetM > 0 ? `rain on ${fmtDist(wx.wetM)}` : 'dry', wx.beyond ? 'past the forecast' : wx.unsure ? 'less certain' : ''].filter(Boolean).join(' · ') : '';
-      const night = nights[k];
-      return h('button', { type: 'button', class: 'day', title: 'Show this day on the profile and the map', onclick: () => this.focusRange(d.i0, d.i1, null) },
-        h('b', {}, `Day ${d.n}`), h('span', { class: 'day-when' }, `${date(d.t0)} · ${timeOf(d.t0)}–${timeOf(d.t1)}`),
-        h('span', { class: 'day-what' }, `${fmtDist(d.to - d.from)} · ${fmtDuration(d.moving)} moving${d.up >= 20 ? ` · ↑${Math.round(d.up)} m` : ''}${night ? ` · night at ${this.nameOf(night.i)}` : ''}`),
-        weather ? h('span', { class: 'day-wx' }, weather) : null);
-    }));
-  }
-
   // ---------------------------------------------------------------- persistence & sharing
   // The route is kept on this device with its routed geometry and way tags
   // (a table of distinct tag sets), so reopening Polku asks BRouter nothing.
@@ -4649,8 +4631,6 @@ export class Planner {
     this.els.breakdown = h('div', { class: 'breakdown' });
     this.els.climbs = h('div', { class: 'list climbs' });
     this.els.warnings = h('div', { class: 'list warnings' });
-    this.els.wind = h('div', { class: 'list wind' });
-    this.els.dock = h('div', { class: 'dock' }); // (the timeline stays over the map while planning: #225)
 
     // The profile, one, under the header: always in sight (but at the summary size), with the
     // legs and their points on it and what colours it right above it (22a)
@@ -4665,7 +4645,7 @@ export class Planner {
     this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
     this.renderProfileSize();
 
-    // Three tabs for three moments: drawing (Route), what's on the way (Check), setting off (Go)
+    // Two tabs for two moments: drawing (Route), and what's on the way (Check)
     this.tab = TABS.some((t) => t.id === store.get('plannerTab', 'route')) ? store.get('plannerTab', 'route') : 'route';
     this.els.tabBtn = {};
     this.els.tabs = h('div', { class: 'pl-tabs', role: 'tablist', 'aria-label': 'Planner',
@@ -4679,13 +4659,18 @@ export class Planner {
     ...TABS.map((t) => (this.els.tabBtn[t.id] = h('button', {
       type: 'button', role: 'tab', class: 'pl-tab', id: `pl-tab-${t.id}`, 'aria-controls': `pl-pane-${t.id}`, title: t.title,
       onclick: () => this.setTab(t.id, { user: true }),
-    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-unk', hidden: true, 'aria-hidden': 'true' }, '?'), h('span', { class: 'pl-tab-t' })))));
+    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-unk', hidden: true, 'aria-hidden': 'true' }, '?')))));
     const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
     // the marks on the map: Layers' Your route group shows them while a route is drawn (#424's C) [tabs-c-layers]
     this.els.onMap = h('div', { class: 'onmap' });
+    // the trip's box over the route's list (#869's step 3): When and when you're there, then each day's weather
+    this.els.leave = this.when.control('pill');
+    this.els.there = h('span', { class: 'trip-there' });
+    this.els.boxDays = h('div', { class: 'rows trip-days' });
+    this.els.box = h('div', { class: 'trip-box', role: 'group', 'aria-label': 'The trip', hidden: true }, h('div', { class: 'trip-when' }, this.els.leave, this.els.there), this.els.boxDays);
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
-      route: pane('route',
+      route: pane('route', this.els.box,
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
         this.section('points', 'Waypoints', this.els.pointsTools = h('div', { class: 'wpl-head-tools' }), this.els.pointsTop = h('div', { class: 'wpl-top' }),
@@ -4701,14 +4686,8 @@ export class Planner {
         // the two short lists share a column in a wide panel
         h('div', { class: 'sec-stack' }, this.checksSection(), this.section('climbs', 'Climbs', this.els.climbs)),
         this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown)),
-      go: pane('go',
-        this.section('speed', 'Time',
-          this.els.leave = this.when.control('pill'),
-          this.els.speedRoute = h('div', { class: 'speed-route' })),
-        this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
-        this.section('take', 'Take it along', this.els.take = h('div', { class: 'take-along' }))),
     };
-    this.els.body = h('div', { class: 'sheet-body' }, this.els.panes.route, this.els.panes.check, this.els.panes.go);
+    this.els.body = h('div', { class: 'sheet-body' }, this.els.panes.route, this.els.panes.check);
     p.addEventListener('scroll', () => { // (the body's, or the sheet's where it scrolls as one)
       const owner = this.categoryPreview?.owner;
       if (!owner) return;
@@ -4727,7 +4706,6 @@ export class Planner {
     p.after(this.els.grip); // (beside the panel, not in it: the side panel scrolls as one, which would clip it and scroll it away)
     this.setTab(this.tab);
     this.renderOnMap();
-    this.renderTake();
     this.renderLoop();
     this.renderStyle();
     this.renderModeChips();
@@ -4828,18 +4806,6 @@ export class Planner {
   }
 
   // Go › Take it along: the route as a file, a link, or the map saved for offline
-  renderTake() {
-    const box = this.els.take;
-    if (!box) return;
-    const b = (ic, label, title, fn) => h('button', { type: 'button', class: 'btn', title, onclick: fn, html: `${icon(ic, 16)} ${label}` });
-    box.replaceChildren(
-      b('download', 'Export GPX', 'The route as a GPX file, for a GPS device or another app', () => this.exportGpx()),
-      h('button', { type: 'button', class: 'btn take-share', title: 'A link that opens this route in Polku', onclick: () => this.share(), html: icon('share', 16) },
-        h('span', {}, 'Copy share link', this.shareSub() ? h('small', {}, this.shareSub()) : null)),
-      b('offline', 'Save offline…', 'The map, terrain and this route on this device, for when there’s no signal', () => this.app.saveOffline()));
-    this.setSection('take', { empty: this.points.length < 2 });
-  }
-
   // The leg you open or point at in the waypoint list, lit up on the map and in the profile
   litLeg(i) {
     const leg = i == null ? null : this.legs[i];
@@ -6253,44 +6219,11 @@ export class Planner {
     }
   }
 
+  // your speeds: in Route › Route style's section, beside the route style (there before there's a route too), and
+  // Route's rows
   renderSpeed() {
-    const a = this.analysis;
-    const act = this.mainSport();
-    // your speeds: in Route › Route style's section, beside the route style (there before there's a route too)
     this.speedEditors(this.els.speedBox);
     this.renderHow();
-    // Go › Time: how long, and where the time goes
-    const total = a ? a.timeWind || a.time : 0, T = this.trip();
-    this.setSection('speed', { summary: a ? `${fmtDuration(total)} · arrive ${T.clock(T.end)}` : '', empty: !a });
-    if (!a) return;
-    const box = this.els.speedRoute;
-    box.innerHTML = '';
-    const waitSec = (a.waits || []).reduce((t, w) => t + w.sec, 0);
-    const cats = {};
-    let up = 0;
-    for (let i = 1; i < a.pts.length; i++) {
-      const c = surfaceClass(a, i);
-      const dt = T.at(i) - T.at(i - 1) - (a.waitAt ? a.waitAt[i] : 0), dd = a.along[i] - a.along[i - 1];
-      (cats[c] ||= { d: 0, t: 0 });
-      cats[c].d += dd; cats[c].t += dt;
-      if (a.grade[i] > 3 && c !== 'water') up += dt;
-    }
-    const runner = act === 'run' || act === 'trailrun';
-    const LABEL = { paved: 'Paved', unpaved: 'Gravel & unpaved', trail: act === 'hike' || runner ? 'Paths & trails' : 'Trails', water: 'On the water', carry: 'Carries' };
-    const speedTxt = (d, t) => (t > 0 ? (runner ? `${pace((d / 1000) / (t / 3600))} /km` : `${((d / 1000) / (t / 3600)).toFixed(1)} km/h`) : '');
-    const rows = ['paved', 'unpaved', 'trail', 'water', 'carry'].filter((k) => cats[k] && cats[k].d > 20);
-    // the total first: how long, and from when to when
-    // There at, under Leave (#424's C) [tabs-c-go]
-    box.append(h('div', { class: 'time-head' }, h('b', {}, `${this.isLoop() ? 'Back' : 'There'} at ${T.clock(T.end)}`), h('span', {}, `${fmtDuration(total)} on the way`)),
-      h('div', { class: 'speed-table' },
-        ...rows.map((k) => h('div', { class: 'speed-row' }, h('span', {}, LABEL[k]), h('b', {}, fmtDist(cats[k].d)), h('b', {}, fmtDuration(cats[k].t)), h('small', {}, speedTxt(cats[k].d, cats[k].t)))),
-        up > 30 && !isWater(act) ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which uphill (over 3 %)'), h('b', {}, ''), h('b', {}, fmtDuration(up)), h('small', {}, '')) : null,
-        a.timeWind ? h('div', { class: 'speed-row sub' }, h('span', {}, a.snowSec >= 60 ? 'the wind and the snow' : 'the wind'), h('b', {}, ''), h('b', {}, Math.abs(a.timeWind - a.time) < 60 ? 'about ±0' : `${a.timeWind > a.time ? '+' : '−'}${fmtDuration(Math.abs(a.timeWind - a.time))}`), h('small', {}, 'included above')) : null,
-        a.snowSec >= 60 ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which the snow'), h('b', {}, ''), h('b', {}, `+${fmtDuration(a.snowSec)}`), h('small', {}, `${Math.round(a.snow.max)} cm at most (forecast)`)) : null,
-        ...this.sportRows(a, T.tAt, speedTxt),
-        h('div', { class: 'speed-row total' }, h('span', {}, waitSec ? 'Total time' : 'Moving time'), h('b', {}, fmtDist(a.total)), h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, speedTxt(a.total, (a.timeWind || a.time) - waitSec)))));
-    // what the time is based on: Your speed ›, its step in Route (#424's C)
-    box.append(h('div', { class: 'rows' }, this.speedRow()));
   }
 
   // why the weather isn't known, for the key facts (null: it is, or it's on its way)
@@ -6341,17 +6274,7 @@ export class Planner {
       setTimeout(() => { const el = this.els.points.querySelector('.sec2.lit'); if (el) { el.scrollIntoView({ block: 'nearest' }); this.flash(el); } }, 400);
       return;
     }
-    if (a) this.reveal('depart'); // the wind, the rain, a headwind, the weather not known: the weather along the route
-  }
-
-  // Go's tab shows when you'd be back; Check's, the heads-up count (setSection)
-  renderTabTimes() {
-    const a = this.analysis, t = this.els.tabBtn && this.els.tabBtn.go.querySelector('.pl-tab-t');
-    if (!t) return;
-    const T = this.trip();
-    t.textContent = T ? T.clock(T.end) : '';
-    this.els.tabBtn.go.title = a ? `When and how long: ${this.isLoop() ? 'back' : 'there'} at ${t.textContent} · the weather, taking it along` : TABS[2].title;
-    if (a) this.els.tabBtn.go.setAttribute('aria-label', `Go: arrive ${t.textContent}`); else this.els.tabBtn.go.removeAttribute('aria-label'); // (not "Go09:41")
+    if (a) this.openWeather(); // the wind, the rain, a headwind, the weather not known: the weather on the way
   }
 
   // A multisport route: each sport's distance and time, then the changeovers.
@@ -6519,17 +6442,6 @@ export class Planner {
     }
   }
 
-  // The summary's estimate opens When's menu at Go's pill.
-  revealDeparture() {
-    this.reveal('speed');
-    requestAnimationFrame(() => {
-      const pill = this.els.leave.querySelector('button');
-      this.flash(this.els.leave);
-      pill.focus({ preventScroll: true });
-      this.when.menu(pill);
-    });
-  }
-
   flash(el) {
     if (!el) return;
     el.scrollIntoView({ block: 'nearest', behavior: this.keyed || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -6571,8 +6483,8 @@ export class Planner {
       const ll = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
       const sec = T ? T.at(i - 1) + (T.at(i) - T.at(i - 1)) * t - T.start : 0;
       const timed = T && Number.isFinite(sec);
-      const elapsed = Math.max(0, Math.round(sec)), hours = Math.floor(elapsed / 3600), minutes = Math.floor((elapsed % 3600) / 60), seconds = elapsed % 60;
-      const duration = hours ? `${hours} h ${minutes} min ${seconds} s` : minutes ? `${minutes} min ${seconds} s` : `${seconds} s`;
+      const elapsed = Math.max(0, Math.round(sec / 60)), hours = Math.floor(elapsed / 60), minutes = elapsed % 60; // (in minutes, #766)
+      const duration = hours ? `${hours} h ${minutes} min` : `${minutes} min`;
       const label = `${d / 1000} km${this.marks.time && timed ? ` · ${T.clock(T.start + sec)}` : ''}${this.marks.duration && timed ? `\n${duration} elapsed` : ''}`;
       features.push({ type: 'Feature', properties: { label }, geometry: { type: 'Point', coordinates: ll } });
     }
@@ -6596,18 +6508,15 @@ export class Planner {
     sum.innerHTML = '';
     const stat = (label, value, sub = '') => st.append(h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: 'stat-value', html: value }), sub ? h('span', { class: 'stat-sub', title: sub }, sub) : null));
     const key = (label, value, title = '') => sum.append(h('div', { class: 'sum-item', title }, h('b', {}, value), h('small', {}, label)));
-    for (const id of ['profile', 'climbs', 'warnings', 'speed', 'colours']) this.setSection(id, { empty: !a });
+    for (const id of ['profile', 'climbs', 'warnings', 'colours']) this.setSection(id, { empty: !a });
     this.els.checkEmpty.hidden = !!a;
     this.els.stats.hidden = !a;
     this.renderWaypoints(); // distances along the route
     this.renderStart();
     this.renderOnMap();
-    this.renderTake();
-    this.renderTabTimes();
+    this.renderBox();
     this.renderFacts(a);
     this.when.put(); // ("Tomorrow" becomes "Today" overnight)
-    // the clock stays reachable before there's a route: set the time, then draw
-    if (!a) this.setSection('depart', { summary: `Depart ${this.when.words()}` });
     if (!a) {
       const tap = matchMedia('(pointer: coarse)').matches ? 'tap' : 'click';
       sum.append(h('p', { class: 'sum-empty' }, this.loop.open ? `Round trip: ${tap} the map to move its start`
@@ -6621,7 +6530,6 @@ export class Planner {
       this.renderSpeed(); // your speeds for the sport, before there's a route and after Clear (#87)
       this.els.climbs.innerHTML = '';
       this.renderWarnings(); // (Check's tab and the peek's row too: nothing on the way, #463)
-      this.els.wind.innerHTML = '';
       this.drawColored(); // no route: its colours and wind arrows go from the map too
       if (this.app.onAnalysis) this.app.onAnalysis(null);
       return;
@@ -6632,7 +6540,7 @@ export class Planner {
     key('distance', fmtDist(a.total));
     // the time is from your departure: tapping it opens the clock (one control for both)
     const dep = this.when.words();
-    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · set the departure`, onclick: () => this.revealDeparture() },
+    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · Time on the way`, onclick: () => this.openWeather({ time: true }) },
       // the whole time, its waits too, and under it the time on the move where they differ (#761), else when you leave
       h('b', {}, nights ? shortDuration(a.timeWind || a.time) : fmtDuration(a.timeWind || a.time)), h('small', {}, waitSec ? `${shortDuration((a.timeWind || a.time) - waitSec)} moving` : `from ${dep}`));
     sum.append(time);
@@ -6705,7 +6613,6 @@ export class Planner {
     this.renderBreakdown();
     this.renderClimbs();
     this.renderWarnings();
-    this.renderWind();
     this.renderSpeed();
     this.renderStyle();
     this.drawColored();
@@ -7371,9 +7278,9 @@ export class Planner {
     if (g === 'not' || more.some((m) => m.icon === 'external')) { /* (its own: the OpenStreetMap note, Fix the map) */ }
     else if (/^Fintraffic($|’s road weather)/.test(by)) more.push({ icon: 'external', label: 'See it at Fintraffic', line: 'Fintraffic’s traffic situation, live', fn: () => open('https://liikennetilanne.fintraffic.fi/', '_blank', 'noopener') });
     else if (w.src && w.src.kind === 'map' && /OpenStreetMap/.test(by) && this.itemPlace(w)) more.push({ icon: 'external', label: 'Not right? Leave a note on OpenStreetMap', line: 'Its mappers can fix what you tell them', fn: () => open(osmNote(this.itemPlace(w)), '_blank', 'noopener') });
-    else if (/forecast/.test(by)) more.push({ icon: 'cloudSun', label: 'The weather on the way', line: 'In Go: the forecast along the route, for when you leave', fn: go('depart') });
+    else if (/forecast/.test(by)) more.push({ icon: 'cloudSun', label: 'The weather on the way', line: 'The forecast where you’ll be, for when you leave', fn: () => this.openWeather({ from: this.cards.current }) });
     else if (by === 'the terrain model') more.push({ icon: 'mountain', label: 'The climbs', line: 'In Check: how steep each one is, from the terrain model', fn: go('climbs') });
-    else if (/sun/.test(by)) more.push({ icon: 'sun', label: 'Sunrise and sunset', line: 'In Go, with the weather on the way', fn: go('depart') });
+    else if (/sun/.test(by)) more.push({ icon: 'sun', label: 'Sunrise and sunset', line: 'Each day’s, with the weather on the way', fn: () => this.openWeather({ from: this.cards.current }) });
     else if (/stops/.test(by)) more.push({ icon: 'pause', label: 'Your stops', line: 'In Route: each stop and night in the list', fn: go('points') });
     return { main, more };
   }
@@ -7436,101 +7343,212 @@ export class Planner {
     this.unlitLeg();
   }
 
-  renderWind() {
+  // ---------------------------------------------------------------- the trip's box and the weather card (#869's step 3)
+  // The trip's days: one between nights (trip.js), or the trip as one day
+  wxDays(a) {
+    const T = tripTimes(a), days = T.days();
+    return days.length ? days : [{ n: 1, from: 0, to: a.total, i0: 0, i1: a.along.length - 1, t0: T.start, t1: T.end }];
+  }
+  // a day in the dark (sun.js), in words: the whole way, or from or until when; null in the light
+  darkOf(a, d) {
+    const dark = darkness(d.t0, d.t1, a.pts[d.i0]).filter((x) => x.kind === 'dark');
+    if (!dark.length) return null;
+    if (dark.length === 1 && dark[0].from <= d.t0 + 60 && dark[0].to >= d.t1 - 60) return { all: true, words: 'in the dark the whole way' };
+    return { all: false, words: dark[0].from > d.t0 + 60 ? `in the dark from ${timeOf(dark[0].from)}` : `in the dark until ${timeOf(dark[0].to)}` };
+  }
+  // A day's weather in the box: the temperature, rain and the dark, never the wind (each sport's row says it); missing
+  // or late forecasts in words
+  boxLine(a, d) {
+    const w = a.wind, wx = w && dayWeather(w, a, d.i0, d.i1), dark = this.darkOf(a, d);
+    const said = !w ? (a.windError ? 'forecast unavailable' : 'loading the forecast…') : !wx ? '' : wx.none ? 'no forecast yet'
+      : [degRange(wx.tMin, wx.tMax), wx.wetM > 0 ? `${wx.snowM > wx.wetM / 2 ? 'snow' : 'rain'} on ${fmtDist(wx.wetM)}` : 'dry',
+        wx.beyond ? `no forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}` : wx.unsure ? 'less certain' : ''].filter(Boolean).join(' · ');
+    return [said, dark && (dark.all ? 'in the dark' : dark.words)].filter(Boolean).join(' · ');
+  }
+  // The trip's box over the route's list: When and when you're there, then the day's weather (a row a day with nights),
+  // each opening the weather card
+  renderBox() {
+    const a = this.analysis, T = a && this.trip();
+    this.els.box.hidden = !T;
+    if (!T) return;
+    this.els.there.textContent = `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`;
+    const days = this.wxDays(a), many = days.length > 1;
+    this.els.boxDays.replaceChildren(...days.map((d, k) => {
+      const known = a.wind && forecastKnown(a.wind, d.i0), line = this.boxLine(a, d);
+      const row = item({ icon: known ? this.skyAt(a, d.i0) : 'cloudSun', label: many ? `Day ${d.n} · ${shortDate(d.t0)}` : line, line: many ? line : '', chev: true, k: `day-${d.n}`,
+        onclick: (e) => this.openWeather({ day: k, el: e.currentTarget }) });
+      row.setAttribute('aria-label', `${many ? `Day ${d.n}, ${shortDate(d.t0)}` : 'The weather'}: ${line}. Open the weather on the way`);
+      return row;
+    }));
+  }
+  skyAt(a, i) { const w = a.wind; return skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, nightAt(tripTimes(a).at(i), a.pts[i])); }
+
+  // The weather card from the trip's box, the numbers' time, Check's items or the key facts: at a day (framed on the map
+  // on a trip of days), or at Time on the way, unfolded. `from`: the card it came from, for Back
+  openWeather({ day = 0, time = false, from = 'list', el = null } = {}) {
     const a = this.analysis;
-    const box = this.els.wind;
-    const act = this.mainSport();
-    box.innerHTML = '';
-    if (!a) return;
-    // departure → back, for the section summary
-    const T = tripTimes(a);
-    const when = `Depart ${this.when.words()} → ${this.isLoop() ? 'back' : 'there'} ${T.clock(T.end)}`;
-    box.append(h('h3', { class: 'wind-title' }, isWater(act) ? 'Weather on the water' : 'Weather on the route'));
-    const sun = this.sunLine();
-    if (sun) box.append(h('p', { class: 'sun-line', html: `${icon('sun', 15)} ${escapeHtml(sun)}` }));
-    const days = this.daysList(a); // with nights: day by day (each day's weather once it's in)
-    if (days) box.append(days);
-    if (a.wind && a.wind.stale) box.append(h('p', { class: 'note stale-note' }, `Older forecast (from ${new Date(a.wind.from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) — Open-Meteo couldn’t be reached.`));
-    if (!a.wind) {
-      box.append(h('div', { class: 'wind-body note' }, a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : 'Loading forecast…'));
-      this.setSection('depart', { summary: `${when} · ${a.windError ? 'forecast unavailable' : 'loading the forecast…'}` });
-      return;
+    if (!a || !this.trip()) return;
+    const days = this.wxDays(a);
+    if (days.length > 1 && !time) this.focusRange(days[day].i0, days[day].i1, null);
+    // (a desktop's beside the panel, level with its row, as Check's items')
+    const panel = this.panel.getBoundingClientRect(), side = this.layout() === 'side' && this.active;
+    const beside = this.cards.where() === 'float' ? (side ? { right: panel.right + 4, top: el ? el.getBoundingClientRect().top : panel.top + 60 } : { right: 4, top: 72 }) : null;
+    this.cards.open(weatherCard(this, { time }), { beside, from });
+    if (day || time) requestAnimationFrame(() => this.cards.box?.querySelector(time ? '[data-k=time]' : `[data-day="${day}"]`)?.scrollIntoView({ block: 'start' }));
+  }
+
+  // The weather card's content, the trip's alone (#869's step 3): When, each day's weather and its hours, the wind on
+  // the way, Colour by and Time on the way. Missing, late and partial forecasts say so where they start.
+  weatherBody(card, body) {
+    const a = this.analysis, T = this.trip(), w = a.wind, days = this.wxDays(a);
+    const note = (text, cls = '') => h('p', { class: `note wx-note ${cls}` }, text);
+    body.append(h('div', { class: 'trip-when' }, this.when.control('pill'), h('span', { class: 'trip-there' }, `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`)));
+    if (w && w.stale) body.append(note(`Older forecast (from ${timeOf(w.from / 1000)}): Open-Meteo couldn’t be reached.`, 'stale-note'));
+    if (!w) {
+      body.append(note(a.windError ? (typeof a.windError === 'string' ? a.windError : 'The forecast couldn’t be loaded.') : 'Loading the forecast…'));
+      if (a.windError) body.append(h('button', { type: 'button', class: 'btn small', 'data-k': 'retry', onclick: () => this.loadWind(a) }, 'Retry'));
+    } else if (w.beyond === 0) body.append(note(`No forecast yet for ${dayOf(T.start)}. Sunset and the dark still count; the forecast reaches 10 days ahead.`));
+    days.forEach((d, k) => body.append(this.wxDay(a, d, k, days.length > 1)));
+    if (w && w.beyond !== 0) body.append(...this.wxWay(a));
+    // Colour by: the profile's own choices, colouring the route on the map too
+    const sel = h('select', { 'aria-label': 'Colour the route and the profile by', onchange: (e) => this.pickColor(e.target.value) });
+    sel.innerHTML = this.els.modeSel.innerHTML;
+    sel.value = this.colorMode;
+    const wait = (a.waits || []).reduce((t, x) => t + x.sec, 0), open = !!card.time, row = item({ icon: 'clock', label: 'Time on the way', line: `${fmtDuration(a.timeWind || a.time)}${wait ? ` · ${shortDuration((a.timeWind || a.time) - wait)} moving` : ''}`, k: 'time', onclick: () => { card.time = !card.time; this.cards.refresh(); } });
+    row.setAttribute('aria-expanded', String(open));
+    row.append(h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) }));
+    body.append(h('label', { class: 'mode-select' }, h('span', { class: 'mode-select-label' }, 'Colour by'),
+      h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('caret', 12) }))),
+    rows(row));
+    if (open) body.append(this.speedTable(a));
+  }
+
+  // One day of the card: its heading on a trip of days, the reading, the notes where they start, the dark and the sun,
+  // and its hours where you'll be, as a table and a graph
+  wxDay(a, d, k, many) {
+    const w = a.wind, wx = w && dayWeather(w, a, d.i0, d.i1), el = h('section', { class: 'wx-day', 'data-day': String(k), 'aria-label': many ? `Day ${d.n}` : 'The weather' });
+    const nights = (a.waits || []).filter((x) => isNight(x.stop)), night = many && nights[k];
+    if (many) el.append(h('h4', { class: 'wx-dayh' }, `Day ${d.n} · ${shortDate(d.t0)}`, h('small', {}, `${timeOf(d.t0)}–${timeOf(d.t1)} · ${fmtDist(d.to - d.from)}${night ? ` · night at ${this.nameOf(night.i)}` : ''}`)));
+    const note = (text) => el.append(h('p', { class: 'note wx-note' }, text));
+    if (wx && !wx.none) el.append(this.wxReading(a, d, wx));
+    else if (wx && wx.none && w.beyond !== 0) note(`No forecast yet for ${dayOf(d.t0)}: the forecast reaches 10 days ahead.`);
+    if (wx && !wx.none && wx.beyond) note(`No forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}, ${this.clockOf(w.beyondSec)}: the weather here is up to there, and the time leaves the wind out after it.`);
+    if (wx && !wx.none && wx.unsure && (w.beyond < 0 || w.unsure < w.beyond)) note(`From km ${(a.along[w.unsure] / 1000).toFixed(0)} (${this.clockOf(tripTimes(a).at(w.unsure))}) it’s more than three days ahead: the forecast is less certain.`);
+    if (wx && !wx.none && wx.tMin <= 0.5 && wx.wetM > 0) el.append(h('span', { class: 'pill warn' }, 'Wet and near freezing — slippery roots and rocks'));
+    const dark = this.darkOf(a, d);
+    if (dark) el.append(h('p', { class: 'wx-dark', html: `${icon('moon', 16)}${escapeHtml(cap(dark.words))}` }));
+    el.append(h('p', { class: 'wx-sun' }, ...this.sunLine(d.t0, a.pts[d.i0]).map(([ic, t]) => h('span', { html: `${icon(ic, 15)}${escapeHtml(t)}` }))));
+    if (wx && !wx.none && w.series) el.append(...this.wxHours(a, d));
+    return el;
+  }
+
+  // The reading: the sky and the temperature large, then as it feels, rain, the wind and its gust, the waves on a paddle
+  // and the snow on the ground in winter; each only where it's known
+  wxReading(a, d, wx) {
+    const wave = this.dayWaves(d), winter = this.app.winter && this.app.winter().on, sky = this.skyAt(a, Math.max(1, d.i0));
+    const fact = (ic, html) => h('span', { html: `${icon(ic, 16)}${html}` });
+    const snowy = wx.snowM > wx.wetM / 2, mm = Math.round(wx.mm * 10) / 10;
+    return h('div', { class: 'wx-read' },
+      h('span', { class: 'wx-now' }, h('span', { class: `wx-sky ${sky}`, 'aria-hidden': 'true', html: icon(sky, 34) }), h('b', { class: tCls(wx.tMax) }, degRange(wx.tMin, wx.tMax).replace(' °C', '°'))),
+      h('span', { class: 'wx-facts' },
+        wx.feel != null ? fact('temp', `Feels like <b class="${tCls(wx.feel)}">${deg(wx.feel)}</b>`) : null,
+        fact(snowy ? 'snow' : 'drop', wx.wetM > 0 ? `<b class="wx-rain">${mm < 1 ? mm.toFixed(1) : Math.round(mm)} mm</b> · up to ${wx.peak.toFixed(1)} mm/h${snowy ? ', as snow' : ''}` : '<b class="wx-rain">0 mm</b> · dry'),
+        fact('wind', `<b class="wx-wind">${Math.round(wx.wind)} (${Math.round(wx.gust)}) m/s</b>${arrow(wx.dir)} from ${compass(wx.dir)}`),
+        wave ? fact('paddle', `Waves up to about <b class="wx-wave">${Math.max(0.1, wave.m).toFixed(1)} m</b> <small>an estimate${wave.at ? `, for the wind at ${timeOf(wave.at)}` : ''}</small>`) : null,
+        winter && wx.snow != null ? fact('flake', `Snow on the ground <b>${Math.round(wx.snow)}&nbsp;cm</b>`) : null));
+  }
+  // the highest wave on the day's water legs (water.js): { m, at } or null where none is known (no wind, or a leg not
+  // routed on the water)
+  dayWaves(d) {
+    let top = null;
+    this.legs.forEach((l, i) => {
+      const wr = l.mode === 'water' && l.status === 'ok' && l.result && l.result.water;
+      if (wr && wr.wave != null && this.lengthTo(i + 1) > d.from && this.lengthTo(i) < d.to && (!top || wr.wave > top.m)) top = { m: wr.wave, at: wr.at };
+    });
+    return top;
+  }
+
+  // The day's hours where you'll be (#766): the trip's hours marked, one either side, as FMI's table; and yr's graph of
+  // 12 hours (more for a longer day) from two hours before. Past the forecast an hour says so.
+  wxHours(a, d) {
+    const w = a.wind, T = tripTimes(a), n = a.along.length, h0 = Math.floor(d.t0 / 3600) * 3600, h1 = Math.floor(d.t1 / 3600) * 3600;
+    const span = Math.min(24, Math.max(12, (h1 - h0) / 3600 + 4)), hours = [];
+    for (let k = 0, i = 0; k < span; k++) {
+      const t = h0 - 7200 + k * 3600;
+      while (i < n - 1 && T.at(i) < t) i++;
+      const x = t <= w.beyondSec ? sampleAt(w.series[w.cell[i]], t) : null, night = nightAt(t, a.pts[i]);
+      hours.push({ t, x, night, on: t + 3600 > d.t0 && t <= d.t1, sky: x && skyKind(x.precip, x.temp, x.cloud ?? NaN, night) });
     }
-    const w = a.wind;
-    // a start past the forecast's reach: nothing of it to show (#465) [tabs-c-far-check]
-    if (w.beyond === 0) {
-      box.append(h('p', { class: 'wind-body note' }, `No forecast yet for ${dayOf(T.start)}. Sunset and the dark still count; the forecast reaches 10 days ahead.`));
-      this.setSection('depart', { summary: `${when} · no forecast yet` });
-      return;
-    }
-    // (as far as the forecast reaches: past it the values are its last hour's)
-    const reach = w.beyond > 0 ? w.beyond : a.pts.length;
-    const s0 = w.start;
-    const r = windRating(s0.speed, s0.gust, act);
-    // distance share per class, and the strongest headwind stretch
-    const share = { head: 0, cross: 0, tail: 0, calm: 0 };
+    const shown = hours.filter((x) => x.t >= h0 - 3600 && x.t <= h1 + 3600), feels = shown.some((x) => x.x && x.x.feel != null);
+    const cols = ['Time', 'Sky', 'Temp', ...(feels ? ['Feels'] : []), 'mm', 'Wind (gust) m/s'];
+    const table = h('table', { class: 'wx-hours' }, h('caption', { class: 'sr-only' }, 'The hours where you’ll be'),
+      h('thead', {}, h('tr', {}, ...cols.map((c) => h('th', { scope: 'col', class: c === 'Sky' ? 'sky' : null }, c === 'Sky' ? h('span', { class: 'sr-only' }, c) : c)))),
+      h('tbody', {}, ...shown.map(({ t, x, on, sky }) => h('tr', { class: on ? 'on' : null },
+        h('th', { scope: 'row' }, on ? h('b', {}, hh(t)) : hh(t), on ? h('span', { class: 'sr-only' }, ', on the way') : null),
+        ...(!x ? [h('td', { colspan: String(cols.length - 1), class: 'none' }, 'No forecast yet')] : [
+          h('td', { class: 'sky' }, h('span', { class: `wx-sky ${sky}`, 'aria-hidden': 'true', html: icon(sky, 20) }), h('span', { class: 'sr-only' }, SKY_WORDS[sky])),
+          h('td', { class: tCls(x.temp) }, h('b', {}, deg(x.temp))),
+          feels ? h('td', { class: 'feel' }, x.feel != null ? deg(x.feel) : '–') : null,
+          h('td', {}, x.precip >= 0.1 ? h('span', { class: 'wx-rain' }, x.precip.toFixed(1)) : '–'),
+          h('td', { html: `<span class="wx-wind">${Math.round(x.speed)}</span> (${Math.round(x.gust)})${arrow(x.dir)}<span class="sr-only"> from ${compass(x.dir)}</span>` })])))));
+    const graph = dayGraph(hours, d, `${hh(hours[0].t)}:00 to ${hh(hours[hours.length - 1].t + 3600)}:00: ${degRange(...minMax(hours.filter((x) => x.x).map((x) => x.x.temp)))}, wind up to ${Math.round(Math.max(0, ...hours.filter((x) => x.x).map((x) => x.x.speed)))} m/s`);
+    return [h('div', { class: 'wx-scroll' }, table), h('div', { class: 'wx-scroll', html: graph }),
+      h('p', { class: 'wx-key', html: '<span class="wx-warm">— °C</span> · <span class="wx-rain">▮ rain mm/h</span> · <span class="wx-wind">— wind, - - gusts</span> · the dark shaded, your trip in green between its marks' })];
+  }
+
+  // The wind on the way: its shares along the route, and the strongest headwind, framed (as far as the forecast reaches)
+  wxWay(a) {
+    const w = a.wind, reach = w.beyond > 0 ? w.beyond : a.pts.length, share = { head: 0, cross: 0, tail: 0, calm: 0 };
     let worst = null;
     for (let i = 1; i < reach; i++) {
-      const d = a.along[i] - a.along[i - 1];
       const c = windClass(w.head[i], w.speed[i]).key;
-      share[c === 'strongHead' ? 'head' : c === 'strongTail' ? 'tail' : c] += d;
+      share[c === 'strongHead' ? 'head' : c === 'strongTail' ? 'tail' : c] += a.along[i] - a.along[i - 1];
       if (!worst || w.head[i] > worst.v) worst = { v: w.head[i], i };
     }
     const tot = a.along[reach - 1] || 1;
-    // temperature range and where / how much it rains, at arrival times
-    let tMin = Infinity, tMax = -Infinity, wetM = 0, peak = 0, mm = 0, firstWet = -1, lastWet = -1, snowM = 0;
-    for (let i = 1; i < reach; i++) {
-      tMin = Math.min(tMin, w.temp[i]); tMax = Math.max(tMax, w.temp[i]);
-      if (w.precip[i] >= 0.1) {
-        const d = a.along[i] - a.along[i - 1];
-        wetM += d; if (w.temp[i] < 0.5) snowM += d;
-        if (firstWet < 0) firstWet = i; lastWet = i;
-        peak = Math.max(peak, w.precip[i]);
-      }
-      mm += (w.precip[i] * (T.at(i) - T.at(i - 1))) / 3600;
+    return [h('h4', { class: 'wx-h' }, 'The wind on the way'),
+      h('div', { class: 'exposure' }, ...[['Headwind', share.head, '#ef4444'], ['Crosswind', share.cross, '#f59e0b'], ['Tailwind', share.tail, '#22a447'], ['Calm', share.calm, '#94a3b8']]
+        .filter(([, v]) => v > 0).map(([l, v, c]) => h('span', { class: 'ex-item' }, h('i', { style: `background:${c};width:${Math.max(4, (v / tot) * 100)}%` }), `${l} ${Math.round((v / tot) * 100)} %`))),
+      worst && worst.v >= 1.5 ? rows(item({ icon: 'wind', label: `Strongest headwind ${worst.v.toFixed(1)} m/s`, line: `at km ${(a.along[worst.i] / 1000).toFixed(1)}`, chev: true, k: 'headwind',
+        onclick: () => this.focusRange(Math.max(0, worst.i - 20), Math.min(a.pts.length - 1, worst.i + 20), null) })) : null].filter(Boolean);
+  }
+
+  // Time on the way: by way, uphill and the wind, by sport with the changeovers and nights, and the total
+  speedTable(a) {
+    const act = this.mainSport(), T = this.trip(), waitSec = (a.waits || []).reduce((t, w) => t + w.sec, 0), cats = {};
+    let up = 0;
+    for (let i = 1; i < a.pts.length; i++) {
+      const c = surfaceClass(a, i);
+      const dt = T.at(i) - T.at(i - 1) - (a.waitAt ? a.waitAt[i] : 0), dd = a.along[i] - a.along[i - 1];
+      (cats[c] ||= { d: 0, t: 0 });
+      cats[c].d += dd; cats[c].t += dt;
+      if (a.grade[i] > 3 && c !== 'water') up += dt;
     }
-    const rainLine = wetM > 0
-      ? `${snowM > wetM / 2 ? 'Snow' : 'Rain'} on ${fmtDist(wetM)} (${Math.round((wetM / tot) * 100)} %, km ${(a.along[firstWet] / 1000).toFixed(0)}–${(a.along[lastWet] / 1000).toFixed(0)}), up to ${peak.toFixed(1)} mm/h · about ${mm < 0.5 ? mm.toFixed(1) : Math.round(mm)} mm on you`
-      : 'Dry the whole way';
-    const icy = tMin <= 0.5 && wetM > 0;
-    this.setSection('depart', { summary: `${when} · ${Math.round(tMin) === Math.round(tMax) ? Math.round(tMin) : `${Math.round(tMin)}…${Math.round(tMax)}`} °C · ${r.label.toLowerCase()} · ${wetM > 0 ? (snowM > wetM / 2 ? 'snow' : 'rain') : 'dry'}` });
-    const body = h('div', { class: 'wind-body' },
-      h('div', { class: 'wind-now' },
-        h('span', { class: 'wind-arrow', style: `transform:rotate(${s0.dir + 180}deg)`, title: `from ${compass(s0.dir)}`, html: '&#8593;' }),
-        h('span', {}, h('b', {}, `${s0.speed.toFixed(1)} m/s`), ` gusts ${s0.gust.toFixed(1)} · from ${compass(s0.dir)} · ${Math.round(s0.temp)} °C${s0.precip > 0.1 ? ` · rain ${s0.precip.toFixed(1)} mm/h` : ''}`),
-        h('span', { class: `pill ${r.tone}` }, r.label)),
-      h('div', { class: 'wx-sum' },
-        h('span', {}, h('b', {}, 'Temperature '), tMin === tMax || Math.round(tMin) === Math.round(tMax) ? `${Math.round(tMin)} °C` : `${Math.round(tMin)}…${Math.round(tMax)} °C`),
-        h('button', { type: 'button', class: 'link', onclick: () => this.showMode(wetM > 0 ? 'rain' : 'temp', { reveal: true }) }, rainLine),
-        icy ? h('span', { class: 'pill warn' }, 'Wet and near freezing — slippery roots and rocks') : null),
-      h('div', { class: 'exposure' },
-        ...[['Headwind', share.head, '#ef4444'], ['Crosswind', share.cross, '#f59e0b'], ['Tailwind', share.tail, '#22a447'], ['Calm', share.calm, '#94a3b8']]
-          .filter(([, v]) => v > 0)
-          .map(([l, v, c]) => h('span', { class: 'ex-item' }, h('i', { style: `background:${c};width:${Math.max(4, (v / tot) * 100)}%` }), `${l} ${Math.round((v / tot) * 100)} %`))),
-      worst && worst.v >= 1.5 ? h('button', { type: 'button', class: 'link', onclick: () => {
-        const i0 = Math.max(0, worst.i - 20), i1 = Math.min(a.pts.length - 1, worst.i + 20);
-        this.focusRange(i0, i1, null);
-      } }, `Strongest headwind ${worst.v.toFixed(1)} m/s at km ${(a.along[worst.i] / 1000).toFixed(1)} →`) : null,
-      w.beyond > 0 ? h('p', { class: 'note' }, `No forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}, ${this.clockOf(w.beyondSec)}: the weather here is up to there, and the time leaves the wind out after it.`) : null,
-      w.unsure >= 0 && (w.beyond < 0 || w.unsure < w.beyond) ? h('p', { class: 'note' }, `From km ${(a.along[w.unsure] / 1000).toFixed(0)} (${T.clock(T.at(w.unsure))}) it’s more than three days ahead: the forecast is less certain.`) : null,
-      h('div', { class: 'hours' }, ...hourStrip(w.hourly, T.start)),
-      h('div', { class: 'wx-links' },
-        ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([k, l]) => h('button', { type: 'button', class: 'link', onclick: () => this.showMode(k, { reveal: true }) }, `${l} along the route ↑`))),
-    );
-    box.append(body);
+    const runner = act === 'run' || act === 'trailrun';
+    const LABEL = { paved: 'Paved', unpaved: 'Gravel & unpaved', trail: act === 'hike' || runner ? 'Paths & trails' : 'Trails', water: 'On the water', carry: 'Carries' };
+    const speedTxt = (d, t) => (t > 0 ? (runner ? `${pace((d / 1000) / (t / 3600))} /km` : `${((d / 1000) / (t / 3600)).toFixed(1)} km/h`) : '');
+    const kinds = ['paved', 'unpaved', 'trail', 'water', 'carry'].filter((k) => cats[k] && cats[k].d > 20);
+    return h('div', { class: 'speed-table' },
+      ...kinds.map((k) => h('div', { class: 'speed-row' }, h('span', {}, LABEL[k]), h('b', {}, fmtDist(cats[k].d)), h('b', {}, fmtDuration(cats[k].t)), h('small', {}, speedTxt(cats[k].d, cats[k].t)))),
+      up > 30 && !isWater(act) ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which uphill (over 3 %)'), h('b', {}, ''), h('b', {}, fmtDuration(up)), h('small', {}, '')) : null,
+      a.timeWind ? h('div', { class: 'speed-row sub' }, h('span', {}, a.snowSec >= 60 ? 'the wind and the snow' : 'the wind'), h('b', {}, ''), h('b', {}, Math.abs(a.timeWind - a.time) < 60 ? 'about ±0' : `${a.timeWind > a.time ? '+' : '−'}${fmtDuration(Math.abs(a.timeWind - a.time))}`), h('small', {}, 'included above')) : null,
+      a.snowSec >= 60 ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which the snow'), h('b', {}, ''), h('b', {}, `+${fmtDuration(a.snowSec)}`), h('small', {}, `${Math.round(a.snow.max)} cm at most (forecast)`)) : null,
+      ...this.sportRows(a, T.tAt, speedTxt),
+      h('div', { class: 'speed-row total' }, h('span', {}, waitSec ? 'Total time' : 'Moving time'), h('b', {}, fmtDist(a.total)), h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, speedTxt(a.total, (a.timeWind || a.time) - waitSec))));
   }
 }
 
-function hourStrip(s, startSec) {
-  const out = [];
-  for (let i = 0; i < s.time.length && out.length < 8; i++) {
-    if (s.time[i] < startSec - 1800 || (out.length && i % 2)) continue;
-    const t = new Date(s.time[i] * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    out.push(h('span', { class: 'hour', title: `${s.speed[i].toFixed(1)} m/s, gusts ${s.gust[i].toFixed(1)}, ${Math.round(s.temp[i])} °C` },
-      h('i', { style: `transform:rotate(${s.dir[i] + 180}deg)`, html: '&#8593;' }), h('b', {}, s.speed[i].toFixed(0)), h('small', {}, t)));
-  }
-  return out;
-}
+// a temperature as the card says it ("−3°"), a range ("6…7 °C"), and its colour's class
+const deg = (t) => `${Math.round(t) < 0 ? '−' : ''}${Math.abs(Math.round(t))}°`;
+const degRange = (lo, hi) => (Math.round(lo) === Math.round(hi) ? `${deg(lo)}`.replace('°', ' °C') : `${deg(lo).replace('°', '')}…${deg(hi).replace('°', ' °C')}`);
+const minMax = (xs) => [Math.min(...xs), Math.max(...xs)];
+const tCls = (t) => (t < 0 ? 'wx-cold' : 'wx-warm');
+const hh = (t) => String(new Date(t * 1000).getHours()).padStart(2, '0');
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+const shortDate = (sec) => new Date(sec * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'numeric' });
+const SKY_WORDS = { sun: 'Clear', moon: 'Clear', cloudSun: 'Partly cloudy', cloud: 'Cloudy', rain: 'Rain', snow: 'Snow' };
+// the wind's arrow, drawn, pointing where it blows
+const arrow = (from) => `<svg class="arw" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style="transform:rotate(${Math.round(from + 180)}deg)"><path d="M8 13V3M4 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 // DEM elevation for each routed vertex, taken from the nearest analysed sample (none where
 // the terrain is missing: the GPX gets no height there rather than an estimate).
