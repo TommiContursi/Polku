@@ -313,6 +313,8 @@ Three PRs, each tried on a phone before the next, in this order: 6a, then 6b, th
   - Looked at at 390 × 844, 360 × 740, 200 % and 1440 × 900, MTB and paddle, light and dark.
 - **Docs:** CHANGELOG (Go's tab gone, the weather card), USING (the box and the card), README (Go's mentions), DEVELOPING (Weather: the card; Shared controls' new rows).
 
+**Built (#973, 2026-11-11):** as listed, with these choices in the build. The box is the Route pane's first child, over the list and under the tabs (not between the profile and the tabs), so the pane's steps, the peek, the fold and a card in the peek hide it as they hide the list; Route opens with it. `apparent_temperature` is Open-Meteo's tenth variable (thunder's `weather_code` came first), still one call. The hours are each sampled where you'll be then (`windAlong()`'s `series` and `cell`); the graph is an SVG (`js/daygraph.js`). The water router gives each leg its highest wave (`wave`), the card's estimate. The wind's rating word (Breezy…) went with Go, as the reading has none here. The card also opens from Check's forecast and sun items and the key facts' weather, and the map's distance marks lost their seconds (#766).
+
 **6b. The weather line: the map's weather, with two choices.**
 - `js/wxmap.js`:
   - **The window becomes the line.** On a phone it takes the sheet's place; on a desktop it sits above the toolbar's end. It has ▷, the reading, ✕, the strip and the row of two pills.
