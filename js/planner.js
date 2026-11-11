@@ -3300,7 +3300,7 @@ export class Planner {
       if (main) { const road = this.roadAt(main.k); rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${escapeHtml(a.way[main.k])} · ${escapeHtml(a.surf[main.k].replace('_', ' '))}`); }
     }
     if (kw < 0) return w ? [...rows, 'No forecast yet'] : rows;
-    const c = windClass(w.head[kw], w.speed[kw]), t = Math.round(lo) === Math.round(hi) ? `${Math.round(lo)}` : `${Math.round(lo)}–${Math.round(hi)}`;
+    const c = windClass(a, kw), t = Math.round(lo) === Math.round(hi) ? `${Math.round(lo)}` : `${Math.round(lo)}–${Math.round(hi)}`;
     rows.push(`${c.label} · up to ${w.speed[kw].toFixed(1)} m/s from ${compass(w.dir[kw])}${gust > w.speed[kw] + 2 ? `, gusts ${gust.toFixed(0)}` : ''}`);
     // (its sky: where it rains most, else where it's cloudiest, as the line says the most rain)
     rows.push(`${skyIcon(a, w.precip[kr] >= 0.1 || kc < 0 ? kr : kc)}${t} °C · ${w.precip[kr] >= 0.1 ? `${w.temp[kr] < 0.5 ? 'snow' : 'rain'} up to ${w.precip[kr].toFixed(1)} mm/h` : 'dry'}`);
@@ -6373,7 +6373,7 @@ export class Planner {
         if (a.along[k] < next) continue;
         next += step;
         if (!forecastKnown(a.wind, k)) break; // (none past the forecast's reach, #465)
-        const c = windClass(a.wind.head[k], a.wind.speed[k]);
+        const c = windClass(a, k);
         arrows.push({ type: 'Feature', properties: { rot: (a.wind.dir[k] + 180) % 360, color: c.color, size: Math.min(1.3, 0.6 + a.wind.speed[k] / 12) }, geometry: { type: 'Point', coordinates: a.pts[k] } });
       }
     }
@@ -7537,7 +7537,7 @@ export class Planner {
     const w = a.wind, reach = w.beyond > 0 ? w.beyond : a.pts.length, share = { head: 0, cross: 0, tail: 0, calm: 0 };
     let worst = null;
     for (let i = 1; i < reach; i++) {
-      const c = windClass(w.head[i], w.speed[i]).key;
+      const c = windClass(a, i).key;
       share[c === 'strongHead' ? 'head' : c === 'strongTail' ? 'tail' : c] += a.along[i] - a.along[i - 1];
       if (!worst || w.head[i] > worst.v) worst = { v: w.head[i], i };
     }

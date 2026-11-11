@@ -12620,6 +12620,24 @@ WC_JS = """(async () => {
 })()"""
 
 
+def wind_by_sport(chrome):
+    """The route's wind colours (#869, 2026-11-12): a headwind is strong at the limit a note uses for the sport there, 6 m/s
+    on a ride, 8 on foot and 5 on the water, and light from 1.5 m/s; so a 3 m/s headwind on a ride is a light one."""
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'})
+        got = pg.js("""(async () => { const { windClass } = await import(location.origin + '/js/weather.js');
+          const at = (sport, head, speed = Math.abs(head) + 1) => windClass({ activity: 'mtb', attr: [{ sport }], wind: { head: [head], speed: [speed] } }, 0).key;
+          return [at('mtb', 3), at('mtb', 5.9), at('mtb', 6), at('hike', 7), at('hike', 8), at('paddle', 5), at('mtb', -6), at('mtb', 1), at('mtb', 0.5, 1)]; })()""")
+        want = ['head', 'head', 'strongHead', 'head', 'strongHead', 'strongHead', 'strongTail', 'cross', 'calm']
+        fails = [] if got == want else [f'the classes {got}, not {want}']
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the wind's colours by sport: strong at the sport's limit, light below it" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def weather_card(chrome):
     pg = chrome.page(390, 844, True)
     try:
@@ -20378,7 +20396,7 @@ GROUPS = [
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
     ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),
     ('marks', [marks], 'distance, arrival/elapsed times, default and saved settings, the departure link'),
-    ('colours', [colours], 'every available route breakdown, choosing colours, folds and late data'),
+    ('colours', [colours, wind_by_sport], 'every available route breakdown, choosing colours, folds and late data; the wind\'s colours by sport'),
     ('previews', [previews], 'bar/legend hover highlights, keyboard previews and cleanup'),
     ('drawer', [drawer], 'the drawer in three tabs (22a): every part in its place, the start, the lit leg'),
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),

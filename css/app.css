@@ -80,7 +80,9 @@
   --trail-vis-road: #94a3b8; --trail-vis-none: #d6dde3; --trail-vis-clear: #16a34a; --trail-vis-faint: #eab308; --trail-vis-hard: #f97316; --trail-vis-barely: #dc2626;
   --temp-frost: #6d28d9; --temp-cold: #3b82f6; --temp-cool: #7dd3fc; --temp-mild: #86efac; --temp-warm: #fde047; --temp-warmer: #fdba74; --temp-hot: #f97316; --temp-hotter: #dc2626;
   --rain-dry: #a3acb9; --rain-drizzle: #93c5fd; --rain-rain: #3b82f6; --rain-heavy: #1e3a8a; --rain-snow: #a78bfa;
-  --wind-strong-head: #b91c1c; --wind-head: #f87171; --wind-cross: #f59e0b; --wind-tail: #4ade80; --wind-strong-tail: #15803d; --wind-calm: #a3acb9;
+  /* the wind: made for the route's white casing (on the light map and the night map alike), the stronger the darker and
+     more saturated, the weaker the paler; the tailwind teal, apart from the headwind's red without colour vision (#869, 2026-11-12) */
+  --wind-strong-head: #b8122b; --wind-head: #f4a074; --wind-cross: #f3cf7a; --wind-tail: #9fd8cf; --wind-strong-tail: #1f8a7c; --wind-calm: #cfd6dc;
   --bikes-separate: #15803d; --bikes-shared: #65a30d; --bikes-cycleway: #4d7c0f; --bikes-lane: #ca8a04; --bikes-track: #a16207; --bikes-beside: #b45309;
   --bikes-trail: #7c2d12; --bikes-walk: #64748b; --bikes-traffic: #ea580c; --bikes-no: #334155;
   --lit-yes: #facc15; --lit-no: #475569; --oneway-one: #f97316; --oneway-bikes: #16a34a; --oneway-both: #94a3b8;

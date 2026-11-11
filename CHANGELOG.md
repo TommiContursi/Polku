@@ -2,6 +2,13 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-12
+
+### The wind's colours ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- The route coloured by **Wind** has new colours: the stronger the wind, the darker and deeper its colour, so a strong headwind stands out on the light map, the night map and the planner alike. A tailwind is teal, so it stays apart from a headwind's red without colour vision.
+- A headwind counts as strong from the sport's limit: 6 m/s on a ride, 8 on foot and 5 on the water. Below that it's a light headwind, so 3 m/s against you on a ride no longer shows as strong.
+
 ## 2026-11-11
 
 ### The trip's box and the weather card ([#869](https://github.com/TommiContursi/Polku/issues/869))

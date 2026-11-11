@@ -80,7 +80,7 @@ export function colorAt(a, i, mode) {
     case 'down': return a.down6[i] >= 0 ? DIFF_COLORS[a.down6[i]] : '#d6dde3';
     // as on the map: climbs by their uphill grade, the rest by MTB difficulty
     case 'both': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : a.down6[i] >= 0 ? DIFF_COLORS[a.down6[i]] : '#d6dde3';
-    case 'wind': return a.wind ? windClass(a.wind.head[i], a.wind.speed[i]).color : '#e2e8f0';
+    case 'wind': return a.wind ? windClass(a, i).color : '#e2e8f0';
     case 'temp': return a.wind ? tempBand(a.wind.temp[i]).color : '#e2e8f0';
     case 'rain': return a.wind ? rainBand(a.wind.precip[i], a.wind.temp[i]).color : '#e2e8f0';
     case 'sport': return SPORT_COLORS[(a.attr[i] && a.attr[i].sport) || a.activity] || '#64748b';
@@ -102,7 +102,7 @@ export function breakdownKey(a, mode, i) {
     case 'surface': return a.surf[i];
     case 'way': return a.way[i];
     case 'width': case 'vis': return a.td?.[mode][i];
-    case 'wind': return a.wind && windClass(a.wind.head[i], a.wind.speed[i]).key;
+    case 'wind': return a.wind && windClass(a, i).key;
     case 'temp': return a.wind && tempBand(a.wind.temp[i]).key;
     case 'rain': return a.wind && rainBand(a.wind.precip[i], a.wind.temp[i]).key;
     case 'uphill': return noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down';
@@ -198,7 +198,7 @@ export function routeReadout(a, i, road = '') {
   if (pastForecast(a, i)) when.push('No forecast yet');
   else if (a.wind) {
     const w = a.wind;
-    const c = windClass(w.head[i], w.speed[i]);
+    const c = windClass(a, i);
     when.push(`${dot(c.color)}${c.label}${c.key === 'calm' ? '' : ` ${w.speed[i].toFixed(0)} m/s`}`, `${w.temp[i].toFixed(0)} °C`,
       w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry');
   }
@@ -230,7 +230,7 @@ export function sampleRows(a, i, road = '', water = false) {
   }
   if (pastForecast(a, i)) rows.push('No forecast yet');
   else if (a.wind) {
-    const w = a.wind, c = windClass(w.head[i], w.speed[i]);
+    const w = a.wind, c = windClass(a, i);
     rows.push(`${c.label} · ${w.speed[i].toFixed(1)} m/s from ${compass(w.dir[i])}${w.gust[i] > w.speed[i] + 2 ? `, gusts ${w.gust[i].toFixed(0)}` : ''}`);
     rows.push(`${skyIcon(a, i)}${w.temp[i].toFixed(0)} °C · ${w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry'}`);
   }

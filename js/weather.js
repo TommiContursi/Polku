@@ -2,7 +2,7 @@
 // precipitation for many points per request. Used along planned routes and for
 // the wind/temperature/rain map overlay.
 
-import { OPEN_METEO } from './config.js';
+import { OPEN_METEO, groupOf } from './config.js';
 import { bearing } from './geo.js';
 import { idb } from './idb.js';
 import { request } from './net.js';
@@ -311,11 +311,15 @@ export const WIND_CLASSES = fromCss([
 ]);
 const byKey = Object.fromEntries(WIND_CLASSES.map((c) => [c.key, c]));
 
-export function windClass(head, speed) {
-  if (speed < 1.5) return byKey.calm;
-  if (head >= 4) return byKey.strongHead;
+// The wind at sample i of a route. Strong is the limit a note uses for the sport there (6 m/s on a ride, 8 on foot, 5 on the
+// water: the weather card's plan, Round 5), so a 3 m/s headwind on a ride is a light one, not an alarm.
+const WIND_LIMIT = { bike: 6, foot: 8, water: 5 };
+export function windClass(a, i) {
+  const head = a.wind.head[i], lim = WIND_LIMIT[groupOf(a.attr[i]?.sport || a.activity)];
+  if (a.wind.speed[i] < 1.5) return byKey.calm;
+  if (head >= lim) return byKey.strongHead;
   if (head >= 1.5) return byKey.head;
-  if (head <= -4) return byKey.strongTail;
+  if (head <= -lim) return byKey.strongTail;
   if (head <= -1.5) return byKey.tail;
   return byKey.cross;
 }
