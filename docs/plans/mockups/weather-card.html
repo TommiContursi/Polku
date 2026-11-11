@@ -279,11 +279,13 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wf-dayh { margin: 6px 0 0; font-size: var(--font-row); }
 .wf-say { display: flex; align-items: center; gap: 8px; margin: 2px 0 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; }
 .wf-say > span:first-child { flex: none; }
-.wf-notes { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--font-body); }
+.wf-notes { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--font-control); color: var(--muted); }
 .wf-notes li { display: flex; align-items: flex-start; gap: 8px; }
 .wf-notes li > span:first-child { flex: none; display: grid; margin-top: 1px; color: var(--muted); }
 .wf-notes li.warn > span:first-child { color: var(--warn); }
-.wf-notes li.warn { font-weight: var(--weight-name); }
+.wf-notes li.warn { font-weight: var(--weight-name); color: var(--text); }
+.wf-notes li.unk > span:first-child { color: var(--unk); }
+.wf-say.none { color: var(--muted); }
 /* the numbers in the same places every time: four equal columns where the card is wide (a desktop), two a row on a phone,
    so a label ("feels like −12°", "wind, gusts 10") never breaks; the fourth empty when there are no waves or snow */
 .wf-nums.sheet-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 4px 8px; margin: 2px 0 0; }
@@ -292,10 +294,10 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 @container card (max-width: 460px) { .wf-nums.sheet-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; } }
 .wf-key { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: -2px 0 0; font-size: 11.5px; color: var(--muted); }
 .wf-key > span::before { content: ""; display: inline-block; vertical-align: 2px; margin-right: 4px; }
-.wf-key .k-temp::before { width: 12px; height: 2px; background: #f97316; }
-.wf-key .k-rain::before { width: 6px; height: 9px; vertical-align: -1px; background: #3b82f6; border-radius: 1px; }
-.wf-key .k-snow::before { width: 6px; height: 9px; vertical-align: -1px; background: #a78bfa; border-radius: 1px; }
-.wf-key .k-wind::before { content: "→"; margin-right: 3px; }
+.wf-key .k-temp::before { width: 12px; height: 2px; background: var(--temp-hot); }
+.wf-key .k-rain::before { width: 6px; height: 9px; vertical-align: -1px; background: var(--rain-rain); border-radius: 1px; }
+.wf-key .k-snow::before { width: 6px; height: 9px; vertical-align: -1px; background: var(--rain-snow); border-radius: 1px; }
+.wf-key .k-wind::before { content: "↑"; margin-right: 3px; transform: rotate(var(--r, 0deg)); }
 .wf-key .k-dark::before { width: 9px; height: 9px; vertical-align: -1px; background: rgba(30, 41, 59, .1); box-shadow: inset 0 0 0 1px var(--line); border-radius: 1px; }
 .wf .wx-colour .mode-select-label { flex-basis: 100%; } /* (the label over its three chips, never one chip beside it) */
 .wf-key .k-you::before { width: 8px; height: 9px; vertical-align: -1px; background: color-mix(in srgb, var(--route) 30%, transparent); border-left: 2px solid var(--route); }
@@ -331,7 +333,7 @@ const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshot
 const q = new URLSearchParams(location.search);
 const pick = (k, vals, d) => (vals.includes(q.get(k)) ? q.get(k) : d);
 const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site', 'trip'], 'trip'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line', 'now', 'layers'], 'line'), hr: 1, tt: pick('tt', ['open'], ''), wl: pick('wl', ['open', 'line'], 'open'), size: pick('size', ['half', 'full'], 'half'),
-  trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain', 'winter', 'long'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100'),
+  trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain', 'winter', 'long', 'gap'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100'),
   // E (2026-11-10): the line's two choices (lm), which menu is open (mo), the three winds, the card's later rows; what's on the map
   cf: pick('cf', ['e', 'f'], 'f'), // (2026-11-11: E's card as drawn, or F's: a verdict in words, then the numbers in their places)
   lm: pick('lm', ['today', 'two', 'corners'], 'two'), mo: pick('mo', ['none', 'colour', 'top'], 'colour'), wind: pick('wind', ['a', 'b', 'c'], 'b'), later: pick('later', ['now', 'later'], 'now'),
@@ -354,15 +356,15 @@ const DAY = {
   nums: [['5.48 km', 'distance'], ['58 min', '33 min moving'], ['↑9 ↓22 m', 'ascent · descent']], warnN: 7,
   leave: 'Leave now', there: 'there at 21:19', tab: '21:19',
   rows: [['mtb', 'bike', 'MTB', '<b>↑7 m</b> · cycleway and footway'], ['paddle', 'paddle', 'Paddle', 'wind up to <b>5 m/s</b>, gusts 8'], ['hike', 'hike', 'Hike', '<b>↑2 m</b>']],
-  days: [{ name: 'Sat 07/11 · 20:21–21:19', i0: 1, i1: 2.3, sun: 'Sunset 16:11 · dark from 16:58 · sunrise 07:59', inDark: 'In the dark the whole way' }],
+  days: [{ name: 'Sat 07/11 · 20:21–21:19', i0: 1, i1: 2.3, sun: 'Sunset 16:11 · dark from 16:58 · sunrise 07:59', inDark: 'In the dark the whole way', sunIn: '' }],
   share: [1, 13, 86], strongest: 'Strongest headwind 2.8 m/s at km 2.4', wave: ['0.3 m', '20:45'],
 };
 const NIGHT = {
   nums: [['5.48 km', 'distance'], ['22 h 06', '32 min moving'], ['↑9 ↓22 m', 'ascent · descent']], warnN: 6,
   leave: 'Leave Sun 10:00', there: 'there Mon 08:05', tab: 'Mon 08:05',
   rows: DAY.rows,
-  days: [{ n: 1, name: 'Sun 08/11 · 10:00–10:41', what: '4.96 km · 27 min moving · night at Waypoint 2', i0: 15, i1: 15.7, sun: 'Sunrise 08:01 · sunset 16:08 · dark from 16:56', inDark: '' },
-    { n: 2, name: 'Mon 09/11 · 08:00–08:05', what: '521 m · 6 min moving', i0: 37, i1: 37.1, sun: 'Sunrise 08:03 · sunset 16:05 · dark from 16:53', inDark: '' }],
+  days: [{ n: 1, name: 'Sun 08/11 · 10:00–10:41', what: '4.96 km · 27 min moving · night at Waypoint 2', i0: 15, i1: 15.7, sun: 'Sunrise 08:01 · sunset 16:08 · dark from 16:56', inDark: '', sunIn: '' },
+    { n: 2, name: 'Mon 09/11 · 08:00–08:05', what: '521 m · 6 min moving', i0: 37, i1: 37.1, sun: 'Sunrise 08:03 · sunset 16:05 · dark from 16:53', inDark: '', sunIn: 'Sunrise 08:03, as you set off' }],
   share: [1, 6, 93], strongest: 'Strongest headwind 3.0 m/s at km 0.1', wave: ['0.2 m', '10:25'],
 };
 const T = () => (S.trip === 'day' ? DAY : NIGHT);
@@ -373,14 +375,18 @@ const BYSPORT = [['MTB', '2.97 km', '9 min', '20.7 km/h'], ['Paddle', '1.97 km',
 // feels like: the wind chill at 10 m (Environment Canada's formula) where it's 10 °C or colder and the wind blows; the build asks
 // Open-Meteo for apparent_temperature, its ninth variable (a request counts as one call up to ten)
 const feel = (t, v) => { const k = v * 3.6; return t <= 10 && k > 4.8 ? 13.12 + 0.6215 * t - 11.37 * k ** 0.16 + 0.3965 * t * k ** 0.16 : t; };
+const FC_END = () => (S.data === 'gap' ? (S.trip === 'day' ? 2 : 30) : Infinity); // (Data: Past the forecast: its last hour, Sat 21:00 or Mon 01:00)
+const clock = (i) => `${String(hr(i)).padStart(2, '0')}:00`;
 function dayWx(d) {
-  const hs = []; for (let i = Math.floor(d.i0); i <= Math.ceil(d.i1); i++) hs.push(wx(i));
+  const hs = []; for (let i = Math.floor(d.i0); i <= Math.min(Math.ceil(d.i1), FC_END()); i++) hs.push(wx(i));
+  if (!hs.length) return { none: true, t: 'no forecast yet', rainShort: '', sky: 'cloud' };
   const t0 = Math.round(Math.min(...hs.map((x) => x[3]))), t1 = Math.round(Math.max(...hs.map((x) => x[3])));
   const w0 = Math.round(Math.min(...hs.map((x) => x[0]))), w1 = Math.round(Math.max(...hs.map((x) => x[0]))), g = Math.round(Math.max(...hs.map((x) => x[1])));
   const wet = hs.filter((x) => x[4] >= 0.1), peak = Math.max(0, ...hs.map((x) => x[4]));
   const f = Math.round(Math.min(...hs.map((x) => feel(x[3], x[0])))), mm = hs.reduce((a, x) => a + x[4], 0) * (d.i1 - d.i0) / Math.max(1, hs.length - 1);
   return { t0, t1, w0, w1, g, f, dir: hs[0][2], peak, mm, wet: wet.length > 0, t: t0 === t1 ? `${t0} °C` : `${t0}…${t1} °C`, big: `${Math.round(hs[0][3])}°`, wind: `${w0 === w1 ? w0 : `${w0}–${w1}`} m/s from ${compass(hs[0][2])}, gusts ${g}`, rate: w1 >= 8 ? 'Windy' : w1 >= 4 ? 'Breezy' : 'Light',
-    rain: wet.length ? `Rain from km 2, up to ${peak.toFixed(1)} mm/h · about 1 mm on you` : 'Dry the whole way', rainShort: wet.length ? 'rain from km 2' : 'dry', sky: wet.length ? 'rain' : dark(Math.floor(d.i0)) ? 'moon' : 'cloud' };
+    rain: wet.length ? `Rain from km 2, up to ${peak.toFixed(1)} mm/h · about 1 mm on you` : 'Dry the whole way', rainShort: !wet.length ? 'dry' : `${hs[0][3] < 0.5 ? 'snow' : 'rain'} from ${hs[0][4] >= 0.1 ? 'the start' : clock(Math.floor(d.i0) + hs.findIndex((x) => x[4] >= 0.1))}`,
+    peakAt: Math.floor(d.i0) + hs.findIndex((x) => x[4] === peak), partial: Math.ceil(d.i1) > FC_END(), sky: wet.length ? 'rain' : dark(Math.floor(d.i0)) ? 'moon' : 'cloud' };
 }
 
 // ---------------------------------------------------------------- small builders
@@ -404,7 +410,7 @@ function head() {
 
 // the trip's box: When, then the day's weather without what a sport's row says (the wind: Paddle's row says it)
 function box() {
-  const R = T(), line = (d) => { const w = dayWx(d); return [w.t, w.rainShort, d.inDark ? 'in the dark' : 'in the light'].join(' · '); };
+  const R = T(), line = (d) => { const w = dayWx(d); return [w.t, w.rainShort, d.inDark ? 'in the dark' : 'in the light'].filter(Boolean).join(' · '); };
   const first = h('div', { class: 'rt-dayline' }, whenPill(), h('span', {}, `→ ${R.there}`));
   if (R.days.length === 1) return h('div', { class: 'p22-box', role: 'group', 'aria-label': 'The trip' }, h('div', { class: 'day' }, first,
     h('button', { type: 'button', class: 'rt-dayweather', onclick: go('card') }, h('span', { html: `${icon(dayWx(R.days[0]).sky, 14)}${line(R.days[0])}` }), chevR())));
@@ -782,52 +788,63 @@ function card() {
 // exposure, the sun's line (wx-sunline) and the strip itself (js/daygraph.js). New: the verdict (wf-say, wf-notes).
 const BASE = new Date(2026, 10, 7, 19) / 1000; // (WX[0]: Sat 7 Nov 19:00)
 const WAVE_LIMIT = 0.5; // (m: what Check calls rough for a sea kayak here, illustrative)
-// the words for a day, from its numbers: the temperature as it feels, then rain, then the wind (fixed thresholds, said in
-// the plan); and what stands out, worst first, three at most: gusts, waves, the dark, slippery, when the rain starts (never
-// a number the row under it says)
+// the words for a day, from its numbers (the review of 11-11): the air's temperature (feels like is the number's label), then
+// rain or snow, then the wind in FMI's words, and which way it mostly blows; then what stands out, worst first, three at most:
+// a forecast that stops short, gusts, waves, slippery, the dark, when the rain starts, the snow on the ground. Never a number
+// the row under it says. It describes; only the notes judge.
+const shareOf = (R) => (S.data === 'rain' ? [34, 22, 44] : R.share); // (Data: Rain, illustrative: no one way the wind mostly blows)
 function verdict(d, R) {
-  const w = dayWx(d), feel = w.f, winter = S.data === 'winter', snowing = winter && w.wet;
-  const temp = feel <= -10 ? 'Very cold' : feel <= 0 ? 'Freezing' : feel <= 7 ? 'Cold' : feel <= 14 ? 'Cool' : feel <= 22 ? 'Mild' : feel <= 27 ? 'Warm' : 'Hot';
-  const rain = !w.wet ? 'dry' : w.mm >= 5 || w.peak >= 4 ? (snowing ? 'heavy snow' : 'heavy rain') : w.mm >= 1 ? (snowing ? 'snow' : 'rain') : (snowing ? 'a little snow' : 'a little rain');
-  const wind = w.w1 < 2 ? 'little wind' : w.w1 < 5 ? 'a light wind' : w.w1 < 8 ? 'a fresh wind' : w.w1 < 11 ? 'a strong wind' : 'a gale';
-  const say = `${temp}${rain === 'dry' ? ' and dry' : `, ${rain}`}, ${wind}`;
-  const notes = [];
+  const w = dayWx(d);
+  if (w.none) return { say: `No forecast yet for ${d.name.split(' · ')[0]}`, sky: 'cloud', notes: [['cloud', 'unk', 'The forecast reaches 10 days ahead.']] };
+  const air = (w.t0 + w.t1) / 2, snowy = w.t1 < 0.5, share = shareOf(R), most = Math.max(...share);
+  const temp = air <= -10 ? 'Very cold' : air <= 0 ? 'Freezing' : air <= 7 ? 'Cold' : air <= 14 ? 'Cool' : air <= 22 ? 'Mild' : air <= 27 ? 'Warm' : 'Hot';
+  const fall = snowy ? 'snow' : 'rain', rain = !w.wet ? 'dry' : w.mm >= 5 || w.peak >= 4 ? `heavy ${fall}` : w.mm >= 1 ? fall : `a little ${fall}`;
+  // FMI's words: light under 4 m/s, moderate 4–7, fresh 8–13, strong 14–20, a storm from 21
+  const wind = w.w1 < 4 ? 'a light wind' : w.w1 < 8 ? 'a moderate wind' : w.w1 < 14 ? 'a fresh wind' : w.w1 < 21 ? 'a strong wind' : 'a storm';
+  const way = most >= 60 ? `, mostly ${['against you', 'from the side', 'behind you'][share.indexOf(most)]}` : '';
+  const paddles = S.trip === 'day' || d.n === 1, notes = [];
+  if (w.partial) notes.push(['cloud', 'unk', `Forecast until ${clock(FC_END())} only: the numbers are up to then`]);
   if (w.g >= 14) notes.push(['wind', 'warn', `Gusts up to ${w.g} m/s`]);
-  const paddles = S.trip === 'day' || d.n === 1;
   if (paddles && parseFloat(R.wave[0]) >= WAVE_LIMIT) notes.push(['paddle', 'warn', `Waves up to about ${R.wave[0]} on the water`]);
-  if (d.inDark) notes.push(['moon', 'note', `${d.inDark}: take a light`]);
-  if (w.wet && w.t0 <= 0.5) notes.push(['flake', 'warn', 'Wet and near freezing: slippery']);
-  else if (w.wet) notes.push([snowing ? 'snow' : 'rain', 'note', `${snowing ? 'Snow' : 'Rain'} from ${String(hr(Math.ceil(d.i0))).padStart(2, '0')}:00`]);
-  return { say, notes: notes.slice(0, 3) };
+  if (w.wet && w.t0 <= 2 && w.t1 >= -2) notes.push(['flake', 'warn', 'Wet and near freezing: slippery']);
+  if (d.inDark) notes.push(['moon', 'plain', `${d.inDark}: take a light`]);
+  if (w.wet) notes.push([fall, 'plain', `${cap(w.rainShort)}${w.peak >= 0.5 ? `, heaviest about ${clock(w.peakAt)}` : ''}`]);
+  if (S.data === 'winter') notes.push(['flake', 'plain', `Snow on the ground: ${SNOW_CM} cm`]);
+  return { say: `${temp}${rain === 'dry' ? ' and dry' : `, ${rain}`}, ${wind}${way}`, sky: sky(wx(Math.floor(d.i0)), Math.floor(d.i0)), notes: notes.slice(0, 3) };
 }
-// the day's hours for the strip, as the app's dayHours() gives them
+const cap = (t) => t[0].toUpperCase() + t.slice(1);
+// the day's hours for the strip, as the app's dayHours() gives them: none past the forecast
 function stripHours(d) {
   const a = Math.max(0, Math.floor(d.i0) - 2), n = Math.max(12, Math.ceil(d.i1) - Math.floor(d.i0) + 4);
-  return Array.from({ length: n }, (_, k) => { const i = a + k, x = wx(i); return { t: BASE + i * 3600, night: dark(i), on: i + 1 > d.i0 && i <= d.i1, x: { temp: x[3], precip: x[4], speed: x[0], gust: x[1], dir: x[2] } }; });
+  return Array.from({ length: n }, (_, k) => { const i = a + k, x = wx(i); return { t: BASE + i * 3600, night: dark(i), on: i + 1 > d.i0 && i <= d.i1, x: i > FC_END() ? null : { temp: x[3], precip: x[4], speed: x[0], gust: x[1], dir: x[2] } }; });
 }
-function dayF(d, R, many) {
-  const w = dayWx(d), v = verdict(d, R), paddles = S.trip === 'day' || d.n === 1, winter = S.data === 'winter';
+// the strip's key, once for the card: only what its strips show
+function stripKey(days) {
+  const hours = days.flatMap(stripHours), falls = hours.filter((x) => x.x && x.x.precip >= 0.05);
+  return [['k-temp', 'temperature'], falls.some((x) => x.x.temp >= 0.5) && ['k-rain', 'rain'], falls.some((x) => x.x.temp < 0.5) && ['k-snow', 'snow'],
+    ['k-wind', 'wind', `--r:${Math.round(hours.find((x) => x.x).x.dir + 180)}deg`], ['k-you', 'you’re out'], hours.some((x) => x.night) && ['k-dark', 'dark']].filter(Boolean);
+}
+function dayF(d, R, many, key) {
+  const w = dayWx(d), v = verdict(d, R), paddles = S.trip === 'day' || d.n === 1;
   const num = (value, label) => h('span', { class: 'sum-item' }, h('b', {}, value), h('small', {}, label));
-  const hours = stripHours(d), falls = hours.filter((x) => x.x.precip >= 0.05), snowing = winter && w.wet;
-  const key = [['k-temp', 'temperature'], falls.some((x) => x.x.temp >= 0.5) && ['k-rain', 'rain'], falls.some((x) => x.x.temp < 0.5) && ['k-snow', 'snow'],
-    ['k-wind', 'wind'], ['k-you', 'you’re out'], hours.some((x) => x.night) && ['k-dark', 'dark']].filter(Boolean);
+  const snowy = !w.none && w.t1 < 0.5, n = w.none ? 0 : Math.max(1, Math.round(w.mm));
   return h('section', { class: 'wf-day', 'aria-label': many ? `Day ${d.n}` : 'The weather' },
     many ? h('h4', { class: 'wf-dayh' }, `Day ${d.n} · ${d.name}`) : null,
     // 1. the verdict, in words: a line, then what stands out
-    h('p', { class: 'wf-say' }, h('span', { class: `wd-sky ${sky(wx(Math.floor(d.i0)), Math.floor(d.i0))}`, 'aria-hidden': 'true', html: icon(sky(wx(Math.floor(d.i0)), Math.floor(d.i0)), 24) }), h('span', {}, v.say)),
+    h('p', { class: `wf-say${w.none ? ' none' : ''}` }, h('span', { class: `wd-sky ${v.sky}`, 'aria-hidden': 'true', html: icon(v.sky, 24) }), h('span', {}, v.say)),
     v.notes.length ? h('ul', { class: 'wf-notes' }, ...v.notes.map(([ic, tone, t]) => h('li', { class: tone }, h('span', { 'aria-hidden': 'true', html: icon(ic, 16) }), h('span', {}, t)))) : null,
-    // 2. the numbers, in the same places every time, each with what it is under it (the planner's numbers row)
-    h('div', { class: 'sheet-sum wf-nums' },
+    // 2. the numbers in their places: the temperature, the wind, what falls on you, the waves on a paddle (empty otherwise)
+    w.none ? null : h('div', { class: 'sheet-sum wf-nums' },
       num(w.t0 === w.t1 ? deg(w.t0) : `${deg(w.t0).replace('°', '')}…${deg(w.t1)}`, `feels like ${deg(w.f)}`),
       num(`${w.w1} m/s`, `wind, gusts ${w.g}`),
-      num(w.wet ? `${Math.max(1, Math.round(w.mm))} mm` : '0 mm', `${w.t1 < 0.5 ? 'snow' : 'rain'} on you`), // (below freezing all day, what falls is snow)
-      paddles ? num(R.wave[0], 'waves (estimate)') : winter ? num(`${SNOW_CM} cm`, 'snow on the ground') : null),
-    // 3. the hours, the timeline's strip, full width under them, and what it shows in words
-    h('div', { class: 'wf-strip', html: dayStrip(hours, { t0: BASE + d.i0 * 3600, t1: BASE + d.i1 * 3600 }, `${w.t}, wind up to ${w.w1} m/s, ${w.rainShort}; your trip marked`) }),
-    h('p', { class: 'wf-key', 'aria-hidden': 'true' }, ...key.map(([c, t]) => h('span', { class: c }, t))),
-    // 4. the sun, one line; the hours row by row, folded
-    h('p', { class: 'wx-sunline', html: `${icon('sunset', 12)}${d.sun}` }),
-    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row', 'aria-expanded': 'false' }, h('span', { html: icon('cloudSun', 20) }), h('span', {}, h('b', {}, 'Hour by hour')), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronDown', 18) }))));
+      snowy ? num(w.wet ? `${n} cm` : '0 cm', w.wet ? 'snow on you, roughly' : 'snow on you') : num(w.wet ? `${n} mm` : '0 mm', 'rain on you'),
+      paddles ? num(R.wave[0], 'waves (estimate)') : h('span', { class: 'sum-item', 'aria-hidden': 'true' })),
+    // 3. the hours, the timeline's strip, full width under them (none past the forecast), its key once a card
+    w.none ? null : h('div', { class: 'wf-strip', html: dayStrip(stripHours(d), { t0: BASE + d.i0 * 3600, t1: BASE + d.i1 * 3600 }, `${w.t}, wind up to ${w.w1} m/s, ${w.rainShort}; your trip marked`) }),
+    !w.none && key ? h('p', { class: 'wf-key', 'aria-hidden': 'true' }, ...key.map(([c, t, st]) => h('span', { class: c, style: st || '' }, t))) : null,
+    // 4. the sun, only where it changes on the way (with no forecast, the day's: the dark still counts); the hours, folded
+    w.none || d.sunIn ? h('p', { class: 'wx-sunline', html: `${icon('sunset', 12)}${w.none ? d.sun : d.sunIn}` }) : null,
+    w.none ? null : h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row', 'aria-expanded': 'false' }, h('span', { html: icon('cloudSun', 20) }), h('span', {}, h('b', {}, 'Hour by hour')), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronDown', 18) }))));
 }
 function cardF() {
   const R = T(), half = phone() && S.size === 'half';
@@ -836,16 +853,18 @@ function cardF() {
   el.append(h('div', { class: 'wf-top' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Fold', html: icon('chevronDown', 20) }), phone() ? h('span', { class: 'sheet-handle wf-handle' }) : h('span'),
     h('span', {}, h('button', { type: 'button', class: 'tool', 'aria-label': 'Card settings', html: icon('more', 22) }), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) }))));
   const body = h('div', { class: 'wc-body wf-body' }, h('div', { class: 'wc-when' }, whenPill(), h('span', {}, `→ ${R.there}`)));
-  for (const d of R.days) body.append(dayF(d, R, R.days.length > 1));
-  // 5. the rest, each saying what it does
-  const COL = ['#ef4444', '#f59e0b', '#22a447'], most = R.share.indexOf(Math.max(...R.share));
-  body.append(
-    h('p', { class: 'wf-lead' }, h('b', {}, 'The wind on the way: '), `mostly ${['headwind', 'crosswind', 'tailwind'][most]}`),
-    h('div', { class: 'exposure' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', { class: 'ex-item' }, h('i', { style: `background:${COL[i]};width:${Math.max(4, R.share[i])}%` }), `${k} ${R.share[i]} %`))),
-    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('wind', 20) }), h('span', {}, h('b', {}, 'Show where the headwind is strongest'), h('small', {}, R.strongest.replace('Strongest headwind ', ''))), chevR())),
+  const key = stripKey(R.days.filter((d) => !dayWx(d).none));
+  R.days.forEach((d, k) => body.append(dayF(d, R, R.days.length > 1, k === R.days.findIndex((x) => !dayWx(x).none) ? key : null)));
+  // 5. the wind on the way (its way is in the verdict), where the headwind is worst when there's enough of it, the route
+  // line's colour, the time
+  const COL = ['#ef4444', '#f59e0b', '#22a447'], share = shareOf(R), strong = parseFloat(R.strongest.match(/([\d.]+) m\/s/)[1]);
+  body.append(...[
+    h('p', { class: 'wf-lead' }, h('b', {}, 'The wind on the way')),
+    h('div', { class: 'exposure' }, ...['Headwind', 'Crosswind', 'Tailwind'].map((k, i) => h('span', { class: 'ex-item' }, h('i', { style: `background:${COL[i]};width:${Math.max(4, share[i])}%` }), `${k} ${share[i]} %`))),
+    share[0] >= 20 || strong >= 5 ? h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { html: icon('wind', 20) }), h('span', {}, h('b', {}, 'Show where the headwind is strongest'), h('small', {}, R.strongest.replace('Strongest headwind ', ''))), chevR())) : null,
     h('div', { class: 'rt-chips wx-colour', role: 'group', 'aria-label': 'Colour the route line by' }, h('span', { class: 'mode-select-label' }, 'Colour the route line by'),
       ...['Wind', 'Temperature', 'Rain'].map((t) => h('button', { type: 'button', class: 'chip', 'aria-pressed': 'false' }, h('span', {}, t)))),
-    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row', 'aria-expanded': 'false' }, h('span', { html: icon('clock', 20) }), h('span', {}, h('b', {}, 'Time on the way'), h('small', {}, `${R.nums[1][0]} · ${R.nums[1][1]}`)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronDown', 18) }))));
+    h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row', 'aria-expanded': 'false' }, h('span', { html: icon('clock', 20) }), h('span', {}, h('b', {}, 'Time on the way'), h('small', {}, `${R.nums[1][0]} · ${R.nums[1][1]}`)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronDown', 18) })))].filter(Boolean));
   el.append(body);
   return el;
 }
@@ -871,7 +890,7 @@ const SW = [
   ['Trip', 'trip', [['day', 'A day trip'], ['night', 'With a night']]],
   ['Hours', 'hrs', [['both', 'Table and graph'], ['switch', 'Table or graph']]],
   ['Line', 'at', [['sheet', 'In the sheet’s place (chosen 10-27)'], ['above', 'Above the toolbar (before)']]],
-  ['Data', 'data', [['real', 'That evening’s'], ['rain', 'Rain (illustrative)'], ['winter', 'Winter (illustrative)'], ['long', 'Long Finnish names (E)']]],
+  ['Data', 'data', [['real', 'That evening’s'], ['rain', 'Rain (illustrative)'], ['winter', 'Winter (illustrative)'], ['long', 'Long Finnish names (E)'], ['gap', 'Past the forecast (F)']]],
   ['Frame', 'f', [['390', '390'], ['360', '360'], ['desk', 'Desktop']]],
   ['Zoom', 'z', [['100', '100 %'], ['200', '200 %']]],
 ];
