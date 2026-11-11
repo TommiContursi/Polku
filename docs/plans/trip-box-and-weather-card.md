@@ -337,47 +337,79 @@ One trip line a day. A day under about 30 minutes is one line of words. A lane t
 
 ### Every weather fact, and where it lives
 
-The places are the card's (1 to 7 above) and Check's. **(p)** marks a limit proposed here, where Check has none, waiting for the user's answer. "On foot" is hike, trail run and run; "rides" are MTB, gravel and road.
+The places are the card's (1 to 7 above) and Check's. Where Check had no limit, one was proposed and the user accepted it on 2026-11-11, with the changes to the gusts, the water's temperature, the low sun and the rain's start. These limits are judgement, not measured truth: change them when going out shows one is wrong. "On foot" is hike, trail run and run; "rides" are MTB, gravel and road.
 
 | Fact | Source | Time | Place | Map's weather box today | Old card (Go, `main`) | F | Elsewhere today | Lives in | Rises to a note when | Counts for |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Air temperature | Open-Meteo | hourly, read at the minute you're there | 2.8 km grid; a route reads 2–12 points | reading, colour layer, towns | range along the route | range over the hours, one point | route coloured by temperature | 3 numbers (range); 1 sentence (its word); a lane only when it crosses 0 °C; Hour by hour | it crosses 0 °C with rain on the way (slippery, below); feels like 27 °C or more **(p)** | all |
-| Feels like, the forecast's | Open-Meteo `apparent_temperature` (this branch) | hourly | grid | — | — | yes | — | 3 numbers, under the temperature; Hour by hour | see the next row | all |
-| Feels like at your speed | Polku: wind chill with your own speed | to the minute | every route point | — | — | — | Check: Very cold, Frostbite risk | 2 note, Check | Check's: −15 °C Very cold, −27 °C Frostbite risk | all; most on rides |
+| Air temperature | Open-Meteo | hourly, read at the minute you're there | 2.8 km grid; a route reads 2–12 points | reading, colour layer, towns | range along the route | range over the hours, one point | route coloured by temperature | 3 numbers (range); 1 sentence (its word); a lane only when it crosses 0 °C; Hour by hour | it crosses 0 °C with rain on the way (slippery, below) | all |
+| Feels like, warmer than 10 °C | Open-Meteo `apparent_temperature` (it takes the damp and the sun in) | hourly | grid | — | — | yes | — | 3 numbers, under the temperature; Hour by hour | 27 °C or more | all |
+| Feels like, 10 °C or colder | Polku: wind chill (`windChill()`, Environment Canada's and FMI's formula) with your own speed | to the minute | every land point | — | — | — | Check: Very cold, Frostbite risk | 3 numbers, under the temperature; Hour by hour; 2 note; Check | Check's: −15 °C Very cold, −27 °C Frostbite risk | all; most on rides |
 | Wind speed | Open-Meteo | hourly | grid | reading, wind lines, towns | the start at departure, plus chips from the middle | highest hour, middle point | route coloured by wind, Paddle's row | 3 numbers (strongest on the way); 1 sentence (FMI's word); Hour by hour | through its direction (head-, cross-, tailwind) and its gusts | all |
-| Gusts | Open-Meteo | hourly | grid | reading | the start at departure | highest hour | Paddle's row | 3 numbers, under the wind; Wind on the way (the strongest, where); Hour by hour | 14 m/s or more on a ride or a paddle; 20 m/s or more for all **(p)** | all |
+| Gusts | Open-Meteo | hourly | grid | reading | the start at departure | highest hour | Paddle's row | 3 numbers, under the wind; Wind on the way (the strongest, where); Hour by hour | 10 m/s or more on a paddle, 14 on a ride, 20 for all | all |
 | Wind direction | Open-Meteo | hourly | grid | arrow, lines | "from W", chips | arrows every 3 h | — | 7 Weather on the map; on the card only as head-, cross- or tailwind | never on its own | — |
-| Head-, cross- and tailwind | Polku: the wind against your heading | to the minute | every route point | — | shares, strongest headwind | shares, verdict | route coloured by wind | 4 wind lane; 1 sentence ("behind you"); 5 Wind on the way: the stacked bar and every headwind stretch | a headwind of 6 m/s or more over 1 km or more on a ride, 8 m/s on foot; 5 m/s on a paddle's open water, from any side **(p)** | rides, paddle, on foot (drawn on those legs) |
+| Head-, cross- and tailwind | Polku: the wind against your heading | to the minute | every route point | — | shares, strongest headwind | shares, verdict | route coloured by wind | 4 wind lane; 1 sentence ("behind you"); 5 Wind on the way: the stacked bar and every headwind stretch | a headwind of 6 m/s or more over 1 km or more on a ride, 8 m/s on foot; 5 m/s on a paddle's open water, from any side | rides, paddle, on foot (drawn on those legs) |
 | Time lost or won to the wind | Polku: timed with and without wind | the trip | the trip | — | Time section | Time on the way | — | 5 Time on the way, in its summary | never | rides, paddle, on foot |
-| Rain | Open-Meteo | hourly | grid | forecast layer, reading mm/h and 6 h total | "Rain on X km", where | total, bars, start time | route coloured by rain | 3 numbers (total on you); 4 rain lane; 1 sentence; Hour by hour | 1 mm or more falls on the way, or it starts or stops on the way; 4 mm an hour is heavy **(p)** | all but swim |
-| Rain now and the last 1.5 h | FMI radar (RainViewer outside Finland) | every 5 min | radar image | rain layer before Now | — | — | — | 2 note within 2 h of leaving; 7 Weather on the map | leaving within 2 h and the radar has rain on the route now **(p)** | all |
+| Rain | Open-Meteo | hourly | grid | forecast layer, reading mm/h and 6 h total | "Rain on X km", where | total, bars, start time | route coloured by rain | 3 numbers (total on you); 4 rain lane; 1 sentence; Hour by hour | 1 mm or more falls on the way; it starts or stops on the way with 0.5 mm or more falling (so a drizzle of 0.1 mm raises nothing); 4 mm an hour is heavy | all but swim |
+| Rain now and the last 1.5 h | FMI radar (RainViewer outside Finland) | every 5 min | radar image | rain layer before Now | — | — | — | 2 note within 2 h of leaving; 7 Weather on the map | leaving within 2 h and the radar has rain on the route now | all |
 | Snowfall | Open-Meteo `snowfall`; rain below +0.5 °C drawn as snow | hourly | grid | the rain layer, as snow | "Snow on X km" | bars | Check: Snowing on the way | 3 numbers (in cm, in the rain's place); 4 the rain lane, as snow; Hour by hour | Check's: 2 cm or more while you're out | all |
 | Snow on the ground, forecast | Open-Meteo `snow_depth` | hourly | grid | snow layer | — | note | Check: Snow on the way, slower going | 2 note; Check; 7 Weather on the map | Check's: snow on the way in winter, with the time it adds | rides, on foot |
-| Snow on the ground, measured | FMI stations | the latest measurement | stations | the snow layer's numbers | — | — | — | 6 Measured nearby (#912); 7 Weather on the map | the station has snow where the forecast has none **(p)** | rides, on foot |
+| Snow on the ground, measured | FMI stations | the latest measurement | stations | the snow layer's numbers | — | — | — | 6 Measured nearby (#912); 7 Weather on the map | the station has snow where the forecast has none | rides, on foot |
 | Cloud cover | Open-Meteo | hourly | grid | clouds layer, sky icon | — | sky icon | — | 1 sentence (the sky's word only); 7 Weather on the map; the aurora's chance (#914) | never | — |
 | Thunder, forecast | Open-Meteo weather code 95–99 | hourly | grid | thunder layer (dashed area) | — | — | not in Check | 2 note, first; 4 thunder lane; 1 sentence; Hour by hour; Check (new) | any hour with thunder where you are then | all |
-| Lightning strikes | FMI | each strike, the last hour | exact | thunder layer | — | — | — | 2 note, first; 7 Weather on the map | leaving within 2 h and strikes within 20 km of the route in the last hour **(p)** | all |
+| Lightning strikes | FMI | each strike, the last hour | exact | thunder layer | — | — | — | 2 note, first; 7 Weather on the map | leaving within 2 h and strikes within 20 km of the route in the last hour | all |
 | Daylight, dusk and dark | Polku: the sun's height | to the minute | every route point | night shading, night icon | sunrise, sunset, dark from | note, strip, sun line | Check: After sunset, In the dark | 2 note; 4 the dark on the trip line, with the time it falls; 6 Sun and moon | Check's: any part after sunset or before sunrise | all |
-| Low sun ahead | Polku: the sun's position | to the minute | any point | — | — | — | — (never shown) | 2 note | the sun under 10° and within 30° of your heading for 500 m or more **(p)** | rides, on foot |
+| Low sun ahead | Polku: the sun's position | to the minute | any point | — | — | — | — (never shown) | 2 note | the sun under 10° and within 30° of your heading for 500 m or more, with the cloud cover under about half | rides, on foot |
 | Shade from hills, trees and buildings | Polku: the sun, the terrain and tree and building heights | any hour | ≈ 1 m from zoom 14 | shadows layer | — | — | — | 7 Weather on the map | never | — |
-| Lit and unlit ways | OpenStreetMap | fixed | each way | Layers | — | — | Check's dark note | 2 note, as the dark note's number ("1.2 km unlit") | in the dark with 500 m or more unlit **(p)** | all on land |
+| Lit and unlit ways | OpenStreetMap | fixed | each way | Layers | — | — | Check's dark note | 2 note, as the dark note's number ("1.2 km unlit") | in the dark with 500 m or more unlit | all on land |
 | Waves | Polku: the forecast wind over open water upwind, to 8 km | the leg's wind | water grid | — | — | number (estimate) | Check: Rough for a kayak | 3 numbers, the fourth; 4 waves lane on the paddle legs; 2 note | Check's: over the craft's comfortable height (kayak 0.35 m, canoe 0.25, SUP 0.2, swim 0.15) | paddle, swim |
 | Slippery | Polku, from the forecast | hourly | every route point | — | "Wet and near freezing" | note | Check: Slippery | 2 note; Check | Check's: rain or sleet between −2 and +1.5 °C for 100 m or more | rides, on foot |
 | Ice season | Polku, from the temperatures | the season | water legs | — | — | — | Check: Ice season | 2 note; Check | Check's | paddle, swim |
 | Road conditions, forecast | Fintraffic road weather | 0–12 h | main-road sections | road conditions layer | — | — | Check, main roads | 2 note; Check | Check's: slippery or poor on a main road on the way | rides, on foot |
-| Road weather, measured | Fintraffic stations | live | along main roads | the road camera's window | — | — | — | 6 Road cameras (#913), with the camera's readings | road surface at 0 °C or below with rain near the start, leaving within 2 h **(p)** | rides, on foot |
+| Road weather, measured | Fintraffic stations | live | along main roads | the road camera's window | — | — | — | 6 Road cameras (#913), with the camera's readings | road surface at 0 °C or below with rain near the start, leaving within 2 h | rides, on foot |
 | Rain in the last day | Open-Meteo, the past day | 24 h | the start only | — | — | — | switches the route style to wet; the amount is never shown | 2 note | 3 mm or more (the wet style's limit) on a route with trails | MTB, gravel, trail run, hike |
 | Forecast reach and certainty | Open-Meteo: 10 days for routes, 48 h on the map; "less certain" past 72 h | — | — | ends at 48 h | notes | notes | Check: No forecast yet | 1 sentence becomes "No forecast yet for …" with no numbers; 2 note when it stops short; "less certain" a quiet line under the numbers | the forecast stops before arrival | all |
 | Warnings (#911, planned) | FMI's CAP feed or MeteoAlarm, to check | by the warning's hours | regions or areas | — (planned: On top) | — | — | — | 6 Warnings; 2 note | a warning for the trip's area and hours that fits the sport: wind at sea for a paddle, thunderstorms for all, forest fire for hikes, slippery roads for rides and on foot | by the warning |
-| Measured nearby (#912, planned) | FMI stations | the last reading, the last 24 h | the station nearest the trip's middle | — | — | — | — | 6 Measured nearby | leaving within 2 h, and the station measures rain or snow where the forecast has it dry, or the other way **(p)** | all |
+| Measured nearby (#912, planned) | FMI stations | the last reading, the last 24 h | the station nearest the trip's middle | — | — | — | — | 6 Measured nearby | leaving within 2 h, and the station measures rain or snow where the forecast has it dry, or the other way | all |
 | Road cameras (#913, planned) | Fintraffic weathercams (`js/cameras.js`) | live pictures | stations near the start | — | — | — | the map's camera layer | 6 Road cameras | never (pictures) | rides, on foot |
 | Moon (#914, planned) | Polku, calculated | to the minute | anywhere | — | — | — | — | 6 Sun and moon | never | all |
-| UV (#914, planned) | Open-Meteo `uv_index` | hourly or the day's highest | grid | — | — | — | — | 6 Sun and moon | UV 6 or more while you're out **(p)** | all; most on a paddle or a swim |
+| UV (#914, planned) | Open-Meteo `uv_index` | hourly or the day's highest | grid | — | — | — | — | 6 Sun and moon | UV 6 or more while you're out | all; most on a paddle or a swim |
 | Aurora (#914, planned) | a new source, needs the user's OK | — | — | — | — | — | — | 6 Sun and moon | never | — |
-| Water temperature (#862, planned) | SYKE stations | daily | stations; unknown between them | — | — | — | — | 6 Water | under 15 °C on a paddle (a capsize), under 15 °C on a swim **(p)** | paddle, swim |
-| Blue-green algae (#862, planned) | to check | to check | to check | — | — | — | — | 6 Water | algae seen near a swim leg **(p)** | swim, paddle |
+| Water temperature (#862, planned) | SYKE stations | daily | stations; unknown between them | — | — | — | — | 6 Water | under 15 °C on a swim, under 10 °C on a paddle (a capsize) | paddle, swim |
+| Blue-green algae (#862, planned) | to check | to check | to check | — | — | — | — | 6 Water | algae seen near a swim leg | swim, paddle |
 
-**One feels like, not two (to decide):** the numbers' "feels like" is the forecast's, standing still, as weather apps give it; Check's cold warnings use the wind with your own speed. With both on a card, a ride at −10 °C could read "feels like −14°" in the numbers and "feels like −22 °C" in a note.
+**One feels like, never two** (decided 2026-11-11). At 10 °C or colder it's Polku's own at your speed, the number Check's cold warnings use, so the numbers and a note always agree. Warmer, it's the forecast's `apparent_temperature`, which takes the damp and the sun in (the wind chill's formula holds only in the cold), so the variable stays in the request. **To decide:** `windChill()` adds the wind's speed to yours whatever its direction, so a tailwind reads as cold as a headwind. With the head- and crosswind known at every point, the air past you is √((your speed + headwind)² + crosswind²).
+
+### Which notes win
+
+Three notes fit. When more fire, they rank in this order, and the first three show, numbered on the trip line where each happens:
+
+1. **Danger to life:**
+   1. lightning within 20 km of the route in the last hour (leaving within 2 h);
+   2. a warning for the trip's area and hours (#911);
+   3. thunder in the forecast where you'll be;
+   4. frostbite risk (−27 °C at your speed);
+   5. waves over the craft's limit;
+   6. cold water: under 10 °C on a paddle, under 15 °C on a swim (#862);
+   7. the ice season on a water leg.
+2. **Losing control:**
+   1. slippery: rain or sleet near 0 °C;
+   2. gusts over the sport's limit;
+   3. road conditions: slippery or poor on a main road, forecast or measured.
+3. **Comfort and planning:**
+   1. very cold (−15 °C at your speed), or hot (feels like 27 °C or more);
+   2. rain: heavy first, then on the radar now, then starting, stopping or 1 mm on the way;
+   3. snowing on the way, and snow on the ground slowing you;
+   4. a headwind over the sport's limit;
+   5. the dark, with its unlit part;
+   6. low sun ahead;
+   7. UV 6 or more;
+   8. the station nearby measuring rain or snow the forecast hasn't (#912);
+   9. wet trails after rain in the last day.
+
+- **Within a step,** the one that comes first on the trip wins.
+- **Notes about the same thing are one:** a thunderstorm warning and thunder in the forecast are one note, the warning's.
+- **A source that didn't answer,** or a forecast that stops before you arrive, ranks just under the worst note it could have raised: the lightning not answering comes after thunder in the forecast, and so does a forecast that stops short (it can't say whether there's thunder on the rest of the way).
+- **Past the third,** a note isn't lost: it shows in its own place (its lane, its row under Around the trip, or Check).
 
 ## How step 6 is built
 
