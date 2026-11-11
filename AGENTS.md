@@ -182,7 +182,8 @@ conversation again
 - **One style, and don't redesign what works.** A control for a job the app
   already does is the one in DEVELOPING's "Shared controls", with its class,
   and a mock-up copies its CSS. A new kind is proposed to the user first. A
-  mock-up keeps its earlier versions behind a switch, so they can be compared.
+  mock-up keeps its earlier versions behind a switch, so they can be compared,
+  and a round adds at most two versions.
 - **Motion follows DESIGN.md's "Motion"**, built on Emil Kowalski's rules.
   Every change to motion or interaction is decided with /animate. When a
   change moves something (a new or changed animation, transition, or a
