@@ -19124,14 +19124,15 @@ def keyfacts(chrome):
 # group in Layers while a route is drawn (straight legs)
 TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; window.TB = {
   pane: () => document.getElementById('pl-pane-route'),
+  // (the trip's box leads it, over the list: #869's step 3)
   route() {
-    const pane = TB.pane(), first = [...pane.children].find(vis), rows = [...pane.querySelectorAll('.how-rows > .row')];
-    return { first: first ? first.dataset.sec || first.className : '', rows: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
+    const pane = TB.pane(), kids = [...pane.children].filter(vis), first = kids.find((e) => e !== polku.planner.els.box), rows = [...pane.querySelectorAll('.how-rows > .row')];
+    return { box: kids[0] === polku.planner.els.box, first: first ? first.dataset.sec || first.className : '', rows: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
   },
   // the Route tab's first content, from its top: what it is and whether its heading is in sight in the body (#740)
   top() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
-    const first = [...TB.pane().children].find(vis), head = first?.querySelector('.sec-head, .wpl-head-tools') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect(); // (the list's: Show all's row, #761)
+    const first = [...TB.pane().children].find((e) => vis(e) && e !== p.els.box), head = first?.querySelector('.sec-head, .wpl-head-tools') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect(); // (the list's: Show all's row, #761)
     return { first: first ? first.dataset.sec || first.className : '', seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
   },
   // the route's list said once (#764): no hint, a one-part route's heading beside Reorder with no numbers line under it,
@@ -19199,7 +19200,7 @@ def tabs(chrome):
         pg.js(TB_JS)
         pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
         r = pg.js("TB.route()")
-        if r['first'] != 'points' or r['rows'] != ['Route style · Balanced', 'Your speed · Normal'] or not r['list'] or r['step']:
+        if not r['box'] or r['first'] != 'points' or r['rows'] != ['Route style · Balanced', 'Your speed · Normal'] or not r['list'] or r['step']:
             fails.append(f"{name}: Route opens with {r}")
             pg.close()
             return
@@ -19308,7 +19309,7 @@ def tabs(chrome):
 # its numbers changing with the route; the tabs say their count and time in words ("Check: 1 good to know", "Go: arrive
 # 11:04"), not run into the name; and the headings go one level at a time, in the planner's Route, Check and Go and in All
 # layers with the trails' Map key open. At 390 × 844 by touch and 1440 × 900
-TN_HEADS = """((root) => { const out = []; let was = 1;
+TN_HEADS = """((root, was = 1) => { const out = [];
   for (const e of root.querySelectorAll('h1, h2, h3, h4, h5, h6, [role=heading]')) {
     if (!e.checkVisibility()) continue;
     const l = +(e.getAttribute('aria-level') || e.tagName[1]);
@@ -19359,7 +19360,7 @@ def tabs_names(chrome):
             for tab, js in (('Route', "polku.planner.setTab('route')"), ('Route style', "polku.planner.openStep('how')"), ('Check', "polku.planner.openStep(null); polku.planner.setTab('check')"), ('weather card', "polku.planner.openWeather()")):
                 pg.js(f"{js}; true")
                 time.sleep(0.4)
-                skips = pg.js(f"({TN_HEADS})(polku.planner.cards.box || polku.planner.panel)")
+                skips = pg.js(f"({TN_HEADS})(polku.planner.cards.box || polku.planner.panel, polku.planner.cards.box ? 2 : 1)") # (a card's h3 under the planner's h2)
                 if skips:
                     fails.append(f"{name}: the planner's {tab}: headings skip a level: {skips}")
             pg.js("polku.planner.cards.close(); true")
