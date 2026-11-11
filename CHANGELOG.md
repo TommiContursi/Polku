@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-11
+
+### A waypoint inside a place to avoid says so ([#893](https://github.com/TommiContursi/Polku/issues/893))
+
+- When a waypoint is inside a place to avoid, the router can't reach it, and the leg's note says so in plain words: "a waypoint is inside a place to avoid: move one of them". The leg is drawn as a straight line until you move the waypoint or the place, and Check has a Retry.
+
 ## 2026-11-10
 
 ### A tap on a phone opens the card ([#690](https://github.com/TommiContursi/Polku/issues/690))

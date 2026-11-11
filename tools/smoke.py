@@ -2097,8 +2097,11 @@ AVOID_ROUTER = """(() => {
     if (/valhalla/.test(url)) return new Response('{}', { status: 503 });
     const prof = url.match(/\\/profile\\/([\\w-]+)/);
     if (prof) return new Response(JSON.stringify({ profileid: prof[1] }));
-    // a straight line through the points, with a vertex halfway along each stretch
     const ll = new URL(url).searchParams.get('lonlats').split('|').map((q) => q.split(',').map(Number)), c = [];
+    // a leg ending at window.restricted: BRouter 1.7.10 answers 400 when a leg's last point is in a place to avoid (#893)
+    const r = window.restricted;
+    if (r && Math.abs(ll.at(-1)[0] - r[0]) < 1e-6 && Math.abs(ll.at(-1)[1] - r[1]) < 1e-6) return new Response('last wpt in restricted area\\n', { status: 400 });
+    // a straight line through the points, with a vertex halfway along each stretch
     ll.forEach((q, i) => { if (i) c.push([(ll[i - 1][0] + q[0]) / 2, (ll[i - 1][1] + q[1]) / 2]); c.push(q); });
     return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: [] }, geometry: { type: 'LineString', coordinates: c } }] }));
   };
@@ -2125,6 +2128,19 @@ AVOID_SHARE = """(async () => {
   if (!new URL(url).searchParams.get('av')) errs.push(`no places to avoid in the share link: ${url.split('?')[1]}`);
   bad.searchParams.set('av', 'nonsense,24.9_60.1');
   return { errs, url, bad: bad.toString(), sent: p.nogos.map((n) => ({ ll: n.ll, r: n.r })) };
+})()"""
+# a point put inside a place to avoid, on the last page (the bad link's 3 points): the leg can't be routed, and the note says why in Polku's words, not BRouter's (#893)
+AVOID_INSIDE = """(async () => {
+  """ + AVOID_HELPERS + """
+  const errs = [], q = [24.99, 60.17];
+  window.restricted = q;
+  p.addNogo(q, 40, 'Inside');
+  p.addPoint(q);
+  for (let k = 0; k < 100 && !(p.legs.length === 3 && p.legs[2].status === 'error'); k++) await wait(200);
+  const note = toastsSaid.find((t) => /route this leg/.test(t)) || '';
+  if (!(p.legs.length === 3 && p.legs[2].status === 'error')) errs.push(`the leg into the place to avoid: ${p.legs.map((l) => l.status).join(', ')}`);
+  if (!/inside a place to avoid/.test(note) || /wpt|restricted/.test(note)) errs.push(`a point inside a place to avoid says: ${note || 'nothing'}`);
+  return errs;
 })()"""
 # the link in a clean page: the circles at 5 decimals (about 1 m), each in a router call
 AVOID_OPENED = """(async (sent) => {
@@ -2198,6 +2214,7 @@ def avoid_link(chrome):
         pg.goto(shared['bad'])
         pg.map_loaded()
         fails += pg.js(AVOID_BAD, timeout=60000)
+        fails += pg.js(AVOID_INSIDE, timeout=60000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
