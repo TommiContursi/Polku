@@ -12592,8 +12592,8 @@ WC_JS = """(async () => {
   }
   set(null, true); await wait(200);
   if (!p.cards.box?.querySelector('button[data-k=retry]')) errs.push('a forecast that failed has no Retry');
-  // the hours: past the forecast's last hour, an hour says so and shows none of its values
-  set(wind()); await wait(200);
+  // the hours: past the forecast's last hour (here the first of the trip's), an hour says so and shows none of its values
+  set(wind({ beyondSec: t0 + 3600 })); await wait(200);
   const rows = [...(p.cards.box?.querySelectorAll('.wx-hours tbody tr') || [])].map((r) => r.textContent);
   if (!rows.length || !rows.some((t) => /No forecast yet$/.test(t)) || rows.some((t) => /No forecast yet/.test(t) && /°/.test(t))) errs.push(`the hours past the forecast: ${rows.join(' / ') || 'none'}`);
   // feels like where it's known, and nothing where it isn't (a cell cached before it was asked for)
