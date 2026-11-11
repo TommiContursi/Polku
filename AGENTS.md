@@ -235,9 +235,9 @@ conversation again
 - Docs and tooling PRs stay on their one subject.
 - **The repo squash-merges:** the PR's title and description become its one
   commit on `main`, so keep the description true as the PR changes. When the
-  PR below yours is merged, rebase yours onto `main` without its commits
-  (`git rebase --onto origin/main <old base>`), or it conflicts with the
-  squashed copy of them.
+  PR below yours is merged, don't rebase a branch that's already pushed. To
+  bring `main` in, `git merge origin/main` and push normally (the repo
+  squash-merges, so the merge commit never reaches `main`).
 - **Title** like the history, saying what changes for people using Polku:
   "Calmer planner: the map's cards", "Fix: the map's credits stay folded on
   phones", "Docs: …". Not `feat:` or `docs:`.
