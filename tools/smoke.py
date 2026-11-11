@@ -18382,8 +18382,9 @@ LV_JS = """(() => { window.LV = {
     const frames = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
     let a = null, same = 0;
     for (let k = 0; k < 30 && same < 2; k++) {
-      const el = get(), s = el && el.isConnected && el.getClientRects().length && (el.closest('.pl-way.card') || el.closest('.sheet-body') || el.closest('.sheet')); // (the trip's box: the sheet's own)
-      if (s) { const e = el.getBoundingClientRect(), r = s.getBoundingClientRect(); if (e.bottom > r.bottom) s.scrollTop += e.bottom - r.bottom + 8; else if (e.top < r.top) s.scrollTop -= r.top - e.top + 8; }
+      // (the trip's box scrolls with the sheet itself, under its top row, which stays: #869's step 3)
+      const el = get(), s = el && el.isConnected && el.getClientRects().length && (el.closest('.pl-way.card') || el.closest('.sheet-body') || el.closest('.sheet'));
+      if (s) { const e = el.getBoundingClientRect(), r = s.getBoundingClientRect(), top = s.matches('.sheet') ? polku.planner.els.top.getBoundingClientRect().bottom : r.top; if (e.bottom > r.bottom) s.scrollTop += e.bottom - r.bottom + 8; else if (e.top < top) s.scrollTop -= top - e.top + 8; }
       await frames();
       const b = s && get()?.getClientRects().length ? get().getBoundingClientRect() : null, at = b && { x: b.left + Math.min(60, b.width / 3), y: b.top + b.height / 2 };
       same = a && at && Math.abs(a.x - at.x) < 1 && Math.abs(a.y - at.y) < 1 && !polku.map.isMoving() ? same + 1 : 0;
