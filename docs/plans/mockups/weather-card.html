@@ -302,6 +302,73 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wf .wx-colour .mode-select-label { flex-basis: 100%; } /* (the label over its three chips, never one chip beside it) */
 .wf-key .k-you::before { width: 8px; height: 9px; vertical-align: -1px; background: color-mix(in srgb, var(--route) 30%, transparent); border-left: 2px solid var(--route); }
 .wf-lead { margin: 4px 0 -4px; font-size: var(--font-body); }
+/* ======================================================= G (2026-11-11): the trip line (the plan's Round 5) */
+.wg-body { gap: 12px; }
+.wg-say { margin: 2px 0 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; text-wrap: balance; }
+.wg-dayh { margin: 4px 0 -6px; font-size: var(--font-control); font-weight: var(--weight-name); color: var(--muted); }
+.wg-notes { display: grid; margin: -2px 0 0; padding: 0; list-style: none; }
+.wg-note { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: var(--target); padding: 6px 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--font-row); line-height: 1.3; text-align: left; cursor: pointer; }
+.wg-note > .ic { margin-top: 1px; color: var(--muted); }
+.wg-note.danger > .ic { color: var(--danger); } .wg-note.look > .ic { color: var(--look); } .wg-note.unk > .ic { color: var(--unk); }
+/* a note's number, on the note and on the trip line: its tier's colour (red only for danger) */
+.wg-n { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--radius-round); background: var(--text); color: var(--surface-solid); font-size: 12.5px; font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
+.wg-n.danger { background: var(--danger); } .wg-n.look { background: var(--look); } .wg-n.unk { background: var(--unk); }
+.wg-nums.sheet-sum { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 4px 10px; align-items: start; }
+.wg-nums .sum-item small { white-space: normal; line-height: 1.25; }
+@container card (max-width: 300px) { .wg-nums.sheet-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* the trip line: one line from start to arrival, each leg in its sport's colour, the notes' numbers where each happens */
+.wg-trip { display: grid; gap: 8px; margin-top: 2px; }
+.wg-line { position: relative; height: 30px; }
+.wg-leg { position: absolute; top: 13px; height: 5px; }
+.wg-leg:first-child { border-radius: 3px 0 0 3px; } .wg-leg:last-of-type { border-radius: 0 3px 3px 0; } .wg-leg:only-of-type { border-radius: 3px; }
+.wg-line .wg-n { position: absolute; top: 4px; margin-left: -11px; box-shadow: 0 0 0 2px var(--surface-solid); transition: transform var(--t-press) var(--ease-out); }
+.wg-line .wg-n.lit, .wg-notes .lit .wg-n { transform: scale(1.18); box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--focus); }
+.wg-hl { position: absolute; top: 9px; height: 13px; border-radius: 4px; background: color-mix(in srgb, var(--focus) 28%, transparent); outline: 2px solid var(--focus); pointer-events: none; }
+.wg-ticks, .wg-legnames { position: relative; display: flex; justify-content: space-between; gap: 8px; font-size: var(--font-small); color: var(--muted); font-variant-numeric: tabular-nums; }
+.wg-legnames { height: 16px; margin-top: -6px; } .wg-legnames > span { position: absolute; white-space: nowrap; }
+/* a lane: its name and value at its start, its stretches on the trip line's axis, in the route's colours for that fact */
+.wg-lane { display: grid; gap: 4px; width: 100%; min-height: var(--target); padding: 2px 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.wg-lane-h { font-size: var(--font-control); color: var(--muted); } .wg-lane-h b { color: var(--text); font-weight: var(--weight-name); }
+.wg-track { position: relative; display: block; height: 12px; border-radius: 6px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.wg-track > i { position: absolute; top: 0; bottom: 0; }
+/* thunder: the map's own look for the forecast's thunder (the legend's lg-dash) */
+.wg-track > i.th, .wg-key .k-th::before { background: rgba(245, 158, 11, .3); outline: 1.5px dashed #b45309; outline-offset: -1.5px; }
+:root[data-theme="dark"] .wg-track > i.th, :root[data-theme="dark"] .wg-key .k-th::before { outline-color: #fbbf24; }
+.wg-key { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: -2px 0 0; font-size: var(--font-small); color: var(--muted); }
+.wg-key > span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; background: var(--k); }
+.wg-lbl { margin: 2px 0 -6px; font-size: var(--font-control); color: var(--muted); }
+.wg .rows small { display: block; font-size: var(--font-small); color: var(--muted); font-weight: var(--weight-regular); }
+.wg .btn.wg-map { justify-content: center; width: 100%; min-height: var(--target); }
+/* Wind on the way, opened: one stacked bar, its key on one line, then every stretch against you, worst first */
+.wg-open { display: grid; gap: 10px; padding: 2px 0 10px; }
+.rows > .wg-open { padding: 4px 8px 12px; } /* (rows reach 8 px past the card's edges, for their own background) */
+.wg-stack { display: flex; height: 12px; border-radius: 6px; overflow: hidden; }
+.wg-open .rows { margin: 0; border: 1px solid var(--line); border-radius: 12px; }
+.wg-open p { margin: 0; font-size: var(--font-control); color: var(--muted); }
+/* Hour by hour, opened: the hours you're out, one either side, read where you'll be then */
+.wg-hours { width: 100%; border-collapse: collapse; font-size: var(--font-control); font-variant-numeric: tabular-nums; }
+.wg-hours th { padding: 4px 4px 6px; font-size: var(--font-small); font-weight: var(--weight-name); color: var(--muted); text-align: right; white-space: nowrap; }
+.wg-hours td { padding: 8px 4px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.wg-hours :is(th, td):nth-child(-n + 2) { text-align: left; } .wg-hours :is(th, td):first-child { padding-left: 0; } .wg-hours :is(th, td):last-child { padding-right: 0; }
+.wg-hours tr.out td { color: var(--muted); } .wg-hours td small { display: block; font-size: var(--font-small); color: var(--look); white-space: normal; }
+/* a lane tapped: the card folds to this bar at the foot; the map shows the route by that fact */
+.wg-bar { position: absolute; z-index: 6; left: 8px; right: 8px; bottom: 8px; display: grid; gap: 10px; padding: 6px 12px 14px; border-radius: var(--radius-sheet); background: var(--glass-read); -webkit-backdrop-filter: var(--glass-read-filter); backdrop-filter: var(--glass-read-filter); box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); }
+.frame.desk .wg-bar { left: 424px; right: auto; width: 420px; bottom: 12px; }
+.wg-bar-h { display: flex; align-items: center; gap: 4px; } .wg-bar-h b { flex: 1; font-size: var(--font-row); }
+.wg-step { display: flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-solid); }
+.wg-step > span { flex: 1; text-align: center; font-weight: var(--weight-name); } .wg-step small { display: block; font-weight: var(--weight-regular); font-size: var(--font-small); color: var(--muted); }
+.wg-step .tool { width: 44px; height: 52px; } .wg-step .tool:disabled { opacity: .35; }
+.wg-slide { position: relative; height: 28px; }
+.wg-slide .wg-track { position: absolute; left: 0; right: 0; top: 8px; }
+.wg-slide input { position: absolute; inset: 0; width: 100%; height: 28px; margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: ew-resize; }
+.wg-slide input::-webkit-slider-runnable-track { height: 28px; background: none; }
+.wg-slide input::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: 2px; border-radius: 50%; background: var(--surface-solid); border: 3px solid var(--text); box-shadow: var(--shadow-marker); }
+.wg-slide input::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--surface-solid); border: 3px solid var(--text); }
+.wg-chip { position: absolute; z-index: 6; left: 12px; top: 64px; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--glass-control); -webkit-backdrop-filter: var(--glass-control-filter); backdrop-filter: var(--glass-control-filter); box-shadow: var(--shadow), var(--edge); font-weight: var(--weight-name); font-variant-numeric: tabular-nums; }
+.frame.desk .wg-chip { left: 860px; }
+.frame > .wg-mapsvg { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; }
+.wg-callout { position: absolute; z-index: 6; max-width: 220px; padding: 6px 10px; border-radius: 10px; background: var(--surface-solid); box-shadow: var(--shadow); font-size: var(--font-control); line-height: 1.3; pointer-events: none; transform: translate(-50%, calc(-100% - 12px)); }
+.frame.z2 > :is(.wg-mapsvg, .wg-chip, .wg-callout) { display: none; }
 </style>
 </head>
 <body class="mk">
@@ -335,7 +402,9 @@ const pick = (k, vals, d) => (vals.includes(q.get(k)) ? q.get(k) : d);
 const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site', 'trip'], 'trip'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line', 'now', 'layers'], 'line'), hr: 1, tt: pick('tt', ['open'], ''), wl: pick('wl', ['open', 'line'], 'open'), size: pick('size', ['half', 'full'], 'half'),
   trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain', 'winter', 'long', 'gap'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100'),
   // E (2026-11-10): the line's two choices (lm), which menu is open (mo), the three winds, the card's later rows; what's on the map
-  cf: pick('cf', ['e', 'f'], 'f'), // (2026-11-11: E's card as drawn, or F's: a verdict in words, then the numbers in their places)
+  cf: pick('cf', ['e', 'f', 'g'], 'g'), // (2026-11-11: E's card as drawn; F's: a verdict in words, then the numbers in their places; G's: the trip line)
+  // G (2026-11-11): the trip, the planned sources, and what the card shows (the stretch the bar's arrows are at, and the slider)
+  gt: pick('gt', ['quiet', 'long', 'multi'], 'long'), gp: pick('gp', ['off', 'on'], 'off'), gs: pick('gs', ['card', 'wind', 'hours', 'windlane', 'rainlane', 'thunderlane', 'waveslane'], 'card'), gi: 0, gpos: null,
   lm: pick('lm', ['today', 'two', 'corners'], 'two'), mo: pick('mo', ['none', 'colour', 'top'], 'colour'), wind: pick('wind', ['a', 'b', 'c'], 'b'), later: pick('later', ['now', 'later'], 'now'),
   col: pick('col', ['rain', 'cloud', 'wind', 'temp', 'snow', 'none'], 'rain'), top: q.get('top') ?? 'windl,places', tday: q.get('tday') ?? 'rain,wind,towns', fx: pick('fx', ['on', 'off'], 'on'), lg: pick('lg', ['fold', 'open'], 'fold') };
 
@@ -707,6 +776,7 @@ function layersPanel() {
 // E's later parts, a row each: its name, a short line, › (the issue that builds it, for the mock-up)
 const laterRow = (ic, name, line, n) => h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { class: ic === 'warnf' ? 'warn-icon' : null, html: icon(ic, 20) }), h('span', {}, h('b', {}, name), h('small', {}, line)), h('span', { class: 'val mk-soon' }, `later, ${n}`), chevR()));
 function card() {
+  if (isE() && S.cf === 'g') return cardG();
   if (isE() && S.cf === 'f') return cardF();
   const R = T(), atMap = S.s === 'map';
   const half = phone() && S.size === 'half';
@@ -869,6 +939,206 @@ function cardF() {
   return el;
 }
 
+// ---------------------------------------------------------------- G (2026-11-11): the trip line
+// The user's direction of 2026-11-11, from a design canvas of six screens (the plan's Round 5): one sentence; up to three notes,
+// worst first, their numbers on the trip line where each happens; the numbers in their places; the trip line, each leg in its
+// sport's colour, with the lanes under it on the same axis; things to check, folded; Around the trip; Weather on the map. Built
+// from app.css's classes and tokens (sheet-sum, sum-item, rows, row, btn, tool, rt-pill; the sports', the wind's and the rain's
+// colours); new are the sentence, the notes, the trip line, the lanes and the lane's bar (wg-…). The trips are illustrative:
+// numbers made to show the rules (the plan's table and "Which notes win"), not a forecast.
+const GC = { sh: 'var(--wind-strong-head)', hd: 'var(--wind-head)', cr: 'var(--wind-cross)', tl: 'var(--wind-tail)', st: 'var(--wind-strong-tail)',
+  dz: 'var(--rain-drizzle)', rn: 'var(--rain-rain)', hv: 'var(--rain-heavy)', w1: 'var(--surf-water)', w2: 'var(--route-water)' };
+const GKEY = {
+  wind: [['sh', 'against you, strong'], ['hd', 'against you'], ['cr', 'from the side'], ['tl', 'behind you']],
+  rain: [['dz', 'drizzle'], ['rn', 'rain'], ['hv', 'heavy']], thunder: [['th', 'thunder possible']], waves: [['w1', 'under the kayak’s limit'], ['w2', 'over it']],
+};
+const GNAME = { wind: 'Wind on the way', rain: 'Rain on the way', thunder: 'Thunder on the way', waves: 'Waves on the way' };
+const GSTEP = { wind: 'Against you', rain: 'Rain', thunder: 'Thunder possible', waves: 'Rough water' };
+const GT = {
+  quiet: { leave: 'Leave now', there: 'there at 21:19', from: '20:21', to: '21:19', km: 5.5, time: '58 min · 33 min moving', pill: 'clock',
+    days: [{ say: 'Cold and dry, a moderate wind behind you', sky: 'moon', legs: [['mtb', 0, 1, 'Ride']],
+      notes: [{ tier: 'plain', ic: 'moon', t: 'Dark the whole way, 1.2 km of it unlit: take a light', at: [0, 1] }],
+      nums: [['6…7°', 'feels like 1°'], ['5 m/s', 'gusts 8'], ['0 mm', 'rain']], lanes: [] }],
+    wind: { share: [1, 13, 86], sum: 'Behind you 86 %', stretches: [], gust: 'Strongest gusts 8 m/s, around km 1' },
+    hours: [['Sat', [['19', 'before', '7°', '3°', '–', '5 (8)'], ['20', 'start', '7°', '2°', '–', '4 (8)'], ['21', 'km 5', '6°', '1°', '–', '5 (7)'], ['22', 'after', '6°', '1°', '–', '5 (8)']]]],
+    around: [['warn', 'Warnings', 'None for the trip’s area and hours · FMI'], ['pin', 'Measured nearby', 'Kaisaniemi, 1 km away · 6.4°, 4 m/s, 10 min ago'], ['camera', 'Road cameras', 'One near the start'], ['moon', 'Sun and moon', 'Moon 63 %, up until 02:10']] },
+  long: { leave: 'Leave Sat 13:00', there: 'there at 16:10', from: '13:00', to: '16:10', km: 42, time: '3 h 10 min · 8 min lost to the wind', pill: 'calendar',
+    days: [{ say: 'Cool, then rain and a risk of thunder', sky: 'thunder', legs: [['mtb', 0, 1, 'Ride']], ticks: ['13:00 · start', 'km 21', '16:10 · 42 km'],
+      notes: [{ tier: 'danger', ic: 'thunder', t: 'Thunder possible around 15:30, near km 34', on: 'Thunderstorm warning for 14 to 18 (FMI): thunder possible around 15:30, near km 34', at: [0.74, 0.92], pos: 0.81 },
+        { tier: 'plain', ic: 'rain', t: 'Rain from around 14:30, from km 20 on', at: [0.48, 1], pos: 0.48 },
+        { tier: 'plain', ic: 'wind', t: 'Headwind up to 9 m/s on three stretches, the longest km 12 to 20', at: [0.28, 0.48], pos: 0.38 }],
+      nums: [['11…14°', 'feels like 8°'], ['9 m/s', 'gusts 13'], ['4 mm', 'rain']],
+      lanes: [{ k: 'wind', name: 'Wind', val: 'against you on three stretches', segs: [[0, .28, 'tl'], [.28, .48, 'sh'], [.48, .71, 'cr'], [.71, .79, 'sh'], [.79, .9, 'cr'], [.9, .95, 'hd'], [.95, 1, 'tl']],
+        stretches: [['km 12 to 20 · up to 9 m/s', 'around 13:55 to 14:30 · open fields', .28, .48], ['km 30 to 33 · up to 8 m/s', 'around 15:15 to 15:30', .71, .79], ['km 38 to 40 · up to 7 m/s', 'around 15:50 to 16:00', .9, .95]] },
+        { k: 'rain', name: 'Rain', val: '4 mm from around 14:30', segs: [[.48, .7, 'rn'], [.7, .86, 'dz'], [.86, 1, 'rn']],
+          stretches: [['km 20 to 29 · up to 2.1 mm an hour', 'around 14:30 to 15:15', .48, .7], ['km 36 to 42 · up to 1.5 mm an hour', 'around 15:40 to 16:10', .86, 1]] },
+        { k: 'thunder', name: 'Thunder', val: 'possible around 15:30', segs: [[.74, .92, 'th']], stretches: [['km 31 to 39 · around 15:20 to 15:50', 'the forecast’s thunder where you’ll be then', .74, .92]] }] }],
+    wind: { share: [33, 34, 33], sum: 'Against you 33 % · three stretches', gust: 'Strongest gusts 13 m/s, around km 16' },
+    hours: [['Sat', [['12', 'before', '14°', '12°', '–', '6 (9)'], ['13', 'start', '14°', '11°', '–', '7 (11)'], ['14', 'km 13', '13°', '9°', '0.4', '9 (13)'], ['15', 'km 26', '12°', '8°', '2.1', '8 (13)', 'thunder possible'], ['16', 'km 40', '11°', '8°', '1.5', '7 (12)'], ['17', 'after', '11°', '8°', '0.8', '7 (11)']]]],
+    around: [['warn', 'Warnings', 'Thunderstorms, Sat 14 to 18 · FMI'], ['pin', 'Measured nearby', 'Kumpula, 3 km from the start · 15.2°, 6 m/s, 10 min ago'], ['camera', 'Road cameras', 'Three along the way'], ['sun', 'Sun and moon', 'UV 5 around 13:00 · sunset 21:05']] },
+  multi: { leave: 'Leave Sat 10:00', there: 'there Sun 08:05', from: '10:00', to: '14:40', km: 17, time: '22 h 05 min · 1 h 50 min moving', pill: 'calendar',
+    days: [{ head: 'Day 1 · Sat 10:00 to 14:40', say: 'Cool and dry, a fresh wind on the water', sky: 'cloud', legs: [['mtb', 0, .45, 'Ride'], ['paddle', .45, .75, 'Paddle'], ['hike', .75, 1, 'Hike']], ticks: ['10:00 · start', '14:40 · night at km 17'],
+      notes: [{ tier: 'danger', ic: 'warn', t: '', on: 'Warning for wind at sea, Sat 12 to 18 (FMI)', at: [0.45, 0.75], pos: 0.45, planned: true },
+        { tier: 'danger', ic: 'paddle', t: 'Waves about 0.6 m on the crossing, km 9 to 13', at: [0.53, 0.65], pos: 0.58 },
+        { tier: 'danger', ic: 'water', t: '', on: 'Water about 9 °C at the nearest station, 6 km away: dress for a capsize', at: [0.45, 0.75], pos: 0.5, planned: true },
+        { tier: 'look', ic: 'wind', t: 'Gusts up to 15 m/s on the water, around 12:00', at: [0.5, 0.62], pos: 0.62 },
+        { tier: 'plain', ic: 'wind', t: 'Wind against you on the crossing, up to 10 m/s', at: [0.45, 0.67], pos: 0.52 }],
+      nums: [['4…6°', 'feels like 0°'], ['10 m/s', 'gusts 15'], ['0 mm', 'rain'], ['0.6 m', 'waves, estimate']],
+      lanes: [{ k: 'wind', name: 'Wind', val: 'against you on the crossing', segs: [[0, .45, 'cr'], [.45, .67, 'sh'], [.67, 1, 'tl']], stretches: [['km 8 to 12 · up to 10 m/s', 'around 12:05 to 13:05 · on the water', .45, .67]] },
+        { k: 'waves', name: 'Waves', val: 'about 0.6 m, on the paddle only', leg: [.45, .75], segs: [[.45, .53, 'w1'], [.53, .65, 'w2'], [.65, .75, 'w1']], stretches: [['km 9 to 13 · about 0.6 m', 'around 12:20 to 13:00 · the crossing', .53, .65]] }] },
+      { head: 'Day 2 · Sun 08:00 to 08:05', short: '2°, dry, a light wind · sunrise 08:03, as you set off' }],
+    wind: { share: [22, 45, 33], sum: 'Against you 22 % · on the crossing', gust: 'Strongest gusts 15 m/s, around km 10, on the water' },
+    hours: [['Sat', [['09', 'before', '4°', '−1°', '–', '8 (12)'], ['10', 'start', '4°', '−1°', '–', '9 (13)'], ['11', 'km 6', '5°', '0°', '–', '10 (15)'], ['12', 'km 10, on the water', '5°', '1°', '–', '10 (15)'], ['13', 'km 13', '6°', '1°', '–', '9 (14)'], ['14', 'km 16', '6°', '2°', '–', '8 (12)'], ['15', 'after', '5°', '1°', '–', '7 (11)']]],
+      ['Sun', [['07', 'before', '1°', '−2°', '–', '3 (5)'], ['08', 'start', '2°', '−1°', '–', '3 (5)'], ['09', 'after', '3°', '0°', '–', '4 (6)']]]],
+    around: [['warn', 'Warnings', 'Wind at sea, Sat 12 to 18 · FMI'], ['pin', 'Measured nearby', 'Harmaja, 4 km from the crossing · 5.8°, 11 m/s, 10 min ago'], ['camera', 'Road cameras', 'Two near the start'], ['moon', 'Sun and moon', 'Dark from 16:50 at the night’s stop · moon 41 %'], ['water', 'Water', '9 °C at the nearest station, 6 km away · no algae seen']] },
+};
+// the notes that show: the planned sources' only when they're on, a planned source's words where it says more, three at most
+// (in the order the plan's "Which notes win" gives; here the data is already in that order)
+const gNotes = (d) => (d.notes || []).filter((n) => S.gp === 'on' || !n.planned).map((n) => ({ ...n, t: S.gp === 'on' && n.on ? n.on : n.t })).slice(0, 3).map((n, i) => ({ ...n, n: i + 1 }));
+const pv = (a, b, say) => ({ 'data-pv': `${a}-${b}`, 'data-say': say });
+function gTripLine(d, notes) {
+  const line = h('div', { class: 'wg-line', role: 'img', 'aria-label': `The trip from ${d.ticks[0].replace(' · ', ' at the ')} to ${d.ticks.at(-1).replace(' · ', ', ')}${notes.length ? `; ${notes.map((n) => `note ${n.n} at ${Math.round(n.pos * 100)} % of the way`).join(', ')}` : ''}` });
+  for (const [k, a, b] of d.legs) line.append(h('i', { class: 'wg-leg', style: `left:${a * 100}%; width:${(b - a) * 100}%; background:var(--sport-${k})` }));
+  let last = -1;
+  for (const n of [...notes].sort((x, y) => x.pos - y.pos)) { const x = Math.max(n.pos, last + 0.075); last = x; line.append(h('span', { class: `wg-n ${n.tier}`, 'data-n': String(n.n), 'aria-hidden': 'true', style: `left:${Math.min(97, x * 100)}%` }, String(n.n))); }
+  return h('div', { class: 'wg-trip' }, line,
+    d.legs.length > 1 ? h('div', { class: 'wg-legnames', 'aria-hidden': 'true' }, ...d.legs.map(([, a, , name]) => h('span', { style: `left:${a * 100}%` }, name))) : null,
+    h('div', { class: 'wg-ticks' }, ...d.ticks.map((t) => h('span', {}, t))));
+}
+const gTrack = (l) => h('span', { class: 'wg-track', 'aria-hidden': 'true' }, ...l.segs.map(([a, b, c]) => h('i', { class: c === 'th' ? 'th' : '', style: `left:${a * 100}%; width:${(b - a) * 100}%;${c === 'th' ? '' : ` background:${GC[c]}`}` })));
+// the key: only the colours the lanes draw, and none for a lane of one colour (its name says it)
+const gKey = (k, used) => h('p', { class: 'wg-key', 'aria-hidden': 'true' }, ...GKEY[k].filter(([c]) => !used || used.has(c)).map(([c, t]) => h('span', { class: c === 'th' ? 'k-th' : '', style: c === 'th' ? '' : `--k:${GC[c]}` }, t)));
+const gKeys = (lanes) => { const used = new Set(lanes.flatMap((l) => l.segs.map((x) => x[2]))); return h('div', { style: 'display:grid; gap:2px' }, ...lanes.filter((l) => new Set(l.segs.map((x) => x[2])).size > 1).map((l) => gKey(l.k, used))); };
+function gLane(l) {
+  const worst = l.stretches[0];
+  return h('button', { type: 'button', class: 'wg-lane', 'aria-label': `${l.name}: ${l.val}. Show it on the map`, ...pv(worst[2], worst[3], `${GSTEP[l.k]} · ${worst[0]} · ${worst[1]}`), onclick: () => { S.gs = `${l.k}lane`; S.gi = 0; draw(); } },
+    h('span', { class: 'wg-lane-h' }, h('b', {}, l.name), ` · ${l.val}`), gTrack(l));
+}
+const gRow = (ic, name, sub, k, open) => h('button', { type: 'button', class: 'row', 'aria-expanded': k ? String(open) : null, onclick: k ? () => { S.gs = open ? 'card' : k; draw(); } : null },
+  h('span', { html: icon(ic, 20) }), h('span', {}, h('b', {}, name), sub ? h('small', {}, sub) : null), k ? h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) }) : chevR());
+function gWindOpen(R) {
+  const [a, c, b] = R.wind.share, l = (R.days[0].lanes || []).find((x) => x.k === 'wind');
+  return h('div', { class: 'wg-open' },
+    h('div', { class: 'wg-stack', role: 'img', 'aria-label': `Against you ${a} %, from the side ${c} %, behind you ${b} %` }, ...[[a, 'sh'], [c, 'cr'], [b, 'tl']].map(([w, k]) => h('span', { style: `width:${w}%; background:${GC[k]}` }))),
+    h('p', { class: 'wg-key', 'aria-hidden': 'true' }, ...[['sh', `Against you ${a} %`], ['cr', `From the side ${c} %`], ['tl', `Behind you ${b} %`]].map(([k, t]) => h('span', { style: `--k:${GC[k]}` }, t))),
+    l ? h('p', {}, 'Where it’s against you, strongest first') : h('p', {}, 'Nowhere against you for long.'),
+    l ? h('div', { class: 'rows' }, ...l.stretches.map(([t, s, f0, f1]) => h('button', { type: 'button', class: 'row', ...pv(f0, f1, `Against you · ${t} · ${s}`) }, h('span', {}, h('b', {}, t), h('small', {}, s)), chevR()))) : null,
+    h('p', {}, R.wind.gust),
+    h('button', { type: 'button', class: 'btn wg-map', onclick: () => { S.gs = 'windlane'; S.gi = 0; draw(); } }, 'Show the wind on the map'));
+}
+function gHours(R) {
+  const t = h('table', { class: 'wg-hours' }, h('thead', {}, h('tr', {}, ...['Time', 'You’re at', 'Temp', 'Feels', 'Rain', 'Wind (gust)'].map((c) => h('th', { scope: 'col' }, c)))));
+  for (const [day, rows] of R.hours) {
+    if (R.hours.length > 1) t.append(h('tbody', {}, h('tr', {}, h('th', { scope: 'rowgroup', colspan: '6', style: 'text-align:left; padding-top:10px' }, day))));
+    t.append(h('tbody', {}, ...rows.map(([hh, at, te, fe, ra, wi, flag]) => h('tr', { class: at === 'before' || at === 'after' ? 'out' : '' },
+      h('td', {}, hh), h('td', {}, at, flag ? h('small', {}, flag) : null), h('td', {}, te), h('td', {}, fe), h('td', {}, ra), h('td', {}, wi)))));
+  }
+  return h('div', { class: 'wg-open' }, t, h('p', {}, 'Rain in mm an hour, wind in m/s. Each hour is the forecast for where you’ll be then.'));
+}
+function gDay(d, R, many, first) {
+  if (d.short) return h('div', { class: 'rows' }, h('div', { class: 'row', style: 'min-height:0; padding-block:8px' }, h('span', { html: icon('cloudSun', 20) }), h('span', {}, h('small', {}, d.head), d.short)));
+  const notes = gNotes(d), lanes = (d.lanes || []);
+  const line = lanes.length > 0; // (a quiet trip: no trip line, no lanes, its notes with their icons)
+  return h('section', { class: 'wg-day', 'aria-label': many ? d.head : 'The weather', style: 'display:grid; gap:10px' },
+    many ? h('h4', { class: 'wg-dayh' }, d.head) : null,
+    h('p', { class: 'wg-say' }, d.say),
+    notes.length ? h('ul', { class: 'wg-notes' }, ...notes.map((n) => h('li', {}, h('button', { type: 'button', class: `wg-note ${n.tier}`, 'data-note': String(n.n), ...pv(n.at[0], n.at[1], n.t) },
+      line ? h('span', { class: `wg-n ${n.tier}`, 'aria-hidden': 'true' }, String(n.n)) : h('span', { class: 'ic', html: icon(n.ic, 20) }), h('span', {}, n.t))))) : null,
+    h('div', { class: 'sheet-sum wg-nums', style: `--n:${d.nums.length}` }, ...d.nums.map(([v, s]) => h('span', { class: 'sum-item' }, h('b', {}, v), h('small', {}, s)))),
+    line ? gTripLine(d, notes) : null,
+    ...lanes.map((l) => (l.leg ? gLaneOnLeg(l) : gLane(l))),
+    line && first ? gKeys(lanes) : null);
+}
+// a lane that counts for one sport only is drawn on that leg only
+function gLaneOnLeg(l) { const b = gLane(l); b.querySelector('.wg-track').style.cssText = `margin-left:${l.leg[0] * 100}%; width:${(l.leg[1] - l.leg[0]) * 100}%`; b.querySelectorAll('.wg-track > i').forEach((i, k) => { const [a, c] = l.segs[k]; i.style.left = `${((a - l.leg[0]) / (l.leg[1] - l.leg[0])) * 100}%`; i.style.width = `${((c - a) / (l.leg[1] - l.leg[0])) * 100}%`; }); return b; }
+function cardG() {
+  const R = GT[S.gt], half = phone() && S.size === 'half';
+  if (S.gs.endsWith('lane')) return gBar(R, S.gs.replace('lane', ''));
+  const el = h('section', { class: `wc-card wg${half ? ' half' : ''}`, 'aria-label': 'Weather on the way' });
+  el.append(h('div', { class: 'wf-top' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Fold', html: icon('chevronDown', 20) }), phone() ? h('span', { class: 'sheet-handle wf-handle' }) : h('span'),
+    h('span', {}, h('button', { type: 'button', class: 'tool', 'aria-label': 'Card settings', html: icon('more', 22) }), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) }))));
+  const body = h('div', { class: 'wc-body wg-body' }, h('div', { class: 'wc-when' },
+    h('button', { type: 'button', class: 'rt-pill', 'aria-haspopup': 'menu', 'aria-label': `When: ${R.leave}` }, h('span', { html: icon(R.pill, 18) }), h('span', {}, R.leave), h('span', { html: CARET })), h('span', {}, `→ ${R.there}`)));
+  R.days.forEach((d, k) => body.append(gDay(d, R, R.days.length > 1, k === 0)));
+  // 5. things to check, folded; one opens in place
+  body.append(h('div', { class: 'rows' },
+    gRow('cloudSun', 'Hour by hour', '', 'hours', S.gs === 'hours'), S.gs === 'hours' ? gHours(R) : null,
+    gRow('wind', 'Wind on the way', R.wind.sum, 'wind', S.gs === 'wind'), S.gs === 'wind' ? gWindOpen(R) : null,
+    gRow('clock', 'Time on the way', R.time, 'time', false)));
+  // 6. around the trip: the planned sources, a row each opening its own view
+  if (S.gp === 'on') body.append(h('p', { class: 'wg-lbl' }, 'Around the trip'), h('div', { class: 'rows' }, ...R.around.map(([ic, n, s]) => gRow(ic, n, s))));
+  // 7. one button
+  body.append(h('button', { type: 'button', class: 'btn wg-map', onclick: () => { S.s = 'line'; draw(); }, html: `${icon('layers', 18)} Weather on the map` }));
+  el.append(body);
+  return el;
+}
+// a lane tapped: the card folds to a bar at the foot; the route by that fact on the map, its layer on, at the trip's time
+function gBar(R, k) {
+  const d = R.days[0], l = (d.lanes || []).find((x) => x.k === k) || { k, name: k === 'wind' ? 'Wind' : 'Rain', segs: k === 'wind' ? [[0, 1, 'tl']] : [], stretches: [] };
+  const n = l.stretches.length, i = Math.min(S.gi, Math.max(0, n - 1)), s = l.stretches[i];
+  const step = (by) => () => { S.gi = (i + by + n) % n; S.gpos = Math.round(((l.stretches[S.gi][2] + l.stretches[S.gi][3]) / 2) * 100); draw(); };
+  const bar = h('section', { class: 'wg-bar', 'aria-label': GNAME[k] },
+    h('div', { class: 'wg-bar-h' }, h('b', {}, GNAME[k]),
+      h('button', { type: 'button', class: 'tool', 'aria-label': 'Back to the weather card', onclick: () => { S.gs = 'card'; draw(); }, html: icon('chevronUp', 20) }),
+      h('button', { type: 'button', class: 'tool', 'aria-label': `Close, and clear the ${k} from the map`, onclick: () => { S.gs = 'card'; draw(); }, html: icon('close', 20) })),
+    h('div', { class: 'wg-step' },
+      h('button', { type: 'button', class: 'tool', 'aria-label': `Previous stretch`, disabled: n < 2 ? '' : null, onclick: step(-1), html: icon('chevronLeft', 20) }),
+      h('span', { 'aria-live': 'polite' }, n ? `${GSTEP[k]}, ${i + 1} of ${n}` : k === 'wind' ? 'Nowhere against you' : 'Dry the whole way', s ? h('small', {}, s[0]) : null),
+      h('button', { type: 'button', class: 'tool', 'aria-label': `Next stretch`, disabled: n < 2 ? '' : null, onclick: step(1), html: icon('chevronRight', 20) })),
+    h('div', {}, h('div', { class: 'wg-slide' }, gTrack(l), h('input', { type: 'range', min: '0', max: '100', value: String(S.gpos), 'aria-label': 'Along the trip', oninput: (ev) => { S.gpos = +ev.target.value; gMove(); } })),
+      h('div', { class: 'wg-ticks' }, h('span', {}, R.from), h('span', {}, 'drag to move along the trip'), h('span', {}, R.to))),
+    gKey(k, new Set(l.segs.map((x) => x[2]))));
+  return bar;
+}
+// the map: an illustrative route drawn over the screenshot (it isn't the screenshot's own), by sport, or by the tapped lane
+const G_ROUTE = [[.06, .86], [.2, .72], [.36, .66], [.48, .5], [.6, .44], [.72, .34], [.84, .26], [.88, .14], [.78, .06]];
+function gRegion() { // the map's room in the frame: above the card at half on a phone, right of the card on a desktop
+  if (!phone()) return [790, 90, 280, 540];
+  const w = S.f === '360' ? 360 : 390, hh = S.f === '360' ? 740 : 844;
+  return [24, 120, w - 48, (S.size === 'half' || S.gs.endsWith('lane') ? hh * (S.gs.endsWith('lane') ? 0.62 : 0.46) : hh * 0.4) - 130];
+}
+const gXY = ([x, y]) => { const [L, T0, W, H] = gRegion(); return [L + x * W, T0 + y * H]; };
+function gSub(f0, f1) { // the route's points from fraction f0 to f1 of its length
+  const P = G_ROUTE.map(gXY), Ls = [0]; for (let i = 1; i < P.length; i++) Ls.push(Ls[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  const T1 = Ls.at(-1), at = (f) => { const dd = f * T1; let i = 1; while (i < P.length - 1 && Ls[i] < dd) i++; const k = (dd - Ls[i - 1]) / (Ls[i] - Ls[i - 1] || 1); return [P[i - 1][0] + (P[i][0] - P[i - 1][0]) * k, P[i - 1][1] + (P[i][1] - P[i - 1][1]) * k]; };
+  return [at(f0), ...P.filter((_, i) => Ls[i] > f0 * T1 && Ls[i] < f1 * T1), at(f1)];
+}
+const gPts = (pts) => pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+function gMap() {
+  if (S.z === '200') return [];
+  const R = GT[S.gt], d = R.days[0], lane = S.gs.endsWith('lane') ? S.gs.replace('lane', '') : null, l = lane && (d.lanes || []).find((x) => x.k === lane);
+  const fw = phone() ? (S.f === '360' ? 360 : 390) : 1100, fh = phone() ? (S.f === '360' ? 740 : 844) : 700;
+  let s = `<svg class="wg-mapsvg" id="wg-mapsvg" width="${fw}" height="${fh}" aria-hidden="true"><rect width="${fw}" height="${fh}" fill="var(--page)" opacity="${lane ? .8 : .55}"/>`;
+  if (lane === 'wind') { for (let y = 40; y < fh; y += 70) for (let x = (y / 70 % 2) * 40; x < fw; x += 90) s += `<path d="M${x} ${y}l26 10" stroke="rgba(15,23,42,.35)" stroke-width="2" stroke-linecap="round"/>`; }
+  if (lane === 'rain' || lane === 'thunder') { const [x, y] = gSub(.6, .62)[0]; s += [[0, 0, 70], [40, -30, 46], [-30, 24, 40]].map(([dx, dy, r]) => `<circle cx="${x + dx}" cy="${y + dy}" r="${r}" fill="var(--rain-rain)" opacity=".22"/>`).join(''); }
+  s += `<polyline points="${gPts(gSub(0, 1))}" fill="none" stroke="rgba(15,23,42,.55)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const parts = l ? [[0, 1, 'var(--rail)'], ...l.segs.map(([a, b, c]) => [a, b, c === 'th' ? '#f59e0b' : GC[c]])] : d.legs.map(([k, a, b]) => [a, b, `var(--sport-${k})`]);
+  for (const [a, b, c] of parts) s += `<polyline points="${gPts(gSub(a, b))}" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const [sx, sy] = gSub(0, 0)[0], [ex, ey] = gSub(1, 1)[0];
+  s += `<circle cx="${sx}" cy="${sy}" r="6" fill="#fff" stroke="#111" stroke-width="2"/><circle cx="${ex}" cy="${ey}" r="6" fill="#111" stroke="#fff" stroke-width="2"/><g id="wg-pvmap"></g>`;
+  if (lane) { const [x, y] = gSub(S.gpos / 100, S.gpos / 100)[0]; s += `<circle id="wg-you" cx="${x}" cy="${y}" r="9" fill="var(--surface-solid)" stroke="var(--text)" stroke-width="3"/>`; }
+  const out = [h('div', { html: `${s}</svg>` }).firstChild];
+  if (lane) out.push(h('div', { class: 'wg-chip', id: 'wg-chip' }, gChipText()));
+  return out;
+}
+const gClock = (f) => { const R = GT[S.gt], m = (t) => +t.slice(0, 2) * 60 + +t.slice(3); const v = Math.round((m(R.from) + (m(R.to) - m(R.from)) * f) / 5) * 5; return `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`; };
+const gChipText = () => { const R = GT[S.gt], f = S.gpos / 100; return `${GNAME[S.gs.replace('lane', '')].split(' ')[0]} · around ${gClock(f)} · km ${Math.round(R.km * f)}`; };
+function gMove() { const c = document.getElementById('wg-chip'), y = document.getElementById('wg-you'); if (c) c.textContent = gChipText(); if (y) { const [x, yy] = gSub(S.gpos / 100, S.gpos / 100)[0]; y.setAttribute('cx', x); y.setAttribute('cy', yy); } }
+// pointing previews (a desktop) and keyboard focus: that part lit on the trip line and on the map, with its words; the map stays
+function gPreview(fr) {
+  const clear = () => { fr.querySelectorAll('.lit').forEach((e) => e.classList.remove('lit')); fr.querySelectorAll('.wg-hl, .wg-callout').forEach((e) => e.remove()); const g = fr.querySelector('#wg-pvmap'); if (g) g.innerHTML = ''; };
+  const show = (t) => {
+    clear(); const [a, b] = t.dataset.pv.split('-').map(Number), n = t.dataset.note;
+    if (n) { t.closest('li')?.classList.add('lit'); fr.querySelector(`.wg-line [data-n="${n}"]`)?.classList.add('lit'); }
+    else { const ln = t.closest('.wg-day')?.querySelector('.wg-line') || fr.querySelector('.wg-line'); ln?.append(h('i', { class: 'wg-hl', style: `left:${a * 100}%; width:${(b - a) * 100}%` })); }
+    const g = fr.querySelector('#wg-pvmap'); if (!g) return;
+    g.innerHTML = `<polyline points="${gPts(gSub(a, b))}" fill="none" stroke="var(--focus)" stroke-width="11" stroke-opacity=".45" stroke-linecap="round" stroke-linejoin="round"/>`;
+    if (!phone()) { const [x, y] = gSub((a + b) / 2, (a + b) / 2)[0]; fr.append(h('div', { class: 'wg-callout', style: `left:${x}px; top:${y}px` }, t.dataset.say)); }
+  };
+  for (const ev of ['pointerover', 'focusin']) fr.addEventListener(ev, (e) => { const t = e.target.closest('[data-pv]'); if (t && (ev === 'focusin' || !phone())) show(t); });
+  for (const ev of ['pointerout', 'focusout']) fr.addEventListener(ev, (e) => { const t = e.target.closest('[data-pv]'); if (t && !t.contains(e.relatedTarget)) clear(); });
+}
+
 // ---------------------------------------------------------------- Today, from main: Go and the timeline window
 function today() {
   return h('div', { class: 'shots' },
@@ -884,7 +1154,10 @@ const SW = [
   ['Choices', 'lm', [['two', 'Two dropdowns (chosen 11-10)'], ['corners', 'Two buttons at the corners'], ['today', 'Today: one menu']]],
   ['Open', 'mo', [['colour', 'Map colour'], ['top', 'On top'], ['none', 'Closed']]],
   ['Wind', 'wind', [['a', 'a) A colour only'], ['b', 'b) Its speed a colour, lines on top (chosen 11-10)'], ['c', 'c) Lines on top only']]],
-  ['Card', 'cf', [['f', 'F: a verdict, then numbers in place (11-11)'], ['e', 'E as drawn (11-10)']]],
+  ['Card', 'cf', [['g', 'G: the trip line (11-11)'], ['f', 'F: a verdict, then numbers in place (11-11)'], ['e', 'E as drawn (11-10)']]],
+  ['Trip', 'gt', [['quiet', 'A quiet short ride'], ['long', 'A long ride: rain, headwind, thunder'], ['multi', 'Ride, paddle and hike, with a night']]],
+  ['Planned sources', 'gp', [['off', 'Off: what Polku fetches today'], ['on', 'On: #911–#914, #862']]],
+  ['Showing', 'gs', [['card', 'The card'], ['wind', 'Wind on the way, opened'], ['hours', 'Hour by hour, opened'], ['windlane', 'After a tap on the wind lane'], ['rainlane', 'After a tap on the rain lane'], ['thunderlane', 'Thunder lane'], ['waveslane', 'Waves lane']]],
   ['Later', 'later', [['now', 'Now (6b)'], ['later', 'With #911–#914 and #862']]],
   ['Size', 'size', [['half', 'Half'], ['full', 'Full']]],
   ['Trip', 'trip', [['day', 'A day trip'], ['night', 'With a night']]],
@@ -895,9 +1168,10 @@ const SW = [
   ['Zoom', 'z', [['100', '100 %'], ['200', '200 %']]],
 ];
 const isE = () => S.v === 'trip';
-const WHEN = { cf: () => isE() && S.s === 'card', hrs: () => S.v === 'site' || (isE() && S.cf === 'e'), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
+const isG = () => isE() && S.s === 'card' && S.cf === 'g';
+const WHEN = { cf: () => isE() && S.s === 'card', gt: isG, gp: isG, gs: isG, trip: () => !isG(), data: () => !isG(), hrs: () => S.v === 'site' || (isE() && S.cf === 'e'), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
   wind: () => isE() && (S.s === 'now' || S.s === 'layers' || (S.s === 'line' && S.lm !== 'today')), later: () => isE() && S.cf === 'e' };
-const HIDE = { s: (v) => (isE() ? v === 'map' : v === 'now' || v === 'layers'), mo: (v) => S.lm === 'today' && v === 'top' };
+const HIDE = { s: (v) => (isE() ? v === 'map' : v === 'now' || v === 'layers'), mo: (v) => S.lm === 'today' && v === 'top', gs: (v) => v === 'thunderlane' || v === 'waveslane' };
 function bars() {
   const el = document.getElementById('bars'); el.replaceChildren();
   for (const [label, k, opts] of SW) {
@@ -917,10 +1191,22 @@ const CAP_E = {
   line: () => `The weather line is the map’s weather now, no longer the card folded: the hour, play, the strip, and ${{ two: 'two dropdowns on a row of their own at its foot: the map’s colour, one at a time, and what goes on top, any mix', corners: 'two of the map’s buttons over its corners, as Zoom Earth has them at its time bar’s: On top at the left, the map’s colour at the right, nearest the thumb; the line keeps its height', today: 'today’s one menu (main): every layer ticks, so Rain and Temperature go on together too' }[S.lm]}. ${S.lm === 'today' ? '' : { a: 'a) Wind is a colour only: with Rain on, the wind doesn’t show at all.', b: 'b) Wind speed is a colour, and Wind lines go on top of any colour: here white over Rain.', c: 'c) Wind is its lines on top only, coloured by its speed, over Rain’s blues.' }[S.wind]} ✕ closes the line and the map goes back to Now, keeping its layers. The Weather button, pressed, shows the hour’s temperature. Tap the map to close a menu.`,
   now: () => 'The map at Now, the line closed: what’s on stays on, at Now (Q1). The Weather button shows the sky and the temperature at the map’s middle, once you’ve used the weather once; until then it says Weather, as today (Q8). Weather at places is the map’s overview, and what Weather turns on the first time (Q3). Tap Weather to open the line.',
   layers: () => 'Layers’ weather group: the same two choices by the same rule, as chips to pick one colour and switches for what goes on top. The Timeline switch goes (Q1): the Weather button opens the line.',
-  card: () => `E: the trip’s weather only: the day’s reading, the hours, the wind on the way and Time on the way; On the map leaves the card for the weather line. ${S.later === 'later' ? 'Later: a row each, with a short line and ›: warnings first (#911), then Around the trip: measured nearby (#912), road cameras (#913), sun, moon and sky (#914) and the water (#862).' : 'Switch Later to see where #911–#914 and #862 go.'}`,
+  card: () => (S.cf === 'g' ? CAP_G() : `E: the trip’s weather only: the day’s reading, the hours, the wind on the way and Time on the way; On the map leaves the card for the weather line. ${S.later === 'later' ? 'Later: a row each, with a short line and ›: warnings first (#911), then Around the trip: measured nearby (#912), road cameras (#913), sun, moon and sky (#914) and the water (#862).' : 'Switch Later to see where #911–#914 and #862 go.'}`),
 };
+// G's captions (2026-11-11)
+const CAP_G = () => ({
+  card: `G, the trip line (the plan's Round 5): one sentence; up to three notes, worst first (the plan's "Which notes win"), their numbers on the trip line where each happens; the numbers always in their places, the waves a fourth on a paddle only; the trip line, each leg in its sport's colour, with a lane under it for each fact that counts, its name and value at its start. ${S.gt === 'quiet' ? 'Nothing changes on the way, so there is no trip line and no lanes. ' : ''}${S.gt === 'multi' ? 'One trip line a day; a day under about 30 minutes is a line of words; the waves are drawn on the paddle only. ' : ''}${S.gp === 'on' ? 'Planned sources on: a row each under Around the trip, and any of them can raise a note (a warning merged with the forecast\'s thunder, the cold water). ' : 'Planned sources off: what Polku fetches today. '}A tap on a note frames its place on the map; on a lane, the card folds to a bar. On a desktop, pointing at a note, a lane or a stretch lights it on the trip line and on the map, with its words; the keyboard's focus does the same.`,
+  wind: 'Wind on the way, opened in place: one stacked bar with its key on one line, then every stretch against you, strongest first, each a row that frames it on the map; the strongest gusts; Show the wind on the map does what a tap on the wind lane does.',
+  hours: 'Hour by hour, opened in place: the hours you’re out with one either side (muted), each read where you’ll be then, with a column saying where that is.',
+  windlane: 'After a tap on the wind lane: the card folds to this bar. The route is drawn by head- and tailwind (illustrative, over the screenshot), and the map’s wind is on. The arrows step from one stretch against you to the next; the slider moves you along the trip and the map’s hour follows (the chip at the top); ⌃ goes back to the card; ✕ clears the map.',
+  rainlane: 'After a tap on the rain lane: the same bar for the rain. The route is drawn by the rain where you’ll be when you get there, and the map’s rain is on at that hour.',
+  thunderlane: 'After a tap on the thunder lane: the forecast’s thunder where you’ll be, and the map’s thunder on.',
+  waveslane: 'After a tap on the waves lane: the waves on the paddle’s legs, by the kayak’s limit.',
+}[S.gs]);
 function draw() {
   if (isE() && S.s === 'map') S.s = 'card';
+  if (S.gs !== draw.gs || S.gt !== draw.gt) { S.gi = 0; S.gpos = null; draw.gs = S.gs; draw.gt = S.gt; } // (G: a lane opens at its first stretch)
+  if (S.gpos == null) { const l = (GT[S.gt].days[0].lanes || []).find((x) => `${x.k}lane` === S.gs), st = l && l.stretches[0]; S.gpos = st ? Math.round(((st[2] + st[3]) / 2) * 100) : 50; }
   if (!isE() && (S.s === 'now' || S.s === 'layers')) S.s = 'route';
   const p = new URLSearchParams(); for (const [k, v] of Object.entries(S)) p.set(k, v); history.replaceState(null, '', `?${p}`);
   bars();
@@ -928,7 +1214,7 @@ function draw() {
   if (S.v === 'today') { stage.append(today()); return; }
   const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}` });
   fr.append(h('img', { class: 'mk-map', src: `${PIC}bg-${phone() ? 'phone' : 'desk'}.jpg`, alt: '' }));
-  if (isE()) fr.append(...mapWx());
+  if (isE()) fr.append(...(isG() ? gMap() : mapWx()));
   if (S.s === 'now' || S.s === 'layers') { const pl = planner(); if (phone()) { pl.classList.add('peek'); pl.classList.remove('half'); } fr.append(pl); if (S.s === 'layers') fr.append(layersPanel()); }
   else if (S.s === 'line') {
     if (!phone()) {
@@ -956,6 +1242,7 @@ function draw() {
   if (isE() && (!phone() || S.s === 'line' || S.s === 'now')) wxFab(fr);
   if (isE() && S.s === 'line' && S.mo !== 'none') { const a = fr.querySelector(`[data-mk="${S.lm === 'today' ? 'colour' : S.mo}"]`); if (a) { const m = menuEl(); fr.append(m); placeMenu(fr, m, a); } }
   fr.addEventListener('click', (ev) => { if (S.mo !== 'none' && !ev.target.closest('.mk-menu, [data-mk]')) { S.mo = 'none'; draw(); } });
+  if (isG()) gPreview(fr);
   const cap = isE() && CAP_E[S.s] ? CAP_E[S.s]() : S.s === 'route' || S.s === 'line' ? CAP[S.s] : CAP[S.s] + (S.v === 'site' ? 'D: each day as weather sites read it (yr, FMI, Foreca at 390 px, 2026-11-07): the sky and the temperature, three small lines beside them (feels like, rain in mm, the wind and its gust with its arrow), and on a paddle the waves and the water; the dark, then the sun’s times on a line of their own; then the hours as FMI’s table and yr’s graph. ' : S.v === 'together' ? 'C: each day’s big numbers first, a colour for each kind (the temperature and how it feels, the wind and its gusts, the rain, the waves on a paddle); the dark on a line of its own, the sun’s times on the next; then the 12 hours as a graph in the same colours. ' : S.v === 'graph' ? 'B: each day is a line in words and a graph of 12 hours at the start, a column an hour: the wind (m/s, its arrow), the temperature, rain, the dark shaded, your trip in green.' : 'A: each day in words: its reading (the sky, the temperature, the wind with its gusts, the rain) and its sun, saying when the trip is in the dark.')
     + (phone() && S.size === 'half' && S.s !== 'route' ? ' At half, this is all a phone shows before a swipe.' : '');
   stage.append(h('div', {}, fr, h('p', { class: 'cap' }, cap)));
