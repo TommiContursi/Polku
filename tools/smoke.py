@@ -13295,30 +13295,30 @@ def toolbox(chrome):
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
     # a narrow desktop: the toolbar folds before the map's buttons, level with it at the map's foot (#468), with the
-    # timeline open. There the mode's name stays (Mode ▾, #869); the longest words, MTB's Roads to the trail and Paddle's
-    # Over water with Near the shore, shorten the style's name too (fold4), and only they do
-    for sport, styles in (('mtb', (('balanced', False), ('transfer', True))), ('paddle', (('shore', True),))):
+    # timeline open. As in Mode ▾'s mock-up (#869), it fits in one row with the style's name shortened (fold4) and the
+    # mode's name gone (foldM), whatever the sport and style
+    for sport, styles in (('mtb', ('balanced', 'transfer')), ('paddle', ('shore',))):
         name = f'1024x768 {sport}'
         pg = page(1024, 768, False, sport)
         pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
         if sport == 'paddle':
             pg.js("polku.planner.setMode('water'); true")
-        for style, short in styles:
+        for style in styles:
             pg.js(f"polku.planner.setStyle({{ p: '{style}', v: {{}}, wet: 'auto' }}); true")
             placed(pg)
             pg.js(SETTLED)
             e = pg.js(ON_EDGE)
-            if not (e['edge'] and e['round'] and e['smaller'] and e['together'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or ('fold4' in e['folds']) != short or 'tb-rows' in e['folds']:
+            if not (e['edge'] and e['round'] and e['smaller'] and e['together'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or not {'fold4', 'foldM'} <= set(e['folds']) or 'tb-rows' in e['folds']:
                 fails.append(f'{name}, {style}: the toolbar {e}')
         d = dupes(pg, name)
         if pg.js("document.getElementById('btn-fit').hidden") or 'Show the whole route' in d['bar']:
             fails.append(f"{name}: Show the whole route isn’t in the map’s column alone (the toolbar has {', '.join(d['bar'])})")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
-    # a narrower window (200 % on a 1920 px screen): fully folded, the toolbar still doesn't fit beside the panel, so it
+    # the narrowest window with the panel beside the map: fully folded, the toolbar still doesn't fit beside it, so it
     # takes a second row, growing upward, clear of the map's buttons, and the scale and the credits ride above it (#468)
-    name = '960x700'
-    pg = page(960, 700, False)
+    name = '900x700'
+    pg = page(900, 700, False)
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
     placed(pg)
     pg.js(SETTLED)
@@ -13340,7 +13340,7 @@ def toolbox(chrome):
         if pg.js("polku.planner.mode") != mode:
             fails.append(f'{name}: {label} in Mode ▾\'s menu left the mode at {pg.js("polku.planner.mode")}')
         placed(pg)
-        seen.append(pg.js("(() => { const t = polku.planner.tools, at = (b) => Math.round(b.getBoundingClientRect().left) + '+' + Math.round(b.getBoundingClientRect().width); return at(polku.planner.els.modePick) + ' ' + [...t.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent).map((b) => (b.getAttribute('aria-label') || b.textContent.trim()).replace(/^Next leg: .*/, 'Next leg')).join('|'); })()"))
+        seen.append(pg.js("(() => { const t = polku.planner.tools, at = (b) => Math.round(b.getBoundingClientRect().left) + '+' + Math.round(b.getBoundingClientRect().width); return at(polku.planner.els.modePick) + ' ' + [...t.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent).map((b) => (b.getAttribute('aria-label') || b.textContent.trim()).replace(/^(Next leg|Draw the next leg): .*/, '$1')).join('|'); })()"))
     if len(set(seen)) != 1:
         fails.append(f'{name}: the toolbar changed as the mode changed (the modes, then what shows): ' + ' / '.join(seen))
     fails += [f'{name} console: {x[:160]}' for x in pg.errors()]
