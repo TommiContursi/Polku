@@ -81,16 +81,16 @@ Close with where the picker is running (URL or file path) and the keys to flip.
 
 ### Phase 6 — Promote on selection
 
-When the user picks: integrate that variant where it belongs, following the project's existing conventions (file layout, naming, token usage), then delete the prototype surface per Hard Rule 5. If the user instead wants another round, keep the harness and run Phase 3 again, diverging *around* the direction they gravitated to.
+When the user picks: integrate that variant where it belongs, following the project's existing conventions (file layout, naming, token usage), then follow Hard Rule 5. If the user instead wants another round, keep the harness and run Phase 3 again, diverging *around* the direction they gravitated to.
 
 ## Invocation Variants
 
 | Invocation | Behavior |
 | --- | --- |
-| `<description>` | Full workflow: scope → recon → 3 variants → picker → wait for choice |
-| `<description> x5` | Same, with that many variants (capped at 5) |
+| `<description>` | Full workflow: scope → recon → variants → picker → wait for choice |
+| `<description> x5` | Same, with that many variants, within what Phase 3 allows |
 | `riff <variant>` | New round: keep the harness, generate a fresh set diverging around the named variant's direction |
-| `keep <variant>` | Promote that variant into the codebase and delete the prototype surface |
+| `keep <variant>` | Promote that variant into the codebase and follow Hard Rule 5 |
 | `keep <variant>, leave the picker` | Promote, but keep the prototype surface around |
 
 ## Tone
