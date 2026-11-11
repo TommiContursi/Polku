@@ -3106,6 +3106,10 @@ HEADS = """(async () => {
   if (behind.length) errs.push(`winterWarnings, −10 °C with the wind behind you: ${behind.map((x) => x.text).join(' / ')}`);
   expect('winterWarnings, on the water', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, attr: attrs('paddle', [[0, 60, {}, 'water']]), wind: { ...wa.wind, temp: fill(0), precip: fill(0), snowfall: fill(0) } }), [[/^Ice season/, 'read', ...F]]);
   expect('iceWarnings', p.iceWarnings({ along, attr: Array.from(along, () => ({ ice: true })) }), [[/^On the ice/, 'read', 'calculated', 'your route over the ice']]);
+  // thunder in the forecast where you'd be (#869): a warning in any season, from where it starts; none past the forecast's reach
+  const storm = Uint8Array.from({ length: n }, (_, i) => (i >= 20 && i < 30 ? 1 : 0));
+  expect('thunderWarnings', p.thunderWarnings({ along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: -1 } }), [[/^Thunder possible around \\d\\d:\\d0, near km 1$/, 'read', ...F]]);
+  if (p.thunderWarnings({ along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: 20 } }).length) errs.push('thunderWarnings: thunder past the forecast\\'s reach is a warning');
   // the stops: the bike left behind, and a short night
   const sp = ['mtb', 'hike', 'mtb'], four = [[23.80, 61.5], [23.81, 61.5], [23.83, 61.5], [23.84, 61.5]];
   const st = p.stopWarnings.call({ legs: [{}, {}, {}], legSport: (i) => sp[i], points: four, carryAt: () => false, lengthTo: (i) => i * 1000, nameOf: (i) => `P${i}`, gearLabel: () => 'The bike', clockOf: () => '23:00' },
@@ -19476,7 +19480,7 @@ PF_JS = """(async () => {
   const grey = [C.colorAt(a, k - 1, 'wind'), C.colorAt(a, k, 'wind'), C.colorAt(a, n - 1, 'temp'), C.colorAt(a, n - 1, 'rain')];
   if (grey[0] === C.NO_FORECAST || grey.slice(1).some((c) => c !== C.NO_FORECAST)) errs.push(`the weather's colours at the cut: ${grey.join(' ')}`);
   const km = (a.along[k] / 1000).toFixed(1), not = p.headsUp().not.find((x) => x.key === 'beyond'), all = [...p.headsUp().read, ...p.headsUp().look].map((x) => x.text);
-  if (!not || not.text !== `No forecast yet from km ${km}, ${p.clockOf(a.wind.beyondSec)}` || not.note !== 'Wind, rain and waves aren’t checked from there.') errs.push(`Not checked: ${JSON.stringify(not)}`);
+  if (!not || not.text !== `No forecast yet from km ${km}, ${p.clockOf(a.wind.beyondSec)}` || not.note !== 'Wind, rain, thunder and waves aren’t checked from there.') errs.push(`Not checked: ${JSON.stringify(not)}`);
   if (all.some((t) => /cold|Frostbite/.test(t))) errs.push(`cold past the forecast is a warning: ${all.join(' / ')}`);
   set(cold(1, k));
   if (!p.headsUp().read.some((x) => /Frostbite|Very cold/.test(x.text))) errs.push('cold within the forecast is no warning');

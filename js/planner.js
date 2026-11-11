@@ -2431,6 +2431,20 @@ export class Planner {
   }
 
   // Heads-up in winter: snow and fresh snow, slippery, the cold, the ways in winter, ice on the water
+  // Thunder in the forecast where you'd be then (#869): a warning in any sport and season, from where it starts to where it ends
+  thunderWarnings(a) {
+    const w = a.wind;
+    if (!w || !w.thunder) return [];
+    let i0 = -1, i1 = -1;
+    for (let i = 0; i < a.along.length; i++) if (w.thunder[i] && forecastKnown(w, i)) { if (i0 < 0) i0 = i; i1 = i; }
+    if (i0 < 0) return [];
+    const at = Math.round(tripTimes(a).at(i0) / 600) * 600; // (around: the forecast is hourly)
+    return [{ at: a.along[i0], len: a.along[i1] - a.along[i0], kind: 'thunder', ic: 'thunder', noAvoid: true,
+      text: `Thunder possible around ${this.clockOf(at)}, near km ${Math.max(1, Math.round(a.along[i0] / 1000))}`,
+      note: 'the forecast’s thunder where you’d be then · keep off open water, ridges and lone trees, and know where you could shelter',
+      tier: 'read', src: { kind: 'estimate', by: 'the forecast' } }];
+  }
+
   winterWarnings(a) {
     const set = this.app.winter ? this.app.winter() : { on: false, setting: 'auto' };
     const w = a.wind;
@@ -6806,7 +6820,7 @@ export class Planner {
     if (!a) return out;
     // a stand-in for a leg not routed yet is its own item, not a Straight line too
     const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Freehand/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a), ...this.iceWarnings(a), ...this.routerWarnings()].sort((x, y) => x.at - y.at);
+    const all = [...a.warnings.filter((w) => !(/^Freehand/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a), ...this.thunderWarnings(a), ...this.iceWarnings(a), ...this.routerWarnings()].sort((x, y) => x.at - y.at);
     const hidden = hiddenKinds();
     for (const w of all) {
       const k = hideKind(w);
@@ -6897,8 +6911,8 @@ export class Planner {
     if (a.windError) out.push({ key: 'weather', by: 'Open-Meteo', text: 'The forecast didn’t answer', note: `${typeof a.windError === 'string' ? `${a.windError}. ` : ''}The wind, the rain and the cold on the way aren’t known, and the time is without the wind.`, ranges: null, retry: ask('weather', () => this.loadWind(a)) });
     // past the forecast's reach (10 days, #465): its last hour isn't used, so wind, rain and waves aren't known there
     const w = a.wind;
-    if (w && w.beyond === 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: 'No forecast yet for this trip', note: 'Wind, rain and waves aren’t checked: the forecast reaches 10 days ahead. Sunset and the dark still count.', ranges: null });
-    else if (w && w.beyond > 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: `No forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}, ${this.clockOf(w.beyondSec)}`, note: 'Wind, rain and waves aren’t checked from there.', ...place([[a.along[w.beyond], end - a.along[w.beyond]]]) });
+    if (w && w.beyond === 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: 'No forecast yet for this trip', note: 'Wind, rain, thunder and waves aren’t checked: the forecast reaches 10 days ahead. Sunset and the dark still count.', ranges: null });
+    else if (w && w.beyond > 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: `No forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}, ${this.clockOf(w.beyondSec)}`, note: 'Wind, rain, thunder and waves aren’t checked from there.', ...place([[a.along[w.beyond], end - a.along[w.beyond]]]) });
     const at = (x) => (x.ranges ? x.at : Infinity);
     return out.sort((x, y) => (at(x) === at(y) ? 0 : at(x) < at(y) ? -1 : 1));
   }
@@ -7387,7 +7401,7 @@ export class Planner {
       return row;
     }));
   }
-  skyAt(a, i) { const w = a.wind; return skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, nightAt(tripTimes(a).at(i), a.pts[i])); }
+  skyAt(a, i) { const w = a.wind; return skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, nightAt(tripTimes(a).at(i), a.pts[i]), w.thunder?.[i] === 1); }
   // Whether a day is wet, one rule for the box, the reading, the hours and the graph (the review of 2026-11-11): rain where
   // you are on the route's samples, or in one of your hours; its strongest rate of either, and snow where most of it is
   dayRain(a, d, wx) {

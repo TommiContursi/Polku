@@ -9,6 +9,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The route coloured by **Wind** has new colours: the stronger the wind, the darker and deeper its colour, so a strong headwind stands out on the light map, the night map and the planner alike. A tailwind is teal, so it stays apart from a headwind's red without colour vision.
 - A headwind counts as strong from the sport's limit: 6 m/s on a ride, 8 on foot and 5 on the water. Below that it's a light headwind, so 3 m/s against you on a ride no longer shows as strong.
 
+### Thunder in Check ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- Check warns when the forecast has thunder where you'd be: "Thunder possible around 15:30, near km 34", with what to do. It's a warning in any sport and season.
+- Where the route's weather shows its sky, thunder shows as a thunder cloud. Where the forecast doesn't reach, Check says thunder isn't checked there, as it says for the wind and the rain.
+
 ### The cold, by the wind's direction ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - **Very cold** and **Frostbite risk** in Check now count the wind by its direction: a headwind adds to the air you make with your own speed, and a tailwind takes from it. Before, the wind's speed was added to yours whichever way it blew, so a ride with the wind behind you read as cold as one into it.

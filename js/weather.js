@@ -185,7 +185,8 @@ async function fetchPoints(points, hours = 49) {
 
 /** The sky's icon for a forecast: snow or rain where it falls, else by the cloud cover (%), the moon at night; partly
  *  cloudy where the cover isn't known (a cell from before it was asked for). The timeline and the route's list (#761). */
-export function skyKind(rain, temp, cloud, night) {
+export function skyKind(rain, temp, cloud, night, thunder = false) {
+  if (thunder) return 'thunder';
   if (rain >= 0.1) return temp < 0.5 ? 'snow' : 'rain';
   if (!(cloud >= 0)) return night ? 'moon' : 'cloudSun';
   return cloud >= 70 ? 'cloud' : cloud >= 25 ? (night ? 'cloud' : 'cloudSun') : night ? 'moon' : 'sun';
@@ -238,10 +239,11 @@ export async function windAlong(pts, along, tAt, startSec) {
   const temp = new Float32Array(n), precip = new Float32Array(n), cloud = new Float32Array(n).fill(NaN);
   const snow = new Float32Array(n).fill(NaN), snowfall = new Float32Array(n).fill(NaN); // NaN: a cell from before snow was asked for
   const feel = new Float32Array(n).fill(NaN), cell = new Uint8Array(n); // (feels like: and before it was); each sample's forecast
+  const thunder = new Uint8Array(n); // 1: thunder in the forecast (WMO's codes 95–99) in the hour you're there or the next (#869)
   for (let i = 0; i < n; i++) {
     cell[i] = Math.min(k - 1, Math.round((along[i] / total) * (k - 1)));
     const s = series[cell[i]];
-    const w = sampleAt(s, startSec + (tAt[i] || 0));
+    const t = startSec + (tAt[i] || 0), w = sampleAt(s, t);
     // heading over ±2 samples keeps tiny zig-zags from flipping head/tail
     const a = pts[Math.max(0, i - 2)], b = pts[Math.min(n - 1, i + 2)];
     const hdg = bearing(a, b);
@@ -253,16 +255,17 @@ export async function windAlong(pts, along, tAt, startSec) {
     if (w.snowfall != null) snowfall[i] = w.snowfall;
     if (w.feel != null) feel[i] = w.feel;
     // past the forecast's last hour its values are that hour's: shown grey, and the time leaves the wind out (#465)
-    const known = startSec + (tAt[i] || 0) <= last;
+    const known = t <= last;
     head[i] = known ? w.speed * Math.cos(d) : 0; // >0 wind against you
     cross[i] = known ? w.speed * Math.sin(d) : 0;
+    if (known && s.code) { let j = 0; while (j < s.time.length - 2 && s.time[j + 1] <= t) j++; thunder[i] = s.code[j] >= 95 || s.code[j + 1] >= 95 ? 1 : 0; }
   }
   const first = sampleAt(series[0], startSec);
   // where the forecast runs out (the values there are its last hour's: none of the checks read them), and where
   // it's more than three days ahead (less certain): sample indexes, or -1
   const at = (t) => { for (let i = 0; i < n; i++) if (startSec + (tAt[i] || 0) > t) return i; return -1; };
   return {
-    speed, gust, dir, head, cross, temp, precip, cloud, snow, snowfall, feel, long,
+    speed, gust, dir, head, cross, temp, precip, cloud, snow, snowfall, feel, thunder, long,
     beyond: at(last), beyondSec: last, unsure: at(now + 72 * 3600),
     start: { ...first, time: startSec },
     // the hours where you are (the weather card): sample i's forecast is series[cell[i]]

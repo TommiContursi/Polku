@@ -218,7 +218,7 @@ export function routeReadout(a, i, road = '') {
 // the sky's icon at sample i, as the list's weather has it, a moon on a clear night: for a tip's weather line (#761)
 export function skyIcon(a, i) {
   const w = a.wind, sec = a.tAtWind ? tripTimes(a).at(i) : null;
-  return icon(skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, sec != null && nightAt(sec, a.pts[i])), 14);
+  return icon(skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, sec != null && nightAt(sec, a.pts[i]), w.thunder?.[i] === 1), 14);
 }
 
 export function sampleRows(a, i, road = '', water = false) {
