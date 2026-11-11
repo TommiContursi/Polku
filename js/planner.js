@@ -7377,7 +7377,7 @@ export class Planner {
       const known = a.wind && forecastKnown(a.wind, d.i0), line = this.boxLine(a, d);
       const row = item({ icon: known ? this.skyAt(a, d.i0) : 'cloudSun', label: many ? `Day ${d.n} · ${shortDate(d.t0)}` : line, line: many ? line : '', chev: true, k: `day-${d.n}`,
         onclick: (e) => this.openWeather({ day: k, el: e.currentTarget }) });
-      row.setAttribute('aria-label', `${many ? `Day ${d.n}, ${shortDate(d.t0)}` : 'The weather'}: ${line}. Open the weather on the way`);
+      row.setAttribute('aria-label', `${many ? `Day ${d.n} · ${shortDate(d.t0)}` : 'The weather'}: ${line}. Open the weather on the way`); // (its words as shown, WCAG 2.5.3)
       return row;
     }));
   }
@@ -7406,7 +7406,7 @@ export class Planner {
     if (w && w.stale) body.append(note(`Older forecast (from ${timeOf(w.from / 1000)}): Open-Meteo couldn’t be reached.`, 'stale-note'));
     if (!w) {
       body.append(note(a.windError ? (typeof a.windError === 'string' ? a.windError : 'The forecast couldn’t be loaded.') : 'Loading the forecast…'));
-      if (a.windError) body.append(h('button', { type: 'button', class: 'btn small', 'data-k': 'retry', onclick: () => this.loadWind(a) }, 'Retry'));
+      if (a.windError) body.append(h('button', { type: 'button', class: 'btn small', 'data-k': 'retry', onclick: () => this.loadWind(this.analysis) }, 'Retry'));
     } else if (w.beyond === 0) body.append(note(`No forecast yet for ${dayOf(T.start)}. Sunset and the dark still count; the forecast reaches 10 days ahead.`));
     days.forEach((d, k) => body.append(this.wxDay(a, d, k, days.length > 1)));
     if (w && w.beyond !== 0) body.append(...this.wxWay(a));
