@@ -304,7 +304,17 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .wf-lead { margin: 4px 0 -4px; font-size: var(--font-body); }
 /* ======================================================= G (2026-11-11): the trip line (the plan's Round 5) */
 .wg-body { gap: 12px; }
-.wg-say { margin: 2px 0 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; text-wrap: balance; }
+.wg-say { display: flex; align-items: center; gap: 10px; margin: 2px 0 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; text-wrap: balance; }
+.wg-say > .wx-sky { flex: none; }
+.wg .wx-sky.rain { color: var(--wx-text); } .wg .wx-sky.thunder { color: var(--look); } /* (app.css's wx-sky: the sun in --wx-sun, the rest grey) */
+.wg-hours td.sky { padding-block: 4px; } .wg-hours td.sky > span { display: inline-grid; vertical-align: middle; }
+.wg-hours :is(th, td):nth-child(2) { text-align: center; } .wg-hours :is(th, td):nth-child(-n + 3):not(:nth-child(2)) { text-align: left; }
+/* the proposed wind colours (11-12): one set for the card, the light map and the night map, made for the route's white casing;
+   the stronger the wind, the darker and more saturated, the weaker the paler; the tailwind teal, not green, so it stays apart
+   from the headwind's red without colour vision. On the card each lane sits on the route's white casing too, in both themes. */
+.wg.wc-new, .frame.wc-new { --wind-strong-head: #b8122b; --wind-head: #f4a074; --wind-cross: #f3cf7a; --wind-tail: #9fd8cf; --wind-strong-tail: #1f8a7c; --wind-calm: #cfd6dc; }
+.frame.wc-new .wg-track { box-shadow: 0 0 0 1px rgba(16, 24, 20, .3); }
+:root[data-theme="dark"] .frame.wc-new .wg-track { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .85); } /* (the route's white casing, thin) */
 .wg-dayh { margin: 4px 0 -6px; font-size: var(--font-control); font-weight: var(--weight-name); color: var(--muted); }
 .wg-notes { display: grid; margin: -2px 0 0; padding: 0; list-style: none; }
 .wg-note { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: var(--target); padding: 6px 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--font-row); line-height: 1.3; text-align: left; cursor: pointer; }
@@ -405,7 +415,7 @@ const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site', 'trip'],
   // E (2026-11-10): the line's two choices (lm), which menu is open (mo), the three winds, the card's later rows; what's on the map
   cf: pick('cf', ['e', 'f', 'g'], 'g'), // (2026-11-11: E's card as drawn; F's: a verdict in words, then the numbers in their places; G's: the trip line)
   // G (2026-11-11): the trip, the planned sources, and what the card shows (the stretch the bar's arrows are at, and the slider)
-  gt: pick('gt', ['quiet', 'long', 'multi'], 'long'), gp: pick('gp', ['off', 'on'], 'off'), gs: pick('gs', ['card', 'wind', 'hours', 'windlane', 'rainlane', 'thunderlane', 'waveslane'], 'card'), gi: 0, gpos: null,
+  gt: pick('gt', ['quiet', 'sunny', 'long', 'multi'], 'long'), wc: pick('wc', ['new', 'today'], 'new'), gp: pick('gp', ['off', 'on'], 'off'), gs: pick('gs', ['card', 'wind', 'hours', 'windlane', 'rainlane', 'thunderlane', 'waveslane'], 'card'), gi: 0, gpos: null,
   lm: pick('lm', ['today', 'two', 'corners'], 'two'), mo: pick('mo', ['none', 'colour', 'top'], 'colour'), wind: pick('wind', ['a', 'b', 'c'], 'b'), later: pick('later', ['now', 'later'], 'now'),
   col: pick('col', ['rain', 'cloud', 'wind', 'temp', 'snow', 'none'], 'rain'), top: q.get('top') ?? 'windl,places', tday: q.get('tday') ?? 'rain,wind,towns', fx: pick('fx', ['on', 'off'], 'on'), lg: pick('lg', ['fold', 'open'], 'fold') };
 
@@ -950,7 +960,7 @@ function cardF() {
 const GC = { sh: 'var(--wind-strong-head)', hd: 'var(--wind-head)', cr: 'var(--wind-cross)', tl: 'var(--wind-tail)', st: 'var(--wind-strong-tail)',
   dz: 'var(--rain-drizzle)', rn: 'var(--rain-rain)', hv: 'var(--rain-heavy)', w1: 'var(--surf-water)', w2: 'var(--route-water)' };
 const GKEY = {
-  wind: [['sh', 'against you, strong'], ['hd', 'against you'], ['cr', 'from the side'], ['tl', 'behind you']],
+  wind: [['sh', 'against you, over the limit'], ['hd', 'against you, light'], ['cr', 'from the side'], ['tl', 'behind you']],
   rain: [['dz', 'drizzle'], ['rn', 'rain'], ['hv', 'heavy']], thunder: [['th', 'thunder possible']], waves: [['w1', 'under the kayak’s limit'], ['w2', 'over it']],
 };
 const GNAME = { wind: 'Wind on the way', rain: 'Rain on the way', thunder: 'Thunder on the way', waves: 'Waves on the way' };
@@ -961,7 +971,7 @@ const GT = {
       notes: [{ tier: 'plain', ic: 'moon', t: 'Dark the whole way, 1.2 km of it unlit: take a light', at: [0, 1] }],
       nums: [['6…7°', 'feels like 1°'], ['5 m/s', 'gusts 8'], ['0 mm', 'rain']], lanes: [] }],
     wind: { share: [1, 13, 86], sum: 'Behind you 86 %', stretches: [], gust: 'Strongest gusts 8 m/s, around km 1' },
-    hours: [['Sat', [['19', 'before', '7°', '3°', '–', '5 (8)'], ['20', 'start', '7°', '2°', '–', '4 (8)'], ['21', 'km 5', '6°', '1°', '–', '5 (7)'], ['22', 'after', '6°', '1°', '–', '5 (8)']]]],
+    hours: [['Sat', [['19', 'moon', 'before', '7°', '3°', '–', '5 (8)'], ['20', 'moon', 'start', '7°', '2°', '–', '4 (8)'], ['21', 'cloud', 'km 5', '6°', '1°', '–', '5 (7)'], ['22', 'cloud', 'after', '6°', '1°', '–', '5 (8)']]]],
     around: [['warn', 'Warnings', 'None for the trip’s area and hours · FMI'], ['pin', 'Measured nearby', 'Kaisaniemi, 1 km away · 6.4°, 4 m/s, 10 min ago'], ['camera', 'Road cameras', 'One near the start'], ['moon', 'Sun and moon', 'Moon 63 %, up until 02:10']] },
   long: { leave: 'Leave Sat 13:00', there: 'there at 16:10', from: '13:00', to: '16:10', km: 42, time: '3 h 10 min · 8 min lost to the wind', pill: 'calendar',
     days: [{ say: 'Cool, then rain and a risk of thunder', sky: 'thunder', legs: [['mtb', 0, 1, 'Ride']], ticks: ['13:00 · start', 'km 21', '16:10 · 42 km'],
@@ -969,14 +979,21 @@ const GT = {
         { tier: 'plain', ic: 'rain', t: 'Rain from around 14:30, from km 20 on', at: [0.48, 1], pos: 0.48 },
         { tier: 'plain', ic: 'wind', t: 'Headwind up to 9 m/s on three stretches, the longest km 12 to 20', at: [0.28, 0.48], pos: 0.38 }],
       nums: [['11…14°', 'feels like 8°'], ['9 m/s', 'gusts 13'], ['4 mm', 'rain']],
-      lanes: [{ k: 'wind', name: 'Wind', val: 'against you on three stretches', segs: [[0, .28, 'tl'], [.28, .48, 'sh'], [.48, .71, 'cr'], [.71, .79, 'sh'], [.79, .9, 'cr'], [.9, .95, 'hd'], [.95, 1, 'tl']],
+      lanes: [{ k: 'wind', name: 'Wind', val: 'against you on three stretches', segs: [[0, .28, 'tl'], [.28, .48, 'sh'], [.48, .6, 'cr'], [.6, .71, 'hd'], [.71, .79, 'sh'], [.79, .9, 'cr'], [.9, .95, 'sh'], [.95, 1, 'tl']],
         stretches: [['km 12 to 20 · up to 9 m/s', 'around 13:55 to 14:30 · open fields', .28, .48], ['km 30 to 33 · up to 8 m/s', 'around 15:15 to 15:30', .71, .79], ['km 38 to 40 · up to 7 m/s', 'around 15:50 to 16:00', .9, .95]] },
         { k: 'rain', name: 'Rain', val: '4 mm from around 14:30', segs: [[.48, .7, 'rn'], [.7, .86, 'dz'], [.86, 1, 'rn']],
           stretches: [['km 20 to 29 · up to 2.1 mm an hour', 'around 14:30 to 15:15', .48, .7], ['km 36 to 42 · up to 1.5 mm an hour', 'around 15:40 to 16:10', .86, 1]] },
         { k: 'thunder', name: 'Thunder', val: 'possible around 15:30', segs: [[.74, .92, 'th']], stretches: [['km 31 to 39 · around 15:20 to 15:50', 'the forecast’s thunder where you’ll be then', .74, .92]] }] }],
     wind: { share: [33, 34, 33], sum: 'Against you 33 % · three stretches', gust: 'Strongest gusts 13 m/s, around km 16' },
-    hours: [['Sat', [['12', 'before', '14°', '12°', '–', '6 (9)'], ['13', 'start', '14°', '11°', '–', '7 (11)'], ['14', 'km 13', '13°', '9°', '0.4', '9 (13)'], ['15', 'km 26', '12°', '8°', '2.1', '8 (13)', 'thunder possible'], ['16', 'km 40', '11°', '8°', '1.5', '7 (12)'], ['17', 'after', '11°', '8°', '0.8', '7 (11)']]]],
+    hours: [['Sat', [['12', 'cloudSun', 'before', '14°', '12°', '–', '6 (9)'], ['13', 'cloudSun', 'start', '14°', '11°', '–', '7 (11)'], ['14', 'rain', 'km 13', '13°', '9°', '0.4', '9 (13)'], ['15', 'thunder', 'km 26', '12°', '8°', '2.1', '8 (13)', 'thunder possible'], ['16', 'rain', 'km 40', '11°', '8°', '1.5', '7 (12)'], ['17', 'rain', 'after', '11°', '8°', '0.8', '7 (11)']]]],
     around: [['warn', 'Warnings', 'Thunderstorms, Sat 14 to 18 · FMI'], ['pin', 'Measured nearby', 'Kumpula, 3 km from the start · 15.2°, 6 m/s, 10 min ago'], ['camera', 'Road cameras', 'Three along the way'], ['sun', 'Sun and moon', 'UV 5 around 13:00 · sunset 21:05']] },
+  sunny: { leave: 'Leave Sat 10:00', there: 'there at 13:40', from: '10:00', to: '13:40', km: 14, time: '3 h 40 min · 2 h 50 min moving', pill: 'calendar',
+    days: [{ say: 'Warm and sunny, a light wind', sky: 'sun', legs: [['paddle', 0, 1, 'Paddle']],
+      notes: [{ tier: 'plain', ic: 'sun', t: '', on: 'UV 7 around midday: sun cream and a hat', at: [0.4, 0.8], pos: 0.6, planned: true }],
+      nums: [['21…24°', 'feels like 24°'], ['3 m/s', 'gusts 5'], ['0 mm', 'rain'], ['0.2 m', 'waves, estimate']], lanes: [] }],
+    wind: { share: [18, 30, 52], sum: 'Behind you 52 %', stretches: [], gust: 'Strongest gusts 5 m/s, around km 9' },
+    hours: [['Sat', [['09', 'sun', 'before', '19°', '19°', '–', '2 (4)'], ['10', 'sun', 'start', '21°', '21°', '–', '2 (4)'], ['11', 'sun', 'km 4', '22°', '23°', '–', '3 (5)'], ['12', 'sun', 'km 8', '23°', '24°', '–', '3 (5)'], ['13', 'cloudSun', 'km 12', '24°', '24°', '–', '3 (5)'], ['14', 'sun', 'after', '24°', '24°', '–', '3 (4)']]]],
+    around: [['warn', 'Warnings', 'None for the trip’s area and hours · FMI'], ['pin', 'Measured nearby', 'Harmaja, 5 km away · 22.1°, 3 m/s, 10 min ago'], ['sun', 'Sun and moon', 'Sunset 22:31 · moon 41 %'], ['water', 'Water', '19 °C at the nearest station, 3 km away · no algae seen']] },
   multi: { leave: 'Leave Sat 10:00', there: 'there Sun 08:05', from: '10:00', to: '14:40', km: 17, time: '22 h 05 min · 1 h 50 min moving', pill: 'calendar',
     days: [{ head: 'Day 1 · Sat 10:00 to 14:40', say: 'Cool and dry, a fresh wind on the water', sky: 'cloud', legs: [['mtb', 0, .45, 'Ride'], ['paddle', .45, .75, 'Paddle'], ['hike', .75, 1, 'Hike']], ticks: ['10:00 · start', '14:40 · night at km 17'],
       notes: [{ tier: 'danger', ic: 'warn', t: '', on: 'Warning for wind at sea, Sat 12 to 18 (FMI)', at: [0.45, 0.75], pos: 0.45, planned: true },
@@ -987,15 +1004,17 @@ const GT = {
       nums: [['4…6°', 'feels like 0°'], ['10 m/s', 'gusts 15'], ['0 mm', 'rain'], ['0.6 m', 'waves, estimate']],
       lanes: [{ k: 'wind', name: 'Wind', val: 'against you on the crossing', segs: [[0, .45, 'cr'], [.45, .67, 'sh'], [.67, 1, 'tl']], stretches: [['km 8 to 12 · up to 10 m/s', 'around 12:05 to 13:05 · on the water', .45, .67]] },
         { k: 'waves', name: 'Waves', val: 'about 0.6 m, on the paddle only', leg: [.45, .75], segs: [[.45, .53, 'w1'], [.53, .65, 'w2'], [.65, .75, 'w1']], stretches: [['km 9 to 13 · about 0.6 m', 'around 12:20 to 13:00 · the crossing', .53, .65]] }] },
-      { head: 'Day 2 · Sun 08:00 to 08:05', short: '2°, dry, a light wind · sunrise 08:03, as you set off' }],
+      { head: 'Day 2 · Sun 08:00 to 08:05', sky: 'cloudSun', short: '2°, dry, a light wind · sunrise 08:03, as you set off' }],
     wind: { share: [22, 45, 33], sum: 'Against you 22 % · on the crossing', gust: 'Strongest gusts 15 m/s, around km 10, on the water' },
-    hours: [['Sat', [['09', 'before', '4°', '−1°', '–', '8 (12)'], ['10', 'start', '4°', '−1°', '–', '9 (13)'], ['11', 'km 6', '5°', '0°', '–', '10 (15)'], ['12', 'km 10, on the water', '5°', '1°', '–', '10 (15)'], ['13', 'km 13', '6°', '1°', '–', '9 (14)'], ['14', 'km 16', '6°', '2°', '–', '8 (12)'], ['15', 'after', '5°', '1°', '–', '7 (11)']]],
-      ['Sun', [['07', 'before', '1°', '−2°', '–', '3 (5)'], ['08', 'start', '2°', '−1°', '–', '3 (5)'], ['09', 'after', '3°', '0°', '–', '4 (6)']]]],
-    around: [['warn', 'Warnings', 'Wind at sea, Sat 12 to 18 · FMI'], ['pin', 'Measured nearby', 'Harmaja, 4 km from the crossing · 5.8°, 11 m/s, 10 min ago'], ['camera', 'Road cameras', 'Two near the start'], ['moon', 'Sun and moon', 'Dark from 16:50 at the night’s stop · moon 41 %'], ['water', 'Water', '9 °C at the nearest station, 6 km away · no algae seen']] },
+    hours: [['Sat', [['09', 'cloudSun', 'before', '4°', '−1°', '–', '8 (12)'], ['10', 'cloudSun', 'start', '4°', '−1°', '–', '9 (13)'], ['11', 'cloud', 'km 6', '5°', '0°', '–', '10 (15)'], ['12', 'cloud', 'km 10, on the water', '5°', '1°', '–', '10 (15)'], ['13', 'cloud', 'km 13', '6°', '1°', '–', '9 (14)'], ['14', 'cloudSun', 'km 16', '6°', '2°', '–', '8 (12)'], ['15', 'cloudSun', 'after', '5°', '1°', '–', '7 (11)']]],
+      ['Sun', [['07', 'moon', 'before', '1°', '−2°', '–', '3 (5)'], ['08', 'cloudSun', 'start', '2°', '−1°', '–', '3 (5)'], ['09', 'sun', 'after', '3°', '0°', '–', '4 (6)']]]],
+    around: [['warn', 'Warnings', 'Wind at sea, Sat 12 to 18 · FMI'], ['pin', 'Measured nearby', 'Harmaja, 4 km from the crossing · 5.8°, 11 m/s, 10 min ago'], ['camera', 'Road cameras', 'Two near the start'], ['moon', 'Sun and moon', 'Dark from 16:50 at the night’s stop · moon 41 %'], ['water', 'Water', 'The nearest station, 6 km away · no algae seen']] },
 };
 // the notes that show: the planned sources' only when they're on, a planned source's words where it says more, three at most
 // (in the order the plan's "Which notes win" gives; here the data is already in that order)
 const gNotes = (d) => (d.notes || []).filter((n) => S.gp === 'on' || !n.planned).map((n) => ({ ...n, t: S.gp === 'on' && n.on ? n.on : n.t })).slice(0, 3).map((n, i) => ({ ...n, n: i + 1 }));
+const GSKY = { sun: 'Sunny', cloudSun: 'Partly cloudy', cloud: 'Cloudy', rain: 'Rain', snow: 'Snow', thunder: 'Thunder', moon: 'Clear night' };
+const gSky = (k, size = 24) => h('span', { class: `wx-sky ${k}`, role: 'img', 'aria-label': GSKY[k], html: icon(k, size) });
 const pv = (a, b, say) => ({ 'data-pv': `${a}-${b}`, 'data-say': say });
 function gTripLine(d, notes) {
   const line = h('div', { class: 'wg-line', role: 'img', 'aria-label': `The trip from ${d.ticks[0].replace(' · ', ' at the ')} to ${d.ticks.at(-1).replace(' · ', ', ')}${notes.length ? `; ${notes.map((n) => `note ${n.n} at ${Math.round(n.pos * 100)} % of the way`).join(', ')}` : ''}` });
@@ -1028,21 +1047,21 @@ function gWindOpen(R) {
     h('button', { type: 'button', class: 'btn wg-map', onclick: () => { S.gs = 'windlane'; S.gi = 0; draw(); } }, 'Show the wind on the map'));
 }
 function gHours(R) {
-  const t = h('table', { class: 'wg-hours' }, h('thead', {}, h('tr', {}, ...['Time', 'You’re at', 'Temp', 'Feels', 'Rain', 'Wind (gust)'].map((c) => h('th', { scope: 'col' }, c)))));
+  const t = h('table', { class: 'wg-hours' }, h('thead', {}, h('tr', {}, ...['Time', 'Sky', 'You’re at', 'Temp', 'Feels', 'Rain', 'Wind (gust)'].map((c) => h('th', { scope: 'col' }, c)))));
   for (const [day, rows] of R.hours) {
-    if (R.hours.length > 1) t.append(h('tbody', {}, h('tr', {}, h('th', { scope: 'rowgroup', colspan: '6', style: 'text-align:left; padding-top:10px' }, day))));
-    t.append(h('tbody', {}, ...rows.map(([hh, at, te, fe, ra, wi, flag]) => h('tr', { class: at === 'before' || at === 'after' ? 'out' : '' },
-      h('td', {}, hh), h('td', {}, at, flag ? h('small', {}, flag) : null), h('td', {}, te), h('td', {}, fe), h('td', {}, ra), h('td', {}, wi)))));
+    if (R.hours.length > 1) t.append(h('tbody', {}, h('tr', {}, h('th', { scope: 'rowgroup', colspan: '7', style: 'text-align:left; padding-top:10px' }, day))));
+    t.append(h('tbody', {}, ...rows.map(([hh, sky, at, te, fe, ra, wi, flag]) => h('tr', { class: at === 'before' || at === 'after' ? 'out' : '' },
+      h('td', {}, hh), h('td', { class: 'sky' }, gSky(sky, 18)), h('td', {}, at, flag ? h('small', {}, flag) : null), h('td', {}, te), h('td', {}, fe), h('td', {}, ra), h('td', {}, wi)))));
   }
   return h('div', { class: 'wg-open' }, t, h('p', {}, 'Rain in mm an hour, wind in m/s. Each hour is the forecast for where you’ll be then.'));
 }
 function gDay(d, R, many, first) {
-  if (d.short) return h('div', { class: 'rows' }, h('div', { class: 'row', style: 'min-height:0; padding-block:8px' }, h('span', { html: icon('cloudSun', 20) }), h('span', {}, h('small', {}, d.head), d.short)));
+  if (d.short) return h('div', { class: 'rows' }, h('div', { class: 'row', style: 'min-height:0; padding-block:8px' }, gSky(d.sky, 22), h('span', {}, h('small', {}, d.head), d.short)));
   const notes = gNotes(d), lanes = (d.lanes || []);
   const line = lanes.length > 0; // (a quiet trip: no trip line, no lanes, its notes with their icons)
   return h('section', { class: 'wg-day', 'aria-label': many ? d.head : 'The weather', style: 'display:grid; gap:10px' },
     many ? h('h4', { class: 'wg-dayh' }, d.head) : null,
-    h('p', { class: 'wg-say' }, d.say),
+    h('p', { class: 'wg-say' }, gSky(d.sky, 28), h('span', {}, d.say)),
     notes.length ? h('ul', { class: 'wg-notes' }, ...notes.map((n) => h('li', {}, h('button', { type: 'button', class: `wg-note ${n.tier}`, 'data-note': String(n.n), ...pv(n.at[0], n.at[1], n.t) },
       line ? h('span', { class: `wg-n ${n.tier}`, 'aria-hidden': 'true' }, String(n.n)) : h('span', { class: 'ic', html: icon(n.ic, 20) }), h('span', {}, n.t))))) : null,
     h('div', { class: 'sheet-sum wg-nums', style: `--n:${d.nums.length}` }, ...d.nums.map(([v, s]) => h('span', { class: 'sum-item' }, h('b', {}, v), h('small', {}, s)))),
@@ -1112,7 +1131,7 @@ function gMap() {
   let s = `<svg class="wg-mapsvg" id="wg-mapsvg" width="${fw}" height="${fh}" aria-hidden="true"><rect width="${fw}" height="${fh}" fill="var(--page)" opacity="${lane ? .8 : .55}"/>`;
   if (lane === 'wind') { for (let y = 40; y < fh; y += 70) for (let x = (y / 70 % 2) * 40; x < fw; x += 90) s += `<path d="M${x} ${y}l26 10" stroke="rgba(15,23,42,.35)" stroke-width="2" stroke-linecap="round"/>`; }
   if (lane === 'rain' || lane === 'thunder') { const [x, y] = gSub(.6, .62)[0]; s += [[0, 0, 70], [40, -30, 46], [-30, 24, 40]].map(([dx, dy, r]) => `<circle cx="${x + dx}" cy="${y + dy}" r="${r}" fill="var(--rain-rain)" opacity=".22"/>`).join(''); }
-  s += `<polyline points="${gPts(gSub(0, 1))}" fill="none" stroke="rgba(15,23,42,.55)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`;
+  s += `<polyline points="${gPts(gSub(0, 1))}" fill="none" stroke="rgba(15,23,42,.35)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${gPts(gSub(0, 1))}" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`;
   const parts = l ? [[0, 1, 'var(--rail)'], ...l.segs.map(([a, b, c]) => [a, b, c === 'th' ? '#f59e0b' : GC[c]])] : d.legs.map(([k, a, b]) => [a, b, `var(--sport-${k})`]);
   for (const [a, b, c] of parts) s += `<polyline points="${gPts(gSub(a, b))}" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
   const [sx, sy] = gSub(0, 0)[0], [ex, ey] = gSub(1, 1)[0];
@@ -1156,7 +1175,8 @@ const SW = [
   ['Open', 'mo', [['colour', 'Map colour'], ['top', 'On top'], ['none', 'Closed']]],
   ['Wind', 'wind', [['a', 'a) A colour only'], ['b', 'b) Its speed a colour, lines on top (chosen 11-10)'], ['c', 'c) Lines on top only']]],
   ['Card', 'cf', [['g', 'G: the trip line (11-11)'], ['f', 'F: a verdict, then numbers in place (11-11)'], ['e', 'E as drawn (11-10)']]],
-  ['Trip', 'gt', [['quiet', 'A quiet short ride'], ['long', 'A long ride: rain, headwind, thunder'], ['multi', 'Ride, paddle and hike, with a night']]],
+  ['Trip', 'gt', [['quiet', 'A quiet short ride'], ['sunny', 'A sunny day paddle'], ['long', 'A long ride: rain, headwind, thunder'], ['multi', 'Ride, paddle and hike, with a night']]],
+  ['Wind colours', 'wc', [['new', 'Proposed (11-12)'], ['today', 'Today’s']]],
   ['Planned sources', 'gp', [['off', 'Off: what Polku fetches today'], ['on', 'On: #911–#914, #862']]],
   ['Showing', 'gs', [['card', 'The card'], ['wind', 'Wind on the way, opened'], ['hours', 'Hour by hour, opened'], ['windlane', 'After a tap on the wind lane'], ['rainlane', 'After a tap on the rain lane'], ['thunderlane', 'Thunder lane'], ['waveslane', 'Waves lane']]],
   ['Later', 'later', [['now', 'Now (6b)'], ['later', 'With #911–#914 and #862']]],
@@ -1170,7 +1190,7 @@ const SW = [
 ];
 const isE = () => S.v === 'trip';
 const isG = () => isE() && S.s === 'card' && S.cf === 'g';
-const WHEN = { cf: () => isE() && S.s === 'card', gt: isG, gp: isG, gs: isG, trip: () => !isG(), data: () => !isG(), hrs: () => S.v === 'site' || (isE() && S.cf === 'e'), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
+const WHEN = { cf: () => isE() && S.s === 'card', gt: isG, gp: isG, gs: isG, wc: isG, trip: () => !isG(), data: () => !isG(), hrs: () => S.v === 'site' || (isE() && S.cf === 'e'), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
   wind: () => isE() && (S.s === 'now' || S.s === 'layers' || (S.s === 'line' && S.lm !== 'today')), later: () => isE() && S.cf === 'e' };
 const HIDE = { s: (v) => (isE() ? v === 'map' : v === 'now' || v === 'layers'), mo: (v) => S.lm === 'today' && v === 'top', gs: (v) => v === 'thunderlane' || v === 'waveslane' };
 function bars() {
@@ -1213,7 +1233,7 @@ function draw() {
   bars();
   const stage = document.getElementById('stage'); stage.replaceChildren();
   if (S.v === 'today') { stage.append(today()); return; }
-  const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}` });
+  const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}${isG() && S.wc === 'new' ? ' wc-new' : ''}` });
   fr.append(h('img', { class: 'mk-map', src: `${PIC}bg-${phone() ? 'phone' : 'desk'}.jpg`, alt: '' }));
   if (isE()) fr.append(...(isG() ? gMap() : mapWx()));
   if (S.s === 'now' || S.s === 'layers') { const pl = planner(); if (phone()) { pl.classList.add('peek'); pl.classList.remove('half'); } fr.append(pl); if (S.s === 'layers') fr.append(layersPanel()); }

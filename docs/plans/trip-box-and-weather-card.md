@@ -304,7 +304,7 @@ The card as built in #973, and then F (a verdict, numbers in fixed places, the d
 
 ### The card's fixed places
 
-1. **One sentence** that says how it is ("Mild at first, then rain and a risk of thunder").
+1. **One sentence** that says how it is ("Cool, then rain and a risk of thunder"), starting with the sky's icon: thunder, snow or rain when the trip meets them, else the sky at the trip's middle hour (sun, sun behind cloud, cloud, or the moon at night). The icons are `skyKind()`'s, which gains thunder from the forecast's weather code 95–99. The sky gets no lane.
 2. **Up to three notes,** worst first, each with a number. Any source can raise a note when it changes a decision.
 3. **The numbers,** always in the same places: the temperature with feels like, the wind with its gusts, the rain. The waves are a fourth, on a paddle only.
 4. **The trip line:** one line from start to arrival, each leg in its sport's colour, with the notes' numbers where each thing happens. Under it, the lanes on the same axis.
@@ -319,14 +319,14 @@ The card's length follows the weather: when nothing changes on the way, there's 
 - **On a desktop** the card sits beside the map, so pointing previews: pointing at a note, a lane or a headwind stretch lights that part up on the trip line and on the map, with its km, time and value, and the map doesn't move. A click then does what a tap does on a phone. Nothing is behind hover only: a click, a tap and the keyboard reach the same thing, and keyboard focus previews as pointing does.
 - **A note** frames its place on the map.
 - **A lane** folds the card to a bar at the foot. The whole route is coloured by that fact and the map's matching layer goes on, at the trip's time. The bar has arrows to step from one stretch to the next ("Against you, 1 of 3"), a slider that moves you along the trip while the map's hour follows, a way back to the card, and a close that clears the map.
-- **A folded row** opens in place. Wind on the way shows one stacked bar with its key on one line, then every headwind stretch, worst first, each a row that frames it on the map. Hour by hour is a table of the hours you're out, with one either side and a column for where you are then.
+- **A folded row** opens in place. Wind on the way shows one stacked bar with its key on one line, then every headwind stretch, worst first, each a row that frames it on the map. Hour by hour is a table of the hours you're out, with one either side: the time, the sky's icon, where you are then, the temperature, feels like, the rain and the wind with its gust.
 - **An Around the trip row** opens its own view.
 - **Weather on the map** opens the map's weather at the departure.
 - The "Colour the route line by" chips go: a lane does it.
 
 ### Several days and sports
 
-One trip line a day. A day under about 30 minutes is one line of words. A lane that counts for one sport only is drawn on that leg only (the waves on the paddle).
+One trip line a day. A day under about 30 minutes is one line of words, with its sky's icon. A lane that counts for one sport only is drawn on that leg only (the waves on the paddle).
 
 ### Details
 
@@ -334,6 +334,26 @@ One trip line a day. A day under about 30 minutes is one line of words. A lane t
 - Times are rounded and say "around": the forecast is hourly, on a 2.8 km grid.
 - No number shows twice. No sun times when the whole trip is in the dark or the whole trip is in daylight.
 - Labels use the words weather apps use. Colours come from tokens, and colours that must be told apart differ in lightness too.
+- No number shows twice on the card: a row under Around the trip leaves out a number a note already gives (the UV, the water's temperature).
+
+### The wind's colours (decided 2026-11-12)
+
+The wind's lane and the route coloured by wind share one set of colours, `--wind-*`, the same in both themes as today. Today's set made the strongest headwind the darkest, so on the dark card and the night map it stood out least, and its red and green differed little in lightness. The new set is made for the route's white casing, which the route has on the light map and the night map alike: the stronger the wind, the darker and more saturated its colour, the weaker the paler. On the card each lane sits on that casing too, thin, in both themes, so the strong wind stands out the same on the card and on the map. The tailwind turns teal, so it stays apart from the headwind's red without colour vision.
+
+| Token | Today | New |
+|---|---|---|
+| `--wind-strong-head` | #b91c1c | #b8122b |
+| `--wind-head` | #f87171 | #f4a074 |
+| `--wind-cross` | #f59e0b | #f3cf7a |
+| `--wind-tail` | #4ade80 | #9fd8cf |
+| `--wind-strong-tail` | #15803d | #1f8a7c |
+| `--wind-calm` | #a3acb9 | #cfd6dc |
+
+A colour's class follows the leg's sport: `windClass()` calls a headwind strong at the limit a note uses (6 m/s on a ride, 8 on foot, 5 on a paddle's open water), and a light headwind from 1.5 m/s, so a 3 m/s headwind on a ride is light, not an alarm. Today it's strong from 4 m/s whatever the sport.
+
+### The cold with the wind's direction (decided 2026-11-12)
+
+`windChill()` gets the air moving past you, √((your speed + headwind)² + crosswind²), from the head- and crosswind every route point has, instead of the wind's speed added to yours. It changes Check's Very cold and Frostbite warnings, so it's a commit of its own with its own line in the changelog.
 
 ### Every weather fact, and where it lives
 
