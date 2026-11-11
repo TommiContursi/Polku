@@ -18569,11 +18569,12 @@ def leave(chrome):
         if not q or int(q['min'][-2:]) % 15 or q['bad'] or (not phone and not q['focused']) or q['size'] < 16:
             fails.append(f"{name}: Leave at…'s field: {q}")
         pg.js("polku.planner.when.pop?.close(); true")
-        # set for tomorrow at 07:30: the row says the time and the day, the menu gone
-        pg.js("LV.pick('start', LV.iso(LV.at(1, 7, 30)))")
+        # set for tomorrow at 07:30: the row says the time and the day, the menu gone; the card's row is the one the menu
+        # opened from, so a key's Enter leaves the focus on it (Codex's review of #969)
+        pg.js("window.__whenRow = LV.row('start'); LV.pick('start', LV.iso(LV.at(1, 7, 30)))")
         time.sleep(0.5)
-        r = pg.js("({ ...LV.when('start'), menu: !!LV.menu(), start: polku.planner.when.start(), want: LV.at(1, 7, 30), day: 'Tomorrow, ' + LV.day(LV.at(1, 7, 30)), clock: LV.clock(LV.at(1, 7, 30)) })")
-        if r['start'] != r['want'] or r['name'] != f"Leave at {r['clock']}" or r['line'] != r['day'] or r['menu'] or r['expanded'] != 'false':
+        r = pg.js("({ ...LV.when('start'), menu: !!LV.menu(), start: polku.planner.when.start(), want: LV.at(1, 7, 30), day: 'Tomorrow, ' + LV.day(LV.at(1, 7, 30)), clock: LV.clock(LV.at(1, 7, 30)), same: LV.row('start') === window.__whenRow })")
+        if r['start'] != r['want'] or r['name'] != f"Leave at {r['clock']}" or r['line'] != r['day'] or r['menu'] or r['expanded'] != 'false' or not r['same']:
             fails.append(f"{name}: When set for tomorrow, 07:30: {r}")
         # Go's pill says the same, on one line, with ▾; within two days the timeline and the safety layers keep the same time
         pg.js("polku.planner.cards.close(); polku.planner.reveal('speed'); true")

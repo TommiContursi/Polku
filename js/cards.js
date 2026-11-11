@@ -129,8 +129,8 @@ function pointBody(pl, card, body) {
       body.append(rows(item({ icon: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km', chev: true, onclick: () => pl.cards.open(staysCard(pl, card), { at: card.key, from: card }) })));
     }
   }
-  // the start: when you leave
-  if (i === 0 && n > 1) body.append(rows(pl.when.control('row')));
+  // the start: when you leave (one row for the card, so the menu it opens gives the focus back to it after a refresh)
+  if (i === 0 && n > 1) body.append(rows(card.when ||= pl.when.control('row')));
   // Next stretch, to Waypoint 4: where it goes, in its name, so a desktop says it too (its line is a tooltip there; 2026-10-22).
   // A stretch runs to the next point you see (1b): from a point that only shapes the line, the stretch it's on.
   const str = pl.legs[i] ? pl.stretchAt(i) : null;
