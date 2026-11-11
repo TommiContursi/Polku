@@ -7384,8 +7384,9 @@ export class Planner {
   skyAt(a, i) { const w = a.wind; return skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, nightAt(tripTimes(a).at(i), a.pts[i])); }
 
   // The weather card from the trip's box, the numbers' time, Check's items or the key facts: at a day (framed on the map
-  // on a trip of days), or at Time on the way, unfolded. `from`: the card it came from, for Back
-  openWeather({ day = 0, time = false, from = 'list', el = null } = {}) {
+  // on a trip of days), or at Time on the way, unfolded. `from`: the card it came from, for Back; from the planner, ✕ alone
+  // (Escape and the back gesture still go back), as Check's items
+  openWeather({ day = 0, time = false, from = 'box', el = null } = {}) {
     const a = this.analysis;
     if (!a || !this.trip()) return;
     const days = this.wxDays(a);
@@ -7398,12 +7399,18 @@ export class Planner {
     if (day || time) requestAnimationFrame(() => { const box = this.cards.box, el = box?.querySelector(time ? '[data-k=time]' : `[data-day="${day}"]`); if (el) box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - 8; });
   }
 
-  // The weather card's content, the trip's alone (#869's step 3): When, each day's weather and its hours, the wind on
-  // the way, Colour by and Time on the way. Missing, late and partial forecasts say so where they start.
+  // The weather card's head, in its title's place (the user's choice, 2026-11-11): When and when you're there, so the
+  // weather starts right under the sheet's top row; its name is said, not shown
+  weatherHead() {
+    const T = this.trip();
+    return h('span', { class: 'trip-when' }, h('span', { class: 'sr-only' }, 'Weather on the way. '), this.when.control('pill'),
+      h('span', { class: 'trip-there' }, `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`));
+  }
+  // The weather card's content, the trip's alone (#869's step 3): each day's weather and its hours, the wind on the way,
+  // Colour by and Time on the way. Missing, late and partial forecasts say so where they start.
   weatherBody(card, body) {
     const a = this.analysis, T = this.trip(), w = a.wind, days = this.wxDays(a);
     const note = (text, cls = '') => h('p', { class: `note wx-note ${cls}` }, text);
-    body.append(h('div', { class: 'trip-when' }, this.when.control('pill'), h('span', { class: 'trip-there' }, `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`)));
     if (w && w.stale) body.append(note(`Older forecast (from ${timeOf(w.from / 1000)}): Open-Meteo couldn’t be reached.`, 'stale-note'));
     if (!w) {
       body.append(note(a.windError ? (typeof a.windError === 'string' ? a.windError : 'The forecast couldn’t be loaded.') : 'Loading the forecast…'));

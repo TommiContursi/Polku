@@ -1369,8 +1369,8 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 :root { --wx-warm: #b91c1c; --wx-cold: #1d4ed8; --wx-rain: #1d4ed8; --wx-wind: #6d28d9; --wx-sun: #a16207; --wx-dark: rgba(16, 24, 20, 0.08); }
 :root[data-theme="dark"] { --wx-warm: #f87171; --wx-cold: #60a5fa; --wx-rain: #60a5fa; --wx-wind: #c4b5fd; --wx-sun: #facc15; --wx-dark: rgba(232, 236, 233, 0.09); }
 .wx-warm { color: var(--wx-warm); } .wx-cold { color: var(--wx-cold); } .wx-rain { color: var(--wx-rain); } .wx-wind { color: var(--wx-wind); }
-.card[data-kind="weather"] { gap: 12px; }
-.card[data-kind="weather"] > .trip-when { margin-top: 2px; }
+.card[data-kind="weather"] { gap: 8px; }
+.card[data-kind="weather"] .way-hint .trip-when { padding-top: 2px; }
 .wx-note { margin: 0; font-size: 13px; }
 .wx-day { display: grid; gap: 8px; min-width: 0; }
 .wx-dayh { margin: 6px 0 0; font-size: var(--font-row); }
