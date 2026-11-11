@@ -7837,14 +7837,14 @@ MARKS = r"""(async () => {
   const before = seconds(label().split('\n')[1] || '');
   p.setStop(1, { min: 45 });
   const after = seconds(label().split('\n')[1] || '');
-  if (Math.abs(after - before - 2700) > 1) errs.push(`elapsed time ignored the break: ${before} → ${after}`);
+  if (Math.abs(after - before - 2700) > 60) errs.push(`elapsed time ignored the break: ${before} → ${after}`); // (in whole minutes, #766)
   p.setStop(1, null);
-  // Exact seconds and hour rollover, independent of the forecast and sport's speed.
+  // Whole minutes, rounded, and hour rollover, independent of the forecast and sport's speed: no seconds (#766)
   const a = p.analysis, original = a.tAt;
   a.tAt = Float64Array.from(a.along, (d) => d * 0.045); p.drawMarks();
-  if (!/45 s elapsed/.test(label())) errs.push(`seconds-only duration: ${label()}`);
+  if (!/\n1 min elapsed$/.test(label())) errs.push(`45 s, in minutes: ${label()}`);
   a.tAt = Float64Array.from(a.along, (d) => d * 4); p.drawMarks();
-  if (!/1 h 6 min 40 s elapsed/.test(label())) errs.push(`hour/minute/second duration: ${label()}`);
+  if (!/\n1 h 7 min elapsed$/.test(label())) errs.push(`1 h 6 min 40 s, in hours and minutes: ${label()}`);
   // Arrival times move immediately, while the old weather is still in memory.
   const fill = (v) => new Float32Array(a.along.length).fill(v);  // (a whole forecast: the waypoints' tooltips read it, #761)
   a.wind = { head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) }; a.tAtWind = a.tAt;
