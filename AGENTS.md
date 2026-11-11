@@ -171,8 +171,8 @@ conversation again
 - Follow the module that already does the job (DEVELOPING has the list), in
   its style, except in a refactor an issue asks for, and keep the change
   free of **bloat** (Code Review Rules, below: the same bar the review
-  applies). Older dead code is a noticed line, unless
-  removing it makes the change simpler.
+  applies). Except in a refactor an issue asks for, older dead code is a
+  noticed line, unless removing it makes the change simpler.
 - **Where a skill differs from this file, this file wins:** same-commit runs
   count, the user decides scope and order (not a ledger), progress goes in
   Hand-overs, and only the user merges.
