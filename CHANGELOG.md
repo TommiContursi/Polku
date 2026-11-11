@@ -13,9 +13,9 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - When a waypoint is inside a place to avoid, the router can't reach it, and the leg's note says so in plain words: "a waypoint is inside a place to avoid: move one of them". The leg is drawn as a straight line until you move the waypoint or the place, and Check has a Retry.
 
-### A tap outside a menu only closes it ([#845](https://github.com/TommiContursi/Polku/issues/845))
+### A tap or a click outside a menu only closes it ([#845](https://github.com/TommiContursi/Polku/issues/845))
 
-- On a phone, a tap outside an open menu, such as the drawing menu, closes the menu and does nothing else, as phones' own menus do. A tap on the map to close it no longer adds a waypoint. With a mouse, a click outside a menu closes it and also does what it clicks on, as before.
+- A tap or a click outside an open menu, such as the drawing menu, closes the menu and does nothing else, on a phone and a desktop alike. A tap on the map to close it no longer adds a waypoint, and a click on another button doesn't press it: tap or click again for that.
 
 ## 2026-11-10
 

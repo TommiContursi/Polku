@@ -119,6 +119,8 @@ Shortcuts work when you are not typing in an input field.
 
 Pinching, or Ctrl+scrolling, over a panel zooms the map. The mouse wheel and a two-finger trackpad scroll up or down zoom, in 2D and 3D alike; a sideways trackpad scroll rotates, and Shift+scroll tilts. You can also use the orbit pad, right-drag or a two-finger touch gesture.
 
+A tap or a click outside an open menu only closes it: what's under it, the map or another button, waits for your next tap or click.
+
 ## Before going offline
 
 Use **Save offline** in Go or the planner's **More** (⋯). Then use **Preview offline** to check the saved coverage. On an iPhone, add Polku to the home screen to help keep the saved data available.

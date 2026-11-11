@@ -9537,7 +9537,8 @@ def menu_tap_outside(chrome):
                     pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'none' if kind == 'mouseMoved' else 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
 
             def open_menu():
-                at(*pg.js("(() => { const r = document.querySelector('#pl-tools .modebtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
+                # the drawing menu: the mode's button on a phone, the route style's on a desktop
+                at(*pg.js(f"(() => {{ const r = document.querySelector('#pl-tools {'.modebtn' if phone else '.stylebtn'}').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()"))
                 time.sleep(0.5)
                 return pg.js(MENU_SPOT)
 
