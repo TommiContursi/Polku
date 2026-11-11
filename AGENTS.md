@@ -132,10 +132,12 @@ conversation again
   Prefer one clear implementation over compatibility layers for superseded
   behavior or formats.
 - **How much to change.** Bug fix or small tweak: make the smallest change
-  that fully solves it. Feature or refactor: the code structure is yours.
-  How it is built, named and organized is your call, and you will keep
-  building on it. Clean up what you touch, and say what you changed beyond
-  the request. What Polku does and how it looks is the user's call.
+  that fully solves it. Feature: follow the module that already does the
+  job, in its style. Clean up the code your change is in. Refactor, when an
+  issue asks for one: the code structure is yours. How it is built, named
+  and organized is your call, and you will keep building on it. Say what
+  you changed beyond the request. What Polku does and how it looks is the
+  user's call.
 
 ## In the code
 
