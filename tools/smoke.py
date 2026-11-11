@@ -14896,19 +14896,12 @@ def point_card(chrome):
         r = pg.js("({ href: location.href.split('#')[0], kind: polku.planner.cards.current && polku.planner.cards.current.kind, n: polku.planner.points.length })")
         if r['href'] != href or r['kind'] or r['n'] != 4:
             fails.append(f'{name}: cards closed and opened at once, then the back gesture: {r}')
-        # the start: you leave, and Leave › (the leave group tries its picker); the end: Back to start; a loop's end has none,
-        # its via points no End here
+        # the start: you leave, and When's row, Leave now (the leave group picks a time in its menu); the end: Back to start;
+        # a loop's end has none, its via points no End here
         s = tap_marker(pg, 0, name, touch)
-        if s['labels'][:1] != ['you leave'] or 'Leave' not in s['rows'] or 'Reverse' not in s['rows'] or 'More for this waypoint' not in s['heads'] or 'Start here' in s['rows'] or 'At this waypoint' in s['heads']:
+        if s['labels'][:1] != ['you leave'] or 'Leave now' not in s['rows'] or 'Reverse' not in s['rows'] or 'More for this waypoint' not in s['heads'] or 'Start here' in s['rows'] or 'At this waypoint' in s['heads']:
             fails.append(f"{name}: the start's card: {s['labels']}, {s['rows']}, {s['heads']}")
-        r = pg.js("""(async () => { const p = polku.planner, at = (Math.floor(Date.now() / 3600000) + 3) * 3600, d = new Date(at * 1000), z = (x) => String(x).padStart(2, '0'), i = document.querySelector('.pl-way.card .row.pick input');
-          if (!i) return { field: false };
-          i.value = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; i.dispatchEvent(new Event('change', { bubbles: true }));
-          await new Promise((ok) => setTimeout(ok, 400));
-          return { field: true, off: p.when.start() - new Date(i.value).getTime() / 1000, kind: p.cards.current && p.cards.current.kind }; })()""")  # (what the field says: on the night the clocks go back, 03:30 is twice)
-        if not r['field'] or r['off'] != 0 or r['kind'] != 'point':
-            fails.append(f"{name}: Leave in three hours: {r}")
-        pg.js("polku.planner.when.set(null); polku.planner.cards.close(); true")
+        pg.js("polku.planner.cards.close(); true")
         s = tap_marker(pg, 3, name, touch)
         if 'Back to start' not in s['rows'] or 'Reverse' not in s['rows'] or 'Start here' in s['rows'] or 'Sport from here' in s['rows']:
             fails.append(f"{name}: the end's card: {s['rows']}")
