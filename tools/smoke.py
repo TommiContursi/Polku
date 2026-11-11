@@ -7871,7 +7871,7 @@ MARKS = r"""(async () => {
     if (p.when.start() !== hour(4) || pill.textContent !== `Leave ${clock(hour(4))}`) errs.push(`Go's pill after a new departure: ${pill.textContent}`);
     const r = pill.getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('Go’s When pill is out of view');
-    if (r.height < 44) errs.push('Go’s When pill is too small');
+    if (r.height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)) errs.push('Go’s When pill is too small'); // (--target: a finger's 44 px, a mouse's 36)
     // (Route's list says it on the start's row, 25d's part 4, to a screen reader since #761; the start's card and Go set it)
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
     if (!waypoint().includes(`Leave ${p.when.words()}`) || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.when.start() + (p.analysis.timeWind || p.analysis.time)))) errs.push('Go departure did not update the start’s row or There at immediately');
@@ -18275,7 +18275,7 @@ LV_JS = """(() => { window.LV = {
     W.pop?.close();
     W.menu(LV.row(where));
     let f = W.pop.el.querySelector('input');
-    if (f) { f.value = value; f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); return true; }
+    if (f) { f.focus(); f.value = value; f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); return true; } // (picked, and the phone's picker put away)
     [...W.pop.el.querySelectorAll('button.menu-item')].find((x) => x.textContent.startsWith('Leave at')).click();
     f = W.pop.el.querySelector('.menu-when input');
     f.value = value;
@@ -18307,7 +18307,7 @@ return true; })()"""
 # ▾ for a value you pick, the chevron for a fold (#869's rule 2): Colour by, When, the toolbar's drawing mode, sport and
 # Route style; Go's Time folds
 CARETS_JS = """(async () => {
-  const U = await import(location.origin + '/js/ui.js'), path = (n) => U.icon(n).match(/<path[^>]*>/)[0], has = (el, n) => !!el && el.innerHTML.includes(path(n)), p = polku.planner;
+  const U = await import(location.origin + '/js/ui.js'), path = (n) => U.icon(n).match(/ d="[^"]*"/)[0], has = (el, n) => !!el && el.innerHTML.includes(path(n)), p = polku.planner;
   const picks = { 'Colour by': document.querySelector('.pl-profile .mode-select-chev'), When: document.querySelector('#pl-pane-go .when-pill'), 'the drawing mode': p.els.modeBtn,
     ...(p.layout() === 'side' ? { "the next leg's sport": p.els.sportBtn, 'Route style': p.els.styleBtn } : {}) };
   return [...Object.entries(picks).filter(([, el]) => !has(el, 'caret') || has(el, 'chevronDown')).map(([k]) => `${k} has no ▾`),
@@ -18540,7 +18540,7 @@ def leave(chrome):
     # (once the route's numbers are in and the sheet has come to its size)
     ready = lambda pg: (pg.js("Promise.resolve(polku.planner.analysing).then(() => true, () => true)"), pg.js(SETTLED))
     show = lambda pg, where: (ready(pg), pg.js(f"LV.show(() => LV.row({json.dumps(where)}))"))[1]
-    menu_at = lambda pg, label: pg.js(f"(() => {{ const b = [...(LV.menu()?.querySelectorAll('.menu-item') || [])].find((x) => x.textContent.startsWith({json.dumps(label)})); if (!b) return null; const r = b.getBoundingClientRect(); return {{ x: r.left + Math.min(60, r.width / 3), y: r.top + r.height / 2 }}; }})()")
+    menu_at = lambda pg, label: pg.js(f"(() => {{ const m = LV.menu(), b = m && ({json.dumps(label)} === 'datetime-local' ? m.querySelector('input.menu-item') : [...m.querySelectorAll('.menu-item')].find((x) => x.textContent.startsWith({json.dumps(label)}))); if (!b) return null; const r = b.getBoundingClientRect(); return {{ x: r.left + Math.min(60, r.width / 3), y: r.top + r.height / 2 }}; }})()")
 
     def one(w, h_, phone):
         name, touch = f'{w}x{h_}', phone
@@ -18557,7 +18557,7 @@ def leave(chrome):
         time.sleep(0.4)
         at = show(pg, 'start')  # (in sight first: at night a box saying so comes before it)
         r = pg.js("LV.when('start')")
-        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or not r['caret'] or r['expanded'] != 'false' or r['h'] < 44:
+        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or not r['caret'] or r['expanded'] != 'false' or r['h'] < (44 if phone else 36):
             fails.append(f"{name}: the start's card's When row: {r}")
             pg.close()
             return
@@ -18584,7 +18584,7 @@ def leave(chrome):
         pg.js("polku.planner.cards.close(); polku.planner.reveal('speed'); true")
         time.sleep(0.6)
         r = pg.js("({ ...LV.when('go'), want: `Leave ${LV.day(LV.at(1, 7, 30))}, ${LV.clock(LV.at(1, 7, 30))}` })")
-        if not r or r['name'] != r['want'] or r['lines'] != 1 or not r['caret'] or r['note'] or r['h'] < 44:
+        if not r or r['name'] != r['want'] or r['lines'] != 1 or not r['caret'] or r['note'] or r['h'] < (44 if phone else 36):
             fails.append(f"{name}: Go's When pill: {r}")
             pg.close()
             return
