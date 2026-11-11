@@ -108,9 +108,9 @@ November 2026").
   Write one too before a turn that waits for the user, so the answer can
   start a fresh session. End every turn with the work committed.
 
-**Model and effort,** picked when the session starts: Sonnet, or Opus at
-medium, for docs, small fixes, rebases, filing issues and `/lessons`;
-Opus at high for a phase's part, multi-file work and hard bugs, including
+**Model and effort,** picked when the session starts: a smaller model, or
+the strongest one at medium, for docs, small fixes, rebases, filing issues
+and `/lessons`; the strongest model at high for a phase's part, multi-file work and hard bugs, including
 anything touching routing, saved data or share links. Use effort xhigh for
 plans and their reviews. Otherwise raise it to xhigh only when high is stuck
 on the same problem.
