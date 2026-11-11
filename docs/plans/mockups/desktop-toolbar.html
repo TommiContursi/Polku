@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Desktop toolbar</title>
+<meta name="description" content="Mock-up for #869: the desktop toolbar with room for its words and a fourth drawing mode. Today's toolbar on main (68c9df6e) beside two versions, at four window widths.">
+<!--
+  #869, 2026-11-11. Not wired to the app: nothing here is loaded by Polku. The toolbar is the app's own markup (captured
+  from main at 68c9df6e, 1440 × 900, a route of three straight legs), styled by css/app.css; the icons and h() and
+  popMenu() are js/ui.js's. What this page adds is in the block marked "new in this mock-up".
+
+  The room each toolbar has is the window's width less the planner (404 px and its 12 px gap) and the map's buttons
+  (84 px): 1420 px at 1920 × 1080, 940 at 1440 × 900, 780 at 1280 × 800 and 524 at 1024 × 768. Each toolbar takes the
+  fold steps of its version, in order, until it fits, as placeTools() does.
+
+  ?v=today|pick|icons  &m=3|4 (the drawing modes: today's three, or with a fourth, #709's painting)
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";</script>
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #4a564f; --switch-bg: #d4d8d5; --switch-on: #fff; --map: #e9efe4; }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --switch-bg: #2a302c; --switch-on: #48514c; --map: #26302a; }
+* { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; }
+body.mk { margin: 0; padding: 20px 16px 80px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); }
+.cv { max-width: 1480px; margin: 0 auto; }
+.cv h1 { margin: 0 0 4px; font-size: 22px; }
+.cv > p { margin: 0 0 8px; max-width: 880px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 14px 0; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border-radius: 10px; background: var(--switch-bg); }
+.sw button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 650; }
+.note { max-width: 880px; padding: 10px 14px; border-radius: 10px; background: var(--switch-bg); }
+.row-cap { margin: 22px 0 6px; font-weight: 650; }
+.row-cap small { font-weight: 400; color: var(--page-cap); }
+.room { position: relative; height: 84px; padding: 14px 0; overflow: hidden; border-radius: 12px; background: var(--map); outline: 1px dashed rgba(128,128,128,.5); outline-offset: -1px; }
+.room .pl-tools { position: static; width: max-content; }
+.fold-cap { margin: 4px 0 0; font-size: 12.5px; color: var(--page-cap); }
+/* ======================================================= new in this mock-up */
+/* the drawing mode as a value you pick (rule 2): the sport button's look, its width the longest mode's name so
+   picking another moves nothing on the toolbar (#594's stillness) */
+.modepick { height: 40px; flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.modepick > .ic:first-child { color: var(--accent); }
+.modepick > span { flex: 1; text-align: left; }
+.modepick[aria-expanded="true"] { background: var(--accent-soft); }
+@media (hover: hover) { .modepick:hover { background: var(--surface-2); } }
+.pl-tools.foldM .modepick > span { display: none; }
+.pl-tools.foldM .modepick { min-width: 0 !important; }
+/* ▾, the proposed caret (rule 2): a small filled triangle in the muted ink */
+.ic.caret { color: var(--muted); }
+</style>
+</head>
+<body class="mk">
+<div class="cv">
+  <h1>Desktop toolbar</h1>
+  <p>#869, 2026-11-11. The desktop toolbar as its window narrows, with room for a fourth drawing mode (#709's painting, its name not decided). <b>Today</b> is <code>main</code>: its first fold takes away the three modes' names, so at 1440 × 900 the modes are bare icons while six route actions keep their room. <b>Mode ▾</b> (recommended) makes the drawing mode one value you pick, as a phone's toolbox and rule 2 have it. <b>Icons</b> keeps a row of mode icons and never shows their names. Click a mode, sport or style button to open its menu.</p>
+  <div class="bar">
+    <span>Version</span><div class="sw" data-k="v"><button data-v="today">Today (main)</button><button data-v="pick">Mode ▾ (recommended)</button><button data-v="icons">Icons</button></div>
+    <span>Drawing modes</span><div class="sw" data-k="m"><button data-v="3">Three (today)</button><button data-v="4">Four (with Paint)</button></div>
+  </div>
+  <p class="note" id="say"></p>
+  <div id="rows"></div>
+</div>
+<script type="module">
+import { icon, h, popMenu } from '../../../js/ui.js';
+
+const P = new URLSearchParams(location.search);
+const S = { v: P.get('v') || 'pick', m: P.get('m') || '4' };
+const caret = (s = 10) => `<svg class="ic caret" width="${s}" height="${s}" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3h8L5 8.5z" fill="currentColor"/></svg>`;
+const chev = (s) => icon('chevronDown', s);
+// a placeholder for #709's mode: a stroke painted along a path
+const PAINT = '<svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 18.5c2.5-1 3.5-4 6-4s2.5 3 5 3 3.5-5 6-8.5" stroke-width="3.2" opacity=".35"/><path d="M3.5 18.5c2.5-1 3.5-4 6-4s2.5 3 5 3 3.5-5 6-8.5"/></svg>';
+const MODES = [
+  { k: 'auto', label: 'Follow paths', key: 'P', ic: () => icon('auto', 19), desc: 'Along paths and roads, by the route style' },
+  { k: 'line', label: 'Freehand', key: 'S', ic: () => icon('straight', 19), desc: 'Straight, off the trail or across a gap' },
+  { k: 'water', label: 'Over water', key: 'W', ic: () => icon('water', 19), desc: 'On the water, round land and hazards' },
+  { k: 'paint', label: 'Paint', key: 'D', ic: () => PAINT, desc: 'Paint along the paths you want (#709, later)' },
+];
+const ROOMS = [[1420, '1920 × 1080'], [940, '1440 × 900'], [780, '1280 × 800'], [524, '1024 × 768']];
+const SAY = {
+  today: '<b>Today:</b> the first fold takes the modes’ names (fold3), then the route actions go into More from the last, then the style’s caption, the sport’s name, Clear route, and the style’s name shortens. A fourth mode makes it about 110 px wider: at 1280 × 800 three route actions go into More, not two, and the four icons have no names below 1920 × 1080.',
+  pick: '<b>Mode ▾:</b> the drawing mode is one button that names the mode in use, opening the four modes with their keys (P, S, W and a fourth). It’s as wide as the longest name, so picking another moves nothing. It folds last, after the route actions, the style’s caption and the sport’s name. A fourth or fifth mode costs no room. A mode is two clicks rather than one, and the keys stay. It’s the phone’s own control, and rule 2’s: a value you pick ends in ▾.',
+  icons: '<b>Icons:</b> the modes stay a row of buttons, one click each, but never with their names; a tooltip and the key say them. Nothing moves as the window narrows, until the route actions go. A fourth icon has to be learnt from its tooltip.',
+};
+
+let menu = null;
+const open = (anchor, label, items) => {
+  if (menu) { menu.close(); menu = null; return; }
+  anchor.setAttribute('aria-expanded', 'true');
+  menu = popMenu(anchor, items, { label, align: 'left', onClose: () => { menu = null; anchor.setAttribute('aria-expanded', 'false'); } });
+};
+let mode = 'auto';
+const modes = () => MODES.slice(0, +S.m);
+
+function toolbar(v) {
+  const tb = (name, label, cls = '') => h('button', { type: 'button', class: `tbtn ${cls}`, 'aria-label': label, title: label, html: icon(name, 20) });
+  const sep = (g) => { const el = h('span', { class: 'tb-sep tb-desk', 'aria-hidden': 'true' }); if (g) el.dataset.group = g; return el; };
+  const arrow = v === 'today' ? chev(12) : caret();
+  const sport = h('button', { type: 'button', class: 'sportbtn tb-desk', 'aria-haspopup': 'menu', 'aria-expanded': 'false', html: `${icon('bike', 18)}<span>MTB</span>${arrow}` });
+  sport.onclick = () => open(sport, 'Next leg', [{ group: 'Sport · the legs you draw next', items: ['MTB', 'Gravel', 'Hike', 'Paddle'].map((l, i) => ({ icon: ['bike', 'bike', 'hike', 'paddle'][i], label: l, radio: true, checked: !i, fn: () => {} })) }]);
+  const style = h('button', { type: 'button', class: 'stylebtn tb-desk', 'aria-haspopup': 'menu', 'aria-expanded': 'false', html: `<span class="two"><small>Route style</small><span>Balanced</span></span>${arrow}` });
+  style.onclick = () => open(style, 'Route style', [{ group: 'Route style · the whole route', items: ['Balanced', 'Technical', 'Flowy', 'Easy'].map((l, i) => ({ label: l, radio: true, checked: !i, fn: () => {} })) }]);
+  let modeEl;
+  const pickItems = () => [{ group: 'Draw the next leg', items: modes().map((m) => ({ icon: null, label: `${m.label}`, desc: `${m.desc} · ${m.key}`, radio: true, checked: mode === m.k, fn: () => { mode = m.k; draw(); } })) }];
+  if (v === 'pick') {
+    const cur = MODES.find((m) => m.k === mode);
+    modeEl = h('button', { type: 'button', class: 'modepick tb-desk', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `Draw the next leg: ${cur.label}`, title: `Draw the next leg: ${cur.label} (${cur.key})`,
+      html: `${cur.ic()}<span>${cur.label}</span>${caret()}` });
+    modeEl.onclick = () => open(modeEl, 'Draw the next leg', pickItems().map((g) => ({ ...g, items: g.items.map((it, i) => ({ ...it, icon: modes()[i].k === 'paint' ? 'pencil' : modes()[i].k === 'auto' ? 'auto' : modes()[i].k === 'line' ? 'straight' : 'water' })) })));
+  } else {
+    modeEl = h('div', { class: 'seg tb-modes tb-desk', role: 'radiogroup', 'aria-label': 'Draw the next leg' },
+      ...modes().map((m) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(mode === m.k), 'aria-label': m.label, title: `${m.label} (${m.key})`, onclick: () => { mode = m.k; draw(); },
+        html: `${m.ic()}${v === 'today' ? `<span>${m.label}</span>` : ''}` })));
+  }
+  const opt = (b, k, g) => { b.dataset.opt = k; b.dataset.group = g; return b; };
+  const acts = [opt(tb('reverse', 'Reverse'), 1, 'nav'), opt(tb('loop', 'Back to start'), 2, 'nav'), opt(tb('link', 'Share link'), 3, 'take'), opt(tb('download', 'Export GPX'), 4, 'take'), opt(tb('offline', 'Save offline…'), 5, 'take'), opt(tb('trash', 'Clear route', 'danger'), 6, 'clear')];
+  const box = h('div', { class: 'pl-tools desk', role: 'toolbar', 'aria-label': 'Drawing tools' },
+    h('button', { type: 'button', class: 'btn done' }, 'Done'), modeEl, sep(), sport, style, sep(), tb('undo', 'Undo'), tb('redo', 'Redo'),
+    sep('nav'), acts[0], acts[1], sep('take'), acts[2], acts[3], acts[4], sep('clear'), acts[5], sep(), tb('more', 'More: the whole route’s actions'));
+  return { box, acts, modeEl };
+}
+
+function fit(room, v) {
+  const { box, acts, modeEl } = toolbar(v);
+  const wrap = h('div', { class: 'room', style: `width:${room}px;max-width:100%` }, box);
+  const steps = [], said = [];
+  const order = [...acts].sort((a, b) => (a.dataset.opt === '6' ? -1 : b.dataset.opt === '6' ? 1 : a.dataset.opt - b.dataset.opt));
+  const setOpts = (n) => { order.forEach((b, i) => { b.hidden = i >= n; }); for (const g of box.querySelectorAll('.tb-sep[data-group]')) g.hidden = !box.querySelector(`button[data-group="${g.dataset.group}"]:not([hidden])`); };
+  const actsSteps = () => { for (let n = order.length - 1; n >= 1; n--) steps.push([() => setOpts(n), `${order.length - n} action${order.length - n > 1 ? 's' : ''} in More`]); };
+  if (v === 'today') steps.push([() => box.classList.add('fold3'), 'the modes’ names gone']);
+  actsSteps();
+  steps.push([() => box.classList.add('fold1'), 'the style’s caption gone'], [() => box.classList.add('foldS'), 'the sport’s name gone'], [() => setOpts(0), 'Clear route in More'], [() => box.classList.add('fold4'), 'the style’s name shortened']);
+  if (v === 'pick') steps.push([() => box.classList.add('foldM'), 'the mode’s name gone']);
+  return { wrap, run: () => {
+    if (v === 'pick') { // as wide as the longest name: picking another moves nothing
+      const span = modeEl.querySelector('span'), was = span.textContent;
+      let w = 0; for (const m of modes()) { span.textContent = m.label; w = Math.max(w, modeEl.getBoundingClientRect().width); }
+      span.textContent = was; modeEl.style.minWidth = `${Math.ceil(w)}px`;
+    }
+    setOpts(order.length);
+    for (const [step, words] of steps) { if (box.scrollWidth <= room) break; step(); said.push(words); }
+    if (box.scrollWidth > room) said.push('and still too wide: the app then takes a second row (tb-rows), not drawn here');
+    return said;
+  } };
+}
+
+function draw() {
+  for (const b of document.querySelectorAll('.sw button')) b.setAttribute('aria-pressed', String(S[b.parentElement.dataset.k] === b.dataset.v));
+  document.getElementById('say').innerHTML = SAY[S.v];
+  if (!modes().some((m) => m.k === mode)) mode = 'auto';
+  const rows = document.getElementById('rows');
+  rows.replaceChildren();
+  for (const [room, name] of ROOMS) {
+    const f = fit(room, S.v), cap = h('p', { class: 'fold-cap' });
+    rows.append(h('p', { class: 'row-cap', html: `${name} <small>· ${room} px beside the planner</small>` }), f.wrap, cap);
+    const said = f.run();
+    cap.textContent = said.length ? `Folded: ${said.join(', ')}.` : 'Everything fits, with every word.';
+  }
+}
+for (const b of document.querySelectorAll('.sw button')) b.onclick = () => { S[b.parentElement.dataset.k] = b.dataset.v; try { history.replaceState(null, '', `?v=${S.v}&m=${S.m}`); } catch { /* the viewer's sandbox */ } draw(); };
+draw();
+</script>
+</body>
+</html>
