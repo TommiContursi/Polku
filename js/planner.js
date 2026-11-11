@@ -2566,11 +2566,12 @@ export class Planner {
     this.renderSpeed(); this.renderTabTimes(); this.renderWaypoints(); this.renderTake(); // (the list's times and the share link's line too)
   }
   // Leave now moves on with the clock (#956): every 5 minutes while Polku's on screen, and when it's shown again, the
-  // route's timed from the new minute and its forecast sampled again (cached for an hour), but not under a drag, a name
-  // being typed or an open card. Fintraffic isn't asked again: road works and road weather don't change by the minute.
+  // route's timed from the new minute and its forecast sampled again (cached for an hour), but not under a drag (on the
+  // map or of a list's row), a name being typed, an open card or the focus in the planner, which the redraw would drop
+  // (#966). Fintraffic isn't asked again: road works and road weather don't change by the minute.
   moveOn() {
-    const a = this.analysis;
-    if (!a || this.leaveAt != null || a.start === this.startSec() || document.hidden || this.edit || this.renamingRow || this.cards.stack.length) return;
+    const a = this.analysis, busy = this.edit || this.renamingRow || this.cards.stack.length || this.panel.contains(document.activeElement) || this.panel.querySelector('.dragging');
+    if (!a || this.leaveAt != null || a.start === this.startSec() || document.hidden || busy) return;
     this.restart(a);
     this.loadWind(a, { hazards: false });
   }

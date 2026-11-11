@@ -16949,6 +16949,59 @@ SE_LINE = """(() => {
 })()"""
 
 
+# Leave now's 5-minute refresh (#956) skips its turn under the person (#966): with focus on Go's Your speed, and while a
+# row of Reorder is dragged, a tick (the clock 6 minutes on, moveOn() as the interval calls it) leaves the focus and the drop
+TICK_JS = r"""(async () => { const p = polku.planner, real = Date.now; window.__off = (window.__off || 0) + 6; Date.now = () => real() + window.__off * 60000;
+  p.moveOn(); await new Promise((r) => setTimeout(r, 1500)); Date.now = real; return true; })()"""
+
+
+def tick_under(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+    if not pg.js(PC_ROUTE, timeout=30000):
+        print('FAIL the refresh under the person: no route', flush=True)
+        pg.close()
+        return False
+    r = pg.js("""(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      for (let k = 0; k < 100 && !(p.analysis && p.analysis.tAtWind); k++) await wait(100);
+      p.reveal('speed'); await wait(500);
+      const b = p.els.speedRoute.querySelector('button'); b.focus();
+      return { had: document.activeElement === b, label: b.textContent.trim().slice(0, 30) }; })()""", timeout=30000)
+    pg.js(TICK_JS, timeout=20000)
+    after = pg.js("(() => { const a = document.activeElement; return a === document.body ? 'the page' : a.textContent.trim().slice(0, 30); })()")
+    if not r['had'] or after != r['label']:
+        fails.append(f"focus on Go's {r['label']}: after a tick it's on {after}")
+    pg.js("document.activeElement.blur(); true")
+    d = pg.js("""(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      p.reveal('points'); await wait(400); p.reordering = true; p.renderWaypoints(); await wait(300);
+      const rows = [...p.els.points.querySelectorAll('.wpl-row')];
+      rows[0].scrollIntoView({ block: 'center' }); await wait(300);
+      const g = rows[0].querySelector('.wpl-grip').getBoundingClientRect(), last = rows[rows.length - 1].getBoundingClientRect();
+      return { first: p.nameOf(0), x: g.left + g.width / 2, y: g.top + g.height / 2, y2: last.top + last.height * 0.75 }; })()""", timeout=30000)
+
+    def mouse(kind, x, y, buttons):
+        pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'none' if kind == 'mouseMoved' else 'left', 'buttons': buttons, 'clickCount': 1}, pg.s)
+    mouse('mouseMoved', d['x'], d['y'], 0)
+    mouse('mousePressed', d['x'], d['y'], 1)
+    for k in range(1, 11):
+        mouse('mouseMoved', d['x'], d['y'] + (d['y2'] - d['y']) * k / 10, 1)
+        time.sleep(0.05)
+    pg.js(TICK_JS, timeout=20000)
+    mouse('mouseMoved', d['x'], d['y2'] + 2, 1)
+    mouse('mouseReleased', d['x'], d['y2'] + 2, 0)
+    time.sleep(1)
+    last = pg.js("(() => { const p = polku.planner; return p.nameOf(p.points.length - 1); })()")
+    if last != d['first']:
+        fails.append(f"a Reorder drag with a tick in it: the first point ({d['first']}) didn't move to the end (the end is {last})")
+    fails += [f'console: {e}' for e in pg.errors()]
+    pg.close()
+    print(('FAIL' if fails else 'ok  ') + " the refresh under the person: focus in Go and a Reorder drag stay (#966)", flush=True)
+    for f in fails:
+        print(f'     - {f}', flush=True)
+    return not fails
+
+
 def sections_list(chrome):
     fails, trail = [], []
 
@@ -20238,7 +20291,7 @@ GROUPS = [
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
-    ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
+    ('sections', [sections_list, tick_under], 'Leave now\'s refresh leaving focus and a Reorder drag alone (#966); Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave, when_start], 'when you leave (25d, #364\'s C, #869): When on the first screen, the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
