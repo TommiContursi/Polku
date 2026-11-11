@@ -290,6 +290,10 @@ def OTHER_WAYS(pick=False, peek=False, pts=NUUKSIO):
 
 
 TAB = lambda sec: f"(async () => {{ polku.planner.reveal({json.dumps(sec)}); await new Promise((r) => setTimeout(r, 600)); return true; }})()"
+# the departure four weeks ahead (#869: when.set(); before it, setLeave()), then Go's time or the start's card
+FAR = "const far = new Date(); far.setDate(far.getDate() + 28); far.setHours(7, 30, 0, 0); (p.when ? p.when.set(far / 1000) : p.setLeave(far / 1000)); await new Promise((r) => setTimeout(r, 400)); "
+GO_FAR = "(async () => { const p = polku.planner; " + FAR + "p.reveal('speed'); await new Promise((r) => setTimeout(r, 600)); return true; })()"
+START_CARD = lambda far=False: "(async () => { const p = polku.planner; " + (FAR if far else '') + "p.openPointCard(p.points[0]); await new Promise((r) => setTimeout(r, 600)); return true; })()"
 
 # #72: terrain tiles that don't load, before the route is in: none at all, or (part) the
 # route's eastern tile at zoom 14 and every coarser one
@@ -744,6 +748,12 @@ SCENES = {
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
     # 25d part 1: a point's card (on main, the point menu it replaces), at the thumb on a phone, at the point on a desktop, and at 200 % in Finnish
     'phone-point-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD()),
+    'phone-start-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js=START_CARD()),
+    'desk-start-card': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=START_CARD()),
+    'phone-start-card-far': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js=START_CARD(True)),
+    'phone-tab-go': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js=TAB('speed')),
+    'phone-go-far': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js=GO_FAR),
+    'desk-go-far': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=GO_FAR),
     'desk-point-card': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=POINT_CARD()),
     'phone-point-card-200': dict(w=180, h=370, phone=True, timeline=False, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD('Pirunvuoren näköalapaikan pohjoisrinteellä', 'list')),
     # #370: red words in dark mode (a point's card's Remove, Heads-up's Avoid)

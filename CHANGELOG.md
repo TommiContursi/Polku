@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-11
 
+### One When everywhere, and ▾ for a value you pick ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- **Go**'s departure is now a pill at the top of its time, "Leave now ▾", and the start's card has the same **When** row as the first screen. Each opens one menu: **Leave now**, and **Leave at…**, which opens your phone's own date and time picker; on a desktop it shows a date and time field with **Set**. A time set in one shows in all of them.
+- A tap on the route's time estimate opens that menu in **Go**.
+- Past the forecast's reach, the start's card says "no forecast yet" on its **When** row, and **Go** says so under its pill. A planned time that has passed says so in both, and the route leaves now.
+- A value you pick from a few now ends in ▾, a small filled triangle: **When**, your sport at the start, **Colour by**, the drawing button, the desktop toolbar's sport and **Route style**, and a round trip's **Direction**. ⌄ and ⌃ still fold and unfold.
+
 ### Leave now's times wait while you use the planner ([#966](https://github.com/TommiContursi/Polku/issues/966))
 
 - With **Leave now**, the times on the route wait to move on while you're in the planner with the keyboard or a screen reader, so your place there stays where it was. Before, every 5 minutes the focus jumped back to the top of the page.
