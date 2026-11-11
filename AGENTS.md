@@ -174,7 +174,8 @@ conversation again
   readers, enlarged text, reduced motion, and nothing said by colour alone.
 - **A new panel, sheet or way of working starts as a clickable mock-up** in
   `docs/plans/mockups/`, checked in the worst case too (360 px, 200 % zoom,
-  long Finnish words), with the design skills that help. A small visual
+  long Finnish words), with the design skills that help. Fix what breaks in
+  the mock-up, then present it. A small visual
   change needs none. The mock-up and a short plan are enough: no probe
   scripts, measurements or evidence files unless the user asks. The user
   chooses before it's built; #123's plan shows how.
