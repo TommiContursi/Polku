@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-11
 
+### The desktop toolbar's drawing mode, a value you pick ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- On a desktop, the toolbar shows how the next leg is drawn as one button, **Follow paths ▾**, as on a phone. Its menu has **Follow paths**, **Freehand** and **Over water**, each with its key (P, S and W), and the keys still pick a mode at once.
+- The button is as wide as the longest mode's name, so picking another mode moves nothing on the toolbar. In a narrow window it keeps its name longest, after the route's actions, the style's caption and the sport's name have made room.
+
 ### One When everywhere, and ▾ for a value you pick ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - **Go**'s departure is now a pill at the top of its time, "Leave now ▾", and the start's card has the same **When** row as the first screen. Each opens one menu: **Leave now**, and **Leave at…**, which opens your phone's own date and time picker; on a desktop it shows a date and time field with **Set**. A time set in one shows in all of them.
