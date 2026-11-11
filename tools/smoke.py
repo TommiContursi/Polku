@@ -1337,8 +1337,8 @@ WATER = """(async () => {
     a.windError = false;
     p.openWeather();
     await wait(400);
-    const waves = [...(p.cards.box?.querySelectorAll('.wx-facts > span') || [])].map((x) => x.textContent).find((t) => /^Waves/.test(t)) || '';
-    if (!(wr && wr.wave > 0) || !/^Waves up to about \\d\\.\\d m an estimate, for the wind at \\d\\d:\\d\\d$/.test(waves)) errs.push(`the weather card's waves: ${waves || 'none'} (the leg's highest wave ${wr && wr.wave})`);
+    const waves = [...(p.cards.box?.querySelectorAll('.tl-now > div') || [])].map((x) => x.textContent).find((t) => /^waves/.test(t)) || '';
+    if (!(wr && wr.wave > 0) || !/^waves about \\d\\.\\d m, an estimate$/.test(waves)) errs.push(`the weather card's waves: ${waves || 'none'} (the leg's highest wave ${wr && wr.wave})`);
     p.cards.close();
   }
   // a source that didn't answer (25d part 2): Not checked, on the legs routed without it, with Retry, until it answers;
@@ -2016,8 +2016,8 @@ STOPS = """(async () => {
   // the weather card: each day its own sun, the night's morning too (#869's step 3)
   p.openWeather({ day: 1 });
   await wait(300);
-  const suns = [...(p.cards.box?.querySelectorAll('.wx-day .wx-sun') || [])].map((x) => x.textContent);
-  if (suns.length !== 2 || suns.some((t) => !/Sunrise|Midnight sun|Polar night/.test(t))) errs.push(`each day's sun in the weather card: ${suns.join(' / ') || 'none'}`);
+  const suns = [...(p.cards.box?.querySelectorAll('.wx-day .wx-sunline') || [])].map((x) => x.textContent);
+  if (suns.length !== 2 || suns.some((t) => !/sunrise|Midnight sun|Polar night/i.test(t))) errs.push(`each day's sun in the weather card: ${suns.join(' / ') || 'none'}`);
   p.cards.close();
   if (document.querySelectorAll('.wp-stop').length !== 2 || document.querySelectorAll('.wp-stop.night').length !== 1) errs.push(`stop badges: ${document.querySelectorAll('.wp-stop').length}`);
   p.reveal('points');
@@ -5806,7 +5806,7 @@ ROUTE_BITS = """(async () => {
   p.setColorOnMap(false);
   p.openWeather();
   await wait(300);
-  if (!/Sunrise|Midnight sun|Polar night/.test(p.cards.box?.querySelector('.wx-sun')?.textContent || '')) errs.push('no sun times in the weather card');
+  if (!/sunrise|Midnight sun|Polar night/i.test(p.cards.box?.querySelector('.wx-sunline')?.textContent || '')) errs.push('no sun times in the weather card');
   p.cards.close();
   // a point beside its path: the routed leg starts 30 m away, so the point moves onto it, and its key with it
   p.clear();
@@ -12594,16 +12594,18 @@ WC_JS = """(async () => {
   }
   set(null, true); await wait(200);
   if (!p.cards.box?.querySelector('button[data-k=retry]')) errs.push('a forecast that failed has no Retry');
-  // the hours: past the forecast's last hour (here the first of the trip's), an hour says so and shows none of its values
+  // the hours, unfolded (Hour by hour): past the forecast's last hour (here the first of the trip's), an hour says so and
+  // shows none of its values
   set(wind({ beyondSec: t0 + 3600 })); await wait(200);
+  p.cards.box.querySelector('[data-k^="hours-"]').click(); await wait(200);
   const rows = [...(p.cards.box?.querySelectorAll('.wx-hours tbody tr') || [])].map((r) => r.textContent);
   if (!rows.length || !rows.some((t) => /No forecast yet$/.test(t)) || rows.some((t) => /No forecast yet/.test(t) && /°/.test(t))) errs.push(`the hours past the forecast: ${rows.join(' / ') || 'none'}`);
   // feels like where it's known, and nothing where it isn't (a cell cached before it was asked for)
-  const feels = () => ({ line: /Feels like 1°/.test(card()), col: [...(p.cards.box?.querySelectorAll('.wx-hours thead th') || [])].some((x) => x.textContent === 'Feels') });
+  const feels = () => ({ line: /feels 1°/.test(card()), col: [...(p.cards.box?.querySelectorAll('.wx-hours thead th') || [])].some((x) => x.textContent === 'Feels') });
   const known = feels();
   set(wind({ feel: fill(NaN), series: [series(null)] })); await wait(200);
   const missing = feels();
-  if (!known.line || !known.col || missing.line || missing.col || /Feels/.test(card())) errs.push(`feels like: known ${JSON.stringify(known)}, missing ${JSON.stringify(missing)}`);
+  if (!known.line || !known.col || missing.line || missing.col || /feels/i.test(card())) errs.push(`feels like: known ${JSON.stringify(known)}, missing ${JSON.stringify(missing)}`);
   // Time on the way: the wind's row only where it changes the time (#766)
   p.cards.box.querySelector('[data-k=time]').click(); await wait(200);
   const windRow = () => [...(p.cards.box?.querySelectorAll('.speed-row.sub span') || [])].find((x) => /^the wind/.test(x.textContent))?.parentElement.textContent || '';
