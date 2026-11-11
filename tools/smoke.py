@@ -4859,7 +4859,7 @@ DRAWER = """(async () => {
   p.setTab('route'); await wait(100);
   if (document.querySelector('#pl-tab-go, #pl-pane-go')) errs.push('Go is still there');
   const box = p.els.box;
-  if (box.hidden || box.parentElement !== p.els.panes.route || !box.querySelector('.trip-when .when-pill') || !/^→ (there|back) at /.test(txt(box.querySelector('.trip-there')))) errs.push(`the trip's box: ${box.hidden ? 'hidden' : txt(box)}`);
+  if (box.hidden || box.previousElementSibling !== p.els.profZone || !box.querySelector('.trip-when .when-pill') || !/^→ (there|back) at /.test(txt(box.querySelector('.trip-there')))) errs.push(`the trip's box: ${box.hidden ? 'hidden' : txt(box)}`);
   if (['share', 'gpx', 'offline'].some((k) => !p.els[k] || !p.tools.contains(p.els[k]))) errs.push('Take it along isn’t in More');
   // the route's points on the profile where they are along it (a loop's finish at the end)
   const cp = p.chart.points || [];
@@ -7893,7 +7893,7 @@ MARKS = r"""(async () => {
     const hour = (k) => (Math.floor(Date.now() / 3600000) + k) * 3600, clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     p.when.set(hour(4));
     if (p.when.start() !== hour(4) || pill.textContent !== `Leave ${clock(hour(4))}`) errs.push(`the box's pill after a new departure: ${pill.textContent}`);
-    const r = pill.getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
+    const r = pill.getBoundingClientRect(), body = p.panel.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('the box’s When pill is out of view');
     if (r.height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)) errs.push('the box’s When pill is too small'); // (--target: a finger's 44 px, a mouse's 36)
     // (Route's list says it on the start's row, 25d's part 4, to a screen reader since #761; the start's card and the box set it)
@@ -18382,7 +18382,7 @@ LV_JS = """(() => { window.LV = {
     const frames = () => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
     let a = null, same = 0;
     for (let k = 0; k < 30 && same < 2; k++) {
-      const el = get(), s = el && el.isConnected && el.getClientRects().length && (el.closest('.pl-way.card') || el.closest('.sheet-body'));
+      const el = get(), s = el && el.isConnected && el.getClientRects().length && (el.closest('.pl-way.card') || el.closest('.sheet-body') || el.closest('.sheet')); // (the trip's box: the sheet's own)
       if (s) { const e = el.getBoundingClientRect(), r = s.getBoundingClientRect(); if (e.bottom > r.bottom) s.scrollTop += e.bottom - r.bottom + 8; else if (e.top < r.top) s.scrollTop -= r.top - e.top + 8; }
       await frames();
       const b = s && get()?.getClientRects().length ? get().getBoundingClientRect() : null, at = b && { x: b.left + Math.min(60, b.width / 3), y: b.top + b.height / 2 };
@@ -19124,15 +19124,15 @@ def keyfacts(chrome):
 # group in Layers while a route is drawn (straight legs)
 TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; window.TB = {
   pane: () => document.getElementById('pl-pane-route'),
-  // (the trip's box leads it, over the list: #869's step 3)
+  // (the trip's box after the profile, over the tabs: #869's step 3)
   route() {
-    const pane = TB.pane(), kids = [...pane.children].filter(vis), first = kids.find((e) => e !== polku.planner.els.box), rows = [...pane.querySelectorAll('.how-rows > .row')];
-    return { box: kids[0] === polku.planner.els.box, first: first ? first.dataset.sec || first.className : '', rows: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
+    const p = polku.planner, pane = TB.pane(), first = [...pane.children].find(vis), rows = [...pane.querySelectorAll('.how-rows > .row')];
+    return { box: vis(p.els.box) && p.els.box.previousElementSibling === p.els.profZone, first: first ? first.dataset.sec || first.className : '', rows: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
   },
   // the Route tab's first content, from its top: what it is and whether its heading is in sight in the body (#740)
   top() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
-    const first = [...TB.pane().children].find((e) => vis(e) && e !== p.els.box), head = first?.querySelector('.sec-head, .wpl-head-tools') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect(); // (the list's: Show all's row, #761)
+    const first = [...TB.pane().children].find(vis), head = first?.querySelector('.sec-head, .wpl-head-tools') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect(); // (the list's: Show all's row, #761)
     return { first: first ? first.dataset.sec || first.className : '', seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
   },
   // the route's list said once (#764): no hint, a one-part route's heading beside Reorder with no numbers line under it,
@@ -19242,10 +19242,10 @@ def tabs(chrome):
         r = pg.js("(() => { const p = polku.planner; p.setTab('check'); return [...p.els.stats.querySelectorAll('.stat-label')].map((x) => x.textContent); })()")
         if 'Speed' in r or 'Style' in r or not r:
             fails.append(f"{name}: Check's top: {r}")
-        # no Go (#869's step 3): the trip's box leads Route, When and there at, then the day's weather, whose › opens the
-        # weather card with Back to Route
+        # no Go (#869's step 3): the trip's box after the profile, over the tabs (the order of 2026-11-06), When and there at,
+        # then the day's weather, whose › opens the weather card
         r = pg.js("""(() => { const p = polku.planner, b = p.els.box; p.setTab('route');
-          return { tabs: [...p.els.tabs.querySelectorAll('[role=tab]')].map((t) => t.id), first: b === p.els.panes.route.firstElementChild, when: !!b.querySelector('.trip-when .when-pill'),
+          return { tabs: [...p.els.tabs.querySelectorAll('[role=tab]')].map((t) => t.id), first: b.previousElementSibling === p.els.profZone && !!(b.compareDocumentPosition(p.els.tabs) & Node.DOCUMENT_POSITION_FOLLOWING), when: !!b.querySelector('.trip-when .when-pill'),
             there: b.querySelector('.trip-there').textContent, days: b.querySelectorAll('.trip-days > .row').length }; })()""")
         if r['tabs'] != ['pl-tab-route', 'pl-tab-check'] or not r['first'] or not r['when'] or not r['there'].startswith('→ there at ') or r['days'] != 1:
             fails.append(f"{name}: the trip's box: {r}")

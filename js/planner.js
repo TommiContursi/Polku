@@ -4663,14 +4663,15 @@ export class Planner {
     const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
     // the marks on the map: Layers' Your route group shows them while a route is drawn (#424's C) [tabs-c-layers]
     this.els.onMap = h('div', { class: 'onmap' });
-    // the trip's box over the route's list (#869's step 3): When and when you're there, then each day's weather
+    // the trip's box after the profile, over the tabs (#869's step 3; the order of 2026-11-06): When and when you're there,
+    // then each day's weather
     this.els.leave = this.when.control('pill');
     this.els.there = h('span', { class: 'trip-there' });
     this.els.boxDays = h('div', { class: 'rows trip-days' });
     this.els.box = h('div', { class: 'trip-box', role: 'group', 'aria-label': 'The trip', hidden: true }, h('div', { class: 'trip-when' }, this.els.leave, this.els.there), this.els.boxDays);
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
-      route: pane('route', this.els.box,
+      route: pane('route',
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
         this.section('points', 'Waypoints', this.els.pointsTools = h('div', { class: 'wpl-head-tools' }), this.els.pointsTop = h('div', { class: 'wpl-top' }),
@@ -4702,7 +4703,7 @@ export class Planner {
     this.els.top = h('div', { class: 'sheet-top' }, h('span', { class: 'sheet-top-start' }, this.els.up, this.els.foldBtn), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.topSet, this.els.topX), this.els.topSum);
     this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
     // (the tabs' headings, h3, under one of the planner's own: its title row has the route's name only in the route's view)
-    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, h('h2', { class: 'sr-only' }, 'Planner'), this.els.tabs, this.els.body, this.els.bar);
+    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.box, h('h2', { class: 'sr-only' }, 'Planner'), this.els.tabs, this.els.body, this.els.bar);
     p.after(this.els.grip); // (beside the panel, not in it: the side panel scrolls as one, which would clip it and scroll it away)
     this.setTab(this.tab);
     this.renderOnMap();
@@ -5309,7 +5310,7 @@ export class Planner {
     const p = this.panel, st = p.dataset.state, on = this.layout() === 'side' ? st === 'open' && !this.peekOnly()
       : !this.cards.current && ((st === 'peek' && this.peekCut)
         || (innerWidth <= 720 && st === 'half')
-        || (st === 'full' && (innerWidth <= 720 || this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2)));
+        || (st === 'full' && (innerWidth <= 720 || this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.box.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2)));
     if (p.classList.contains('scroll-all') === on) return;
     const was = scrolled; // (read before: a sheet that no longer scrolls reads 0)
     p.classList.toggle('scroll-all', on);
@@ -7359,9 +7360,9 @@ export class Planner {
   // A day's weather in the box: the temperature, rain and the dark, never the wind (each sport's row says it); missing
   // or late forecasts in words
   boxLine(a, d) {
-    const w = a.wind, wx = w && dayWeather(w, a, d.i0, d.i1), dark = this.darkOf(a, d);
+    const w = a.wind, wx = w && dayWeather(w, a, d.i0, d.i1), dark = this.darkOf(a, d), rain = wx && !wx.none && this.dayRain(a, d, wx);
     const said = !w ? (a.windError ? 'forecast unavailable' : 'loading the forecast…') : !wx ? '' : wx.none ? 'no forecast yet'
-      : [degRange(wx.tMin, wx.tMax), wx.wetM > 0 ? `${wx.snowM > wx.wetM / 2 ? 'snow' : 'rain'} on ${fmtDist(wx.wetM)}` : 'dry',
+      : [degRange(wx.tMin, wx.tMax), !rain.wet ? 'dry' : wx.wetM > 0 ? `${rain.snow ? 'snow' : 'rain'} on ${fmtDist(wx.wetM)}` : `a little ${rain.snow ? 'snow' : 'rain'}`,
         wx.beyond ? `no forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}` : wx.unsure ? 'less certain' : ''].filter(Boolean).join(' · ');
     return [said, dark && (dark.all ? 'in the dark' : dark.words)].filter(Boolean).join(' · ');
   }
@@ -7374,14 +7375,22 @@ export class Planner {
     this.els.there.textContent = `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`;
     const days = this.wxDays(a), many = days.length > 1;
     this.els.boxDays.replaceChildren(...days.map((d, k) => {
-      const known = a.wind && forecastKnown(a.wind, d.i0), line = this.boxLine(a, d);
-      const row = item({ icon: known ? this.skyAt(a, d.i0) : 'cloudSun', label: many ? `Day ${d.n} · ${shortDate(d.t0)}` : line, line: many ? line : '', chev: true, k: `day-${d.n}`,
+      const wx = a.wind && forecastKnown(a.wind, d.i0) && dayWeather(a.wind, a, d.i0, d.i1), line = this.boxLine(a, d);
+      const row = item({ icon: wx && !wx.none ? this.daySky(a, d, wx) : 'cloudSun', label: many ? `Day ${d.n} · ${shortDate(d.t0)}` : line, line: many ? line : '', chev: true, k: `day-${d.n}`,
         onclick: (e) => this.openWeather({ day: k, el: e.currentTarget }) });
       row.setAttribute('aria-label', `${many ? `Day ${d.n} · ${shortDate(d.t0)}` : 'The weather'}: ${line}. Open the weather on the way`); // (its words as shown, WCAG 2.5.3)
       return row;
     }));
   }
   skyAt(a, i) { const w = a.wind; return skyKind(w.precip[i], w.temp[i], w.cloud ? w.cloud[i] : NaN, nightAt(tripTimes(a).at(i), a.pts[i])); }
+  // Whether a day is wet, one rule for the box, the reading, the hours and the graph (the review of 2026-11-11): rain where
+  // you are on the route's samples, or in one of your hours; its strongest rate of either, and snow where most of it is
+  dayRain(a, d, wx) {
+    const on = a.wind.series ? this.dayHours(a, d).filter((x) => x.on && x.x) : [], peak = Math.max(wx.peak, ...on.map((x) => x.x.precip));
+    return { wet: peak >= 0.1, peak, snow: wx.wetM > 0 ? wx.snowM > wx.wetM / 2 : on.some((x) => x.x.precip >= 0.1 && x.x.temp < 0.5) };
+  }
+  // the day's sky at its start, rain or snow where the day is wet
+  daySky(a, d, wx) { const r = this.dayRain(a, d, wx); return r.wet ? (r.snow ? 'snow' : 'rain') : this.skyAt(a, Math.max(1, d.i0)); }
 
   // The weather card from the trip's box, the numbers' time, Check's items or the key facts: at a day (framed on the map
   // on a trip of days), or at Time on the way, unfolded. `from`: the card it came from, for Back; from the planner, ✕ alone
@@ -7418,16 +7427,16 @@ export class Planner {
     } else if (w.beyond === 0) body.append(note(`No forecast yet for ${dayOf(T.start)}. Sunset and the dark still count; the forecast reaches 10 days ahead.`));
     days.forEach((d, k) => body.append(this.wxDay(a, d, k, days.length > 1)));
     if (w && w.beyond !== 0) body.append(...this.wxWay(a));
-    // Colour by: the profile's own choices, colouring the route on the map too
-    const sel = h('select', { 'aria-label': 'Colour the route and the profile by', onchange: (e) => this.pickColor(e.target.value) });
-    sel.innerHTML = this.els.modeSel.innerHTML;
-    sel.value = this.colorMode;
+    // Colour the route by its weather, a tap each, as Go's three links did (the user's choice of 2026-11-11); the profile's
+    // other kinds are in ⋯'s Colour by
+    const chip = (k, label) => { const on = this.colorOnMap && this.colorMode === k;
+      return h('button', { type: 'button', class: 'chip', 'data-k': `colour-${k}`, 'aria-pressed': String(on), onclick: () => { this.pickColor(k); this.cards.refresh(); }, html: `${on ? icon('check', 15) : ''}<span>${label}</span>` }); };
     const wait = (a.waits || []).reduce((t, x) => t + x.sec, 0), open = !!card.time, row = item({ icon: 'clock', label: 'Time on the way', line: `${fmtDuration(a.timeWind || a.time)}${wait ? ` · ${shortDuration((a.timeWind || a.time) - wait)} moving` : ''}`, k: 'time', onclick: () => { card.time = !card.time; this.cards.refresh(); } });
     row.setAttribute('aria-expanded', String(open));
     row.append(h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) }));
-    body.append(h('label', { class: 'mode-select' }, h('span', { class: 'mode-select-label' }, 'Colour by'),
-      h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('caret', 12) }))),
-    rows(row));
+    body.append(h('h4', { class: 'menu-h', id: 'wx-colour-h' }, 'Colour the route by'),
+      h('div', { class: 'rt-chips', role: 'group', 'aria-labelledby': 'wx-colour-h' }, chip('wind', 'Wind'), chip('temp', 'Temperature'), chip('rain', 'Rain')),
+      rows(row));
     if (open) body.append(this.speedTable(a));
   }
 
@@ -7442,7 +7451,7 @@ export class Planner {
     else if (wx && wx.none && w.beyond !== 0) note(`No forecast yet for ${dayOf(d.t0)}: the forecast reaches 10 days ahead.`);
     if (wx && !wx.none && wx.beyond) note(`No forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}, ${this.clockOf(w.beyondSec)}: the weather here is up to there, and the time leaves the wind out after it.`);
     if (wx && !wx.none && wx.unsure && (w.beyond < 0 || w.unsure < w.beyond)) note(`From km ${(a.along[w.unsure] / 1000).toFixed(0)} (${this.clockOf(tripTimes(a).at(w.unsure))}) it’s more than three days ahead: the forecast is less certain.`);
-    if (wx && !wx.none && wx.tMin <= 0.5 && wx.wetM > 0) el.append(h('span', { class: 'pill warn' }, 'Wet and near freezing — slippery roots and rocks'));
+    if (wx && !wx.none && wx.tMin <= 0.5 && this.dayRain(a, d, wx).wet) el.append(h('div', { class: 'warn-row look' }, h('span', { 'aria-hidden': 'true', html: icon('flake', 18) }), h('span', {}, h('b', {}, 'Wet and near freezing'), h('small', {}, 'Slippery roots and rocks'))));
     const dark = this.darkOf(a, d);
     if (dark) el.append(h('p', { class: 'wx-dark', html: `${icon('moon', 16)}${escapeHtml(cap(dark.words))}` }));
     el.append(h('p', { class: 'wx-sun' }, ...this.sunLine(d.t0, a.pts[d.i0]).map(([ic, t]) => h('span', { html: `${icon(ic, 15)}${escapeHtml(t)}` }))));
@@ -7452,18 +7461,20 @@ export class Planner {
 
   // The reading: the sky and the temperature large, then as it feels, rain, the wind and its gust, the waves on a paddle
   // and the snow on the ground in winter; each only where it's known
+  // (the values in the text's ink, each line's icon in its kind's colour: the user's choice of 2026-11-11, so nothing reads
+  // as danger's red)
   wxReading(a, d, wx) {
-    const wave = this.dayWaves(d), winter = this.app.winter && this.app.winter().on, sky = this.skyAt(a, Math.max(1, d.i0));
-    const fact = (ic, html) => h('span', { html: `${icon(ic, 16)}${html}` });
-    const snowy = wx.snowM > wx.wetM / 2, mm = Math.round(wx.mm * 10) / 10;
+    const wave = this.dayWaves(d), winter = this.app.winter && this.app.winter().on, sky = this.daySky(a, d, wx), rain = this.dayRain(a, d, wx);
+    const fact = (ic, kind, html) => h('span', { html: `<span class="wx-ic ${kind}">${icon(ic, 16)}</span>${html}` });
+    const mm = Math.max(rain.wet ? 0.1 : 0, Math.round(wx.mm * 10) / 10);
     return h('div', { class: 'wx-read' },
-      h('span', { class: 'wx-now' }, h('span', { class: `wx-sky ${sky}`, 'aria-hidden': 'true', html: icon(sky, 34) }), h('b', { class: tCls(wx.tMax) }, degRange(wx.tMin, wx.tMax).replace(' °C', '°'))),
+      h('span', { class: 'wx-now' }, h('span', { class: `wx-sky ${sky}`, 'aria-hidden': 'true', html: icon(sky, 30) }), h('b', {}, degRange(wx.tMin, wx.tMax).replace(' °C', '°'))),
       h('span', { class: 'wx-facts' },
-        wx.feel != null ? fact('temp', `Feels like <b class="${tCls(wx.feel)}">${deg(wx.feel)}</b>`) : null,
-        fact(snowy ? 'snow' : 'drop', wx.wetM > 0 ? `<b class="wx-rain">${mm < 1 ? mm.toFixed(1) : Math.round(mm)} mm</b> · up to ${wx.peak.toFixed(1)} mm/h${snowy ? ', as snow' : ''}` : '<b class="wx-rain">0 mm</b> · dry'),
-        fact('wind', `<b class="wx-wind">${Math.round(wx.wind)} (${Math.round(wx.gust)}) m/s</b>${arrow(wx.dir)} from ${compass(wx.dir)}`),
-        wave ? fact('paddle', `Waves up to about <b class="wx-wave">${Math.max(0.1, wave.m).toFixed(1)} m</b> <small>an estimate${wave.at ? `, for the wind at ${timeOf(wave.at)}` : ''}</small>`) : null,
-        winter && wx.snow != null ? fact('flake', `Snow on the ground <b>${Math.round(wx.snow)}&nbsp;cm</b>`) : null));
+        wx.feel != null ? fact('temp', 'temp', `Feels like <b>${deg(wx.feel)}</b>`) : null,
+        fact(rain.snow ? 'snow' : 'drop', 'rain', rain.wet ? `<b>${mm < 1 ? mm.toFixed(1) : Math.round(mm)} mm</b> · up to ${rain.peak.toFixed(1)} mm/h${rain.snow ? ', as snow' : ''}` : '<b>0 mm</b> · dry'),
+        fact('wind', 'wind', `<b>${Math.round(wx.wind)} (${Math.round(wx.gust)}) m/s</b>${arrow(wx.dir)} from ${compass(wx.dir)}`),
+        wave ? fact('paddle', 'wave', `Waves up to about <b>${Math.max(0.1, wave.m).toFixed(1)} m</b> <small>an estimate${wave.at ? `, for the wind at ${timeOf(wave.at)}` : ''}</small>`) : null,
+        winter && wx.snow != null ? fact('flake', 'snow', `Snow on the ground <b>${Math.round(wx.snow)}&nbsp;cm</b>`) : null));
   }
   // the highest wave on the day's water legs (water.js): { m, at } or null where none is known (no wind, or a leg not
   // routed on the water)
@@ -7476,32 +7487,39 @@ export class Planner {
     return top;
   }
 
-  // The day's hours where you'll be (#766): the trip's hours marked, one either side, as FMI's table; and yr's graph of
-  // 12 hours (more for a longer day) from two hours before. Past the forecast an hour says so.
-  wxHours(a, d) {
+  // The day's hours where you'll be (#766): from two hours before the day's first, 12 of them (more for a longer day), each
+  // sampled at the place you're at then; its rain the hour's own (Open-Meteo's precipitation is the hour before its time,
+  // so an hour's is the next one's); none past the forecast. `on`: an hour you're on the way
+  dayHours(a, d) {
     const w = a.wind, T = tripTimes(a), n = a.along.length, h0 = Math.floor(d.t0 / 3600) * 3600, h1 = Math.floor(d.t1 / 3600) * 3600;
-    const span = Math.min(24, Math.max(12, (h1 - h0) / 3600 + 4)), hours = [];
+    const span = Math.min(24, Math.max(12, (h1 - h0) / 3600 + 4)), out = [];
     for (let k = 0, i = 0; k < span; k++) {
       const t = h0 - 7200 + k * 3600;
       while (i < n - 1 && T.at(i) < t) i++;
-      const x = t <= w.beyondSec ? sampleAt(w.series[w.cell[i]], t) : null, night = nightAt(t, a.pts[i]);
-      hours.push({ t, x, night, on: t + 3600 > d.t0 && t <= d.t1, sky: x && skyKind(x.precip, x.temp, x.cloud ?? NaN, night) });
+      const s = w.series[w.cell[i]], x = t <= w.beyondSec ? { ...sampleAt(s, t), precip: sampleAt(s, Math.min(t + 3600, w.beyondSec)).precip } : null, night = nightAt(t, a.pts[i]);
+      out.push({ t, x, night, on: t + 3600 > d.t0 && t <= d.t1, sky: x && skyKind(x.precip, x.temp, x.cloud ?? NaN, night) });
     }
+    return out;
+  }
+  // …as FMI's table (the trip's hours marked, one either side) and yr's graph (js/daygraph.js), values in the text's ink
+  wxHours(a, d) {
+    const hours = this.dayHours(a, d), h0 = Math.floor(d.t0 / 3600) * 3600, h1 = Math.floor(d.t1 / 3600) * 3600;
     const shown = hours.filter((x) => x.t >= h0 - 3600 && x.t <= h1 + 3600), feels = shown.some((x) => x.x && x.x.feel != null);
     const cols = ['Time', 'Sky', 'Temp', ...(feels ? ['Feels'] : []), 'mm', 'Wind (gust) m/s'];
     const table = h('table', { class: 'wx-hours' }, h('caption', { class: 'sr-only' }, 'The hours where you’ll be'),
-      h('thead', {}, h('tr', {}, ...cols.map((c) => h('th', { scope: 'col', class: c === 'Sky' ? 'sky' : null }, c === 'Sky' ? h('span', { class: 'sr-only' }, c) : c)))),
+      h('thead', {}, h('tr', {}, ...cols.map((c) => h('th', { scope: 'col', class: c === 'Sky' ? 'sky' : c === 'Feels' ? 'feel' : null }, c === 'Sky' ? h('span', { class: 'sr-only' }, c) : c)))),
       h('tbody', {}, ...shown.map(({ t, x, on, sky }) => h('tr', { class: on ? 'on' : null },
         h('th', { scope: 'row' }, on ? h('b', {}, hh(t)) : hh(t), on ? h('span', { class: 'sr-only' }, ', on the way') : null),
         ...(!x ? [h('td', { colspan: String(cols.length - 1), class: 'none' }, 'No forecast yet')] : [
           h('td', { class: 'sky' }, h('span', { class: `wx-sky ${sky}`, 'aria-hidden': 'true', html: icon(sky, 20) }), h('span', { class: 'sr-only' }, SKY_WORDS[sky])),
-          h('td', { class: tCls(x.temp) }, h('b', {}, deg(x.temp))),
+          h('td', {}, on ? h('b', {}, deg(x.temp)) : deg(x.temp)),
           feels ? h('td', { class: 'feel' }, x.feel != null ? deg(x.feel) : '–') : null,
-          h('td', {}, x.precip >= 0.1 ? h('span', { class: 'wx-rain' }, x.precip.toFixed(1)) : '–'),
-          h('td', { html: `<span class="wx-wind">${Math.round(x.speed)}</span> (${Math.round(x.gust)})${arrow(x.dir)}<span class="sr-only"> from ${compass(x.dir)}</span>` })])))));
-    const graph = dayGraph(hours, d, `${hh(hours[0].t)}:00 to ${hh(hours[hours.length - 1].t + 3600)}:00: ${degRange(...minMax(hours.filter((x) => x.x).map((x) => x.x.temp)))}, wind up to ${Math.round(Math.max(0, ...hours.filter((x) => x.x).map((x) => x.x.speed)))} m/s`);
+          h('td', {}, x.precip >= 0.1 ? x.precip.toFixed(1) : '–'),
+          h('td', { html: `${Math.round(x.speed)} (${Math.round(x.gust)})${arrow(x.dir)}<span class="sr-only"> from ${compass(x.dir)}</span>` })])))));
+    const known = hours.filter((x) => x.x), rainPeak = Math.max(0, ...known.map((x) => x.x.precip));
+    const graph = dayGraph(hours, d, `${hh(hours[0].t)}:00 to ${hh(hours[hours.length - 1].t + 3600)}:00: ${degRange(...minMax(known.map((x) => x.x.temp)))}, wind up to ${Math.round(Math.max(0, ...known.map((x) => x.x.speed)))} m/s${known.some((x) => x.x.precip >= 0.1) ? ', some rain' : ', dry'}`);
     return [h('div', { class: 'wx-scroll' }, table), h('div', { class: 'wx-scroll', html: graph }),
-      h('p', { class: 'wx-key', html: '<span class="wx-warm">— °C</span> · <span class="wx-rain">▮ rain mm/h</span> · <span class="wx-wind">— wind, - - gusts</span> · the dark shaded, your trip in green between its marks' })];
+      h('p', { class: 'wx-key', html: `<span class="wx-ic temp">—</span> °C · <span class="wx-ic rain">▮</span> rain${rainPeak >= 0.1 ? `, up to ${rainPeak.toFixed(1)} mm/h` : ': none'} · <span class="wx-ic wind">—</span> wind, <span class="wx-ic wind">- -</span> gusts · the dark shaded, your trip between its marks in the route’s colour` })];
   }
 
   // The wind on the way: its shares along the route, and the strongest headwind, framed (as far as the forecast reaches)
@@ -7514,7 +7532,7 @@ export class Planner {
       if (!worst || w.head[i] > worst.v) worst = { v: w.head[i], i };
     }
     const tot = a.along[reach - 1] || 1;
-    return [h('h4', { class: 'wx-h' }, 'The wind on the way'),
+    return [h('h4', { class: 'menu-h' }, 'The wind on the way'),
       h('div', { class: 'exposure' }, ...[['Headwind', share.head, '#ef4444'], ['Crosswind', share.cross, '#f59e0b'], ['Tailwind', share.tail, '#22a447'], ['Calm', share.calm, '#94a3b8']]
         .filter(([, v]) => v > 0).map(([l, v, c]) => h('span', { class: 'ex-item' }, h('i', { style: `background:${c};width:${Math.max(4, (v / tot) * 100)}%` }), `${l} ${Math.round((v / tot) * 100)} %`))),
       worst && worst.v >= 1.5 ? rows(item({ icon: 'wind', label: `Strongest headwind ${worst.v.toFixed(1)} m/s`, line: `at km ${(a.along[worst.i] / 1000).toFixed(1)}`, chev: true, k: 'headwind',
@@ -7550,7 +7568,6 @@ export class Planner {
 const deg = (t) => `${Math.round(t) < 0 ? '−' : ''}${Math.abs(Math.round(t))}°`;
 const degRange = (lo, hi) => (Math.round(lo) === Math.round(hi) ? `${deg(lo)}`.replace('°', ' °C') : `${deg(lo).replace('°', '')}…${deg(hi).replace('°', ' °C')}`);
 const minMax = (xs) => [Math.min(...xs), Math.max(...xs)];
-const tCls = (t) => (t < 0 ? 'wx-cold' : 'wx-warm');
 const hh = (t) => String(new Date(t * 1000).getHours()).padStart(2, '0');
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 const shortDate = (sec) => new Date(sec * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'numeric' });

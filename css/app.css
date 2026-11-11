@@ -171,7 +171,7 @@ html { -webkit-tap-highlight-color: transparent; }
   :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: none; }
 }
 /* a small heading, everywhere: 12 px capitals in grey (#356) */
-.menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .speed-route h4, .wind-title, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
+.menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
   font-size: var(--font-small); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
 }
 #map { position: fixed; inset: 0; }
@@ -845,13 +845,13 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet[data-layout="sheet"] .fold-line::before { left: calc(50% - 16px); right: auto; width: 32px; top: 5px; pointer-events: none; }
 .sheet[data-state="folded"] .fold-line { opacity: 1; visibility: visible; pointer-events: auto; filter: none; transition-delay: 0s; }
 .sheet.dragging .fold-line { visibility: visible; pointer-events: none; filter: none; transition: none; }
-.sheet > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: opacity .15s var(--ease-out), filter .15s var(--ease-out), visibility 0s; }
-.sheet[data-state="folded"] > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition-delay: 0s, 0s, .15s; }
-.sheet.dragging > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: none; }
-.sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { opacity: 0; visibility: hidden; }
+.sheet > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: opacity .15s var(--ease-out), filter .15s var(--ease-out), visibility 0s; }
+.sheet[data-state="folded"] > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition-delay: 0s, 0s, .15s; }
+.sheet.dragging > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: none; }
+.sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { opacity: 0; visibility: hidden; }
 .sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head) { filter: blur(var(--fade-blur)); }
 /* from the keyboard it changes at once (planner.js setSheetState()); with reduced motion it's a fade alone, no blur */
-.sheet.instant > :is(.fold-line, .sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: none; }
+.sheet.instant > :is(.fold-line, .sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: none; }
 @media (prefers-reduced-motion: reduce) { .sheet { --fade-blur: 0px; } }
 .fold-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 14px 0 2px 14px; border: 0; border-radius: var(--radius-control); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .fold-line > .fold-x { flex: none; width: 44px; height: 44px; margin-top: 16px; }
@@ -959,7 +959,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="side"] .sheet-handle { display: none; }
 .sheet[data-layout="side"] .sheet-head { padding-top: 12px; touch-action: auto; }
 .sheet[data-layout="side"][data-state="folded"] { top: auto; bottom: 12px; }
-.sheet[data-layout="side"][data-state="folded"] > :is(.sheet-head, .pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.sheet[data-layout="side"][data-state="folded"] > :is(.sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
 .sheet[data-layout="side"] .fold-line { display: none; }
 .sheet[data-layout="side"][data-state="folded"] .fold-line { display: flex; position: static; align-items: center; }
 .sheet[data-layout="side"] .fold-go { min-height: 56px; padding: 0 0 0 14px; }
@@ -1006,7 +1006,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-empty { margin: 14px 0; }
 /* the sheet's sizes: the peek is the header and the profile (#742), as tall as it leaves room for (--prof-peek, measureSheet()),
    and so is half's, so it doesn't move when the sheet does; half and full add the tabs, full the profile's own row */
-.sheet[data-state="peek"]:not(.dragging) .pl-tabs, .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
+.sheet[data-state="peek"]:not(.dragging) :is(.trip-box, .pl-tabs), .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile #profile-canvas { height: var(--prof-peek, 64px); }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .profile-top { display: none; }
 /* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
@@ -1019,7 +1019,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
    start instead of the route's numbers: the ways to begin, a step (Draw it, Round trip, Marked routes) or the
    first point's peek. On a phone the peek is as tall as it, and the rest of the sheet waits for a route. */
 .sheet-row[hidden], .pl-way[hidden] { display: none; }
-.sheet.starting :is(.pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.sheet.starting :is(.pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
 .pl-way { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; /* (a held sheet never squeezes its rows: it scrolls) */ gap: 10px; padding: 2px 2px 4px; min-width: 0;
   overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
 /* as tall as there's room: the sheet stops below the top bar (a docked toolbox, 200 % zoom), and the view scrolls inside */
@@ -1357,59 +1357,63 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .ex-item { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; font-size: 12px; color: var(--muted); }
 .ex-item i { grid-column: 2; grid-row: 1; height: 7px; border-radius: 999px; display: block; }
 /* ---------------------------------------------------------------- the trip's box and the weather card (#869's step 3) */
-/* the box over Route's list: When and when you're there, then a row a day ending in › */
-.trip-box { grid-column: 1 / -1; display: grid; gap: 2px; margin: 0 0 12px; padding: 8px 10px 0; border: 1px solid var(--line); border-radius: 14px; }
+/* the box after the profile, over the tabs (the order of 2026-11-06): When and when you're there, then a row a day with › */
+.sheet > .trip-box { flex: none; display: grid; gap: var(--space-2); margin: 0 16px var(--space-10); padding: var(--space-8) var(--space-10) 0; border: 1px solid var(--line); border-radius: var(--radius); }
 .trip-box .trip-days { margin: 0 -10px; }
-.trip-box .trip-days > .row:last-child { border-radius: 0 0 14px 14px; }
+.trip-box .trip-days > .row:last-child { border-radius: 0 0 var(--radius) var(--radius); }
 /* When's pill and "→ there at" on a line, the pill's note (past the forecast, a passed time) under both */
-.trip-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.trip-when { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-10); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
 .trip-when .when-box { display: contents; }
-.trip-when .pick-note { order: 1; flex-basis: 100%; font-weight: 400; }
-/* the card: the colours of the weather, each kind its own, said in words too (the mock-up's D, 2026-11-07) */
-:root { --wx-warm: #b91c1c; --wx-cold: #1d4ed8; --wx-rain: #1d4ed8; --wx-wind: #6d28d9; --wx-sun: #a16207; --wx-dark: rgba(16, 24, 20, 0.08); }
-:root[data-theme="dark"] { --wx-warm: #f87171; --wx-cold: #60a5fa; --wx-rain: #60a5fa; --wx-wind: #c4b5fd; --wx-sun: #facc15; --wx-dark: rgba(232, 236, 233, 0.09); }
-.wx-warm { color: var(--wx-warm); } .wx-cold { color: var(--wx-cold); } .wx-rain { color: var(--wx-rain); } .wx-wind { color: var(--wx-wind); }
-.card[data-kind="weather"] { gap: 8px; }
-.card[data-kind="weather"] .way-hint .trip-when { padding-top: 2px; }
-.wx-note { margin: 0; font-size: 13px; }
-.wx-day { display: grid; gap: 8px; min-width: 0; }
-.wx-dayh { margin: 6px 0 0; font-size: var(--font-row); }
-.wx-dayh small { display: block; margin-top: 1px; font-size: 13px; font-weight: 400; color: var(--muted); }
-.wx-h { margin: 6px 0 -4px; font-size: 13px; color: var(--muted); }
-/* the reading: the sky and the temperature large, three small lines with icons beside them */
-.wx-read { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-.wx-now { flex: none; display: flex; align-items: center; gap: 6px; }
-.wx-now > b { font-size: 30px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.wx-facts { flex: 1 1 170px; min-width: 0; display: grid; gap: 2px; font-size: 14px; line-height: 1.35; }
+.trip-when .pick-note { order: 1; flex-basis: 100%; font-weight: var(--weight-regular); }
+/* the card: values in the text's ink; each kind's icon in its colour, as the weather timeline draws them (the user's
+   choice of 2026-11-11: nothing in danger's red), and said in words */
+:root { --wx-temp: #ea580c; --wx-sun: #a16207; }
+:root[data-theme="dark"] { --wx-temp: #fb923c; --wx-sun: #facc15; }
+.wx-ic { display: inline-flex; vertical-align: -3px; margin-right: var(--space-6); color: var(--muted); }
+.wx-ic.temp { color: var(--wx-temp); } .wx-ic.rain { color: var(--wx-text); } .wx-ic.wave { color: var(--sport-paddle); }
+.card[data-kind="weather"] { gap: var(--space-8); }
+.card[data-kind="weather"] .way-hint .trip-when { padding-top: var(--space-2); }
+.wx-note { margin: 0; }
+.wx-day { display: grid; gap: var(--space-8); min-width: 0; }
+.wx-dayh { margin: var(--space-6) 0 0; font-size: var(--font-row); font-weight: var(--weight-strong); }
+.wx-dayh small { display: block; margin-top: 1px; font-size: var(--font-control); font-weight: var(--weight-regular); color: var(--muted); }
+/* the reading: the sky and the temperature large, the rest small lines with their icons beside them */
+.wx-read { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-12); }
+.wx-now { flex: none; display: flex; align-items: center; gap: var(--space-6); }
+.wx-now > b { font-size: var(--font-numeral); line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.wx-facts { flex: 1 1 170px; min-width: 0; display: grid; gap: var(--space-2); font-size: var(--font-body); line-height: 1.35; }
 .wx-facts > span { overflow-wrap: anywhere; }
-.wx-facts .ic { display: inline-block; vertical-align: -3px; margin-right: 6px; color: var(--muted); }
-.wx-facts small { color: var(--muted); font-size: 12.5px; }
-.wx-wave { color: var(--sport-paddle); }
+.wx-facts small { color: var(--muted); font-size: var(--font-small); }
 .wx-sky { display: inline-grid; color: var(--muted); }
 .wx-sky:is(.sun, .cloudSun) { color: var(--wx-sun); }
-svg.arw { display: inline-block; vertical-align: -2px; margin: 0 2px; color: var(--wx-wind); }
-.wx-dark { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 600; }
-.wx-sun { display: flex; flex-wrap: wrap; gap: 2px 14px; margin: 0; font-size: 13px; }
-.wx-sun > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2); }
+.wx-dark { display: flex; align-items: center; gap: var(--space-6); margin: 0; font-size: var(--font-body); font-weight: var(--weight-name); }
+.wx-sun { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-12); margin: 0; font-size: var(--font-control); font-weight: var(--weight-regular); }
+.wx-sun > span { display: inline-flex; align-items: center; gap: var(--space-4); white-space: nowrap; }
 .wx-sun .ic { color: var(--wx-sun); }
-/* the hours where you'll be, FMI's table; the trip's own marked ● (and said: ", on the way") */
+/* the hours where you'll be, FMI's table; the trip's own marked ● in the route's colour (and said: ", on the way") */
 .wx-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
-.wx-hours { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
-.wx-hours thead th { padding: 0 4px 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-align: right; white-space: nowrap; }
-.wx-hours :is(td, tbody th) { height: 38px; padding: 0 4px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-weight: 400; }
+.wx-hours { width: 100%; border-collapse: collapse; font-size: var(--font-body); font-variant-numeric: tabular-nums; }
+.wx-hours thead th { padding: 0 var(--space-4) var(--space-4); font-size: var(--font-small); font-weight: var(--weight-name); color: var(--muted); text-align: right; white-space: nowrap; }
+.wx-hours :is(td, tbody th) { height: 38px; padding: 0 var(--space-4); border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-weight: var(--weight-regular); }
 .wx-hours :is(th, td):first-child { text-align: left; }
 .wx-hours .sky { text-align: center; }
-.wx-hours .feel, .wx-hours td.none { color: var(--muted); }
-.wx-hours tbody tr:not(.on) :is(th, td) { color: var(--muted); }
-.wx-hours tr.on th b { display: inline-flex; align-items: center; gap: 4px; }
-.wx-hours tr.on th b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.wx-hours tbody tr:not(.on) :is(th, td), .wx-hours .feel, .wx-hours td.none { color: var(--muted); }
+.wx-hours tr.on th b { display: inline-flex; align-items: center; gap: var(--space-4); }
+.wx-hours tr.on th b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--route); }
 .wx-hours td.none { text-align: left; }
 @container card (max-width: 300px) { .wx-hours .feel { display: none; } }
-/* yr's graph: at least its drawn width, scrolling sideways in a narrow card (200 %) */
+/* yr's graph (js/daygraph.js), on the chart's tokens: at least its drawn width, scrolling sideways in a narrow card (200 %) */
 .wx-graph { display: block; width: 100%; min-width: 300px; height: auto; }
-.wx-graph text { font: 600 11px/1 system-ui, sans-serif; fill: var(--text); }
-.wx-graph text.wx-warm { fill: var(--wx-warm); } .wx-graph text.wx-cold { fill: var(--wx-cold); } .wx-graph text.wx-rain { fill: var(--wx-rain); } .wx-graph text.wx-wind { fill: var(--wx-wind); }
-.wx-key { margin: -4px 0 0; font-size: 12.5px; }
+.wx-graph text { font: 600 12px/1 system-ui, sans-serif; fill: var(--chart-ink); }
+.wx-graph .night { fill: var(--chart-grid); }
+.wx-graph .trip { fill: var(--route); opacity: .14; } .wx-graph .trip-mark { fill: var(--route); }
+.wx-graph .grid { stroke: var(--chart-grid); }
+.wx-graph .temp { fill: none; stroke: var(--wx-temp); stroke-width: 2; }
+.wx-graph .rain { fill: var(--wx-text); opacity: .8; }
+.wx-graph .wind { fill: none; stroke: var(--muted); stroke-width: 2; } .wx-graph .gust { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 3 3; }
+.wx-key { margin: 0; font-size: var(--font-small); }
+.wx-key .wx-ic { margin: 0; vertical-align: baseline; font-weight: var(--weight-strong); }
 .card[data-kind="weather"] .speed-row small { white-space: normal; } /* (a note such as "included above" wraps in its column) */
 
 /* ---------------------------------------------------------------- waypoints */
@@ -1953,7 +1957,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
 /* the card has the whole sheet (step 3 of #233): the planner's profile, tabs and list wait behind it; swiped up, the sheet
    is the planner's half and full (#889), and the card scrolls inside it, or sits at its top with room under it */
-.sheet.carded > :is(.pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.sheet.carded > :is(.pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
 .sheet.carded:is([data-state="half"], [data-state="full"]) > .sheet-head, .sheet.carded:is([data-state="half"], [data-state="full"]) :is(.sheet-head-in, .card-peek) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sheet.carded:is([data-state="half"], [data-state="full"]) .card-peek .card { flex: 0 1 auto; min-height: 0; max-height: none; }
 /* at its spot (desktops, the planner put away), Revision 5: a quick look, not a sheet. 320 px wide and 480 px tall at
