@@ -14,8 +14,7 @@ import { ACTIVITIES, CRAFTS, LIPAS_TYPES, DIFF_COLORS, isLipasRoute } from './co
 import { STYLES, styleName } from './styles.js';
 import { fmtDist, fmtDuration, compass, bearing, lineLength } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
-import { LONG_HOURS } from './weather.js';
-import { timeOf, dayOf } from './trip.js';
+import { dayOf } from './trip.js';
 
 // the point's own marker, as the map draws it
 export function pointMark(pl, i) {
@@ -87,7 +86,7 @@ function pointBody(pl, card, body) {
   const name = pl.nameOf(i);
   // (while a leg is routed, or the analysis is of the route before it, what isn't known yet waits in its place)
   const pending = pl.points.length > 1 && !pl.analysisFits();
-  const when = pl.analysis ? pl.arriveAt(i) : i === 0 ? pl.startSec() : null;
+  const when = pl.analysis ? pl.arriveAt(i) : i === 0 ? pl.when.start() : null;
   body.append(nums(pointNums(pl.analysis, i, { when, along: pl.lengthTo(i), clock: (s) => pl.clockOf(s), pending })));
   // …and once routing has ended, numbers along a leg that couldn't be routed, or waits for the router, say so
   const before = pl.legs.slice(0, i), failed = before.some((l) => l.status === 'error'), waits = before.some((l) => l.status === 'waiting');
@@ -130,8 +129,8 @@ function pointBody(pl, card, body) {
       body.append(rows(item({ icon: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km', chev: true, onclick: () => pl.cards.open(staysCard(pl, card), { at: card.key, from: card }) })));
     }
   }
-  // the start: when you leave
-  if (i === 0 && n > 1) { const lv = leaveBlock(pl); lv.put(); body.append(lv.el); }
+  // the start: when you leave (one row for the card, so the menu it opens gives the focus back to it after a refresh)
+  if (i === 0 && n > 1) body.append(rows(card.when ||= pl.when.control('row')));
   // Next stretch, to Waypoint 4: where it goes, in its name, so a desktop says it too (its line is a tooltip there; 2026-10-22).
   // A stretch runs to the next point you see (1b): from a point that only shapes the line, the stretch it's on.
   const str = pl.legs[i] ? pl.stretchAt(i) : null;
@@ -200,33 +199,6 @@ function sportCard(pl, point) {
     },
   };
   return card;
-}
-
-// a departure as a datetime-local field writes it ("2026-11-07T09:00"), and one picked in it: Go's Leave and When's (#869)
-export const leaveLocal = (sec) => { const d = new Date(sec * 1000), z = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
-export function leaveFrom(pl, v) {
-  const sec = v ? new Date(v).getTime() / 1000 : null;
-  if (sec != null && sec <= Date.now() / 1000) toast('That time has passed, so it leaves now');
-  pl.setLeave(sec);
-}
-
-// Leave ›, on the start's card and in Go (#364's C) [r6-leave-c, r6-leave-c-set, r6-leave-c-far, r6-leave-c-passed]: the
-// phone's own date and time for any day ahead. Once set, the date is the row's line, the time its value, and Now on
-// that line (2026-10-24's detail); past the forecast's reach, or a date that had passed, a note under it. Only the start
-// has a date: the rest counts from it.
-export function leaveBlock(pl) {
-  const row = pickRow({ icon: 'clock', label: 'Leave', type: 'datetime-local', now: () => pl.setLeave(null), set: (v) => { leaveFrom(pl, v); put(); } });
-  const note = h('p', { class: 'pick-note', hidden: true });
-  const put = () => {
-    const at = pl.leaveAt, now = Date.now() / 1000, passed = at == null && pl.leavePassed, far = at != null && at - now >= LONG_HOURS * 3600;
-    row.put({ line: at == null ? 'Sets the times and the weather along the route' : dayOf(at, true), val: at == null ? 'Now' : timeOf(at),
-      value: leaveLocal(at ?? Math.ceil(now / 900) * 900), min: leaveLocal(Math.floor(now / 900) * 900), set: at != null }); // (min on the clock's quarter hour: the field's steps count from it)
-    note.hidden = !far && !passed;
-    note.classList.toggle('info', !!passed);
-    note.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(far ? 'cloudSun' : 'info', 16) }),
-      h('span', {}, far ? `No forecast yet for ${dayOf(at)}. Sunset and the dark still count.` : passed ? `Planned for ${dayOf(passed)}, ${timeOf(passed)}. That’s passed, so it leaves now: pick a new time above.` : ''));
-  };
-  return { el: h('div', { class: 'pick-leave' }, rows(row.el), note), put };
 }
 
 // Places to sleep nearby ›: lean-tos, huts and campsites within 3 km (LIPAS and OpenStreetMap); a tap moves the night there [r-stays]
@@ -725,7 +697,7 @@ function colourBy(pl, pick) {
     ...modesOf(a).map(([title, modes]) => h('optgroup', { label: title }, ...modes.map((k) => h('option', { value: k }, PICK_MODES[k])))));
   sel.value = mode;
   const chips = h('label', { class: 'mode-select pick-by' }, h('span', { class: 'mode-select-label' }, 'Colour by'),
-    h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
+    h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('caret', 12) })));
   const legend = h('div', { class: 'bd-legend' }, ...breakdownRows(a, mode).filter((r) => r[1] > 0).map(([words, d, color, key]) => h('span', { class: 'bd-item', 'data-category': String(key) },
     h('i', { style: `background:${color}`, 'aria-hidden': 'true' }), h('span', {}, `${cap(String(words))} `), h('b', {}, fmtDist(d)))));
   // (a pick has no direction of its own: head and tail are for going from its west end to its east end)

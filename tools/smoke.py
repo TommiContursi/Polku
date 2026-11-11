@@ -1790,7 +1790,7 @@ MULTI = """(async () => {
   if (!a || !a.waits || a.waits.length !== 2) return [...errs, `changeovers: ${a && a.waits ? a.waits.length : 'none'}`];
   const mins = a.waits.map((w) => w.sec / 60).join(',');
   if (mins !== '15,10') errs.push(`changeover minutes: ${mins}`);
-  const moving = p.timed(a, null, null, p.startSec()).total - 25 * 60;
+  const moving = p.timed(a, null, null, p.when.start()).total - 25 * 60;
   p.setChangeMin(2, 3);
   await wait(300);
   if (Math.round((p.analysis.time - moving) / 60) !== 18) errs.push(`time with 15 + 3 min of changeovers: ${Math.round((p.analysis.time - moving) / 60)} min more than moving`);
@@ -1960,8 +1960,8 @@ STOPS = """(async () => {
   const ten = new Date();
   ten.setHours(10, 0, 0, 0);
   if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
-  p.setLeave(ten / 1000);
-  if (new Date(p.startSec() * 1000).getHours() !== 10) errs.push(`departure at ${new Date(p.startSec() * 1000)}`);
+  p.when.set(ten / 1000);
+  if (new Date(p.when.start() * 1000).getHours() !== 10) errs.push(`departure at ${new Date(p.when.start() * 1000)}`);
   for (const q of [[23.700, 61.500], [23.720, 61.506], [23.745, 61.509], [23.760, 61.504]]) p.addPoint(q);
   p.setLegSport(1, 'paddle'); // mtb → paddle → mtb: the bike stays at point 1
   const ready = (k) => p.analysis && p.analysis.waits && p.analysis.waits.length === k;
@@ -7685,8 +7685,8 @@ PREVIEWS = r"""(async () => {
   const empty = (why) => { if (data().length || p.els.breakdown.querySelector('.bd-preview')) errs.push(`preview remains after ${why}`); };
   const fire = (el, type, pointerType = 'mouse') => el.dispatchEvent(new PointerEvent(type, { pointerType }));
   const cell = (mode, key, legend = false) => [...p.breakdownKinds[mode].el.querySelectorAll(legend ? '.bd-item' : '.bd-bar span')].find((el) => el.dataset.category === String(key));
-  const saved = JSON.stringify({ mode: p.colorMode, onMap: p.colorOnMap, leave: p.leaveAt, points: p.points, camera: [polku.map.getCenter().toArray(), polku.map.getZoom(), polku.map.getBearing(), polku.map.getPitch()], settings: [localStorage.getItem('polku:colorMode'), localStorage.getItem('polku:colorOnMap')] });
-  const unchanged = () => JSON.stringify({ mode: p.colorMode, onMap: p.colorOnMap, leave: p.leaveAt, points: p.points, camera: [polku.map.getCenter().toArray(), polku.map.getZoom(), polku.map.getBearing(), polku.map.getPitch()], settings: [localStorage.getItem('polku:colorMode'), localStorage.getItem('polku:colorOnMap')] }) === saved;
+  const saved = JSON.stringify({ mode: p.colorMode, onMap: p.colorOnMap, leave: p.when.at, points: p.points, camera: [polku.map.getCenter().toArray(), polku.map.getZoom(), polku.map.getBearing(), polku.map.getPitch()], settings: [localStorage.getItem('polku:colorMode'), localStorage.getItem('polku:colorOnMap')] });
+  const unchanged = () => JSON.stringify({ mode: p.colorMode, onMap: p.colorOnMap, leave: p.when.at, points: p.points, camera: [polku.map.getCenter().toArray(), polku.map.getZoom(), polku.map.getBearing(), polku.map.getPitch()], settings: [localStorage.getItem('polku:colorMode'), localStorage.getItem('polku:colorOnMap')] }) === saved;
   const { lineLength } = await import(location.origin + '/js/geo.js');
   // All rendered categories highlight the distance printed in their legend, including weather and trail details.
   for (const [mode, kind] of Object.entries(p.breakdownKinds)) {
@@ -7741,7 +7741,7 @@ PREVIEWS = r"""(async () => {
   p.previewCategory('uphill', 'missing category', p.breakdownKinds.uphill.pick); empty('no matches');
   const enter = () => fire(cell('grade', flat[3]), 'pointerenter');
   enter(); p.renderBreakdown(); empty('data redraw');
-  enter(); p.setLeave(Date.now() / 1000 + 3600); empty('departure update'); p.setLeave(null);
+  enter(); p.when.set(Date.now() / 1000 + 3600); empty('departure update'); p.when.set(null);
   enter(); p.setTab('go'); empty('tab change'); p.setTab('check');
   enter(); p.toggleSection('colours', false); empty('section fold'); p.toggleSection('colours', true);
   enter(); const fold = p.breakdownKinds.grade.el.closest('.bd-group').querySelector('.bd-group-toggle'); fold.click(); empty('group fold'); fold.click();
@@ -7830,10 +7830,10 @@ MARKS = r"""(async () => {
   // Arrival times move immediately, while the old weather is still in memory.
   const fill = (v) => new Float32Array(a.along.length).fill(v);  // (a whole forecast: the waypoints' tooltips read it, #761)
   a.wind = { head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) }; a.tAtWind = a.tAt;
-  p.setLeave(Date.now() / 1000 + 3 * 3600);
+  p.when.set(Date.now() / 1000 + 3 * 3600);
   const T = p.trip(), k = a.along.findIndex((d) => d >= 1000), f = (1000 - a.along[k - 1]) / (a.along[k] - a.along[k - 1]);
   const arrival = T.clock(T.at(k - 1) + (T.at(k) - T.at(k - 1)) * f);
-  if (T.start !== p.startSec() || !label().includes(`1 km · ${arrival}`)) errs.push(`departure did not move the mark immediately: ${label()}, timed from ${T.start}`);
+  if (T.start !== p.when.start() || !label().includes(`1 km · ${arrival}`)) errs.push(`departure did not move the mark immediately: ${label()}, timed from ${T.start}`);
   a.wind = null; a.tAtWind = null; a.tAt = original;
   p.renderAnalysis();
   // (the marks' switches: Layers' Your route group, #424's C; open, as a person opens it)
@@ -7859,24 +7859,28 @@ MARKS = r"""(async () => {
   document.querySelector('.sum-time').click(); await wait(500);
   const settled = await __DEPARTURE_SETTLED__;
   if (settled) errs.push(`departure sheet: ${settled}`);
-  // (Go's Leave: the phone's own date and time over its row, #364's C; the leave group tries it as a person)
-  const leave = document.querySelector('#pl-pane-go .pick-leave'), input = leave && leave.querySelector('input');
-  if (p.tab !== 'go' || p.sec.speed.el.dataset.open !== 'true' || !input || document.activeElement !== input) errs.push('estimate did not open Go and focus its Leave');
-  if (input) {
-    const hour = (k) => (Math.floor(Date.now() / 3600000) + k) * 3600, iso = (sec) => { const d = new Date(sec * 1000), z = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
-    input.value = iso(hour(4)); input.dispatchEvent(new Event('change', { bubbles: true }));
-    if (p.startSec() !== new Date(input.value).getTime() / 1000) errs.push('Leave did not change the departure'); // (what the field says: on the night the clocks go back, an hour is twice)
-    const r = leave.querySelector('.row').getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
-    if (r.top < body.top || r.bottom > body.bottom) errs.push('Go’s Leave is out of view');
-    if (r.height < 44 || parseFloat(getComputedStyle(input).fontSize) < 16) errs.push('Go’s Leave is too small, or its field zooms a phone');
+  // (Go's When pill and its menu, #869; the leave group tries them as a person)
+  const pill = document.querySelector('#pl-pane-go .when-pill'), menu = () => document.querySelector('.menu-pop[aria-label="When"]');
+  if (p.tab !== 'go' || p.sec.speed.el.dataset.open !== 'true' || !pill || !menu() || pill.getAttribute('aria-expanded') !== 'true') errs.push('estimate did not open Go and When’s menu at its pill');
+  if (pill) {
+    // (a phone's field lies over Leave at… from the start; a desktop's shows once Leave at… is pressed)
+    const field = menu()?.querySelector('input');
+    if (matchMedia('(pointer: coarse)').matches ? !field || parseFloat(getComputedStyle(field).fontSize) < 16 : !/Leave at…/.test(menu()?.textContent)) errs.push('When’s field is missing, or zooms a phone');
+    p.when.pop?.close();
+    const hour = (k) => (Math.floor(Date.now() / 3600000) + k) * 3600, clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    p.when.set(hour(4));
+    if (p.when.start() !== hour(4) || pill.textContent !== `Leave ${clock(hour(4))}`) errs.push(`Go's pill after a new departure: ${pill.textContent}`);
+    const r = pill.getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
+    if (r.top < body.top || r.bottom > body.bottom) errs.push('Go’s When pill is out of view');
+    if (r.height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)) errs.push('Go’s When pill is too small'); // (--target: a finger's 44 px, a mouse's 36)
     // (Route's list says it on the start's row, 25d's part 4, to a screen reader since #761; the start's card and Go set it)
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
-    if (!waypoint().includes(`Leave ${p.leaveWords()}`) || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.startSec() + (p.analysis.timeWind || p.analysis.time)))) errs.push('Go departure did not update the start’s row or There at immediately');
-    p.setLeave(hour(6), { fromMap: true });
-    if (leave.querySelector('.val').textContent !== new Date(hour(6) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || !waypoint().includes(`Leave ${p.leaveWords()}`)) errs.push('timeline departure did not update Go’s Leave and the start’s row');
-    input.focus(); p.renderAnalysis();
-    if (document.activeElement !== input || !input.isConnected) errs.push('an analysis update replaced the focused Leave');
-    p.setLeave(null);
+    if (!waypoint().includes(`Leave ${p.when.words()}`) || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.when.start() + (p.analysis.timeWind || p.analysis.time)))) errs.push('Go departure did not update the start’s row or There at immediately');
+    p.when.set(hour(6), { fromMap: true });
+    if (pill.textContent !== `Leave ${clock(hour(6))}` || !waypoint().includes(`Leave ${p.when.words()}`)) errs.push('timeline departure did not update Go’s pill and the start’s row');
+    pill.focus(); p.renderAnalysis();
+    if (document.activeElement !== pill || !pill.isConnected) errs.push('an analysis update replaced the focused When pill');
+    p.when.set(null);
   }
   p.setMarks({ km: false, time: false, duration: false });
   return errs;
@@ -11179,7 +11183,7 @@ def fold_tabs(chrome):
         try:
             pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'})
             pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
-            r = pg.js("""(() => { const p = polku.planner; p.setSheetState(p.layout() === 'side' ? 'open' : 'half', { remember: false }); p.setLeave(Date.now() / 1000 + 7200);
+            r = pg.js("""(() => { const p = polku.planner; p.setSheetState(p.layout() === 'side' ? 'open' : 'half', { remember: false }); p.when.set(Date.now() / 1000 + 7200);
               p.renderBadge({ read: [{}, {}], look: [], not: [{}] });
               const t = p.els.tabs, tabs = [...t.querySelectorAll('.pl-tab')].filter((e) => e.getClientRects().length);
               return { rows: new Set(tabs.map((e) => Math.round(e.getBoundingClientRect().top))).size, h: Math.round(t.getBoundingClientRect().height), text: tabs.map((e) => e.textContent).join(' | ') }; })()""")
@@ -13107,7 +13111,7 @@ def toolbox(chrome):
         # #356: the labels under the numbers wrap, at 12.5 px, and are never cut with "…": as the app draws them, with a
         # departure set ("from 14:00"), and Finnish-length ones; the numbers with their labels stay apart, in the sheet
         # and clear of Done
-        pg.js("(() => { const p = polku.planner; p.leaveAt = (Math.floor(Date.now() / 3600000) + 3) * 3600; p.renderAnalysis(); return true; })()")
+        pg.js("(() => { const p = polku.planner; p.when.at = (Math.floor(Date.now() / 3600000) + 3) * 3600; p.renderAnalysis(); return true; })()")
         for lang, labels in (('English', None), ('Finnish-length', ['kokonaismatka', 'lähtöajasta klo 14.00', 'nousumetrit · laskumetrit'])):
             if labels:
                 pg.js(f"(() => {{ const t = {json.dumps(labels)}; polku.planner.els.sum.querySelectorAll('.sum-item small').forEach((s, i) => {{ s.textContent = t[i]; }}); return true; }})()")
@@ -13647,6 +13651,7 @@ START_LIB = """(() => {
     // the route style and the direction: side by side on a phone, a row each on a desktop
     const pair = $('.pl-way .rt-pair'), kids = pair ? [...pair.children] : [];
     if (kids.length !== 2 || !kids[0].matches('.stylebtn[data-k=srow]') || !kids[1].matches('.rt-dir') || !kids[1].querySelector('select[data-k=dir]')) err(`the style and the direction: ${pair ? txt(pair) : 'none'}`);
+    else if (!kids[1].querySelector('.rt-dir-chev path[fill="currentColor"]')) err('the direction, a value you pick, has no ▾ (#869)');
     else if (kids.some((k) => k.getBoundingClientRect().height > 60)) err(`the style and the direction stretched: ${kids.map((k) => Math.round(k.getBoundingClientRect().height)).join(' and ')} px tall`);
     else if (Math.abs(kids[0].getBoundingClientRect().top - kids[1].getBoundingClientRect().top) < 1 === (p.layout() === 'side')) err(`the style and the direction ${p.layout() === 'side' ? 'side by side in the side panel' : 'a row each at the bottom'}`);
     // a wide panel at the bottom: the form in two columns, How long beside the sport (2026-10-21)
@@ -14892,19 +14897,12 @@ def point_card(chrome):
         r = pg.js("({ href: location.href.split('#')[0], kind: polku.planner.cards.current && polku.planner.cards.current.kind, n: polku.planner.points.length })")
         if r['href'] != href or r['kind'] or r['n'] != 4:
             fails.append(f'{name}: cards closed and opened at once, then the back gesture: {r}')
-        # the start: you leave, and Leave › (the leave group tries its picker); the end: Back to start; a loop's end has none,
-        # its via points no End here
+        # the start: you leave, and When's row, Leave now (the leave group picks a time in its menu); the end: Back to start;
+        # a loop's end has none, its via points no End here
         s = tap_marker(pg, 0, name, touch)
-        if s['labels'][:1] != ['you leave'] or 'Leave' not in s['rows'] or 'Reverse' not in s['rows'] or 'More for this waypoint' not in s['heads'] or 'Start here' in s['rows'] or 'At this waypoint' in s['heads']:
+        if s['labels'][:1] != ['you leave'] or 'Leave now' not in s['rows'] or 'Reverse' not in s['rows'] or 'More for this waypoint' not in s['heads'] or 'Start here' in s['rows'] or 'At this waypoint' in s['heads']:
             fails.append(f"{name}: the start's card: {s['labels']}, {s['rows']}, {s['heads']}")
-        r = pg.js("""(async () => { const p = polku.planner, at = (Math.floor(Date.now() / 3600000) + 3) * 3600, d = new Date(at * 1000), z = (x) => String(x).padStart(2, '0'), i = document.querySelector('.pl-way.card .row.pick input');
-          if (!i) return { field: false };
-          i.value = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; i.dispatchEvent(new Event('change', { bubbles: true }));
-          await new Promise((ok) => setTimeout(ok, 400));
-          return { field: true, off: p.startSec() - new Date(i.value).getTime() / 1000, kind: p.cards.current && p.cards.current.kind }; })()""")  # (what the field says: on the night the clocks go back, 03:30 is twice)
-        if not r['field'] or r['off'] != 0 or r['kind'] != 'point':
-            fails.append(f"{name}: Leave in three hours: {r}")
-        pg.js("polku.planner.setLeave(null); polku.planner.cards.close(); true")
+        pg.js("polku.planner.cards.close(); true")
         s = tap_marker(pg, 3, name, touch)
         if 'Back to start' not in s['rows'] or 'Reverse' not in s['rows'] or 'Start here' in s['rows'] or 'Sport from here' in s['rows']:
             fails.append(f"{name}: the end's card: {s['rows']}")
@@ -17399,7 +17397,7 @@ def sections_list(chrome):
         # on the waypoints; with via 4 named, the stretch after it doesn't count the one before it. (Leaving at 10:00, in
         # daylight.)
         pg.js("window.rcTags = (q) => (Math.abs(q[0] - 23.808) < 0.001 ? 'highway=footway bicycle=no surface=paved' : Math.abs(q[0] - 23.796) < 0.001 ? 'highway=path surface=dirt mtb:scale=3' : 'highway=path surface=dirt mtb:scale=1'); "
-              "const d = new Date(); d.setHours(10, 0, 0, 0); if (d < Date.now()) d.setDate(d.getDate() + 1); polku.planner.setLeave(d / 1000); true")
+              "const d = new Date(); d.setHours(10, 0, 0, 0); if (d < Date.now()) d.setDate(d.getDate() + 1); polku.planner.when.set(d / 1000); true")
         route(pg, name, {'mode': 'auto', 'pts': PTS})
         WARNS = "JSON.stringify([...polku.planner.els.points.querySelectorAll('.wpl-point, .wpl-stretch')].map((x) => `${x.dataset.i ?? `${x.dataset.from}-${x.dataset.to}`}:${x.querySelector('.wpl-warns')?.textContent || ''}`).filter((x) => !x.endsWith(':')))"
         # (#761's words) an unnamed waypoint is Waypoint 2, in an exported GPX too, and ⌄ shows "the 5 waypoints"
@@ -17472,7 +17470,7 @@ def sections_list(chrome):
           return { stretch: L.querySelector('.wpl-stretch .wpl-warns')?.textContent || '', end: [...L.querySelectorAll('.wpl-point.last .wpl-warns')].map((x) => x.textContent) }; })()""")
         if not r['stretch'] or r['end']:
             fails.append(f"{name}: unfolded, then its waypoint removed: the stretch says {r['stretch']!r}, the end's row {r['end']} (want the end's row without them, #819)")
-        pg.js("polku.planner.setLeave(null); true")
+        pg.js("polku.planner.when.set(null); true")
         # (#761, PR 6) a desktop's tools in a waypoint's row, where › is, while the mouse is over it: Rename (the name a
         # field in the row: Enter keeps it, the focus back on the row), Remove (with Undo in the note) and the grip at the
         # far end, which drags it along the list
@@ -18234,30 +18232,52 @@ def controls(chrome):
 
 
 # When you leave (25d, #364's C [r6-leave-c, r6-leave-c-set, r6-leave-c-far, r6-leave-c-passed, r6-night-c2, r6-whole-c-share,
-# tabs-c-go-set, tabs-c-share, tabs-c-passed]): one Leave row, on the start's card and in Go, with an invisible date and time
-# field over it that opens the phone's own picker; once set, the date is the row's line, the time its value, and Now on that
-# line. Past the forecast's reach, No forecast yet. Within two days the timeline keeps the same time. The date travels in
-# share links, saved routes and a reload; one that has passed opens at Now, saying when it was planned for. A stay of
-# several nights, with Go on at by the phone's clock; GPX with the planned times in words, none on the track (straight legs)
+# tabs-c-go-set, tabs-c-share, tabs-c-passed], one When since #869): the first screen's When row on the start's card, and
+# Go's When pill, "Leave now ▾", each opening one menu: Leave now, and Leave at…, whose field opens the phone's own picker
+# (a desktop's shows the field with Set). Once set, the row says the time and the day, the pill both. Past the forecast's
+# reach, no forecast yet. Within two days the timeline keeps the same time. The date travels in share links, saved routes
+# and a reload; one that has passed opens leaving now, saying when it was planned for. A stay of several nights, with Go on
+# at by the phone's clock; GPX with the planned times in words, none on the track (straight legs)
 LV_JS = """(() => { window.LV = {
   day: (sec) => new Date(sec * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }),
   clock: (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   iso(sec) { const d = new Date(sec * 1000), z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; },
   at(days, hh, mm) { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(hh, mm, 0, 0); return d.getTime() / 1000; },
-  row: (where) => document.querySelector(where === 'go' ? '#pl-pane-go .row.pick' : '.pl-way.card .row.pick'),
-  // the row as it is: what it says, where its Now is, whether the field is what a tap meets
+  // 'go': Go's When pill; 'start': the start's card's When row; 'card': a card's row the phone's own picker sets (Go on at)
+  row: (where) => document.querySelector({ go: '#pl-pane-go .when-pill', start: '.pl-way.card .when-row', card: '.pl-way.card .row.pick' }[where]),
+  // Go on at as it is: what it says, whether the field is what a tap meets
   read(where) {
     const r = LV.row(where);
     if (!r) return null;
-    const box = (e) => (e && e.getClientRects().length ? e.getBoundingClientRect() : null), now = r.querySelector('.pick-now'), line = r.querySelector('.pick-line'), val = r.querySelector('.val'), input = r.querySelector('input');
-    const R = r.getBoundingClientRect(), n = box(now), v = box(val), top = document.elementFromPoint(R.left + Math.min(60, R.width / 3), R.top + R.height / 2);
-    const note = r.closest('.pick-leave')?.querySelector('.pick-note:not([hidden])');
-    return { label: r.querySelector('b').textContent, line: line && box(line) ? line.textContent : '', val: val ? val.textContent : '', type: input && input.type, min: input ? input.min : '',
-      now: n ? { inside: n.top >= R.top - 1 && n.bottom <= R.bottom + 1, x: n.left + n.width / 2, y: n.top + n.height / 2, h: Math.round(n.height) } : null,
-      valLines: v ? Math.round(v.height / parseFloat(getComputedStyle(val).lineHeight)) : 0, over: !!input && top === input, note: note ? note.textContent.trim() : '',
-      boxed: !!line && getComputedStyle(line).boxShadow !== 'none' };
+    const line = r.querySelector('.pick-line'), val = r.querySelector('.val'), input = r.querySelector('input');
+    const R = r.getBoundingClientRect(), top = document.elementFromPoint(R.left + Math.min(60, R.width / 3), R.top + R.height / 2);
+    return { label: r.querySelector('b').textContent, line: line && line.getClientRects().length ? line.textContent : '', val: val ? val.textContent : '', type: input && input.type, over: !!input && top === input };
   },
   set(where, value) { const i = LV.row(where).querySelector('input'); i.value = value; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); return true; },
+  // When's control as it is: what it says (a row its name and line, the pill its words and the note under it), on how
+  // many lines, with ▾, whether its menu is open
+  when(where) {
+    const c = LV.row(where);
+    if (!c) return null;
+    const b = c.querySelector('b'), note = c.closest('.when-box')?.querySelector('.pick-note:not([hidden])'), words = b || c.querySelector('span:nth-child(2)');
+    return { name: b ? b.textContent : c.textContent, line: c.querySelector('small')?.textContent || '', note: note ? note.textContent.trim() : '', label: c.getAttribute('aria-label'),
+      lines: Math.round(words.getBoundingClientRect().height / parseFloat(getComputedStyle(words).lineHeight)), caret: !!c.querySelector('.caret svg'), expanded: c.getAttribute('aria-expanded'),
+      h: Math.round(c.getBoundingClientRect().height) };
+  },
+  // a time picked in When's menu, opened at that control, as a phone picks it or a desktop sets it
+  pick(where, value) {
+    const W = polku.planner.when;
+    W.pop?.close();
+    W.menu(LV.row(where));
+    let f = W.pop.el.querySelector('input');
+    if (f) { f.focus(); f.value = value; f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); return true; } // (picked, and the phone's picker put away)
+    [...W.pop.el.querySelectorAll('button.menu-item')].find((x) => x.textContent.startsWith('Leave at')).click();
+    f = W.pop.el.querySelector('.menu-when input');
+    f.value = value;
+    W.pop.el.querySelector('.menu-when .btn.primary').click();
+    return true;
+  },
+  menu: () => document.querySelector('.menu-pop[aria-label="When"]'),
   // where to press it, in sight as a person scrolls to it (the card, or the sheet's body, never the page, which the app
   // scrolls back), once it has stayed put two frames apart with the map still; found afresh each time, as a card is
   // built again when its numbers come in (a row kept from before was detached, at 0, 0)
@@ -18279,6 +18299,16 @@ window.__picked = [];
 HTMLInputElement.prototype.showPicker = function () { window.__picked.push(this.type); };
 return true; })()"""
 
+# ▾ for a value you pick, the chevron for a fold (#869's rule 2): Colour by, When, the toolbar's drawing mode, sport and
+# Route style; Go's Time folds
+CARETS_JS = """(async () => {
+  const U = await import(location.origin + '/js/ui.js'), path = (n) => U.icon(n).match(/ d="[^"]*"/)[0], has = (el, n) => !!el && el.innerHTML.includes(path(n)), p = polku.planner;
+  const picks = { 'Colour by': document.querySelector('.pl-profile .mode-select-chev'), When: document.querySelector('#pl-pane-go .when-pill'), 'the drawing mode': p.els.modeBtn,
+    ...(p.layout() === 'side' ? { "the next leg's sport": p.els.sportBtn, 'Route style': p.els.styleBtn } : {}) };
+  return [...Object.entries(picks).filter(([, el]) => !has(el, 'caret') || has(el, 'chevronDown')).map(([k]) => `${k} has no ▾`),
+    ...(has(document.querySelector('#pl-pane-go .sec-chev'), 'chevronDown') ? [] : ["Go's Time lost its fold's chevron"])];
+})()"""
+
 # the rest, in one page's JS: share links, a passed date, the saved route, a stay of nights, GPX
 LV_REST = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
@@ -18287,7 +18317,7 @@ LV_REST = """(async () => {
   // a share link carries the date, and says so: Copy share link and the whole route's Share link
   p.reveal('take');
   await wait(300);
-  LV.set('go', LV.iso(far));
+  LV.pick('go', LV.iso(far));
   await wait(300);
   const q = new URL(p.shareUrl()).searchParams;
   if (q.get('lv') !== String(Math.round(far / 60))) errs.push(`the share link's date: lv=${q.get('lv')}, not ${Math.round(far / 60)}`);
@@ -18302,72 +18332,73 @@ LV_REST = """(async () => {
   // opened: the date comes back; a link from before it has none, and leaves now
   p.restore(P.parseShared(q));
   await wait(300);
-  if (p.startSec() !== far) errs.push(`from the link: leaves ${new Date(p.startSec() * 1000)}, not ${new Date(far * 1000)}`);
+  if (p.when.start() !== far) errs.push(`from the link: leaves ${new Date(p.when.start() * 1000)}, not ${new Date(far * 1000)}`);
   const old = new URLSearchParams(q);
   old.delete('lv');
   p.restore(P.parseShared(old));
   await wait(300);
-  if (p.leaveAt != null || LV.read('go').val !== 'Now' || LV.read('go').note) errs.push(`a link without a date: ${JSON.stringify(LV.read('go'))}, leaveAt ${p.leaveAt}`);
+  if (p.when.at != null || LV.when('go').name !== 'Leave now' || LV.when('go').note) errs.push(`a link without a date: ${JSON.stringify(LV.when('go'))}, at ${p.when.at}`);
   // a date that has passed opens at Now, saying when it was planned for, on the start's card and in Go
   const past = Math.round(Date.now() / 60000) - 125;
   q.set('lv', String(past));
   p.restore(P.parseShared(q));
   await wait(300);
   const passed = `Planned for ${when(past * 60)}. That’s passed, so it leaves now: pick a new time above.`;
-  if (p.leaveAt != null || LV.read('go').val !== 'Now' || LV.read('go').note !== passed) errs.push(`a passed date in Go: ${JSON.stringify(LV.read('go'))}`);
+  if (p.when.at != null || LV.when('go').name !== 'Leave now' || LV.when('go').note !== passed) errs.push(`a passed date in Go: ${JSON.stringify(LV.when('go'))}`);
   p.openPointCard(p.points[0]);
   await wait(300);
-  if (LV.read('card')?.note !== passed) errs.push(`a passed date on the start's card: ${JSON.stringify(LV.read('card'))}`);
+  const card = LV.when('start');
+  if (card?.name !== 'Leave now' || card.line !== `${when(past * 60)} has passed`) errs.push(`a passed date on the start's card: ${JSON.stringify(card)}`);
   p.cards.close();
-  LV.set('go', LV.iso(tomorrow));
+  LV.pick('go', LV.iso(tomorrow));
   await wait(300);
-  if (LV.read('go').note) errs.push(`the note stays once a new time is set: ${LV.read('go').note}`);
+  if (LV.when('go').note) errs.push(`the note stays once a new time is set: ${LV.when('go').note}`);
   // the saved route keeps it, and one that has passed opens at Now; so does a route saved offline
   p.save();
-  p.legs = []; p.points = []; p.leaveAt = null;
+  p.legs = []; p.points = []; p.when.at = null;
   p.loadSaved();
   await wait(400);
-  if (p.startSec() !== tomorrow) errs.push(`the saved route leaves ${new Date(p.startSec() * 1000)}, not ${new Date(tomorrow * 1000)}`);
+  if (p.when.start() !== tomorrow) errs.push(`the saved route leaves ${new Date(p.when.start() * 1000)}, not ${new Date(tomorrow * 1000)}`);
   const kept = JSON.parse(localStorage.getItem('polku:route'));
   kept.leave = past * 60;
   localStorage.setItem('polku:route', JSON.stringify(kept));
   p.legs = []; p.points = [];
   p.loadSaved();
   await wait(400);
-  if (p.leaveAt != null || LV.read('go').note !== passed) errs.push(`a saved route whose date has passed: ${JSON.stringify(LV.read('go'))}`);
-  LV.set('go', LV.iso(tomorrow));
+  if (p.when.at != null || LV.when('go').note !== passed) errs.push(`a saved route whose date has passed: ${JSON.stringify(LV.when('go'))}`);
+  LV.pick('go', LV.iso(tomorrow));
   const snap = p.routeSnapshot();
   p.clear();
   p.restoreSnapshot(snap);
   await wait(400);
-  if (p.startSec() !== tomorrow) errs.push(`a route saved offline leaves ${new Date(p.startSec() * 1000)}`);
+  if (p.when.start() !== tomorrow) errs.push(`a route saved offline leaves ${new Date(p.when.start() * 1000)}`);
   // Undo after opening one brings back the route you had leaving when it did, and Redo the opened one's (#506)
-  LV.set('go', LV.iso(far));
+  LV.pick('go', LV.iso(far));
   await wait(300);
   p.restoreSnapshot(snap);
   await wait(400);
   p.undo();
   await wait(400);
-  if (p.startSec() !== far || LV.read('go').val !== LV.clock(far)) errs.push(`Undo after opening a route: leaves ${new Date(p.startSec() * 1000)}, Go says ${LV.read('go').val}`);
+  if (p.when.start() !== far || LV.when('go').name !== `Leave ${when(far)}`) errs.push(`Undo after opening a route: leaves ${new Date(p.when.start() * 1000)}, Go says ${LV.when('go').name}`);
   p.redo();
   await wait(400);
-  if (p.startSec() !== tomorrow) errs.push(`Redo after that: leaves ${new Date(p.startSec() * 1000)}`);
+  if (p.when.start() !== tomorrow) errs.push(`Redo after that: leaves ${new Date(p.when.start() * 1000)}`);
   // a departure that passes while Polku stays open leaves now, saying so, as a reload says (the review of #475): a share
   // link made then carries no date, and the page shown again leaves now
   const realNow = Date.now, soon = Math.ceil(Date.now() / 60000) * 60 + 1800;
   try {
     for (const how of ['share', 'shown']) {
-      LV.set('go', LV.iso(soon));
+      LV.pick('go', LV.iso(soon));
       await wait(200);
       Date.now = () => realNow() + 75 * 60000;
       const lv = how === 'share' ? new URL(p.shareUrl()).searchParams.get('lv') : (document.dispatchEvent(new Event('visibilitychange')), null);
       await wait(200);
-      const r = LV.read('go'), want = `Planned for ${when(soon)}. That’s passed, so it leaves now: pick a new time above.`;
-      if (lv != null || p.leaveAt != null || Math.abs(p.startSec() - Date.now() / 1000) > 60 || r.val !== 'Now' || r.note !== want) errs.push(`a departure passed while open (${how}): lv=${lv}, leaveAt ${p.leaveAt}, starts ${Math.round(p.startSec() - Date.now() / 1000)} s from now, Go says ${r.val}, “${r.note}”`);
+      const r = LV.when('go'), want = `Planned for ${when(soon)}. That’s passed, so it leaves now: pick a new time above.`;
+      if (lv != null || p.when.at != null || Math.abs(p.when.start() - Date.now() / 1000) > 60 || r.name !== 'Leave now' || r.note !== want) errs.push(`a departure passed while open (${how}): lv=${lv}, at ${p.when.at}, starts ${Math.round(p.when.start() - Date.now() / 1000)} s from now, Go says ${r.name}, “${r.note}”`);
       Date.now = realNow;
     }
   } finally { Date.now = realNow; }
-  LV.set('go', LV.iso(tomorrow));
+  LV.pick('go', LV.iso(tomorrow));
   // two nights at via 2: Stay with the stepper, and Go on at by the phone's clock, its line the day
   p.setStop(2, { on: 480 });
   for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 1); k++) await wait(200);
@@ -18417,14 +18448,14 @@ LV_NIGHTS = """(async () => {
     return new DOMParser().parseFromString(await blob.text(), 'application/xml');
   };
   const doc = await gpx(), descs = (d) => [...d.querySelectorAll('wpt')].map((x) => x.querySelector('desc')?.textContent || ''), desc = descs(doc);
-  const s0 = p.startSec(), w2 = p.analysis.waits[0];
+  const s0 = p.when.start(), w2 = p.analysis.waits[0];
   const on = `${LV.day(w2.arrive + w2.sec)}, 07:00`;
   if (desc[0] !== `Leave ${LV.day(s0)}, ${LV.clock(s0)}` || !/^There at /.test(desc[1]) || !desc[2].startsWith('There at ') || !desc[2].endsWith(`. 2 nights, go on ${on}`) || !desc[3].startsWith(`There at ${LV.day(w2.arrive + w2.sec)}, `)) errs.push(`GPX's descriptions: ${desc.join(' / ')}`);
   if (doc.querySelectorAll('trkpt').length < 4 || doc.querySelector('trkpt time') || !doc.querySelector('metadata > time')) errs.push(`GPX's times: ${doc.querySelectorAll('trkpt time').length} on the track, ${doc.querySelectorAll('metadata > time').length} in its metadata`);
   // leaving now, exported ten minutes after the forecast came: Leave is the moment the route is timed from, as There at's
   // times are, so it never comes after them (#506)
   const tomorrows = p.analysis.wind;
-  p.setLeave(null);
+  p.when.set(null);
   for (let k = 0; k < 50 && !(p.analysis && p.analysis.wind && p.analysis.wind !== tomorrows && p.analysis.waits); k++) await wait(200);
   if (!p.analysis.wind) errs.push('leaving now: no forecast came');
   const realNow = Date.now;
@@ -18463,15 +18494,15 @@ LV_NIGHTS = """(async () => {
   window.fetch = (input, init) => (/open-meteo/.test(String(input && input.url ? input.url : input)) ? held.then(() => f0(input, init)) : f0(input, init));
   try {
     Date.now = () => realNow() + 2 * 3600e3;
-    p.setLeave(realNow() / 1000 + 3 * 86400);
+    p.when.set(realNow() / 1000 + 3 * 86400);
     await wait(300);
     Date.now = realNow;
     const w0 = p.analysis.wind;
-    p.setLeave(null);
+    p.when.set(null);
     for (let k = 0; k < 50 && p.analysis.wind === w0; k++) await wait(200);
     release();
     await wait(2000);
-    if (p.leaveAt != null || Math.abs(p.trip().start - Date.now() / 1000) > 120) errs.push(`leaving now after a later answer for three days ahead: the trip starts ${new Date(p.trip().start * 1000)}`);
+    if (p.when.at != null || Math.abs(p.trip().start - Date.now() / 1000) > 120) errs.push(`leaving now after a later answer for three days ahead: the trip starts ${new Date(p.trip().start * 1000)}`);
   } finally { Date.now = realNow; window.fetch = f0; release(); }
   return errs;
 })()"""
@@ -18504,7 +18535,7 @@ def leave(chrome):
     # (once the route's numbers are in and the sheet has come to its size)
     ready = lambda pg: (pg.js("Promise.resolve(polku.planner.analysing).then(() => true, () => true)"), pg.js(SETTLED))
     show = lambda pg, where: (ready(pg), pg.js(f"LV.show(() => LV.row({json.dumps(where)}))"))[1]
-    now_at = lambda pg, where: (ready(pg), pg.js(f"LV.show(() => LV.row({json.dumps(where)})?.querySelector('.pick-now'))"))[1]
+    menu_at = lambda pg, label: pg.js(f"(() => {{ const m = LV.menu(), b = m && ({json.dumps(label)} === 'datetime-local' ? m.querySelector('input.menu-item') : [...m.querySelectorAll('.menu-item')].find((x) => x.textContent.startsWith({json.dumps(label)}))); if (!b) return null; const r = b.getBoundingClientRect(); return {{ x: r.left + Math.min(60, r.width / 3), y: r.top + r.height / 2 }}; }})()")
 
     def one(w, h_, phone):
         name, touch = f'{w}x{h_}', phone
@@ -18516,65 +18547,70 @@ def leave(chrome):
             pg.close()
             return
         pg.js(LV_JS)
-        # the start's card: Leave · Now ›, the picker's field over the row, opened by a tap or a click (and Enter)
+        # the start's card: the first screen's When row, "Leave now" with ▾, opening When's menu at it (#869)
         pg.js("polku.planner.openPointCard(polku.planner.points[0]); true")
         time.sleep(0.4)
-        show(pg, 'card')  # (in sight first: at night a box saying so comes before it)
-        r = pg.js("LV.read('card')")
-        if not r or r['label'] != 'Leave' or r['val'] != 'Now' or r['type'] != 'datetime-local' or r['now'] or not r['over'] or not r['min'] or r['line'] != ('Sets the times and the weather along the route' if phone else ''):
-            fails.append(f"{name}: the start's card's Leave row: {r}")
+        at = show(pg, 'start')  # (in sight first: at night a box saying so comes before it)
+        r = pg.js("LV.when('start')")
+        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or not r['caret'] or r['expanded'] != 'false' or r['h'] < (44 if phone else 36):
+            fails.append(f"{name}: the start's card's When row: {r}")
             pg.close()
             return
-        # its quarter hours on the clock's: min on a quarter hour, so the next whole hour is a step, never a mismatch (the review of #475)
-        q = pg.js("(() => { const i = LV.row('card').querySelector('input'), d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); i.value = LV.iso(d / 1000); const bad = i.validity.stepMismatch; i.value = ''; return { min: i.min, bad }; })()")
-        if int(q['min'][-2:]) % 15 or q['bad']:
-            fails.append(f"{name}: Leave's quarter hours: min {q['min']}, the next whole hour a step mismatch: {q['bad']}")
-        press(pg, show(pg, 'card'), f'{name}: Leave', touch)
-        if not phone:
-            enter(pg)
-        picked = pg.js("window.__picked")
-        if picked != ['datetime-local'] * (1 if phone else 2):
-            fails.append(f"{name}: a {'tap' if phone else 'click and Enter'} on Leave opened {picked or 'no picker'}")
-        # set for tomorrow at 07:30: the date is the line, the time the value, Now on the line, the time on one line
-        pg.js("LV.set('card', LV.iso(LV.at(1, 7, 30)))")
+        press(pg, at, f'{name}: When on the start\'s card', touch)
+        m = pg.js("(() => { const m = LV.menu(); return m && { items: [...m.querySelectorAll('.menu-item')].map((x) => x.matches('input') ? x.type : x.textContent), expanded: LV.row('start').getAttribute('aria-expanded') }; })()")
+        if not m or m['items'] != (['Leave now', 'datetime-local'] if phone else ['Leave now', 'Leave at…']) or m['expanded'] != 'true':
+            fails.append(f"{name}: When's menu on the start's card: {m}")
+        # its field: a phone's own picker from a tap; on a desktop, Leave at… shows it with Set. Its quarter hours on the
+        # clock's: min on a quarter hour, so the next whole hour is a step, never a mismatch (the review of #475)
+        press(pg, menu_at(pg, 'datetime-local' if phone else 'Leave at'), f'{name}: Leave at…', touch)
+        if phone and pg.js("window.__picked") != ['datetime-local']:
+            fails.append(f"{name}: a tap on Leave at… opened {pg.js('window.__picked') or 'no picker'}")
+        q = pg.js("(() => { const i = LV.menu()?.querySelector('input'); if (!i) return null; const d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); const was = i.value; i.value = LV.iso(d / 1000); const bad = i.validity.stepMismatch; i.value = was; return { min: i.min, bad, focused: document.activeElement === i, size: parseFloat(getComputedStyle(i).fontSize) }; })()")
+        if not q or int(q['min'][-2:]) % 15 or q['bad'] or (not phone and not q['focused']) or q['size'] < 16:
+            fails.append(f"{name}: Leave at…'s field: {q}")
+        pg.js("polku.planner.when.pop?.close(); true")
+        # set for tomorrow at 07:30: the row says the time and the day, the menu gone; the card's row is the one the menu
+        # opened from, so a key's Enter leaves the focus on it (Codex's review of #969)
+        pg.js("window.__whenRow = LV.row('start'); LV.pick('start', LV.iso(LV.at(1, 7, 30)))")
         time.sleep(0.5)
-        r = pg.js("({ ...LV.read('card'), start: polku.planner.startSec(), want: LV.at(1, 7, 30), day: 'Tomorrow, ' + LV.day(LV.at(1, 7, 30)), clock: LV.clock(LV.at(1, 7, 30)) })")
-        # (its line plain, not the map's line at a spot: #574 gave that one the same class)
-        if r['start'] != r['want'] or r['line'] != r['day'] or r['val'] != r['clock'] or not r['now'] or not r['now']['inside'] or r['valLines'] != 1 or r['boxed']:
-            fails.append(f"{name}: Leave set for tomorrow, 07:30: {r}")
-        # Go has the same row, in step; within two days the timeline and the safety layers keep the same time
+        r = pg.js("({ ...LV.when('start'), menu: !!LV.menu(), start: polku.planner.when.start(), want: LV.at(1, 7, 30), day: 'Tomorrow, ' + LV.day(LV.at(1, 7, 30)), clock: LV.clock(LV.at(1, 7, 30)), same: LV.row('start') === window.__whenRow })")
+        if r['start'] != r['want'] or r['name'] != f"Leave at {r['clock']}" or r['line'] != r['day'] or r['menu'] or r['expanded'] != 'false' or not r['same']:
+            fails.append(f"{name}: When set for tomorrow, 07:30: {r}")
+        # Go's pill says the same, on one line, with ▾; within two days the timeline and the safety layers keep the same time
         pg.js("polku.planner.cards.close(); polku.planner.reveal('speed'); true")
         time.sleep(0.6)
-        r = pg.js("({ ...LV.read('go'), day: 'Tomorrow, ' + LV.day(LV.at(1, 7, 30)), clock: LV.clock(LV.at(1, 7, 30)) })")
-        if not r or r['line'] != r['day'] or r['val'] != r['clock'] or not r['now']:
-            fails.append(f"{name}: Go's Leave row: {r}")
+        r = pg.js("({ ...LV.when('go'), want: `Leave ${LV.day(LV.at(1, 7, 30))}, ${LV.clock(LV.at(1, 7, 30))}` })")
+        if not r or r['name'] != r['want'] or r['lines'] != 1 or not r['caret'] or r['note'] or r['h'] < (44 if phone else 36):
+            fails.append(f"{name}: Go's When pill: {r}")
             pg.close()
             return
+        fails.extend(f'{name}: {e}' for e in pg.js(CARETS_JS))
         r = pg.js("""(async () => { const W = await import(location.origin + '/js/wxmap.js'), p = polku.planner;
           // (what the field says: on the night the clocks go back, an hour is twice, and its words mean the first)
           const want = new Date(LV.iso(W.timeAtHour(5))).getTime() / 1000;
-          LV.set('go', LV.iso(W.timeAtHour(5))); await new Promise((ok) => setTimeout(ok, 300));
-          const a = { start: p.startSec(), want, hour: polku.weather.hour, wantHour: Math.floor((want - Math.floor(Date.now() / 3600000) * 3600) / 3600), safety: Math.round(polku.safety.app.time()) };
+          LV.pick('go', LV.iso(W.timeAtHour(5))); await new Promise((ok) => setTimeout(ok, 300));
+          const a = { start: p.when.start(), want, hour: polku.weather.hour, wantHour: Math.floor((want - Math.floor(Date.now() / 3600000) * 3600) / 3600), safety: Math.round(polku.safety.app.time()) };
           polku.weather.setHour(7); await new Promise((ok) => setTimeout(ok, 300));
-          return { ...a, then: p.startSec(), want7: W.timeAtHour(7), val: LV.read('go').val, clock: LV.clock(W.timeAtHour(7)) }; })()""")
+          return { ...a, then: p.when.start(), want7: W.timeAtHour(7), name: LV.when('go').name, words: `Leave ${p.when.words()}`, clock: LV.clock(W.timeAtHour(7)) }; })()""")
         if r['start'] != r['want'] or r['hour'] != r['wantHour'] or abs(r['safety'] - r['start']) > 60:
             fails.append(f"{name}: Leave in five hours: the timeline at hour {r['hour']}, the safety layers at {r['safety'] - r['want']} s from it, leaves at {r['start'] - r['want']} s")
-        if abs(r['then'] - r['want7']) > 1 or r['val'] != r['clock']:
-            fails.append(f"{name}: the timeline at hour 7: leaves {r['then'] - r['want7']} s from it, Go says {r['val']}")
-        # Now, on the row's line: leaving now again
-        press(pg, now_at(pg, 'go'), f'{name}: Now', touch)
-        r = pg.js("({ ...LV.read('go'), leave: polku.planner.leaveAt, hour: polku.weather.hour })")
-        if r['leave'] is not None or r['val'] != 'Now' or r['now'] or r['hour'] != 0:
-            fails.append(f"{name}: after Now: {r}")
-        # four weeks ahead: past the forecast's reach, said under the row in Go and on the start's card; the timeline stays
-        pg.js("LV.set('go', LV.iso(LV.at(28, 7, 30)))")
+        if abs(r['then'] - r['want7']) > 1 or r['name'] != r['words'] or r['clock'] not in r['name']:
+            fails.append(f"{name}: the timeline at hour 7: leaves {r['then'] - r['want7']} s from it, Go says {r['name']}")
+        # Leave now, from the pill's menu: leaving now again
+        press(pg, show(pg, 'go'), f"{name}: Go's When pill", touch)
+        press(pg, menu_at(pg, 'Leave now'), f'{name}: Leave now', touch)
+        r = pg.js("({ ...LV.when('go'), menu: !!LV.menu(), leave: polku.planner.when.at, hour: polku.weather.hour })")
+        if r['leave'] is not None or r['name'] != 'Leave now' or r['note'] or r['menu'] or r['hour'] != 0:
+            fails.append(f"{name}: after Leave now: {r}")
+        # four weeks ahead: past the forecast's reach, said under Go's pill and on the start's card's row; the timeline stays
+        pg.js("LV.pick('go', LV.iso(LV.at(28, 7, 30)))")
         time.sleep(0.4)
-        want = pg.js("`No forecast yet for ${LV.day(LV.at(28, 7, 30))}. Sunset and the dark still count.`")
-        r = pg.js("({ go: LV.read('go').note, hour: polku.weather.hour })")
+        want = pg.js("({ go: `No forecast yet for ${LV.day(LV.at(28, 7, 30))}. Sunset and the dark still count.`, card: `${LV.day(LV.at(28, 7, 30))} · no forecast yet` })")
+        r = pg.js("({ go: LV.when('go').note, hour: polku.weather.hour })")
         pg.js("polku.planner.openPointCard(polku.planner.points[0]); true")
         time.sleep(0.4)
-        r['card'] = pg.js("LV.read('card')?.note")
-        if r['go'] != want or r['card'] != want or r['hour'] != 0:
+        r['card'] = pg.js("LV.when('start')?.line")
+        if r['go'] != want['go'] or r['card'] != want['card'] or r['hour'] != 0:
             fails.append(f"{name}: four weeks ahead: {r}")
         pg.js("polku.planner.cards.close(); true")
         if phone:
@@ -18596,12 +18632,12 @@ def leave(chrome):
                     fails.append(f"{name}: a tap on Go on at opened {pg.js('window.__picked') or 'no picker'}")
                 fails.extend(f'{name}: {e}' for e in pg.js(LV_NIGHTS, timeout=60000))
             # a reload keeps the date
-            pg.js("LV.set('go', LV.iso(LV.at(1, 9, 0))); polku.planner.save(); true")
+            pg.js("LV.pick('go', LV.iso(LV.at(1, 9, 0))); polku.planner.save(); true")
             want = pg.js("LV.at(1, 9, 0)")
             pg.reload()
             pg.js(LV_JS)
-            if pg.js("polku.planner.startSec()") != want:
-                fails.append(f"{name}: after a reload it leaves {pg.js('new Date(polku.planner.startSec() * 1000).toString()')}")
+            if pg.js("polku.planner.when.start()") != want:
+                fails.append(f"{name}: after a reload it leaves {pg.js('new Date(polku.planner.when.start() * 1000).toString()')}")
             # and an imported track's name, which its share link doesn't carry; a route without one stays without (#822)
             unnamed = pg.js("polku.planner.routeName")
             pg.js("polku.planner.loadTrack([[23.800, 61.518], [23.805, 61.5185], [23.810, 61.519], [23.815, 61.5188]], 'A track'); true")
@@ -18624,13 +18660,13 @@ def leave(chrome):
 # desktop, whose browser picker has no OK, it shows the field itself with Set, which sets the time and closes. A time picked before the first waypoint survives a reload (it didn't: the saved route had no points),
 # carries into the route, where Go's Leave and the numbers say it, and Leave now brings it back to now.
 WHEN_JS = """(() => { window.WN = {
-  row: () => document.querySelector('.pl-way .when-row'),
+  row: () => document.querySelector('.pl-way:not(.card) .when-row'),
   read() {
-    const r = WN.row(), s = document.querySelector('.pl-way .sport-row');
+    const r = WN.row(), s = document.querySelector('.pl-way:not(.card) .sport-row');
     if (!r) return null;
     const R = r.getBoundingClientRect(), S = s.getBoundingClientRect();
     return { name: r.querySelector('b').textContent, line: r.querySelector('small').textContent, label: r.getAttribute('aria-label'), popup: r.getAttribute('aria-haspopup'), expanded: r.getAttribute('aria-expanded'),
-      h: Math.round(R.height), under: Math.abs(R.top - S.bottom) < 12 && Math.abs(R.left - S.left) < 1 && Math.abs(R.width - S.width) < 1 };
+      h: Math.round(R.height), carets: !!r.querySelector('.caret svg') && !!s.querySelector('.caret svg'), under: Math.abs(R.top - S.bottom) < 12 && Math.abs(R.left - S.left) < 1 && Math.abs(R.width - S.width) < 1 };
   },
   at(el) { if (!el || !el.getClientRects().length) return null; const b = el.getBoundingClientRect(); return { x: b.left + Math.min(60, b.width / 3), y: b.top + b.height / 2 }; },
   menu() {
@@ -18677,7 +18713,7 @@ def when_start(chrome):
         pg.js("polku.planner.setActive(true); true")
         pg.js(SETTLED)
         r = pg.js("WN.read()")
-        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or r['popup'] != 'menu' or r['expanded'] != 'false' or r['h'] < 44 or not r['under']:
+        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or r['popup'] != 'menu' or r['expanded'] != 'false' or r['h'] < 44 or not r['under'] or not r['carets']:
             fails.append(f"{name}: Start a route's When row: {r}")
             pg.close()
             return
@@ -18717,7 +18753,7 @@ def when_start(chrome):
             press(pg, f['at'], f'{name}: Set', touch)
         r = pg.js("""(async () => { const want = LV.at(1, 9, 0);
           await new Promise((ok) => setTimeout(ok, 300));
-          return { ...WN.read(), menu: !!WN.menu(), leave: polku.planner.leaveAt, want, clock: LV.clock(want), day: 'Tomorrow, ' + LV.day(want) }; })()""")
+          return { ...WN.read(), menu: !!WN.menu(), leave: polku.planner.when.at, want, clock: LV.clock(want), day: 'Tomorrow, ' + LV.day(want) }; })()""")
         if r['leave'] != r['want'] or r['menu'] or r['expanded'] != 'false' or r['name'] != f"Leave at {r['clock']}" or r['line'] != r['day'] or r['label'] != f"When: Leave at {r['clock']}. {r['day']}":
             fails.append(f"{name}: Leave at tomorrow, 09:00: {r}")
         # a reload before there's a route keeps it
@@ -18727,20 +18763,20 @@ def when_start(chrome):
         pg.js(LV_JS)
         pg.js(WHEN_JS)
         pg.js("polku.planner.setActive(true); true")
-        r = pg.js("({ start: polku.planner.startSec(), name: WN.read()?.name })")
+        r = pg.js("({ start: polku.planner.when.start(), name: WN.read()?.name })")
         if r['start'] != want or r['name'] != f"Leave at {pg.js(f'LV.clock({want})')}":
             fails.append(f"{name}: after a reload with no route: {r}")
         # two waypoints: Go's Leave and the numbers say it; a reload keeps it with the route
         pg.js("""(async () => { const p = polku.planner; p.setMode('line'); p.addPoint([23.800, 61.512]); p.addPoint([23.815, 61.5155]);
           for (let k = 0; k < 100 && !p.analysis; k++) await new Promise((ok) => setTimeout(ok, 100)); p.reveal('speed'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()""", timeout=30000)
-        r = pg.js(f"({{ ...LV.read('go'), from: document.querySelector('.sum-time small')?.textContent, start: polku.planner.startSec(), clock: LV.clock({want}), day: LV.day({want}) }})")
-        if not r or r['start'] != want or r['val'] != r['clock'] or r['line'] != f"Tomorrow, {r['day']}" or r['from'] != f"from {r['day']}, {r['clock']}":
+        r = pg.js(f"({{ ...LV.when('go'), from: document.querySelector('.sum-time small')?.textContent, start: polku.planner.when.start(), clock: LV.clock({want}), day: LV.day({want}) }})")
+        if not r or r['start'] != want or r['name'] != f"Leave {r['day']}, {r['clock']}" or r['from'] != f"from {r['day']}, {r['clock']}":
             fails.append(f"{name}: the route drawn after Leave at: {r}")
         pg.reload()
         pg.js(LV_JS)
         pg.js(WHEN_JS)
-        if pg.js("polku.planner.startSec()") != want:
-            fails.append(f"{name}: after a reload with the route it leaves {pg.js('new Date(polku.planner.startSec() * 1000).toString()')}")
+        if pg.js("polku.planner.when.start()") != want:
+            fails.append(f"{name}: after a reload with the route it leaves {pg.js('new Date(polku.planner.when.start() * 1000).toString()')}")
         # Leave now, from the first screen's menu again: back to now everywhere
         pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); await new Promise((ok) => setTimeout(ok, 400)); return true; })()")
         pg.js(SETTLED)
@@ -18750,8 +18786,8 @@ def when_start(chrome):
             fails.append(f"{name}: When's menu with a time: {m}")
         else:
             press(pg, m['now'], f'{name}: Leave now', touch)
-            r = pg.js("({ ...WN.read(), leave: polku.planner.leaveAt, go: LV.read('go')?.val, hour: polku.weather.hour })")
-            if r['leave'] is not None or r['name'] != 'Leave now' or r['go'] != 'Now' or r['hour'] != 0:
+            r = pg.js("({ ...WN.read(), leave: polku.planner.when.at, go: LV.when('go')?.name, hour: polku.weather.hour })")
+            if r['leave'] is not None or r['name'] != 'Leave now' or r['go'] != 'Leave now' or r['hour'] != 0:
                 fails.append(f"{name}: after Leave now: {r}")
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.close()
@@ -18776,7 +18812,7 @@ KF_JS = """(() => {
     a.climbs = [{ cls: 1, gain: 60, avg: 5, max: 7, len: 600, from: 100, to: 700, start: 2, end: 8 }, { cls: 2, gain: 21, avg: 12, max: 15, len: 180, from: 900, to: 1080, start: 10, end: 13 }, { cls: 0, gain: 8, avg: 4, max: 5, len: 200, from: 1500, to: 1700, start: 16, end: 18 }];
     a.time = o.time || 3600; a.timeWind = a.time + (o.add || 0) * 60; a.windError = o.failed || false;
     KF.base = KF.base || a.wind || { start: { speed: 5, gust: 7, dir: 180, temp: 8, precip: 0 } }; // (the forecast's other fields, as it came)
-    a.wind = o.failed ? null : { ...KF.base, startSec: p.startSec(), head: fill(o.head || 0), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(0), temp: fill(8), precip: fill(o.rain || 0) };
+    a.wind = o.failed ? null : { ...KF.base, startSec: p.when.start(), head: fill(o.head || 0), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(0), temp: fill(8), precip: fill(o.rain || 0) };
     if (o.surf) a.surf = a.surf.map(() => o.surf);
     a.waits = o.waits || []; p.renderAnalysis();
     return KF.read();
@@ -19082,7 +19118,7 @@ def tabs(chrome):
             # the route's list at half says things once (#764), leaving at 10:00 so no "In the dark" row comes between; its
             # start a scroll down, under the profile as tall as at the peek (#889)
             r = pg.js("""(async () => { const p = polku.planner, ten = new Date(); ten.setHours(10, 0, 0, 0); if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
-              p.setLeave(ten / 1000); p.setTab('route'); p.setSheetState('half'); await new Promise((ok) => setTimeout(ok, 800)); const r = TB.list(true); p.setLeave(null); return r; })()""")
+              p.when.set(ten / 1000); p.setTab('route'); p.setSheetState('half'); await new Promise((ok) => setTimeout(ok, 800)); const r = TB.list(true); p.when.set(null); return r; })()""")
             if r != {'hint': False, 'nums': False, 'reorder': True, 'beside': False, 'head': True, 'warn': False, 'start': True, 'end': True, 'seen': True, 'stretch': True}:
                 fails.append(f"{name}: the route's list at half: {r} (want no hint, the part's heading in the list with its totals (#761), Start and End without their distance, Start and the first stretch's first words in sight, a scroll down, #889)")
         pg.js("(async () => { const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('left'); p.setSheetState(p.layout() === 'side' ? 'open' : 'full'); await new Promise((ok) => setTimeout(ok, 600)); return true; })()")
@@ -19109,7 +19145,7 @@ def tabs(chrome):
             fails.append(f"{name}: Check's top: {r}")
         # Go: Leave, There at, where the time goes, then Your speed ›, which opens its step in Route
         r = pg.js("""(() => { const p = polku.planner; p.setTab('go'); p.toggleSection('speed', true); const b = p.sec.speed.el.querySelector('.sec-body');
-          const order = [...b.querySelectorAll('.pick-leave, .time-head, .speed-table, .row')].filter((e) => e.getClientRects().length).map((e) => e.matches('.pick-leave') ? 'Leave' : e.matches('.time-head') ? e.querySelector('b').textContent.split(' at ')[0] + ' at' : e.matches('.speed-table') ? 'table' : e.querySelector('b')?.textContent);
+          const order = [...b.querySelectorAll('.when-box, .time-head, .speed-table, .row')].filter((e) => e.getClientRects().length).map((e) => e.matches('.when-box') ? 'Leave' : e.matches('.time-head') ? e.querySelector('b').textContent.split(' at ')[0] + ' at' : e.matches('.speed-table') ? 'table' : e.querySelector('b')?.textContent);
           return order.filter((x, i) => order.indexOf(x) === i); })()""")
         if r[:4] != ['Leave', 'There at', 'table', 'Your speed']:
             fails.append(f"{name}: Go's Time: {r}")
@@ -19287,7 +19323,7 @@ PF_JS = """(async () => {
   const a = p.analysis, n = a.along.length, k = Math.round(n / 3), fill = (v) => new Float32Array(n).fill(v);
   p.app.winter = () => ({ on: false, setting: 'auto' });
   const set = (temp) => {
-    a.wind = { ...(a.wind || {}), start: { speed: 5, gust: 7, dir: 90, temp: 5, precip: 0 }, startSec: p.startSec(), head: fill(3), speed: fill(8), gust: fill(12), dir: fill(90), cross: fill(0), temp, precip: fill(0), beyond: k, beyondSec: p.startSec() + 3 * 3600, unsure: -1 };
+    a.wind = { ...(a.wind || {}), start: { speed: 5, gust: 7, dir: 90, temp: 5, precip: 0 }, startSec: p.when.start(), head: fill(3), speed: fill(8), gust: fill(12), dir: fill(90), cross: fill(0), temp, precip: fill(0), beyond: k, beyondSec: p.when.start() + 3 * 3600, unsure: -1 };
     a.windError = false; p.renderAnalysis();
   };
   const cold = (from, to) => Float32Array.from({ length: n }, (_, i) => (i >= from && i < to ? -30 : 5));
@@ -20250,7 +20286,7 @@ GROUPS = [
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list, tick_under], 'Leave now\'s refresh leaving focus and a Reorder drag alone (#966); Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
-    ('leave', [leave, when_start], 'when you leave (25d, #364\'s C, #869): When on the first screen, the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
+    ('leave', [leave, when_start], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
