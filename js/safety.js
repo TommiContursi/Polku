@@ -15,6 +15,7 @@ import { openModal } from './modal.js';
 import { h, icon } from './ui.js';
 import { compass } from './geo.js';
 import { request } from './net.js';
+import { tripTimes } from './trip.js';
 
 // AIS ship type → group (colour on the map, label in the card)
 const SHIP_GROUPS = [
@@ -451,10 +452,10 @@ export class SafetyLayers {
   /**
    * Hazards along a planned route: road works / incidents / poor road
    * conditions within a few tens of metres, busy-road stretches for people on
-   * bikes or foot. Loads the data it needs for the route area.
+   * bikes or foot, at the trip's times (js/trip.js). Loads the data it needs for the route area.
    * @returns {Promise<Array<{at,len,text,lngLat,kind,avoid}>>}
    */
-  async hazardsAlong(a, { activity, startSec }) {
+  async hazardsAlong(a, { activity }) {
     // the route's own place and each stretch's own sport, whatever the map shows (#71)
     if (!a || !a.pts.some((p) => this.inFinland(p))) return [];
     const box = [Infinity, Infinity, -Infinity, -Infinity];
@@ -471,8 +472,7 @@ export class SafetyLayers {
     if (!this.incidents || worksIn === false) throw new Error('Fintraffic didn’t answer');
     // where each comes from: live with the time Fintraffic answered, or an estimate (25d part 2)
     const live = { kind: 'live', by: 'Fintraffic', at: Math.min(this.incidents.t, ...this.roadworkAt(box)) };
-    const tAt = a.tAtWind || a.tAt;
-    const out = [];
+    const T = tripTimes(a), out = [];
     const index = (feats) => new LineIndex(feats);
     const near = (idx, maxM, pred) => {
       const hits = new Map();
@@ -495,7 +495,7 @@ export class SafetyLayers {
     const roadsOnly = (i, tags) => landAt(i) && (!tags.highway || !['path', 'footway', 'cycleway', 'bridleway', 'steps', 'track', 'pedestrian'].includes(tags.highway));
 
     // road works active when you get there
-    const works = this.allRoadworks().filter((f) => activeAt(f.properties, startSec + (tAt[a.pts.length - 1] || 0) / 2));
+    const works = this.allRoadworks().filter((f) => activeAt(f.properties, (T.start + T.end) / 2));
     for (const h of near(index(works), 30)) {
       const p = h.f.properties;
       out.push({ kind: 'roadwork', at: a.along[h.i0], len: a.along[h.i1] - a.along[h.i0], lngLat: a.pts[h.i0], text: `Road works: ${shortTitle(p.title)}${p.details ? ` — ${p.details}` : ''}`, avoid: avoidAt(h), tier: 'read', src: live });
@@ -506,7 +506,7 @@ export class SafetyLayers {
     }
     // road conditions at arrival time (main roads only)
     if (this.roadcond && onWheelsOrFeet) {
-      const t = startSec + (tAt[Math.floor(a.pts.length / 2)] || 0);
+      const t = T.at(Math.floor(a.pts.length / 2));
       for (const h of near(index(this.roadcondFeatures(t)), 25, roadsOnly)) {
         const p = h.f.properties;
         out.push({ kind: 'roadcond', at: a.along[h.i0], len: a.along[h.i1] - a.along[h.i0], lngLat: a.pts[h.i0], text: `${p.label}${p.reasons ? ` (${p.reasons})` : ''}, road ${Math.round(p.roadTemp)} °C`, avoid: avoidAt(h), tier: 'read', src: { kind: 'estimate', by: 'Fintraffic’s road weather' } });

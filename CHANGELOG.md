@@ -4,11 +4,22 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-11
 
+### A waypoint inside a place to avoid says so ([#893](https://github.com/TommiContursi/Polku/issues/893))
+
+- When a waypoint is inside a place to avoid, the router can't reach it, and the leg's note says so in plain words: "a waypoint is inside a place to avoid: move one of them". The leg is drawn as a straight line until you move the waypoint or the place, and Check has a Retry.
+
 ### A tap outside a menu only closes it ([#845](https://github.com/TommiContursi/Polku/issues/845))
 
 - On a phone, a tap outside an open menu, such as the drawing menu, closes the menu and does nothing else, as phones' own menus do. A tap on the map to close it no longer adds a waypoint. With a mouse, a click outside a menu closes it and also does what it clicks on, as before.
 
 ## 2026-11-10
+
+### Leave now keeps every time in step ([#956](https://github.com/TommiContursi/Polku/issues/956))
+
+- With **Leave now**, every time on the route counts from the same minute: the arrival in **Go**, the times in the route's list, the days of a trip with nights, the map's distance marks, the warnings about the dark and the planned times in an exported GPX. Before, the list and the GPX counted from the minute the forecast came in, so they could be behind **Go**.
+- Leaving now moves on with the clock. When you come back to Polku, and every 5 minutes while it's open, the times move on to the current minute. They don't move while you drag a point, type a name or have a card open. A night stop still ends at the hour you set.
+- On a trip with nights, the wind's line under **Go**'s time no longer counts a night made shorter or longer by a new departure as the wind.
+- When you change the departure while a forecast is still coming, the weather and the times are always for the departure you set last, even if an earlier one's forecast answers later ([#70](https://github.com/TommiContursi/Polku/issues/70)).
 
 ### A tap on a phone opens the card ([#690](https://github.com/TommiContursi/Polku/issues/690))
 
