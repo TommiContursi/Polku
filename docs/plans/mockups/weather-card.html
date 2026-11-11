@@ -344,7 +344,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 /* thunder: the map's own look for the forecast's thunder (the legend's lg-dash) */
 .wg-track > i.th, .wg-key .k-th::before { background: rgba(245, 158, 11, .3); outline: 1.5px dashed #b45309; outline-offset: -1.5px; }
 :root[data-theme="dark"] .wg-track > i.th, :root[data-theme="dark"] .wg-key .k-th::before { outline-color: #fbbf24; }
-.wg-key { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: -2px 0 0; font-size: var(--font-small); color: var(--muted); }
+.wg-key { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: -6px 0 2px; font-size: var(--font-small); color: var(--muted); } /* (under its own lane) */
 .wg-key > span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; background: var(--k); }
 .wg-lbl { margin: 2px 0 -6px; font-size: var(--font-control); color: var(--muted); }
 .wg .rows small { display: block; font-size: var(--font-small); color: var(--muted); font-weight: var(--weight-regular); }
@@ -1028,7 +1028,7 @@ function gTripLine(d, notes) {
 const gTrack = (l) => h('span', { class: 'wg-track', 'aria-hidden': 'true' }, ...l.segs.map(([a, b, c]) => h('i', { class: c === 'th' ? 'th' : '', style: `left:${a * 100}%; width:${(b - a) * 100}%;${c === 'th' ? '' : ` background:${GC[c]}`}` })));
 // the key: only the colours the lanes draw, and none for a lane of one colour (its name says it)
 const gKey = (k, used) => h('p', { class: 'wg-key', 'aria-hidden': 'true' }, ...GKEY[k].filter(([c]) => !used || used.has(c)).map(([c, t]) => h('span', { class: c === 'th' ? 'k-th' : '', style: c === 'th' ? '' : `--k:${GC[c]}` }, t)));
-const gKeys = (lanes) => { const used = new Set(lanes.flatMap((l) => l.segs.map((x) => x[2]))); return h('div', { style: 'display:grid; gap:2px' }, ...lanes.filter((l) => new Set(l.segs.map((x) => x[2])).size > 1).map((l) => gKey(l.k, used))); };
+const gLaneKey = (l) => { const used = new Set(l.segs.map((x) => x[2])); return used.size > 1 ? gKey(l.k, used) : null; };
 function gLane(l) {
   const worst = l.stretches[0];
   return h('button', { type: 'button', class: 'wg-lane', 'aria-label': `${l.name}: ${l.val}. Show it on the map`, ...pv(worst[2], worst[3], `${GSTEP[l.k]} · ${worst[0]} · ${worst[1]}`), onclick: () => { S.gs = `${l.k}lane`; S.gi = 0; draw(); } },
@@ -1055,7 +1055,7 @@ function gHours(R) {
   }
   return h('div', { class: 'wg-open' }, t, h('p', {}, 'Rain in mm an hour, wind in m/s. Each hour is the forecast for where you’ll be then.'));
 }
-function gDay(d, R, many, first) {
+function gDay(d, R, many) {
   if (d.short) return h('div', { class: 'rows' }, h('div', { class: 'row', style: 'min-height:0; padding-block:8px' }, gSky(d.sky, 22), h('span', {}, h('small', {}, d.head), d.short)));
   const notes = gNotes(d), lanes = (d.lanes || []);
   const line = lanes.length > 0; // (a quiet trip: no trip line, no lanes, its notes with their icons)
@@ -1066,8 +1066,7 @@ function gDay(d, R, many, first) {
       line ? h('span', { class: `wg-n ${n.tier}`, 'aria-hidden': 'true' }, String(n.n)) : h('span', { class: 'ic', html: icon(n.ic, 20) }), h('span', {}, n.t))))) : null,
     h('div', { class: 'sheet-sum wg-nums', style: `--n:${d.nums.length}` }, ...d.nums.map(([v, s]) => h('span', { class: 'sum-item' }, h('b', {}, v), h('small', {}, s)))),
     line ? gTripLine(d, notes) : null,
-    ...lanes.map((l) => (l.leg ? gLaneOnLeg(l) : gLane(l))),
-    line && first ? gKeys(lanes) : null);
+    ...lanes.flatMap((l) => [l.leg ? gLaneOnLeg(l) : gLane(l), gLaneKey(l)]));
 }
 // a lane that counts for one sport only is drawn on that leg only
 function gLaneOnLeg(l) { const b = gLane(l); b.querySelector('.wg-track').style.cssText = `margin-left:${l.leg[0] * 100}%; width:${(l.leg[1] - l.leg[0]) * 100}%`; b.querySelectorAll('.wg-track > i').forEach((i, k) => { const [a, c] = l.segs[k]; i.style.left = `${((a - l.leg[0]) / (l.leg[1] - l.leg[0])) * 100}%`; i.style.width = `${((c - a) / (l.leg[1] - l.leg[0])) * 100}%`; }); return b; }
@@ -1079,7 +1078,7 @@ function cardG() {
     h('span', {}, h('button', { type: 'button', class: 'tool', 'aria-label': 'Card settings', html: icon('more', 22) }), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) }))));
   const body = h('div', { class: 'wc-body wg-body' }, h('div', { class: 'wc-when' },
     h('button', { type: 'button', class: 'rt-pill', 'aria-haspopup': 'menu', 'aria-label': `When: ${R.leave}` }, h('span', { html: icon(R.pill, 18) }), h('span', {}, R.leave), h('span', { html: CARET })), h('span', {}, `→ ${R.there}`)));
-  R.days.forEach((d, k) => body.append(gDay(d, R, R.days.length > 1, k === 0)));
+  R.days.forEach((d) => body.append(gDay(d, R, R.days.length > 1)));
   // 5. things to check, folded; one opens in place
   body.append(h('div', { class: 'rows' },
     gRow('cloudSun', 'Hour by hour', '', 'hours', S.gs === 'hours'), S.gs === 'hours' ? gHours(R) : null,
