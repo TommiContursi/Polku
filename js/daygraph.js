@@ -28,6 +28,6 @@ export function dayGraph(hours, trip, label) {
   s += `<path d="${line((x) => wy(x.speed))}" fill="none" stroke="var(--wx-wind)" stroke-width="2"/>`;
   hours.forEach((h, k) => { if (h.x && k % 2 === 0) s += `<g transform="translate(${cx(k) - 8},2)" class="wx-sky ${h.sky}">${icon(h.sky, 16).replace('<svg', '<svg x="0" y="0"')}</g>`; });
   hours.forEach((h, k) => { if (k % 3 === 0) s += `<text x="${cx(k)}" y="${H - 6}" text-anchor="middle">${hh(h.t)}</text>`; });
-  s += `<text x="2" y="${W0 - 9}" class="wx-wind">${Math.round(wMax)} m/s</text></svg>`; // (at the left: rain's bars end at the right)
+  s += `<text x="2" y="${W0 - 9}" class="wx-wind">${Math.round(wMax)} m/s</text></svg>`; // (the band's top, at the left: clear of rain's figures)
   return s;
 }

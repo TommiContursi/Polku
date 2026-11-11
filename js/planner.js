@@ -19,7 +19,7 @@ import { clock } from './net.js';
 import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
+import { windAlong, windClass, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls } from './ui.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';

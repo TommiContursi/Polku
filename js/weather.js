@@ -320,27 +320,6 @@ export function windClass(head, speed) {
   return byKey.cross;
 }
 
-// How the wind feels for the activity.
-export function windRating(speed, gust, activity) {
-  const g = Math.max(speed, gust * 0.7);
-  if (activity === 'swim') {
-    if (g < 3) return { label: 'Calm water', tone: 'good' };
-    if (g < 6) return { label: 'Some chop', tone: 'ok' };
-    if (g < 9) return { label: 'Choppy — hard to sight', tone: 'warn' };
-    return { label: 'Rough — swim somewhere sheltered', tone: 'bad' };
-  }
-  if (activity === 'paddle') {
-    if (g < 4) return { label: 'Calm water', tone: 'good' };
-    if (g < 7) return { label: 'Moderate', tone: 'ok' };
-    if (g < 10) return { label: 'Fresh — experienced paddlers', tone: 'warn' };
-    return { label: 'Strong — stay near shore', tone: 'bad' };
-  }
-  if (g < 4) return { label: 'Light wind', tone: 'good' };
-  if (g < 8) return { label: 'Breezy', tone: 'ok' };
-  if (g < 12) return { label: 'Windy — open sections feel it', tone: 'warn' };
-  return { label: 'Very windy — watch for fallen trees', tone: 'bad' };
-}
-
 // Rain in the last 24 hours at a place (mm), for route styles' "wet ground:
 // auto" (styles.js). One Open-Meteo call per place and hour, kept for the hour.
 const rainCache = new Map();
