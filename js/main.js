@@ -1246,7 +1246,7 @@ const items3d = () => [
   { node: h('div', { class: 'wpl-shows menu-3d' }, ...hillsControls(), hillshadeControls()) },
 ];
 function open3dMenu(anchor) {
-  menu3d = popMenu(anchor, items3d(), { label: '3D settings', modal: true, sheet: true, onClose: () => { menu3d = null; anchor.setAttribute('aria-expanded', 'false'); } });
+  menu3d = popMenu(anchor, items3d(), { label: '3D settings', sheet: true, onClose: () => { menu3d = null; anchor.setAttribute('aria-expanded', 'false'); } });
   anchor.setAttribute('aria-expanded', 'true');
 }
 // weather on the map: the same switches as on the Weather button's timeline

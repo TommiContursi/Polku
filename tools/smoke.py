@@ -9520,28 +9520,52 @@ MENU_SPOT = """(() => { const m = polku.map, c = m.getCanvas(), menu = document.
 
 def menu_tap_outside(chrome):
     fails = []
-    pg = chrome.page(390, 844, True)
-    try:
-        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
-        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.4975/23.738')
-        pg.js("""(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.7355, 61.4972]); p.addPoint([23.7405, 61.4972]);
-          for (let k = 0; k < 100 && !p.analysis; k++) await new Promise((r) => setTimeout(r, 100)); return true; })()""")
-        b = pg.js("(() => { const r = document.querySelector('#pl-tools .modebtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
-        pg.quick_tap(*b)
-        time.sleep(0.5)
-        at = pg.js(MENU_SPOT)
-        if not at:
-            fails.append('the drawing menu didn\'t open, or no spot on the map clear of it')
-        else:
-            pg.quick_tap(*at)
+    for w, h_, phone in ((390, 844, True), (1440, 900, False)):
+        size, press = f'{w}x{h_}', 'tap' if phone else 'click'
+        pg = chrome.page(w, h_, phone)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.4975/23.738')
+            pg.js("""(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.7355, 61.4972]); p.addPoint([23.7405, 61.4972]);
+              for (let k = 0; k < 100 && !p.analysis; k++) await new Promise((r) => setTimeout(r, 100)); return true; })()""")
+
+            def at(x, y):  # a finger's tap on a phone, a mouse's click on a desktop
+                if phone:
+                    pg.quick_tap(x, y)
+                    return
+                for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'none' if kind == 'mouseMoved' else 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+
+            def open_menu():
+                at(*pg.js("(() => { const r = document.querySelector('#pl-tools .modebtn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
+                time.sleep(0.5)
+                return pg.js(MENU_SPOT)
+
+            spot = open_menu()
+            if not spot:
+                fails.append(f"{size}: the drawing menu didn't open, or no spot on the map clear of it")
+                continue
+            at(*spot)
             time.sleep(1)
             got = pg.js("({ menu: !!document.querySelector('.menu-pop'), n: polku.planner.points.length })")
             if got['menu'] or got['n'] != 2:
-                fails.append(f"a tap on the map at {at} with the drawing menu open: the menu {'still open' if got['menu'] else 'closed'}, {got['n']} points, not 2")
-        fails += [f'console: {e[:160]}' for e in pg.errors()]
-    finally:
-        pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} sportmenu: a tap outside the drawing menu only closes it (#845)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+                fails.append(f"{size}: a {press} on the map at {spot} with the drawing menu open: the menu {'still open' if got['menu'] else 'closed'}, {got['n']} points, not 2")
+            if phone:
+                # a drag that closes the menu ends in no click: the next tap, at once, still adds a point
+                spot = open_menu()
+                if not spot:
+                    fails.append(f"{size}: the drawing menu didn't open again")
+                    continue
+                pg.swipe(spot[0], spot[1], spot[1] + 30, ms=120, steps=6)
+                pg.quick_tap(*spot)
+                time.sleep(1)
+                got = pg.js("({ menu: !!document.querySelector('.menu-pop'), n: polku.planner.points.length })")
+                if got['menu'] or got['n'] != 3:
+                    fails.append(f"{size}: a drag on the map closing the drawing menu, then a tap: the menu {'still open' if got['menu'] else 'closed'}, {got['n']} points, not 3")
+            fails += [f'{size} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} sportmenu: a tap or a click outside the drawing menu only closes it (#845)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -20277,7 +20301,7 @@ GROUPS = [
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
-    ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap outside the drawing menu only closes it (#845)'),
+    ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),

@@ -198,9 +198,8 @@ export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '
  * a line (the map's buttons); sheet: with no room above or below, it opens as a sheet of its own.
  */
 let menuIds = 0;
-// `modal`: a click outside closes it and does nothing else (a menu over rows that a click opens, the route's list's, #761);
-// a tap outside never does more (#845)
-export function popMenu(anchor, items, { label = '', onClose = null, align = 'right', maxRight = null, sheet = false, modal = false } = {}) {
+// a tap or a click outside closes it and does nothing else, as a phone's own menus do (#845, #761)
+export function popMenu(anchor, items, { label = '', onClose = null, align = 'right', maxRight = null, sheet = false } = {}) {
   const el = h('div', { class: 'menu menu-pop', role: 'menu', 'aria-label': label || null });
   // at once from the keyboard, and in place of a menu still leaving (a choice that opens it again, another menu)
   const leaving = $$('.menu-leaving');
@@ -231,11 +230,12 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
   const off = (e) => {
     if (el.contains(e.target) || anchor.contains(e.target)) return;
     close();
-    // a finger's tap outside only closes it, as on a phone's own menus (#845); a mouse's click also acts, unless modal
-    if (!modal && e.pointerType !== 'touch') return;
+    // only this press's click: a drag ends in none, so the next press or 700 ms ends the wait
     const eat = (c) => { c.preventDefault(); c.stopPropagation(); };
+    const done = () => { document.removeEventListener('click', eat, true); document.removeEventListener('pointerdown', done, true); };
     document.addEventListener('click', eat, { capture: true, once: true });
-    setTimeout(() => document.removeEventListener('click', eat, true), 700); // (a drag that ends in no click)
+    document.addEventListener('pointerdown', done, { capture: true, once: true });
+    setTimeout(done, 700);
   };
   const onResize = () => close();
   const key = (e) => {
