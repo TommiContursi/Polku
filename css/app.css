@@ -1365,6 +1365,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .trip-when { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-10); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
 .trip-when .when-box { display: contents; }
 .trip-when .pick-note { order: 1; flex-basis: 100%; font-weight: var(--weight-regular); }
+@media (max-width: 300px) { .sheet > .trip-box { margin: 0 12px var(--space-8); padding: 0; border: 0; } } /* (200 %: its words get the planner's width, the user's choice of 2026-11-11) */
 /* the card: values in the text's ink; each kind's icon in its colour, as the weather timeline draws them (the user's
    choice of 2026-11-11: nothing in danger's red), and said in words */
 :root { --wx-temp: #ea580c; --wx-sun: #a16207; }
@@ -1878,6 +1879,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
    numbers one to a row, the switch in a column */
 @container card (max-width: 290px) {
   .card[data-back] > .way-bar { display: flex; flex-wrap: wrap; } /* (Back on a line of its own where undo, redo and ✕ don't fit beside it) */
+  .card-peek .card[data-back="no"]:not(:has(> .way-bar > [data-k="undo"])) > .way-bar { display: none; } /* (nothing of it shows there: the sheet's top row has ⋯ and ✕) */
   .card > .way-bar [data-k] { display: inline-flex; width: 44px; height: 44px; }
   .card > .way-bar [data-k="undo"], .card > .way-bar [data-k="set"] { margin-left: auto; }
   .card > .way-bar [data-k="set"] + [data-k="undo"] { margin-left: 0; }

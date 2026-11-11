@@ -4613,9 +4613,10 @@ export class Planner {
         this.unfoldTo = was.unfoldTo; // (its line opens to the size it left, not to a card's)
         requestAnimationFrame(() => { this.listScroller().scrollTop = was.scroll; });
       },
-      // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox
+      // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox; not the weather card, which
+      // changes nothing on the route but the departure (the user's choice of 2026-11-11: no row of its own over When)
       settings: (card) => this.cardMenu(card),
-      dock: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView()
+      dock: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView() && this.cards.current?.kind !== 'weather'
         ? { undo: () => this.undo(), redo: () => this.redo(), canUndo: !!this.past.length, canRedo: !!this.future.length } : null),
     });
     this.buildTools();
@@ -5938,9 +5939,10 @@ export class Planner {
     // no toolbox until there's something it can do: a point, or something to undo or redo
     const desk = this.sideMQ.matches;
     // (a card in a phone's peek keeps undo and redo here, or in its own top row when it's narrow; none in the route's view, 25d;
-    // the route's view folded keeps Edit and More, #745)
+    // the route's view folded keeps Edit and More, #745; none with the weather card, which changes nothing on the route but
+    // the departure: the user's choice of 2026-11-11)
     const carded = this.cards.place === 'peek' && !desk, folded = !desk && this.panel.dataset.state === 'folded';
-    const show = (this.active || this.panel.classList.contains('leaving')) && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(carded && ((this.cards.narrow && !folded) || this.inView()));
+    const show = (this.active || this.panel.classList.contains('leaving')) && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(carded && (((this.cards.narrow || this.cards.current?.kind === 'weather') && !folded) || this.inView()));
     box.hidden = !show;
     box.classList.toggle('desk', desk);
     if (!show) this.dockTools(false);
