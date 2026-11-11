@@ -344,6 +344,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .rows > .wg-open { padding: 4px 8px 12px; } /* (rows reach 8 px past the card's edges, for their own background) */
 .wg-stack { display: flex; height: 12px; border-radius: 6px; overflow: hidden; }
 .wg-open .rows { margin: 0; border: 1px solid var(--line); border-radius: 12px; }
+.wg-open .row > span:first-child { flex: 1; display: block; } /* (a stretch's row has no icon: its words take the room, › at the end) */
 .wg-open p { margin: 0; font-size: var(--font-control); color: var(--muted); }
 /* Hour by hour, opened: the hours you're out, one either side, read where you'll be then */
 .wg-hours { width: 100%; border-collapse: collapse; font-size: var(--font-control); font-variant-numeric: tabular-nums; }
@@ -1246,6 +1247,9 @@ function draw() {
   const cap = isE() && CAP_E[S.s] ? CAP_E[S.s]() : S.s === 'route' || S.s === 'line' ? CAP[S.s] : CAP[S.s] + (S.v === 'site' ? 'D: each day as weather sites read it (yr, FMI, Foreca at 390 px, 2026-11-07): the sky and the temperature, three small lines beside them (feels like, rain in mm, the wind and its gust with its arrow), and on a paddle the waves and the water; the dark, then the sun’s times on a line of their own; then the hours as FMI’s table and yr’s graph. ' : S.v === 'together' ? 'C: each day’s big numbers first, a colour for each kind (the temperature and how it feels, the wind and its gusts, the rain, the waves on a paddle); the dark on a line of its own, the sun’s times on the next; then the 12 hours as a graph in the same colours. ' : S.v === 'graph' ? 'B: each day is a line in words and a graph of 12 hours at the start, a column an hour: the wind (m/s, its arrow), the temperature, rain, the dark shaded, your trip in green.' : 'A: each day in words: its reading (the sky, the temperature, the wind with its gusts, the rain) and its sun, saying when the trip is in the dark.')
     + (phone() && S.size === 'half' && S.s !== 'route' ? ' At half, this is all a phone shows before a swipe.' : '');
   stage.append(h('div', {}, fr, h('p', { class: 'cap' }, cap)));
+  // G: a row opened in place comes to the card's top, so what it holds is in view
+  const open = isG() && fr.querySelector('.wg [aria-expanded="true"]'), body = open && open.closest('.wc-body');
+  if (body) body.scrollTop += open.getBoundingClientRect().top - body.getBoundingClientRect().top - 8;
 }
 draw();
 </script>
