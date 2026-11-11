@@ -36,7 +36,7 @@ body.mk { margin: 0; padding: 20px 16px 80px; font: 14px/1.45 system-ui, -apple-
 .note { max-width: 880px; padding: 10px 14px; border-radius: 10px; background: var(--switch-bg); }
 .row-cap { margin: 22px 0 6px; font-weight: 650; }
 .row-cap small { font-weight: 400; color: var(--page-cap); }
-.room { position: relative; height: 84px; padding: 14px 0; overflow: hidden; border-radius: 12px; background: var(--map); outline: 1px dashed rgba(128,128,128,.5); outline-offset: -1px; }
+.room { position: relative; height: 84px; padding: 14px 12px; overflow: hidden; border-radius: 12px; background: var(--map); outline: 1px dashed rgba(128,128,128,.5); outline-offset: -1px; }
 .room .pl-tools { position: static; width: max-content; }
 .fold-cap { margin: 4px 0 0; font-size: 12.5px; color: var(--page-cap); }
 /* ======================================================= new in this mock-up */
@@ -125,7 +125,7 @@ function toolbar(v) {
 
 function fit(room, v) {
   const { box, acts, modeEl } = toolbar(v);
-  const wrap = h('div', { class: 'room', style: `width:${room}px;max-width:100%` }, box);
+  const wrap = h('div', { class: 'room', style: `width:${room + 24}px;max-width:100%` }, box);
   const steps = [], said = [];
   const order = [...acts].sort((a, b) => (a.dataset.opt === '6' ? -1 : b.dataset.opt === '6' ? 1 : a.dataset.opt - b.dataset.opt));
   const setOpts = (n) => { order.forEach((b, i) => { b.hidden = i >= n; }); for (const g of box.querySelectorAll('.tb-sep[data-group]')) g.hidden = !box.querySelector(`button[data-group="${g.dataset.group}"]:not([hidden])`); };
