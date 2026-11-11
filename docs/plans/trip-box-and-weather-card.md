@@ -2,7 +2,7 @@
 
 The design of step 6 of [the one order](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784): the trip's box over the list, and the weather card it opens, with Go's tab gone ([#431](https://github.com/TommiContursi/Polku/issues/431), [#794](https://github.com/TommiContursi/Polku/issues/794), [#759](https://github.com/TommiContursi/Polku/issues/759), [#766](https://github.com/TommiContursi/Polku/issues/766)). Part of [#869](https://github.com/TommiContursi/Polku/issues/869); milestone [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-10): designed again, and decided.** On 2026-11-10 the weather got three homes, each with one job (below, Round 4), and round 1 of the refresh was answered. Rounds 2 and 3 answered the rest the same day: two dropdowns, the wind as its speed's colour with its lines on top, Weather at places, and three PRs (6a, 6b, 6c) below. **Ready to build** after the ▾ pill, as steps 2 and 3 of [the one order of 2026-11-10](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6772432958); 6c is new to that order, after 6b. The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/X4VyAyhFQZ49xo9BHWzaKa) to try on a phone (built with `css/app.css` and `js/ui.js` inlined; the earlier one was [this Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri)). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2 of 2026-11-07; **C**, **A** and **B**, the earlier answers, stay to compare. No app code is written here.
+**Where it stands (2026-11-11): the card redrawn as the trip line (Round 5, below), its rules and every weather fact's place written down, waiting for the user's answer on the proposed limits; then version G of the mock-up.** Before it, on 2026-11-10: designed again, and decided. On 2026-11-10 the weather got three homes, each with one job (below, Round 4), and round 1 of the refresh was answered. Rounds 2 and 3 answered the rest the same day: two dropdowns, the wind as its speed's colour with its lines on top, Weather at places, and three PRs (6a, 6b, 6c) below. **Ready to build** after the ▾ pill, as steps 2 and 3 of [the one order of 2026-11-10](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6772432958); 6c is new to that order, after 6b. The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/X4VyAyhFQZ49xo9BHWzaKa) to try on a phone (built with `css/app.css` and `js/ui.js` inlined; the earlier one was [this Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri)). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2 of 2026-11-07; **C**, **A** and **B**, the earlier answers, stay to compare. No app code is written here.
 
 ## Already decided
 
@@ -280,7 +280,104 @@ Not checked: a real phone, a screen reader, high contrast, and a desktop at 721�
 
 **Round 3's answers (2026-11-10):** a sport's Wind tile switches Wind lines on top, keeping whatever colour is on (a Rain or Temperature tile sets the colour); step 6 is three PRs, the Weather button's temperature on its own (6c).
 
-Nothing is left open for step 6's design.
+Nothing was left open for step 6's design until Round 5 (below) redrew the card on 2026-11-11.
+
+## Round 5: the trip line (2026-11-11)
+
+The card as built in #973, and then F (a verdict, numbers in fixed places, the day's strip), still showed weather facts picked from Go's old contents, each drawn its own way, and missed most of what Polku knows. The user set the direction on 2026-11-11 with a [design canvas](https://claude.ai/artifact/WD6i6g3rustC7TK4HGSnVV) of six screens: a quiet trip, a trip where the weather turns, Wind on the way opened, the bar after a tap on the wind lane, Hour by hour opened, and two days with two sports and the planned sources. The canvas is the model for structure and behaviour; colours and type come from Polku's own classes and tokens. Version G of [the mock-up](mockups/weather-card.html) draws it; F and the older versions stay behind their switches.
+
+### Two rules
+
+**What to show.**
+- A fact shows only when it changes a decision: go or not, when, what to bring, which way.
+- An ordinary value stays small, in its fixed place; an unusual one rises to a note at the top, worst first, saying where and when on the trip.
+- The limits are Check's own where Check has one, by each leg's sport, so the card and Check never disagree. Where Check has none, the table below proposes one.
+- Each leg's sport decides which facts count: the waves only on a paddle, your own speed in the cold on a ride.
+- Within about two hours of leaving, what's measured (the radar, lightning, road stations) beats the forecast.
+- A source that could change a decision and didn't answer is said, at a note's size.
+
+**How to draw it.**
+- One axis: the trip from start to arrival, in clock time and km, each leg in its sport's colour. A night breaks the axis: a day each.
+- Every fact that rule 1 lets through is a lane on that axis, in the colours of the map's weather layers, from the tokens. The wind's lane is head- and tailwind, its strength in its lightness, so a 3 m/s headwind doesn't look like an alarm.
+- Each lane has its name and its value at its start, so no colour stands alone.
+- With the axis ending at arrival, the hours either side show only in Hour by hour; a different departure redraws the lanes.
+
+### The card's fixed places
+
+1. **One sentence** that says how it is ("Mild at first, then rain and a risk of thunder").
+2. **Up to three notes,** worst first, each with a number. Any source can raise a note when it changes a decision.
+3. **The numbers,** always in the same places: the temperature with feels like, the wind with its gusts, the rain. The waves are a fourth, on a paddle only.
+4. **The trip line:** one line from start to arrival, each leg in its sport's colour, with the notes' numbers where each thing happens. Under it, the lanes on the same axis.
+5. **Things to check,** folded: Hour by hour, Wind on the way, Time on the way.
+6. **Around the trip,** a row each: Warnings, Measured nearby, Road cameras, Sun and moon, Water.
+7. **One button:** Weather on the map.
+
+The card's length follows the weather: when nothing changes on the way, there's no trip line and no lanes.
+
+### What a tap or a click does
+
+- **On a desktop** the card sits beside the map, so pointing previews: pointing at a note, a lane or a headwind stretch lights that part up on the trip line and on the map, with its km, time and value, and the map doesn't move. A click then does what a tap does on a phone. Nothing is behind hover only: a click, a tap and the keyboard reach the same thing, and keyboard focus previews as pointing does.
+- **A note** frames its place on the map.
+- **A lane** folds the card to a bar at the foot. The whole route is coloured by that fact and the map's matching layer goes on, at the trip's time. The bar has arrows to step from one stretch to the next ("Against you, 1 of 3"), a slider that moves you along the trip while the map's hour follows, a way back to the card, and a close that clears the map.
+- **A folded row** opens in place. Wind on the way shows one stacked bar with its key on one line, then every headwind stretch, worst first, each a row that frames it on the map. Hour by hour is a table of the hours you're out, with one either side and a column for where you are then.
+- **An Around the trip row** opens its own view.
+- **Weather on the map** opens the map's weather at the departure.
+- The "Colour the route line by" chips go: a lane does it.
+
+### Several days and sports
+
+One trip line a day. A day under about 30 minutes is one line of words. A lane that counts for one sport only is drawn on that leg only (the waves on the paddle).
+
+### Details
+
+- Every number is read from the route's points at the time you're there: nothing from the start's hours, nor from after arrival. (Go on `main` gave the wind at the start at the departure minute, "3.7 m/s, gusts 7.2", beside hour chips from the route's middle point; F took the highest hour at the middle point, 20:00 to 22:00, an hour past arrival: "5 m/s, gusts 8".)
+- Times are rounded and say "around": the forecast is hourly, on a 2.8 km grid.
+- No number shows twice. No sun times when the whole trip is in the dark or the whole trip is in daylight.
+- Labels use the words weather apps use. Colours come from tokens, and colours that must be told apart differ in lightness too.
+
+### Every weather fact, and where it lives
+
+The places are the card's (1 to 7 above) and Check's. **(p)** marks a limit proposed here, where Check has none, waiting for the user's answer. "On foot" is hike, trail run and run; "rides" are MTB, gravel and road.
+
+| Fact | Source | Time | Place | Map's weather box today | Old card (Go, `main`) | F | Elsewhere today | Lives in | Rises to a note when | Counts for |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Air temperature | Open-Meteo | hourly, read at the minute you're there | 2.8 km grid; a route reads 2–12 points | reading, colour layer, towns | range along the route | range over the hours, one point | route coloured by temperature | 3 numbers (range); 1 sentence (its word); a lane only when it crosses 0 °C; Hour by hour | it crosses 0 °C with rain on the way (slippery, below); feels like 27 °C or more **(p)** | all |
+| Feels like, the forecast's | Open-Meteo `apparent_temperature` (this branch) | hourly | grid | — | — | yes | — | 3 numbers, under the temperature; Hour by hour | see the next row | all |
+| Feels like at your speed | Polku: wind chill with your own speed | to the minute | every route point | — | — | — | Check: Very cold, Frostbite risk | 2 note, Check | Check's: −15 °C Very cold, −27 °C Frostbite risk | all; most on rides |
+| Wind speed | Open-Meteo | hourly | grid | reading, wind lines, towns | the start at departure, plus chips from the middle | highest hour, middle point | route coloured by wind, Paddle's row | 3 numbers (strongest on the way); 1 sentence (FMI's word); Hour by hour | through its direction (head-, cross-, tailwind) and its gusts | all |
+| Gusts | Open-Meteo | hourly | grid | reading | the start at departure | highest hour | Paddle's row | 3 numbers, under the wind; Wind on the way (the strongest, where); Hour by hour | 14 m/s or more on a ride or a paddle; 20 m/s or more for all **(p)** | all |
+| Wind direction | Open-Meteo | hourly | grid | arrow, lines | "from W", chips | arrows every 3 h | — | 7 Weather on the map; on the card only as head-, cross- or tailwind | never on its own | — |
+| Head-, cross- and tailwind | Polku: the wind against your heading | to the minute | every route point | — | shares, strongest headwind | shares, verdict | route coloured by wind | 4 wind lane; 1 sentence ("behind you"); 5 Wind on the way: the stacked bar and every headwind stretch | a headwind of 6 m/s or more over 1 km or more on a ride, 8 m/s on foot; 5 m/s on a paddle's open water, from any side **(p)** | rides, paddle, on foot (drawn on those legs) |
+| Time lost or won to the wind | Polku: timed with and without wind | the trip | the trip | — | Time section | Time on the way | — | 5 Time on the way, in its summary | never | rides, paddle, on foot |
+| Rain | Open-Meteo | hourly | grid | forecast layer, reading mm/h and 6 h total | "Rain on X km", where | total, bars, start time | route coloured by rain | 3 numbers (total on you); 4 rain lane; 1 sentence; Hour by hour | 1 mm or more falls on the way, or it starts or stops on the way; 4 mm an hour is heavy **(p)** | all but swim |
+| Rain now and the last 1.5 h | FMI radar (RainViewer outside Finland) | every 5 min | radar image | rain layer before Now | — | — | — | 2 note within 2 h of leaving; 7 Weather on the map | leaving within 2 h and the radar has rain on the route now **(p)** | all |
+| Snowfall | Open-Meteo `snowfall`; rain below +0.5 °C drawn as snow | hourly | grid | the rain layer, as snow | "Snow on X km" | bars | Check: Snowing on the way | 3 numbers (in cm, in the rain's place); 4 the rain lane, as snow; Hour by hour | Check's: 2 cm or more while you're out | all |
+| Snow on the ground, forecast | Open-Meteo `snow_depth` | hourly | grid | snow layer | — | note | Check: Snow on the way, slower going | 2 note; Check; 7 Weather on the map | Check's: snow on the way in winter, with the time it adds | rides, on foot |
+| Snow on the ground, measured | FMI stations | the latest measurement | stations | the snow layer's numbers | — | — | — | 6 Measured nearby (#912); 7 Weather on the map | the station has snow where the forecast has none **(p)** | rides, on foot |
+| Cloud cover | Open-Meteo | hourly | grid | clouds layer, sky icon | — | sky icon | — | 1 sentence (the sky's word only); 7 Weather on the map; the aurora's chance (#914) | never | — |
+| Thunder, forecast | Open-Meteo weather code 95–99 | hourly | grid | thunder layer (dashed area) | — | — | not in Check | 2 note, first; 4 thunder lane; 1 sentence; Hour by hour; Check (new) | any hour with thunder where you are then | all |
+| Lightning strikes | FMI | each strike, the last hour | exact | thunder layer | — | — | — | 2 note, first; 7 Weather on the map | leaving within 2 h and strikes within 20 km of the route in the last hour **(p)** | all |
+| Daylight, dusk and dark | Polku: the sun's height | to the minute | every route point | night shading, night icon | sunrise, sunset, dark from | note, strip, sun line | Check: After sunset, In the dark | 2 note; 4 the dark on the trip line, with the time it falls; 6 Sun and moon | Check's: any part after sunset or before sunrise | all |
+| Low sun ahead | Polku: the sun's position | to the minute | any point | — | — | — | — (never shown) | 2 note | the sun under 10° and within 30° of your heading for 500 m or more **(p)** | rides, on foot |
+| Shade from hills, trees and buildings | Polku: the sun, the terrain and tree and building heights | any hour | ≈ 1 m from zoom 14 | shadows layer | — | — | — | 7 Weather on the map | never | — |
+| Lit and unlit ways | OpenStreetMap | fixed | each way | Layers | — | — | Check's dark note | 2 note, as the dark note's number ("1.2 km unlit") | in the dark with 500 m or more unlit **(p)** | all on land |
+| Waves | Polku: the forecast wind over open water upwind, to 8 km | the leg's wind | water grid | — | — | number (estimate) | Check: Rough for a kayak | 3 numbers, the fourth; 4 waves lane on the paddle legs; 2 note | Check's: over the craft's comfortable height (kayak 0.35 m, canoe 0.25, SUP 0.2, swim 0.15) | paddle, swim |
+| Slippery | Polku, from the forecast | hourly | every route point | — | "Wet and near freezing" | note | Check: Slippery | 2 note; Check | Check's: rain or sleet between −2 and +1.5 °C for 100 m or more | rides, on foot |
+| Ice season | Polku, from the temperatures | the season | water legs | — | — | — | Check: Ice season | 2 note; Check | Check's | paddle, swim |
+| Road conditions, forecast | Fintraffic road weather | 0–12 h | main-road sections | road conditions layer | — | — | Check, main roads | 2 note; Check | Check's: slippery or poor on a main road on the way | rides, on foot |
+| Road weather, measured | Fintraffic stations | live | along main roads | the road camera's window | — | — | — | 6 Road cameras (#913), with the camera's readings | road surface at 0 °C or below with rain near the start, leaving within 2 h **(p)** | rides, on foot |
+| Rain in the last day | Open-Meteo, the past day | 24 h | the start only | — | — | — | switches the route style to wet; the amount is never shown | 2 note | 3 mm or more (the wet style's limit) on a route with trails | MTB, gravel, trail run, hike |
+| Forecast reach and certainty | Open-Meteo: 10 days for routes, 48 h on the map; "less certain" past 72 h | — | — | ends at 48 h | notes | notes | Check: No forecast yet | 1 sentence becomes "No forecast yet for …" with no numbers; 2 note when it stops short; "less certain" a quiet line under the numbers | the forecast stops before arrival | all |
+| Warnings (#911, planned) | FMI's CAP feed or MeteoAlarm, to check | by the warning's hours | regions or areas | — (planned: On top) | — | — | — | 6 Warnings; 2 note | a warning for the trip's area and hours that fits the sport: wind at sea for a paddle, thunderstorms for all, forest fire for hikes, slippery roads for rides and on foot | by the warning |
+| Measured nearby (#912, planned) | FMI stations | the last reading, the last 24 h | the station nearest the trip's middle | — | — | — | — | 6 Measured nearby | leaving within 2 h, and the station measures rain or snow where the forecast has it dry, or the other way **(p)** | all |
+| Road cameras (#913, planned) | Fintraffic weathercams (`js/cameras.js`) | live pictures | stations near the start | — | — | — | the map's camera layer | 6 Road cameras | never (pictures) | rides, on foot |
+| Moon (#914, planned) | Polku, calculated | to the minute | anywhere | — | — | — | — | 6 Sun and moon | never | all |
+| UV (#914, planned) | Open-Meteo `uv_index` | hourly or the day's highest | grid | — | — | — | — | 6 Sun and moon | UV 6 or more while you're out **(p)** | all; most on a paddle or a swim |
+| Aurora (#914, planned) | a new source, needs the user's OK | — | — | — | — | — | — | 6 Sun and moon | never | — |
+| Water temperature (#862, planned) | SYKE stations | daily | stations; unknown between them | — | — | — | — | 6 Water | under 15 °C on a paddle (a capsize), under 15 °C on a swim **(p)** | paddle, swim |
+| Blue-green algae (#862, planned) | to check | to check | to check | — | — | — | — | 6 Water | algae seen near a swim leg **(p)** | swim, paddle |
+
+**One feels like, not two (to decide):** the numbers' "feels like" is the forecast's, standing still, as weather apps give it; Check's cold warnings use the wind with your own speed. With both on a card, a ride at −10 °C could read "feels like −14°" in the numbers and "feels like −22 °C" in a note.
 
 ## How step 6 is built
 
