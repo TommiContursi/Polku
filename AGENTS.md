@@ -108,11 +108,12 @@ November 2026").
   Write one too before a turn that waits for the user, so the answer can
   start a fresh session. End every turn with the work committed.
 
-**Model and effort,** picked when the session starts: Sonnet, or Opus at
-medium, for docs, small fixes, rebases, filing issues and `/lessons`;
-Opus at high for a phase's part, multi-file work and hard bugs, including
-anything touching routing, saved data or share links. Raise it to xhigh
-only when high is stuck on the same problem.
+**Model and effort,** picked when the session starts: a smaller model, or
+the strongest one at medium, for docs, small fixes, rebases, filing issues
+and `/lessons`; the strongest model at high for a phase's part, multi-file work and hard bugs, including
+anything touching routing, saved data or share links. Use effort xhigh for
+plans and their reviews. Otherwise raise it to xhigh only when high is stuck
+on the same problem.
 Mid-session, change effort, not models: a new model sends the whole
 conversation again
 ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
@@ -167,20 +168,22 @@ conversation again
   removing it makes the change simpler.
 - **Where a skill differs from this file, this file wins:** same-commit runs
   count, the user decides scope and order (not a ledger), progress goes in
-  Hand-overs, and only the user merges.
+  Hand-overs, plans go in `docs/plans/`, and only the user merges.
 - Think of the phone outdoors: touch, one thumb, small screens, bright sun,
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
 - **A new panel, sheet or way of working starts as a clickable mock-up** in
   `docs/plans/mockups/`, checked in the worst case too (360 px, 200 % zoom,
-  long Finnish words), with the design skills that help. A small visual
+  long Finnish words), with the design skills that help. Fix what breaks in
+  the mock-up, then present it. A small visual
   change needs none. The mock-up and a short plan are enough: no probe
   scripts, measurements or evidence files unless the user asks. The user
   chooses before it's built; #123's plan shows how.
 - **One style, and don't redesign what works.** A control for a job the app
   already does is the one in DEVELOPING's "Shared controls", with its class,
   and a mock-up copies its CSS. A new kind is proposed to the user first. A
-  mock-up keeps its earlier versions behind a switch, so they can be compared.
+  mock-up keeps its earlier versions behind a switch, so they can be compared,
+  and a round adds at most two versions.
 - **Motion follows DESIGN.md's "Motion"**, built on Emil Kowalski's rules.
   Every change to motion or interaction is decided with /animate. When a
   change moves something (a new or changed animation, transition, or a
@@ -234,9 +237,9 @@ conversation again
 - Docs and tooling PRs stay on their one subject.
 - **The repo squash-merges:** the PR's title and description become its one
   commit on `main`, so keep the description true as the PR changes. When the
-  PR below yours is merged, rebase yours onto `main` without its commits
-  (`git rebase --onto origin/main <old base>`), or it conflicts with the
-  squashed copy of them.
+  PR below yours is merged, don't rebase a branch that's already pushed. To
+  bring `main` in, `git merge origin/main` and push normally (the repo
+  squash-merges, so the merge commit never reaches `main`).
 - **Title** like the history, saying what changes for people using Polku:
   "Calmer planner: the map's cards", "Fix: the map's credits stay folded on
   phones", "Docs: …". Not `feat:` or `docs:`.
