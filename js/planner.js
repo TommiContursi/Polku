@@ -7461,7 +7461,7 @@ export class Planner {
     const dark = this.darkOf(a, d), sun = this.sunLine(d.t0, a.pts[d.i0]);
     el.append(h('p', { class: 'wx-sunline', html: `${icon(dark ? 'moon' : 'sun', 12)}${escapeHtml([dark && cap(dark.words), ...sun.map(([, t], i) => (i ? t[0].toLowerCase() + t.slice(1) : dark ? t[0].toLowerCase() + t.slice(1) : t))].filter(Boolean).join(' · '))}` }));
     if (hours) {
-      const row = item({ icon: 'details', label: 'Hour by hour', k: `hours-${k}`, onclick: () => { card.hours = !card.hours; this.cards.refresh(); } });
+      const row = item({ icon: 'cloudSun', label: 'Hour by hour', k: `hours-${k}`, onclick: () => { card.hours = !card.hours; this.cards.refresh(); } });
       row.setAttribute('aria-expanded', String(!!card.hours));
       row.append(h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(card.hours ? 'chevronUp' : 'chevronDown', 18) }));
       el.append(rows(row));
@@ -7480,7 +7480,7 @@ export class Planner {
       `<div class="tl-now-main">${icon(sky, 24)}<b>${degRange(wx.tMin, wx.tMax).replace(' °C', '°')}</b>${wx.feel != null ? `<small>feels ${deg(wx.feel)}</small>` : ''}</div>`,
       `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${Math.round(wx.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${sr('Wind up to ')}${wx.wind < 0.5 ? 'calm' : `${wx.wind.toFixed(wx.wind < 3 ? 1 : 0)} m/s ${compass(wx.dir)}`}${wx.gust > wx.wind + 2 ? ` <span>gusts ${Math.round(wx.gust)}</span>` : ''}</div>`,
       `<div><span class="wx-ic rain">${icon(rain.snow ? 'snow' : 'drop', 12)}</span>${rain.wet ? `${sr('Rain up to ')}${rain.peak.toFixed(1)} mm/h <span>· ${mm < 1 ? mm.toFixed(1) : Math.round(mm)} mm${sr(' on you')}</span>` : 'dry'}</div>`,
-      wave ? `<div><span class="wx-ic wave">${icon('paddle', 12)}</span>waves ${Math.max(0.1, wave.m).toFixed(1)} m <span>· estimate</span></div>` : '',
+      wave ? `<div title="An estimate from the wind as the leg starts, over the open water upwind"><span class="wx-ic wave">${icon('paddle', 12)}</span>waves about ${Math.max(0.1, wave.m).toFixed(1)} m${sr(', an estimate')}</div>` : '',
       winter && wx.snow != null ? `<div>${icon('snow', 12)}${Math.round(wx.snow)} cm of snow</div>` : '',
     ].filter(Boolean);
     return h('div', { class: 'tl-now wx-now', style: `--tl-lines: ${lines.length}`, html: lines.join('') });
