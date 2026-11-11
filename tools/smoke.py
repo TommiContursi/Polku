@@ -13159,7 +13159,7 @@ def toolbox(chrome):
       return { side, folds: [...p.tools.classList].filter((k) => /^fold|^tb-rows$/.test(k)), timeline: !!t, edge: side ? Math.abs(b.left - (r.right + 12)) <= 1 && Math.abs(b.bottom - (innerHeight - 12)) <= 1 : Math.abs(b.bottom - (r.top - 12)) <= 1 && Math.abs(b.left - r.left) <= 1,
         round: ['TopLeft', 'TopRight', 'BottomLeft', 'BottomRight'].every((c) => parseFloat(getComputedStyle(p.tools)['border' + c + 'Radius']) >= 16),
         named: /^Draw the next leg: /.test(p.els.modePick.getAttribute('aria-label')), // (the mode keeps its name for a screen reader where its words fold away)
-        smaller: !p.tools.classList.contains('foldM') || [...p.tools.querySelectorAll('[data-opt]')].every((o) => o.hidden), // (the mode's name goes last: Mode ▾, #869)
+        smaller: !p.tools.classList.contains('foldM') || [...p.tools.querySelectorAll('[data-opt]')].every((o) => o.hidden), // (the mode's name goes once the route's actions are in More: Mode ▾, #869)
         clear: b.right <= (level ? c.left - 12 : innerWidth - 12) + 0.5, below: b.top >= document.querySelector('.topbar').getBoundingClientRect().bottom - 0.5,
         together: ((n) => !n[0].offsetParent || n.every((x) => Math.abs(x.getBoundingClientRect().left - n[0].getBoundingClientRect().left) < 1 && x.getBoundingClientRect().width <= n[0].parentElement.getBoundingClientRect().width + 0.5))([...p.els.modePick.querySelectorAll('.mp-names > span')]), // (as wide as the longest mode's name, so picking another moves nothing, #594, #869)
         scale: s.bottom <= b.top + 0.5 && s.bottom >= b.top - 12 && (!side || s.left >= r.right - 0.5),
@@ -13295,8 +13295,8 @@ def toolbox(chrome):
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
     # a narrow desktop: the toolbar folds before the map's buttons, level with it at the map's foot (#468), with the
-    # timeline open. As in Mode ▾'s mock-up (#869), it fits in one row with the style's name shortened (fold4) and the
-    # mode's name gone (foldM), whatever the sport and style
+    # timeline open. The mode's name goes first (Mode ▾ keeps its icon, #869), then the sport's: one row, the route
+    # style's caption and its whole name kept (the user's choice, 2026-11-11), whatever the sport and style
     for sport, styles in (('mtb', ('balanced', 'transfer')), ('paddle', ('shore',))):
         name = f'1024x768 {sport}'
         pg = page(1024, 768, False, sport)
@@ -13308,7 +13308,7 @@ def toolbox(chrome):
             placed(pg)
             pg.js(SETTLED)
             e = pg.js(ON_EDGE)
-            if not (e['edge'] and e['round'] and e['smaller'] and e['together'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or not {'fold4', 'foldM'} <= set(e['folds']) or 'tb-rows' in e['folds']:
+            if not (e['edge'] and e['round'] and e['smaller'] and e['together'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or e['folds'] != ['foldM', 'foldS']:
                 fails.append(f'{name}, {style}: the toolbar {e}')
         d = dupes(pg, name)
         if pg.js("document.getElementById('btn-fit').hidden") or 'Show the whole route' in d['bar']:

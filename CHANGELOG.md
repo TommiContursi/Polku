@@ -7,7 +7,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### The desktop toolbar's drawing mode, a value you pick ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - On a desktop, the toolbar shows how the next leg is drawn as one button, **Follow paths ▾**, as on a phone. Its menu has **Follow paths**, **Freehand** and **Over water**, each with its key (P, S and W), and the keys still pick a mode at once.
-- The button is as wide as the longest mode's name, so picking another mode moves nothing on the toolbar. In a narrow window it keeps its name longest, after the route's actions, the style's caption and the sport's name have made room.
+- The button is as wide as the longest mode's name, so picking another mode moves nothing on the toolbar. In a narrow window, once the route's actions have moved into **⋯**, it shows its icon alone, so the route style keeps **Route style** over its whole name.
 
 ### One When everywhere, and ▾ for a value you pick ([#869](https://github.com/TommiContursi/Polku/issues/869))
 

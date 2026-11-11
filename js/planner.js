@@ -41,9 +41,9 @@ const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
 const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 const MODES = ['auto', 'line', 'water'];
 const MODE_KEY = { auto: 'P', line: 'S', water: 'W' };
-// what the desktop toolbar shortens where room runs out (placeTools()): the style's caption, the sport's name, the
-// style's name (the longest beside a 1024 px window's panel), then the mode's name; last, beside the side panel, a second row
-const FOLDS = ['fold1', 'foldS', 'fold4', 'foldM', 'tb-rows'];
+// what the desktop toolbar shortens where room runs out (placeTools()): the mode's name (Mode ▾ keeps its icon), the
+// sport's name, the style's caption, the style's name; last, beside the side panel, a second row
+const FOLDS = ['foldM', 'foldS', 'fold1', 'fold4', 'tb-rows'];
 // how a phone's toolbox fits a window narrower than it (#745): less room around its words, then the drawing button shortened
 const PHONE_FITS = ['tb-tight', 'tb-short', 'tb-shorter', 'tb-wrap'];
 // how a sport goes along a line, for "MTB legs can't be paddled on the same line"
@@ -6007,19 +6007,21 @@ export class Planner {
       // (docked, the row is right-aligned: what doesn't fit runs out at its left, which scrollWidth doesn't count)
       const first = () => [...box.querySelectorAll('button')].find((e) => !e.hidden && e.offsetParent);
       const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 || first().getBoundingClientRect().left < box.getBoundingClientRect().left - 1 : box.getBoundingClientRect().right > limit);
-      // in turn: the route's actions from the last, the style's caption, the sport's name (its icon stays), Clear route
-      // (the action kept longest), the style's name shortens, then the mode's name goes (its icon, label and tooltip
-      // stay; Mode ▾, #869); last, beside the side panel of a narrow window, a second row above the first
+      // in turn: the route's actions from the last, the mode's name (its icon, label and tooltip stay; Mode ▾, #869), the
+      // sport's name (its icon stays), the style's caption, Clear route (the action kept longest), and the style's name
+      // shortens; last, beside the side panel of a narrow window, a second row above the first
       box.classList.remove(...FOLDS, ...PHONE_FITS);
       setOpts(box, opts.length);
       const steps = [];
       for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
-      steps.push(() => box.classList.add('fold1'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold4'), () => box.classList.add('foldM'));
+      steps.push(() => box.classList.add('foldM'), () => box.classList.add('foldS'), () => box.classList.add('fold1'), () => setOpts(box, 0), () => box.classList.add('fold4'));
       if (side) steps.push(() => { box.classList.add('tb-rows'); box.style.maxWidth = `${limit - r.right - 12}px`; });
       for (const step of steps) {
         if (!over()) break;
         step();
       }
+      // (the caption sits over the style's name: where the name is the wider, its fold saved nothing, so it comes back)
+      if (box.classList.contains('fold1')) { box.classList.remove('fold1'); if (over()) box.classList.add('fold1'); }
       // (a bottom panel's own height is --sheet-h already)
       const tb = box.getBoundingClientRect();
       toolsH(inPanel ? 0 : Math.round(side ? innerHeight - tb.top : innerHeight - r.bottom + tb.height + 12));
