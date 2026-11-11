@@ -9552,17 +9552,18 @@ def menu_tap_outside(chrome):
             if got['menu'] or got['n'] != 2:
                 fails.append(f"{size}: a {press} on the map at {spot} with the drawing menu open: the menu {'still open' if got['menu'] else 'closed'}, {got['n']} points, not 2")
             if phone:
-                # a drag that closes the menu ends in no click: the next tap, at once, still adds a point
-                spot = open_menu()
-                if not spot:
+                # a drag that closes the menu ends in no click: the next press's click, however soon, still counts.
+                # (Its own events, in one go: a real drag and tap take longer than the 700 ms the old code waited.)
+                if not open_menu():
                     fails.append(f"{size}: the drawing menu didn't open again")
                     continue
-                pg.swipe(spot[0], spot[1], spot[1] + 30, ms=120, steps=6)
-                pg.quick_tap(*spot)
-                time.sleep(1)
-                got = pg.js("({ menu: !!document.querySelector('.menu-pop'), n: polku.planner.points.length })")
-                if got['menu'] or got['n'] != 3:
-                    fails.append(f"{size}: a drag on the map closing the drawing menu, then a tap: the menu {'still open' if got['menu'] else 'closed'}, {got['n']} points, not 3")
+                got = pg.js("""(() => { const c = polku.map.getCanvas(), b = document.body.appendChild(document.createElement('button')), o = { pointerType: 'touch', bubbles: true };
+                  let n = 0; b.onclick = () => n++;
+                  c.dispatchEvent(new PointerEvent('pointerdown', o)); c.dispatchEvent(new PointerEvent('pointerup', o));
+                  b.dispatchEvent(new PointerEvent('pointerdown', o)); b.click(); b.remove();
+                  return { menu: !!document.querySelector('.menu-pop'), n }; })()""")
+                if got['menu'] or got['n'] != 1:
+                    fails.append(f"{size}: a drag on the map closing the drawing menu, then a tap on a button: the menu {'still open' if got['menu'] else 'closed'}, the button {'pressed' if got['n'] else 'not pressed'}")
             fails += [f'{size} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
