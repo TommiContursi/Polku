@@ -296,6 +296,10 @@ GO_FAR = "(async () => { const p = polku.planner; " + FAR + "p.openWeather(); aw
 # the trip's box over Route's list, and the weather card it opens (#869's step 3), at Time on the way with `time`
 BOX = "(async () => { const p = polku.planner; p.reveal('points'); await new Promise((r) => setTimeout(r, 600)); p.els.box.scrollIntoView({ block: 'nearest' }); await new Promise((r) => setTimeout(r, 300)); return true; })()"
 FULL = "p.setSheetState('full'); await wait(700);"
+# a trip with a night: leaving tomorrow at 10:00, a night at waypoint 1, on at 08:00; the weather card at Day 2
+WEATHER_DAYS = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0);"
+                " p.when.set(d / 1000); p.setStop(1, { on: 480 }); for (let k = 0; k < 150 && !(p.analysis && p.analysis.wind && (p.analysis.waits || []).length); k++) await wait(100);"
+                " await wait(800); p.openWeather({ day: 1 }); await wait(900); return true; })()")
 WEATHER = lambda time=False, full=False: f"(async () => {{ const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (let k = 0; k < 150 && !p.analysis.wind; k++) await wait(100); p.openWeather({{ time: {'true' if time else 'false'} }}); await wait(700); {FULL if full else ''} return true; }})()"
 START_CARD = lambda far=False: "(async () => { const p = polku.planner; " + (FAR if far else '') + "p.openPointCard(p.points[0]); await new Promise((r) => setTimeout(r, 600)); return true; })()"
 
@@ -762,6 +766,8 @@ SCENES = {
     'phone-paddle-weather': dict(PHONE, timeline=False, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='half', js=WEATHER()),
     'phone-weather-360': dict(PHONE, w=360, h=740, timeline=False, route='route-kauppi-mtb.json', state='full', js=WEATHER()),
     'phone-weather-full': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js=WEATHER(full=True)),
+    'phone-half': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half'),
+    'phone-weather-days': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js=WEATHER_DAYS),
     'phone-paddle-weather-full': dict(PHONE, timeline=False, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='half', js=WEATHER(full=True)),
     'phone-box-200': dict(PHONE, w=195, h=422, timeline=False, route='route-kauppi-mtb.json', state='full', js=BOX),
     'phone-weather-200': dict(PHONE, w=195, h=422, timeline=False, route='route-kauppi-mtb.json', state='full', js=WEATHER()),
