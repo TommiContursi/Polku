@@ -82,7 +82,7 @@ Fixed at the bottom-center of the viewport, out of the component's way. Small, n
 
 View the worst case and look for each failure signature below. Check it:
 
-- at the component's **real container width** (a sidebar list is not a full-page list), then at **320px** and at the **widest** layout it supports;
+- at the component's **real container width** (a sidebar list is not a full-page list), then at the narrowest width AGENTS.md's mock-up rule names and at the **widest** layout it supports;
 - with **browser zoom at 200%** (or root font size raised), because text grows and boxes don't;
 - in **dark mode** and **RTL** (`dir="rtl"` on a wrapper) if the product supports either.
 
