@@ -16,7 +16,7 @@ import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js'
 import { sunTimes, darkness, nightAt } from './sun.js';
 import { tripTimes, sampleAt as sampleAtOf, timeOf, dayOf, clockOf } from './trip.js';
 import { clock } from './net.js';
-import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
+import { winterAlong, windChill, airPast, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
@@ -2477,7 +2477,7 @@ export class Planner {
     for (let i = 1; i < n; i++) {
       if (water(i) || !known(i)) continue;
       const kmh = ((a.along[i] - a.along[i - 1]) / Math.max(1, T.at(i) - T.at(i - 1))) * 3.6;
-      const f = windChill(w.temp[i], w.speed[i], Math.min(40, kmh));
+      const f = windChill(w.temp[i], airPast(Math.min(40, kmh), w.head[i], w.cross[i]));
       if (f < wc) { wc = f; wcAt = i; }
     }
     if (wc <= -27) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Frostbite risk: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · bare skin can freeze within half an hour: cover face and fingers', ...read });

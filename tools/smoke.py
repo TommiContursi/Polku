@@ -3094,11 +3094,16 @@ HEADS = """(async () => {
   const fill = (v) => new Float32Array(n).fill(v), F = ['estimate', 'the forecast'], T = ['map', 'winter tags'];
   const cls = Array.from({ length: n }, (_, i) => ['closed', 'groomed', 'unploughed', 'open3'][Math.floor(i / 15)]);
   const wa = { along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), snow: { cm: fill(15) }, winterCls: cls, snowSec: 0,
-    wind: { temp: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0 : -30)), precip: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0.5 : 0)), speed: fill(10), snowfall: fill(5), snow: fill(15) } };
+    wind: { temp: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0 : -30)), precip: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0.5 : 0)), speed: fill(10), head: fill(10), cross: fill(0), snowfall: fill(5), snow: fill(15) } };
   const wt = { app: { winter: () => ({ on: true, setting: 'on' }) } };
   expect('winterWarnings', p.winterWarnings.call(wt, wa), [[/^Snow on the way/, 'look', ...F], [/^Snowing on the way/, 'look', ...F], [/^Slippery/, 'read', ...F], [/^Frostbite risk/, 'read', ...F],
     [/^No access in winter/, 'read', ...T], [/^Beside a ski track/, 'look', ...T], [/^Not ploughed/, 'look', ...T], [/^Opens slowly/, 'look', ...T]]);
-  expect('winterWarnings, very cold', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, wind: { ...wa.wind, temp: fill(-14), precip: fill(0), snowfall: fill(0), speed: fill(4) } }), [[/^Very cold/, 'read', ...F]]);
+  expect('winterWarnings, very cold', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, wind: { ...wa.wind, temp: fill(-14), precip: fill(0), snowfall: fill(0), speed: fill(4), head: fill(4) } }), [[/^Very cold/, 'read', ...F]]);
+  // the cold by the wind's direction (#869): at −10 °C riding 20 km/h in 4 m/s of wind, very cold against it, not with it behind you
+  const ride = { ...wa, snow: null, winterCls: null, tAt: Float32Array.from({ length: n }, (_, i) => i * 1.8) }, cold = { ...wa.wind, temp: fill(-10), precip: fill(0), snowfall: fill(0), speed: fill(4) };
+  expect('winterWarnings, −10 °C into the wind', p.winterWarnings.call(wt, { ...ride, wind: { ...cold, head: fill(4) } }), [[/^Very cold/, 'read', ...F]]);
+  const behind = p.winterWarnings.call(wt, { ...ride, wind: { ...cold, head: fill(-4) } }).filter((x) => /^(Very cold|Frostbite)/.test(x.text));
+  if (behind.length) errs.push(`winterWarnings, −10 °C with the wind behind you: ${behind.map((x) => x.text).join(' / ')}`);
   expect('winterWarnings, on the water', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, attr: attrs('paddle', [[0, 60, {}, 'water']]), wind: { ...wa.wind, temp: fill(0), precip: fill(0), snowfall: fill(0) } }), [[/^Ice season/, 'read', ...F]]);
   expect('iceWarnings', p.iceWarnings({ along, attr: Array.from(along, () => ({ ice: true })) }), [[/^On the ice/, 'read', 'calculated', 'your route over the ice']]);
   // the stops: the bike left behind, and a short night
