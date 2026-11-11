@@ -1790,7 +1790,7 @@ MULTI = """(async () => {
   if (!a || !a.waits || a.waits.length !== 2) return [...errs, `changeovers: ${a && a.waits ? a.waits.length : 'none'}`];
   const mins = a.waits.map((w) => w.sec / 60).join(',');
   if (mins !== '15,10') errs.push(`changeover minutes: ${mins}`);
-  const moving = p.timed(a).total - 25 * 60;
+  const moving = p.timed(a, null, null, p.startSec()).total - 25 * 60;
   p.setChangeMin(2, 3);
   await wait(300);
   if (Math.round((p.analysis.time - moving) / 60) !== 18) errs.push(`time with 15 + 3 min of changeovers: ${Math.round((p.analysis.time - moving) / 60)} min more than moving`);
@@ -1997,7 +1997,7 @@ STOPS = """(async () => {
   if (!/ 00$/.test(whole || '')) errs.push(`summary time at ${a.time} s: ${whole}`);
   [a.time, a.timeWind] = was;
   p.renderAnalysis();
-  const days = S.tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : p.startSec(), a.waits);
+  const days = p.trip().days();
   if (days.length !== 2 || Math.abs(days[0].moving + days[1].moving - moving) > 2) errs.push(`days: ${days.length}, moving ${days.map((d) => d.moving).join('+')} vs ${moving}`);
   p.reveal('depart');
   await wait(200);
@@ -3037,7 +3037,7 @@ HEADS = """(async () => {
     [[/^Hard to follow/, 'look', 'map', 'OpenStreetMap', /^trail_visibility=bad · /], [/^Overgrown/, 'look', 'map', 'OpenStreetMap', /^obstacle=vegetation · /], [/^Wet or muddy/, 'look', 'map', 'OpenStreetMap', /^surface=mud or obstacle=mud · /], [/^Fallen trees/, 'look', 'map', 'OpenStreetMap', /^obstacle=fallen_tree · /], [/^Ford/, 'look', 'map', 'OpenStreetMap', /^ford=yes · /]]);
   // Fintraffic: its caches seeded for the route's box, so nothing is fetched
   const S = polku.safety, road = { highway: 'primary' }, line = (c) => ({ type: 'LineString', coordinates: c });
-  const ra = { pts, along, attr: pts.map(() => ({ sport: 'mtb', tags: road })), tAt: new Float32Array(n), activity: 'mtb' };
+  const ra = { pts, along, attr: pts.map(() => ({ sport: 'mtb', tags: road })), tAt: new Float32Array(n), activity: 'mtb', start: Date.now() / 1000 };
   const box = [pts[0][0], 61.5, pts[n - 1][0], 61.5], now = Date.now();
   const mid = [pts[10], pts[20]], end = [pts[30], pts[40]];
   S.incidents = { t: now - 60000, feats: [{ type: 'Feature', properties: { kind: 'incident', id: 'i1', title: 'Accident on the road' }, geometry: line(mid) }] };
@@ -3047,7 +3047,7 @@ HEADS = """(async () => {
   const cond = S.roadcondFeatures;
   S.roadcondFeatures = () => [{ type: 'Feature', properties: { id: 'c1', label: 'Slippery', reasons: 'ice', roadTemp: -2 }, geometry: line(mid) }];
   try {
-    const hz = await S.hazardsAlong(ra, { activity: 'mtb', startSec: now / 1000 });
+    const hz = await S.hazardsAlong(ra, { activity: 'mtb' });
     expect('hazardsAlong', hz, [[/^Road works/, 'read', 'live', 'Fintraffic'], [/^Traffic incident/, 'read', 'live', 'Fintraffic'], [/^Slippery/, 'read', 'estimate', 'Fintraffic’s road weather'], [/^Busy road/, 'look', 'estimate', 'Fintraffic’s yearly counts', /^Cars pass close/]]);
     const w = hz.find((x) => /^Road works/.test(x.text));
     if (w && w.src.at !== now - 120000) errs.push(`road works' time: ${w.src.at}, not when its tile answered (${now - 120000})`);
@@ -3055,13 +3055,13 @@ HEADS = """(async () => {
     const inc = S.loadIncidents;
     S.incidents = null; S.loadIncidents = async () => {};
     let threw = null;
-    try { await S.hazardsAlong(ra, { activity: 'mtb', startSec: now / 1000 }); } catch (e) { threw = e.message; }
+    try { await S.hazardsAlong(ra, { activity: 'mtb' }); } catch (e) { threw = e.message; }
     if (!threw) errs.push('hazardsAlong with no answer from Fintraffic gave a list, as if nothing were there');
     S.loadIncidents = inc;
   } finally { S.roadcondFeatures = cond; S.incidents = null; S.roadcond = null; S.roadworkTiles.clear(); S.aadtTiles.clear(); }
   // the dark: a ride from half an hour before sunset into the dark, with a planner of its own
   const ll = [23.8, 61.5], sun = SUN.sunTimes(now / 1000, ll), tAt = Float32Array.from({ length: n }, (_, i) => i * 180);
-  const dk = p.darkWarnings.call({ startSec: () => sun.set - 1800, points: [ll], routeSports: () => ['mtb'] }, { tAt, along, attr: attrs('mtb', []) });
+  const dk = p.darkWarnings.call({ points: [ll], routeSports: () => ['mtb'] }, { tAt, along, attr: attrs('mtb', []), start: sun.set - 1800 });
   expect('darkWarnings', dk, [[/^After sunset/, 'look', 'calculated', 'the sun’s times'], [/^In the dark/, 'read', 'calculated', 'the sun’s times']]);
   // the water: its events, along one leg
   const events = [{ kind: 'ship', at: 100, len: 50, name: 'Näsijärvi fairway' }, { kind: 'ship', at: 200, len: 900 }, { kind: 'harbour', at: 300, len: 100 }, { kind: 'hazard', at: 350, len: 20 }, { kind: 'rough', at: 400, len: 100, max: 0.6 }];
@@ -3076,7 +3076,7 @@ HEADS = """(async () => {
   // winter: snow, snowing, the cold, slippery, the ways' winter tags, the ice season
   const fill = (v) => new Float32Array(n).fill(v), F = ['estimate', 'the forecast'], T = ['map', 'winter tags'];
   const cls = Array.from({ length: n }, (_, i) => ['closed', 'groomed', 'unploughed', 'open3'][Math.floor(i / 15)]);
-  const wa = { along, pts, tAt, activity: 'mtb', attr: attrs('mtb', []), snow: { cm: fill(15) }, winterCls: cls, snowSec: 0,
+  const wa = { along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), snow: { cm: fill(15) }, winterCls: cls, snowSec: 0,
     wind: { temp: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0 : -30)), precip: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0.5 : 0)), speed: fill(10), snowfall: fill(5), snow: fill(15) } };
   const wt = { app: { winter: () => ({ on: true, setting: 'on' }) } };
   expect('winterWarnings', p.winterWarnings.call(wt, wa), [[/^Snow on the way/, 'look', ...F], [/^Snowing on the way/, 'look', ...F], [/^Slippery/, 'read', ...F], [/^Frostbite risk/, 'read', ...F],
@@ -3204,7 +3204,7 @@ HEADS_UP = """(async () => {
     window.fetch = (input, init) => (/digiroad/.test(String(input && input.url ? input.url : input)) ? Promise.resolve(new Response(wfs, { status: 200 })) : f0(input, init));
     try {
       // Helsinki to Jyväskylä: more tiles than either asks for, so nothing is asked
-      const far = { pts: [[24.94, 60.17], [25.75, 62.24]], along: Float32Array.from([0, 240000]), attr: [{ sport: 'mtb', tags: {} }, { sport: 'mtb', tags: {} }], tAt: Float32Array.from([0, 36000]), activity: 'mtb' };
+      const far = { pts: [[24.94, 60.17], [25.75, 62.24]], along: Float32Array.from([0, 240000]), attr: [{ sport: 'mtb', tags: {} }, { sport: 'mtb', tags: {} }], tAt: Float32Array.from([0, 36000]), activity: 'mtb', start: Date.now() / 1000 };
       hz = (c, opt) => S.hazardsAlong(far, opt);
       await p.loadHazards(p.analysis);
       for (const [k, re] of [['roadworks', /^Road works: not checked on a route this long$/], ['busy', /^Busy roads: not checked on a route this long$/]]) {
@@ -7829,10 +7829,11 @@ MARKS = r"""(async () => {
   if (!/1 h 6 min 40 s elapsed/.test(label())) errs.push(`hour/minute/second duration: ${label()}`);
   // Arrival times move immediately, while the old weather is still in memory.
   const fill = (v) => new Float32Array(a.along.length).fill(v);  // (a whole forecast: the waypoints' tooltips read it, #761)
-  a.wind = { startSec: p.startSec(), head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) }; a.tAtWind = a.tAt;
+  a.wind = { head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) }; a.tAtWind = a.tAt;
   p.setLeave(Date.now() / 1000 + 3 * 3600);
-  const arrival = p.clockOf(p.startSec() + 4000);
-  if (!label().includes(`1 km · ${arrival}`)) errs.push(`departure did not move the mark immediately: ${label()}`);
+  const T = p.trip(), k = a.along.findIndex((d) => d >= 1000), f = (1000 - a.along[k - 1]) / (a.along[k] - a.along[k - 1]);
+  const arrival = T.clock(T.at(k - 1) + (T.at(k) - T.at(k - 1)) * f);
+  if (T.start !== p.startSec() || !label().includes(`1 km · ${arrival}`)) errs.push(`departure did not move the mark immediately: ${label()}, timed from ${T.start}`);
   a.wind = null; a.tAtWind = null; a.tAt = original;
   p.renderAnalysis();
   // (the marks' switches: Layers' Your route group, #424's C; open, as a person opens it)
@@ -7872,7 +7873,7 @@ MARKS = r"""(async () => {
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
     if (!waypoint().includes(`Leave ${p.leaveWords()}`) || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.startSec() + (p.analysis.timeWind || p.analysis.time)))) errs.push('Go departure did not update the start’s row or There at immediately');
     p.setLeave(hour(6), { fromMap: true });
-    if (leave.querySelector('.val').textContent !== p.timeOf(hour(6)) || !waypoint().includes(`Leave ${p.leaveWords()}`)) errs.push('timeline departure did not update Go’s Leave and the start’s row');
+    if (leave.querySelector('.val').textContent !== new Date(hour(6) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || !waypoint().includes(`Leave ${p.leaveWords()}`)) errs.push('timeline departure did not update Go’s Leave and the start’s row');
     input.focus(); p.renderAnalysis();
     if (document.activeElement !== input || !input.isConnected) errs.push('an analysis update replaced the focused Leave');
     p.setLeave(null);
@@ -18369,14 +18370,56 @@ LV_NIGHTS = """(async () => {
   if (doc.querySelectorAll('trkpt').length < 4 || doc.querySelector('trkpt time') || !doc.querySelector('metadata > time')) errs.push(`GPX's times: ${doc.querySelectorAll('trkpt time').length} on the track, ${doc.querySelectorAll('metadata > time').length} in its metadata`);
   // leaving now, exported ten minutes after the forecast came: Leave is the moment the route is timed from, as There at's
   // times are, so it never comes after them (#506)
+  const tomorrows = p.analysis.wind;
   p.setLeave(null);
-  for (let k = 0; k < 50 && !(p.analysis && p.analysis.wind && p.analysis.wind.startSec < Date.now() / 1000 + 60 && p.analysis.waits); k++) await wait(200);
+  for (let k = 0; k < 50 && !(p.analysis && p.analysis.wind && p.analysis.wind !== tomorrows && p.analysis.waits); k++) await wait(200);
   if (!p.analysis.wind) errs.push('leaving now: no forecast came');
   const realNow = Date.now;
   let now;
   try { Date.now = () => realNow() + 10 * 60000; now = descs(await gpx()); } finally { Date.now = realNow; }
   const s1 = p.arriveAt(0);
   if (now[0] !== `Leave ${LV.day(s1)}, ${LV.clock(s1)}` || !now[1].startsWith(`There at ${LV.clock(p.arriveAt(1))}`)) errs.push(`GPX leaving now, timed from ${LV.clock(s1)}: ${now.join(' / ')}`);
+  // leaving now, Polku left open 20 minutes and shown again: the trip counts from the new minute, and Go's There at, its
+  // tab, the list's last arrival and the GPX's last planned time say the same, after a redraw too (#956)
+  p.cards.close();
+  const hhmm = (s) => (String(s || '').match(/\\d\\d:\\d\\d(?!.*\\d\\d:\\d\\d)/) || [''])[0];
+  const views = async () => {
+    const n = p.points.length, row = p.els.points.querySelector(`.wpl-point[data-i="${n - 1}"]`), gpxNow = descs(await gpx());
+    return { go: hhmm(document.querySelector('.time-head b')?.textContent), tab: hhmm(document.querySelector('.pl-tab-t')?.textContent),
+      list: hhmm((row?.getAttribute('aria-label') || '').match(/Arrive [^,]*/)?.[0]), gpx: hhmm(gpxNow[n - 1].match(/There at [^.]*/)?.[0]) };
+  };
+  const agree = (v) => v.go && (!v.tab || v.go === v.tab) && v.go === v.list && v.go === v.gpx; // (a phone has no tab with the time)
+  const windRow = () => p.analysis.timeWind - p.analysis.time, wind0 = windRow(); // (Go's "the wind": a shorter night isn't the wind)
+  try {
+    Date.now = () => realNow() + 20 * 60000;
+    document.dispatchEvent(new Event('visibilitychange'));
+    for (let k = 0; k < 50 && !(p.arriveAt(0) >= Date.now() / 1000 - 60 && p.analysis.tAtWind); k++) await wait(200);
+    if (!(p.arriveAt(0) >= Date.now() / 1000 - 60)) errs.push(`20 minutes on, leaving now still counts from ${LV.clock(p.arriveAt(0))}, not ${LV.clock(Date.now() / 1000)}`);
+    const shown = await views();
+    if (!agree(shown)) errs.push(`20 minutes on, the trip's arrival: ${JSON.stringify(shown)}`);
+    if (Math.abs(windRow() - wind0) > 120) errs.push(`20 minutes on, the wind's part of the time went from ${wind0} s to ${windRow()} s`);
+    p.renderAnalysis();
+    const redrawn = await views();
+    if (!agree(redrawn)) errs.push(`20 minutes on and redrawn, the trip's arrival: ${JSON.stringify(redrawn)}`);
+  } finally { Date.now = realNow; }
+  // an older departure's forecast that answers last doesn't win (#70): three days ahead asks Open-Meteo (its cells stale
+  // two hours on, the answer held here), then leaving now answers from the cache first
+  const f0 = window.fetch;
+  let release;
+  const held = new Promise((r) => { release = r; });
+  window.fetch = (input, init) => (/open-meteo/.test(String(input && input.url ? input.url : input)) ? held.then(() => f0(input, init)) : f0(input, init));
+  try {
+    Date.now = () => realNow() + 2 * 3600e3;
+    p.setLeave(realNow() / 1000 + 3 * 86400);
+    await wait(300);
+    Date.now = realNow;
+    const w0 = p.analysis.wind;
+    p.setLeave(null);
+    for (let k = 0; k < 50 && p.analysis.wind === w0; k++) await wait(200);
+    release();
+    await wait(2000);
+    if (p.leaveAt != null || Math.abs(p.trip().start - Date.now() / 1000) > 120) errs.push(`leaving now after a later answer for three days ahead: the trip starts ${new Date(p.trip().start * 1000)}`);
+  } finally { Date.now = realNow; window.fetch = f0; release(); }
   return errs;
 })()"""
 

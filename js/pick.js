@@ -77,7 +77,7 @@ export async function loadWeather(pick, changed) {
   try {
     const w = await windAlong(a.pts, a.along, new Float32Array(a.pts.length), pick.sec);
     if (pick.dead || pick.a !== a) return;
-    a.wind = { ...w, startSec: pick.sec };
+    a.wind = w;
   } catch { a.windError = true; }
   changed();
 }
