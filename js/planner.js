@@ -7394,7 +7394,8 @@ export class Planner {
     const panel = this.panel.getBoundingClientRect(), side = this.layout() === 'side' && this.active;
     const beside = this.cards.where() === 'float' ? (side ? { right: panel.right + 4, top: el ? el.getBoundingClientRect().top : panel.top + 60 } : { right: 4, top: 72 }) : null;
     this.cards.open(weatherCard(this, { time }), { beside, from });
-    if (day || time) requestAnimationFrame(() => this.cards.box?.querySelector(time ? '[data-k=time]' : `[data-day="${day}"]`)?.scrollIntoView({ block: 'start' }));
+    // (the card scrolled to it, not the page)
+    if (day || time) requestAnimationFrame(() => { const box = this.cards.box, el = box?.querySelector(time ? '[data-k=time]' : `[data-day="${day}"]`); if (el) box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - 8; });
   }
 
   // The weather card's content, the trip's alone (#869's step 3): When, each day's weather and its hours, the wind on
