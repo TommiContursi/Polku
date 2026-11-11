@@ -19250,8 +19250,9 @@ def tabs(chrome):
         if r['tabs'] != ['pl-tab-route', 'pl-tab-check'] or not r['first'] or not r['when'] or not r['there'].startswith('→ there at ') or r['days'] != 1:
             fails.append(f"{name}: the trip's box: {r}")
         press(pg, at(pg, "polku.planner.els.boxDays.querySelector('.row')"), f"{name}: the box's weather", touch)
-        r = pg.js("({ card: polku.planner.cards.current?.kind, back: polku.planner.cards.box?.querySelector('.way-back')?.textContent, title: polku.planner.cards.box?.querySelector('.way-hint')?.textContent })")
-        if r != {'card': 'weather', 'back': 'Route', 'title': 'Weather on the way'}:
+        # (its head is When and there at, its name said: ✕ alone, as Check's items, the user's choice of 2026-11-11)
+        r = pg.js("(() => { const b = polku.planner.cards.box; return { card: polku.planner.cards.current?.kind, back: b?.querySelector('.way-back')?.textContent || null, name: b?.getAttribute('aria-label'), when: !!b?.querySelector('.way-hint .when-pill') }; })()")
+        if r != {'card': 'weather', 'back': None, 'name': 'Weather on the way', 'when': True}:
             fails.append(f"{name}: the box's weather opened {r}")
         pg.js("polku.planner.cards.close(); true")
         # a multisport route: Route style has a row for each sport, and Paddle's styles the paddle legs, not the MTB ones
