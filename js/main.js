@@ -407,7 +407,7 @@ map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(()
 map.once('load', () => checkWinter(true));
 
 let hadRoute = false; // (a route drawn, for All layers' Your route group)
-const safety = new SafetyLayers(map, { setData, time: () => planner.startSec() });
+const safety = new SafetyLayers(map, { setData, time: () => planner.when.start() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
 
@@ -563,7 +563,7 @@ const weather = new WeatherOverlay(map, {
   },
   dark: mapDark,
   // the timeline and the route's departure time are one clock
-  onHour: (k) => { planner.setLeave(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
+  onHour: (k) => { planner.when.set(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
   hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
   onToggle: (patch) => setWeather(patch),
@@ -609,7 +609,7 @@ map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catch
 function setTimeline(on) {
   state.timeline = on;
   weather.setOpen(on);
-  if (on && planner.leaveHour()) weather.setHour(planner.leaveHour(), { silent: true });
+  if (on && planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
   $('#btn-time').setAttribute('aria-pressed', String(on));
   saveSettings();
 }
@@ -617,7 +617,7 @@ function setTimeline(on) {
 function setWeather(patch) {
   Object.assign(state.weather, patch);
   weather.set(state.weather);
-  if (planner.leaveHour()) weather.setHour(planner.leaveHour(), { silent: true });
+  if (planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
   // weather layers live on the timeline: switching one on opens it
   if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
   applyStyle();

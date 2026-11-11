@@ -26,7 +26,8 @@ import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, a
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, leaveLocal, leaveFrom, spotCard, lipasCard, thingCard, nearestSample } from './cards.js';
+import { When } from './when.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, spotCard, lipasCard, thingCard, nearestSample } from './cards.js';
 import { pickData, modesOf, modeOf, setMode as setPickMode } from './pick.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -232,9 +233,8 @@ export class Planner {
     this.analysis = null;
     this.colorMode = store.get('colorMode', 'grade');
     this.colorOnMap = store.get('colorOnMap', false);
-    this.leaveAt = null; // when you leave (#364): epoch seconds, or null to leave now
-    this.leavePassed = null; // a planned departure that had passed when its route was opened (said under Leave until a new one)
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { this.expireLeave(); this.moveOn(); } });
+    this.when = new When({ changed: (o) => this.whenChanged(o), coarse: () => this.coarse() }); // when you leave (js/when.js)
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.moveOn(); });
     setInterval(() => this.moveOn(), 5 * 60000);
     this.nogos = []; // places to avoid: [{ll, r, label}]
     this.gen = 0;
@@ -335,7 +335,7 @@ export class Planner {
     this.routeName = s.routeName || '';
     if (s.styles) this.styles = { ...s.styles };
     if (s.read) this.readKeys = new Set(s.read);
-    if ('leave' in s) this.openLeave(s.leave);
+    if ('leave' in s) this.when.open(s.leave);
     this.matchMode();
     this.update();
   }
@@ -531,8 +531,8 @@ export class Planner {
   }
   // (across another route put in place: each comes back with what was read on it, freshRead(); across one opened, with
   // when it leaves, restoreSnapshot())
-  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.leaveAt ?? this.leavePassed; this.future.push(t); this.restoreSnap(s); } }
-  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.leaveAt ?? this.leavePassed; this.past.push(t); this.restoreSnap(s); } }
+  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.when.at ?? this.when.passed; this.future.push(t); this.restoreSnap(s); } }
+  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.when.at ?? this.when.passed; this.past.push(t); this.restoreSnap(s); } }
 
   // `name`: a place's own name for it (#886), in the same step of Undo
   addPoint(ll, { name = '' } = {}) {
@@ -672,7 +672,7 @@ export class Planner {
     if (!this.points.length) return;
     this.commit();
     this.freshRead(); // (Undo brings it back with what was read on it, #439)
-    this.leavePassed = null;
+    this.when.passed = null;
     this.points = [];
     this.legs = [];
     this.routeName = ''; // (an imported track's or a marked route's: not the next route's, #769)
@@ -805,7 +805,7 @@ export class Planner {
     }
     for (const [i, k] of alts || []) if (this.legs[i] && this.legs[i].mode === 'auto') this.legs[i].alt = k;
     for (const i of ice || []) if (this.legs[i] && this.legs[i].mode === 'line') this.legs[i].ice = true;
-    this.openLeave(leave);
+    this.when.open(leave);
     this.nextFromLast();
     this.update();
     this.loadSources();
@@ -1132,7 +1132,7 @@ export class Planner {
   // When leg i starts, roughly: the departure plus the way so far at your paddling speed (for the wind on water legs)
   legStartSec(i) {
     const kmh = (CRAFT[this.craft] || CRAFT.kayak).kmh;
-    return this.startSec() + (this.lengthTo(i) / 1000 / kmh) * 3600;
+    return this.when.start() + (this.lengthTo(i) / 1000 / kmh) * 3600;
   }
 
   // the router parameters for leg i: its own style, else its sport's (the route's, or your saved one for another sport)
@@ -1589,7 +1589,7 @@ export class Planner {
       }
       let direction = L.dir;
       if (direction === 'wind') {
-        try { const [s] = await pointForecasts([start]); direction = Math.round(sampleAt(s, this.startSec()).dir); } catch { direction = null; }
+        try { const [s] = await pointForecasts([start]); direction = Math.round(sampleAt(s, this.when.start()).dir); } catch { direction = null; }
       }
       const rp = routerOf(sport, keepOff(this.styleOf(sport)), this.wet.on); // round trips keep off ways marked private (#106)
       // directions not tried yet; when every one has been, the same ones turned a little
@@ -1613,7 +1613,7 @@ export class Planner {
         } catch (err) { return { o, err }; }
       };
       // on the water: each leg by Polku's own router (CPU, no network but the water data)
-      const waterOpts = { ...rp.water, craft: sport === 'swim' ? 'swim' : this.craft, at: this.startSec(), nogos: this.nogos };
+      const waterOpts = { ...rp.water, craft: sport === 'swim' ? 'swim' : this.craft, at: this.when.start(), nogos: this.nogos };
       const runWater = async (o) => {
         try {
           const legs = [];
@@ -1784,7 +1784,7 @@ export class Planner {
     // the direction: a button like the route style's beside it, the browser's own list under it (2026-10-21)
     const dir = h('label', { class: 'stylebtn rt-dir', title: 'Which way the loop heads out (into the wind first: back with it behind you)' },
       h('span', { class: 'two', 'aria-hidden': 'true' }, h('small', {}, 'Direction'), h('span', {}, name)),
-      h('span', { class: 'rt-dir-chev', 'aria-hidden': 'true', html: icon('chevronDown', 12) }),
+      h('span', { class: 'rt-dir-chev', 'aria-hidden': 'true', html: icon('caret', 12) }),
       h('select', { 'aria-label': 'Direction', 'data-k': 'dir', onchange: (e) => { const v = e.target.value; L.dir = v === '' ? null : v === 'wind' ? 'wind' : +v; this.loopChanged(); } },
         ...DIRS.map(([v, t]) => h('option', { value: v, selected: v === cur }, t))));
     const fmt = (v) => (min ? (v >= 60 ? `${Math.floor(v / 60)} h${v % 60 ? ` ${v % 60}` : ''}` : `${v} min`) : `${v} km`);
@@ -2118,7 +2118,7 @@ export class Planner {
   useAnalysis(a) {
     this.analysis = a;
     a.gen = this.gen; // (the routing it's of: both callers checked it's this one; analysisFits())
-    this.setTimes(a, this.startSec());
+    this.setTimes(a, this.when.start());
     a.waterWarn = this.waterWarnings();
     a.darkWarn = this.darkWarnings(a);
     a.accessWarn = [...this.standInAccess(a), ...this.detourWarnings(a)];
@@ -2333,7 +2333,7 @@ export class Planner {
   // the sun at the start on the departure day, for "Departure & weather"
   sunLine() {
     if (!this.points.length) return '';
-    const s = sunTimes(this.startSec(), this.points[0]);
+    const s = sunTimes(this.when.start(), this.points[0]);
     if (s.day === 'polar-day') return 'Midnight sun: the sun doesn’t set';
     if (s.day === 'polar-night') return s.dawn ? `Polar night: twilight ${timeOf(s.dawn)}–${timeOf(s.dusk)}` : 'Polar night: no daylight';
     return `Sunrise ${timeOf(s.rise)} · sunset ${timeOf(s.set)} · dark from ${timeOf(s.dusk)}`;
@@ -2561,7 +2561,7 @@ export class Planner {
   }
   // The route timed again from the departure, at once, with the wind as it was sampled (the forecast follows: loadWind).
   restart(a) {
-    this.setTimes(a, this.startSec(), a.tAtWind ? a.wind : null, a.tAtWind ? this.snowOf(a, a.wind) : null);
+    this.setTimes(a, this.when.start(), a.tAtWind ? a.wind : null, a.tAtWind ? this.snowOf(a, a.wind) : null);
     this.drawMarks();
     this.renderSpeed(); this.renderTabTimes(); this.renderWaypoints(); this.renderTake(); // (the list's times and the share link's line too)
   }
@@ -2571,7 +2571,7 @@ export class Planner {
   // (#966). Fintraffic isn't asked again: road works and road weather don't change by the minute.
   moveOn() {
     const a = this.analysis, busy = this.edit || this.renamingRow || this.cards.stack.length || this.panel.contains(document.activeElement) || this.panel.querySelector('.dragging');
-    if (!a || this.leaveAt != null || a.start === this.startSec() || document.hidden || busy) return;
+    if (!a || this.when.at != null || a.start === this.when.start() || document.hidden || busy) return;
     this.restart(a);
     this.loadWind(a, { hazards: false });
   }
@@ -2584,46 +2584,27 @@ export class Planner {
     return T && T.arrive(this.lengthTo(i));
   }
   // a clock time on the trip: "13:40", with the day when it isn't the day you leave ("Thu 08:00")
-  clockOf(sec) { return clockOf(sec, this.trip()?.start ?? this.startSec()); }
-  // when you leave, in words: "now", "07:30" today, "Sun 1 Nov, 07:30" on another day
-  leaveWords() {
-    const at = this.leaveAt;
-    return at == null ? 'now' : new Date(at * 1000).toDateString() === new Date().toDateString() ? timeOf(at) : `${dayOf(at)}, ${timeOf(at)}`;
-  }
+  clockOf(sec) { return clockOf(sec, this.trip()?.start ?? this.when.start()); }
 
   // Speeds changed: re-time the route (no routing, no DEM), then the route
   // weather, since arrival times move.
   retime() {
     const a = this.analysis;
     if (!a) return;
-    this.setTimes(a, this.startSec());
+    this.setTimes(a, this.when.start());
     this.renderAnalysis();
     clearTimeout(this.retimeTimer);
     this.retimeTimer = setTimeout(() => { if (this.analysis === a) this.loadWind(a); }, 400);
   }
 
-  startSec() { return this.leaveAt ?? Math.round(Date.now() / 60000) * 60; }
-
-  // the weather's timeline hour for the departure (one clock, within its 48 hours): 0 leaving now, null past them
-  leaveHour() {
-    if (this.leaveAt == null) return 0;
-    const k = Math.floor((this.leaveAt - Math.floor(Date.now() / 3600000) * 3600) / 3600);
-    return k <= 48 ? Math.max(0, k) : null;
-  }
-
-  // When you leave (#364's C): epoch seconds, or null to leave now; a time that has passed is now. Shared with the
-  // weather's timeline: `fromMap` means its slider moved, so it isn't told again.
-  setLeave(sec, { fromMap = false } = {}) {
-    sec = sec != null && sec > Date.now() / 1000 ? Math.round(sec / 60) * 60 : null;
-    const was = this.leaveAt, passed = this.leavePassed;
-    this.leavePassed = null; // (a time of your own: the note on the one that had passed goes)
-    if (sec === was) { if (passed) this.renderLeave(); return; }
+  // The departure changed (js/when.js): the start's card says it, the timeline's hour follows, and the route is timed
+  // again at once while the new forecast loads; one that came with a route (`opened`) is drawn with it
+  whenChanged({ fromMap = false, opened = false }) {
+    this.cards.refresh();
+    if (!fromMap && this.app.onStartChange) this.app.onStartChange(this.when.hour());
+    if (opened) return;
     this.clearCategoryPreview();
-    this.leaveAt = sec;
-    this.renderLeave();
-    if (!fromMap && this.app.onStartChange) this.app.onStartChange(this.leaveHour());
     if (this.analysis) this.restart(this.analysis); // the clock times move immediately while the new forecast loads
-    this.expireLeave();
     clearTimeout(this.windTimer);
     // playback moves an hour a second; let it settle a little before re-fetching (and keeping it with the route)
     this.windTimer = setTimeout(() => {
@@ -2637,7 +2618,7 @@ export class Planner {
   // Wind at the time each part of the route is reached: time the route without
   // wind, fetch the forecast, re-time it with the wind, and sample again.
   async loadWind(a, { hazards = true } = {}) {
-    const start = this.startSec(), gen = ++this.windGen;
+    const start = this.when.start(), gen = ++this.windGen;
     const stale = () => this.analysis !== a || this.windGen !== gen; // a newer route, or a newer call's departure (#70)
     a.darkWarn = this.darkWarnings(a); // the departure may have moved (without the wind's times, these do)
     try {
@@ -3132,7 +3113,7 @@ export class Planner {
   pointRow(i, ro, { shape = false, w = null, leave = false, brk = false } = {}) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), at = this.timesAt(i), out = i === 0 || leave;
-    const when = i === 0 ? this.leaveWords() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
+    const when = i === 0 ? this.when.words() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
     const sky = this.wxOf(w, out ? at && at.leave : at && at.arrive, p), shown = this.listShow.weather ? sky : [];
     // (#761, Phase 1: how far and how long from the start in a column left of the line, the distance first as the planner's
     // numbers have it; the clock's time in its card, its tooltip and what a screen reader hears)
@@ -3954,7 +3935,7 @@ export class Planner {
   }
   // Share link's line: what the link carries beyond the route, the date once one is set (#364's C; to share without it,
   // set Now first)
-  shareSub() { return this.leaveAt == null ? '' : `Includes when you leave: ${dayOf(this.leaveAt)}, ${timeOf(this.leaveAt)}`; }
+  shareSub() { const at = this.when.at; return at == null ? '' : `Includes when you leave: ${dayOf(at)}, ${timeOf(at)}`; }
   loopsHere() { return roundTripSports.includes(this.app.activity()); }
   importFile() { $('#file-input').click(); }
 
@@ -4380,14 +4361,14 @@ export class Planner {
         ? { key: l.key, line: encodePolyline(l.result.coords), tags: l.result.tags.map(tagId), portage: l.result.portage || [], provider: l.result.provider, water: l.result.water ? { ...l.result.water, times: undefined } : undefined } : null)),
       tags: table,
       read: [...this.readKeys], // Check's items marked read: on this device only, not in share links; none in older saved routes
-      leave: this.leaveAt, // when you leave (#364), null: now
+      leave: this.when.at, // when you leave (#364), null: now
     });
   }
 
   loadSaved() {
     const r = store.get('route', null);
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
-    if (!r || !r.points || !r.points.length) { if (r && r.leave) this.openLeave(r.leave); return false; } // (a time set before the first point: When's)
+    if (!r || !r.points || !r.points.length) { if (r && r.leave) this.when.open(r.leave); return false; } // (a time set before the first point: When's)
     this.points = r.points;
     this.routeName = r.routeName || '';
     this.readKeys = new Set(r.read || []);
@@ -4414,34 +4395,10 @@ export class Planner {
     (r.legStyles || []).forEach((c, i) => { if (c && this.legs[i]) this.legs[i].style = decodeStyle(this.legSport(i), c); });
     (r.alts || []).forEach((k, i) => { if (k > 0 && k <= 3 && this.legs[i] && this.legs[i].mode === 'auto') this.legs[i].alt = k; });
     (r.ice || []).forEach((on, i) => { if (on && this.legs[i] && this.legs[i].mode === 'line') this.legs[i].ice = true; });
-    this.openLeave(r.leave);
+    this.when.open(r.leave);
     this.nextFromLast();
     this.update();
     return true;
-  }
-
-  // A route opened (saved, saved offline, a link) leaves when it was planned to; one whose time has passed leaves now,
-  // saying when it was planned for
-  openLeave(sec) {
-    const ahead = sec > Date.now() / 1000;
-    this.leaveAt = ahead ? sec : null;
-    this.leavePassed = sec && !ahead ? sec : null;
-    this.renderLeave();
-    if (this.app.onStartChange) this.app.onStartChange(this.leaveHour());
-    this.expireLeave();
-  }
-
-  // A planned departure that passes while Polku stays open leaves now, saying when it was planned for, as a reload
-  // says: on a timer, when the page is shown again, and before a link or a file is made (the review of #475)
-  expireLeave() {
-    clearTimeout(this.leaveTimer);
-    if (this.leaveAt == null) return;
-    const left = this.leaveAt - Date.now() / 1000;
-    if (left > 0) { this.leaveTimer = setTimeout(() => this.expireLeave(), Math.min(left * 1000 + 500, 864e5)); return; }
-    const was = this.leaveAt;
-    this.setLeave(null);
-    this.leavePassed = was;
-    this.renderLeave();
   }
 
   // the route's style for each sport but the map's (whose is `style`, as before), as codes
@@ -4474,13 +4431,13 @@ export class Planner {
       legStyles: this.legs.map((l, i) => (l.style ? encodeStyle(this.legSport(i), l.style) || 'balanced' : null)),
       nogos: this.nogos,
       legs: this.legs.map((l) => ({ mode: l.mode, key: l.key, src: l.src || null, sport: l.sport || null, alt: l.alt || 0, ice: !!l.ice, result: l.status === 'ok' || l.mode === 'fixed' ? l.result : null })),
-      leave: this.leaveAt,
+      leave: this.when.at,
     };
   }
 
   restoreSnapshot(s) {
     const had = this.points.length > 0;
-    if (had) { this.commit(); this.past[this.past.length - 1].leave = this.leaveAt ?? this.leavePassed; } // (Undo brings back the route you had, leaving when it did)
+    if (had) { this.commit(); this.past[this.past.length - 1].leave = this.when.at ?? this.when.passed; } // (Undo brings back the route you had, leaving when it did)
     this.points = s.points;
     this.freshRead(had);
     this.nameAll(s.names);
@@ -4497,7 +4454,7 @@ export class Planner {
       const alt = l.mode === 'auto' && l.alt > 0 && l.alt <= 3 ? l.alt : 0, ice = l.mode === 'line' && !!l.ice;
       return l.result ? { mode: l.mode, key: l.key, status: 'ok', result: l.result, style, src: l.src || null, sport, alt, ice } : { mode: l.mode === 'fixed' ? 'auto' : l.mode, style, sport, alt, ice };
     });
-    this.openLeave(s.leave);
+    this.when.open(s.leave);
     this.nextFromLast();
     this.update();
   }
@@ -4512,7 +4469,7 @@ export class Planner {
   }
 
   shareUrl() {
-    this.expireLeave();
+    this.when.expire();
     const u = new URL(location.href);
     u.search = '';
     u.hash = ''; // the map's view isn't shared (the link fits the route): while it follows you, it's where you are
@@ -4548,7 +4505,7 @@ export class Planner {
     const ic = this.legs.map((l, i) => (l.mode === 'line' && l.ice ? String(i) : '')).filter(Boolean).join(',');
     if (ic) u.searchParams.set('ic', ic);
     // when you leave, in minutes since 1970 (#364's C); older links have none, and leave now
-    if (this.leaveAt != null) u.searchParams.set('lv', String(Math.round(this.leaveAt / 60)));
+    if (this.when.at != null) u.searchParams.set('lv', String(Math.round(this.when.at / 60)));
     return u.toString();
   }
 
@@ -4564,7 +4521,7 @@ export class Planner {
   }
 
   exportGpx() {
-    this.expireLeave();
+    this.when.expire();
     const a = this.analysis;
     if (!a) { toast('Nothing to export yet'); return; }
     const name = this.routeName || `Polku ${ACTIVITIES[this.mainSport()].label} ${new Date().toISOString().slice(0, 10)}`;
@@ -4685,7 +4642,7 @@ export class Planner {
     this.els.modeSel = h('select', { 'aria-label': 'Colour the profile by', onchange: (e) => this.showMode(e.target.value) });
     this.els.modeSelect = h('label', { class: 'mode-select', title: 'What the colours of the profile show' },
       h('span', { class: 'mode-select-label' }, 'Colour by'),
-      h('span', { class: 'mode-select-box' }, this.els.modeSel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
+      h('span', { class: 'mode-select-box' }, this.els.modeSel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('caret', 12) })));
     this.els.mapToggle = h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => this.setColorOnMap(e.target.checked) });
     this.els.mapToggleRow = h('label', { class: 'tg tg-inline', title: 'Colour the route line on the map the same way as the profile' },
       h('span', { class: 'tg-text' }, 'On map'), this.els.mapToggle, h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
@@ -4746,7 +4703,7 @@ export class Planner {
         this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown)),
       go: pane('go',
         this.section('speed', 'Time',
-          (this.els.leave = leaveBlock(this)).el,
+          this.els.leave = this.when.control('pill'),
           this.els.speedRoute = h('div', { class: 'speed-route' })),
         this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
         this.section('take', 'Take it along', this.els.take = h('div', { class: 'take-along' }))),
@@ -4769,7 +4726,6 @@ export class Planner {
     p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, h('h2', { class: 'sr-only' }, 'Planner'), this.els.tabs, this.els.body, this.els.bar);
     p.after(this.els.grip); // (beside the panel, not in it: the side panel scrolls as one, which would clip it and scroll it away)
     this.setTab(this.tab);
-    this.els.leave.put();
     this.renderOnMap();
     this.renderTake();
     this.renderLoop();
@@ -4976,62 +4932,13 @@ export class Planner {
     const sp = this.app.activity(), label = ACTIVITIES[sp].label;
     const line = sp === 'paddle' ? `${(CRAFT[this.craft] || CRAFT.kayak).label} · ${ACTIVITIES[sp].line}` : ACTIVITIES[sp].line;
     const b = h('button', { type: 'button', class: 'row sport-chip sport-row', 'data-k': 'sport', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `Sport: ${label}. ${line}`,
-      html: `<span>${icon(this.sportIcon(sp), 20)}</span><span><b>${escapeHtml(label)}</b><small>${escapeHtml(line)}</small></span><span class="way-chev">${icon('chevronDown', 16)}</span>` });
+      html: `<span>${icon(this.sportIcon(sp), 20)}</span><span><b>${escapeHtml(label)}</b><small>${escapeHtml(line)}</small></span><span class="caret">${icon('caret', 12)}</span>` });
     b.onclick = () => this.app.sportMenu && this.app.sportMenu(b);
     return b;
   }
   // When (#869): a row under the sport's, in the ways to begin and every step, so the departure is set before the first
-  // waypoint: the same one Go's Leave sets (setLeave()), kept with the route. One element, said again in place (put()),
-  // so a menu open at it stays open while the start is drawn again.
-  whenRow() {
-    if (!this.els.when) {
-      const b = h('button', { type: 'button', class: 'row when-row', 'data-k': 'when', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.whenMenu(b) });
-      const put = () => {
-        const at = this.leaveAt, passed = at == null && this.leavePassed, far = at != null && at - Date.now() / 1000 >= LONG_HOURS * 3600;
-        const name = at == null ? 'Leave now' : `Leave at ${timeOf(at)}`;
-        const line = at != null ? `${dayOf(at, true)}${far ? ' · no forecast yet' : ''}` : passed ? `${dayOf(passed)}, ${timeOf(passed)} has passed` : 'Times and weather along the route';
-        b.setAttribute('aria-label', `When: ${name}. ${line}`);
-        b.innerHTML = `<span>${icon(at == null ? 'clock' : 'calendar', 20)}</span><span><b>${escapeHtml(name)}</b><small>${escapeHtml(line)}</small></span><span class="way-chev">${icon('chevronDown', 16)}</span>`;
-      };
-      this.els.when = { el: b, put };
-    }
-    this.els.when.put();
-    return this.els.when.el;
-  }
-  // When's menu: Leave now, and Leave at…. On a phone, Leave at…'s date field lies unseen over it, so a tap opens the
-  // phone's own picker (an iPhone has no showPicker()), and the field is what the keyboard and a screen reader reach, as
-  // pickRow()'s; the menu stays while the picker is open, and goes once a time is picked and the picker is put away. A
-  // desktop browser's picker has no OK, so there Leave at… shows the field itself in the menu, with Set (and Enter).
-  whenMenu(anchor) {
-    if (this.whenPop) { this.whenPop.close(); return; }
-    const at = this.leaveAt, now = Date.now() / 1000, day = at != null ? `${dayOf(at, true)}, ${timeOf(at)}` : '', phone = this.coarse();
-    const field = h('input', { type: 'datetime-local', step: '900', class: phone ? 'menu-item' : 'name-field', value: leaveLocal(at ?? Math.ceil(now / 900) * 900), min: leaveLocal(Math.floor(now / 900) * 900),
-      'aria-label': phone ? `Leave at…${at != null ? ` ${day}.` : ''} Pick a day and a time` : 'Leave at: a day and a time' });
-    let leaveAt;
-    if (phone) {
-      let picked = false;
-      const open = () => { try { field.showPicker(); } catch { /* the phone opens its own */ } };
-      field.addEventListener('click', open);
-      field.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
-      field.addEventListener('change', () => { picked = true; leaveFrom(this, field.value); });
-      field.addEventListener('blur', () => { if (picked) this.whenPop?.close(this.keyed); }); // (left by a key: the focus back on the row)
-      leaveAt = { node: h('div', { class: `menu-pick${at != null ? ' on' : ''}` },
-        h('span', { 'aria-hidden': 'true', html: `${icon('calendar', 17)}<span>Leave at…${at != null ? `<small>${escapeHtml(day)}</small>` : ''}</span>${at != null ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}` }), field) };
-    } else {
-      const set = () => { if (!field.value) return; leaveFrom(this, field.value); this.whenPop?.close(this.keyed); };
-      field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); set(); } });
-      const form = h('div', { class: 'menu-when' }, field, h('button', { type: 'button', class: 'btn primary', 'data-k': 'when-set', onclick: set }, 'Set'));
-      leaveAt = { icon: 'calendar', label: 'Leave at…', desc: escapeHtml(day), radio: true, checked: at != null, keep: true,
-        fn: () => { this.whenPop.refill([{ group: 'Leave at', items: [{ node: form }] }]); field.focus(); } };
-    }
-    const keyed = anchor.matches(':focus-visible');
-    anchor.setAttribute('aria-expanded', 'true');
-    this.whenPop = popMenu(anchor, [{ group: 'When', items: [{ icon: 'clock', label: 'Leave now', radio: true, checked: at == null, fn: () => this.setLeave(null) }, leaveAt] }],
-      { label: 'When', align: 'left', sheet: true, onClose: () => { this.whenPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
-    // a phone's, with a time set: the focus on Leave at… from the keyboard, and on neither from a tap: on Leave now it
-    // reads as picked, and a field focused under a finger opens an iPhone's picker
-    if (phone && at != null) { if (keyed) field.focus({ preventScroll: true }); else this.whenPop.el.querySelector(':focus')?.blur(); }
-  }
+  // waypoint (js/when.js). One element, so a menu open at it stays open while the start is drawn again.
+  whenRow() { return (this.els.when ||= this.when.control('row')); }
   // a step's top row: Back on the left; on the right the panel's place (desktops) and ✕
   backRow(label = 'Ways to begin', fn = () => this.wayBack()) {
     return h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', 'data-k': 'back', onclick: fn, html: `${icon('chevronLeft', 18)}<span>${escapeHtml(label)}</span>` }), this.dockX(), this.closeX());
@@ -5981,12 +5888,12 @@ export class Planner {
     // the style is what Follow paths (or the water router, paddling) prefers; a straight line has none
     const styled = m === 'auto' || (m === 'water' && isWater(ns));
     // the sport stays whole and the style shortens when there's no room (css/app.css)
-    this.els.modeBtn.innerHTML = `${icon(MODE_ICON[m], 20)}<span class="two"><b>${MODE_LABEL[m]}</b><small><span class="tb-sport">${escapeHtml(sport)}</span>${styled ? `<span class="tb-style">&nbsp;· ${escapeHtml(name)}</span>` : ''}</small></span>${icon('chevronDown', 14)}`;
+    this.els.modeBtn.innerHTML = `${icon(MODE_ICON[m], 20)}<span class="two"><b>${MODE_LABEL[m]}</b><small><span class="tb-sport">${escapeHtml(sport)}</span>${styled ? `<span class="tb-style">&nbsp;· ${escapeHtml(name)}</span>` : ''}</small></span>${icon('caret', 12)}`;
     this.els.modeBtn.setAttribute('aria-label', `Draw the next leg: ${MODE_LABEL[m]}, ${sport}${styled ? `, route style ${name}` : ''}`);
-    this.els.sportBtn.innerHTML = `${icon(this.sportIcon(ns), 18)}<span>${escapeHtml(sport)}</span>${icon('chevronDown', 12)}`;
+    this.els.sportBtn.innerHTML = `${icon(this.sportIcon(ns), 18)}<span>${escapeHtml(sport)}</span>${icon('caret', 12)}`;
     this.els.sportBtn.setAttribute('aria-label', `Next leg: ${sport}`);
     for (const b of this.els.modeSeg.children) b.setAttribute('aria-checked', String(b.dataset.mode === m));
-    this.els.styleBtn.innerHTML = `<span class="two"><small>Route style</small><span>${escapeHtml(name)}</span></span>${icon('chevronDown', 12)}`;
+    this.els.styleBtn.innerHTML = `<span class="two"><small>Route style</small><span>${escapeHtml(name)}</span></span>${icon('caret', 12)}`;
     this.els.styleBtn.setAttribute('aria-label', `Route style: ${name}`);
     const n = this.points.length, hist = !!(this.past.length || this.future.length);
     // It grows with the route (2026-10-20): before the first point nothing of it can do anything yet (the first
@@ -6384,7 +6291,7 @@ export class Planner {
 
   // why the weather isn't known, for the key facts (null: it is, or it's on its way)
   noWeather(a) {
-    if ((this.leaveAt != null && this.leaveAt - Date.now() / 1000 >= LONG_HOURS * 3600) || (a.wind && a.wind.beyond === 0)) return 'no forecast yet';
+    if ((this.when.at != null && this.when.at - Date.now() / 1000 >= LONG_HOURS * 3600) || (a.wind && a.wind.beyond === 0)) return 'no forecast yet';
     return a.windError ? 'couldn’t be loaded' : null;
   }
   keyFacts(a) {
@@ -6608,19 +6515,15 @@ export class Planner {
     }
   }
 
-  // The summary's estimate opens Go at Leave.
+  // The summary's estimate opens When's menu at Go's pill.
   revealDeparture() {
     this.reveal('speed');
     requestAnimationFrame(() => {
-      this.flash(this.els.leave.el);
-      this.els.leave.el.querySelector('input').focus({ preventScroll: true });
+      const pill = this.els.leave.querySelector('button');
+      this.flash(this.els.leave);
+      pill.focus({ preventScroll: true });
+      this.when.menu(pill);
     });
-  }
-  // Leave's rows say when you leave: Go's, and an open card's
-  renderLeave() {
-    this.els.leave.put();
-    this.els.when?.put();
-    this.cards.refresh();
   }
 
   flash(el) {
@@ -6698,9 +6601,9 @@ export class Planner {
     this.renderTake();
     this.renderTabTimes();
     this.renderFacts(a);
-    this.els.leave.put(); // ("Tomorrow" becomes "Today" overnight)
+    this.when.put(); // ("Tomorrow" becomes "Today" overnight)
     // the clock stays reachable before there's a route: set the time, then draw
-    if (!a) this.setSection('depart', { summary: `Depart ${this.leaveWords()}` });
+    if (!a) this.setSection('depart', { summary: `Depart ${this.when.words()}` });
     if (!a) {
       const tap = matchMedia('(pointer: coarse)').matches ? 'tap' : 'click';
       sum.append(h('p', { class: 'sum-empty' }, this.loop.open ? `Round trip: ${tap} the map to move its start`
@@ -6724,7 +6627,7 @@ export class Planner {
     const nights = (a.waits || []).reduce((c, w) => c + (isNight(w.stop) ? w.stop.n || 1 : 0), 0);
     key('distance', fmtDist(a.total));
     // the time is from your departure: tapping it opens the clock (one control for both)
-    const dep = this.leaveWords();
+    const dep = this.when.words();
     const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · set the departure`, onclick: () => this.revealDeparture() },
       // the whole time, its waits too, and under it the time on the move where they differ (#761), else when you leave
       h('b', {}, nights ? shortDuration(a.timeWind || a.time) : fmtDuration(a.timeWind || a.time)), h('small', {}, waitSec ? `${shortDuration((a.timeWind || a.time) - waitSec)} moving` : `from ${dep}`));
@@ -7537,7 +7440,7 @@ export class Planner {
     if (!a) return;
     // departure → back, for the section summary
     const T = tripTimes(a);
-    const when = `Depart ${this.leaveWords()} → ${this.isLoop() ? 'back' : 'there'} ${T.clock(T.end)}`;
+    const when = `Depart ${this.when.words()} → ${this.isLoop() ? 'back' : 'there'} ${T.clock(T.end)}`;
     box.append(h('h3', { class: 'wind-title' }, isWater(act) ? 'Weather on the water' : 'Weather on the route'));
     const sun = this.sunLine();
     if (sun) box.append(h('p', { class: 'sun-line', html: `${icon('sun', 15)} ${escapeHtml(sun)}` }));
