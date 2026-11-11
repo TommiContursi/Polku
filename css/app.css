@@ -1376,45 +1376,42 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .card[data-kind="weather"] .way-hint .trip-when { padding-top: var(--space-2); }
 .wx-note { margin: 0; }
 .wx-day { display: grid; gap: var(--space-8); min-width: 0; }
-.wx-dayh { margin: var(--space-6) 0 0; font-size: var(--font-row); font-weight: var(--weight-strong); }
-.wx-dayh small { display: block; margin-top: 1px; font-size: var(--font-control); font-weight: var(--weight-regular); color: var(--muted); }
-/* the reading: the sky and the temperature large, the rest small lines with their icons beside them */
-.wx-read { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-12); }
-.wx-now { flex: none; display: flex; align-items: center; gap: var(--space-6); }
-.wx-now > b { font-size: var(--font-numeral); line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.wx-facts { flex: 1 1 170px; min-width: 0; display: grid; gap: var(--space-2); font-size: var(--font-body); line-height: 1.35; }
-.wx-facts > span { overflow-wrap: anywhere; }
-.wx-facts small { color: var(--muted); font-size: var(--font-small); }
+.wx-dayh { margin: var(--space-6) 0 0; font-size: var(--font-control); font-weight: var(--weight-strong); }
+.wx-dayh small { display: block; margin-top: 1px; font-size: var(--font-small); font-weight: var(--weight-regular); color: var(--muted); }
+/* a day, in the weather timeline's own look (the user's choice of 2026-11-11): its reading (.tl-now, the timeline's) beside
+   a strip of the day's hours, 66 px as the timeline's; under each other where the card is narrow (200 %) */
+.wx-today { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-8); }
+.wx-today > .tl-now { width: 132px; }
+.wx-strip-box { flex: 1 1 150px; min-width: 0; }
+.wx-strip { display: block; overflow: visible; border-radius: 8px; }
+.wx-strip text { font: 10px system-ui, sans-serif; }
+.wx-strip text.h { fill: var(--muted); } .wx-strip text.t { fill: var(--wx-temp); font-weight: 600; }
+.wx-strip .night { fill: rgba(30, 41, 59, 0.07); }
+:root[data-theme="dark"] .wx-strip .night { fill: rgba(0, 0, 0, 0.28); }
+.wx-strip .trip { fill: var(--route); opacity: .16; } .wx-strip .trip-bar { fill: var(--route); }
+.wx-strip .rain { fill: #3b82f6; } .wx-strip .snowfall { fill: #a78bfa; }
+.wx-strip .temp { fill: none; stroke: #f97316; stroke-width: 1.8; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.wx-strip .wind { fill: none; stroke: var(--muted); stroke-linecap: round; stroke-linejoin: round; }
+/* the sun and the dark, one short line, as the timeline's note */
+.wx-sunline { display: flex; align-items: flex-start; gap: var(--space-4); margin: 0; font-size: 11.5px; line-height: 1.35; color: var(--muted); }
+.wx-sunline .ic { flex: none; margin-top: 1px; color: var(--wx-sun); }
 .wx-sky { display: inline-grid; color: var(--muted); }
 .wx-sky:is(.sun, .cloudSun) { color: var(--wx-sun); }
 svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2); }
-.wx-dark { display: flex; align-items: center; gap: var(--space-6); margin: 0; font-size: var(--font-body); font-weight: var(--weight-name); }
-.wx-sun { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-12); margin: 0; font-size: var(--font-control); font-weight: var(--weight-regular); }
-.wx-sun > span { display: inline-flex; align-items: center; gap: var(--space-4); white-space: nowrap; }
-.wx-sun .ic { color: var(--wx-sun); }
-/* the hours where you'll be, FMI's table; the trip's own marked ● in the route's colour (and said: ", on the way") */
+/* hour by hour, folded: FMI's table at the timeline's size; the trip's own hours marked ● in the route's colour (and said) */
 .wx-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
-.wx-hours { width: 100%; border-collapse: collapse; font-size: var(--font-body); font-variant-numeric: tabular-nums; }
-.wx-hours thead th { padding: 0 var(--space-4) var(--space-4); font-size: var(--font-small); font-weight: var(--weight-name); color: var(--muted); text-align: right; white-space: nowrap; }
-.wx-hours :is(td, tbody th) { height: 38px; padding: 0 var(--space-4); border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-weight: var(--weight-regular); }
+.wx-hours { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.wx-hours thead th { padding: 0 var(--space-4) var(--space-2); font-size: 11px; font-weight: var(--weight-name); color: var(--muted); text-align: right; white-space: nowrap; }
+.wx-hours :is(td, tbody th) { height: 28px; padding: 0 var(--space-4); border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-weight: var(--weight-regular); }
 .wx-hours :is(th, td):first-child { text-align: left; }
 .wx-hours .sky { text-align: center; }
 .wx-hours tbody tr:not(.on) :is(th, td), .wx-hours .feel, .wx-hours td.none { color: var(--muted); }
 .wx-hours tr.on th b { display: inline-flex; align-items: center; gap: var(--space-4); }
-.wx-hours tr.on th b::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--route); }
+.wx-hours tr.on th b::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--route); }
 .wx-hours td.none { text-align: left; }
 @container card (max-width: 300px) { .wx-hours .feel { display: none; } }
-/* yr's graph (js/daygraph.js), on the chart's tokens: at least its drawn width, scrolling sideways in a narrow card (200 %) */
-.wx-graph { display: block; width: 100%; min-width: 300px; height: auto; }
-.wx-graph text { font: 600 12px/1 system-ui, sans-serif; fill: var(--chart-ink); }
-.wx-graph .night { fill: var(--chart-grid); }
-.wx-graph .trip { fill: var(--route); opacity: .14; } .wx-graph .trip-mark { fill: var(--route); }
-.wx-graph .grid { stroke: var(--chart-grid); }
-.wx-graph .temp { fill: none; stroke: var(--wx-temp); stroke-width: 2; }
-.wx-graph .rain { fill: var(--wx-text); opacity: .8; }
-.wx-graph .wind { fill: none; stroke: var(--muted); stroke-width: 2; } .wx-graph .gust { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 3 3; }
-.wx-key { margin: 0; font-size: var(--font-small); }
-.wx-key .wx-ic { margin: 0; vertical-align: baseline; font-weight: var(--weight-strong); }
+/* Colour by, as the profile's top says it, then three chips */
+.wx-colour { align-items: center; }
 .card[data-kind="weather"] .speed-row small { white-space: normal; } /* (a note such as "included above" wraps in its column) */
 
 /* ---------------------------------------------------------------- waypoints */
