@@ -56,6 +56,15 @@
         ],
         "createdAt": "2026-11-07T20:47:52.260Z",
         "reason": "Claude: no marquee; the motion is the map's falling rain and drifting clouds, the subject of the mock-up (#182), as weather-card.html's ignore"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/desktop-toolbar.html"
+        ],
+        "createdAt": "2026-11-11T06:24:55.290Z",
+        "reason": "Claude: the mock-up has no animation or auto-scrolling; nothing in it moves (checked in the browser pane, 2026-11-11)"
       }
     ]
   }
