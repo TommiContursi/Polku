@@ -7863,8 +7863,9 @@ MARKS = r"""(async () => {
   const pill = document.querySelector('#pl-pane-go .when-pill'), menu = () => document.querySelector('.menu-pop[aria-label="When"]');
   if (p.tab !== 'go' || p.sec.speed.el.dataset.open !== 'true' || !pill || !menu() || pill.getAttribute('aria-expanded') !== 'true') errs.push('estimate did not open Go and When’s menu at its pill');
   if (pill) {
+    // (a phone's field lies over Leave at… from the start; a desktop's shows once Leave at… is pressed)
     const field = menu()?.querySelector('input');
-    if (!field || parseFloat(getComputedStyle(field).fontSize) < 16) errs.push('When’s field is missing, or zooms a phone');
+    if (matchMedia('(pointer: coarse)').matches ? !field || parseFloat(getComputedStyle(field).fontSize) < 16 : !/Leave at…/.test(menu()?.textContent)) errs.push('When’s field is missing, or zooms a phone');
     p.when.pop?.close();
     const hour = (k) => (Math.floor(Date.now() / 3600000) + k) * 3600, clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     p.when.set(hour(4));
