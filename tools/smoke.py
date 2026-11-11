@@ -19130,11 +19130,16 @@ TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; win
     const p = polku.planner, pane = TB.pane(), first = [...pane.children].find(vis), rows = [...pane.querySelectorAll('.how-rows > .row')];
     return { box: vis(p.els.box) && p.els.box.previousElementSibling === p.els.profZone, first: first ? first.dataset.sec || first.className : '', rows: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
   },
-  // the Route tab's first content, from its top: what it is and whether its heading is in sight in the body (#740)
+  // the Route tab's first content, from its top: what it is and whether its heading is in sight in the body (#740); the
+  // trip's box in sight from the top, and where it takes the list's room (a phone's half, the bottom dock's), the list a
+  // scroll away, the tabs under the sheet's top row as a finger leaves them (#869's step 3, the order of 2026-11-06)
   top() {
     const p = polku.planner, s = p.listScroller(); p.listToTop(); s.scrollTop = 0;
-    const first = [...TB.pane().children].find(vis), head = first?.querySelector('.sec-head, .wpl-head-tools') || first, r = head?.getBoundingClientRect(), b = p.els.body.getBoundingClientRect(); // (the list's: Show all's row, #761)
-    return { first: first ? first.dataset.sec || first.className : '', seen: !!r && r.top >= b.top - 1 && r.bottom <= Math.min(b.bottom, innerHeight) + 1 };
+    const first = [...TB.pane().children].find(vis), head = first?.querySelector('.sec-head, .wpl-head-tools') || first; // (the list's: Show all's row, #761)
+    const inSight = (e, below) => { const r = e?.getBoundingClientRect(), v = s.getBoundingClientRect(), top = Math.max(below.getBoundingClientRect().top, s === p.panel ? p.els.top.getBoundingClientRect().bottom : v.top); return !!r && r.top >= top - 1 && r.bottom <= Math.min(v.bottom, innerHeight) + 1; };
+    const box = inSight(p.els.box, s);
+    if (!inSight(head, p.els.body) && s === p.panel) s.scrollTop = p.els.tabs.offsetTop - p.els.top.offsetHeight;
+    return { first: first ? first.dataset.sec || first.className : '', box, seen: inSight(head, p.els.body) };
   },
   // the route's list said once (#764): no hint, a one-part route's heading beside Reorder with no numbers line under it,
   // Start and End without their distance, and from the list's top the Start row and the first stretch's first words in sight
@@ -19209,8 +19214,8 @@ def tabs(chrome):
         for dock, state in ((('left', 'half'),) if phone else (('left', 'open'), ('bottom', 'half'))):
             r = pg.js(f"(async () => {{ const p = polku.planner; if (p.layout() !== 'sheet') p.setDock('{dock}'); p.setTab('route'); p.setSheetState('{state}'); await new Promise((ok) => setTimeout(ok, 600)); return TB.top(); }})()")
             where = f"{'phone' if phone else dock + ' dock'} at {state}"
-            if r != {'first': 'points', 'seen': True}:
-                fails.append(f"{name}: Route's first content, {where}: {r} (want the route's list, its heading in sight)")
+            if r != {'first': 'points', 'box': True, 'seen': True}:
+                fails.append(f"{name}: Route's first content, {where}: {r} (want the trip's box in sight, then the route's list, its heading in sight, a scroll away where the box takes its room)")
             r = pg.js("TB.back()")
             if r != {'focus': 'how-mtb', 'seen': True}:
                 fails.append(f"{name}: Back from Route style, {where}: {r} (want the focus on its row, in sight)")

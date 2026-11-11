@@ -5304,13 +5304,16 @@ export class Planner {
     if (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && !['folded', 'peek'].includes(this.panel.dataset.state)) this.setSheetState(this.restSize(), { remember: false, rest: true });
   }
   // The whole sheet scrolls as one under its top row, which stays: on a phone at half and full and on the side panel (D of
-  // the sheet's stops, #233), so a finger on the numbers scrolls it too; wider, at full where the header, the profile and the tabs take more
-  // than half of it (#453), so the list can be reached; and a peek cut below the top bar
+  // the sheet's stops, #233), so a finger on the numbers scrolls it too; wider, at full where the header, the profile, the
+  // trip's box and the tabs take more than half of it (#453), and at half where they leave the list under a quarter of it
+  // (the box over the tabs, #869's step 3), so the list can be reached; and a peek cut below the top bar
   scrollAll(scrolled = this.panel.scrollTop) {
-    const p = this.panel, st = p.dataset.state, on = this.layout() === 'side' ? st === 'open' && !this.peekOnly()
+    const p = this.panel, st = p.dataset.state, over = this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.box.offsetHeight + this.els.tabs.offsetHeight;
+    const on = this.layout() === 'side' ? st === 'open' && !this.peekOnly()
       : !this.cards.current && ((st === 'peek' && this.peekCut)
         || (innerWidth <= 720 && st === 'half')
-        || (st === 'full' && (innerWidth <= 720 || this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.box.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2)));
+        || (st === 'half' && over > p.clientHeight * 0.75)
+        || (st === 'full' && (innerWidth <= 720 || over > (dvh() - 76) / 2)));
     if (p.classList.contains('scroll-all') === on) return;
     const was = scrolled; // (read before: a sheet that no longer scrolls reads 0)
     p.classList.toggle('scroll-all', on);
