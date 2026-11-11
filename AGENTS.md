@@ -287,7 +287,7 @@ Codex reviews each PR against this file as it is on the PR's branch. Treat
 each of these as P1, and skip style nits:
 
 - **Bloat:** code the task didn't need, a helper or abstraction with one
-  caller, a defensive check or fallback nothing has shown is needed, a second
+  caller (except in a refactor an issue asks for), a defensive check or fallback nothing has shown is needed, a second
   way of doing what a module already does, an option or setting its issue or
   plan doesn't ask for, code the change left unused, old formats kept for
   compatibility, tidying of unrelated code.
