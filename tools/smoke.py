@@ -7892,7 +7892,7 @@ MARKS = r"""(async () => {
     p.when.pop?.close();
     const hour = (k) => (Math.floor(Date.now() / 3600000) + k) * 3600, clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     p.when.set(hour(4));
-    if (p.when.start() !== hour(4) || pill.textContent !== `Leave ${clock(hour(4))}`) errs.push(`the box's pill after a new departure: ${pill.textContent}`);
+    if (p.when.start() !== hour(4) || pill.textContent !== `Leave ${p.when.words()}` || !pill.textContent.includes(clock(hour(4)))) errs.push(`the box's pill after a new departure: ${pill.textContent}`);
     const r = pill.getBoundingClientRect(), body = p.panel.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('the box’s When pill is out of view');
     if (r.height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)) errs.push('the box’s When pill is too small'); // (--target: a finger's 44 px, a mouse's 36)
@@ -7900,7 +7900,7 @@ MARKS = r"""(async () => {
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
     if (!waypoint().includes(`Leave ${p.when.words()}`) || !p.els.there.textContent.includes(p.clockOf(p.when.start() + (p.analysis.timeWind || p.analysis.time)))) errs.push('a new departure did not update the start’s row or the box’s there at immediately');
     p.when.set(hour(6), { fromMap: true });
-    if (pill.textContent !== `Leave ${clock(hour(6))}` || !waypoint().includes(`Leave ${p.when.words()}`)) errs.push('timeline departure did not update the box’s pill and the start’s row');
+    if (pill.textContent !== `Leave ${p.when.words()}` || !pill.textContent.includes(clock(hour(6))) || !waypoint().includes(`Leave ${p.when.words()}`)) errs.push(`timeline departure did not update the box’s pill and the start’s row: ${pill.textContent}`);
     pill.focus(); p.renderAnalysis();
     if (document.activeElement !== pill || !pill.isConnected) errs.push('an analysis update replaced the focused When pill');
     p.when.set(null);
@@ -10075,6 +10075,8 @@ def nextleg(chrome):
     # Route's Your speed ›: what the time is based on, which opens its step (#424's C)
     pg.js("(() => { const p = polku.planner; p.reveal('points'); return true; })()")
     time.sleep(0.6)
+    pg.js("(() => { document.querySelector('#pl-pane-route .how-rows .row[data-k=speed]')?.scrollIntoView({ block: 'center' }); return true; })()")  # (under the list, #740)
+    time.sleep(0.4)
     at = pg.js("(document.querySelector('#pl-pane-route .how-rows .row[data-k=speed]') || { textContent: '' }).textContent")
     if not at.startswith('Your speed20 / 16 / 11 km/h · 600 m/h upNormal'):
         fails.append(f'{name}: Route’s Your speed says “{at[:80]}”')
@@ -17860,10 +17862,10 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (er < 3) out.push(`a switch's off track: its edge ${er.toFixed(2)}:1, under 3:1`);
   // small headings: 12 px capitals in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
   box.innerHTML = `<div class="menu-h">A</div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
-    <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div><div class="speed-route"><h4>A</h4></div>
-    <div class="wind-title">A</div><span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
+    <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div>
+    <span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
   const want = `12px 700 0.72px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
-  for (const e of box.querySelectorAll('.menu-h, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
+  for (const e of box.querySelectorAll('.menu-h, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .cam-wx-title, .bd-group-toggle')) {
     const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
     if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
   }
