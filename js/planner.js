@@ -218,6 +218,7 @@ export class Planner {
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
     this.unfolded = new Set(); // Route's list: the stretches whose waypoints are unfolded (their first point's pid), in memory only
     this.unfoldIn = new Set(); // (those just unfolded by a tap: their rows come in, once)
+    this.windGen = 0; // loadWind()'s latest call: an older one's answer is dropped (#70)
     this.renamingRow = null; // Route's list on a desktop: the row whose name is a field (its point's pid, and whether it's a part's start row)
     this.reordering = false; // Route's list in Reorder
     this.roads = initNames(map); // road and path names from the loaded tiles
@@ -2635,13 +2636,15 @@ export class Planner {
   // Wind at the time each part of the route is reached: time the route without
   // wind, fetch the forecast, re-time it with the wind, and sample again.
   async loadWind(a, { hazards = true } = {}) {
-    const start = this.startSec();
+    const start = this.startSec(), gen = ++this.windGen;
+    const stale = () => this.analysis !== a || this.windGen !== gen; // a newer route, or a newer call's departure (#70)
     a.darkWarn = this.darkWarnings(a); // the departure may have moved (without the wind's times, these do)
     try {
       let w = await windAlong(a.pts, a.along, a.tAt, start);
+      if (stale()) return;
       const t = this.timed(a, w.head, this.snowOf(a, w), start);
       w = await windAlong(a.pts, a.along, t.tAt, start); // same forecast, cached
-      if (this.analysis !== a) return;
+      if (stale()) return;
       const snow = this.snowOf(a, w);
       a.wind = w;
       a.windError = false; // (a failure stays until the forecast answers: 25d part 2)
@@ -2651,7 +2654,7 @@ export class Planner {
       if (snow && !a.winterCls && !a.winterLoading) this.loadWinterAlong(a);
       a.darkWarn = this.darkWarnings(a);
     } catch (err) {
-      if (this.analysis !== a) return;
+      if (stale()) return;
       a.windError = err && err.name === 'Limited' ? err.message : true; // says which service and when
     }
     this.renderAnalysis();

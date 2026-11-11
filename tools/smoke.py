@@ -18385,6 +18385,24 @@ LV_NIGHTS = """(async () => {
     const redrawn = await views();
     if (!agree(redrawn)) errs.push(`20 minutes on and redrawn, the trip's arrival: ${JSON.stringify(redrawn)}`);
   } finally { Date.now = realNow; }
+  // an older departure's forecast that answers last doesn't win (#70): three days ahead asks Open-Meteo (its cells stale
+  // two hours on, the answer held here), then leaving now answers from the cache first
+  const f0 = window.fetch;
+  let release;
+  const held = new Promise((r) => { release = r; });
+  window.fetch = (input, init) => (/open-meteo/.test(String(input && input.url ? input.url : input)) ? held.then(() => f0(input, init)) : f0(input, init));
+  try {
+    Date.now = () => realNow() + 2 * 3600e3;
+    p.setLeave(realNow() / 1000 + 3 * 86400);
+    await wait(300);
+    Date.now = realNow;
+    const w0 = p.analysis.wind;
+    p.setLeave(null);
+    for (let k = 0; k < 50 && p.analysis.wind === w0; k++) await wait(200);
+    release();
+    await wait(2000);
+    if (p.leaveAt != null || Math.abs(p.trip().start - Date.now() / 1000) > 120) errs.push(`leaving now after a later answer for three days ahead: the trip starts ${new Date(p.trip().start * 1000)}`);
+  } finally { Date.now = realNow; window.fetch = f0; release(); }
   return errs;
 })()"""
 
