@@ -75,7 +75,7 @@ What Polku does that its neighbours don't do together:
 - One website for every device; offline areas in the browser's storage.
 - **To change one** (a service of Polku's own, such as a weekly data build (#154), a token exchange (#188) or sync; native apps (#195); routing on the device (#279); a build step, a framework or a dependency): an issue that says what people gain and what it costs to build, run and maintain, and the maker's OK. Whatever changes keeps the commitments.
 
-**Polku's words:** Plan; the planner's tabs Route, Check and Go; Heads-up and Avoid; Other ways; Round trip; Route style and Your speed; Save offline and Preview offline; Follow me; On the way (planned); Layers and Settings; S0–S6 and ↑S0–↑S5 for difficulty.
+**Polku's words:** Plan; the planner's tabs Route and Check, the trip's box and the weather card; Heads-up and Avoid; Other ways; Round trip; Route style and Your speed; Save offline and Preview offline; Follow me; On the way (planned); Layers and Settings; S0–S6 and ↑S0–↑S5 for difficulty.
 
 **Code licensing:** Polku's original code is proprietary, with all rights reserved; see [LICENSE](LICENSE). Third-party rights are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The service is currently free; this source-code licence does not rule out future freemium or commercial use. Any future integration of copyleft code needs a compatibility check first (#279).
 

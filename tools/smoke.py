@@ -12604,6 +12604,15 @@ WC_JS = """(async () => {
   set(wind({ feel: fill(NaN), series: [series(null)] })); await wait(200);
   const missing = feels();
   if (!known.line || !known.col || missing.line || missing.col || /Feels/.test(card())) errs.push(`feels like: known ${JSON.stringify(known)}, missing ${JSON.stringify(missing)}`);
+  // Time on the way: the wind's row only where it changes the time (#766)
+  p.cards.box.querySelector('[data-k=time]').click(); await wait(200);
+  const windRow = () => [...(p.cards.box?.querySelectorAll('.speed-row.sub span') || [])].find((x) => /^the wind/.test(x.textContent))?.parentElement.textContent || '';
+  const time = a.time;
+  a.timeWind = time + 20; p.cards.refresh(); await wait(100);
+  const none = windRow();
+  a.timeWind = time + 300; p.cards.refresh(); await wait(100);
+  const five = windRow();
+  if (none || !/^the wind\\+5 min/.test(five)) errs.push(`Time on the way's wind row: “${none}” for 20 s, “${five}” for 5 min (want none, then +5 min)`);
   p.cards.close();
   return errs;
 })()"""
