@@ -132,6 +132,13 @@ conversation again
 - **Clarity over compatibility.** Clear code beats backward compatibility.
   Prefer one clear implementation over compatibility layers for superseded
   behavior or formats.
+- **How much to change.** Bug fix or small tweak: make the smallest change
+  that fully solves it. Feature: follow the module that already does the
+  job, in its style. Clean up the code your change is in. Refactor, when an
+  issue asks for one: the code structure is yours. How it is built, named
+  and organized is your call, and you will keep building on it. Say what
+  you changed beyond the request. What Polku does and how it looks is the
+  user's call.
 
 ## In the code
 
@@ -163,9 +170,10 @@ conversation again
   routing and carries, round trips, offline save and preview, GPX/KML import
   and GPX export, share links, 3D and hover.
 - Follow the module that already does the job (DEVELOPING has the list), in
-  its style, and keep the change free of **bloat** (Code Review Rules, below:
-  the same bar the review applies). Older dead code is a noticed line, unless
-  removing it makes the change simpler.
+  its style, except in a refactor an issue asks for, and keep the change
+  free of **bloat** (Code Review Rules, below: the same bar the review
+  applies). Except in a refactor an issue asks for, older dead code is a
+  noticed line, unless removing it makes the change simpler.
 - **Where a skill differs from this file, this file wins:** same-commit runs
   count, the user decides scope and order (not a ledger), progress goes in
   Hand-overs, plans go in `docs/plans/`, and only the user merges.
@@ -282,7 +290,7 @@ Codex reviews each PR against this file as it is on the PR's branch. Treat
 each of these as P1, and skip style nits:
 
 - **Bloat:** code the task didn't need, a helper or abstraction with one
-  caller, a defensive check or fallback nothing has shown is needed, a second
+  caller (except in a refactor an issue asks for), a defensive check or fallback nothing has shown is needed, a second
   way of doing what a module already does, an option or setting its issue or
   plan doesn't ask for, code the change left unused, old formats kept for
   compatibility, tidying of unrelated code.
