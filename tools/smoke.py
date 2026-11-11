@@ -1338,7 +1338,7 @@ WATER = """(async () => {
     p.openWeather();
     await wait(400);
     const waves = [...(p.cards.box?.querySelectorAll('.wx-facts > span') || [])].map((x) => x.textContent).find((t) => /^Waves/.test(t)) || '';
-    if (!(wr && wr.wave > 0) || !/^Waves up to about \d\.\d m an estimate, for the wind at \d\d:\d\d$/.test(waves)) errs.push(`the weather card's waves: ${waves || 'none'} (the leg's highest wave ${wr && wr.wave})`);
+    if (!(wr && wr.wave > 0) || !/^Waves up to about \\d\\.\\d m an estimate, for the wind at \\d\\d:\\d\\d$/.test(waves)) errs.push(`the weather card's waves: ${waves || 'none'} (the leg's highest wave ${wr && wr.wave})`);
     p.cards.close();
   }
   // a source that didn't answer (25d part 2): Not checked, on the legs routed without it, with Retry, until it answers;
