@@ -13650,6 +13650,7 @@ START_LIB = """(() => {
     // the route style and the direction: side by side on a phone, a row each on a desktop
     const pair = $('.pl-way .rt-pair'), kids = pair ? [...pair.children] : [];
     if (kids.length !== 2 || !kids[0].matches('.stylebtn[data-k=srow]') || !kids[1].matches('.rt-dir') || !kids[1].querySelector('select[data-k=dir]')) err(`the style and the direction: ${pair ? txt(pair) : 'none'}`);
+    else if (!kids[1].querySelector('.rt-dir-chev path[fill="currentColor"]')) err('the direction, a value you pick, has no ▾ (#869)');
     else if (kids.some((k) => k.getBoundingClientRect().height > 60)) err(`the style and the direction stretched: ${kids.map((k) => Math.round(k.getBoundingClientRect().height)).join(' and ')} px tall`);
     else if (Math.abs(kids[0].getBoundingClientRect().top - kids[1].getBoundingClientRect().top) < 1 === (p.layout() === 'side')) err(`the style and the direction ${p.layout() === 'side' ? 'side by side in the side panel' : 'a row each at the bottom'}`);
     // a wide panel at the bottom: the form in two columns, How long beside the sport (2026-10-21)
@@ -18725,9 +18726,9 @@ def when_start(chrome):
         for way, js in (('Draw it', "polku.planner.openWay('draw')"), ('Marked routes', "polku.planner.openWay('find')"), ('Round trip', "polku.planner.openLoop(null, { fromWays: true })")):
             pg.js(f"{js}; true")
             time.sleep(0.3)
-            r = pg.js("({ ...WN.read(), dir: (() => { const d = document.querySelector('.rt-dir-chev'); return d ? d.innerHTML.includes('currentColor\" stroke=\"none') : null; })() })")
-            if not r or r['name'] != 'Leave now' or not r['under'] or r['dir'] is not (True if way == 'Round trip' else None):
-                fails.append(f"{name}: {way}'s When row (and a round trip's Direction with ▾): {r}")
+            r = pg.js("WN.read()")
+            if not r or r['name'] != 'Leave now' or not r['under']:
+                fails.append(f"{name}: {way}'s When row: {r}")
             pg.js("polku.planner.loop.open ? polku.planner.closeLoop() : polku.planner.wayBack(); true")
             time.sleep(0.3)
         # its menu: Leave now, ticked, and Leave at…: on a phone the field a tap meets, on a desktop the field and Set
