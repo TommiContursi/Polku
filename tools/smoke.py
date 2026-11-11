@@ -1337,8 +1337,8 @@ WATER = """(async () => {
     a.windError = false;
     p.openWeather();
     await wait(400);
-    const waves = [...(p.cards.box?.querySelectorAll('.tl-now > div') || [])].map((x) => x.textContent).find((t) => /^waves/.test(t)) || '';
-    if (!(wr && wr.wave > 0) || !/^waves about \\d\\.\\d m, an estimate$/.test(waves)) errs.push(`the weather card's waves: ${waves || 'none'} (the leg's highest wave ${wr && wr.wave})`);
+    const waves = [...(p.cards.box?.querySelectorAll('.wx-nums .sum-item') || [])].map((x) => x.textContent).find((t) => /waves, estimate$/.test(t)) || '';
+    if (!(wr && wr.wave > 0) || !/^\\d\\.\\d mwaves, estimate$/.test(waves)) errs.push(`the weather card's waves: ${waves || 'none'} (the leg's highest wave ${wr && wr.wave})`);
     p.cards.close();
   }
   // a source that didn't answer (25d part 2): Not checked, on the legs routed without it, with Retry, until it answers;
@@ -2013,11 +2013,11 @@ STOPS = """(async () => {
   p.reveal('points');
   await wait(200);
   if (p.els.boxDays.querySelectorAll('.row').length !== 2) errs.push(`${p.els.boxDays.querySelectorAll('.row').length} days in the trip's box`);
-  // the weather card: each day its own sun, the night's morning too (#869's step 3)
+  // the weather card: each day its own weather, a sentence or (under half an hour) a line, the night's morning too (#869)
   p.openWeather({ day: 1 });
   await wait(300);
-  const suns = [...(p.cards.box?.querySelectorAll('.wx-day .wx-sunline') || [])].map((x) => x.textContent);
-  if (suns.length !== 2 || suns.some((t) => !/sunrise|Midnight sun|Polar night/i.test(t))) errs.push(`each day's sun in the weather card: ${suns.join(' / ') || 'none'}`);
+  const said = [...(p.cards.box?.querySelectorAll('.wx-day') || [])].map((x) => x.querySelector('.wx-say, .row')?.textContent || '');
+  if (said.length !== 2 || said.some((t) => !t)) errs.push(`each day's weather in the weather card: ${said.join(' / ') || 'none'}`);
   p.cards.close();
   if (document.querySelectorAll('.wp-stop').length !== 2 || document.querySelectorAll('.wp-stop.night').length !== 1) errs.push(`stop badges: ${document.querySelectorAll('.wp-stop').length}`);
   p.reveal('points');
@@ -5815,7 +5815,7 @@ ROUTE_BITS = """(async () => {
   p.setColorOnMap(false);
   p.openWeather();
   await wait(300);
-  if (!/sunrise|Midnight sun|Polar night/i.test(p.cards.box?.querySelector('.wx-sunline')?.textContent || '')) errs.push('no sun times in the weather card');
+  if (!p.cards.box?.querySelector('.wx-say .wx-sky[role=img]')) errs.push('no sentence with its sky in the weather card');
   p.cards.close();
   // a point beside its path: the routed leg starts 30 m away, so the point moves onto it, and its key with it
   p.clear();
@@ -12583,7 +12583,7 @@ WC_JS = """(async () => {
   const a = p.analysis, n = a.along.length, T = p.trip(), fill = (v) => new Float32Array(n).fill(v);
   // four hours of forecast from the last whole hour, feels like 1 °C or none (a cell from before it was asked for)
   const t0 = Math.floor(T.start / 3600) * 3600 - 3600, hours = (v) => Array.from({ length: 4 }, () => v);
-  const series = (feel) => ({ time: Array.from({ length: 4 }, (_, k) => t0 + k * 3600), speed: hours(5), gust: hours(9), dir: hours(270), temp: hours(4), precip: hours(0), cloud: hours(90), feel: feel == null ? null : hours(feel) });
+  const series = (feel, temp = 4) => ({ time: Array.from({ length: 4 }, (_, k) => t0 + k * 3600), speed: hours(5), gust: hours(9), dir: hours(270), temp: hours(temp), precip: hours(0), cloud: hours(90), feel: feel == null ? null : hours(feel) });
   const set = (w, error = false) => { a.wind = w; a.windError = error; p.renderAnalysis(); };
   const wind = (o = {}) => ({ start: { speed: 5, gust: 9, dir: 270, temp: 4, precip: 0 }, head: fill(2), cross: fill(0), speed: fill(5), gust: fill(9), dir: fill(270), temp: fill(4), precip: fill(0),
     feel: fill(1), cloud: fill(90), snow: fill(NaN), beyond: -1, beyondSec: t0 + 3 * 3600, unsure: -1, series: [series(1)], cell: new Uint8Array(n), ...o });
@@ -12593,8 +12593,8 @@ WC_JS = """(async () => {
     ['loading', () => set(null), 'loading the forecast…', 'Loading the forecast…'],
     ['failed', () => set(null, true), 'forecast unavailable', 'The forecast couldn’t be loaded.'],
     ['older', () => set(wind({ stale: true, from: Date.now() - 2 * 3600e3 })), '4 °C · dry', `Older forecast (from ${new Date(Date.now() - 7200e3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}): Open-Meteo couldn’t be reached.`],
-    ['from a km', () => set(wind({ beyond: k, beyondSec: T.at(k) })), `no forecast yet from km ${km}`, `No forecast yet from km ${km}, ${p.clockOf(T.at(k))}`],
-    ['less certain', () => set(wind({ unsure: k })), 'less certain', `From km ${(a.along[k] / 1000).toFixed(0)} (${p.clockOf(T.at(k))}) it’s more than three days ahead: the forecast is less certain.`],
+    ['from a km', () => set(wind({ beyond: k, beyondSec: T.at(k) })), `no forecast yet from km ${km}`, `The forecast only reaches ${p.clockOf(T.at(k))}`],
+    ['less certain', () => set(wind({ unsure: k })), 'less certain', 'More than three days ahead: the forecast is less certain.'],
     ['none for the trip', () => set(wind({ beyond: 0 })), 'no forecast yet', 'No forecast yet for '],
   ];
   for (const [name, go, inBox, inCard] of states) {
@@ -12606,15 +12606,35 @@ WC_JS = """(async () => {
   // the hours, unfolded (Hour by hour): past the forecast's last hour (here the first of the trip's), an hour says so and
   // shows none of its values
   set(wind({ beyondSec: t0 + 3600 })); await wait(200);
-  p.cards.box.querySelector('[data-k^="hours-"]').click(); await wait(200);
+  p.cards.box.querySelector('[data-k="hours"]').click(); await wait(200);
   const rows = [...(p.cards.box?.querySelectorAll('.wx-hours tbody tr') || [])].map((r) => r.textContent);
   if (!rows.length || !rows.some((t) => /No forecast yet$/.test(t)) || rows.some((t) => /No forecast yet/.test(t) && /°/.test(t))) errs.push(`the hours past the forecast: ${rows.join(' / ') || 'none'}`);
-  // feels like where it's known, and nothing where it isn't (a cell cached before it was asked for)
-  const feels = () => ({ line: /feels 1°/.test(card()), col: [...(p.cards.box?.querySelectorAll('.wx-hours thead th') || [])].some((x) => x.textContent === 'Feels') });
-  const known = feels();
-  set(wind({ feel: fill(NaN), series: [series(null)] })); await wait(200);
+  // one feels like (the plan's Round 5): at 10 °C or colder Polku's own at your speed, whatever the forecast's says; warmer
+  // the forecast's where it's known, and none where it isn't (a cell cached before it was asked for)
+  const feels = () => ({ num: p.cards.box?.querySelector('.wx-nums .sum-item:first-child small')?.textContent || '', col: [...(p.cards.box?.querySelectorAll('.wx-hours tbody td:nth-child(5)') || [])].map((x) => x.textContent) });
+  const cold = feels();
+  set(wind({ temp: fill(15), feel: fill(17), series: [series(17, 15)] })); await wait(200);
+  const warm = feels();
+  set(wind({ temp: fill(15), feel: fill(NaN), series: [series(null, 15)] })); await wait(200);
   const missing = feels();
-  if (!known.line || !known.col || missing.line || missing.col || /feels/i.test(card())) errs.push(`feels like: known ${JSON.stringify(known)}, missing ${JSON.stringify(missing)}`);
+  const v = parseInt((cold.num.match(/feels like (−?\\d+)°/) || [])[1]?.replace('−', '-'), 10);
+  if (!(v <= 4) || cold.num === 'feels like 1°' || warm.num !== 'feels like 17°' || !warm.col.includes('17°') || missing.num !== '' || missing.col.some((x) => x !== '–'))
+    errs.push(`feels like: cold “${cold.num}”, warm “${warm.num}” ${warm.col.join(' ')}, missing “${missing.num}” ${missing.col.join(' ')}`);
+  // the card as G: the sentence with its sky; thunder note 1, a danger; the notes' numbers on the trip line; a lane a fact
+  const storm = Uint8Array.from({ length: n }, (_, i) => (i > n / 2 ? 1 : 0)), wet = Float32Array.from({ length: n }, (_, i) => (i > n / 3 ? 6 : 0)); // (heavy: a lane however short the route)
+  set(wind({ head: fill(8), speed: fill(8), gust: fill(12), thunder: storm, precip: wet, temp: fill(12), feel: fill(10), series: [series(10, 12)] })); await wait(300);
+  const say = p.cards.box?.querySelector('.wx-say'), first = p.cards.box?.querySelector('.wx-tell');
+  const g = { say: say?.textContent || '', sky: say?.querySelector('.wx-sky')?.getAttribute('aria-label'), first: first?.textContent || '', danger: !!first?.matches('.danger'),
+    marks: p.cards.box?.querySelectorAll('.wx-trip-line .wx-n').length, notes: p.cards.box?.querySelectorAll('.wx-tell').length, lanes: [...(p.cards.box?.querySelectorAll('.wx-lane') || [])].map((x) => x.dataset.k) };
+  // (the wind's lane needs a headwind over a ride's limit for 1 km or more: only on a route that long)
+  const lanes = ['lane-rain', 'lane-thunder', ...(a.total >= 1500 ? ['lane-wind'] : [])];
+  if (!/a risk of thunder$/.test(g.say) || g.sky !== 'Thunder' || !/^1Thunder possible around/.test(g.first) || !g.danger || !g.notes || g.marks !== g.notes || !lanes.every((x) => g.lanes.includes(x)))
+    errs.push(`the card as G: ${JSON.stringify(g)}`);
+  // a lane's tap: the route coloured by it, and the card folded to a banner that brings it back
+  p.cards.box?.querySelector('[data-k=lane-rain]')?.click(); await wait(300);
+  const lane = { mode: p.colorMode, map: p.colorOnMap, folded: !!p.cards.folded };
+  if (lane.folded) { p.cards.escape(); await wait(200); }
+  if (lane.mode !== 'rain' || !lane.map || !lane.folded || p.cards.folded || !p.cards.box?.querySelector('.wx-say')) errs.push(`a lane's tap: ${JSON.stringify(lane)}, then the card back: ${!!p.cards.box?.querySelector('.wx-say')}`);
   // Time on the way: the wind's row only where it changes the time (#766)
   p.cards.box.querySelector('[data-k=time]').click(); await wait(200);
   const windRow = () => [...(p.cards.box?.querySelectorAll('.speed-row.sub span') || [])].find((x) => /^the wind/.test(x.textContent))?.parentElement.textContent || '';
@@ -19489,10 +19509,11 @@ PF_JS = """(async () => {
   const tag = document.querySelector('.pl-profile .nofc');
   if (!tag || !tag.getClientRects().length || tag.textContent !== 'No forecast yet') errs.push(`the profile's cut: ${tag ? tag.textContent : 'none'}`);
   p.showMode('grade');
-  // the weather card's wind: each share on one line, its number and % with it, "Headwind 100 %" too (#388)
+  // the weather card's wind, opened: each share on one line, its % with it, "Against you 100 %" too (#388)
   p.openWeather(); await wait(400);
-  const shares = [...(p.cards.box?.querySelectorAll('.ex-item') || [])], linesOf = (el) => { const r = document.createRange(); r.selectNodeContents(el.lastChild); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
-  if (!shares.length || shares.some((el) => linesOf(el) !== 1)) errs.push(`Go's wind shares: ${shares.map((el) => `${el.textContent} on ${linesOf(el)} lines`).join(' / ') || 'none'}`);
+  p.cards.box?.querySelector('[data-k=wind]')?.click(); await wait(300);
+  const shares = [...(p.cards.box?.querySelectorAll('.wx-open .wx-key span') || [])], linesOf = (el) => { const r = document.createRange(); r.selectNodeContents(el); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
+  if (!shares.length || shares.some((el) => linesOf(el) !== 1)) errs.push(`the wind's shares: ${shares.map((el) => `${el.textContent} on ${linesOf(el)} lines`).join(' / ') || 'none'}`);
   p.cards.close(); await wait(300);
   p.reveal('points'); await wait(300);
   // a route of one section: the weather as you leave on Start's row, and none yet on End's (#764)

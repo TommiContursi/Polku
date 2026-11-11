@@ -4,6 +4,18 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-12
 
+### The trip's box and the weather card ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- The **Go** tab is gone. What it held is in the trip's box under the route's profile, and in the weather card the box opens. **Export GPX**, **Share link** and **Save offline…** are in **More** (⋯) and on the whole route's card.
+- The trip's box has **When**, "Leave now ▾", and when you'd be there, and under them the day's temperature, rain and whether you're in the dark; a trip with nights has a row a day. It leaves the wind to each sport's row under the route's numbers. While the forecast loads or fails, and where it doesn't reach the trip or grows less certain past three days, the box says so in words.
+- A tap on a day's row opens the weather card. Each day starts with one sentence and the sky's icon, such as "Cool, then rain and a risk of thunder". Every value is read where you'll be when you're there.
+- Up to three notes follow, worst first, each with a number: danger first (thunder, frostbite, rough water, ice), then losing your grip (slippery, gusts over your sport's limit, road conditions), then comfort and planning (very cold or hot, when the rain starts or stops, a headwind over your sport's limit, the dark, low sun ahead, wet trails). A tap on a note shows its place on the map.
+- The numbers are always in the same places: the temperature and how it feels, the strongest wind and its gusts, the rain on you, and on a paddle the highest waves, an estimate. At 10 °C or colder it feels as the wind and your own speed make it; warmer, as the forecast says.
+- When the weather changes on the way, a line of the trip shows each leg in its sport's colour and the notes' numbers where each happens. Under it a lane for the wind, rain, thunder or the waves on the water shows where, with its colours' key under it. A tap on a lane colours the route by it and turns the map's weather on at that hour; **Back** brings the card back. On a desktop, pointing at a note, a lane or a stretch lights it on the map without moving the map.
+- Folded under the day: **Hour by hour**, the hours you're out with their sky and where you are then; **Wind on the way**, how much is against you, from the side and behind you, and every stretch against you, strongest first; and **Time on the way**. **Weather on the map** opens the map's weather at your departure.
+- A tap on the route's time estimate opens the weather card at **Time on the way**. The eight hour chips that ran past the end of a trip are gone, and so are the chips that coloured the route from the card: a lane does that now.
+- The map's distance marks give the elapsed time in hours and minutes, without seconds.
+
 ### The wind's colours ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - The route coloured by **Wind** has new colours: the stronger the wind, the darker and deeper its colour, so a strong headwind stands out on the light map, the night map and the planner alike. A tailwind is teal, so it stays apart from a headwind's red without colour vision.
@@ -19,14 +31,6 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **Very cold** and **Frostbite risk** in Check now count the wind by its direction: a headwind adds to the air you make with your own speed, and a tailwind takes from it. Before, the wind's speed was added to yours whichever way it blew, so a ride with the wind behind you read as cold as one into it.
 
 ## 2026-11-11
-
-### The trip's box and the weather card ([#869](https://github.com/TommiContursi/Polku/issues/869))
-
-- The **Go** tab is gone. What it held is in the trip's box under the route's profile, and in the weather card the box opens. **Export GPX**, **Share link** and **Save offline…** are in **More** (⋯) and on the whole route's card.
-- The trip's box has **When**, "Leave now ▾", and when you'd be there, and under them the day's temperature, rain and whether you're in the dark; a trip with nights has a row a day. It leaves the wind to each sport's row under the route's numbers. While the forecast loads or fails, and where it doesn't reach the trip or grows less certain past three days, the box says so in words.
-- A tap on a day's row opens the weather card. Each day has the sky and the temperature, how it feels where the forecast says it, the rain that falls on you, the strongest wind with its gusts, the highest waves on a paddle (an estimate) and the snow on the ground in winter. It reads like the weather timeline, with a strip of the day's hours beside it and your trip marked on it. Under them come whether you're in the dark, the day's sunrise, sunset and dark, and **Hour by hour**, the hours where you'll be as a table. The card ends with the wind on the way, **Strongest headwind**, chips that colour the route by **Wind**, **Temperature** or **Rain**, and **Time on the way**.
-- A tap on the route's time estimate opens the weather card at **Time on the way**. The eight hour chips that ran past the end of a trip are gone.
-- The map's distance marks give the elapsed time in hours and minutes, without seconds.
 
 ### The desktop toolbar's drawing mode, a value you pick ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
