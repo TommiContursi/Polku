@@ -2419,9 +2419,9 @@ body.dropping .drop-hint { display: flex; }
 @keyframes tb-in { from { opacity: 0; } }
 .tbtn { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--text); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .tbtn:disabled { opacity: .7; color: var(--muted); cursor: default; } /* (the glass's grey, still dimmer than redo) */
-.tbtn:focus-visible, .modebtn:focus-visible, .stylebtn:focus-visible, .sportbtn:focus-visible, .tb-modes button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.tbtn[aria-expanded="true"], .modebtn[aria-expanded="true"], .stylebtn[aria-expanded="true"], .sportbtn[aria-expanded="true"] { background: var(--accent-soft); }
-@media (hover: hover) { .tbtn:hover:not(:disabled), .modebtn:hover, .stylebtn:hover, .sportbtn:hover { background: var(--surface-2); } }
+.tbtn:focus-visible, .modebtn:focus-visible, .modepick:focus-visible, .stylebtn:focus-visible, .sportbtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.tbtn[aria-expanded="true"], .modebtn[aria-expanded="true"], .modepick[aria-expanded="true"], .stylebtn[aria-expanded="true"], .sportbtn[aria-expanded="true"] { background: var(--accent-soft); }
+@media (hover: hover) { .tbtn:hover:not(:disabled), .modebtn:hover, .modepick:hover, .stylebtn:hover, .sportbtn:hover { background: var(--surface-2); } }
 .tbtn:active:not(:disabled), .modebtn:active { background: var(--surface-2); }
 /* the mode button: its icon, its name, the route style under it */
 .modebtn { height: 44px; min-width: 0; display: inline-flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -2454,10 +2454,14 @@ body.dropping .drop-hint { display: flex; }
 @media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } }
 .pl-tools.desk.docked { position: static; height: 56px; flex-wrap: nowrap; margin: 0 8px 0 10px; padding: 0 0 4px; border-radius: 0; border-bottom: 1px solid var(--line); box-shadow: none; background: none; }
 .pl-tools.desk .tbtn { width: 40px; height: 40px; }
-.tb-modes button { height: 40px; min-width: 40px; padding: 0 8px; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--text); }
-.tb-modes button .ic { color: var(--muted); }
-.tb-modes button[aria-checked="true"] { background: var(--surface-solid); box-shadow: 0 1px 3px rgba(0,0,0,.16), inset 0 0 0 1px var(--line); }
-.tb-modes button[aria-checked="true"] .ic { color: var(--accent); }
+/* desktops: the drawing mode, a value you pick (#869, Mode ▾): the sport button's look, as wide as the longest mode's
+   name (every name in one cell, the others unseen), so picking another moves nothing (#594) */
+.modepick { height: 40px; flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.modepick > .ic:first-child { color: var(--accent); }
+.modepick > .ic:last-child { color: var(--muted); }
+.mp-names { display: grid; text-align: left; }
+.mp-names > span { grid-area: 1 / 1; }
+.mp-names > .mp-off { visibility: hidden; }
 .stylebtn { height: 40px; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; text-align: left; cursor: pointer; }
 .stylebtn .two small { font-size: 11px; font-weight: 600; color: var(--muted); }
 .stylebtn .two span { white-space: nowrap; }
@@ -2471,10 +2475,10 @@ body.dropping .drop-hint { display: flex; }
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo, redo and More */
 .pl-tools[data-stage="folded"] .modebtn, .pl-tools.tb-wrap .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
 .pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child), .pl-tools.tb-wrap .modebtn > :not(.ic:first-child) { display: none; } /* (and the planner's bar at 200 %, before it takes a second row: #745) */
-/* where room runs out (planner.js FOLDS): first the three modes' names together (their tooltips say them), then the
-   route's actions go into More, then the style's caption, the sport's name, and the style's name shortens */
+/* where room runs out (planner.js FOLDS): first the route's actions go into More, then the style's caption, the sport's
+   name, the style's name shortens, and the mode's name goes (its icon, label and tooltip stay) */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
-.pl-tools.fold3 .tb-modes button span { display: none; }
+.pl-tools.foldM .modepick .mp-names { display: none; }
 .pl-tools.foldS .sportbtn > span { display: none; }
 .pl-tools.fold4 .stylebtn .two span { max-width: 4.5em; overflow: hidden; text-overflow: ellipsis; }
 /* last, beside the side panel of a narrow window: a second row, growing up from the map's foot (its max-width, up to the

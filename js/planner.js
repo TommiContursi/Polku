@@ -41,10 +41,9 @@ const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
 const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 const MODES = ['auto', 'line', 'water'];
 const MODE_KEY = { auto: 'P', line: 'S', water: 'W' };
-// what the desktop toolbar shortens where room runs out (placeTools()): the style's caption, the names of
-// the modes not in use, then all the modes' names, then the style's name (the longest beside a 1024 px window's panel);
-// last, beside the side panel, a second row
-const FOLDS = ['fold1', 'foldS', 'fold3', 'fold4', 'tb-rows'];
+// what the desktop toolbar shortens where room runs out (placeTools()): the mode's name (Mode ▾ keeps its icon), the
+// sport's name, the style's caption, the style's name; last, beside the side panel, a second row
+const FOLDS = ['foldM', 'foldS', 'fold1', 'fold4', 'tb-rows'];
 // how a phone's toolbox fits a window narrower than it (#745): less room around its words, then the drawing button shortened
 const PHONE_FITS = ['tb-tight', 'tb-short', 'tb-shorter', 'tb-wrap'];
 // how a sport goes along a line, for "MTB legs can't be paddled on the same line"
@@ -55,6 +54,7 @@ const TIPS = {
   auto: { name: 'Follow paths', keys: 'P', text: 'The next leg follows paths and roads, chosen by the route style.' },
   line: { name: 'Freehand', keys: 'S', text: 'The next leg is drawn straight: off the trail, or across a gap the router can’t take.' },
   water: { name: 'Over water', keys: 'W', text: 'The next leg is routed on the water by Polku: round land and marked hazards.' },
+  mode: { name: 'Draw the next leg', keys: 'P, S, W', text: 'Follow paths, Freehand or Over water: how the next leg is drawn. Legs already drawn keep theirs.' },
   style: { name: 'Route style', text: 'Which ways Follow paths prefers, for the whole route. Changing it routes the route again.' },
   sport: { name: 'Sport', text: 'The sport for the legs you draw next, and your speed in it. Legs already drawn keep theirs.' },
   undo: { name: 'Undo', keys: 'Ctrl Z', text: 'Takes back the last change.' },
@@ -5817,9 +5817,8 @@ export class Planner {
     const sep = (cls = '') => h('span', { class: `tb-sep tb-desk ${cls}`, 'aria-hidden': 'true' });
     // phones: one drop-down for the modes, the route style under the mode's name
     this.els.modeBtn = h('button', { type: 'button', class: 'modebtn tb-phone', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleModes(this.els.modeBtn) });
-    // desktops: the modes with their names and keys, then the route style (a mode keeps its name for a screen reader where its words fold away)
-    this.els.modeSeg = h('div', { class: 'seg tb-modes tb-desk', role: 'radiogroup', 'aria-label': 'Draw the next leg' },
-      ...MODES.map((m) => h('button', { type: 'button', role: 'radio', 'data-mode': m, 'aria-label': MODE_LABEL[m], 'aria-keyshortcuts': MODE_KEY[m], onclick: () => this.setMode(m), html: `${icon(MODE_ICON[m], 19)}<span>${MODE_LABEL[m]}</span>` })));
+    // desktops: the mode in use, a value you pick (#869, Mode ▾), its menu every mode with its key; then the route style
+    this.els.modePick = h('button', { type: 'button', class: 'modepick tb-desk', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-keyshortcuts': 'P S W', onclick: () => this.toggleModes(this.els.modePick, { modes: true }) });
     this.els.styleBtn = h('button', { type: 'button', class: 'stylebtn tb-desk', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleModes(this.els.styleBtn) });
     // desktops: the next leg's sport, before the style it decides (as the phones' "Hike · Balanced"); its menu is
     // the phones' Next leg (B of #233; beside the style rather than first, decided while building, 2026-10-20)
@@ -5845,10 +5844,10 @@ export class Planner {
     // the route's view (25c): Edit where Done was
     this.els.toolEdit = h('button', { type: 'button', class: 'btn done edit', 'aria-keyshortcuts': 'E', onclick: () => this.setEditing(true), html: `${icon('pencil', 18)}<span>Edit</span>` });
     const gsep = (group) => { const el = sep(); el.dataset.group = group; return el; };
-    box.append(this.els.toolDone, this.els.toolEdit, this.els.modeBtn, this.els.modeSeg, sep(), this.els.sportBtn, this.els.styleBtn, sep('tb-hist'), this.els.undo, this.els.redo,
+    box.append(this.els.toolDone, this.els.toolEdit, this.els.modeBtn, this.els.modePick, sep(), this.els.sportBtn, this.els.styleBtn, sep('tb-hist'), this.els.undo, this.els.redo,
       gsep('nav'), this.els.reverse, this.els.backToStart, gsep('take'), this.els.share, this.els.gpx, this.els.offline,
       gsep('clear'), this.els.clearTool, sep(), this.els.more);
-    for (const b of this.els.modeSeg.children) tooltip(b, TIPS[b.dataset.mode]);
+    tooltip(this.els.modePick, TIPS.mode);
     for (const k of ['undo', 'redo', 'reverse', 'backToStart', 'share', 'gpx', 'offline', 'more']) tooltip(this.els[k], TIPS[k]);
     tooltip(this.els.clearTool, TIPS.clear);
     tooltip(this.els.styleBtn, TIPS.style);
@@ -5892,7 +5891,9 @@ export class Planner {
     this.els.modeBtn.setAttribute('aria-label', `Draw the next leg: ${MODE_LABEL[m]}, ${sport}${styled ? `, route style ${name}` : ''}`);
     this.els.sportBtn.innerHTML = `${icon(this.sportIcon(ns), 18)}<span>${escapeHtml(sport)}</span>${icon('caret', 12)}`;
     this.els.sportBtn.setAttribute('aria-label', `Next leg: ${sport}`);
-    for (const b of this.els.modeSeg.children) b.setAttribute('aria-checked', String(b.dataset.mode === m));
+    // (every mode's name in one place, the others unseen: as wide as the longest, so picking another moves nothing, #594)
+    this.els.modePick.innerHTML = `${icon(MODE_ICON[m], 18)}<span class="mp-names">${MODES.map((k) => `<span${k === m ? '' : ' class="mp-off"'}>${MODE_LABEL[k]}</span>`).join('')}</span>${icon('caret', 12)}`;
+    this.els.modePick.setAttribute('aria-label', `Draw the next leg: ${MODE_LABEL[m]}`);
     this.els.styleBtn.innerHTML = `<span class="two"><small>Route style</small><span>${escapeHtml(name)}</span></span>${icon('caret', 12)}`;
     this.els.styleBtn.setAttribute('aria-label', `Route style: ${name}`);
     const n = this.points.length, hist = !!(this.past.length || this.future.length);
@@ -5910,7 +5911,7 @@ export class Planner {
     this.tools.dataset.stage = view ? 'view' : carded ? 'card' : loop ? 'loop' : folded ? 'folded' : String(Math.min(n, 2));
     this.tools.setAttribute('aria-label', view ? 'Your route' : 'Drawing tools');
     this.els.modeBtn.hidden = !n || loop || view;
-    for (const el of [this.els.sportBtn, this.els.modeSeg, this.els.styleBtn, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n || loop || view || folded;
+    for (const el of [this.els.sportBtn, this.els.modePick, this.els.styleBtn, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n || loop || view || folded;
     this.els.more.hidden = !n || loop;
     for (const el of this.tools.querySelectorAll('.tbtn.tb-hist')) el.hidden = !(hist || n) || view;
     this.els.undo.disabled = !this.past.length;
@@ -6006,20 +6007,21 @@ export class Planner {
       // (docked, the row is right-aligned: what doesn't fit runs out at its left, which scrollWidth doesn't count)
       const first = () => [...box.querySelectorAll('button')].find((e) => !e.hidden && e.offsetParent);
       const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 || first().getBoundingClientRect().left < box.getBoundingClientRect().left - 1 : box.getBoundingClientRect().right > limit);
-      // in turn: the three modes' names together (their tooltips and labels say them; picking another mode then moves
-      // nothing, #594), the route's actions from the last, the style's caption, the sport's name (its icon stays), Clear
-      // route (the action kept longest), then the style's name shortens; last, beside the side panel of a narrow window,
-      // a second row above the first
+      // in turn: the route's actions from the last, the mode's name (its icon, label and tooltip stay; Mode ▾, #869), the
+      // sport's name (its icon stays), the style's caption, Clear route (the action kept longest), and the style's name
+      // shortens; last, beside the side panel of a narrow window, a second row above the first
       box.classList.remove(...FOLDS, ...PHONE_FITS);
       setOpts(box, opts.length);
-      const steps = [() => box.classList.add('fold3')];
+      const steps = [];
       for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
-      steps.push(() => box.classList.add('fold1'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold4'));
+      steps.push(() => box.classList.add('foldM'), () => box.classList.add('foldS'), () => box.classList.add('fold1'), () => setOpts(box, 0), () => box.classList.add('fold4'));
       if (side) steps.push(() => { box.classList.add('tb-rows'); box.style.maxWidth = `${limit - r.right - 12}px`; });
       for (const step of steps) {
         if (!over()) break;
         step();
       }
+      // (the caption sits over the style's name: where the name is the wider, its fold saved nothing, so it comes back)
+      if (box.classList.contains('fold1')) { box.classList.remove('fold1'); if (over()) box.classList.add('fold1'); }
       // (a bottom panel's own height is --sheet-h already)
       const tb = box.getBoundingClientRect();
       toolsH(inPanel ? 0 : Math.round(side ? innerHeight - tb.top : innerHeight - r.bottom + tb.height + 12));
@@ -6103,7 +6105,7 @@ export class Planner {
   // Phones: the mode's menu: "Draw the next leg", the next leg's sport and speed, and the route style for the
   // whole route. Desktops: the style button's menu (the modes are in the toolbar itself), and the sport
   // button's (`next`), the phones' sport part. The styles are the next leg's sport's: the ones its button names.
-  toggleModes(anchor, { next = false } = {}) {
+  toggleModes(anchor, { next = false, modes = false } = {}) {
     if (this.modesMenu) { this.modesMenu.close(); return; }
     this.closeMore();
     const desk = this.tools.classList.contains('desk');
@@ -6111,6 +6113,8 @@ export class Planner {
     this.nlSpeed = false;
     const items = () => {
       if (next) return [{ group: 'Sport · the legs you draw next', items: this.nextLegItems(refill) }];
+      // (a desktop's Mode ▾: each mode with its key)
+      if (modes) return [{ group: 'Draw the next leg', items: MODES.map((m) => ({ icon: MODE_ICON[m], label: MODE_LABEL[m], desc: `${MODE_DESC[m]} · ${MODE_KEY[m]}`, radio: true, checked: this.mode === m, fn: () => this.setMode(m) })) }];
       const styles = { group: 'Route style · the whole route', items: this.styleItems(this.nextLegSport()) };
       // in the order the button reads: how it's drawn, its sport ("Hike · Balanced") and the style
       // three parts, apart: how the next leg is drawn (and its note), its sport and speed, the whole route's style
@@ -6130,7 +6134,7 @@ export class Planner {
       const el = focus && this.modesMenu.el.querySelector(focus);
       if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest' }); }
     };
-    this.modesMenu = popMenu(anchor, items(), { label: next ? 'Next leg' : desk ? 'Route style' : 'Draw the next leg', align: 'left', maxRight: $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
+    this.modesMenu = popMenu(anchor, items(), { label: next ? 'Next leg' : modes || !desk ? 'Draw the next leg' : 'Route style', align: 'left', maxRight: $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
       onClose: () => { this.modesMenu = null; anchor.setAttribute('aria-expanded', 'false'); } });
     anchor.setAttribute('aria-expanded', 'true');
   }
