@@ -13159,7 +13159,7 @@ def toolbox(chrome):
       return { side, folds: [...p.tools.classList].filter((k) => /^fold|^tb-rows$/.test(k)), timeline: !!t, edge: side ? Math.abs(b.left - (r.right + 12)) <= 1 && Math.abs(b.bottom - (innerHeight - 12)) <= 1 : Math.abs(b.bottom - (r.top - 12)) <= 1 && Math.abs(b.left - r.left) <= 1,
         round: ['TopLeft', 'TopRight', 'BottomLeft', 'BottomRight'].every((c) => parseFloat(getComputedStyle(p.tools)['border' + c + 'Radius']) >= 16),
         named: /^Draw the next leg: /.test(p.els.modePick.getAttribute('aria-label')), // (the mode keeps its name for a screen reader where its words fold away)
-        smaller: !p.tools.classList.contains('foldM') || [...p.tools.querySelectorAll('[data-opt]')].every((o) => o.hidden), // (the mode's name goes once the route's actions are in More: Mode ▾, #869)
+        smaller: !p.tools.classList.contains('foldM') || [...p.tools.querySelectorAll('[data-opt]')].filter((o) => !o.hidden).length <= 1, // (the mode's name goes once the route's actions are in More, all but Clear route: Mode ▾, #869)
         clear: b.right <= (level ? c.left - 12 : innerWidth - 12) + 0.5, below: b.top >= document.querySelector('.topbar').getBoundingClientRect().bottom - 0.5,
         together: ((n) => !n[0].offsetParent || n.every((x) => Math.abs(x.getBoundingClientRect().left - n[0].getBoundingClientRect().left) < 1 && x.getBoundingClientRect().width <= n[0].parentElement.getBoundingClientRect().width + 0.5))([...p.els.modePick.querySelectorAll('.mp-names > span')]), // (as wide as the longest mode's name, so picking another moves nothing, #594, #869)
         scale: s.bottom <= b.top + 0.5 && s.bottom >= b.top - 12 && (!side || s.left >= r.right - 0.5),
