@@ -332,7 +332,11 @@ each of these as P1, and skip style nits:
 
 ## Writing
 
-- Plain, natural English in complete sentences. Say what happens on the
+- Write the way a native English speaker writes at work: full, ordinary
+  sentences. Use the usual word for a thing, the one other apps and docs
+  use. Do not invent a simpler one. Plain does not mean short or childlike.
+  If a sentence would sound odd said aloud to a colleague, rewrite it. App
+  text uses the terms people know from similar apps. Say what happens on the
   screen ("Back to start does nothing"), not what kind of defect it is ("a
   shadowed method").
 - **Polku's words are in [CONTEXT.md](CONTEXT.md):** use them, and add a term
