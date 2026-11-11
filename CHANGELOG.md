@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-11
 
+### Leave now's times wait while you use the planner ([#966](https://github.com/TommiContursi/Polku/issues/966))
+
+- With **Leave now**, the times on the route wait to move on while you're in the planner with the keyboard or a screen reader, so your place there stays where it was. Before, every 5 minutes the focus jumped back to the top of the page.
+- They also wait while you drag a row in **Reorder**, so the move is never lost.
+
 ### A waypoint inside a place to avoid says so ([#893](https://github.com/TommiContursi/Polku/issues/893))
 
 - When a waypoint is inside a place to avoid, the router can't reach it, and the leg's note says so in plain words: "a waypoint is inside a place to avoid: move one of them". The leg is drawn as a straight line until you move the waypoint or the place, and Check has a Retry.
