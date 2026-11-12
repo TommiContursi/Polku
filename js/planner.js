@@ -7620,6 +7620,8 @@ export class Planner {
   // that hour. An hour past the forecast says so and shows nothing. Waves have no section: they're estimated once a leg.
   wxStrip(a, d, k, f, wx, card) {
     const n = a.along.length, T = tripTimes(a), hrs = this.dayHours(a, d), h0 = hrs[0].t;
+    // (another departure: the strip opens afresh at the hour before you leave, and the hour picked goes, with its dot)
+    if ((card.h0 ||= {})[k] !== h0) { card.h0[k] = h0; if (card.x) delete card.x[k]; if (card.hour != null) { card.hour = null; this.wxDot = false; this.hoverAt(null, false, false); } }
     const x = (t) => (t - h0) / 3600 + 0.5, cols = (v) => `calc(var(--cw) * ${v.toFixed(3)})`;
     const sport = (i) => (a.attr[i] && a.attr[i].sport) || a.activity;
     const clock = (t) => (new Date(t * 1000).getHours() ? `${hh(t)}:00` : new Date(t * 1000).toLocaleDateString([], { weekday: 'short' }));
@@ -7656,7 +7658,7 @@ export class Planner {
     const time = (o) => h('span', { class: 'wx-hs-h', style: o.on ? `--leg: var(--sport-${sport(o.i)})` : null }, clock(o.t));
     const strip = h('div', { class: 'wx-hs-strip' },
       h('div', { class: 'wx-hs-curve', 'aria-hidden': 'true', html: `<svg viewBox="0 0 ${hrs.length} 1" preserveAspectRatio="none"><g class="all">${line(() => true)}</g><g class="you">${line((o) => o.on)}</g></svg>` }),
-      h('div', { class: 'wx-hs-row' }, ...hrs.map((o, j) => h('button', { type: 'button', class: `wx-hs-col${o.on ? ' on' : ''}${o.x ? '' : ' none'}${card.hour === o.t ? ' picked' : ''}`, 'data-h': String(j), tabindex: '-1', 'aria-pressed': String(card.hour === o.t), onclick: pick(o, j) },
+      h('div', { class: 'wx-hs-row' }, ...hrs.map((o, j) => h('button', { type: 'button', class: `wx-hs-col${o.on ? ' on' : ''}${o.x ? '' : ' none'}${card.hour === o.t ? ' picked' : ''}`, 'data-h': String(j), tabindex: (card.hour != null ? card.hour === o.t : j === Math.max(0, hrs.findIndex((q) => q.on))) ? '0' : '-1', 'aria-pressed': String(card.hour === o.t), onclick: pick(o, j) },
         h('span', { class: 'sr-only' }, said(o)),
         h('span', { class: 'wx-hs-t', 'aria-hidden': 'true', style: o.x ? `--y: ${y(o.x.temp)}` : null }, o.x ? deg(o.x.temp) : '–'),
         h('span', { class: 'wx-hs-sky', 'aria-hidden': 'true', html: o.x ? icon(`sky-${o.sky}`, 26) : '' }), time(o)))),
@@ -7698,7 +7700,7 @@ export class Planner {
         return [h('span', { class: 'wx-hs-v' }, c ? timeOf(c) : ''), h('span', { class: 'wx-hs-p' }, h('i', { class: `wx-hs-light ${o.light}` }))]; }, null));
     const wrap = h('div', { class: 'wx-hs', 'data-h0': String(h0), 'data-day': String(k), style: `--n: ${hrs.length}` },
       h('button', { type: 'button', class: 'tool wx-hs-arrow l', 'aria-label': 'Earlier hours', tabindex: '-1', html: icon('chevronLeft', 20) }),
-      h('div', { class: 'wx-hs-x', tabindex: '0', role: 'group', 'aria-label': `The hours, ${hh(h0)}:00 to ${hh(hrs.at(-1).t)}:00, where you’ll be. The arrow keys move along them.` },
+      h('div', { class: 'wx-hs-x', role: 'group', 'aria-label': `The hours, ${hh(h0)}:00 to ${hh(hrs.at(-1).t)}:00, where you’ll be. The arrow keys move along them; Enter marks where you are then.` },
         h('div', { class: 'wx-hs-in' }, strip, ...sections)),
       h('button', { type: 'button', class: 'tool wx-hs-arrow r', 'aria-label': 'Later hours', tabindex: '-1', html: icon('chevronRight', 20) }));
     this.wxWire(wrap, card, k, hrs);
@@ -7710,7 +7712,7 @@ export class Planner {
   wxWire(wrap, card, k, hrs) {
     const x = wrap.querySelector('.wx-hs-x'), first = Math.max(0, hrs.findIndex((o) => o.on) - 1), smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
     // (drawn again: where the strip it replaces is now, which its scroll event may not have said yet)
-    const old = this.cards.box?.querySelector(`.wx-hs[data-day="${k}"]`), ocw = old && parseFloat(old.style.getPropertyValue('--cw'));
+    const old = this.cards.box?.querySelector(`.wx-hs[data-day="${k}"][data-h0="${hrs[0].t}"]`), ocw = old && parseFloat(old.style.getPropertyValue('--cw'));
     if (ocw) (card.x ||= {})[k] = old.querySelector('.wx-hs-x').scrollLeft / ocw;
     let cw = 0;
     const arrows = () => { wrap.querySelector('.wx-hs-arrow.l').classList.toggle('on', x.scrollLeft > 2); wrap.querySelector('.wx-hs-arrow.r').classList.toggle('on', x.scrollLeft < x.scrollWidth - x.clientWidth - 2); };
@@ -7726,12 +7728,21 @@ export class Planner {
     x.addEventListener('scroll', () => { if (!x.isConnected || !cw) return; (card.x ||= {})[k] = x.scrollLeft / cw; arrows(); }, { passive: true }); // (a strip taken away by a redraw reads 0)
     wrap.querySelector('.wx-hs-arrow.l').addEventListener('click', () => x.scrollBy({ left: -(x.clientWidth - 2 * PAD_HS - cw), behavior: smooth() }));
     wrap.querySelector('.wx-hs-arrow.r').addEventListener('click', () => x.scrollBy({ left: x.clientWidth - 2 * PAD_HS - cw, behavior: smooth() }));
+    const btns = [...wrap.querySelectorAll('.wx-hs-strip button.wx-hs-col')];
+    const inSight = (j) => { const c0 = PAD_HS + j * cw; if (c0 < x.scrollLeft + PAD_HS || c0 + cw > x.scrollLeft + x.clientWidth - PAD_HS) x.scrollLeft = c0 - (x.clientWidth - cw) / 2; };
     x.addEventListener('keydown', (e) => {
-      const to = { ArrowLeft: x.scrollLeft - cw, ArrowRight: x.scrollLeft + cw, Home: 0, End: x.scrollWidth }[e.key];
-      if (to == null || e.target !== x) return;
+      const j = btns.indexOf(e.target), to = j < 0 ? null : { ArrowLeft: j - 1, ArrowRight: j + 1, Home: 0, End: btns.length - 1 }[e.key];
+      if (to == null) return;
       e.preventDefault();
-      x.scrollLeft = to;
+      const b = btns[Math.max(0, Math.min(btns.length - 1, to))];
+      btns.forEach((x2) => x2.setAttribute('tabindex', x2 === b ? '0' : '-1'));
+      b.focus({ preventScroll: true });
+      inSight(+b.dataset.h);
     });
+    const lit = (j) => { wrap.querySelectorAll('.lit').forEach((e) => e.classList.remove('lit')); if (j != null) wrap.querySelectorAll(`[data-h="${j}"]`).forEach((e) => e.classList.add('lit')); };
+    const unpoint = () => { lit(null); const p = card.hour != null && hrs.find((o) => o.t === card.hour); this.hoverAt(p ? p.i : null, false, false); };
+    x.addEventListener('focusin', (e) => { const j = btns.indexOf(e.target); if (j >= 0) { lit(j); this.hoverAt(hrs[j].i, false, false); } });
+    x.addEventListener('focusout', (e) => { if (btns.includes(e.target) && !btns.includes(e.relatedTarget)) unpoint(); });
     // a mouse drags it sideways (a finger and a trackpad scroll it themselves); a drag isn't a tap
     let drag = null;
     x.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 0) drag = { x0: e.clientX, s0: x.scrollLeft, moved: false, id: e.pointerId }; });
@@ -7744,9 +7755,8 @@ export class Planner {
     x.addEventListener('pointerup', end);
     x.addEventListener('pointercancel', end);
     if (!hoverCapable()) return;
-    const lit = (j) => { wrap.querySelectorAll('.lit').forEach((e) => e.classList.remove('lit')); if (j != null) wrap.querySelectorAll(`[data-h="${j}"]`).forEach((e) => e.classList.add('lit')); };
     x.addEventListener('pointerover', (e) => { const c = e.target.closest('[data-h]'); if (!c || drag?.moved) return; lit(c.dataset.h); this.hoverAt(hrs[+c.dataset.h].i, false, false); });
-    x.addEventListener('pointerleave', () => { lit(null); const p = card.hour != null && hrs.find((o) => o.t === card.hour); this.hoverAt(p ? p.i : null, false, false); });
+    x.addEventListener('pointerleave', unpoint);
   }
   // the route's pointer (on the map or the profile) at sample i: its hour lit in the strip and brought into view, at once
   wxPoint(i) {
@@ -7897,8 +7907,8 @@ export class Planner {
     return top;
   }
   // The day's hours where you'll be (#766): from two hours before the day's first, 12 of them (more for a longer day), each
-  // sampled at the place you're at then (`i`); its rain, snow and thunder the hour's own (Open-Meteo's precipitation and
-  // weather code are the hour before their time, so an hour's are the next one's); none past the forecast. `on`: an hour
+  // sampled at the place you're at then (`i`); its rain and snow the hour's own (Open-Meteo's precipitation is the hour before
+  // its time, so an hour's is the next one's; its weather code is the hour's instant); none past the forecast. `on`: an hour
   // you're on the way
   dayHours(a, d) {
     const w = a.wind, T = tripTimes(a), n = a.along.length, h0 = Math.floor(d.t0 / 3600) * 3600, h1 = Math.floor(d.t1 / 3600) * 3600;
@@ -7908,7 +7918,7 @@ export class Planner {
       while (i < n - 1 && T.at(i) < t) i++;
       const s = w.series[w.cell[i]], nx = t <= w.beyondSec && sampleAt(s, Math.min(t + 3600, w.beyondSec)), night = nightAt(t, a.pts[i]);
       const x = nx ? { ...sampleAt(s, t), precip: nx.precip, snowfall: nx.snowfall } : null;
-      const j = s.time.findIndex((u) => u >= t + 3600), storm = !!s.code && j >= 0 && s.code[j] >= 95; // (its code, as its rain: the hour after)
+      const j = s.time.findIndex((u) => u >= t), storm = !!s.code && j >= 0 && s.code[j] >= 95;
       out.push({ t, x, night, i, on: t + 3600 > d.t0 && t <= d.t1, sky: x && skyKind(x.precip, x.temp, x.cloud ?? NaN, night, storm) });
     }
     return out;
@@ -7951,7 +7961,7 @@ const SKY_WORDS = { sun: 'Clear', moon: 'Clear', cloudSun: 'Partly cloudy', clou
 // colour, by the route's wind classes; the arrow drawn going your way (to the right) and turned by its angle to it
 const PAD_HS = 8;
 const WIND_SAID = { strongHead: 'against you, over your limit', head: 'against you', cross: 'from the side', tail: 'behind you', strongTail: 'behind you', calm: 'calm' };
-const WIND_PAL = { strongHead: 'against strong', head: 'against', cross: 'side', tail: 'behind', strongTail: 'behind' };
+const WIND_PAL = { strongHead: 'against', head: 'against', cross: 'side', tail: 'behind', strongTail: 'behind' }; // (a diverging three: warm, grey, cool; the number says how strong)
 const windArrow = (rot, cls, size = 22) => `<svg class="wx-arr ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" style="transform: rotate(${Math.round(rot)}deg)"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 // the weather card's lanes: each class's colour (the route's own, coloured by that fact) and its words in the lane's key
 const LANE_COLOURS = {

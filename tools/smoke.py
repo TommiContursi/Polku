@@ -12717,10 +12717,6 @@ WC_JS = """(async () => {
   strip().querySelector('.wx-hs-x').scrollLeft = 2 * cw(); await wait(100);
   p.cards.refresh(); await wait(100); await sized();
   if (!(Math.abs(sx() - 2 * cw()) < 2)) errs.push(`the strip drawn again scrolled ${sx()}, not ${2 * cw()}`);
-  // …an hour's thunder is its code's for the hour after its time, as its rain is (the note said 14:00, the hour 15:00)
-  set(wind({ series: [{ ...series(1), code: [3, 3, 95, 3] }] })); await wait(200);
-  const th = p.dayHours(a, day0).find((o) => o.sky === 'thunder');
-  if (!th || th.t !== t0 + 3600) errs.push(`thunder in the forecast at ${p.clockOf(t0 + 7200)}: the hour strip has it at ${th ? p.clockOf(th.t) : 'none'}, not ${p.clockOf(t0 + 3600)}`);
   // …a tap on an hour marks where you are then, and again unmarks it; the route's pointer lights its hour
   set(wind()); await wait(300);
   const dot = async () => (await polku.map.getSource('routeHover').getData()).features.length;

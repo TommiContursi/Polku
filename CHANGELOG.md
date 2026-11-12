@@ -9,10 +9,9 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The weather card shows the day's hours as weather apps do, in a strip you scroll sideways: a column an hour with the temperature on its line, the sky and the time, from two hours before you leave to a few after you're there. It opens at the hour before you leave. Your own hours are underlined in your sport's colour, and the trip runs across them with the notes' numbers and where you are each hour.
 - Under the strip, **Rain** and **Wind** each have a section on the same columns: the rain in mm an hour as bars (snow in cm), and the wind's speed with an arrow for how it meets you, against you, from the side or behind you. A section with nothing to say starts folded, and the dark gets one when your trip is in it. The sections scroll with the strip.
 - A tap on an hour marks where you'll be then on the map. A tap on a section's hours colours the route by it and turns the map's weather on at that hour. A tap on a note brings its hour into view, and **Weather on the map** opens at the hour you picked.
-- On a desktop the card is wider, and arrows at the strip's edges, a drag, the trackpad and the arrow keys scroll it. Pointing at the route on the map or on the profile brings its hour into view, and pointing at an hour shows where you'll be then; the map doesn't move.
+- On a desktop the card is wider, and arrows at the strip's edges, a drag and the trackpad scroll it; from the keyboard the arrow keys move along the hours and Enter picks one. Pointing at the route on the map or on the profile brings its hour into view, and pointing at an hour shows where you'll be then; the map doesn't move.
 - Nothing else goes: the trip line and its lanes are under **The whole trip**, folded with **Hour by hour** and **Time on the way**, and **Wind on the way** opens from the strip's Wind. A trip with nights shows a day at a time, with a chip for each day.
 - The sky's icons are filled and in colour wherever the forecast's sky shows: the weather card, the trip's box, the route's list and profile, the timeline and the towns on the map.
-- An hour's thunder shows at the hour its note says; it was drawn an hour later.
 
 ### The trip's box and the weather card ([#869](https://github.com/TommiContursi/Polku/issues/869))
 

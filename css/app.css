@@ -1421,14 +1421,15 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* the hour strip (#979): a column an hour, the trip across your hours, then a section a fact on the same columns, all in one
    scroller out to the card's edges (its padding: planner.js's PAD_HS) with the headers and lines pinned to the visible width.
    The temperature's line is the timeline's orange; the wind's arrows go your way to the right, in the route's wind classes
-   darkened for small marks on the card; the rain's bars in the route's rain colours. Your hours bright, the rest dimmed */
-:root { --wx-temp: #ea580c; --wx-against: #c2410c; --wx-against-strong: #b8122b; --wx-side: #64748b; --wx-behind: #0f766e; --wx-dark: #334155; --wx-dusk: #94a3b8; }
-:root[data-theme="dark"] { --wx-temp: #fb923c; --wx-against: #fb923c; --wx-against-strong: #ff8a8a; --wx-side: #a3b0bf; --wx-behind: #5eead4; --wx-dark: #020617; --wx-dusk: #475569; }
+   darkened for small marks on the card, a diverging three (warm, a neutral grey, cool: checked with the data viz skill's
+   validator for colour blindness and 3:1); the rain's bars in the route's rain colours. Your hours bright, the rest dimmed */
+:root { --wx-temp: #ea580c; --wx-against: #c2410c; --wx-side: #848e9b; --wx-behind: #047857; --wx-dark: #334155; --wx-dusk: #94a3b8; }
+:root[data-theme="dark"] { --wx-temp: #fb923c; --wx-against: #fb923c; --wx-side: #a3b0bf; --wx-behind: #5eead4; --wx-dark: #05070d; --wx-dusk: #4b5563; }
 .wx-days { margin-bottom: calc(-1 * var(--space-2)); }
 .wx-hs { position: relative; container: hs / inline-size; margin-inline: -8px; } /* (to the card's edges: its padding) */
 .wx-hs-x { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x pan-y; }
 .wx-hs-x::-webkit-scrollbar { display: none; }
-.wx-hs-x:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: var(--radius-small); }
+button.wx-hs-col:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .wx-hs-x.drag { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 .wx-hs-in { width: calc(var(--n) * var(--cw, 56px) + 16px); padding-inline: 8px; display: grid; gap: var(--space-4); }
 .wx-hs .wx-pin { position: sticky; left: 8px; width: calc(100cqw - 16px); }
@@ -1477,11 +1478,12 @@ div.wx-sec-cols { cursor: default; }
 :root[data-theme="dark"] .wx-hs-bar { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85); } /* (the route's white casing, as the lanes': the heavy rain's navy shows) */
 .wx-hs-col:not(.on) :is(.wx-hs-bar, .wx-arr) { opacity: .5; }
 .wx-hs-dot { width: 5px; height: 5px; border-radius: var(--radius-round); background: var(--muted); opacity: .6; }
-.wx-arr { display: block; } .wx-arr.against { color: var(--wx-against); } .wx-arr.against.strong { color: var(--wx-against-strong); } .wx-arr.side { color: var(--wx-side); } .wx-arr.behind { color: var(--wx-behind); }
+.wx-arr { display: block; } .wx-arr.against { color: var(--wx-against); } .wx-arr.side { color: var(--wx-side); } .wx-arr.behind { color: var(--wx-behind); }
 .wx-hs-key { margin: var(--space-2) 0 0; } .wx-hs-key > span { display: inline-flex; align-items: center; gap: var(--space-4); } .wx-hs-key > span::before { content: none; }
 .wx-sec > .rows.wx-pin { margin: var(--space-4) 0 var(--space-2); }
 .wx-hs-light { display: block; width: calc(var(--cw, 56px) - 6px); height: 14px; border-radius: 3px; }
 .wx-hs-light.dark { background: var(--wx-dark); } .wx-hs-light.dusk { background: var(--wx-dusk); } .wx-hs-light.day { box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-theme="dark"] .wx-hs-light.dark { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4); } :root[data-theme="dark"] .wx-hs-light.day { background: #a3b0bf; box-shadow: none; } /* (on the dark card: the day light, the night ringed) */
 /* a desktop's arrows at the edges, while there's more that way (a finger and a trackpad scroll it themselves) */
 .wx-hs-arrow { position: absolute; top: 34px; z-index: 2; display: none; width: 32px; height: 32px; border-radius: var(--radius-round); background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line);
   opacity: 0; pointer-events: none; transition: opacity var(--t-press) var(--ease-out); }
