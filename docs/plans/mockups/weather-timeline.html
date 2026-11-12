@@ -121,6 +121,58 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 .frame.ph .tl-head .tl-layers.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
 .frame.ph .wx-bar .tl-head { gap: 6px; }
 .frame.ph .tl-handle { display: none; }
+/* ======================================================= new: your trip (part 2) */
+/* The trip's row, under the slider while the route has times: what the timeline shows (the app's switch, seg small),
+   the stretches against you with ‹ › (tool), and the way to the weather card (btn small quiet) */
+.tl-trip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 0 0 42px; }
+.frame.ph .tl-trip { padding-left: 0; }
+.tl-step { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; }
+.tl-step > span { flex: 1; min-width: 0; display: grid; text-align: center; font-size: 12.5px; line-height: 1.25; }
+.tl-step b { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-step small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-trip .tl-card { margin-left: auto; white-space: nowrap; }
+.tl-trip .wx-days { flex-wrap: nowrap; gap: 6px; }
+.tl-trip .wx-days .chip { height: var(--target); padding: 0 10px; font-size: 13px; }
+.tl-why { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
+/* the reading on your route: its wind against you, from the side or behind you, in words */
+.tl-now div:not(.tl-now-main) b { font-weight: 650; }
+/* a phone, the sketch's rows: the reading over the strip on one line, the strip the bar's whole width */
+.wx-bar.sk .tl-main { flex-direction: column; gap: 6px; }
+.wx-bar.sk .tl-strip { flex: none; }
+.wx-bar.sk .tl-now { order: -1; width: auto; min-height: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; }
+.wx-bar.sk .tl-now-main small { margin-left: 6px; }
+.frame.ph .tl-step { flex-basis: 100%; }
+
+/* ======================================================= stand-ins: the planner and the weather card, simplified (main's
+   are fuller), so the ways between them and the timeline can be tried. Not part of the design. */
+.frame.desk { width: min(1440px, calc(100vw - 32px)); height: 760px; }
+.mk-map .mk-rt { display: none; }
+.frame.planning .mk-map .mk-rt { display: inline; }
+.mk-pl, .mk-banner { position: absolute; color: var(--text); background: var(--glass-read); -webkit-backdrop-filter: var(--glass-read-filter); backdrop-filter: var(--glass-read-filter);
+  box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); }
+.mk-pl { z-index: 6; left: 12px; top: 64px; max-height: calc(100% - 76px); width: 360px; display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; border-radius: var(--radius-sheet); }
+.frame.ph .mk-pl { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; border-radius: var(--radius-sheet) var(--radius-sheet) 14px 14px; }
+.frame.ph .mk-pl.half { max-height: 56%; }
+.mk-pl.fold { padding-block: 6px; }
+.mk-pl.fold b { font-size: var(--font-row); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-pl-head { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.mk-pl-head > span { flex: 1; min-width: 0; display: grid; }
+.mk-pl-head b { font-size: var(--font-title); }
+.mk-pl-head small, .mk-stand { color: var(--muted); font-size: 12px; }
+.mk-stand { margin: 0; }
+.mk-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.mk-row > span { flex: none; display: grid; }
+.mk-row > span:nth-child(2) { flex: 1; min-width: 0; display: block; }
+.mk-say { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: var(--font-row); }
+.mk-hours { display: grid; grid-template-columns: 48px repeat(var(--n), minmax(0, 1fr)); gap: 3px; font-size: 12.5px; font-variant-numeric: tabular-nums; align-items: center; }
+.mk-hours > span { color: var(--muted); text-align: center; }
+.mk-hours > span:nth-child(5n+1), .mk-hours > b { text-align: left; }
+.mk-hours button { min-height: 36px; padding: 0; border: 0; border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+.mk-banner { z-index: 7; top: 64px; left: 12px; right: 12px; max-width: 440px; margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-radius: var(--radius); font-weight: 600; }
+.mk-banner > span { flex: 1; display: flex; align-items: center; gap: 8px; }
+.frame.ph.planning .plan-btn { display: none; }
+.frame.ph.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); }
+.frame.ph.planning .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 12px); }
 </style>
 </head>
 <body class="mk ready">
@@ -134,6 +186,8 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
       <div class="sw" data-k="t"><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
     <div class="bar"><span>Layers on</span><div class="sw" data-k="on"><button data-v="none">None</button><button data-v="rain">Rain</button><button data-v="rainwind">Rain and Wind</button><button data-v="tempwind">Temperature and Wind</button><button data-v="all">All six</button></div></div>
     <div class="bar"><span>Forecast</span><div class="sw" data-k="fc"><button data-v="ready">Loaded</button><button data-v="loading">Loading</button><button data-v="failed">Failed</button></div></div>
+    <div class="bar"><span>Your trip</span><div class="sw" data-k="trip"><button data-v="none">No route</button><button data-v="day">Friday's ride</button><button data-v="night">With a night</button><button data-v="far">Past the 48 hours</button></div></div>
+    <div class="bar"><span>On a phone</span><div class="sw" data-k="way"><button data-v="row">Under the slider</button><button data-v="sketch">The sketch's rows</button><button data-v="fold">The planner folded</button></div></div>
   </div>
   <div class="stage" id="stage"></div>
   <p class="cap" id="cap"></p>
@@ -172,7 +226,7 @@ import { icon, h, popMenu, tooltip } from '../../../js/ui.js';
 // ------------------------------------------------------------------ the page's switches (the URL keeps them)
 const Q = new URLSearchParams(location.search);
 const narrowScreen = matchMedia('(max-width: 720px)').matches;
-const S = { v: Q.get('v') || 'row', f: Q.get('f') || (narrowScreen ? '390' : 'desk'), z: Q.get('z') || '100', t: Q.get('t') || document.documentElement.dataset.theme, on: Q.get('on') || 'rain', fc: Q.get('fc') || 'ready' };
+const S = { v: Q.get('v') || 'row', f: Q.get('f') || (narrowScreen ? '390' : 'desk'), z: Q.get('z') || '100', t: Q.get('t') || document.documentElement.dataset.theme, on: Q.get('on') || 'rain', fc: Q.get('fc') || 'ready', trip: Q.get('trip') || 'day', way: Q.get('way') || 'row', span: Q.get('span') || '48' };
 const ON = { none: [], rain: ['rain'], rainwind: ['rain', 'wind'], tempwind: ['temp', 'wind'], all: ['rain', 'cloud', 'thunder', 'wind', 'temp', 'snow'] };
 for (const sw of document.querySelectorAll('.sw')) {
   sw.addEventListener('click', (e) => {
@@ -180,6 +234,7 @@ for (const sw of document.querySelectorAll('.sw')) {
     if (!b) return;
     S[sw.dataset.k] = b.dataset.v;
     if (sw.dataset.k === 'on') layers = new Set(ON[S.on]);
+    if (sw.dataset.k === 'trip') { day = 0; step = null; panel = 'box'; if (S.trip === 'far' || S.trip === 'none') S.span = '48'; }
     draw();
   });
 }
@@ -222,6 +277,30 @@ const LAYERS = [
 const TOWNS = ['towns', 'Weather at places', 'The sky, temperature and wind where the map names a place', 'Places', 'cloudSun'];
 const NOTE = 'Forecast by Open-Meteo. Radar and measured snow by FMI, and by RainViewer outside Finland.';
 let layers = new Set(ON[S.on]), towns = false, effects = true, hour = 0, playing = false, legendOpen = null;
+let day = 0, step = null, panel = 'box', floatPos = null; // (the trip's day, the stretch stepped to, the planner's stand-in: box, card or banner)
+
+// ------------------------------------------------------------------ your trip (made up): Friday's ride, two days with a night at a hut, or one past the 48 hours
+const TRIPS = {
+  day: { line: 'MTB · 42 km · 3 h 10 min', days: [{ h0: 18, h1: 18 + 19 / 6, km0: 0, km1: 42 }], against: [[12, 20, 9], [24, 27, 7], [31, 33, 6]] },
+  night: { line: 'MTB · 80 km · 6 h 40 min, a night at the hut', days: [{ h0: 18, h1: 18 + 19 / 6, km0: 0, km1: 42 }, { h0: 38, h1: 41.5, km0: 42, km1: 80 }], against: [[12, 20, 9], [24, 27, 7], [31, 33, 6], [50, 58, 8], [66, 70, 6]] },
+  far: { line: 'MTB · 42 km · 3 h 10 min', days: [{ h0: 62, h1: 62 + 19 / 6, km0: 0, km1: 42 }], against: [[12, 20, 9], [24, 27, 7], [31, 33, 6]] },
+};
+const trip = () => TRIPS[S.trip] || null;
+const zoomed = () => S.span === 'trip' && S.v !== 'today' && !!trip() && S.trip !== 'far';
+const curDay = () => trip().days[Math.min(day, trip().days.length - 1)];
+const span = () => [curDay().h0 - 1, curDay().h1 + 1]; // (your day, an hour either side)
+const kmAt = (hr) => { const d = curDay(); return d.km0 + (d.km1 - d.km0) * Math.max(0, Math.min(1, (hr - d.h0) / (d.h1 - d.h0))); };
+const hrAtKm = (km) => { const d = trip().days.find((x) => km <= x.km1) || curDay(); return d.h0 + ((d.h1 - d.h0) * (km - d.km0)) / (d.km1 - d.km0); };
+const relAt = (km) => { const a = trip().against.find(([k0, k1]) => km >= k0 && km <= k1); return a ? (a[2] >= 8 ? 'strong' : 'against') : Math.floor(km / 4) % 3 === 1 ? 'behind' : 'side'; };
+const REL = { strong: ['--wind-strong-head', 'against you', 180], against: ['--wind-head', 'against you', 180], side: ['--wind-cross', 'from the side', 90], behind: ['--wind-tail', 'behind you', 0] };
+const stretches = () => { const d = curDay(); return trip().against.filter(([k0]) => k0 >= d.km0 && k0 < d.km1).map(([km0, km1, max]) => ({ km0, km1, max, h0: hrAtKm(km0), h1: hrAtKm(km1) })); };
+const wday = (hr, long) => new Date(timeAtHour(hr) * 1000).toLocaleDateString([], { weekday: long ? 'long' : 'short' });
+const dayLabel = (d, j) => `Day ${j + 1} · ${wday(d.h0)}`; // (the weather card's chips, rt-chips wx-days)
+// a press that changes what the page draws: drawn again, the focus back on the control it was on
+const act = (fn) => (e) => { const k = e.currentTarget.dataset.k; fn(); draw(); if (k) document.querySelector(`.frame [data-k="${k}"]`)?.focus({ preventScroll: true }); };
+const goTrip = () => { S.span = 'trip'; step = null; const [w0, w1] = span(); if (hour < w0 || hour > w1) hour = curDay().h0; };
+// from the weather card: the timeline zoomed to your trip at that hour, with that layer on; on a phone the card folds to its banner, as a lane's tap does on main
+const fromCard = (hr, k, ph) => { layers.add(k); day = trip().days.findIndex((d) => hr <= d.h1 + 1); S.span = 'trip'; step = null; hour = hr; panel = ph ? 'banner' : 'card'; };
 const RAIN_STEPS = [[0.1, '#a5e4fb'], [0.5, '#38bdf8'], [2, '#1d6fe0'], [5, '#1e3a8a'], [15, '#a855f7']];
 const SNOW_STEPS = [[1, '#e0f2fe'], [10, '#a5d8fb'], [25, '#5cb8f2'], [50, '#2f7fd6']];
 const WIND_RAMP = [[0, '#3b82f6'], [3, '#22d3ee'], [6, '#4ade80'], [9, '#facc15'], [12, '#fb923c'], [16, '#ef4444'], [22, '#a855f7']];
@@ -239,6 +318,7 @@ const MAP = `<svg viewBox="0 0 1440 900" aria-hidden="true">
   <g fill="none" stroke-linecap="round"><path d="M0 330 C300 340 520 300 720 360 S1140 380 1440 300" stroke="var(--mk-road-edge)" stroke-width="9"/><path d="M0 330 C300 340 520 300 720 360 S1140 380 1440 300" stroke="var(--mk-road)" stroke-width="6"/>
   <path d="M700 0 C690 200 760 300 720 360 S640 700 700 900" stroke="var(--mk-road-edge)" stroke-width="7"/><path d="M700 0 C690 200 760 300 720 360 S640 700 700 900" stroke="var(--mk-road)" stroke-width="4.5"/>
   <path d="M300 900 C340 760 420 720 520 700" stroke="var(--mk-road-edge)" stroke-width="6"/><path d="M300 900 C340 760 420 720 520 700" stroke="var(--mk-road)" stroke-width="3.5"/></g>
+  <g class="mk-rt" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M600 170 C 700 140 830 180 845 265 S 760 380 800 450 S 885 560 825 640 S 650 710 600 630 S 555 485 615 405 S 640 265 600 170" stroke="#fff" stroke-width="9"/><path class="mk-rt-line" d="M600 170 C 700 140 830 180 845 265 S 760 380 800 450 S 885 560 825 640 S 650 710 600 630 S 555 485 615 405 S 640 265 600 170" stroke="var(--route)" stroke-width="5"/><path class="mk-rt-hi" d="M600 170 C 700 140 830 180 845 265 S 760 380 800 450 S 885 560 825 640 S 650 710 600 630 S 555 485 615 405 S 640 265 600 170" stroke="var(--wind-strong-head)" stroke-width="9" stroke-dasharray="0 100000"/><circle class="mk-you" r="10" cx="-99" cy="-99" fill="#fff" stroke="var(--route)" stroke-width="5"/></g>
   <text x="728" y="392">Tampere</text><text x="400" y="300">Nokia</text><text x="1010" y="408">Kangasala</text><text x="560" y="720">Pirkkala</text><text x="300" y="610">Pyhäjärvi</text>
 </svg>`;
 
@@ -249,18 +329,20 @@ function draw() {
   for (const sw of document.querySelectorAll('.sw')) for (const b of sw.children) b.setAttribute('aria-pressed', String(b.dataset.v === S[sw.dataset.k]));
   try { history.replaceState(null, '', `?${new URLSearchParams(S)}`); } catch { /* a viewer's frame may refuse it */ }
   for (const m of document.querySelectorAll('.menu-pop')) m.remove();
+  if (zoomed()) { const [w0, w1] = span(); if (hour < w0 || hour > w1) hour = curDay().h0; } // (your trip opens at your departure)
   const stage = document.getElementById('stage');
   stage.replaceChildren();
   frames.length = 0;
   const ph = S.f !== 'desk' || S.z === '200';
   const fr = h('div', { class: `frame ${ph ? 'ph' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}${S.f === 'desk' && S.z === '200' ? ' deskz' : ''}` });
+  fr.classList.toggle('planning', !!trip());
   stage.append(fr);
   frames.push(buildFrame(fr, ph));
   document.getElementById('cap').textContent = {
     today: 'Today: main. The pill names what’s on ("Rain +1") and opens the menu; the menu stays open while you tick.',
     row: `Buttons on a row of their own: ${ph ? 'on a phone they take the pill’s place and scroll sideways; the timeline is no taller' : 'the title bar stays as it is, with ⋯ beside ✕, and the buttons take a row under it; the timeline is 42 px taller'}.`,
     bar: `Buttons on the title bar (the sketch’s way): ${ph ? 'on a phone the same as on a row of their own' : 'the word Timeline goes, its clock stays as the handle, and the window opens 744 px wide (640 today) so the six fit; narrower, they wrap'}.`,
-  }[S.v];
+  }[S.v] + (trip() && S.v !== 'today' ? ` Your trip: ${S.trip === 'far' ? 'it starts past the forecast’s 48 hours, so Your trip is greyed, with the reason' : zoomed() ? 'the timeline is zoomed to it; the reading follows you, the band under the hours shows the wind on your way, and ‹ › step between the stretches against you' : 'tap Your trip, or an hour in the weather card (Weather card ›)'}.` : '');
 }
 
 function buildFrame(fr, ph) {
@@ -274,10 +356,17 @@ function buildFrame(fr, ph) {
     h('button', { type: 'button', class: 'plan-btn', html: `${icon('route', 22)}<span>Plan<span class="plan-more"> route</span></span>` }));
   F.bar = h('div', { class: 'wx-bar', role: 'region', 'aria-label': 'Timeline' });
   fr.append(F.map, h('div', { class: 'mk-top' }, h('div', { class: 'search', html: `${icon('search', 18)}Search places or paste coordinates` })), hints, ctrls, F.bar);
+  if (trip()) buildPlanner(F);
   buildBar(F);
-  const fit = () => { fr.style.setProperty('--wx-h', ph ? `${F.bar.offsetHeight + 40}px` : '0px'); };
+  const fit = () => {
+    fr.style.setProperty('--sheet-h', ph && F.pl ? `${F.pl.offsetHeight + 8}px` : '0px');
+    fr.style.setProperty('--pl-left', !ph && F.pl ? '384px' : '0px');
+    fr.style.setProperty('--wx-h', ph && !F.bar.hidden ? `${F.bar.offsetHeight + (F.pl ? 12 : 40)}px` : '0px');
+  };
   new ResizeObserver(() => { fit(); renderStrip(F); }).observe(F.bar);
+  if (F.pl) new ResizeObserver(fit).observe(F.pl);
   fit();
+  if (!ph && floatPos) placeFloat(F, floatPos);
   renderAll(F);
   return F;
 }
@@ -286,7 +375,9 @@ function buildFrame(fr, ph) {
 function buildBar(F) {
   const bar = F.bar;
   F.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => togglePlay(), html: icon('play', 18) });
-  F.slider = h('input', { type: 'range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { playing = false; setHour(hourOf(+e.target.value)); } });
+  F.slider = zoomed()
+    ? h('input', { type: 'range', min: String(Math.round(span()[0] * 12)), max: String(Math.round(span()[1] * 12)), step: '1', value: String(Math.round(hour * 12)), 'aria-label': 'Time on your trip, by 5 minutes', oninput: (e) => { playing = false; step = null; setHour(+e.target.value / 12); } })
+    : h('input', { type: 'range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: String(unitOf(hour) < 0 ? Math.round(unitOf(hour)) : Math.round(hour)), 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { playing = false; setHour(hourOf(+e.target.value)); } });
   F.timeEl = h('div', { class: 'wx-time' });
   F.noteEl = h('div', { class: 'tl-note' });
   F.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': 'The radar’s last 90 minutes, then the 48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
@@ -305,13 +396,142 @@ function buildBar(F) {
     else if (S.v === 'row') { head = h('div', { class: 'tl-head' }, title, h('span', { style: 'flex:1' }), F.more, close); own = F.row; F.row.classList.add('own'); }
     else { bar.classList.add('on-bar'); head = h('div', { class: 'tl-head' }, h('span', { class: 'tl-handle', title: 'Timeline: drag to move it', html: icon('clock', 16) }), F.row, F.more, close); }
   }
-  bar.append(...[head, own].filter(Boolean), h('div', { class: 'tl-main' }, F.stripCv, F.nowEl), h('div', { class: 'wx-row' }, F.playBtn, F.slider, F.timeEl), F.noteEl);
+  const sk = F.ph && S.way === 'sketch' && S.v !== 'today' && !!trip();
+  bar.classList.toggle('sk', sk);
+  const rows = trip() && S.v !== 'today' ? tripRows(F, sk) : [];
+  bar.append(...[head, own].filter(Boolean), h('div', { class: 'tl-main' }, F.stripCv, F.nowEl), h('div', { class: 'wx-row' }, ...(sk ? [] : [F.playBtn]), F.slider, F.timeEl), ...rows, F.noteEl);
+  bar.hidden = F.ph && trip() && panel === 'card'; // (a phone's card covers the map; its hours bring the timeline back)
   if (!F.ph) bindFloat(F, head);
   if (F.ph && F.row) {
     const edge = () => { const r = F.row; r.classList.toggle('more-l', r.scrollLeft > 2); r.classList.toggle('more-r', r.scrollLeft + r.clientWidth < r.scrollWidth - 2); };
     F.row.addEventListener('scroll', edge, { passive: true });
     requestAnimationFrame(() => { const first = F.row.querySelector('[aria-pressed="true"]'); if (first && first.offsetLeft + first.offsetWidth > F.row.clientWidth) F.row.scrollLeft = first.offsetLeft - 8; edge(); });
   }
+}
+
+// the trip's row: what the timeline shows, a day at a time on a trip of days, the stretches against you, and the weather card
+function tripRows(F, sk) {
+  const z = zoomed(), far = S.trip === 'far';
+  const seg = h('div', { class: 'seg small', role: 'group', 'aria-label': 'What the timeline shows' },
+    h('button', { type: 'button', 'data-k': 'span-48', 'aria-pressed': String(!z), onclick: act(() => { S.span = '48'; step = null; }) }, '48 hours'),
+    h('button', { type: 'button', 'data-k': 'span-trip', 'aria-pressed': String(z), disabled: far || null, onclick: act(goTrip) }, 'Your trip'));
+  const days = z && trip().days.length > 1 ? h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' }, ...trip().days.map((d, j) =>
+    h('button', { type: 'button', class: 'chip', 'data-k': `day-${j}`, 'aria-pressed': String(j === day), onclick: act(() => { day = j; step = null; hour = d.h0; }) }, dayLabel(d, j)))) : null;
+  const card = h('button', { type: 'button', class: 'btn small quiet tl-card', 'data-k': 'to-card', onclick: act(() => { panel = 'card'; }), html: `Weather card${icon('chevronRight', 16)}` });
+  const why = far ? h('p', { class: 'tl-why' }, `Your trip starts ${wday(trip().days[0].h0, true)} at ${hhmm(timeAtHour(trip().days[0].h0))}, past the forecast’s 48 hours: you can zoom to it from ${wday(trip().days[0].h0 - HOURS, true)} ${hhmm(timeAtHour(trip().days[0].h0 - HOURS))}.`) : null;
+  F.stepEl = z ? h('div', { class: 'tl-step', role: 'group', 'aria-label': 'The stretches where the wind is against you' }) : null;
+  syncStep(F);
+  // a phone: what the timeline shows and the weather card on one row, the days and the stretches on the next (no room for all on one)
+  if (F.ph) return [h('div', { class: 'tl-trip' }, ...(sk ? [F.playBtn] : []), seg, card), days || F.stepEl ? h('div', { class: 'tl-trip' }, days, F.stepEl) : null, why].filter(Boolean);
+  return [h('div', { class: 'tl-trip' }, seg, days, F.stepEl, card, why)];
+}
+// ‹ Against you, 1 of 3 › and where it is; the band and the route ringed where you stepped to
+function syncStep(F) {
+  if (!F.stepEl) return;
+  const list = stretches(), n = list.length, cur = step ?? -1, s = list[Math.max(0, cur)];
+  const go = (j) => (e) => { e.stopPropagation(); step = j; playing = false; setHour(Math.round(list[j].h0 * 12) / 12); };
+  const had = F.stepEl.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+  F.stepEl.replaceChildren(
+    h('button', { type: 'button', class: 'tool', 'data-k': 'step-prev', 'aria-label': 'The stretch against you before', disabled: cur <= 0 || null, html: icon('chevronLeft', 18), onclick: go(cur - 1) }),
+    h('span', { 'aria-live': 'polite' }, h('b', {}, !n ? 'Nowhere against you for long' : cur < 0 ? `Against you on ${n} stretch${n > 1 ? 'es' : ''}` : `Against you, ${cur + 1} of ${n}`),
+      n ? h('small', {}, cur < 0 ? `up to ${Math.max(...list.map((x) => x.max))} m/s` : `km ${s.km0} to ${s.km1} · up to ${s.max} m/s`) : null),
+    h('button', { type: 'button', class: 'tool', 'data-k': 'step-next', 'aria-label': 'The next stretch against you', disabled: cur >= n - 1 || null, html: icon('chevronRight', 18), onclick: go(cur + 1) }));
+  if (had) (F.stepEl.querySelector(`[data-k="${had}"]:not(:disabled)`) || F.stepEl.querySelector('button:not(:disabled)'))?.focus({ preventScroll: true }); // (the focus stays on ‹ or ›)
+}
+
+// the strip zoomed to your trip: the same drawing, by the 10 minutes, read where you'll be; the wind on your way under the hours
+function renderTripStrip(F, ctx, W, H, css, ink, muted, dark) {
+  const d = curDay(), [w0, w1] = span(), PAD = 9, DT = 1 / 6;
+  const X = (hr) => PAD + ((hr - w0) / (w1 - w0)) * (W - 2 * PAD);
+  ctx.fillStyle = dark ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
+  for (let hr = w0; hr < w1 - 1e-6; hr += DT) if (night(timeAtHour(hr + DT / 2))) ctx.fillRect(X(hr), 0, X(hr + DT) - X(hr) + 0.5, H);
+  ctx.fillStyle = css.getPropertyValue('--route').trim(); ctx.globalAlpha = 0.1;
+  ctx.fillRect(X(d.h0), 0, X(d.h1) - X(d.h0), H); ctx.globalAlpha = 1;
+  const top = 14, bottom = H - 20, band = H - 7;
+  for (let hr = w0; hr < w1 - 1e-6; hr += DT) {
+    const r = lin(D.rain, hr + DT / 2);
+    if (r < 0.05) continue;
+    const bh = Math.min(1, r / 3) * (bottom - top) * 0.75 + 2;
+    ctx.fillStyle = (lin(D.temp, hr) < 0.5 ? 'rgba(167,139,250,' : 'rgba(59,130,246,') + Math.min(0.9, 0.35 + r / 4) + ')';
+    ctx.fillRect(X(hr) + 0.5, bottom - bh, X(hr + DT) - X(hr) - 1, bh);
+  }
+  const ts = []; for (let hr = w0; hr <= w1 + 1e-6; hr += DT) ts.push([hr, lin(D.temp, hr)]);
+  let tMin = Math.min(...ts.map((x) => x[1])), tMax = Math.max(...ts.map((x) => x[1]));
+  if (tMax - tMin < 4) { const m = (tMax + tMin) / 2; tMin = m - 2; tMax = m + 2; }
+  const Y = (t) => top + 4 + (1 - (t - tMin) / (tMax - tMin)) * (bottom - top - 14);
+  ctx.beginPath(); ts.forEach(([hr, t], i) => (i ? ctx.lineTo(X(hr), Y(t)) : ctx.moveTo(X(hr), Y(t))));
+  ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.8; ctx.stroke();
+  const hi = ts.reduce((a, x) => (x[1] > a[1] ? x : a)), lo = ts.reduce((a, x) => (x[1] < a[1] ? x : a));
+  ctx.fillStyle = '#c2410c'; ctx.textAlign = 'center';
+  ctx.fillText(`${Math.round(hi[1])}°`, Math.min(W - 12, Math.max(12, X(hi[0]))), Y(hi[1]) - 4);
+  if (lo !== hi) ctx.fillText(`${Math.round(lo[1])}°`, Math.min(W - 12, Math.max(12, X(lo[0]))), Math.min(bottom, Y(lo[1]) + 11));
+  ctx.strokeStyle = muted;
+  for (let hr = Math.ceil(w0 * 2) / 2; hr <= w1; hr += 0.5) {
+    const sp = lin(D.speed, hr), a = ((lin(D.dir, hr) + 180) * Math.PI) / 180, l = Math.min(6, 2.5 + sp / 2);
+    ctx.save(); ctx.translate(X(hr), 7); ctx.rotate(a); ctx.lineWidth = sp > 8 ? 1.8 : 1.1;
+    ctx.beginPath(); ctx.moveTo(0, l); ctx.lineTo(0, -l); ctx.moveTo(-2.4, -l + 2.6); ctx.lineTo(0, -l); ctx.lineTo(2.4, -l + 2.6); ctx.stroke(); ctx.restore();
+  }
+  ctx.textAlign = 'left'; ctx.fillStyle = muted;
+  for (let hr = Math.ceil(w0); hr <= w1; hr++) if (X(hr) < W - 14) ctx.fillText(String(new Date(timeAtHour(hr) * 1000).getHours()), X(hr) + 2, H - 10); // (the hours, as the 48 hours' labels)
+  // the wind on your way, by the km you're at: against you (the strong in the darker red), from the side, behind you
+  for (let hr = d.h0; hr < d.h1 - 1e-6; hr += 1 / 60) { ctx.fillStyle = css.getPropertyValue(REL[relAt(kmAt(hr))][0]).trim(); ctx.fillRect(X(hr), band, X(hr + 1 / 60) - X(hr) + 0.5, 7); }
+  if (step != null) { const s = stretches()[step]; ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(X(s.h0) - 1, band - 2, X(s.h1) - X(s.h0) + 2, 10); }
+  const cx = X(hour);
+  ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+  ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(cx, Y(lin(D.temp, hour)), 3.2, 0, Math.PI * 2); ctx.fill();
+}
+// the reading on your route: where you'll be at the hour, and the weather there; its wind against you, from the side or behind you
+function readTrip(el, hr, t) {
+  const d = curDay(), km = kmAt(hr), out = hr < d.h0 ? 'the start' : hr > d.h1 ? 'the finish' : null, rel = out ? null : REL[relAt(km)];
+  const s = { temp: lin(D.temp, hr) - 1, rain: lin(D.rain, hr), speed: lin(D.speed, hr), gust: lin(D.gust, hr), cloud: lin(D.cloud, hr) };
+  const kind = skyKind(s.rain, s.temp, s.cloud, night(t));
+  el.title = `${SKY[kind]} · ${out ? `at ${out}` : `on your route at km ${Math.round(km)}, the wind ${rel[1]}`}, ${hhmm(t)}${s.gust > s.speed + 2 ? ` · gusts ${s.gust.toFixed(0)} m/s` : ''}`;
+  el.innerHTML =
+    `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${out || `km ${Math.round(km)}`}</small></div>` +
+    `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(lin(D.dir, hr) + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed.toFixed(0)} m/s ${rel && rel[2] === 180 ? `<b>${rel[1]}</b>` : compass(lin(D.dir, hr))}</div>` +
+    `<div>${icon('drop', 12)}${s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry'}</div>` +
+    (layers.has('snow') ? `<div>${icon('snow', 12)}no snow</div>` : '');
+}
+// the route on the map: your dot where you'll be, and the stretch you stepped to
+function renderRoute(F) {
+  const svg = F.map.querySelector('svg'), line = svg.querySelector('.mk-rt-line'), you = svg.querySelector('.mk-you'), hiP = svg.querySelector('.mk-rt-hi');
+  if (!trip() || !line) return;
+  const L = line.getTotalLength(), total = trip().days[trip().days.length - 1].km1, z = zoomed();
+  const p = line.getPointAtLength((L * (z ? kmAt(hour) : 0)) / total);
+  you.setAttribute('cx', z ? p.x : -99); you.setAttribute('cy', z ? p.y : -99);
+  const s = z && step != null ? stretches()[step] : null;
+  hiP.setAttribute('stroke-dasharray', s ? `0 ${(L * s.km0) / total} ${(L * (s.km1 - s.km0)) / total} ${L}` : '0 100000');
+}
+
+// the planner and the weather card, stand-ins: the route's line and its days on the box; the card with its hours, each a way to the timeline
+function buildPlanner(F) {
+  const t = trip(), card = panel === 'card', phCard = F.ph && card;
+  const d0 = t.days[0], dl = t.days[t.days.length - 1];
+  const when = `${wday(d0.h0)} ${hhmm(timeAtHour(d0.h0))} → ${t.days.length > 1 ? `${wday(dl.h1)} ` : ''}${hhmm(timeAtHour(dl.h1))}`;
+  const far = S.trip === 'far';
+  const head = h('div', { class: 'mk-pl-head' }, h('span', {}, h('b', {}, card ? 'Weather card' : t.line), h('small', {}, when)),
+    card ? h('button', { type: 'button', class: 'tool', 'data-k': 'card-x', 'aria-label': 'Close the weather card', html: icon('close', 16), onclick: act(() => { panel = 'box'; }) }) : null);
+  const kids = [head];
+  if (!card) {
+    kids.push(...t.days.map((d, j) => h('button', { type: 'button', class: 'mk-row', 'data-k': `box-${j}`, onclick: act(() => { panel = 'card'; day = j; }) },
+      h('span', { html: icon(far ? 'cloud' : 'sky-rain', 22) }), h('span', {}, far ? `${wday(d.h0)}: no forecast yet` : `${wday(d.h0)}: ${Math.round(lin(D.temp, d.h0) - 1)} to ${Math.round(lin(D.temp, d.h1) + 2)}°, showers on the way`), h('span', { html: icon('chevronRight', 16) }))));
+  } else {
+    const d = curDay(), hrs = []; for (let hr = Math.ceil(d.h0); hr <= Math.floor(d.h1); hr++) hrs.push(hr);
+    if (t.days.length > 1) kids.push(h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' }, ...t.days.map((x, j) => h('button', { type: 'button', class: 'chip', 'data-k': `card-day-${j}`, 'aria-pressed': String(j === day), onclick: act(() => { day = j; }) }, dayLabel(x, j)))));
+    kids.push(h('p', { class: 'mk-say', html: far ? `${icon('cloud', 22)}<span>No forecast yet for ${wday(d.h0, true)}: it reaches 48 hours ahead.</span>` : `${icon('sky-rain', 22)}<span>Showers from ${hhmm(timeAtHour(d.h0 + 1))}, and a fresh wind against you from km ${stretches()[0].km0}.</span>` }));
+    if (!far) {
+      const g = h('div', { class: 'mk-hours', style: `--n: ${hrs.length}`, role: 'group', 'aria-label': 'Your hours: a tap shows it on the map at that hour' }, h('span', {}), ...hrs.map((hr) => h('span', {}, hhmm(timeAtHour(hr)))));
+      g.append(h('b', {}, 'Rain'), ...hrs.map((hr) => h('button', { type: 'button', 'data-k': `c-rain-${hr}`, 'aria-label': `Rain at ${hhmm(timeAtHour(hr))} on the map`, onclick: act(() => fromCard(hr, 'rain', F.ph)) }, lin(D.rain, hr) >= 0.05 ? lin(D.rain, hr).toFixed(1) : '–')));
+      g.append(h('b', {}, 'Wind'), ...hrs.map((hr) => h('button', { type: 'button', 'data-k': `c-wind-${hr}`, 'aria-label': `The wind at ${hhmm(timeAtHour(hr))} on the map`, onclick: act(() => fromCard(hr, 'wind', F.ph)) }, `${lin(D.speed, hr).toFixed(0)}${relAt(kmAt(hr)) === 'strong' || relAt(kmAt(hr)) === 'against' ? ' ↓' : ''}`)));
+      kids.push(g);
+    }
+    kids.push(h('p', { class: 'mk-stand' }, 'A stand-in for main’s weather card: an hour of Rain or Wind opens the timeline on your trip at that hour, with that layer on (↓: against you).'));
+  }
+  F.pl = h('div', { class: `mk-pl${phCard ? ' half' : ''}` }, ...kids);
+  if (F.ph && S.way === 'fold' && zoomed() && !card) { F.pl.classList.add('fold'); F.pl.replaceChildren(h('div', { class: 'mk-pl-head' }, h('span', {}, h('b', {}, t.line)), h('button', { type: 'button', class: 'tool', 'data-k': 'unfold', 'aria-label': 'Unfold the planner (the timeline goes back to 48 hours)', html: icon('chevronUp', 18), onclick: act(() => { S.span = '48'; }) }))); }
+  F.fr.append(F.pl);
+  if (F.ph && panel === 'banner') F.fr.append(h('div', { class: 'mk-banner', role: 'status' }, h('span', { html: `${icon([...layers].includes('wind') ? 'wind' : 'rain', 18)}Weather on the map` }),
+    h('button', { type: 'button', class: 'btn small quiet', 'data-k': 'banner-back', onclick: act(() => { panel = 'card'; }) }, 'Back')));
 }
 
 // the buttons: the app's chips, any of them at once, in the menu's order
@@ -375,6 +595,7 @@ function renderAll(F) {
   m.toggle('windf', layers.has('wind') && !layers.has('temp') && S.fc !== 'failed' && hour >= 0);
   m.toggle('wind', layers.has('wind') && S.fc !== 'failed' && hour >= 0);
   syncRow(F);
+  renderRoute(F);
   renderPill(F);
   renderTime(F);
   renderStrip(F);
@@ -399,12 +620,19 @@ function renderStrip(F) {
   const PAD = 9;
   const U0 = unitOf(-PAST), X = (hr) => PAD + ((unitOf(hr) - U0) / (HOURS - U0)) * (W - 2 * PAD);
   ctx.font = '10px system-ui, sans-serif';
+  if (zoomed() && S.fc === 'ready') { renderTripStrip(F, ctx, W, H, css, ink, muted, dark); return; }
   if (S.fc !== 'ready') { ctx.fillStyle = muted; ctx.fillText(S.fc === 'loading' ? 'Loading the forecast…' : 'Zoom in to see the forecast here', PAD, H / 2); return; }
   const d = D;
   ctx.fillStyle = dark ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
   for (let hr = 0; hr < HOURS; hr++) if (night((d.t[hr] + d.t[hr + 1]) / 2)) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
   ctx.fillStyle = dark ? 'rgba(96,165,250,0.16)' : 'rgba(59,130,246,0.08)';
   ctx.fillRect(X(-PAST), 0, X(0) - X(-PAST), H);
+  // your ride, from its departure to arrival (main's band; a day at a time on a trip of days)
+  if (trip()) for (const r of trip().days) if (r.h0 < HOURS) {
+    ctx.fillStyle = css.getPropertyValue('--route').trim(); ctx.globalAlpha = 0.16;
+    ctx.fillRect(X(r.h0), 0, Math.max(3, X(Math.min(HOURS, r.h1)) - X(r.h0)), H); ctx.globalAlpha = 1;
+    ctx.fillRect(X(r.h0), H - 3, Math.max(3, X(Math.min(HOURS, r.h1)) - X(r.h0)), 3);
+  }
   const top = 14, bottom = H - 14;
   for (let hr = 0; hr < HOURS; hr++) {
     const r = (d.rain[hr] + d.rain[hr + 1]) / 2;
@@ -451,26 +679,28 @@ function renderStrip(F) {
 function bindStrip(F) {
   const cv = F.stripCv;
   let down = false;
-  const at = (e) => { const r = cv.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (e.clientX - r.left - 9 * r.width / cv.clientWidth) / (r.width - 18 * r.width / cv.clientWidth))); playing = false; setHour(hourOf(unitOf(-PAST) + x * (HOURS - unitOf(-PAST)))); };
+  const at = (e) => { const r = cv.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (e.clientX - r.left - 9 * r.width / cv.clientWidth) / (r.width - 18 * r.width / cv.clientWidth))); playing = false; if (zoomed()) { const [w0, w1] = span(); step = null; setHour(Math.round((w0 + x * (w1 - w0)) * 12) / 12); } else setHour(hourOf(unitOf(-PAST) + x * (HOURS - unitOf(-PAST)))); };
   cv.addEventListener('pointerdown', (e) => { down = true; try { cv.setPointerCapture(e.pointerId); } catch { /* gone */ } at(e); });
   cv.addEventListener('pointermove', (e) => { if (down) at(e); });
   cv.addEventListener('pointerup', () => { down = false; });
   cv.addEventListener('pointercancel', () => { down = false; });
 }
 function setHour(hr) {
-  hour = Math.max(-PAST, Math.min(HOURS, hr));
-  for (const F of frames) { F.slider.value = String(unitOf(hour) < 0 ? Math.round(unitOf(hour)) : Math.round(hour)); syncPlay(F); renderAll(F); }
+  const [lo, hi] = zoomed() ? span() : [-PAST, HOURS];
+  hour = Math.max(lo, Math.min(hi, hr));
+  for (const F of frames) { F.slider.value = String(zoomed() ? Math.round(hour * 12) : unitOf(hour) < 0 ? Math.round(unitOf(hour)) : Math.round(hour)); syncPlay(F); renderAll(F); syncStep(F); }
 }
 function togglePlay() {
   playing = !playing;
-  if (playing && hour >= HOURS) hour = 0;
+  const end = zoomed() ? span()[1] : HOURS;
+  if (playing && hour >= end) hour = zoomed() ? span()[0] : 0;
   let last = performance.now();
   const step = (now) => {
     if (!playing) { for (const F of frames) syncPlay(F); return; }
     const k = (now - last) / 1000 * 60; last = now;
-    const next = hour + k / (hour < 0 ? 240 : 60);
-    if (next >= HOURS) playing = false;
-    setHour(Math.min(HOURS, next));
+    const next = hour + k / (zoomed() ? 240 : hour < 0 ? 240 : 60); // (your trip: 15 minutes a second)
+    if (next >= end) playing = false;
+    setHour(Math.min(end, next));
     requestAnimationFrame(step);
   };
   for (const F of frames) syncPlay(F);
@@ -489,10 +719,11 @@ function renderTime(F) {
   if (past && !layers.has('rain')) label += ' (Rain is off)';
   else if (layers.has('rain') && hour < 0.5 && !past) label += ' · FMI radar';
   if (S.fc === 'loading') label += ' · loading…';
+  if (zoomed()) { const d = curDay(); label = `${day} ${clock} · ${hour < d.h0 ? 'before you set off' : hour > d.h1 ? 'after you arrive' : `km ${Math.round(kmAt(hour))}`}`; }
   F.timeEl.textContent = label;
   const problem = S.fc === 'failed' ? 'Weather forecast unavailable right now' : null;
   F.noteEl.classList.toggle('warn', !!problem);
-  F.noteEl.textContent = problem ? `⚠ ${problem}` : 'Road works and road conditions follow this time too.';
+  F.noteEl.textContent = problem ? `⚠ ${problem}` : zoomed() ? 'Your trip, an hour either side, read where you’ll be. Under the hours: the wind against you, from the side, behind you.' : `${trip() && trip().days[0].h0 < HOURS ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
   F.slider.setAttribute('aria-valuetext', past ? `${clock}, the radar ${Math.round(-hour * 60)} minutes ago` : hour < 0.5 ? `Now, ${clock}` : `${t.toLocaleDateString([], { weekday: 'long' })} ${clock}, in ${Math.round(hour)} hours`);
 }
 
@@ -502,6 +733,7 @@ function readout(F) {
   el.style.setProperty('--tl-lines', layers.has('snow') ? 4 : 3);
   if (S.fc !== 'ready') { el.innerHTML = `<small>${S.fc === 'loading' ? 'Loading forecast…' : 'Weather forecast unavailable right now'}</small>`; el.title = el.textContent; return; }
   const hr = Math.max(0, hour), t = timeAtHour(hr);
+  if (zoomed()) { readTrip(el, hr, t); return; }
   const s = { temp: lin(D.temp, hr), rain: lin(D.rain, hr), speed: lin(D.speed, hr), dir: lin(D.dir, hr), gust: lin(D.gust, hr), cloud: lin(D.cloud, hr) };
   const kind = skyKind(s.rain, s.temp, s.cloud, night(t));
   let sum = 0; for (let k = 0; k < 6; k++) sum += lin(D.rain, hr + k);
@@ -551,14 +783,14 @@ function bindFloat(F, head) {
     const { r } = drag, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     placeFloat(F, drag.kind === 'move' ? { left: r.left + dx, top: r.top + dy, width: r.width } : { left: r.left, top: r.top, width: r.width + dx });
   };
-  const end = () => { if (!drag) return; drag = null; bar.classList.remove('dragging'); };
+  const end = () => { if (!drag) return; drag = null; bar.classList.remove('dragging'); floatPos = F.float; };
   for (const [el, kind] of [[head, 'move'], [grip, 'size']]) {
     el.addEventListener('pointerdown', start(kind));
     el.addEventListener('pointermove', move);
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
   }
-  head.addEventListener('dblclick', (e) => { if (!e.target.closest('button, input, select, a')) placeFloat(F, null); });
+  head.addEventListener('dblclick', (e) => { if (!e.target.closest('button, input, select, a')) { placeFloat(F, null); floatPos = null; } });
 }
 function placeFloat(F, f) {
   if (f !== undefined) F.float = f;
