@@ -28,7 +28,7 @@ Divergence is not an excuse to drop the craft bar. Every variant individually me
 2. **Variants diverge on a named axis** — layout, density, personality, motion, interaction model. Before building, you must be able to state each variant's axis in a phrase. Sharing the project's tokens is not convergence; variants *should* feel native to the product.
 3. **Every variant fully works.** Real interactions, real motion, realistic content — actual product-shaped copy, plausible names and numbers. No lorem ipsum, no dead buttons, no "imagine this part".
 4. **The picker is chrome, not a contestant.** Its exact markup, styles, and behavior are specified in [PICKER.md](PICKER.md) — copy them verbatim. Its look is not a design decision and never adapts to the project.
-5. **Clean up after the choice.** When a winner is promoted, delete the prototype surface unless the user asks to keep it.
+5. **After the choice,** keep or remove the versions as AGENTS.md's "One style" rule says.
 
 ## Workflow
 
@@ -49,7 +49,7 @@ If there is no project (empty directory, or the user is just exploring), skip to
 
 ### Phase 3 — Choose directions
 
-Default **3 variants**; up to 5 when the user asks or the design space is genuinely wide. More than 5 dilutes the comparison.
+How many variants: AGENTS.md's "One style" rule says.
 
 Before writing any code, list the set: a name and an axis for each. Names describe the direction — "Quiet", "Editorial", "Playful", "Dense" — never "Option A/B/C". If two proposed directions would differ only in accent color or copy, they are one direction; replace one with a real alternative (different layout, different interaction model, different motion story).
 
@@ -81,16 +81,16 @@ Close with where the picker is running (URL or file path) and the keys to flip.
 
 ### Phase 6 — Promote on selection
 
-When the user picks: integrate that variant where it belongs, following the project's existing conventions (file layout, naming, token usage), then delete the prototype surface per Hard Rule 5. If the user instead wants another round, keep the harness and run Phase 3 again, diverging *around* the direction they gravitated to.
+When the user picks: integrate that variant where it belongs, following the project's existing conventions (file layout, naming, token usage), then follow Hard Rule 5. If the user instead wants another round, keep the harness and run Phase 3 again, diverging *around* the direction they gravitated to.
 
 ## Invocation Variants
 
 | Invocation | Behavior |
 | --- | --- |
-| `<description>` | Full workflow: scope → recon → 3 variants → picker → wait for choice |
-| `<description> x5` | Same, with that many variants (capped at 5) |
+| `<description>` | Full workflow: scope → recon → variants → picker → wait for choice |
+| `<description> x5` | Same, with that many variants, within what Phase 3 allows |
 | `riff <variant>` | New round: keep the harness, generate a fresh set diverging around the named variant's direction |
-| `keep <variant>` | Promote that variant into the codebase and delete the prototype surface |
+| `keep <variant>` | Promote that variant into the codebase and follow Hard Rule 5 |
 | `keep <variant>, leave the picker` | Promote, but keep the prototype surface around |
 
 ## Tone

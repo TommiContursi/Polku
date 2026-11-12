@@ -66,16 +66,15 @@ export function item({ icon: ic, label, line = '', val = null, chev = false, dan
 
 // A row the phone's own picker sets (#364's C, the mock-up's pickRow6): its date or time field lies unseen over the
 // row, so a tap opens the phone's picker and a click the browser's; the field is what the keyboard and a screen reader
-// reach. `put()` changes what it says in place, so a picker that's open stays open. `now`: a Now button on its line.
-export function pickRow({ icon: ic, label, type, set, now = null }) {
+// reach. `put()` changes what it says in place, so a picker that's open stays open.
+export function pickRow({ icon: ic, label, type, set }) {
   const line = h('span', { class: 'pick-line' }), val = h('span', { class: 'val' });
   const input = h('input', { type, step: '900', onchange: () => set(input.value) });
   const open = () => { try { input.showPicker(); } catch { /* the phone opens its own */ } };
   input.addEventListener('click', open);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
-  const nowBtn = now && h('button', { type: 'button', class: 'btn small pick-now', 'aria-label': `${label} now`, onclick: now }, 'Now');
   const el = h('div', { class: 'row pick', 'data-k': label },
-    h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, label), h('small', {}, line, nowBtn)), val,
+    h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, label), h('small', {}, line)), val,
     h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }), input);
   // set: a value of its own is set (its line is then a fact, not what the row does, so desktops show it too)
   const put = ({ line: l, val: v, value, min = '', set: on = false }) => {
@@ -85,7 +84,6 @@ export function pickRow({ icon: ic, label, type, set, now = null }) {
     input.min = min;
     input.setAttribute('aria-label', `${label}: ${v}${on ? `, ${l}` : ''}. Pick ${type === 'time' ? 'a time' : 'a day and a time'}`);
     el.classList.toggle('set', on);
-    if (nowBtn) nowBtn.hidden = !on;
   };
   return { el, put };
 }
@@ -258,8 +256,8 @@ export class CardHost {
 
   // The card gives way to a banner under the top bar while the map answers (Move: "Tap where it goes", Cancel);
   // unfold() shows the card again
-  fold(text, cancel) {
-    this.folded = { text, cancel };
+  fold(text, cancel, { icon: ic = 'move', label = 'Cancel' } = {}) {
+    this.folded = { text, cancel, icon: ic, label };
     this.render({ fresh: true });
   }
   unfold() {
@@ -331,8 +329,8 @@ export class CardHost {
       if (t) t.focus({ preventScroll: true });
       if (where === 'peek' && at) this.inSight(at);
       // a desktop's card with no room between the top bar and the map's foot opens folded to its title (step 3 of #233); not a
-      // pick's (#574): long by design, scrolling inside, and measured here while it still loads
-      if (where !== 'peek' && card.kind !== 'spot' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
+      // pick's (#574) nor the weather's: long by design, scrolling inside, and measured here while it still loads
+      if (where !== 'peek' && card.kind !== 'spot' && card.kind !== 'weather' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
     }
   }
 
@@ -410,9 +408,9 @@ export class CardHost {
   bannerBox() {
     const f = this.folded;
     return h('div', { class: 'card-banner pl-viewnote' },
-      h('span', { html: icon('move', 18), 'aria-hidden': 'true' }),
+      h('span', { html: icon(f.icon, 18), 'aria-hidden': 'true' }),
       h('span', { role: 'status', tabindex: '-1' }, f.text),
-      h('button', { type: 'button', class: 'btn small', onclick: () => this.escape() }, 'Cancel'));
+      h('button', { type: 'button', class: 'btn small', onclick: () => this.escape() }, f.label));
   }
 
   // The pill: the card's one action at the spot. On a desktop it's the card's first button, at the pointer (render(); 1b

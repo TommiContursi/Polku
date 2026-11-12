@@ -2,7 +2,47 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-12
+
+### The trip's box and the weather card ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- The **Go** tab is gone. What it held is in the trip's box under the route's profile, and in the weather card the box opens. **Export GPX**, **Share link** and **Save offline…** are in **More** (⋯) and on the whole route's card.
+- The trip's box has **When**, "Leave now ▾", and when you'd be there, and under them the day's temperature, rain, a risk of thunder and whether you're in the dark; a trip with nights has a row a day. It leaves the wind to each sport's row under the route's numbers. While the forecast loads or fails, and where it doesn't reach the trip or grows less certain past three days, the box says so in words.
+- A tap on a day's row opens the weather card. Each day starts with one sentence and the sky's icon, such as "Cool, then rain and a risk of thunder". Every value is read where you'll be when you're there.
+- Up to three notes follow, worst first, each with a number. The dark is said even while the forecast loads, fails or doesn't reach the trip yet: danger first (thunder, frostbite, rough water, ice), then losing your grip (slippery, gusts over your sport's limit, road conditions), then comfort and planning (very cold or hot, when the rain starts or stops, a headwind over your sport's limit, the dark, low sun ahead, wet trails). A tap on a note shows its place on the map.
+- The numbers are always in the same places: the temperature and how it feels, the strongest wind and its gusts, the rain on you, and on a paddle the highest waves, an estimate. At 10 °C or colder it feels as the wind and your own speed make it; warmer, as the forecast says.
+- When the weather changes on the way, a line of the trip shows each leg in its sport's colour and the notes' numbers where each happens. Under it a lane for the wind, rain, thunder or the waves on the water shows where, with its colours' key under it. A tap on a lane colours the route by it and turns the map's weather on at that hour; past the map's 48 hours, it says so instead. On a desktop the card stays open beside the map; on a phone it folds to a banner, and **Back** brings it back. On a desktop, pointing at a note, a lane or a stretch lights it on the map without moving the map.
+- Folded under the day: **Hour by hour**, the hours you're out with their sky and where you are then; **Wind on the way**, how much is against you, from the side and behind you, and every stretch against you, strongest first; and **Time on the way**. **Weather on the map** opens the map's weather at your departure, when that's within the map's 48 hours.
+- A tap on the route's time estimate opens the weather card at **Time on the way**. The eight hour chips that ran past the end of a trip are gone, and so are the chips that coloured the route from the card: a lane does that now.
+- The map's distance marks give the elapsed time in hours and minutes, without seconds.
+
+### The wind's colours ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- The route coloured by **Wind** has new colours: the stronger the wind, the darker and deeper its colour, so a strong headwind stands out on the light map, the night map and the planner alike. A tailwind is teal, so it stays apart from a headwind's red without colour vision.
+- A headwind counts as strong from the sport's limit: 6 m/s on a ride, 8 on foot and 5 on the water. Below that it's a light headwind, so 3 m/s against you on a ride no longer shows as strong.
+
+### Thunder in Check ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- Check warns when the forecast has thunder where you'd be: "Thunder possible around 15:30, near km 34", with what to do. It's a warning in any sport and season.
+- Where the route's weather shows its sky, thunder shows as a thunder cloud. Where the forecast doesn't reach, Check says thunder isn't checked there, as it says for the wind and the rain.
+
+### The cold, by the wind's direction ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- **Very cold** and **Frostbite risk** in Check now count the wind by its direction: a headwind adds to the air you make with your own speed, and a tailwind takes from it. Before, the wind's speed was added to yours whichever way it blew, so a ride with the wind behind you read as cold as one into it.
+
 ## 2026-11-11
+
+### The desktop toolbar's drawing mode, a value you pick ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- On a desktop, the toolbar shows how the next leg is drawn as one button, **Follow paths ▾**, as on a phone. Its menu has **Follow paths**, **Freehand** and **Over water**, each with its key (P, S and W), and the keys still pick a mode at once.
+- The button is as wide as the longest mode's name, so picking another mode moves nothing on the toolbar. In a narrow window, once the route's actions have moved into **⋯**, it shows its icon alone, so the route style keeps **Route style** over its whole name.
+
+### One When everywhere, and ▾ for a value you pick ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- **Go**'s departure is now a pill at the top of its time, "Leave now ▾", and the start's card has the same **When** row as the first screen. Each opens one menu: **Leave now**, and **Leave at…**, which opens your phone's own date and time picker; on a desktop it shows a date and time field with **Set**. A time set in one shows in all of them.
+- A tap on the route's time estimate opens that menu in **Go**.
+- Past the forecast's reach, the start's card says "no forecast yet" on its **When** row, and **Go** says so under its pill. A planned time that has passed says so in both, and the route leaves now.
+- A value you pick from a few now ends in ▾, a small filled triangle: **When**, your sport at the start, **Colour by**, the drawing button, the desktop toolbar's sport and **Route style**, and a round trip's **Direction**. ⌄ and ⌃ still fold and unfold.
 
 ### Leave now's times wait while you use the planner ([#966](https://github.com/TommiContursi/Polku/issues/966))
 

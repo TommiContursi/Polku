@@ -339,12 +339,14 @@ export function snowFactor(cm, way, cls, how) {
 }
 
 /**
- * Wind chill (°C), the Environment Canada / FMI formula, for the air moving past you:
- * the wind (m/s) and your own speed (km/h). Only below 10 °C and above 5 km/h of air.
+ * Wind chill (°C), the Environment Canada / FMI formula, for the air moving past you (km/h, `airPast()`). Only below
+ * 10 °C and above 5 km/h of air.
  */
-export function windChill(t, windMs, ownKmh = 0) {
-  const v = windMs * 3.6 + ownKmh;
-  if (t > 10 || v < 4.8) return t;
-  const p = v ** 0.16;
+export function windChill(t, airKmh) {
+  if (t > 10 || airKmh < 4.8) return t;
+  const p = airKmh ** 0.16;
   return 13.12 + 0.6215 * t - 11.37 * p + 0.3965 * t * p;
 }
+// The air moving past you (km/h): your own speed with the wind by its direction against your heading (m/s: `head` > 0
+// against you, `cross` from the side), so a headwind adds to what you make yourself and a tailwind takes from it (#869).
+export const airPast = (ownKmh, head, cross) => Math.hypot(ownKmh / 3.6 + head, cross) * 3.6;

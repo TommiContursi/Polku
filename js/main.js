@@ -407,7 +407,7 @@ map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(()
 map.once('load', () => checkWinter(true));
 
 let hadRoute = false; // (a route drawn, for All layers' Your route group)
-const safety = new SafetyLayers(map, { setData, time: () => planner.startSec() });
+const safety = new SafetyLayers(map, { setData, time: () => planner.when.start() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
 
@@ -450,6 +450,14 @@ const planner = new Planner(map, {
     if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
   },
   weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
+  // the map's weather at a time of the trip, a layer turned on with it (the weather card's Weather on the map and its lanes);
+  // past the map's 48 hours it says so, and shows nothing that would pass for the trip's weather
+  weatherOn: (sec, layer) => {
+    const k = Math.floor((sec - Math.floor(Date.now() / 3600000) * 3600) / 3600);
+    if (k > 48) { toast('The map’s weather only reaches 48 hours ahead: it can’t show your trip yet'); return; }
+    if (layer) setWeather({ [layer]: true }); else if (!state.timeline) setTimeline(true);
+    if (k >= 0) weather.setHour(k, { silent: true });
+  },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   routeTip: (ev, d) => hover.route(ev, d),
@@ -563,7 +571,7 @@ const weather = new WeatherOverlay(map, {
   },
   dark: mapDark,
   // the timeline and the route's departure time are one clock
-  onHour: (k) => { planner.setLeave(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
+  onHour: (k) => { planner.when.set(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
   hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
   onToggle: (patch) => setWeather(patch),
@@ -609,7 +617,7 @@ map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catch
 function setTimeline(on) {
   state.timeline = on;
   weather.setOpen(on);
-  if (on && planner.leaveHour()) weather.setHour(planner.leaveHour(), { silent: true });
+  if (on && planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
   $('#btn-time').setAttribute('aria-pressed', String(on));
   saveSettings();
 }
@@ -617,7 +625,7 @@ function setTimeline(on) {
 function setWeather(patch) {
   Object.assign(state.weather, patch);
   weather.set(state.weather);
-  if (planner.leaveHour()) weather.setHour(planner.leaveHour(), { silent: true });
+  if (planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
   // weather layers live on the timeline: switching one on opens it
   if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
   applyStyle();

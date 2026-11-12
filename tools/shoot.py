@@ -290,6 +290,18 @@ def OTHER_WAYS(pick=False, peek=False, pts=NUUKSIO):
 
 
 TAB = lambda sec: f"(async () => {{ polku.planner.reveal({json.dumps(sec)}); await new Promise((r) => setTimeout(r, 600)); return true; }})()"
+# the departure four weeks ahead (#869: when.set(); before it, setLeave()), then Go's time or the start's card
+FAR = "const far = new Date(); far.setDate(far.getDate() + 28); far.setHours(7, 30, 0, 0); (p.when ? p.when.set(far / 1000) : p.setLeave(far / 1000)); await new Promise((r) => setTimeout(r, 400)); "
+GO_FAR = "(async () => { const p = polku.planner; " + FAR + "p.openWeather(); await new Promise((r) => setTimeout(r, 600)); return true; })()"
+# the trip's box over Route's list, and the weather card it opens (#869's step 3), at Time on the way with `time`
+BOX = "(async () => { const p = polku.planner; p.reveal('points'); await new Promise((r) => setTimeout(r, 600)); p.els.box.scrollIntoView({ block: 'nearest' }); await new Promise((r) => setTimeout(r, 300)); return true; })()"
+FULL = "p.setSheetState('full'); await wait(700);"
+# a trip with a night: leaving tomorrow at 10:00, a night at waypoint 1, on at 08:00; the weather card at Day 2
+WEATHER_DAYS = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0);"
+                " p.when.set(d / 1000); p.setStop(1, { on: 480 }); for (let k = 0; k < 150 && !(p.analysis && p.analysis.wind && (p.analysis.waits || []).length); k++) await wait(100);"
+                " await wait(800); p.openWeather({ day: 1 }); await wait(900); return true; })()")
+WEATHER = lambda time=False, full=False: f"(async () => {{ const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (let k = 0; k < 150 && !p.analysis.wind; k++) await wait(100); p.openWeather({{ time: {'true' if time else 'false'} }}); await wait(700); {FULL if full else ''} return true; }})()"
+START_CARD = lambda far=False: "(async () => { const p = polku.planner; " + (FAR if far else '') + "p.openPointCard(p.points[0]); await new Promise((r) => setTimeout(r, 600)); return true; })()"
 
 # #72: terrain tiles that don't load, before the route is in: none at all, or (part) the
 # route's eastern tile at zoom 14 and every coarser one
@@ -305,10 +317,10 @@ LONG_HAZARDS = ("(() => { const S = polku.safety, far = { pts: [[24.94, 60.17], 
 LOOKED = ("(async () => { polku.planner.reveal('warnings'); await new Promise((r) => setTimeout(r, 600));"
           " document.querySelector('.looked').scrollIntoView({ block: 'center' }); return true; })()")
 
-# #388: Go's wind with a headwind the whole way ("Headwind 100 %"), the forecast's own values otherwise
+# #388: the weather card's wind with a headwind the whole way ("Headwind 100 %"), the forecast's own values otherwise
 GO_WIND = ("(async () => { const p = polku.planner, a = p.analysis, wait = (ms) => new Promise((r) => setTimeout(r, ms));"
            " for (let k = 0; k < 150 && !a.wind; k++) await wait(100); if (!a.wind) throw new Error('No forecast for the screenshot');"
-           " a.wind.head = a.wind.head.map(() => 6); a.wind.speed = a.wind.speed.map(() => 6); p.renderAnalysis(); p.reveal('depart'); await wait(600); return true; })()")
+           " a.wind.head = a.wind.head.map(() => 6); a.wind.speed = a.wind.speed.map(() => 6); p.renderAnalysis(); p.openWeather(); await wait(600); return true; })()")
 
 # #88, #89: the fit button with the sheet at full, a GPX import (the Kauppi ride as a track) with
 # the planner open at half, and a round-trip loop clicked on its line (its farthest point from
@@ -485,9 +497,9 @@ SCENES = {
     'desk-bottom': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}),
     'desk-bottom-peek': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='peek', storage={'polku:plannerDock': '"bottom"'}),
     'desk-wide': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage={'polku:panelWidth': '860'}),
-    'desk-speed': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.reveal('speed'); true"),
-    'phone-speed': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js="polku.planner.reveal('speed'); true"),
-    'desk-paddle-speed': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], js="polku.planner.reveal('speed'); true"),
+    'desk-speed': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WEATHER(True)),
+    'phone-speed': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js=WEATHER(True)),
+    'desk-paddle-speed': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], js=WEATHER(True)),
     'desk-zoom': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.chart.setView && polku.planner.chart.setView([700, 2000], true)"),
     'phone-closed': dict(PHONE, timeline=True),
     'phone-planner': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half'),
@@ -686,7 +698,9 @@ SCENES = {
     'desk-marked': dict(DESK, timeline=False, hash='#13.4/61.5085/23.8270', storage=SIDE, js=WAY('find'), settle=4),
     'desk-leg-lit': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=LEG_LIT),
     'desk-tab-check': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('warnings')),
-    'desk-tab-go': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('speed')),
+    'desk-box': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=BOX),
+    'desk-weather': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=WEATHER()),
+    'desk-paddle-weather': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], storage=SIDE, js=WEATHER()),
     'phone-tab-check': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=TAB('warnings')),
     'desk-long-hazards': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, pre=LONG_HAZARDS, js=TAB('warnings')),
     'desk-long-looked': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, pre=LONG_HAZARDS, js=LOOKED),
@@ -744,6 +758,21 @@ SCENES = {
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
     # 25d part 1: a point's card (on main, the point menu it replaces), at the thumb on a phone, at the point on a desktop, and at 200 % in Finnish
     'phone-point-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD()),
+    'phone-start-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js=START_CARD()),
+    'desk-start-card': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=START_CARD()),
+    'phone-start-card-far': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js=START_CARD(True)),
+    'phone-box': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js=BOX),
+    'phone-weather': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js=WEATHER()),
+    'phone-paddle-weather': dict(PHONE, timeline=False, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='half', js=WEATHER()),
+    'phone-weather-360': dict(PHONE, w=360, h=740, timeline=False, route='route-kauppi-mtb.json', state='full', js=WEATHER()),
+    'phone-weather-full': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js=WEATHER(full=True)),
+    'phone-half': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half'),
+    'phone-weather-days': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js=WEATHER_DAYS),
+    'phone-paddle-weather-full': dict(PHONE, timeline=False, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='half', js=WEATHER(full=True)),
+    'phone-box-200': dict(PHONE, w=195, h=422, timeline=False, route='route-kauppi-mtb.json', state='full', js=BOX),
+    'phone-weather-200': dict(PHONE, w=195, h=422, timeline=False, route='route-kauppi-mtb.json', state='full', js=WEATHER()),
+    'phone-go-far': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js=GO_FAR),
+    'desk-go-far': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=GO_FAR),
     'desk-point-card': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=POINT_CARD()),
     'phone-point-card-200': dict(w=180, h=370, phone=True, timeline=False, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD('Pirunvuoren näköalapaikan pohjoisrinteellä', 'list')),
     # #370: red words in dark mode (a point's card's Remove, Heads-up's Avoid)
@@ -876,7 +905,7 @@ RAIN_RADAR_VIEW = """(async () => {
   p.checkWet=async()=>{};p.loadTrail=async()=>{};
   (await import('./js/trails.js')).holdFetches();
   p.setActive(true);p.clear();p.setMode('line');p.addPoint([25.72,62.23]);p.addPoint([25.76,62.25]);await p.analysing;
-  p.reveal('depart');if(p.layout()==='sheet')p.setSheetState('half',{remember:false});
+  p.reveal('points');if(p.layout()==='sheet')p.setSheetState('half',{remember:false});
   Object.assign(polku.state.weather,{rain:true});wx.set(polku.state.weather);wx.setHour(0,{silent:true});wx.setOpen(true);
   polku.map.jumpTo({center:[25.74,62.24],zoom:11});
   const until=Date.now()+25000;

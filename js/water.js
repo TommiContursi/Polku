@@ -463,18 +463,19 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
     tags.push(onLand && seg > grid.res * 1.5 ? { portage: 'yes', surface: 'ground' } : { route: 'water', surface: 'water' });
     coords.push(ll);
   }
-  const events = eventsAlong(grid, coords, comfort, got);
+  const { events, wave } = eventsAlong(grid, coords, comfort, got);
   lap('events');
   delete T.t;
-  return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
+  return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wave, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
 }
 
 // Where the finished line meets what costs: shipping lanes and harbours it
 // crosses or follows, keep-clear zones it passes through, rough water. In
-// metres from the leg's start, for Heads-up.
+// metres from the leg's start, for Heads-up; and the highest wave along it (m, null without the wind), for the weather card.
 function eventsAlong(grid, coords, comfort, got) {
-  if (!grid.fair && !grid.wave) return [];
+  if (!grid.fair && !grid.wave) return { events: [], wave: null };
   const out = [];
+  let wave = 0;
   const runs = {}; // kind -> open run { at, len, max }
   let m = 0;
   const close = (kind) => { const r = runs[kind]; if (r) { out.push({ kind, ...r }); runs[kind] = null; } };
@@ -488,6 +489,7 @@ function eventsAlong(grid, coords, comfort, got) {
       const at = m + d * t, len = d / n;
       const i = x >= 0 && y >= 0 && x < grid.W && y < grid.H ? y * grid.W + x : -1;
       const water = i >= 0 && grid.type[i] === 1;
+      if (water && grid.wave) wave = Math.max(wave, grid.wave[i]);
       const on = {
         ship: water && grid.fair && grid.fair[i] === 3,
         harbour: water && grid.fair && grid.fair[i] === 2,
@@ -508,7 +510,7 @@ function eventsAlong(grid, coords, comfort, got) {
   // names: the shipping lane under each crossing
   const names = got && got.fairways ? got.fairways.features : [];
   for (const e of out) e.name = e.kind === 'ship' ? nameAt(names, coords, e.at + e.len / 2) : '';
-  return out.filter((e) => e.len >= 2 * grid.res || e.kind === 'hazard');
+  return { events: out.filter((e) => e.len >= 2 * grid.res || e.kind === 'hazard'), wave: grid.wave ? wave : null };
 }
 
 function nameAt(fairways, coords, at) {
@@ -597,7 +599,7 @@ export async function routeWater(from, to, { allowPortage = true, shore, carry, 
   const out = {
     coords: best.coords, tags: best.tags, portage: best.portage, note,
     // (at: the departure its wind is for)
-    water: { events: best.events, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, skipped: best.skipped, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
+    water: { events: best.events, wave: best.wave, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, skipped: best.skipped, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
   };
   if (!best.missing.length) memo.set(key, out); // a leg routed without a source is routed again when it answers
   if (memo.size > 60) memo.delete(memo.keys().next().value);
