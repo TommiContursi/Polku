@@ -12640,7 +12640,8 @@ def weather_line(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
     try:
-        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
+        # (+4 °C, as the next checks' here: the forecast stays cached on the device)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
         pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'wind': True}}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
         fails += pg.js(WX_LINE, timeout=60000)
         pg.reload()
