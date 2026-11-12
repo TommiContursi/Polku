@@ -12490,7 +12490,7 @@ WX_MENU = """(async () => {
   pill.click(); await wait(300);
   const item = (k) => document.querySelector(`.menu-pop .wx-${k}`);
   const items = [...document.querySelectorAll('.menu-pop [role=menuitemcheckbox]')].map((b) => `${b.textContent.trim().split(/(?=[A-Z])/)[0]}:${b.getAttribute('aria-checked')}`);
-  if (items.join() !== 'Rain and snowfall:true,Clouds:false,Thunder:false,Wind:false,Temperature:false,Snow on the ground:false,Towns’ weather:false,Effects:true') out.push(`the menu: ${items.join()}`);
+  if (items.join() !== 'Rain and snowfall:true,Clouds:false,Thunder:false,Wind:false,Temperature:false,Snow on the ground:false,Weather at places:false,Effects:true') out.push(`the menu: ${items.join()}`);
   if (!item('rain')?.querySelector('.menu-tick') || item('wind')?.querySelector('.menu-tick')) out.push('a ticked layer has no tick, or one off has');
   item('wind').click(); await wait(300);
   if (!item('wind') || item('wind').getAttribute('aria-checked') !== 'true' || document.activeElement !== item('wind')) out.push('Wind: not ticked, or the menu closed, or the focus left it');
@@ -12589,7 +12589,7 @@ def weather_menu(chrome):
 
 # #916, the towns' weather: the sky, °C and wind at the places the map names, from the grid (WX_FIXED: +4 °C,
 # 4 m/s from 220°); apart from each other; none over the route (a straight line through Tampere); zoomed in too, at the
-# villages and suburbs; the menu's Points item names it, and the pill says "Towns". A press on a town's symbol (a real
+# villages and suburbs; the menu's Points item names it Weather at places, and the pill says "Places". A press on a town's symbol (a real
 # mouse's, below) pins the reading there and isn't the map's click (a card).
 WX_TOWNS = """(async () => {
   const out = [], w = polku.weather, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -12603,10 +12603,10 @@ WX_TOWNS = """(async () => {
   if (bad.length) out.push(`a town's symbol says “${bad[0].text}” (${bad[0].label})`);
   t.forEach((a, i) => t.slice(i + 1).forEach((b) => { if (a.r.left < b.r.right && b.r.left < a.r.right && a.r.top < b.r.bottom && b.r.top < a.r.bottom) out.push(`${a.name} and ${b.name} over each other`); }));
   const pill = document.querySelector('#wx-bar .wl-layer');
-  if (pill.textContent.trim() !== 'Towns') out.push(`the pill says “${pill.textContent.trim()}”`);
+  if (pill.textContent.trim() !== 'Places') out.push(`the pill says “${pill.textContent.trim()}”`);
   pill.click(); await wait(300);
   const item = document.querySelector('.menu-pop .wx-towns');
-  if (!item || item.getAttribute('aria-checked') !== 'true' || !/Points/.test(document.querySelector('.menu-pop').textContent)) out.push('no ticked Towns’ weather under Points in the menu');
+  if (!item || item.getAttribute('aria-checked') !== 'true' || !/^Weather at places/.test(item.textContent) || !/Points/.test(document.querySelector('.menu-pop').textContent)) out.push('no ticked Weather at places under Points in the menu');
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await wait(200);
   // a route through Tampere: no symbol over it
   const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line');
@@ -12650,11 +12650,11 @@ def towns_weather(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the towns' weather, at every zoom, apart and off the route, a press pins the reading (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} weather at places, at every zoom, apart and off the route, a press pins the reading (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
-# The weather's layers have their switches in Layers too (Clouds, Thunder, Towns' weather, and Weather effects, which
+# The weather's layers have their switches in Layers too (Clouds, Thunder, Weather at places, and Weather effects, which
 # Settings › Display has as well), and a quick tile for each in Edit's list; a switch there turns the layer the
 # timeline's menu ticks. The legend folds to "Legend": folded at first on a phone, open on a desktop, remembered.
 WX_LAYERS = """(async (phone) => {
@@ -12677,7 +12677,7 @@ WX_LAYERS = """(async (phone) => {
   const grp = document.querySelector('#layers-body .lg-group[data-group="weather"]');
   grp.open = true;
   const sw = (root, l) => [...root.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === l)?.querySelector('input');
-  for (const l of ['Rain', 'Clouds', 'Thunder', 'Wind', 'Temperature', 'Snow depth', 'Towns’ weather', 'Weather effects']) if (!sw(grp, l)) out.push(`Layers’ weather has no ${l} switch`);
+  for (const l of ['Rain', 'Clouds', 'Thunder', 'Wind', 'Temperature', 'Snow depth', 'Weather at places', 'Weather effects']) if (!sw(grp, l)) out.push(`Layers’ weather has no ${l} switch`);
   sw(grp, 'Clouds')?.click(); await wait(300);
   if (!polku.state.weather.cloud || !w.on.cloud) out.push('Layers’ Clouds switch doesn’t turn the clouds on');
   const fx = w.effects;

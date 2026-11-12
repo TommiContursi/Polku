@@ -57,8 +57,8 @@ const LAYERS = [
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
 ];
-// the menu's points: the towns' weather (#916), at the places the map names at any zoom; a tap pins the reading there
-const TOWNS = ['towns', 'Towns’ weather', 'The sky, temperature and wind where the map names a place', 'Towns', 'cloudSun'];
+// the menu's points: Weather at places (#916; its key `towns` as saved), at the places the map names at any zoom; a tap pins the reading there
+const TOWNS = ['towns', 'Weather at places', 'The sky, temperature and wind where the map names a place', 'Places', 'cloudSun'];
 // the places it marks, the larger first: zoomed in, the map names villages and suburbs too
 const PLACE_LAYERS = ['label-city', 'label-town', 'label-village', 'label-suburb'];
 
@@ -672,7 +672,7 @@ export class WeatherOverlay {
     return true;
   }
 
-  // The towns' weather (#916): the sky, °C and wind at the places the map names (cities and towns, and zoomed in villages
+  // Weather at places (#916): the sky, °C and wind at the places the map names (cities and towns, and zoomed in villages
   // and suburbs), at the timeline's hour. The grid is finer zoomed in, so nearby places can differ. From the grid, so a town costs no request; one with no grid near shows nothing rather than a guess.
   // `pick`: choose the towns again (the map's labels have moved): the larger first, kept apart, none over the route.
   renderTowns(pick = false) {

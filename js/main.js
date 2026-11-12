@@ -1268,7 +1268,7 @@ const wxToggle = (k) => ({
   snow: () => withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
   cloud: () => toggle('Clouds', state.weather.cloud, (v) => setWeather({ cloud: v })),
   thunder: () => toggle('Thunder', state.weather.thunder, (v) => setWeather({ thunder: v })),
-  towns: () => toggle('Towns’ weather', state.weather.towns, (v) => setWeather({ towns: v })),
+  towns: () => toggle('Weather at places', state.weather.towns, (v) => setWeather({ towns: v })),
 })[k]();
 // the weather's Effects, also at the end of the timeline's layer menu (and in Settings › Display)
 const effectsToggle = () => toggle('Weather effects', weather.effects, (v) => weather.setEffects(v));
@@ -1301,7 +1301,7 @@ function renderLayersPanel() {
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
-  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Towns’ weather']].filter(([k]) => state.weather[k]);
+  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Weather at places']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
   // On now and Base map fold away like the other groups (open unless you close them)

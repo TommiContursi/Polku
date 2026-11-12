@@ -9,6 +9,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Moving the weather timeline no longer changes when you leave, and setting **When** no longer moves the timeline. The strip still shades your trip, at the time you leave.
 - Turning on a weather layer in **Layers**, in the timeline's menu or from a tile shows it at the timeline's hour, and no longer opens the timeline. **Weather** (T) opens it.
 - Closing the timeline takes the map back to now, with its layers still on. Road works and road conditions follow the timeline's hour.
+- **Towns' weather** is now **Weather at places**, in the timeline's menu, Layers and its tile. It stays on if you had it on.
 
 ### The hour strip's arrows ([#984](https://github.com/TommiContursi/Polku/issues/984))
 
