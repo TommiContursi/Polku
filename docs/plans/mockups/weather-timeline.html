@@ -93,7 +93,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
    hairline; on, the chosen chip's green tint and 2 px green border. Each has its icon and the name it has in the menu
    today and in Layers. One height with the pill it replaces (36 px, a finger's 44 by touch with an ::after, as wl-layer). */
 .tl-layers { display: flex; flex-wrap: wrap; gap: 4px; }
-.tl-layers .chip { flex: none; position: relative; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px 0 8px; font-size: 13px; color: var(--text); white-space: nowrap; }
+.tl-layers .chip { flex: none; position: relative; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px 0 8px; font-size: 13px; color: var(--text); white-space: nowrap; -webkit-user-select: none; user-select: none; } /* (a finger held on one while the row scrolls selects no words) */
 .tl-layers .chip[aria-pressed="true"] { padding: 0 9px 0 7px; } /* (its 2 px border inside the same width: nothing moves) */
 .tl-layers .chip .ic { color: var(--muted); }
 .tl-layers .chip[aria-pressed="true"] .ic { color: var(--accent); }
@@ -109,7 +109,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 .tl-layers.own { padding: 0 0 8px 8px; }
 /* Buttons on the title bar: the title's word goes, its clock stays as the handle to drag; the window opens wider */
 .wx-bar.on-bar { width: min(744px, calc(100% - 200px)); }
-.wx-bar.on-bar .tl-head { gap: 6px; }
+.wx-bar.on-bar .tl-head { gap: 6px; align-items: flex-start; } /* (in a narrow window the buttons wrap: the handle, ⋯ and ✕ stay on the first row) */
 .wx-bar.on-bar .tl-head .tl-layers { flex: 1; min-width: 0; }
 .tl-handle { display: grid; place-items: center; width: 22px; height: 36px; flex: none; color: var(--muted); }
 /* a phone: one row in the head, where the pill was; it scrolls sideways, and fades where there's more */
@@ -150,6 +150,13 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
     <h2>What stays as it is</h2>
     <ul>
       <li>The window, where it opens, dragging it by its title bar and resizing it by its grip (a desktop), the strip, the slider, Play, the time, the reading and the note under them, and the legend over the map.</li>
+    </ul>
+    <h2>Questions for you</h2>
+    <ul>
+      <li><b>Which version</b>, on a desktop: Buttons on a row of their own (the title bar as it is, 42 px taller), or Buttons on the title bar (no taller, but the window wider and little room to grab)?</li>
+      <li><b>A phone at 360 px</b> shows about two and a half buttons; the rest are a swipe away, and the legend over the map names what's on. Today's pill counts them ("Rain +2"). Is the sideways row enough? Try All six on a phone.</li>
+      <li><b>Weather at places behind ⋯</b> shows its state on the map only, and ⋯ is otherwise kept for settings (#690). Keep it there, or make it a seventh button?</li>
+      <li><b>Snow depth</b> adds a line to the reading, so the timeline grows 12 px (16 on a phone) and the buttons move up under the finger. Today it happens behind the open menu. Leave it, or keep the line's room always (16 px on every phone)?</li>
     </ul>
     <h2>Left out of the mock-up</h2>
     <ul>
