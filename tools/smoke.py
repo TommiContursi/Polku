@@ -12491,6 +12491,14 @@ WX_STILL = """(async () => {
   await wait(600);
   const b = px();
   if (!a.every((v, i) => v === b[i])) out.push('reduced motion: the rain moves');
+  // the wind's lines, still, showing which way they blow (step 6b)
+  w.app.onToggle({ windLines: true }); await wait(800);
+  const wv = w.windCv, wpx = () => wv.getContext('2d').getImageData(0, 0, wv.width, wv.height).data, w1 = wpx();
+  if (wv.hidden || !w1.some((v, i) => i % 4 === 3 && v)) out.push('reduced motion: the wind’s lines aren’t drawn');
+  await wait(600);
+  const w2 = wpx();
+  if (!w1.every((v, i) => v === w2[i])) out.push('reduced motion: the wind’s lines move');
+  w.app.onToggle({ windLines: false }); await wait(200);
   // the last layer off (the colour None): no legend
   const pill = document.querySelector('#wx-bar .wl-layer[data-wx=colour]');
   pill.click(); await wait(300); document.querySelector('.menu-pop .wx-none').click(); await wait(300);
@@ -12669,7 +12677,7 @@ WX_LAYERS = """(async (phone) => {
   chips().find((c) => c.textContent === 'Clouds')?.click(); await wait(300);
   if (polku.state.weather.colour !== 'cloud' || !w.on.cloud || w.on.rain || chips().find((c) => c.textContent === 'Clouds')?.getAttribute('aria-pressed') !== 'true') out.push('Layers’ Clouds chip doesn’t make the clouds the one colour');
   sw(document.querySelector('#layers-body .lg-group[data-group="weather"]'), 'Wind lines')?.click(); await wait(300);
-  if (!polku.state.weather.windLines || !w.on.cloud || document.querySelector('#wx-bar .wl-layer[data-wx=top]').textContent.trim() !== 'On top · 1') out.push('Layers’ Wind lines switch doesn’t put the lines on top of the clouds, as the line’s pill shows');
+  if (!polku.state.weather.windLines || !w.on.cloud || document.querySelector('#wx-bar .wl-layer[data-wx=top]').textContent.trim() !== 'On top · 2') out.push('Layers’ Wind lines switch doesn’t put the lines on top of the clouds with Thunder, as the line’s pill shows');
   sw(document.querySelector('#layers-body .lg-group[data-group="weather"]'), 'Wind lines')?.click(); await wait(300);
   const fx = w.effects;
   sw(document.querySelector('#layers-body .lg-group[data-group="weather"]'), 'Weather effects')?.click(); await wait(300);

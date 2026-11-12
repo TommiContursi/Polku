@@ -912,7 +912,7 @@ export class WeatherOverlay {
       if (rain[i] >= 0.1) wet++;
     }
     this.field = { vx, vy, rain, snow, wet: wet / n };
-    this.precipStill = false; // (reduced motion: the still rain is drawn again for the new field)
+    this.precipStill = this.windStill = false; // (reduced motion: the still rain and wind are drawn again for the new field)
   }
 
   // FMI's radar rate now (mm/h), or null where it doesn't reach or at a later hour (its fiRate is
@@ -936,7 +936,8 @@ export class WeatherOverlay {
       const f = this.field, cols = this.cam.cols;
       const cellAt = (x, y) => Math.round(y / CELL) * cols + Math.round(x / CELL);
 
-      if (this.on.windLines && this.hour >= 0) {
+      if (this.on.windLines && this.hour >= 0 && REDUCED.matches) this.drawWindStill(f, cellAt);
+      else if (this.on.windLines && this.hour >= 0) {
         const ctx = this.windCtx;
         ctx.globalCompositeOperation = 'destination-in';
         ctx.fillStyle = `rgba(0,0,0,${Math.pow(0.86, k).toFixed(3)})`;
@@ -963,6 +964,29 @@ export class WeatherOverlay {
       if (this.falling) this.drawPrecip(k, f, cellAt);
     };
     this.anim = requestAnimationFrame(tick);
+  }
+
+  // Wind lines with reduced motion: still, short strokes along the wind with a head showing which way it blows, every
+  // 48 px, drawn once until the field changes (step 6b)
+  drawWindStill(f, cellAt) {
+    if (this.windStill) return;
+    this.windStill = true;
+    const ctx = this.windCtx;
+    ctx.clearRect(0, 0, this.W, this.H);
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = ctx.lineJoin = 'round';
+    ctx.strokeStyle = this.app.dark() || this.colour ? 'rgba(255,255,255,0.8)' : 'rgba(15,23,42,0.6)';
+    ctx.beginPath();
+    for (let y = 24; y < this.H; y += 48) {
+      for (let x = 24 + ((y / 48) % 2) * 24; x < this.W; x += 48) {
+        const i = cellAt(x, y), vx = f.vx[i], vy = f.vy[i], v = Math.hypot(vx, vy);
+        if (!v) continue;
+        const ux = vx / v, uy = vy / v, l = 7, hx = x + ux * l, hy = y + uy * l;
+        ctx.moveTo(x - ux * l, y - uy * l); ctx.lineTo(hx, hy);
+        ctx.moveTo(hx - ux * 4 - uy * 3, hy - uy * 4 + ux * 3); ctx.lineTo(hx, hy); ctx.lineTo(hx - ux * 4 + uy * 3, hy - uy * 4 - ux * 3);
+      }
+    }
+    ctx.stroke();
   }
 
   // Effects' rain (#182): a few thin white streaks at the wind's angle where it rains, more where it rains
