@@ -12499,7 +12499,7 @@ TL_SKEL = """(() => {
 })()"""
 TL_ROW = """(() => {
   const row = document.querySelector('#wx-bar .tl-layers'), r = row.getBoundingClientRect(), t = row.querySelector('[data-k=temp]').getBoundingClientRect();
-  return { head: row.parentElement.matches('.tl-head') && !!row.nextElementSibling?.matches('.tl-more'), left: Math.round(t.left - r.left), right: Math.round(r.right - t.right),
+  return { head: !!row.parentElement.parentElement.matches('.tl-head') && !!row.parentElement.nextElementSibling?.matches('.tl-more'), left: Math.round(t.left - r.left), right: Math.round(r.right - t.right),
     fade: [...row.classList].filter((c) => c.startsWith('more-')).sort().join(' '), more: row.scrollWidth > row.clientWidth };
 })()"""
 TL_SWITCH = """(async () => { const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -12580,6 +12580,56 @@ def timeline_phone(chrome):
     return not fails
 
 
+# The weather layers in a narrow window with a mouse (#869: a screen size is not a device): the row in the head scrolls
+# sideways, with the hour strip's arrow at the edge where there's more and none where there isn't; a real mouse's click on
+# the arrow pages it, a drag from a button moves it and switches nothing, and a click without a move switches the layer
+TL_MOUSE_ROW = """(() => {
+  const row = document.querySelector('#wx-bar .tl-layers'), a = (s) => document.querySelector(`#wx-bar .tl-lwrap > .wx-hs-arrow.${s}`);
+  const seen = (e) => { const c = getComputedStyle(e); return c.display !== 'none' && +c.opacity > 0.5 && c.pointerEvents !== 'none'; }, mid = (k) => { const r = (k === 'r' ? a('r') : row.querySelector(`[data-k=${k}]`)).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  return { left: Math.round(row.scrollLeft), l: seen(a('l')), r: seen(a('r')), more: row.scrollWidth > row.clientWidth, arrow: mid('r'), rain: mid('rain'), cloud: mid('cloud'), on: Object.entries(polku.weather.on).filter(([, v]) => v).map(([k]) => k).join() };
+})()"""
+
+
+def timeline_mouse(chrome):
+    fails = []
+    pg = chrome.page(600, 800, False)
+
+    def mouse(kind, x, y, down):
+        pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left', 'buttons': 1 if down else 0, 'clickCount': 1}, pg.s)
+
+    def click(x, y):
+        mouse('mouseMoved', x, y, False); mouse('mousePressed', x, y, True); mouse('mouseReleased', x, y, False); time.sleep(0.8)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True}}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
+        pg.js(SETTLED)
+        a = pg.js(TL_MOUSE_ROW)
+        if not a['more'] or a['left'] or a['l'] or not a['r']:
+            fails.append(f'at its start the row has no arrow to its right, or one to its left: {a}')
+        else:
+            click(*a['arrow'])
+            b = pg.js(TL_MOUSE_ROW)
+            if b['left'] < 50 or not b['l'] or b['on'] != 'rain':
+                fails.append(f'a click on the right arrow: the row at {b["left"]} px, the left arrow {b["l"]}, on: {b["on"]}')
+            pg.js("document.querySelector('#wx-bar .tl-layers').scrollLeft = 0; new Promise((ok) => setTimeout(() => ok(true), 400))")
+            x, y = pg.js(TL_MOUSE_ROW)['rain']
+            mouse('mouseMoved', x, y, False); mouse('mousePressed', x, y, True)
+            for dx in (10, 40, 80, 120):
+                mouse('mouseMoved', x - dx, y, True)
+            mouse('mouseReleased', x - 120, y, False); time.sleep(0.5)
+            c = pg.js(TL_MOUSE_ROW)
+            if c['left'] < 60 or c['on'] != 'rain':
+                fails.append(f'a drag from Rain 120 px to the left: the row at {c["left"]} px, on: {c["on"]} (want it moved, Rain still on)')
+            click(*c['cloud'])
+            if pg.js(TL_MOUSE_ROW)['on'] != 'rain,cloud':
+                fails.append(f'a click on Clouds after the drag: on {pg.js(TL_MOUSE_ROW)["on"]}')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the weather layers in a narrow window with a mouse (#869): the arrows, a drag that switches nothing, a click" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The weather layers as buttons (#869's build, PR 1; #182's legend and look): the six on a row of their own under a
 # desktop's title bar, in Layers' order and names, each turning its layer on and off with its aria-pressed, its line in a
 # tooltip; Wind says Wind lines while Temperature is on; switching any of them but Snow depth (a fourth line in the
@@ -12593,7 +12643,7 @@ WX_MENU = """(async () => {
   for (let k = 0; k < 100 && !w.cur; k++) await wait(200);
   if (!w.cur) return ['no forecast after 20 s'];
   const said = () => [...row.children].map((b) => `${b.innerText.trim()}:${b.getAttribute('aria-pressed')}`).join();
-  if (row.getAttribute('role') !== 'group' || row.getAttribute('aria-label') !== 'Weather layers' || !row.previousElementSibling?.matches('.tl-head')) out.push('the buttons aren’t a group “Weather layers” on a row of their own under the title bar');
+  if (row.getAttribute('role') !== 'group' || row.getAttribute('aria-label') !== 'Weather layers' || !row.parentElement.previousElementSibling?.matches('.tl-head')) out.push('the buttons aren’t a group “Weather layers” on a row of their own under the title bar');
   if (said() !== 'Rain:true,Clouds:false,Thunder:false,Wind:false,Temperature:false,Snow depth:false') out.push(`the buttons: ${said()}`);
   const legend = () => document.querySelector('.map-hints .wx-legend');
   if (!legend() || legend().hidden || !/Rain 0\\.1 · 0\\.5 · 2 · 5 · 15 mm\\/h/.test(legend().textContent) || !/light · moderate · heavy · very heavy/.test(legend().textContent))
@@ -20792,7 +20842,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather layers as buttons and ⋯ on a desktop and a phone, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

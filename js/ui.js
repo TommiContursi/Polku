@@ -372,6 +372,22 @@ export function tooltip(el, { name, keys = '', text = '', lines = [], beside = f
   el.addEventListener('blur', () => { if (tipFor === el) hideTip(0); });
   el.addEventListener('pointerdown', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(0); });
 }
+// A mouse drags a sideways scroller that has more than it shows (a finger and a trackpad scroll it themselves), with a
+// grabbing hand (`drag`); a drag isn't a click. `skip(e)`: a press that isn't a hand on it (its arrows). Says whether a drag
+// is under way, for what a pointer over it would do (the weather card's hours, the timeline's layers)
+export function mouseDrag(x, skip = () => false) {
+  let drag = null;
+  x.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 0 && x.scrollWidth > x.clientWidth + 1 && !skip(e)) drag = { x0: e.clientX, s0: x.scrollLeft, moved: false, id: e.pointerId }; });
+  x.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.moved && Math.abs(e.clientX - drag.x0) > 4) { drag.moved = true; x.setPointerCapture(e.pointerId); x.classList.add('drag'); }
+    if (drag.moved) x.scrollLeft = drag.s0 - (e.clientX - drag.x0);
+  });
+  const end = () => { if (drag?.moved) { x.classList.remove('drag'); const stop = (ev) => { ev.stopPropagation(); ev.preventDefault(); }; x.addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => x.removeEventListener('click', stop, { capture: true }), 0); } drag = null; };
+  x.addEventListener('pointerup', end);
+  x.addEventListener('pointercancel', end);
+  return () => !!drag?.moved;
+}
 function hideTip(ms = 120) {
   clearTimeout(tipHide);
   tipHide = setTimeout(() => {

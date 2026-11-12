@@ -423,6 +423,10 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-layers [data-k=wind] > span { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 4px; }
 .tl-layers [data-k=wind] > span:last-child, .tl-layers [data-k=wind].lines > span:first-child { visibility: hidden; }
 .tl-layers [data-k=wind].lines > span:last-child { visibility: visible; }
+/* a row too narrow for them scrolls sideways; a mouse has the hour strip's arrows at its edges, and a drag */
+.tl-lwrap { position: relative; min-width: 0; }
+.tl-lwrap > .wx-hs-arrow { top: 50%; margin-top: -16px; }
+.tl-layers.drag { cursor: grabbing; }
 /* lines up with the slider: play button (34) + gap (8) on the left, gap (8) + time (132) on the right */
 .tl-main { display: flex; gap: 8px; align-items: stretch; }
 .tl-strip { display: block; flex: 1; min-width: 0; margin-left: 42px; height: 66px; cursor: ew-resize; touch-action: none; border-radius: 8px; }
@@ -2363,10 +2367,11 @@ body.dropping .drop-hint { display: flex; }
   .view3d { padding: 8px 6px 6px; }
   .wx-bar { width: calc(100% - 24px); bottom: calc(var(--sheet-h) + 40px); }
   .tl-title { display: none; }
-  /* the weather layers in the head's row, sideways, fading at the edge where there's more; the padding is room for the
-     focus ring and a finger's 44 px inside the scroller */
+  /* the weather layers in the head's row (a narrow window's too), sideways, fading at the edge where there's more; the
+     padding is room for the focus ring and a finger's 44 px inside the scroller */
   .tl-head { gap: 6px; }
-  .tl-head .tl-layers { flex: 1; min-width: 0; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; padding: 4px; margin: -4px 0 -4px -4px; }
+  .tl-head .tl-lwrap { flex: 1; }
+  .tl-head .tl-layers { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; padding: 4px; margin: -4px 0 -4px -4px; }
   .tl-layers::-webkit-scrollbar { display: none; }
   .tl-layers.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
   .tl-layers.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
