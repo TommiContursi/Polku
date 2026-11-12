@@ -2014,11 +2014,15 @@ STOPS = """(async () => {
   await wait(200);
   if (p.els.boxDays.querySelectorAll('.row').length !== 2) errs.push(`${p.els.boxDays.querySelectorAll('.row').length} days in the trip's box`);
   // the weather card: each day its own weather, a sentence or (under half an hour) a line, the night's morning too (#869),
-  // shown on a desktop's card too (a short day's line was a row's hidden small, #973's test)
+  // shown on a desktop's card too (a short day's line was a row's hidden small, #973's test); a day at a time, its chip
+  // pressed: the box's second day opens the second (#979)
   p.openWeather({ day: 1 });
   await wait(300);
-  const said = [...(p.cards.box?.querySelectorAll('.wx-day') || [])].map((x) => x.querySelector('.wx-say')?.innerText || '');
-  if (said.length !== 2 || said.some((t) => !t)) errs.push(`each day's weather in the weather card: ${said.join(' / ') || 'none'}`);
+  const dayNow = () => ({ chips: [...(p.cards.box?.querySelectorAll('.wx-days .chip') || [])].map((c) => c.getAttribute('aria-pressed')).join(' '), days: p.cards.box?.querySelectorAll('.wx-day').length, say: p.cards.box?.querySelector('.wx-day .wx-say')?.innerText || '', n: p.cards.box?.querySelector('.wx-day')?.dataset.day });
+  const second = dayNow();
+  p.cards.box?.querySelector('.wx-days .chip')?.click(); await wait(300);
+  const firstDay = dayNow();
+  if (second.chips !== 'false true' || second.days !== 1 || second.n !== '1' || !second.say || firstDay.chips !== 'true false' || firstDay.n !== '0' || !firstDay.say) errs.push(`each day's weather in the weather card, the second then the first: ${JSON.stringify(second)} / ${JSON.stringify(firstDay)}`);
   // a lane's tap on a desktop leaves the card open beside the map (a phone's folds, weather_card)
   p.wxLane({ k: 'waves', name: 'Waves', stretches: [] }); await wait(200);
   if (p.cards.folded || !p.cards.box?.querySelector('.wx-day')) errs.push(`a lane's tap on a desktop: the card ${p.cards.folded ? 'folded' : 'gone'}`);
@@ -12718,6 +12722,7 @@ WC_JS = """(async () => {
   // the card as G: the sentence with its sky; thunder note 1, a danger; the notes' numbers on the trip line; a lane a fact
   const storm = Uint8Array.from({ length: n }, (_, i) => (i > n / 2 ? 1 : 0)), wet = Float32Array.from({ length: n }, (_, i) => (i > (2 * n) / 3 ? 6 : i > n / 3 ? 1 : 0)); // (heavy: a lane however short the route)
   set(wind({ head: fill(8), speed: fill(8), gust: fill(12), thunder: storm, precip: wet, temp: fill(12), feel: fill(10), series: [series(10, 12)] })); await wait(300);
+  p.cards.box?.querySelector('[data-k="trip"]')?.click(); await wait(200); // (the trip line and its lanes: The whole trip, #979)
   const say = p.cards.box?.querySelector('.wx-say'), first = p.cards.box?.querySelector('.wx-tell');
   const g = { say: say?.textContent || '', sky: say?.querySelector('.wx-sky')?.getAttribute('aria-label'), first: first?.textContent || '', danger: !!first?.matches('.danger'),
     marks: p.cards.box?.querySelectorAll('.wx-trip-line .wx-n').length, notes: p.cards.box?.querySelectorAll('.wx-tell').length, lanes: [...(p.cards.box?.querySelectorAll('.wx-lane') || [])].map((x) => x.dataset.k) };
@@ -12764,9 +12769,122 @@ WC_JS = """(async () => {
   a.timeWind = time + 300; p.cards.refresh(); await wait(100);
   const five = windRow();
   if (none || !/^the wind\\+5 min/.test(five)) errs.push(`Time on the way's wind row: “${none}” for 20 s, “${five}” for 5 min (want none, then +5 min)`);
+  // the hour strip (#979): an hour a column from two hours before you leave, your hours marked, opening at the hour before
+  // you leave; Rain and Wind always there, folded with nothing to say; an hour past the forecast says so and shows nothing
+  set(wind({ beyondSec: t0 + 3 * 3600 })); await wait(400);
+  const strip = () => p.cards.box?.querySelector('.wx-hs'), cols = () => [...(strip()?.querySelectorAll('.wx-hs-strip button.wx-hs-col') || [])];
+  const day0 = p.wxDays(a)[0], H = p.dayHours(a, day0), firstOn = H.findIndex((o) => o.on), cw = () => parseFloat(strip()?.style.getPropertyValue('--cw')), sx = () => strip()?.querySelector('.wx-hs-x').scrollLeft;
+  const sized = async () => { for (let q = 0; q < 30 && !cw(); q++) await wait(100); }; // (its columns' width comes with its first frame)
+  p.cards.close(); await wait(200); p.openWeather(); await wait(300); await sized(); // (opened afresh: a note's tap above scrolled it)
+  const secs = [...(strip()?.querySelectorAll('.wx-sec') || [])].map((x) => `${x.dataset.sec}:${x.querySelector('.wx-sec-h').getAttribute('aria-expanded')}`).filter((x) => !x.startsWith('dark'));
+  const past = cols().filter((c) => c.matches('.none'));
+  if (!strip() || cols().length !== H.length || cols().filter((c) => c.matches('.on')).length !== H.filter((o) => o.on).length || !(Math.abs(sx() - (firstOn - 1) * cw()) < 2)
+    || secs.join(' ') !== 'rain:false wind:false' || past.length !== H.filter((o) => !o.x).length || !past.length || past.some((c) => /°/.test(c.textContent) || !/no forecast yet/.test(c.textContent)))
+    errs.push(`the hour strip: ${cols().length} columns of ${H.length}, ${cols().filter((c) => c.matches('.on')).length} yours, scrolled ${sx()} for ${firstOn - 1} columns of ${cw()} px, sections ${secs.join(' ')}, ${past.length} past the forecast: ${past.map((c) => c.textContent).join(' / ')}`);
+  // …it keeps its place when the card is drawn again (a strip taken away read 0)
+  strip().querySelector('.wx-hs-x').scrollLeft = 2 * cw(); await wait(100);
+  p.cards.refresh(); await wait(100); await sized();
+  if (!(Math.abs(sx() - 2 * cw()) < 2)) errs.push(`the strip drawn again scrolled ${sx()}, not ${2 * cw()}`);
+  // …and drawn again while a note's tap scrolls it smoothly, it lands where that was going, not part way (#980's review)
+  { const x = strip().querySelector('.wx-hs-x'), want = Math.min(x.scrollWidth - x.clientWidth, Math.max(0, 8 + (H.length - 1) * cw() - (x.clientWidth - cw()) / 2));
+    x.scrollLeft = 0; await wait(100);
+    p.wxTo(H.at(-1).t, true); await wait(30); p.cards.refresh(); await wait(100); await sized(); await wait(800);
+    if (!(Math.abs(sx() - want) < 2)) errs.push(`drawn again during a note's scroll to ${p.clockOf(H.at(-1).t)}: scrolled ${sx()}, not ${want}`); }
+  // …each open section has arrows beside its hours too, paging the one scroller as the strip's do (#984); a phone shows none
+  { const c = p.cards.current; c.sec = { rain: true, wind: true }; p.cards.refresh(); await wait(100); await sized();
+    const x = strip().querySelector('.wx-hs-x'); x.scrollLeft = 0; await wait(100);
+    const per = [...strip().querySelectorAll('.wx-sec')].filter((e) => e.dataset.sec !== 'dark').map((e) => `${e.dataset.sec}:${e.querySelectorAll('.wx-sec-line > .wx-hs-arrow').length}`);
+    const shown = [...strip().querySelectorAll('.wx-hs-arrow')].filter((b) => getComputedStyle(b).display !== 'none').length;
+    strip().querySelector('[data-sec=wind] .wx-hs-arrow.r')?.click(); await wait(600);
+    const want = Math.min(x.scrollWidth - x.clientWidth, x.clientWidth - 16 - cw()), paged = sx();
+    if (per.join(' ') !== 'rain:2 wind:2' || shown || !(Math.abs(paged - want) < 2)) errs.push(`the sections' arrows: ${per.join(' ')} (want 2 each), ${shown} shown on a phone, Wind's › scrolled to ${paged}, not ${want}`);
+    delete c.sec; }
+  // …a tap on an hour marks where you are then, and again unmarks it; the route's pointer lights its hour
+  set(wind()); await wait(300);
+  const dot = async () => (await polku.map.getSource('routeHover').getData()).features.length;
+  cols()[firstOn + 1]?.click(); await wait(100);
+  const picked = { pressed: cols()[firstOn + 1]?.getAttribute('aria-pressed'), dot: await dot() };
+  cols()[firstOn + 1]?.click(); await wait(100);
+  const unpicked = { pressed: cols()[firstOn + 1]?.getAttribute('aria-pressed'), dot: await dot() };
+  const mid = Math.round(n / 2), want = String(Math.round((T.at(mid) - H[0].t) / 3600));
+  p.hoverAt(mid); await wait(50);
+  const lit = [...(strip()?.querySelectorAll('.wx-hs-strip .lit') || [])].map((c) => c.dataset.h);
+  p.hoverAt(-1); await wait(50);
+  // …and a time outside the strip's hours (another day's, on a trip with nights) lights none of them (#986's review)
+  strip().dataset.h0 = String(+strip().dataset.h0 + 86400); p.hoverAt(mid); await wait(50);
+  const other = [...(strip()?.querySelectorAll('.wx-hs-strip .lit') || [])].map((c) => c.dataset.h);
+  p.hoverAt(-1); strip().dataset.h0 = String(+strip().dataset.h0 - 86400); await wait(50);
+  if (other.length) errs.push(`the route's pointer at an hour a day before the strip's lit ${other.join(',')}, not none`);
+  if (picked.pressed !== 'true' || !picked.dot || unpicked.pressed !== 'false' || unpicked.dot || !lit.length || lit.some((h) => h !== want) || strip()?.querySelector('.lit'))
+    errs.push(`an hour's tap: ${JSON.stringify(picked)}, again ${JSON.stringify(unpicked)}; the route's pointer at ${p.clockOf(T.at(mid))} lit ${lit.join(',') || 'none'} (want ${want}), then ${strip()?.querySelector('.lit') ? 'stays lit' : 'none'}`);
+  // …a tap on the rain's columns at an hour: the route by the rain, the map's weather at that hour, the card a banner
+  set(wind({ precip: fill(1), series: [{ ...series(1), precip: hours(1) }] })); await wait(300);
+  const j = firstOn + 1, k0 = Math.floor((H[j].t - Math.floor(Date.now() / 3600000) * 3600) / 3600);
+  strip()?.querySelector(`[data-sec=rain] .wx-sec-cols [data-h="${j}"]`)?.click(); await wait(300);
+  const tap = { mode: p.colorMode, folded: !!p.cards.folded, hour: Math.round(polku.weather.hour) };
+  if (tap.folded) { p.cards.escape(); await wait(200); }
+  if (tap.mode !== 'rain' || !tap.folded || (k0 >= 0 && tap.hour !== k0)) errs.push(`a tap on the rain's columns at ${p.clockOf(H[j].t)}: ${JSON.stringify(tap)}, want the map at hour ${k0}`);
   p.cards.close();
   return errs;
 })()"""
+
+
+# #984: on a desktop each open section of the weather card's hour strip (Rain, Wind and Dark) has an arrow at each edge
+# beside its hours, on top where it's drawn, and a mouse's click on it pages the strip and every section together.
+# The trip leaves at the next dark hour, so the Dark section is there; the forecast is WX_FIXED's.
+SA_JS = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), { sunPosition } = await import(location.origin + '/js/sun.js');
+  for (let k = 0; k < 150 && !(p.analysis && p.analysis.wind); k++) await wait(100);
+  const ll = p.points[0], h0 = Math.floor(Date.now() / 3600e3) * 3600;
+  let t = h0 + 3600; while (sunPosition(t + 1800, ll).alt > -8 && t < h0 + 40 * 3600) t += 3600;
+  p.when.set(t); await wait(300); for (let k = 0; k < 100 && !(p.analysis && p.analysis.wind); k++) await wait(100); await wait(800);
+  p.openWeather(); await wait(600);
+  const c = p.cards.current; c.sec = { rain: true, wind: true, dark: true }; p.cards.refresh(); await wait(300);
+  const s = () => p.cards.box.querySelector('.wx-hs');
+  for (let q = 0; q < 30 && !parseFloat(s()?.style.getPropertyValue('--cw')); q++) await wait(100);
+  return [...s().querySelectorAll('.wx-sec')].map((e) => e.dataset.sec);
+})()"""
+# where a section's › is, with the strip scrolled back to its start: shown, and on top there
+SA_AT = """(async (k) => {
+  const s = polku.planner.cards.box.querySelector('.wx-hs'), x = s.querySelector('.wx-hs-x'), b = s.querySelector(`[data-sec=${k}] .wx-sec-line > .wx-hs-arrow.r`);
+  if (!b) return null;
+  b.scrollIntoView({ block: 'center', inline: 'nearest' }); x.scrollLeft = 0; delete s.dataset.goal;
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const R = b.getBoundingClientRect(), cx = R.left + R.width / 2, cy = R.top + R.height / 2;
+  return { x: cx, y: cy, top: document.elementFromPoint(cx, cy)?.closest('.wx-hs-arrow') === b, shown: getComputedStyle(b).display !== 'none' && getComputedStyle(b).opacity === '1' };
+})"""
+
+
+def strip_arrows(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': WX_FIXED + 'window.__wx.temp = 6; window.__wx.precip = () => 1.2;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
+        if not pg.js(PC_ROUTE, timeout=30000):
+            fails.append('no route')
+        else:
+            secs = pg.js(SA_JS, timeout=60000)
+            if secs != ['rain', 'wind', 'dark']:
+                fails.append(f"sections {secs}, want rain, wind and dark")
+            for k in secs:
+                x = pg.js(f"{SA_AT}('{k}')")
+                if not x:
+                    fails.append(f"{k}: no arrows")
+                    continue
+                if not x['top'] or not x['shown']:
+                    fails.append(f"{k}: its › {'shown' if x['shown'] else 'not shown'}, {'on top' if x['top'] else 'under something else'}")
+                for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x['x'], 'y': x['y'], 'button': 'none' if kind == 'mouseMoved' else 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                got = pg.js("""new Promise((ok) => setTimeout(() => { const s = polku.planner.cards.box.querySelector('.wx-hs'), x = s.querySelector('.wx-hs-x'), cw = parseFloat(s.style.getPropertyValue('--cw'));
+                  ok({ at: x.scrollLeft, want: Math.min(x.scrollWidth - x.clientWidth, x.clientWidth - 16 - cw) }); }, 600))""")
+                if abs(got['at'] - got['want']) >= 2:
+                    fails.append(f"{k}: a click on its › scrolled to {got['at']}, not {got['want']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the hour strip's arrows beside each section on a desktop, a click paging them all (#984)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 
 def wind_by_sport(chrome):
@@ -19612,7 +19730,8 @@ PF_JS = """(async () => {
   const a = p.analysis, n = a.along.length, k = Math.round(n / 3), fill = (v) => new Float32Array(n).fill(v);
   p.app.winter = () => ({ on: false, setting: 'auto' });
   const set = (temp) => {
-    a.wind = { ...(a.wind || {}), start: { speed: 5, gust: 7, dir: 90, temp: 5, precip: 0 }, startSec: p.when.start(), head: fill(3), speed: fill(8), gust: fill(12), dir: fill(90), cross: fill(0), temp, precip: fill(0), beyond: k, beyondSec: p.when.start() + 3 * 3600, unsure: -1 };
+    const t0 = Math.floor(p.when.start() / 3600) * 3600, six = (v) => Array(6).fill(v); // (the hours: the weather card's strip, #979)
+    a.wind = { series: [{ time: six(0).map((_, j) => t0 + (j - 1) * 3600), speed: six(8), gust: six(12), dir: six(90), temp: six(5), precip: six(0), cloud: six(50) }], cell: new Uint8Array(n), ...(a.wind || {}), start: { speed: 5, gust: 7, dir: 90, temp: 5, precip: 0 }, startSec: p.when.start(), head: fill(3), speed: fill(8), gust: fill(12), dir: fill(90), cross: fill(0), temp, precip: fill(0), beyond: k, beyondSec: p.when.start() + 3 * 3600, unsure: -1 };
     a.windError = false; p.renderAnalysis();
   };
   const cold = (from, to) => Float32Array.from({ length: n }, (_, i) => (i >= from && i < to ? -30 : 5));
@@ -19631,6 +19750,7 @@ PF_JS = """(async () => {
   p.showMode('grade');
   // the weather card's wind, opened: each share on one line, its % with it, "Against you 100 %" too (#388)
   p.openWeather(); await wait(400);
+  if (p.cards.box?.querySelector('[data-k=wx-wind][aria-expanded=false]')) { p.cards.box.querySelector('[data-k=wx-wind]').click(); await wait(300); } // (Wind on the way opens from the strip's Wind, #979)
   p.cards.box?.querySelector('[data-k=wind]')?.click(); await wait(300);
   const shares = [...(p.cards.box?.querySelectorAll('.wx-open .wx-key span') || [])], linesOf = (el) => { const r = document.createRange(); r.selectNodeContents(el); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
   if (!shares.length || shares.some((el) => linesOf(el) !== 1)) errs.push(`the wind's shares: ${shares.map((el) => `${el.textContent} on ${linesOf(el)} lines`).join(' / ') || 'none'}`);
@@ -20510,7 +20630,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

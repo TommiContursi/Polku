@@ -15,6 +15,7 @@
 
   ?v=today|rows|graph|together|site|trip  &s=route|card|map|line|now|layers  &size=half|full  &trip=day|night  &data=real|rain|winter  &f=390|360|desk  &z=100|200
   E (2026-11-10): &lm=two|corners|today  &mo=colour|top|none  &wind=a|b|c  &later=now|later  &col=rain|cloud|wind|temp|snow|none  &top=thunder,windl,places,warn
+  H (2026-11-12, #979), the hour strip: &cf=h &ht=long|clear|multi &hd=0|1 (the day) &hl=rain|wind|waves|thunder (a section's columns tapped)
   E's map layers are drawn by hand over the screenshot (illustrative), with the app's colours (js/wxmap.js) and its classes
   (wx-legend, wx-town, menu, menu-item, rt-pill wl-layer, fab, panel, lg-group, chip, tg).
 -->
@@ -323,7 +324,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 /* a note's number, on the note and on the trip line: its tier's colour (red only for danger) */
 .wg-n { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--radius-round); background: var(--text); color: var(--surface-solid); font-size: 12.5px; font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
 .wg-n.danger { background: var(--danger); } .wg-n.look { background: var(--look); } .wg-n.unk { background: var(--unk); }
-.wg-nums.sheet-sum { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 4px 10px; align-items: start; }
+.wg-nums.sheet-sum { flex: none; display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 4px 10px; align-items: start; }
 .wg-nums .sum-item small { white-space: normal; line-height: 1.25; }
 @container card (max-width: 300px) { .wg-nums.sheet-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* the trip line: one line from start to arrival, each leg in its sport's colour, the notes' numbers where each happens */
@@ -380,6 +381,67 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 .frame > .wg-mapsvg { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; }
 .wg-callout { position: absolute; z-index: 6; max-width: 220px; padding: 6px 10px; border-radius: 10px; background: var(--surface-solid); box-shadow: var(--shadow); font-size: var(--font-control); line-height: 1.3; pointer-events: none; transform: translate(-50%, calc(-100% - 12px)); }
 .frame.z2 > :is(.wg-mapsvg, .wg-chip, .wg-callout) { display: none; }
+/* ======================================================= H (2026-11-12, #979): the hour strip, G's card otherwise */
+/* the wind's arrows against your way: against you warm, behind you teal (the route's wind colours), from the side grey; each
+   is also a direction, so nothing is said by colour alone */
+.wh { --hs-against: #c2410c; --hs-side: #64748b; --hs-behind: #0f766e; --hs-wave: var(--sport-paddle); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wh { --hs-against: #fb923c; --hs-side: #94a3b8; --hs-behind: #5eead4; } }
+:root[data-theme="dark"] .wh { --hs-against: #fb923c; --hs-side: #94a3b8; --hs-behind: #5eead4; }
+.wh .hs-days { margin-bottom: -2px; }
+/* one scroller for the strip and the sections, out to the card's edges; headers and lines pinned to the visible width */
+.wh .hs { position: relative; container: hs / inline-size; margin-inline: -14px; }
+.wh .hs-x { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; outline-offset: -3px; border-radius: 4px; }
+.wh .hs-x::-webkit-scrollbar { display: none; }
+.wh .hs-x.drag { cursor: grabbing; user-select: none; }
+.wh .hs-in { width: calc(var(--n) * var(--cw, 60px) + 28px); padding-inline: 14px; display: grid; gap: 2px; }
+.wh .hs-pin { position: sticky; left: 14px; width: calc(100cqw - 28px); }
+.wh .hs-row { display: flex; }
+.wh .hs-col { flex: none; width: var(--cw, 60px); display: grid; justify-items: center; align-content: start; gap: 4px; padding-block: 4px; border-radius: 8px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wh .hs-col.on { color: var(--text); }
+.wh .hs-col.lit { background: color-mix(in srgb, var(--focus) 16%, transparent); }
+.wh .hs-t { font-size: var(--font-row); }
+.wh .hs-col.on :is(.hs-t, .hs-h) { font-weight: var(--weight-strong); }
+.wh .hs-col:not(.on) .hs-ic { opacity: .5; }
+.wh .hs-h { font-size: var(--font-small); padding-bottom: 3px; border-bottom: 3px solid transparent; }
+.wh .hs-col.on .hs-h[style] { border-bottom-color: var(--leg); } /* (your hours, underlined in the trip's colour) */
+/* the trip across your hours: its legs in their sports' colours, the notes' numbers where they happen */
+.wh .wg-line.hs-trip { height: 26px; }
+.wh .hs-leg { position: absolute; top: 10px; height: 6px; border-radius: 3px; }
+.wh .wg-line .wg-n { top: 2px; transition: none; }
+.wh .wg-line .wg-n.lit, .wh .wg-notes .lit .wg-n { transform: none; }
+.wh .hs-at .hs-col { padding-block: 0 2px; font-size: var(--font-small); }
+/* a section: its header as weather apps have it, one line, then its columns (the value, a picture, the time) */
+.wh .hs-sec { display: grid; }
+.wh .hs-head { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: inherit; font-size: var(--font-row); text-align: left; cursor: pointer; }
+.wh .hs-tile { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); color: var(--muted); }
+.wh .hs-tile.rain { color: var(--wc-rain); } .wh .hs-tile.wind { color: var(--hs-against); } .wh .hs-tile.waves { color: var(--hs-wave); }
+.wh .hs-name { flex: 1; min-width: 0; } .wh .hs-name b { font-weight: var(--weight-name); } .wh .hs-name span { color: var(--muted); }
+.wh .hs-line { margin: 0 0 8px; font-size: var(--font-body); text-wrap: pretty; } .wh .hs-line b { font-weight: var(--weight-name); }
+.wh .hs-cols { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; text-align: center; }
+.wh .hs-v { font-size: var(--font-row); line-height: 1.2; min-height: 1.2em; }
+.wh .hs-col.on .hs-v { font-weight: var(--weight-name); }
+.wh .hs-p { display: grid; place-items: center; height: 30px; width: 100%; }
+.wh .hs-bar { display: block; width: calc(100% - 14px); border-radius: 6px; background: var(--wc-rain); }
+.wh .hs-col:not(.on) .hs-bar { opacity: .4; }
+.wh .hs-bar.wave { background: var(--hs-wave); } .wh .hs-bar.wave.over { background: var(--danger); }
+.wh .hs-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .6; }
+.wh .hs-arr.h { color: var(--hs-against); } .wh .hs-arr.s { color: var(--hs-side); } .wh .hs-arr.t { color: var(--hs-behind); }
+.wh .hs-sky { display: block; width: calc(100% - 6px); height: 18px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--line); }
+.wh .hs-sky.d { background: color-mix(in srgb, var(--text) 70%, transparent); } .wh .hs-sky.w { background: color-mix(in srgb, var(--text) 30%, transparent); }
+.wh .hs-key { display: flex; flex-wrap: wrap; gap: 2px 14px; margin: 6px 0 8px; font-size: var(--font-small); color: var(--muted); }
+.wh .hs-key > span { display: inline-flex; align-items: center; gap: 4px; }
+.wh .hs-key .k-wave::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--hs-wave); } .wh .hs-key .k-wave.over::before { background: var(--danger); }
+.wh .hs-sec > .rows { margin: 0 0 10px; }
+.wh .hs-sec > .rows small { display: block; }
+.wh .hs-sec .wg-open .row > span:first-child { min-width: 0; } /* (a stretch's words wrap, at 200 % too) */
+/* a desktop's arrows: only where there's more that way, over the strip's edge */
+.wh .hs-arrow { position: absolute; z-index: 2; top: 30px; background: var(--surface-solid); box-shadow: var(--shadow); border-radius: var(--radius-round); opacity: 0; pointer-events: none; transition: opacity var(--t-press) var(--ease-out); }
+.wh .hs-arrow.l { left: 4px; } .wh .hs-arrow.r { right: 4px; }
+.wh .hs-arrow.on { opacity: 1; pointer-events: auto; }
+.frame.phone .wh .hs-arrow { display: none; }
+.frame > .hs-banner { position: absolute; z-index: 7; left: 12px; right: 12px; top: 64px; max-width: none; margin: 0; }
+.frame.desk .hs-chip { display: flex; align-items: center; gap: 6px; padding-right: 6px; }
+.frame.desk .hs-chip .tool { width: 32px; height: 32px; min-height: 0; }
 </style>
 </head>
 <body class="mk">
@@ -405,15 +467,61 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-
 </div>
 <script type="module">
 import { icon, h } from '../../../js/ui.js';
-import { dayStrip } from '../../../js/daygraph.js'; // (F: the app's own strip, as built)
+// (F: the app's own strip as it was built; js/daygraph.js went with G's build, #973, so its copy is kept here)
+// The day's strip in the weather card (#869's step 3; the user's choice of 2026-11-11: the weather timeline's own look),
+// drawn as the timeline draws its strip (js/wxmap.js, drawStrip): 66 px high, the night shaded, your trip in the route's
+// colour with a bar at its foot, rain as bars from the foot (snow violet), the temperature an orange line with its warmest
+// and coldest hour labelled, the wind's arrows along the top and the hours under it. An SVG: its shapes stretch to the
+// card's width, its words and arrows keep their size (positioned in %), and it follows the theme (css/app.css .wx-strip).
+
+// `hours`: [{ t, x, night, on }] from the planner's dayHours(), x null past the forecast; `trip`: { t0, t1 }
+function dayStrip(hours, trip, label) {
+  const n = hours.length, H = 66, top = 14, bottom = H - 14, pct = (u) => `${((u / n) * 100).toFixed(2)}%`;
+  const known = hours.map((h, k) => ({ ...h, k })).filter((h) => h.x);
+  let lo = Math.min(...known.map((h) => h.x.temp)), hi = Math.max(...known.map((h) => h.x.temp));
+  if (hi - lo < 4) { const m = (hi + lo) / 2; lo = m - 2; hi = m + 2; } // (as the timeline: a flat day stays flat)
+  const ty = (t) => top + 4 + (1 - (t - lo) / (hi - lo)) * (bottom - top - 14);
+  const deg = (t) => `${Math.round(t) < 0 ? '−' : ''}${Math.abs(Math.round(t))}°`;
+  const hh = (t) => String(new Date(t * 1000).getHours()).padStart(2, '0');
+  const at = (t) => Math.max(0, Math.min(n, (t - hours[0].t) / 3600));
+  let x0 = at(trip.t0), x1 = at(trip.t1);
+  if (x1 - x0 < 0.25) { const m = (x0 + x1) / 2; x0 = m - 0.125; x1 = m + 0.125; } // (a short ride still shows)
+  // the shapes, in hours across and pixels down, stretched to the width
+  let g = `<svg viewBox="0 0 ${n} ${H}" preserveAspectRatio="none" width="100%" height="${H}" aria-hidden="true">`;
+  hours.forEach((h, k) => { if (h.night) g += `<rect class="night" x="${k}" y="0" width="1" height="${H}"/>`; });
+  g += `<rect class="trip" x="${x0}" y="0" width="${x1 - x0}" height="${H}"/><rect class="trip-bar" x="${x0}" y="${H - 3}" width="${x1 - x0}" height="3"/>`;
+  known.forEach((h) => {
+    const r = h.x.precip;
+    if (r < 0.05) return;
+    const bh = Math.min(1, r / 3) * (bottom - top) * 0.75 + 2;
+    g += `<rect class="${h.x.temp < 0.5 ? 'snowfall' : 'rain'}" x="${h.k + 0.06}" y="${bottom - bh}" width="0.88" height="${bh}" style="opacity:${Math.min(0.9, 0.35 + r / 4).toFixed(2)}"/>`;
+  });
+  const pts = hours.map((h, k) => (h.x ? `${(k + 0.5).toFixed(2)},${ty(h.x.temp).toFixed(1)}` : null));
+  let run = [];
+  for (const p of [...pts, null]) { if (p) run.push(p); else { if (run.length > 1) g += `<polyline class="temp" points="${run.join(' ')}"/>`; run = []; } }
+  g += '</svg>';
+  // the words and arrows, at their own size
+  let s = `<svg class="wx-strip" width="100%" height="${H}" role="img" aria-label="${label}">${g}`;
+  const warm = known.reduce((b, h) => (h.x.temp > b.x.temp ? h : b), known[0]), cold = known.reduce((b, h) => (h.x.temp < b.x.temp ? h : b), known[0]);
+  s += `<text class="t" x="${pct(warm.k + 0.5)}" y="${ty(warm.x.temp) - 4}" text-anchor="middle">${deg(warm.x.temp)}</text>`;
+  if (cold !== warm && Math.round(cold.x.temp) !== Math.round(warm.x.temp)) s += `<text class="t" x="${pct(cold.k + 0.5)}" y="${Math.min(bottom, ty(cold.x.temp) + 11)}" text-anchor="middle">${deg(cold.x.temp)}</text>`;
+  known.forEach((h) => {
+    if (h.k % 3) return;
+    const l = Math.min(6, 2.5 + h.x.speed / 2), w = h.x.speed > 8 ? 1.8 : 1.1;
+    s += `<svg x="${pct(h.k + 0.5)}" y="7" width="1" height="1" overflow="visible"><path class="wind" stroke-width="${w}" transform="rotate(${Math.round(h.x.dir + 180)})" d="M0 ${l}V${-l}M-2.4 ${-l + 2.6}L0 ${-l}L2.4 ${-l + 2.6}"/></svg>`;
+  });
+  hours.forEach((h, k) => { if (k % 3 === 1) s += `<text class="h" x="${pct(k + 0.5)}" y="${H - 5}" text-anchor="middle">${hh(h.t)}</text>`; });
+  return `${s}</svg>`;
+}
 
 const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/design-weather-card/';
 const q = new URLSearchParams(location.search);
 const pick = (k, vals, d) => (vals.includes(q.get(k)) ? q.get(k) : d);
-const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site', 'trip'], 'trip'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line', 'now', 'layers'], 'line'), hr: 1, tt: pick('tt', ['open'], ''), wl: pick('wl', ['open', 'line'], 'open'), size: pick('size', ['half', 'full'], 'half'),
+const S = { v: pick('v', ['today', 'rows', 'graph', 'together', 'site', 'trip'], 'trip'), hrs: pick('hrs', ['both', 'switch'], 'both'), tab: pick('tab', ['table', 'graph'], 'table'), at: pick('at', ['sheet', 'above'], 'sheet'), s: pick('s', ['route', 'card', 'map', 'line', 'now', 'layers'], 'card'), hr: 1, tt: pick('tt', ['open'], ''), wl: pick('wl', ['open', 'line'], 'open'), size: pick('size', ['half', 'full'], 'half'),
   trip: pick('trip', ['day', 'night'], 'day'), data: pick('data', ['real', 'rain', 'winter', 'long', 'gap'], 'real'), f: pick('f', ['390', '360', 'desk'], '390'), z: pick('z', ['100', '200'], '100'),
   // E (2026-11-10): the line's two choices (lm), which menu is open (mo), the three winds, the card's later rows; what's on the map
-  cf: pick('cf', ['e', 'f', 'g'], 'g'), // (2026-11-11: E's card as drawn; F's: a verdict in words, then the numbers in their places; G's: the trip line)
+  cf: pick('cf', ['e', 'f', 'g', 'h'], 'h'), // (2026-11-11: E's card as drawn; F's: a verdict in words, then the numbers in their places; G's: the trip line; 11-12, H's: the hour strip)
+  ht: pick('ht', ['long', 'clear', 'multi'], 'long'), hd: pick('hd', ['0', '1'], '0'), hl: pick('hl', ['rain', 'wind', 'waves', 'thunder'], ''), // (H: the trip, its day, the fact whose columns were tapped)
   // G (2026-11-11): the trip, the planned sources, and what the card shows (the stretch the bar's arrows are at, and the slider)
   gt: pick('gt', ['quiet', 'sunny', 'long', 'multi'], 'long'), wc: pick('wc', ['new', 'today'], 'new'), gp: pick('gp', ['off', 'on'], 'off'), gs: pick('gs', ['card', 'wind', 'hours', 'windlane', 'rainlane', 'thunderlane', 'waveslane'], 'card'), gi: 0, gpos: null,
   lm: pick('lm', ['today', 'two', 'corners'], 'two'), mo: pick('mo', ['none', 'colour', 'top'], 'colour'), wind: pick('wind', ['a', 'b', 'c'], 'b'), later: pick('later', ['now', 'later'], 'now'),
@@ -787,6 +895,7 @@ function layersPanel() {
 // E's later parts, a row each: its name, a short line, › (the issue that builds it, for the mock-up)
 const laterRow = (ic, name, line, n) => h('div', { class: 'rows wc-rows' }, h('button', { type: 'button', class: 'row' }, h('span', { class: ic === 'warnf' ? 'warn-icon' : null, html: icon(ic, 20) }), h('span', {}, h('b', {}, name), h('small', {}, line)), h('span', { class: 'val mk-soon' }, `later, ${n}`), chevR()));
 function card() {
+  if (isE() && S.cf === 'h') return cardH();
   if (isE() && S.cf === 'g') return cardG();
   if (isE() && S.cf === 'f') return cardF();
   const R = T(), atMap = S.s === 'map';
@@ -1029,14 +1138,14 @@ const gTrack = (l) => h('span', { class: 'wg-track', 'aria-hidden': 'true' }, ..
 // the key: only the colours the lanes draw, and none for a lane of one colour (its name says it)
 const gKey = (k, used) => h('p', { class: 'wg-key', 'aria-hidden': 'true' }, ...GKEY[k].filter(([c]) => !used || used.has(c)).map(([c, t]) => h('span', { class: c === 'th' ? 'k-th' : '', style: c === 'th' ? '' : `--k:${GC[c]}` }, t)));
 const gLaneKey = (l) => { const used = new Set(l.segs.map((x) => x[2])); return used.size > 1 ? gKey(l.k, used) : null; };
-function gLane(l) {
+function gLane(l, act = () => { S.gs = `${l.k}lane`; S.gi = 0; draw(); }) {
   const worst = l.stretches[0];
-  return h('button', { type: 'button', class: 'wg-lane', 'aria-label': `${l.name}: ${l.val}. Show it on the map`, ...pv(worst[2], worst[3], `${GSTEP[l.k]} · ${worst[0]} · ${worst[1]}`), onclick: () => { S.gs = `${l.k}lane`; S.gi = 0; draw(); } },
+  return h('button', { type: 'button', class: 'wg-lane', 'aria-label': `${l.name}: ${l.val}. Show it on the map`, ...pv(worst[2], worst[3], `${GSTEP[l.k]} · ${worst[0]} · ${worst[1]}`), onclick: act },
     h('span', { class: 'wg-lane-h' }, h('b', {}, l.name), ` · ${l.val}`), gTrack(l));
 }
 const gRow = (ic, name, sub, k, open) => h('button', { type: 'button', class: 'row', 'aria-expanded': k ? String(open) : null, onclick: k ? () => { S.gs = open ? 'card' : k; draw(); } : null },
   h('span', { html: icon(ic, 20) }), h('span', {}, h('b', {}, name), sub ? h('small', {}, sub) : null), k ? h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) }) : chevR());
-function gWindOpen(R) {
+function gWindOpen(R, show = () => { S.gs = 'windlane'; S.gi = 0; draw(); }) {
   const [a, c, b] = R.wind.share, l = (R.days[0].lanes || []).find((x) => x.k === 'wind');
   return h('div', { class: 'wg-open' },
     h('div', { class: 'wg-stack', role: 'img', 'aria-label': `Against you ${a} %, from the side ${c} %, behind you ${b} %` }, ...[[a, 'sh'], [c, 'cr'], [b, 'tl']].map(([w, k]) => h('span', { style: `width:${w}%; background:${GC[k]}` }))),
@@ -1044,7 +1153,7 @@ function gWindOpen(R) {
     l ? h('p', {}, 'Where it’s against you, strongest first') : h('p', {}, 'Nowhere against you for long.'),
     l ? h('div', { class: 'rows' }, ...l.stretches.map(([t, s, f0, f1]) => h('button', { type: 'button', class: 'row', ...pv(f0, f1, `Against you · ${t} · ${s}`) }, h('span', {}, h('b', {}, t), h('small', {}, s)), chevR()))) : null,
     h('p', {}, R.wind.gust),
-    h('button', { type: 'button', class: 'btn wg-map', onclick: () => { S.gs = 'windlane'; S.gi = 0; draw(); } }, 'Show the wind on the map'));
+    h('button', { type: 'button', class: 'btn wg-map', onclick: show }, 'Show the wind on the map'));
 }
 function gHours(R) {
   const t = h('table', { class: 'wg-hours' }, h('thead', {}, h('tr', {}, ...['Time', 'Sky', 'You’re at', 'Temp', 'Feels', 'Rain', 'Wind (gust)'].map((c) => h('th', { scope: 'col' }, c)))));
@@ -1069,7 +1178,7 @@ function gDay(d, R, many) {
     ...lanes.flatMap((l) => [l.leg ? gLaneOnLeg(l) : gLane(l), gLaneKey(l)]));
 }
 // a lane that counts for one sport only is drawn on that leg only
-function gLaneOnLeg(l) { const b = gLane(l); b.querySelector('.wg-track').style.cssText = `margin-left:${l.leg[0] * 100}%; width:${(l.leg[1] - l.leg[0]) * 100}%`; b.querySelectorAll('.wg-track > i').forEach((i, k) => { const [a, c] = l.segs[k]; i.style.left = `${((a - l.leg[0]) / (l.leg[1] - l.leg[0])) * 100}%`; i.style.width = `${((c - a) / (l.leg[1] - l.leg[0])) * 100}%`; }); return b; }
+function gLaneOnLeg(l, act) { const b = gLane(l, act); b.querySelector('.wg-track').style.cssText = `margin-left:${l.leg[0] * 100}%; width:${(l.leg[1] - l.leg[0]) * 100}%`; b.querySelectorAll('.wg-track > i').forEach((i, k) => { const [a, c] = l.segs[k]; i.style.left = `${((a - l.leg[0]) / (l.leg[1] - l.leg[0])) * 100}%`; i.style.width = `${((c - a) / (l.leg[1] - l.leg[0])) * 100}%`; }); return b; }
 function cardG() {
   const R = GT[S.gt], half = phone() && S.size === 'half';
   if (S.gs.endsWith('lane')) return gBar(R, S.gs.replace('lane', ''));
@@ -1158,6 +1267,239 @@ function gPreview(fr) {
   for (const ev of ['pointerout', 'focusout']) fr.addEventListener(ev, (e) => { const t = e.target.closest('[data-pv]'); if (t && !t.contains(e.relatedTarget)) clear(); });
 }
 
+// ---------------------------------------------------------------- H (2026-11-12, #979): the hour strip
+// G's rules, notes, their order and its numbers, with the hours read as weather apps read them: a strip of an hour a column,
+// from a few hours before the trip to a few after, the trip drawn across your hours; under it a section a fact on the same
+// columns (the value, a picture, the time), everything scrolling sideways as one. #973's own views stay, folded: Wind on the
+// way in the Wind section, then The whole trip (G's trip line and lanes), Hour by hour and Time on the way under it. Built from app.css's classes and tokens
+// (sheet-sum, sum-item, rows, row, chip, tool, btn, rt-pill, wx-sky, card-banner; the sports' and the rain's colours); new are
+// the strip and the sections (hs-…). The trips are illustrative, as G's.
+// An hour: [time, °C, sky, rain mm, wind m/s, the wind on your way (h against you, s from the side, t behind you; none off the
+// trip), where you are (none off the trip), the waves at the crossing in m, the light (d dark, w twilight)]
+const HT = {
+  long: { leave: 'Leave Sat 13:00', there: 'there at 16:10', pill: 'calendar', time: '3 h 10 min · 8 min lost to the wind',
+    days: [{ chip: 'Sat', km: 42, from: 13, to: 16 + 10 / 60, legs: [['mtb', 0, 1]], say: 'Cool, then rain and a risk of thunder', sky: 'thunder', notes: GT.long.days[0].notes, nums: GT.long.days[0].nums,
+      hours: [['09', 13, 'cloudSun', 0, 5], ['10', 13, 'cloudSun', 0, 5], ['11', 14, 'cloudSun', 0, 6], ['12', 14, 'cloud', 0, 6],
+        ['13', 14, 'cloud', 0, 7, 't', 'start'], ['14', 13, 'rain', 0.4, 9, 'h', 'km 13'], ['15', 12, 'thunder', 2.1, 8, 's', 'km 26'], ['16', 11, 'rain', 1.5, 7, 'h', 'km 40'],
+        ['17', 11, 'rain', 0.8, 7], ['18', 10, 'rain', 0.3, 6], ['19', 10, 'cloud', 0, 5]],
+      rain: ['4 mm', 'On your trip', '4 mm, from around 14:30'], wind: ['up to 9 m/s', 'Against you on', 'three stretches, gusts 13 m/s'],
+      stretches: GT.long.days[0].lanes[0].stretches, segs: { wind: GT.long.days[0].lanes[0].segs, rain: GT.long.days[0].lanes[1].segs, thunder: GT.long.days[0].lanes[2].segs },
+      g: { R: GT.long, day: GT.long.days[0] } }] },
+  clear: { leave: 'Leave Sat 11:00', there: 'there at 12:20', pill: 'calendar', time: '1 h 20 min',
+    days: [{ chip: 'Sat', km: 14, from: 11, to: 12 + 20 / 60, legs: [['mtb', 0, 1]], say: 'Clear and cold, a light wind from the side', sky: 'sun', notes: [],
+      nums: [['−2…−1°', 'feels like −7°'], ['3 m/s', 'gusts 6'], ['0 mm', 'rain']],
+      hours: [['07', -4, 'moon', 0, 2, '', '', 0, 'd'], ['08', -4, 'sun', 0, 2, '', '', 0, 'w'], ['09', -3, 'sun', 0, 2], ['10', -3, 'sun', 0, 3],
+        ['11', -2, 'sun', 0, 3, 's', 'start'], ['12', -1, 'sun', 0, 3, 's', 'km 10'], ['13', 0, 'sun', 0, 3], ['14', 0, 'cloud', 0, 4], ['15', -1, 'cloud', 0, 4], ['16', -2, 'cloud', 0, 4, '', '', 0, 'w'], ['17', -3, 'moon', 0, 3, '', '', 0, 'd']],
+      rain: ['dry'], wind: ['3 m/s, from the side', 'From the side', 'the whole way, gusts 6 m/s'], stretches: [], segs: { wind: [[0, 1, 'cr']], rain: [] },
+      g: { R: { wind: { share: [0, 100, 0], sum: 'From the side the whole way', gust: 'Strongest gusts 6 m/s, around km 8' }, days: [{ lanes: [] }],
+        hours: [['Sat', [['10', 'sun', 'before', '−3°', '−8°', '–', '3 (5)'], ['11', 'sun', 'start', '−2°', '−7°', '–', '3 (6)'], ['12', 'sun', 'km 10', '−1°', '−7°', '–', '3 (6)'], ['13', 'sun', 'after', '0°', '−5°', '–', '3 (6)']]]] }, day: { lanes: [] } } }] },
+  multi: { leave: 'Leave Sat 10:00', there: 'there Sun 07:45', pill: 'calendar', time: '21 h 45 min · 4 h 50 min moving',
+    days: [{ chip: 'Sat', km: 17, head: 'Day 1 · Sat 10:00 to 14:40 · night at Kaivopuistonranta', from: 10, to: 14 + 40 / 60, legs: [['mtb', 0, 0.45], ['paddle', 0.45, 0.75], ['hike', 0.75, 1]],
+      say: 'Cool and dry, a fresh wind on the water', sky: 'cloud', notes: GT.multi.days[0].notes, nums: GT.multi.days[0].nums,
+      hours: [['07', 3, 'cloudSun', 0, 7, '', '', 0.3], ['08', 3, 'cloudSun', 0, 8, '', '', 0.3], ['09', 4, 'cloudSun', 0, 8, '', '', 0.4],
+        ['10', 4, 'cloudSun', 0, 9, 't', 'start', 0.5], ['11', 5, 'cloud', 0, 10, 's', 'km 6', 0.6], ['12', 5, 'cloud', 0, 10, 'h', 'km 10', 0.6], ['13', 6, 'cloud', 0, 9, 'h', 'km 13', 0.4],
+        ['14', 6, 'cloudSun', 0, 8, 't', 'km 16', 0.4], ['15', 5, 'cloudSun', 0, 7, '', '', 0.3], ['16', 5, 'cloud', 0, 7, '', '', 0.3], ['17', 4, 'moon', 0, 6, '', '', 0.2, 'd']],
+      water: ['12', '13'], limit: 0.5, rain: ['dry'], wind: ['up to 10 m/s', 'Against you on', 'the crossing, gusts 15 m/s'],
+      waves: ['up to 0.6 m', 'On the crossing', 'about 0.6 m around 12:30, over the kayak’s limit'],
+      stretches: GT.multi.days[0].lanes[0].stretches, segs: { wind: GT.multi.days[0].lanes[0].segs, waves: GT.multi.days[0].lanes[1].segs, rain: [] },
+      g: { R: { ...GT.multi, hours: [GT.multi.hours[0]] }, day: GT.multi.days[0] } },
+    { chip: 'Sun', k0: 17, km: 3, head: 'Day 2 · Sun 07:00 to 07:45', from: 7, to: 7.75, legs: [['hike', 0, 1]], say: 'Cold and dry, a light wind behind you', sky: 'moon',
+      notes: [{ tier: 'plain', ic: 'moon', t: 'In the dark until 07:30: take a light', at: [0, 0.66], pos: 0.3 }],
+      nums: [['0…1°', 'feels like −4°'], ['3 m/s', 'gusts 5'], ['0 mm', 'rain']],
+      hours: [['04', -1, 'moon', 0, 2, '', '', 0, 'd'], ['05', -1, 'moon', 0, 2, '', '', 0, 'd'], ['06', 0, 'moon', 0, 3, '', '', 0, 'd'], ['07', 0, 'moon', 0, 3, 't', 'start', 0, 'd'],
+        ['08', 1, 'cloudSun', 0, 3, '', '', 0, 'w'], ['09', 2, 'cloudSun', 0, 4], ['10', 3, 'sun', 0, 4], ['11', 4, 'sun', 0, 4], ['12', 4, 'cloudSun', 0, 5]],
+      rain: ['dry'], wind: ['3 m/s, behind you', 'Behind you', 'the whole way, gusts 5 m/s'],
+      dark: ['until 07:30', 'As you set off', 'dark until 07:30, sunrise at 08:03: take a light'], darkAt: { '07': '07:30', '08': '08:03' },
+      stretches: [], segs: { wind: [[0, 1, 'tl']], rain: [] },
+      g: { R: { wind: { share: [0, 0, 100], sum: 'Behind you the whole way', gust: 'Strongest gusts 5 m/s, at the start' }, days: [{ lanes: [] }],
+        hours: [['Sun', [['06', 'moon', 'before', '0°', '−4°', '–', '3 (5)'], ['07', 'moon', 'start', '0°', '−4°', '–', '3 (5)', 'dark until 07:30'], ['08', 'cloudSun', 'after', '1°', '−3°', '–', '3 (5)']]]] }, day: { lanes: [] } } }] },
+};
+const HOPEN = {}; // a section or a row folded or opened, kept while the page is open
+let HX = null; // where the strip was scrolled to, kept when the card is drawn again
+const hDay = () => { const R = HT[S.ht]; return R.days[Math.min(+S.hd, R.days.length - 1)]; };
+const hOn = (r) => !!r[6];
+const hMinus = (v) => String(v).replace('-', '−');
+const hSport = (d, t) => { const f = Math.max(0, Math.min(1, (t - d.from) / (d.to - d.from))); return (d.legs.find(([, a, b]) => f >= a && f <= b) || d.legs[0])[0]; };
+const hTime = (d, f) => d.from + f * (d.to - d.from);
+const hClock = (t) => { const m = Math.round(t * 60); return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+const HSKY = { sun: 'clear', moon: 'clear', cloudSun: 'partly cloudy', cloud: 'cloudy', rain: 'rain', snow: 'snow', thunder: 'thunder possible' };
+// a wind arrow against your own way (you go to the right): against you points back at you, behind you points the way you go
+const hArrow = (rel, s = 22) => `<svg class="hs-arr ${rel}" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true" style="transform: rotate(${{ h: 180, s: 90, t: 0 }[rel]}deg)"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// the strip scrolled so time t is in its middle (a note's tap); smooth unless reduced motion asks for less
+function hTo(t) {
+  const x = document.querySelector('.wh .hs-x'), d = hDay(), cw = parseFloat(x?.parentElement.style.getPropertyValue('--cw'));
+  if (!x || !cw) return;
+  x.scrollTo({ left: 14 + (t - +d.hours[0][0] + 0.5) * cw - x.clientWidth / 2, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
+// the strip: an hour a column (the temperature, the sky, the time), the trip across your hours with the notes' numbers where
+// they happen, and where you are each hour
+function hStrip(d, notes) {
+  const H = d.hours, h0 = +H[0][0], at = (t) => t - h0 + 0.5, cols = (v) => `calc(var(--cw) * ${v.toFixed(3)})`;
+  const marks = [];
+  let last = -9;
+  for (const n of [...notes].sort((a, b) => a.pos - b.pos)) { const x = Math.max(at(hTime(d, n.pos)), last + 0.45); last = x; marks.push(h('span', { class: `wg-n ${n.tier}`, 'data-n': String(n.n), 'aria-hidden': 'true', style: `left: ${cols(x)}` }, String(n.n))); }
+  return h('div', { class: 'hs-strip' },
+    h('div', { class: 'hs-row' }, ...H.map((r, i) => h('div', { class: `hs-col${hOn(r) ? ' on' : ''}`, 'data-i': String(i) },
+      h('span', { class: 'sr-only' }, `${r[0]}:00, ${hMinus(r[1])}°, ${HSKY[r[2]]}, ${r[3] >= 0.1 ? `${r[3].toFixed(1)} mm of rain` : 'dry'}, wind ${r[4]} m/s${hOn(r) && r[5] ? ` ${{ h: 'against you', s: 'from the side', t: 'behind you' }[r[5]]}` : ''}${r[7] ? `, waves ${r[7].toFixed(1)} m` : ''}${hOn(r) ? `, ${r[6] === 'start' ? 'you set off' : `you’re at ${r[6]}`}` : ''}`),
+      h('span', { class: 'hs-t', 'aria-hidden': 'true' }, `${hMinus(r[1])}°`), h('span', { class: 'hs-ic', 'aria-hidden': 'true' }, gSky(r[2], 26)), h('span', { class: 'hs-h', 'aria-hidden': 'true' }, `${r[0]}:00`)))),
+    h('div', { class: 'wg-line hs-trip', 'aria-hidden': 'true' },
+      ...d.legs.map(([k, a, b]) => h('i', { class: 'hs-leg', style: `left: ${cols(at(hTime(d, a)))}; width: ${cols(hTime(d, b) - hTime(d, a))}; background: var(--sport-${k})` })), ...marks),
+    h('div', { class: 'hs-row hs-at', 'aria-hidden': 'true' }, ...H.map((r, i) => h('span', { class: `hs-col${hOn(r) ? ' on' : ''}`, 'data-i': String(i) }, r[6] || ''))));
+}
+// a section: a header that folds or opens it (an icon in a tile, its name, its value in short), one line for what doesn't fit
+// a cell, then the columns (the value, a picture, the time; your hours bright and underlined in the trip's colour), a tap on
+// which colours the route by it, as a lane's did
+function hSec(k, d, [ic, name, val], line, cell, mine, extra = []) {
+  const id = `${S.ht}${S.hd}${k}`, open = HOPEN[id] ?? (k === 'rain' ? line.length > 0 : k === 'wind' ? d.stretches.length > 0 : true);
+  const head = h('button', { type: 'button', class: 'hs-head hs-pin', 'aria-expanded': String(open), onclick: () => { HOPEN[id] = !open; draw(); } },
+    h('span', { class: `hs-tile ${k}`, html: icon(ic, 20) }), h('span', { class: 'hs-name' }, h('b', {}, name), h('span', {}, ` · ${val}`)),
+    h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) }));
+  if (!open) return h('div', { class: 'hs-sec' }, head);
+  const tap = k !== 'dark', cols = h(tap ? 'button' : 'div', { type: tap ? 'button' : null, class: 'hs-cols hs-row', 'aria-label': tap ? `${name}: ${line.join(' ')}. Show it on the map` : null, onclick: tap ? () => { S.hl = k; draw(); } : null },
+    ...d.hours.map((r, i) => { const on = mine(r); return h('span', { class: `hs-col${on ? ' on' : ''}`, 'data-i': String(i), 'aria-hidden': 'true' }, ...cell(r, on), h('span', { class: 'hs-h', style: on ? `--leg: var(--sport-${hSport(d, +r[0])})` : null }, `${r[0]}:00`)); }));
+  return h('div', { class: 'hs-sec' }, head, line.length ? h('p', { class: 'hs-line hs-pin' }, `${line[0]} `, h('b', {}, line[1])) : null, cols, ...extra);
+}
+// a row of the card's own (an icon, a name, a short line, ⌄) that opens its view in place under it
+function hFold(id, ic, name, sub, view) {
+  const k = `${S.ht}${S.hd}${id}`, open = !!HOPEN[k];
+  return [h('button', { type: 'button', class: 'row', 'aria-expanded': String(open), onclick: () => { HOPEN[k] = !open; draw(); } },
+    h('span', { html: icon(ic, 20) }), h('span', {}, h('b', {}, name), sub ? h('small', {}, sub) : null), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) })),
+    open ? view() : null];
+}
+// #973's own views, kept as other ways to see the same hours, folded under the sections: the whole trip on one line with a lane
+// a fact (when anything changes on the way, as in G), and Hour by hour for the picked day; a lane's tap does what a section's does
+function hViews(d) {
+  const gd = d.g.day, lanes = gd.lanes || [], act = (l) => () => { S.hl = l.k; draw(); };
+  const names = lanes.map((l) => l.name.toLowerCase()), list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+  return [...(lanes.length ? hFold('trip', 'route', 'The whole trip', `${list[0].toUpperCase()}${list.slice(1)} along the way`, () => h('div', { class: 'wg-open' }, gTripLine(gd, gNotes(gd)),
+      ...lanes.flatMap((l) => [l.leg ? gLaneOnLeg(l, act(l)) : gLane(l, act(l)), gLaneKey(l)]))) : []),
+    ...hFold('hours', 'cloudSun', 'Hour by hour', 'Feels like, gusts and where you’ll be', () => gHours(d.g.R))];
+}
+function hSections(d) {
+  const out = [], rows = d.hours;
+  out.push(hSec('rain', d, ['rain', 'Rain', d.rain[0]], d.rain.slice(1), (r) => [h('span', { class: 'hs-v' }, r[3] >= 0.1 ? r[3].toFixed(1) : '–'),
+    h('span', { class: 'hs-p' }, r[3] >= 0.1 ? h('i', { class: 'hs-bar rain', style: `height: ${Math.max(4, Math.min(26, 11 * r[3])).toFixed(1)}px` }) : null)], hOn));
+  const key = h('p', { class: 'hs-key hs-pin', 'aria-hidden': 'true' }, ...[['h', 'against you'], ['s', 'from the side'], ['t', 'behind you']].map(([rel, t]) => h('span', { html: `${hArrow(rel, 16)}${t}` })));
+  const won = h('div', { class: 'rows hs-pin' }, ...hFold('won', 'wind', 'Wind on the way', d.g.R.wind.sum, () => gWindOpen(d.g.R, () => { S.hl = 'wind'; draw(); })));
+  out.push(hSec('wind', d, ['wind', 'Wind', d.wind[0]], d.wind.slice(1), (r, on) => [h('span', { class: 'hs-v' }, String(r[4])),
+    h('span', { class: 'hs-p', html: on && r[5] ? hArrow(r[5]) : '<i class="hs-dot"></i>' })], hOn, [key, won]));
+  if (d.waves) out.push(hSec('waves', d, ['paddle', 'Waves', d.waves[0]], d.waves.slice(1), (r) => [h('span', { class: 'hs-v' }, r[7] ? r[7].toFixed(1) : '–'),
+    h('span', { class: 'hs-p' }, r[7] ? h('i', { class: `hs-bar wave${r[7] > d.limit ? ' over' : ''}`, style: `height: ${Math.max(4, Math.min(26, 40 * r[7])).toFixed(1)}px` }) : null)],
+    (r) => d.water.includes(r[0]), [h('p', { class: 'hs-key hs-pin', 'aria-hidden': 'true' }, h('span', { class: 'k-wave' }, 'under the kayak’s limit'), h('span', { class: 'k-wave over' }, 'over it'))]));
+  if (d.dark) out.push(hSec('dark', d, ['moon', 'Dark', d.dark[0]], d.dark.slice(1), (r) => [h('span', { class: 'hs-v' }, d.darkAt[r[0]] || ''),
+    h('span', { class: 'hs-p' }, h('i', { class: `hs-sky ${r[8] || ''}` }))], hOn));
+  return out;
+}
+function cardH() {
+  const R = HT[S.ht], d = hDay(), many = R.days.length > 1, half = phone() && S.size === 'half';
+  if (S.hl && phone()) return h('div', { class: 'card-banner pl-viewnote hs-banner' }, h('span', { 'aria-hidden': 'true', html: icon({ rain: 'rain', wind: 'wind', waves: 'paddle', thunder: 'thunder' }[S.hl], 18) }),
+    h('span', { role: 'status' }, `${{ rain: 'Rain', wind: 'Wind', waves: 'Waves', thunder: 'Thunder' }[S.hl]} on the map`), h('button', { type: 'button', class: 'btn small', onclick: () => { S.hl = ''; draw(); } }, 'Back'));
+  const el = h('section', { class: `wc-card wg wh${half ? ' half' : ''}`, 'aria-label': 'Weather on the way' });
+  el.append(h('div', { class: 'wf-top' }, h('button', { type: 'button', class: 'tool', 'aria-label': 'Fold', html: icon('chevronDown', 20) }), phone() ? h('span', { class: 'sheet-handle wf-handle' }) : h('span'),
+    h('span', {}, h('button', { type: 'button', class: 'tool', 'aria-label': 'Card settings', html: icon('more', 22) }), h('button', { type: 'button', class: 'tool', 'aria-label': 'Close', onclick: go('route'), html: icon('close', 20) }))));
+  const notes = gNotes(d);
+  const body = h('div', { class: 'wc-body wg-body' }, h('div', { class: 'wc-when' },
+    h('button', { type: 'button', class: 'rt-pill', 'aria-haspopup': 'menu', 'aria-label': `When: ${R.leave}` }, h('span', { html: icon(R.pill, 18) }), h('span', {}, R.leave), h('span', { html: CARET })), h('span', {}, `→ ${R.there}`)));
+  // a trip of days: a chip a day, which picks the day for all under it (its words, notes, numbers, hours and sections)
+  if (many) body.append(h('div', { class: 'rt-chips hs-days', role: 'group', 'aria-label': 'The day' }, ...R.days.map((x, k) => h('button', { type: 'button', class: 'chip', 'aria-pressed': String(+S.hd === k), onclick: () => { S.hd = String(k); S.hl = ''; draw(); } }, `${x.chip} · Day ${k + 1}`))),
+    h('h4', { class: 'wg-dayh' }, d.head));
+  body.append(h('p', { class: 'wg-say' }, gSky(d.sky, 28), h('span', {}, d.say)),
+    ...(notes.length ? [h('ul', { class: 'wg-notes' }, ...notes.map((n) => h('li', {}, h('button', { type: 'button', class: `wg-note ${n.tier}`, 'data-note': String(n.n), ...pv(n.at[0], n.at[1], n.t), onclick: () => hTo(hTime(d, n.pos)) },
+      h('span', { class: `wg-n ${n.tier}`, 'aria-hidden': 'true' }, String(n.n)), h('span', {}, n.t)))))] : []),
+    h('div', { class: 'sheet-sum wg-nums', style: `--n:${d.nums.length}` }, ...d.nums.map(([v, s]) => h('span', { class: 'sum-item' }, h('b', {}, v), h('small', {}, s)))),
+    // the hours: one scroller for the strip and the sections, so they move as one; an arrow at each edge on a desktop
+    h('div', { class: 'hs' },
+      h('button', { type: 'button', class: 'tool hs-arrow l', 'aria-label': 'Earlier hours', tabindex: '-1', html: icon('chevronLeft', 20) }),
+      h('div', { class: 'hs-x', tabindex: '0', role: 'region', 'aria-label': `The hours, ${d.hours[0][0]}:00 to ${d.hours.at(-1)[0]}:00. The arrow keys move along them.` },
+        h('div', { class: 'hs-in', style: `--n: ${d.hours.length}` }, hStrip(d, notes), ...hSections(d))),
+      h('button', { type: 'button', class: 'tool hs-arrow r', 'aria-label': 'Later hours', tabindex: '-1', html: icon('chevronRight', 20) })),
+    h('div', { class: 'rows' }, ...hViews(d), gRow('clock', 'Time on the way', R.time, 'time', false)));
+  if (S.gp === 'on') body.append(h('p', { class: 'wg-lbl' }, 'Around the trip'), h('div', { class: 'rows' }, ...GT[{ long: 'long', clear: 'quiet', multi: 'multi' }[S.ht]].around.map(([ic, n, s]) => gRow(ic, n, s))));
+  body.append(h('button', { type: 'button', class: 'btn wg-map', onclick: () => { S.s = 'line'; draw(); }, html: `${icon('layers', 18)} Weather on the map` }));
+  el.append(body);
+  return el;
+}
+// the map: G's illustrative route, by sport, or by the fact whose columns were tapped; on a desktop a wide invisible line to
+// point at, and a dot for where you are at the hour pointed at
+function hMap() {
+  if (S.z === '200') return [];
+  const d = hDay(), k = S.hl, segs = k ? d.segs[k] || [] : null;
+  const fw = phone() ? (S.f === '360' ? 360 : 390) : 1100, fh = phone() ? (S.f === '360' ? 740 : 844) : 700, all = gPts(gSub(0, 1));
+  let s = `<svg class="wg-mapsvg" id="wg-mapsvg" width="${fw}" height="${fh}" aria-hidden="true"><rect width="${fw}" height="${fh}" fill="var(--page)" opacity="${k ? 0.8 : 0.55}"/>`;
+  if (k === 'wind') { for (let y = 40; y < fh; y += 70) for (let x = ((y / 70) % 2) * 40; x < fw; x += 90) s += `<path d="M${x} ${y}l26 10" stroke="rgba(15,23,42,.35)" stroke-width="2" stroke-linecap="round"/>`; }
+  s += `<polyline points="${all}" fill="none" stroke="rgba(15,23,42,.35)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${all}" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const parts = segs ? [[0, 1, 'var(--rail)'], ...segs.map(([a, b, c]) => [a, b, c === 'th' ? '#f59e0b' : GC[c]])] : HT[S.ht].days[0].legs.map(([sp, a, b]) => [a, b, `var(--sport-${sp})`]);
+  for (const [a, b, c] of parts) s += `<polyline points="${gPts(gSub(a, b))}" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const [sx, sy] = gSub(0, 0)[0], [ex, ey] = gSub(1, 1)[0];
+  s += `<circle cx="${sx}" cy="${sy}" r="6" fill="#fff" stroke="#111" stroke-width="2"/><circle cx="${ex}" cy="${ey}" r="6" fill="#111" stroke="#fff" stroke-width="2"/><g id="wg-pvmap"></g><g id="hs-dot"></g>`;
+  if (!phone()) s += `<polyline id="hs-hit" points="${all}" fill="none" stroke="transparent" stroke-width="24" stroke-linecap="round" pointer-events="stroke" style="cursor: crosshair"/>`;
+  const out = [h('div', { html: `${s}</svg>` }).firstChild];
+  if (k && !phone()) out.push(h('div', { class: 'wg-chip hs-chip', role: 'status' }, `The route by the ${{ rain: 'rain', wind: 'wind', waves: 'waves', thunder: 'risk of thunder' }[k]}`,
+    h('button', { type: 'button', class: 'tool', 'aria-label': 'Clear it from the map', onclick: () => { S.hl = ''; draw(); }, html: icon('close', 16) })));
+  return out;
+}
+// after the frame is drawn: the columns' width, where the strip opens, its arrows, keys and mouse, and on a desktop pointing
+// at a column (where you are then, on the map) or at the route (that hour lit, scrolled into view; the map doesn't move)
+function hWire(fr) {
+  const wrap = fr.querySelector('.wh .hs');
+  if (!wrap) return;
+  const x = wrap.querySelector('.hs-x'), d = hDay(), H = d.hours, h0 = +H[0][0];
+  // whole columns that fit, and half of the next, a sign there's more; at least two
+  const size = () => { const vw = x.clientWidth - 14, n = Math.max(2, Math.floor(vw / 58)); wrap.style.setProperty('--cw', `${(vw / (n + 0.5)).toFixed(2)}px`); };
+  size();
+  const cw = () => parseFloat(wrap.style.getPropertyValue('--cw'));
+  const key = `${S.ht}${S.hd}`;
+  x.scrollLeft = HX && HX.k === key ? HX.v : Math.max(0, (Math.floor(d.from) - 1 - h0) * cw()); // (the hour before you leave at its left edge)
+  x.addEventListener('scroll', () => { HX = { k: key, v: x.scrollLeft }; }, { passive: true });
+  const [al, ar] = wrap.querySelectorAll('.hs-arrow');
+  const edges = () => { al.classList.toggle('on', x.scrollLeft > 2); ar.classList.toggle('on', x.scrollLeft < x.scrollWidth - x.clientWidth - 2); };
+  x.addEventListener('scroll', edges, { passive: true });
+  edges();
+  const smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+  al.addEventListener('click', () => x.scrollBy({ left: -(x.clientWidth - cw()), behavior: smooth() }));
+  ar.addEventListener('click', () => x.scrollBy({ left: x.clientWidth - cw(), behavior: smooth() }));
+  x.addEventListener('keydown', (e) => { // (a column a key, Home and End; the keyboard's moves aren't animated)
+    const by = { ArrowRight: cw(), ArrowLeft: -cw() }[e.key];
+    if (by) { e.preventDefault(); x.scrollLeft += by; } else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); x.scrollLeft = e.key === 'Home' ? 0 : x.scrollWidth; }
+  });
+  // a mouse drags it (a finger or a trackpad scrolls it natively); a drag is never a tap on a section's columns
+  let drag = null;
+  x.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 0) drag = { x0: e.clientX, s: x.scrollLeft, moved: false, id: e.pointerId }; });
+  x.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x0;
+    if (!drag.moved && Math.abs(dx) > 4) { drag.moved = true; x.setPointerCapture(drag.id); x.classList.add('drag'); }
+    if (drag.moved) x.scrollLeft = drag.s - dx;
+  });
+  const end = () => { if (drag && drag.moved) { x.classList.remove('drag'); x.dataset.dragged = '1'; setTimeout(() => delete x.dataset.dragged); } drag = null; };
+  x.addEventListener('pointerup', end);
+  x.addEventListener('pointercancel', end);
+  x.addEventListener('click', (e) => { if (x.dataset.dragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+  if (phone()) return;
+  const lit = (i) => { wrap.querySelectorAll('.lit').forEach((e) => e.classList.remove('lit')); if (i != null) wrap.querySelectorAll(`[data-i="${i}"]`).forEach((e) => e.classList.add('lit')); };
+  const say = (f, text) => {
+    const g = fr.querySelector('#hs-dot');
+    fr.querySelector('.hs-say')?.remove();
+    if (!g) return;
+    if (f == null) { g.innerHTML = ''; return; }
+    const [px, py] = gSub(f, f)[0];
+    g.innerHTML = `<circle cx="${px}" cy="${py}" r="8" fill="var(--surface-solid)" stroke="var(--text)" stroke-width="3"/>`;
+    fr.append(h('div', { class: 'wg-callout hs-say', style: `left:${px}px; top:${py}px` }, text));
+  };
+  const at = (i) => { const r = H[i], t = +r[0]; return [Math.max(0, Math.min(1, (t - d.from) / (d.to - d.from))), `${r[0]}:00 · ${hOn(r) ? (r[6] === 'start' ? 'you set off' : r[6]) : t < d.from ? 'before you set off' : 'you’re there'}`]; };
+  x.addEventListener('pointerover', (e) => { const c = e.target.closest('[data-i]'); if (c && !drag) { lit(+c.dataset.i); say(...at(+c.dataset.i)); } });
+  x.addEventListener('pointerleave', () => { lit(null); say(null); });
+  // the route on the map, pointed at: the hour you're there lit and in view, without moving the map
+  const hit = fr.querySelector('#hs-hit');
+  if (!hit) return;
+  const svg = hit.ownerSVGElement;
+  const near = (e) => { const b = svg.getBoundingClientRect(), p = [e.clientX - b.left, e.clientY - b.top]; let best = 0, bd = Infinity; for (let k = 0; k <= 120; k++) { const [qx, qy] = gSub(k / 120, k / 120)[0], dd = (qx - p[0]) ** 2 + (qy - p[1]) ** 2; if (dd < bd) { bd = dd; best = k / 120; } } return best; };
+  const inView = (i) => { const l = 14 + i * cw(), r = l + cw(); if (l < x.scrollLeft + 14) x.scrollLeft = l - 14; else if (r > x.scrollLeft + x.clientWidth) x.scrollLeft = r - x.clientWidth + cw() / 2; };
+  hit.addEventListener('pointermove', (e) => { const f = near(e), t = hTime(d, f), i = Math.max(0, Math.min(H.length - 1, Math.floor(t) - h0)); lit(i); inView(i); say(f, `${hClock(t)} · km ${(d.k0 || 0) + Math.round(f * d.km)}`); });
+  hit.addEventListener('pointerleave', () => { lit(null); say(null); });
+}
+const CAP_H = () => `H, the hour strip (#979): G's sentence, notes and numbers, then the hours as weather apps read them. The strip has a column an hour, from a few hours before the trip to a few after (dimmed), and opens with the hour before you leave at its left edge. The trip runs across your hours in its sports' colours, with the notes' numbers where they happen and where you are each hour. Under it a section a fact, on the same columns: its header folds or opens it, one line says what doesn't fit a cell, then each column reads top to bottom: the value, a picture, the time, with your hours bright and underlined in the trip's colour. Rain and Wind are always there, folded when there's nothing to say; Waves and Dark only when they apply; thunder shows in the hour's icon, its note and the trip line. Everything scrolls sideways as one. #973's views all stay, folded so the card stays short: Wind on the way opens from the Wind section; under the sections The whole trip (the trip line with a lane a fact, when anything changes on the way, as in G), Hour by hour (with feels like, gusts and where you'll be) and Time on the way. A lane's tap does what a section's does. ${phone() ? 'On a phone half of the next column shows, a tap on a note scrolls to its hour, and a tap on a section’s columns colours the route by it and folds the card to a banner with Back.' : 'On a desktop an arrow at each edge shows when there’s more that way, and a trackpad, shift and the wheel, dragging and the arrow keys scroll it too. Point at a column for where you are then on the route; point at the route for its hour, lit and scrolled into view; the map doesn’t move. A tap on a section’s columns colours the route by it, and the card stays open beside the map.'} ${S.ht === 'multi' ? 'A trip of days has a chip a day over the day; Day 2 starts in the dark, so it has a Dark section.' : S.ht === 'clear' ? 'A clear day: no notes, the sun on every hour, Rain and Wind folded.' : ''}`;
+
 // ---------------------------------------------------------------- Today, from main: Go and the timeline window
 function today() {
   return h('div', { class: 'shots' },
@@ -1173,8 +1515,9 @@ const SW = [
   ['Choices', 'lm', [['two', 'Two dropdowns (chosen 11-10)'], ['corners', 'Two buttons at the corners'], ['today', 'Today: one menu']]],
   ['Open', 'mo', [['colour', 'Map colour'], ['top', 'On top'], ['none', 'Closed']]],
   ['Wind', 'wind', [['a', 'a) A colour only'], ['b', 'b) Its speed a colour, lines on top (chosen 11-10)'], ['c', 'c) Lines on top only']]],
-  ['Card', 'cf', [['g', 'G: the trip line (11-11)'], ['f', 'F: a verdict, then numbers in place (11-11)'], ['e', 'E as drawn (11-10)']]],
+  ['Card', 'cf', [['h', 'H: the hour strip (11-12)'], ['g', 'G: the trip line (11-11)'], ['f', 'F: a verdict, then numbers in place (11-11)'], ['e', 'E as drawn (11-10)']]],
   ['Trip', 'gt', [['quiet', 'A quiet short ride'], ['sunny', 'A sunny day paddle'], ['long', 'A long ride: rain, headwind, thunder'], ['multi', 'Ride, paddle and hike, with a night']]],
+  ['Trip', 'ht', [['long', 'A long ride: rain, headwind, thunder'], ['clear', 'A clear day ride'], ['multi', 'Ride, paddle and hike, with a night']]],
   ['Wind colours', 'wc', [['new', 'Proposed (11-12)'], ['today', 'Today’s']]],
   ['Planned sources', 'gp', [['off', 'Off: what Polku fetches today'], ['on', 'On: #911–#914, #862']]],
   ['Showing', 'gs', [['card', 'The card'], ['wind', 'Wind on the way, opened'], ['hours', 'Hour by hour, opened'], ['windlane', 'After a tap on the wind lane'], ['rainlane', 'After a tap on the rain lane'], ['thunderlane', 'Thunder lane'], ['waveslane', 'Waves lane']]],
@@ -1189,7 +1532,8 @@ const SW = [
 ];
 const isE = () => S.v === 'trip';
 const isG = () => isE() && S.s === 'card' && S.cf === 'g';
-const WHEN = { cf: () => isE() && S.s === 'card', gt: isG, gp: isG, gs: isG, wc: isG, trip: () => !isG(), data: () => !isG(), hrs: () => S.v === 'site' || (isE() && S.cf === 'e'), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
+const isH = () => isE() && S.s === 'card' && S.cf === 'h';
+const WHEN = { cf: () => isE() && S.s === 'card', gt: isG, gp: () => isG() || isH(), gs: isG, wc: isG, ht: isH, trip: () => !isG() && !isH(), data: () => !isG() && !isH(), hrs: () => S.v === 'site' || (isE() && S.cf === 'e'), at: () => S.v === 'site', lm: () => isE() && S.s === 'line', mo: () => isE() && S.s === 'line',
   wind: () => isE() && (S.s === 'now' || S.s === 'layers' || (S.s === 'line' && S.lm !== 'today')), later: () => isE() && S.cf === 'e' };
 const HIDE = { s: (v) => (isE() ? v === 'map' : v === 'now' || v === 'layers'), mo: (v) => S.lm === 'today' && v === 'top', gs: (v) => v === 'thunderlane' || v === 'waveslane' };
 function bars() {
@@ -1211,7 +1555,7 @@ const CAP_E = {
   line: () => `The weather line is the map’s weather now, no longer the card folded: the hour, play, the strip, and ${{ two: 'two dropdowns on a row of their own at its foot: the map’s colour, one at a time, and what goes on top, any mix', corners: 'two of the map’s buttons over its corners, as Zoom Earth has them at its time bar’s: On top at the left, the map’s colour at the right, nearest the thumb; the line keeps its height', today: 'today’s one menu (main): every layer ticks, so Rain and Temperature go on together too' }[S.lm]}. ${S.lm === 'today' ? '' : { a: 'a) Wind is a colour only: with Rain on, the wind doesn’t show at all.', b: 'b) Wind speed is a colour, and Wind lines go on top of any colour: here white over Rain.', c: 'c) Wind is its lines on top only, coloured by its speed, over Rain’s blues.' }[S.wind]} ✕ closes the line and the map goes back to Now, keeping its layers. The Weather button, pressed, shows the hour’s temperature. Tap the map to close a menu.`,
   now: () => 'The map at Now, the line closed: what’s on stays on, at Now (Q1). The Weather button shows the sky and the temperature at the map’s middle, once you’ve used the weather once; until then it says Weather, as today (Q8). Weather at places is the map’s overview, and what Weather turns on the first time (Q3). Tap Weather to open the line.',
   layers: () => 'Layers’ weather group: the same two choices by the same rule, as chips to pick one colour and switches for what goes on top. The Timeline switch goes (Q1): the Weather button opens the line.',
-  card: () => (S.cf === 'g' ? CAP_G() : `E: the trip’s weather only: the day’s reading, the hours, the wind on the way and Time on the way; On the map leaves the card for the weather line. ${S.later === 'later' ? 'Later: a row each, with a short line and ›: warnings first (#911), then Around the trip: measured nearby (#912), road cameras (#913), sun, moon and sky (#914) and the water (#862).' : 'Switch Later to see where #911–#914 and #862 go.'}`),
+  card: () => (S.cf === 'h' ? CAP_H() : S.cf === 'g' ? CAP_G() : `E: the trip’s weather only: the day’s reading, the hours, the wind on the way and Time on the way; On the map leaves the card for the weather line. ${S.later === 'later' ? 'Later: a row each, with a short line and ›: warnings first (#911), then Around the trip: measured nearby (#912), road cameras (#913), sun, moon and sky (#914) and the water (#862).' : 'Switch Later to see where #911–#914 and #862 go.'}`),
 };
 // G's captions (2026-11-11)
 const CAP_G = () => ({
@@ -1232,9 +1576,9 @@ function draw() {
   bars();
   const stage = document.getElementById('stage'); stage.replaceChildren();
   if (S.v === 'today') { stage.append(today()); return; }
-  const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}${isG() && S.wc === 'new' ? ' wc-new' : ''}` });
+  const fr = h('div', { class: `frame ${phone() ? 'phone' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}${(isG() || isH()) && S.wc === 'new' ? ' wc-new' : ''}` });
   fr.append(h('img', { class: 'mk-map', src: `${PIC}bg-${phone() ? 'phone' : 'desk'}.jpg`, alt: '' }));
-  if (isE()) fr.append(...(isG() ? gMap() : mapWx()));
+  if (isE()) fr.append(...(isG() ? gMap() : isH() ? hMap() : mapWx()));
   if (S.s === 'now' || S.s === 'layers') { const pl = planner(); if (phone()) { pl.classList.add('peek'); pl.classList.remove('half'); } fr.append(pl); if (S.s === 'layers') fr.append(layersPanel()); }
   else if (S.s === 'line') {
     if (!phone()) {
@@ -1261,11 +1605,12 @@ function draw() {
   else { fr.append(planner()); if (S.s !== 'route') fr.append(card()); }
   if (isE() && (!phone() || S.s === 'line' || S.s === 'now')) wxFab(fr);
   if (isE() && S.s === 'line' && S.mo !== 'none') { const a = fr.querySelector(`[data-mk="${S.lm === 'today' ? 'colour' : S.mo}"]`); if (a) { const m = menuEl(); fr.append(m); placeMenu(fr, m, a); } }
-  fr.addEventListener('click', (ev) => { if (S.mo !== 'none' && !ev.target.closest('.mk-menu, [data-mk]')) { S.mo = 'none'; draw(); } });
-  if (isG()) gPreview(fr);
+  fr.addEventListener('click', (ev) => { if (S.mo !== 'none' && fr.querySelector('.mk-menu') && !ev.target.closest('.mk-menu, [data-mk]')) { S.mo = 'none'; draw(); } }); // (only with a menu open: a click elsewhere closes it)
+  if (isG() || isH()) gPreview(fr);
   const cap = isE() && CAP_E[S.s] ? CAP_E[S.s]() : S.s === 'route' || S.s === 'line' ? CAP[S.s] : CAP[S.s] + (S.v === 'site' ? 'D: each day as weather sites read it (yr, FMI, Foreca at 390 px, 2026-11-07): the sky and the temperature, three small lines beside them (feels like, rain in mm, the wind and its gust with its arrow), and on a paddle the waves and the water; the dark, then the sun’s times on a line of their own; then the hours as FMI’s table and yr’s graph. ' : S.v === 'together' ? 'C: each day’s big numbers first, a colour for each kind (the temperature and how it feels, the wind and its gusts, the rain, the waves on a paddle); the dark on a line of its own, the sun’s times on the next; then the 12 hours as a graph in the same colours. ' : S.v === 'graph' ? 'B: each day is a line in words and a graph of 12 hours at the start, a column an hour: the wind (m/s, its arrow), the temperature, rain, the dark shaded, your trip in green.' : 'A: each day in words: its reading (the sky, the temperature, the wind with its gusts, the rain) and its sun, saying when the trip is in the dark.')
     + (phone() && S.size === 'half' && S.s !== 'route' ? ' At half, this is all a phone shows before a swipe.' : '');
   stage.append(h('div', {}, fr, h('p', { class: 'cap' }, cap)));
+  if (isH()) hWire(fr);
   // G: a row opened in place comes to the card's top, so what it holds is in view
   const open = isG() && fr.querySelector('.wg [aria-expanded="true"]'), body = open && open.closest('.wc-body');
   if (body) body.scrollTop += open.getBoundingClientRect().top - body.getBoundingClientRect().top - 8;

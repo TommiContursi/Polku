@@ -106,6 +106,15 @@ const P = {
   est: '<path d="M4 9c2.7-2 5.3 2 8 0s5.3-2 8 0M4 15c2.7-2 5.3 2 8 0s5.3-2 8 0"/>',
   avoid: '<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>',
   retry: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.8h-4.8"/>',
+  // the sky, filled and in colour wherever a forecast's sky is drawn (the weather card, the trip's box, the route's list, the
+  // profile, the timeline and the towns): a sun, a cloud, the rain's drops and the snow in the route's own rain colours (.sk-…)
+  'sky-sun': '<circle class="sk-sun" cx="12" cy="12" r="4.6"/><path class="sk-ray" d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.35 5.35l1.55 1.55M17.1 17.1l1.55 1.55M5.35 18.65l1.55-1.55M17.1 6.9l1.55-1.55"/>',
+  'sky-moon': '<path class="sk-moon" d="M19.5 14.6A7.8 7.8 0 1 1 9.4 4.5a6.3 6.3 0 0 0 10.1 10.1Z"/>',
+  'sky-cloud': '<path class="sk-cloud" d="M7 19a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 13a3.5 3.5 0 0 1-2 6H7Z"/>',
+  'sky-cloudSun': '<circle class="sk-sun" cx="8" cy="8" r="3.3"/><path class="sk-ray" d="M8 1.7v1.4M1.7 8h1.4M3.5 3.5l1 1M12.5 3.5l-1 1"/><path class="sk-cloud" d="M9 20a4 4 0 1 1 1.3-7.8A5 5 0 0 1 20 14a3 3 0 0 1-1 6H9Z"/>',
+  'sky-rain': '<path class="sk-wet" transform="translate(0 -3.5)" d="M7 19a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 13a3.5 3.5 0 0 1-2 6H7Z"/><path class="sk-drop" d="M8.7 18.3l-1.1 2.5M12.7 18.3l-1.1 2.5M16.7 18.3l-1.1 2.5"/>',
+  'sky-snow': '<path class="sk-wet" transform="translate(0 -3.5)" d="M7 19a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 13a3.5 3.5 0 0 1-2 6H7Z"/><g class="sk-flake"><circle cx="8.2" cy="18.6" r="1.3"/><circle cx="12.2" cy="18.6" r="1.3"/><circle cx="16.2" cy="18.6" r="1.3"/><circle cx="10.2" cy="21.7" r="1.3"/><circle cx="14.2" cy="21.7" r="1.3"/></g>',
+  'sky-thunder': '<path class="sk-storm" transform="translate(0 -3.5)" d="M7 19a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 13a3.5 3.5 0 0 1-2 6H7Z"/><path class="sk-bolt" d="M12.8 11.6 9.3 17.3h3.2l-1.4 5 4.6-6.6h-3.2l1.9-4.1Z"/>',
   eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1Q11.3 5 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-2.7 3.8M6.6 6.6C4.3 8 2.7 10.2 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 };
 
