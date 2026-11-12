@@ -493,7 +493,7 @@ Three PRs, each tried on a phone before the next, in this order: 6a, then 6b, th
   - **Road cameras (#913):** the nearest Digitraffic weathercams to the start (`js/cameras.js`), two pictures to swipe.
   - **Sun, moon and sky (#914):** the sun (`js/sun.js`), the moon (calculated) and UV (Open-Meteo). The aurora is a new source and needs the user's OK.
   - **The water (#862):** the surface temperature at SYKE's nearest station, and blue-green algae, its source still to check. Between stations the value is unknown and looks unknown.
-- **Clouds, thunder, the legend and Effects** (#182) are built. The layers' look was chosen on 2026-11-08 (Weather service, with Effects on top). The two menus of 6b answer #935's question.
+- **Clouds, thunder, the legend and Effects** (#182) are built. The layers' look was chosen on 2026-11-08 (Weather service, with Effects on top).
 
 ## Not drawn, or not known
 
