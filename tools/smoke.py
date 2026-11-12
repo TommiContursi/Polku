@@ -12717,6 +12717,11 @@ WC_JS = """(async () => {
   strip().querySelector('.wx-hs-x').scrollLeft = 2 * cw(); await wait(100);
   p.cards.refresh(); await wait(100); await sized();
   if (!(Math.abs(sx() - 2 * cw()) < 2)) errs.push(`the strip drawn again scrolled ${sx()}, not ${2 * cw()}`);
+  // …and drawn again while a note's tap scrolls it smoothly, it lands where that was going, not part way (#980's review)
+  { const x = strip().querySelector('.wx-hs-x'), want = Math.min(x.scrollWidth - x.clientWidth, Math.max(0, 8 + (H.length - 1) * cw() - (x.clientWidth - cw()) / 2));
+    x.scrollLeft = 0; await wait(100);
+    p.wxTo(H.at(-1).t, true); await wait(30); p.cards.refresh(); await wait(100); await sized(); await wait(800);
+    if (!(Math.abs(sx() - want) < 2)) errs.push(`drawn again during a note's scroll to ${p.clockOf(H.at(-1).t)}: scrolled ${sx()}, not ${want}`); }
   // …a tap on an hour marks where you are then, and again unmarks it; the route's pointer lights its hour
   set(wind()); await wait(300);
   const dot = async () => (await polku.map.getSource('routeHover').getData()).features.length;

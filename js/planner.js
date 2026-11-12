@@ -7713,7 +7713,7 @@ export class Planner {
     const x = wrap.querySelector('.wx-hs-x'), first = Math.max(0, hrs.findIndex((o) => o.on) - 1), smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
     // (drawn again: where the strip it replaces is now, which its scroll event may not have said yet)
     const old = this.cards.box?.querySelector(`.wx-hs[data-day="${k}"][data-h0="${hrs[0].t}"]`), ocw = old && parseFloat(old.style.getPropertyValue('--cw'));
-    if (ocw) (card.x ||= {})[k] = old.querySelector('.wx-hs-x').scrollLeft / ocw;
+    if (ocw) (card.x ||= {})[k] = (old.dataset.goal != null ? +old.dataset.goal : old.querySelector('.wx-hs-x').scrollLeft) / ocw; // (or where its smooth scroll was going)
     let cw = 0;
     const arrows = () => { wrap.querySelector('.wx-hs-arrow.l').classList.toggle('on', x.scrollLeft > 2); wrap.querySelector('.wx-hs-arrow.r').classList.toggle('on', x.scrollLeft < x.scrollWidth - x.clientWidth - 2); };
     new ResizeObserver(() => {
@@ -7725,9 +7725,19 @@ export class Planner {
       x.scrollLeft = was * cw;
       arrows();
     }).observe(x);
-    x.addEventListener('scroll', () => { if (!x.isConnected || !cw) return; (card.x ||= {})[k] = x.scrollLeft / cw; arrows(); }, { passive: true }); // (a strip taken away by a redraw reads 0)
-    wrap.querySelector('.wx-hs-arrow.l').addEventListener('click', () => x.scrollBy({ left: -(x.clientWidth - 2 * PAD_HS - cw), behavior: smooth() }));
-    wrap.querySelector('.wx-hs-arrow.r').addEventListener('click', () => x.scrollBy({ left: x.clientWidth - 2 * PAD_HS - cw, behavior: smooth() }));
+    // a smooth scroll heads for `goal` (wrap.dataset.goal): the next page goes on from there, a redraw lands there, and
+    // a hand on the strip (or its end) lets it go
+    wrap.goTo = (left) => { const to = Math.max(0, Math.min(x.scrollWidth - x.clientWidth, left)); wrap.dataset.goal = String(to); x.scrollTo({ left: to, behavior: smooth() }); };
+    const page = (dir) => wrap.goTo((wrap.dataset.goal != null ? +wrap.dataset.goal : x.scrollLeft) + dir * (x.clientWidth - 2 * PAD_HS - cw));
+    for (const ev of ['wheel', 'pointerdown', 'keydown', 'scrollend']) x.addEventListener(ev, () => delete wrap.dataset.goal, { passive: true });
+    x.addEventListener('scroll', () => {
+      if (!x.isConnected || !cw) return; // (a strip taken away by a redraw reads 0)
+      if (wrap.dataset.goal != null && Math.abs(x.scrollLeft - +wrap.dataset.goal) < 1) delete wrap.dataset.goal;
+      (card.x ||= {})[k] = x.scrollLeft / cw;
+      arrows();
+    }, { passive: true });
+    wrap.querySelector('.wx-hs-arrow.l').addEventListener('click', () => page(-1));
+    wrap.querySelector('.wx-hs-arrow.r').addEventListener('click', () => page(1));
     const btns = [...wrap.querySelectorAll('.wx-hs-strip button.wx-hs-col')];
     const inSight = (j) => { const c0 = PAD_HS + j * cw; if (c0 < x.scrollLeft + PAD_HS || c0 + cw > x.scrollLeft + x.clientWidth - PAD_HS) x.scrollLeft = c0 - (x.clientWidth - cw) / 2; };
     x.addEventListener('keydown', (e) => {
@@ -7776,7 +7786,8 @@ export class Planner {
     const wrap = this.cards.box?.querySelector('.wx-hs'), x = wrap?.querySelector('.wx-hs-x'), cw = wrap && parseFloat(wrap.style.getPropertyValue('--cw'));
     if (!cw) return;
     const j = Math.round((t - +wrap.dataset.h0) / 3600);
-    x.scrollTo({ left: PAD_HS + j * cw - (x.clientWidth - cw) / 2, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    const left = PAD_HS + j * cw - (x.clientWidth - cw) / 2;
+    if (smooth) wrap.goTo(left); else x.scrollLeft = left;
   }
 
   // the trip line: one line from start to arrival, each leg in its sport's colour, the notes' numbers where each happens
