@@ -454,6 +454,14 @@ export function wholeCard(pl) {
   };
 }
 
+// The weather on the way (#869's step 3): the trip's weather, day by day, from the trip's box, the numbers' time, Check's
+// items and the key facts (planner's weatherBody()). Its head is When and when you're there (weatherHead()), its name for a
+// screen reader. `time`: Time on the way unfolded, kept from one drawing to the next.
+export function weatherCard(pl, { time = false } = {}) {
+  const card = { kind: 'weather', key: 'weather', label: 'Weather on the way', get title() { return pl.weatherHead(); }, time, alive: () => pl.points.length > 1 && !!(pl.analysis && pl.trip()), build: (body) => pl.weatherBody(card, body) };
+  return card;
+}
+
 // ------------------------------------------------------------------ an item of Check (25d part 3)
 const GROUP = { read: ['Warning', 'warnf'], look: ['Good to know', 'eye'], not: ['Not checked', 'unk'] };
 // where an item comes from, in words: "Live · Fintraffic, 18:40", "From the map · OpenStreetMap", "An estimate · …"

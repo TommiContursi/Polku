@@ -256,8 +256,8 @@ export class CardHost {
 
   // The card gives way to a banner under the top bar while the map answers (Move: "Tap where it goes", Cancel);
   // unfold() shows the card again
-  fold(text, cancel) {
-    this.folded = { text, cancel };
+  fold(text, cancel, { icon: ic = 'move', label = 'Cancel' } = {}) {
+    this.folded = { text, cancel, icon: ic, label };
     this.render({ fresh: true });
   }
   unfold() {
@@ -329,8 +329,8 @@ export class CardHost {
       if (t) t.focus({ preventScroll: true });
       if (where === 'peek' && at) this.inSight(at);
       // a desktop's card with no room between the top bar and the map's foot opens folded to its title (step 3 of #233); not a
-      // pick's (#574): long by design, scrolling inside, and measured here while it still loads
-      if (where !== 'peek' && card.kind !== 'spot' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
+      // pick's (#574) nor the weather's: long by design, scrolling inside, and measured here while it still loads
+      if (where !== 'peek' && card.kind !== 'spot' && card.kind !== 'weather' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
     }
   }
 
@@ -408,9 +408,9 @@ export class CardHost {
   bannerBox() {
     const f = this.folded;
     return h('div', { class: 'card-banner pl-viewnote' },
-      h('span', { html: icon('move', 18), 'aria-hidden': 'true' }),
+      h('span', { html: icon(f.icon, 18), 'aria-hidden': 'true' }),
       h('span', { role: 'status', tabindex: '-1' }, f.text),
-      h('button', { type: 'button', class: 'btn small', onclick: () => this.escape() }, 'Cancel'));
+      h('button', { type: 'button', class: 'btn small', onclick: () => this.escape() }, f.label));
   }
 
   // The pill: the card's one action at the spot. On a desktop it's the card's first button, at the pointer (render(); 1b

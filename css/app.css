@@ -80,7 +80,9 @@
   --trail-vis-road: #94a3b8; --trail-vis-none: #d6dde3; --trail-vis-clear: #16a34a; --trail-vis-faint: #eab308; --trail-vis-hard: #f97316; --trail-vis-barely: #dc2626;
   --temp-frost: #6d28d9; --temp-cold: #3b82f6; --temp-cool: #7dd3fc; --temp-mild: #86efac; --temp-warm: #fde047; --temp-warmer: #fdba74; --temp-hot: #f97316; --temp-hotter: #dc2626;
   --rain-dry: #a3acb9; --rain-drizzle: #93c5fd; --rain-rain: #3b82f6; --rain-heavy: #1e3a8a; --rain-snow: #a78bfa;
-  --wind-strong-head: #b91c1c; --wind-head: #f87171; --wind-cross: #f59e0b; --wind-tail: #4ade80; --wind-strong-tail: #15803d; --wind-calm: #a3acb9;
+  /* the wind: made for the route's white casing (on the light map and the night map alike), the stronger the darker and
+     more saturated, the weaker the paler; the tailwind teal, apart from the headwind's red without colour vision (#869, 2026-11-12) */
+  --wind-strong-head: #b8122b; --wind-head: #f4a074; --wind-cross: #f3cf7a; --wind-tail: #9fd8cf; --wind-strong-tail: #1f8a7c; --wind-calm: #cfd6dc;
   --bikes-separate: #15803d; --bikes-shared: #65a30d; --bikes-cycleway: #4d7c0f; --bikes-lane: #ca8a04; --bikes-track: #a16207; --bikes-beside: #b45309;
   --bikes-trail: #7c2d12; --bikes-walk: #64748b; --bikes-traffic: #ea580c; --bikes-no: #334155;
   --lit-yes: #facc15; --lit-no: #475569; --oneway-one: #f97316; --oneway-bikes: #16a34a; --oneway-both: #94a3b8;
@@ -145,8 +147,7 @@
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
 /* No browser pinch-zoom on the UI chrome (gestures.js sends it to the map). */
 html { touch-action: none; }
-.panel-body, .sheet-body, #search-results, .hours { touch-action: pan-y; }
-.hours { touch-action: pan-x; }
+.panel-body, .sheet-body, #search-results { touch-action: pan-y; }
 body {
   font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
@@ -172,7 +173,7 @@ html { -webkit-tap-highlight-color: transparent; }
   :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: none; }
 }
 /* a small heading, everywhere: 12 px capitals in grey (#356) */
-.menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .speed-route h4, .wind-title, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
+.menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
   font-size: var(--font-small); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
 }
 #map { position: fixed; inset: 0; }
@@ -846,13 +847,13 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet[data-layout="sheet"] .fold-line::before { left: calc(50% - 16px); right: auto; width: 32px; top: 5px; pointer-events: none; }
 .sheet[data-state="folded"] .fold-line { opacity: 1; visibility: visible; pointer-events: auto; filter: none; transition-delay: 0s; }
 .sheet.dragging .fold-line { visibility: visible; pointer-events: none; filter: none; transition: none; }
-.sheet > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: opacity .15s var(--ease-out), filter .15s var(--ease-out), visibility 0s; }
-.sheet[data-state="folded"] > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition-delay: 0s, 0s, .15s; }
-.sheet.dragging > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: none; }
-.sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { opacity: 0; visibility: hidden; }
+.sheet > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: opacity .15s var(--ease-out), filter .15s var(--ease-out), visibility 0s; }
+.sheet[data-state="folded"] > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition-delay: 0s, 0s, .15s; }
+.sheet.dragging > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: none; }
+.sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { opacity: 0; visibility: hidden; }
 .sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head) { filter: blur(var(--fade-blur)); }
 /* from the keyboard it changes at once (planner.js setSheetState()); with reduced motion it's a fade alone, no blur */
-.sheet.instant > :is(.fold-line, .sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: none; }
+.sheet.instant > :is(.fold-line, .sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: none; }
 @media (prefers-reduced-motion: reduce) { .sheet { --fade-blur: 0px; } }
 .fold-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 14px 0 2px 14px; border: 0; border-radius: var(--radius-control); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .fold-line > .fold-x { flex: none; width: 44px; height: 44px; margin-top: 16px; }
@@ -960,7 +961,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="side"] .sheet-handle { display: none; }
 .sheet[data-layout="side"] .sheet-head { padding-top: 12px; touch-action: auto; }
 .sheet[data-layout="side"][data-state="folded"] { top: auto; bottom: 12px; }
-.sheet[data-layout="side"][data-state="folded"] > :is(.sheet-head, .pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.sheet[data-layout="side"][data-state="folded"] > :is(.sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
 .sheet[data-layout="side"] .fold-line { display: none; }
 .sheet[data-layout="side"][data-state="folded"] .fold-line { display: flex; position: static; align-items: center; }
 .sheet[data-layout="side"] .fold-go { min-height: 56px; padding: 0 0 0 14px; }
@@ -1003,12 +1004,11 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; gap: 2px; border-radius: 9px; background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .pl-tab-n.read:not(:empty) { background: var(--danger); color: var(--surface-solid); box-shadow: none; }
 .pl-tab-unk { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--unk); box-shadow: inset 0 0 0 1.5px var(--unk); font-size: 11px; font-weight: 800; }
-.pl-tab-t { font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pl-pane[hidden] { display: none !important; }
 .pl-empty { margin: 14px 0; }
 /* the sheet's sizes: the peek is the header and the profile (#742), as tall as it leaves room for (--prof-peek, measureSheet()),
    and so is half's, so it doesn't move when the sheet does; half and full add the tabs, full the profile's own row */
-.sheet[data-state="peek"]:not(.dragging) .pl-tabs, .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
+.sheet[data-state="peek"]:not(.dragging) :is(.trip-box, .pl-tabs), .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile #profile-canvas { height: var(--prof-peek, 64px); }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .profile-top { display: none; }
 /* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
@@ -1021,7 +1021,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
    start instead of the route's numbers: the ways to begin, a step (Draw it, Round trip, Marked routes) or the
    first point's peek. On a phone the peek is as tall as it, and the rest of the sheet waits for a route. */
 .sheet-row[hidden], .pl-way[hidden] { display: none; }
-.sheet.starting :is(.pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.sheet.starting :is(.pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
 .pl-way { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; /* (a held sheet never squeezes its rows: it scrolls) */ gap: 10px; padding: 2px 2px 4px; min-width: 0;
   overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
 /* as tall as there's room: the sheet stops below the top bar (a docked toolbox, 200 % zoom), and the view scrolls inside */
@@ -1144,10 +1144,6 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .speed-go { margin-top: 10px; }
 /* Settings' speeds: every sport a row, its speeds in one line; a tap opens the editor under it */
 .speed-list .speed-box { padding: 8px 8px 12px 42px; } /* (under the sport's name) */
-.when-box { grid-column: 1 / -1; display: grid; justify-items: start; gap: 6px; margin: 0 0 14px; scroll-margin: 8px; } /* Go's When pill and its note (scrolled to whole, its ring too) */
-.time-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 8px; }
-.time-head b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.time-head span { font-size: 12.5px; color: var(--muted); }
 .wpl-foot .btn { white-space: nowrap; }
 .onmap .tg { max-width: 360px; }
 /* Route's two rows, and their steps (#424's C): a step shows the route style or your speeds alone, with Back to Route */
@@ -1162,9 +1158,6 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .pl-pane[data-tab="route"][data-step] [data-sec=style] > .sec-body { display: block; }
 .pl-pane[data-step="how"] .speed-wrap, .pl-pane[data-step="speed"] [data-sec=style] .style-box { display: none; }
 .tg.off { opacity: .5; } /* a mark's time while there are no marks (Layers, Settings) */
-.take-along { display: flex; flex-wrap: wrap; gap: 8px; }
-.take-share > span { display: grid; text-align: left; }
-.take-share small { font-size: var(--font-small); font-weight: 400; color: var(--muted); }
 
 /* collapsible sections */
 /* a full-height sheet covers the map chrome: take it out of the way */
@@ -1299,7 +1292,6 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .speed-field small { font-weight: 500; }
 .speed-how { margin: 0; }
 .speed-sport { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-.speed-route h4 { margin: 12px 0 4px; }
 .speed-table { display: grid; font-size: 12.5px; }
 .speed-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 70px; gap: 12px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line); }
 .speed-row b { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
@@ -1307,7 +1299,6 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .speed-row.sub span { padding-left: 12px; color: var(--muted); }
 .speed-row.total { border-bottom: 0; }
 .speed-row.total span, .speed-row.total b { font-weight: 700; }
-.wind-title { margin: 12px 0 8px; }
 #profile-canvas { display: block; width: 100%; height: 150px; cursor: crosshair; touch-action: none; }
 .profile-tip {
   position: absolute; top: 4px; pointer-events: none; z-index: 2;
@@ -1359,27 +1350,85 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* black words where white doesn't read on the colour (#376: js/palette.js darkWords()) */
 .badge.ink, .loop-dot.ink { color: var(--ink); text-shadow: none; }
 
-.wind-body { font-size: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
 .start { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 600; }
-.wx-sum { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
-.wx-sum .link { font-weight: 500; color: var(--text); text-decoration: underline dotted; text-underline-offset: 3px; }
-.wx-links { display: flex; gap: 12px; flex-wrap: wrap; }
-.wind-now { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.wind-arrow { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: var(--surface-2); font-size: 16px; font-weight: 700; }
 .pill { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-.pill.good { background: rgba(22,163,74,.14); color: var(--good-text); }
-.pill.ok { background: rgba(202,138,4,.14); color: var(--ok-text); }
 .pill.warn { background: rgba(234,88,12,.14); color: var(--warn-text); }
-.pill.bad { background: rgba(220,38,38,.14); color: var(--bad-text); }
-.exposure { display: grid; grid-template-columns: max-content 1fr; gap: 4px 8px; margin: 4px 0; width: 100%; }
-/* the shares' words as wide as the widest, so "Headwind 100 %" stays on one line and the bars start together (#388) */
-.ex-item { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; font-size: 12px; color: var(--muted); }
-.ex-item i { grid-column: 2; grid-row: 1; height: 7px; border-radius: 999px; display: block; }
-.hours { display: flex; gap: 4px; overflow-x: auto; }
-.hour { display: flex; flex-direction: column; align-items: center; min-width: 40px; padding: 4px; border-radius: 8px; background: var(--surface-2); font-size: 12px; }
-.hour i { font-style: normal; font-weight: 700; }
-.hour small { color: var(--muted); font-size: 10px; }
+/* ---------------------------------------------------------------- the trip's box and the weather card (#869's step 3) */
+/* the box after the profile, over the tabs (the order of 2026-11-06): When and when you're there, then a row a day with › */
+.sheet > .trip-box { flex: none; display: grid; gap: var(--space-2); margin: 0 16px var(--space-10); padding: var(--space-8) var(--space-10) 0; border: 1px solid var(--line); border-radius: var(--radius); }
+.trip-box .trip-days { margin: 0 -10px; }
+.trip-box .trip-days > .row:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+/* When's pill and "→ there at" on a line, the pill's note (past the forecast, a passed time) under both */
+.trip-when { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-10); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
+.trip-when .when-box { display: contents; }
+.trip-when .pick-note { order: 1; flex-basis: 100%; font-weight: var(--weight-regular); }
+@media (max-width: 300px) { .sheet > .trip-box { margin: 0 12px var(--space-8); padding: 0; border: 0; } } /* (200 %: its words get the planner's width, the user's choice of 2026-11-11) */
+/* the weather card (#869, the plan's Round 5, version G): a day's sentence with its sky, the notes with their numbers, the
+   numbers in their places, the trip line with its lanes, then the folded rows and Weather on the map */
+:root { --wx-sun: #a16207; }
+:root[data-theme="dark"] { --wx-sun: #facc15; }
+.card[data-kind="weather"] { gap: var(--space-8); }
+.card[data-kind="weather"] .way-hint .trip-when { padding-top: var(--space-2); }
+.wx-note { margin: 0; }
+.wx-day { display: grid; gap: var(--space-10); min-width: 0; }
+.wx-dayh { margin: var(--space-6) 0 calc(-1 * var(--space-4)); font-size: var(--font-control); font-weight: var(--weight-name); color: var(--muted); }
+.wx-say { display: flex; align-items: center; gap: var(--space-10); margin: 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; text-wrap: balance; }
+.wx-say > .wx-sky { flex: none; }
+.wx-say.none { color: var(--muted); }
+.wx-sky { display: inline-grid; color: var(--muted); }
+.wx-sky:is(.sun, .cloudSun) { color: var(--wx-sun); } .wx-sky.rain { color: var(--wx-text); } .wx-sky.thunder { color: var(--look); }
+/* the notes, worst first; a note's number in its tier's colour (red only for danger), as on the trip line */
+.wx-notes { display: grid; margin: calc(-1 * var(--space-2)) 0 0; padding: 0; list-style: none; }
+.wx-tell { display: flex; align-items: flex-start; gap: var(--space-10); width: 100%; min-height: var(--target); padding: var(--space-6) 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--font-row); line-height: 1.3; text-align: left; cursor: pointer; }
+.wx-tell > .ic { margin-top: 1px; color: var(--muted); } .wx-tell.danger > .ic { color: var(--danger); } .wx-tell.look > .ic { color: var(--look); } .wx-tell.unk > .ic { color: var(--unk); }
+.wx-n { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--radius-round); background: var(--text); color: var(--surface-solid); font-size: var(--font-small); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
+.wx-n.danger { background: var(--danger); } .wx-n.look { background: var(--look); } .wx-n.unk { background: var(--unk); }
+/* the numbers in the same places every time: the temperature, the wind, the rain, and the waves on a paddle */
+.wx-nums.sheet-sum { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: var(--space-4) var(--space-10); align-items: start; }
+.wx-nums .sum-item small { white-space: normal; line-height: 1.25; }
+@container card (max-width: 300px) { .wx-nums.sheet-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* the trip line: each leg in its sport's colour, the notes' numbers where each happens; the times and km under it */
+.wx-trip { display: grid; gap: var(--space-8); margin-top: var(--space-2); }
+.wx-trip-line { position: relative; height: 30px; }
+.wx-leg { position: absolute; top: 13px; height: 5px; }
+.wx-leg:first-child { border-radius: 3px 0 0 3px; } .wx-leg:last-of-type { border-radius: 0 3px 3px 0; } .wx-leg:only-of-type { border-radius: 3px; }
+.wx-trip-line .wx-n { position: absolute; top: 4px; margin-left: -11px; box-shadow: 0 0 0 2px var(--surface-solid); }
+.wx-trip-line .wx-n.lit { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--focus); } /* (a ring, nothing moving) */
+.wx-hl { position: absolute; top: 9px; height: 13px; border-radius: 4px; background: color-mix(in srgb, var(--focus) 28%, transparent); outline: 2px solid var(--focus); pointer-events: none; }
+.wx-ticks, .wx-legnames { position: relative; display: flex; justify-content: space-between; gap: var(--space-8); font-size: var(--font-small); color: var(--muted); font-variant-numeric: tabular-nums; }
+.wx-legnames { height: 16px; margin-top: calc(-1 * var(--space-6)); } .wx-legnames > span { position: absolute; white-space: nowrap; }
+/* a lane: its name and value at its start, its stretches on the trip line's axis in the route's own colours for that fact,
+   on the route's white casing in the dark too, so the strong wind stands out on the card as it does on the map */
+.wx-lane { display: grid; gap: var(--space-4); width: 100%; min-height: var(--target); padding: var(--space-2) 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.wx-lane-h { font-size: var(--font-control); color: var(--muted); } .wx-lane-h b { color: var(--text); font-weight: var(--weight-name); }
+.wx-track { position: relative; display: block; height: 12px; border-radius: 6px; background: var(--surface-2); box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+:root[data-theme="dark"] .wx-track { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85); }
+.wx-track > i { position: absolute; top: 0; bottom: 0; }
+/* thunder: the map's own look for the forecast's thunder (the legend's lg-dash) */
+.wx-track > i.th { background: rgba(245, 158, 11, .3); outline: 1.5px dashed #b45309; outline-offset: -1.5px; }
+:root[data-theme="dark"] .wx-track > i.th { outline-color: #fbbf24; }
+.wx-key { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-12); margin: calc(-1 * var(--space-6)) 0 var(--space-2); font-size: var(--font-small); color: var(--muted); }
+.wx-key > span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; background: var(--k); }
+/* a folded row opened in place: Wind on the way's one stacked bar and its stretches, or Hour by hour's table */
+.rows > .wx-open { display: grid; gap: var(--space-10); padding: var(--space-4) 8px var(--space-12); } /* (rows reach 8 px past the card's edges, for their own background) */
+.wx-open .rows { margin: 0; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.wx-open .row > span:first-child { flex: 1; display: block; } /* (a stretch's row has no icon: its words take the room, › at the end) */
+.wx-open .row small { display: block; font-size: var(--font-small); color: var(--muted); font-weight: var(--weight-regular); }
+.wx-stack { display: flex; height: 12px; border-radius: 6px; overflow: hidden; }
+.wx-foot { margin: 0; font-size: var(--font-control); color: var(--muted); }
+.btn.wx-map { justify-content: center; width: 100%; min-height: var(--target); }
+svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2); }
+.wx-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.wx-hours { width: 100%; border-collapse: collapse; font-size: var(--font-control); font-variant-numeric: tabular-nums; }
+.wx-hours thead th { padding: 0 var(--space-4) var(--space-4); font-size: var(--font-small); font-weight: var(--weight-name); color: var(--muted); text-align: right; white-space: nowrap; }
+.wx-hours :is(td, tbody th) { height: 36px; padding: 0 var(--space-4); border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-weight: var(--weight-regular); }
+.wx-hours :is(th, td):first-child { padding-left: 0; text-align: left; } .wx-hours :is(th, td):last-child { padding-right: 0; }
+.wx-hours :is(th, td):nth-child(2) { text-align: center; } .wx-hours :is(th, td):nth-child(3) { text-align: left; }
+.wx-hours tbody tr:not(.on) :is(th, td), .wx-hours td.none { color: var(--muted); }
+.wx-hours td.none { text-align: left; }
+.wx-hours th.wx-hday { padding-top: var(--space-10); text-align: left; font-weight: var(--weight-name); color: var(--text); }
+.card[data-kind="weather"] .speed-row small { white-space: normal; } /* (a note such as "included above" wraps in its column) */
 
 /* ---------------------------------------------------------------- waypoints */
 /* the dot sits in a bigger invisible target: 44 px where fingers tap */
@@ -1599,18 +1648,10 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wp-stop.night { background: #6366f1; }
 .wp-stop svg { width: 11px; height: 11px; }
 .polku-popup .pt-menu { overflow-y: auto; overscroll-behavior: contain; padding: 3px; margin: -3px; } /* room for focus rings */
-.days { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
-.day { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 1px; text-align: left; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
-@media (hover: hover) { .day:hover { border-color: var(--muted); } }
-.day b { grid-row: span 3; align-self: start; font-size: 13px; }
-.day-when { font-weight: 600; }
-.day-what, .day-wx { color: var(--muted); }
 /* the sport strip under the profile (chart.js), icons over its stretches */
 .chart-sports { position: absolute; inset: 0; pointer-events: none; }
 .chart-sport { position: absolute; transform: translate(-50%, -50%); width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center; color: #fff; box-shadow: 0 0 0 1.5px var(--surface-solid); }
 .chart-sport svg { width: 11px; height: 11px; }
-/* the sun at the start; the departure in the start's menu and row */
-.sun-line { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; font-size: 12.5px; color: var(--muted); }
 .speed-row.sub.head span { padding-left: 0; font-weight: 700; color: var(--text); }
 .speed-row.sub span svg { display: inline-block; vertical-align: -2px; margin-right: 4px; }
 .speed-row.sub span:has(svg) { white-space: nowrap; }
@@ -1851,6 +1892,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
    numbers one to a row, the switch in a column */
 @container card (max-width: 290px) {
   .card[data-back] > .way-bar { display: flex; flex-wrap: wrap; } /* (Back on a line of its own where undo, redo and ✕ don't fit beside it) */
+  .card-peek .card[data-back="no"]:not(:has(> .way-bar > [data-k="undo"])) > .way-bar { display: none; } /* (nothing of it shows there: the sheet's top row has ⋯ and ✕) */
   .card > .way-bar [data-k] { display: inline-flex; width: 44px; height: 44px; }
   .card > .way-bar [data-k="undo"], .card > .way-bar [data-k="set"] { margin-left: auto; }
   .card > .way-bar [data-k="set"] + [data-k="undo"] { margin-left: 0; }
@@ -1930,7 +1972,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
 /* the card has the whole sheet (step 3 of #233): the planner's profile, tabs and list wait behind it; swiped up, the sheet
    is the planner's half and full (#889), and the card scrolls inside it, or sits at its top with room under it */
-.sheet.carded > :is(.pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.sheet.carded > :is(.pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
 .sheet.carded:is([data-state="half"], [data-state="full"]) > .sheet-head, .sheet.carded:is([data-state="half"], [data-state="full"]) :is(.sheet-head-in, .card-peek) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sheet.carded:is([data-state="half"], [data-state="full"]) .card-peek .card { flex: 0 1 auto; min-height: 0; max-height: none; }
 /* at its spot (desktops, the planner put away), Revision 5: a quick look, not a sheet. 320 px wide and 480 px tall at
