@@ -65,6 +65,21 @@
         ],
         "createdAt": "2026-11-11T06:24:55.290Z",
         "reason": "Claude: the mock-up has no animation or auto-scrolling; nothing in it moves (checked in the browser pane, 2026-11-11)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "ui\",roboto,sans-serif",
+        "createdAt": "2026-11-12T18:24:40.112Z",
+        "reason": "Claude: the mock-up copies css/app.css's own body font stack (\"Inter\", system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif, app.css line 152) so it matches production"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/weather-timeline.html"
+        ],
+        "createdAt": "2026-11-12T18:24:40.150Z",
+        "reason": "Claude: nothing auto-scrolls; the phone's row of layer buttons scrolls only by the user's swipe, with a fade at the edge (scrollLeft is set once on open to show the first layer that is on)"
       }
     ]
   }
