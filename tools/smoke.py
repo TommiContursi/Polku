@@ -7529,7 +7529,8 @@ def check(chrome, w, h, phone, bottom=False):
     fails = []
     pg = chrome.page(w, h, phone)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"bottom"' if bottom else '"left"'})
-    pg.js(OPEN_LINE)
+    if not phone:  # (a phone's weather line takes the sheet's place: the fold group's)
+        pg.js(OPEN_LINE)
     # no Overpass in the layout checks: trail-detail tiles loading live made the timing flaky
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     time.sleep(1.0)
@@ -7543,8 +7544,8 @@ def check(chrome, w, h, phone, bottom=False):
     pg.js("new Promise((ok) => { const p = polku.planner, t0 = Date.now(); const go = () => (p.analysis && p.analysis.pts.length > 10) || Date.now() - t0 > 30000 ? ok() : setTimeout(go, 200); go(); })")
     time.sleep(0.8)
     layout = pg.js("polku.planner.layout ? polku.planner.layout() : 'old'")
-    # while planning, the timeline stays over the map (#225): on a phone just above the sheet, clear of the toolbox
-    if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):
+    # while planning, a desktop's weather line stays over the map (#225), clear of the toolbar
+    if not phone and pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):
         fails.append('the timeline isn’t over the map while planning')
     states = ['open', 'folded'] if layout == 'side' else ['peek', 'half', 'full']
     for st in states:
@@ -7575,7 +7576,7 @@ def check(chrome, w, h, phone, bottom=False):
     fails += [f'round trip: {e}' for e in pg.js(LOOP)]
     pg.js("polku.planner.setActive(false); true")
     time.sleep(0.3)
-    if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):
+    if not phone and pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):
         fails.append('timeline did not come back to the map after planning')
     pg.js("polku.planner.setActive(true); true")
     # sections remember their state across reloads
@@ -11504,19 +11505,41 @@ def fold_away_card(chrome):
             fold_settled(pg, fails, f'{how}: step 6')
             if info()['st'] != 'half':
                 fails.append(f"{how}: Plan after the card opened the planner at {info()['st']}, not half (the size it had)")
-        # #572: the timeline open, a card at full with the planner put away: the timeline on the sheet under its header, as over
-        # a full planner, not off the screen above it
+        # the weather line (step 6b): in the sheet's place, the sheet going down out of view and the map's buttons above the
+        # line; ✕ brings the sheet back at the size it had; a card, or Plan, takes the sheet back from the line
+        LINE = """(() => { const p = polku.planner, b = document.querySelector('#wx-bar'), r = b.getBoundingClientRect();
+          const col = [...document.querySelectorAll('#map-ctrls > *')].filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect().bottom);
+          return { open: polku.weather.open, line: !b.hidden, sheet: !p.panel.hidden, st: p.panel.dataset.state, active: p.active, card: p.cards.current?.kind || null,
+            foot: Math.round(innerHeight - r.bottom), below: col.every((y) => y <= r.top + 0.5) }; })()"""
+        pg.js("(() => { const p = polku.planner; p.cards.close(); if (!p.active) p.setActive(true); p.setSheetState('half'); return true; })()")
+        fold_settled(pg, fails, 'the line: step 1')
         pg.js("document.querySelector('#btn-time').click(); true")
-        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 20000 ? ok() : setTimeout(go, 100); go(); })")
-        pg.js("(() => { const p = polku.planner; p.close(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+        fold_settled(pg, fails, 'the line: step 2')
+        w = pg.js(LINE)
+        if not w['open'] or not w['line'] or w['sheet'] or not w['active'] or w['foot'] != 8 or not w['below']:
+            fails.append(f"Weather while planning: {w} (the line 8 px from the foot in the sheet's place, the sheet gone, the planner still open, the map's buttons above it)")
+        pg.tap(*fold_at(pg, "document.querySelector('#wx-bar .tl-close')"))
+        fold_settled(pg, fails, 'the line: step 3')
+        w = pg.js(LINE)
+        if w['open'] or w['line'] or not w['sheet'] or w['st'] != 'half':
+            fails.append(f"the line's ✕: {w} (the sheet back at half, the line gone)")
+        pg.js("document.querySelector('#btn-time').click(); true")
+        fold_settled(pg, fails, 'the line: step 4')
+        pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
         time.sleep(0.6)
-        fold_settled(pg, fails, 'the timeline: step 1')
-        pg.js("polku.planner.setSheetState('full'); true")
-        fold_settled(pg, fails, 'the timeline: step 2')
-        w = pg.js("(() => { const b = document.querySelector('#wx-bar'), r = b.getBoundingClientRect(); return { hidden: b.hidden, t: Math.round(r.top), b: Math.round(r.bottom), H: innerHeight, top: Math.round(document.querySelector('.topbar').getBoundingClientRect().bottom), over: document.body.classList.contains('wx-over'), st: polku.planner.panel.dataset.state, place: polku.planner.cards.place }; })()")
-        if w['place'] != 'peek' or w['st'] != 'full' or w['hidden'] or w['t'] < w['top'] or w['b'] > w['H'] or not w['over']:
-            fails.append(f"the timeline with a card at full, the planner put away: the card {w['place']} at {w['st']}; the timeline {'hidden' if w['hidden'] else f'at y {w[chr(116)]}–{w[chr(98)]}'} on a {w['H']} px screen, {'on' if w['over'] else 'not on'} the sheet (on it, under the top bar)")
-        pg.js("polku.planner.cards.close(); document.querySelector('#btn-time').click(); true")
+        fold_settled(pg, fails, 'the line: step 5')
+        w = pg.js(LINE)
+        if w['open'] or not w['sheet'] or w['card'] != 'spot':
+            fails.append(f"a spot's card with the line open: {w} (the card in the sheet, the line closed)")
+        pg.js("(() => { const p = polku.planner; p.cards.close(); p.close(); return true; })()")
+        fold_settled(pg, fails, 'the line: step 6')
+        pg.js("document.querySelector('#btn-time').click(); true")
+        fold_settled(pg, fails, 'the line: step 7')
+        pg.js("polku.planner.setActive(true); true")
+        fold_settled(pg, fails, 'the line: step 8')
+        w = pg.js(LINE)
+        if w['open'] or not w['sheet'] or not w['active']:
+            fails.append(f"Plan with the line open and the planner put away: {w} (the planner in the sheet, the line closed)")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
