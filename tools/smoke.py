@@ -12741,7 +12741,19 @@ def timeline_open(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the timeline apart: a layer doesn't open it, ✕ goes back to Now with the layers on" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    # a desktop's place for it kept at the window's foot, and a reload: open, all of it is on screen (its place was kept
+    # while it was hidden, from a guess at its height, and #869's buttons made it taller than the guess)
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:winter': '"off"', 'polku:timelineFloat': json.dumps({'left': 400, 'top': 880, 'width': 640})}, '#11/61.5/23.8')
+        top, bottom = pg.js("(() => { const r = document.getElementById('wx-bar').getBoundingClientRect(); return [r.top, r.bottom]; })()")
+        if bottom > 900 - 7:
+            fails.append(f'placed at the foot and reloaded, the timeline is at y {top:.0f}–{bottom:.0f}, past the window’s 900 px')
+        fails += [f'placed: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline apart: a layer doesn't open it, ✕ goes back to Now with the layers on; placed at the foot, on screen" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

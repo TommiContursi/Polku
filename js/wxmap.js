@@ -180,6 +180,7 @@ export class WeatherOverlay {
     // a phone's row of layers opens with the first that's on in sight, clear of the fade at its edge (32 px), at once (a
     // desktop's wraps: nothing to scroll)
     if (!on) return;
+    this.placeFloat(); // (a place kept while it was hidden, measured now it's shown: on screen)
     const row = this.layerRow, b = row.querySelector('[aria-pressed="true"]');
     row.scrollLeft = b ? Math.max(0, b.getBoundingClientRect().right - row.getBoundingClientRect().left + row.scrollLeft - row.clientWidth + 32) : 0;
   }
