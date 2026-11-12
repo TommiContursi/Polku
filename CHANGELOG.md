@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-12
 
+### The weather timeline and when you leave ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- Moving the weather timeline no longer changes when you leave, and setting **When** no longer moves the timeline. The strip still shades your trip, at the time you leave.
+- Turning on a weather layer in **Layers**, in the timeline's menu or from a tile shows it at the timeline's hour, and no longer opens the timeline. **Weather** (T) opens it.
+- Closing the timeline takes the map back to now, with its layers still on. Road works and road conditions follow the timeline's hour.
+
 ### The hour strip's arrows ([#984](https://github.com/TommiContursi/Polku/issues/984))
 
 - On a desktop, **Rain**, **Wind** and **Dark** in the weather card have arrows beside their hours too, so you can page through the hours from any section. They move the strip and every section together. A phone has no arrows: a swipe scrolls.

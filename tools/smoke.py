@@ -8800,8 +8800,8 @@ def glass(chrome):
                     measured += glass_ink(pg, where, found)
                     pg.js("document.querySelector('#btn-time').click(); true")
                     time.sleep(0.4)
-                    if 'ahead' not in pg.js("document.querySelector('#btn-time').className"):
-                        fails.append(f"{where}: the Weather button doesn't say it's looking ahead")
+                    if pg.js("polku.weather.open || polku.weather.hour !== 0 || document.querySelector('#btn-time').classList.contains('ahead')"):
+                        fails.append(f"{where}: Weather didn't close the timeline and go back to Now")
                     pg.js("document.querySelector('#btn-layers').click(); true")
                     time.sleep(0.6)
                     measured += glass_ink(pg, where, found)
@@ -12531,6 +12531,45 @@ WX_STILL = """(async () => {
 })()"""
 
 
+# The timeline apart (#869's 6b): a layer from a tile or from Layers shows at Now and leaves the timeline closed;
+# Weather opens it; ✕ closes it and goes back to Now with the layers left on, road works and road conditions too.
+WX_OPEN = """(async () => {
+  const out = [], w = polku.weather, S = polku.state, wait = (ms) => new Promise((r) => setTimeout(r, ms)), W = await import(location.origin + '/js/wxmap.js');
+  const bar = () => document.querySelector('#wx-bar');
+  const sw = (root, l) => [...root.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === l)?.querySelector('input');
+  if (w.open || !bar().hidden) out.push('the timeline is open with nothing asked for');
+  document.querySelector('#btn-layers').click(); await wait(300);
+  document.querySelector('#quick-layers .qt-tog[data-tile="wx:rain"]').click(); await wait(300);
+  if (!S.weather.rain || w.open || !bar().hidden || w.hour !== 0) out.push(`the Rain tile: rain ${S.weather.rain}, the timeline open ${w.open}, hour ${w.hour}`);
+  document.querySelector('#quick-layers .qt-more').click(); await wait(300);
+  const grp = document.querySelector('#layers-body .lg-group[data-group="weather"]'); grp.open = true;
+  sw(grp, 'Clouds').click(); await wait(300);
+  if (!S.weather.cloud || w.open || !bar().hidden) out.push(`Layers' Clouds: clouds ${S.weather.cloud}, the timeline open ${w.open}`);
+  document.querySelector('#layers-panel .panel-close').click(); await wait(300);
+  document.querySelector('#btn-time').click(); await wait(300);
+  if (!w.open || bar().hidden) out.push('Weather didn’t open the timeline');
+  w.setHour(6); await wait(300);
+  if (Math.abs(polku.safety.app.time() - W.timeAtHour(6)) > 1) out.push('at +6 h, road works and road conditions aren’t at the timeline’s hour');
+  document.querySelector('#wx-bar .tl-close').click(); await wait(300);
+  if (w.open || !bar().hidden || w.hour !== 0 || !S.weather.rain || !S.weather.cloud) out.push(`✕: open ${w.open}, hour ${w.hour}, rain ${S.weather.rain}, clouds ${S.weather.cloud} (closed at Now, the layers on)`);
+  if (Math.abs(polku.safety.app.time() - Date.now() / 1000) > 60) out.push('✕: road works and road conditions aren’t back at Now');
+  return out;
+})()"""
+
+
+def timeline_open(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
+        fails = pg.js(WX_OPEN, timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline apart: a layer doesn't open it, ✕ goes back to Now with the layers on" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def weather_menu(chrome):
     pg = chrome.page(1440, 900, False)
     try:
@@ -12991,7 +13030,7 @@ WX_THUNDER = """(async () => {
   // the recording's last strikes (15:48:31) 20 s ago; the first answer stops at 15:46:17
   L.shift = Date.now() - 20e3 - Date.parse('2026-11-02T15:48:31Z'); L.upTo = Date.parse('2026-11-02T15:46:17Z');
   const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false);
-  const w = polku.weather; w.app.onToggle({ thunder: true }); // (as the menu does; it opens the timeline)
+  const w = polku.weather; w.app.onToggle({ thunder: true }); // (as the menu does)
   for (let k = 0; k < 100 && !(w.lightning && map.getSource('wxThunderArea')); k++) await wait(200);
   if (!w.lightning) return ['no lightning asked for after 20 s'];
   const feats = () => map.getSource('wxStrikes')._data.features || map.getSource('wxStrikes')._data.geojson?.features || [];
@@ -20633,7 +20672,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
+    ('weather', [weather_requests, timeline_reading, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
