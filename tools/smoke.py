@@ -9066,7 +9066,7 @@ TL_HELD = """new Promise((ok) => { const t0 = Date.now(), go = () => { const b =
   (b && !b.hidden && __wx.held.length) || Date.now() - t0 > 20000 ? ok(!!__wx.held.length) : setTimeout(go, 100); }; go(); })"""
 TL_SIZES = """(() => { const r = (id) => document.getElementById(id)?.getBoundingClientRect();
   return { bar: r('wx-bar').height, now: document.querySelector('#wx-bar .tl-now').getBoundingClientRect().height, locate: r('btn-locate').top,
-    lines: document.querySelectorAll('#wx-bar .tl-now > div').length, text: document.querySelector('#wx-bar .tl-now').textContent.slice(0, 60) }; })()"""
+    lines: document.querySelectorAll('#wx-bar .tl-now small > span').length, text: document.querySelector('#wx-bar .tl-now').textContent.slice(0, 60) }; })()"""
 
 
 def timeline_height(chrome):
@@ -9087,13 +9087,13 @@ def timeline_height(chrome):
             pg.js(SETTLED)
             a = pg.js(TL_SIZES)
             pg.js('__wx.release()')
-            pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('#wx-bar .tl-now-main') || Date.now() - t0 > 20000 ? ok(true) : setTimeout(go, 100); go(); })")
+            pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('#wx-bar .tl-now-main svg') || Date.now() - t0 > 20000 ? ok(true) : setTimeout(go, 100); go(); })")
             pg.js(SETTLED)
             pg.js('new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))')
             b = pg.js(TL_SIZES)
-            want = 4 if snow else 3
+            want = 4 if snow else 3  # the wind, the rain (the snow) and where it's read
             if b['lines'] != want:
-                fails.append(f"{name}: {b['lines']} lines in its reading once the forecast is in, not {want} ({b['text']})")
+                fails.append(f"{name}: {b['lines']} values in its reading once the forecast is in, not {want} ({b['text']})")
             for k, what in (('bar', 'the timeline'), ('now', 'its reading'), ('locate', "Locate's top")):
                 if abs(a[k] - b[k]) > 0.25:
                     fails.append(f'{name}: {what} {a[k]:.1f} px while the forecast loaded, {b[k]:.1f} px once it was in')
@@ -12385,21 +12385,21 @@ WX_FIXED = """(() => {
   };
 })();"""
 
-# The timeline's reading on phones (#243): opened with a tap on Weather, the forecast answering (WX_FIXED), its first
-# line (the sky's icon, the temperature, "map centre") is whole inside its box. (The wind's and the rain's lines can
-# still be longer than the box: #457.)
+# The weather line's reading on phones and at 200 % (#243, step 6b): opened with a tap on Weather, the forecast
+# answering (WX_FIXED), the sky's icon, the temperature, the time and each value (the wind, the rain, "map centre") are
+# whole inside its box, each value on a line of its own if it must.
 TL_READING = """new Promise((done) => {
   const t0 = Date.now(), go = () => {
-    const box = document.querySelector('#wx-bar .tl-now'), main = box && box.querySelector('.tl-now-main');
+    const box = document.querySelector('#wx-bar .tl-now'), main = box && box.querySelector('.tl-now-main svg') && box;
     if (!main) { if (Date.now() - t0 < 20000) { setTimeout(go, 200); return; } done({ out: [`no reading after 20 s: ${box ? box.textContent : 'no timeline'}`] }); return; }
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const out = [], b = box.getBoundingClientRect();
-      for (const e of [main, ...main.children]) {
+      for (const e of [...main.children, ...main.querySelectorAll('.tl-now-text > *, small > span')]) {
         const r = e.getBoundingClientRect(), t = e.textContent.trim() || e.tagName;
         if (r.right > b.right + 0.5 || r.left < b.left - 0.5 || r.bottom > b.bottom + 0.5) out.push(`“${t}” at x ${Math.round(r.left)}–${Math.round(r.right)}, out of its box (x ${Math.round(b.left)}–${Math.round(b.right)})`);
         else if (e.scrollWidth > e.clientWidth + 1 && e.clientWidth) out.push(`“${t}” cut (${e.scrollWidth} px in ${e.clientWidth})`);
       }
-      const label = main.querySelector('small')?.textContent;
+      const label = main.querySelector('small > span:last-child')?.textContent;
       if (label !== 'map centre') out.push(`it says “${label}” where it's read, not “map centre”`);
       done({ out, text: box.textContent });
     }));
@@ -12410,8 +12410,8 @@ TL_READING = """new Promise((done) => {
 
 def timeline_reading(chrome):
     fails = []
-    for w, h_ in ((390, 844), (360, 740)):
-        name = f'{w}x{h_}'
+    for w, h_ in ((390, 844), (360, 740), (195, 422)):
+        name = f'{w}x{h_}' + (' (200 %)' if w < 300 else '')
         pg = chrome.page(w, h_, True)
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
@@ -12424,7 +12424,7 @@ def timeline_reading(chrome):
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the timeline's reading on phones: its first line whole in its box (#243)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the weather line's reading on phones and at 200 %: whole in its box (#243)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -18445,7 +18445,7 @@ TG_LOOK = """(() => {
   for (const [what, sel] of [['the search', '#search-input'], ['the sport pill', '#activity-bar .act-current'], ['Settings', '#btn-settings'],
     ['the Polku mark', '.topbar .brand'], ['Zoom in to see every trail', '#zoom-hint'], ["the credits' (i)", '.maplibregl-ctrl-attrib-button'],
     ['the compass', '.ctrl-compass button'], ['Locate', '#btn-locate'], ['3D', '.ctrl-3d'], ['Weather', '#btn-time'], ['Layers', '#btn-layers'],
-    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the map colour's pill", '#wx-bar .wl-layer[data-wx=colour]'], ["On top's pill", '#wx-bar .wl-layer[data-wx=top]'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
+    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the map colour's pill", '#wx-bar .wl-layer[data-wx=colour]'], ["On top's pill", '#wx-bar .wl-layer[data-wx=top]'], ['Play', '#wx-bar .wl-row > .tool'], ['the time slider', '#wx-bar .wl-range'],
     ["a map popup's ✕", '.polku-popup .maplibregl-popup-close-button']]) {
     const e = document.querySelector(sel);
     if (!e || !e.getClientRects().length) fails.push(`${what} isn't there (${sel})`); else hit(what, e);

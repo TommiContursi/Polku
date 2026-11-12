@@ -118,6 +118,10 @@ const P = {
   eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1Q11.3 5 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-2.7 3.8M6.6 6.6C4.3 8 2.7 10.2 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 };
 
+// a CSS custom property of the page, and a duration token's milliseconds (DESIGN.md's Motion: --t-open, --ease-drawer…)
+export const cssVar = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+export const token = (k) => parseFloat(cssVar(k));
+
 export const icon = (name, size = 20) =>
   `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;
 

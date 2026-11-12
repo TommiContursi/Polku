@@ -461,6 +461,7 @@ const planner = new Planner(map, {
     if (k >= 0) weather.setHour(k);
   },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
+  closeLine: () => setTimeline(false), // (the sheet wanted on a phone, where the weather line has its place)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   routeTip: (ev, d) => hover.route(ev, d),
   saveOffline: () => {
@@ -619,15 +620,16 @@ map.on('moveend', () => { if (lightStale()) applyStyle(); });
 map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)
 
 // The weather line open or closed; closed, the map goes back to Now with its layers left on (step 6b)
-function setTimeline(on) {
-  weather.setOpen(on);
+function setTimeline(on, { instant = false } = {}) {
+  weather.setOpen(on, { instant });
+  planner.setLineOver(on && matchMedia('(max-width: 720px)').matches, { instant });
   if (!on) weather.setHour(0);
   $('#btn-time').setAttribute('aria-pressed', String(on));
 }
 // Weather and T open the line at Now with what was on last, or Weather at places the first time
-function openLine() {
+function openLine({ instant = false } = {}) {
   if (!Object.values(state.weather).some(Boolean)) setWeather(state.weatherLast || { places: true });
-  setTimeline(true);
+  setTimeline(true, { instant });
   weather.setHour(0);
 }
 
@@ -1949,32 +1951,29 @@ $('#layers-panel .panel-back').addEventListener('click', () => openPanel('quick-
 
 for (const b of $$('#btn-plan, #btn-plan-search')) b.addEventListener('click', () => planner.setActive(!planner.active));
 // The button and T open and close the weather line, while planning too (#225).
-const toggleTimeline = () => {
-  if (weather.open) setTimeline(false); else openLine();
+// From the keyboard (T, or the button's Enter) at once.
+const toggleTimeline = ({ instant = false } = {}) => {
+  if (weather.open) setTimeline(false, { instant }); else openLine({ instant });
   renderLayersPanel();
 };
-$('#btn-time').addEventListener('click', toggleTimeline);
+$('#btn-time').addEventListener('click', (e) => toggleTimeline({ instant: e.detail === 0 }));
 $('#btn-zoom-in').addEventListener('click', () => map.zoomIn());
 $('#btn-fit').innerHTML = icon('fit', 20);
 $('#btn-fit').addEventListener('click', () => planner.fitRoute());
 $('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 
-// Phones: the floating timeline sits above the Plan pill, or 16 px above the planner's sheet while
-// planning; the map's buttons and the planner's toolbox ride above it. Where they wouldn't fit above it
-// (a half or full sheet, or a short phone), it's on the sheet under its header instead (body.wx-over).
+// The weather line's place (step 6b): on a phone the sheet's, the sheet going down out of view while it's open
+// (planner.setLineOver()), and the map's column above it (--wx-h, the line's height less the column's own 12 px, plus 8
+// apart); on a desktop above the toolbar's end, or on top of a bottom panel raised too high for it above (body.wx-over).
+// A phone turned to a wider screen, or back, moves the sheet with it.
 function syncWxH() {
-  const b = $('#wx-bar'), st = planner.panel.dataset.state, phone = matchMedia('(max-width: 720px)').matches;
-  const shown = !b.hidden && !b.classList.contains('docked'), open = shown && phone;
+  const b = $('#wx-bar'), shown = weather.open, phone = matchMedia('(max-width: 720px)').matches;
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
-  // desktops: a bottom panel raised too high for it above (unless you've placed it yourself)
-  const deskOver = shown && !phone && planner.active && planner.layout() === 'sheet' && !b.classList.contains('placed')
+  const over = shown && !phone && planner.active && planner.layout() === 'sheet'
     && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < $('.topbar').getBoundingClientRect().bottom + 8;
-  const sheet = !planner.panel.hidden && !planner.panel.classList.contains('leaving'); // (the planner, or a card's sheet with it put away: #572)
-  const over = deskOver || (open && sheet && (st === 'half' || st === 'full'));
   document.body.classList.toggle('wx-over', over);
-  const floating = open && !over;
-  // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
-  document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
+  document.documentElement.style.setProperty('--wx-h', `${shown && phone && b.offsetHeight ? b.offsetHeight + 4 : 0}px`);
+  planner.setLineOver(shown && phone, { instant: true });
   planner.placeToolsSoon();
   fitColumn();
 }
@@ -2025,7 +2024,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'e' && !mod && !e.altKey && planner.active && planner.points.length && !planner.loop.open) { if (planner.inView()) planner.setEditing(true); else planner.done(); }
   else if (planner.active && !planner.inView() && !mod && !e.altKey && { p: 1, s: 1, w: 1 }[e.key]) planner.setMode({ p: 'auto', s: 'line', w: 'water' }[e.key]); // the next leg's mode
   else if (e.key === 'l' && !mod) openPanel('quick-layers', { instant: true });
-  else if (e.key === 't' && !mod) toggleTimeline();
+  else if (e.key === 't' && !mod) toggleTimeline({ instant: true });
   else if (e.key === 'Escape') {
     if (layersEscape()) return;
     if (planner.cards.escape()) return; // a card: one back (from the first, closed); Move: cancelled

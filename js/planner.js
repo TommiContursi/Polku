@@ -21,7 +21,7 @@ import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decode
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
-import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls } from './ui.js';
+import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, cssVar, token } from './ui.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
@@ -109,8 +109,6 @@ const SHEET_STATES = ['folded', 'peek', 'half', 'full'];
 // every card's actions at 360 and 390 px wide (40 % of the screen where that's less: measureSheet())
 const PEEK = 296;
 // a token from css/app.css (--t-sheet: 260ms), and how far a move has slid the sheet down over its foot
-const cssVar = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
-const token = (k) => parseFloat(cssVar(k));
 const slid = (el) => parseFloat(getComputedStyle(el).translate.split(' ')[1]) || 0;
 // where the planner sits on a wide screen: on the left, unless you moved it to the bottom
 export const dockOf = () => store.get('plannerDock', 'left');
@@ -5682,15 +5680,14 @@ export class Planner {
   }
 
   // How far what floats above the sheet reaches over the map: the toolbox floating on a phone (or the toolbar
-  // on a bottom panel's edge) and, on a phone, an open timeline under it (css/app.css's offsets). Worked out
-  // from the sheet's settled top, since they follow the sheet as it moves.
+  // on a bottom panel's edge; css/app.css's offsets). Worked out from the sheet's settled top, since they follow the
+  // sheet as it moves. (A phone's weather line takes the sheet's place, never above it: step 6b.)
   overSheet() {
     this.placeTools();
-    const box = this.tools, wx = $('#wx-bar');
+    const box = this.tools;
     const tools = box && !box.hidden && !box.classList.contains('docked') ? box.offsetHeight : 0;
     if (box && box.classList.contains('desk')) return tools && tools + 12; // (docked into a raised bottom panel: none; floating, it's 12 px above the panel, #594)
-    const time = wx && !wx.hidden && !document.body.classList.contains('wx-over') ? wx.offsetHeight : 0;
-    return tools ? (time ? time + 20 : 8) + tools : time ? time + 8 : 0;
+    return tools && tools + 8;
   }
 
   // The sheet's height once it has settled, from the heights in css/app.css. It changes height over --t-sheet (longer when
@@ -5746,6 +5743,7 @@ export class Planner {
   // fades; from the keyboard, as the page loads and on a wider screen, at once. Leaving, it takes no taps and the map's
   // room is back at once (main.js), so what rides above it goes down with it.
   showSheet(on, { instant = false } = {}) {
+    if (on && this.lineOver) { this.app.closeLine(); return; } // (the planner or a card wants the sheet: the weather line gives it back)
     const p = this.panel, a = this.sheetSlide;
     if (on === (!p.hidden && !p.classList.contains('leaving'))) return;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, prop = reduce ? 'opacity' : 'translate';
@@ -5772,6 +5770,14 @@ export class Planner {
     };
     if (on) this.placeTools(); // (at once, as setSheetState() does: the map's buttons rise above it from where they were)
     p.dispatchEvent(new Event('sheetstate')); // (main.js: the map's room, and what rides above the sheet)
+  }
+
+  // The weather line in the sheet's place on a phone (step 6b): while it's open the sheet goes down out of view, keeping its
+  // size, and comes back as it was after ✕ (main.js setTimeline())
+  setLineOver(on, { instant = false } = {}) {
+    if (on === !!this.lineOver) return;
+    this.lineOver = on;
+    this.showSheet(!on && (this.active || (!!this.cards.current && this.cards.place === 'peek')), { instant });
   }
 
   /** Frame bounds [w, s, e, n] in the map the planner leaves free. A full sheet leaves no map

@@ -15,7 +15,7 @@ import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind }
 import { compass, dist } from './geo.js';
 import { strikesIn } from './lightning.js';
 import { STRIKE_COLOURS } from './icons.js';
-import { h, icon, store, popMenu } from './ui.js';
+import { h, icon, store, popMenu, token, cssVar } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 import { fmiRadar, FI_BOUNDS, rainviewerCoverage } from './radar.js';
 import { sunPosition } from './sun.js';
@@ -48,6 +48,7 @@ const fallRgba = (mmh, snow) => stepRgba(snow ? SNOWFALL_STEPS : RAIN_STEPS, mmh
 const stepsCss = (steps) => `linear-gradient(90deg, ${steps.map(([, c], i) => `${c} ${(i * 100) / steps.length}% ${((i + 1) * 100) / steps.length}%`).join(', ')})`;
 const SKY = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
+const PHONE = matchMedia('(max-width: 720px)'); // (where the line takes the sheet's place: main.js syncWxH())
 // the map's colour, one at a time (step 6b): [key, its name, its line, the pill's word, icon]; null is None
 export const COLOURS = [
   ['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'],
@@ -106,7 +107,7 @@ export class WeatherOverlay {
     this.set(wxState(null), { quiet: true });
     this.townMarks = new Map();
     this.effects = store.get('wxEffects', true); // softer edges and falling rain, over the steps (#182)
-    this.open = false; // timeline bar visible
+    this.open = false; // the weather line open (or opening)
     this.hour = 0;
     this.grid = null;
     this.viewZoom = map.getZoom();
@@ -135,7 +136,7 @@ export class WeatherOverlay {
   get layersOn() { return Object.values(this.on).some(Boolean); }
   get colour() { return COLOURS.find(([k]) => k && this.on[k])?.[0] ?? null; }
   // forecast data is needed for the weather layers and for the timeline strip
-  get active() { return this.open || !!this.docked || this.layersOn; }
+  get active() { return this.open || this.layersOn; }
   get animated() { return this.on.windLines || this.falling; }
   get fi() { return this.hour < 0 ? this.fiPast : this.fiNow; } // the radar image the map shows: Now's, or a past scan
 
@@ -167,9 +168,7 @@ export class WeatherOverlay {
     this.readout();
   }
 
-  // Show / hide the floating timeline. Layers keep their selected time either way.
-  // While docked in the planner it stays there; this only sets what comes back.
-  // Weather here (25d part 6b): the readout is for a spot of the map you chose, with a pin on it, until the timeline
+  // Weather here (25d part 6b): the readout is for a spot of the map you chose, with a pin on it, until the line
   // closes or you pick another; the forecast it reads is the grid's, so no request carries the spot
   holdAt(ll) {
     this.heldLL = ll;
@@ -184,23 +183,34 @@ export class WeatherOverlay {
     this.readout();
   }
 
-  setOpen(on) {
+  // Open or close the line. On a phone it takes the sheet's place, rising from the bottom edge on --t-sheet as the sheet
+  // goes down (main.js); on a desktop it grows from its foot as a card, on --t-open. It leaves the other way, on --t-open
+  // or --t-press, taking no taps while it goes, and `open` says at once where it's going. From the keyboard, at once;
+  // with reduced motion it fades. Web Animations, from where it is, so a second press turns it back mid-way.
+  setOpen(on, { instant = false } = {}) {
     if (!on) this.release();
+    if (on === this.open) return;
     this.open = on;
-    if (!this.docked) this.bar.hidden = !on;
-    this.wake();
-  }
-
-  // While planning, the timeline lives in the planner: one departure control,
-  // and no second panel over the map. `el` null puts it back on the map.
-  dock(el) {
-    if (el === (this.docked || null)) return;
-    if (!this.home) this.home = { parent: this.bar.parentElement, next: this.bar.nextSibling };
-    this.docked = el;
-    if (el) el.append(this.bar); else this.home.parent.insertBefore(this.bar, this.home.next);
-    this.bar.classList.toggle('docked', !!el);
-    this.bar.hidden = !el && !this.open;
-    this.placeFloat();
+    const bar = this.bar, was = this.slide, phone = PHONE.matches, reduce = REDUCED.matches;
+    const prop = reduce ? 'opacity' : phone ? 'translate' : 'scale', now = was && getComputedStyle(bar)[prop];
+    was?.cancel();
+    this.slide = null;
+    bar.classList.toggle('leaving', !on && !instant);
+    bar.inert = !on;
+    if (on) bar.hidden = false;
+    if (instant) bar.hidden = !on;
+    else {
+      const away = reduce ? '0' : phone ? '0 100%' : '0.97', here = reduce ? '1' : phone ? '0 0' : '1';
+      const frames = [{ [prop]: now || (on ? away : here) }, { [prop]: on ? here : away }];
+      if (!reduce && !phone) for (const [f, o] of frames.map((f, i) => [f, i === (on ? 0 : 1) ? 0 : 1])) f.opacity = String(o); // (the desktop's card fades as it grows)
+      const s = this.slide = bar.animate(frames, { duration: token(reduce ? '--t-open' : on ? (phone ? '--t-sheet' : '--t-open') : phone ? '--t-open' : '--t-press'), easing: cssVar(phone && !reduce ? '--ease-drawer' : '--ease-out'), fill: 'forwards' });
+      s.onfinish = () => {
+        if (this.slide !== s) return;
+        this.slide = null;
+        if (!on) { bar.hidden = true; bar.classList.remove('leaving'); }
+        s.cancel();
+      };
+    }
     this.wake();
   }
 
@@ -212,70 +222,6 @@ export class WeatherOverlay {
       requestAnimationFrame(() => this.renderStrip());
       if (!this.anim) this.startAnim();
     } else this.stopClock();
-  }
-
-  // Floating on a wide screen: drag the title bar to put the timeline anywhere,
-  // the grip on its right edge to make it wider. Both are remembered; a
-  // double-click on the title bar puts it back at the bottom centre.
-  bindFloat() {
-    const bar = this.bar;
-    const head = bar.querySelector('.tl-head');
-    const grip = h('div', { class: 'tl-grip', title: 'Drag to resize the timeline', 'aria-hidden': 'true' });
-    bar.append(grip);
-    this.floatMQ = matchMedia('(min-width: 721px)');
-    this.floatMQ.addEventListener('change', () => this.placeFloat());
-    const can = () => !this.docked && this.floatMQ.matches;
-    let drag = null;
-    const start = (kind) => (e) => {
-      if (!can() || e.button > 0 || (kind === 'move' && e.target.closest('button, input, select, a'))) return;
-      const r = bar.getBoundingClientRect();
-      drag = { kind, x: e.clientX, y: e.clientY, r };
-      bar.classList.add('dragging');
-      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
-      e.preventDefault();
-    };
-    const move = (e) => {
-      if (!drag) return;
-      const { r } = drag, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      const f = drag.kind === 'move' ? { left: r.left + dx, top: r.top + dy, width: r.width } : { left: r.left, top: r.top, width: r.width + dx };
-      this.placeFloat(f);
-    };
-    const end = () => {
-      if (!drag) return;
-      drag = null;
-      bar.classList.remove('dragging');
-      if (this.float) store.set('timelineFloat', this.float);
-    };
-    for (const [el, kind] of [[head, 'move'], [grip, 'size']]) {
-      el.addEventListener('pointerdown', start(kind));
-      el.addEventListener('pointermove', move);
-      el.addEventListener('pointerup', end);
-      el.addEventListener('pointercancel', end);
-    }
-    head.addEventListener('dblclick', (e) => {
-      if (!can() || e.target.closest('button, input, select, a')) return;
-      store.set('timelineFloat', null);
-      this.placeFloat(null);
-    });
-    addEventListener('resize', () => this.placeFloat());
-    this.placeFloat(store.get('timelineFloat', null) || undefined);
-  }
-
-  // f: {left, top, width} in px, null: back to the default place, undefined: re-apply (and keep on screen)
-  placeFloat(f) {
-    if (f !== undefined) this.float = f;
-    const bar = this.bar, st = bar.style;
-    const on = this.float && !this.docked && this.floatMQ && this.floatMQ.matches;
-    bar.classList.toggle('placed', !!on);
-    if (!on) { st.left = st.top = st.width = st.bottom = st.transform = ''; return; }
-    // anywhere on the map, but never over the button column on the right
-    const right = innerWidth - 84;
-    const w = Math.round(Math.max(420, Math.min(right - 16, this.float.width)));
-    const hgt = bar.offsetHeight || 190;
-    const left = Math.round(Math.max(8, Math.min(right - w - 8, this.float.left)));
-    const top = Math.round(Math.max(8, Math.min(innerHeight - hgt - 8, this.float.top)));
-    this.float = { left, top, width: w };
-    Object.assign(st, { left: `${left}px`, top: `${top}px`, width: `${w}px`, bottom: 'auto', transform: 'none' });
   }
 
   onMoveStart() {
@@ -455,19 +401,6 @@ export class WeatherOverlay {
     const at = (arr) => w.reduce((s, [k, wt]) => s + arr[k] * wt, 0);
     const u = at(c.u), v = at(c.v);
     return { u, v, speed: Math.hypot(u, v), gust: at(c.gust), temp: at(c.temp), rain: at(c.rain), cloud: at(c.cloud), snow: c.snow ? at(c.snow) : NaN, dir: ((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360 };
-  }
-
-  // Precipitation summed over the next `hours` from the selected time.
-  accum(lngLat, hours = 6) {
-    const g = this.grid, c = this.cur;
-    const w = c && this.weights(lngLat);
-    if (!w) return null;
-    let sum = 0;
-    for (const [k, wt] of w) {
-      const p = g.series[k].precip;
-      for (let j = c.i + 1; j <= Math.min(p.length - 1, c.i + hours); j++) sum += (p[j] || 0) * wt;
-    }
-    return sum;
   }
 
   // ------------------------------------------------------------------ map images
@@ -1120,18 +1053,20 @@ export class WeatherOverlay {
   stop() { this.set(wxState(null), { quiet: true }); this.clearLayers(); this.renderLegend(); this.stopClock(); }
 
   // ------------------------------------------------------------------ time bar
+  // The weather line (step 6b): ▷, the reading at the map's centre (or the spot) with the time, ✕; the strip with its
+  // range under it; the note; and a row of two pills, the map's colour and On top
   buildBar() {
     const bar = document.getElementById('wx-bar');
     this.bar = bar;
     bar.hidden = true;
     this.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => this.togglePlay(), html: icon('play', 18) });
-    this.slider = h('input', { type: 'range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(hourOf(+e.target.value)); } });
-    this.timeEl = h('div', { class: 'wx-time' });
-    // the map's layers: the colour and On top, each a pill opening its menu (step 6b)
+    this.slider = h('input', { type: 'range', class: 'wl-range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(hourOf(+e.target.value)); } });
+    this.timeEl = h('b', { class: 'wx-time' });
+    // the map's layers: the colour and On top, each a pill opening its menu
     const pill = (kind) => h('button', { type: 'button', class: 'rt-pill wl-layer', 'data-wx': kind, 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.layerMenu(kind) });
     this.colourPill = pill('colour');
     this.topPill = pill('top');
-    // the legend over the map, top left, while a layer is on: apart from the timeline, wherever that is
+    // the legend over the map, top left, while a layer is on: apart from the line, wherever that is
     this.legendEl = h('div', { class: 'wx-legend', role: 'region', 'aria-label': 'Map legend', hidden: true });
     document.querySelector('.map-hints').append(this.legendEl);
     // it folds to its name and opens with a tap; folded at first on a phone (or 200 %), open on a desktop; remembered
@@ -1140,19 +1075,18 @@ export class WeatherOverlay {
     this.foldMQ.addEventListener('change', () => { this.legendKey = null; this.renderLegend(); });
     this.noteEl = h('div', { class: 'tl-note' });
     this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': 'The radar’s last 90 minutes, then the 48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
-    this.nowEl = h('div', { class: 'tl-now' });
+    // the reading: the sky and the temperature, then the time over the wind, the rain and where it's read
+    this.nowMain = h('span', { class: 'tl-now-main' });
+    this.nowText = h('small');
+    this.nowEl = h('div', { class: 'tl-now' }, this.nowMain, h('span', { class: 'tl-now-text' }, this.timeEl, this.nowText));
     this.bindStrip();
     bar.append(
-      h('div', { class: 'tl-head' },
-        h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` }),
-        h('span', { class: 'wl-picks' }, this.colourPill, this.topPill),
-        h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) })),
-      h('div', { class: 'tl-main' }, this.stripCv, this.nowEl),
-      h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl),
-      this.noteEl,
+      h('div', { class: 'wl-row' }, this.playBtn, this.nowEl,
+        h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close the weather line: the map goes back to Now', onclick: () => this.app.onClose(), html: icon('close', 20) })),
+      this.stripCv, this.slider, this.noteEl,
+      h('div', { class: 'wl-picks' }, this.colourPill, this.topPill),
     );
     new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);
-    this.bindFloat();
   }
 
   // The two pills (step 6b): the map's colour ("Rain ▾") and On top ("On top · 2 ▾"), their names starting with their words
@@ -1460,8 +1394,8 @@ export class WeatherOverlay {
     });
   }
 
-  // The weather card beside the strip: the selected time at the spot under the
-  // mouse (or the map centre). At most once per frame.
+  // The line's reading: the selected time at the spot under the mouse, the spot held or the map centre. While the
+  // forecast for it loads, or when it failed or is old, the temperature is "–", never an older number. At most once a frame.
   readout() {
     if (this.readFrame) return;
     this.readFrame = requestAnimationFrame(() => {
@@ -1469,26 +1403,22 @@ export class WeatherOverlay {
       if (!this.active || !this.nowEl) return;
       this.renderLegend();
       const ll = this.heldLL || this.pointerLL || this.map.getCenter().toArray();
-      const s = this.sample(ll);
-      this.nowEl.style.setProperty('--tl-lines', this.on.snow ? 4 : 3); // (its room from the start: css/app.css, #301)
-      if (!s) {
-        this.nowEl.innerHTML = `<small>${this.loading ? 'Loading forecast…' : this.status || 'No forecast here'}</small>`;
-        this.nowEl.title = this.nowEl.textContent; // (a long note shows three lines)
+      const s = this.sample(ll), where = this.heldLL ? 'the spot' : this.pointerLL ? 'under the mouse' : 'map centre';
+      const unknown = !s || this.loading || this.status || this.grid?.stale;
+      if (unknown) {
+        this.nowMain.innerHTML = '<b>–</b>';
+        this.nowText.textContent = `${this.loading ? 'Loading the forecast…' : this.status || (this.grid?.stale ? 'An older forecast' : 'No forecast here')} · ${where}`;
+        this.nowEl.title = this.nowText.textContent;
         return;
       }
-      const night = sunPosition(this.cur.t, ll).alt < -3;
-      const kind = skyKind(s.rain, s.temp, s.cloud, night);
-      const sky = SKY[kind];
-      const sum = this.accum(ll, 6);
-      const rainTxt = s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry';
-      const gust = s.gust > s.speed + 2 ? ` <span>gusts ${s.gust.toFixed(0)}</span>` : '';
-      const where = this.heldLL ? 'at the spot' : this.pointerLL ? 'under the mouse' : 'at the map centre';
-      this.nowEl.title = `${sky} · ${where}`;
-      this.nowEl.innerHTML =
-        `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${this.heldLL ? 'the spot' : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
-        `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
-        `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` +
-        (this.on.snow && Number.isFinite(s.snow) ? `<div>${icon('snow', 12)}${s.snow >= 1 ? `${Math.round(s.snow)} cm of snow` : 'no snow'}</div>` : '');
+      const kind = skyKind(s.rain, s.temp, s.cloud, sunPosition(this.cur.t, ll).alt < -3);
+      const ms = (v) => v.toFixed(v < 3 ? 1 : 0), gust = s.gust > s.speed + 2 ? ` (${s.gust.toFixed(0)})` : '';
+      this.nowMain.innerHTML = `${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b>`;
+      this.nowText.innerHTML = `<svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>`
+        + `<span>${s.speed < 0.5 ? 'calm' : `${ms(s.speed)}${gust} m/s ${compass(s.dir)}`}</span> · <span>${s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry'}</span>`
+        + (this.on.snow && Number.isFinite(s.snow) ? ` · <span>${s.snow >= 1 ? `${Math.round(s.snow)} cm of snow` : 'no snow'}</span>` : '') + ` · <span>${where}</span>`;
+      this.nowEl.title = `${SKY[kind]} · ${where}`;
     });
   }
+
 }
