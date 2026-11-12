@@ -4569,6 +4569,8 @@ export class Planner {
         if (fresh && card?.pick) this.drawPick(card.pick);
         if (this.wxDot && card?.kind !== 'weather') { this.wxDot = false; this.hoverAt(null, false, false); } // (an hour picked in the weather card: its dot goes with it)
         this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
+        // a card opened wants the sheet: the weather line gives it back (not a card folded to its banner: a lane's tap opens the line)
+        if (card && fresh && !this.cards.folded && this.lineOver && this.cards.place === 'peek') this.app.closeLine();
         // the planner put away: the sheet comes for the card alone, and goes with it (#570)
         if (!this.active) {
           this.showSheet(this.cards.place === 'peek');

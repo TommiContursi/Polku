@@ -192,7 +192,7 @@ export class WeatherOverlay {
     if (on === this.open) return;
     this.open = on;
     const bar = this.bar, was = this.slide, phone = PHONE.matches, reduce = REDUCED.matches;
-    const prop = reduce ? 'opacity' : phone ? 'translate' : 'scale', now = was && getComputedStyle(bar)[prop];
+    const prop = reduce ? 'opacity' : phone ? 'translate' : 'scale', now = was && getComputedStyle(bar)[prop], fade = was && getComputedStyle(bar).opacity;
     was?.cancel();
     this.slide = null;
     bar.classList.toggle('leaving', !on && !instant);
@@ -202,7 +202,7 @@ export class WeatherOverlay {
     else {
       const away = reduce ? '0' : phone ? '0 100%' : '0.97', here = reduce ? '1' : phone ? '0 0' : '1';
       const frames = [{ [prop]: now || (on ? away : here) }, { [prop]: on ? here : away }];
-      if (!reduce && !phone) for (const [f, o] of frames.map((f, i) => [f, i === (on ? 0 : 1) ? 0 : 1])) f.opacity = String(o); // (the desktop's card fades as it grows)
+      if (!reduce && !phone) { frames[0].opacity = fade || (on ? '0' : '1'); frames[1].opacity = on ? '1' : '0'; } // (the desktop's card fades as it grows)
       const s = this.slide = bar.animate(frames, { duration: token(reduce ? '--t-open' : on ? (phone ? '--t-sheet' : '--t-open') : phone ? '--t-open' : '--t-press'), easing: cssVar(phone && !reduce ? '--ease-drawer' : '--ease-out'), fill: 'forwards' });
       s.onfinish = () => {
         if (this.slide !== s) return;
@@ -1216,7 +1216,7 @@ export class WeatherOverlay {
     ctx.fillRect(X(-PAST), 0, X(0) - X(-PAST), H);
     // your ride, from its departure to arrival, whatever the map's hour (step 6b)
     const ride = this.app.routeHours && this.app.routeHours(), go = Math.max(0, (this.app.departure() - Math.floor(Date.now() / 3600e3) * 3600) / 3600);
-    if (ride > 0) {
+    if (ride > 0 && go < HOURS) {
       ctx.fillStyle = accent;
       ctx.globalAlpha = 0.16;
       ctx.fillRect(X(go), 0, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), H);
