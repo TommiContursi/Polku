@@ -67,10 +67,10 @@ const DEFAULTS = {
   trackpadTilt: true,
   hoverInfo: true,
   routeFlow: true, // the route's moving chevrons (#198)
-  timeline: false,
   labelsDown: false,
   labelsUp: false,
   weather: wxState(null), // the map's colour and what's on top
+  weatherLast: null, // what the Weather button turns on again (the last layers that were on)
   exaggeration: 1.5,
   mmlKey: '',
   overlaysByActivity: {},
@@ -450,14 +450,15 @@ const planner = new Planner(map, {
     const has = planner.points.length > 1;
     if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
   },
-  weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
+  weatherHere: (ll) => { if (!weather.open) openLine(); weather.holdAt(ll); }, // (Weather here on a card)
   // the map's weather at a time of the trip, a layer turned on with it (the weather card's Weather on the map and its lanes);
   // past the map's 48 hours it says so, and shows nothing that would pass for the trip's weather
   weatherOn: (sec, layer) => {
     const k = Math.floor((sec - Math.floor(Date.now() / 3600000) * 3600) / 3600);
     if (k > 48) { toast('The map’s weather only reaches 48 hours ahead: it can’t show your trip yet'); return; }
-    if (layer) wxTileSet(`wx:${layer}`, true); else if (!state.timeline) setTimeline(true); // (a lane as its tile: Rain the colour, Wind its lines on top)
-    if (k >= 0) weather.setHour(k, { silent: true });
+    if (layer) wxTileSet(`wx:${layer}`, true); // (a lane as its tile: Rain the colour, Wind its lines on top)
+    if (!weather.open) openLine();
+    if (k >= 0) weather.setHour(k);
   },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
@@ -617,18 +618,23 @@ const lightStale = () => (state.hillshade && state.hillLight === 'sun' && (sunHo
 map.on('moveend', () => { if (lightStale()) applyStyle(); });
 map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)
 
+// The weather line open or closed; closed, the map goes back to Now with its layers left on (step 6b)
 function setTimeline(on) {
-  state.timeline = on;
   weather.setOpen(on);
+  if (!on) weather.setHour(0);
   $('#btn-time').setAttribute('aria-pressed', String(on));
-  saveSettings();
+}
+// Weather and T open the line at Now with what was on last, or Weather at places the first time
+function openLine() {
+  if (!Object.values(state.weather).some(Boolean)) setWeather(state.weatherLast || { places: true });
+  setTimeline(true);
+  weather.setHour(0);
 }
 
 function setWeather(patch) {
   state.weather = wxState({ ...state.weather, ...patch });
-  weather.set(state.weather);
-  // weather layers live on the timeline: switching one on opens it
-  if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
+  if (Object.values(state.weather).some(Boolean)) state.weatherLast = state.weather; // (what Weather brings back)
+  weather.set(state.weather); // (shown at the map's hour: a layer doesn't open the line)
   applyStyle();
   renderLayersPanel();
 }
@@ -1259,7 +1265,6 @@ function open3dMenu(anchor) {
   anchor.setAttribute('aria-expanded', 'true');
 }
 // weather on the map: the same switches as on the Weather button's timeline
-const timelineToggle = () => toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
 // Map colour as chips, one at a time, with the chosen one's opacity; On top as switches (step 6b)
 const wxColours = () => withOpacity(`wx:${state.weather.colour}`, h('div', { class: 'rt-chips wx-colours', role: 'group', 'aria-label': 'Map colour' },
   ...COLOURS.map(([k, label]) => h('button', { type: 'button', class: 'chip', 'data-wx': k || 'none', 'aria-pressed': String(state.weather.colour === k), onclick: () => setWeather({ colour: k }) }, label))));
@@ -1378,8 +1383,8 @@ function renderLayersPanel() {
   }
 
   // weather on the map — the same switches as on the Weather button's timeline
-  p.append(layerGroup('weather', 'Weather on the map', wx.length + (state.timeline ? 1 : 0),
-    timelineToggle(), h('div', { class: 'chip-group-label' }, 'Map colour'), wxColours(), effectsToggle(), h('div', { class: 'chip-group-label' }, 'On top'), ...TOPS.map(([k]) => wxTop(k)),
+  p.append(layerGroup('weather', 'Weather on the map', wx.length,
+    h('div', { class: 'chip-group-label' }, 'Map colour'), wxColours(), effectsToggle(), h('div', { class: 'chip-group-label' }, 'On top'), ...TOPS.map(([k]) => wxTop(k)),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Radar, lightning and measured snow by FMI, and by RainViewer outside Finland. Play the next 48 hours with the Weather button (T).')));
   refreshLitStatus();
   settle();
@@ -1539,8 +1544,8 @@ const QUICK_OPTS = {
   depths: () => [...DEPTHS.map(overlayToggle), h('p', { class: 'note' }, 'Traficom’s nautical chart data: shown, never used for routing. Not for navigation.')],
   lit: () => [overlayToggle('lit'), mapKey(...KEYS.dark())],
   hillshade: () => [hillshadeControls()],
-  'wx:rain': () => [wxColours(), timelineToggle()],
-  'wx:temp': () => [wxColours(), timelineToggle()],
+  'wx:rain': () => [wxColours()],
+  'wx:temp': () => [wxColours()],
 };
 
 function renderQuickLayers(dir = null) {
@@ -1824,7 +1829,7 @@ function renderSettingsPanel() {
     h('p', { class: 'note' }, 'On the map while a route is drawn. Layers has these too, with your route.')));
 
   p.append(group('map', 'Map and planner',
-    h('div', { class: 'rows' }, item({ icon: 'layers', label: 'Layers', line: 'The base map, trails, 3D, the timeline and weather on the map', chev: true, onclick: () => openPanel('quick-layers') })),
+    h('div', { class: 'rows' }, item({ icon: 'layers', label: 'Layers', line: 'The base map, trails, 3D and weather on the map', chev: true, onclick: () => openPanel('quick-layers') })),
     ...hillsControls(),
     hillshadeControls(),
     hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
@@ -1943,9 +1948,9 @@ for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', (e) =
 $('#layers-panel .panel-back').addEventListener('click', () => openPanel('quick-layers', { back: true }));
 
 for (const b of $$('#btn-plan, #btn-plan-search')) b.addEventListener('click', () => planner.setActive(!planner.active));
-// The button and T open and close the timeline over the map, while planning too (#225).
+// The button and T open and close the weather line, while planning too (#225).
 const toggleTimeline = () => {
-  setTimeline(!state.timeline);
+  if (weather.open) setTimeline(false); else openLine();
   renderLayersPanel();
 };
 $('#btn-time').addEventListener('click', toggleTimeline);
@@ -2099,7 +2104,6 @@ renderSettingsPanel();
 // The forecast needs only the view. The buttons show once the timeline has its rows (a frame of its
 // own, before this one), in their place, without sliding there.
 if (Object.values(state.weather).some(Boolean)) weather.set(state.weather);
-if (state.timeline) setTimeline(true);
 requestAnimationFrame(() => { syncWxH(); document.body.classList.add('ready'); });
 // MapLibre fires `load` (and `idle`) at the end of a frame it draws once every tile is in or has failed, but a tile
 // that fails with anything but a 404 asks for no frame. When it was the last one, the load step below waited until

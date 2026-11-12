@@ -242,7 +242,7 @@ def editing(chrome):
         for w, h, phone in [(1440, 900, False), (390, 844, True)]:
             pg = chrome.page(w, h, phone)
             try:
-                pg.open_app({'activity': sport, 'timeline': True}, {'polku:plannerDock': '"left"'})
+                pg.open_app({'activity': sport}, {'polku:plannerDock': '"left"'})
                 pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
                 fails = pg.js(MIDPOINT_EDIT)
                 if phone and sport == 'mtb': fails += [f'refit: {e}' for e in pg.js(REFIT_LATE)]
@@ -3821,7 +3821,7 @@ def onroute(chrome):
     # a desktop, by mouse: beside the panel at its box, above the timeline, no ‹ ›, Escape closes it
     pg = chrome.page(1440, 900, False)
     try:
-        pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
         errs, at = pg.js(f"{ONROUTE_OPEN}('.tier-read .warn-row', 'Road works')", timeout=90000)
         fails += errs
         if at:
@@ -6038,7 +6038,7 @@ TERRAIN = """(async () => {
 
 def terrain(chrome):
     pg = chrome.page(1440, 900, False)
-    pg.open_app({'activity': 'hike', 'timeline': True}, {'polku:plannerDock': '"left"'}, '#13/61.513/23.83')
+    pg.open_app({'activity': 'hike'}, {'polku:plannerDock': '"left"'}, '#13/61.513/23.83')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(TERRAIN, timeout=90000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
@@ -6189,7 +6189,7 @@ def sunlight(chrome):
     pg = chrome.page(1440, 900, False)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
-        pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:winter': '"off"'}, '#12.5/61.8790/25.0650')
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#12.5/61.8790/25.0650')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         fails += pg.js(SUNLIGHT_MATHS)
         fails += pg.js(f"({SUNLIGHT_APP})('before')", timeout=120000)
@@ -6760,7 +6760,7 @@ def routing_edits(chrome):
     pg = chrome.page(1440, 900)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
-        pg.open_app({'activity': 'hike', 'timeline': True}, {'polku:brouterUrl': json.dumps('https://own.invalid/brouter'), 'polku:winter': '"off"'})
+        pg.open_app({'activity': 'hike'}, {'polku:brouterUrl': json.dumps('https://own.invalid/brouter'), 'polku:winter': '"off"'})
         fails = pg.js("""(async () => {
           const p = polku.planner, real = fetch, asked = [], errs = [];
           let cancelled = 0;
@@ -7528,7 +7528,8 @@ def check(chrome, w, h, phone, bottom=False):
     name = f'{w}x{h}' + (' bottom' if bottom else '')
     fails = []
     pg = chrome.page(w, h, phone)
-    pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:plannerDock': '"bottom"' if bottom else '"left"'})
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"bottom"' if bottom else '"left"'})
+    pg.js(OPEN_LINE)
     # no Overpass in the layout checks: trail-detail tiles loading live made the timing flaky
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     time.sleep(1.0)
@@ -7699,7 +7700,7 @@ def colours(chrome):
         for sport in ['mtb', 'gravel', 'hike', 'paddle']:
             name = f'{w}{" bottom" if bottom else ""} {sport}'
             pg = chrome.page(w, h_, phone)
-            pg.open_app({'activity': sport, 'timeline': True}, {'polku:plannerDock': '"bottom"'} if bottom else None)
+            pg.open_app({'activity': sport}, {'polku:plannerDock': '"bottom"'} if bottom else None)
             fails += [f'{name}: {e}' for e in pg.js(COLOURS)]
             if bottom:
                 geometry = pg.js("""(() => {
@@ -7838,7 +7839,7 @@ def previews(chrome):
     fails = []
     for w, h_, phone in [(1440, 900, False), (390, 844, True)]:
         pg = chrome.page(w, h_, phone)
-        pg.open_app({'activity': 'mtb', 'timeline': True})
+        pg.open_app({'activity': 'mtb'})
         fails += [f'{w}: {e}' for e in pg.js(PREVIEWS)]
         if pg.js('!!window.categoryPreviewReady'):
             pg.js("document.querySelector('.bd-group[aria-label=Terrain] .bd-group-toggle').focus(); true")
@@ -7973,7 +7974,7 @@ def marks(chrome):
     for w, h_, phone in [(1440, 900, False), (390, 844, True)]:
         for sport in ['mtb', 'paddle']:
             pg = chrome.page(w, h_, phone)
-            pg.open_app({'activity': sport, 'timeline': True})
+            pg.open_app({'activity': sport})
             fails += [f'{w} {sport}: {e}' for e in pg.js(MARKS)]
             pg.reload()
             if pg.js("Object.values(polku.planner.marks).some(Boolean)"):
@@ -7994,7 +7995,7 @@ def changelog(chrome):
     fails = []
     for w, h_, phone in [(1440, 900, False), (390, 844, True)]:
         pg = chrome.page(w, h_, phone)
-        pg.open_app({'activity': 'mtb', 'timeline': True})
+        pg.open_app({'activity': 'mtb'})
         errs = pg.js("""(async () => {
           const p = polku.planner, wait = ms => new Promise(r => setTimeout(r, ms)), errs = [];
           p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.80,61.51]); p.addPoint([23.82,61.52]); await p.analysing;
@@ -8524,7 +8525,7 @@ def appearance(chrome):
         # the timeline's strip in the new look as soon as the theme changes (#583): Automatic, the timeline open, the
         # device turning dark; the strip as it is, against the strip drawn again (first with nothing changed, as a control)
         scheme(pg, 'light')
-        pg.open_app({'activity': 'mtb', 'appearance': 'auto', 'base': 'trail', 'timeline': True})
+        pg.open_app({'activity': 'mtb', 'appearance': 'auto', 'base': 'trail'})
         strip = """(() => { const w = polku.weather, was = w.stripCv.toDataURL(); w.renderStrip();
           return { shown: !w.bar.hidden && w.stripCv.width > 0, same: was === w.stripCv.toDataURL() }; })()"""
         r0 = pg.js(strip)
@@ -8802,7 +8803,8 @@ def glass(chrome):
                 where = f"{'phone' if phone else 'desktop'}, {theme}, over {map_name}"
                 pg = chrome.page(*((390, 844) if phone else (1440, 900)), phone)
                 try:
-                    pg.open_app({'activity': 'mtb', 'timeline': True, 'base': base, 'appearance': theme})
+                    pg.open_app({'activity': 'mtb', 'base': base, 'appearance': theme})
+                    pg.js(OPEN_LINE)
                     pg.js('polku.planner.setActive(true); true')
                     pg.js(f"polku.planner.restoreSnapshot({shoot.FIX('route-kauppi-mtb.json')}); true")
                     pg.js(shoot.WAIT_ROUTE)
@@ -8823,8 +8825,8 @@ def glass(chrome):
                     measured += glass_ink(pg, where, found)
                     pg.js("document.querySelector('#btn-time').click(); true")
                     time.sleep(0.4)
-                    if 'ahead' not in pg.js("document.querySelector('#btn-time').className"):
-                        fails.append(f"{where}: the Weather button doesn't say it's looking ahead")
+                    if pg.js("polku.weather.open || polku.weather.hour !== 0"):
+                        fails.append(f"{where}: the Weather button didn't close the line and go back to Now")
                     pg.js("document.querySelector('#btn-layers').click(); true")
                     time.sleep(0.6)
                     measured += glass_ink(pg, where, found)
@@ -8896,7 +8898,7 @@ def glass_modes(chrome):
 
     pg = chrome.page(1440, 900, False)
     try:
-        pg.open_app({'activity': 'mtb', 'timeline': True})
+        pg.open_app({'activity': 'mtb'})
         pg.js('polku.planner.setActive(true); true')
         pg.js(f"polku.planner.restoreSnapshot({shoot.FIX('route-kauppi-mtb.json')}); true")
         pg.js(shoot.WAIT_ROUTE)
@@ -8921,7 +8923,7 @@ def glass_modes(chrome):
     pg = chrome.page(390, 844, True)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': CONTRAST_AT_START}, pg.s)
-        pg.open_app({'activity': 'mtb', 'timeline': True})
+        pg.open_app({'activity': 'mtb'})
         pg.js('polku.planner.setActive(true); true')
         pg.js(f"polku.planner.restoreSnapshot({shoot.FIX('route-kauppi-mtb.json')}); true")
         pg.js(shoot.WAIT_ROUTE)
@@ -9013,37 +9015,38 @@ COLUMN_HOLD = r"""(() => {
 })();"""
 
 
+# The weather line opened by its button (step 6b: it isn't kept open across a reload), once it shows
+OPEN_LINE = """new Promise((ok) => { document.querySelector('#btn-time').click(); const t0 = Date.now(), go = () => !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 5000 ? ok(true) : setTimeout(go, 50); go(); })"""
+
+
 def column_early(chrome):
-    """#292: on a phone with the timeline left on, the map's column is in its place from the first frame it shows,
-    not moved up once the map has loaded."""
+    """#292: on a phone with the weather's layers left on, the map's column is in its place from the first frame it shows,
+    not moved up once the map has loaded. (The weather line isn't kept open across a reload since step 6b.)"""
     fails = []
-    # the temperature layer adds the timeline's legend row
+    # the temperature layer adds the legend's row
     for sport, wx in (('mtb', {}), ('paddle', {}), ('paddle', {'colour': 'temp'})):
-        name = f"390x844 {sport}, the timeline on{', the temperature too' if wx else ''}"
+        name = f"390x844 {sport}{', the temperature on' if wx else ''}"
         pg = chrome.page(390, 844, True)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COLUMN_HOLD}, pg.s)
-        pg.open_app({'activity': sport, 'timeline': True, **({'weather': wx} if wx else {})},
+        pg.open_app({'activity': sport, **({'weather': wx} if wx else {})},
                     {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'})
         # open_app() returns once the map has loaded, which can be well before MapLibre fires its load event
         if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => __col.held || Date.now() - t0 > 45000 ? ok(!!__col.held)"
                      " : setTimeout(go, 100); go(); })"):
             fails.append(f'{name}: MapLibre’s load event didn’t come in 45 s (the check proves nothing)')
         pg.js('__col.release()')
-        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 20000 ? ok() : setTimeout(go, 100); go(); })")
         pg.js(SETTLED)
         pg.js('new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => ok(true)))))')
         s = pg.js('__col.samples')
         held = [x for x in s if not x['loaded']]
         if not held:
             fails.append(f'{name}: no frame with the buttons before the map’s load event')
-        elif pg.js("document.querySelector('#wx-bar').hidden"):
-            fails.append(f'{name}: the timeline is not open after the map’s load event')
         else:
             first, last = held[0], s[-1]
             for k, label in (('locate', 'Locate'), ('d3', '3D')):
                 moves = sorted({x[k] for x in s if x[k] is not None})
-                # exact: the timeline keeps its height when its forecast comes in (#301)
+                # exact: nothing moves them once the map has loaded
                 if first[k] is None or last[k] is None or moves[-1] - moves[0] > 0:
                     fails.append(f"{name}: {label}'s top went from y {first[k]} (at {first['t']} ms) to y {last[k]} after the map's load"
                                  f" (tops seen: {', '.join(map(str, moves[:6]))})")
@@ -9075,8 +9078,9 @@ def timeline_height(chrome):
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.hold = true;'}, pg.s)
             pg.goto(BASE + 'sw.js')
             pg.js(TL_FORGET)
-            pg.open_app({'activity': 'hike', 'timeline': True, 'weather': {'colour': 'snow' if snow else 'rain', 'windLines': True}},
+            pg.open_app({'activity': 'hike', 'weather': {'colour': 'snow' if snow else 'rain', 'windLines': True}},
                         {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#11/68.9/27.0')
+            pg.js(OPEN_LINE)
             if not pg.js(TL_HELD):
                 fails.append(f'{name}: the forecast wasn’t asked for, or came from a cache (the check proves nothing)')
                 continue
@@ -9602,7 +9606,7 @@ def sport_menu(chrome):
         # the menu needs none of Traficom's depths, nor the snow
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': NO_SNOW}, pg.s)
-        pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': '"off"'})
+        pg.open_app({'activity': sport}, {'polku:winter': '"off"'})
         pg.js(SNOW_IN)  # (a late answer closed the menu a tap had just opened, and every tap after it was one behind: #371)
         return pg
 
@@ -9738,7 +9742,7 @@ def sport_menu(chrome):
         pg = chrome.page(w, h_, phone)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': HELD_SNOW}, pg.s)
-        pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': json.dumps(winter)})
+        pg.open_app({'activity': sport}, {'polku:winter': json.dumps(winter)})
         if not pg.js(SNOW_ASKED):
             fails.append(f'{name}: the snow was never asked for, so the check proves nothing')
         return pg
@@ -10229,13 +10233,8 @@ def button3d(chrome, phones=False):
         pg = chrome.page(w, h_, phone)
         # the button needs none of Traficom's depths
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
-        pg.open_app({'activity': sport, 'timeline': True, **(settings or {})}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:seen3dHint2': 'true'})
+        pg.open_app({'activity': sport, **(settings or {})}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:seen3dHint2': 'true'})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-        # Polku's load step opens the timeline, and on a phone the column then moves up above it (#292): open_app()
-        # waits for the step, 45 s at most, and this says so if the timeline still isn't open
-        if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden ? ok(true)"
-                     " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 100); go(); })"):
-            fails.append(f'{w}x{h_} {sport}: the timeline did not open in 45 s (Polku’s load step)')
         late = pg.js(SETTLED)
         if late:
             fails.append(f'{w}x{h_} {sport}: {late}')
@@ -10429,7 +10428,7 @@ def button3d(chrome, phones=False):
 
         # 200 % zoom on a 390 x 844 phone: no room for 3D in the column, which stays clear of the top bar; 3D still in Layers.
         # (With the timeline open or the planner, the column reaches the top bar on main too: #73, and 25a's rule for short phones.)
-        pg = page(195, 422, True, 'paddle', {'timeline': False})
+        pg = page(195, 422, True, 'paddle')
         if pg.js("(() => { const b = document.querySelector('#btn-3d'); return b ? getComputedStyle(b).display : 'none'; })()") != 'none':
             fails.append('195x422 (200 %): the 3D button shows, with no room for it in the column')
         top = ('.topbar', '#activity-bar', '#btn-settings', '#zoom-hint')
@@ -11161,7 +11160,7 @@ def fold_clear(chrome):
     fails = []
     pg = chrome.page(390, 844, True)
     try:
-        pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:winter': '"off"'})
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
         if not pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000):
             return ['no route']
         pg.js("polku.planner.setSheetState('peek'); polku.planner.clear(); true")
@@ -12502,11 +12501,64 @@ WX_STILL = """(async () => {
 })()"""
 
 
+# The weather line (step 6b): a state saved in an older format starts with nothing on, and the line isn't open after a
+# reload; Weather opens it at Now with Weather at places the first time; ✕ closes it and goes back to Now, the layers
+# left on; a layer from a tile or Layers shows at Now and doesn't open the line; Weather brings back what was on last;
+# a reload keeps the new format.
+WX_LINE = """(async () => {
+  const out = [], w = polku.weather, S = polku.state, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const bar = () => document.querySelector('#wx-bar'), weather = () => JSON.stringify(S.weather);
+  const NONE = '{"colour":null,"thunder":false,"windLines":false,"places":false}';
+  if (w.open || !bar().hidden) out.push('the line is open after a reload');
+  if (weather() !== NONE || w.layersOn) out.push(`saved in an older format, the layers start as ${weather()}`);
+  document.querySelector('#btn-time').click(); await wait(300);
+  if (!w.open || bar().hidden || w.hour !== 0 || weather() !== NONE.replace('"places":false', '"places":true')) out.push(`Weather the first time: open ${w.open}, hour ${w.hour}, ${weather()}`);
+  if (document.querySelector('#btn-time').getAttribute('aria-pressed') !== 'true') out.push('Weather isn’t pressed with the line open');
+  w.setHour(6); await wait(200);
+  document.querySelector('#wx-bar .tl-close').click(); await wait(300);
+  if (w.open || !bar().hidden || w.hour !== 0 || !S.weather.places) out.push(`✕: open ${w.open}, hour ${w.hour}, ${weather()}`);
+  if (Math.abs(polku.safety.app.time() - Date.now() / 1000) > 60) out.push('✕: road works and road conditions aren’t back at Now');
+  // a tile, then Layers: at Now, the line stays closed
+  document.querySelector('#btn-layers').click(); await wait(300);
+  document.querySelector('#quick-layers .qt-tog[data-tile="wx:rain"]').click(); await wait(300);
+  if (w.open || S.weather.colour !== 'rain' || w.hour !== 0) out.push(`the Rain tile: the line open ${w.open}, the colour ${S.weather.colour}`);
+  document.querySelector('#quick-layers .qt-more').click(); await wait(300);
+  const grp = document.querySelector('#layers-body .lg-group[data-group="weather"]'); grp.open = true;
+  grp.querySelector('.wx-colours [data-wx="temp"]').click(); await wait(300);
+  if (w.open || S.weather.colour !== 'temp') out.push(`Layers' Temperature: the line open ${w.open}, the colour ${S.weather.colour}`);
+  document.querySelector('#layers-panel .panel-close').click(); await wait(300);
+  // all off, then Weather: what was on last
+  w.app.onToggle({ colour: null, places: false }); await wait(200);
+  document.querySelector('#btn-time').click(); await wait(300);
+  if (!w.open || weather() !== '{"colour":"temp","thunder":false,"windLines":false,"places":true}') out.push(`Weather again: ${weather()}, not what was on last`);
+  return out;
+})()"""
+
+
+def weather_line(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'wind': True}}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
+        fails += pg.js(WX_LINE, timeout=60000)
+        pg.reload()
+        r = pg.js("({ open: polku.weather.open, weather: JSON.stringify(polku.state.weather), on: polku.weather.colour })")
+        if r != {'open': False, 'weather': '{"colour":"temp","thunder":false,"windLines":false,"places":true}', 'on': 'temp'}:
+            fails.append(f'after a reload: {r}')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the weather line opens and closes: Weather, ✕ back to Now, layers apart from it, the saved layers" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def weather_menu(chrome):
     pg = chrome.page(1440, 900, False)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
-        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'colour': 'rain'}}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
+        pg.open_app({'activity': 'mtb', 'weather': {'colour': 'rain'}}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
+        pg.js(OPEN_LINE)
         pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
         fails = pg.js(WX_MENU, timeout=60000)
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
@@ -12570,7 +12622,8 @@ def towns_weather(chrome):
     pg = chrome.page(1440, 900, False)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
-        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'places': True}}, {'polku:winter': '"off"'}, '#8.6/61.5/23.8')
+        pg.open_app({'activity': 'mtb', 'weather': {'places': True}}, {'polku:winter': '"off"'}, '#8.6/61.5/23.8')
+        pg.js(OPEN_LINE)
         pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
         res = pg.js(WX_TOWNS, timeout=90000)
         fails = res if isinstance(res, list) else res['out']
@@ -12901,7 +12954,8 @@ def weather_layers(chrome):
         pg = chrome.page(width, height, phone)
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
-            pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'colour': 'rain', 'thunder': True}}, {'polku:winter': '"off"'}, '#9/61.5/23.8')
+            pg.open_app({'activity': 'mtb', 'weather': {'colour': 'rain', 'thunder': True}}, {'polku:winter': '"off"'}, '#9/61.5/23.8')
+            pg.js(OPEN_LINE)
             fails += [f'{width} px: {f}' for f in pg.js(f'{WX_LAYERS}({str(phone).lower()})', timeout=60000)]
             fails += [f'{width} px: console: {e[:160]}' for e in pg.errors()]
         finally:
@@ -12935,7 +12989,8 @@ def clouds(chrome):
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)  # (Effects' motion on)
-        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'colour': 'cloud'}}, {'polku:winter': '"off"'}, '#9/61.5/23.8')
+        pg.open_app({'activity': 'mtb', 'weather': {'colour': 'cloud'}}, {'polku:winter': '"off"'}, '#9/61.5/23.8')
+        pg.js(OPEN_LINE)
         pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
         fails = pg.js(WX_CLOUDS, timeout=60000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
@@ -13296,9 +13351,10 @@ def toolbox(chrome):
     def page(w, h_, phone, sport='mtb', dock='left'):
         pg = chrome.page(w, h_, phone)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
-        pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': '"off"', 'polku:plannerDock': json.dumps(dock)})
+        pg.open_app({'activity': sport}, {'polku:winter': '"off"', 'polku:plannerDock': json.dumps(dock)})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })")
+        if not phone:  # (a desktop's line over the map, clear of the toolbar; a phone's takes the sheet's place)
+            pg.js(OPEN_LINE)
         return pg
 
     # (where it is once the sheet has come to its size: a tap measured while the sheet changed after Clear route
@@ -18432,7 +18488,7 @@ def targets(chrome):
         pg = chrome.page(w, h_, True)
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
-            pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'windLines': True}}, {'polku:winter': '"off"'}, '#12/61.514/23.822')
+            pg.open_app({'activity': 'mtb', 'weather': {'windLines': True}}, {'polku:winter': '"off"'}, '#12/61.514/23.822')
             pg.js(SETTLED)
             fails += [f'{name}: {f}' for f in pg.js(TG_LOOK)]
             # a switch in Settings answers while it's held: its track darkens (pressed by a mouse: the browser's touch here sets no :active)
@@ -20610,7 +20666,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
+    ('weather', [weather_requests, timeline_reading, weather_line, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
