@@ -2602,22 +2602,20 @@ export class Planner {
     this.retimeTimer = setTimeout(() => { if (this.analysis === a) this.loadWind(a); }, 400);
   }
 
-  // The departure changed (js/when.js): the start's card says it, the timeline's hour follows, and the route is timed
-  // again at once while the new forecast loads; one that came with a route (`opened`) is drawn with it
-  whenChanged({ fromMap = false, opened = false }) {
+  // The departure changed (js/when.js): the start's card says it, and the route is timed again at once while the new
+  // forecast loads; one that came with a route (`opened`) is drawn with it. The map's hour is its own (step 6b).
+  whenChanged({ opened = false }) {
     this.cards.refresh();
-    if (!fromMap && this.app.onStartChange) this.app.onStartChange(this.when.hour());
     if (opened) return;
     this.clearCategoryPreview();
     if (this.analysis) this.restart(this.analysis); // the clock times move immediately while the new forecast loads
     clearTimeout(this.windTimer);
-    // playback moves an hour a second; let it settle a little before re-fetching (and keeping it with the route)
     this.windTimer = setTimeout(() => {
       this.save();
       // water legs that keep out of the wind follow the forecast for the new hour (water.js keeps routes per wind class)
       if (this.legs.some((l, i) => l.mode === 'water' && this.routerFor(i).water.wind !== 'ignore')) { this.routeAll(); return; }
       if (this.analysis) this.loadWind(this.analysis);
-    }, fromMap ? 600 : 0);
+    });
   }
 
   // Wind at the time each part of the route is reached: time the route without

@@ -7957,8 +7957,8 @@ MARKS = r"""(async () => {
     // (Route's list says it on the start's row, 25d's part 4, to a screen reader since #761; the start's card and the box set it)
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
     if (!waypoint().includes(`Leave ${p.when.words()}`) || !p.els.there.textContent.includes(p.clockOf(p.when.start() + (p.analysis.timeWind || p.analysis.time)))) errs.push('a new departure did not update the start’s row or the box’s there at immediately');
-    p.when.set(hour(6), { fromMap: true });
-    if (pill.textContent !== `Leave ${p.when.words()}` || !pill.textContent.includes(clock(hour(6))) || !waypoint().includes(`Leave ${p.when.words()}`)) errs.push(`timeline departure did not update the box’s pill and the start’s row: ${pill.textContent}`);
+    p.when.set(hour(6));
+    if (pill.textContent !== `Leave ${p.when.words()}` || !pill.textContent.includes(clock(hour(6))) || !waypoint().includes(`Leave ${p.when.words()}`)) errs.push(`a later departure did not update the box’s pill and the start’s row: ${pill.textContent}`);
     pill.focus(); p.renderAnalysis();
     if (document.activeElement !== pill || !pill.isConnected) errs.push('an analysis update replaced the focused When pill');
     p.when.set(null);
@@ -18947,7 +18947,7 @@ def leave(chrome):
         r = pg.js("({ ...LV.when('start'), menu: !!LV.menu(), start: polku.planner.when.start(), want: LV.at(1, 7, 30), day: 'Tomorrow, ' + LV.day(LV.at(1, 7, 30)), clock: LV.clock(LV.at(1, 7, 30)), same: LV.row('start') === window.__whenRow })")
         if r['start'] != r['want'] or r['name'] != f"Leave at {r['clock']}" or r['line'] != r['day'] or r['menu'] or r['expanded'] != 'false' or not r['same']:
             fails.append(f"{name}: When set for tomorrow, 07:30: {r}")
-        # the box's pill says the same, on one line, with ▾; within two days the timeline and the safety layers keep the same time
+        # the box's pill says the same, on one line, with ▾; the map's hour and the departure leave each other alone (step 6b)
         pg.js("polku.planner.cards.close(); polku.planner.reveal('points'); polku.planner.els.box.scrollIntoView({ block: 'nearest' }); true")
         time.sleep(0.6)
         r = pg.js("({ ...LV.when('box'), want: `Leave ${LV.day(LV.at(1, 7, 30))}, ${LV.clock(LV.at(1, 7, 30))}` })")
@@ -18959,19 +18959,22 @@ def leave(chrome):
         r = pg.js("""(async () => { const W = await import(location.origin + '/js/wxmap.js'), p = polku.planner;
           // (what the field says: on the night the clocks go back, an hour is twice, and its words mean the first)
           const want = new Date(LV.iso(W.timeAtHour(5))).getTime() / 1000;
+          const hour0 = polku.weather.hour;
           LV.pick('box', LV.iso(W.timeAtHour(5))); await new Promise((ok) => setTimeout(ok, 300));
-          const a = { start: p.when.start(), want, hour: polku.weather.hour, wantHour: Math.floor((want - Math.floor(Date.now() / 3600000) * 3600) / 3600), safety: Math.round(polku.safety.app.time()) };
+          const a = { start: p.when.start(), want, hour0, hour: polku.weather.hour, safety: Math.round(polku.safety.app.time()), now: Date.now() / 1000 };
           polku.weather.setHour(7); await new Promise((ok) => setTimeout(ok, 300));
-          return { ...a, then: p.when.start(), want7: W.timeAtHour(7), name: LV.when('box').name, words: `Leave ${p.when.words()}`, clock: LV.clock(W.timeAtHour(7)) }; })()""")
-        if r['start'] != r['want'] or r['hour'] != r['wantHour'] or abs(r['safety'] - r['start']) > 60:
-            fails.append(f"{name}: Leave in five hours: the timeline at hour {r['hour']}, the safety layers at {r['safety'] - r['want']} s from it, leaves at {r['start'] - r['want']} s")
-        if abs(r['then'] - r['want7']) > 1 or r['name'] != r['words'] or r['clock'] not in r['name']:
-            fails.append(f"{name}: the timeline at hour 7: leaves {r['then'] - r['want7']} s from it, the box says {r['name']}")
+          const b = { then: p.when.start(), safety7: Math.round(polku.safety.app.time()), want7: W.timeAtHour(7), name: LV.when('box').name };
+          polku.weather.setHour(0);
+          return { ...a, ...b }; })()""")
+        if r['start'] != r['want'] or r['hour'] != r['hour0'] or abs(r['safety'] - r['now']) > 60:
+            fails.append(f"{name}: Leave in five hours: the map's hour went from {r['hour0']} to {r['hour']}, the safety layers {r['safety'] - r['now']} s from now, leaves {r['start'] - r['want']} s from it")
+        if r['then'] != r['want'] or abs(r['safety7'] - r['want7']) > 1:
+            fails.append(f"{name}: the map at hour 7: the departure moved {r['then'] - r['want']} s, the safety layers {r['safety7'] - r['want7']} s from the map's hour, the box says {r['name']}")
         # Leave now, from the pill's menu: leaving now again
         press(pg, show(pg, 'box'), f"{name}: the box's When pill", touch)
         press(pg, menu_at(pg, 'Leave now'), f'{name}: Leave now', touch)
-        r = pg.js("({ ...LV.when('box'), menu: !!LV.menu(), leave: polku.planner.when.at, hour: polku.weather.hour })")
-        if r['leave'] is not None or r['name'] != 'Leave now' or r['note'] or r['menu'] or r['hour'] != 0:
+        r = pg.js("({ ...LV.when('box'), menu: !!LV.menu(), leave: polku.planner.when.at })")
+        if r['leave'] is not None or r['name'] != 'Leave now' or r['note'] or r['menu']:
             fails.append(f"{name}: after Leave now: {r}")
         # four weeks ahead: past the forecast's reach, said under the box's pill and on the start's card's row; the timeline stays
         pg.js("LV.pick('box', LV.iso(LV.at(28, 7, 30)))")

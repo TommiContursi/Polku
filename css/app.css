@@ -452,7 +452,6 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .fab.ahead[aria-pressed="true"] .fab-time-label { color: #fff; }
 .wx-row { display: flex; align-items: center; gap: 8px; }
 .wx-row input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
-.wx-time.linked::before { content: "⚑ "; color: var(--route-text); }
 .wx-time { font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; width: 132px; flex: none; text-align: right; overflow: hidden; text-overflow: ellipsis; }
 /* the legend over the map, top left, while a weather layer is on (#182, as yr's app shows it) */
 .wx-legend { display: flex; flex-direction: column; gap: 4px; max-width: min(300px, calc(100vw - var(--pl-left) - 88px)); padding: 7px 10px 8px; border-radius: 12px; color: var(--text); }
