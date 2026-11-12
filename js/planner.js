@@ -2967,7 +2967,7 @@ export class Planner {
       { group: 'Times', items: [['route', 'From start', false], ['clock', 'Clock', true]].map(([ic, label, clock]) => ({ icon: ic, label, radio: true, checked: S.clock === clock, fn: () => set({ clock }) })) },
       { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, ...LIST_SHOWS.map(sw)) }] },
       { note: 'Hidden items stay in Check and the cards.' },
-    ], { label: 'List settings', modal: true });
+    ], { label: 'List settings' });
   }
   // Card settings (#690), ⋯ beside a card's ✕: Colour by, what colours the card's profile (a pick's own, else the route's,
   // which a point's profile shows), and Colours on the map, the route's; kept for every card on this device. Built as the
@@ -2986,7 +2986,7 @@ export class Planner {
         a ? { group: 'Show', items: [{ node: h('div', { class: 'wpl-shows' }, h('label', { class: 'tg' }, h('span', { class: 'tg-text' }, 'Colours on the map'),
           h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => this.setColorOnMap(e.target.checked) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }))) }] } : null,
         { note: 'Kept for every card, on this device.' },
-      ].filter(Boolean), { label: 'Card settings', modal: true });
+      ].filter(Boolean), { label: 'Card settings' });
     };
   }
   // A part's ⚙ (#761): its sport, which opens the list of sports in its place and changes this part's legs alone; its
@@ -3005,7 +3005,7 @@ export class Planner {
       { group: this.isMulti() ? `Route style · ${label} legs` : 'Route style · the whole route', items: this.styleItems(sport) },
     ];
     const again = (focus) => { menu.refill(items()); const el = focus && menu.el.querySelector(focus); if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest' }); } };
-    const menu = popMenu(anchor, items(), { label: `${label}: sport, speed and route style`, modal: true, sheet: true, onClose: () => anchor.setAttribute('aria-expanded', 'false') });
+    const menu = popMenu(anchor, items(), { label: `${label}: sport, speed and route style`, sheet: true, onClose: () => anchor.setAttribute('aria-expanded', 'false') });
     anchor.setAttribute('aria-expanded', 'true');
   }
   setListShow(patch) {
