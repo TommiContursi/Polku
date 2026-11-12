@@ -6159,6 +6159,7 @@ SKY_3D = """(async () => {
   await expect('night', night, '#0b1426');
   const dark = m.getStyle().light; // (not MapLibre's own, which turns with the camera)
   if (!dark || dark.anchor !== 'map' || dark.position[2] !== 0) out.push(`the buildings' light at night: ${JSON.stringify(dark)}, not from straight above`);
+  const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); // (forecasts other checks cached here: 60 % cloud)
   document.getElementById('btn-time').click();
   for (let k = 0; k < 80 && !w.sample(m.getCenter().toArray()); k++) await wait(250);
   await expect('day, a clear forecast', day, '#5f9cdb');
