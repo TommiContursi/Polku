@@ -366,7 +366,9 @@ export class WeatherOverlay {
     const pts = list.map(latticePoint);
     const req = (this.req = Symbol('wx'));
     this.loading = true;
+    this.renderStrip(); // (where there's nothing to show yet, the skeleton: after a pan too)
     this.renderTime();
+    this.readout();
     try {
       const raw = await forecastCells(list);
       if (req !== this.req) return;

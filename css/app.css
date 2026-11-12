@@ -2371,8 +2371,9 @@ body.dropping .drop-hint { display: flex; }
   .tl-layers.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
   .tl-layers.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
   .tl-layers.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
-  /* the strip from Play's column to the reading's, as the slider is from Play to the time: the knob under the needle */
-  .tl-strip { height: 56px; }
+  /* the strip from Play's column (a phone's tool is 30 px) to the reading's, as the slider is from Play to the time: the
+     knob under the needle */
+  .tl-strip { height: 56px; margin-left: 38px; }
   .tl-now { --tl-row: 14px; width: 112px; font-size: 11px; } /* (three lines in the strip's 56 px) */
   .tl-now-main b { font-size: 19px; }
   .tl-note { display: none; }

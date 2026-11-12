@@ -12506,9 +12506,10 @@ TL_SWITCH = """(async () => { const out = [], w = polku.weather, wait = (ms) => 
   """ + WX_SWITCH + """
   return out; })()"""
 # the knob: the slider's columns where its green is tallest (the thumb, taller than the track's green) in a screenshot;
-# the needle: the strip's columns drawn in its ink, opaque, from top to foot
+# the needle: the strip's columns drawn in its ink, opaque, from top to foot; the strip as wide as the slider with its
+# margins (the browser's 2 px), as on a desktop
 TL_KNOB = """(async (png) => {
-  const sl = document.querySelector('#wx-bar .wx-row input[type=range]'), cv = document.querySelector('#wx-bar .tl-strip'), s = sl.getBoundingClientRect(), c = cv.getBoundingClientRect();
+  const sl = document.querySelector('#wx-bar .wx-row input[type=range]'), cv = document.querySelector('#wx-bar .tl-strip'), s = sl.getBoundingClientRect(), c = cv.getBoundingClientRect(), m = getComputedStyle(sl);
   const img = new Image(); img.src = 'data:image/png;base64,' + png; await img.decode();
   const k = img.width / innerWidth, x0 = Math.floor(s.left * k), y0 = Math.floor(s.top * k), W = Math.ceil(s.right * k) - x0, H = Math.ceil(s.bottom * k) - y0;
   const g = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height }).getContext('2d'); g.drawImage(img, 0, 0);
@@ -12518,7 +12519,7 @@ TL_KNOB = """(async (png) => {
   const e = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, ink = [];
   for (let x = 0; x < cv.width; x++) { let n = 0; for (let y = 0; y < cv.height; y++) { const i = (y * cv.width + x) * 4; if (e[i + 3] > 200 && e[i] < 90 && e[i + 1] < 90 && e[i + 2] < 90) n++; } if (n > cv.height * 0.8) ink.push(x); }
   return { knob: most ? (x0 + (cols[0] + cols[cols.length - 1] + 1) / 2) / k : null, needle: ink.length ? c.left + ((ink[0] + ink[ink.length - 1] + 1) / 2) * (c.width / cv.width) : null,
-    strip: [c.left, c.right], slider: [s.left, s.right] };
+    strip: [c.left, c.right], slider: [s.left - parseFloat(m.marginLeft), s.right + parseFloat(m.marginRight)] };
 })"""
 FRAMES = 'new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))'
 
@@ -12527,7 +12528,8 @@ def timeline_phone(chrome):
     fails = []
     pg = chrome.page(390, 844, True)
     try:
-        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.hold = true;'}, pg.s)
+        # (+4 °C, as the checks after it here have it: its forecasts stay in the cache)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.hold = true; window.__wx.temp = 4;'}, pg.s)
         pg.goto(BASE + 'sw.js')
         pg.js(TL_FORGET)
         pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'temp': True}}, {'polku:winter': '"off"'}, '#12/61.514/23.822')
@@ -12553,7 +12555,7 @@ def timeline_phone(chrome):
                 png = pg.c.send('Page.captureScreenshot', {'format': 'png'}, pg.s)['data']
                 k = pg.js(f'{TL_KNOB}({json.dumps(png)})', timeout=60000)
                 if any(abs(a - b) > 1 for a, b in zip(k['strip'], k['slider'])):
-                    fails.append(f"at +{hr} h the strip is at x {k['strip'][0]:.1f}–{k['strip'][1]:.1f}, the slider at {k['slider'][0]:.1f}–{k['slider'][1]:.1f}")
+                    fails.append(f"at +{hr} h the strip is at x {k['strip'][0]:.1f}–{k['strip'][1]:.1f}, the slider with its margins at {k['slider'][0]:.1f}–{k['slider'][1]:.1f}")
                 if k['knob'] is None or k['needle'] is None or abs(k['knob'] - k['needle']) > 2:
                     fails.append(f"at +{hr} h the knob's centre is at x {k['knob']}, the needle at {k['needle']}")
             # where there was no forecast, one that fails: the skeleton, then the failure in words
