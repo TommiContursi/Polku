@@ -35,7 +35,7 @@ import { onStatus, SOURCES, clock, sourceStatus } from './net.js';
 import { swipeSheet, SWIPE } from './sheet.js';
 import { renderUsage } from './usage.js';
 import { renderSpeedEditor } from './speeds.js';
-import { WeatherOverlay, timeAtHour } from './wxmap.js';
+import { WeatherOverlay, timeAtHour, wxState, COLOURS, TOPS } from './wxmap.js';
 import { wayUnder } from './pick.js';
 import { isAerial } from './style.js';
 import { RouteFlow } from './routeflow.js';
@@ -70,7 +70,7 @@ const DEFAULTS = {
   timeline: false,
   labelsDown: false,
   labelsUp: false,
-  weather: { wind: false, temp: false, rain: false },
+  weather: wxState(null), // the map's colour and what's on top
   exaggeration: 1.5,
   mmlKey: '',
   overlaysByActivity: {},
@@ -84,7 +84,7 @@ const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
 if (!APPEARANCES.some(([k]) => k === state.appearance)) state.appearance = 'auto'; // (and a look)
 if (!LIT_LOOKS.some(([k]) => k === state.litLook)) state.litLook = 'lines';
-state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
+state.weather = wxState(state.weather); // (an older format starts with nothing on)
 for (const k of ['quickTiles', 'depthsBack']) if (!state[k] || typeof state[k] !== 'object') state[k] = {};
 const shared = parseShared(new URLSearchParams(location.search));
 const pin = parsePin(new URLSearchParams(location.search)); // a link to a spot: its card opens there (25d part 6b)
@@ -455,7 +455,7 @@ const planner = new Planner(map, {
   weatherOn: (sec, layer) => {
     const k = Math.floor((sec - Math.floor(Date.now() / 3600000) * 3600) / 3600);
     if (k > 48) { toast('The map’s weather only reaches 48 hours ahead: it can’t show your trip yet'); return; }
-    if (layer) setWeather({ [layer]: true }); else if (!state.timeline) setTimeline(true);
+    if (layer) wxTileSet(`wx:${layer}`, true); else if (!state.timeline) setTimeline(true); // (a lane as its tile: Rain the colour, Wind its lines on top)
     if (k >= 0) weather.setHour(k, { silent: true });
   },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
@@ -623,7 +623,7 @@ function setTimeline(on) {
 }
 
 function setWeather(patch) {
-  Object.assign(state.weather, patch);
+  state.weather = wxState({ ...state.weather, ...patch });
   weather.set(state.weather);
   if (planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
   // weather layers live on the timeline: switching one on opens it
@@ -1109,9 +1109,9 @@ const seg = (options, value, fn) => h('div', { class: 'seg small full' },
 // A raster layer's opacity, right under its switch while it's on; remembered per layer
 // (overlays by id, the weather fields as wx:rain and wx:temp; style.js reads the same keys).
 const WX_OPACITY = {
-  'wx:rain': { label: 'Rain', opacity: 0.55, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.rain },
-  'wx:temp': { label: 'Temperature', opacity: 0.5, layers: ['wx-field'], on: () => state.weather.temp },
-  'wx:snow': { label: 'Snow depth', opacity: 0.5, layers: ['wx-snow'], on: () => state.weather.snow },
+  'wx:rain': { label: 'Rain', opacity: 0.55, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.colour === 'rain' },
+  'wx:temp': { label: 'Temperature', opacity: 0.5, layers: ['wx-field'], on: () => state.weather.colour === 'temp' },
+  'wx:snow': { label: 'Snow depth', opacity: 0.5, layers: ['wx-snow'], on: () => state.weather.colour === 'snow' },
 };
 const opacitySpec = (id) => (RASTER_OVERLAYS[id]
   ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }
@@ -1259,15 +1259,17 @@ function open3dMenu(anchor) {
 }
 // weather on the map: the same switches as on the Weather button's timeline
 const timelineToggle = () => toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
-const wxToggle = (k) => ({
-  wind: () => toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
-  temp: () => withOpacity('wx:temp', toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
-  rain: () => withOpacity('wx:rain', toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
-  snow: () => withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
-  cloud: () => toggle('Clouds', state.weather.cloud, (v) => setWeather({ cloud: v })),
-  thunder: () => toggle('Thunder', state.weather.thunder, (v) => setWeather({ thunder: v })),
-  towns: () => toggle('Towns’ weather', state.weather.towns, (v) => setWeather({ towns: v })),
-})[k]();
+// Map colour as chips, one at a time, with the chosen one's opacity; On top as switches (step 6b)
+const wxColours = () => withOpacity(`wx:${state.weather.colour}`, h('div', { class: 'rt-chips wx-colours', role: 'group', 'aria-label': 'Map colour' },
+  ...COLOURS.map(([k, label]) => h('button', { type: 'button', class: 'chip', 'data-wx': k || 'none', 'aria-pressed': String(state.weather.colour === k), onclick: () => setWeather({ colour: k }) }, label))));
+const wxTop = (k) => { const [, label, desc] = TOPS.find(([t]) => t === k); return toggle(label, state.weather[k], (v) => setWeather({ [k]: v }), desc); };
+// a weather tile: a colour (wx:rain, wx:temp, wx:snow, wx:cloud), or what's on top (wx:wind is Wind lines, wx:towns Weather at places)
+const WX_TOP = { 'wx:wind': 'windLines', 'wx:towns': 'places', 'wx:thunder': 'thunder' };
+const wxTileOn = (id) => (WX_TOP[id] ? state.weather[WX_TOP[id]] : state.weather.colour === id.slice(3));
+const wxTileSet = (id, on) => setWeather(WX_TOP[id] ? { [WX_TOP[id]]: on } : { colour: on ? id.slice(3) : wxTileOn(id) ? null : state.weather.colour });
+// what's on, by name: the colour, then what's on top, each with its key (On now's chips and More's count)
+const wxOnNames = () => [...COLOURS.filter(([k]) => k && state.weather.colour === k).map(([k, label]) => ({ k: 'colour', label, off: null })),
+  ...TOPS.filter(([k]) => state.weather[k]).map(([k, label]) => ({ k, label, off: false }))];
 // the weather's Effects, also at the end of the timeline's layer menu (and in Settings › Display)
 const effectsToggle = () => toggle('Weather effects', weather.effects, (v) => weather.setEffects(v));
 const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
@@ -1276,7 +1278,7 @@ const onNowIds = () => [
   ...(state.trailColors !== 'off' ? ['trailColors'] : []),
   ...(state.trailDetails ? ['trailDetails'] : []),
   ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]),
-  ...['wind', 'temp', 'rain', 'cloud', 'thunder', 'snow', 'towns'].filter((k) => state.weather[k]).map((k) => `wx:${k}`),
+  ...wxOnNames().map(({ k }) => `wx:${k}`),
 ];
 
 function renderLayersPanel() {
@@ -1299,7 +1301,7 @@ function renderLayersPanel() {
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
-  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Towns’ weather']].filter(([k]) => state.weather[k]);
+  const wx = wxOnNames();
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
   // On now and Base map fold away like the other groups (open unless you close them)
@@ -1309,7 +1311,7 @@ function renderLayersPanel() {
       trailOn ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail colours', onclick: () => { setTrail('trailColors', 'off'); renderLayersPanel(); }, html: `<span>${{ down: 'Difficulty colours', up: 'Uphill colours', both: 'Difficulty & uphill', winter: 'Winter colours' }[state.trailColors]}</span>${icon('close', 12)}` }) : null,
       state.trailDetails ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail details', onclick: () => { setTrail('trailDetails', false); renderLayersPanel(); }, html: `<span>Trail details</span>${icon('close', 12)}` }) : null,
       ...on.map((id) => h('button', { type: 'button', class: 'on-chip', title: `Turn off ${overlayLabel(id)}`, onclick: () => { setOverlay(id, false); renderLayersPanel(); }, html: `<span>${overlayLabel(id)}</span>${icon('close', 12)}` })),
-      ...wx.map(([k, l]) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${l.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: false }), html: `<span>${l}</span>${icon('close', 12)}` })))
+      ...wx.map(({ k, label, off }) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${label.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: off }), html: `<span>${label}</span>${icon('close', 12)}` })))
       : h('p', { class: 'note' }, 'No extra layers — just the base map and trails.'),
     custom ? h('button', { type: 'button', class: 'link', onclick: () => {
       state.overlaysByActivity[state.activity] = {};
@@ -1362,7 +1364,7 @@ function renderLayersPanel() {
     }), 'How soon trails open after snow, ploughing, no access in winter, ski tracks · OpenStreetMap, where mapped · zoom 11+'),
     toggle('Ski tracks, skating & snowmobile routes', !!state.overlays.lipasWinter, rerender((v) => setOverlay('lipasWinter', v)), 'LIPAS · keep off ski tracks on foot and by bike'),
     withOpacity('seaIce', toggle('Sea ice', !!state.overlays.seaIce, rerender((v) => setOverlay('seaIce', v)), 'FMI’s daily ice charts (Copernicus Marine) · never a sign that ice is safe')),
-    withOpacity('wx:snow', toggle('Snow depth on the map', state.weather.snow, (v) => setWeather({ snow: v }), 'On the timeline, with FMI’s measured depths')),
+    withOpacity('wx:snow', toggle('Snow depth on the map', state.weather.colour === 'snow', (v) => setWeather({ colour: v ? 'snow' : null }), 'The map’s colour, with FMI’s measured depths')),
     wOn ? null : h('p', { class: 'note' }, 'These show while it’s winter.'),
     mapKey(...KEYS.winter())));
 
@@ -1376,8 +1378,8 @@ function renderLayersPanel() {
 
   // weather on the map — the same switches as on the Weather button's timeline
   p.append(layerGroup('weather', 'Weather on the map', wx.length + (state.timeline ? 1 : 0),
-    timelineToggle(), wxToggle('rain'), wxToggle('cloud'), wxToggle('thunder'), wxToggle('wind'), wxToggle('temp'), wxToggle('snow'), wxToggle('towns'), effectsToggle(),
-    h('p', { class: 'note' }, 'Forecast by Open-Meteo. Radar, lightning and measured snow by FMI, and by RainViewer outside Finland. Scrub or play the next 48 hours on the timeline.')));
+    timelineToggle(), h('div', { class: 'chip-group-label' }, 'Map colour'), wxColours(), effectsToggle(), h('div', { class: 'chip-group-label' }, 'On top'), ...TOPS.map(([k]) => wxTop(k)),
+    h('p', { class: 'note' }, 'Forecast by Open-Meteo. Radar, lightning and measured snow by FMI, and by RainViewer outside Finland. Play the next 48 hours with the Weather button (T).')));
   refreshLitStatus();
   settle();
 }
@@ -1411,7 +1413,7 @@ const tileLabel = (id, act = state.activity) => (id === 'lipasPoints' && QUICK_P
 function tileOn(id) {
   if (id === 'trailColors') return state.trailColors !== 'off';
   if (id === 'depths') return DEPTHS.some((d) => state.overlays[d]);
-  if (id.startsWith('wx:')) return !!state.weather[id.slice(3)];
+  if (id.startsWith('wx:')) return wxTileOn(id);
   if (TRAIL_KEYS.includes(id) || ['hillshade', 'contours'].includes(id)) return !!state[id];
   return !!state.overlays[id];
 }
@@ -1426,7 +1428,7 @@ function setTile(id, on) {
     setOverlays(Object.fromEntries(DEPTHS.map((d) => [d, back.includes(d)])));
   } else if (id === 'hillshade' || id === 'contours') { state[id] = on; applyStyle(); }
   else if (TRAIL_KEYS.includes(id)) setTrail(id, on);
-  else if (id.startsWith('wx:')) { setWeather({ [id.slice(3)]: on }); return; } // (it draws the panels: once, so the tile fades)
+  else if (id.startsWith('wx:')) { wxTileSet(id, on); return; } // (it draws the panels: once, so the tile fades)
   else setOverlay(id, on);
   renderLayersPanel();
 }
@@ -1536,8 +1538,8 @@ const QUICK_OPTS = {
   depths: () => [...DEPTHS.map(overlayToggle), h('p', { class: 'note' }, 'Traficom’s nautical chart data: shown, never used for routing. Not for navigation.')],
   lit: () => [overlayToggle('lit'), mapKey(...KEYS.dark())],
   hillshade: () => [hillshadeControls()],
-  'wx:rain': () => [wxToggle('rain'), timelineToggle()],
-  'wx:temp': () => [wxToggle('temp'), timelineToggle()],
+  'wx:rain': () => [wxColours(), timelineToggle()],
+  'wx:temp': () => [wxColours(), timelineToggle()],
 };
 
 function renderQuickLayers(dir = null) {

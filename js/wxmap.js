@@ -48,17 +48,24 @@ const fallRgba = (mmh, snow) => stepRgba(snow ? SNOWFALL_STEPS : RAIN_STEPS, mmh
 const stepsCss = (steps) => `linear-gradient(90deg, ${steps.map(([, c], i) => `${c} ${(i * 100) / steps.length}% ${((i + 1) * 100) / steps.length}%`).join(', ')})`;
 const SKY = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
-// the weather menu's layers, in its order: [key, its name, its line, the pill's word, icon]
-const LAYERS = [
+// the map's colour, one at a time (step 6b): [key, its name, its line, the pill's word, icon]; null is None
+export const COLOURS = [
   ['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'],
   ['cloud', 'Clouds', 'A grey veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
-  ['thunder', 'Thunder', 'Lightning in the last hour, and the forecast’s thunder', 'Thunder', 'thunder'],
-  ['wind', 'Wind', 'Moving lines, coloured by its speed', 'Wind', 'wind'],
+  ['wind', 'Wind speed', 'A colour field by its speed', 'Wind speed', 'wind'],
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
+  [null, 'None', '', 'No colour', 'close'],
 ];
-// the menu's points: the towns' weather (#916), at the places the map names at any zoom; a tap pins the reading there
-const TOWNS = ['towns', 'Towns’ weather', 'The sky, temperature and wind where the map names a place', 'Towns', 'cloudSun'];
+// on top of the colour, any of them: [key, its name, its line, icon]. Weather at places (#916): the sky, °C and wind at
+// the places the map names at any zoom; a tap pins the reading there
+export const TOPS = [
+  ['thunder', 'Thunder', 'Lightning in the last hour, and the forecast’s thunder', 'thunder'],
+  ['windLines', 'Wind lines', 'Moving lines: which way it blows', 'wind'],
+  ['places', 'Weather at places', 'The sky, temperature and wind where the map names a place', 'cloudSun'],
+];
+// the saved layers, from what was saved: a colour and what's on top, anything else (an older format) nothing
+export const wxState = (w) => ({ colour: COLOURS.some(([k]) => k && k === w?.colour) ? w.colour : null, ...Object.fromEntries(TOPS.map(([k]) => [k, w?.[k] === true])) });
 // the places it marks, the larger first: zoomed in, the map names villages and suburbs too
 const PLACE_LAYERS = ['label-city', 'label-town', 'label-village', 'label-suburb'];
 
@@ -96,7 +103,7 @@ export class WeatherOverlay {
   constructor(map, app) {
     this.map = map;
     this.app = app; // { setImage(id, img|null), setRadar(r|null), setData(id, fc), dark() }
-    this.on = { wind: false, temp: false, rain: false, snow: false, cloud: false, thunder: false, towns: false };
+    this.set(wxState(null), { quiet: true });
     this.townMarks = new Map();
     this.effects = store.get('wxEffects', true); // softer edges and falling rain, over the steps (#182)
     this.open = false; // timeline bar visible
@@ -126,9 +133,10 @@ export class WeatherOverlay {
   }
 
   get layersOn() { return Object.values(this.on).some(Boolean); }
+  get colour() { return COLOURS.find(([k]) => k && this.on[k])?.[0] ?? null; }
   // forecast data is needed for the weather layers and for the timeline strip
   get active() { return this.open || !!this.docked || this.layersOn; }
-  get animated() { return this.on.wind || this.falling; }
+  get animated() { return this.on.windLines || this.falling; }
   get fi() { return this.hour < 0 ? this.fiPast : this.fiNow; } // the radar image the map shows: Now's, or a past scan
 
   get falling() { return this.on.rain && this.effects; } // Effects' thin rain and snow
@@ -140,9 +148,11 @@ export class WeatherOverlay {
     this.app.onToggle({}); // (its switches in Layers and Settings drawn again)
   }
 
-  set(layers) {
-    Object.assign(this.on, layers);
-    this.windCv.hidden = !this.on.wind;
+  // the layers: one colour (or none) and what's on top (wxState()); `on` has a flag for each, for the drawing
+  set(w, { quiet = false } = {}) {
+    this.on = { ...Object.fromEntries(COLOURS.filter(([k]) => k).map(([k]) => [k, w.colour === k])), ...Object.fromEntries(TOPS.map(([k]) => [k, !!w[k]])) };
+    if (quiet) return; // (the first, before the canvases)
+    this.windCv.hidden = !this.on.windLines;
     this.rainCv.hidden = !this.falling;
     this.renderPill();
     this.clearLayers();
@@ -503,7 +513,7 @@ export class WeatherOverlay {
       return { url: cv.toDataURL('image/png'), coordinates: coords };
     };
     const on = this.hour < 0 ? { rain: this.on.rain } : this.on; // only the rain has a past (the radar): the rest start at Now
-    this.windCv.hidden = !on.wind;
+    this.windCv.hidden = !on.windLines;
     const fieldOn = on.temp || on.wind;
     this.app.setImage('wxField', fieldOn ? draw((at) => [...(on.temp ? ramp(TEMP_RAMP, at(c.temp)) : ramp(WIND_RAMP, Math.hypot(at(c.u), at(c.v)))), 255]) : null);
     // snow on the ground: its steps where there's 1 cm or more (bare ground stays clear; cells from before snow was asked for aren't known)
@@ -677,7 +687,7 @@ export class WeatherOverlay {
   // `pick`: choose the towns again (the map's labels have moved): the larger first, kept apart, none over the route.
   renderTowns(pick = false) {
     const marks = this.townMarks;
-    if (!this.on.towns || this.hour < 0 || !this.cur) { for (const m of marks.values()) m.remove(); marks.clear(); this.townList = null; return; }
+    if (!this.on.places || this.hour < 0 || !this.cur) { for (const m of marks.values()) m.remove(); marks.clear(); this.townList = null; return; }
     if (pick || !this.townList) {
       const big = (f) => PLACE_LAYERS.indexOf(f.layer.id) * 100 + (f.properties.rank ?? 50);
       const route = ['route-casing'].filter((id) => this.map.getLayer(id));
@@ -993,7 +1003,7 @@ export class WeatherOverlay {
       const f = this.field, cols = this.cam.cols;
       const cellAt = (x, y) => Math.round(y / CELL) * cols + Math.round(x / CELL);
 
-      if (this.on.wind && this.hour >= 0) {
+      if (this.on.windLines && this.hour >= 0) {
         const ctx = this.windCtx;
         ctx.globalCompositeOperation = 'destination-in';
         ctx.fillStyle = `rgba(0,0,0,${Math.pow(0.86, k).toFixed(3)})`;
@@ -1004,7 +1014,7 @@ export class WeatherOverlay {
         this.particles.length = n;
         ctx.lineWidth = 1.3;
         ctx.lineCap = 'round';
-        ctx.strokeStyle = this.app.dark() ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,42,0.55)';
+        ctx.strokeStyle = this.app.dark() || this.colour ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,42,0.55)'; // (white over a colour)
         ctx.beginPath();
         for (const p of this.particles) {
           const i = cellAt(p.x, p.y);
@@ -1088,14 +1098,14 @@ export class WeatherOverlay {
 
   // Remove what the switched-off layers drew (images, labels, particles).
   clearLayers() {
-    if (!this.on.wind) { this.clearCanvas(this.windCtx, this.windCv); this.windCv.hidden = true; }
+    if (!this.on.windLines) { this.clearCanvas(this.windCtx, this.windCv); this.windCv.hidden = true; }
     if (!this.falling) { this.clearCanvas(this.rainCtx, this.rainCv); this.rainCv.hidden = true; }
     if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
     if (!this.on.snow) this.app.setImage('wxSnow', null);
     if (!this.on.cloud) this.app.setImage('wxCloud', null);
     if (!this.on.thunder) { this.app.setImage('wxThunderArea', null); this.app.setData('wxThunder', { type: 'FeatureCollection', features: [] }); clearTimeout(this.strikeTimer); this.lightning = null; this.renderStrikes(); }
     if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fiNow = this.fiPast = this.radarShown = null; this.fiRate = null; this.renderNoRadar(); }
-    if (!this.on.towns) this.renderTowns();
+    if (!this.on.places) this.renderTowns();
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
   }
 
@@ -1107,7 +1117,7 @@ export class WeatherOverlay {
     this.anim = 0;
   }
 
-  stop() { this.on = { wind: false, temp: false, rain: false, snow: false, cloud: false, thunder: false, towns: false }; this.clearLayers(); this.renderLegend(); this.stopClock(); }
+  stop() { this.set(wxState(null), { quiet: true }); this.clearLayers(); this.renderLegend(); this.stopClock(); }
 
   // ------------------------------------------------------------------ time bar
   buildBar() {
@@ -1117,8 +1127,10 @@ export class WeatherOverlay {
     this.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => this.togglePlay(), html: icon('play', 18) });
     this.slider = h('input', { type: 'range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(hourOf(+e.target.value)); } });
     this.timeEl = h('div', { class: 'wx-time' });
-    // the map's layers: one pill naming what's on, opening their menu (#182; the weather line's, step 6b)
-    this.pill = h('button', { type: 'button', class: 'rt-pill wl-layer', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.layerMenu() });
+    // the map's layers: the colour and On top, each a pill opening its menu (step 6b)
+    const pill = (kind) => h('button', { type: 'button', class: 'rt-pill wl-layer', 'data-wx': kind, 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.layerMenu(kind) });
+    this.colourPill = pill('colour');
+    this.topPill = pill('top');
     // the legend over the map, top left, while a layer is on: apart from the timeline, wherever that is
     this.legendEl = h('div', { class: 'wx-legend', role: 'region', 'aria-label': 'Map legend', hidden: true });
     document.querySelector('.map-hints').append(this.legendEl);
@@ -1133,7 +1145,7 @@ export class WeatherOverlay {
     bar.append(
       h('div', { class: 'tl-head' },
         h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` }),
-        this.pill,
+        h('span', { class: 'wl-picks' }, this.colourPill, this.topPill),
         h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) })),
       h('div', { class: 'tl-main' }, this.stripCv, this.nowEl),
       h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl),
@@ -1143,27 +1155,35 @@ export class WeatherOverlay {
     this.bindFloat();
   }
 
+  // The two pills (step 6b): the map's colour ("Rain ▾") and On top ("On top · 2 ▾"), their names starting with their words
   renderPill() {
-    const shown = [...LAYERS, TOWNS].filter(([k]) => this.on[k]);
-    this.pill.innerHTML = `<span>${icon(shown[0] ? shown[0][4] : 'layers', 16)}</span><span>${shown.length ? `${shown[0][3]}${shown.length > 1 ? ` +${shown.length - 1}` : ''}` : 'Layers'}</span><span>${icon('chevronDown', 14)}</span>`;
-    this.pill.setAttribute('aria-label', `Weather layers: ${shown.map((x) => x[3]).join(', ') || 'none'}`);
+    const c = COLOURS.find(([k]) => k === this.colour), t = TOPS.filter(([k]) => this.on[k]);
+    this.colourPill.innerHTML = `<span>${icon(c[4], 16)}</span><span>${c[3]}</span><span>${icon('chevronDown', 14)}</span>`;
+    this.colourPill.setAttribute('aria-label', `${c[3]}: the map’s colour`);
+    this.topPill.innerHTML = `<span>${icon('layers', 16)}</span><span>${t.length ? `On top · ${t.length}` : 'On top'}</span><span>${icon('chevronDown', 14)}</span>`;
+    this.topPill.setAttribute('aria-label', `On top${t.length ? ` ${t.length}` : ''}: ${t.map((x) => x[1]).join(', ') || 'nothing'}`);
   }
 
-  // The pill's menu: the layers, any of them at once, and Effects at the end; it stays open while you tick
-  layerMenu() {
-    const items = () => [
-      { group: 'Weather on the map', items: LAYERS.map(layer) },
+  // A pill's menu, open while you pick: the colour's radios, then Effects under a heading of its own and the sources'
+  // note; On top's ticks. A pill again, or the other one, closes it.
+  layerMenu(kind) {
+    const was = this.menu?.kind;
+    if (this.menu) this.menu.close();
+    if (was === kind) return;
+    const colour = kind === 'colour', pill = colour ? this.colourPill : this.topPill;
+    const items = () => (colour ? [
+      { group: 'Map colour', items: COLOURS.map(([k, label, desc, , ic]) => ({ icon: ic, label, desc, radio: true, checked: this.colour === k, keep: true, cls: `wx-${k || 'none'}`, fn: () => pick(`wx-${k || 'none'}`, () => this.app.onToggle({ colour: k })) })) },
       'hr',
-      { group: 'Points', items: [layer(TOWNS)] },
-      'hr',
-      { icon: 'sparkle', label: 'Effects', desc: 'Softer edges and falling rain', checked: this.effects, keep: true, cls: 'wx-fx', fn: () => tick('fx', () => this.setEffects(!this.effects)) },
+      { group: 'Effects', items: [{ icon: 'sparkle', label: 'Softer edges and falling rain', checked: this.effects, keep: true, cls: 'wx-fx', fn: () => pick('wx-fx', () => this.setEffects(!this.effects)) }] },
       { note: 'Forecast by Open-Meteo. Radar and measured snow by FMI, and by RainViewer outside Finland.' },
-    ];
-    const layer = ([k, label, desc, , ic]) => ({ icon: ic, label, desc, checked: this.on[k], keep: true, cls: `wx-${k}`, fn: () => tick(k, () => this.app.onToggle({ [k]: !this.on[k] })) });
-    const tick = (k, fn) => { fn(); menu.refill(items()); menu.el.querySelector(`.wx-${k}`).focus({ preventScroll: true }); };
-    if (this.menu) { this.menu.close(); return; } // (the pill again: it closes)
-    this.pill.setAttribute('aria-expanded', 'true');
-    const menu = this.menu = popMenu(this.pill, items(), { label: 'Weather layers', onClose: () => { this.menu = null; this.pill.setAttribute('aria-expanded', 'false'); } });
+    ] : [
+      { group: 'On top', items: TOPS.map(([k, label, desc, ic]) => ({ icon: ic, label, desc, checked: this.on[k], keep: true, cls: `wx-${k}`, fn: () => pick(`wx-${k}`, () => this.app.onToggle({ [k]: !this.on[k] })) })) },
+      { note: 'Lightning by FMI.' },
+    ]);
+    const pick = (cls, fn) => { fn(); menu.refill(items()); menu.el.querySelector(`.${cls}`).focus({ preventScroll: true }); };
+    pill.setAttribute('aria-expanded', 'true');
+    const menu = this.menu = popMenu(pill, items(), { label: colour ? 'Map colour' : 'On top', sheet: true, onClose: () => { if (this.menu === menu) this.menu = null; pill.setAttribute('aria-expanded', 'false'); } });
+    menu.kind = kind;
   }
 
   // ------------------------------------------------------------------ timeline strip
@@ -1402,7 +1422,7 @@ export class WeatherOverlay {
     const c = this.cur, rows = [];
     const scale = (bar, words) => `<span class="wx-lg"><i style="background:${bar}"></i><small>${words}</small></span>`;
     if (this.on.temp) rows.push(scale(rampCss(TEMP_RAMP), `<b>Temperature</b> ${TEMP_RAMP[0][0]}–${TEMP_RAMP[TEMP_RAMP.length - 1][0]} °C`));
-    else if (this.on.wind) rows.push(scale(rampCss(WIND_RAMP), `<b>Wind</b> ${WIND_RAMP[0][0]}–${WIND_RAMP[WIND_RAMP.length - 1][0]} m/s`));
+    else if (this.on.wind) rows.push(scale(rampCss(WIND_RAMP), `<b>Wind speed</b> ${WIND_RAMP[0][0]}–${WIND_RAMP[WIND_RAMP.length - 1][0]} m/s`));
     if (this.on.rain) {
       rows.push(scale(stepsCss(RAIN_STEPS), `<b>Rain</b> ${RAIN_STEPS.map(([v]) => v).join(' · ')} mm/h`));
       rows.push('<div class="lgl lg-note">light · moderate · heavy · very heavy</div>');

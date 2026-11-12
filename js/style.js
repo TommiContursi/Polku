@@ -682,8 +682,10 @@ export function buildStyle(s, ctx) {
   return style;
 }
 
+// the weather's layers as flags: the one colour's, and what's on top (js/wxmap.js wxState())
+const wxOn = (s) => ({ ...(s.weather || {}), ...(s.weather?.colour ? { [s.weather.colour]: true } : {}) });
 function addWeather(s, ctx, sources, layers) {
-  const wx = s.weather || {};
+  const wx = wxOn(s);
   const d = ctx.data;
   const op = (k, dflt) => (s.overlayOpacity && s.overlayOpacity[k] != null ? s.overlayOpacity[k] : dflt); // yours, or the default
   if ((wx.temp || wx.wind) && d.wxField) {
@@ -1032,19 +1034,19 @@ function addLabels(s, P, hc, layers) {
   place('label-village', ['village'], 9, zi(9, 11, 14, 15));
   place('label-town', ['town'], 7, zi(7, 11, 13, 17), FONT_B);
   place('label-city', ['city'], 4, zi(4, 11, 12, 20), FONT_B);
-  if (s.weather && s.weather.temp) {
+  if (wxOn(s).temp) {
     layers.push({ id: 'wx-temp-label', type: 'symbol', source: 'wxLabels', filter: ['==', ['get', 'kind'], 'temp'], layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': 13, 'text-padding': 30 }, paint: { 'text-color': '#111827', 'text-halo-color': 'rgba(255,255,255,0.9)', 'text-halo-width': 2 } });
   }
-  if (s.weather && s.weather.snow) {
+  if (wxOn(s).snow) {
     // the snow FMI's stations measured: the real thing beside the model's wash
     // (a bare station is a small grey 0: measured, no snow)
     layers.push({ id: 'wx-snow-label', type: 'symbol', source: 'wxLabels', filter: ['==', ['get', 'kind'], 'snowobs'], layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': ['case', ['==', ['get', 'bare'], 1], 10, 12], 'text-padding': 12, 'symbol-sort-key': ['get', 'bare'] }, paint: { 'text-color': ['case', ['==', ['get', 'bare'], 1], '#94a3b8', '#4338ca'], 'text-halo-color': 'rgba(255,255,255,0.95)', 'text-halo-width': 2 } });
   }
-  if (s.weather && s.weather.thunder) {
+  if (wxOn(s).thunder) {
     // FMI's lightning: a cross by its age, over the words; a new one fades in (its feature-state, js/wxmap.js)
     layers.push({ id: 'wx-strikes', type: 'symbol', source: 'wxStrikes', layout: { 'icon-image': ['concat', 'strike-', ['get', 'age']], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'sort'] }, paint: { 'icon-opacity': ['coalesce', ['feature-state', 'a'], 1] } });
   }
-  if (s.weather && s.weather.rain) {
+  if (wxOn(s).rain) {
     // precipitation amount where it rains, nudged below the °C label
     layers.push({ id: 'wx-rain-label', type: 'symbol', source: 'wxLabels', filter: ['==', ['get', 'kind'], 'rain'], layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': 12, 'text-offset': [0, 1.3], 'text-padding': 20 }, paint: { 'text-color': '#1d4ed8', 'text-halo-color': 'rgba(255,255,255,0.92)', 'text-halo-width': 2 } });
   }
