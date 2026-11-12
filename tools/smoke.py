@@ -12742,6 +12742,11 @@ WC_JS = """(async () => {
   p.hoverAt(mid); await wait(50);
   const lit = [...(strip()?.querySelectorAll('.wx-hs-strip .lit') || [])].map((c) => c.dataset.h);
   p.hoverAt(-1); await wait(50);
+  // …and a time outside the strip's hours (another day's, on a trip with nights) lights none of them (#986's review)
+  strip().dataset.h0 = String(+strip().dataset.h0 + 86400); p.hoverAt(mid); await wait(50);
+  const other = [...(strip()?.querySelectorAll('.wx-hs-strip .lit') || [])].map((c) => c.dataset.h);
+  p.hoverAt(-1); strip().dataset.h0 = String(+strip().dataset.h0 - 86400); await wait(50);
+  if (other.length) errs.push(`the route's pointer at an hour a day before the strip's lit ${other.join(',')}, not none`);
   if (picked.pressed !== 'true' || !picked.dot || unpicked.pressed !== 'false' || unpicked.dot || !lit.length || lit.some((h) => h !== want) || strip()?.querySelector('.lit'))
     errs.push(`an hour's tap: ${JSON.stringify(picked)}, again ${JSON.stringify(unpicked)}; the route's pointer at ${p.clockOf(T.at(mid))} lit ${lit.join(',') || 'none'} (want ${want}), then ${strip()?.querySelector('.lit') ? 'stays lit' : 'none'}`);
   // …a tap on the rain's columns at an hour: the route by the rain, the map's weather at that hour, the card a banner

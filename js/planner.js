@@ -7776,7 +7776,8 @@ export class Planner {
     wrap.querySelectorAll('.lit').forEach((e) => e.classList.remove('lit'));
     if (i == null || i < 0 || !this.analysis) return;
     const x = wrap.querySelector('.wx-hs-x'), cw = parseFloat(wrap.style.getPropertyValue('--cw')), n = +wrap.style.getPropertyValue('--n');
-    const j = Math.max(0, Math.min(n - 1, Math.round((tripTimes(this.analysis).at(i) - +wrap.dataset.h0) / 3600)));
+    const j = Math.round((tripTimes(this.analysis).at(i) - +wrap.dataset.h0) / 3600);
+    if (!(j >= 0 && j < n)) return; // (another day's hour, on a trip with nights: nothing here is it)
     wrap.querySelectorAll(`[data-h="${j}"]`).forEach((e) => e.classList.add('lit'));
     if (!cw) return;
     const c0 = PAD_HS + j * cw;
