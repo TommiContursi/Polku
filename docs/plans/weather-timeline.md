@@ -5,8 +5,8 @@ code is written here. The mock-up is [mockups/weather-timeline.html](mockups/wea
 [private Artifact](https://claude.ai/artifact/5cLEyQFboky2ZYumGHZpeA) to try on a phone (built with `css/app.css` and
 `js/ui.js` inlined); **Today** in it is `main`'s timeline (with #988).
 
-**Where it stands (2026-11-12):** lines 1 to 7 of the list below, the map's weather, are drawn together in the mock-up:
-part 1 (the layers as buttons) and part 2 (your trip). The user chooses once, on the whole; no app code before that.
+**Where it stands (2026-11-13):** chosen by the user on the whole, after trying the mock-up: see "Chosen" below.
+The build of lines 1 to 7 is the four PRs under "The build", one at a time, each tried on a phone before the next.
 
 ## The list that counts (set by the user, 2026-11-12)
 
@@ -59,6 +59,12 @@ Frames 9 to 11 on the [design canvas](https://claude.ai/artifact/WD6i6g3rustC7TK
   (#767) *(from planner-rethought.md: the user's to keep or drop)*
 - Notes of your own on a waypoint, a stretch or the route (#854); Notes stays free for them meanwhile.
 
+**Later, in this weather work (after lines 1 to 7):**
+- The weather card's look, from the mock-up's stand-in: one row of times, and Rain and Wind as rows of tiles that look
+  tappable, under the clear heading "Weather card". An idea for the real card, to design.
+- More of the stand-in's heading look in the planner: the route's sport, length and time as its title ("MTB · 42 km ·
+  3 h 10 min"), its times under it ("Fri 13:00 → 16:10"), a hairline, then a row a day with the sky and ›.
+
 **Later, each its own issue:**
 - Best time to leave, from the weather (#273, #856), and later transport (#857).
 - What is still open of #431 and #794: a temperature lane on the weather card, and the trip box's When hidden while the
@@ -74,6 +80,54 @@ Frames 9 to 11 on the [design canvas](https://claude.ai/artifact/WD6i6g3rustC7TK
 **How:** the map's weather (1 to 7) in one mock-up, on `main`'s real timeline, before any app code; #992 holds it. It
 can be built in as many PRs as it needs, but the user chooses once, on the whole. Where a line can't be done as written,
 say so and propose what to do instead.
+
+## Chosen (2026-11-13)
+
+The user tried the whole and chose:
+1. **A phone with your trip: the planner folded** to its line while the timeline shows your trip, and back as it was
+   when you leave the trip view (48 hours) or close the timeline.
+2. **A desktop: the layer buttons on a row of their own** under the title bar.
+3. **360 px: the sideways row** of layer buttons stays.
+4. **Weather at places stays behind ⋯.**
+5. **Snow depth's fourth reading line stays** as on `main`.
+
+And, from trying it:
+- **On a phone the slider's knob lines up under the strip's needle,** as it does on a desktop: the strip starts where
+  the slider does (after Play's column) and ends where it does.
+- **With the planner folded, the reading is one line over a strip the bar's whole width** (as the sketch's rows drew
+  it). Its cost: the timeline is about 30 px taller than with the reading beside the strip (the map 418 px rather than
+  448 at 390 × 844), and the reading moves over the strip when you tap Your trip. What it gains: the strip is about
+  60 px wider, so the slider is more precise, and the line has room for "from the side" and "behind you" as well as
+  "against you". Play stays in the slider's row (`main`'s place); the time goes to the reading line's end, so the knob
+  and the needle line up there too.
+- **Loading is a skeleton,** as the cards' (`pick-skel`): the strip and the reading show their shapes while the forecast
+  comes, not a line of words.
+
+## The build
+
+Four PRs in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16), one at a time (they share
+`js/wxmap.js`), each tried on a phone before the next, each referring to #869 and naming the lines it closes:
+
+1. **The weather layers as buttons** (lines 1, and 7's Wind lines): the six as `chip`s with `aria-pressed` in
+   `tl-layers` (a row of their own on a desktop, the pill's place on a phone, sideways with a fade), ⋯ beside ✕ with
+   Weather at places, Effects and the sources' note, a desktop's tooltips; the knob under the needle on a phone; the
+   skeleton while loading. The pill and its menu go. DEVELOPING's Shared controls: the layer buttons' row replaces "A
+   pill naming what's on".
+2. **The timeline zoomed to your trip** (lines 2, 3, 4 and 7): the trip's row (48 hours · Your trip, Weather card ›),
+   the strip and slider by the 5 minutes over your trip, the reading where you'll be (from the planner's analysis),
+   your dot on the route, the wind band with its key, ‹ › between the stretches against you (the weather card's wind
+   stretches), a day at a time with the card's day chips, Your trip greyed with the reason past the 48 hours, and the
+   forecast loading or failed said in the stepper. CONTEXT.md's Weather timeline line changes ("not tied to the route").
+3. **The weather card and the timeline, one tap apart** (line 5): the card's hours of Rain and Wind and its lanes open
+   the timeline on your trip at that hour with that layer on (on a phone the card folds to its banner with Back, as
+   today); Weather card › and 48 hours. The separate bar for a lane's tap is dropped, and CONTEXT.md's Weather line with
+   it.
+4. **Room for your trip on a phone** (line 6): the planner folds to its line while the timeline shows your trip, and
+   comes back as it was on 48 hours or ✕; the reading on one line over a full-width strip there; checked at 360 px and
+   200 %.
+
+Each PR: its checks in `tools/smoke.py` (`weather`, and the groups it touches), CHANGELOG, USING.md, DEVELOPING,
+screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "Model and effort").
 
 ## What stays as it is
 
