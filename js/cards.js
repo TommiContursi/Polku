@@ -458,7 +458,7 @@ export function wholeCard(pl) {
 // items and the key facts (planner's weatherBody()). Its head is When and when you're there (weatherHead()), its name for a
 // screen reader. `time`: Time on the way unfolded, kept from one drawing to the next.
 export function weatherCard(pl, { time = false } = {}) {
-  const card = { kind: 'weather', key: 'weather', label: 'Weather on the way', get title() { return pl.weatherHead(); }, time, alive: () => !!(pl.analysis && pl.trip()), build: (body) => pl.weatherBody(card, body) };
+  const card = { kind: 'weather', key: 'weather', label: 'Weather on the way', get title() { return pl.weatherHead(); }, time, alive: () => pl.points.length > 1 && !!(pl.analysis && pl.trip()), build: (body) => pl.weatherBody(card, body) };
   return card;
 }
 

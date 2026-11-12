@@ -7460,7 +7460,7 @@ export class Planner {
     const w = a.wind, el = h('section', { class: 'wx-day', 'data-day': String(k), 'aria-label': many ? `Day ${d.n}` : 'The weather' });
     const night = many && (a.waits || []).filter((x) => isNight(x.stop))[k];
     const head = `Day ${d.n} · ${shortDate(d.t0)} · ${timeOf(d.t0)} to ${timeOf(d.t1)}${night ? ` · night at ${this.nameOf(night.i)}` : ''}`;
-    if (many && !(w && d.t1 - d.t0 < 1800)) el.append(h('h4', { class: 'wx-dayh' }, head));
+    if (many) el.append(h('h4', { class: 'wx-dayh' }, head));
     if (!w) return el;
     const wx = dayWeather(w, a, d.i0, d.i1);
     const say = (sky, text, none = false) => h('p', { class: `wx-say${none ? ' none' : ''}` }, h('span', { class: `wx-sky ${sky}`, role: 'img', 'aria-label': SKY_WORDS[sky], html: icon(sky, 28) }), h('span', {}, text));
@@ -7469,7 +7469,7 @@ export class Planner {
       return el;
     }
     const f = this.dayFacts(a, d, wx);
-    if (many && d.t1 - d.t0 < 1800) { el.append(rows(item({ icon: f.sky, label: head, line: f.short, el: 'div' }))); return el; }
+    if (many && d.t1 - d.t0 < 1800) { el.append(say(f.sky, f.short)); return el; }
     const line = f.lanes.length > 0, pv = this.wxPreview(a, d, el);
     el.append(say(f.sky, f.say));
     if (f.notes.length) el.append(h('ul', { class: 'wx-notes' }, ...f.notes.map((n) => h('li', {}, pv(h('button', { type: 'button', class: `wx-tell ${n.tier}`, 'data-note': String(n.n), onclick: () => this.focusRange(n.i0, Math.max(n.i0, n.i1), null) },
@@ -7609,7 +7609,8 @@ export class Planner {
     if (l.k === 'wind' || l.k === 'rain') this.pickColor(l.k);
     if (l.k !== 'waves') this.app.weatherOn(tripTimes(a).at(s ? s.i0 : 0), l.k);
     if (s) this.focusRange(s.i0, s.i1, null);
-    this.cards.fold(`${l.name} on the map`, () => {}, { icon: { wind: 'wind', rain: 'rain', thunder: 'thunder', waves: 'paddle' }[l.k], label: 'Back' });
+    // (on a desktop the card stays beside the map; on a phone, where it covers the map, it folds to a banner with Back)
+    if (this.cards.place !== 'float') this.cards.fold(`${l.name} on the map`, () => {}, { icon: { wind: 'wind', rain: 'rain', thunder: 'thunder', waves: 'paddle' }[l.k], label: 'Back' });
   }
   // pointing at a note, a lane or a stretch (or the keyboard's focus on it) lights it on the trip line and on the map, with
   // the map staying where it is; a click then frames it, as a tap does

@@ -2013,11 +2013,15 @@ STOPS = """(async () => {
   p.reveal('points');
   await wait(200);
   if (p.els.boxDays.querySelectorAll('.row').length !== 2) errs.push(`${p.els.boxDays.querySelectorAll('.row').length} days in the trip's box`);
-  // the weather card: each day its own weather, a sentence or (under half an hour) a line, the night's morning too (#869)
+  // the weather card: each day its own weather, a sentence or (under half an hour) a line, the night's morning too (#869),
+  // shown on a desktop's card too (a short day's line was a row's hidden small, #973's test)
   p.openWeather({ day: 1 });
   await wait(300);
-  const said = [...(p.cards.box?.querySelectorAll('.wx-day') || [])].map((x) => x.querySelector('.wx-say, .row')?.textContent || '');
+  const said = [...(p.cards.box?.querySelectorAll('.wx-day') || [])].map((x) => x.querySelector('.wx-say')?.innerText || '');
   if (said.length !== 2 || said.some((t) => !t)) errs.push(`each day's weather in the weather card: ${said.join(' / ') || 'none'}`);
+  // a lane's tap on a desktop leaves the card open beside the map (a phone's folds, weather_card)
+  p.wxLane({ k: 'waves', name: 'Waves', stretches: [] }); await wait(200);
+  if (p.cards.folded || !p.cards.box?.querySelector('.wx-day')) errs.push(`a lane's tap on a desktop: the card ${p.cards.folded ? 'folded' : 'gone'}`);
   // a warning that crosses the night counts on both days (#973's review): thunder all along, a note of its own each day
   {
     const { dayWeather } = await import(location.origin + '/js/stops.js'), a = p.analysis, keep = a.wind;
@@ -2091,7 +2095,14 @@ STOPS = """(async () => {
   if (!dk.length || dk[0].from !== t8 || !(dk[0].sunFrom < t8 - 1800)) errs.push(`darkness from 20:00: ${JSON.stringify(dk)}`);
   if (S.encodeStops([null, { min: 45 }, { on: 480 }]) !== '1:45,2:n0800' || JSON.stringify(S.decodeStops('1:45,2:n0800,x,3:n2500')) !== '[[1,{"min":45}],[2,{"on":480}]]') errs.push('st= encoding');
   if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (straight legs need none)');
-  p.clear();
+  // Clear route with the weather card open: the route goes, and the card with it (it stayed, drawn from the analysis of
+  // no points, and Clear route stopped half-way, #973's test)
+  for (let k = 0; k < 50 && !p.analysisFits(); k++) await wait(100);
+  p.openWeather(); await wait(300);
+  const open = !!p.cards.box?.querySelector('.wx-day');
+  try { p.clear(); } catch (e) { errs.push(`Clear route with the weather card open: ${e.message}`); }
+  await wait(300);
+  if (!open || p.points.length || p.cards.current) errs.push(`Clear route with the weather card open: ${open ? '' : 'no card to start with, '}${p.points.length} points left, the card ${p.cards.current ? 'still open' : 'closed'}`);
   return errs;
 })()"""
 
