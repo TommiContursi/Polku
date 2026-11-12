@@ -481,6 +481,8 @@ Three PRs, each tried on a phone before the next, in this order: 6a, then 6b, th
 
 **Not chosen (2026-11-12):** the rest of what this section listed before: the line in the sheet's place, the two dropdowns (the map's colour and On top), one colour at a time, Layers' chips, the new reading, the rename to Weather at places, and the Weather button's temperature (6c). They came from mock-up E, a sketch made before the route's weather was designed. A build of them (#987) was closed unmerged: it took away the timeline's window, its dragging and resizing, and the visible slider, and the user found it worse than `main`'s. The mock-ups in [mockups/weather-card.html](mockups/weather-card.html) are sketches, not specs.
 
+**The timeline's next round (2026-11-12):** its layers as buttons, then zooming it to your trip, in [a plan of its own](weather-timeline.md) with [its mock-up](mockups/weather-timeline.html). Its trip view replaces the lane's folded bar of Round 5.
+
 **Next for the map's weather, when the user chooses:** a written list (no mock-up) of every place a weather setting lives today (the timeline's menu, Layers' weather group, the quick tiles, Settings → Display, Layers → Winter), with one proposal for connecting them.
 
 ## Left for step 9 and later

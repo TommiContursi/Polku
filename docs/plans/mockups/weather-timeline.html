@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Weather timeline</title>
+<meta name="description" content="Mock-up for #869: the map's weather timeline with its layers as buttons instead of the dropdown, and zoomed to your trip, beside Today's from main.">
+<!--
+  #869, 2026-11-12, with #988 merged. Part 1 of the weather timeline's round: the layers as buttons instead of the dropdown.
+  Part 2 (zooming the timeline to the trip) waits for the user's answer on part 1. Not wired to the app: nothing here is
+  loaded by Polku. Today is main's timeline (with #988), drawn from js/wxmap.js (buildBar(), renderPill(),
+  layerMenu(), renderStrip(), readout(), renderTime(), renderLegend(), bindFloat()) with css/app.css's own classes
+  (wx-bar, tl-head, tl-title, rt-pill wl-layer, tl-strip, tl-now, wx-row, wx-time, tl-note, tl-grip, wx-legend, fab,
+  plan-btn, tool, chip, menu); what's new is in the block marked "new". The forecast is made up, at a fixed clock
+  (Thursday 12 November, 19:56). The map and its layers are drawn by hand (illustrative).
+
+  Part 2 (your trip), drawn the same day: the trip's row, the reading on the route, the wind band and its stretches, and
+  stand-ins for the planner and the weather card (marked as such).
+  ?v=today|row|bar  &f=desk|390|360  &z=100|200  &on=none|rain|rainwind|tempwind|all  &fc=ready|loading|failed
+  &trip=none|day|night|far  &span=48|trip  &way=row|sketch|fold
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
+<style>
+/* ======================================================= the page (mock-up chrome, not the design; #869's) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; }
+* { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; } /* (app.css holds the app's page still; this page scrolls) */
+body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* (the app's, so its menus and tooltips have it) */ color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+.cv { max-width: 1500px; margin: 0 auto; }
+.cv a { color: var(--page-link); }
+.cv h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+.cv > p { margin: 0 0 8px; max-width: 900px; }
+.bars { margin: 12px -16px 0; padding: 8px 16px; border-bottom: 1px solid rgba(128,128,128,.25); }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.bar > span { min-width: 60px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 28px; padding: 3px 11px; border: 0; border-radius: 18px; background: none; color: var(--switch-fg); font: inherit; font-size: 13px; cursor: pointer; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 650; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.stage { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 28px; margin-top: 18px; }
+.cap { margin: 10px 0 0; font-size: 12.5px; color: var(--page-cap); max-width: 900px; }
+.notes { margin-top: 28px; max-width: 900px; }
+.notes h2 { font-size: 16px; margin: 20px 0 6px; }
+.notes ul { padding-left: 20px; }
+.notes li { margin: 3px 0; }
+
+/* the frames: a desktop's window and a phone's screen, the map drawn by hand (illustrative) */
+.frame { font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; position: relative; flex: none; overflow: hidden; border-radius: 26px; box-shadow: 0 0 0 1px rgba(0,0,0,.18), 0 18px 40px rgba(0,0,0,.18); background: var(--mk-land); }
+.frame.desk { width: min(1100px, calc(100vw - 32px)); height: 700px; border-radius: 10px; }
+.frame.ph { width: 390px; height: 844px; }
+.frame.ph.narrow { width: 360px; height: 740px; }
+.frame.z2 { zoom: 2; }
+.frame.z2.ph { width: 195px; height: 422px; }
+.frame.z2.ph.narrow { width: 180px; height: 370px; }
+.frame.z2.ph.deskz { width: min(550px, calc(50vw - 16px)); height: 350px; border-radius: 5px; } /* (a desktop at 200 %: the app takes its phone rules) */
+@media (max-width: 440px) { .frame.ph:not(.z2) { width: calc(100vw - 32px); } }
+:root { --mk-land: #eef1e8; --mk-wood: #d9e6cf; --mk-water: #a9cbe9; --mk-road: #ffffff; --mk-road-edge: #d6d2c4; --mk-label: #47524c; }
+:root[data-theme="dark"] { --mk-land: #23272a; --mk-wood: #1f2b22; --mk-water: #1b3346; --mk-road: #3a4045; --mk-road-edge: #2c3135; --mk-label: #aab4ae; }
+.mk-map { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+.mk-map svg { position: absolute; left: 50%; top: 50%; width: 1440px; height: 900px; margin: -450px 0 0 -720px; }
+.mk-map text { font: 600 13px system-ui, sans-serif; fill: var(--mk-label); paint-order: stroke; stroke: var(--mk-land); stroke-width: 3px; }
+/* the layers, drawn by hand over the map (illustrative: the app draws them from the forecast) */
+.mk-lay { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s; }
+.mk-map.temp .mk-temp, .mk-map.windf .mk-windf, .mk-map.rain .mk-rain, .mk-map.cloud .mk-cloud, .mk-map.thunder .mk-thunder, .mk-map.snow .mk-snow, .mk-map.wind .mk-wind { opacity: 1; }
+.mk-temp { background: radial-gradient(60% 70% at 30% 70%, rgba(167,243,208,.55), transparent), radial-gradient(70% 60% at 75% 30%, rgba(253,224,71,.5), transparent), rgba(224,242,254,.35); }
+.mk-windf { background: radial-gradient(55% 60% at 65% 55%, rgba(74,222,128,.45), transparent), radial-gradient(50% 50% at 20% 30%, rgba(34,211,238,.45), transparent), rgba(250,204,21,.18); }
+.mk-rain { background: radial-gradient(14% 18% at 38% 42%, rgba(29,111,224,.6), rgba(56,189,248,.45) 55%, transparent 75%), radial-gradient(10% 12% at 62% 60%, rgba(56,189,248,.5), rgba(165,228,251,.4) 60%, transparent 80%), radial-gradient(8% 10% at 80% 25%, rgba(165,228,251,.5), transparent 80%); }
+.mk-cloud { background: radial-gradient(45% 40% at 50% 40%, rgba(154,163,174,.35), transparent), rgba(241,245,249,.18); }
+.mk-thunder { inset: 30% auto auto 55%; width: 180px; height: 110px; border-radius: 40%; background: rgba(245,158,11,.18); outline: 2px dashed #b45309; outline-offset: -2px; }
+.mk-snow { background: radial-gradient(60% 60% at 70% 20%, rgba(165,216,251,.45), transparent), rgba(224,242,254,.25); }
+.mk-wind { background: repeating-linear-gradient(30deg, transparent 0 46px, rgba(255,255,255,.55) 46px 48px, transparent 48px 120px); mask-image: radial-gradient(70% 70% at 50% 50%, #000, transparent); }
+:root[data-theme="dark"] .mk-wind { background: repeating-linear-gradient(30deg, transparent 0 46px, rgba(255,255,255,.35) 46px 48px, transparent 48px 120px); }
+.mk-top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+.mk-top .search { flex: 1; max-width: 520px; height: 44px; border-radius: 999px; display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--muted); font-size: 14px; }
+.frame.ph .mk-top .search { max-width: none; }
+/* ======================================================= css/app.css's phone rules for the timeline and the map's column,
+   scoped to the phone's frame (the app's own are for the window's width, @media (max-width: 720px)), the same values */
+.frame.ph .map-ctrls { bottom: calc(var(--wx-h, 0px) + 12px); }
+.frame.ph .fab, .frame.ph .plan-btn { width: 54px; height: 52px; border-radius: 14px; font-size: 12px; }
+.frame.ph .wx-bar { width: calc(100% - 24px); bottom: 44px; }
+.frame.ph .tl-title { display: none; }
+.frame.ph .tl-strip { margin-left: 0; height: 56px; }
+.frame.ph .tl-now { --tl-row: 14px; width: 112px; font-size: 11px; }
+.frame.ph .tl-now-main b { font-size: 19px; }
+.frame.ph .tl-note { display: none; }
+.frame.ph .wx-time { width: auto; flex: 0 1 auto; }
+.frame.ph .wx-bar .tl-grip { display: none; } /* (dragging and resizing are a desktop's, min-width: 721px) */
+.frame.ph .wx-bar .tl-head { cursor: auto; }
+.frame.z2.ph:not(.deskz) .map-ctrls { display: none; } /* (a phone at 200 %: no room for the column, which the app's fitColumn() folds away, #344) */
+.frame .fab-layers .fab-thumb { background: linear-gradient(160deg, #b9d3a5, #7fa86a 60%, #a9cbe9); }
+
+/* ======================================================= new: the layers as buttons (part 1) */
+/* The app's chips (`chip` with aria-pressed, the round trip's lengths), here any of them at once: off, the glass with a
+   hairline; on, the chosen chip's green tint and 2 px green border. Each has its icon and the name it has in the menu
+   today and in Layers. One height with the pill it replaces (36 px, a finger's 44 by touch with an ::after, as wl-layer). */
+.tl-layers { display: flex; flex-wrap: wrap; gap: 4px; }
+.tl-layers .chip { flex: none; position: relative; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px 0 8px; font-size: 13px; color: var(--text); white-space: nowrap; -webkit-user-select: none; user-select: none; } /* (a finger held on one while the row scrolls selects no words) */
+.tl-layers .chip[aria-pressed="true"] { padding: 0 9px 0 7px; } /* (its 2 px border inside the same width: nothing moves) */
+.tl-layers .chip .ic { color: var(--muted); }
+.tl-layers .chip[aria-pressed="true"] .ic { color: var(--accent); }
+/* Wind says "Wind lines" while Temperature colours the map (the two share one colour field): both take the button's
+   room, the one not shown hidden and the shown one in the middle, so nothing moves when Temperature is switched */
+.tl-layers .chip.lb-w { display: inline-grid; justify-items: center; align-items: center; }
+.tl-layers .lb-w > span { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 4px; }
+.tl-layers .lb-w > [data-off] { visibility: hidden; }
+@media (pointer: coarse) { .tl-layers .chip::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); } }
+/* ⋯ beside ✕ (a `tool` as ✕ is): Weather at places and Effects, the app's menu (as a card's own settings, card-set) */
+@media (pointer: coarse) { .tl-more { position: relative; } .tl-more::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); } }
+/* Buttons on a row of their own (a desktop): under the title bar, wrapping in a narrow window */
+.tl-layers.own { padding: 0 0 8px 8px; }
+/* Buttons on the title bar: the title's word goes, its clock stays as the handle to drag; the window opens wider */
+.wx-bar.on-bar { width: min(744px, calc(100% - 200px)); }
+.wx-bar.on-bar .tl-head { gap: 6px; align-items: flex-start; } /* (in a narrow window the buttons wrap: the handle, ⋯ and ✕ stay on the first row) */
+.wx-bar.on-bar .tl-head .tl-layers { flex: 1; min-width: 0; }
+.tl-handle { display: grid; place-items: center; width: 22px; height: 36px; flex: none; color: var(--muted); }
+/* a phone: one row in the head, where the pill was; it scrolls sideways, and fades where there's more */
+.frame.ph .tl-head .tl-layers { flex: 1; min-width: 0; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x;
+  padding: 4px; margin: -4px 0 -4px -4px; } /* (room for the focus ring and a finger's 44 px inside the scroller) */
+.frame.ph .tl-head .tl-layers::-webkit-scrollbar { display: none; }
+.frame.ph .tl-head .tl-layers.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+.frame.ph .tl-head .tl-layers.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
+.frame.ph .tl-head .tl-layers.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+.frame.ph .wx-bar .tl-head { gap: 6px; }
+.frame.ph .tl-handle { display: none; }
+/* ======================================================= new: your trip (part 2) */
+/* The trip's row, under the slider while the route has times: what the timeline shows (the app's switch, seg small),
+   the stretches against you with ‹ › (tool), and the way to the weather card (btn small quiet) */
+.tl-trip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 0 0 42px; }
+.frame.ph .tl-trip { padding-left: 0; }
+.tl-step { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; }
+.tl-step > span { flex: 1; min-width: 0; display: grid; text-align: center; font-size: 12.5px; line-height: 1.25; }
+.tl-step b { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-step small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-trip .tl-card { margin-left: auto; white-space: nowrap; }
+.tl-trip .wx-days { flex-wrap: nowrap; gap: 6px; }
+.tl-trip .wx-days .chip { height: var(--target); padding: 0 10px; font-size: 13px; }
+.tl-why { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
+@media (pointer: coarse) { .tl-trip .btn { min-height: 44px; } .tl-step .tool { width: 44px; height: 44px; } } /* (a finger's 44 px, #235) */
+/* the reading on your route: its wind against you, from the side or behind you, in words */
+.tl-now div:not(.tl-now-main) b { font-weight: 650; }
+/* a phone, the sketch's rows: the reading over the strip on one line, the strip the bar's whole width */
+.wx-bar.sk .tl-main { flex-direction: column; gap: 6px; }
+.wx-bar.sk .tl-strip { flex: none; }
+.wx-bar.sk .tl-now { order: -1; width: auto; min-height: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; }
+.wx-bar.sk .tl-now-main small { margin-left: 6px; }
+.frame.ph .tl-step { flex-basis: 100%; }
+
+/* ======================================================= stand-ins: the planner and the weather card, simplified (main's
+   are fuller), so the ways between them and the timeline can be tried. Not part of the design. */
+.frame.desk { width: min(1440px, calc(100vw - 32px)); height: 760px; }
+.mk-map .mk-rt { display: none; }
+.frame.planning .mk-map .mk-rt { display: inline; }
+.mk-pl, .mk-banner { position: absolute; color: var(--text); background: var(--glass-read); -webkit-backdrop-filter: var(--glass-read-filter); backdrop-filter: var(--glass-read-filter);
+  box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); }
+.mk-pl { z-index: 6; left: 12px; top: 64px; max-height: calc(100% - 76px); width: 360px; display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; border-radius: var(--radius-sheet); }
+.frame.ph .mk-pl { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; border-radius: var(--radius-sheet) var(--radius-sheet) 14px 14px; }
+.frame.ph .mk-pl.half { max-height: 56%; }
+.frame.ph .mk-pl.peek { height: 296px; } /* (main's peek, #889: the numbers, the profile and the trip's box) */
+.mk-peek-rest { flex: 1; min-height: 40px; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 10px; }
+.mk-pl.fold { padding-block: 6px; }
+.mk-pl.fold b { font-size: var(--font-row); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-pl-head { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.mk-pl-head > span { flex: 1; min-width: 0; display: grid; }
+.mk-pl-head b { font-size: var(--font-title); }
+.mk-pl-head small, .mk-stand { color: var(--muted); font-size: 12px; }
+.mk-stand { margin: 0; }
+.mk-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.mk-row > span { flex: none; display: grid; }
+.mk-row > span:nth-child(2) { flex: 1; min-width: 0; display: block; }
+.mk-say { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: var(--font-row); }
+.mk-hours { display: grid; grid-template-columns: 48px repeat(var(--n), minmax(0, 1fr)); gap: 3px; font-size: 12.5px; font-variant-numeric: tabular-nums; align-items: center; }
+.mk-hours > span { color: var(--muted); text-align: center; }
+.mk-hours > span:nth-child(5n+1), .mk-hours > b { text-align: left; }
+.mk-hours button { min-height: 36px; padding: 0; border: 0; border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+.mk-banner { z-index: 7; top: 64px; left: 12px; right: 12px; max-width: 440px; margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-radius: var(--radius); font-weight: 600; }
+.mk-banner > span { flex: 1; display: flex; align-items: center; gap: 8px; }
+.frame.ph.planning .plan-btn { display: none; }
+.frame.ph.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); }
+.frame.ph.planning .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 12px); }
+</style>
+</head>
+<body class="mk ready">
+<div class="cv">
+  <h1>Weather timeline</h1>
+  <p>The map's weather timeline, the whole of it, to choose once (<a href="https://github.com/TommiContursi/Polku/issues/869">#869</a>, lines 1 to 7 of <a href="../weather-timeline.md">its plan</a>): the weather layers as buttons, one tap each, their state in sight, in place of the dropdown (part 1); and with a route, the timeline zoomed to your trip, the reading on your route, the wind against you, and the ways to the weather card and back (part 2). Where the weather comes from doesn't change. <b>Today</b> is <code>main</code>'s timeline: its window, the dragging and resizing, the strip, the slider and the reading stay as they are in every version. Drag the title bar or the grip on the right edge on a desktop.</p>
+  <div class="bars">
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="row">Buttons on a row of their own</button><button data-v="bar">Buttons on the title bar</button></div></div>
+    <div class="bar"><span>Screen</span><div class="sw" data-k="f"><button data-v="desk">Desktop</button><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button></div>
+      <div class="sw" data-k="z"><button data-v="100">100 %</button><button data-v="200">200 %</button></div>
+      <div class="sw" data-k="t"><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+    <div class="bar"><span>Layers on</span><div class="sw" data-k="on"><button data-v="none">None</button><button data-v="rain">Rain</button><button data-v="rainwind">Rain and Wind</button><button data-v="tempwind">Temperature and Wind</button><button data-v="all">All six</button></div></div>
+    <div class="bar"><span>Forecast</span><div class="sw" data-k="fc"><button data-v="ready">Loaded</button><button data-v="loading">Loading</button><button data-v="failed">Failed</button></div></div>
+    <div class="bar"><span>Your trip</span><div class="sw" data-k="trip"><button data-v="none">No route</button><button data-v="day">Friday's ride</button><button data-v="night">With a night</button><button data-v="far">Past the 48 hours</button></div></div>
+    <div class="bar"><span>On a phone</span><div class="sw" data-k="way"><button data-v="row">Under the slider</button><button data-v="sketch">The sketch's rows</button><button data-v="fold">The planner folded</button></div></div>
+  </div>
+  <div class="stage" id="stage"></div>
+  <p class="cap" id="cap"></p>
+  <section class="notes">
+    <h2>What changes</h2>
+    <ul>
+      <li><b>The layers are buttons</b>: Rain, Clouds, Thunder, Wind, Temperature and Snow depth, each with its icon and the name it has today. A tap turns it on or off; any of them at once, as the menu's ticks today. On, a button has the app's chosen-chip look: a green tint, a 2 px green border and a green icon.</li>
+      <li><b>Wind lines:</b> while Temperature is on, the two share one colour field, so the map colours by temperature and the wind shows only its lines. The Wind button then says Wind lines. It keeps the room of its longer name, so nothing moves when Temperature is switched.</li>
+      <li><b>⋯ beside ✕</b> holds Weather at places and Effects, with the sources' note, in the app's menu: the rest of today's menu.</li>
+      <li><b>On a desktop</b> (Buttons on a row of their own) the title bar stays as it is, with Timeline and its room to grab, and the buttons take a row under it. In a narrow window they wrap. <b>Buttons on the title bar</b> is the sketch's way: they take the title bar, the word Timeline goes (its clock stays as the handle to drag), and the window opens 104 px wider so the six fit.</li>
+      <li><b>On a phone</b> both versions are the same: the buttons take the pill's place in the row that's there, so the timeline is no taller. They scroll sideways, and fade at the edge where there's more. (With a route, part 2's trip row adds a row.)</li>
+      <li><b>A tooltip</b> on a desktop gives each button the line it has in the menu today.</li>
+    </ul>
+    <h2>What changes: your trip (part 2)</h2>
+    <ul>
+      <li><b>A row for your trip</b> under the slider, while the route has times: <b>48 hours · Your trip</b> (the app's switch), and <b>Weather card ›</b>. Your trip zooms the strip and the slider to your trip, an hour either side, by the 5 minutes; 48 hours goes back. On a desktop it is one row; on a phone two, the second only in Your trip, so with a route a phone's timeline is a row taller (48 px) before you open your trip.</li>
+      <li><b>The reading follows you:</b> where you'll be at that time (km 15, the start, the finish) and the weather there, with the wind <b>against you</b> said in words; the map shows your dot on the route. The time says Fri 14:10 · km 15.</li>
+      <li><b>The wind on your way</b> is a band under the hours, in the route's wind colours: against you (the strong in the darker red), from the side, behind you. <b>‹ Against you, 1 of 3 ›</b> steps from one stretch to the next: the hour goes to its start, the band and the route light it.</li>
+      <li><b>From the weather card:</b> a tap on an hour of Rain or Wind opens the timeline on your trip at that hour, with that layer on. On a phone the card folds to its banner with Back, as a lane's tap does on main; on a desktop it stays beside the map. This replaces the separate bar a lane's tap was to fold to.</li>
+      <li><b>A trip past the 48 hours:</b> Your trip is greyed, with the reason and when it can zoom. <b>A trip with a night:</b> a day at a time, with the card's day chips (Day 1 · Fri).</li>
+      <li><b>On a phone</b> (On a phone, above), by touch at 390 × 844 with the planner at main's peek (296 px): <b>Under the slider</b> keeps main's rows and adds the trip's two (268 px tall, the map 200 px); <b>The sketch's rows</b> puts the reading over a strip the bar's whole width (298 px, the map 170 px); <b>The planner folded</b> is Under the slider with the planner folded to its line (48 px) while you look at your trip (the map 448 px). In each the planner stays at its peek until you open your trip. For comparison, Today with a route and the timeline open: 162 px and the map about 300 px.</li>
+    </ul>
+    <h2>What stays as it is</h2>
+    <ul>
+      <li>The window, where it opens, dragging it by its title bar and resizing it by its grip (a desktop), the strip, the slider, Play, the time, the reading and the note under them, and the legend over the map.</li>
+    </ul>
+    <h2>Questions for you</h2>
+    <ul>
+      <li><b>Which version</b>, on a desktop: Buttons on a row of their own (the title bar as it is, 42 px taller), or Buttons on the title bar (no taller, but the window wider and little room to grab)?</li>
+      <li><b>A phone at 360 px</b> shows about two and a half buttons; the rest are a swipe away, and the legend over the map names what's on. Today's pill counts them ("Rain +2"). Is the sideways row enough? Try All six on a phone.</li>
+      <li><b>Weather at places behind ⋯</b> shows its state on the map only, and ⋯ is otherwise kept for settings (#690). Keep it there, or make it a seventh button?</li>
+      <li><b>A phone with your trip:</b> The planner folded (recommended: the only way that leaves the map room, but it folds the planner on a tap that asked for your trip, so it would say so the first time), Under the slider, or The sketch's rows?</li>
+      <li><b>The trip's reading on a phone</b> says only "against you" in words (no room for "from the side" in 112 px); the band shows the rest, and the reading's tooltip on a desktop. Enough?</li>
+      <li><b>Snow depth</b> adds a line to the reading, so the timeline grows 12 px (16 on a phone) and the buttons move up under the finger. Today it happens behind the open menu. Leave it, or keep the line's room always (16 px on every phone)?</li>
+    </ul>
+    <h2>Left out of the mock-up</h2>
+    <ul>
+      <li>The map's layers are drawn by hand, roughly; the app draws them from the forecast. Weather at places puts no marks on this map.</li>
+      <li>The radar's past isn't loaded: its scans are the app's. Your trip is made up (a 42 km ride on Friday, the wind against you on km 12 to 20, 24 to 27 and 31 to 33), and its weather is the map's forecast, a degree cooler.</li>
+      <li>The planner and the weather card are stand-ins, simplified: main's are fuller. A tap on the strip's band to zoom (the sketch's idea) is left out: a tap on the strip sets the hour today.</li>
+      <li>Today's menu shows a line under each layer's name. With buttons, a desktop has it as the tooltip; a phone has the legend over the map.</li>
+    </ul>
+  </section>
+</div>
+<script type="module">
+import { icon, h, popMenu, tooltip } from '../../../js/ui.js';
+
+// ------------------------------------------------------------------ the page's switches (the URL keeps them)
+const Q = new URLSearchParams(location.search);
+const narrowScreen = matchMedia('(max-width: 720px)').matches;
+const S = { v: Q.get('v') || 'row', f: Q.get('f') || (narrowScreen ? '390' : 'desk'), z: Q.get('z') || '100', t: Q.get('t') || document.documentElement.dataset.theme, on: Q.get('on') || 'rain', fc: Q.get('fc') || 'ready', trip: Q.get('trip') || 'day', way: Q.get('way') || 'row', span: Q.get('span') || '48' };
+const ON = { none: [], rain: ['rain'], rainwind: ['rain', 'wind'], tempwind: ['temp', 'wind'], all: ['rain', 'cloud', 'thunder', 'wind', 'temp', 'snow'] };
+for (const sw of document.querySelectorAll('.sw')) {
+  sw.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    S[sw.dataset.k] = b.dataset.v;
+    if (sw.dataset.k === 'on') layers = new Set(ON[S.on]);
+    if (sw.dataset.k === 'trip') { day = 0; step = null; panel = 'box'; if (S.trip === 'far' || S.trip === 'none') S.span = '48'; }
+    draw();
+  });
+}
+
+// ------------------------------------------------------------------ the forecast (made up), at a fixed clock
+const NOW = new Date(2026, 10, 12, 19, 56).getTime() / 1000;
+const HOURS = 48, PAST = 1.5;
+const unitOf = (hr) => (hr < 0 ? hr * 6 : hr);
+const hourOf = (u) => (u < 0 ? Math.round(u * 2) / 12 : Math.round(u));
+const timeAtHour = (hr) => (hr < 0.01 ? NOW : Math.max(NOW, Math.floor(NOW / 3600) * 3600 + hr * 3600));
+const scanAt = (hr) => Math.floor((NOW - 600) / 300) * 300 + (Math.round(hr * 12) + 1) * 300;
+const D = { temp: [], rain: [], speed: [], dir: [], gust: [], cloud: [], t: [] };
+for (let hr = 0; hr <= HOURS; hr++) {
+  const t = timeAtHour(hr), clock = new Date(t * 1000).getHours() + new Date(t * 1000).getMinutes() / 60;
+  const day = (hr + 19.9) / 24;
+  D.t.push(t);
+  D.temp.push(4.6 - day * 0.9 + 2.6 * Math.sin(((clock - 8.5) / 24) * 2 * Math.PI) + 0.4 * Math.sin(hr / 3));
+  D.rain.push(Math.max(0, 1.3 * Math.exp(-(((hr - 8) / 2.2) ** 2)) + 0.6 * Math.exp(-(((hr - 21) / 1.6) ** 2)) + 0.35 * Math.exp(-(((hr - 39) / 1.4) ** 2)) - 0.04));
+  D.speed.push(8 + 3 * Math.sin(hr / 7) + (hr > 30 ? -3 : 0));
+  D.dir.push(180 + hr * 2);
+  D.gust.push(D.speed[hr] + 4 + 2 * Math.sin(hr / 4));
+  D.cloud.push(hr < 30 ? 85 : 40);
+}
+const night = (t) => { const c = new Date(t * 1000).getHours() + new Date(t * 1000).getMinutes() / 60; return c < 8.1 || c >= 15.8; }; // (Tampere in mid-November)
+const lin = (a, hr) => { const x = Math.max(0, Math.min(HOURS, hr)), i = Math.min(HOURS - 1, Math.floor(x)), f = x - i; return a[i] * (1 - f) + a[i + 1] * f; };
+const SKY = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' };
+const skyKind = (rain, temp, cloud, nt) => (rain >= 0.1 ? (temp < 0.5 ? 'snow' : 'rain') : cloud >= 70 ? 'cloud' : cloud >= 25 ? (nt ? 'cloud' : 'cloudSun') : nt ? 'moon' : 'sun');
+const compass = (deg) => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(((deg % 360) + 360) % 360 / 45) % 8];
+const hhmm = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+// ------------------------------------------------------------------ the layers (js/wxmap.js's, in its order)
+const LAYERS = [
+  ['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'],
+  ['cloud', 'Clouds', 'A grey veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
+  ['thunder', 'Thunder', 'Lightning in the last hour, and the forecast’s thunder', 'Thunder', 'thunder'],
+  ['wind', 'Wind', 'Moving lines, coloured by its speed', 'Wind', 'wind'],
+  ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
+  ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
+];
+const TOWNS = ['towns', 'Weather at places', 'The sky, temperature and wind where the map names a place', 'Places', 'cloudSun'];
+const NOTE = 'Forecast by Open-Meteo. Radar and measured snow by FMI, and by RainViewer outside Finland.';
+let layers = new Set(ON[S.on]), towns = false, effects = true, hour = 0, playing = false, legendOpen = null;
+let day = 0, step = null, panel = 'box', floatPos = null; // (the trip's day, the stretch stepped to, the planner's stand-in: box, card or banner)
+
+// ------------------------------------------------------------------ your trip (made up): Friday's ride, two days with a night at a hut, or one past the 48 hours
+const TRIPS = {
+  day: { line: 'MTB · 42 km · 3 h 10 min', days: [{ h0: 18, h1: 18 + 19 / 6, km0: 0, km1: 42 }], against: [[12, 20, 9], [24, 27, 7], [31, 33, 6]] },
+  night: { line: 'MTB · 80 km · 6 h 40 min, a night at the hut', days: [{ h0: 18, h1: 18 + 19 / 6, km0: 0, km1: 42 }, { h0: 38, h1: 41.5, km0: 42, km1: 80 }], against: [[12, 20, 9], [24, 27, 7], [31, 33, 6], [50, 58, 8], [66, 70, 6]] },
+  far: { line: 'MTB · 42 km · 3 h 10 min', days: [{ h0: 62, h1: 62 + 19 / 6, km0: 0, km1: 42 }], against: [[12, 20, 9], [24, 27, 7], [31, 33, 6]] },
+};
+const trip = () => TRIPS[S.trip] || null;
+const zoomed = () => S.span === 'trip' && S.v !== 'today' && !!trip() && S.trip !== 'far';
+const curDay = () => trip().days[Math.min(day, trip().days.length - 1)];
+const span = () => [curDay().h0 - 1, curDay().h1 + 1]; // (your day, an hour either side)
+const kmAt = (hr) => { const d = curDay(); return d.km0 + (d.km1 - d.km0) * Math.max(0, Math.min(1, (hr - d.h0) / (d.h1 - d.h0))); };
+const hrAtKm = (km) => { const d = trip().days.find((x) => km <= x.km1) || curDay(); return d.h0 + ((d.h1 - d.h0) * (km - d.km0)) / (d.km1 - d.km0); };
+const relAt = (km) => { const a = trip().against.find(([k0, k1]) => km >= k0 && km <= k1); return a ? (a[2] >= 8 ? 'strong' : 'against') : Math.floor(km / 4) % 3 === 1 ? 'behind' : 'side'; };
+const REL = { strong: ['--wind-strong-head', 'against you', 180], against: ['--wind-head', 'against you', 180], side: ['--wind-cross', 'from the side', 90], behind: ['--wind-tail', 'behind you', 0] };
+const stretches = () => { const d = curDay(); return trip().against.filter(([k0]) => k0 >= d.km0 && k0 < d.km1).map(([km0, km1, max]) => ({ km0, km1, max, h0: hrAtKm(km0), h1: hrAtKm(km1) })); };
+const wday = (hr, long) => new Date(timeAtHour(hr) * 1000).toLocaleDateString([], { weekday: long ? 'long' : 'short' });
+const dayLabel = (d, j) => `Day ${j + 1} · ${wday(d.h0)}`; // (the weather card's chips, rt-chips wx-days)
+// a press that changes what the page draws: drawn again, the focus back on the control it was on
+const act = (fn) => (e) => { const k = e.currentTarget.dataset.k; fn(); draw(); if (k) (document.querySelector(`.frame [data-k="${k}"]`) || (k.startsWith('c-') ? document.querySelector('.frame .wx-bar input') : null))?.focus({ preventScroll: true }); }; // (an hour in the card: the timeline's slider)
+const goTrip = () => { S.span = 'trip'; step = null; const [w0, w1] = span(); if (hour < w0 || hour > w1) hour = curDay().h0; };
+// from the weather card: the timeline zoomed to your trip at that hour, with that layer on; on a phone the card folds to its banner, as a lane's tap does on main
+const fromCard = (hr, k, ph) => { layers.add(k); day = trip().days.findIndex((d) => hr <= d.h1 + 1); S.span = 'trip'; step = null; hour = hr; panel = ph ? 'banner' : 'card'; };
+const RAIN_STEPS = [[0.1, '#a5e4fb'], [0.5, '#38bdf8'], [2, '#1d6fe0'], [5, '#1e3a8a'], [15, '#a855f7']];
+const SNOW_STEPS = [[1, '#e0f2fe'], [10, '#a5d8fb'], [25, '#5cb8f2'], [50, '#2f7fd6']];
+const WIND_RAMP = [[0, '#3b82f6'], [3, '#22d3ee'], [6, '#4ade80'], [9, '#facc15'], [12, '#fb923c'], [16, '#ef4444'], [22, '#a855f7']];
+const TEMP_RAMP = [[-25, '#7c3aed'], [-15, '#2563eb'], [-5, '#38bdf8'], [0, '#e0f2fe'], [5, '#a7f3d0'], [10, '#fde047'], [18, '#fb923c'], [25, '#ef4444'], [32, '#9f1239']];
+const stepsCss = (steps) => `linear-gradient(90deg, ${steps.map(([, c], i) => `${c} ${(i * 100) / steps.length}% ${((i + 1) * 100) / steps.length}%`).join(', ')})`;
+const rampCss = (stops) => `linear-gradient(90deg, ${stops.map(([, c], i) => `${c} ${(i / (stops.length - 1)) * 100}%`).join(', ')})`;
+
+// ------------------------------------------------------------------ the map, drawn by hand
+const MAP = `<svg viewBox="0 0 1440 900" aria-hidden="true">
+  <path d="M0 520 C180 470 260 560 420 540 C560 520 600 430 760 450 C900 470 980 560 1180 520 C1300 495 1380 520 1440 510 L1440 640 C1300 660 1200 610 1080 640 C900 690 820 600 680 610 C520 625 430 700 260 680 C150 668 70 640 0 650 Z" fill="var(--mk-water)"/>
+  <path d="M120 120 C260 90 320 200 280 280 C240 360 120 330 90 250 C70 190 80 140 120 120 Z" fill="var(--mk-wood)"/>
+  <path d="M980 140 C1120 120 1240 180 1220 260 C1200 330 1060 340 1000 290 C950 250 930 170 980 140 Z" fill="var(--mk-wood)"/>
+  <path d="M560 760 C700 730 820 800 780 860 C740 910 600 900 560 860 C530 830 520 780 560 760 Z" fill="var(--mk-wood)"/>
+  <path d="M1080 340 C1140 320 1180 360 1160 400 C1140 440 1080 430 1070 400 C1060 370 1060 350 1080 340 Z" fill="var(--mk-water)"/>
+  <g fill="none" stroke-linecap="round"><path d="M0 330 C300 340 520 300 720 360 S1140 380 1440 300" stroke="var(--mk-road-edge)" stroke-width="9"/><path d="M0 330 C300 340 520 300 720 360 S1140 380 1440 300" stroke="var(--mk-road)" stroke-width="6"/>
+  <path d="M700 0 C690 200 760 300 720 360 S640 700 700 900" stroke="var(--mk-road-edge)" stroke-width="7"/><path d="M700 0 C690 200 760 300 720 360 S640 700 700 900" stroke="var(--mk-road)" stroke-width="4.5"/>
+  <path d="M300 900 C340 760 420 720 520 700" stroke="var(--mk-road-edge)" stroke-width="6"/><path d="M300 900 C340 760 420 720 520 700" stroke="var(--mk-road)" stroke-width="3.5"/></g>
+  <g class="mk-rt" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M600 170 C 700 140 830 180 845 265 S 760 380 800 450 S 885 560 825 640 S 650 710 600 630 S 555 485 615 405 S 640 265 600 170" stroke="#fff" stroke-width="9"/><path class="mk-rt-line" d="M600 170 C 700 140 830 180 845 265 S 760 380 800 450 S 885 560 825 640 S 650 710 600 630 S 555 485 615 405 S 640 265 600 170" stroke="var(--route)" stroke-width="5"/><path class="mk-rt-hi" d="M600 170 C 700 140 830 180 845 265 S 760 380 800 450 S 885 560 825 640 S 650 710 600 630 S 555 485 615 405 S 640 265 600 170" stroke="var(--wind-strong-head)" stroke-width="9" stroke-dasharray="0 100000"/><circle class="mk-you" r="10" cx="-99" cy="-99" fill="#fff" stroke="var(--route)" stroke-width="5"/></g>
+  <text x="728" y="392">Tampere</text><text x="400" y="300">Nokia</text><text x="1010" y="408">Kangasala</text><text x="560" y="720">Pirkkala</text><text x="300" y="610">Pyhäjärvi</text>
+</svg>`;
+
+// ------------------------------------------------------------------ one frame: the map, its column and the timeline
+const frames = [];
+function draw() {
+  document.documentElement.dataset.theme = S.t;
+  for (const sw of document.querySelectorAll('.sw')) for (const b of sw.children) b.setAttribute('aria-pressed', String(b.dataset.v === S[sw.dataset.k]));
+  try { history.replaceState(null, '', `?${new URLSearchParams(S)}`); } catch { /* a viewer's frame may refuse it */ }
+  for (const m of document.querySelectorAll('.menu-pop')) m.remove();
+  if (zoomed()) { const [w0, w1] = span(); if (hour < w0 || hour > w1) hour = curDay().h0; } // (your trip opens at your departure)
+  const stage = document.getElementById('stage');
+  stage.replaceChildren();
+  frames.length = 0;
+  const ph = S.f !== 'desk' || S.z === '200';
+  const fr = h('div', { class: `frame ${ph ? 'ph' : 'desk'}${S.f === '360' ? ' narrow' : ''}${S.z === '200' ? ' z2' : ''}${S.f === 'desk' && S.z === '200' ? ' deskz' : ''}` });
+  fr.classList.toggle('planning', !!trip());
+  stage.append(fr);
+  frames.push(buildFrame(fr, ph));
+  document.getElementById('cap').textContent = {
+    today: 'Today: main. The pill names what’s on ("Rain +1") and opens the menu; the menu stays open while you tick.',
+    row: `Buttons on a row of their own: ${ph ? `on a phone they take the pill’s place and scroll sideways; the buttons make the timeline no taller${trip() ? ', the trip’s row adds one' : ''}` : 'the title bar stays as it is, with ⋯ beside ✕, and the buttons take a row under it; the timeline is 42 px taller'}.`,
+    bar: `Buttons on the title bar (the sketch’s way): ${ph ? 'on a phone the same as on a row of their own' : 'the word Timeline goes, its clock stays as the handle, and the window opens 744 px wide (640 today) so the six fit; narrower, they wrap'}.`,
+  }[S.v] + (trip() && S.v !== 'today' ? ` Your trip: ${S.trip === 'far' ? 'it starts past the forecast’s 48 hours, so Your trip is greyed, with the reason' : zoomed() ? 'the timeline is zoomed to it; the reading follows you, the band under the hours shows the wind on your way, and ‹ › step between the stretches against you' : 'tap Your trip, or an hour in the weather card (Weather card ›)'}.` : '');
+}
+
+function buildFrame(fr, ph) {
+  const F = { fr, ph, float: null };
+  F.map = h('div', { class: 'mk-map', html: MAP + ['temp', 'windf', 'rain', 'cloud', 'thunder', 'snow', 'wind'].map((k) => `<div class="mk-lay mk-${k}"></div>`).join('') });
+  F.legend = h('div', { class: 'wx-legend', role: 'region', 'aria-label': 'Map legend', hidden: true });
+  const hints = h('div', { class: 'map-hints' }, F.legend);
+  const ctrls = h('div', { class: 'map-ctrls' },
+    h('button', { type: 'button', class: 'fab', 'aria-pressed': 'true', 'aria-label': 'Time & weather', html: `<svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.44 13.77A6 6 0 1 1 14.62 7.35"/><path d="M8.8 5.4v3.4H6.4"/><path d="M10.6 21a3.6 3.6 0 0 1-.13-7.2 4.6 4.6 0 0 1 9.13.8 3.2 3.2 0 0 1 0 6.4Z"/></svg><span class="fab-time-label">Weather</span>` }),
+    h('button', { type: 'button', class: 'fab fab-layers', html: '<span class="fab-thumb"></span><span>Layers</span>' }),
+    h('button', { type: 'button', class: 'plan-btn', html: `${icon('route', 22)}<span>Plan<span class="plan-more"> route</span></span>` }));
+  F.bar = h('div', { class: 'wx-bar', role: 'region', 'aria-label': 'Timeline' });
+  fr.append(F.map, h('div', { class: 'mk-top' }, h('div', { class: 'search', html: `${icon('search', 18)}Search places or paste coordinates` })), hints, ctrls, F.bar);
+  if (trip()) buildPlanner(F);
+  buildBar(F);
+  const fit = () => {
+    fr.style.setProperty('--sheet-h', ph && F.pl ? `${F.pl.offsetHeight + 8}px` : '0px');
+    fr.style.setProperty('--pl-left', !ph && F.pl ? '384px' : '0px');
+    fr.style.setProperty('--wx-h', ph && !F.bar.hidden ? `${F.bar.offsetHeight + (F.pl ? 12 : 40)}px` : '0px');
+  };
+  new ResizeObserver(() => { fit(); renderStrip(F); }).observe(F.bar);
+  if (F.pl) new ResizeObserver(fit).observe(F.pl);
+  fit();
+  if (!ph && floatPos) placeFloat(F, floatPos);
+  renderAll(F);
+  return F;
+}
+
+// ------------------------------------------------------------------ the timeline (js/wxmap.js buildBar(), with the versions' head)
+function buildBar(F) {
+  const bar = F.bar;
+  F.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => togglePlay(), html: icon('play', 18) });
+  F.slider = zoomed()
+    ? h('input', { type: 'range', min: String(Math.round(span()[0] * 12)), max: String(Math.round(span()[1] * 12)), step: '1', value: String(Math.round(hour * 12)), 'aria-label': 'Time on your trip, by 5 minutes', oninput: (e) => { playing = false; step = null; setHour(+e.target.value / 12); } })
+    : h('input', { type: 'range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: String(unitOf(hour) < 0 ? Math.round(unitOf(hour)) : Math.round(hour)), 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { playing = false; setHour(hourOf(+e.target.value)); } });
+  F.timeEl = h('div', { class: 'wx-time' });
+  F.noteEl = h('div', { class: 'tl-note' });
+  F.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': 'The radar’s last 90 minutes, then the 48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
+  F.nowEl = h('div', { class: 'tl-now' });
+  bindStrip(F);
+  const close = h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => {}, html: icon('close', 16) });
+  const title = h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` });
+  let head, own = null;
+  if (S.v === 'today') {
+    F.pill = h('button', { type: 'button', class: 'rt-pill wl-layer', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => layerMenu(F) });
+    head = h('div', { class: 'tl-head' }, title, F.pill, close);
+  } else {
+    F.more = h('button', { type: 'button', class: 'tool tl-more', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': 'More: Weather at places, Effects', html: icon('more', 18), onclick: () => moreMenu(F) });
+    F.row = layerRow(F);
+    if (F.ph) head = h('div', { class: 'tl-head' }, title, F.row, F.more, close);
+    else if (S.v === 'row') { head = h('div', { class: 'tl-head' }, title, h('span', { style: 'flex:1' }), F.more, close); own = F.row; F.row.classList.add('own'); }
+    else { bar.classList.add('on-bar'); head = h('div', { class: 'tl-head' }, h('span', { class: 'tl-handle', title: 'Timeline: drag to move it', html: icon('clock', 16) }), F.row, F.more, close); }
+  }
+  const sk = F.ph && S.way === 'sketch' && S.v !== 'today' && !!trip();
+  bar.classList.toggle('sk', sk);
+  const rows = trip() && S.v !== 'today' ? tripRows(F, sk) : [];
+  bar.append(...[head, own].filter(Boolean), h('div', { class: 'tl-main' }, F.stripCv, F.nowEl), h('div', { class: 'wx-row' }, ...(sk ? [] : [F.playBtn]), F.slider, F.timeEl), ...rows, F.noteEl);
+  bar.hidden = F.ph && trip() && panel === 'card'; // (a phone's card covers the map; its hours bring the timeline back)
+  if (!F.ph) bindFloat(F, head);
+  if (F.ph && F.row) {
+    const edge = () => { const r = F.row; r.classList.toggle('more-l', r.scrollLeft > 2); r.classList.toggle('more-r', r.scrollLeft + r.clientWidth < r.scrollWidth - 2); };
+    F.row.addEventListener('scroll', edge, { passive: true });
+    requestAnimationFrame(() => { const first = F.row.querySelector('[aria-pressed="true"]'); if (first && first.offsetLeft + first.offsetWidth > F.row.clientWidth) F.row.scrollLeft = first.offsetLeft - 8; edge(); });
+  }
+}
+
+// the trip's row: what the timeline shows, a day at a time on a trip of days, the stretches against you, and the weather card
+function tripRows(F, sk) {
+  const z = zoomed(), far = S.trip === 'far';
+  const seg = h('div', { class: 'seg small', role: 'group', 'aria-label': 'What the timeline shows' },
+    h('button', { type: 'button', 'data-k': 'span-48', 'aria-pressed': String(!z), onclick: act(() => { S.span = '48'; step = null; }) }, '48 hours'),
+    h('button', { type: 'button', 'data-k': 'span-trip', 'aria-pressed': String(z), disabled: far || null, onclick: act(goTrip) }, 'Your trip'));
+  const days = z && trip().days.length > 1 ? h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' }, ...trip().days.map((d, j) =>
+    h('button', { type: 'button', class: 'chip', 'data-k': `day-${j}`, 'aria-pressed': String(j === day), onclick: act(() => { day = j; step = null; hour = d.h0; }) }, dayLabel(d, j)))) : null;
+  const card = h('button', { type: 'button', class: 'btn small quiet tl-card', 'data-k': 'to-card', onclick: act(() => { panel = 'card'; }), html: `Weather card${icon('chevronRight', 16)}` });
+  const why = far ? h('p', { class: 'tl-why' }, `Your trip starts ${wday(trip().days[0].h0, true)} at ${hhmm(timeAtHour(trip().days[0].h0))}, past the forecast’s 48 hours: you can zoom to it from ${wday(trip().days[0].h0 - HOURS, true)} ${hhmm(timeAtHour(trip().days[0].h0 - HOURS))}.`) : null;
+  F.stepEl = z ? h('div', { class: 'tl-step', role: 'group', 'aria-label': 'The stretches where the wind is against you' }) : null;
+  syncStep(F);
+  // a phone: what the timeline shows and the weather card on one row, the days and the stretches on the next (no room for all on one)
+  if (F.ph) return [h('div', { class: 'tl-trip' }, ...(sk ? [F.playBtn] : []), seg, card), days || F.stepEl ? h('div', { class: 'tl-trip' }, days, F.stepEl) : null, why].filter(Boolean);
+  return [h('div', { class: 'tl-trip' }, seg, days, F.stepEl, card, why)];
+}
+// ‹ Against you, 1 of 3 › and where it is; the band and the route ringed where you stepped to
+function syncStep(F) {
+  if (!F.stepEl) return;
+  const list = S.fc === 'ready' ? stretches() : [], n = list.length, cur = step ?? -1, s = list[Math.max(0, cur)];
+  const go = (j) => (e) => { e.stopPropagation(); step = j; playing = false; setHour(Math.round(list[j].h0 * 12) / 12); };
+  const had = F.stepEl.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+  F.stepEl.replaceChildren(
+    h('button', { type: 'button', class: 'tool', 'data-k': 'step-prev', 'aria-label': 'The stretch against you before', disabled: cur <= 0 || null, html: icon('chevronLeft', 18), onclick: go(cur - 1) }),
+    h('span', { 'aria-live': 'polite' }, h('b', {}, S.fc === 'loading' ? 'The wind on your way: loading' : S.fc !== 'ready' ? 'The wind on your way: no forecast' : !n ? 'Nowhere against you for long' : cur < 0 ? `Against you on ${n} stretch${n > 1 ? 'es' : ''}` : `Against you, ${cur + 1} of ${n}`),
+      n ? h('small', {}, cur < 0 ? `up to ${Math.max(...list.map((x) => x.max))} m/s` : `km ${s.km0} to ${s.km1} · up to ${s.max} m/s`) : null),
+    h('button', { type: 'button', class: 'tool', 'data-k': 'step-next', 'aria-label': 'The next stretch against you', disabled: cur >= n - 1 || null, html: icon('chevronRight', 18), onclick: go(cur + 1) }));
+  if (had) (F.stepEl.querySelector(`[data-k="${had}"]:not(:disabled)`) || F.stepEl.querySelector('button:not(:disabled)'))?.focus({ preventScroll: true }); // (the focus stays on ‹ or ›)
+}
+
+// the strip zoomed to your trip: the same drawing, by the 10 minutes, read where you'll be; the wind on your way under the hours
+function renderTripStrip(F, ctx, W, H, css, ink, muted, dark) {
+  const d = curDay(), [w0, w1] = span(), PAD = 9, DT = 1 / 6;
+  const X = (hr) => PAD + ((hr - w0) / (w1 - w0)) * (W - 2 * PAD);
+  ctx.fillStyle = dark ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
+  for (let hr = w0; hr < w1 - 1e-6; hr += DT) if (night(timeAtHour(hr + DT / 2))) ctx.fillRect(X(hr), 0, X(hr + DT) - X(hr) + 0.5, H);
+  ctx.fillStyle = css.getPropertyValue('--route').trim(); ctx.globalAlpha = 0.1;
+  ctx.fillRect(X(d.h0), 0, X(d.h1) - X(d.h0), H); ctx.globalAlpha = 1;
+  const top = 14, bottom = H - 20, band = H - 7;
+  for (let hr = w0; hr < w1 - 1e-6; hr += DT) {
+    const r = lin(D.rain, hr + DT / 2);
+    if (r < 0.05) continue;
+    const bh = Math.min(1, r / 3) * (bottom - top) * 0.75 + 2;
+    ctx.fillStyle = (lin(D.temp, hr) < 0.5 ? 'rgba(167,139,250,' : 'rgba(59,130,246,') + Math.min(0.9, 0.35 + r / 4) + ')';
+    ctx.fillRect(X(hr) + 0.5, bottom - bh, X(hr + DT) - X(hr) - 1, bh);
+  }
+  const ts = []; for (let hr = w0; hr <= w1 + 1e-6; hr += DT) ts.push([hr, lin(D.temp, hr)]);
+  let tMin = Math.min(...ts.map((x) => x[1])), tMax = Math.max(...ts.map((x) => x[1]));
+  if (tMax - tMin < 4) { const m = (tMax + tMin) / 2; tMin = m - 2; tMax = m + 2; }
+  const Y = (t) => top + 4 + (1 - (t - tMin) / (tMax - tMin)) * (bottom - top - 14);
+  ctx.beginPath(); ts.forEach(([hr, t], i) => (i ? ctx.lineTo(X(hr), Y(t)) : ctx.moveTo(X(hr), Y(t))));
+  ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.8; ctx.stroke();
+  const hi = ts.reduce((a, x) => (x[1] > a[1] ? x : a)), lo = ts.reduce((a, x) => (x[1] < a[1] ? x : a));
+  ctx.fillStyle = '#c2410c'; ctx.textAlign = 'center';
+  ctx.fillText(`${Math.round(hi[1])}°`, Math.min(W - 12, Math.max(12, X(hi[0]))), Y(hi[1]) - 4);
+  if (lo !== hi) ctx.fillText(`${Math.round(lo[1])}°`, Math.min(W - 12, Math.max(12, X(lo[0]))), Math.min(bottom, Y(lo[1]) + 11));
+  ctx.strokeStyle = muted;
+  for (let hr = Math.ceil(w0 * 2) / 2; hr <= w1; hr += 0.5) {
+    const sp = lin(D.speed, hr), a = ((lin(D.dir, hr) + 180) * Math.PI) / 180, l = Math.min(6, 2.5 + sp / 2);
+    ctx.save(); ctx.translate(X(hr), 7); ctx.rotate(a); ctx.lineWidth = sp > 8 ? 1.8 : 1.1;
+    ctx.beginPath(); ctx.moveTo(0, l); ctx.lineTo(0, -l); ctx.moveTo(-2.4, -l + 2.6); ctx.lineTo(0, -l); ctx.lineTo(2.4, -l + 2.6); ctx.stroke(); ctx.restore();
+  }
+  ctx.textAlign = 'left'; ctx.fillStyle = muted;
+  for (let hr = Math.ceil(w0); hr <= w1; hr++) if (X(hr) < W - 14) ctx.fillText(String(new Date(timeAtHour(hr) * 1000).getHours()), X(hr) + 2, H - 10); // (the hours, as the 48 hours' labels)
+  // the wind on your way, by the km you're at: against you (the strong in the darker red), from the side, behind you
+  for (let hr = d.h0; hr < d.h1 - 1e-6; hr += 1 / 60) { ctx.fillStyle = css.getPropertyValue(REL[relAt(kmAt(hr))][0]).trim(); ctx.fillRect(X(hr), band, X(hr + 1 / 60) - X(hr) + 0.5, 7); }
+  if (step != null) { const s = stretches()[step]; ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(X(s.h0) - 1, band - 2, X(s.h1) - X(s.h0) + 2, 10); }
+  const cx = X(hour);
+  ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+  ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(cx, Y(lin(D.temp, hour)), 3.2, 0, Math.PI * 2); ctx.fill();
+}
+// the reading on your route: where you'll be at the hour, and the weather there; its wind against you, from the side or behind you
+function readTrip(el, hr, t) {
+  const d = curDay(), km = kmAt(hr), out = hr < d.h0 ? 'the start' : hr > d.h1 ? 'the finish' : null, rel = out ? null : REL[relAt(km)];
+  const s = { temp: lin(D.temp, hr) - 1, rain: lin(D.rain, hr), speed: lin(D.speed, hr), gust: lin(D.gust, hr), cloud: lin(D.cloud, hr) };
+  const kind = skyKind(s.rain, s.temp, s.cloud, night(t));
+  el.title = `${SKY[kind]} · ${out ? `at ${out}` : `on your route at km ${Math.round(km)}, the wind ${rel[1]}`}, ${hhmm(t)}${s.gust > s.speed + 2 ? ` · gusts ${s.gust.toFixed(0)} m/s` : ''}`;
+  el.innerHTML =
+    `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${out || `km ${Math.round(km)}`}</small></div>` +
+    `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(lin(D.dir, hr) + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed.toFixed(0)} m/s ${rel && rel[2] === 180 ? `<b>${rel[1]}</b>` : compass(lin(D.dir, hr))}</div>` +
+    `<div>${icon('drop', 12)}${s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry'}</div>` +
+    (layers.has('snow') ? `<div>${icon('snow', 12)}no snow</div>` : '');
+}
+// the route on the map: your dot where you'll be, and the stretch you stepped to
+function renderRoute(F) {
+  const svg = F.map.querySelector('svg'), line = svg.querySelector('.mk-rt-line'), you = svg.querySelector('.mk-you'), hiP = svg.querySelector('.mk-rt-hi');
+  if (!trip() || !line) return;
+  const L = line.getTotalLength(), total = trip().days[trip().days.length - 1].km1, z = zoomed();
+  const p = line.getPointAtLength((L * (z ? kmAt(hour) : 0)) / total);
+  you.setAttribute('cx', z ? p.x : -99); you.setAttribute('cy', z ? p.y : -99);
+  const s = z && step != null ? stretches()[step] : null;
+  hiP.setAttribute('stroke-dasharray', s ? `0 ${(L * s.km0) / total} ${(L * (s.km1 - s.km0)) / total} ${L}` : '0 100000');
+}
+
+// the planner and the weather card, stand-ins: the route's line and its days on the box; the card with its hours, each a way to the timeline
+function buildPlanner(F) {
+  const t = trip(), card = panel === 'card', phCard = F.ph && card;
+  const d0 = t.days[0], dl = t.days[t.days.length - 1];
+  const when = `${wday(d0.h0)} ${hhmm(timeAtHour(d0.h0))} → ${t.days.length > 1 ? `${wday(dl.h1)} ` : ''}${hhmm(timeAtHour(dl.h1))}`;
+  const far = S.trip === 'far';
+  const head = h('div', { class: 'mk-pl-head' }, h('span', {}, h('b', {}, card ? 'Weather card' : t.line), h('small', {}, when)),
+    card ? h('button', { type: 'button', class: 'tool', 'data-k': 'card-x', 'aria-label': 'Close the weather card', html: icon('close', 16), onclick: act(() => { panel = 'box'; }) }) : null);
+  const kids = [head];
+  if (!card) {
+    kids.push(...t.days.map((d, j) => h('button', { type: 'button', class: 'mk-row', 'data-k': `box-${j}`, onclick: act(() => { panel = 'card'; day = j; }) },
+      h('span', { html: icon(far ? 'cloud' : 'sky-rain', 22) }), h('span', {}, far ? `${wday(d.h0)}: no forecast yet` : `${wday(d.h0)}: ${Math.round(lin(D.temp, d.h0) - 1)} to ${Math.round(lin(D.temp, d.h1) + 2)}°, showers on the way`), h('span', { html: icon('chevronRight', 16) }))));
+  } else {
+    const d = curDay(), hrs = []; for (let hr = Math.ceil(d.h0); hr <= Math.floor(d.h1); hr++) hrs.push(hr);
+    if (t.days.length > 1) kids.push(h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' }, ...t.days.map((x, j) => h('button', { type: 'button', class: 'chip', 'data-k': `card-day-${j}`, 'aria-pressed': String(j === day), onclick: act(() => { day = j; step = null; }) }, dayLabel(x, j)))));
+    kids.push(h('p', { class: 'mk-say', html: far ? `${icon('cloud', 22)}<span>No forecast yet for ${wday(d.h0, true)}: it reaches 48 hours ahead.</span>` : `${icon('sky-rain', 22)}<span>Showers from ${hhmm(timeAtHour(d.h0 + 1))}, and a fresh wind against you from km ${stretches()[0].km0}.</span>` }));
+    if (!far) {
+      const g = h('div', { class: 'mk-hours', style: `--n: ${hrs.length}`, role: 'group', 'aria-label': 'Your hours: a tap shows it on the map at that hour' }, h('span', {}), ...hrs.map((hr) => h('span', {}, hhmm(timeAtHour(hr)))));
+      g.append(h('b', {}, 'Rain'), ...hrs.map((hr) => h('button', { type: 'button', 'data-k': `c-rain-${hr}`, 'aria-label': `Rain at ${hhmm(timeAtHour(hr))} on the map`, onclick: act(() => fromCard(hr, 'rain', F.ph)) }, lin(D.rain, hr) >= 0.05 ? lin(D.rain, hr).toFixed(1) : '–')));
+      g.append(h('b', {}, 'Wind'), ...hrs.map((hr) => h('button', { type: 'button', 'data-k': `c-wind-${hr}`, 'aria-label': `The wind at ${hhmm(timeAtHour(hr))} on the map`, onclick: act(() => fromCard(hr, 'wind', F.ph)) }, `${lin(D.speed, hr).toFixed(0)}${relAt(kmAt(hr)) === 'strong' || relAt(kmAt(hr)) === 'against' ? ' ↓' : ''}`)));
+      kids.push(g);
+    }
+    kids.push(h('p', { class: 'mk-stand' }, 'A stand-in for main’s weather card: an hour of Rain or Wind opens the timeline on your trip at that hour, with that layer on (↓: against you).'));
+  }
+  if (F.ph && !card) kids.splice(1, 0, h('p', { class: 'mk-stand mk-peek-rest' }, 'The numbers and the profile, as main’s peek has them'));
+  F.pl = h('div', { class: `mk-pl${phCard ? ' half' : F.ph ? ' peek' : ''}` }, ...kids);
+  if (F.ph && S.way === 'fold' && zoomed() && !card) { F.pl.classList.replace('peek', 'fold'); F.pl.replaceChildren(h('div', { class: 'mk-pl-head' }, h('span', {}, h('b', {}, t.line)), h('button', { type: 'button', class: 'tool', 'data-k': 'unfold', 'aria-label': 'Unfold the planner (the timeline goes back to 48 hours)', html: icon('chevronUp', 18), onclick: act(() => { S.span = '48'; }) }))); }
+  F.fr.append(F.pl);
+  if (F.ph && panel === 'banner') F.fr.append(h('div', { class: 'mk-banner', role: 'status' }, h('span', { html: `${icon([...layers].includes('wind') ? 'wind' : 'rain', 18)}Weather on the map` }),
+    h('button', { type: 'button', class: 'btn small quiet', 'data-k': 'banner-back', onclick: act(() => { panel = 'card'; }) }, 'Back')));
+}
+
+// the buttons: the app's chips, any of them at once, in the menu's order
+function layerRow(F) {
+  const row = h('div', { class: 'tl-layers', role: 'group', 'aria-label': 'Weather layers' });
+  for (const [k, label, desc, word, ic] of LAYERS) {
+    const html = k === 'wind' ? `<span>${icon(ic, 16)}Wind</span><span>${icon(ic, 16)}Wind lines</span>` : `${icon(ic, 16)}<span>${word}</span>`;
+    const b = h('button', { type: 'button', class: `chip wx-${k}${k === 'wind' ? ' lb-w' : ''}`, 'data-k': k, 'aria-pressed': 'false', html, onclick: () => toggle(k) });
+    if (!F.ph) tooltip(b, { name: label, text: desc });
+    row.append(b);
+  }
+  return row;
+}
+function syncRow(F) {
+  if (!F.row) return;
+  for (const b of F.row.children) b.setAttribute('aria-pressed', String(layers.has(b.dataset.k)));
+  const w = F.row.querySelector('.lb-w');
+  if (w) { const lines = layers.has('temp'); w.children[0].toggleAttribute('data-off', lines); w.children[1].toggleAttribute('data-off', !lines); }
+}
+function toggle(k) {
+  if (layers.has(k)) layers.delete(k); else layers.add(k);
+  for (const F of frames) renderAll(F);
+}
+
+// Today's pill and its menu (renderPill(), layerMenu())
+function renderPill(F) {
+  if (!F.pill) return;
+  const shown = [...LAYERS, TOWNS].filter(([k]) => (k === 'towns' ? towns : layers.has(k)));
+  F.pill.innerHTML = `<span>${icon(shown[0] ? shown[0][4] : 'layers', 16)}</span><span>${shown.length ? `${shown[0][3]}${shown.length > 1 ? ` +${shown.length - 1}` : ''}` : 'Layers'}</span><span>${icon('chevronDown', 14)}</span>`;
+  F.pill.setAttribute('aria-label', `Weather layers: ${shown.map((x) => x[3]).join(', ') || 'none'}`);
+}
+function layerMenu(F) {
+  const layer = ([k, label, desc, , ic]) => ({ icon: ic, label, desc, checked: k === 'towns' ? towns : layers.has(k), keep: true, cls: `wx-${k}`, fn: () => tick(k, () => (k === 'towns' ? (towns = !towns) : toggle(k))) });
+  const items = () => [
+    { group: 'Weather on the map', items: LAYERS.map(layer) }, 'hr', { group: 'Points', items: [layer(TOWNS)] }, 'hr',
+    { icon: 'sparkle', label: 'Effects', desc: 'Softer edges and falling rain', checked: effects, keep: true, cls: 'wx-fx', fn: () => tick('fx', () => { effects = !effects; }) },
+    { note: NOTE },
+  ];
+  const tick = (k, fn) => { fn(); for (const G of frames) renderAll(G); menu.refill(items()); menu.el.querySelector(`.wx-${k}`).focus({ preventScroll: true }); };
+  if (F.menu) { F.menu.close(); return; }
+  F.pill.setAttribute('aria-expanded', 'true');
+  const menu = F.menu = popMenu(F.pill, items(), { label: 'Weather layers', onClose: () => { F.menu = null; F.pill.setAttribute('aria-expanded', 'false'); } });
+}
+// ⋯: the rest of today's menu
+function moreMenu(F) {
+  const items = () => [
+    { group: 'Points', items: [{ icon: TOWNS[4], label: TOWNS[1], desc: TOWNS[2], checked: towns, keep: true, cls: 'wx-towns', fn: () => tick('towns', () => { towns = !towns; }) }] }, 'hr',
+    { icon: 'sparkle', label: 'Effects', desc: 'Softer edges and falling rain', checked: effects, keep: true, cls: 'wx-fx', fn: () => tick('fx', () => { effects = !effects; }) },
+    { note: NOTE },
+  ];
+  const tick = (k, fn) => { fn(); for (const G of frames) renderAll(G); menu.refill(items()); menu.el.querySelector(`.wx-${k}`).focus({ preventScroll: true }); };
+  if (F.menu) { F.menu.close(); return; }
+  F.more.setAttribute('aria-expanded', 'true');
+  const menu = F.menu = popMenu(F.more, items(), { label: 'More weather', onClose: () => { F.menu = null; F.more.setAttribute('aria-expanded', 'false'); } });
+}
+
+// ------------------------------------------------------------------ drawing it all
+function renderAll(F) {
+  const m = F.map.classList;
+  for (const k of ['rain', 'cloud', 'thunder', 'snow', 'temp']) m.toggle(k, layers.has(k) && S.fc !== 'failed' && (k === 'rain' || hour >= 0));
+  m.toggle('windf', layers.has('wind') && !layers.has('temp') && S.fc !== 'failed' && hour >= 0);
+  m.toggle('wind', layers.has('wind') && S.fc !== 'failed' && hour >= 0);
+  syncRow(F);
+  renderRoute(F);
+  renderPill(F);
+  renderTime(F);
+  renderStrip(F);
+  readout(F);
+  renderLegend(F);
+}
+
+// the strip (renderStrip(), the same drawing)
+function renderStrip(F) {
+  const cv = F.stripCv;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (!W || !H) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const css = getComputedStyle(cv);
+  const ink = css.getPropertyValue('--text').trim() || '#1c2420';
+  const muted = css.getPropertyValue('--muted').trim() || '#5f6b65';
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const PAD = 9;
+  const U0 = unitOf(-PAST), X = (hr) => PAD + ((unitOf(hr) - U0) / (HOURS - U0)) * (W - 2 * PAD);
+  ctx.font = '10px system-ui, sans-serif';
+  if (zoomed() && S.fc === 'ready') { renderTripStrip(F, ctx, W, H, css, ink, muted, dark); return; }
+  if (S.fc !== 'ready') { ctx.fillStyle = muted; ctx.fillText(S.fc === 'loading' ? 'Loading the forecast…' : 'Zoom in to see the forecast here', PAD, H / 2); return; }
+  const d = D;
+  ctx.fillStyle = dark ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
+  for (let hr = 0; hr < HOURS; hr++) if (night((d.t[hr] + d.t[hr + 1]) / 2)) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
+  ctx.fillStyle = dark ? 'rgba(96,165,250,0.16)' : 'rgba(59,130,246,0.08)';
+  ctx.fillRect(X(-PAST), 0, X(0) - X(-PAST), H);
+  // your ride, from its departure to arrival (main's band; a day at a time on a trip of days)
+  if (trip()) for (const r of trip().days) if (r.h0 < HOURS) {
+    ctx.fillStyle = css.getPropertyValue('--route').trim(); ctx.globalAlpha = 0.16;
+    ctx.fillRect(X(r.h0), 0, Math.max(3, X(Math.min(HOURS, r.h1)) - X(r.h0)), H); ctx.globalAlpha = 1;
+    ctx.fillRect(X(r.h0), H - 3, Math.max(3, X(Math.min(HOURS, r.h1)) - X(r.h0)), 3);
+  }
+  const top = 14, bottom = H - 14;
+  for (let hr = 0; hr < HOURS; hr++) {
+    const r = (d.rain[hr] + d.rain[hr + 1]) / 2;
+    if (r < 0.05) continue;
+    const bh = Math.min(1, r / 3) * (bottom - top) * 0.75 + 2;
+    ctx.fillStyle = (d.temp[hr] < 0.5 ? 'rgba(167,139,250,' : 'rgba(59,130,246,') + Math.min(0.9, 0.35 + r / 4) + ')';
+    ctx.fillRect(X(hr) + 0.5, bottom - bh, X(hr + 1) - X(hr) - 1, bh);
+  }
+  let tMin = Math.min(...d.temp), tMax = Math.max(...d.temp);
+  if (tMax - tMin < 4) { const m = (tMax + tMin) / 2; tMin = m - 2; tMax = m + 2; }
+  const Y = (t) => top + 4 + (1 - (t - tMin) / (tMax - tMin)) * (bottom - top - 14);
+  ctx.beginPath();
+  d.temp.forEach((t, hr) => { const x = X(hr), y = Y(t); if (hr) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+  ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.8; ctx.stroke();
+  const iMax = d.temp.indexOf(Math.max(...d.temp)), iMin = d.temp.indexOf(Math.min(...d.temp));
+  ctx.fillStyle = '#c2410c'; ctx.textAlign = 'center';
+  ctx.fillText(`${Math.round(d.temp[iMax])}°`, Math.min(W - 12, Math.max(12, X(iMax))), Y(d.temp[iMax]) - 4);
+  if (iMin !== iMax) ctx.fillText(`${Math.round(d.temp[iMin])}°`, Math.min(W - 12, Math.max(12, X(iMin))), Math.min(bottom, Y(d.temp[iMin]) + 11));
+  ctx.strokeStyle = muted; ctx.fillStyle = muted;
+  for (let hr = 0; hr <= HOURS; hr += 3) {
+    const x = X(hr), y = 7, a = ((d.dir[hr] + 180) * Math.PI) / 180, l = Math.min(6, 2.5 + d.speed[hr] / 2);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    ctx.lineWidth = d.speed[hr] > 8 ? 1.8 : 1.1;
+    ctx.beginPath(); ctx.moveTo(0, l); ctx.lineTo(0, -l); ctx.moveTo(-2.4, -l + 2.6); ctx.lineTo(0, -l); ctx.lineTo(2.4, -l + 2.6); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.textAlign = 'left'; ctx.fillStyle = muted; ctx.strokeStyle = muted; ctx.lineWidth = 1;
+  const every = (X(HOURS) - X(0)) / HOURS * 6 < 34 ? 12 : 6;
+  for (let hr = 1; hr <= HOURS; hr++) {
+    const dt = new Date(d.t[hr] * 1000);
+    if (dt.getHours() === 0) {
+      ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(X(hr), 0); ctx.lineTo(X(hr), H); ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.fillText(dt.toLocaleDateString([], { weekday: 'short' }), X(hr) + 3, H - 4);
+    } else if (dt.getHours() % every === 0 && X(hr) > X(0) + 18) ctx.fillText(String(dt.getHours()), X(hr) - 4, H - 4);
+  }
+  ctx.fillText('Radar', X(-PAST) - 6, H - 4);
+  const cx = X(hour);
+  ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+  const ti = Math.min(HOURS, Math.round(Math.max(0, hour)));
+  ctx.fillStyle = ink;
+  if (hour >= 0) { ctx.beginPath(); ctx.arc(cx, Y(d.temp[ti]), 3.2, 0, Math.PI * 2); ctx.fill(); }
+}
+function bindStrip(F) {
+  const cv = F.stripCv;
+  let down = false;
+  const at = (e) => { const r = cv.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (e.clientX - r.left - 9 * r.width / cv.clientWidth) / (r.width - 18 * r.width / cv.clientWidth))); playing = false; if (zoomed()) { const [w0, w1] = span(); step = null; setHour(Math.round((w0 + x * (w1 - w0)) * 12) / 12); } else setHour(hourOf(unitOf(-PAST) + x * (HOURS - unitOf(-PAST)))); };
+  cv.addEventListener('pointerdown', (e) => { down = true; try { cv.setPointerCapture(e.pointerId); } catch { /* gone */ } at(e); });
+  cv.addEventListener('pointermove', (e) => { if (down) at(e); });
+  cv.addEventListener('pointerup', () => { down = false; });
+  cv.addEventListener('pointercancel', () => { down = false; });
+}
+function setHour(hr) {
+  const [lo, hi] = zoomed() ? span() : [-PAST, HOURS];
+  hour = Math.max(lo, Math.min(hi, hr));
+  for (const F of frames) { F.slider.value = String(zoomed() ? Math.round(hour * 12) : unitOf(hour) < 0 ? Math.round(unitOf(hour)) : Math.round(hour)); syncPlay(F); renderAll(F); syncStep(F); }
+}
+function togglePlay() {
+  playing = !playing;
+  const end = zoomed() ? span()[1] : HOURS;
+  if (playing && hour >= end) hour = zoomed() ? span()[0] : 0;
+  let last = performance.now();
+  const step = (now) => {
+    if (!playing) { for (const F of frames) syncPlay(F); return; }
+    const k = (now - last) / 1000 * 60; last = now;
+    const next = hour + k / (zoomed() ? 240 : hour < 0 ? 240 : 60); // (your trip: 15 minutes a second)
+    if (next >= end) playing = false;
+    setHour(Math.min(end, next));
+    requestAnimationFrame(step);
+  };
+  for (const F of frames) syncPlay(F);
+  if (playing) requestAnimationFrame(step);
+}
+function syncPlay(F) {
+  F.playBtn.innerHTML = icon(playing ? 'pause' : 'play', 18);
+  F.playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play forecast');
+}
+
+// the time and the note under it (renderTime())
+function renderTime(F) {
+  const past = hour < 0, t = new Date((past ? scanAt(hour) : timeAtHour(hour)) * 1000);
+  const day = t.toLocaleDateString([], { weekday: 'short' }), clock = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  let label = past ? `${clock} · radar` : hour < 0.5 ? `Now · ${clock}` : `${day} ${clock} · +${Math.round(hour)} h`;
+  if (past && !layers.has('rain')) label += ' (Rain is off)';
+  else if (layers.has('rain') && hour < 0.5 && !past) label += ' · FMI radar';
+  if (S.fc === 'loading') label += ' · loading…';
+  if (zoomed()) { const d = curDay(); label = `${day} ${clock} · ${hour < d.h0 ? 'before you set off' : hour > d.h1 ? 'after you arrive' : `km ${Math.round(kmAt(hour))}`}`; }
+  F.timeEl.textContent = label;
+  const problem = S.fc === 'failed' ? 'Weather forecast unavailable right now' : null;
+  F.noteEl.classList.toggle('warn', !!problem);
+  F.noteEl.textContent = problem ? `⚠ ${problem}` : zoomed() ? 'Your trip, an hour either side, read where you’ll be. Under the hours: the wind against you, from the side, behind you.' : `${trip() && trip().days[0].h0 < HOURS ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
+  F.slider.setAttribute('aria-valuetext', past ? `${clock}, the radar ${Math.round(-hour * 60)} minutes ago` : hour < 0.5 ? `Now, ${clock}` : `${t.toLocaleDateString([], { weekday: 'long' })} ${clock}, in ${Math.round(hour)} hours`);
+}
+
+// the reading beside the strip (readout()), at the map's centre
+function readout(F) {
+  const el = F.nowEl;
+  el.style.setProperty('--tl-lines', layers.has('snow') ? 4 : 3);
+  if (S.fc !== 'ready') { el.innerHTML = `<small>${S.fc === 'loading' ? 'Loading forecast…' : 'Weather forecast unavailable right now'}</small>`; el.title = el.textContent; return; }
+  const hr = Math.max(0, hour), t = timeAtHour(hr);
+  if (zoomed()) { readTrip(el, hr, t); return; }
+  const s = { temp: lin(D.temp, hr), rain: lin(D.rain, hr), speed: lin(D.speed, hr), dir: lin(D.dir, hr), gust: lin(D.gust, hr), cloud: lin(D.cloud, hr) };
+  const kind = skyKind(s.rain, s.temp, s.cloud, night(t));
+  let sum = 0; for (let k = 0; k < 6; k++) sum += lin(D.rain, hr + k);
+  const rainTxt = s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry';
+  const gust = s.gust > s.speed + 2 ? ` <span>gusts ${s.gust.toFixed(0)}</span>` : '';
+  el.title = `${SKY[kind]} · at the map centre`;
+  el.innerHTML =
+    `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>map centre</small></div>` +
+    `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
+    `<div>${icon('drop', 12)}${rainTxt}${sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` +
+    (layers.has('snow') ? `<div>${icon('snow', 12)}${hr > 30 ? '3 cm of snow' : 'no snow'}</div>` : '');
+}
+
+// the legend over the map (renderLegend()): open on a desktop, folded on a phone until opened
+function renderLegend(F) {
+  const rows = [];
+  const scale = (bar, words) => `<span class="wx-lg"><i style="background:${bar}"></i><small>${words}</small></span>`;
+  if (layers.has('temp')) rows.push(scale(rampCss(TEMP_RAMP), `<b>Temperature</b> ${TEMP_RAMP[0][0]}–${TEMP_RAMP[TEMP_RAMP.length - 1][0]} °C`));
+  else if (layers.has('wind')) rows.push(scale(rampCss(WIND_RAMP), `<b>Wind</b> ${WIND_RAMP[0][0]}–${WIND_RAMP[WIND_RAMP.length - 1][0]} m/s`));
+  if (layers.has('rain')) { rows.push(scale(stepsCss(RAIN_STEPS), `<b>Rain</b> ${RAIN_STEPS.map(([v]) => v).join(' · ')} mm/h`)); rows.push('<div class="lgl lg-note">light · moderate · heavy · very heavy</div>'); }
+  if (layers.has('cloud')) rows.push(document.documentElement.dataset.theme === 'dark' ? scale('linear-gradient(90deg, #7d8a84, #f1f5f9)', '<b>Clouds</b> the paler, the cloudier') : scale('linear-gradient(90deg, #f1f5f9, #9aa3ae)', '<b>Clouds</b> the greyer, the cloudier'));
+  if (layers.has('thunder')) rows.push('<div class="lgl"><i class="lg-dash"></i><span><b>Thunder</b> possible (forecast)</span></div>');
+  if (layers.has('snow')) { rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`)); rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>'); }
+  if (zoomed() && S.fc === 'ready') { const css = getComputedStyle(F.fr), sw = (k) => `<i style="display:inline-block;width:14px;height:8px;border-radius:2px;vertical-align:1px;background:${css.getPropertyValue(REL[k][0]).trim()}"></i>`;
+    rows.push(`<div class="lgl"><span><b>The wind on your way</b> (the band under the hours)<br><small>${sw('strong')}${sw('against')} against you · ${sw('side')} from the side · ${sw('behind')} behind you</small></span></div>`); }
+  if (hour < 0 && rows.length) rows.unshift('<div class="lgl lg-note">The radar’s past: only the rain has one, the other layers start at Now</div>');
+  const open = legendOpen ?? !F.ph;
+  F.legend.hidden = !rows.length;
+  F.legend.innerHTML = `<button type="button" class="lg-fold" aria-expanded="${open}">Legend ${icon(open ? 'chevronUp' : 'chevronDown', 14)}</button>` + (open ? rows.join('') : '');
+  F.legend.querySelector('.lg-fold').addEventListener('click', () => { legendOpen = !open; for (const G of frames) renderLegend(G); F.legend.querySelector('.lg-fold').focus(); });
+}
+
+// ------------------------------------------------------------------ dragging and resizing on a desktop (bindFloat(), placeFloat()), in the frame
+function bindFloat(F, head) {
+  const bar = F.bar, fr = F.fr;
+  const grip = h('div', { class: 'tl-grip', title: 'Drag to resize the timeline', 'aria-hidden': 'true' });
+  bar.append(grip);
+  let drag = null;
+  const start = (kind) => (e) => {
+    if (e.button > 0 || (kind === 'move' && e.target.closest('button, input, select, a'))) return;
+    const r = bar.getBoundingClientRect(), o = fr.getBoundingClientRect();
+    drag = { kind, x: e.clientX, y: e.clientY, r: { left: r.left - o.left, top: r.top - o.top, width: r.width } };
+    bar.classList.add('dragging');
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+    e.preventDefault();
+  };
+  const move = (e) => {
+    if (!drag) return;
+    const { r } = drag, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    placeFloat(F, drag.kind === 'move' ? { left: r.left + dx, top: r.top + dy, width: r.width } : { left: r.left, top: r.top, width: r.width + dx });
+  };
+  const end = () => { if (!drag) return; drag = null; bar.classList.remove('dragging'); floatPos = F.float; };
+  for (const [el, kind] of [[head, 'move'], [grip, 'size']]) {
+    el.addEventListener('pointerdown', start(kind));
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+  head.addEventListener('dblclick', (e) => { if (!e.target.closest('button, input, select, a')) { placeFloat(F, null); floatPos = null; } });
+}
+function placeFloat(F, f) {
+  if (f !== undefined) F.float = f;
+  const bar = F.bar, st = bar.style;
+  bar.classList.toggle('placed', !!F.float);
+  if (!F.float) { st.left = st.top = st.width = st.bottom = st.transform = ''; return; }
+  const W = F.fr.clientWidth, H = F.fr.clientHeight, right = W - 84;
+  const w = Math.round(Math.max(420, Math.min(right - 16, F.float.width)));
+  const hgt = bar.offsetHeight || 190;
+  const left = Math.round(Math.max(8, Math.min(right - w - 8, F.float.left)));
+  const top = Math.round(Math.max(8, Math.min(H - hgt - 8, F.float.top)));
+  F.float = { left, top, width: w };
+  Object.assign(st, { left: `${left}px`, top: `${top}px`, width: `${w}px`, bottom: 'auto', transform: 'none' });
+}
+
+draw();
+window.mk = { S, frames, layers: () => layers, draw }; // (for checks)
+</script>
+</body>
+</html>
