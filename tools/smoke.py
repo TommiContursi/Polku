@@ -12756,6 +12756,64 @@ WC_JS = """(async () => {
 })()"""
 
 
+# #984: on a desktop each open section of the weather card's hour strip (Rain, Wind and Dark) has an arrow at each edge
+# beside its hours, on top where it's drawn, and a mouse's click on it pages the strip and every section together.
+# The trip leaves at the next dark hour, so the Dark section is there; the forecast is WX_FIXED's.
+SA_JS = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), { sunPosition } = await import(location.origin + '/js/sun.js');
+  for (let k = 0; k < 150 && !(p.analysis && p.analysis.wind); k++) await wait(100);
+  const ll = p.points[0], h0 = Math.floor(Date.now() / 3600e3) * 3600;
+  let t = h0 + 3600; while (sunPosition(t + 1800, ll).alt > -8 && t < h0 + 40 * 3600) t += 3600;
+  p.when.set(t); await wait(300); for (let k = 0; k < 100 && !(p.analysis && p.analysis.wind); k++) await wait(100); await wait(800);
+  p.openWeather(); await wait(600);
+  const c = p.cards.current; c.sec = { rain: true, wind: true, dark: true }; p.cards.refresh(); await wait(300);
+  const s = () => p.cards.box.querySelector('.wx-hs');
+  for (let q = 0; q < 30 && !parseFloat(s()?.style.getPropertyValue('--cw')); q++) await wait(100);
+  return [...s().querySelectorAll('.wx-sec')].map((e) => e.dataset.sec);
+})()"""
+# where a section's › is, with the strip scrolled back to its start: shown, and on top there
+SA_AT = """(async (k) => {
+  const s = polku.planner.cards.box.querySelector('.wx-hs'), x = s.querySelector('.wx-hs-x'), b = s.querySelector(`[data-sec=${k}] .wx-sec-line > .wx-hs-arrow.r`);
+  if (!b) return null;
+  b.scrollIntoView({ block: 'center', inline: 'nearest' }); x.scrollLeft = 0; delete s.dataset.goal;
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const R = b.getBoundingClientRect(), cx = R.left + R.width / 2, cy = R.top + R.height / 2;
+  return { x: cx, y: cy, top: document.elementFromPoint(cx, cy)?.closest('.wx-hs-arrow') === b, shown: getComputedStyle(b).display !== 'none' && getComputedStyle(b).opacity === '1' };
+})"""
+
+
+def strip_arrows(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': WX_FIXED + 'window.__wx.temp = 6; window.__wx.precip = () => 1.2;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
+        if not pg.js(PC_ROUTE, timeout=30000):
+            fails.append('no route')
+        else:
+            secs = pg.js(SA_JS, timeout=60000)
+            if secs != ['rain', 'wind', 'dark']:
+                fails.append(f"sections {secs}, want rain, wind and dark")
+            for k in secs:
+                x = pg.js(f"{SA_AT}('{k}')")
+                if not x:
+                    fails.append(f"{k}: no arrows")
+                    continue
+                if not x['top'] or not x['shown']:
+                    fails.append(f"{k}: its › {'shown' if x['shown'] else 'not shown'}, {'on top' if x['top'] else 'under something else'}")
+                for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x['x'], 'y': x['y'], 'button': 'none' if kind == 'mouseMoved' else 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                got = pg.js("""new Promise((ok) => setTimeout(() => { const s = polku.planner.cards.box.querySelector('.wx-hs'), x = s.querySelector('.wx-hs-x'), cw = parseFloat(s.style.getPropertyValue('--cw'));
+                  ok({ at: x.scrollLeft, want: Math.min(x.scrollWidth - x.clientWidth, x.clientWidth - 16 - cw) }); }, 600))""")
+                if abs(got['at'] - got['want']) >= 2:
+                    fails.append(f"{k}: a click on its › scrolled to {got['at']}, not {got['want']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the hour strip's arrows beside each section on a desktop, a click paging them all (#984)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def wind_by_sport(chrome):
     """The route's wind colours (#869, 2026-11-12): a headwind is strong at the limit a note uses for the sport there, 6 m/s
     on a ride, 8 on foot and 5 on the water, and light from 1.5 m/s; so a 3 m/s headwind on a ride is a light one."""
@@ -20499,7 +20557,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
+    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
