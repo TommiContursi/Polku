@@ -468,7 +468,7 @@ export const QUICK_TILE = {
   'wx:rain': { group: 'Weather on the map', label: 'Rain radar', icon: 'rain', opts: true },
   'wx:cloud': { group: 'Weather on the map', label: 'Clouds', icon: 'cloud' },
   'wx:thunder': { group: 'Weather on the map', label: 'Thunder', icon: 'thunder' },
-  'wx:towns': { group: 'Weather on the map', label: 'Towns’ weather', icon: 'cloudSun' },
+  'wx:towns': { group: 'Weather on the map', label: 'Weather at places', icon: 'cloudSun' },
 };
 // Places are LIPAS's points for the sport, so the tile says what they are there
 export const QUICK_PLACES = { paddle: 'Landing sites & lean-tos', swim: 'Beaches & swimming places', road: 'Campfire sites', gravel: 'Lean-tos & campfire sites' };

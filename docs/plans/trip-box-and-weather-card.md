@@ -2,7 +2,7 @@
 
 The design of step 6 of [the one order](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6710400784): the trip's box over the list, and the weather card it opens, with Go's tab gone ([#431](https://github.com/TommiContursi/Polku/issues/431), [#794](https://github.com/TommiContursi/Polku/issues/794), [#759](https://github.com/TommiContursi/Polku/issues/759), [#766](https://github.com/TommiContursi/Polku/issues/766)). Part of [#869](https://github.com/TommiContursi/Polku/issues/869); milestone [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16).
 
-**Where it stands (2026-11-12): the card redrawn as the trip line (Round 5, below) and built as version G in #973, with the wind's new colours, the cold by the wind's direction and thunder in Check; then the hour strip added as the card's main view (version H, #979), with G's views kept, folded.** Before it, on 2026-11-10: designed again, and decided. On 2026-11-10 the weather got three homes, each with one job (below, Round 4), and round 1 of the refresh was answered. Rounds 2 and 3 answered the rest the same day: two dropdowns, the wind as its speed's colour with its lines on top, Weather at places, and three PRs (6a, 6b, 6c) below. **Ready to build** after the ▾ pill, as steps 2 and 3 of [the one order of 2026-11-10](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6772432958); 6c is new to that order, after 6b. The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/X4VyAyhFQZ49xo9BHWzaKa) to try on a phone (built with `css/app.css` and `js/ui.js` inlined; the earlier one was [this Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri)). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2 of 2026-11-07; **C**, **A** and **B**, the earlier answers, stay to compare. No app code is written here.
+**Where it stands (2026-11-12): 6b rescoped to the timeline's hour apart from the departure, on `main`'s timeline as it is, and 6c dropped ("How step 6 is built", below). Before it: the card redrawn as the trip line (Round 5, below) and built as version G in #973, with the wind's new colours, the cold by the wind's direction and thunder in Check; then the hour strip added as the card's main view (version H, #979), with G's views kept, folded.** Before it, on 2026-11-10: designed again, and decided. On 2026-11-10 the weather got three homes, each with one job (below, Round 4), and round 1 of the refresh was answered. Rounds 2 and 3 answered the rest the same day: two dropdowns, the wind as its speed's colour with its lines on top, Weather at places, and three PRs (6a, 6b, 6c) below. **Ready to build** after the ▾ pill, as steps 2 and 3 of [the one order of 2026-11-10](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6772432958); 6c is new to that order, after 6b. The mock-up is [mockups/weather-card.html](mockups/weather-card.html), also a [private Artifact](https://claude.ai/artifact/X4VyAyhFQZ49xo9BHWzaKa) to try on a phone (built with `css/app.css` and `js/ui.js` inlined; the earlier one was [this Artifact](https://claude.ai/artifact/TuYMqZgUGfFuqf5QmxCUri)). **Today** shows Go and the timeline from `main`; **D: Like a weather site** is the card after round 2 of 2026-11-07; **C**, **A** and **B**, the earlier answers, stay to compare. No app code is written here.
 
 ## Already decided
 
@@ -474,63 +474,14 @@ Three PRs, each tried on a phone before the next, in this order: 6a, then 6b, th
 - No Waves section: Polku estimates a water leg's waves once, at the time you're on it, so an hour-by-hour row would repeat one number. The waves stay in the numbers and on The whole trip's lane.
 - On a desktop the weather card is 400 px wide, for six hours and a half.
 
-**6b. The weather line: the map's weather, with two choices.**
-- `js/wxmap.js`:
-  - **The window becomes the line.** On a phone it takes the sheet's place; on a desktop it sits above the toolbar's end. It has ▷, the reading, ✕, the strip and the row of two pills.
-    - The reading says "map centre" or "the spot". It shows "–" until the new centre's forecast arrives, and when it fails or is stale, never the old number.
-    - The strip keeps `main`'s range under its drawing, the radar's last 90 minutes and "Radar". The trip is bracketed and the dark marked, not tinted alone. A drag uses `touch-action: none` and handles `pointercancel`.
-    - The time label keeps its forms.
-  - **The layers' state is one colour plus what's on top.** The colour is `rain`, `cloud`, `wind`, `temp`, `snow` or none; on top is any of `thunder`, `windLines` and `places`. This replaces seven booleans.
-    - The wind becomes two layers: Wind speed is the colour field (`wxField` by speed), and Wind lines are drawn on `windCv`. The lines are white over a colour, in the speed's colours when Wind speed is the colour, and show their direction when still (reduced motion).
-    - Clouds is one of the colours.
-  - **The menus are both `popMenu()`, staying open while you pick (`keep`).** The colour's menu has radios (`menuitemradio`), then Effects under a heading of its own, then the sources' note. On top's has ticks (`menuitemcheckbox`). The pills say the colour's word ("Rain ▾") and "On top · 2 ▾", their names starting with those words.
-  - The legend follows the one colour, with thunder's rows when Thunder is on top.
-  - `TOWNS` becomes **Weather at places**, everywhere the name shows.
-  - **Gone:** `dock()`, the window's placement and its resize grip.
-  - `onHour` no longer calls `planner.setLeave`, nor `setLeave` the map's hour. The "Also the departure" note goes. Road works and road conditions still follow the map's hour, and the line's note says so.
-- `js/main.js`:
-  - **Opening and closing the line.** `setWeather()` no longer opens it: a layer switched on shows at Now. Weather and T open the line at Now and turn on what was on last (stored), or Weather at places the first time. ✕ closes it and sets the hour back to Now, with the layers left on.
-  - **The sheet's place.** `syncWxH()`, `body.wx-over` and `columnFits()` put the line in the sheet's place on a phone. On a desktop it goes above the toolbar's end, right of the planner. The motion is in Motion's table.
-  - **Layers' weather group:**
-    - Map colour as `rt-chips` with `chip`, with the chosen colour's opacity (`withOpacity`);
-    - Weather effects (`tg`);
-    - On top as `tg` switches;
-    - the Timeline switch goes, and the note's last sentence changes;
-    - Winter's "Snow depth on the map" sets the colour to Snow on the ground, or none;
-    - On now's chips name the colour and what's on top.
-  - **The sport's tiles** stay by sport. `wx:rain` and `wx:temp` set the colour, so running's two replace each other. `wx:wind` switches Wind lines on top.
-  - **The saved state:** the new format's reader, writer and tests change together. A state saved before starts with nothing on (AGENTS.md: clarity over compatibility).
-  - **As today:** Weather here on a card opens the line with the reading held at the spot, and 3D's sun, shadows and sky follow the map's hour.
-- `css/app.css`: the line in the sheet's place and the pills' row. No window.
-- **Removed:** the floating window, its grip and `dock()`; Layers' Timeline switch; the departure's link both ways, and with it the water legs routing again when the hour moves; the name Towns' weather.
-- **Checks** (`tools/smoke.py`):
-  - `weather`:
-    - the line's reading is whole at 390 px and 200 %;
-    - one colour at a time, and on top in any mix;
-    - a layer from Layers or a tile doesn't open the line;
-    - ✕ goes back to Now with the layers on;
-    - Weather brings back the last layers, and Weather at places the first time;
-    - the reading shows "–" while the forecast loads, and when it fails;
-    - the saved state's new format.
-  - `leave`: the map's hour leaves the departure alone, and the other way.
-  - `quick`: Rain and Temperature replace each other, and Wind adds its lines.
-  - `controls`: the pills, the menus and Layers' chips are shared controls.
-  - `fold`: the line in the sheet's place, and the sheet back after ✕.
-- **Docs:**
-  - CHANGELOG: the weather line and its two choices, Weather at places, Layers' group;
-  - USING: Weather, the line, Layers' weather;
-  - README: the weather layers;
-  - DEVELOPING: Weather and the sheet; Shared controls gets the pills' row and "On top · 2".
-- **Motion:** the line rising in the sheet's place. The user runs `/review-animations` before this PR opens.
+**6b. The timeline's hour apart from the departure** (rescoped by the user on 2026-11-12). **Built on `calmer-planner-timeline-hour`.** On `main`'s weather timeline as it is: its look, its window you drag and resize, its slider, its reading and its one menu stay.
+- Moving the timeline no longer sets the route's departure, and the departure no longer moves the timeline. Road works and road conditions follow the timeline's hour. The strip shades your ride at its own departure.
+- A weather layer switched on in Layers, the timeline's menu or a tile shows at the timeline's hour and doesn't open the timeline. Weather (T), the weather card's Weather on the map and its lanes, and Weather here open it.
+- Closing the timeline sets the map back to Now, with the layers left on.
 
-**6c. The Weather button's temperature.**
-- `js/main.js` and `js/wxmap.js`:
-  - **When it shows.** Before the weather's first use, the button says Weather, as today, and asks for nothing. The first use is Weather, or a layer from Layers or a tile, and it's stored. After it, the button shows the sky and the temperature at the map's centre at Now, or the hour's while the line is open.
-  - **The request.** The forecast is asked for at the nearest point of the forecast grid, about 3 km (PRODUCT.md), when the map stops moving. It goes through `request()` and is cached as the layers' forecasts are. The button shows "–" while it loads, when it fails and offline.
-  - **The labels.** The "+k h" label goes. The button's title is "Weather (T)", and its name gives the temperature and where it is.
-- **Layers' note says so in words:** "The Weather button shows the temperature at the map's centre, to about 3 km." The control says what leaves the device (PRODUCT.md).
-- **Checks:** `weather`: no request for the button before the first use; one, rounded, after a pan; "–" while it loads and offline.
-- **Docs:** CHANGELOG, USING, DEVELOPING (Weather).
+**Not chosen (2026-11-12):** the rest of what this section listed before: the line in the sheet's place, the two dropdowns (the map's colour and On top), one colour at a time, Layers' chips, the new reading, the rename to Weather at places, and the Weather button's temperature (6c). They came from mock-up E, a sketch made before the route's weather was designed. A build of them (#987) was closed unmerged: it took away the timeline's window, its dragging and resizing, and the visible slider, and the user found it worse than `main`'s. The mock-ups in [mockups/weather-card.html](mockups/weather-card.html) are sketches, not specs.
+
+**Next for the map's weather, when the user chooses:** a written list (no mock-up) of every place a weather setting lives today (the timeline's menu, Layers' weather group, the quick tiles, Settings → Display, Layers → Winter), with one proposal for connecting them.
 
 ## Left for step 9 and later
 
@@ -542,7 +493,7 @@ Three PRs, each tried on a phone before the next, in this order: 6a, then 6b, th
   - **Road cameras (#913):** the nearest Digitraffic weathercams to the start (`js/cameras.js`), two pictures to swipe.
   - **Sun, moon and sky (#914):** the sun (`js/sun.js`), the moon (calculated) and UV (Open-Meteo). The aurora is a new source and needs the user's OK.
   - **The water (#862):** the surface temperature at SYKE's nearest station, and blue-green algae, its source still to check. Between stations the value is unknown and looks unknown.
-- **Clouds, thunder, the legend and Effects** (#182) are built. The layers' look was chosen on 2026-11-08 (Weather service, with Effects on top). The two menus of 6b answer #935's question.
+- **Clouds, thunder, the legend and Effects** (#182) are built. The layers' look was chosen on 2026-11-08 (Weather service, with Effects on top).
 
 ## Not drawn, or not known
 

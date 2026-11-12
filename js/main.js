@@ -407,7 +407,9 @@ map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(()
 map.once('load', () => checkWinter(true));
 
 let hadRoute = false; // (a route drawn, for All layers' Your route group)
-const safety = new SafetyLayers(map, { setData, time: () => planner.when.start() });
+// road works and road conditions at the map's hour (the weather's, once it's made)
+let mapTime = () => Date.now() / 1000;
+const safety = new SafetyLayers(map, { setData, time: () => mapTime() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
 
@@ -442,7 +444,6 @@ const planner = new Planner(map, {
   rideLipas: (props, opts) => rideLipas(props, opts),
   lipasRide: (props, click = null) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   setData,
-  onStartChange: (k) => { if (k != null) weather.setHour(k, { silent: true }); safety.publish(); }, // (a day past the timeline's two: it stays)
   onAnalysis: () => {
     weather.renderTime(); weather.renderStrip();
     // All layers open as a route comes or goes: its Your route group with it (#424's C)
@@ -455,8 +456,9 @@ const planner = new Planner(map, {
   weatherOn: (sec, layer) => {
     const k = Math.floor((sec - Math.floor(Date.now() / 3600000) * 3600) / 3600);
     if (k > 48) { toast('The map’s weather only reaches 48 hours ahead: it can’t show your trip yet'); return; }
-    if (layer) setWeather({ [layer]: true }); else if (!state.timeline) setTimeline(true);
-    if (k >= 0) weather.setHour(k, { silent: true });
+    if (layer) setWeather({ [layer]: true });
+    if (!state.timeline) setTimeline(true);
+    if (k >= 0) weather.setHour(k);
   },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
@@ -570,8 +572,9 @@ const weather = new WeatherOverlay(map, {
     if (JSON.stringify(r || null) !== before) applyStyle();
   },
   dark: mapDark,
-  // the timeline and the route's departure time are one clock
-  onHour: (k) => { planner.when.set(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
+  // road works and road conditions follow the map's hour (the route's departure is its own: step 6b)
+  onHour: () => safety.publish(),
+  departure: () => planner.when.start(),
   hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
   onToggle: (patch) => setWeather(patch),
@@ -589,6 +592,7 @@ const weather = new WeatherOverlay(map, {
     $('#btn-time').setAttribute('aria-label', k ? `Time & weather, ${k} h ahead` : 'Time & weather');
   },
 });
+mapTime = () => timeAtHour(weather.hour);
 // the sun at the map's hour (to ten minutes, so the shadows' tiles keep), from the map's middle, for style.js
 // shortcut: the light is worked out when the style is built, so after a long pan or ten minutes without a rebuild it's a little off
 const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
@@ -614,20 +618,18 @@ const lightStale = () => (state.hillshade && state.hillLight === 'sun' && (sunHo
 map.on('moveend', () => { if (lightStale()) applyStyle(); });
 map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)
 
+// The timeline open or closed; closed, the map goes back to Now with its layers left on
 function setTimeline(on) {
   state.timeline = on;
   weather.setOpen(on);
-  if (on && planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
+  if (!on) weather.setHour(0);
   $('#btn-time').setAttribute('aria-pressed', String(on));
   saveSettings();
 }
 
 function setWeather(patch) {
   Object.assign(state.weather, patch);
-  weather.set(state.weather);
-  if (planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
-  // weather layers live on the timeline: switching one on opens it
-  if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
+  weather.set(state.weather); // (shown at the timeline's hour: a layer doesn't open the timeline)
   applyStyle();
   renderLayersPanel();
 }
@@ -1266,7 +1268,7 @@ const wxToggle = (k) => ({
   snow: () => withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
   cloud: () => toggle('Clouds', state.weather.cloud, (v) => setWeather({ cloud: v })),
   thunder: () => toggle('Thunder', state.weather.thunder, (v) => setWeather({ thunder: v })),
-  towns: () => toggle('Towns’ weather', state.weather.towns, (v) => setWeather({ towns: v })),
+  towns: () => toggle('Weather at places', state.weather.towns, (v) => setWeather({ towns: v })),
 })[k]();
 // the weather's Effects, also at the end of the timeline's layer menu (and in Settings › Display)
 const effectsToggle = () => toggle('Weather effects', weather.effects, (v) => weather.setEffects(v));
@@ -1299,7 +1301,7 @@ function renderLayersPanel() {
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
-  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Towns’ weather']].filter(([k]) => state.weather[k]);
+  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Weather at places']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
   // On now and Base map fold away like the other groups (open unless you close them)

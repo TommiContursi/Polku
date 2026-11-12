@@ -57,8 +57,8 @@ const LAYERS = [
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
 ];
-// the menu's points: the towns' weather (#916), at the places the map names at any zoom; a tap pins the reading there
-const TOWNS = ['towns', 'Towns’ weather', 'The sky, temperature and wind where the map names a place', 'Towns', 'cloudSun'];
+// the menu's points: Weather at places (#916; its key `towns` as saved), at the places the map names at any zoom; a tap pins the reading there
+const TOWNS = ['towns', 'Weather at places', 'The sky, temperature and wind where the map names a place', 'Places', 'cloudSun'];
 // the places it marks, the larger first: zoomed in, the map names villages and suburbs too
 const PLACE_LAYERS = ['label-city', 'label-town', 'label-village', 'label-suburb'];
 
@@ -672,7 +672,7 @@ export class WeatherOverlay {
     return true;
   }
 
-  // The towns' weather (#916): the sky, °C and wind at the places the map names (cities and towns, and zoomed in villages
+  // Weather at places (#916): the sky, °C and wind at the places the map names (cities and towns, and zoomed in villages
   // and suburbs), at the timeline's hour. The grid is finer zoomed in, so nearby places can differ. From the grid, so a town costs no request; one with no grid near shows nothing rather than a guess.
   // `pick`: choose the towns again (the map's labels have moved): the larger first, kept apart, none over the route.
   renderTowns(pick = false) {
@@ -1226,9 +1226,9 @@ export class WeatherOverlay {
     // the radar's last 90 minutes, before Now: only the rain has a past
     ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(96,165,250,0.16)' : 'rgba(59,130,246,0.08)';
     ctx.fillRect(X(-PAST), 0, X(0) - X(-PAST), H);
-    // your ride, from departure to arrival (the radar's past isn't a departure: it's Now's)
-    const ride = this.app.routeHours && this.app.routeHours(), go = Math.max(0, this.hour);
-    if (ride > 0) {
+    // your ride, from its departure to arrival, whatever the map's hour (step 6b)
+    const ride = this.app.routeHours && this.app.routeHours(), go = Math.max(0, (this.app.departure() - Math.floor(Date.now() / 3600e3) * 3600) / 3600);
+    if (ride > 0 && go < HOURS) { // (a departure past the strip's 48 hours: none)
       ctx.fillStyle = accent;
       ctx.globalAlpha = 0.16;
       ctx.fillRect(X(go), 0, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), H);
@@ -1291,7 +1291,7 @@ export class WeatherOverlay {
     ctx.strokeStyle = ink;
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
-    const ti = Math.min(HOURS, Math.round(go));
+    const ti = Math.min(HOURS, Math.round(Math.max(0, this.hour)));
     ctx.fillStyle = ink;
     if (this.hour >= 0) { ctx.beginPath(); ctx.arc(cx, Y(d.temp[ti]), 3.2, 0, Math.PI * 2); ctx.fill(); }
   }
@@ -1316,18 +1316,17 @@ export class WeatherOverlay {
     cv.addEventListener('pointercancel', () => { down = false; });
   }
 
-  // `silent`: change came from the route's departure picker, don't echo back
-  setHour(hr, { silent = false } = {}) {
+  setHour(hr) {
     this.hour = Math.max(-PAST, Math.min(HOURS, hr));
     this.syncSlider();
     if (this.grid) this.applyHour(); else this.renderTime();
     this.readout();
-    if (!silent) this.emitHour();
+    this.emitHour();
   }
 
-  // Tell the app (and so the planner) whenever the whole hour changes.
+  // Tell the app whenever the whole hour changes: road works and road conditions follow it.
   emitHour() {
-    const k = Math.max(0, Math.round(this.hour)); // (the radar's past isn't a departure: it's Now's)
+    const k = Math.max(0, Math.round(this.hour)); // (the radar's past: Now's)
     if (k === this.lastEmit) return;
     this.lastEmit = k;
     if (this.app.onHour) this.app.onHour(k);
@@ -1379,19 +1378,14 @@ export class WeatherOverlay {
     else if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? (past ? '' : ' · FMI radar') : past ? '' : ' · radar';
     if (this.loading) label += ' · loading…';
     this.timeEl.textContent = label;
-    // linked with the route's departure time
     const route = !!(this.app.hasRoute && this.app.hasRoute());
-    this.timeEl.title = route ? 'Also the departure time of your route' : '';
-    this.timeEl.classList.toggle('linked', route);
     if (this.noteEl) {
       const g = this.grid;
       const st = sourceStatus('openmeteo');
       const problem = this.status && !this.loading ? this.status
         : g && g.stale ? `Showing the forecast from ${hhmm(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null;
       this.noteEl.classList.toggle('warn', !!problem);
-      this.noteEl.textContent = problem ? `⚠ ${problem}`
-        : this.docked ? 'This is your departure: drag the strip or press play. The shaded band is your ride; road works and road conditions follow this time too.'
-          : route ? 'Also your route’s departure — the shaded band is your ride. Road works and road conditions follow this time too.' : 'Also sets road works and road conditions, and the departure of a planned route.';
+      this.noteEl.textContent = problem ? `⚠ ${problem}` : `${route ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
     }
     if (this.app.onTime) this.app.onTime(this.hour);
   }

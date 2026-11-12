@@ -6159,6 +6159,7 @@ SKY_3D = """(async () => {
   await expect('night', night, '#0b1426');
   const dark = m.getStyle().light; // (not MapLibre's own, which turns with the camera)
   if (!dark || dark.anchor !== 'map' || dark.position[2] !== 0) out.push(`the buildings' light at night: ${JSON.stringify(dark)}, not from straight above`);
+  const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); // (forecasts other checks cached here: 60 % cloud)
   document.getElementById('btn-time').click();
   for (let k = 0; k < 80 && !w.sample(m.getCenter().toArray()); k++) await wait(250);
   await expect('day, a clear forecast', day, '#5f9cdb');
@@ -7934,8 +7935,8 @@ MARKS = r"""(async () => {
     // (Route's list says it on the start's row, 25d's part 4, to a screen reader since #761; the start's card and the box set it)
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
     if (!waypoint().includes(`Leave ${p.when.words()}`) || !p.els.there.textContent.includes(p.clockOf(p.when.start() + (p.analysis.timeWind || p.analysis.time)))) errs.push('a new departure did not update the start’s row or the box’s there at immediately');
-    p.when.set(hour(6), { fromMap: true });
-    if (pill.textContent !== `Leave ${p.when.words()}` || !pill.textContent.includes(clock(hour(6))) || !waypoint().includes(`Leave ${p.when.words()}`)) errs.push(`timeline departure did not update the box’s pill and the start’s row: ${pill.textContent}`);
+    p.when.set(hour(6));
+    if (pill.textContent !== `Leave ${p.when.words()}` || !pill.textContent.includes(clock(hour(6))) || !waypoint().includes(`Leave ${p.when.words()}`)) errs.push(`a later departure did not update the box’s pill and the start’s row: ${pill.textContent}`);
     pill.focus(); p.renderAnalysis();
     if (document.activeElement !== pill || !pill.isConnected) errs.push('an analysis update replaced the focused When pill');
     p.when.set(null);
@@ -8800,8 +8801,8 @@ def glass(chrome):
                     measured += glass_ink(pg, where, found)
                     pg.js("document.querySelector('#btn-time').click(); true")
                     time.sleep(0.4)
-                    if 'ahead' not in pg.js("document.querySelector('#btn-time').className"):
-                        fails.append(f"{where}: the Weather button doesn't say it's looking ahead")
+                    if pg.js("polku.weather.open || polku.weather.hour !== 0 || document.querySelector('#btn-time').classList.contains('ahead')"):
+                        fails.append(f"{where}: Weather didn't close the timeline and go back to Now")
                     pg.js("document.querySelector('#btn-layers').click(); true")
                     time.sleep(0.6)
                     measured += glass_ink(pg, where, found)
@@ -12490,7 +12491,7 @@ WX_MENU = """(async () => {
   pill.click(); await wait(300);
   const item = (k) => document.querySelector(`.menu-pop .wx-${k}`);
   const items = [...document.querySelectorAll('.menu-pop [role=menuitemcheckbox]')].map((b) => `${b.textContent.trim().split(/(?=[A-Z])/)[0]}:${b.getAttribute('aria-checked')}`);
-  if (items.join() !== 'Rain and snowfall:true,Clouds:false,Thunder:false,Wind:false,Temperature:false,Snow on the ground:false,Towns’ weather:false,Effects:true') out.push(`the menu: ${items.join()}`);
+  if (items.join() !== 'Rain and snowfall:true,Clouds:false,Thunder:false,Wind:false,Temperature:false,Snow on the ground:false,Weather at places:false,Effects:true') out.push(`the menu: ${items.join()}`);
   if (!item('rain')?.querySelector('.menu-tick') || item('wind')?.querySelector('.menu-tick')) out.push('a ticked layer has no tick, or one off has');
   item('wind').click(); await wait(300);
   if (!item('wind') || item('wind').getAttribute('aria-checked') !== 'true' || document.activeElement !== item('wind')) out.push('Wind: not ticked, or the menu closed, or the focus left it');
@@ -12531,6 +12532,45 @@ WX_STILL = """(async () => {
 })()"""
 
 
+# The timeline apart (#869's 6b): a layer from a tile or from Layers shows at Now and leaves the timeline closed;
+# Weather opens it; ✕ closes it and goes back to Now with the layers left on, road works and road conditions too.
+WX_OPEN = """(async () => {
+  const out = [], w = polku.weather, S = polku.state, wait = (ms) => new Promise((r) => setTimeout(r, ms)), W = await import(location.origin + '/js/wxmap.js');
+  const bar = () => document.querySelector('#wx-bar');
+  const sw = (root, l) => [...root.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === l)?.querySelector('input');
+  if (w.open || !bar().hidden) out.push('the timeline is open with nothing asked for');
+  document.querySelector('#btn-layers').click(); await wait(300);
+  document.querySelector('#quick-layers .qt-tog[data-tile="wx:rain"]').click(); await wait(300);
+  if (!S.weather.rain || w.open || !bar().hidden || w.hour !== 0) out.push(`the Rain tile: rain ${S.weather.rain}, the timeline open ${w.open}, hour ${w.hour}`);
+  document.querySelector('#quick-layers .qt-more').click(); await wait(300);
+  const grp = document.querySelector('#layers-body .lg-group[data-group="weather"]'); grp.open = true;
+  sw(grp, 'Clouds').click(); await wait(300);
+  if (!S.weather.cloud || w.open || !bar().hidden) out.push(`Layers' Clouds: clouds ${S.weather.cloud}, the timeline open ${w.open}`);
+  document.querySelector('#layers-panel .panel-close').click(); await wait(300);
+  document.querySelector('#btn-time').click(); await wait(300);
+  if (!w.open || bar().hidden) out.push('Weather didn’t open the timeline');
+  w.setHour(6); await wait(300);
+  if (Math.abs(polku.safety.app.time() - W.timeAtHour(6)) > 1) out.push('at +6 h, road works and road conditions aren’t at the timeline’s hour');
+  document.querySelector('#wx-bar .tl-close').click(); await wait(300);
+  if (w.open || !bar().hidden || w.hour !== 0 || !S.weather.rain || !S.weather.cloud) out.push(`✕: open ${w.open}, hour ${w.hour}, rain ${S.weather.rain}, clouds ${S.weather.cloud} (closed at Now, the layers on)`);
+  if (Math.abs(polku.safety.app.time() - Date.now() / 1000) > 60) out.push('✕: road works and road conditions aren’t back at Now');
+  return out;
+})()"""
+
+
+def timeline_open(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
+        fails = pg.js(WX_OPEN, timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline apart: a layer doesn't open it, ✕ goes back to Now with the layers on" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def weather_menu(chrome):
     pg = chrome.page(1440, 900, False)
     try:
@@ -12550,7 +12590,7 @@ def weather_menu(chrome):
 
 # #916, the towns' weather: the sky, °C and wind at the places the map names, from the grid (WX_FIXED: +4 °C,
 # 4 m/s from 220°); apart from each other; none over the route (a straight line through Tampere); zoomed in too, at the
-# villages and suburbs; the menu's Points item names it, and the pill says "Towns". A press on a town's symbol (a real
+# villages and suburbs; the menu's Points item names it Weather at places, and the pill says "Places". A press on a town's symbol (a real
 # mouse's, below) pins the reading there and isn't the map's click (a card).
 WX_TOWNS = """(async () => {
   const out = [], w = polku.weather, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -12564,10 +12604,10 @@ WX_TOWNS = """(async () => {
   if (bad.length) out.push(`a town's symbol says “${bad[0].text}” (${bad[0].label})`);
   t.forEach((a, i) => t.slice(i + 1).forEach((b) => { if (a.r.left < b.r.right && b.r.left < a.r.right && a.r.top < b.r.bottom && b.r.top < a.r.bottom) out.push(`${a.name} and ${b.name} over each other`); }));
   const pill = document.querySelector('#wx-bar .wl-layer');
-  if (pill.textContent.trim() !== 'Towns') out.push(`the pill says “${pill.textContent.trim()}”`);
+  if (pill.textContent.trim() !== 'Places') out.push(`the pill says “${pill.textContent.trim()}”`);
   pill.click(); await wait(300);
   const item = document.querySelector('.menu-pop .wx-towns');
-  if (!item || item.getAttribute('aria-checked') !== 'true' || !/Points/.test(document.querySelector('.menu-pop').textContent)) out.push('no ticked Towns’ weather under Points in the menu');
+  if (!item || item.getAttribute('aria-checked') !== 'true' || !/^Weather at places/.test(item.textContent) || !/Points/.test(document.querySelector('.menu-pop').textContent)) out.push('no ticked Weather at places under Points in the menu');
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await wait(200);
   // a route through Tampere: no symbol over it
   const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line');
@@ -12611,11 +12651,11 @@ def towns_weather(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the towns' weather, at every zoom, apart and off the route, a press pins the reading (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} weather at places, at every zoom, apart and off the route, a press pins the reading (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
-# The weather's layers have their switches in Layers too (Clouds, Thunder, Towns' weather, and Weather effects, which
+# The weather's layers have their switches in Layers too (Clouds, Thunder, Weather at places, and Weather effects, which
 # Settings › Display has as well), and a quick tile for each in Edit's list; a switch there turns the layer the
 # timeline's menu ticks. The legend folds to "Legend": folded at first on a phone, open on a desktop, remembered.
 WX_LAYERS = """(async (phone) => {
@@ -12638,7 +12678,7 @@ WX_LAYERS = """(async (phone) => {
   const grp = document.querySelector('#layers-body .lg-group[data-group="weather"]');
   grp.open = true;
   const sw = (root, l) => [...root.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === l)?.querySelector('input');
-  for (const l of ['Rain', 'Clouds', 'Thunder', 'Wind', 'Temperature', 'Snow depth', 'Towns’ weather', 'Weather effects']) if (!sw(grp, l)) out.push(`Layers’ weather has no ${l} switch`);
+  for (const l of ['Rain', 'Clouds', 'Thunder', 'Wind', 'Temperature', 'Snow depth', 'Weather at places', 'Weather effects']) if (!sw(grp, l)) out.push(`Layers’ weather has no ${l} switch`);
   sw(grp, 'Clouds')?.click(); await wait(300);
   if (!polku.state.weather.cloud || !w.on.cloud) out.push('Layers’ Clouds switch doesn’t turn the clouds on');
   const fx = w.effects;
@@ -12991,7 +13031,7 @@ WX_THUNDER = """(async () => {
   // the recording's last strikes (15:48:31) 20 s ago; the first answer stops at 15:46:17
   L.shift = Date.now() - 20e3 - Date.parse('2026-11-02T15:48:31Z'); L.upTo = Date.parse('2026-11-02T15:46:17Z');
   const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false);
-  const w = polku.weather; w.app.onToggle({ thunder: true }); // (as the menu does; it opens the timeline)
+  const w = polku.weather; w.app.onToggle({ thunder: true }); // (as the menu does)
   for (let k = 0; k < 100 && !(w.lightning && map.getSource('wxThunderArea')); k++) await wait(200);
   if (!w.lightning) return ['no lightning asked for after 20 s'];
   const feats = () => map.getSource('wxStrikes')._data.features || map.getSource('wxStrikes')._data.geojson?.features || [];
@@ -18970,7 +19010,7 @@ def leave(chrome):
         r = pg.js("({ ...LV.when('start'), menu: !!LV.menu(), start: polku.planner.when.start(), want: LV.at(1, 7, 30), day: 'Tomorrow, ' + LV.day(LV.at(1, 7, 30)), clock: LV.clock(LV.at(1, 7, 30)), same: LV.row('start') === window.__whenRow })")
         if r['start'] != r['want'] or r['name'] != f"Leave at {r['clock']}" or r['line'] != r['day'] or r['menu'] or r['expanded'] != 'false' or not r['same']:
             fails.append(f"{name}: When set for tomorrow, 07:30: {r}")
-        # the box's pill says the same, on one line, with ▾; within two days the timeline and the safety layers keep the same time
+        # the box's pill says the same, on one line, with ▾; the map's hour and the departure leave each other alone (step 6b)
         pg.js("polku.planner.cards.close(); polku.planner.reveal('points'); polku.planner.els.box.scrollIntoView({ block: 'nearest' }); true")
         time.sleep(0.6)
         r = pg.js("({ ...LV.when('box'), want: `Leave ${LV.day(LV.at(1, 7, 30))}, ${LV.clock(LV.at(1, 7, 30))}` })")
@@ -18982,19 +19022,22 @@ def leave(chrome):
         r = pg.js("""(async () => { const W = await import(location.origin + '/js/wxmap.js'), p = polku.planner;
           // (what the field says: on the night the clocks go back, an hour is twice, and its words mean the first)
           const want = new Date(LV.iso(W.timeAtHour(5))).getTime() / 1000;
+          const hour0 = polku.weather.hour;
           LV.pick('box', LV.iso(W.timeAtHour(5))); await new Promise((ok) => setTimeout(ok, 300));
-          const a = { start: p.when.start(), want, hour: polku.weather.hour, wantHour: Math.floor((want - Math.floor(Date.now() / 3600000) * 3600) / 3600), safety: Math.round(polku.safety.app.time()) };
+          const a = { start: p.when.start(), want, hour0, hour: polku.weather.hour, safety: Math.round(polku.safety.app.time()), now: Date.now() / 1000 };
           polku.weather.setHour(7); await new Promise((ok) => setTimeout(ok, 300));
-          return { ...a, then: p.when.start(), want7: W.timeAtHour(7), name: LV.when('box').name, words: `Leave ${p.when.words()}`, clock: LV.clock(W.timeAtHour(7)) }; })()""")
-        if r['start'] != r['want'] or r['hour'] != r['wantHour'] or abs(r['safety'] - r['start']) > 60:
-            fails.append(f"{name}: Leave in five hours: the timeline at hour {r['hour']}, the safety layers at {r['safety'] - r['want']} s from it, leaves at {r['start'] - r['want']} s")
-        if abs(r['then'] - r['want7']) > 1 or r['name'] != r['words'] or r['clock'] not in r['name']:
-            fails.append(f"{name}: the timeline at hour 7: leaves {r['then'] - r['want7']} s from it, the box says {r['name']}")
+          const b = { then: p.when.start(), safety7: Math.round(polku.safety.app.time()), want7: W.timeAtHour(7), name: LV.when('box').name };
+          polku.weather.setHour(0);
+          return { ...a, ...b }; })()""")
+        if r['start'] != r['want'] or r['hour'] != r['hour0'] or abs(r['safety'] - r['now']) > 60:
+            fails.append(f"{name}: Leave in five hours: the map's hour went from {r['hour0']} to {r['hour']}, the safety layers {r['safety'] - r['now']} s from now, leaves {r['start'] - r['want']} s from it")
+        if r['then'] != r['want'] or abs(r['safety7'] - r['want7']) > 1:
+            fails.append(f"{name}: the map at hour 7: the departure moved {r['then'] - r['want']} s, the safety layers {r['safety7'] - r['want7']} s from the map's hour, the box says {r['name']}")
         # Leave now, from the pill's menu: leaving now again
         press(pg, show(pg, 'box'), f"{name}: the box's When pill", touch)
         press(pg, menu_at(pg, 'Leave now'), f'{name}: Leave now', touch)
-        r = pg.js("({ ...LV.when('box'), menu: !!LV.menu(), leave: polku.planner.when.at, hour: polku.weather.hour })")
-        if r['leave'] is not None or r['name'] != 'Leave now' or r['note'] or r['menu'] or r['hour'] != 0:
+        r = pg.js("({ ...LV.when('box'), menu: !!LV.menu(), leave: polku.planner.when.at })")
+        if r['leave'] is not None or r['name'] != 'Leave now' or r['note'] or r['menu']:
             fails.append(f"{name}: after Leave now: {r}")
         # four weeks ahead: past the forecast's reach, said under the box's pill and on the start's card's row; the timeline stays
         pg.js("LV.pick('box', LV.iso(LV.at(28, 7, 30)))")
@@ -20630,7 +20673,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
+    ('weather', [weather_requests, timeline_reading, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
