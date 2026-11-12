@@ -1490,6 +1490,7 @@ div.wx-sec-cols { cursor: default; }
   opacity: 0; pointer-events: none; transition: opacity var(--t-press) var(--ease-out), transform var(--t-press) var(--ease-out), background-color var(--t-press) ease; } /* (its fade, and a tool's press and hover) */
 @media (prefers-reduced-motion: reduce) { .wx-hs-arrow { transition: opacity var(--t-press) var(--ease-out), background-color var(--t-press) ease; } }
 .wx-hs-arrow.l { left: 4px; } .wx-hs-arrow.r { right: 4px; }
+.wx-sec-line > .wx-hs-arrow { top: calc(100% + 28px); } .wx-sec-line > .wx-hs-arrow.l { left: -4px; } .wx-sec-line > .wx-hs-arrow.r { right: -4px; } /* (a section's, hanging from its pinned line beside its hours' pictures: #984) */
 @media (hover: hover) and (pointer: fine) { .wx-hs-arrow { display: grid; } .wx-hs-arrow.on { opacity: 1; pointer-events: auto; } }
 .wx-whole { gap: var(--space-8); }
 .card-float .card[data-kind="weather"] { width: 400px; } /* (room for six hours and a half) */

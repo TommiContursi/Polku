@@ -12722,6 +12722,15 @@ WC_JS = """(async () => {
     x.scrollLeft = 0; await wait(100);
     p.wxTo(H.at(-1).t, true); await wait(30); p.cards.refresh(); await wait(100); await sized(); await wait(800);
     if (!(Math.abs(sx() - want) < 2)) errs.push(`drawn again during a note's scroll to ${p.clockOf(H.at(-1).t)}: scrolled ${sx()}, not ${want}`); }
+  // …each open section has arrows beside its hours too, paging the one scroller as the strip's do (#984); a phone shows none
+  { const c = p.cards.current; c.sec = { rain: true, wind: true }; p.cards.refresh(); await wait(100); await sized();
+    const x = strip().querySelector('.wx-hs-x'); x.scrollLeft = 0; await wait(100);
+    const per = [...strip().querySelectorAll('.wx-sec')].filter((e) => e.dataset.sec !== 'dark').map((e) => `${e.dataset.sec}:${e.querySelectorAll('.wx-sec-line > .wx-hs-arrow').length}`);
+    const shown = [...strip().querySelectorAll('.wx-hs-arrow')].filter((b) => getComputedStyle(b).display !== 'none').length;
+    strip().querySelector('[data-sec=wind] .wx-hs-arrow.r')?.click(); await wait(600);
+    const want = Math.min(x.scrollWidth - x.clientWidth, x.clientWidth - 16 - cw()), paged = sx();
+    if (per.join(' ') !== 'rain:2 wind:2' || shown || !(Math.abs(paged - want) < 2)) errs.push(`the sections' arrows: ${per.join(' ')} (want 2 each), ${shown} shown on a phone, Wind's › scrolled to ${paged}, not ${want}`);
+    delete c.sec; }
   // …a tap on an hour marks where you are then, and again unmarks it; the route's pointer lights its hour
   set(wind()); await wait(300);
   const dot = async () => (await polku.map.getSource('routeHover').getData()).features.length;

@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-12
 
+### The hour strip's arrows ([#984](https://github.com/TommiContursi/Polku/issues/984))
+
+- On a desktop, **Rain**, **Wind** and **Dark** in the weather card have arrows beside their hours too, so you can page through the hours from any section. They move the strip and every section together. A phone has no arrows: a swipe scrolls.
+
 ### The hour strip ([#979](https://github.com/TommiContursi/Polku/issues/979))
 
 - The weather card shows the day's hours as weather apps do, in a strip you scroll sideways: a column an hour with the temperature on its line, the sky and the time, from two hours before you leave to a few after you're there. It opens at the hour before you leave. Your own hours are underlined in your sport's colour, and the trip runs across them with the notes' numbers and where you are each hour.

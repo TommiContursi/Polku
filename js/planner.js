@@ -7666,6 +7666,8 @@ export class Planner {
       h('div', { class: 'wx-hs-row wx-hs-at', 'aria-hidden': 'true' }, ...hrs.map((o, j) => h('span', { class: `wx-hs-col${o.on ? ' on' : ''}${card.hour === o.t ? ' picked' : ''}`, 'data-h': String(j) }, where(o)))));
     // a section: its header (an icon in a tile, its name, its value in short, ⌄), one line for what doesn't fit a cell, then
     // the columns: the value, a picture, the time. A tap on them does what a lane's tap does, at the hour tapped
+    const arrows = () => [h('button', { type: 'button', class: 'tool wx-hs-arrow l', 'aria-label': 'Earlier hours', tabindex: '-1', html: icon('chevronLeft', 20) }),
+      h('button', { type: 'button', class: 'tool wx-hs-arrow r', 'aria-label': 'Later hours', tabindex: '-1', html: icon('chevronRight', 20) })];
     const sec = (key, ic, name, val, open, said2, cell, tap, extra = []) => {
       const on = card.sec?.[key] ?? open;
       const head = h('button', { type: 'button', class: 'row wx-sec-h wx-pin', 'aria-expanded': String(on), 'data-k': `wx-${key}`, onclick: () => { (card.sec ||= {})[key] = !on; this.cards.refresh(); } },
@@ -7676,7 +7678,7 @@ export class Planner {
       const at = (e) => { const j = e.target.closest('[data-h]')?.dataset.h; return j != null ? hrs[+j].t : null; };
       const row = tap ? h('button', { type: 'button', class: 'wx-sec-cols wx-hs-row', 'data-k': `wx-${key}-map`, 'aria-label': `${name}: ${said2.textContent}. Show it on the map`, onclick: (e) => tap(at(e)) }, ...cells)
         : h('div', { class: 'wx-sec-cols wx-hs-row', 'aria-hidden': 'true' }, ...cells);
-      return h('div', { class: 'wx-sec', 'data-sec': key }, head, h('p', { class: 'wx-sec-line wx-pin' }, said2), row, ...extra);
+      return h('div', { class: 'wx-sec', 'data-sec': key }, head, h('p', { class: 'wx-sec-line wx-pin' }, said2, ...arrows()), row, ...extra); // (its own arrows, beside its hours: #984)
     };
     const rain = this.dayRain(a, d, wx), Fall = rain.snow ? 'Snow' : 'Rain', rl = f.lanes.find((l) => l.k === 'rain'), wl = f.lanes.find((l) => l.k === 'wind');
     const lines = (...xs) => h('span', {}, ...xs);
@@ -7698,11 +7700,10 @@ export class Planner {
     if (dark) sections.push(sec('dark', 'moon', 'Dark', dark.all ? 'the whole way' : dark.words.replace(/^in the dark /, ''), true, lines(h('b', {}, cap(dark.words)), ': take a light'),
       (o) => { const st = sunTimes(o.t, a.pts[d.i0]), c = [st.dawn, st.rise, st.set, st.dusk].find((v) => v && Math.abs(v - o.t) < 1800); // (where the header's time is from)
         return [h('span', { class: 'wx-hs-v' }, c ? timeOf(c) : ''), h('span', { class: 'wx-hs-p' }, h('i', { class: `wx-hs-light ${o.light}` }))]; }, null));
-    const wrap = h('div', { class: 'wx-hs', 'data-h0': String(h0), 'data-day': String(k), style: `--n: ${hrs.length}` },
-      h('button', { type: 'button', class: 'tool wx-hs-arrow l', 'aria-label': 'Earlier hours', tabindex: '-1', html: icon('chevronLeft', 20) }),
+    const [al, ar] = arrows();
+    const wrap = h('div', { class: 'wx-hs', 'data-h0': String(h0), 'data-day': String(k), style: `--n: ${hrs.length}` }, al,
       h('div', { class: 'wx-hs-x', role: 'group', 'aria-label': `The hours, ${hh(h0)}:00 to ${hh(hrs.at(-1).t)}:00, where you’ll be. The arrow keys move along them; Enter marks where you are then.` },
-        h('div', { class: 'wx-hs-in' }, strip, ...sections)),
-      h('button', { type: 'button', class: 'tool wx-hs-arrow r', 'aria-label': 'Later hours', tabindex: '-1', html: icon('chevronRight', 20) }));
+        h('div', { class: 'wx-hs-in' }, strip, ...sections)), ar);
     this.wxWire(wrap, card, k, hrs);
     return wrap;
   }
@@ -7715,7 +7716,7 @@ export class Planner {
     const old = this.cards.box?.querySelector(`.wx-hs[data-day="${k}"][data-h0="${hrs[0].t}"]`), ocw = old && parseFloat(old.style.getPropertyValue('--cw'));
     if (ocw) (card.x ||= {})[k] = (old.dataset.goal != null ? +old.dataset.goal : old.querySelector('.wx-hs-x').scrollLeft) / ocw; // (or where its smooth scroll was going)
     let cw = 0;
-    const arrows = () => { wrap.querySelector('.wx-hs-arrow.l').classList.toggle('on', x.scrollLeft > 2); wrap.querySelector('.wx-hs-arrow.r').classList.toggle('on', x.scrollLeft < x.scrollWidth - x.clientWidth - 2); };
+    const arrows = () => { wrap.querySelectorAll('.wx-hs-arrow.l').forEach((b) => b.classList.toggle('on', x.scrollLeft > 2)); wrap.querySelectorAll('.wx-hs-arrow.r').forEach((b) => b.classList.toggle('on', x.scrollLeft < x.scrollWidth - x.clientWidth - 2)); };
     new ResizeObserver(() => {
       const w = x.clientWidth - 2 * PAD_HS;
       if (w <= 0) return;
@@ -7729,15 +7730,15 @@ export class Planner {
     // a hand on the strip (or its end) lets it go
     wrap.goTo = (left) => { const to = Math.max(0, Math.min(x.scrollWidth - x.clientWidth, left)); wrap.dataset.goal = String(to); x.scrollTo({ left: to, behavior: smooth() }); };
     const page = (dir) => wrap.goTo((wrap.dataset.goal != null ? +wrap.dataset.goal : x.scrollLeft) + dir * (x.clientWidth - 2 * PAD_HS - cw));
-    for (const ev of ['wheel', 'pointerdown', 'keydown', 'scrollend']) x.addEventListener(ev, () => delete wrap.dataset.goal, { passive: true });
+    const onArrow = (e) => !!e.target.closest('.wx-hs-arrow'); // (a section's arrows are inside the scroller: their press isn't a hand on it)
+    for (const ev of ['wheel', 'pointerdown', 'keydown', 'scrollend']) x.addEventListener(ev, (e) => { if (!onArrow(e)) delete wrap.dataset.goal; }, { passive: true });
     x.addEventListener('scroll', () => {
       if (!x.isConnected || !cw) return; // (a strip taken away by a redraw reads 0)
       if (wrap.dataset.goal != null && Math.abs(x.scrollLeft - +wrap.dataset.goal) < 1) delete wrap.dataset.goal;
       (card.x ||= {})[k] = x.scrollLeft / cw;
       arrows();
     }, { passive: true });
-    wrap.querySelector('.wx-hs-arrow.l').addEventListener('click', () => page(-1));
-    wrap.querySelector('.wx-hs-arrow.r').addEventListener('click', () => page(1));
+    wrap.querySelectorAll('.wx-hs-arrow').forEach((b) => b.addEventListener('click', () => page(b.matches('.l') ? -1 : 1)));
     const btns = [...wrap.querySelectorAll('.wx-hs-strip button.wx-hs-col')];
     const inSight = (j) => { const c0 = PAD_HS + j * cw; if (c0 < x.scrollLeft + PAD_HS || c0 + cw > x.scrollLeft + x.clientWidth - PAD_HS) x.scrollLeft = c0 - (x.clientWidth - cw) / 2; };
     x.addEventListener('keydown', (e) => {
@@ -7755,7 +7756,7 @@ export class Planner {
     x.addEventListener('focusout', (e) => { if (btns.includes(e.target) && !btns.includes(e.relatedTarget)) unpoint(); });
     // a mouse drags it sideways (a finger and a trackpad scroll it themselves); a drag isn't a tap
     let drag = null;
-    x.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 0) drag = { x0: e.clientX, s0: x.scrollLeft, moved: false, id: e.pointerId }; });
+    x.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 0 && !onArrow(e)) drag = { x0: e.clientX, s0: x.scrollLeft, moved: false, id: e.pointerId }; });
     x.addEventListener('pointermove', (e) => {
       if (!drag || e.pointerId !== drag.id) return;
       if (!drag.moved && Math.abs(e.clientX - drag.x0) > 4) { drag.moved = true; x.setPointerCapture(e.pointerId); x.classList.add('drag'); }
