@@ -2014,11 +2014,15 @@ STOPS = """(async () => {
   await wait(200);
   if (p.els.boxDays.querySelectorAll('.row').length !== 2) errs.push(`${p.els.boxDays.querySelectorAll('.row').length} days in the trip's box`);
   // the weather card: each day its own weather, a sentence or (under half an hour) a line, the night's morning too (#869),
-  // shown on a desktop's card too (a short day's line was a row's hidden small, #973's test)
+  // shown on a desktop's card too (a short day's line was a row's hidden small, #973's test); a day at a time, its chip
+  // pressed: the box's second day opens the second (#979)
   p.openWeather({ day: 1 });
   await wait(300);
-  const said = [...(p.cards.box?.querySelectorAll('.wx-day') || [])].map((x) => x.querySelector('.wx-say')?.innerText || '');
-  if (said.length !== 2 || said.some((t) => !t)) errs.push(`each day's weather in the weather card: ${said.join(' / ') || 'none'}`);
+  const dayNow = () => ({ chips: [...(p.cards.box?.querySelectorAll('.wx-days .chip') || [])].map((c) => c.getAttribute('aria-pressed')).join(' '), days: p.cards.box?.querySelectorAll('.wx-day').length, say: p.cards.box?.querySelector('.wx-day .wx-say')?.innerText || '', n: p.cards.box?.querySelector('.wx-day')?.dataset.day });
+  const second = dayNow();
+  p.cards.box?.querySelector('.wx-days .chip')?.click(); await wait(300);
+  const firstDay = dayNow();
+  if (second.chips !== 'false true' || second.days !== 1 || second.n !== '1' || !second.say || firstDay.chips !== 'true false' || firstDay.n !== '0' || !firstDay.say) errs.push(`each day's weather in the weather card, the second then the first: ${JSON.stringify(second)} / ${JSON.stringify(firstDay)}`);
   // a lane's tap on a desktop leaves the card open beside the map (a phone's folds, weather_card)
   p.wxLane({ k: 'waves', name: 'Waves', stretches: [] }); await wait(200);
   if (p.cards.folded || !p.cards.box?.querySelector('.wx-day')) errs.push(`a lane's tap on a desktop: the card ${p.cards.folded ? 'folded' : 'gone'}`);
@@ -12650,6 +12654,7 @@ WC_JS = """(async () => {
   // the card as G: the sentence with its sky; thunder note 1, a danger; the notes' numbers on the trip line; a lane a fact
   const storm = Uint8Array.from({ length: n }, (_, i) => (i > n / 2 ? 1 : 0)), wet = Float32Array.from({ length: n }, (_, i) => (i > (2 * n) / 3 ? 6 : i > n / 3 ? 1 : 0)); // (heavy: a lane however short the route)
   set(wind({ head: fill(8), speed: fill(8), gust: fill(12), thunder: storm, precip: wet, temp: fill(12), feel: fill(10), series: [series(10, 12)] })); await wait(300);
+  p.cards.box?.querySelector('[data-k="trip"]')?.click(); await wait(200); // (the trip line and its lanes: The whole trip, #979)
   const say = p.cards.box?.querySelector('.wx-say'), first = p.cards.box?.querySelector('.wx-tell');
   const g = { say: say?.textContent || '', sky: say?.querySelector('.wx-sky')?.getAttribute('aria-label'), first: first?.textContent || '', danger: !!first?.matches('.danger'),
     marks: p.cards.box?.querySelectorAll('.wx-trip-line .wx-n').length, notes: p.cards.box?.querySelectorAll('.wx-tell').length, lanes: [...(p.cards.box?.querySelectorAll('.wx-lane') || [])].map((x) => x.dataset.k) };
@@ -12696,6 +12701,46 @@ WC_JS = """(async () => {
   a.timeWind = time + 300; p.cards.refresh(); await wait(100);
   const five = windRow();
   if (none || !/^the wind\\+5 min/.test(five)) errs.push(`Time on the way's wind row: “${none}” for 20 s, “${five}” for 5 min (want none, then +5 min)`);
+  // the hour strip (#979): an hour a column from two hours before you leave, your hours marked, opening at the hour before
+  // you leave; Rain and Wind always there, folded with nothing to say; an hour past the forecast says so and shows nothing
+  set(wind({ beyondSec: t0 + 3 * 3600 })); await wait(400);
+  const strip = () => p.cards.box?.querySelector('.wx-hs'), cols = () => [...(strip()?.querySelectorAll('.wx-hs-strip button.wx-hs-col') || [])];
+  const day0 = p.wxDays(a)[0], H = p.dayHours(a, day0), firstOn = H.findIndex((o) => o.on), cw = () => parseFloat(strip()?.style.getPropertyValue('--cw')), sx = () => strip()?.querySelector('.wx-hs-x').scrollLeft;
+  const sized = async () => { for (let q = 0; q < 30 && !cw(); q++) await wait(100); }; // (its columns' width comes with its first frame)
+  await sized();
+  const secs = [...(strip()?.querySelectorAll('.wx-sec') || [])].map((x) => `${x.dataset.sec}:${x.querySelector('.wx-sec-h').getAttribute('aria-expanded')}`).filter((x) => !x.startsWith('dark'));
+  const past = cols().filter((c) => c.matches('.none'));
+  if (!strip() || cols().length !== H.length || cols().filter((c) => c.matches('.on')).length !== H.filter((o) => o.on).length || !(Math.abs(sx() - (firstOn - 1) * cw()) < 2)
+    || secs.join(' ') !== 'rain:false wind:false' || past.length !== H.filter((o) => !o.x).length || !past.length || past.some((c) => /°/.test(c.textContent) || !/no forecast yet/.test(c.textContent)))
+    errs.push(`the hour strip: ${cols().length} columns of ${H.length}, ${cols().filter((c) => c.matches('.on')).length} yours, scrolled ${sx()} for ${firstOn - 1} columns of ${cw()} px, sections ${secs.join(' ')}, ${past.length} past the forecast: ${past.map((c) => c.textContent).join(' / ')}`);
+  // …it keeps its place when the card is drawn again (a strip taken away read 0)
+  strip().querySelector('.wx-hs-x').scrollLeft = 2 * cw(); await wait(100);
+  p.cards.refresh(); await wait(100); await sized();
+  if (!(Math.abs(sx() - 2 * cw()) < 2)) errs.push(`the strip drawn again scrolled ${sx()}, not ${2 * cw()}`);
+  // …an hour's thunder is its code's for the hour after its time, as its rain is (the note said 14:00, the hour 15:00)
+  set(wind({ series: [{ ...series(1), code: [3, 3, 95, 3] }] })); await wait(200);
+  const th = p.dayHours(a, day0).find((o) => o.sky === 'thunder');
+  if (!th || th.t !== t0 + 3600) errs.push(`thunder in the forecast at ${p.clockOf(t0 + 7200)}: the hour strip has it at ${th ? p.clockOf(th.t) : 'none'}, not ${p.clockOf(t0 + 3600)}`);
+  // …a tap on an hour marks where you are then, and again unmarks it; the route's pointer lights its hour
+  set(wind()); await wait(300);
+  const dot = async () => (await polku.map.getSource('routeHover').getData()).features.length;
+  cols()[firstOn + 1]?.click(); await wait(100);
+  const picked = { pressed: cols()[firstOn + 1]?.getAttribute('aria-pressed'), dot: await dot() };
+  cols()[firstOn + 1]?.click(); await wait(100);
+  const unpicked = { pressed: cols()[firstOn + 1]?.getAttribute('aria-pressed'), dot: await dot() };
+  const mid = Math.round(n / 2), want = String(Math.round((T.at(mid) - H[0].t) / 3600));
+  p.hoverAt(mid); await wait(50);
+  const lit = [...(strip()?.querySelectorAll('.wx-hs-strip .lit') || [])].map((c) => c.dataset.h);
+  p.hoverAt(-1); await wait(50);
+  if (picked.pressed !== 'true' || !picked.dot || unpicked.pressed !== 'false' || unpicked.dot || !lit.length || lit.some((h) => h !== want) || strip()?.querySelector('.lit'))
+    errs.push(`an hour's tap: ${JSON.stringify(picked)}, again ${JSON.stringify(unpicked)}; the route's pointer at ${p.clockOf(T.at(mid))} lit ${lit.join(',') || 'none'} (want ${want}), then ${strip()?.querySelector('.lit') ? 'stays lit' : 'none'}`);
+  // …a tap on the rain's columns at an hour: the route by the rain, the map's weather at that hour, the card a banner
+  set(wind({ precip: fill(1), series: [{ ...series(1), precip: hours(1) }] })); await wait(300);
+  const j = firstOn + 1, k0 = Math.floor((H[j].t - Math.floor(Date.now() / 3600000) * 3600) / 3600);
+  strip()?.querySelector(`[data-sec=rain] .wx-sec-cols [data-h="${j}"]`)?.click(); await wait(300);
+  const tap = { mode: p.colorMode, folded: !!p.cards.folded, hour: Math.round(polku.weather.hour) };
+  if (tap.folded) { p.cards.escape(); await wait(200); }
+  if (tap.mode !== 'rain' || !tap.folded || (k0 >= 0 && tap.hour !== k0)) errs.push(`a tap on the rain's columns at ${p.clockOf(H[j].t)}: ${JSON.stringify(tap)}, want the map at hour ${k0}`);
   p.cards.close();
   return errs;
 })()"""
@@ -19544,7 +19589,8 @@ PF_JS = """(async () => {
   const a = p.analysis, n = a.along.length, k = Math.round(n / 3), fill = (v) => new Float32Array(n).fill(v);
   p.app.winter = () => ({ on: false, setting: 'auto' });
   const set = (temp) => {
-    a.wind = { ...(a.wind || {}), start: { speed: 5, gust: 7, dir: 90, temp: 5, precip: 0 }, startSec: p.when.start(), head: fill(3), speed: fill(8), gust: fill(12), dir: fill(90), cross: fill(0), temp, precip: fill(0), beyond: k, beyondSec: p.when.start() + 3 * 3600, unsure: -1 };
+    const t0 = Math.floor(p.when.start() / 3600) * 3600, six = (v) => Array(6).fill(v); // (the hours: the weather card's strip, #979)
+    a.wind = { series: [{ time: six(0).map((_, j) => t0 + (j - 1) * 3600), speed: six(8), gust: six(12), dir: six(90), temp: six(5), precip: six(0), cloud: six(50) }], cell: new Uint8Array(n), ...(a.wind || {}), start: { speed: 5, gust: 7, dir: 90, temp: 5, precip: 0 }, startSec: p.when.start(), head: fill(3), speed: fill(8), gust: fill(12), dir: fill(90), cross: fill(0), temp, precip: fill(0), beyond: k, beyondSec: p.when.start() + 3 * 3600, unsure: -1 };
     a.windError = false; p.renderAnalysis();
   };
   const cold = (from, to) => Float32Array.from({ length: n }, (_, i) => (i >= from && i < to ? -30 : 5));
@@ -19563,6 +19609,7 @@ PF_JS = """(async () => {
   p.showMode('grade');
   // the weather card's wind, opened: each share on one line, its % with it, "Against you 100 %" too (#388)
   p.openWeather(); await wait(400);
+  if (p.cards.box?.querySelector('[data-k=wx-wind][aria-expanded=false]')) { p.cards.box.querySelector('[data-k=wx-wind]').click(); await wait(300); } // (Wind on the way opens from the strip's Wind, #979)
   p.cards.box?.querySelector('[data-k=wind]')?.click(); await wait(300);
   const shares = [...(p.cards.box?.querySelectorAll('.wx-open .wx-key span') || [])], linesOf = (el) => { const r = document.createRange(); r.selectNodeContents(el); return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size; };
   if (!shares.length || shares.some((el) => linesOf(el) !== 1)) errs.push(`the wind's shares: ${shares.map((el) => `${el.textContent} on ${linesOf(el)} lines`).join(' / ') || 'none'}`);

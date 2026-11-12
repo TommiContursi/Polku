@@ -425,7 +425,6 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-now-main { height: var(--tl-icon); }
 .tl-now-main b { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
 .tl-now-main small { margin-left: auto; align-self: flex-start; font-size: 11px; color: var(--muted); white-space: normal; text-align: right; line-height: 1.15; } /* (on two short lines where there's no room: never cut, the row no taller than its icon, #243) */
-.tl-now-main .ic { color: var(--accent); }
 .tl-now .tl-arrow { width: 12px; height: 12px; fill: currentColor; flex: none; }
 .tl-now div .ic { flex: none; }
 .tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
@@ -1366,8 +1365,18 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 @media (max-width: 300px) { .sheet > .trip-box { margin: 0 12px var(--space-8); padding: 0; border: 0; } } /* (200 %: its words get the planner's width, the user's choice of 2026-11-11) */
 /* the weather card (#869, the plan's Round 5, version G): a day's sentence with its sky, the notes with their numbers, the
    numbers in their places, the trip line with its lanes, then the folded rows and Weather on the map */
-:root { --wx-sun: #a16207; }
-:root[data-theme="dark"] { --wx-sun: #facc15; }
+/* the sky's icons (ui.js's sky-…), filled and in colour: the sun's amber, a cloud's grey (darker with rain or snow, darkest with
+   thunder), the drops and the snow in the route's own rain colours; each with an edge, so it holds on white and on the dark */
+:root { --sky-sun: #fbbf24; --sky-sun-edge: #d97706; --sky-moon: #fde68a; --sky-moon-edge: #b7791f; --sky-cloud: #e9eef3; --sky-cloud-edge: #7b8794;
+  --sky-wet: #d0d8e1; --sky-wet-edge: #64748b; --sky-storm: #94a3b8; --sky-storm-edge: #475569; --sky-bolt: #facc15; --sky-bolt-edge: #b45309; }
+:root[data-theme="dark"] { --sky-sun-edge: #f59e0b; --sky-moon-edge: #e0b341; --sky-cloud: #dbe2ea; --sky-cloud-edge: #aeb9c5; --sky-wet: #b5c0cc;
+  --sky-wet-edge: #d6dde5; --sky-storm: #7d8b9d; --sky-storm-edge: #b8c3cf; }
+.sk-sun { fill: var(--sky-sun); stroke: var(--sky-sun-edge); stroke-width: 1.3; } .sk-ray { fill: none; stroke: var(--sky-sun-edge); stroke-width: 2; }
+.sk-moon { fill: var(--sky-moon); stroke: var(--sky-moon-edge); stroke-width: 1.3; }
+.sk-cloud { fill: var(--sky-cloud); stroke: var(--sky-cloud-edge); stroke-width: 1.4; } .sk-wet { fill: var(--sky-wet); stroke: var(--sky-wet-edge); stroke-width: 1.4; }
+.sk-storm { fill: var(--sky-storm); stroke: var(--sky-storm-edge); stroke-width: 1.4; }
+.sk-drop { fill: none; stroke: var(--rain-rain); stroke-width: 2.3; } .sk-flake { fill: var(--rain-snow); stroke: none; }
+.sk-bolt { fill: var(--sky-bolt); stroke: var(--sky-bolt-edge); stroke-width: 1.1; }
 .card[data-kind="weather"] { gap: var(--space-8); }
 .card[data-kind="weather"] .way-hint .trip-when { padding-top: var(--space-2); }
 .wx-note { margin: 0; }
@@ -1376,8 +1385,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wx-say { display: flex; align-items: center; gap: var(--space-10); margin: 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; text-wrap: balance; }
 .wx-say > .wx-sky { flex: none; }
 .wx-say.none { color: var(--muted); }
-.wx-sky { display: inline-grid; color: var(--muted); }
-.wx-sky:is(.sun, .cloudSun) { color: var(--wx-sun); } .wx-sky.rain { color: var(--wx-text); } .wx-sky.thunder { color: var(--look); }
+.wx-sky { display: inline-grid; }
 /* the notes, worst first; a note's number in its tier's colour (red only for danger), as on the trip line */
 .wx-notes { display: grid; margin: calc(-1 * var(--space-2)) 0 0; padding: 0; list-style: none; }
 .wx-tell { display: flex; align-items: flex-start; gap: var(--space-10); width: 100%; min-height: var(--target); padding: var(--space-6) 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--font-row); line-height: 1.3; text-align: left; cursor: pointer; }
@@ -1410,6 +1418,77 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 :root[data-theme="dark"] .wx-track > i.th { outline-color: #fbbf24; }
 .wx-key { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-12); margin: calc(-1 * var(--space-6)) 0 var(--space-2); font-size: var(--font-small); color: var(--muted); }
 .wx-key > span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; background: var(--k); }
+/* the hour strip (#979): a column an hour, the trip across your hours, then a section a fact on the same columns, all in one
+   scroller out to the card's edges (its padding: planner.js's PAD_HS) with the headers and lines pinned to the visible width.
+   The temperature's line is the timeline's orange; the wind's arrows go your way to the right, in the route's wind classes
+   darkened for small marks on the card; the rain's bars in the route's rain colours. Your hours bright, the rest dimmed */
+:root { --wx-temp: #ea580c; --wx-against: #c2410c; --wx-against-strong: #b8122b; --wx-side: #64748b; --wx-behind: #0f766e; --wx-dark: #334155; --wx-dusk: #94a3b8; }
+:root[data-theme="dark"] { --wx-temp: #fb923c; --wx-against: #fb923c; --wx-against-strong: #ff8a8a; --wx-side: #a3b0bf; --wx-behind: #5eead4; --wx-dark: #020617; --wx-dusk: #475569; }
+.wx-days { margin-bottom: calc(-1 * var(--space-2)); }
+.wx-hs { position: relative; container: hs / inline-size; margin-inline: -8px; } /* (to the card's edges: its padding) */
+.wx-hs-x { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: pan-x pan-y; }
+.wx-hs-x::-webkit-scrollbar { display: none; }
+.wx-hs-x:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: var(--radius-small); }
+.wx-hs-x.drag { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+.wx-hs-in { width: calc(var(--n) * var(--cw, 56px) + 16px); padding-inline: 8px; display: grid; gap: var(--space-4); }
+.wx-hs .wx-pin { position: sticky; left: 8px; width: calc(100cqw - 16px); }
+.wx-hs-row { display: flex; }
+.wx-hs-col { flex: none; width: var(--cw, 56px); display: grid; justify-items: center; align-content: start; gap: var(--space-4); padding: var(--space-4) 0; border: 0; border-radius: var(--radius-small);
+  background: none; color: var(--muted); font: inherit; font-variant-numeric: tabular-nums; user-select: none; -webkit-user-select: none; }
+.wx-hs-col.on { color: var(--text); }
+button.wx-hs-col, .wx-sec-cols { -webkit-tap-highlight-color: transparent; } /* (no grey flash: the hour lights itself) */
+button.wx-hs-col { cursor: pointer; touch-action: manipulation; }
+.wx-hs-col.lit { background: var(--surface-2); }
+.wx-hs-col.picked { background: color-mix(in srgb, var(--focus) 16%, transparent); }
+/* the strip: the temperature on its line (a 22 px band: the number above its point), the sky, the time underlined in your
+   sport's colour over your hours; the trip's line and the notes' numbers; where you are */
+.wx-hs-strip { position: relative; display: grid; gap: var(--space-2); }
+.wx-hs-curve { position: absolute; left: 0; top: calc(var(--space-4) + 19px); width: calc(var(--n) * var(--cw, 56px)); height: 22px; pointer-events: none; }
+.wx-hs-curve svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.wx-hs-curve polyline { fill: none; stroke: var(--wx-temp); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.wx-hs-curve .all { opacity: .38; }
+.wx-hs-t { display: block; height: 44px; padding-top: calc(var(--y, 0.5) * 22px); font-size: var(--font-control); line-height: 16px; }
+.wx-hs-col.on .wx-hs-t { font-weight: var(--weight-name); }
+.wx-hs-sky { display: grid; place-items: center; height: 28px; }
+.wx-hs-col:not(.on) .wx-hs-sky { opacity: .6; }
+.wx-hs-h { padding-bottom: 2px; border-bottom: 3px solid transparent; font-size: var(--font-small); line-height: 16px; white-space: nowrap; }
+.wx-hs-col.on .wx-hs-h { border-bottom-color: var(--leg); font-weight: var(--weight-name); }
+.wx-hs-trip { position: relative; width: calc(var(--n) * var(--cw, 56px)); height: 26px; }
+.wx-hs-trip > i { position: absolute; top: 11px; height: 5px; border-radius: 3px; }
+.wx-hs-trip > .wx-n { position: absolute; top: 2px; margin-left: -11px; box-shadow: 0 0 0 2px var(--surface-solid); }
+.wx-hs-at > .wx-hs-col { padding: 0; font-size: var(--font-small); line-height: 16px; white-space: nowrap; }
+/* a section: its header (an icon in a tile, its name and value, ⌄), one line, then the columns: the value, a picture, the time */
+.wx-sec { display: grid; gap: var(--space-4); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.wx-sec-h.row { min-height: var(--target); padding: var(--space-4) 0; gap: var(--space-10); border-radius: var(--radius-small); }
+.wx-sec-h b { font-weight: var(--weight-name); }
+.wx-sec-h.row[aria-expanded="true"] { background: none; } /* (open is how a section starts: no tint) */
+.wx-tile { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-small); background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+.wx-tile.rain { color: var(--wx-text); }
+.wx-sec-line { margin: 0 0 var(--space-2); font-size: var(--font-control); line-height: 1.35; color: var(--muted); }
+.wx-sec-line b { color: var(--text); font-weight: var(--weight-name); }
+.wx-sec-cols { display: flex; width: max-content; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: center; cursor: pointer; touch-action: manipulation; }
+div.wx-sec-cols { cursor: default; }
+.wx-sec-cols:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: var(--radius-small); }
+.wx-hs-v { min-height: 16px; font-size: var(--font-control); line-height: 16px; }
+.wx-hs-col.on .wx-hs-v { font-weight: var(--weight-name); }
+.wx-hs-p { display: flex; align-items: center; justify-content: center; height: 28px; }
+.wx-sec[data-sec="rain"] .wx-hs-p { align-items: flex-end; box-shadow: 0 1px 0 var(--line); }
+.wx-hs-bar { display: block; width: 16px; border-radius: 4px 4px 1px 1px; }
+:root[data-theme="dark"] .wx-hs-bar { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85); } /* (the route's white casing, as the lanes': the heavy rain's navy shows) */
+.wx-hs-col:not(.on) :is(.wx-hs-bar, .wx-arr) { opacity: .5; }
+.wx-hs-dot { width: 5px; height: 5px; border-radius: var(--radius-round); background: var(--muted); opacity: .6; }
+.wx-arr { display: block; } .wx-arr.against { color: var(--wx-against); } .wx-arr.against.strong { color: var(--wx-against-strong); } .wx-arr.side { color: var(--wx-side); } .wx-arr.behind { color: var(--wx-behind); }
+.wx-hs-key { margin: var(--space-2) 0 0; } .wx-hs-key > span { display: inline-flex; align-items: center; gap: var(--space-4); } .wx-hs-key > span::before { content: none; }
+.wx-sec > .rows.wx-pin { margin: var(--space-4) 0 var(--space-2); }
+.wx-hs-light { display: block; width: calc(var(--cw, 56px) - 6px); height: 14px; border-radius: 3px; }
+.wx-hs-light.dark { background: var(--wx-dark); } .wx-hs-light.dusk { background: var(--wx-dusk); } .wx-hs-light.day { box-shadow: inset 0 0 0 1px var(--line); }
+/* a desktop's arrows at the edges, while there's more that way (a finger and a trackpad scroll it themselves) */
+.wx-hs-arrow { position: absolute; top: 34px; z-index: 2; display: none; width: 32px; height: 32px; border-radius: var(--radius-round); background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line);
+  opacity: 0; pointer-events: none; transition: opacity var(--t-press) var(--ease-out); }
+.wx-hs-arrow.l { left: 4px; } .wx-hs-arrow.r { right: 4px; }
+@media (hover: hover) and (pointer: fine) { .wx-hs-arrow { display: grid; } .wx-hs-arrow.on { opacity: 1; pointer-events: auto; } }
+.wx-whole { gap: var(--space-8); }
+.card-float .card[data-kind="weather"] { width: 400px; } /* (room for six hours and a half) */
 /* a folded row opened in place: Wind on the way's one stacked bar and its stretches, or Hour by hour's table */
 .rows > .wx-open { display: grid; gap: var(--space-10); padding: var(--space-4) 8px var(--space-12); } /* (rows reach 8 px past the card's edges, for their own background) */
 .wx-open .rows { margin: 0; border: 1px solid var(--line); border-radius: var(--radius-control); }

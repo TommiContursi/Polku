@@ -705,7 +705,7 @@ export class WeatherOverlay {
       const el = m.getElement();
       if (el.getAttribute('aria-label') !== label) {
         el.setAttribute('aria-label', label);
-        el.innerHTML = `${icon(kind, 18)}<b class="${t <= 0 ? 'cold' : ''}">${t}°</b><small><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${Math.round(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${ms} m/s</small>`;
+        el.innerHTML = `${icon(`sky-${kind}`, 18)}<b class="${t <= 0 ? 'cold' : ''}">${t}°</b><small><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${Math.round(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${ms} m/s</small>`;
       }
       shown.add(name);
     }
@@ -1470,7 +1470,7 @@ export class WeatherOverlay {
       const where = this.heldLL ? 'at the spot' : this.pointerLL ? 'under the mouse' : 'at the map centre';
       this.nowEl.title = `${sky} · ${where}`;
       this.nowEl.innerHTML =
-        `<div class="tl-now-main">${icon(kind, 24)}<b>${Math.round(s.temp)}°</b><small>${this.heldLL ? 'the spot' : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
+        `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${this.heldLL ? 'the spot' : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
         `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
         `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` +
         (this.on.snow && Number.isFinite(s.snow) ? `<div>${icon('snow', 12)}${s.snow >= 1 ? `${Math.round(s.snow)} cm of snow` : 'no snow'}</div>` : '');
