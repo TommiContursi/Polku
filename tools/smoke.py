@@ -12707,7 +12707,7 @@ WC_JS = """(async () => {
   const strip = () => p.cards.box?.querySelector('.wx-hs'), cols = () => [...(strip()?.querySelectorAll('.wx-hs-strip button.wx-hs-col') || [])];
   const day0 = p.wxDays(a)[0], H = p.dayHours(a, day0), firstOn = H.findIndex((o) => o.on), cw = () => parseFloat(strip()?.style.getPropertyValue('--cw')), sx = () => strip()?.querySelector('.wx-hs-x').scrollLeft;
   const sized = async () => { for (let q = 0; q < 30 && !cw(); q++) await wait(100); }; // (its columns' width comes with its first frame)
-  await sized();
+  p.cards.close(); await wait(200); p.openWeather(); await wait(300); await sized(); // (opened afresh: a note's tap above scrolled it)
   const secs = [...(strip()?.querySelectorAll('.wx-sec') || [])].map((x) => `${x.dataset.sec}:${x.querySelector('.wx-sec-h').getAttribute('aria-expanded')}`).filter((x) => !x.startsWith('dark'));
   const past = cols().filter((c) => c.matches('.none'));
   if (!strip() || cols().length !== H.length || cols().filter((c) => c.matches('.on')).length !== H.filter((o) => o.on).length || !(Math.abs(sx() - (firstOn - 1) * cw()) < 2)
