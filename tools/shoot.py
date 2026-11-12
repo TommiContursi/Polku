@@ -415,6 +415,16 @@ DEPARTURE_VIEW = """(async () => {
   return true;
 })()"""
 
+# the weather line opened by its button (main's timeline opens with the page), its first pill's menu with `menu`
+WEATHER_LINE = lambda menu: """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), bar = document.querySelector('#wx-bar');
+  if (bar.hidden) document.querySelector('#btn-time').click();
+  for (let k = 0; k < 100 && !polku.weather.cur; k++) await wait(100);
+  await wait(600);
+  if (MENU) { document.querySelector('#wx-bar .wl-layer').click(); await wait(400); }
+  return true;
+})()""".replace('MENU', 'true' if menu else 'false')
+
 SCENES = {
     'desk-route-times': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=COLOURS_PRE, js=MARKS_VIEW),
     'phone-route-times': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=COLOURS_PRE, js=MARKS_VIEW),
@@ -827,6 +837,12 @@ SCENES.update({
     'phone-sport-360': dict(PHONE, w=360, h=740, timeline=False, hash='#15/61.4975/23.738', js=SPORT_JS('long')),
     'desk-sport-button': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js=SPORT_JS('button')),
     'desk-sport-ask': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js=SPORT_JS('ask')),
+    # the weather line (step 6b of #869), with rain and the wind's lines, the forecast WX_FIXED's: on a phone in the sheet's
+    # place, on a desktop at the map's foot, and the colour's menu open. Its layers in both saved formats, so main's
+    # timeline (before) shows the same ones
+    **{f'{kind}-weather-line{menu}': dict(PRESET, route='route-kauppi-mtb.json', state='half', wx_fixed=True,
+        weather={'rain': True, 'wind': True, 'colour': 'rain', 'windLines': True}, js=WEATHER_LINE(bool(menu)))
+       for kind, PRESET in (('phone', PHONE), ('desk', DESK)) for menu in ('', '-menu')},
     # the start: the sport in a row of its own under Start a route (2026-10-21)
     'phone-sport-start': dict(PHONE, timeline=False, hash='#15/61.4975/23.738', js="(async () => { polku.planner.clear(); polku.planner.setActive(true); return true; })()"),
     'desk-sport-start': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js="(async () => { polku.planner.clear(); polku.planner.setActive(true); return true; })()"),
@@ -841,7 +857,10 @@ def scene(chrome, name):
     if sc.get('dark') or sc.get('motion'):
         motion = 'no-preference' if sc.get('motion') else 'reduce'  # motion: what moves (#198's chevrons) moves
         chrome.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'dark' if sc.get('dark') else 'light'}, {'name': 'prefers-reduced-motion', 'value': motion}]}, pg.s)
-    settings = {'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False), **({'base': sc['base']} if 'base' in sc else {})}
+    settings = {'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False), **({'base': sc['base']} if 'base' in sc else {}), **({'weather': sc['weather']} if 'weather' in sc else {})}
+    if sc.get('wx_fixed'):  # Open-Meteo's answer set in the page (tools/smoke.py's WX_FIXED), so no rate limit
+        from smoke import WX_FIXED
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': WX_FIXED}, pg.s)
     pg.open_app(settings, sc.get('storage'), **({'hash_': sc['hash']} if 'hash' in sc else {}))
     if sc.get('pre'):
         pg.js(sc['pre'])  # before any route: e.g. trail-detail tiles the route's analysis will read
