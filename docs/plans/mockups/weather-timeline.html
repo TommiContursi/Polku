@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Weather timeline</title>
-<meta name="description" content="Mock-up for #869: the map's weather timeline with its layers as buttons instead of the dropdown, beside Today's from main.">
+<meta name="description" content="Mock-up for #869: the map's weather timeline with its layers as buttons instead of the dropdown, and zoomed to your trip, beside Today's from main.">
 <!--
   #869, 2026-11-12, with #988 merged. Part 1 of the weather timeline's round: the layers as buttons instead of the dropdown.
   Part 2 (zooming the timeline to the trip) waits for the user's answer on part 1. Not wired to the app: nothing here is
@@ -15,7 +15,10 @@
   plan-btn, tool, chip, menu); what's new is in the block marked "new". The forecast is made up, at a fixed clock
   (Thursday 12 November, 19:56). The map and its layers are drawn by hand (illustrative).
 
+  Part 2 (your trip), drawn the same day: the trip's row, the reading on the route, the wind band and its stretches, and
+  stand-ins for the planner and the weather card (marked as such).
   ?v=today|row|bar  &f=desk|390|360  &z=100|200  &on=none|rain|rainwind|tempwind|all  &fc=ready|loading|failed
+  &trip=none|day|night|far  &span=48|trip  &way=row|sketch|fold
 -->
 <link rel="stylesheet" href="../../../css/app.css">
 <script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
@@ -134,6 +137,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 .tl-trip .wx-days { flex-wrap: nowrap; gap: 6px; }
 .tl-trip .wx-days .chip { height: var(--target); padding: 0 10px; font-size: 13px; }
 .tl-why { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
+@media (pointer: coarse) { .tl-trip .btn { min-height: 44px; } .tl-step .tool { width: 44px; height: 44px; } } /* (a finger's 44 px, #235) */
 /* the reading on your route: its wind against you, from the side or behind you, in words */
 .tl-now div:not(.tl-now-main) b { font-weight: 650; }
 /* a phone, the sketch's rows: the reading over the strip on one line, the strip the bar's whole width */
@@ -178,7 +182,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 <body class="mk ready">
 <div class="cv">
   <h1>Weather timeline</h1>
-  <p>Part 1 of the timeline's round (<a href="https://github.com/TommiContursi/Polku/issues/869">#869</a>): the map's weather layers as buttons, one tap each, their state in sight, in place of the dropdown. Where the weather comes from doesn't change. <b>Today</b> is <code>main</code>'s timeline: its window, the dragging and resizing, the strip, the slider and the reading stay as they are in every version. Drag the title bar or the grip on the right edge on a desktop.</p>
+  <p>The map's weather timeline, the whole of it, to choose once (<a href="https://github.com/TommiContursi/Polku/issues/869">#869</a>, lines 1 to 7 of <a href="../weather-timeline.md">its plan</a>): the weather layers as buttons, one tap each, their state in sight, in place of the dropdown (part 1); and with a route, the timeline zoomed to your trip, the reading on your route, the wind against you, and the ways to the weather card and back (part 2). Where the weather comes from doesn't change. <b>Today</b> is <code>main</code>'s timeline: its window, the dragging and resizing, the strip, the slider and the reading stay as they are in every version. Drag the title bar or the grip on the right edge on a desktop.</p>
   <div class="bars">
     <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="row">Buttons on a row of their own</button><button data-v="bar">Buttons on the title bar</button></div></div>
     <div class="bar"><span>Screen</span><div class="sw" data-k="f"><button data-v="desk">Desktop</button><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button></div>
@@ -201,6 +205,15 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
       <li><b>On a phone</b> both versions are the same: the buttons take the pill's place in the row that's there, so the timeline is no taller. They scroll sideways, and fade at the edge where there's more.</li>
       <li><b>A tooltip</b> on a desktop gives each button the line it has in the menu today.</li>
     </ul>
+    <h2>What changes: your trip (part 2)</h2>
+    <ul>
+      <li><b>A row for your trip</b> under the slider, while the route has times: <b>48 hours · Your trip</b> (the app's switch), and <b>Weather card ›</b>. Your trip zooms the strip and the slider to your trip, an hour either side, by the 5 minutes; 48 hours goes back. On a desktop it is one row; on a phone two, the second only in Your trip.</li>
+      <li><b>The reading follows you:</b> where you'll be at that time (km 15, the start, the finish) and the weather there, with the wind <b>against you</b> said in words; the map shows your dot on the route. The time says Fri 14:10 · km 15.</li>
+      <li><b>The wind on your way</b> is a band under the hours, in the route's wind colours: against you (the strong in the darker red), from the side, behind you. <b>‹ Against you, 1 of 3 ›</b> steps from one stretch to the next: the hour goes to its start, the band and the route light it.</li>
+      <li><b>From the weather card:</b> a tap on an hour of Rain or Wind opens the timeline on your trip at that hour, with that layer on. On a phone the card folds to its banner with Back, as a lane's tap does on main; on a desktop it stays beside the map. This replaces the separate bar a lane's tap was to fold to.</li>
+      <li><b>A trip past the 48 hours:</b> Your trip is greyed, with the reason and when it can zoom. <b>A trip with a night:</b> a day at a time, with the card's day chips (Day 1 · Fri).</li>
+      <li><b>On a phone</b> (On a phone, above): <b>Under the slider</b> keeps main's rows and adds the trip's two (232 px tall at 390 × 844, the map 415 px); <b>The sketch's rows</b> puts the reading over a strip the bar's whole width (250 px, the map 397 px; 288 px at 360, where its row wraps); <b>The planner folded</b> is Under the slider with the planner folded to its line while you look at your trip, as you asked for it (the map 484 px). In each the planner stays where it is, at its peek, until you open your trip.</li>
+    </ul>
     <h2>What stays as it is</h2>
     <ul>
       <li>The window, where it opens, dragging it by its title bar and resizing it by its grip (a desktop), the strip, the slider, Play, the time, the reading and the note under them, and the legend over the map.</li>
@@ -210,12 +223,15 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
       <li><b>Which version</b>, on a desktop: Buttons on a row of their own (the title bar as it is, 42 px taller), or Buttons on the title bar (no taller, but the window wider and little room to grab)?</li>
       <li><b>A phone at 360 px</b> shows about two and a half buttons; the rest are a swipe away, and the legend over the map names what's on. Today's pill counts them ("Rain +2"). Is the sideways row enough? Try All six on a phone.</li>
       <li><b>Weather at places behind ⋯</b> shows its state on the map only, and ⋯ is otherwise kept for settings (#690). Keep it there, or make it a seventh button?</li>
+      <li><b>A phone with your trip:</b> Under the slider, The sketch's rows, or The planner folded?</li>
+      <li><b>The trip's reading on a phone</b> says only "against you" in words (no room for "from the side" in 112 px); the band shows the rest, and the reading's tooltip on a desktop. Enough?</li>
       <li><b>Snow depth</b> adds a line to the reading, so the timeline grows 12 px (16 on a phone) and the buttons move up under the finger. Today it happens behind the open menu. Leave it, or keep the line's room always (16 px on every phone)?</li>
     </ul>
     <h2>Left out of the mock-up</h2>
     <ul>
       <li>The map's layers are drawn by hand, roughly; the app draws them from the forecast. Weather at places puts no marks on this map.</li>
-      <li>The radar's past isn't loaded: its scans are the app's. The route's band on the strip is part 2's.</li>
+      <li>The radar's past isn't loaded: its scans are the app's. Your trip is made up (a 42 km ride on Friday, the wind against you on km 12 to 20, 24 to 27 and 31 to 33), and its weather is the map's forecast, a degree cooler.</li>
+      <li>The planner and the weather card are stand-ins, simplified: main's are fuller. A tap on the strip's band to zoom (the sketch's idea) is left out: a tap on the strip sets the hour today.</li>
       <li>Today's menu shows a line under each layer's name. With buttons, a desktop has it as the tooltip; a phone has the legend over the map.</li>
     </ul>
   </section>
@@ -297,7 +313,7 @@ const stretches = () => { const d = curDay(); return trip().against.filter(([k0]
 const wday = (hr, long) => new Date(timeAtHour(hr) * 1000).toLocaleDateString([], { weekday: long ? 'long' : 'short' });
 const dayLabel = (d, j) => `Day ${j + 1} · ${wday(d.h0)}`; // (the weather card's chips, rt-chips wx-days)
 // a press that changes what the page draws: drawn again, the focus back on the control it was on
-const act = (fn) => (e) => { const k = e.currentTarget.dataset.k; fn(); draw(); if (k) document.querySelector(`.frame [data-k="${k}"]`)?.focus({ preventScroll: true }); };
+const act = (fn) => (e) => { const k = e.currentTarget.dataset.k; fn(); draw(); if (k) (document.querySelector(`.frame [data-k="${k}"]`) || (k.startsWith('c-') ? document.querySelector('.frame .wx-bar input') : null))?.focus({ preventScroll: true }); }; // (an hour in the card: the timeline's slider)
 const goTrip = () => { S.span = 'trip'; step = null; const [w0, w1] = span(); if (hour < w0 || hour > w1) hour = curDay().h0; };
 // from the weather card: the timeline zoomed to your trip at that hour, with that layer on; on a phone the card folds to its banner, as a lane's tap does on main
 const fromCard = (hr, k, ph) => { layers.add(k); day = trip().days.findIndex((d) => hr <= d.h1 + 1); S.span = 'trip'; step = null; hour = hr; panel = ph ? 'banner' : 'card'; };

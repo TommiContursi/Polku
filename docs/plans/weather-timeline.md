@@ -5,8 +5,8 @@ code is written here. The mock-up is [mockups/weather-timeline.html](mockups/wea
 [private Artifact](https://claude.ai/artifact/5cLEyQFboky2ZYumGHZpeA) to try on a phone (built with `css/app.css` and
 `js/ui.js` inlined); **Today** in it is `main`'s timeline (with #988).
 
-**Where it stands (2026-11-12):** lines 1 to 7 below are drawn together in the mock-up, part 1 (the layers as buttons)
-and part 2 (your trip). The user chooses once, on the whole; no app code before that.
+**Where it stands (2026-11-12):** lines 1 to 7 of the list below, the map's weather, are drawn together in the mock-up:
+part 1 (the layers as buttons) and part 2 (your trip). The user chooses once, on the whole; no app code before that.
 
 ## The list that counts (set by the user, 2026-11-12)
 
@@ -121,9 +121,44 @@ but Snow depth moves no button (their place and width are measured before and af
 - Found on `main` on the way: #990 (the time cut to "FMI r…" on a desktop) and #991 (a failed forecast's strip says
   "Zoom in").
 
-## Part 2: your trip (to come)
+## Part 2: your trip (lines 2 to 7)
 
-Zooming the timeline to the trip ("48 hours" and "Your trip"), the reading following you on the route, a band where
-the wind is against you, stepping from one stretch to the next, and one tap to the trip's weather card. It replaces
-the separate bar a lane's tap was to fold to (Round 5 of [the weather card's plan](trip-box-and-weather-card.md)), and
-shows two or three ways to fit on a phone without taking the planner's place.
+Drawn in the same mock-up, on the same timeline. Planner and weather card are stand-ins there, simplified.
+
+- **The trip's row,** under the slider while the route has times: **48 hours · Your trip** (the app's switch, `seg
+  small`) and **Weather card ›** (`btn small quiet`). Your trip zooms the strip and the slider to your trip, an hour
+  either side, by the 5 minutes (line 2); 48 hours goes back (line 5). One row on a desktop; on a phone two, the second
+  only in Your trip.
+- **The reading follows you** (line 3): where you'll be at that time (km 15, the start, the finish) and the weather
+  there, with the wind **against you** in words; your dot on the route on the map; the time says "Fri 14:10 · km 15".
+  On a phone only "against you" fits in the reading's 112 px; the band says the rest.
+- **The wind on your way** (line 4): a band under the hours in the route's wind colours (against you, the strong in
+  the darker red; from the side; behind you), named in the note under the timeline. **‹ Against you, 1 of 3 ›** (`tool`
+  arrows) steps from one stretch to the next: the hour goes to its start, the band and the route light it, and the focus
+  stays on the arrow.
+- **The weather card** (line 5): **Weather card ›** opens it. On a phone it covers the timeline, as cards do. In the
+  card, a tap on an hour of Rain or Wind opens the timeline on your trip at that hour, with that layer on. On a phone
+  the card folds to its banner with Back, as a lane's tap does on `main`; on a desktop it stays beside the map. This
+  replaces the separate bar a lane's tap was to fold to.
+- **A trip past the 48 hours** (line 7): Your trip greyed (the switch's own disabled look), with the reason and the day
+  it can zoom. **A trip with a night:** a day at a time, with the card's day chips ("Day 1 · Fri").
+- **On a phone** (line 6), three ways, the planner at its peek in each until you open your trip:
+  - **Under the slider** (recommended): `main`'s rows, and the trip's two under them; 232 px tall at 390 × 844, the
+    map 415 px between it and the top bar.
+  - **The sketch's rows** (frame 11): the reading on one line over a strip the bar's whole width, Play beside the switch;
+    250 px, the map 397 px; at 360 px its row wraps and it's 288 px.
+  - **The planner folded:** Under the slider, with the planner folded to its line while you look at your trip (you
+    asked for it by opening it); 48 hours or ⌃ unfolds it. The map 484 px.
+- **No new motion:** switching 48 hours and Your trip redraws at once. An animated zoom of the strip would be new
+  motion, decided with /animate if wanted.
+
+What the checks found (the design skills, 390, 360, 200 %, light and dark):
+
+- **At 200 % on a desktop** (720 × 450) and on short phones, the trip view doesn't fit above the planner's peek: its
+  top runs under the top bar, as the timeline already does on `main` at 200 % on a phone (#590). The planner folded is
+  the way that fits there; a build could fold it there by itself.
+- **A trip with a night on a 360 px phone** adds the day chips' row: with all six layers on (Snow depth's fourth line)
+  the timeline is about 300 px and the map about 250 px.
+- **The reading's long words:** "from the side" doesn't fit a phone's reading, so it says only "against you" there.
+- **CONTEXT.md** says the weather timeline is "not tied to the route". Zoomed to your trip it is, so the term's line
+  changes once this is chosen, and "Weather line" (the folded card) goes with the dropped bar.
