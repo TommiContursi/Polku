@@ -1,8 +1,9 @@
 # The weather timeline: the layers as buttons, then your trip
 
 A design round for #869, in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16), after #988. No app
-code is written here. The mock-up is [mockups/weather-timeline.html](mockups/weather-timeline.html); **Today** in it is
-`main`'s timeline as #988 leaves it.
+code is written here. The mock-up is [mockups/weather-timeline.html](mockups/weather-timeline.html), also a
+[private Artifact](https://claude.ai/artifact/5cLEyQFboky2ZYumGHZpeA) to try on a phone (built with `css/app.css` and
+`js/ui.js` inlined); **Today** in it is `main`'s timeline as #988 leaves it.
 
 **Where it stands (2026-11-12):** part 1 (the layers as buttons) is drawn and waits for the user's choice. Part 2
 (zooming the timeline to the trip, with the route's weather) is drawn after that answer.
