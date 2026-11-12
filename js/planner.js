@@ -2330,14 +2330,6 @@ export class Planner {
     return out;
   }
 
-  // the sun on the day that holds `at`, at `ll`, for the weather card: [icon, words] for each of its times
-  sunLine(at, ll) {
-    const s = sunTimes(at, ll);
-    if (s.day === 'polar-day') return [['sun', 'Midnight sun: the sun doesn’t set']];
-    if (s.day === 'polar-night') return [['moon', s.dawn ? `Polar night: twilight ${timeOf(s.dawn)}–${timeOf(s.dusk)}` : 'Polar night: no daylight']];
-    return [['sunrise', `Sunrise ${timeOf(s.rise)}`], ['sunset', `Sunset ${timeOf(s.set)}`], ['moon', `Dark from ${timeOf(s.dusk)}`]];
-  }
-
   // Heads-up from the water router (water.js events): shipping lanes and
   // harbours on the way, keep-clear zones it had to pass, rough water.
   // Positions along the whole route. (A source that didn't answer: notChecked().)
@@ -7508,7 +7500,11 @@ export class Planner {
       const v = w.temp[i] <= 10 ? windChill(w.temp[i], airPast(Math.min(40, own(i)), w.head[i], w.cross[i])) : Number.isFinite(w.feel[i]) ? w.feel[i] : null;
       if (v != null && (feel == null || (cold ? v < feel : v > feel))) { feel = v; feelAt = i; }
     }
-    const rain = this.dayRain(a, d, wx), fall = rain.snow ? 'snow' : 'rain', mm = Math.max(rain.wet ? 0.1 : 0, wx.mm), wet = runs((i) => w.precip[i] >= 0.1), storm = runs((i) => w.thunder && w.thunder[i] === 1);
+    // what falls on you: rain in mm, snow in cm from the forecast's own snowfall as Check sums it; a wet day at least 0.1
+    const rain = this.dayRain(a, d, wx), fall = rain.snow ? 'snow' : 'rain', wet = runs((i) => w.precip[i] >= 0.1), storm = runs((i) => w.thunder && w.thunder[i] === 1);
+    let cm = 0;
+    for (let i = i0; i <= i1; i++) if (known(i) && w.snowfall && Number.isFinite(w.snowfall[i])) cm += (w.snowfall[i] * (T.at(i) - T.at(i - 1))) / 3600;
+    const fell = Math.max(rain.wet ? 0.1 : 0, rain.snow ? cm : wx.mm), unit = rain.snow ? 'cm' : 'mm';
     const lim = (i) => (water(i) ? 10 : group(i) === 'bike' ? 14 : 20);
     const strong = runs((i) => !water(i) && windClass(a, i).key === 'strongHead').filter((r) => r.len >= (group(r.i1) === 'bike' ? 1000 : 500));
     const sea = runs((i) => water(i) && w.speed[i] >= 5);
@@ -7516,16 +7512,19 @@ export class Planner {
     // the sentence: the air's word, the rain's or the sky's, then thunder or the wind in FMI's words with its way
     const air = (wx.tMin + wx.tMax) / 2, skyMid = this.skyAt(a, Math.round((i0 + i1) / 2));
     const tw = air <= -10 ? 'Very cold' : air <= 0 ? 'Freezing' : air <= 7 ? 'Cold' : air <= 14 ? 'Cool' : air <= 22 ? 'Mild' : air <= 27 ? 'Warm' : 'Hot';
-    const rw = !rain.wet ? (skyMid === 'sun' ? 'sunny' : skyMid === 'moon' ? 'clear' : 'dry') : rain.peak >= 4 ? `heavy ${fall}` : mm >= 1 ? fall : `a little ${fall}`;
+    const rw = !rain.wet ? (skyMid === 'sun' ? 'sunny' : skyMid === 'moon' ? 'clear' : 'dry') : rain.peak >= 4 ? `heavy ${fall}` : fell >= 1 ? fall : `a little ${fall}`;
     const later = rain.wet && wet.length && pos(wet[0].i0) > 0.15 ? 'then ' : '', sh = this.windShares(a, d.i0, d.i1);
     const ww = `${wx.wind < 4 ? 'a light wind' : wx.wind < 8 ? 'a moderate wind' : wx.wind < 14 ? 'a fresh wind' : wx.wind < 21 ? 'a strong wind' : 'a storm'}${sh.most ? ` ${sh.most}` : ''}`;
     const sky = storm.length ? 'thunder' : rain.wet ? fall : skyMid;
     const sentence = storm.length ? `${tw}, ${rain.wet ? `${later}${rw} and ` : ''}a risk of thunder` : rain.wet ? `${tw}, ${later}${rw}, ${ww}` : `${tw} and ${rw}, ${ww}`;
-    // the notes: Check's where Check has the limit, the card's own for the rest; ranked, three at most
-    const hu = this.headsUp(a), items = [...hu.read, ...hu.look].filter((x) => x.at >= d.from - 1 && x.at <= d.to + 1);
+    // the notes: Check's where Check has the limit, the card's own for the rest; ranked, three at most. Check's items count on
+    // each day they reach (one that crosses a night on the next day too), their range clipped to the day
+    const hu = this.headsUp(a), items = [...hu.read, ...hu.look].filter((x) => x.at <= d.to + 1 && x.at + (x.len || 0) >= d.from - 1);
+    const clip = (x) => [at(Math.max(x.at, d.from)), at(Math.min(x.at + (x.len || 0), d.to))];
     const notes = [], add = (rank, tier, ic, text, j0, j1 = j0) => notes.push({ rank, tier, ic, text, i0: j0, i1: j1 });
-    const check = (rank, tier, ic, test, words = (x) => x.text) => { const x = items.find(test); if (x) add(rank, tier, ic, words(x), at(x.at), at(x.at + (x.len || 0))); };
-    check(13, 'danger', 'thunder', (x) => x.kind === 'thunder');
+    const check = (rank, tier, ic, test, words = (x) => x.text) => { const x = items.find(test); if (x) add(rank, tier, ic, words(x), ...clip(x)); };
+    // (thunder: Check's limit, any thunder where you are, in the day's own words, where it starts that day)
+    if (storm.length) add(13, 'danger', 'thunder', `Thunder possible around ${around(storm[0].i0 + 1)}, near km ${km(storm[0].i0 + 1)}`, storm[0].i0, storm.at(-1).i1);
     if (wx.beyond) add(13.5, 'unk', 'cloud', `The forecast only reaches ${this.clockOf(w.beyondSec)}, near km ${km(w.beyond)}: the rest isn’t checked`, w.beyond);
     check(14, 'danger', 'temp', (x) => x.kind === 'cold' && /^Frostbite/.test(x.text));
     check(15, 'danger', 'paddle', (x) => x.kind === 'water' && /^Rough/.test(x.text));
@@ -7540,9 +7539,9 @@ export class Planner {
     if (rain.wet && wet.length) {
       const Fall = cap(fall), pk = wet.reduce((b, r) => { for (let i = r.i0 + 1; i <= r.i1; i++) if (w.precip[i] > w.precip[b]) b = i; return b; }, wet[0].i1);
       if (rain.peak >= 4) add(32, 'plain', fall, `Heavy ${fall} around ${around(pk)}, near km ${km(pk)}`, pk);
-      else if (later && mm >= 0.5) add(32, 'plain', fall, `${Fall} from around ${around(wet[0].i0)}, from km ${km(wet[0].i0)} on`, wet[0].i0, i1);
-      else if (wet.at(-1).i1 < i1 - 2 && mm >= 0.5) add(32, 'plain', fall, `${Fall} until around ${around(wet.at(-1).i1)}`, i0, wet.at(-1).i1);
-      else if (mm >= 1) add(32, 'plain', fall, `${Fall} the whole way`, i0, i1);
+      else if (later && fell >= 0.5) add(32, 'plain', fall, `${Fall} from around ${around(wet[0].i0)}, from km ${km(wet[0].i0)} on`, wet[0].i0, i1);
+      else if (wet.at(-1).i1 < i1 - 2 && fell >= 0.5) add(32, 'plain', fall, `${Fall} until around ${around(wet.at(-1).i1)}`, i0, wet.at(-1).i1);
+      else if (fell >= 1) add(32, 'plain', fall, `${Fall} the whole way`, i0, i1);
     }
     check(33, 'plain', 'snow', (x) => x.kind === 'winter' && /^Snow/.test(x.text));
     if (strong.length) {
@@ -7560,14 +7559,14 @@ export class Planner {
     // the numbers in their places; the waves a fourth on a paddle, where they're known
     const wave = this.dayWaves(d), paddle = Array.from({ length: i1 - i0 + 1 }, (_, j) => i0 + j).some(water);
     const nums = [[degRange(wx.tMin, wx.tMax).replace(' °C', '°'), feel != null ? `feels like ${deg(feel)}` : ''], [`${Math.round(wx.wind)} m/s`, `gusts ${Math.round(wx.gust)}`],
-      rain.snow ? [`${r1(mm)} cm`, 'snow'] : [`${r1(mm)} mm`, 'rain'], ...(paddle && wave ? [[`${Math.max(0.1, wave.m).toFixed(1)} m`, 'waves, estimate']] : [])];
+      [`${r1(fell)} ${unit}`, fall], ...(paddle && wave ? [[`${Math.max(0.1, wave.m).toFixed(1)} m`, 'waves, estimate']] : [])];
     // the lanes: each fact that changes on the way, its stretches in the route's own colours
     const segs = (cls) => { const out = []; let cur = null; for (let i = i0; i <= i1; i++) { const c = known(i) ? cls(i) : null; if (c && cur && cur[2] === c) cur[1] = pos(i); else if (c) out.push(cur = [pos(i - 1), pos(i), c]); else cur = null; } return out; };
     const lanes = [], plural = (k) => (k === 1 ? 'one stretch' : `${k} stretches`);
     if (strong.length || sea.length) lanes.push({ k: 'wind', name: 'Wind', val: strong.length ? `against you on ${plural(strong.length)}` : 'strong on the water', segs: segs((i) => windClass(a, i).key), stretches: [...strong, ...sea].sort((x, y) => top(y, w.speed) - top(x, w.speed)) });
-    if (rain.wet && wet.length && (mm >= 0.5 || rain.peak >= 4)) lanes.push({ k: 'rain', name: rain.snow ? 'Snow' : 'Rain', val: `${r1(mm)} ${rain.snow ? 'cm' : 'mm'}${later ? ` from around ${around(wet[0].i0)}` : ''}`, segs: segs((i) => (w.precip[i] >= 0.1 ? rainBand(w.precip[i], w.temp[i]).key : null)), stretches: wet });
+    if (rain.wet && wet.length && (fell >= 0.5 || rain.peak >= 4)) lanes.push({ k: 'rain', name: rain.snow ? 'Snow' : 'Rain', val: `${r1(fell)} ${unit}${later ? ` from around ${around(wet[0].i0)}` : ''}`, segs: segs((i) => (w.precip[i] >= 0.1 ? rainBand(w.precip[i], w.temp[i]).key : null)), stretches: wet });
     if (storm.length) lanes.push({ k: 'thunder', name: 'Thunder', val: `possible around ${around(storm[0].i0)}`, segs: segs((i) => (w.thunder[i] === 1 ? 'thunder' : null)), stretches: storm });
-    const rough = items.filter((x) => x.kind === 'water' && /^Rough/.test(x.text)).map((x) => ({ i0: at(x.at), i1: at(x.at + (x.len || 0)) }));
+    const rough = items.filter((x) => x.kind === 'water' && /^Rough/.test(x.text)).map((x) => { const [j0, j1] = clip(x); return { i0: j0, i1: j1 }; });
     if (rough.length) {
       const wet0 = Array.from({ length: i1 - i0 + 1 }, (_, j) => i0 + j).filter(water), over = (i) => rough.some((r) => i >= r.i0 && i <= r.i1);
       lanes.push({ k: 'waves', name: 'Waves', val: wave ? `about ${Math.max(0.1, wave.m).toFixed(1)} m, on the water` : 'rough on the water', segs: segs((i) => (water(i) ? (over(i) ? 'over' : 'under') : null)), stretches: rough, leg: [pos(Math.max(0, wet0[0] - 1)), pos(wet0.at(-1))] });

@@ -2018,6 +2018,17 @@ STOPS = """(async () => {
   await wait(300);
   const said = [...(p.cards.box?.querySelectorAll('.wx-day') || [])].map((x) => x.querySelector('.wx-say, .row')?.textContent || '');
   if (said.length !== 2 || said.some((t) => !t)) errs.push(`each day's weather in the weather card: ${said.join(' / ') || 'none'}`);
+  // a warning that crosses the night counts on both days (#973's review): thunder all along, a note of its own each day
+  {
+    const { dayWeather } = await import(location.origin + '/js/stops.js'), a = p.analysis, keep = a.wind;
+    if (!keep) errs.push('no forecast to test thunder over the night on');
+    else {
+      a.wind = { ...keep, thunder: new Uint8Array(a.along.length).fill(1), beyond: -1 };
+      const tells = p.wxDays(a).map((d) => p.dayFacts(a, d, dayWeather(a.wind, a, d.i0, d.i1)).notes.filter((x) => /^Thunder possible/.test(x.text)).length);
+      a.wind = keep;
+      if (tells.length !== 2 || tells.some((k) => k !== 1)) errs.push(`thunder over both days: ${tells.join(' and ')} notes, not one on each`);
+    }
+  }
   p.cards.close();
   if (document.querySelectorAll('.wp-stop').length !== 2 || document.querySelectorAll('.wp-stop.night').length !== 1) errs.push(`stop badges: ${document.querySelectorAll('.wp-stop').length}`);
   p.reveal('points');
@@ -12635,6 +12646,10 @@ WC_JS = """(async () => {
   const lane = { mode: p.colorMode, map: p.colorOnMap, folded: !!p.cards.folded };
   if (lane.folded) { p.cards.escape(); await wait(200); }
   if (lane.mode !== 'rain' || !lane.map || !lane.folded || p.cards.folded || !p.cards.box?.querySelector('.wx-say')) errs.push(`a lane's tap: ${JSON.stringify(lane)}, then the card back: ${!!p.cards.box?.querySelector('.wx-say')}`);
+  // snow on you is the forecast's snowfall in cm, as Check sums it, not the rain's mm called cm (#973's review)
+  set(wind({ temp: fill(-2), precip: fill(3), snowfall: fill(0.3), series: [series(-6, -2)] })); await wait(200);
+  const snow = p.cards.box?.querySelectorAll('.wx-nums .sum-item')[2]?.textContent || '', hrs = (T.at(n - 1) - T.at(0)) / 3600, got = parseFloat(snow);
+  if (!/ cmsnow$/.test(snow) || Math.abs(got - Math.max(0.1, 0.3 * hrs)) > 0.15 + 0.05 * hrs) errs.push(`snow on you: “${snow}” for ${hrs.toFixed(2)} h of 0.3 cm an hour (3 mm an hour of water)`);
   // Time on the way: the wind's row only where it changes the time (#766)
   p.cards.box.querySelector('[data-k=time]').click(); await wait(200);
   const windRow = () => [...(p.cards.box?.querySelectorAll('.speed-row.sub span') || [])].find((x) => /^the wind/.test(x.textContent))?.parentElement.textContent || '';
