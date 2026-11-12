@@ -535,7 +535,7 @@ function buildPlanner(F) {
       h('span', { html: icon(far ? 'cloud' : 'sky-rain', 22) }), h('span', {}, far ? `${wday(d.h0)}: no forecast yet` : `${wday(d.h0)}: ${Math.round(lin(D.temp, d.h0) - 1)} to ${Math.round(lin(D.temp, d.h1) + 2)}°, showers on the way`), h('span', { html: icon('chevronRight', 16) }))));
   } else {
     const d = curDay(), hrs = []; for (let hr = Math.ceil(d.h0); hr <= Math.floor(d.h1); hr++) hrs.push(hr);
-    if (t.days.length > 1) kids.push(h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' }, ...t.days.map((x, j) => h('button', { type: 'button', class: 'chip', 'data-k': `card-day-${j}`, 'aria-pressed': String(j === day), onclick: act(() => { day = j; }) }, dayLabel(x, j)))));
+    if (t.days.length > 1) kids.push(h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' }, ...t.days.map((x, j) => h('button', { type: 'button', class: 'chip', 'data-k': `card-day-${j}`, 'aria-pressed': String(j === day), onclick: act(() => { day = j; step = null; }) }, dayLabel(x, j)))));
     kids.push(h('p', { class: 'mk-say', html: far ? `${icon('cloud', 22)}<span>No forecast yet for ${wday(d.h0, true)}: it reaches 48 hours ahead.</span>` : `${icon('sky-rain', 22)}<span>Showers from ${hhmm(timeAtHour(d.h0 + 1))}, and a fresh wind against you from km ${stretches()[0].km0}.</span>` }));
     if (!far) {
       const g = h('div', { class: 'mk-hours', style: `--n: ${hrs.length}`, role: 'group', 'aria-label': 'Your hours: a tap shows it on the map at that hour' }, h('span', {}), ...hrs.map((hr) => h('span', {}, hhmm(timeAtHour(hr)))));
