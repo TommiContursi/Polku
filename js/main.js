@@ -407,7 +407,9 @@ map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(()
 map.once('load', () => checkWinter(true));
 
 let hadRoute = false; // (a route drawn, for All layers' Your route group)
-const safety = new SafetyLayers(map, { setData, time: () => planner.when.start() });
+// road works and road conditions at the map's hour (the weather's, once it's made)
+let mapTime = () => Date.now() / 1000;
+const safety = new SafetyLayers(map, { setData, time: () => mapTime() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
 
@@ -442,7 +444,6 @@ const planner = new Planner(map, {
   rideLipas: (props, opts) => rideLipas(props, opts),
   lipasRide: (props, click = null) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   setData,
-  onStartChange: (k) => { if (k != null) weather.setHour(k, { silent: true }); safety.publish(); }, // (a day past the timeline's two: it stays)
   onAnalysis: () => {
     weather.renderTime(); weather.renderStrip();
     // All layers open as a route comes or goes: its Your route group with it (#424's C)
@@ -570,8 +571,9 @@ const weather = new WeatherOverlay(map, {
     if (JSON.stringify(r || null) !== before) applyStyle();
   },
   dark: mapDark,
-  // the timeline and the route's departure time are one clock
-  onHour: (k) => { planner.when.set(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
+  // road works and road conditions follow the map's hour (the route's departure is its own: step 6b)
+  onHour: () => safety.publish(),
+  departure: () => planner.when.start(),
   hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
   onToggle: (patch) => setWeather(patch),
@@ -589,6 +591,7 @@ const weather = new WeatherOverlay(map, {
     $('#btn-time').setAttribute('aria-label', k ? `Time & weather, ${k} h ahead` : 'Time & weather');
   },
 });
+mapTime = () => timeAtHour(weather.hour);
 // the sun at the map's hour (to ten minutes, so the shadows' tiles keep), from the map's middle, for style.js
 // shortcut: the light is worked out when the style is built, so after a long pan or ten minutes without a rebuild it's a little off
 const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
@@ -617,7 +620,6 @@ map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catch
 function setTimeline(on) {
   state.timeline = on;
   weather.setOpen(on);
-  if (on && planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
   $('#btn-time').setAttribute('aria-pressed', String(on));
   saveSettings();
 }
@@ -625,7 +627,6 @@ function setTimeline(on) {
 function setWeather(patch) {
   Object.assign(state.weather, patch);
   weather.set(state.weather);
-  if (planner.when.hour()) weather.setHour(planner.when.hour(), { silent: true });
   // weather layers live on the timeline: switching one on opens it
   if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
   applyStyle();

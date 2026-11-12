@@ -10,7 +10,7 @@ const local = (sec) => { const d = new Date(sec * 1000), z = (x) => String(x).pa
 const caret = `<span class="caret" aria-hidden="true">${icon('caret', 12)}</span>`;
 
 export class When {
-  // changed({ fromMap, opened }): after the departure changes; `opened` when it came with a route (open()), which the
+  // changed({ opened }): after the departure changes; `opened` when it came with a route (open()), which the
   // planner draws next. coarse(): a phone, whose own picker the menu opens.
   constructor({ changed, coarse }) {
     this.at = null; // epoch seconds, or null to leave now
@@ -31,15 +31,8 @@ export class When {
     const at = this.at;
     return at == null ? 'now' : new Date(at * 1000).toDateString() === new Date().toDateString() ? timeOf(at) : `${dayOf(at)}, ${timeOf(at)}`;
   }
-  // the weather's timeline hour for the departure (one clock, within its 48 hours): 0 leaving now, null past them
-  hour() {
-    if (this.at == null) return 0;
-    const k = Math.floor((this.at - Math.floor(Date.now() / 3600000) * 3600) / 3600);
-    return k <= 48 ? Math.max(0, k) : null;
-  }
-
-  // A time of your own: a time that has passed is now. `fromMap`: the weather's timeline moved it, so it isn't told again.
-  set(sec, { fromMap = false } = {}) {
+  // A time of your own: a time that has passed is now
+  set(sec) {
     sec = sec != null && sec > Date.now() / 1000 ? Math.round(sec / 60) * 60 : null;
     const was = this.at, passed = this.passed;
     this.passed = null; // (the note on one that had passed goes)
@@ -47,7 +40,7 @@ export class When {
     this.at = sec;
     this.put();
     this.expire();
-    this.changed({ fromMap });
+    this.changed({});
   }
   // A route opened (saved, saved offline, a link, Undo) leaves when it was planned to; one whose time has passed leaves
   // now, saying when it was planned for
