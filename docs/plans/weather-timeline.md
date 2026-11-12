@@ -11,7 +11,7 @@ part 1 (the layers as buttons) and part 2 (your trip). The user chooses once, on
 ## The list that counts (set by the user, 2026-11-12)
 
 The whole of what the planner and the weather have to do, from #869's journeys and points, each checked against the code
-on `main` on 2026-11-12 (at cb621575, whose app code is `main`'s). The work goes against this list, each PR says which
+on `main` on 2026-11-12 (at 3facfe75). Where a point is partly done, the line says what's left. The work goes against this list, each PR says which
 of its lines it closes, and nothing outside it is done without asking. Nothing in #869's description is dropped unless
 the user says so. `main`'s look stays.
 
@@ -22,9 +22,11 @@ the user says so. `main`'s look stays.
 - Multisport: each part's heading opens its sport, speed and route style (#848), and a waypoint's card has Sport from
   here.
 - The profile in the peek (#742, #889).
-- Show all waypoints on the right, over the route's list (#761).
+- Show all waypoints, in the Waypoints section's heading tools (#761, `listTools()`); its side not checked in the app.
 - Go's contents in the weather card, and Go's tab gone (#973, #794, #759).
-- Warnings called Warnings everywhere (#853).
+- Warnings called Warnings in the planner's lists (#853). Not done: "heads-up" is still in Check's tab tooltip and
+  its empty note (`js/planner.js` 121, 4691), a round trip's notes (1878) and Settings' Hidden Heads-up (`js/main.js`
+  1841).
 - The weather card: the sentence with the sky, up to three notes, the numbers, the hour strip with Rain and Wind, and
   the older views folded away (#973, #979); the wind's colours, the cold by the wind's direction, and thunder in Check
   (#973).
@@ -49,12 +51,12 @@ Frames 9 to 11 on the [design canvas](https://claude.ai/artifact/WD6i6g3rustC7TK
 - A clear home for On the route: the profile card, with On the route as Colour by's list (#796, #758). Today it is a
   section of Check.
 - The tabs go: the warnings' box in the numbers opens the Check card. Today Route and Check are tabs.
-- The Add row, with the search in the sheet (#761's PR 8).
+- The Add row, with the search in the sheet (#761's PR 8). *(from planner-rethought.md, not #869's own words: the user's to keep or drop)*
 - The rest of the rule for controls, every control checked against it: a part's sport as MTB ▾ in its heading,
   Clear route off the list's foot, the toolbar giving Take it along to More first, the dotted time words gone, DESIGN.md's
   words on green, and DEVELOPING's Shared controls with the new controls.
 - The quiet line over the profile in the peek, naming its colouring, and a "Waypoints" heading in sentence case
-  (#767).
+  (#767) *(from planner-rethought.md: the user's to keep or drop)*
 - Notes of your own on a waypoint, a stretch or the route (#854); Notes stays free for them meanwhile.
 
 **Later, each its own issue:**
@@ -121,6 +123,18 @@ but Snow depth moves no button (their place and width are measured before and af
 - Found on `main` on the way: #990 (the time cut to "FMI r…" on a desktop) and #991 (a failed forecast's strip says
   "Zoom in").
 
+## What can't be done as written, and what to do instead
+
+- **Line 6 on a phone.** With the planner at its peek (296 px on `main`), the trip view leaves 200 px of map at
+  390 × 844, about 90 px at 360 × 740, and at 200 % it doesn't fit at all. It fits only if the planner gives room, and
+  folding it when you open Your trip takes its place on a tap that asked for the trip, not for folding. Proposal: The
+  planner folded, undone by 48 hours or ⌃, said in words the first time ("The planner folds while you look at your
+  trip"). The other choice is Under the slider, with less map. The user decides.
+- **Line 3's words on a phone.** The reading is 112 px wide, so it says only "against you"; "from the side" and
+  "behind you" are in the band and its key. Proposal: keep it so.
+- **Line 1 at 360 px.** About two and a half buttons show; the rest are a swipe away, and today's count ("Rain +2")
+  goes. Proposal: keep the sideways row; the legend over the map names what's on.
+
 ## Part 2: your trip (lines 2 to 7)
 
 Drawn in the same mock-up, on the same timeline. Planner and weather card are stand-ins there, simplified.
@@ -142,13 +156,15 @@ Drawn in the same mock-up, on the same timeline. Planner and weather card are st
   replaces the separate bar a lane's tap was to fold to.
 - **A trip past the 48 hours** (line 7): Your trip greyed (the switch's own disabled look), with the reason and the day
   it can zoom. **A trip with a night:** a day at a time, with the card's day chips ("Day 1 · Fri").
-- **On a phone** (line 6), three ways, the planner at its peek in each until you open your trip:
-  - **Under the slider** (recommended): `main`'s rows, and the trip's two under them; 232 px tall at 390 × 844, the
-    map 415 px between it and the top bar.
+- **On a phone** (line 6), three ways, the planner at its peek (`main`'s 296 px, #889) until you open your trip.
+  Measured by touch at 390 × 844 (Today with no route: the timeline 162 px, the map 582 px; with a route in 48 hours:
+  218 px, the map 250 px):
+  - **Under the slider:** `main`'s rows, and the trip's two under them; 268 px, the map 200 px between it and the top
+    bar (about 90 px at 360 × 740, worked out, not measured).
   - **The sketch's rows** (frame 11): the reading on one line over a strip the bar's whole width, Play beside the switch;
-    250 px, the map 397 px; at 360 px its row wraps and it's 288 px.
-  - **The planner folded:** Under the slider, with the planner folded to its line while you look at your trip (you
-    asked for it by opening it); 48 hours or ⌃ unfolds it. The map 484 px.
+    298 px, the map 170 px.
+  - **The planner folded** (recommended): Under the slider, with the planner folded to its line (48 px) while you look
+    at your trip; 48 hours or ⌃ unfolds it. The map 448 px.
 - **No new motion:** switching 48 hours and Your trip redraws at once. An animated zoom of the strip would be new
   motion, decided with /animate if wanted.
 
@@ -156,9 +172,16 @@ What the checks found (the design skills, 390, 360, 200 %, light and dark):
 
 - **At 200 % on a desktop** (720 × 450) and on short phones, the trip view doesn't fit above the planner's peek: its
   top runs under the top bar, as the timeline already does on `main` at 200 % on a phone (#590). The planner folded is
-  the way that fits there; a build could fold it there by itself.
+  the way that fits there.
+- **Missing data:** with the forecast loading or failed, the strip and the reading say so (as on `main`), and the
+  stepper says "The wind on your way: loading" or "no forecast" and steps nowhere.
+- **The band's key** is in the note under the timeline on a desktop and in the map's legend on both (a phone hides the
+  note), so its colours aren't the only telling.
 - **A trip with a night on a 360 px phone** adds the day chips' row: with all six layers on (Snow depth's fourth line)
   the timeline is about 300 px and the map about 250 px.
 - **The reading's long words:** "from the side" doesn't fit a phone's reading, so it says only "against you" there.
+- **Trips not drawn:** one whose second day runs past the 48 hours (its chip greyed, with the reason, would follow line
+  7), one with no stretch against you ("Nowhere against you for long", drawn in the code but not on a trip), one with
+  one stretch or many, and a long day (the 5-minute slider is then less precise per pixel).
 - **CONTEXT.md** says the weather timeline is "not tied to the route". Zoomed to your trip it is, so the term's line
   changes once this is chosen, and "Weather line" (the folded card) goes with the dropped bar.

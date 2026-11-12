@@ -157,6 +157,8 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 .mk-pl { z-index: 6; left: 12px; top: 64px; max-height: calc(100% - 76px); width: 360px; display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; border-radius: var(--radius-sheet); }
 .frame.ph .mk-pl { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; border-radius: var(--radius-sheet) var(--radius-sheet) 14px 14px; }
 .frame.ph .mk-pl.half { max-height: 56%; }
+.frame.ph .mk-pl.peek { height: 296px; } /* (main's peek, #889: the numbers, the profile and the trip's box) */
+.mk-peek-rest { flex: 1; min-height: 40px; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 10px; }
 .mk-pl.fold { padding-block: 6px; }
 .mk-pl.fold b { font-size: var(--font-row); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mk-pl-head { display: flex; align-items: center; gap: 8px; min-height: 36px; }
@@ -202,17 +204,17 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
       <li><b>Wind lines:</b> while Temperature is on, the two share one colour field, so the map colours by temperature and the wind shows only its lines. The Wind button then says Wind lines. It keeps the room of its longer name, so nothing moves when Temperature is switched.</li>
       <li><b>⋯ beside ✕</b> holds Weather at places and Effects, with the sources' note, in the app's menu: the rest of today's menu.</li>
       <li><b>On a desktop</b> (Buttons on a row of their own) the title bar stays as it is, with Timeline and its room to grab, and the buttons take a row under it. In a narrow window they wrap. <b>Buttons on the title bar</b> is the sketch's way: they take the title bar, the word Timeline goes (its clock stays as the handle to drag), and the window opens 104 px wider so the six fit.</li>
-      <li><b>On a phone</b> both versions are the same: the buttons take the pill's place in the row that's there, so the timeline is no taller. They scroll sideways, and fade at the edge where there's more.</li>
+      <li><b>On a phone</b> both versions are the same: the buttons take the pill's place in the row that's there, so the timeline is no taller. They scroll sideways, and fade at the edge where there's more. (With a route, part 2's trip row adds a row.)</li>
       <li><b>A tooltip</b> on a desktop gives each button the line it has in the menu today.</li>
     </ul>
     <h2>What changes: your trip (part 2)</h2>
     <ul>
-      <li><b>A row for your trip</b> under the slider, while the route has times: <b>48 hours · Your trip</b> (the app's switch), and <b>Weather card ›</b>. Your trip zooms the strip and the slider to your trip, an hour either side, by the 5 minutes; 48 hours goes back. On a desktop it is one row; on a phone two, the second only in Your trip.</li>
+      <li><b>A row for your trip</b> under the slider, while the route has times: <b>48 hours · Your trip</b> (the app's switch), and <b>Weather card ›</b>. Your trip zooms the strip and the slider to your trip, an hour either side, by the 5 minutes; 48 hours goes back. On a desktop it is one row; on a phone two, the second only in Your trip, so with a route a phone's timeline is a row taller (48 px) before you open your trip.</li>
       <li><b>The reading follows you:</b> where you'll be at that time (km 15, the start, the finish) and the weather there, with the wind <b>against you</b> said in words; the map shows your dot on the route. The time says Fri 14:10 · km 15.</li>
       <li><b>The wind on your way</b> is a band under the hours, in the route's wind colours: against you (the strong in the darker red), from the side, behind you. <b>‹ Against you, 1 of 3 ›</b> steps from one stretch to the next: the hour goes to its start, the band and the route light it.</li>
       <li><b>From the weather card:</b> a tap on an hour of Rain or Wind opens the timeline on your trip at that hour, with that layer on. On a phone the card folds to its banner with Back, as a lane's tap does on main; on a desktop it stays beside the map. This replaces the separate bar a lane's tap was to fold to.</li>
       <li><b>A trip past the 48 hours:</b> Your trip is greyed, with the reason and when it can zoom. <b>A trip with a night:</b> a day at a time, with the card's day chips (Day 1 · Fri).</li>
-      <li><b>On a phone</b> (On a phone, above): <b>Under the slider</b> keeps main's rows and adds the trip's two (232 px tall at 390 × 844, the map 415 px); <b>The sketch's rows</b> puts the reading over a strip the bar's whole width (250 px, the map 397 px; 288 px at 360, where its row wraps); <b>The planner folded</b> is Under the slider with the planner folded to its line while you look at your trip, as you asked for it (the map 484 px). In each the planner stays where it is, at its peek, until you open your trip.</li>
+      <li><b>On a phone</b> (On a phone, above), by touch at 390 × 844 with the planner at main's peek (296 px): <b>Under the slider</b> keeps main's rows and adds the trip's two (268 px tall, the map 200 px); <b>The sketch's rows</b> puts the reading over a strip the bar's whole width (298 px, the map 170 px); <b>The planner folded</b> is Under the slider with the planner folded to its line (48 px) while you look at your trip (the map 448 px). In each the planner stays at its peek until you open your trip. For comparison, Today with a route and the timeline open: 162 px and the map about 300 px.</li>
     </ul>
     <h2>What stays as it is</h2>
     <ul>
@@ -223,7 +225,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
       <li><b>Which version</b>, on a desktop: Buttons on a row of their own (the title bar as it is, 42 px taller), or Buttons on the title bar (no taller, but the window wider and little room to grab)?</li>
       <li><b>A phone at 360 px</b> shows about two and a half buttons; the rest are a swipe away, and the legend over the map names what's on. Today's pill counts them ("Rain +2"). Is the sideways row enough? Try All six on a phone.</li>
       <li><b>Weather at places behind ⋯</b> shows its state on the map only, and ⋯ is otherwise kept for settings (#690). Keep it there, or make it a seventh button?</li>
-      <li><b>A phone with your trip:</b> Under the slider, The sketch's rows, or The planner folded?</li>
+      <li><b>A phone with your trip:</b> The planner folded (recommended: the only way that leaves the map room, but it folds the planner on a tap that asked for your trip, so it would say so the first time), Under the slider, or The sketch's rows?</li>
       <li><b>The trip's reading on a phone</b> says only "against you" in words (no room for "from the side" in 112 px); the band shows the rest, and the reading's tooltip on a desktop. Enough?</li>
       <li><b>Snow depth</b> adds a line to the reading, so the timeline grows 12 px (16 on a phone) and the buttons move up under the finger. Today it happens behind the open menu. Leave it, or keep the line's room always (16 px on every phone)?</li>
     </ul>
@@ -356,7 +358,7 @@ function draw() {
   frames.push(buildFrame(fr, ph));
   document.getElementById('cap').textContent = {
     today: 'Today: main. The pill names what’s on ("Rain +1") and opens the menu; the menu stays open while you tick.',
-    row: `Buttons on a row of their own: ${ph ? 'on a phone they take the pill’s place and scroll sideways; the timeline is no taller' : 'the title bar stays as it is, with ⋯ beside ✕, and the buttons take a row under it; the timeline is 42 px taller'}.`,
+    row: `Buttons on a row of their own: ${ph ? `on a phone they take the pill’s place and scroll sideways; the buttons make the timeline no taller${trip() ? ', the trip’s row adds one' : ''}` : 'the title bar stays as it is, with ⋯ beside ✕, and the buttons take a row under it; the timeline is 42 px taller'}.`,
     bar: `Buttons on the title bar (the sketch’s way): ${ph ? 'on a phone the same as on a row of their own' : 'the word Timeline goes, its clock stays as the handle, and the window opens 744 px wide (640 today) so the six fit; narrower, they wrap'}.`,
   }[S.v] + (trip() && S.v !== 'today' ? ` Your trip: ${S.trip === 'far' ? 'it starts past the forecast’s 48 hours, so Your trip is greyed, with the reason' : zoomed() ? 'the timeline is zoomed to it; the reading follows you, the band under the hours shows the wind on your way, and ‹ › step between the stretches against you' : 'tap Your trip, or an hour in the weather card (Weather card ›)'}.` : '');
 }
@@ -444,12 +446,12 @@ function tripRows(F, sk) {
 // ‹ Against you, 1 of 3 › and where it is; the band and the route ringed where you stepped to
 function syncStep(F) {
   if (!F.stepEl) return;
-  const list = stretches(), n = list.length, cur = step ?? -1, s = list[Math.max(0, cur)];
+  const list = S.fc === 'ready' ? stretches() : [], n = list.length, cur = step ?? -1, s = list[Math.max(0, cur)];
   const go = (j) => (e) => { e.stopPropagation(); step = j; playing = false; setHour(Math.round(list[j].h0 * 12) / 12); };
   const had = F.stepEl.contains(document.activeElement) ? document.activeElement.dataset.k : null;
   F.stepEl.replaceChildren(
     h('button', { type: 'button', class: 'tool', 'data-k': 'step-prev', 'aria-label': 'The stretch against you before', disabled: cur <= 0 || null, html: icon('chevronLeft', 18), onclick: go(cur - 1) }),
-    h('span', { 'aria-live': 'polite' }, h('b', {}, !n ? 'Nowhere against you for long' : cur < 0 ? `Against you on ${n} stretch${n > 1 ? 'es' : ''}` : `Against you, ${cur + 1} of ${n}`),
+    h('span', { 'aria-live': 'polite' }, h('b', {}, S.fc === 'loading' ? 'The wind on your way: loading' : S.fc !== 'ready' ? 'The wind on your way: no forecast' : !n ? 'Nowhere against you for long' : cur < 0 ? `Against you on ${n} stretch${n > 1 ? 'es' : ''}` : `Against you, ${cur + 1} of ${n}`),
       n ? h('small', {}, cur < 0 ? `up to ${Math.max(...list.map((x) => x.max))} m/s` : `km ${s.km0} to ${s.km1} · up to ${s.max} m/s`) : null),
     h('button', { type: 'button', class: 'tool', 'data-k': 'step-next', 'aria-label': 'The next stretch against you', disabled: cur >= n - 1 || null, html: icon('chevronRight', 18), onclick: go(cur + 1) }));
   if (had) (F.stepEl.querySelector(`[data-k="${had}"]:not(:disabled)`) || F.stepEl.querySelector('button:not(:disabled)'))?.focus({ preventScroll: true }); // (the focus stays on ‹ or ›)
@@ -543,8 +545,9 @@ function buildPlanner(F) {
     }
     kids.push(h('p', { class: 'mk-stand' }, 'A stand-in for main’s weather card: an hour of Rain or Wind opens the timeline on your trip at that hour, with that layer on (↓: against you).'));
   }
-  F.pl = h('div', { class: `mk-pl${phCard ? ' half' : ''}` }, ...kids);
-  if (F.ph && S.way === 'fold' && zoomed() && !card) { F.pl.classList.add('fold'); F.pl.replaceChildren(h('div', { class: 'mk-pl-head' }, h('span', {}, h('b', {}, t.line)), h('button', { type: 'button', class: 'tool', 'data-k': 'unfold', 'aria-label': 'Unfold the planner (the timeline goes back to 48 hours)', html: icon('chevronUp', 18), onclick: act(() => { S.span = '48'; }) }))); }
+  if (F.ph && !card) kids.splice(1, 0, h('p', { class: 'mk-stand mk-peek-rest' }, 'The numbers and the profile, as main’s peek has them'));
+  F.pl = h('div', { class: `mk-pl${phCard ? ' half' : F.ph ? ' peek' : ''}` }, ...kids);
+  if (F.ph && S.way === 'fold' && zoomed() && !card) { F.pl.classList.replace('peek', 'fold'); F.pl.replaceChildren(h('div', { class: 'mk-pl-head' }, h('span', {}, h('b', {}, t.line)), h('button', { type: 'button', class: 'tool', 'data-k': 'unfold', 'aria-label': 'Unfold the planner (the timeline goes back to 48 hours)', html: icon('chevronUp', 18), onclick: act(() => { S.span = '48'; }) }))); }
   F.fr.append(F.pl);
   if (F.ph && panel === 'banner') F.fr.append(h('div', { class: 'mk-banner', role: 'status' }, h('span', { html: `${icon([...layers].includes('wind') ? 'wind' : 'rain', 18)}Weather on the map` }),
     h('button', { type: 'button', class: 'btn small quiet', 'data-k': 'banner-back', onclick: act(() => { panel = 'card'; }) }, 'Back')));
@@ -773,6 +776,8 @@ function renderLegend(F) {
   if (layers.has('cloud')) rows.push(document.documentElement.dataset.theme === 'dark' ? scale('linear-gradient(90deg, #7d8a84, #f1f5f9)', '<b>Clouds</b> the paler, the cloudier') : scale('linear-gradient(90deg, #f1f5f9, #9aa3ae)', '<b>Clouds</b> the greyer, the cloudier'));
   if (layers.has('thunder')) rows.push('<div class="lgl"><i class="lg-dash"></i><span><b>Thunder</b> possible (forecast)</span></div>');
   if (layers.has('snow')) { rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`)); rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>'); }
+  if (zoomed() && S.fc === 'ready') { const css = getComputedStyle(F.fr), sw = (k) => `<i style="display:inline-block;width:14px;height:8px;border-radius:2px;vertical-align:1px;background:${css.getPropertyValue(REL[k][0]).trim()}"></i>`;
+    rows.push(`<div class="lgl"><span><b>The wind on your way</b> (the band under the hours)<br><small>${sw('strong')}${sw('against')} against you · ${sw('side')} from the side · ${sw('behind')} behind you</small></span></div>`); }
   if (hour < 0 && rows.length) rows.unshift('<div class="lgl lg-note">The radar’s past: only the rain has one, the other layers start at Now</div>');
   const open = legendOpen ?? !F.ph;
   F.legend.hidden = !rows.length;
