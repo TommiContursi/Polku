@@ -7,9 +7,9 @@
 <title>Weather timeline</title>
 <meta name="description" content="Mock-up for #869: the map's weather timeline with its layers as buttons instead of the dropdown, beside Today's from main.">
 <!--
-  #869, after #988, 2026-11-12. Part 1 of the weather timeline's round: the layers as buttons instead of the dropdown.
+  #869, 2026-11-12, with #988 merged. Part 1 of the weather timeline's round: the layers as buttons instead of the dropdown.
   Part 2 (zooming the timeline to the trip) waits for the user's answer on part 1. Not wired to the app: nothing here is
-  loaded by Polku. Today is main's timeline as #988 leaves it, drawn from js/wxmap.js (buildBar(), renderPill(),
+  loaded by Polku. Today is main's timeline (with #988), drawn from js/wxmap.js (buildBar(), renderPill(),
   layerMenu(), renderStrip(), readout(), renderTime(), renderLegend(), bindFloat()) with css/app.css's own classes
   (wx-bar, tl-head, tl-title, rt-pill wl-layer, tl-strip, tl-now, wx-row, wx-time, tl-note, tl-grip, wx-legend, fab,
   plan-btn, tool, chip, menu); what's new is in the block marked "new". The forecast is made up, at a fixed clock
@@ -126,7 +126,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 <body class="mk ready">
 <div class="cv">
   <h1>Weather timeline</h1>
-  <p>Part 1 of the timeline's round (<a href="https://github.com/TommiContursi/Polku/issues/869">#869</a>, after <a href="https://github.com/TommiContursi/Polku/pull/988">#988</a>): the map's weather layers as buttons, one tap each, their state in sight, in place of the dropdown. Where the weather comes from doesn't change. <b>Today</b> is <code>main</code>'s timeline as #988 leaves it: its window, the dragging and resizing, the strip, the slider and the reading stay as they are in every version. Drag the title bar or the grip on the right edge on a desktop.</p>
+  <p>Part 1 of the timeline's round (<a href="https://github.com/TommiContursi/Polku/issues/869">#869</a>): the map's weather layers as buttons, one tap each, their state in sight, in place of the dropdown. Where the weather comes from doesn't change. <b>Today</b> is <code>main</code>'s timeline: its window, the dragging and resizing, the strip, the slider and the reading stay as they are in every version. Drag the title bar or the grip on the right edge on a desktop.</p>
   <div class="bars">
     <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="today">Today</button><button data-v="row">Buttons on a row of their own</button><button data-v="bar">Buttons on the title bar</button></div></div>
     <div class="bar"><span>Screen</span><div class="sw" data-k="f"><button data-v="desk">Desktop</button><button data-v="390">Phone 390</button><button data-v="360">Phone 360</button></div>
@@ -257,7 +257,7 @@ function draw() {
   stage.append(fr);
   frames.push(buildFrame(fr, ph));
   document.getElementById('cap').textContent = {
-    today: 'Today: main as #988 leaves it. The pill names what’s on ("Rain +1") and opens the menu; the menu stays open while you tick.',
+    today: 'Today: main. The pill names what’s on ("Rain +1") and opens the menu; the menu stays open while you tick.',
     row: `Buttons on a row of their own: ${ph ? 'on a phone they take the pill’s place and scroll sideways; the timeline is no taller' : 'the title bar stays as it is, with ⋯ beside ✕, and the buttons take a row under it; the timeline is 42 px taller'}.`,
     bar: `Buttons on the title bar (the sketch’s way): ${ph ? 'on a phone the same as on a row of their own' : 'the word Timeline goes, its clock stays as the handle, and the window opens 744 px wide (640 today) so the six fit; narrower, they wrap'}.`,
   }[S.v];

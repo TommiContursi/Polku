@@ -1,9 +1,9 @@
 # The weather timeline: the layers as buttons, then your trip
 
-A design round for #869, in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16), after #988. No app
+A design round for #869, in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16). No app
 code is written here. The mock-up is [mockups/weather-timeline.html](mockups/weather-timeline.html), also a
 [private Artifact](https://claude.ai/artifact/5cLEyQFboky2ZYumGHZpeA) to try on a phone (built with `css/app.css` and
-`js/ui.js` inlined); **Today** in it is `main`'s timeline as #988 leaves it.
+`js/ui.js` inlined); **Today** in it is `main`'s timeline (with #988).
 
 **Where it stands (2026-11-12):** part 1 (the layers as buttons) is drawn and waits for the user's choice. Part 2
 (zooming the timeline to the trip, with the route's weather) is drawn after that answer.
@@ -43,7 +43,7 @@ Two versions, the same on a phone:
 
 Checked with the design skills (emil-design-eng, apple-design, mobile-native, break-ui) at 1440 × 900, 390 and 360 px,
 200 %, light and dark, all six on, the forecast loading and failed, and a window resized to 420 px. Switching any button
-moves no other button (their place and width are measured before and after). What it found:
+but Snow depth moves no button (their place and width are measured before and after each switch). What it found:
 
 - **Snow depth adds a line to the reading**, so the timeline grows 12 px (16 px on a phone) and, its foot fixed, the
   buttons move up under the finger. `main` does the same, behind its open menu. Keeping the line's room always costs
