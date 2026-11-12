@@ -1197,10 +1197,19 @@ export class WeatherOverlay {
     const U0 = unitOf(-PAST), X = (hr) => PAD + ((unitOf(hr) - U0) / (HOURS - U0)) * (W - 2 * PAD);
     ctx.font = '10px system-ui, sans-serif';
     if (!d) { ctx.fillStyle = muted; ctx.fillText(this.loading ? 'Loading the forecast…' : 'Zoom in to see the forecast here', PAD, H / 2); return; }
-    // night
+    // night: shaded, and a moon where it starts (not the tint alone, step 6b)
     ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
-    for (let hr = 0; hr < HOURS; hr++) {
-      if (sunPosition((d.t[hr] + d.t[hr + 1]) / 2, [d.lon, d.lat]).alt < -0.8) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
+    const starts = [];
+    for (let hr = 0, was = false; hr < HOURS; hr++) {
+      const dark = sunPosition((d.t[hr] + d.t[hr + 1]) / 2, [d.lon, d.lat]).alt < -0.8;
+      if (dark) { ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H); if (!was) starts.push(hr); }
+      was = dark;
+    }
+    ctx.fillStyle = muted;
+    for (const hr of starts) { // a crescent: a disc less one beside it
+      const cx = X(hr) + 7, cy = H / 2 + 4, r = 3.5;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(cx + 1.8, cy - 1.2, r, 0, Math.PI * 2); ctx.clip('evenodd');
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     // the radar's last 90 minutes, before Now: only the rain has a past
     ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(96,165,250,0.16)' : 'rgba(59,130,246,0.08)';
@@ -1213,6 +1222,8 @@ export class WeatherOverlay {
       ctx.fillRect(X(go), 0, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), H);
       ctx.globalAlpha = 1;
       ctx.fillRect(X(go), H - 3, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), 3);
+      // its bracket: an end up at each side (not the tint alone, step 6b)
+      for (const x of [X(go), Math.max(X(go) + 3, X(Math.min(HOURS, go + ride))) - 1.5]) ctx.fillRect(x, H - 12, 1.5, 12);
     }
     // rain bars
     const top = 14, bottom = H - 14;
