@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Polku: one route, every sport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@200..800&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
+<style>
+:root {
+  /* Polku's own values, from css/app.css */
+  --accent-bg: #1f6f4a; --route: #d6006e; --text: #141b17; --muted-glass: #3b4741; --line: rgba(28, 36, 32, 0.14);
+  --glass: rgba(255, 255, 255, 0.72); --glass-control: rgba(255, 255, 255, 0.84);
+  --edge: inset 0 0 0 1px rgba(255, 255, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 0 0 1px rgba(16, 24, 20, 0.26);
+  --shadow: 0 8px 28px rgba(16, 24, 20, 0.18), 0 1px 3px rgba(16, 24, 20, 0.1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --mtb: #c2410c; --paddle: #0369a1; --run: #0f766e;
+  --display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --body: 'Atkinson Hyperlegible Next', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+[data-theme="night"] {
+  --accent-bg: #237a52; --text: #f2f5f3; --muted-glass: #c5cec9; --line: rgba(232, 236, 233, 0.16);
+  --glass: rgba(8, 10, 9, 0.73); --glass-control: rgba(8, 10, 9, 0.84);
+  --edge: inset 0 0 0 1px rgba(255, 255, 255, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 0 0 1px rgba(0, 0, 0, 0.7);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
+  --mtb: #f97316; --paddle: #38bdf8; --run: #2dd4bf;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font: 15px/1.4 var(--body); color: var(--text); background: #dfe6e0; overflow: hidden; }
+#map { position: fixed; inset: 0; }
+.glass { background: var(--glass); -webkit-backdrop-filter: blur(32px) saturate(105%); backdrop-filter: blur(32px) saturate(105%); box-shadow: var(--shadow), var(--edge); color: var(--text); transition: background-color 600ms var(--ease-out), color 600ms var(--ease-out); }
+.ui { position: fixed; inset: 0; pointer-events: none; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.ui > * { pointer-events: auto; }
+.brand { position: absolute; left: 16px; top: 16px; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 22px 0 8px; border-radius: 999px; font: 800 28px/1 var(--display); letter-spacing: -0.02em; text-decoration: none; }
+.open { position: absolute; right: 16px; top: 16px; display: inline-flex; align-items: center; height: 56px; padding: 0 26px; border-radius: 999px; background: var(--accent-bg); color: #fff; font-weight: 700; font-size: 17px; text-decoration: none; box-shadow: var(--shadow); }
+.open:active, .ctl button:active { transform: scale(0.97); }
+/* scenes: everything for a scene fades up when the scene is current, and leaves faster */
+.s { position: absolute; opacity: 0; transform: translateY(10px); visibility: hidden; transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s 160ms; }
+body[data-scene="0"] .s0, body[data-scene="1"] .s1, body[data-scene="2"] .s2, body[data-scene="3"] .s3, body[data-scene="4"] .s4 {
+  opacity: 1; transform: none; visibility: visible; transition: opacity 280ms var(--ease-out) var(--d, 500ms), transform 280ms var(--ease-out) var(--d, 500ms), visibility 0s var(--d, 500ms); }
+.head { left: 20px; top: 96px; max-width: min(760px, 92vw); }
+.head h1 { margin: 0; font: 800 clamp(52px, 9.4vw, 128px)/0.86 var(--display); font-stretch: 80%; letter-spacing: -0.02em; text-shadow: 0 0 10px #f4f7ee, 0 0 10px #f4f7ee, 0 0 18px #f4f7ee, 0 0 18px #f4f7ee; color: #141b17; }
+.head p { margin: 14px 0 0; font: 600 clamp(22px, 3vw, 40px)/1.05 var(--display); font-stretch: 90%; text-shadow: 0 0 8px #f4f7ee, 0 0 8px #f4f7ee, 0 0 14px #f4f7ee; color: #141b17; }
+.card { width: min(380px, calc(100vw - 32px)); padding: 16px 18px; border-radius: 14px; display: flex; flex-direction: column; gap: 10px; }
+.card.wide { width: min(470px, calc(100vw - 32px)); }
+.left { left: 16px; bottom: 96px; } .right { right: 16px; bottom: 96px; } .right-top { right: 16px; top: 92px; }
+.kicker { font-size: 13px; font-weight: 700; color: var(--muted-glass); }
+.row { display: flex; align-items: center; gap: 12px; }
+.ring { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; border: 3px solid var(--c); font: 800 12px/1 var(--display); }
+.t { font-size: 17px; font-weight: 700; } .m { font-size: 14px; color: var(--muted-glass); font-variant-numeric: tabular-nums; }
+.sep { padding-top: 10px; border-top: 1px solid var(--line); }
+.big { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.sentence { display: flex; align-items: center; gap: 10px; font: 700 22px/1.1 var(--display); letter-spacing: -0.01em; }
+.note { display: flex; align-items: center; gap: 10px; }
+.note b { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--c); color: #fff; font-size: 13px; }
+.hours { display: flex; gap: 2px; font-variant-numeric: tabular-nums; }
+.hours div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 600; }
+.hours span { font-size: 13px; padding-bottom: 3px; border-bottom: 3px solid var(--c); }
+.pill { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.sw { flex: none; width: 46px; height: 28px; margin-left: auto; border-radius: 999px; background: var(--accent-bg); display: flex; align-items: center; justify-content: flex-end; padding: 0 3px; }
+.sw i { width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+.chk { display: flex; align-items: center; gap: 10px; } .chk span { flex: 1; } .chk b { font-variant-numeric: tabular-nums; }
+.sports { left: 16px; bottom: 96px; display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100vw - 32px); }
+.sports span { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--c); color: #fff; font-size: 14px; font-weight: 700; box-shadow: 0 1px 3px rgba(16, 24, 20, 0.2); }
+.outro { left: 50%; top: 50%; translate: -50% -50%; width: min(560px, calc(100vw - 32px)); padding: 28px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.outro h2 { margin: 0; font: 800 clamp(48px, 8vw, 84px)/0.9 var(--display); font-stretch: 85%; letter-spacing: -0.02em; }
+.outro a { display: inline-flex; align-items: center; min-height: 52px; padding: 0 28px; border-radius: 999px; background: var(--accent-bg); color: #fff; font-weight: 700; font-size: 18px; text-decoration: none; }
+/* the scene bar: the dash is Polku's own mark */
+.ctl { position: absolute; left: 50%; bottom: 16px; translate: -50% 0; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border-radius: 999px; }
+.ctl button { min-width: 44px; height: 44px; border: 0; border-radius: 999px; background: transparent; color: inherit; font: inherit; cursor: pointer; display: grid; place-items: center; transition: transform 120ms var(--ease-out); }
+.ctl .dash { display: block; width: 28px; height: 6px; border-radius: 3px; background: currentColor; opacity: 0.28; transition: opacity 200ms var(--ease-out), background-color 200ms var(--ease-out); }
+.ctl [aria-current="true"] .dash { opacity: 1; background: var(--route); }
+:where(a, button):focus-visible { outline: 2px solid var(--accent-bg); outline-offset: 2px; }
+.wp { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 2.8px solid #111; display: grid; place-items: center; font: 700 14px/1 var(--body); color: #111; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
+.wp.end { background: #111; border-color: #fff; }
+.note-example { position: absolute; right: 16px; bottom: 22px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+@media (max-width: 720px) {
+  .right, .right-top, .left { left: 16px; right: 16px; top: auto; bottom: 88px; }
+  .card, .card.wide { width: auto; }
+  .s2.right { display: none; } .note-example { display: none; }
+  .head { top: 88px; }
+}
+@media (prefers-reduced-motion: reduce) { .s, .glass { transition: opacity 200ms linear !important; transform: none !important; } }
+</style>
+</head>
+<body data-scene="0" data-theme="day">
+<div id="map" aria-label="Map of Tampere with an example route"></div>
+<div class="ui">
+  <a class="brand glass" href="https://polku.si" aria-label="Polku">
+    <svg width="40" height="40" viewBox="0 0 96 96" aria-hidden="true"><rect width="96" height="96" rx="24" fill="#1f6f4a"/><path d="M20 68C34 68 36 50 48 47S62 40 76 28" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-dasharray="9 12"/></svg>polku</a>
+  <a class="open" href="https://polku.si">Open Polku</a>
+
+  <!-- 0: the whole trip -->
+  <div class="s s0 head"><h1>One route.<br>Every sport.</h1><p>And the weather when you get there.</p></div>
+  <div class="s s0 sports" style="--d: 800ms">
+    <span style="--c:#c2410c">MTB</span><span style="--c:#a16207">Gravel</span><span style="--c:#b91c1c">Road</span><span style="--c:#15803d">Hike</span><span style="--c:#4d7c0f">Trail run</span><span style="--c:#0f766e">Run</span><span style="--c:#0369a1">Paddle</span><span style="--c:#6d28d9">Swim</span>
+  </div>
+
+  <!-- 1: on the trails -->
+  <div class="s s1 card glass left">
+    <div class="row"><div class="ring" style="--c: var(--mtb)">MTB</div><div><div class="t">Mountain bike</div><div class="m">Through Kauppi, on the trails</div></div></div>
+    <svg viewBox="0 0 264 72" role="img" aria-label="Height profile coloured by trail difficulty" style="width: 100%"><g id="prof"></g></svg>
+    <div class="row" style="gap: 14px; font-size: 13px; font-weight: 600"><span style="color:#22a447">■</span>S0 <span style="color:#c7c100">■</span>S1 <span style="color:#f59e0b">■</span>S2 <span style="color:#ef4444">■</span>S3</div>
+    <div class="m">Uphill difficulty for every trail, worked out from the terrain.</div>
+  </div>
+
+  <!-- 2: over the water -->
+  <div class="s s2 card wide glass left">
+    <div class="row" style="justify-content: space-between"><span class="pill" style="border: 1px solid var(--line)">Leave Fri 13 Nov, 13:00</span><b>&rarr; there at 21:48</b></div>
+    <div class="sentence"><svg width="34" height="34" viewBox="-20 -20 40 40" aria-hidden="true"><use href="#i-thunder"/></svg>Cool, rain and a risk of thunder</div>
+    <div class="note" style="--c:#b4232a"><b>1</b>Thunder possible around 14:00, near km 5</div>
+    <div class="note" style="--c:#8a5a00"><b>2</b>Gusts up to 15 m/s around 16:00, near km 14</div>
+    <div class="note" style="--c:#141b17"><b>3</b>Rain until around 18:40</div>
+    <div class="hours sep" id="hours"></div>
+  </div>
+  <div class="s s2 card glass right" style="--d: 700ms">
+    <div class="row"><div class="ring" style="--c: var(--paddle)">PAD</div><div><div class="t">Paddle · sea kayak</div><div class="m">Across Näsijärvi</div></div></div>
+    <div class="sep"><span class="big">0.4 m</span> <span class="m">highest waves, an estimate</span></div>
+    <div>Water routes are worked out in your browser, with wave estimates for your craft.</div>
+    <div class="kicker">For planning, not navigation.</div>
+  </div>
+
+  <!-- 3: into town, after dark -->
+  <div class="s s3 card glass left">
+    <div class="row"><div class="ring" style="--c: var(--run)">RUN</div><div><div class="t">Run, after dark</div><div class="m">Into Tampere, in the dark from 16:35</div></div></div>
+    <div class="row sep"><div><div style="font-weight: 600">3D buildings and the sky</div><div class="m">The sky follows the hour, and the buildings stand up</div></div><span class="sw" role="img" aria-label="On"><i></i></span></div>
+  </div>
+  <div class="s s3 card glass right" style="--d: 700ms">
+    <div class="t" style="font: 700 20px/1.1 var(--display)">Check, before you go</div>
+    <div class="chk"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3L20 19H2Z" fill="none" stroke="#ff8a8a" stroke-width="2.2" stroke-linejoin="round"/><path d="M11 9V13.5M11 16V16.2" stroke="#ff8a8a" stroke-width="2.2" stroke-linecap="round"/></svg><span>Warnings</span><b>1</b></div>
+    <div class="chk"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="8.5" fill="none" stroke="#9cc0e4" stroke-width="2" stroke-dasharray="3.5 3"/><text x="11" y="15.5" text-anchor="middle" font-size="12" font-weight="700" fill="#9cc0e4">?</text></svg><span>Not checked</span><b>1</b></div>
+    <div class="chk"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M2 11C5 5.5 17 5.5 20 11C17 16.5 5 16.5 2 11Z" fill="none" stroke="#f2c45a" stroke-width="2"/><circle cx="11" cy="11" r="2.6" fill="#f2c45a"/></svg><span>Good to know</span><b>3</b></div>
+    <div class="m">Missing or late data never looks complete: the route says so.</div>
+  </div>
+
+  <!-- 4: the close -->
+  <div class="s s4 outro glass">
+    <svg width="92" height="92" viewBox="0 0 96 96" aria-hidden="true"><rect width="96" height="96" rx="24" fill="#1f6f4a"/><path d="M20 68C34 68 36 50 48 47S62 40 76 28" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-dasharray="9 12"/></svg>
+    <h2>polku</h2>
+    <div style="font-size: 19px">Free. No account. Your routes stay on your device.</div>
+    <a href="https://polku.si">Open Polku</a>
+  </div>
+
+  <div class="note-example glass">Example route</div>
+  <div class="ctl glass" role="group" aria-label="Scenes">
+    <button id="play" type="button" aria-label="Pause"><svg id="play-ic" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M5 3V15M13 3V15" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
+    <span id="dots" style="display: flex"></span>
+  </div>
+</div>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true"><defs>
+  <g id="i-cloud"><path d="M-14 8H12A8 8 0 0 0 12-8A11 11 0 0 0-9-9A8.5 8.5 0 0 0-14 8Z" fill="#8fa0b5"/></g>
+  <g id="i-rain"><use href="#i-cloud" y="-4"/><path d="M-8 9L-10 15M0 9L-2 15M8 9L6 15" stroke="#3b82f6" stroke-width="2.6" stroke-linecap="round"/></g>
+  <g id="i-thunder"><use href="#i-cloud" y="-4"/><path d="M2 3L-5 12H0L-2 19L7 8H1Z" fill="#f59e0b"/></g>
+  <g id="i-moon"><path d="M6-13A14 14 0 1 0 13 8A11 11 0 0 1 6-13Z" fill="#94a3b8"/></g>
+</defs></svg>
+
+<script>
+const TEST = new URLSearchParams(location.search).has('test'); // no network: a blank map, to try the scenes
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s) => document.querySelector(s);
+
+// ---- the small things the cards draw ----
+{ const pts = [[0,58],[22,50],[44,54],[66,40],[88,30],[110,36],[132,20],[154,12],[176,24],[198,34],[220,30],[242,44],[264,52]];
+  const col = ['#22a447','#22a447','#c7c100','#f59e0b','#c7c100','#f59e0b','#ef4444','#f59e0b','#c7c100','#22a447','#c7c100','#22a447'];
+  $('#prof').innerHTML = pts.slice(1).map((b, i) => { const a = pts[i]; return `<polygon points="${a} ${b} ${b[0]},70 ${a[0]},70" fill="${col[i]}"/>`; }).join('') +
+    `<path d="M${pts.map((p) => p.join(' ')).join('L')}" fill="none" stroke="currentColor" stroke-width="1.6"/>`;
+  const hrs = [[14,'rain','13:00','mtb'],[13,'rain','14:00','mtb'],[12,'thunder','15:00','paddle'],[11,'rain','16:00','paddle'],[10,'rain','17:00','paddle'],[9,'cloud','18:00','paddle'],[8,'moon','19:00','run'],[7,'moon','20:00','run']];
+  $('#hours').innerHTML = hrs.map(([t, ic, h, s]) => `<div>${t}°<svg width="30" height="30" viewBox="-20 -20 40 40" aria-hidden="true"><use href="#i-${ic}"/></svg><span style="--c: var(--${s})">${h}</span></div>`).join(''); }
+
+// ---- the map: the same open sources Polku uses (OpenFreeMap, Mapterhorn) ----
+const PAL = {
+  day:   { bg: '#ecf0e4', wood: '#d2e3c4', park: '#dcebcf', water: '#a9d3ee', road: '#ffffff', casing: '#c4cbc0', path: '#3b4741', bld: '#d9d4cb', label: '#141b17', halo: '#ffffff', wlabel: '#1f6fa5',
+           sky: { 'sky-color': '#bcd8f0', 'horizon-color': '#eef3ea', 'fog-color': '#eef3ea', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.4 } },
+  night: { bg: '#141c22', wood: '#18251f', park: '#1a2a22', water: '#0c2233', road: '#3a4658', casing: '#0e141a', path: '#8a97a3', bld: '#2a323c', label: '#e8ece9', halo: '#0b1218', wlabel: '#7fb6dc',
+           sky: { 'sky-color': '#060b18', 'horizon-color': '#1a2740', 'fog-color': '#101826', 'sky-horizon-blend': 0.7, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.5 } } };
+const P = PAL.day, zi = (...s) => ['interpolate', ['linear'], ['zoom'], ...s];
+const style = TEST ? { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': P.bg } }] } : {
+  version: 8, transition: { duration: 1400, delay: 0 }, sky: P.sky,
+  glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  sources: {
+    ofm: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
+    dem: { type: 'raster-dem', tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'], tileSize: 512, maxzoom: 14, encoding: 'terrarium', attribution: '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>' },
+    terrain: { type: 'raster-dem', tiles: ['https://tiles.mapterhorn.com/{z}/{x}/{y}.webp'], tileSize: 512, maxzoom: 13, encoding: 'terrarium' } },
+  terrain: { source: 'terrain', exaggeration: 1.5 },
+  layers: [
+    { id: 'bg', type: 'background', paint: { 'background-color': P.bg } },
+    { id: 'wood', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest']]], paint: { 'fill-color': P.wood } },
+    { id: 'park', type: 'fill', source: 'ofm', 'source-layer': 'park', paint: { 'fill-color': P.park, 'fill-opacity': 0.7 } },
+    { id: 'hills', type: 'hillshade', source: 'dem', paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#3a4a40', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#5a6a5e' } },
+    { id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', paint: { 'fill-color': P.water } },
+    { id: 'stream', type: 'line', source: 'ofm', 'source-layer': 'waterway', paint: { 'line-color': P.water, 'line-width': zi(10, 0.6, 16, 3) } },
+    { id: 'path', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12, filter: ['in', ['get', 'class'], ['literal', ['path', 'track']]], paint: { 'line-color': P.path, 'line-width': zi(12, 0.7, 16, 1.8), 'line-dasharray': [3, 2], 'line-opacity': 0.8 } },
+    { id: 'road-case', type: 'line', source: 'ofm', 'source-layer': 'transportation', filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': P.casing, 'line-width': zi(9, 1, 13, 4, 17, 16) } },
+    { id: 'road', type: 'line', source: 'ofm', 'source-layer': 'transportation', filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': P.road, 'line-width': zi(9, 0.5, 13, 2.6, 17, 12) } },
+    { id: 'bld', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, maxzoom: 14, paint: { 'fill-color': P.bld } },
+    { id: 'bld3d', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 14, paint: { 'fill-extrusion-color': P.bld, 'fill-extrusion-opacity': 0.92, 'fill-extrusion-vertical-gradient': true,
+        'fill-extrusion-height': zi(14, 0, 15, ['coalesce', ['get', 'render_height'], 6]), 'fill-extrusion-base': zi(14, 0, 15, ['coalesce', ['get', 'render_min_height'], 0]) } },
+    { id: 'wname', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', layout: { 'text-field': ['coalesce', ['get', 'name:latin'], ['get', 'name']], 'text-font': ['Noto Sans Italic'], 'text-size': 14 }, paint: { 'text-color': P.wlabel, 'text-halo-color': P.halo, 'text-halo-width': 1.5 } },
+    { id: 'place', type: 'symbol', source: 'ofm', 'source-layer': 'place', layout: { 'text-field': ['coalesce', ['get', 'name:latin'], ['get', 'name']], 'text-font': ['Noto Sans Bold'], 'text-size': zi(8, 12, 15, 17) }, paint: { 'text-color': P.label, 'text-halo-color': P.halo, 'text-halo-width': 1.8 } } ] };
+const THEME = [['bg', 'background-color', 'bg'], ['wood', 'fill-color', 'wood'], ['park', 'fill-color', 'park'], ['water', 'fill-color', 'water'], ['stream', 'line-color', 'water'], ['path', 'line-color', 'path'],
+  ['road-case', 'line-color', 'casing'], ['road', 'line-color', 'road'], ['bld', 'fill-color', 'bld'], ['bld3d', 'fill-extrusion-color', 'bld'], ['wname', 'text-color', 'wlabel'], ['wname', 'text-halo-color', 'halo'], ['place', 'text-color', 'label'], ['place', 'text-halo-color', 'halo']];
+function setTheme(name) {
+  document.body.dataset.theme = name;
+  const p = PAL[name];
+  for (const [id, prop, key] of THEME) if (map.getLayer(id)) map.setPaintProperty(id, prop, p[key]);
+  if (map.getLayer('hills')) map.setPaintProperty('hills', 'hillshade-exaggeration', name === 'night' ? 0.25 : 0.45);
+  if (!TEST && map.setSky) map.setSky(p.sky);
+  for (const l of LEGS) if (map.getLayer(l.id)) paintLeg(l); // the route takes the theme's sport colours
+}
+
+// ---- the route: three legs, three sports (an example, around Tampere) ----
+const LEGS = [
+  { id: 'mtb', sport: 'mtb', router: 'trekking', pts: [[23.8125, 61.5075], [23.829, 61.514], [23.848, 61.521], [23.838, 61.5265], [23.815, 61.522], [23.7935, 61.5135]] },
+  { id: 'paddle', sport: 'paddle', pts: [[23.7935, 61.5135], [23.775, 61.5125], [23.752, 61.5095], [23.7375, 61.5035]] },
+  { id: 'run', sport: 'run', router: 'trekking', pts: [[23.7375, 61.5035], [23.745, 61.501], [23.755, 61.4995], [23.7605, 61.498]] } ];
+const sportColor = (s) => getComputedStyle(document.body).getPropertyValue('--' + s).trim();
+async function routed(leg) { // snap the land legs to real ways with BRouter, as Polku does; the plain line if it doesn't answer
+  if (TEST || !leg.router) return leg.pts;
+  try {
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 7000);
+    const r = await fetch(`https://brouter.de/brouter?lonlats=${leg.pts.map((p) => p.join(',')).join('|')}&profile=${leg.router}&alternativeidx=0&format=geojson`, { signal: ctl.signal });
+    const g = await r.json(); const c = g.features[0].geometry.coordinates.map((p) => [p[0], p[1]]);
+    return c.length > 1 ? c : leg.pts;
+  } catch { return leg.pts; }
+}
+function paintLeg(l) {
+  const c = sportColor(l.sport), p = Math.max(0.0001, Math.min(1, l.p ?? 0));
+  const grad = (col) => p >= 1 ? ['step', ['line-progress'], col, 1, col] : ['step', ['line-progress'], col, p, 'rgba(0,0,0,0)'];
+  map.setPaintProperty(l.id + '-glow', 'line-gradient', grad(c));
+  map.setPaintProperty(l.id + '-case', 'line-gradient', grad('#ffffff'));
+  map.setPaintProperty(l.id, 'line-gradient', grad(c));
+}
+async function addRoute() {
+  for (const l of LEGS) {
+    l.line = await routed(l); l.p = 0;
+    map.addSource(l.id, { type: 'geojson', lineMetrics: true, data: { type: 'Feature', geometry: { type: 'LineString', coordinates: l.line } } });
+    const lay = { 'line-cap': 'round', 'line-join': 'round' };
+    map.addLayer({ id: l.id + '-glow', type: 'line', source: l.id, layout: lay, paint: { 'line-width': 18, 'line-blur': 12, 'line-opacity': 0.35} });
+    map.addLayer({ id: l.id + '-case', type: 'line', source: l.id, layout: lay, paint: { 'line-width': 10 } });
+    map.addLayer({ id: l.id, type: 'line', source: l.id, layout: lay, paint: { 'line-width': 6 } });
+    paintLeg(l);
+  }
+  const mk = (pt, html, cls = '') => { const el = document.createElement('div'); el.className = 'wp ' + cls; el.innerHTML = html; return new maplibregl.Marker({ element: el }).setLngLat(pt).addTo(map); };
+  mk(LEGS[0].line[0], '1'); mk(LEGS[1].line[0], '2'); mk(LEGS[2].line[0], '3'); mk(LEGS[2].line.at(-1), '', 'end');
+}
+let drawRaf = 0;
+function drawLegs(upTo, ms) { // legs before `upTo` are whole, `upTo` draws itself over `ms`, later ones wait
+  cancelAnimationFrame(drawRaf);
+  LEGS.forEach((l, i) => { if (i !== upTo) { l.p = i < upTo ? 1 : 0; if (map.getLayer(l.id)) paintLeg(l); } });
+  const l = LEGS[upTo]; if (!l || !map.getLayer(l.id)) return;
+  if (reduce || !ms) { l.p = 1; return paintLeg(l); }
+  const t0 = performance.now();
+  const step = (t) => { l.p = Math.min(1, (t - t0) / ms); paintLeg(l); if (l.p < 1) drawRaf = requestAnimationFrame(step); };
+  drawRaf = requestAnimationFrame(step);
+}
+
+// ---- the scenes ----
+const SCENES = [
+  { name: 'The whole trip', cam: { center: [23.79, 61.513], zoom: 11.6, pitch: 48, bearing: -18 }, fly: 2600, hold: 5200, theme: 'day', leg: 3, turn: 10 },
+  { name: 'Mountain bike in Kauppi', cam: { center: [23.83, 61.519], zoom: 13.5, pitch: 62, bearing: 34 }, fly: 4200, hold: 6200, theme: 'day', leg: 0, turn: 22 },
+  { name: 'Paddle across Näsijärvi', cam: { center: [23.765, 61.5105], zoom: 13.3, pitch: 56, bearing: -42 }, fly: 4200, hold: 7000, theme: 'day', leg: 1, turn: -18 },
+  { name: 'Run into Tampere after dark', cam: { center: [23.749, 61.5006], zoom: 15, pitch: 68, bearing: 150 }, fly: 4600, hold: 7000, theme: 'night', leg: 2, turn: 40 },
+  { name: 'Polku', cam: { center: [23.79, 61.511], zoom: 12, pitch: 52, bearing: 12 }, fly: 4200, hold: 6000, theme: 'day', leg: 3, turn: 12 } ];
+const map = new maplibregl.Map({ container: 'map', style, ...SCENES[0].cam, zoom: SCENES[0].cam.zoom - 0.8, maxPitch: 75, attributionControl: { compact: true }, canvasContextAttributes: { antialias: true } });
+let scene = 0, playing = !reduce, timer = 0, ready = false, gen = 0;
+function go(i, user) {
+  scene = (i + SCENES.length) % SCENES.length; const s = SCENES[scene];
+  document.body.dataset.scene = scene;
+  [...$('#dots').children].forEach((b, j) => b.setAttribute('aria-current', j === scene));
+  clearTimeout(timer); gen++; map.stop();
+  if (!ready) return;
+  setTheme(s.theme);
+  if (reduce) { map.jumpTo(s.cam); drawLegs(Math.min(s.leg, 2), 0); if (s.leg > 2) LEGS.forEach((l) => { l.p = 1; paintLeg(l); }); return; }
+  map.flyTo({ ...s.cam, duration: s.fly, curve: 1.3, essential: true });
+  if (s.leg >= LEGS.length) { LEGS.forEach((l) => { l.p = 1; paintLeg(l); }); } else drawLegs(s.leg, s.fly + 1800);
+  const g = ++gen; // then a slow turn while the cards are read; a later go() makes this one stale
+  timer = setTimeout(() => {
+    if (g !== gen) return;
+    map.easeTo({ bearing: s.cam.bearing + s.turn, duration: s.hold, easing: (t) => t, essential: true });
+    if (playing) timer = setTimeout(() => { if (g === gen) go(scene + 1); }, s.hold);
+  }, s.fly + 60);
+}
+function setPlaying(on) {
+  playing = on; $('#play').setAttribute('aria-label', on ? 'Pause' : 'Play');
+  $('#play-ic').innerHTML = on ? '<path d="M5 3V15M13 3V15" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>' : '<path d="M5 3L15 9L5 15Z" fill="currentColor"/>';
+  clearTimeout(timer); gen++; if (on) go(scene); else map.stop();
+}
+$('#dots').innerHTML = SCENES.map((s, i) => `<button type="button" aria-label="${s.name}" aria-current="${i === 0}"><span class="dash"></span></button>`).join('');
+$('#dots').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { go([...$('#dots').children].indexOf(b), true); } });
+$('#play').addEventListener('click', () => setPlaying(!playing));
+for (const ev of ['mousedown', 'touchstart', 'wheel']) map.getCanvas().addEventListener(ev, () => { if (playing) setPlaying(false); }, { passive: true }); // the map is yours once you touch it
+document.addEventListener('visibilitychange', () => { if (document.hidden && playing) setPlaying(false); });
+map.on('load', async () => { await addRoute(); ready = true; setPlaying(playing); if (!playing) go(0); });
+window.polkuShow = { go, map, SCENES }; // for trying things from the console
+</script>
+</body>
+</html>
