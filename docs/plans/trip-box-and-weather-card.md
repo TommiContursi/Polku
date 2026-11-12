@@ -523,6 +523,13 @@ Three PRs, each tried on a phone before the next, in this order: 6a, then 6b, th
   - DEVELOPING: Weather and the sheet; Shared controls gets the pills' row and "On top · 2".
 - **Motion:** the line rising in the sheet's place. The user runs `/review-animations` before this PR opens.
 
+**Built (#987, 2026-11-12):** as listed, in commits that each leave the app working: the layers' state (`wxState()`, the two pills, Layers' chips and switches, the tiles); the departure unlinked both ways (`When.hour()` and `fromMap` gone; road works and road conditions follow the map's hour through `mapTime()`); opening and closing (`openLine()`, `weatherLast`); the line's place and motion (`setOpen()`, `planner.setLineOver()`); and the wind's still lines (`drawWindStill()`). The build differs where the plan was silent or the mock-up said more:
+- **The line isn't kept open across a reload.** It opens at Now and ✕ goes back to Now, so a reload starts where ✕ leaves it, with the layers on, and a phone never opens with its sheet gone.
+- **A card or Plan takes the sheet back from the line** on a phone: `showSheet()` asked for the sheet while the line is over it closes the line first.
+- **Wind lines are white over any colour,** dark over none on a light map, as mock-up E's option b draws them, not in the speed's colours over Wind speed.
+- **The reading** is the mock-up's: the sky, the temperature, the time over the wind (its gust in brackets), the rain and where it's read. The rain's 6-hour sum went, as in E.
+- **A lane's tap** opens the line at the stretch's time and follows the tiles' rule (the wind's lane puts Wind lines on top, rain sets the colour), until the user decides Round 5's folded bar (#869).
+
 **6c. The Weather button's temperature.**
 - `js/main.js` and `js/wxmap.js`:
   - **When it shows.** Before the weather's first use, the button says Weather, as today, and asks for nothing. The first use is Weather, or a layer from Layers or a tile, and it's stored. After it, the button shows the sky and the temperature at the map's centre at Now, or the hour's while the line is open.

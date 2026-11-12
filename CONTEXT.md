@@ -127,8 +127,16 @@ _Avoid_: stop (a stop is a wait at a waypoint), fold level
 The trip's weather: where you'll be, at the time you're there.
 _Avoid_: weather window
 
-**Weather timeline**:
-The map's weather hour by hour, not tied to the route.
-
 **Weather line**:
-The weather card folded to one line: the map's weather at its hour, and the strip that sets the hour. At the toolbar's end on a desktop.
+The map's weather hour by hour, not tied to the route: the reading at the map's centre, the strip that sets the hour, and two pills, the map's colour and On top. Weather (T) opens it; on a phone it takes the sheet's place, on a desktop it sits at the map's foot.
+_Avoid_: timeline, weather timeline
+
+**Map colour**:
+The one weather layer that colours the map: Rain and snowfall, Clouds, Wind speed, Temperature, Snow on the ground, or None.
+
+**On top**:
+The weather layers over the map colour, any of them at once: Thunder, Wind lines, Weather at places.
+
+**Weather at places**:
+The sky, the temperature and the wind at the places the map names.
+_Avoid_: towns' weather

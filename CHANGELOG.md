@@ -4,6 +4,18 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-12
 
+### The weather line ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- The map's weather is one colour at a time, **Rain and snowfall**, **Clouds**, **Wind speed**, **Temperature**, **Snow on the ground** or **None**, and on top of it any of **Thunder**, **Wind lines** and **Weather at places**. The weather line has a pill for each choice: "Rain ▾" opens the colours, with **Effects** under them, and "On top · 2 ▾" opens what goes on top.
+- The wind is two layers now: **Wind speed** colours the map by how hard it blows, and **Wind lines** show which way it blows, white over a colour. With reduced motion the lines stand still and still show the wind's direction.
+- **Weather** (T) opens the line at Now, with the layers that were on last, or **Weather at places** the first time. **✕** closes it and the map goes back to Now, with its layers still on. A layer switched on in Layers, from a tile or from the weather card shows at Now and doesn't open the line. The line is closed after a reload.
+- On a phone the line takes the planner's place at the foot of the screen, and the planner comes back as it was after **✕**. A tap that opens a card, or **Plan**, brings the planner back. On a desktop the line sits at the map's foot, right of the planner. It no longer floats as a window you can move and resize.
+- The line's hour no longer changes when you leave, and **When** no longer moves the line. Road works and road conditions on the map follow the line's hour. The strip marks your trip at its own time, whatever hour the map shows.
+- The line's reading gives the sky, the temperature and the time, then the wind, the rain and whether it's read at the map's centre or at the spot you held. While its forecast loads, or when it failed or is out of date, it shows "–" rather than an older number.
+- Layers' weather group has **Map colour** as chips, with the chosen colour's opacity, then **Weather effects** and switches for **On top**. Its **Timeline** switch is gone. Winter's **Snow depth on the map** sets the colour to snow on the ground.
+- A sport's tiles keep their layers: **Rain radar** and **Temperature** set the colour, so running's two replace each other, and **Wind lines** puts the wind's lines on top of whatever colour is on. **Towns' weather** is now **Weather at places**.
+- Polku keeps your weather layers in a new way, so layers you had on before this update start off.
+
 ### The hour strip's arrows ([#984](https://github.com/TommiContursi/Polku/issues/984))
 
 - On a desktop, **Rain**, **Wind** and **Dark** in the weather card have arrows beside their hours too, so you can page through the hours from any section. They move the strip and every section together. A phone has no arrows: a swipe scrolls.
