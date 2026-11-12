@@ -134,7 +134,9 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
   mock-up: a phone's row opens with the first button that's on clear of the fade at its edge (32 px), not 8 px from
   the edge, where the fade would cover it; ⋯ and ✕ are 16 px apart by touch, so each has a finger's 44 px without
   covering the other's; on a desktop the row is moved under the title bar (721 px wide and more), so the page's order
-  is the screen's. The skeleton fades in after 300 ms and breathes, as the cards' does (`pick-skel`).
+  is the screen's. The skeleton fades in after 300 ms and breathes, as the cards' does (`pick-skel`). Found in testing
+  (2026-11-13): the sideways row is also a narrow desktop window's, where a mouse couldn't move it, so a mouse has the
+  hour strip's arrows at its edges and a drag there (a screen size isn't a device).
 
 ## What stays as it is
 

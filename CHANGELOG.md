@@ -7,7 +7,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### The weather layers as buttons ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - The timeline's weather layers are buttons: **Rain**, **Clouds**, **Thunder**, **Wind**, **Temperature** and **Snow depth**. A tap turns one on or off, it's green while it's on, and you can have as many on as you like.
-- On a desktop the buttons have a row of their own under the timeline's title, and pointing at one says what it shows. On a phone they're in the timeline's top row: swipe it sideways for the ones that don't fit.
+- On a desktop the buttons have a row of their own under the timeline's title, and pointing at one says what it shows. On a phone, or in a narrow window, they're in the timeline's top row: swipe it sideways for the ones that don't fit, or with a mouse use the arrows at its edges or drag it.
 - While **Temperature** colours the map, **Wind** says **Wind lines**, as the wind then shows only its moving lines.
 - **Weather at places** and **Effects** are under **⋯**, beside the timeline's **✕**.
 - On a phone the slider's knob is now under the strip's line for the time, as on a desktop.
