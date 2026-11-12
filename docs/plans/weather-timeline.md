@@ -26,7 +26,7 @@ the user says so. `main`'s look stays.
 - Go's contents in the weather card, and Go's tab gone (#973, #794, #759).
 - Warnings called Warnings in the planner's lists (#853). Not done: "heads-up" is still in Check's tab tooltip and
   its empty note (`js/planner.js` 121, 4691), a round trip's notes (1878) and Settings' Hidden Heads-up (`js/main.js`
-  1841).
+  1841): #993.
 - The weather card: the sentence with the sky, up to three notes, the numbers, the hour strip with Rain and Wind, and
   the older views folded away (#973, #979); the wind's colours, the cold by the wind's direction, and thunder in Check
   (#973).
