@@ -1078,7 +1078,7 @@ export class WeatherOverlay {
 
   // ------------------------------------------------------------------ time bar
   // The weather line (step 6b): ▷, the reading at the map's centre (or the spot) with the time, ✕; the strip with its
-  // range under it; the note; and a row of two pills, the map's colour and On top
+  // range under its drawing; the note; and a row of two pills, the map's colour and On top
   buildBar() {
     const bar = document.getElementById('wx-bar');
     this.bar = bar;
@@ -1107,7 +1107,7 @@ export class WeatherOverlay {
     bar.append(
       h('div', { class: 'wl-row' }, this.playBtn, this.nowEl,
         h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close the weather line: the map goes back to Now', onclick: () => this.app.onClose(), html: icon('close', 20) })),
-      this.stripCv, this.slider, this.noteEl,
+      h('div', { class: 'wl-scrub' }, this.slider, this.stripCv), this.noteEl, // (the range under the strip's drawing: the drawing takes the pointer, the range the keyboard and a screen reader)
       h('div', { class: 'wl-picks' }, this.colourPill, this.topPill),
     );
     new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);

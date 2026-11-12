@@ -12647,7 +12647,8 @@ WX_LINE = """(async () => {
   for (let k = 0; k < 100 && !document.querySelector('#wx-bar .tl-now-main svg'); k++) await wait(100);
   const temp = () => document.querySelector('#wx-bar .tl-now-main b')?.textContent;
   if (temp() !== '4°') out.push(`the reading says ${temp()}, not 4°`);
-  w.status = 'Weather forecast unavailable right now'; w.readout(); await wait(100);
+  w.status = 'Weather forecast unavailable right now'; w.readout();
+  for (let k = 0; k < 40 && temp() !== '–'; k++) await wait(50); // (it's drawn on the next frame)
   if (temp() !== '–' || !/unavailable/.test(document.querySelector('#wx-bar .tl-now small').textContent)) out.push(`the forecast failed, the reading says ${temp()}: ${document.querySelector('#wx-bar .tl-now small').textContent}`);
   w.status = null; w.readout(); await wait(100);
   w.setHour(6); await wait(200);
@@ -18591,7 +18592,7 @@ TG_LOOK = """(() => {
   for (const [what, sel] of [['the search', '#search-input'], ['the sport pill', '#activity-bar .act-current'], ['Settings', '#btn-settings'],
     ['the Polku mark', '.topbar .brand'], ['Zoom in to see every trail', '#zoom-hint'], ["the credits' (i)", '.maplibregl-ctrl-attrib-button'],
     ['the compass', '.ctrl-compass button'], ['Locate', '#btn-locate'], ['3D', '.ctrl-3d'], ['Weather', '#btn-time'], ['Layers', '#btn-layers'],
-    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the map colour's pill", '#wx-bar .wl-layer[data-wx=colour]'], ["On top's pill", '#wx-bar .wl-layer[data-wx=top]'], ['Play', '#wx-bar .wl-row > .tool'], ['the time slider', '#wx-bar .wl-range'],
+    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the map colour's pill", '#wx-bar .wl-layer[data-wx=colour]'], ["On top's pill", '#wx-bar .wl-layer[data-wx=top]'], ['Play', '#wx-bar .wl-row > .tool'], ['the strip of hours', '#wx-bar .tl-strip'],
     ["a map popup's ✕", '.polku-popup .maplibregl-popup-close-button']]) {
     const e = document.querySelector(sel);
     if (!e || !e.getClientRects().length) fails.push(`${what} isn't there (${sel})`); else hit(what, e);

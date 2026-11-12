@@ -427,9 +427,12 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-now .tl-arrow { width: 12px; height: 12px; fill: currentColor; vertical-align: -1px; margin-right: 3px; }
 /* at 200 %: the reading on a row of its own, keeping the wind and the rain */
 @container (max-width: 240px) { .wl-row { flex-wrap: wrap; } .tl-now { order: 9; flex: 1 1 100%; padding: 0 6px 4px; } }
-/* the strip, its range under it at the same width (js/wxmap.js's PAD lines them up) */
-.tl-strip { display: block; width: 100%; height: 56px; margin-top: 2px; cursor: ew-resize; touch-action: none; border-radius: 8px; }
-.wl-range { display: block; width: 100%; margin: 0; accent-color: var(--accent); }
+/* the strip, its range under its drawing: the drawing takes the pointer, the range the keyboard and a screen reader,
+   its focus ring drawn round the strip */
+.wl-scrub { position: relative; margin-top: 2px; border-radius: 8px; }
+.wl-scrub:has(.wl-range:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.tl-strip { position: relative; display: block; width: 100%; height: 56px; cursor: ew-resize; touch-action: none; border-radius: 8px; }
+.wl-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; }
 .tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
 }
 .fab.ahead .fab-time-label { color: var(--route-text); font-weight: 800; }
@@ -523,7 +526,6 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
     content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%);
   }
   .maplibregl-ctrl-attrib-button::after { content: ""; position: absolute; inset: -14px -10px -6px; } /* (more above: the timeline is just under it) */
-  .wl-range { height: 44px; }
 }
 @media (pointer: coarse) { .zoom-hint { position: relative; } .zoom-hint::after { content: ""; position: absolute; inset: -6px 0 -8px; } } /* (6 px up to the top bar) */
 
