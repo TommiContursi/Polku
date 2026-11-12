@@ -18270,8 +18270,15 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   box.innerHTML = `<div class="chips"><button class="chip" aria-pressed="true">Grade</button></div>
     <div class="style-presets"><span class="chip chip-on">Custom</span></div><div class="act-chips"><button class="act-chip" aria-pressed="true">Canoe</button></div>
     <div class="menu-chips"><button class="menu-item chip" aria-checked="true"><span>Flowy</span></button></div>`;
+  // (Layers' weather Map colour, step 6b: its chosen chip, as Layers has it, beside the round trip's)
+  const wxChip = document.querySelector('#layers-body .wx-colours .chip[aria-pressed=true]');
+  if (!wxChip) out.push('Layers’ Map colour has no chosen chip');
+  else box.append(Object.assign(document.createElement('div'), { className: 'rt-chips wx-colours' })), box.lastChild.append(wxChip.cloneNode(true));
+  // (the weather line's two pills: the shared ▾ pill)
+  for (const pill of document.querySelectorAll('#wx-bar .wl-layer')) if (!pill.matches('button.rt-pill.wl-layer[aria-haspopup=menu]') || !pill.querySelector('.ic')) out.push(`the weather line's ${pill.dataset.wx} pill isn't the shared ▾ pill: ${pill.outerHTML.slice(0, 120)}`);
+  if (document.querySelectorAll('#wx-bar .wl-layer').length !== 2) out.push(`the weather line has ${document.querySelectorAll('#wx-bar .wl-layer').length} pills, not two`);
   if (!ref) out.push('no chosen length in the round trip');
-  else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
+  else for (const [sel, what] of [['.wx-colours .chip', 'Layers’ Map colour'], ['.chips .chip', 'a chip in Layers or the profile'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
     if (chip(box.querySelector(sel)) !== chip(ref)) out.push(`${what}, chosen: ${chip(box.querySelector(sel))}, not the round trip's ${chip(ref)}`);
   // switches: one height in a place, --target; the chosen one white (--seg-on), with black words and a green icon (the green where
   // it sits: the glass's on the glass, #547)

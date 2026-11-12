@@ -1111,6 +1111,7 @@ export class WeatherOverlay {
       h('div', { class: 'wl-picks' }, this.colourPill, this.topPill),
     );
     new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);
+    this.renderPill();
   }
 
   // The two pills (step 6b): the map's colour ("Rain ▾") and On top ("On top · 2 ▾"), their names starting with their words
