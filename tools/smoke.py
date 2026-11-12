@@ -12729,7 +12729,7 @@ WC_JS = """(async () => {
   // card's word from 4 mm an hour; Check's thunder hidden by its name; leaving a note keeps what its click framed
   const key = p.cards.box?.querySelector('[data-k=lane-rain] + .wx-key')?.textContent || '';
   if (/null/.test(card())) errs.push('“null” in the card (a lane of one colour has no key)');
-  if (!/a risk of thunder/.test(box()) || /heavy/.test(key) || !/over 2 mm\/h/.test(key) || p.thunderWarnings(a)[0]?.hide !== 'Thunder') errs.push(`the box “${box()}”, the rain's key “${key}”, Check's thunder hidden as “${p.thunderWarnings(a)[0]?.hide}”`);
+  if (!/a risk of thunder/.test(box()) || /heavy/.test(key) || !/over 2 mm\\/h/.test(key) || p.thunderWarnings(a)[0]?.hide !== 'Thunder') errs.push(`the box “${box()}”, the rain's key “${key}”, Check's thunder hidden as “${p.thunderWarnings(a)[0]?.hide}”`);
   const tell = p.cards.box?.querySelector('.wx-tell');
   tell?.dispatchEvent(new FocusEvent('focus')); tell?.click(); tell?.dispatchEvent(new FocusEvent('blur')); await wait(100);
   if (!p.focusHl) errs.push('leaving a note clears what its click framed');
