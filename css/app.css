@@ -417,10 +417,10 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .rt-pill:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .wl-picks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 2px 0; }
 /* the reading: the sky and the temperature, then the time over the wind, the rain and where it's read */
-.tl-now { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; color: var(--text); font-variant-numeric: tabular-nums; }
+.tl-now { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; color: var(--text); font-variant-numeric: tabular-nums; }
 .tl-now-main { display: flex; align-items: center; gap: 4px; flex: none; }
 .tl-now-main b { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
-.tl-now-text { min-width: 0; display: grid; line-height: 1.25; }
+.tl-now-text { flex: 1 1 8em; min-width: 0; display: grid; line-height: 1.25; } /* (under the temperature where it has no room beside it: 200 %) */
 .wx-time { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .tl-now-text small { font-size: 13px; }
 .tl-now-text small > span { white-space: nowrap; } /* (each value whole: the line breaks only between them, at “·”) */

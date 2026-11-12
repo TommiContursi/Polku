@@ -12615,6 +12615,8 @@ WX_LINE = """(async () => {
   if (document.querySelector('#btn-time').getAttribute('aria-pressed') !== 'true') out.push('Weather isn’t pressed with the line open');
   w.setHour(6); await wait(200);
   document.querySelector('#wx-bar .tl-close').click(); await wait(300);
+  if (w.open) out.push('✕: the line still says it’s open');
+  for (let k = 0; k < 40 && !bar().hidden; k++) await wait(100); // (it fades out first)
   if (w.open || !bar().hidden || w.hour !== 0 || !S.weather.places) out.push(`✕: open ${w.open}, hour ${w.hour}, ${weather()}`);
   if (Math.abs(polku.safety.app.time() - Date.now() / 1000) > 60) out.push('✕: road works and road conditions aren’t back at Now');
   // a tile, then Layers: at Now, the line stays closed
