@@ -706,6 +706,7 @@ SCENES = {
     'desk-timeline-layers-dark': dict(DESK, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', js=WX_LAYERS_ON),
     'phone-timeline-layers': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=WX_LAYERS_ON),
     'phone-timeline-layers-dark': dict(PHONE, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', state='peek', js=WX_LAYERS_ON),
+    'desk-narrow-timeline-layers-dark': dict(DESK, w=600, h=800, timeline=True, dark=True, base='night', js=WX_LAYERS_ON),
     'desk-paddle-weather': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], storage=SIDE, js=WEATHER()),
     'phone-tab-check': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=TAB('warnings')),
     'desk-long-hazards': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, pre=LONG_HAZARDS, js=TAB('warnings')),

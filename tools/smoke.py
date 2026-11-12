@@ -12582,11 +12582,13 @@ def timeline_phone(chrome):
 
 # The weather layers in a narrow window with a mouse (#869: a screen size is not a device): the row in the head scrolls
 # sideways, with the hour strip's arrow at the edge where there's more and none where there isn't; a real mouse's click on
-# the arrow pages it, a drag from a button moves it and switches nothing, and a click without a move switches the layer
+# the arrow pages it, a drag from a button moves it and switches nothing, and a click without a move (on the button in the
+# row's middle, clear of the arrows) switches its layer
 TL_MOUSE_ROW = """(() => {
   const row = document.querySelector('#wx-bar .tl-layers'), a = (s) => document.querySelector(`#wx-bar .tl-lwrap > .wx-hs-arrow.${s}`);
   const seen = (e) => { const c = getComputedStyle(e); return c.display !== 'none' && +c.opacity > 0.5 && c.pointerEvents !== 'none'; }, mid = (k) => { const r = (k === 'r' ? a('r') : row.querySelector(`[data-k=${k}]`)).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
-  return { left: Math.round(row.scrollLeft), l: seen(a('l')), r: seen(a('r')), more: row.scrollWidth > row.clientWidth, arrow: mid('r'), rain: mid('rain'), cloud: mid('cloud'), on: Object.entries(polku.weather.on).filter(([, v]) => v).map(([k]) => k).join() };
+  const box = row.getBoundingClientRect(), middle = [...row.children].sort((x, y) => Math.abs(mid(x.dataset.k)[0] - (box.left + box.right) / 2) - Math.abs(mid(y.dataset.k)[0] - (box.left + box.right) / 2))[0].dataset.k; // (clear of the arrows)
+  return { left: Math.round(row.scrollLeft), l: seen(a('l')), r: seen(a('r')), more: row.scrollWidth > row.clientWidth, arrow: mid('r'), rain: mid('rain'), middle, at: mid(middle), on: Object.entries(polku.weather.on).filter(([, v]) => v).map(([k]) => k).join() };
 })()"""
 
 
@@ -12620,9 +12622,10 @@ def timeline_mouse(chrome):
             c = pg.js(TL_MOUSE_ROW)
             if c['left'] < 60 or c['on'] != 'rain':
                 fails.append(f'a drag from Rain 120 px to the left: the row at {c["left"]} px, on: {c["on"]} (want it moved, Rain still on)')
-            click(*c['cloud'])
-            if pg.js(TL_MOUSE_ROW)['on'] != 'rain,cloud':
-                fails.append(f'a click on Clouds after the drag: on {pg.js(TL_MOUSE_ROW)["on"]}')
+            click(*c['at'])
+            on = pg.js(TL_MOUSE_ROW)['on'].split(',')
+            if c['middle'] not in on or 'rain' not in on or len(on) != 2:
+                fails.append(f'a click on {c["middle"]}, in the row\'s middle, after the drag: on {on}')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
