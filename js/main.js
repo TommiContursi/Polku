@@ -623,6 +623,7 @@ map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catch
 function setTimeline(on, { instant = false } = {}) {
   weather.setOpen(on, { instant });
   planner.setLineOver(on && matchMedia('(max-width: 720px)').matches, { instant });
+  if (on && planner.lineOver && planner.panel.contains(document.activeElement)) $('#wx-bar .tl-close').focus({ preventScroll: true }); // (not left in the sheet that went)
   if (!on) weather.setHour(0);
   $('#btn-time').setAttribute('aria-pressed', String(on));
 }
@@ -1278,7 +1279,7 @@ const wxTileSet = (id, on) => setWeather(WX_TOP[id] ? { [WX_TOP[id]]: on } : { c
 // what's on, by name: the colour, then what's on top, each with its key (On now's chips and More's count)
 const wxOnNames = () => [...COLOURS.filter(([k]) => k && state.weather.colour === k).map(([k, label]) => ({ k: 'colour', label, off: null })),
   ...TOPS.filter(([k]) => state.weather[k]).map(([k, label]) => ({ k, label, off: false }))];
-// the weather's Effects, also at the end of the timeline's layer menu (and in Settings › Display)
+// the weather's Effects, also in the weather line's colour menu (and in Settings › Display)
 const effectsToggle = () => toggle('Weather effects', weather.effects, (v) => weather.setEffects(v));
 const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
 // What the On now chips list and More counts: the layers drawn over the base map
@@ -1286,7 +1287,7 @@ const onNowIds = () => [
   ...(state.trailColors !== 'off' ? ['trailColors'] : []),
   ...(state.trailDetails ? ['trailDetails'] : []),
   ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]),
-  ...wxOnNames().map(({ k }) => `wx:${k}`),
+  ...wxOnNames().map(({ k }) => (k === 'colour' ? `wx:${state.weather.colour}` : Object.keys(WX_TOP).find((id) => WX_TOP[id] === k))), // (as the tiles name them)
 ];
 
 function renderLayersPanel() {

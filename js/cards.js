@@ -810,7 +810,7 @@ function spotActs(pl, card, spot, what) {
   return [[actRow({ main: true, icon: 'plus', label: main.label, line: n ? 'In your route, where it fits' : 'A new route, from here', k: 'add', onclick: main.fn },
     n ? { icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); if (!pl.active) pl.setActive(true); pl.addNogo(spot.ll, 40, spot.place ? spot.title : 'Avoided place'); } } : null,
     { icon: 'share', label: 'Share', line: 'A link to this spot', k: 'share', onclick: () => pl.shareSpot(spot) },
-    { icon: 'cloudSun', label: 'Weather here', line: 'The timeline, held at the spot', k: 'weather', onclick: () => pl.weatherHere(spot.ll) })],
+    { icon: 'cloudSun', label: 'Weather here', line: 'The weather line, held at the spot', k: 'weather', onclick: () => pl.weatherHere(spot.ll) })],
   moreFor(what,
     n ? item({ icon: 'flag', label: 'Start here', line: 'Adds a new start', k: 'start', onclick: () => pl.startFrom(spot.ll, name) }) : null,
     n ? item({ icon: 'flagend', label: 'End here', line: 'Adds a new end', k: 'end', onclick: () => { pl.cards.close(); pl.endAt(spot.ll, name); toast('A new end is added', { ms: 7000, action: undo }); } }) : null,

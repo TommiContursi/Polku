@@ -8645,8 +8645,8 @@ def flat_offer(chrome):
 
 # Idea D: every text in these scenes of tools/shoot.py, against the solid colour behind it, at 4.5:1 (3:1 for large text),
 # in light and then in dark, measured by tools/census.py. Text over the map itself isn't measured (census.py says why).
-CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-point-card', 'desk-acts', 'desk-settings', 'desk-quick',
-         'phone-planner', 'phone-tab-check', 'phone-point-card', 'phone-quick']
+CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-point-card', 'desk-acts', 'desk-settings', 'desk-quick', 'desk-weather-line',
+         'phone-planner', 'phone-tab-check', 'phone-point-card', 'phone-quick', 'phone-weather-line']
 # What still fails, by the issue that fixes it. The sweep fails on anything else, and on an entry here that passes now,
 # so the list only ever shrinks: (theme, the element and its parent as census.py names them, the start of its text or
 # None for any text)
@@ -9087,6 +9087,8 @@ def timeline_height(chrome):
                 continue
             pg.js(SETTLED)
             a = pg.js(TL_SIZES)
+            if not a['text'].startswith('–'):
+                fails.append(f"{name}: while the forecast loads the reading says “{a['text']}”, not “–”")
             pg.js('__wx.release()')
             pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('#wx-bar .tl-now-main svg') || Date.now() - t0 > 20000 ? ok(true) : setTimeout(go, 100); go(); })")
             pg.js(SETTLED)
@@ -11577,7 +11579,7 @@ def fold_away_card(chrome):
         # line; ✕ brings the sheet back at the size it had; a card, or Plan, takes the sheet back from the line
         LINE = """(() => { const p = polku.planner, b = document.querySelector('#wx-bar'), r = b.getBoundingClientRect();
           const col = [...document.querySelectorAll('#map-ctrls > *')].filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect().bottom);
-          return { open: polku.weather.open, line: !b.hidden, sheet: !p.panel.hidden, st: p.panel.dataset.state, active: p.active, card: p.cards.current?.kind || null,
+          return { open: polku.weather.open, line: !b.hidden && !b.classList.contains('leaving'), sheet: !p.panel.hidden, st: p.panel.dataset.state, active: p.active, card: p.cards.current?.kind || null,
             foot: Math.round(innerHeight - r.bottom), below: col.every((y) => y <= r.top + 0.5) }; })()"""
         pg.js("(() => { const p = polku.planner; p.cards.close(); if (!p.active) p.setActive(true); p.setSheetState('half'); return true; })()")
         fold_settled(pg, fails, 'the line: step 1')
@@ -11608,6 +11610,26 @@ def fold_away_card(chrome):
         w = pg.js(LINE)
         if w['open'] or not w['sheet'] or not w['active']:
             fails.append(f"Plan with the line open and the planner put away: {w} (the planner in the sheet, the line closed)")
+        # …and with motion, by a tap: the line rises from the bottom edge on --t-sheet as the sheet goes down, and leaves on
+        # --t-open as the sheet comes back (the animations recorded as they start: a busy machine can't miss them)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+        pg.js("""(() => { window.__anims = []; const A = window.__animate = Element.prototype.animate;
+          Element.prototype.animate = function (k, o) { if (this.id === 'wx-bar' || this.id === 'planner') __anims.push(`${this.id} ${JSON.stringify(k)} ${o.duration}`); return A.call(this, k, o); }; return true; })()""")
+        pg.tap(*fold_at(pg, "document.querySelector('#btn-time')"))
+        fold_settled(pg, fails, 'the line with motion: step 1')
+        pg.tap(*fold_at(pg, "document.querySelector('#wx-bar .tl-close')"))
+        fold_settled(pg, fails, 'the line with motion: step 2')
+        r = pg.js("""new Promise((ok) => { const t0 = Date.now(), go = () => (document.querySelector('#wx-bar').hidden || Date.now() - t0 > 3000) ? ok({ anims: __anims, line: !document.querySelector('#wx-bar').hidden, sheet: !polku.planner.panel.hidden,
+          sheetT: getComputedStyle(document.documentElement).getPropertyValue('--t-sheet').trim(), openT: getComputedStyle(document.documentElement).getPropertyValue('--t-open').trim() }) : setTimeout(go, 50); go(); })""")
+        pg.js("Element.prototype.animate = window.__animate; true")
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+        bar = [a for a in r['anims'] if a.startswith('wx-bar')]
+        sheet = [a for a in r['anims'] if a.startswith('planner')]
+        ms = lambda t: f" {float(t.rstrip('ms')):g}"  # (a token's milliseconds, as the animation's duration is logged)
+        rise = len(bar) == 2 and bar[0].startswith('wx-bar [{"translate":"0 100%"}') and bar[0].endswith(ms(r['sheetT']))
+        leave = len(bar) == 2 and bar[1].endswith('{"translate":"0 100%"}]' + ms(r['openT']))
+        if not rise or not leave or not sheet or r['line'] or not r['sheet']:
+            fails.append(f"the line with motion, by a tap: {r}")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -12512,6 +12534,14 @@ def timeline_reading(chrome):
             pg.quick_tap(*b)
             r = pg.js(TL_READING)
             fails += [f"{name}: the timeline's reading: {f}" for f in r['out']]
+            pg.js(SETTLED)
+            fails += [f"{name}, the line open: {o}" for o in overlaps(pg.js(BOXES))]
+            # …and over the planner (its sheet goes, the map's buttons and the toolbox not under the line)
+            pg.js("(() => { document.querySelector('#btn-time').click(); polku.planner.setActive(true); return true; })()")
+            pg.js(SETTLED)
+            pg.js(OPEN_LINE)
+            pg.js(SETTLED)
+            fails += [f"{name}, the line open over the planner: {o}" for o in overlaps(pg.js(BOXES))]
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
@@ -12613,6 +12643,13 @@ WX_LINE = """(async () => {
   document.querySelector('#btn-time').click(); await wait(300);
   if (!w.open || bar().hidden || w.hour !== 0 || weather() !== NONE.replace('"places":false', '"places":true')) out.push(`Weather the first time: open ${w.open}, hour ${w.hour}, ${weather()}`);
   if (document.querySelector('#btn-time').getAttribute('aria-pressed') !== 'true') out.push('Weather isn’t pressed with the line open');
+  // the reading: "–" when the forecast failed, never an older number
+  for (let k = 0; k < 100 && !document.querySelector('#wx-bar .tl-now-main svg'); k++) await wait(100);
+  const temp = () => document.querySelector('#wx-bar .tl-now-main b')?.textContent;
+  if (temp() !== '4°') out.push(`the reading says ${temp()}, not 4°`);
+  w.status = 'Weather forecast unavailable right now'; w.readout(); await wait(100);
+  if (temp() !== '–' || !/unavailable/.test(document.querySelector('#wx-bar .tl-now small').textContent)) out.push(`the forecast failed, the reading says ${temp()}: ${document.querySelector('#wx-bar .tl-now small').textContent}`);
+  w.status = null; w.readout(); await wait(100);
   w.setHour(6); await wait(200);
   document.querySelector('#wx-bar .tl-close').click(); await wait(300);
   if (w.open) out.push('✕: the line still says it’s open');

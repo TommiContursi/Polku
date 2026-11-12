@@ -877,6 +877,8 @@ def scene(chrome, name):
         time.sleep(0.4)
         pg.js(FIT)
         pg.idle()
+    if sc.get('timeline') and not sc['phone']:  # (the weather line isn't kept open across a reload since #869's 6b; on a phone it would take the planner's place)
+        pg.js("(() => { if (document.querySelector('#wx-bar').hidden) document.querySelector('#btn-time').click(); return true; })()")
     if sc.get('js'):
         pg.js(sc['js'])
     for key, code, vk in sc.get('keys', []):  # pressed as a keyboard does, so the focus ring shows (:focus-visible)

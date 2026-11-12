@@ -50,7 +50,7 @@ The route's **Check** brings together mapped obstacles and access restrictions, 
 
 Winter mode can follow local snow conditions automatically or be set manually. Its layers show snow depth and FMI measurements, trails classified by how soon they open after snow, ploughed paths, winter access restrictions, ski tracks, skating and snowmobile routes, and FMI sea-ice charts. Route time estimates allow for snow; warnings cover freezing rain, cold, darkness and the ice season on water.
 
-![Wind-speed colours and wind-direction particles over southern Finland, with the wind and rain layers enabled and the 48-hour weather timeline open](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-weather-overlay.jpg?raw=true)
+![Wind-speed colours and wind-direction particles over southern Finland, with the 48-hour weather line open](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-weather-overlay.jpg?raw=true)
 
 ## Water routes
 

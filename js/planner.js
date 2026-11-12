@@ -5503,7 +5503,7 @@ export class Planner {
       if (this.peekCut) h = Math.floor(dvh() - 76);
       const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
-      // a phone's timeline over a raised sheet goes under its header: the planner's numbers, or a card's title row (#572)
+      // the weather line over a raised bottom panel goes under its header: the planner's numbers, or a card's title row (#572)
       const ch = this.cards.place === 'peek' && this.cards.box && this.cards.box.querySelector('.way-head');
       document.documentElement.style.setProperty('--sheet-head', `${ch ? Math.round(ch.getBoundingClientRect().bottom - this.panel.getBoundingClientRect().top) : Math.min(rows, h)}px`);
       // the route's numbers came in just after it was framed and wrap onto a second line (#242), or the row of what
