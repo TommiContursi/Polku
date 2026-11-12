@@ -12598,6 +12598,11 @@ WC_JS = """(async () => {
     p.openWeather(); await wait(300);
     const said = { box: / · in the dark$/.test(box()), card: /In the dark the whole way/.test(card()) };
     if (said.box !== dark || said.card !== dark) errs.push(`leaving at ${hh}:00, the dark: ${JSON.stringify(said)}, the box says “${box()}”`);
+    // Check's dark item no longer offers "Sunrise and sunset" in the weather card, which doesn't have them (#973's review)
+    const hu = p.headsUp(p.analysis), sunItem = [...hu.read, ...hu.look].find((x) => x.kind === 'dark' && !x.hide);
+    if (dark && (!sunItem || p.itemActions({ g: hu.read.includes(sunItem) ? 'read' : 'look', w: sunItem }).more.some((m) => /^Sunrise and sunset/.test(m.label)))) errs.push(`leaving at ${hh}:00, Check's dark item: ${sunItem ? 'offers Sunrise and sunset' : 'none'}`);
+    // …and while the forecast loads: the dark is the sun's (#973's review)
+    if (dark) { p.analysis.wind = null; p.analysis.windError = false; p.renderAnalysis(); await wait(200); if (!/In the dark the whole way/.test(card())) errs.push(`leaving at ${hh}:00 with the forecast loading, the card leaves out the dark: ${card().slice(0, 200)}`); }
     p.cards.close(); await wait(200);
   }
   p.when.set(null);
@@ -12643,7 +12648,7 @@ WC_JS = """(async () => {
   if (!(v <= 4) || cold.num === 'feels like 1°' || warm.num !== 'feels like 17°' || !warm.col.includes('17°') || missing.num !== '' || missing.col.some((x) => x !== '–'))
     errs.push(`feels like: cold “${cold.num}”, warm “${warm.num}” ${warm.col.join(' ')}, missing “${missing.num}” ${missing.col.join(' ')}`);
   // the card as G: the sentence with its sky; thunder note 1, a danger; the notes' numbers on the trip line; a lane a fact
-  const storm = Uint8Array.from({ length: n }, (_, i) => (i > n / 2 ? 1 : 0)), wet = Float32Array.from({ length: n }, (_, i) => (i > n / 3 ? 6 : 0)); // (heavy: a lane however short the route)
+  const storm = Uint8Array.from({ length: n }, (_, i) => (i > n / 2 ? 1 : 0)), wet = Float32Array.from({ length: n }, (_, i) => (i > (2 * n) / 3 ? 6 : i > n / 3 ? 1 : 0)); // (heavy: a lane however short the route)
   set(wind({ head: fill(8), speed: fill(8), gust: fill(12), thunder: storm, precip: wet, temp: fill(12), feel: fill(10), series: [series(10, 12)] })); await wait(300);
   const say = p.cards.box?.querySelector('.wx-say'), first = p.cards.box?.querySelector('.wx-tell');
   const g = { say: say?.textContent || '', sky: say?.querySelector('.wx-sky')?.getAttribute('aria-label'), first: first?.textContent || '', danger: !!first?.matches('.danger'),
@@ -12652,11 +12657,32 @@ WC_JS = """(async () => {
   const lanes = ['lane-rain', 'lane-thunder', ...(a.total >= 1500 ? ['lane-wind'] : [])];
   if (!/a risk of thunder$/.test(g.say) || g.sky !== 'Thunder' || !/^1Thunder possible around/.test(g.first) || !g.danger || !g.notes || g.marks !== g.notes || !lanes.every((x) => g.lanes.includes(x)))
     errs.push(`the card as G: ${JSON.stringify(g)}`);
+  // #973's review: the box's sky and words as the card's (thunder first); the rain's key in mm an hour, "heavy" being the
+  // card's word from 4 mm an hour; Check's thunder hidden by its name; leaving a note keeps what its click framed
+  const key = p.cards.box?.querySelector('[data-k=lane-rain] + .wx-key')?.textContent || '';
+  if (/null/.test(card())) errs.push('“null” in the card (a lane of one colour has no key)');
+  if (!/a risk of thunder/.test(box()) || /heavy/.test(key) || !/over 2 mm\/h/.test(key) || p.thunderWarnings(a)[0]?.hide !== 'Thunder') errs.push(`the box “${box()}”, the rain's key “${key}”, Check's thunder hidden as “${p.thunderWarnings(a)[0]?.hide}”`);
+  const tell = p.cards.box?.querySelector('.wx-tell');
+  tell?.dispatchEvent(new FocusEvent('focus')); tell?.click(); tell?.dispatchEvent(new FocusEvent('blur')); await wait(100);
+  if (!p.focusHl) errs.push('leaving a note clears what its click framed');
+  p.unfocusRange();
+  // the hours you're out on a day longer than a day, with one either side (they stopped at 24, #973's review)
+  const long = p.dayHours(a, { t0: T.start, t1: T.start + 30 * 3600 }).filter((x) => x.on).length;
+  if (long < 31) errs.push(`a 30-hour day has ${long} hours out`);
+  // past the map's 48 hours, a lane or Weather on the map says so and turns nothing on (it showed Now)
+  const was = polku.state.weather.thunder;
+  p.app.weatherOn(Date.now() / 1000 + 72 * 3600, 'thunder'); await wait(100);
+  const toastNow = document.querySelector('#toast')?.textContent || '';
+  if (polku.state.weather.thunder !== was || !/48 hours/.test(toastNow)) errs.push(`72 hours ahead: thunder on the map ${polku.state.weather.thunder}, the toast “${toastNow}”`);
   // a lane's tap: the route coloured by it, and the card folded to a banner that brings it back
   p.cards.box?.querySelector('[data-k=lane-rain]')?.click(); await wait(300);
   const lane = { mode: p.colorMode, map: p.colorOnMap, folded: !!p.cards.folded };
   if (lane.folded) { p.cards.escape(); await wait(200); }
   if (lane.mode !== 'rain' || !lane.map || !lane.folded || p.cards.folded || !p.cards.box?.querySelector('.wx-say')) errs.push(`a lane's tap: ${JSON.stringify(lane)}, then the card back: ${!!p.cards.box?.querySelector('.wx-say')}`);
+  // a dry day is 0 mm, however little falls (#973's review: “0.0 mm” under “dry”)
+  set(wind({ precip: fill(0.03) })); await wait(200);
+  const dry = p.cards.box?.querySelectorAll('.wx-nums .sum-item')[2]?.textContent || '';
+  if (!/^0 mmrain$/.test(dry)) errs.push(`a dry day's rain: “${dry}”`);
   // snow on you is the forecast's snowfall in cm, as Check sums it, not the rain's mm called cm (#973's review)
   set(wind({ temp: fill(-2), precip: fill(3), snowfall: fill(0.3), series: [series(-6, -2)] })); await wait(200);
   const snow = p.cards.box?.querySelectorAll('.wx-nums .sum-item')[2]?.textContent || '', hrs = (T.at(n - 1) - T.at(0)) / 3600, got = parseFloat(snow);

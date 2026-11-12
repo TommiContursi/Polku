@@ -450,11 +450,13 @@ const planner = new Planner(map, {
     if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
   },
   weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
-  // the map's weather at a time of the trip, a layer turned on with it (the weather card's Weather on the map and its lanes)
+  // the map's weather at a time of the trip, a layer turned on with it (the weather card's Weather on the map and its lanes);
+  // past the map's 48 hours it says so, and shows nothing that would pass for the trip's weather
   weatherOn: (sec, layer) => {
-    if (layer) setWeather({ [layer]: true }); else if (!state.timeline) setTimeline(true);
     const k = Math.floor((sec - Math.floor(Date.now() / 3600000) * 3600) / 3600);
-    if (k >= 0 && k <= 48) weather.setHour(k, { silent: true });
+    if (k > 48) { toast('The map’s weather only reaches 48 hours ahead: it can’t show your trip yet'); return; }
+    if (layer) setWeather({ [layer]: true }); else if (!state.timeline) setTimeline(true);
+    if (k >= 0) weather.setHour(k, { silent: true });
   },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
