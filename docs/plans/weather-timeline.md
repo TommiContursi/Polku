@@ -129,6 +129,13 @@ Four PRs in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16
 Each PR: its checks in `tools/smoke.py` (`weather`, and the groups it touches), CHANGELOG, USING.md, DEVELOPING,
 screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "Model and effort").
 
+**Built so far:**
+- **PR 1, the weather layers as buttons** (2026-11-13): as listed, on `main`'s timeline. Where it differs from the
+  mock-up: a phone's row opens with the first button that's on clear of the fade at its edge (32 px), not 8 px from
+  the edge, where the fade would cover it; ⋯ and ✕ are 16 px apart by touch, so each has a finger's 44 px without
+  covering the other's; on a desktop the row is moved under the title bar (721 px wide and more), so the page's order
+  is the screen's. The skeleton fades in after 300 ms and breathes, as the cards' does (`pick-skel`).
+
 ## What stays as it is
 
 The timeline's window and where it opens, dragging it by its title bar and resizing it by its grip on a desktop, the
