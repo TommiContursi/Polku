@@ -413,7 +413,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | A heading that opens its own settings | `sec2-head`, a button, the whole row, with a ⚙ (`sec2-set`) where a row's › is; grey while it's held or its menu is open, and under a mouse | a part's heading in Route's list (#761) |
 | A pill naming what's on, opening its menu | `rt-pill` (`wl-layer` beside the timeline's ✕): its icon, its word ("Rain +1" for two) and ⌄, `aria-haspopup="menu"` | the weather's layers (#182, the weather line's pill of step 6b) |
 | Choices in a menu that tick, any of them at once | `menu-item` with `role="menuitemcheckbox"` and `menu-tick` (`checked` in `popMenu()`, `keep` so it stays open) | the weather menu's layers and Effects (#182) |
-| Actions in a group | `menu-h`, `menu-item two-line`, `hr`, `menu-item danger menu-apart` for the dangerous one; built by `popMenu()` in `js/ui.js` | the ⋯ menu |
+| Actions in a group | `menu-h`, `menu-item two-line`, `hr`, `menu-item danger menu-apart` for the dangerous one; built by `popMenu()` in `js/ui.js`, which a tap or a click outside closes and does nothing else: it holds back that press's click only, never a later one (#845) | the ⋯ menu |
 | A choice in a list | `menu-item` with `role="menuitemradio"`, `menu-tick`, `cur` ("your route") | the sport menus |
 | Numbers with their labels | `sheet-sum`, `sum-item` | the peek's summary |
 | A note with its action | `pl-viewnote` | Move's banner on a card |
