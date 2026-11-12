@@ -300,6 +300,8 @@ FULL = "p.setSheetState('full'); await wait(700);"
 WEATHER_DAYS = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0);"
                 " p.when.set(d / 1000); p.setStop(1, { on: 480 }); for (let k = 0; k < 150 && !(p.analysis && p.analysis.wind && (p.analysis.waits || []).length); k++) await wait(100);"
                 " await wait(800); p.openWeather({ day: 1 }); await wait(900); return true; })()")
+# the timeline's weather layers (#869's build, PR 1): Rain and Wind on, with the forecast in
+WX_LAYERS_ON = "(async () => { const w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)); w.app.onToggle({ rain: true, wind: true }); for (let k = 0; k < 100 && !w.cur; k++) await wait(200); await wait(800); return true; })()"
 WEATHER = lambda time=False, full=False: f"(async () => {{ const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (let k = 0; k < 150 && !p.analysis.wind; k++) await wait(100); p.openWeather({{ time: {'true' if time else 'false'} }}); await wait(700); {FULL if full else ''} return true; }})()"
 START_CARD = lambda far=False: "(async () => { const p = polku.planner; " + (FAR if far else '') + "p.openPointCard(p.points[0]); await new Promise((r) => setTimeout(r, 600)); return true; })()"
 
@@ -700,6 +702,10 @@ SCENES = {
     'desk-tab-check': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('warnings')),
     'desk-box': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=BOX),
     'desk-weather': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=WEATHER()),
+    'desk-timeline-layers': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WX_LAYERS_ON),
+    'desk-timeline-layers-dark': dict(DESK, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', js=WX_LAYERS_ON),
+    'phone-timeline-layers': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=WX_LAYERS_ON),
+    'phone-timeline-layers-dark': dict(PHONE, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', state='peek', js=WX_LAYERS_ON),
     'desk-paddle-weather': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], storage=SIDE, js=WEATHER()),
     'phone-tab-check': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=TAB('warnings')),
     'desk-long-hazards': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, pre=LONG_HAZARDS, js=TAB('warnings')),

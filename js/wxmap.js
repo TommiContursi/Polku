@@ -15,7 +15,7 @@ import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind }
 import { compass, dist } from './geo.js';
 import { strikesIn } from './lightning.js';
 import { STRIKE_COLOURS } from './icons.js';
-import { h, icon, store, popMenu } from './ui.js';
+import { h, icon, store, popMenu, tooltip } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 import { fmiRadar, FI_BOUNDS, rainviewerCoverage } from './radar.js';
 import { sunPosition } from './sun.js';
@@ -48,7 +48,7 @@ const fallRgba = (mmh, snow) => stepRgba(snow ? SNOWFALL_STEPS : RAIN_STEPS, mmh
 const stepsCss = (steps) => `linear-gradient(90deg, ${steps.map(([, c], i) => `${c} ${(i * 100) / steps.length}% ${((i + 1) * 100) / steps.length}%`).join(', ')})`;
 const SKY = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
-// the weather menu's layers, in its order: [key, its name, its line, the pill's word, icon]
+// the weather layers, in their buttons' order: [key, its name and its line (a desktop's tooltip), the button's word, icon]
 const LAYERS = [
   ['rain', 'Rain and snowfall', 'The radar now, then the forecast', 'Rain', 'rain'],
   ['cloud', 'Clouds', 'A grey veil, thicker where it’s cloudier', 'Clouds', 'cloud'],
@@ -57,9 +57,7 @@ const LAYERS = [
   ['temp', 'Temperature', 'A colour field, with °C', 'Temperature', 'temp'],
   ['snow', 'Snow on the ground', 'The forecast’s depth, and FMI’s measured depths', 'Snow depth', 'snow'],
 ];
-// the menu's points: Weather at places (#916; its key `towns` as saved), at the places the map names at any zoom; a tap pins the reading there
-const TOWNS = ['towns', 'Weather at places', 'The sky, temperature and wind where the map names a place', 'Places', 'cloudSun'];
-// the places it marks, the larger first: zoomed in, the map names villages and suburbs too
+// the places Weather at places marks, the larger first: zoomed in, the map names villages and suburbs too
 const PLACE_LAYERS = ['label-city', 'label-town', 'label-village', 'label-suburb'];
 
 const hex = (c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
@@ -144,7 +142,7 @@ export class WeatherOverlay {
     Object.assign(this.on, layers);
     this.windCv.hidden = !this.on.wind;
     this.rainCv.hidden = !this.falling;
-    this.renderPill();
+    this.renderLayers();
     this.clearLayers();
     this.renderLegend();
     if (!this.active) { this.stopClock(); return; }
@@ -179,6 +177,11 @@ export class WeatherOverlay {
     this.open = on;
     if (!this.docked) this.bar.hidden = !on;
     this.wake();
+    // a phone's row of layers opens with the first that's on in sight, clear of the fade at its edge (32 px), at once (a
+    // desktop's wraps: nothing to scroll)
+    if (!on) return;
+    const row = this.layerRow, b = row.querySelector('[aria-pressed="true"]');
+    row.scrollLeft = b ? Math.max(0, b.getBoundingClientRect().right - row.getBoundingClientRect().left + row.scrollLeft - row.clientWidth + 32) : 0;
   }
 
   // While planning, the timeline lives in the planner: one departure control,
@@ -197,7 +200,7 @@ export class WeatherOverlay {
   wake() {
     if (this.active) {
       this.maybeFetch();
-      this.renderPill();
+      this.renderLayers();
       this.renderTime();
       requestAnimationFrame(() => this.renderStrip());
       if (!this.anim) this.startAnim();
@@ -382,7 +385,7 @@ export class WeatherOverlay {
       // keep whatever grid we had; say why there's no fresh one
       this.status = err && err.name === 'Limited' ? err.message : 'Weather forecast unavailable right now';
     } finally {
-      if (req === this.req) { this.loading = false; this.renderTime(); this.readout(); }
+      if (req === this.req) { this.loading = false; this.renderStrip(); this.renderTime(); this.readout(); } // (a failure ends the strip's skeleton too)
     }
   }
 
@@ -1117,8 +1120,20 @@ export class WeatherOverlay {
     this.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => this.togglePlay(), html: icon('play', 18) });
     this.slider = h('input', { type: 'range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(hourOf(+e.target.value)); } });
     this.timeEl = h('div', { class: 'wx-time' });
-    // the map's layers: one pill naming what's on, opening their menu (#182; the weather line's, step 6b)
-    this.pill = h('button', { type: 'button', class: 'rt-pill wl-layer', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.layerMenu() });
+    // the map's layers: a button each, one tap, any of them at once, their state in sight (#869)
+    this.layerRow = h('div', { class: 'tl-layers', role: 'group', 'aria-label': 'Weather layers' });
+    for (const [k, name, line, word, ic] of LAYERS) {
+      // (Wind holds both its names, so it's as wide when it says Wind lines: renderLayers())
+      const b = h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': 'false', onclick: () => this.app.onToggle({ [k]: !this.on[k] }),
+        html: k === 'wind' ? `<span>${icon(ic, 16)}Wind</span><span>${icon(ic, 16)}Wind lines</span>` : `${icon(ic, 16)}<span>${word}</span>` });
+      tooltip(b, { name, text: line });
+      this.layerRow.append(b);
+    }
+    // a phone's row scrolls sideways, and fades at the edge where there's more
+    const edge = () => { const r = this.layerRow; r.classList.toggle('more-l', r.scrollLeft > 2); r.classList.toggle('more-r', r.scrollLeft + r.clientWidth < r.scrollWidth - 2); };
+    this.layerRow.addEventListener('scroll', edge, { passive: true });
+    new ResizeObserver(edge).observe(this.layerRow);
+    this.moreBtn = h('button', { type: 'button', class: 'tool tl-more', 'aria-label': 'More: Weather at places, Effects', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.moreMenu(), html: icon('more', 18) });
     // the legend over the map, top left, while a layer is on: apart from the timeline, wherever that is
     this.legendEl = h('div', { class: 'wx-legend', role: 'region', 'aria-label': 'Map legend', hidden: true });
     document.querySelector('.map-hints').append(this.legendEl);
@@ -1130,40 +1145,44 @@ export class WeatherOverlay {
     this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': 'The radar’s last 90 minutes, then the 48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
     this.nowEl = h('div', { class: 'tl-now' });
     this.bindStrip();
+    const head = h('div', { class: 'tl-head' },
+      h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` }),
+      this.moreBtn,
+      h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) }));
     bar.append(
-      h('div', { class: 'tl-head' },
-        h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` }),
-        this.pill,
-        h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) })),
+      head,
       h('div', { class: 'tl-main' }, this.stripCv, this.nowEl),
       h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl),
       this.noteEl,
     );
     new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);
     this.bindFloat();
+    // the buttons on a row of their own under the title bar on a desktop, where the title bar is the handle to drag; on a
+    // phone in the head's row, before ⋯ and ✕
+    const place = () => (this.floatMQ.matches ? head.after(this.layerRow) : head.insertBefore(this.layerRow, this.moreBtn));
+    this.floatMQ.addEventListener('change', place);
+    place();
   }
 
-  renderPill() {
-    const shown = [...LAYERS, TOWNS].filter(([k]) => this.on[k]);
-    this.pill.innerHTML = `<span>${icon(shown[0] ? shown[0][4] : 'layers', 16)}</span><span>${shown.length ? `${shown[0][3]}${shown.length > 1 ? ` +${shown.length - 1}` : ''}` : 'Layers'}</span><span>${icon('chevronDown', 14)}</span>`;
-    this.pill.setAttribute('aria-label', `Weather layers: ${shown.map((x) => x[3]).join(', ') || 'none'}`);
+  // The buttons as the layers are; Wind says Wind lines while Temperature colours the map (the two share its one field)
+  renderLayers() {
+    for (const b of this.layerRow.children) b.setAttribute('aria-pressed', String(!!this.on[b.dataset.k]));
+    this.layerRow.querySelector('[data-k=wind]').classList.toggle('lines', !!this.on.temp);
   }
 
-  // The pill's menu: the layers, any of them at once, and Effects at the end; it stays open while you tick
-  layerMenu() {
+  // ⋯'s menu: the rest of the weather, and where it comes from; it stays open while you tick. Weather at places (#916;
+  // its key `towns` as saved) is at the places the map names at any zoom, and a tap on one pins the reading there
+  moreMenu() {
     const items = () => [
-      { group: 'Weather on the map', items: LAYERS.map(layer) },
-      'hr',
-      { group: 'Points', items: [layer(TOWNS)] },
+      { group: 'Points', items: [{ icon: 'cloudSun', label: 'Weather at places', desc: 'The sky, temperature and wind where the map names a place', checked: this.on.towns, keep: true, cls: 'wx-towns', fn: () => tick('towns', () => this.app.onToggle({ towns: !this.on.towns })) }] },
       'hr',
       { icon: 'sparkle', label: 'Effects', desc: 'Softer edges and falling rain', checked: this.effects, keep: true, cls: 'wx-fx', fn: () => tick('fx', () => this.setEffects(!this.effects)) },
       { note: 'Forecast by Open-Meteo. Radar and measured snow by FMI, and by RainViewer outside Finland.' },
     ];
-    const layer = ([k, label, desc, , ic]) => ({ icon: ic, label, desc, checked: this.on[k], keep: true, cls: `wx-${k}`, fn: () => tick(k, () => this.app.onToggle({ [k]: !this.on[k] })) });
     const tick = (k, fn) => { fn(); menu.refill(items()); menu.el.querySelector(`.wx-${k}`).focus({ preventScroll: true }); };
-    if (this.menu) { this.menu.close(); return; } // (the pill again: it closes)
-    this.pill.setAttribute('aria-expanded', 'true');
-    const menu = this.menu = popMenu(this.pill, items(), { label: 'Weather layers', onClose: () => { this.menu = null; this.pill.setAttribute('aria-expanded', 'false'); } });
+    if (this.menu) { this.menu.close(); return; } // (⋯ again: it closes)
+    this.moreBtn.setAttribute('aria-expanded', 'true');
+    const menu = this.menu = popMenu(this.moreBtn, items(), { label: 'More weather', onClose: () => { this.menu = null; this.moreBtn.setAttribute('aria-expanded', 'false'); } });
   }
 
   // ------------------------------------------------------------------ timeline strip
@@ -1217,7 +1236,9 @@ export class WeatherOverlay {
     const PAD = 9; // matches the range thumb so strip and slider line up
     const U0 = unitOf(-PAST), X = (hr) => PAD + ((unitOf(hr) - U0) / (HOURS - U0)) * (W - 2 * PAD);
     ctx.font = '10px system-ui, sans-serif';
-    if (!d) { ctx.fillStyle = muted; ctx.fillText(this.loading ? 'Loading the forecast…' : 'Zoom in to see the forecast here', PAD, H / 2); return; }
+    // while the forecast comes, the strip's shape, as a card's skeleton (pick-skel); the time says it in words
+    cv.classList.toggle('skel', !d && this.loading);
+    if (!d) { if (!this.loading) { ctx.fillStyle = muted; ctx.fillText('Zoom in to see the forecast here', PAD, H / 2); } return; }
     // night
     ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
     for (let hr = 0; hr < HOURS; hr++) {
@@ -1450,8 +1471,15 @@ export class WeatherOverlay {
       const ll = this.heldLL || this.pointerLL || this.map.getCenter().toArray();
       const s = this.sample(ll);
       this.nowEl.style.setProperty('--tl-lines', this.on.snow ? 4 : 3); // (its room from the start: css/app.css, #301)
+      if (!s && this.loading) {
+        // its lines' shapes while the forecast comes (pick-skel), drawn once, so they don't start again as the mouse moves
+        const n = this.on.snow ? 4 : 3;
+        if (this.nowEl.querySelectorAll('.tl-skel').length !== n) this.nowEl.innerHTML = `<span class="sr-only">Loading the forecast</span>${'<i class="tl-skel"></i>'.repeat(n)}`;
+        this.nowEl.title = '';
+        return;
+      }
       if (!s) {
-        this.nowEl.innerHTML = `<small>${this.loading ? 'Loading forecast…' : this.status || 'No forecast here'}</small>`;
+        this.nowEl.innerHTML = `<small>${this.status || 'No forecast here'}</small>`;
         this.nowEl.title = this.nowEl.textContent; // (a long note shows three lines)
         return;
       }
