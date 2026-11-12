@@ -456,8 +456,9 @@ const planner = new Planner(map, {
   weatherOn: (sec, layer) => {
     const k = Math.floor((sec - Math.floor(Date.now() / 3600000) * 3600) / 3600);
     if (k > 48) { toast('The map’s weather only reaches 48 hours ahead: it can’t show your trip yet'); return; }
-    if (layer) setWeather({ [layer]: true }); else if (!state.timeline) setTimeline(true);
-    if (k >= 0) weather.setHour(k, { silent: true });
+    if (layer) setWeather({ [layer]: true });
+    if (!state.timeline) setTimeline(true);
+    if (k >= 0) weather.setHour(k);
   },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
@@ -617,18 +618,18 @@ const lightStale = () => (state.hillshade && state.hillLight === 'sun' && (sunHo
 map.on('moveend', () => { if (lightStale()) applyStyle(); });
 map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)
 
+// The timeline open or closed; closed, the map goes back to Now with its layers left on
 function setTimeline(on) {
   state.timeline = on;
   weather.setOpen(on);
+  if (!on) weather.setHour(0);
   $('#btn-time').setAttribute('aria-pressed', String(on));
   saveSettings();
 }
 
 function setWeather(patch) {
   Object.assign(state.weather, patch);
-  weather.set(state.weather);
-  // weather layers live on the timeline: switching one on opens it
-  if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
+  weather.set(state.weather); // (shown at the timeline's hour: a layer doesn't open the timeline)
   applyStyle();
   renderLayersPanel();
 }

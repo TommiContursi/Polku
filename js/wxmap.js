@@ -1228,7 +1228,7 @@ export class WeatherOverlay {
     ctx.fillRect(X(-PAST), 0, X(0) - X(-PAST), H);
     // your ride, from its departure to arrival, whatever the map's hour (step 6b)
     const ride = this.app.routeHours && this.app.routeHours(), go = Math.max(0, (this.app.departure() - Math.floor(Date.now() / 3600e3) * 3600) / 3600);
-    if (ride > 0) {
+    if (ride > 0 && go < HOURS) { // (a departure past the strip's 48 hours: none)
       ctx.fillStyle = accent;
       ctx.globalAlpha = 0.16;
       ctx.fillRect(X(go), 0, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), H);
@@ -1316,18 +1316,17 @@ export class WeatherOverlay {
     cv.addEventListener('pointercancel', () => { down = false; });
   }
 
-  // `silent`: change came from the route's departure picker, don't echo back
-  setHour(hr, { silent = false } = {}) {
+  setHour(hr) {
     this.hour = Math.max(-PAST, Math.min(HOURS, hr));
     this.syncSlider();
     if (this.grid) this.applyHour(); else this.renderTime();
     this.readout();
-    if (!silent) this.emitHour();
+    this.emitHour();
   }
 
-  // Tell the app (and so the planner) whenever the whole hour changes.
+  // Tell the app whenever the whole hour changes: road works and road conditions follow it.
   emitHour() {
-    const k = Math.max(0, Math.round(this.hour)); // (the radar's past isn't a departure: it's Now's)
+    const k = Math.max(0, Math.round(this.hour)); // (the radar's past: Now's)
     if (k === this.lastEmit) return;
     this.lastEmit = k;
     if (this.app.onHour) this.app.onHour(k);
