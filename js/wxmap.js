@@ -1244,7 +1244,6 @@ export class WeatherOverlay {
     const zoomed = this.span === 'trip', far = !!tr && !this.reaches(days[0]), off = days.find((d) => !this.reaches(d));
     if (!zoomed) this.stepAt = null;
     this.tripRow.hidden = !tr;
-    this.bar.classList.toggle('trip', zoomed); // (a phone's reading and time a little wider: css/app.css)
     const [b48, bTrip] = this.spanSeg.children;
     b48.setAttribute('aria-pressed', String(!zoomed));
     bTrip.setAttribute('aria-pressed', String(zoomed));

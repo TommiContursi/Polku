@@ -2412,7 +2412,6 @@ body.dropping .drop-hint { display: flex; }
   .tl-now-main b { font-size: 19px; }
   .tl-note { display: none; }
   .wx-time { width: 112px; white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; } /* (on two lines where it must: the row is as tall as Play and the slider) */
-  .wx-bar.trip :is(.tl-now, .wx-time) { width: 120px; } /* (Your trip: "12 m/s against you" whole; the two as wide, the knob under the needle) */
   body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */
   body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers) */
   .wx-bar.docked { width: auto; }
