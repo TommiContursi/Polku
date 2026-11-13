@@ -121,7 +121,10 @@ Four PRs in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16
 3. **The weather card and the timeline, one tap apart** (line 5): the card's hours of Rain and Wind and its lanes open
    the timeline on your trip at that hour with that layer on (on a phone the card folds to its banner with Back, as
    today); Weather card › and 48 hours. The separate bar for a lane's tap is dropped, and CONTEXT.md's Weather line with
-   it.
+   it. **Chosen by the user, 2026-11-13, after trying PR 2:** the trip's ‹ › step through the weather card's notes for
+   the day (up to three, worst first: thunder, heavy rain, the dark, gusts, a headwind over the sport's limit…, in
+   their own words), each opening the timeline at its hour with its layer on, in place of PR 2's headwinds alone
+   (line 4 asked for the wind only). Its words follow AGENTS.md's "Writing" rule, read aloud where they sit.
 4. **Room for your trip on a phone** (line 6): the planner folds to its line while the timeline shows your trip, and
    comes back as it was on 48 hours or ✕; the reading on one line over a full-width strip there; checked at 360 px and
    200 %.
