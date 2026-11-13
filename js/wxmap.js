@@ -86,10 +86,11 @@ export function timeAtHour(hr) {
 // and back: a time from now on (unix s) as the timeline's hour
 const hourAt = (t) => (t - Math.floor(Date.now() / 3600e3) * 3600) / 3600;
 const weekday = (t, long = false) => new Date(t * 1000).toLocaleDateString([], { weekday: long ? 'long' : 'short' });
-// the wind where you are in words (windClass()'s keys), and the wind on your way's key: the band under Your trip's hours,
-// in the route's wind colours (the darker, the stronger), in the note under the timeline and in the legend
-const WIND_WAY = { strongHead: 'against you', head: 'against you', cross: 'from the side', tail: 'behind you', strongTail: 'behind you', calm: 'calm' };
-const BAND_KEY = `<span class="wx-key">${[['strong-head', 'head', 'against you'], ['cross', 'cross', 'from the side'], ['strong-tail', 'tail', 'behind you'], ['calm', 'calm', 'calm']]
+// the wind where you are in words, as Colour by's Wind names it (windClass()'s keys and labels), and the key of the band
+// of wind on the way under Your trip's hours, in the route's wind colours (the darker, the stronger), in the note under
+// the timeline and in the legend
+const WIND_WAY = { strongHead: 'headwind', head: 'headwind', cross: 'crosswind', tail: 'tailwind', strongTail: 'tailwind', calm: 'calm' };
+const BAND_KEY = `<span class="wx-key">${[['strong-head', 'head', 'headwind'], ['cross', 'cross', 'crosswind'], ['strong-tail', 'tail', 'tailwind'], ['calm', 'calm', 'calm']]
   .map(([a, b, t]) => `<span style="--k: linear-gradient(90deg, var(--wind-${a}) 50%, var(--wind-${b}) 50%)">${t}</span>`).join('')}</span>`;
 
 // Web Mercator helpers (0..1 world units)
@@ -119,7 +120,7 @@ export class WeatherOverlay {
     this.drops = [];
     this.span = '48'; // what the timeline shows: '48' hours, or 'trip', zoomed to your trip (#869)
     this.day = 0; // Your trip's day, on a trip of days
-    this.stepAt = null; // the stretch against you ‹ › stepped to, while the hour stays at its start
+    this.stepAt = null; // the headwind ‹ › stepped to, while the hour stays at its start
     this.trip = null; // the route's times, from app.trip(): renderTrip()
     this.buildCanvases();
     this.buildBar();
@@ -1181,16 +1182,16 @@ export class WeatherOverlay {
       this.moreBtn,
       h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) }));
     // the trip's row, under the slider while the route has times (#869): what the timeline shows (48 hours or Your trip,
-    // greyed past the map's 48 hours with the reason), and in Your trip its days and ‹ › between the stretches against you;
+    // greyed past the map's 48 hours with the reason), and in Your trip its days and ‹ › between the headwinds;
     // then the weather card. Its line with the switch is the last, so the switch stays under the finger as rows come and
     // go over it (the timeline grows up from its foot)
     const spanBtn = (k, words) => h('button', { type: 'button', 'data-k': `span-${k}`, 'aria-pressed': 'false', onclick: () => this.setSpan(k) }, words);
     this.spanSeg = h('div', { class: 'seg small', role: 'group', 'aria-label': 'What the timeline shows' }, spanBtn('48', '48 hours'), spanBtn('trip', 'Your trip'));
     this.daysEl = h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' });
-    const stepBtn = (dir) => h('button', { type: 'button', class: 'tool', 'data-k': dir < 0 ? 'step-prev' : 'step-next', 'aria-label': dir < 0 ? 'The stretch against you before' : 'The next stretch against you',
+    const stepBtn = (dir) => h('button', { type: 'button', class: 'tool', 'data-k': dir < 0 ? 'step-prev' : 'step-next', 'aria-label': dir < 0 ? 'The headwind before' : 'The next headwind',
       html: icon(dir < 0 ? 'chevronLeft' : 'chevronRight', 18), onclick: () => this.step(dir) });
     this.stepWords = h('span', { 'aria-live': 'polite' });
-    this.stepEl = h('div', { class: 'tl-step', role: 'group', 'aria-label': 'Where the wind is against you' }, stepBtn(-1), this.stepWords, stepBtn(1));
+    this.stepEl = h('div', { class: 'tl-step', role: 'group', 'aria-label': 'Headwinds on the way' }, stepBtn(-1), this.stepWords, stepBtn(1));
     this.whyEl = h('p', { class: 'tl-why', id: 'tl-why' });
     this.tripRow = h('div', { class: 'tl-trip', hidden: true }, this.spanSeg, this.stepEl,
       h('button', { type: 'button', class: 'btn small quiet tl-card', onclick: () => this.app.openWeather(this.span === 'trip' ? this.day : 0), html: `Weather card${icon('chevronRight', 16)}` }), this.daysEl, this.whyEl);
@@ -1288,7 +1289,7 @@ export class WeatherOverlay {
     while (lo < hi) { const m = (lo + hi) >> 1; if (T.at(m) < t) lo = m + 1; else hi = m; }
     return lo;
   }
-  // the day's stretches against you (the weather card's, from Wind on the way) that start inside the window; a new list (a
+  // the day's headwinds (the weather card's stretches, from Wind on the way) that start inside the window; a new list (a
   // new forecast, day or window) lets go of the one stepped to
   stretches(z) {
     const { a, T } = this.trip, c = this.stepList;
@@ -1320,10 +1321,10 @@ export class WeatherOverlay {
     this.setHour(this.hourOn(this.tripWin(), this.trip.days[j].t0));
   }
 
-  // where ‹ › put the hour on a stretch against you: when you reach its first point, to the minute (a stretch can be
+  // where ‹ › put the hour on a headwind: when you reach its first point, to the minute (a stretch can be
   // shorter than the slider's 5 minutes, and none of them fall inside it), inside the window
   stretchHour(z, r) { return hourAt(Math.max(z.tw0, Math.min(z.tw1, this.trip.T.at(r.i0 + 1)))); }
-  // ‹ and ›: the hour to the stretch against you before or after it, lit on the band and the route
+  // ‹ and ›: the hour to the headwind before or after it, lit on the band and the route
   step(dir) {
     const z = this.tripWin(), list = this.stretches(z), at = list.map((r) => this.stretchHour(z, r));
     const j = dir > 0 ? at.findIndex((x) => x > this.hour + 1e-4) : at.findLastIndex((x) => x < this.hour - 1e-4);
@@ -1349,11 +1350,11 @@ export class WeatherOverlay {
     else this.youPin.setLngLat(a.pts[i]);
     const list = this.stretches(z), n = list.length, at = list[this.stepAt], km = (j) => Math.max(1, Math.round(a.along[j] / 1000));
     const short = w && forecastKnown(w, z.d.i0) && !forecastKnown(w, z.d.i1) ? ` · no forecast past km ${km(w.beyond)}` : '';
-    const [b, sm] = !w ? [`The wind on your way: ${a.windError ? 'no forecast' : 'loading'}`, '']
-      : !forecastKnown(w, z.d.i0) ? ['The wind on your way: no forecast yet', '']
-        : !n ? ['Nowhere against you for long', short.slice(3)]
-          : at ? [`Against you, ${this.stepAt + 1} of ${n}`, `km ${km(at.i0)}${km(at.i1) > km(at.i0) ? ` to ${km(at.i1)}` : ''} · up to ${Math.round(at.max)} m/s`]
-            : [`Against you on ${n} stretch${n > 1 ? 'es' : ''}`, `up to ${Math.round(Math.max(...list.map((r) => r.max)))} m/s${short}`];
+    const [b, sm] = !w ? [`Wind on the way: ${a.windError ? 'no forecast' : 'loading'}`, '']
+      : !forecastKnown(w, z.d.i0) ? ['Wind on the way: no forecast yet', '']
+        : !n ? ['No long headwinds', short.slice(3)]
+          : at ? [`Headwind ${this.stepAt + 1} of ${n}`, `km ${km(at.i0)}${km(at.i1) > km(at.i0) ? ` to ${km(at.i1)}` : ''} · up to ${Math.round(at.max)} m/s`]
+            : [`Headwind on ${n} stretch${n > 1 ? 'es' : ''}`, `up to ${Math.round(Math.max(...list.map((r) => r.max)))} m/s${short}`];
     if (this.stepWords.dataset.said !== b + sm) {
       this.stepWords.dataset.said = b + sm;
       this.stepWords.replaceChildren(h('b', {}, b), sm ? h('small', {}, sm) : '');
@@ -1531,9 +1532,9 @@ export class WeatherOverlay {
       ctx.fillText('Radar', Xh(-PAST) - 6, H - 4);
     }
     if (z) {
-      // Your trip's wind on your way, a band under the hours by the samples you're at (windClass(): against you, the strong
-      // in the darker red, from the side, behind you, calm), none while you wait at a stop; past the forecast's reach, said
-      // so; the stretch ‹ › stepped to, ringed
+      // Your trip's wind on the way, a band under the hours by the samples you're at (windClass(): headwind, the strong in
+      // the darker red, crosswind, tailwind, calm), none while you wait at a stop; past the forecast's reach, said so; the
+      // headwind ‹ › stepped to, ringed
       const { T } = this.trip, w = a.wind, band = H - 7;
       for (let i = z.d.i0 + 1; i <= z.d.i1 && forecastKnown(w, i) && T.at(i - 1) < z.tw1; i++) {
         const x0 = Xt(Math.max(z.tw0, T.at(i - 1))), x1 = Xt(Math.min(z.tw1, T.at(i) - (a.waitAt ? a.waitAt[i] : 0)));
@@ -1675,7 +1676,7 @@ export class WeatherOverlay {
           : g && g.stale ? `Showing the forecast from ${hhmm(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null);
       this.noteEl.classList.toggle('warn', !!problem);
       if (problem || !z) this.noteEl.textContent = problem ? `⚠ ${problem}` : `${route ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
-      else if (!this.noteEl.querySelector('.wx-key')) this.noteEl.innerHTML = `Under the hours, the wind on your way: ${BAND_KEY}`; // (once, not on every frame of Play)
+      else if (!this.noteEl.querySelector('.wx-key')) this.noteEl.innerHTML = `Wind on the way, under the hours: ${BAND_KEY}`; // (once, not on every frame of Play)
     }
     this.syncTrip();
     if (this.app.onTime) this.app.onTime(this.hour);
@@ -1715,7 +1716,7 @@ export class WeatherOverlay {
       rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`));
       rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>');
     }
-    if (this.tripWin()) rows.push(`<div class="lgl"><span><b>Wind on your way</b>, the band under your trip’s hours${BAND_KEY}</span></div>`); // (a phone hides the note under the timeline)
+    if (this.tripWin()) rows.push(`<div class="lgl"><span><b>Wind on the way</b>, under your trip’s hours${BAND_KEY}</span></div>`); // (a phone hides the note under the timeline)
     if (this.hour < 0 && rows.length) rows.unshift('<div class="lgl lg-note">The radar’s past: only the rain has one, the other layers start at Now</div>');
     const open = this.legendOpen ?? !this.foldMQ.matches;
     const key = `${rows.join('')}|${open}`;
@@ -1732,7 +1733,7 @@ export class WeatherOverlay {
   }
 
   // The weather card beside the strip: the selected time at the spot under the mouse (or the map centre); in Your trip,
-  // where you'll be then (from the route's own forecast, the weather card's), the wind against you in words. At most once
+  // where you'll be then (from the route's own forecast, the weather card's), the wind's way in words. At most once
   // per frame.
   readout() {
     if (this.readFrame) return;
@@ -1762,10 +1763,10 @@ export class WeatherOverlay {
       const snow = this.on.snow && Number.isFinite(s.snow ?? NaN) ? `<div>${icon('snow', 12)}${s.snow >= 1 ? `${Math.round(s.snow)} cm of snow` : 'no snow'}</div>` : '';
       if (z) {
         const out = t < z.d.t0 ? 'the start' : t > z.d.t1 ? 'the finish' : null, way = !out && forecastKnown(w, i) && WIND_WAY[windClass(a, i).key];
-        this.nowEl.title = `${SKY[kind]} · ${out ? `at ${out}` : `on your route at km ${km}`}${way ? `, the wind ${way}` : ''}${s.gust > s.speed + 2 ? ` · gusts ${Math.round(s.gust)} m/s` : ''}`;
+        this.nowEl.title = `${SKY[kind]} · ${out ? `at ${out}` : `on your route at km ${km}`}${way ? `, ${way === 'calm' ? 'calm' : `a ${way}`}` : ''}${s.gust > s.speed + 2 ? ` · gusts ${Math.round(s.gust)} m/s` : ''}`;
         this.nowEl.innerHTML =
           `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${out || `km ${km}`}</small></div>` +
-          `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${Math.round(s.speed)} m/s ${way === 'against you' ? '<b>against you</b>' : compass(s.dir)}`}</div>` + // (whole m/s: room for the words)
+          `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${Math.round(s.speed)} m/s ${way === 'headwind' ? '<b>headwind</b>' : way && way !== 'calm' ? way : compass(s.dir)}`}</div>` + // (whole m/s: room for the words)
           `<div>${icon('drop', 12)}${rain >= 0.05 ? `${rain.toFixed(1)} mm/h` : 'dry'}</div>` + snow;
         return;
       }

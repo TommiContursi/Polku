@@ -7872,7 +7872,7 @@ export class Planner {
     return h('div', { class: 'wx-open' },
       h('div', { class: 'wx-stack', role: 'img', 'aria-label': PARTS.map(([k, , t]) => `${t} ${sh[k]} %`).join(', ') }, ...PARTS.map(([k, c]) => h('i', { style: `width: ${sh[k]}%; background: var(${c})` }))),
       h('p', { class: 'wx-key', 'aria-hidden': 'true' }, ...PARTS.map(([k, c, t]) => h('span', { style: `--k: var(${c})` }, `${t} ${sh[k]} %`))),
-      h('p', { class: 'wx-foot' }, head.length ? 'Where it’s against you, strongest first' : 'Nowhere against you for long.'),
+      h('p', { class: 'wx-foot' }, head.length ? 'Where it’s against you, strongest first' : 'No long headwinds.'),
       rows(...head.map((r) => pv(h('button', { type: 'button', class: 'row', 'data-k': 'headwind', onclick: () => this.focusRange(r.i0, r.i1, null) },
         h('span', {}, h('b', {}, `km ${km(r.i0)} to ${km(r.i1)} · up to ${Math.round(r.max)} m/s`), h('small', {}, `around ${this.clockOf(Math.round(T.at(r.i0) / 600) * 600)} to ${this.clockOf(Math.round(T.at(r.i1) / 600) * 600)}`)),
         h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })), r.i0, r.i1))),

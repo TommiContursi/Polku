@@ -13131,8 +13131,8 @@ def wind_by_sport(chrome):
 
 # The timeline zoomed to your trip (#869's build, PR 2): the trip's row under the slider while the route has times;
 # Your trip zooms the strip and the slider to the trip, an hour either side, by the 5 minutes, and the switch stays under
-# the finger as rows come over it; the reading and the time say where you'll be, the wind against you in words, with your
-# dot on the route; ‹ › step through the stretches against you (Wind on the way's), lit on the route, the focus kept, and
+# the finger as rows come over it; the reading and the time say where you'll be, a headwind in words, with your
+# dot on the route; ‹ › step through the headwinds (Wind on the way's stretches), lit on the route, the focus kept, and
 # the slider's own move leaves them; the forecast loading, failed, stopping short and coming late said in the stepper,
 # the strip and the reading; the band's key in the legend (and the note on a desktop); a trip of days a day at a time with
 # its chips; a trip past the 48 hours greyed with the reason; Weather on the map at another hour, Weather here and ✕ back
@@ -13217,29 +13217,29 @@ def timeline_trip(chrome):
             if b['legend'].strip() == 'Legend':  # (folded at first on a phone and in a narrow window: opened as a person does)
                 press(*pg.js("(() => { const r = document.querySelector('.wx-legend .lg-fold').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
                 b['legend'] = st()['legend']
-            if 'Wind on your way' not in b['legend'] or (wd > 720 and b['noteKey'] != 4):
+            if 'Wind on the way' not in b['legend'] or (wd > 720 and b['noteKey'] != 4):
                 bad(f'the band\'s key: the legend “{b["legend"][:80]}”, the note\'s {b["noteKey"]} colours')
-            if b['step'] != 'Against you on 2 stretchesup to 7 m/s':
+            if b['step'] != 'Headwind on 2 stretchesup to 7 m/s':
                 bad(f'the stepper: {b["step"]!r}')
             # › twice and ‹ once: the hour on each stretch, its words, the route lit, the focus kept
             press(*b['next'])
             c = st()
-            if not (c['step'] or '').startswith('Against you, 1 of 2') or '<b>against you</b>' not in c['read'] or not c['lit'] or c['focus'] != 'step-next':
+            if not (c['step'] or '').startswith('Headwind 1 of 2') or '<b>headwind</b>' not in c['read'] or not c['lit'] or c['focus'] != 'step-next':
                 bad(f'› to the first stretch: {c["step"]!r}, the reading {c["read"][-120:]!r}, lit {c["lit"]}, the focus on {c["focus"]}')
             press(*c['next'])
             d = st()
-            if not (d['step'] or '').startswith('Against you, 2 of 2') or not d['nextOff'] or d['focus'] != 'step-prev' or d['lit'] == c['lit'] or 'up to 7 m/s' not in d['step'] or '<b>against you</b>' not in d['read']:
+            if not (d['step'] or '').startswith('Headwind 2 of 2') or not d['nextOff'] or d['focus'] != 'step-prev' or d['lit'] == c['lit'] or 'up to 7 m/s' not in d['step'] or '<b>headwind</b>' not in d['read']:
                 bad(f'› to the second: {d["step"]!r}, › off {d["nextOff"]}, the focus on {d["focus"]}, lit {d["lit"]} (was {c["lit"]})')
             # a strong headwind's words whole in the reading, and the time whole (a phone's reading is the narrowest)
             js("T.set(T.wind({ series: [{ ...T.wind().series[0], speed: Array(8).fill(12) }] })); w.bar.querySelector('[data-k=step-prev]').click()")
             cut = pg.js("[...polku.weather.nowEl.children, polku.weather.timeEl].filter((x) => x.scrollWidth > x.clientWidth + 1).map((x) => x.textContent)")
-            if cut or '12 m/s against you' not in pg.js("polku.weather.nowEl.textContent"):
-                bad(f'12 m/s against you: cut {cut}, the reading “{pg.js("polku.weather.nowEl.textContent")}”')
+            if cut or '12 m/s headwind' not in pg.js("polku.weather.nowEl.textContent"):
+                bad(f'12 m/s headwind: cut {cut}, the reading “{pg.js("polku.weather.nowEl.textContent")}”')
             js('T.set(T.wind())')
             # the slider's own move: the stretch left, the route unlit
             js("w.slider.value = String(+w.slider.value - 3); w.slider.dispatchEvent(new Event('input', { bubbles: true }))")
             e = st()
-            if e['step'] != 'Against you on 2 stretchesup to 7 m/s' or e['lit']:
+            if e['step'] != 'Headwind on 2 stretchesup to 7 m/s' or e['lit']:
                 bad(f'the slider moved off the stretch: {e["step"]!r}, lit {e["lit"]}')
             # a press on the strip three quarters along, and Play: the hour there by the 5 minutes, then on by about 15 minutes a
             # second, inside the window
@@ -13258,13 +13258,13 @@ def timeline_trip(chrome):
             k = st()
             js('T.set(T.wind())')
             l = st()
-            if f['step'] != 'The wind on your way: loading' or not f['skel'] or 'tl-skel' not in f['read']:
+            if f['step'] != 'Wind on the way: loading' or not f['skel'] or 'tl-skel' not in f['read']:
                 bad(f'loading: the stepper {f["step"]!r}, the strip\'s skeleton {f["skel"]}, the reading {f["read"][:80]!r}')
-            if g['step'] != 'The wind on your way: no forecast' or g['skel'] or 'couldn’t be loaded' not in g['read'] or (not phone and 'couldn’t be loaded' not in g['note']):
+            if g['step'] != 'Wind on the way: no forecast' or g['skel'] or 'couldn’t be loaded' not in g['read'] or (not phone and 'couldn’t be loaded' not in g['note']):
                 bad(f'failed: the stepper {g["step"]!r}, the skeleton {g["skel"]}, the reading {g["read"][:80]!r}, the note “{g["note"]}”')
             if not re.search(r'no forecast past km \d+$', k['step'] or ''):
                 bad(f'the forecast stopping half way: the stepper {k["step"]!r}')
-            if l['step'] != 'Against you on 2 stretchesup to 7 m/s' or l['skel']:
+            if l['step'] != 'Headwind on 2 stretchesup to 7 m/s' or l['skel']:
                 bad(f'the forecast coming late: the stepper {l["step"]!r}')
             # a trip of days: a night at the middle point, a day at a time with the weather card's chips
             js('p.setStop(2, { on: 480 }); for (let k = 0; k < 40 && p.wxDays(p.analysis).length < 2; k++) await wait(200); T.set(T.wind({ beyondSec: p.trip().end + 3600 }))')
@@ -13292,7 +13292,7 @@ def timeline_trip(chrome):
             r_ = st()
             # the legend's key goes with the trip view, the timeline closed with no layer on too; the route cleared, the row goes
             js("polku.weather.app.onToggle({ rain: false }); w.bar.querySelector('[data-k=span-trip]').click(); await wait(200); document.querySelector('#wx-bar .tl-close').click()")
-            gone = pg.js("(() => { const l = document.querySelector('.wx-legend'); return !l || l.hidden || !/Wind on your way/.test(l.textContent); })()")
+            gone = pg.js("(() => { const l = document.querySelector('.wx-legend'); return !l || l.hidden || !/Wind on the way/.test(l.textContent); })()")
             js("document.querySelector('#btn-time').click(); await wait(300); w.bar.querySelector('[data-k=span-trip]').click(); await wait(200); p.clear()")
             s_ = st()
             if not gone or s_['row'] or s_['span'] != '48' or s_['you'] or s_['lit']:
@@ -13302,7 +13302,7 @@ def timeline_trip(chrome):
             fails.extend(f'{name}: console: {x[:160]}' for x in pg.errors())
         finally:
             pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the timeline zoomed to your trip (#869): the switch still under the finger, where you'll be, ‹ › between the stretches against you, missing and late forecasts, a day at a time, past 48 hours, back to 48 hours" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline zoomed to your trip (#869): the switch still under the finger, where you'll be, ‹ › between the headwinds, missing and late forecasts, a day at a time, past 48 hours, back to 48 hours" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -21034,7 +21034,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, ‹ › between the stretches against you, missing and late forecasts, a day at a time, past 48 hours (#869)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, ‹ › between the headwinds, missing and late forecasts, a day at a time, past 48 hours (#869)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

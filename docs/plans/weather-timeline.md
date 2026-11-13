@@ -145,6 +145,9 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
   moving the map; the window starts at Now when you leave within the hour; a day that runs past the map's 48 hours is
   zoomed to as far as they reach, and the row says where they end; the trip's lines wrap upwards, so the switch stays
   under the finger when the stepper comes (#594's stillness), on a phone too; your dot has the route's hover dot's look.
+  The words (the user's choice, 2026-11-13): the wind's way in Colour by's words, headwind, crosswind, tailwind and
+  calm, in the reading, the band's key and the stepper (**‹ Headwind 1 of 3 ›**, "No long headwinds", in the weather
+  card's Wind on the way too), in place of the mock-up's "against you", which said nothing of the wind on its own.
 
 ## What stays as it is
 
