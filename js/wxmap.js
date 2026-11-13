@@ -277,11 +277,11 @@ export class WeatherOverlay {
     const on = this.float && !this.docked && this.floatMQ && this.floatMQ.matches;
     bar.classList.toggle('placed', !!on);
     if (!on) { st.left = st.top = st.width = st.bottom = st.transform = ''; return; }
-    // anywhere on the map, but never over the button column on the right
-    const right = innerWidth - 84;
-    const w = Math.round(Math.max(420, Math.min(right - 16, this.float.width)));
+    // anywhere on the map, but never over the button column on the right, nor under the planner's side panel
+    const right = innerWidth - 84, pl = parseFloat(document.documentElement.style.getPropertyValue('--pl-left')) || 0;
+    const w = Math.round(Math.max(420, Math.min(right - pl - 16, this.float.width)));
     const hgt = bar.offsetHeight || 190;
-    const left = Math.round(Math.max(8, Math.min(right - w - 8, this.float.left)));
+    const left = Math.round(Math.max(pl + 8, Math.min(right - w - 8, this.float.left)));
     const top = Math.round(Math.max(8, Math.min(innerHeight - hgt - 8, this.float.top)));
     this.float = { left, top, width: w };
     Object.assign(st, { left: `${left}px`, top: `${top}px`, width: `${w}px`, bottom: 'auto', transform: 'none' });
@@ -1304,15 +1304,17 @@ export class WeatherOverlay {
   // at the day's start unless the hour is already in its window; 48 hours keeps the hour
   setSpan(k) {
     if (k === this.span) return;
+    const t = timeAtHour(this.hour); // (before the trip view keeps the hour inside its window)
     if (k === 'trip') {
-      const t = timeAtHour(this.hour), j = this.trip.days.findIndex((d) => t >= d.t0 - 3600 && t <= d.t1 + 3600);
+      const j = this.trip.days.findIndex((d) => t >= d.t0 - 3600 && t <= d.t1 + 3600);
       this.day = j >= 0 && this.reaches(this.trip.days[j]) ? j : 0;
     }
     this.span = k;
     this.stepAt = null;
+    const z = this.tripWin();
+    if (z) this.hour = this.hourOn(z, t >= z.tw0 && t <= z.tw1 ? t : z.d.t0);
     this.renderTrip();
-    const z = this.tripWin(), t = timeAtHour(this.hour);
-    if (z) this.setHour(this.hourOn(z, t >= z.tw0 && t <= z.tw1 ? t : z.d.t0));
+    if (z) this.setHour(this.hour);
   }
   setDay(j) {
     this.day = j;

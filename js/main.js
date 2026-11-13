@@ -582,7 +582,7 @@ const weather = new WeatherOverlay(map, {
   // the weather card has them; null without a timed route
   trip: () => {
     const a = planner.analysis, T = planner.points.length > 1 && planner.trip();
-    return T ? { a, T, days: planner.wxDays(a), against: (d) => planner.headwinds(a, d.i0, d.i1) } : null;
+    return T ? { a, T, days: planner.wxDays(a), against: (d) => planner.headwinds(a, d.i0 + 1, d.i1) } : null; // (from the day's first piece: not the one before its night)
   },
   // the stretch Your trip stepped to, lit on the profile and the route without moving the map; null unlights it, unless
   // something else has been lit since
@@ -684,6 +684,7 @@ function syncPlannerPadding() {
   const r = sheet.getBoundingClientRect();
   document.documentElement.style.setProperty('--pl-left', `${side ? r.right : 0}px`);
   document.documentElement.style.setProperty('--pl-mid', `${side ? r.top + r.height / 2 : 0}px`); // (its resize grip, beside it)
+  weather.placeFloat(); // (a timeline placed by hand stays clear of the side panel)
   placePanels();
   if (quickOpen()) placeQuick();
   syncWxH(); // (and the map's column)

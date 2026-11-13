@@ -13203,13 +13203,15 @@ def timeline_trip(chrome):
             press(*pg.js("(() => { const r = document.querySelector('#wx-bar .tl-card').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
             if pg.js("polku.planner.cards.current?.kind") != 'weather':
                 bad(f'Weather card › opened {pg.js("polku.planner.cards.current?.kind")!r}')
-            js("p.cards.close()")
+            js("p.cards.close(); w.setHour(30)")
             a = st()
-            # Your trip, as a person presses it: the switch where it was, the strip and the slider over the trip
+            # Your trip, as a person presses it from 30 hours ahead: the switch where it was, the strip and the slider over
+            # the trip, at the departure (it opened at the window's end, the hour kept inside it first: Codex on #1000)
             press(*a['swAt'])
             b = st()
-            if b['trip'] != 'true' or b['sw'] != a['sw']:
-                bad(f'Your trip pressed: {b["trip"]}, the switch from {a["sw"]} to {b["sw"]}')
+            at_go = pg.js("Math.abs(polku.weather.hour * 3600 + Math.floor(Date.now() / 3600e3) * 3600 - polku.planner.trip().start) < 151")
+            if b['trip'] != 'true' or b['sw'] != a['sw'] or not at_go:
+                bad(f'Your trip pressed from 30 hours ahead: {b["trip"]}, the switch from {a["sw"]} to {b["sw"]}, at the departure {at_go} (“{b["time"]}”)')
             if b['slider'][:2] != [0, b['win']] or b['slider'][3] != 'Time on your trip, by 5 minutes' or not (b['win'] and 24 <= b['win'] <= 40) or b['start'] != 60:
                 bad(f'Your trip\'s slider {b["slider"]}, its window {b["win"]} × 5 min, the start {b["start"]} min in (want an hour either side)')
             if not re.search(r' · (km \d+|the start)$', b['time']) or not re.search(r', (at km \d+|before you set off, at the start)$', b['slider'][4] or '') or not b['you'] or not b['youOn']:
@@ -13241,13 +13243,13 @@ def timeline_trip(chrome):
             e = st()
             if e['step'] != 'Headwind on 2 stretchesup to 7 m/s' or e['lit']:
                 bad(f'the slider moved off the stretch: {e["step"]!r}, lit {e["lit"]}')
-            # a press on the strip three quarters along, and Play: the hour there by the 5 minutes, then on by about 15 minutes a
-            # second, inside the window
+            # a press on the strip three quarters along, and Play: the hour there by the 5 minutes, then on (15 minutes a second
+            # at 60 frames a second), inside the window
             sx = pg.js("(() => { const r = polku.weather.stripCv.getBoundingClientRect(); return [r.left + 9 + (r.width - 18) * 0.75, r.top + r.height / 2]; })()")
             press(*sx)
             strip = pg.js("(() => { const w = polku.weather, z = w.tripWin(), t = Math.round(w.hour * 3600 + Math.floor(Date.now() / 3600e3) * 3600); return { off: Math.abs(t - (z.tw0 + 0.75 * (z.tw1 - z.tw0))) / 60, five: t % 300 === 0, slider: +w.slider.value / +w.slider.max }; })()")
             play = pg.js("(async () => { const w = polku.weather, z = w.tripWin(); w.slider.value = '0'; w.slider.dispatchEvent(new Event('input')); const a = w.hour; w.playBtn.click(); await new Promise((r) => setTimeout(r, 1000)); w.playBtn.click(); const b = w.hour; return { mins: (b - a) * 60, inside: (b * 3600 + Math.floor(Date.now() / 3600e3) * 3600) <= z.tw1 + 1 }; })()")
-            if strip['off'] > 2.6 or not strip['five'] or abs(strip['slider'] - 0.75) > 0.05 or not (5 <= play['mins'] <= 25) or not play['inside']:
+            if strip['off'] > 2.6 or not strip['five'] or abs(strip['slider'] - 0.75) > 0.05 or not (0.5 <= play['mins'] <= 25) or not play['inside']:  # (Play's pace is the frames': headless Chrome's are few)
                 bad(f'a press on the strip three quarters along: {strip}; Play for a second: {play}')
             # the forecast loading, failed, stopping short and coming late
             js('T.set(null)')
@@ -13276,6 +13278,14 @@ def timeline_trip(chrome):
                 d2 = pg.js("(() => { const w = polku.weather, z = w.tripWin(), d = w.trip.days[1]; return { day: w.day, chip: document.querySelector('#wx-bar [data-k=day-2]').getAttribute('aria-pressed'), win: z && Math.abs(z.tw0 - Math.ceil((d.t0 - 3600) / 300) * 300) < 1, at: Math.abs(w.hour - w.hourOn(z, d.t0)) < 1e-6, step: w.stepWords.textContent }; })()")
                 if d2['day'] != 1 or d2['chip'] != 'true' or not d2['win'] or not d2['at'] or not d2['step']:
                     bad(f'Day 2 pressed: {d2}')
+            # each day's headwinds are its own: none from the piece before its night (Codex on #1000), here with the wind
+            # against you the whole way
+            own = pg.js("""(async () => { const p = polku.planner, a = p.analysis, n = a.along.length, f = (v) => new Float32Array(n).fill(v), w0 = window.__trip.wind();
+              a.wind = { ...w0, head: f(4), cross: f(0), speed: f(7), gust: f(9), dir: f(270), temp: f(3), precip: f(0), feel: f(0), cloud: f(90), snow: f(NaN), thunder: new Uint8Array(n), cell: new Uint8Array(n), beyondSec: p.trip().end + 3600 };
+              a.windError = false; p.renderAnalysis(); await new Promise((r) => setTimeout(r, 300));
+              const tr = polku.weather.trip; return tr.days.length > 1 && tr.days.slice(1).every((d) => tr.against(d).every((r) => r.i0 >= d.i0)); })()""")
+            if not own:
+                bad('a later day lists a headwind from the day before its night')
             js('p.setStop(2, null)')
             # a trip past the 48 hours: Your trip greyed with the reason, and the trip view left
             js('p.when.set(Math.ceil(Date.now() / 3600e3) * 3600 + 72 * 3600); for (let k = 0; k < 50 && p.analysis.start !== p.when.start(); k++) await wait(100)')
@@ -13299,6 +13309,46 @@ def timeline_trip(chrome):
                 bad(f'the legend\'s key gone after ✕: {gone}; the route cleared in Your trip: the row {s_["row"]}, the view {s_["span"]}, your dot {s_["you"]}, lit {s_["lit"]}')
             if o['span'] != '48' or q['span'] != '48' or r_['span'] != '48' or r_['h48'] != 'true' or r_['hour'] != 0 or r_['you']:
                 bad(f'back to 48 hours: Weather on the map 30 h ahead {o["span"]}, Weather here {q["span"]}, ✕ and Weather {r_["span"]} at hour {r_["hour"]}, your dot {r_["you"]}')
+            if name == 'desktop':
+                # the window made narrower with the planner's side panel open, as a person drags its edge, and back: the
+                # weather buttons stay on one row (sideways where they don't fit), the trip row is a narrow timeline's
+                # (the switch and Weather card › at the foot, the headwinds over them) and a wide one's again; a timeline
+                # dragged over the panel stays clear of it, after the window changes too
+                pg.js(TL_TRIP_SETUP, timeout=40000)  # (the route again: the last step cleared it)
+                js("w.bar.querySelector('[data-k=span-trip]').click()")
+                lay = """(() => { const top = (sel) => { const e = document.querySelector('#wx-bar ' + sel), r = e && e.getBoundingClientRect(); return e && !e.closest('[hidden]') ? Math.round(r.top + r.height / 2) : null; }, row = document.querySelector('#wx-bar .tl-layers');
+                  const b = document.querySelector('#wx-bar').getBoundingClientRect();
+                  return { rows: new Set([...row.children].map((x) => Math.round(x.getBoundingClientRect().top))).size, seg: top('.tl-trip > .seg'), card: top('.tl-card'), step: top('.tl-step'), left: Math.round(b.left), width: Math.round(b.width),
+                    pl: parseFloat(document.documentElement.style.getPropertyValue('--pl-left')) || 0, side: polku.planner.layout() }; })()"""
+                wide = pg.js(lay)
+                sizes = {}
+                for ww, hh in [(1100, 800), (900, 760), (1440, 900)]:
+                    pg.c.send('Emulation.setDeviceMetricsOverride', {'width': ww, 'height': hh, 'deviceScaleFactor': 1, 'mobile': False}, pg.s)
+                    time.sleep(1.2)
+                    sizes[ww] = pg.js(lay)
+                narrow, back = sizes[1100], sizes[1440]
+                if wide['rows'] != 1 or not (wide['seg'] == wide['card'] == wide['step']):
+                    bad(f'at 1440 × 900: the layers on {wide["rows"]} rows, the trip row {wide}')
+                # (at 1100 px the switch and Weather card › share the foot; at 900 the timeline is 296 px, too narrow for both,
+                # so the switch is at the foot alone)
+                for ww in (1100, 900):
+                    x = sizes[ww]
+                    if x['side'] == 'side' and (x['rows'] != 1 or (ww == 1100 and x['seg'] != x['card']) or x['seg'] < x['card'] or not (x['step'] is not None and x['step'] < x['seg'])):
+                        bad(f'the window resized to {ww} px with the side panel: the layers on {x["rows"]} rows, the trip row {x}')
+                if back['rows'] != 1 or not (back['seg'] == back['card'] == back['step']):
+                    bad(f'back at 1440 × 900: the layers on {back["rows"]} rows, the trip row {back}')
+                # the title bar dragged to the window's left edge, over the side panel
+                hx, hy = pg.js("(() => { const r = document.querySelector('#wx-bar .tl-title').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+                for kind, xx in (('mouseMoved', hx), ('mousePressed', hx), ('mouseMoved', hx - 200), ('mouseMoved', 20), ('mouseReleased', 20)):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': xx, 'y': hy, 'button': 'left', 'buttons': 1 if kind != 'mouseReleased' else 0, 'clickCount': 1}, pg.s)
+                time.sleep(0.5)
+                dragged = pg.js(lay)
+                pg.c.send('Emulation.setDeviceMetricsOverride', {'width': 1200, 'height': 860, 'deviceScaleFactor': 1, 'mobile': False}, pg.s)
+                time.sleep(1.2)
+                after = pg.js(lay)
+                pg.js("(() => { localStorage.removeItem('polku:timelineFloat'); return true; })()")
+                if dragged['left'] < dragged['pl'] + 8 or after['left'] < after['pl'] + 8:
+                    bad(f'the timeline dragged over the side panel: at {dragged["left"]} px with the panel to {dragged["pl"]}; the window resized: at {after["left"]} px, the panel to {after["pl"]}')
             fails.extend(f'{name}: console: {x[:160]}' for x in pg.errors())
         finally:
             pg.close()

@@ -12,6 +12,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - A trip with nights goes a day at a time, with a chip for each day. A trip that starts past the map's 48 hours can't be zoomed to yet: **Your trip** is grey, and the timeline says from when you can.
 - While the forecast loads, or if it fails or stops short of your trip, the timeline says so instead of showing an empty band.
 - **Weather card ›** beside the switch opens the weather card. In the weather card's **Wind on the way**, a trip with no long headwind says **No long headwinds**.
+- The timeline's weather buttons stay on one row on a desktop too: when the timeline is too narrow for all six, beside the planner in a smaller window, the row scrolls sideways with arrows at its edges, as in a narrow window, instead of wrapping onto more rows. In a narrow timeline the trip's row puts **48 hours · Your trip** and **Weather card ›** at the foot, whatever the window's size.
+- A timeline you've dragged stays clear of the planner beside it, also after the window or the planner changes size.
 
 ### The weather layers as buttons ([#869](https://github.com/TommiContursi/Polku/issues/869))
 

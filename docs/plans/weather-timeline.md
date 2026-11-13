@@ -148,6 +148,11 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
   moving the map; the window starts at Now when you leave within the hour; a day that runs past the map's 48 hours is
   zoomed to as far as they reach, and the row says where they end; the trip's lines wrap upwards, so the switch stays
   under the finger when the stepper comes (#594's stillness), on a phone too; your dot has the route's hover dot's look.
+  Found in testing (2026-11-13): on a desktop with the planner beside it, a smaller window made the timeline narrow, the
+  layer buttons wrapped onto two or three rows and the trip row's Weather card › jumped over the switch. The buttons now
+  stay on one row everywhere, scrolling sideways with the arrows where they don't fit (PR 1's wrapping is gone), the trip
+  row follows the timeline's own width (a container query), and a dragged timeline keeps clear of the side panel. A
+  timeline too narrow at a 900 px window beside the panel (296 px) is the app's, in its own issue.
   The words (the user's choice, 2026-11-13): the wind's way in Colour by's words, headwind, crosswind, tailwind and
   calm, in the reading, the band's key and the stepper (**‹ Headwind 1 of 3 ›**, "No long headwinds", in the weather
   card's Wind on the way too), in place of the mock-up's "against you", which said nothing of the wind on its own.
