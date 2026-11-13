@@ -14295,15 +14295,15 @@ def toolbox(chrome):
             fails.append(f"{name}: Show the whole route isn’t in the map’s column alone (the toolbar has {', '.join(d['bar'])})")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
-    # the narrowest window with the panel beside the map: fully folded, the toolbar still doesn't fit beside it, so it
-    # takes a second row, growing upward, clear of the map's buttons, and the scale and the credits ride above it (#468)
+    # the narrowest window with the panel beside the map: the panel gives way so the toolbar stays on one row (#1002), clear
+    # of the map's buttons, and the scale and the credits ride above it (#468)
     name = '900x700'
     pg = page(900, 700, False)
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
     placed(pg)
     pg.js(SETTLED)
     e = pg.js(ON_EDGE)
-    if not (e['edge'] and e['round'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' not in e['folds']:
+    if not (e['edge'] and e['round'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' in e['folds']:
         fails.append(f'{name}: the toolbar {e}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
