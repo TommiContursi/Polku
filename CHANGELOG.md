@@ -107,6 +107,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-09
 
+### Buildings in each other's shadows ([#947](https://github.com/TommiContursi/Polku/issues/947))
+
+- In 3D with **The sun** and **Trees' and buildings' shadows** on, a building in the shadow of a taller one, or of trees, is drawn darker: by how much of its roof, or of its wall facing the sun, is in shade. It's one shade for the whole building, so a wall shaded only at its foot darkens the roof a little too.
+
 ### 3D's switches on the 3D pad, and smoother shadows ([#942](https://github.com/TommiContursi/Polku/issues/942), [#943](https://github.com/TommiContursi/Polku/issues/943))
 
 - **3D buildings**, beside **Raised hills** in the 3D pad's **⋯**, **Layers** under 3D terrain and **Settings → Map and planner**, lays the buildings flat in 3D. It's on by default.

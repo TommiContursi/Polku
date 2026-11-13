@@ -97,7 +97,7 @@ const canopy = (z, x, y) => {
 // ---- the buildings: OpenFreeMap's footprints ---------------------------------------------------------------
 const text = new TextDecoder();
 
-/** The `building` layer of a vector tile (protobuf, read by hand): each footprint's rings in tile units, and height. */
+/** The `building` layer of a vector tile (protobuf, read by hand): each footprint's id, rings in tile units, and height. */
 export function decodeBuildings(buf) {
   let p = 0;
   const varint = () => {
@@ -138,9 +138,10 @@ export function decodeBuildings(buf) {
     if (name === 'building') {
       for (const [s, e] of feats) {
         p = s;
-        let h = 0, rings = null;
+        let id = 0, h = 0, rings = null;
         each(e, (f) => {
-          if (f === 2) { const t = end(); while (p < t) { const k = keys[varint()], v = vals[varint()]; if (k === 'render_height') h = v; } }
+          if (f === 1) id = varint();
+          else if (f === 2) { const t = end(); while (p < t) { const k = keys[varint()], v = vals[varint()]; if (k === 'render_height') h = v; } }
           else if (f === 4) {
             // MoveTo starts a ring, LineTo goes on, ClosePath has no point; each point is a step from the last
             const t = end();
@@ -157,7 +158,7 @@ export function decodeBuildings(buf) {
           } else return false;
           return true;
         });
-        if (rings) out.push({ h, rings });
+        if (rings) out.push({ id, h, rings });
       }
     }
     p = layer;
@@ -166,7 +167,8 @@ export function decodeBuildings(buf) {
   return out;
 }
 
-// The buildings' heights in the grid of 3 × 3 tiles around (x, y), from the zoom 14 tiles it covers.
+// The buildings' heights in the grid of 3 × 3 tiles around (x, y), from the zoom 14 tiles it covers, and the
+// footprints of those in the middle tile, in the grid's pixels (their roofs' shade is counted from them).
 async function buildings(z, x, y) {
   const tiles = await ofmTemplate(), N = 3 * S, k = S * 2 ** (z - OFM_Z), gx = (x - 1) * S, gy = (y - 1) * S, all = [];
   const at = [];
@@ -187,7 +189,12 @@ async function buildings(z, x, y) {
   }
   const px = g.getImageData(0, 0, N, N).data, out = new Uint8Array(N * N);
   for (let i = 0; i < out.length; i++) out[i] = px[i * 4];
-  return out;
+  const roofs = [];
+  for (const b of all) {
+    const rings = b.rings.map((r) => r.map((v, i) => (i % 2 ? b.oy : b.ox) + v * f)), xs = rings.flatMap((r) => r.filter((_, i) => !(i % 2))), ys = rings.flatMap((r) => r.filter((_, i) => i % 2));
+    if (Math.max(...xs) > S && Math.min(...xs) < 2 * S && Math.max(...ys) > S && Math.min(...ys) < 2 * S) roofs.push({ id: b.id, h: b.h, rings });
+  }
+  return { heights: out, roofs };
 }
 
 // ---- the tiles ------------------------------------------------------------------------------------------
@@ -196,7 +203,7 @@ const waiting = new Map();
 const sweep = (msg) => new Promise((ok, no) => {
   if (!worker) {
     worker = new Worker(new URL('./shadow-sweep.js', import.meta.url), { type: 'module' });
-    worker.onmessage = ({ data }) => { const w = waiting.get(data.id); waiting.delete(data.id); if (data.error) w.no(new Error(data.error)); else w.ok(data.png); };
+    worker.onmessage = ({ data }) => { const w = waiting.get(data.id); waiting.delete(data.id); if (data.error) w.no(new Error(data.error)); else w.ok(data); };
   }
   const id = ids++;
   waiting.set(id, { ok, no });
@@ -205,9 +212,10 @@ const sweep = (msg) => new Promise((ok, no) => {
 
 /**
  * Registers the protocol; `onFail(objects)` hears of a tile whose heights didn't load (`objects`: the trees' and
- * buildings' tiles).
+ * buildings' tiles), and `onRoofs(t, roofs)` of how much of each building in a tile is in shadow at t
+ * (`{ id, s, n, w, k }`: shadeOf() in js/shadow-sweep.js).
  */
-export function shadowProtocol(maplibre, dem, onFail) {
+export function shadowProtocol(maplibre, dem, onFail, onRoofs) {
   maplibre.addProtocol('sunshadow', async (params, abort) => {
     const [, z, x, y, t] = params.url.match(/sunshadow:\/\/(\d+)\/(\d+)\/(\d+)\?t=(\d+)/).map(Number), objects = params.url.endsWith('&objects');
     const ll = tileLonLat(z, x, y), sun = sunPosition(t, ll);
@@ -224,9 +232,11 @@ export function shadowProtocol(maplibre, dem, onFail) {
       throw e;
     }
     const m = (40075016 * Math.cos((ll[1] * Math.PI) / 180)) / 2 ** z / S;
-    if (!objects) return { data: await sweep({ grid: ground, N: 3 * S, az: sun.az, alt: sun.alt, m }) };
+    if (!objects) return { data: (await sweep({ grid: ground, N: 3 * S, az: sun.az, alt: sun.alt, m })).png };
     const grid = new Float32Array(ground.length);
-    for (let i = 0; i < grid.length; i++) grid[i] = ground[i] + Math.max(trees[i], built[i]);
-    return { data: await sweep({ grid, ground, N: 3 * S, az: sun.az, alt: sun.alt, m }) };
+    for (let i = 0; i < grid.length; i++) grid[i] = ground[i] + Math.max(trees[i], built.heights[i]);
+    const { png, roofs } = await sweep({ grid, ground, N: 3 * S, az: sun.az, alt: sun.alt, m, roofs: built.roofs });
+    onRoofs(t, roofs);
+    return { data: png };
   });
 }
