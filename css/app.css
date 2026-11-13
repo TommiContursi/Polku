@@ -446,9 +446,9 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
 /* the trip's row under the slider while the route has times (#869): 48 hours · Your trip, and Weather card › on its last
    line (wrap-reverse: lines that come go above it, so the switch stays under the finger, the timeline growing from its
-   foot); in Your trip the day's chips and ‹ the stretches against you › on it while there's room, else over it */
+   foot); in Your trip ‹ the stretches against you › between them, and a trip of days' chips on a line over it */
 .tl-trip { display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 6px 8px; padding: 6px 0 0 42px; }
-.tl-trip .wx-days { flex-wrap: nowrap; gap: 6px; margin: 0; }
+.tl-trip .wx-days { flex-basis: 100%; flex-wrap: nowrap; gap: 6px; margin: 0; }
 .tl-step { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; }
 .tl-step > span { flex: 1; min-width: 0; display: grid; text-align: center; font-size: 12.5px; line-height: 1.25; }
 .tl-step b { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2400,11 +2400,11 @@ body.dropping .drop-hint { display: flex; }
   .tl-now { --tl-row: 14px; width: 112px; font-size: 11px; } /* (three lines in the strip's 56 px) */
   .tl-now-main b { font-size: 19px; }
   .tl-note { display: none; }
-  /* the trip's rows: the switch and Weather card › at the foot, the day's chips and the stretches each a line over them */
+  /* the trip's rows: the switch and Weather card › at the foot, the stretches and the day's chips each a line over them */
   .tl-trip { padding-left: 0; }
   .tl-trip > .seg { order: -2; }
   .tl-trip > .tl-card { order: -1; }
-  .tl-trip > .wx-days, .tl-trip > .tl-step { flex-basis: 100%; }
+  .tl-trip > .tl-step { flex-basis: 100%; }
   .wx-time { width: 112px; white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; } /* (on two lines where it must: the row is as tall as Play and the slider) */
   .wx-bar.trip :is(.tl-now, .wx-time) { width: 120px; } /* (Your trip: "12 m/s against you" whole; the two as wide, the knob under the needle) */
   body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */

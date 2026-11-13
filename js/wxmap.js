@@ -1192,8 +1192,8 @@ export class WeatherOverlay {
     this.stepWords = h('span', { 'aria-live': 'polite' });
     this.stepEl = h('div', { class: 'tl-step', role: 'group', 'aria-label': 'Where the wind is against you' }, stepBtn(-1), this.stepWords, stepBtn(1));
     this.whyEl = h('p', { class: 'tl-why', id: 'tl-why' });
-    this.tripRow = h('div', { class: 'tl-trip', hidden: true }, this.spanSeg, this.daysEl, this.stepEl,
-      h('button', { type: 'button', class: 'btn small quiet tl-card', onclick: () => this.app.openWeather(this.span === 'trip' ? this.day : 0), html: `Weather card${icon('chevronRight', 16)}` }), this.whyEl);
+    this.tripRow = h('div', { class: 'tl-trip', hidden: true }, this.spanSeg, this.stepEl,
+      h('button', { type: 'button', class: 'btn small quiet tl-card', onclick: () => this.app.openWeather(this.span === 'trip' ? this.day : 0), html: `Weather card${icon('chevronRight', 16)}` }), this.daysEl, this.whyEl);
     bar.append(
       head,
       h('div', { class: 'tl-main' }, this.stripCv, this.nowEl),
