@@ -576,7 +576,6 @@ const weather = new WeatherOverlay(map, {
   // road works and road conditions follow the map's hour (the route's departure is its own: step 6b)
   onHour: () => safety.publish(),
   departure: () => planner.when.start(),
-  hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
   // Your trip on the timeline (#869): the route's analysis and times, its days and a day's notes, as the weather card has
   // them; null without a timed route

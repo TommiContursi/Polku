@@ -1463,7 +1463,7 @@ export class WeatherOverlay {
     }
     // your ride, from its departure to arrival, whatever the map's hour (step 6b): in Your trip its day, the wind's band
     // under it
-    const ride = z ? 0 : this.app.routeHours && this.app.routeHours(), go = Math.max(0, (this.app.departure() - Math.floor(Date.now() / 3600e3) * 3600) / 3600);
+    const r = !z && this.rideOn();
     ctx.fillStyle = accent;
     if (z) {
       ctx.globalAlpha = 0.1;
@@ -1473,12 +1473,12 @@ export class WeatherOverlay {
       // the radar's last 90 minutes, before Now: only the rain has a past
       ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(96,165,250,0.16)' : 'rgba(59,130,246,0.08)';
       ctx.fillRect(Xh(-PAST), 0, Xh(0) - Xh(-PAST), H);
-      if (ride > 0 && go < HOURS) { // (a departure past the strip's 48 hours: none)
+      if (r) {
         ctx.fillStyle = accent;
         ctx.globalAlpha = 0.16;
-        ctx.fillRect(Xh(go), 0, Math.max(3, Xh(Math.min(HOURS, go + ride)) - Xh(go)), H);
+        ctx.fillRect(Xh(r.go), 0, Math.max(3, Xh(Math.min(HOURS, r.go + r.ride)) - Xh(r.go)), H);
         ctx.globalAlpha = 1;
-        ctx.fillRect(Xh(go), H - 3, Math.max(3, Xh(Math.min(HOURS, go + ride)) - Xh(go)), 3);
+        ctx.fillRect(Xh(r.go), H - 3, Math.max(3, Xh(Math.min(HOURS, r.go + r.ride)) - Xh(r.go)), 3);
       }
     }
     // rain bars
@@ -1566,6 +1566,13 @@ export class WeatherOverlay {
     const tc = d.temp[k0] + (d.temp[k1] - d.temp[k0]) * (fk - k0);
     ctx.fillStyle = ink;
     if (this.hour >= 0 && Number.isFinite(tc)) { ctx.beginPath(); ctx.arc(cx, Y(tc), 3.2, 0, Math.PI * 2); ctx.fill(); }
+  }
+
+  // your ride on the 48 hours' strip, from its departure for its hours (both in the strip's hours); null when there's none
+  // to draw: no timed route, or a departure past the strip's 48 hours. The note under the timeline names it only then (#1001)
+  rideOn() {
+    const ride = this.app.routeHours && this.app.routeHours(), go = Math.max(0, (this.app.departure() - Math.floor(Date.now() / 3600e3) * 3600) / 3600);
+    return ride > 0 && go < HOURS ? { go, ride } : null;
   }
 
   bindStrip() {
@@ -1675,7 +1682,6 @@ export class WeatherOverlay {
     // Your trip: the time and where you'll be (the grid's loading is the map's: the strip and the reading are the route's)
     const z = this.tripWin(), w = z && this.trip.a.wind;
     this.timeEl.textContent = z ? `${day} ${clock} · ${this.whereOn(z, 'the start', 'the finish')}` : label;
-    const route = !!(this.app.hasRoute && this.app.hasRoute());
     if (this.noteEl) {
       const g = this.grid;
       const st = sourceStatus('openmeteo');
@@ -1684,7 +1690,7 @@ export class WeatherOverlay {
         || (this.status && !this.loading ? this.status
           : g && g.stale ? `Showing the forecast from ${hhmm(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null);
       this.noteEl.classList.toggle('warn', !!problem);
-      if (problem || !z) this.noteEl.textContent = problem ? `⚠ ${problem}` : `${route ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
+      if (problem || !z) this.noteEl.textContent = problem ? `⚠ ${problem}` : `${this.rideOn() ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
       else if (!this.noteEl.querySelector('.wx-key')) this.noteEl.innerHTML = `Wind on the way, under the hours: ${BAND_KEY}`; // (once, not on every frame of Play)
     }
     this.syncTrip();

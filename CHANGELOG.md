@@ -10,6 +10,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - On a desktop the weather card stays open beside the map, above the timeline and where you had scrolled it, also as the timeline gets taller. On a phone it folds to a banner, and **Back** on the banner, or **Weather card ›** in the timeline, brings it back with its hours and sections as they were. **48 hours** goes back to the whole timeline.
 - Zoomed to your trip, **‹ ›** step through the weather card's notes for the day, worst first, in their own words: thunder, heavy rain, gusts, a headwind over your sport's limit, the dark and the rest. Each puts the time where it happens, turns the map's weather that shows it on, such as **Thunder** or **Rain**, and lights its place on the route. They replace stepping from one headwind to the next, and have a line of their own over **48 hours · Your trip** on a desktop too.
 - While the forecast loads, fails or stops short of your trip, the timeline's notes say so. The dark is there without a forecast, as in the weather card.
+- For a trip that leaves more than 48 hours ahead, the note under the timeline no longer says the shaded band is your ride, as the strip draws no band then.
 
 ### A smaller desktop window ([#1002](https://github.com/TommiContursi/Polku/issues/1002))
 

@@ -13236,6 +13236,8 @@ def timeline_trip(chrome):
             a = st()
             if not a['row'] or a['trip'] != 'false' or a['h48'] != 'true' or a['off'] or a['step'] is not None or not a['card'] or not a['top']:
                 bad(f'with a route, the trip\'s row: shown {a["row"]}, Your trip {a["trip"]} (off {a["off"]}), 48 hours {a["h48"]}, the stepper {a["step"]!r}, Weather card {a["card"]}, the switch on top {a["top"]}')
+            if not a['note'].startswith('The shaded band is your ride.'):
+                bad(f'the 48 hours’ note with the ride’s band drawn: “{a["note"]}”')
             # Weather card ›, as a person presses it: the weather card (Back or ✕ to the timeline again)
             press(*pg.js("(() => { const r = document.querySelector('#wx-bar .tl-card').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
             if pg.js("polku.planner.cards.current?.kind") != 'weather':
@@ -13388,6 +13390,8 @@ def timeline_trip(chrome):
             n_ = st()
             if not n_['off'] or n_['span'] != '48' or n_['described'] != 'tl-why' or 'past the map’s 48 hours' not in n_['why']:
                 bad(f'past the 48 hours: Your trip off {n_["off"]}, the view {n_["span"]}, described by {n_["described"]}, the reason “{n_["why"]}”')
+            if 'shaded band' in n_['note']:  # (the strip draws no band past its 48 hours: #1001)
+                bad(f'past the 48 hours the note says “{n_["note"]}” with no band drawn')
             # Weather on the map at an hour outside the trip, Weather here and ✕: back to 48 hours (✕ at Now)
             js('p.when.set(Math.ceil(Date.now() / 3600e3) * 3600 + 2 * 3600); for (let k = 0; k < 50 && p.analysis.start !== p.when.start(); k++) await wait(100); T.set(T.wind())')
             js("w.bar.querySelector('[data-k=span-trip]').click(); await wait(200); p.app.weatherOn(Date.now() / 1000 + 30 * 3600)")
