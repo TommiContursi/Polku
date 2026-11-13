@@ -453,26 +453,24 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-now .tl-arrow { width: 12px; height: 12px; fill: currentColor; flex: none; }
 .tl-now div .ic { flex: none; }
 .tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
-/* the trip's row under the slider while the route has times (#869): 48 hours · Your trip, and Weather card › on its last
+/* the trip's row under the slider while the route has times (#869): 48 hours · Your trip and Weather card › on its last
    line (wrap-reverse: lines that come go above it, so the switch stays under the finger, the timeline growing from its
-   foot); in Your trip ‹ the stretches against you › between them, and a trip of days' chips on a line over it */
+   foot); in Your trip ‹ the weather card's notes › on a line over it, in their own words, whole (on more lines where
+   they need them, the arrows at their foot so they stay put), and a trip of days' chips on a line over that */
 .tl-trip { display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 6px 8px; padding: 6px 0 0 42px; }
+.tl-trip > .seg { order: -2; }
+.tl-trip > .tl-card { order: -1; }
 .tl-trip .wx-days { flex-basis: 100%; flex-wrap: nowrap; gap: 6px; margin: 0; }
-.tl-step { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; }
+.tl-step { flex-basis: 100%; min-width: 0; display: flex; align-items: flex-end; }
 .tl-step > span { flex: 1; min-width: 0; display: grid; text-align: center; font-size: 12.5px; line-height: 1.25; }
-.tl-step b { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-step b { font-weight: 650; overflow-wrap: anywhere; }
 .tl-step small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tl-card { margin-left: auto; white-space: nowrap; }
 .tl-why { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
-/* a narrow timeline (a phone's, or a desktop's beside the side panel): the switch and Weather card › at the foot, the
-   headwinds and the day's chips each a line over them. By the timeline's own width, not the window's */
+/* a narrow timeline (a phone's, or a desktop's beside the side panel): the trip's lines from the timeline's edge. By the
+   timeline's own width, not the window's */
 .wx-bar { container: wxbar / inline-size; }
-@container wxbar (max-width: 560px) {
-  .tl-trip { padding-left: 0; }
-  .tl-trip > .seg { order: -2; }
-  .tl-trip > .tl-card { order: -1; }
-  .tl-trip > .tl-step { flex-basis: 100%; }
-}
+@container wxbar (max-width: 560px) { .tl-trip { padding-left: 0; } }
 .tl-now div:not(.tl-now-main) b { font-weight: 650; } /* (the wind against you, in Your trip's reading) */
 .tl-note .wx-key, .wx-legend .wx-key { margin: 0; font-size: inherit; gap: 0 10px; }
 .tl-note .wx-key { display: inline-flex; margin-left: 4px; }
