@@ -455,15 +455,15 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
 /* the trip's row under the slider while the route has times (#869): 48 hours · Your trip and Weather card › on its last
    line (wrap-reverse: lines that come go above it, so the switch stays under the finger, the timeline growing from its
-   foot); in Your trip ‹ the weather card's notes › on a line over it, in their own words (two lines where they need
-   them, the arrows at its foot so they stay put), and a trip of days' chips on a line over that */
+   foot); in Your trip ‹ the weather card's notes › on a line over it, in their own words, whole (on more lines where
+   they need them, the arrows at their foot so they stay put), and a trip of days' chips on a line over that */
 .tl-trip { display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 6px 8px; padding: 6px 0 0 42px; }
 .tl-trip > .seg { order: -2; }
 .tl-trip > .tl-card { order: -1; }
 .tl-trip .wx-days { flex-basis: 100%; flex-wrap: nowrap; gap: 6px; margin: 0; }
 .tl-step { flex-basis: 100%; min-width: 0; display: flex; align-items: flex-end; }
 .tl-step > span { flex: 1; min-width: 0; display: grid; text-align: center; font-size: 12.5px; line-height: 1.25; }
-.tl-step b { font-weight: 650; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.tl-step b { font-weight: 650; overflow-wrap: anywhere; }
 .tl-step small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tl-card { margin-left: auto; white-space: nowrap; }
 .tl-why { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }

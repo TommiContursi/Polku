@@ -12971,11 +12971,13 @@ WC_JS = """(async () => {
   p.app.weatherOn(Date.now() / 1000 + 72 * 3600, 'thunder'); await wait(100);
   const toastNow = document.querySelector('#toast')?.textContent || '';
   if (polku.state.weather.thunder !== was || !/48 hours/.test(toastNow)) errs.push(`72 hours ahead: thunder on the map ${polku.state.weather.thunder}, the toast “${toastNow}”`);
-  // a lane's tap: the route coloured by it, and the card folded to a banner that brings it back
+  // a lane's tap: the route coloured by it, the timeline (closed until now) on Your trip with Rain on, and the card folded
+  // to a banner that brings it back
+  if (polku.state.timeline) document.querySelector('#btn-time').click();
   p.cards.box?.querySelector('[data-k=lane-rain]')?.click(); await wait(300);
-  const lane = { mode: p.colorMode, map: p.colorOnMap, folded: !!p.cards.folded };
+  const lane = { mode: p.colorMode, map: p.colorOnMap, folded: !!p.cards.folded, timeline: polku.state.timeline, span: polku.weather.span, rain: polku.state.weather.rain };
   if (lane.folded) { p.cards.escape(); await wait(200); }
-  if (lane.mode !== 'rain' || !lane.map || !lane.folded || p.cards.folded || !p.cards.box?.querySelector('.wx-say')) errs.push(`a lane's tap: ${JSON.stringify(lane)}, then the card back: ${!!p.cards.box?.querySelector('.wx-say')}`);
+  if (lane.mode !== 'rain' || !lane.map || !lane.folded || !lane.timeline || lane.span !== 'trip' || !lane.rain || p.cards.folded || !p.cards.box?.querySelector('.wx-say')) errs.push(`a lane's tap: ${JSON.stringify(lane)}, then the card back: ${!!p.cards.box?.querySelector('.wx-say')}`);
   // a dry day is 0 mm, however little falls (#973's review: “0.0 mm” under “dry”)
   set(wind({ precip: fill(0.03) })); await wait(200);
   const dry = p.cards.box?.querySelectorAll('.wx-nums .sum-item')[2]?.textContent || '';
@@ -13045,9 +13047,9 @@ WC_JS = """(async () => {
   set(wind({ precip: fill(1), series: [{ ...series(1), precip: hours(1) }] })); await wait(300);
   const j = firstOn + 1, k0 = Math.floor((H[j].t - Math.floor(Date.now() / 3600000) * 3600) / 3600);
   strip()?.querySelector(`[data-sec=rain] .wx-sec-cols [data-h="${j}"]`)?.click(); await wait(300);
-  const tap = { mode: p.colorMode, folded: !!p.cards.folded, hour: Math.round(polku.weather.hour) };
+  const tap = { mode: p.colorMode, folded: !!p.cards.folded, hour: polku.weather.hour, span: polku.weather.span };
   if (tap.folded) { p.cards.escape(); await wait(200); }
-  if (tap.mode !== 'rain' || !tap.folded || (k0 >= 0 && tap.hour !== k0)) errs.push(`a tap on the rain's columns at ${p.clockOf(H[j].t)}: ${JSON.stringify(tap)}, want the map at hour ${k0}`);
+  if (tap.mode !== 'rain' || !tap.folded || tap.span !== 'trip' || (k0 >= 0 && Math.abs(tap.hour - k0) > 1e-6)) errs.push(`a tap on the rain's columns at ${p.clockOf(H[j].t)}: ${JSON.stringify(tap)}, want Your trip at hour ${k0}`);
   p.cards.close();
   return errs;
 })()"""
@@ -13129,14 +13131,16 @@ def wind_by_sport(chrome):
     return not fails
 
 
-# The timeline zoomed to your trip (#869's build, PR 2): the trip's row under the slider while the route has times;
+# The timeline zoomed to your trip (#869's build, PRs 2 and 3): the trip's row under the slider while the route has times;
 # Your trip zooms the strip and the slider to the trip, an hour either side, by the 5 minutes, and the switch stays under
 # the finger as rows come over it; the reading and the time say where you'll be, a headwind in words, with your
-# dot on the route; ‹ › step through the headwinds (Wind on the way's stretches), lit on the route, the focus kept, and
-# the slider's own move leaves them; the forecast loading, failed, stopping short and coming late said in the stepper,
-# the strip and the reading; the band's key in the legend (and the note on a desktop); a trip of days a day at a time with
-# its chips; a trip past the 48 hours greyed with the reason; Weather on the map at another hour, Weather here and ✕ back
-# to 48 hours. A straight route leaving in two hours, its forecast set here (the map's is WX_FIXED's), on a desktop, a
+# dot on the route; the weather card's Rain hours and lanes open Your trip at their hour with their layer on (on a phone
+# the card folds to its banner, and Weather card › brings it back as it was), 48 hours goes back; ‹ › step through the
+# card's notes, worst first, each at its hour with its layer on, lit on the route, the focus kept and the arrows still,
+# the note kept when the route is drawn again, and the slider's own move leaves them; the forecast loading, failed,
+# stopping short and coming late said in the stepper, the strip and the reading; the band's key in the legend (and the
+# note on a desktop); a trip of days a day at a time with its chips, each day's notes its own; a trip past the 48 hours
+# greyed with the reason; Weather on the map at another hour, Weather here and ✕ back to 48 hours. A straight route leaving in two hours, its forecast set here (the map's is WX_FIXED's), on a desktop, a
 # phone by touch and a narrow window with a mouse.
 TL_TRIP_SETUP = """(async () => {
   const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -13159,6 +13163,32 @@ TL_TRIP_SETUP = """(async () => {
   await wait(500);
   return !!p.trip();
 })()"""
+# the weather card's three notes on the trip (#869's PR 3), worst first: thunder from half to 60 % of the way, gusts to
+# 17 m/s at 70 to 75 % (where the wind's against you at 7 m/s), heavy rain, 5 mm an hour, from 45 to 70 %; every forecast
+# set afterwards has them too
+TL_TRIP_NOTES = """(async () => {
+  const T = window.__trip, n = T.n, w0 = T.wind, f = (on, v, off, A = Float32Array) => A.from({ length: n }, (_, i) => (on(i / n) ? v : off));
+  T.wind = (o = {}) => w0({ thunder: f((x) => x > 0.5 && x < 0.6, 1, 0, Uint8Array), precip: f((x) => x > 0.45 && x < 0.7, 5, 0), gust: f((x) => x > 0.7 && x < 0.75, 17, 9), ...o });
+  T.set(T.wind()); await new Promise((r) => setTimeout(r, 300));
+  const p = polku.planner;
+  return p.wxNotes(p.analysis, p.wxDays(p.analysis)[0]).map((x) => `${x.text.split(' ')[0]}:${x.layer}`).join();
+})()"""
+# a column of the weather card's hour strip (`$j`: the hour after the one you leave in) or a lane, the card scrolled to it
+# as a person scrolls it into the part that shows: where to press it, and its time
+TL_CARD_AT = """((sel) => {
+  const p = polku.planner, a = p.analysis, H = p.dayHours(a, p.wxDays(a)[0]), j = H.findIndex((o) => o.on) + 1;
+  const box = p.cards.box, e = box?.querySelector(sel.replace('$j', j));
+  if (!e) return null;
+  const b = box.getBoundingClientRect(), mid = (Math.max(b.top, 0) + Math.min(b.bottom, innerHeight)) / 2; // (the part of the card in sight: a phone's peek)
+  box.scrollTop += e.getBoundingClientRect().top + e.offsetHeight / 2 - mid;
+  const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, H[j].t];
+})"""
+# what the timeline shows after a tap in the weather card, and the card
+TL_CARD_STATE = """(() => {
+  const w = polku.weather, p = polku.planner, c = p.cards.current;
+  return { span: w.span, t: Math.round(w.hour * 3600 + Math.floor(Date.now() / 3600e3) * 3600), on: { ...polku.state.weather }, folded: !!p.cards.folded, card: c?.kind || null,
+    same: c === window.__card, rainOpen: p.cards.box?.querySelector('[data-sec=rain] .wx-sec-h')?.getAttribute('aria-expanded') || null, place: p.cards.place };
+})()"""
 # what the trip's row and Your trip show, and where the switch is
 TL_TRIP_STATE = """(() => {
   const w = polku.weather, p = polku.planner, bar = document.querySelector('#wx-bar'), sw = bar.querySelector('[data-k=span-trip]'), r = sw.getBoundingClientRect();
@@ -13171,7 +13201,8 @@ TL_TRIP_STATE = """(() => {
     win: z && (z.tw1 - z.tw0) / 300, start: z && Math.round((p.trip().start - z.tw0) / 60), you: !!you, youOn: z ? polku.planner.analysis.pts.some((q) => Math.abs(q[0] - polku.weather.youPin.getLngLat().lng) < 1e-9 && Math.abs(q[1] - polku.weather.youPin.getLngLat().lat) < 1e-9) : null,
     lit: p.focusHl ? p.focusHl.map((x) => Math.round(x)) : null, skel: w.stripCv.classList.contains('skel'), days: [...w.daysEl.children].map((b) => `${b.textContent}:${b.getAttribute('aria-pressed')}${b.disabled ? ':off' : ''}`).join(),
     legend: document.querySelector('.wx-legend')?.hidden ? '' : document.querySelector('.wx-legend')?.textContent || '', note: w.noteEl.textContent, noteKey: w.noteEl.querySelectorAll('.wx-key > span').length,
-    card: !!bar.querySelector('.tl-card'), span: w.span, hour: w.hour };
+    card: !!bar.querySelector('.tl-card'), span: w.span, hour: w.hour, on: { ...polku.state.weather },
+    atNote: z && w.stepAt != null ? Math.abs(w.hour - w.noteHour(z, w.notes(z)[w.stepAt])) < 1e-6 : null };
 })()"""
 
 
@@ -13196,6 +13227,9 @@ def timeline_trip(chrome):
             if not pg.js(TL_TRIP_SETUP, timeout=40000):
                 bad('no timed route')
                 continue
+            notes = pg.js(TL_TRIP_NOTES)
+            if notes != 'Thunder:thunder,Gusts:wind,Heavy:rain':
+                bad(f'the weather card\'s notes: {notes}')
             a = st()
             if not a['row'] or a['trip'] != 'false' or a['h48'] != 'true' or a['off'] or a['step'] is not None or not a['card'] or not a['top']:
                 bad(f'with a route, the trip\'s row: shown {a["row"]}, Your trip {a["trip"]} (off {a["off"]}), 48 hours {a["h48"]}, the stepper {a["step"]!r}, Weather card {a["card"]}, the switch on top {a["top"]}')
@@ -13203,7 +13237,43 @@ def timeline_trip(chrome):
             press(*pg.js("(() => { const r = document.querySelector('#wx-bar .tl-card').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
             if pg.js("polku.planner.cards.current?.kind") != 'weather':
                 bad(f'Weather card › opened {pg.js("polku.planner.cards.current?.kind")!r}')
-            js("p.cards.close(); w.setHour(30)")
+            # the card's Rain at the hour after the one you leave in, as a person presses it: Your trip at that hour with
+            # Rain on; in the sheet (a phone, a narrow window) the card folds to its banner, beside the map it stays (#869's PR 3)
+            cs = lambda: pg.js(TL_CARD_STATE)
+            pg.js("(() => { window.__card = polku.planner.cards.current; return true; })()")
+            place = cs()['place']
+            col = pg.js(TL_CARD_AT + "('[data-sec=rain] .wx-sec-cols [data-h=\"$j\"]')")
+            if not col:
+                bad('no Rain section in the weather card')
+            else:
+                time.sleep(0.4)
+                col = pg.js(TL_CARD_AT + "('[data-sec=rain] .wx-sec-cols [data-h=\"$j\"]')")
+                press(col[0], col[1])
+                x = cs()
+                if x['span'] != 'trip' or x['t'] != col[2] or not x['on']['rain'] or x['folded'] != (place != 'float') or x['card'] != 'weather':
+                    bad(f'the card\'s Rain pressed at {col[2]} (the card {place}): {x}')
+                # Weather card › in the trip's row: the card again, as it was where it folded (the same card, Rain open)
+                press(*pg.js("(() => { const r = document.querySelector('#wx-bar .tl-card').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
+                y = cs()
+                if y['card'] != 'weather' or y['folded'] or (place != 'float' and (not y['same'] or y['rainOpen'] != 'true')):
+                    bad(f'Weather card › after the card folded: {y}')
+                # the Thunder lane under The whole trip: Your trip where the thunder starts, Thunder on
+                press(*pg.js(TL_CARD_AT + "('[data-k=trip]')")[:2])
+                lane = pg.js(TL_CARD_AT + "('[data-k=lane-thunder]')")
+                if not lane:
+                    bad('no Thunder lane under The whole trip')
+                else:
+                    time.sleep(0.4)
+                    press(*pg.js(TL_CARD_AT + "('[data-k=lane-thunder]')")[:2])
+                    z = cs()
+                    t0 = pg.js("(() => { const p = polku.planner, a = p.analysis; return Math.round(p.trip().at(p.wxNotes(a, p.wxDays(a)[0])[0].i0)); })()")
+                    if z['span'] != 'trip' or abs(z['t'] - t0) > 150 or not z['on']['thunder'] or z['folded'] != (place != 'float'):
+                        bad(f'the Thunder lane pressed (the thunder from {t0}): {z}')
+                # 48 hours, as a person presses it: the full 48 hours at that hour
+                press(*pg.js("(() => { const r = document.querySelector('#wx-bar [data-k=span-48]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
+                if cs()['span'] != '48':
+                    bad(f'48 hours pressed after the card: {cs()}')
+            js("p.cards.close(); w.app.onToggle({ rain: false, thunder: false }); w.setHour(30)")
             a = st()
             # Your trip, as a person presses it from 30 hours ahead: the switch where it was, the strip and the slider over
             # the trip, at the departure (it opened at the window's end, the hour kept inside it first: Codex on #1000)
@@ -13221,17 +13291,25 @@ def timeline_trip(chrome):
                 b['legend'] = st()['legend']
             if 'Wind on the way' not in b['legend'] or (wd > 720 and b['noteKey'] != 4):
                 bad(f'the band\'s key: the legend “{b["legend"][:80]}”, the note\'s {b["noteKey"]} colours')
-            if b['step'] != 'Headwind on 2 stretchesup to 7 m/s':
-                bad(f'the stepper: {b["step"]!r}')
-            # › twice and ‹ once: the hour on each stretch, its words, the route lit, the focus kept
+            if b['step'] != '3 weather notesthe worst first' or not b['prevOff'] or b['nextOff']:
+                bad(f'the stepper: {b["step"]!r}, ‹ off {b["prevOff"]}, › off {b["nextOff"]}')
+            # › three times, as a person presses it: the weather card's notes in its order, worst first, each at its hour with
+            # its layer on, its words, the route lit, the focus kept and the arrow where it was; the note stepped to kept when
+            # the route's analysis is drawn again
+            still = lambda q: abs(q['next'][0] - b['next'][0]) < 1 and abs(q['next'][1] - b['next'][1]) < 1
             press(*b['next'])
             c = st()
-            if not (c['step'] or '').startswith('Headwind 1 of 2') or '<b>headwind</b>' not in c['read'] or not c['lit'] or c['focus'] != 'step-next':
-                bad(f'› to the first stretch: {c["step"]!r}, the reading {c["read"][-120:]!r}, lit {c["lit"]}, the focus on {c["focus"]}')
+            if not re.fullmatch(r'Thunder possible around \d\d:\d\d, near km \d+1 of 3', c['step'] or '') or not c['atNote'] or not c['on']['thunder'] or not c['lit'] or c['focus'] != 'step-next' or not still(c):
+                bad(f'› to the first note: {c["step"]!r}, at its hour {c["atNote"]}, Thunder on {c["on"]["thunder"]}, lit {c["lit"]}, the focus on {c["focus"]}, › from {b["next"]} to {c["next"]}')
             press(*c['next'])
             d = st()
-            if not (d['step'] or '').startswith('Headwind 2 of 2') or not d['nextOff'] or d['focus'] != 'step-prev' or d['lit'] == c['lit'] or 'up to 7 m/s' not in d['step'] or '<b>headwind</b>' not in d['read']:
-                bad(f'› to the second: {d["step"]!r}, › off {d["nextOff"]}, the focus on {d["focus"]}, lit {d["lit"]} (was {c["lit"]})')
+            if not re.fullmatch(r'Gusts up to 17 m/s around \d\d:\d\d, near km \d+2 of 3', d['step'] or '') or not d['atNote'] or not d['on']['wind'] or d['lit'] == c['lit'] or '<b>headwind</b>' not in d['read'] or not still(d):
+                bad(f'› to the second: {d["step"]!r}, at its hour {d["atNote"]}, Wind on {d["on"]["wind"]}, lit {d["lit"]} (was {c["lit"]}), the reading {d["read"][-120:]!r}')
+            js('p.renderAnalysis()')
+            press(*d['next'])
+            e3 = st()
+            if not re.fullmatch(r'Heavy rain around \d\d:\d\d, near km \d+3 of 3', e3['step'] or '') or not e3['atNote'] or not e3['on']['rain'] or not e3['nextOff'] or e3['focus'] != 'step-prev' or not still(e3):
+                bad(f'› to the third, after the route was drawn again: {e3["step"]!r}, at its hour {e3["atNote"]}, Rain on {e3["on"]["rain"]}, › off {e3["nextOff"]}, the focus on {e3["focus"]}')
             # a strong headwind's words whole in the reading, and the time whole (a phone's reading is the narrowest)
             js("T.set(T.wind({ series: [{ ...T.wind().series[0], speed: Array(8).fill(12) }] })); w.bar.querySelector('[data-k=step-prev]').click()")
             cut = pg.js("[...polku.weather.nowEl.children, polku.weather.timeEl].filter((x) => x.scrollWidth > x.clientWidth + 1).map((x) => x.textContent)")
@@ -13241,8 +13319,8 @@ def timeline_trip(chrome):
             # the slider's own move: the stretch left, the route unlit
             js("w.slider.value = String(+w.slider.value - 3); w.slider.dispatchEvent(new Event('input', { bubbles: true }))")
             e = st()
-            if e['step'] != 'Headwind on 2 stretchesup to 7 m/s' or e['lit']:
-                bad(f'the slider moved off the stretch: {e["step"]!r}, lit {e["lit"]}')
+            if e['step'] != '3 weather notesthe worst first' or e['lit']:
+                bad(f'the slider moved off the note: {e["step"]!r}, lit {e["lit"]}')
             # a press on the strip three quarters along, and Play: the hour there by the 5 minutes, then on (15 minutes a second
             # at 60 frames a second), inside the window
             sx = pg.js("(() => { const r = polku.weather.stripCv.getBoundingClientRect(); return [r.left + 9 + (r.width - 18) * 0.75, r.top + r.height / 2]; })()")
@@ -13258,15 +13336,22 @@ def timeline_trip(chrome):
             g = st()
             js('T.set(T.wind({ beyond: Math.round(T.n / 2), beyondSec: p.trip().at(Math.round(T.n / 2)) }))')
             k = st()
-            js('T.set(T.wind())')
+            # (the forecast's end is a note of its own, the longest: the arrows stay where they were as its lines come and go)
+            press(*k['next'])
+            k1 = st()
+            press(*k1['next'])
+            k2 = st()
+            js("w.slider.value = '0'; w.slider.dispatchEvent(new Event('input', { bubbles: true })); T.set(T.wind())")
             l = st()
-            if f['step'] != 'Wind on the way: loading' or not f['skel'] or 'tl-skel' not in f['read']:
+            if not re.fullmatch(r'(Weather notes|1 weather note)loading the forecast', f['step'] or '') or not f['skel'] or 'tl-skel' not in f['read']:
                 bad(f'loading: the stepper {f["step"]!r}, the strip\'s skeleton {f["skel"]}, the reading {f["read"][:80]!r}')
-            if g['step'] != 'Wind on the way: no forecast' or g['skel'] or 'couldn’t be loaded' not in g['read'] or (not phone and 'couldn’t be loaded' not in g['note']):
+            if not re.fullmatch(r'(Weather notes|1 weather note)no forecast', g['step'] or '') or g['skel'] or 'couldn’t be loaded' not in g['read'] or (not phone and 'couldn’t be loaded' not in g['note']):
                 bad(f'failed: the stepper {g["step"]!r}, the skeleton {g["skel"]}, the reading {g["read"][:80]!r}, the note “{g["note"]}”')
-            if not re.search(r'no forecast past km \d+$', k['step'] or ''):
-                bad(f'the forecast stopping half way: the stepper {k["step"]!r}')
-            if l['step'] != 'Headwind on 2 stretchesup to 7 m/s' or l['skel']:
+            if not re.fullmatch(r'[23] weather notesno forecast past km \d+', k['step'] or '') or not re.fullmatch(r'The forecast only reaches \d\d:\d\d, near km \d+: the rest isn’t checked1 of [23] · no forecast past km \d+', k1['step'] or ''):
+                bad(f'the forecast stopping half way: the stepper {k["step"]!r}, then › {k1["step"]!r}')
+            if not (still(k1) and still(k2)):
+                bad(f'the arrows moved with the notes\' lines: › at {b["next"]}, then {k1["next"]} ({k1["step"]!r}) and {k2["next"]} ({k2["step"]!r})')
+            if l['step'] != '3 weather notesthe worst first' or l['skel']:
                 bad(f'the forecast coming late: the stepper {l["step"]!r}')
             # a trip of days: a night at the middle point, a day at a time with the weather card's chips
             js('p.setStop(2, { on: 480 }); for (let k = 0; k < 40 && p.wxDays(p.analysis).length < 2; k++) await wait(200); T.set(T.wind({ beyondSec: p.trip().end + 3600 }))')
@@ -13278,14 +13363,19 @@ def timeline_trip(chrome):
                 d2 = pg.js("(() => { const w = polku.weather, z = w.tripWin(), d = w.trip.days[1]; return { day: w.day, chip: document.querySelector('#wx-bar [data-k=day-2]').getAttribute('aria-pressed'), win: z && Math.abs(z.tw0 - Math.ceil((d.t0 - 3600) / 300) * 300) < 1, at: Math.abs(w.hour - w.hourOn(z, d.t0)) < 1e-6, step: w.stepWords.textContent }; })()")
                 if d2['day'] != 1 or d2['chip'] != 'true' or not d2['win'] or not d2['at'] or not d2['step']:
                     bad(f'Day 2 pressed: {d2}')
-            # each day's headwinds are its own: none from the piece before its night (Codex on #1000), here with the wind
-            # against you the whole way
-            own = pg.js("""(async () => { const p = polku.planner, a = p.analysis, n = a.along.length, f = (v) => new Float32Array(n).fill(v), w0 = window.__trip.wind();
-              a.wind = { ...w0, head: f(4), cross: f(0), speed: f(7), gust: f(9), dir: f(270), temp: f(3), precip: f(0), feel: f(0), cloud: f(90), snow: f(NaN), thunder: new Uint8Array(n), cell: new Uint8Array(n), beyondSec: p.trip().end + 3600 };
-              a.windError = false; p.renderAnalysis(); await new Promise((r) => setTimeout(r, 300));
-              const tr = polku.weather.trip; return tr.days.length > 1 && tr.days.slice(1).every((d) => tr.against(d).every((r) => r.i0 >= d.i0)); })()""")
-            if not own:
-                bad('a later day lists a headwind from the day before its night')
+            # each day's notes are its own, the weather card's for that day: › on day 2 goes to its hour on day 2 (Codex on
+            # #1000, for the headwinds), here with thunder the whole way; and the card's hour on day 2, from day 1, opens day 2
+            own = pg.js("""(async () => { const p = polku.planner, a = p.analysis, n = a.along.length, f = (v) => new Float32Array(n).fill(v), w0 = window.__trip.wind(), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+              a.wind = { ...w0, head: f(4), cross: f(0), speed: f(7), gust: f(9), dir: f(270), temp: f(3), precip: f(0), feel: f(0), cloud: f(90), snow: f(NaN), thunder: new Uint8Array(n).fill(1), cell: new Uint8Array(n), beyondSec: p.trip().end + 3600 };
+              a.windError = false; p.renderAnalysis(); await wait(300);
+              const w = polku.weather, tr = w.trip, at = () => w.hour * 3600 + Math.floor(Date.now() / 3600e3) * 3600;
+              if (tr.days.length < 2) return 'one day';
+              w.setDay(1); w.bar.querySelector('[data-k=step-next]').click(); await wait(200);
+              const d = tr.days[1], t = at(), said = w.stepWords.textContent;
+              w.setDay(0); p.app.weatherOn(d.t0 + 600); await wait(200);
+              return { inDay: t >= d.t0 - 1 && t <= d.t1 + 1, said, day: w.day, span: w.span, card: Math.abs(at() - (d.t0 + 600)) < 151 }; })()""")
+            if not (isinstance(own, dict) and own['inDay'] and own['said'].startswith('Thunder possible around') and own['day'] == 1 and own['span'] == 'trip' and own['card']):
+                bad(f'a later day\'s notes and the card\'s hour on it: {own}')
             js('p.setStop(2, null)')
             # a trip past the 48 hours: Your trip greyed with the reason, and the trip view left
             js('p.when.set(Math.ceil(Date.now() / 3600e3) * 3600 + 72 * 3600); for (let k = 0; k < 50 && p.analysis.start !== p.when.start(); k++) await wait(100)')
@@ -13327,16 +13417,15 @@ def timeline_trip(chrome):
                     time.sleep(1.2)
                     sizes[ww] = pg.js(lay)
                 narrow, back = sizes[1100], sizes[1440]
-                if wide['rows'] != 1 or not (wide['seg'] == wide['card'] == wide['step']):
+                # (the switch and Weather card › at the foot, the notes on a line over them, at any width: #869's PR 3)
+                trip_ok = lambda x: x['seg'] == x['card'] and x['step'] is not None and x['step'] < x['seg']
+                if wide['rows'] != 1 or not trip_ok(wide):
                     bad(f'at 1440 × 900: the layers on {wide["rows"]} rows, the trip row {wide}')
-                # (by the timeline's own width, its container query's 560 px: beside the side panel it's 600 px at 1100 and one
-                # row, and 452 at 900, where the panel gives way to it (#1002), with the switch and Weather card › at the foot)
                 for ww in (1100, 900):
                     x = sizes[ww]
-                    one = x['width'] > 560
-                    if x['side'] == 'side' and (x['rows'] != 1 or (one and not (x['seg'] == x['card'] == x['step'])) or (not one and (x['seg'] != x['card'] or not (x['step'] is not None and x['step'] < x['seg'])))):
+                    if x['side'] == 'side' and (x['rows'] != 1 or not trip_ok(x)):
                         bad(f'the window resized to {ww} px with the side panel: the layers on {x["rows"]} rows, the trip row {x}')
-                if back['rows'] != 1 or not (back['seg'] == back['card'] == back['step']):
+                if back['rows'] != 1 or not trip_ok(back):
                     bad(f'back at 1440 × 900: the layers on {back["rows"]} rows, the trip row {back}')
                 # the title bar dragged to the window's left edge, over the side panel
                 hx, hy = pg.js("(() => { const r = document.querySelector('#wx-bar .tl-title').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
@@ -13353,7 +13442,7 @@ def timeline_trip(chrome):
             fails.extend(f'{name}: console: {x[:160]}' for x in pg.errors())
         finally:
             pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the timeline zoomed to your trip (#869): the switch still under the finger, where you'll be, ‹ › between the headwinds, missing and late forecasts, a day at a time, past 48 hours, back to 48 hours" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline zoomed to your trip (#869): the switch still under the finger, where you'll be, the weather card's hours and lanes to Your trip and back, ‹ › through the card's notes, missing and late forecasts, a day at a time, past 48 hours, back to 48 hours" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

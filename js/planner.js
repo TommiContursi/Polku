@@ -7370,13 +7370,14 @@ export class Planner {
     const T = tripTimes(a), days = T.days();
     return days.length ? days : [{ n: 1, from: 0, to: a.total, i0: 0, i1: a.along.length - 1, t0: T.start, t1: T.end }];
   }
-  // a day's notes as the weather card shows them, worst first, three at most (none on a day under half an hour, its one
-  // line); null without the day's forecast. The timeline's ‹ › step through them
+  // a day's notes as the weather card has them, worst first, three at most (the dark alone without the day's forecast;
+  // a day under half an hour, the card's one line, has them too). The timeline's ‹ › step through them
   wxNotes(a, d) {
     const wx = a.wind && dayWeather(a.wind, a, d.i0, d.i1);
-    if (!wx || wx.none) return null;
-    return this.wxDays(a).length > 1 && d.t1 - d.t0 < 1800 ? [] : this.dayFacts(a, d, wx).notes;
+    return !wx || wx.none ? this.darkNotes(a, d) : this.dayFacts(a, d, wx).notes;
   }
+  // …the dark as the day's one note, the sun's: no forecast needed
+  darkNotes(a, d) { const dn = this.darkNote(a, d); return dn ? [{ ...dn, rank: 35, tier: 'plain', ic: 'moon', n: 1, layer: null }] : []; }
   // the dark on a day as Check has it (from the sun: no forecast needed), in the card's words and where it falls on the day;
   // null in the light
   darkNote(a, d) {
@@ -7506,7 +7507,7 @@ export class Planner {
     const tell = (notes, line) => h('ul', { class: 'wx-notes' }, ...notes.map((n) => h('li', {}, pv(h('button', { type: 'button', class: `wx-tell ${n.tier}`, 'data-note': String(n.n), onclick: () => { this.focusRange(n.i0, Math.max(n.i0, n.i1), null); this.wxTo(tripTimes(a).at(n.i0), true); } },
       line ? h('span', { class: `wx-n ${n.tier}`, 'aria-hidden': 'true' }, String(n.n)) : h('span', { class: 'ic', 'aria-hidden': 'true', html: icon(n.ic, 20) }), h('span', {}, n.text)), n.i0, n.i1, n.n))));
     // with no forecast (loading, failed, or not this far yet) the dark still counts: it's the sun's
-    const dark = () => { const dn = this.darkNote(a, d); if (dn) el.append(tell([{ ...dn, tier: 'plain', ic: 'moon', n: 1 }], false)); return [el, null]; };
+    const dark = () => { const dn = this.darkNotes(a, d); if (dn.length) el.append(tell(dn, false)); return [el, null]; };
     if (!w) return dark();
     const wx = dayWeather(w, a, d.i0, d.i1);
     const say = (sky, text, none = false) => h('p', { class: `wx-say${none ? ' none' : ''}` }, h('span', { class: `wx-sky ${sky}`, role: 'img', 'aria-label': SKY_WORDS[sky], html: icon(`sky-${sky}`, 28) }), h('span', {}, text));
@@ -7572,41 +7573,42 @@ export class Planner {
     // each day they reach (one that crosses a night on the next day too), their range clipped to the day
     const hu = this.headsUp(a), items = [...hu.read, ...hu.look].filter((x) => x.at <= d.to + 1 && x.at + (x.len || 0) >= d.from - 1);
     const clip = (x) => [at(Math.max(x.at, d.from)), at(Math.min(x.at + (x.len || 0), d.to))];
-    const notes = [], add = (rank, tier, ic, text, j0, j1 = j0) => notes.push({ rank, tier, ic, text, i0: j0, i1: j1 });
-    const check = (rank, tier, ic, test, words = (x) => x.text) => { const x = items.find(test); if (x) add(rank, tier, ic, words(x), ...clip(x)); };
+    // (`layer`: the map's weather layer that shows it, where one does: the timeline's ‹ › turn it on)
+    const notes = [], add = (rank, tier, ic, text, j0, j1 = j0, layer = null) => notes.push({ rank, tier, ic, text, i0: j0, i1: j1, layer });
+    const check = (rank, tier, ic, test, layer = null) => { const x = items.find(test); if (x) add(rank, tier, ic, x.text, ...clip(x), layer); };
     // (thunder: Check's limit, any thunder where you are, in the day's own words, where it starts that day)
-    if (storm.length) add(13, 'danger', 'thunder', `Thunder possible around ${around(storm[0].i0 + 1)}, near km ${km(storm[0].i0 + 1)}`, storm[0].i0, storm.at(-1).i1);
+    if (storm.length) add(13, 'danger', 'thunder', `Thunder possible around ${around(storm[0].i0 + 1)}, near km ${km(storm[0].i0 + 1)}`, storm[0].i0, storm.at(-1).i1, 'thunder');
     if (wx.beyond) add(13.5, 'unk', 'cloud', `The forecast only reaches ${this.clockOf(w.beyondSec)}, near km ${km(w.beyond)}: the rest isn’t checked`, w.beyond);
-    check(14, 'danger', 'temp', (x) => x.kind === 'cold' && /^Frostbite/.test(x.text));
-    check(15, 'danger', 'paddle', (x) => x.kind === 'water' && /^Rough/.test(x.text));
+    check(14, 'danger', 'temp', (x) => x.kind === 'cold' && /^Frostbite/.test(x.text), 'temp');
+    check(15, 'danger', 'paddle', (x) => x.kind === 'water' && /^Rough/.test(x.text), 'wind');
     check(17, 'danger', 'water', (x) => x.kind === 'water' && /^Ice season/.test(x.text));
-    check(21, 'look', 'flake', (x) => x.kind === 'winter' && /^Slippery/.test(x.text));
+    check(21, 'look', 'flake', (x) => x.kind === 'winter' && /^Slippery/.test(x.text), 'temp');
     let gi = -1;
     for (let i = i0; i <= i1; i++) if (known(i) && w.gust[i] >= lim(i) && (gi < 0 || w.gust[i] > w.gust[gi])) gi = i;
-    if (gi >= 0) add(22, 'look', 'wind', `Gusts up to ${Math.round(w.gust[gi])} m/s around ${around(gi)}, near km ${km(gi)}`, gi);
+    if (gi >= 0) add(22, 'look', 'wind', `Gusts up to ${Math.round(w.gust[gi])} m/s around ${around(gi)}, near km ${km(gi)}`, gi, gi, 'wind');
     check(23, 'look', 'road', (x) => x.kind === 'roadcond');
-    check(31, 'plain', 'temp', (x) => x.kind === 'cold' && /^Very cold/.test(x.text));
-    if (!cold && feel != null && feel >= 27) add(31, 'plain', 'temp', `Hot: feels like ${deg(feel)} around ${around(feelAt)}, so drink often`, feelAt);
+    check(31, 'plain', 'temp', (x) => x.kind === 'cold' && /^Very cold/.test(x.text), 'temp');
+    if (!cold && feel != null && feel >= 27) add(31, 'plain', 'temp', `Hot: feels like ${deg(feel)} around ${around(feelAt)}, so drink often`, feelAt, feelAt, 'temp');
     if (rain.wet && wet.length) {
       const Fall = cap(fall), pk = wet.reduce((b, r) => { for (let i = r.i0 + 1; i <= r.i1; i++) if (w.precip[i] > w.precip[b]) b = i; return b; }, wet[0].i1);
-      if (rain.peak >= 4) add(32, 'plain', fall, `Heavy ${fall} around ${around(pk)}, near km ${km(pk)}`, pk);
-      else if (later && fell >= 0.5) add(32, 'plain', fall, `${Fall} from around ${around(wet[0].i0)}, from km ${km(wet[0].i0)} on`, wet[0].i0, i1);
-      else if (wet.at(-1).i1 < i1 - 2 && fell >= 0.5) add(32, 'plain', fall, `${Fall} until around ${around(wet.at(-1).i1)}`, i0, wet.at(-1).i1);
-      else if (fell >= 1) add(32, 'plain', fall, `${Fall} the whole way`, i0, i1);
+      if (rain.peak >= 4) add(32, 'plain', fall, `Heavy ${fall} around ${around(pk)}, near km ${km(pk)}`, pk, pk, 'rain');
+      else if (later && fell >= 0.5) add(32, 'plain', fall, `${Fall} from around ${around(wet[0].i0)}, from km ${km(wet[0].i0)} on`, wet[0].i0, i1, 'rain');
+      else if (wet.at(-1).i1 < i1 - 2 && fell >= 0.5) add(32, 'plain', fall, `${Fall} until around ${around(wet.at(-1).i1)}`, i0, wet.at(-1).i1, 'rain');
+      else if (fell >= 1) add(32, 'plain', fall, `${Fall} the whole way`, i0, i1, 'rain');
     }
-    check(33, 'plain', 'snow', (x) => x.kind === 'winter' && /^Snow/.test(x.text));
+    check(33, 'plain', 'snow', (x) => x.kind === 'winter' && /^Snow/.test(x.text), 'snow');
     if (strong.length) {
       const long = strong.reduce((b, r) => (r.len > b.len ? r : b)), max = Math.round(Math.max(...strong.map((r) => top(r, w.head))));
-      add(34, 'plain', 'wind', strong.length === 1 ? `Headwind up to ${max} m/s, km ${km(long.i0)} to ${km(long.i1)}` : `Headwind up to ${max} m/s on ${strong.length} stretches, the longest km ${km(long.i0)} to ${km(long.i1)}`, long.i0, long.i1);
+      add(34, 'plain', 'wind', strong.length === 1 ? `Headwind up to ${max} m/s, km ${km(long.i0)} to ${km(long.i1)}` : `Headwind up to ${max} m/s on ${strong.length} stretches, the longest km ${km(long.i0)} to ${km(long.i1)}`, long.i0, long.i1, 'wind');
     }
-    if (sea.length) add(34, 'plain', 'paddle', `Wind up to ${Math.round(Math.max(...sea.map((r) => top(r, w.speed))))} m/s on the water, km ${km(sea[0].i0)} to ${km(sea.at(-1).i1)}`, sea[0].i0, sea.at(-1).i1);
+    if (sea.length) add(34, 'plain', 'paddle', `Wind up to ${Math.round(Math.max(...sea.map((r) => top(r, w.speed))))} m/s on the water, km ${km(sea[0].i0)} to ${km(sea.at(-1).i1)}`, sea[0].i0, sea.at(-1).i1, 'wind');
     const dn = this.darkNote(a, d);
     if (dn) add(35, 'plain', 'moon', dn.text, dn.i0, dn.i1);
     const sunny = runs((i) => !water(i) && group(i) !== 'water' && w.cloud[i] < 50 && (() => { const p = sunPosition(T.at(i), a.pts[i]), hd = bearing(a.pts[Math.max(0, i - 2)], a.pts[Math.min(n - 1, i + 2)]);
       return p.alt > 0 && p.alt < 10 && Math.abs(((p.az - hd + 540) % 360) - 180) <= 30; })()).filter((r) => r.len >= 500);
     if (sunny.length) add(36, 'plain', 'sun', `Low sun ahead around ${around(sunny[0].i0)}, km ${km(sunny[0].i0)} to ${km(sunny[0].i1)}`, sunny[0].i0, sunny[0].i1);
     if (this.wet && this.wet.on && ['mtb', 'gravel', 'trailrun', 'hike'].includes(sport(i0))) add(39, 'plain', 'drop', `It rained ${Math.round(this.wet.mm)} mm in the last day: trails may be wet and muddy`, i0);
-    const shown = notes.sort((x, y) => x.rank - y.rank || x.i0 - y.i0).slice(0, 3).map((x, j) => ({ ...x, n: j + 1, layer: NOTE_LAYERS[x.rank] }));
+    const shown = notes.sort((x, y) => x.rank - y.rank || x.i0 - y.i0).slice(0, 3).map((x, j) => ({ ...x, n: j + 1 }));
     // the numbers in their places; the waves a fourth on a paddle, where they're known
     const wave = this.dayWaves(d), paddle = Array.from({ length: i1 - i0 + 1 }, (_, j) => i0 + j).some(water);
     const nums = [[degRange(wx.tMin, wx.tMax).replace(' °C', '°'), feel != null ? `feels like ${deg(feel)}` : ''], [`${Math.round(wx.wind)} m/s`, `gusts ${Math.round(wx.gust)}`],
@@ -8004,10 +8006,6 @@ const LANE_WORDS = {
   thunder: { thunder: 'thunder possible' },
   waves: { under: 'under the craft’s limit', over: 'over it' },
 };
-// the map's weather layer of each kind of the weather card's notes, by its rank, where it has one (the timeline's ‹ › turn
-// it on): thunder; frostbite, slippery, very cold and hot; rough water, gusts, headwinds and the wind on the water; rain
-// or snow falling; snow on the ground
-const NOTE_LAYERS = { 13: 'thunder', 14: 'temp', 21: 'temp', 31: 'temp', 15: 'wind', 22: 'wind', 34: 'wind', 32: 'rain', 33: 'snow' };
 // stretches of a route where pred(i) holds, from sample to sample: [{ i0, i1, len }]
 function runsOf(a, i0, i1, pred) {
   const out = [];

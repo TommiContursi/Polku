@@ -1288,15 +1288,16 @@ export class WeatherOverlay {
     while (lo < hi) { const m = (lo + hi) >> 1; if (T.at(m) < t) lo = m + 1; else hi = m; }
     return lo;
   }
-  // the day's notes, the weather card's (worst first, three at most), that start inside the window; null without the day's
-  // forecast. A new list (a new forecast, day or window) lets go of the one stepped to
+  // the day's notes, the weather card's (worst first, three at most), that start inside the window. A new list (the route's
+  // analysis drawn again: a new forecast, day or window) keeps the note stepped to while it says the same
   notes(z) {
     const { a, T } = this.trip, c = this.stepList;
     if (c && c.w === a.wind && c.d === z.d && c.tw1 === z.tw1) return c.list;
-    const all = a.wind && this.trip.notes(z.d);
-    this.stepAt = null;
-    this.stepList = { w: a.wind, d: z.d, tw1: z.tw1, list: all ? all.filter((x) => T.at(x.i0) <= z.tw1) : null };
-    return this.stepList.list;
+    const was = c && c.list[this.stepAt], list = this.trip.notes(z.d).filter((x) => T.at(x.i0) <= z.tw1);
+    const j = was ? list.findIndex((x) => x.rank === was.rank && x.text === was.text) : -1;
+    this.stepAt = j >= 0 ? j : null;
+    this.stepList = { w: a.wind, d: z.d, tw1: z.tw1, list };
+    return list;
   }
 
   // 48 hours or Your trip, switched at once (nothing moves): Your trip at the day time `at` is in (the hour shown, unless
@@ -1312,7 +1313,7 @@ export class WeatherOverlay {
     this.span = k;
     this.stepAt = null;
     const z = this.tripWin();
-    if (z) this.hour = this.hourOn(z, t >= z.tw0 && t <= z.tw1 ? t : z.d.t0);
+    if (z) this.hour = this.hourOn(z, at != null || (t >= z.tw0 && t <= z.tw1) ? t : z.d.t0); // (the card's time kept inside the window)
     this.renderTrip();
     if (z) this.setHour(this.hour);
   }
@@ -1336,7 +1337,7 @@ export class WeatherOverlay {
   // ‹ and ›: the note before or after it in the card's order, worst first: the hour to it, its layer on, lit on the band
   // and the route
   step(dir) {
-    const z = this.tripWin(), list = this.notes(z) || [], j = this.stepAt == null ? (dir > 0 ? 0 : -1) : this.stepAt + dir, x = list[j];
+    const z = this.tripWin(), list = this.notes(z), j = this.stepAt == null ? (dir > 0 ? 0 : -1) : this.stepAt + dir, x = list[j];
     if (!x) return;
     this.playing = false;
     this.syncPlay();
@@ -1345,8 +1346,8 @@ export class WeatherOverlay {
     if (x.layer && !this.on[x.layer]) this.app.onToggle({ [x.layer]: true });
   }
 
-  // What follows the hour in Your trip: your dot on the route, ‹ › and their words (the forecast loading or failed said so;
-  // stopping short is a note of its own), and the note stepped to lit. The focus stays on the arrow, or goes to the other at
+  // What follows the hour in Your trip: your dot on the route, ‹ › and their words (the forecast loading, failed or stopping
+  // short said so: the dark is the sun's, the rest needs it), and the note stepped to lit. The focus stays on the arrow, or goes to the other at
   // the end (to the slider when neither has another)
   syncTrip() {
     const z = this.tripWin(), tr = this.trip;
@@ -1358,12 +1359,11 @@ export class WeatherOverlay {
     const { a } = tr, w = a.wind, i = this.sampleOn(z.d, timeAtHour(this.hour));
     if (!this.youPin) this.youPin = new maplibregl.Marker({ element: h('div', { class: 'wx-you', 'aria-hidden': 'true' }) }).setLngLat(a.pts[i]).addTo(this.map);
     else this.youPin.setLngLat(a.pts[i]);
-    const list = this.notes(z), n = list ? list.length : 0, at = list && list[this.stepAt];
-    const [b, sm] = !w ? [`Weather notes: ${a.windError ? 'no forecast' : 'loading'}`, '']
-      : !list ? ['Weather notes: no forecast yet', '']
-        : !n ? ['No weather notes', '']
-          : at ? [at.text, `${this.stepAt + 1} of ${n}`]
-            : [`${n} weather note${n > 1 ? 's' : ''}`, 'the worst first'];
+    const list = this.notes(z), n = list.length, at = list[this.stepAt], km = (j) => Math.max(1, Math.round(a.along[j] / 1000));
+    const lack = !w ? (a.windError ? 'no forecast' : 'loading the forecast') : !forecastKnown(w, z.d.i0) ? 'no forecast yet' : !forecastKnown(w, z.d.i1) ? `no forecast past km ${km(w.beyond)}` : '';
+    const [b, sm] = at ? [at.text, `${this.stepAt + 1} of ${n}${lack ? ` · ${lack}` : ''}`]
+      : !n ? [lack ? 'Weather notes' : 'No weather notes', lack]
+        : [`${n} weather note${n > 1 ? 's' : ''}`, lack || 'the worst first'];
     if (this.stepWords.dataset.said !== b + sm) {
       this.stepWords.dataset.said = b + sm;
       this.stepWords.replaceChildren(h('b', {}, b), sm ? h('small', {}, sm) : '');
@@ -1554,7 +1554,7 @@ export class WeatherOverlay {
         ctx.fillStyle = muted; ctx.globalAlpha = 0.12; ctx.fillRect(x, 0, W - PAD - x, H); ctx.globalAlpha = 1;
         ctx.fillText('No forecast yet', x + 4, H / 2);
       }
-      const r = this.stepAt != null && this.notes(z)?.[this.stepAt];
+      const r = this.stepAt != null && this.notes(z)[this.stepAt];
       if (r) { ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(Xt(T.at(r.i0)) - 1, band - 2, Xt(T.at(r.i1)) - Xt(T.at(r.i0)) + 2, 10); }
     }
     // cursor, and the temperature where it crosses the line
