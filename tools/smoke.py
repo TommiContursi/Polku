@@ -13223,7 +13223,7 @@ def timeline_trip(chrome):
                     pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
             time.sleep(0.6)
         st = lambda: pg.js(TL_TRIP_STATE)
-        js = lambda code: pg.js(f"(async () => {{ const p = polku.planner, w = polku.weather, T = window.__trip, wait = (ms) => new Promise((r) => setTimeout(r, ms)); {code}; await wait(400); return true; }})()")
+        js = lambda code: pg.js(f"(async () => {{ const p = polku.planner, w = polku.weather, T = window.__trip, wait = (ms) => new Promise((r) => setTimeout(r, ms)); {code}; await wait(400); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); return true; }})()")  # (the reading is drawn in a frame of its own: one that comes late on a busy page is waited for)
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
             pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
@@ -13260,11 +13260,12 @@ def timeline_trip(chrome):
                 kept = place != 'float' or (x['scroll'] and all(abs(a - b) <= 2 for a, b in zip(x['scroll'], was)))  # (beside the map: where it was scrolled, its hours too)
                 if x['span'] != 'trip' or x['t'] != col[2] or not x['on']['rain'] or x['folded'] != (place != 'float') or x['card'] != 'weather' or x['clear'] is False or not kept:
                     bad(f'the card\'s Rain pressed at {col[2]} (the card {place}, scrolled {was}): {x}')
-                # Weather card › in the trip's row: the card again where it folded (the same card, Rain open, its hours as they were)
+                # Weather card › in the trip's row: the same card, Rain open, its hours as they were (beside the map, where it
+                # was scrolled too: it was open all along)
                 press(*pg.js("(() => { const r = document.querySelector('#wx-bar .tl-card').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
                 y = cs()
-                if y['card'] != 'weather' or y['folded'] or (place != 'float' and (not y['same'] or y['rainOpen'] != 'true' or not y['scroll'] or abs(y['scroll'][1] - was[1]) > 2)):
-                    bad(f'Weather card › after the card folded (its hours were at {was[1]}): {y}')
+                if y['card'] != 'weather' or y['folded'] or not y['same'] or y['rainOpen'] != 'true' or not y['scroll'] or abs(y['scroll'][1] - was[1]) > 2 or (place == 'float' and abs(y['scroll'][0] - was[0]) > 2):
+                    bad(f'Weather card › with the card {"open beside the map" if place == "float" else "folded"} (scrolled {was}): {y}')
                 # the Thunder lane under The whole trip: Your trip where the thunder starts, Thunder on
                 press(*pg.js(TL_CARD_AT + "('[data-k=trip]')")[:2])
                 lane = pg.js(TL_CARD_AT + "('[data-k=lane-thunder]')")
@@ -13299,7 +13300,7 @@ def timeline_trip(chrome):
                 b['legend'] = st()['legend']
             if 'Wind on the way' not in b['legend'] or (wd > 720 and b['noteKey'] != 4):
                 bad(f'the band\'s key: the legend “{b["legend"][:80]}”, the note\'s {b["noteKey"]} colours')
-            if b['step'] != '3 weather notesthe worst first' or not b['prevOff'] or b['nextOff']:
+            if b['step'] != '3 weather notes. the worst first' or not b['prevOff'] or b['nextOff']:
                 bad(f'the stepper: {b["step"]!r}, ‹ off {b["prevOff"]}, › off {b["nextOff"]}')
             # › three times, as a person presses it: the weather card's notes in its order, worst first, each at its hour with
             # its layer on, its words, the route lit, the focus kept and the arrow where it was; the note stepped to kept when
@@ -13307,16 +13308,16 @@ def timeline_trip(chrome):
             still = lambda q: abs(q['next'][0] - b['next'][0]) < 1 and abs(q['next'][1] - b['next'][1]) < 1
             press(*b['next'])
             c = st()
-            if not re.fullmatch(r'Thunder possible around \d\d:\d\d, near km \d+1 of 3', c['step'] or '') or not c['atNote'] or not c['on']['thunder'] or not c['lit'] or c['focus'] != 'step-next' or not still(c):
+            if not re.fullmatch(r'Thunder possible around \d\d:\d\d, near km \d+\. 1 of 3', c['step'] or '') or not c['atNote'] or not c['on']['thunder'] or not c['lit'] or c['focus'] != 'step-next' or not still(c):
                 bad(f'› to the first note: {c["step"]!r}, at its hour {c["atNote"]}, Thunder on {c["on"]["thunder"]}, lit {c["lit"]}, the focus on {c["focus"]}, › from {b["next"]} to {c["next"]}')
             press(*c['next'])
             d = st()
-            if not re.fullmatch(r'Gusts up to 17 m/s around \d\d:\d\d, near km \d+2 of 3', d['step'] or '') or not d['atNote'] or not d['on']['wind'] or d['lit'] == c['lit'] or '<b>headwind</b>' not in d['read'] or not still(d):
+            if not re.fullmatch(r'Gusts up to 17 m/s around \d\d:\d\d, near km \d+\. 2 of 3', d['step'] or '') or not d['atNote'] or not d['on']['wind'] or d['lit'] == c['lit'] or '<b>headwind</b>' not in d['read'] or not still(d):
                 bad(f'› to the second: {d["step"]!r}, at its hour {d["atNote"]}, Wind on {d["on"]["wind"]}, lit {d["lit"]} (was {c["lit"]}), the reading {d["read"][-120:]!r}')
             js('p.renderAnalysis()')
             press(*d['next'])
             e3 = st()
-            if not re.fullmatch(r'Heavy rain around \d\d:\d\d, near km \d+3 of 3', e3['step'] or '') or not e3['atNote'] or not e3['on']['rain'] or not e3['nextOff'] or e3['focus'] != 'step-prev' or not still(e3):
+            if not re.fullmatch(r'Heavy rain around \d\d:\d\d, near km \d+\. 3 of 3', e3['step'] or '') or not e3['atNote'] or not e3['on']['rain'] or not e3['nextOff'] or e3['focus'] != 'step-prev' or not still(e3):
                 bad(f'› to the third, after the route was drawn again: {e3["step"]!r}, at its hour {e3["atNote"]}, Rain on {e3["on"]["rain"]}, › off {e3["nextOff"]}, the focus on {e3["focus"]}')
             # a strong headwind's words whole in the reading, and the time whole (a phone's reading is the narrowest)
             js("T.set(T.wind({ series: [{ ...T.wind().series[0], speed: Array(8).fill(12) }] })); w.bar.querySelector('[data-k=step-prev]').click()")
@@ -13327,7 +13328,7 @@ def timeline_trip(chrome):
             # the slider's own move: the stretch left, the route unlit
             js("w.slider.value = String(+w.slider.value - 3); w.slider.dispatchEvent(new Event('input', { bubbles: true }))")
             e = st()
-            if e['step'] != '3 weather notesthe worst first' or e['lit']:
+            if e['step'] != '3 weather notes. the worst first' or e['lit']:
                 bad(f'the slider moved off the note: {e["step"]!r}, lit {e["lit"]}')
             # a press on the strip three quarters along, and Play: the hour there by the 5 minutes, then on (15 minutes a second
             # at 60 frames a second), inside the window
@@ -13351,16 +13352,34 @@ def timeline_trip(chrome):
             k2 = st()
             js("w.slider.value = '0'; w.slider.dispatchEvent(new Event('input', { bubbles: true })); T.set(T.wind())")
             l = st()
-            if not re.fullmatch(r'(Weather notes|1 weather note)loading the forecast', f['step'] or '') or not f['skel'] or 'tl-skel' not in f['read']:
+            if not re.fullmatch(r'(Weather notes|1 weather note)\. loading the forecast', f['step'] or '') or not f['skel'] or 'tl-skel' not in f['read']:
                 bad(f'loading: the stepper {f["step"]!r}, the strip\'s skeleton {f["skel"]}, the reading {f["read"][:80]!r}')
-            if not re.fullmatch(r'(Weather notes|1 weather note)no forecast', g['step'] or '') or g['skel'] or 'couldn’t be loaded' not in g['read'] or (not phone and 'couldn’t be loaded' not in g['note']):
+            if not re.fullmatch(r'(Weather notes|1 weather note)\. no forecast', g['step'] or '') or g['skel'] or 'couldn’t be loaded' not in g['read'] or (not phone and 'couldn’t be loaded' not in g['note']):
                 bad(f'failed: the stepper {g["step"]!r}, the skeleton {g["skel"]}, the reading {g["read"][:80]!r}, the note “{g["note"]}”')
-            if not re.fullmatch(r'[23] weather notesno forecast past km \d+', k['step'] or '') or not re.fullmatch(r'The forecast only reaches \d\d:\d\d, near km \d+: the rest isn’t checked1 of [23] · no forecast past km \d+', k1['step'] or ''):
+            if not re.fullmatch(r'[23] weather notes\. no forecast past km \d+', k['step'] or '') or not re.fullmatch(r'The forecast only reaches \d\d:\d\d, near km \d+: the rest isn’t checked\. 1 of [23] · no forecast past km \d+', k1['step'] or ''):
                 bad(f'the forecast stopping half way: the stepper {k["step"]!r}, then › {k1["step"]!r}')
             if not (still(k1) and still(k2)):
                 bad(f'the arrows moved with the notes\' lines: › at {b["next"]}, then {k1["next"]} ({k1["step"]!r}) and {k2["next"]} ({k2["step"]!r})')
-            if l['step'] != '3 weather notesthe worst first' or l['skel']:
+            if l['step'] != '3 weather notes. the worst first' or l['skel']:
                 bad(f'the forecast coming late: the stepper {l["step"]!r}')
+            # a note whose words say no time, stepped to, then the departure an hour later: the note let go, not kept at the
+            # time it had (the review of #1005). The dark's, leaving at 23:00 on a calm, dry day: it needs no forecast, so it
+            # stays while a new forecast loads
+            go = lambda shift: js(f"p.when.set({shift}); for (let k = 0; k < 50 && !(p.analysis.start === p.when.start() && p.analysis.wind); k++) await wait(100); await wait(300); if (w.span !== 'trip') w.bar.querySelector('[data-k=span-trip]').click()")
+            go("(() => { const d = new Date(); d.setHours(23, 0, 0, 0); if (d.getTime() < Date.now() + 3600e3) d.setDate(d.getDate() + 1); return d.getTime() / 1000; })()")
+            js("T.set(T.wind({ thunder: new Uint8Array(T.n), precip: new Float32Array(T.n), gust: new Float32Array(T.n).fill(9) }))")  # (calm and dry: the dark the worst)
+            for _ in range(3):
+                h1 = st()
+                if (h1['step'] or '').startswith('In the dark') or h1['nextOff']:
+                    break
+                press(*h1['next'])
+            h1 = st()
+            go('p.when.start() + 3600')
+            h2 = st()
+            go('Math.ceil(Date.now() / 3600e3) * 3600 + 2 * 3600')
+            js('T.set(T.wind())')
+            if not (h1['step'] or '').startswith('In the dark') or not h1['atNote'] or h2['span'] != 'trip' or ((h2['step'] or '').startswith('In the dark') and not h2['atNote']):
+                bad(f'the dark stepped to, then the departure an hour later: {h1["step"]!r} at its hour {h1["atNote"]}, then {h2["step"]!r} at its hour {h2["atNote"]} ({h2["span"]})')
             # a trip of days: a night at the middle point, a day at a time with the weather card's chips
             js('p.setStop(2, { on: 480 }); for (let k = 0; k < 40 && p.wxDays(p.analysis).length < 2; k++) await wait(200); T.set(T.wind({ beyondSec: p.trip().end + 3600 }))')
             m = st()
@@ -13443,6 +13462,13 @@ def timeline_trip(chrome):
                     pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': xx, 'y': hy, 'button': 'left', 'buttons': 1 if kind != 'mouseReleased' else 0, 'clickCount': 1}, pg.s)
                 time.sleep(0.5)
                 dragged = pg.js(lay)
+                at = lambda sel: pg.js(f"(() => {{ const r = document.querySelector('#wx-bar {sel}').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+                press(*at('[data-k=span-48]'))
+                s48 = pg.js(lay)
+                press(*at('[data-k=span-trip]'))
+                strip_ = pg.js(lay)
+                if abs(s48['seg'] - dragged['seg']) > 1 or abs(strip_['seg'] - dragged['seg']) > 1:
+                    bad(f'a dragged timeline: the switch at {dragged["seg"]}, after 48 hours at {s48["seg"]}, after Your trip at {strip_["seg"]} (the rows grow up from its foot)')
                 pg.c.send('Emulation.setDeviceMetricsOverride', {'width': 1200, 'height': 860, 'deviceScaleFactor': 1, 'mobile': False}, pg.s)
                 time.sleep(1.2)
                 after = pg.js(lay)

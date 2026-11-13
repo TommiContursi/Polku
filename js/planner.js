@@ -7437,9 +7437,9 @@ export class Planner {
   openWeather({ day = 0, time = false, from = 'box', el = null } = {}) {
     const a = this.analysis;
     if (!a || !this.trip()) return;
-    // (folded to its banner by a tap on the map's weather, on a phone: back as it was)
+    // (the day's weather card open already: as it is, unfolded where a tap on the map's weather folded it to its banner)
     const cur = this.cards.current;
-    if (this.cards.folded && cur?.kind === 'weather' && (cur.day || 0) === day && !time) { this.cards.unfold(); return; }
+    if (cur?.kind === 'weather' && (cur.day || 0) === day && !time && !this.cards.rolled) { this.cards.unfold(); return; }
     const days = this.wxDays(a);
     if (days.length > 1 && !time) this.focusRange(days[day].i0, days[day].i1, null);
     // (a desktop's beside the panel, level with its row, as Check's items')

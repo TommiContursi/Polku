@@ -267,6 +267,14 @@ export class WeatherOverlay {
       this.placeFloat(null);
     });
     addEventListener('resize', () => this.placeFloat());
+    // placed by hand, it grows from its foot too as rows and lines come and go (Your trip's, a note on two lines), as it
+    // does at the map's foot, so what's under the finger stays where it is (#594): its top moves by the change in height
+    let tall = 0;
+    new ResizeObserver(() => {
+      const was = tall;
+      tall = bar.offsetHeight;
+      if (was && tall && !drag && this.float && bar.classList.contains('placed')) this.placeFloat({ ...this.float, top: this.float.top - (tall - was) });
+    }).observe(bar);
     this.placeFloat(store.get('timelineFloat', null) || undefined);
   }
 
@@ -1289,14 +1297,15 @@ export class WeatherOverlay {
     return lo;
   }
   // the day's notes, the weather card's (worst first, three at most), that start inside the window. A new list (the route's
-  // analysis drawn again: a new forecast, day or window) keeps the note stepped to while it says the same
+  // analysis drawn again: a new forecast, day or window) keeps the note stepped to while it says the same at the same time
+  // (many say no time: a new departure moves them)
   notes(z) {
     const { a, T } = this.trip, c = this.stepList;
     if (c && c.w === a.wind && c.d === z.d && c.tw1 === z.tw1) return c.list;
-    const was = c && c.list[this.stepAt], list = this.trip.notes(z.d).filter((x) => T.at(x.i0) <= z.tw1);
-    const j = was ? list.findIndex((x) => x.rank === was.rank && x.text === was.text) : -1;
+    const was = c && c.list[this.stepAt], list = this.trip.notes(z.d).filter((x) => T.at(x.i0) <= z.tw1), at = list.map((x) => T.at(x.i0));
+    const j = was ? list.findIndex((x, k) => x.rank === was.rank && x.text === was.text && at[k] === c.at[this.stepAt]) : -1;
     this.stepAt = j >= 0 ? j : null;
-    this.stepList = { w: a.wind, d: z.d, tw1: z.tw1, list };
+    this.stepList = { w: a.wind, d: z.d, tw1: z.tw1, list, at };
     return list;
   }
 
@@ -1366,7 +1375,7 @@ export class WeatherOverlay {
         : [`${n} weather note${n > 1 ? 's' : ''}`, lack || 'the worst first'];
     if (this.stepWords.dataset.said !== b + sm) {
       this.stepWords.dataset.said = b + sm;
-      this.stepWords.replaceChildren(h('b', {}, b), sm ? h('small', {}, sm) : '');
+      this.stepWords.replaceChildren(h('b', {}, b), sm ? h('small', {}, h('span', { class: 'sr-only' }, '. '), sm) : ''); // (read apart: "near km 2. 1 of 3")
     }
     const [prev, next] = this.stepEl.querySelectorAll('button'), had = this.stepEl.contains(document.activeElement);
     prev.disabled = !(this.stepAt > 0);
