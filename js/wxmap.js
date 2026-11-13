@@ -11,7 +11,7 @@
 // re-samples the grid. Particle canvases render at 1× pixel density.
 
 import { measuredSnow } from './winter.js';
-import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind } from './weather.js';
+import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind, sampleAt, windClass, forecastKnown } from './weather.js';
 import { compass, dist } from './geo.js';
 import { strikesIn } from './lightning.js';
 import { STRIKE_COLOURS } from './icons.js';
@@ -83,6 +83,14 @@ export function timeAtHour(hr) {
   if (hr < 0.01) return now;
   return Math.max(now, Math.floor(now / 3600) * 3600 + hr * 3600);
 }
+// and back: a time from now on (unix s) as the timeline's hour
+const hourAt = (t) => (t - Math.floor(Date.now() / 3600e3) * 3600) / 3600;
+const weekday = (t, long = false) => new Date(t * 1000).toLocaleDateString([], { weekday: long ? 'long' : 'short' });
+// the wind where you are in words (windClass()'s keys), and the wind on your way's key: the band under Your trip's hours,
+// in the route's wind colours (the darker, the stronger), in the note under the timeline and in the legend
+const WIND_WAY = { strongHead: 'against you', head: 'against you', cross: 'from the side', tail: 'behind you', strongTail: 'behind you', calm: 'calm' };
+const BAND_KEY = `<span class="wx-key">${[['strong-head', 'head', 'against you'], ['cross', 'cross', 'from the side'], ['strong-tail', 'tail', 'behind you'], ['calm', 'calm', 'calm']]
+  .map(([a, b, t]) => `<span style="--k: linear-gradient(90deg, var(--wind-${a}) 50%, var(--wind-${b}) 50%)">${t}</span>`).join('')}</span>`;
 
 // Web Mercator helpers (0..1 world units)
 const mx = (lon) => (lon + 180) / 360;
@@ -109,6 +117,10 @@ export class WeatherOverlay {
     this.moving = false;
     this.particles = [];
     this.drops = [];
+    this.span = '48'; // what the timeline shows: '48' hours, or 'trip', zoomed to your trip (#869)
+    this.day = 0; // Your trip's day, on a trip of days
+    this.stepAt = null; // the stretch against you ‹ › stepped to, while the hour stays at its start
+    this.trip = null; // the route's times, from app.trip(): renderTrip()
     this.buildCanvases();
     this.buildBar();
     map.on('movestart', () => this.onMoveStart());
@@ -160,6 +172,7 @@ export class WeatherOverlay {
   // Weather here (25d part 6b): the readout is for a spot of the map you chose, with a pin on it, until the timeline
   // closes or you pick another; the forecast it reads is the grid's, so no request carries the spot
   holdAt(ll) {
+    if (this.span === 'trip') { this.span = '48'; this.renderTrip(); } // (the reading goes to the spot, not where you'll be)
     this.heldLL = ll;
     if (this.heldPin) this.heldPin.remove();
     this.heldPin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(ll).addTo(this.map);
@@ -173,8 +186,9 @@ export class WeatherOverlay {
   }
 
   setOpen(on) {
-    if (!on) this.release();
+    if (!on) { this.release(); this.span = '48'; } // (closed, it opens again at 48 hours, at Now)
     this.open = on;
+    this.renderTrip();
     if (!this.docked) this.bar.hidden = !on;
     this.wake();
     // a phone's row of layers opens with the first that's on in sight, clear of the fade at its edge (32 px), at once (a
@@ -1121,7 +1135,12 @@ export class WeatherOverlay {
     this.bar = bar;
     bar.hidden = true;
     this.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => this.togglePlay(), html: icon('play', 18) });
-    this.slider = h('input', { type: 'range', min: String(unitOf(-PAST)), max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time: the radar’s last 90 minutes, then the forecast’s hours', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(hourOf(+e.target.value)); } });
+    // (its range and words are set by syncSlider(): the 48 hours by the hour, or Your trip by the 5 minutes)
+    this.slider = h('input', { type: 'range', step: '1', oninput: (e) => {
+      const z = this.tripWin();
+      this.playing = false; this.stepAt = null; this.syncPlay();
+      this.setHour(z ? this.hourOn(z, z.tw0 + e.target.value * 300) : hourOf(+e.target.value));
+    } });
     this.timeEl = h('div', { class: 'wx-time' });
     // the map's layers: a button each, one tap, any of them at once, their state in sight (#869)
     this.layerRow = h('div', { class: 'tl-layers', role: 'group', 'aria-label': 'Weather layers' });
@@ -1161,12 +1180,28 @@ export class WeatherOverlay {
       h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` }),
       this.moreBtn,
       h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) }));
+    // the trip's row, under the slider while the route has times (#869): what the timeline shows (48 hours or Your trip,
+    // greyed past the map's 48 hours with the reason), and in Your trip its days and ‹ › between the stretches against you;
+    // then the weather card. Its line with the switch is the last, so the switch stays under the finger as rows come and
+    // go over it (the timeline grows up from its foot)
+    const spanBtn = (k, words) => h('button', { type: 'button', 'data-k': `span-${k}`, 'aria-pressed': 'false', onclick: () => this.setSpan(k) }, words);
+    this.spanSeg = h('div', { class: 'seg small', role: 'group', 'aria-label': 'What the timeline shows' }, spanBtn('48', '48 hours'), spanBtn('trip', 'Your trip'));
+    this.daysEl = h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' });
+    const stepBtn = (dir) => h('button', { type: 'button', class: 'tool', 'data-k': dir < 0 ? 'step-prev' : 'step-next', 'aria-label': dir < 0 ? 'The stretch against you before' : 'The next stretch against you',
+      html: icon(dir < 0 ? 'chevronLeft' : 'chevronRight', 18), onclick: () => this.step(dir) });
+    this.stepWords = h('span', { 'aria-live': 'polite' });
+    this.stepEl = h('div', { class: 'tl-step', role: 'group', 'aria-label': 'Where the wind is against you' }, stepBtn(-1), this.stepWords, stepBtn(1));
+    this.whyEl = h('p', { class: 'tl-why', id: 'tl-why' });
+    this.tripRow = h('div', { class: 'tl-trip', hidden: true }, this.spanSeg, this.daysEl, this.stepEl,
+      h('button', { type: 'button', class: 'btn small quiet tl-card', onclick: () => this.app.openWeather(this.span === 'trip' ? this.day : 0), html: `Weather card${icon('chevronRight', 16)}` }), this.whyEl);
     bar.append(
       head,
       h('div', { class: 'tl-main' }, this.stripCv, this.nowEl),
       h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl),
+      this.tripRow,
       this.noteEl,
     );
+    this.syncSlider();
     new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);
     this.bindFloat();
     // the buttons on a row of their own under the title bar on a desktop, where the title bar is the handle to drag; on a
@@ -1195,6 +1230,158 @@ export class WeatherOverlay {
     if (this.menu) { this.menu.close(); return; } // (⋯ again: it closes)
     this.moreBtn.setAttribute('aria-expanded', 'true');
     const menu = this.menu = popMenu(this.moreBtn, items(), { label: 'More weather', onClose: () => { this.menu = null; this.moreBtn.setAttribute('aria-expanded', 'false'); } });
+  }
+
+  // ------------------------------------------------------------------ your trip (#869's build, PR 2)
+  // The trip's row as the route's times are (app.onAnalysis(), on every change of the route, its departure and its
+  // forecast, and Leave now's clock): shown while the route has times, Your trip greyed when it starts past the map's 48
+  // hours, the trip view left when the trip goes or moves out of reach, and its hour kept inside the trip's window
+  renderTrip() {
+    const tr = this.trip = this.app.trip ? this.app.trip() : null, days = tr ? tr.days : [];
+    this.day = Math.min(this.day, Math.max(0, days.length - 1));
+    if (this.span === 'trip' && !(tr && this.reaches(days[this.day]))) this.span = '48';
+    const zoomed = this.span === 'trip', far = !!tr && !this.reaches(days[0]), off = days.find((d) => !this.reaches(d));
+    if (!zoomed) this.stepAt = null;
+    this.tripRow.hidden = !tr;
+    const [b48, bTrip] = this.spanSeg.children;
+    b48.setAttribute('aria-pressed', String(!zoomed));
+    bTrip.setAttribute('aria-pressed', String(zoomed));
+    bTrip.disabled = far;
+    if (far) bTrip.setAttribute('aria-describedby', 'tl-why'); else bTrip.removeAttribute('aria-describedby');
+    // a day at a time on a trip of days, with the weather card's chips; a day past the map's 48 hours greyed
+    const chips = zoomed && days.length > 1, had = this.daysEl.contains(document.activeElement) && document.activeElement.dataset.k;
+    this.daysEl.hidden = !chips;
+    this.daysEl.replaceChildren(...(chips ? days.map((d, j) => h('button', { type: 'button', class: 'chip', 'data-k': `day-${d.n}`, 'aria-pressed': String(j === this.day),
+      disabled: !this.reaches(d) || null, 'aria-describedby': this.reaches(d) ? null : 'tl-why', onclick: () => this.setDay(j) }, `Day ${d.n} · ${weekday(d.t0)}`)) : []));
+    if (had) this.daysEl.querySelector(`[data-k="${had}"]`)?.focus({ preventScroll: true });
+    this.stepEl.hidden = !zoomed;
+    const z = this.tripWin(), end = Math.floor(Date.now() / 3600e3) * 3600 + HOURS * 3600, when = (t, long) => `${weekday(t, long)} ${hhmm(t * 1000)}`;
+    this.whyEl.textContent = far ? `Your trip starts ${weekday(days[0].t0, true)} at ${hhmm(days[0].t0 * 1000)}, past the map’s 48 hours of weather: you can zoom to it from ${when(days[0].t0 - HOURS * 3600, true)}.`
+      : chips && off ? `Day ${off.n} starts ${weekday(off.t0, true)} at ${hhmm(off.t0 * 1000)}, past the map’s 48 hours of weather.`
+        : z && z.d.t1 > end ? `The map’s weather reaches ${when(end)}: the rest of ${days.length > 1 ? `day ${z.d.n}` : 'your trip'} isn’t shown.` : '';
+    this.whyEl.hidden = !this.whyEl.textContent;
+    if (z) { const t = timeAtHour(this.hour); if (t < z.tw0 || t > z.tw1) { this.setHour(this.hourOn(z, t)); this.placeFloat(); return; } }
+    this.syncSlider();
+    this.renderStrip();
+    this.renderTime();
+    this.readout();
+    this.placeFloat(); // (rows come and go: kept on screen)
+  }
+
+  // Your trip's window, by the 5 minutes: its day with an hour either side, from Now to the end of the map's 48 hours; null
+  // in the 48 hours
+  tripWin() {
+    if (this.span !== 'trip' || !this.trip) return null;
+    const d = this.trip.days[this.day], now = Date.now() / 1000;
+    return { d, tw0: Math.ceil(Math.max(now, d.t0 - 3600) / 300) * 300, tw1: Math.floor(Math.min(Math.floor(now / 3600) * 3600 + HOURS * 3600, d.t1 + 3600) / 300) * 300 };
+  }
+  // a day the map's 48 hours reach
+  reaches(d) { return hourAt(d.t0) < HOURS; }
+  // the hour at time t in Your trip, to the 5 minutes, inside its window
+  hourOn(z, t) { return hourAt(Math.max(z.tw0, Math.min(z.tw1, Math.round(t / 300) * 300))); }
+  // the sample you're at at time t on day d: its first before you set off, its last once you're there
+  sampleOn(d, t) {
+    const { T } = this.trip;
+    let lo = d.i0, hi = d.i1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (T.at(m) < t) lo = m + 1; else hi = m; }
+    return lo;
+  }
+  // the day's stretches against you (the weather card's, from Wind on the way) that start inside the window; a new list (a
+  // new forecast, day or window) lets go of the one stepped to
+  stretches(z) {
+    const { a, T } = this.trip, c = this.stepList;
+    if (!a.wind) return [];
+    if (c && c.w === a.wind && c.d === z.d && c.tw1 === z.tw1) return c.list;
+    this.stepAt = null;
+    this.stepList = { w: a.wind, d: z.d, tw1: z.tw1, list: this.trip.against(z.d).filter((r) => T.at(r.i0) <= z.tw1) };
+    return this.stepList.list;
+  }
+
+  // 48 hours or Your trip, switched at once (nothing moves): Your trip at the day the hour is in, else its first day, and
+  // at the day's start unless the hour is already in its window; 48 hours keeps the hour
+  setSpan(k) {
+    if (k === this.span) return;
+    if (k === 'trip') {
+      const t = timeAtHour(this.hour), j = this.trip.days.findIndex((d) => t >= d.t0 - 3600 && t <= d.t1 + 3600);
+      this.day = j >= 0 && this.reaches(this.trip.days[j]) ? j : 0;
+    }
+    this.span = k;
+    this.stepAt = null;
+    this.renderTrip();
+    const z = this.tripWin(), t = timeAtHour(this.hour);
+    if (z) this.setHour(this.hourOn(z, t >= z.tw0 && t <= z.tw1 ? t : z.d.t0));
+  }
+  setDay(j) {
+    this.day = j;
+    this.stepAt = null;
+    this.renderTrip();
+    this.setHour(this.hourOn(this.tripWin(), this.trip.days[j].t0));
+  }
+
+  // where ‹ › put the hour on a stretch against you: its first 5 minutes inside it (its first sample's, or the nearest
+  // 5 minutes on a stretch shorter than that)
+  stretchHour(z, r) {
+    const { T } = this.trip, t = T.at(r.i0 + 1), up = Math.ceil(t / 300) * 300;
+    return this.hourOn(z, up <= T.at(r.i1) ? up : t);
+  }
+  // ‹ and ›: the hour to the stretch against you before or after it, lit on the band and the route
+  step(dir) {
+    const z = this.tripWin(), list = this.stretches(z), at = list.map((r) => this.stretchHour(z, r));
+    const j = dir > 0 ? at.findIndex((x) => x > this.hour + 1e-4) : at.findLastIndex((x) => x < this.hour - 1e-4);
+    if (j < 0) return;
+    this.playing = false;
+    this.syncPlay();
+    this.stepAt = j;
+    this.setHour(at[j]);
+  }
+
+  // What follows the hour in Your trip: your dot on the route, ‹ › and their words (the forecast loading, failed or stopping
+  // short said so), and the stretch stepped to lit. The focus stays on the arrow, or goes to the other at the end (to the
+  // slider when neither has another)
+  syncTrip() {
+    const z = this.tripWin(), tr = this.trip;
+    if (!z) {
+      if (this.youPin) { this.youPin.remove(); this.youPin = null; }
+      if (this.litKey) { this.litKey = null; this.app.light(null); }
+      return;
+    }
+    const { a } = tr, w = a.wind, i = this.sampleOn(z.d, timeAtHour(this.hour));
+    if (!this.youPin) this.youPin = new maplibregl.Marker({ element: h('div', { class: 'wx-you', 'aria-hidden': 'true' }) }).setLngLat(a.pts[i]).addTo(this.map);
+    else this.youPin.setLngLat(a.pts[i]);
+    const list = this.stretches(z), n = list.length, at = list[this.stepAt], km = (j) => Math.max(1, Math.round(a.along[j] / 1000));
+    const short = w && forecastKnown(w, z.d.i0) && !forecastKnown(w, z.d.i1) ? ` · no forecast past km ${km(w.beyond)}` : '';
+    const [b, sm] = !w ? [`The wind on your way: ${a.windError ? 'no forecast' : 'loading'}`, '']
+      : !forecastKnown(w, z.d.i0) ? ['The wind on your way: no forecast yet', '']
+        : !n ? ['Nowhere against you for long', short.slice(3)]
+          : at ? [`Against you, ${this.stepAt + 1} of ${n}`, `km ${km(at.i0)} to ${km(at.i1)} · up to ${Math.round(at.max)} m/s`]
+            : [`Against you on ${n} stretch${n > 1 ? 'es' : ''}`, `up to ${Math.round(Math.max(...list.map((r) => r.max)))} m/s${short}`];
+    if (this.stepWords.dataset.said !== b + sm) {
+      this.stepWords.dataset.said = b + sm;
+      this.stepWords.replaceChildren(h('b', {}, b), sm ? h('small', {}, sm) : '');
+    }
+    const [prev, next] = this.stepEl.querySelectorAll('button'), had = this.stepEl.contains(document.activeElement), hrs = list.map((r) => this.stretchHour(z, r));
+    prev.disabled = !hrs.some((x) => x < this.hour - 1e-4);
+    next.disabled = !hrs.some((x) => x > this.hour + 1e-4);
+    if (had && document.activeElement.disabled) (prev.disabled ? (next.disabled ? this.slider : next) : prev).focus({ preventScroll: true }); // (one stretch: the slider)
+    const key = at ? `${at.i0}-${at.i1}` : null;
+    if (key !== (this.litKey || null)) { this.litKey = key; this.app.light(at ? [at.i0, at.i1] : null); }
+  }
+
+  // Your trip's columns, every 10 minutes from the window's start: the weather where you'll be then, from the route's own
+  // forecast (the weather card's; none past its reach); null while it loads, when it failed, or when it reaches none of the
+  // trip
+  tripSeries(z) {
+    const { a } = this.trip, w = a.wind, c = this.tripData;
+    if (!w || !forecastKnown(w, z.d.i0)) return null;
+    if (c && c.w === w && c.d === z.d && c.tw0 === z.tw0 && c.tw1 === z.tw1) return c;
+    const out = { w, d: z.d, tw0: z.tw0, tw1: z.tw1, t: [], temp: [], rain: [], speed: [], dir: [], ll: [] };
+    for (let t = z.tw0; ; t = Math.min(z.tw1, t + 600)) {
+      const i = this.sampleOn(z.d, t), s = t <= w.beyondSec ? sampleAt(w.series[w.cell[i]], t) : null;
+      out.t.push(t); out.ll.push(a.pts[i]);
+      out.temp.push(s ? s.temp : NaN); out.rain.push(s ? s.precip : NaN); out.speed.push(s ? s.speed : NaN); out.dir.push(s ? s.dir : NaN);
+      if (t >= z.tw1) break;
+    }
+    return (this.tripData = out);
   }
 
   // ------------------------------------------------------------------ timeline strip
@@ -1244,61 +1431,81 @@ export class WeatherOverlay {
     const ink = css.getPropertyValue('--text').trim() || '#1c2420';
     const muted = css.getPropertyValue('--muted').trim() || '#5f6b65';
     const accent = css.getPropertyValue('--route').trim();
-    const d = this.stripSeries();
+    // Your trip: its window, read where you'll be from the route's own forecast, a column every 10 minutes; else the 48
+    // hours at the map's centre, a column an hour
+    const z = this.tripWin(), a = z && this.trip.a;
+    const d = z ? this.tripSeries(z) : this.stripSeries();
     const PAD = 9; // matches the range thumb so strip and slider line up
-    const U0 = unitOf(-PAST), X = (hr) => PAD + ((unitOf(hr) - U0) / (HOURS - U0)) * (W - 2 * PAD);
+    const U0 = unitOf(-PAST), Xh = (hr) => PAD + ((unitOf(hr) - U0) / (HOURS - U0)) * (W - 2 * PAD);
+    const Xt = z && ((t) => PAD + ((t - z.tw0) / (z.tw1 - z.tw0)) * (W - 2 * PAD));
+    const X = z ? (k) => Xt(d.t[k]) : Xh, n = d ? d.t.length - 1 : 0;
     ctx.font = '10px system-ui, sans-serif';
     // while the forecast comes, the strip's shape, as a card's skeleton (pick-skel); the time says it in words
-    cv.classList.toggle('skel', !d && this.loading);
-    if (!d) { if (!this.loading) { ctx.fillStyle = muted; ctx.fillText('Zoom in to see the forecast here', PAD, H / 2); } return; }
+    const loading = z ? !a.wind && !a.windError : this.loading;
+    cv.classList.toggle('skel', !d && loading);
+    if (!d) {
+      if (!loading) { ctx.fillStyle = muted; ctx.fillText(z ? (a.wind ? 'No forecast yet for your trip' : 'The forecast couldn’t be loaded') : 'Zoom in to see the forecast here', PAD, H / 2); }
+      return;
+    }
     // night
     ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
-    for (let hr = 0; hr < HOURS; hr++) {
-      if (sunPosition((d.t[hr] + d.t[hr + 1]) / 2, [d.lon, d.lat]).alt < -0.8) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
+    for (let k = 0; k < n; k++) {
+      if (sunPosition((d.t[k] + d.t[k + 1]) / 2, d.ll ? d.ll[k] : [d.lon, d.lat]).alt < -0.8) ctx.fillRect(X(k), 0, X(k + 1) - X(k) + 0.5, H);
     }
-    // the radar's last 90 minutes, before Now: only the rain has a past
-    ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(96,165,250,0.16)' : 'rgba(59,130,246,0.08)';
-    ctx.fillRect(X(-PAST), 0, X(0) - X(-PAST), H);
-    // your ride, from its departure to arrival, whatever the map's hour (step 6b)
-    const ride = this.app.routeHours && this.app.routeHours(), go = Math.max(0, (this.app.departure() - Math.floor(Date.now() / 3600e3) * 3600) / 3600);
-    if (ride > 0 && go < HOURS) { // (a departure past the strip's 48 hours: none)
-      ctx.fillStyle = accent;
-      ctx.globalAlpha = 0.16;
-      ctx.fillRect(X(go), 0, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), H);
+    // your ride, from its departure to arrival, whatever the map's hour (step 6b): in Your trip its day, the wind's band
+    // under it
+    const ride = z ? 0 : this.app.routeHours && this.app.routeHours(), go = Math.max(0, (this.app.departure() - Math.floor(Date.now() / 3600e3) * 3600) / 3600);
+    ctx.fillStyle = accent;
+    if (z) {
+      ctx.globalAlpha = 0.1;
+      ctx.fillRect(Xt(Math.max(z.tw0, z.d.t0)), 0, Xt(Math.min(z.tw1, z.d.t1)) - Xt(Math.max(z.tw0, z.d.t0)), H);
       ctx.globalAlpha = 1;
-      ctx.fillRect(X(go), H - 3, Math.max(3, X(Math.min(HOURS, go + ride)) - X(go)), 3);
+    } else {
+      // the radar's last 90 minutes, before Now: only the rain has a past
+      ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(96,165,250,0.16)' : 'rgba(59,130,246,0.08)';
+      ctx.fillRect(Xh(-PAST), 0, Xh(0) - Xh(-PAST), H);
+      if (ride > 0 && go < HOURS) { // (a departure past the strip's 48 hours: none)
+        ctx.fillStyle = accent;
+        ctx.globalAlpha = 0.16;
+        ctx.fillRect(Xh(go), 0, Math.max(3, Xh(Math.min(HOURS, go + ride)) - Xh(go)), H);
+        ctx.globalAlpha = 1;
+        ctx.fillRect(Xh(go), H - 3, Math.max(3, Xh(Math.min(HOURS, go + ride)) - Xh(go)), 3);
+      }
     }
     // rain bars
-    const top = 14, bottom = H - 14;
-    for (let hr = 0; hr < HOURS; hr++) {
-      const r = (d.rain[hr] + d.rain[hr + 1]) / 2;
-      if (r < 0.05) continue;
+    const top = 14, bottom = H - (z ? 20 : 14);
+    for (let k = 0; k < n; k++) {
+      const r = (d.rain[k] + d.rain[k + 1]) / 2;
+      if (!(r >= 0.05)) continue; // (none past the forecast's reach)
       const bh = Math.min(1, r / 3) * (bottom - top) * 0.75 + 2;
-      ctx.fillStyle = (d.temp[hr] < 0.5 ? 'rgba(167,139,250,' : 'rgba(59,130,246,') + Math.min(0.9, 0.35 + r / 4) + ')';
-      ctx.fillRect(X(hr) + 0.5, bottom - bh, X(hr + 1) - X(hr) - 1, bh);
+      ctx.fillStyle = (d.temp[k] < 0.5 ? 'rgba(167,139,250,' : 'rgba(59,130,246,') + Math.min(0.9, 0.35 + r / 4) + ')';
+      ctx.fillRect(X(k) + 0.5, bottom - bh, X(k + 1) - X(k) - 1, bh);
     }
     // temperature line
-    let tMin = Math.min(...d.temp), tMax = Math.max(...d.temp);
+    const known = d.temp.filter(Number.isFinite);
+    let tMin = Math.min(...known), tMax = Math.max(...known);
     if (tMax - tMin < 4) { const m = (tMax + tMin) / 2; tMin = m - 2; tMax = m + 2; }
     const Y = (t) => top + 4 + (1 - (t - tMin) / (tMax - tMin)) * (bottom - top - 14);
     ctx.beginPath();
-    d.temp.forEach((t, hr) => { const x = X(hr), y = Y(t); if (hr) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+    let pen = false;
+    d.temp.forEach((t, k) => { if (!Number.isFinite(t)) { pen = false; return; } if (pen) ctx.lineTo(X(k), Y(t)); else ctx.moveTo(X(k), Y(t)); pen = true; });
     ctx.strokeStyle = '#f97316';
     ctx.lineWidth = 1.8;
     ctx.stroke();
     // labels at the warmest / coldest hour
-    const iMax = d.temp.indexOf(Math.max(...d.temp)), iMin = d.temp.indexOf(Math.min(...d.temp));
+    const iMax = d.temp.indexOf(Math.max(...known)), iMin = d.temp.indexOf(Math.min(...known));
     ctx.fillStyle = '#c2410c';
     ctx.textAlign = 'center';
     ctx.fillText(`${Math.round(d.temp[iMax])}°`, Math.min(W - 12, Math.max(12, X(iMax))), Y(d.temp[iMax]) - 4);
     if (iMin !== iMax) ctx.fillText(`${Math.round(d.temp[iMin])}°`, Math.min(W - 12, Math.max(12, X(iMin))), Math.min(bottom, Y(d.temp[iMin]) + 11));
-    // wind arrows every 3 h
+    // wind arrows every third column: 3 h, or in Your trip 30 minutes
     ctx.strokeStyle = muted;
     ctx.fillStyle = muted;
-    for (let hr = 0; hr <= HOURS; hr += 3) {
-      const x = X(hr), y = 7, a = ((d.dir[hr] + 180) * Math.PI) / 180, l = Math.min(6, 2.5 + d.speed[hr] / 2);
-      ctx.save(); ctx.translate(x, y); ctx.rotate(a);
-      ctx.lineWidth = d.speed[hr] > 8 ? 1.8 : 1.1;
+    for (let k = 0; k <= n; k += 3) {
+      if (!Number.isFinite(d.speed[k])) continue;
+      const x = X(k), y = 7, ang = ((d.dir[k] + 180) * Math.PI) / 180, l = Math.min(6, 2.5 + d.speed[k] / 2);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+      ctx.lineWidth = d.speed[k] > 8 ? 1.8 : 1.1;
       ctx.beginPath(); ctx.moveTo(0, l); ctx.lineTo(0, -l); ctx.moveTo(-2.4, -l + 2.6); ctx.lineTo(0, -l); ctx.lineTo(2.4, -l + 2.6); ctx.stroke();
       ctx.restore();
     }
@@ -1307,37 +1514,61 @@ export class WeatherOverlay {
     ctx.fillStyle = muted;
     ctx.strokeStyle = muted;
     ctx.lineWidth = 1;
-    // hour labels every 6 h, or only at noon when the strip is narrow (phones)
-    const every = (X(HOURS) - X(0)) / HOURS * 6 < 34 ? 12 : 6;
-    for (let hr = 1; hr <= HOURS; hr++) {
-      const dt = new Date(d.t[hr] * 1000);
-      if (dt.getHours() === 0) {
-        ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(X(hr), 0); ctx.lineTo(X(hr), H); ctx.stroke(); ctx.globalAlpha = 1;
-        ctx.fillText(dt.toLocaleDateString([], { weekday: 'short' }), X(hr) + 3, H - 4);
-      } else if (dt.getHours() % every === 0 && X(hr) > X(0) + 18) {
-        ctx.fillText(String(dt.getHours()), X(hr) - 4, H - 4);
+    const tick = (x) => { ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); ctx.globalAlpha = 1; };
+    if (z) {
+      // Your trip: every hour (every other where they'd crowd), over the wind's band
+      const every = Xt(z.tw0 + 3600) - Xt(z.tw0) < 24 ? 2 : 1;
+      for (let t = Math.ceil(z.tw0 / 3600) * 3600; t <= z.tw1; t += 3600) {
+        const dt = new Date(t * 1000), x = Xt(t);
+        if (dt.getHours() === 0) { tick(x); ctx.fillText(weekday(t), x + 3, H - 10); } else if (dt.getHours() % every === 0 && x < W - 14) ctx.fillText(String(dt.getHours()), x + 2, H - 10);
       }
+    } else {
+      // hour labels every 6 h, or only at noon when the strip is narrow (phones)
+      const every = (Xh(HOURS) - Xh(0)) / HOURS * 6 < 34 ? 12 : 6;
+      for (let hr = 1; hr <= HOURS; hr++) {
+        const dt = new Date(d.t[hr] * 1000);
+        if (dt.getHours() === 0) { tick(Xh(hr)); ctx.fillText(dt.toLocaleDateString([], { weekday: 'short' }), Xh(hr) + 3, H - 4); } else if (dt.getHours() % every === 0 && Xh(hr) > Xh(0) + 18) ctx.fillText(String(dt.getHours()), Xh(hr) - 4, H - 4);
+      }
+      ctx.fillText('Radar', Xh(-PAST) - 6, H - 4);
     }
-    ctx.fillText('Radar', X(-PAST) - 6, H - 4);
-    // cursor
-    const cx = X(this.hour);
+    if (z) {
+      // Your trip's wind on your way, a band under the hours by the samples you're at (windClass(): against you, the strong
+      // in the darker red, from the side, behind you, calm), none while you wait at a stop; past the forecast's reach, said
+      // so; the stretch ‹ › stepped to, ringed
+      const { T } = this.trip, w = a.wind, band = H - 7;
+      for (let i = z.d.i0 + 1; i <= z.d.i1 && forecastKnown(w, i) && T.at(i - 1) < z.tw1; i++) {
+        const x0 = Xt(Math.max(z.tw0, T.at(i - 1))), x1 = Xt(Math.min(z.tw1, T.at(i) - (a.waitAt ? a.waitAt[i] : 0)));
+        if (x1 > x0) { ctx.fillStyle = windClass(a, i).color; ctx.fillRect(x0, band, x1 - x0 + 0.5, 7); }
+      }
+      if (w.beyondSec < z.tw1) {
+        const x = Xt(Math.max(z.tw0, w.beyondSec));
+        ctx.fillStyle = muted; ctx.globalAlpha = 0.12; ctx.fillRect(x, 0, W - PAD - x, H); ctx.globalAlpha = 1;
+        ctx.fillText('No forecast yet', x + 4, H / 2);
+      }
+      const r = this.stepAt != null && this.stretches(z)[this.stepAt];
+      if (r) { ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(Xt(T.at(r.i0)) - 1, band - 2, Xt(T.at(r.i1)) - Xt(T.at(r.i0)) + 2, 10); }
+    }
+    // cursor, and the temperature where it crosses the line
+    const t = timeAtHour(this.hour), cx = z ? Xt(t) : Xh(this.hour);
     ctx.strokeStyle = ink;
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
-    const ti = Math.min(HOURS, Math.round(Math.max(0, this.hour)));
+    const fk = z ? Math.min(n, (t - z.tw0) / 600) : Math.min(HOURS, Math.round(Math.max(0, this.hour))), k0 = Math.floor(fk), k1 = Math.min(n, k0 + 1);
+    const tc = d.temp[k0] + (d.temp[k1] - d.temp[k0]) * (fk - k0);
     ctx.fillStyle = ink;
-    if (this.hour >= 0) { ctx.beginPath(); ctx.arc(cx, Y(d.temp[ti]), 3.2, 0, Math.PI * 2); ctx.fill(); }
+    if (this.hour >= 0 && Number.isFinite(tc)) { ctx.beginPath(); ctx.arc(cx, Y(tc), 3.2, 0, Math.PI * 2); ctx.fill(); }
   }
 
   bindStrip() {
     const cv = this.stripCv;
     let down = false;
     const at = (e) => {
-      const r = cv.getBoundingClientRect();
+      const r = cv.getBoundingClientRect(), z = this.tripWin();
       const x = Math.max(0, Math.min(1, (e.clientX - r.left - 9) / (r.width - 18)));
       this.playing = false;
+      this.stepAt = null;
       this.syncPlay();
-      this.setHour(hourOf(unitOf(-PAST) + x * (HOURS - unitOf(-PAST))));
+      this.setHour(z ? this.hourOn(z, z.tw0 + x * (z.tw1 - z.tw0)) : hourOf(unitOf(-PAST) + x * (HOURS - unitOf(-PAST))));
     };
     cv.addEventListener('pointerdown', (e) => {
       down = true;
@@ -1350,9 +1581,12 @@ export class WeatherOverlay {
   }
 
   setHour(hr) {
+    // an hour outside Your trip's window (the weather card's Weather on the map, say): the 48 hours again
+    const z = this.tripWin(), t = timeAtHour(hr);
+    if (z && (t < z.tw0 - 1 || t > z.tw1 + 1)) { this.span = '48'; this.renderTrip(); }
     this.hour = Math.max(-PAST, Math.min(HOURS, hr));
     this.syncSlider();
-    if (this.grid) this.applyHour(); else this.renderTime();
+    if (this.grid) this.applyHour(); else { this.renderStrip(); this.renderTime(); } // (Your trip's strip is the route's: no grid needed)
     this.readout();
     this.emitHour();
   }
@@ -1366,16 +1600,34 @@ export class WeatherOverlay {
   }
 
   togglePlay() {
+    const z = this.tripWin();
     this.playing = !this.playing;
-    if (this.playing && this.hour >= HOURS) this.hour = 0;
+    this.stepAt = null;
+    if (this.playing && this.hour >= (z ? hourAt(z.tw1) : HOURS) - 1e-6) this.hour = z ? hourAt(z.tw0) : 0;
     this.syncPlay();
     if (!this.anim) this.startAnim();
   }
-  // the slider in the strip's units, and in words
+  // the slider in the strip's units, and in words: the radar's past and the forecast's hours, or Your trip by the 5 minutes
+  // (its range set before its value)
   syncSlider() {
-    this.slider.value = String(unitOf(this.hour) < 0 ? Math.round(unitOf(this.hour)) : Math.round(this.hour));
+    const z = this.tripWin(), sl = this.slider, [lo, hi] = z ? [0, (z.tw1 - z.tw0) / 300] : [unitOf(-PAST), HOURS];
+    if (+sl.min !== lo || +sl.max !== hi || !sl.hasAttribute('aria-label')) {
+      sl.min = String(lo); sl.max = String(hi);
+      sl.setAttribute('aria-label', z ? 'Time on your trip, by 5 minutes' : 'Time: the radar’s last 90 minutes, then the forecast’s hours');
+    }
     const t = new Date((this.hour < 0 ? scanAt(this.hour) : timeAtHour(this.hour)) * 1000), clock = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    this.slider.setAttribute('aria-valuetext', this.hour < 0 ? `${clock}, the radar ${Math.round(-this.hour * 60)} minutes ago` : this.hour < 0.5 ? `Now, ${clock}` : `${t.toLocaleDateString([], { weekday: 'long' })} ${clock}, in ${Math.round(this.hour)} hours`);
+    if (z) {
+      sl.value = String(Math.round((t / 1000 - z.tw0) / 300));
+      sl.setAttribute('aria-valuetext', `${t.toLocaleDateString([], { weekday: 'long' })} ${clock}, ${this.whereOn(z, 'before you set off, at the start', 'after you arrive, at the finish', 'at ')}`);
+      return;
+    }
+    sl.value = String(unitOf(this.hour) < 0 ? Math.round(unitOf(this.hour)) : Math.round(this.hour));
+    sl.setAttribute('aria-valuetext', this.hour < 0 ? `${clock}, the radar ${Math.round(-this.hour * 60)} minutes ago` : this.hour < 0.5 ? `Now, ${clock}` : `${t.toLocaleDateString([], { weekday: 'long' })} ${clock}, in ${Math.round(this.hour)} hours`);
+  }
+  // where you'll be at the hour in Your trip, in words: `before` you set off, (`at`) km …, or `after` you're there
+  whereOn(z, before, after, at = '') {
+    const t = timeAtHour(this.hour);
+    return t < z.d.t0 ? before : t > z.d.t1 ? after : `${at}km ${Math.round(this.trip.a.along[this.sampleOn(z.d, t)] / 1000)}`;
   }
 
   syncPlay() {
@@ -1385,11 +1637,12 @@ export class WeatherOverlay {
   }
 
   advancePlay(k = 1) {
-    const next = this.hour + k / (this.hour < 0 ? 240 : 60); // ~1 s per forecast hour, and per 15 minutes of the radar's past
-    if (next >= HOURS) { this.playing = false; this.syncPlay(); }
-    this.hour = Math.min(HOURS, next);
+    const z = this.tripWin(), end = z ? hourAt(z.tw1) : HOURS;
+    const next = this.hour + k / (z || this.hour < 0 ? 240 : 60); // ~1 s per forecast hour, and per 15 minutes of the radar's past and of your trip
+    if (next >= end) { this.playing = false; this.syncPlay(); }
+    this.hour = Math.min(end, next);
     this.syncSlider();
-    this.applyHour();
+    if (this.grid) this.applyHour(); else { this.renderStrip(); this.renderTime(); this.readout(); }
     this.emitHour();
   }
 
@@ -1410,16 +1663,22 @@ export class WeatherOverlay {
     else if (past && this.scanLoading === scanAt(this.hour)) label += ' · loading…';
     else if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? (past ? '' : ' · FMI radar') : past ? '' : ' · radar';
     if (this.loading) label += ' · loading…';
-    this.timeEl.textContent = label;
+    // Your trip: the time and where you'll be (the grid's loading is the map's: the strip and the reading are the route's)
+    const z = this.tripWin(), w = z && this.trip.a.wind;
+    this.timeEl.textContent = z ? `${day} ${clock} · ${this.whereOn(z, 'at the start', 'at the finish')}` : label;
     const route = !!(this.app.hasRoute && this.app.hasRoute());
     if (this.noteEl) {
       const g = this.grid;
       const st = sourceStatus('openmeteo');
-      const problem = this.status && !this.loading ? this.status
-        : g && g.stale ? `Showing the forecast from ${hhmm(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null;
+      const problem = (z && !w && this.trip.a.windError ? 'The forecast along your route couldn’t be loaded' : null)
+        || (w && w.stale ? `Showing the forecast from ${hhmm(w.from)} — Open-Meteo couldn’t be reached.` : null)
+        || (this.status && !this.loading ? this.status
+          : g && g.stale ? `Showing the forecast from ${hhmm(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null);
       this.noteEl.classList.toggle('warn', !!problem);
-      this.noteEl.textContent = problem ? `⚠ ${problem}` : `${route ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
+      if (problem || !z) this.noteEl.textContent = problem ? `⚠ ${problem}` : `${route ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
+      else if (!this.noteEl.querySelector('.wx-key')) this.noteEl.innerHTML = `Under the hours, the wind on your way: ${BAND_KEY}`; // (once, not on every frame of Play)
     }
+    this.syncTrip();
     if (this.app.onTime) this.app.onTime(this.hour);
   }
 
@@ -1457,6 +1716,7 @@ export class WeatherOverlay {
       rows.push(scale(stepsCss(SNOW_STEPS), `<b>Snow</b> on the ground ${SNOW_STEPS.map(([v]) => v).join(' · ')} cm`));
       rows.push('<div class="lgl"><b class="lg-obs">24 cm</b><span>Measured by FMI. The colours are the forecast.</span></div>');
     }
+    if (this.tripWin()) rows.push(`<div class="lgl"><span><b>Wind on your way</b>, the band under your trip’s hours${BAND_KEY}</span></div>`); // (a phone hides the note under the timeline)
     if (this.hour < 0 && rows.length) rows.unshift('<div class="lgl lg-note">The radar’s past: only the rain has one, the other layers start at Now</div>');
     const open = this.legendOpen ?? !this.foldMQ.matches;
     const key = `${rows.join('')}|${open}`;
@@ -1472,42 +1732,53 @@ export class WeatherOverlay {
     });
   }
 
-  // The weather card beside the strip: the selected time at the spot under the
-  // mouse (or the map centre). At most once per frame.
+  // The weather card beside the strip: the selected time at the spot under the mouse (or the map centre); in Your trip,
+  // where you'll be then (from the route's own forecast, the weather card's), the wind against you in words. At most once
+  // per frame.
   readout() {
     if (this.readFrame) return;
     this.readFrame = requestAnimationFrame(() => {
       this.readFrame = 0;
       if (!this.active || !this.nowEl) return;
       this.renderLegend();
-      const ll = this.heldLL || this.pointerLL || this.map.getCenter().toArray();
-      const s = this.sample(ll);
+      const z = this.tripWin(), a = z && this.trip.a, w = z && a.wind, t = timeAtHour(this.hour), i = z && this.sampleOn(z.d, t);
+      const ll = z ? a.pts[i] : this.heldLL || this.pointerLL || this.map.getCenter().toArray();
+      const s = z ? (w && t <= w.beyondSec ? sampleAt(w.series[w.cell[i]], t) : null) : this.sample(ll);
       this.nowEl.style.setProperty('--tl-lines', this.on.snow ? 4 : 3); // (its room from the start: css/app.css, #301)
-      if (!s && this.loading) {
+      if (!s && (z ? !w && !a.windError : this.loading)) {
         // its lines' shapes while the forecast comes (pick-skel), drawn once, so they don't start again as the mouse moves
         const n = this.on.snow ? 4 : 3;
         if (this.nowEl.querySelectorAll('.tl-skel').length !== n) this.nowEl.innerHTML = `<span class="sr-only">Loading the forecast</span>${'<i class="tl-skel"></i>'.repeat(n)}`;
         this.nowEl.title = '';
         return;
       }
+      const km = z && Math.round(a.along[i] / 1000);
       if (!s) {
-        this.nowEl.innerHTML = `<small>${this.status || 'No forecast here'}</small>`;
+        this.nowEl.innerHTML = `<small>${z ? (w ? `No forecast yet for km ${km}` : 'The forecast couldn’t be loaded') : this.status || 'No forecast here'}</small>`;
         this.nowEl.title = this.nowEl.textContent; // (a long note shows three lines)
         return;
       }
-      const night = sunPosition(this.cur.t, ll).alt < -3;
-      const kind = skyKind(s.rain, s.temp, s.cloud, night);
-      const sky = SKY[kind];
+      const rain = z ? s.precip : s.rain, kind = skyKind(rain, s.temp, s.cloud ?? NaN, sunPosition(z ? t : this.cur.t, ll).alt < -3);
+      const arrow = `<svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>`;
+      const snow = this.on.snow && Number.isFinite(s.snow ?? NaN) ? `<div>${icon('snow', 12)}${s.snow >= 1 ? `${Math.round(s.snow)} cm of snow` : 'no snow'}</div>` : '';
+      if (z) {
+        const out = t < z.d.t0 ? 'the start' : t > z.d.t1 ? 'the finish' : null, way = !out && forecastKnown(w, i) && WIND_WAY[windClass(a, i).key];
+        this.nowEl.title = `${SKY[kind]} · ${out ? `at ${out}` : `on your route at km ${km}`}${way ? `, the wind ${way}` : ''}${s.gust > s.speed + 2 ? ` · gusts ${Math.round(s.gust)} m/s` : ''}`;
+        this.nowEl.innerHTML =
+          `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${out || `km ${km}`}</small></div>` +
+          `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${way === 'against you' ? '<b>against you</b>' : compass(s.dir)}`}</div>` +
+          `<div>${icon('drop', 12)}${rain >= 0.05 ? `${rain.toFixed(1)} mm/h` : 'dry'}</div>` + snow;
+        return;
+      }
       const sum = this.accum(ll, 6);
-      const rainTxt = s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry';
+      const rainTxt = rain >= 0.05 ? `${rain.toFixed(1)} mm/h` : 'dry';
       const gust = s.gust > s.speed + 2 ? ` <span>gusts ${s.gust.toFixed(0)}</span>` : '';
       const where = this.heldLL ? 'at the spot' : this.pointerLL ? 'under the mouse' : 'at the map centre';
-      this.nowEl.title = `${sky} · ${where}`;
+      this.nowEl.title = `${SKY[kind]} · ${where}`;
       this.nowEl.innerHTML =
         `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${this.heldLL ? 'the spot' : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
-        `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
-        `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` +
-        (this.on.snow && Number.isFinite(s.snow) ? `<div>${icon('snow', 12)}${s.snow >= 1 ? `${Math.round(s.snow)} cm of snow` : 'no snow'}</div>` : '');
+        `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
+        `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` + snow;
     });
   }
 }

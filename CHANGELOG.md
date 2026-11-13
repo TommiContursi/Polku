@@ -4,6 +4,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-13
 
+### The timeline zoomed to your trip ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- With a route that has times, the weather timeline has **48 hours · Your trip** under its slider. **Your trip** zooms the strip and the slider to your trip's day, an hour either side, so you can set the time by the 5 minutes.
+- Zoomed to your trip, the timeline reads the weather where you'll be at that time, from the same forecast as the weather card: the reading and the time say where you are on the route, the reading says when the wind is against you, and a dot on the route shows the place.
+- A band under the strip's hours shows the wind on your way: against you, from the side or behind you. **‹ Against you, 1 of 3 ›** steps from one stretch with the wind against you to the next, lighting it on the route.
+- A trip with nights goes a day at a time, with a chip for each day. A trip that starts past the map's 48 hours can't be zoomed to yet: **Your trip** is grey, and the timeline says from when you can.
+- While the forecast loads, or if it fails or stops short of your trip, the timeline says so instead of showing an empty band.
+- **Weather card ›** beside the switch opens the weather card.
+
 ### The weather layers as buttons ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - The timeline's weather layers are buttons: **Rain**, **Clouds**, **Thunder**, **Wind**, **Temperature** and **Snow depth**. A tap turns one on or off, it's green while it's on, and you can have as many on as you like.

@@ -137,6 +137,14 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
   is the screen's. The skeleton fades in after 300 ms and breathes, as the cards' does (`pick-skel`). Found in testing
   (2026-11-13): the sideways row is also a narrow desktop window's, where a mouse couldn't move it, so a mouse has the
   hour strip's arrows at its edges and a drag there (a screen size isn't a device).
+- **PR 2, the timeline zoomed to your trip** (2026-11-13): as listed, on `main`'s timeline. Decisions made in building:
+  ‹ › step through the weather card's Wind on the way stretches (against you, 500 m or more; the Wind lane's count is
+  only those over the sport's limit, so the two can differ), in the route's order, the hour to each one's first 5 minutes
+  inside it; the strip and the reading in Your trip are the route's own forecast (the weather card's), not the map's grid,
+  so a missing route forecast says so there while the map's layers still show; a stretch is lit on the route without
+  moving the map; the window starts at Now when you leave within the hour; a day that runs past the map's 48 hours is
+  zoomed to as far as they reach, and the row says where they end; the trip's lines wrap upwards, so the switch stays
+  under the finger when the stepper comes (#594's stillness), on a phone too; your dot has the route's hover dot's look.
 
 ## What stays as it is
 
