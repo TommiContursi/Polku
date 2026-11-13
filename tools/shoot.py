@@ -711,6 +711,7 @@ SCENES = {
     'phone-timeline-layers-dark': dict(PHONE, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', state='peek', js=WX_LAYERS_ON),
     'desk-timeline-trip': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WX_TRIP),
     'desk-timeline-trip-dark': dict(DESK, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', js=WX_TRIP),
+    'desk-1100-timeline-trip': dict(DESK, w=1100, h=800, timeline=True, route='route-kauppi-mtb.json', js=WX_TRIP),  # (the timeline narrow beside the side panel)
     'phone-timeline-trip': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=WX_TRIP),
     'phone-timeline-trip-dark': dict(PHONE, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', state='peek', js=WX_TRIP),
     'desk-narrow-timeline-layers-dark': dict(DESK, w=600, h=800, timeline=True, dark=True, base='night', js=WX_LAYERS_ON),
