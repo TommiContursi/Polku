@@ -156,6 +156,21 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
   The words (the user's choice, 2026-11-13): the wind's way in Colour by's words, headwind, crosswind, tailwind and
   calm, in the reading, the band's key and the stepper (**‹ Headwind 1 of 3 ›**, "No long headwinds", in the weather
   card's Wind on the way too), in place of the mock-up's "against you", which said nothing of the wind on its own.
+- **PR 3, the weather card and the timeline one tap apart** (2026-11-13): as listed, with ‹ › through the card's notes
+  as the user chose. Decisions made in building: the card's hours of Rain and Wind, its lanes and Weather on the map all
+  open Your trip at their time (the timeline's `showAt()`), and an hour outside the trip (the strip's hours before you
+  leave) the 48 hours at that hour, so the map always shows the hour tapped; on a phone the timeline's Weather card ›
+  unfolds the card as it was (its strip and sections), as its banner's Back does. ‹ › go through the notes in the card's
+  order (worst first, as numbered), each in its own words with "1 of 3" under it, at the minute you reach it, with the
+  map's layer that shows it turned on: thunder; rain or snow falling (Rain); snow on the ground (Snow depth); gusts,
+  headwinds, the wind on the water and rough water (Wind); frostbite, very cold, hot and slippery (Temperature); the
+  dark, low sun, road conditions, wet trails, the ice season and the forecast's end none. A layer stepped on stays on.
+  The notes need the room, so they have a line of their own over the switch on a desktop too (PR 2 had one row
+  there), whole on as many lines as they take, with the arrows at their foot so they stay where they are. A day under
+  half an hour, the card's one line, has its notes in the timeline too, so thunder on a short day isn't missed. With no
+  forecast the dark is the one note, as in the card. The route's analysis drawn again keeps the note stepped to while
+  it says the same. Nothing moves (/animate's verdict). The separate bar for a lane's tap and CONTEXT.md's Weather line
+  are gone.
 
 ## What stays as it is
 

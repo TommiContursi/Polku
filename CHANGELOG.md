@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-13
 
+### The weather card and the timeline one tap apart ([#869](https://github.com/TommiContursi/Polku/issues/869))
+
+- A tap on an hour of the weather card's **Rain** or **Wind**, or on one of its lanes, opens the weather timeline zoomed to your trip at that time, with the map's matching weather on. **Weather on the map** opens your trip too. An hour outside your trip opens the whole 48 hours at that hour.
+- On a desktop the weather card stays open beside the map. On a phone it folds to a banner, and **Back** on the banner, or **Weather card ›** in the timeline, brings it back as it was. **48 hours** goes back to the whole timeline.
+- Zoomed to your trip, **‹ ›** step through the weather card's notes for the day, worst first, in their own words: thunder, heavy rain, gusts, a headwind over your sport's limit, the dark and the rest. Each puts the time where it happens, turns the map's weather that shows it on, such as **Thunder** or **Rain**, and lights its place on the route. They replace stepping from one headwind to the next, and have a line of their own over **48 hours · Your trip** on a desktop too.
+- While the forecast loads, fails or stops short of your trip, the timeline's notes say so. The dark is there without a forecast, as in the weather card.
+
 ### A smaller desktop window ([#1002](https://github.com/TommiContursi/Polku/issues/1002))
 
 - In a smaller desktop window the planner at the side gets narrower, down to its narrowest, so its toolbar stays on one row beside the map's buttons. A planner you've dragged wider gives way the same way, and both are as wide as before once the window is larger again.
