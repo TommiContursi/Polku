@@ -253,7 +253,7 @@ export class WeatherOverlay {
       if (!drag) return;
       drag = null;
       bar.classList.remove('dragging');
-      if (this.float) store.set('timelineFloat', this.float);
+      if (this.float) { this.float = this.shown; store.set('timelineFloat', this.float); } // (where you left it)
     };
     for (const [el, kind] of [[head, 'move'], [grip, 'size']]) {
       el.addEventListener('pointerdown', start(kind));
@@ -279,11 +279,11 @@ export class WeatherOverlay {
     if (!on) { st.left = st.top = st.width = st.bottom = st.transform = ''; return; }
     // anywhere on the map, but never over the button column on the right, nor under the planner's side panel
     const right = innerWidth - 84, pl = parseFloat(document.documentElement.style.getPropertyValue('--pl-left')) || 0;
-    const w = Math.round(Math.max(420, Math.min(right - pl - 16, this.float.width)));
+    const w = Math.round(Math.min(right - pl - 16, Math.max(420, this.float.width)));
     const hgt = bar.offsetHeight || 190;
     const left = Math.round(Math.max(pl + 8, Math.min(right - w - 8, this.float.left)));
     const top = Math.round(Math.max(8, Math.min(innerHeight - hgt - 8, this.float.top)));
-    this.float = { left, top, width: w };
+    this.shown = { left, top, width: w }; // (a smaller window moves and narrows it while it's smaller: yours is this.float, #1002)
     Object.assign(st, { left: `${left}px`, top: `${top}px`, width: `${w}px`, bottom: 'auto', transform: 'none' });
   }
 

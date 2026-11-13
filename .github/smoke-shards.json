@@ -9,7 +9,7 @@
     ["button3dphone"],
     ["routeview", "pointcard", "heads", "onroute", "warnfix", "sections"],
     ["values", "glass", "appearance", "effects", "start", "nextleg", "routecard"],
-    ["leave", "keyfacts", "tabs", "pastforecast", "fold"],
+    ["leave", "keyfacts", "tabs", "pastforecast", "fold", "resize"],
     ["spotcard", "pickcard", "crosshair", "facts", "sharespot", "sheetstops", "settings", "osmdata"]
   ]
 }

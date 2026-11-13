@@ -4218,6 +4218,16 @@ export class Planner {
     return { right: panel.right + 4, top: el.getBoundingClientRect().top };
   }
 
+  // the window resized (#1002): a card beside the side panel stays at its edge (the panel narrows in a smaller window), clear of
+  // the timeline and the toolbar under it; with the panel at the bottom (a narrow window, or moved there) it goes where cards go there
+  keepBeside() {
+    const e = this.cards.stack.at(-1);
+    if (!e?.beside) return;
+    if (this.layout() !== 'side') { e.beside = null; this.cards.refresh(); return; }
+    e.beside.right = this.panel.getBoundingClientRect().right + 4;
+    if (!this.cards.rolled && this.cards.box) this.cards.besideAt(this.cards.box, e.beside);
+  }
+
   // who point p is: a number that stays with it through a move (editTo()), Undo and Redo (snapshot(), restoreSnap())
   pidOf(p) {
     let id = this.pid.get(p);
@@ -5237,6 +5247,7 @@ export class Planner {
     this.setSheetState(store.get('sheetState', {})[this.layout()], { remember: false });
     this.app.onActiveChange(this.active); // padding vars, button states
     this.renderStart(); // the start's own button says where the panel goes next
+    this.keepBeside(); // (a card beside the side panel: where cards go at the bottom)
     requestAnimationFrame(() => this.chart.draw());
     // the map it leaves free has moved: the route is framed in it again (#387)
     if (this.active && this.points.length > 1) requestAnimationFrame(() => this.fitRoute());
@@ -5624,13 +5635,14 @@ export class Planner {
   // gives the profile room on long routes.
   bindResize() {
     const NARROW = 392;
-    const max = () => Math.max(NARROW, Math.min(innerWidth * 0.62, innerWidth - 84 - 12 - 240));
+    // it leaves the map 576 px beside it: the toolbar on one row (468 px), 12 px from the panel and from the map's buttons.
+    // A smaller window narrows it to that, down to 340 px, and it's as wide as you had it again when the window grows (#1002)
+    const max = () => Math.max(NARROW, Math.min(innerWidth * 0.62, innerWidth - 576));
     const apply = (w, save = true) => {
-      if (w == null) { this.panel.style.removeProperty('--pl-w'); w = NARROW; } else {
-        w = Math.round(Math.max(340, Math.min(max(), w)));
-        this.panel.style.setProperty('--pl-w', `${w}px`);
-      }
-      this.els.grip.setAttribute('aria-valuenow', String(w));
+      w = w == null ? null : Math.round(Math.max(340, Math.min(max(), w)));
+      const shown = Math.min(w ?? NARROW, Math.max(340, Math.round(innerWidth - 576)));
+      this.panel.style.setProperty('--pl-w', `${shown}px`);
+      this.els.grip.setAttribute('aria-valuenow', String(shown));
       if (save) store.set('panelWidth', w === NARROW ? null : w);
     };
     const g = this.els.grip;
@@ -5656,9 +5668,8 @@ export class Planner {
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); apply(w + (e.key === 'ArrowRight' ? 32 : -32)); }
       else if (e.key === 'Enter') { e.preventDefault(); apply(w > NARROW + 40 ? null : max()); }
     });
-    const saved = store.get('panelWidth', null);
-    apply(saved, false);
-    addEventListener('resize', () => { const w = store.get('panelWidth', null); if (w) apply(w, false); });
+    apply(store.get('panelWidth', null), false);
+    addEventListener('resize', () => apply(store.get('panelWidth', null), false));
   }
 
   // Padding for camera moves so routes and climbs land in the visible part of the map: below
@@ -5842,7 +5853,7 @@ export class Planner {
     });
     box.addEventListener('focusin', (e) => { if (e.target.closest('button')) this.rove(e.target.closest('button')); });
     new ResizeObserver(() => this.placeToolsSoon()).observe(this.panel);
-    addEventListener('resize', () => this.placeToolsSoon());
+    addEventListener('resize', () => { this.placeToolsSoon(); requestAnimationFrame(() => this.keepBeside()); }); // (after the toolbar's place)
     this.renderTools();
   }
 
