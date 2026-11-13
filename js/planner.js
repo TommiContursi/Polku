@@ -21,7 +21,7 @@ import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decode
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
-import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls } from './ui.js';
+import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag } from './ui.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
@@ -7753,18 +7753,9 @@ export class Planner {
     x.addEventListener('focusin', (e) => { const j = btns.indexOf(e.target); if (j >= 0) { lit(j); this.hoverAt(hrs[j].i, false, false); } });
     x.addEventListener('focusout', (e) => { if (btns.includes(e.target) && !btns.includes(e.relatedTarget)) unpoint(); });
     // a mouse drags it sideways (a finger and a trackpad scroll it themselves); a drag isn't a tap
-    let drag = null;
-    x.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 0 && !onArrow(e)) drag = { x0: e.clientX, s0: x.scrollLeft, moved: false, id: e.pointerId }; });
-    x.addEventListener('pointermove', (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      if (!drag.moved && Math.abs(e.clientX - drag.x0) > 4) { drag.moved = true; x.setPointerCapture(e.pointerId); x.classList.add('drag'); }
-      if (drag.moved) x.scrollLeft = drag.s0 - (e.clientX - drag.x0);
-    });
-    const end = () => { if (drag?.moved) { x.classList.remove('drag'); const stop = (ev) => { ev.stopPropagation(); ev.preventDefault(); }; x.addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => x.removeEventListener('click', stop, { capture: true }), 0); } drag = null; };
-    x.addEventListener('pointerup', end);
-    x.addEventListener('pointercancel', end);
+    const dragging = mouseDrag(x, onArrow);
     if (!hoverCapable()) return;
-    x.addEventListener('pointerover', (e) => { const c = e.target.closest('[data-h]'); if (!c || drag?.moved) return; lit(c.dataset.h); this.hoverAt(hrs[+c.dataset.h].i, false, false); });
+    x.addEventListener('pointerover', (e) => { const c = e.target.closest('[data-h]'); if (!c || dragging()) return; lit(c.dataset.h); this.hoverAt(hrs[+c.dataset.h].i, false, false); });
     x.addEventListener('pointerleave', unpoint);
   }
   // the route's pointer (on the map or the profile) at sample i: its hour lit in the strip and brought into view, at once

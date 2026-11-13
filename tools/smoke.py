@@ -5216,10 +5216,8 @@ WINTER = """(async () => {
     [...t2.querySelectorAll('.seg button')].find((b) => b.textContent === 'Difficulty').click();
     await wait(500);
   }
-  // Snow on the ground in the timeline's weather menu
-  document.querySelector('#wx-bar .wl-layer').click();
-  if (!document.querySelector('.menu-pop .wx-snow')) errs.push('no Snow on the ground in the weather menu');
-  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  // Snow on the ground among the timeline's weather layers
+  if (!document.querySelector('#wx-bar .tl-layers [data-k=snow]')) errs.push('no Snow depth among the timeline’s weather layers');
   W.setWinterSetting('auto');
   return errs;
 })()"""
@@ -12415,7 +12413,7 @@ def weather_requests(chrome):
 
 # Before the page loads: Open-Meteo's forecast answers at once with the same weather everywhere (__wx.temp, −12 °C:
 # the widest reading; __wx.code(lat, lon), WMO's code, overcast unless a check says so), so a check of the timeline doesn't wait for the service or depend on its weather. With
-# __wx.hold set, the answers wait until __wx.release().
+# __wx.hold set, the answers wait until __wx.release(); with __wx.fail set, they're a server error (500).
 WX_FIXED = """(() => {
   const real = window.fetch.bind(window), W = window.__wx = { temp: -12, code: () => 3, asked: 0, hold: false, held: [] };
   W.release = () => { W.hold = false; W.held.splice(0).forEach((go) => go()); return true; };
@@ -12427,7 +12425,7 @@ WX_FIXED = """(() => {
     const n = 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
     const hourly = (lat, lon) => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(4), wind_direction_10m: fill(220), wind_gusts_10m: fill(9),
       temperature_2m: fill(W.temp), precipitation: fill(W.precip ? W.precip(lat, lon) : 0.4), cloud_cover: fill(W.cloud ? W.cloud(lat, lon) : 60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: fill(W.code(lat, lon)) });
-    const answer = () => new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly(lat, lons[i]) }))), { headers: { 'Content-Type': 'application/json' } });
+    const answer = () => W.fail ? new Response('', { status: 500 }) : new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly(lat, lons[i]) }))), { headers: { 'Content-Type': 'application/json' } });
     return W.hold ? new Promise((ok) => W.held.push(() => ok(answer()))) : Promise.resolve(answer());
   };
 })();"""
@@ -12475,30 +12473,208 @@ def timeline_reading(chrome):
     return not fails
 
 
-# #182's weather menu, legend and look: the timeline's pill opens the layers' menu (they tick, it stays open, the pill
-# names them), the legend over the map comes and goes with the layers, the rain is drawn in its steps (0.4 mm/h is the
-# first step's colour), Effects is on at first and remembered, its rain falls at a later hour from the forecast even
-# where the radar is dry now (before, the drops kept the radar's rates until the map moved), and in reduced motion it
-# is drawn once, still. Open-Meteo's answer is WX_FIXED's (0.4 mm/h, +4 °C).
+# The weather buttons' places and widths, to see that none moved (WX_MENU on a desktop, timeline_phone on a phone)
+WX_AT = "[...document.querySelectorAll('#wx-bar .tl-layers .chip')].map((b) => { const r = b.getBoundingClientRect(); return `${b.dataset.k} ${r.left.toFixed(1)},${r.top.toFixed(1)} ${r.width.toFixed(1)}`; }).join(' | ')"
+# Each button but Snow depth on and off again: the layer and aria-pressed as it is, and no button moved
+WX_SWITCH = """const btn = (k) => document.querySelector(`#wx-bar .tl-layers [data-k=${k}]`), at = () => """ + WX_AT + """;
+  const before = at();
+  for (const k of ['cloud', 'thunder', 'wind', 'temp', 'snow', 'rain']) {
+    for (const on of [!w.on[k], w.on[k]]) {
+      btn(k).click(); await wait(250);
+      if (w.on[k] !== on || polku.state.weather[k] !== on || btn(k).getAttribute('aria-pressed') !== String(on)) out.push(`${k} ${on ? 'on' : 'off'}: the layer ${w.on[k]}, aria-pressed ${btn(k).getAttribute('aria-pressed')}`);
+      if (k !== 'snow' && at() !== before) out.push(`${k} ${on ? 'on' : 'off'} moved a button: ${at()}, not ${before}`);
+    }
+  }"""
+# The weather layers on a phone (#869's build, PR 1), at 390 × 844 by touch with Temperature on: the buttons in the
+# head's row before ⋯ and ✕, one sideways row that opens with the first that's on in sight, clear of the fade at the
+# edge where there's more; while the forecast comes, the strip and the reading are skeletons (pick-skel), not words, and
+# the time says it; once it's in, switching any button but Snow depth moves none; the slider's knob is under the strip's
+# needle at Now and at +24 h (the knob found in a screenshot, the needle in the strip's own pixels); and a forecast
+# that fails where there was none ends the skeleton and says so.
+TL_SKEL = """(() => {
+  const cv = document.querySelector('#wx-bar .tl-strip'), now = document.querySelector('#wx-bar .tl-now');
+  return { strip: cv.classList.contains('skel'), seen: +getComputedStyle(cv).opacity, drawn: cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data.some((v, i) => i % 4 === 3 && v),
+    shapes: now.querySelectorAll(':scope > .tl-skel').length, sr: now.querySelector('.sr-only')?.textContent || '', words: now.querySelector('small')?.textContent || '', main: !!now.querySelector('.tl-now-main'),
+    time: document.querySelector('#wx-bar .wx-time').textContent };
+})()"""
+TL_ROW = """(() => {
+  const row = document.querySelector('#wx-bar .tl-layers'), r = row.getBoundingClientRect(), t = row.querySelector('[data-k=temp]').getBoundingClientRect();
+  return { head: !!row.parentElement.parentElement.matches('.tl-head') && !!row.parentElement.nextElementSibling?.matches('.tl-more'), left: Math.round(t.left - r.left), right: Math.round(r.right - t.right),
+    fade: [...row.classList].filter((c) => c.startsWith('more-')).sort().join(' '), more: row.scrollWidth > row.clientWidth };
+})()"""
+TL_SWITCH = """(async () => { const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  """ + WX_SWITCH + """
+  return out; })()"""
+# the knob: the slider's columns where its green is tallest (the thumb, taller than the track's green) in a screenshot;
+# the needle: the strip's columns drawn in its ink, opaque, from top to foot; the strip as wide as the slider with its
+# margins (the browser's 2 px), as on a desktop
+TL_KNOB = """(async (png) => {
+  const sl = document.querySelector('#wx-bar .wx-row input[type=range]'), cv = document.querySelector('#wx-bar .tl-strip'), s = sl.getBoundingClientRect(), c = cv.getBoundingClientRect(), m = getComputedStyle(sl);
+  const img = new Image(); img.src = 'data:image/png;base64,' + png; await img.decode();
+  const k = img.width / innerWidth, x0 = Math.floor(s.left * k), y0 = Math.floor(s.top * k), W = Math.ceil(s.right * k) - x0, H = Math.ceil(s.bottom * k) - y0;
+  const g = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height }).getContext('2d'); g.drawImage(img, 0, 0);
+  const d = g.getImageData(x0, y0, W, H).data, tall = [];
+  for (let x = 0; x < W; x++) { let n = 0; for (let y = 0; y < H; y++) { const i = (y * W + x) * 4; if (d[i + 1] - d[i] > 30 && d[i + 1] - d[i + 2] > 10) n++; } tall.push(n); }
+  const most = Math.max(...tall), cols = tall.map((n, x) => (n >= most - 1 ? x : -1)).filter((x) => x >= 0);
+  const e = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, ink = [];
+  for (let x = 0; x < cv.width; x++) { let n = 0; for (let y = 0; y < cv.height; y++) { const i = (y * cv.width + x) * 4; if (e[i + 3] > 200 && e[i] < 90 && e[i + 1] < 90 && e[i + 2] < 90) n++; } if (n > cv.height * 0.8) ink.push(x); }
+  return { knob: most ? (x0 + (cols[0] + cols[cols.length - 1] + 1) / 2) / k : null, needle: ink.length ? c.left + ((ink[0] + ink[ink.length - 1] + 1) / 2) * (c.width / cv.width) : null,
+    strip: [c.left, c.right], slider: [s.left - parseFloat(m.marginLeft), s.right + parseFloat(m.marginRight)] };
+})"""
+FRAMES = 'new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))'
+
+
+def timeline_phone(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        # (+4 °C, as the checks after it here have it: its forecasts stay in the cache)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.hold = true; window.__wx.temp = 4;'}, pg.s)
+        pg.goto(BASE + 'sw.js')
+        pg.js(TL_FORGET)
+        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'temp': True}}, {'polku:winter': '"off"'}, '#12/61.514/23.822')
+        if not pg.js(TL_HELD):
+            fails.append('the forecast wasn’t asked for, or came from a cache (the check proves nothing)')
+        else:
+            time.sleep(1)  # (past the skeleton's 300 ms and its fade)
+            s = pg.js(TL_SKEL)
+            if not s['strip'] or s['seen'] < 0.3 or s['drawn'] or s['shapes'] != 3 or s['sr'] != 'Loading the forecast' or s['words'] or 'loading…' not in s['time']:
+                fails.append(f'while the forecast comes, the strip and the reading aren’t its skeleton: {s}')
+            pg.js('__wx.release()')
+            pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('#wx-bar .tl-now-main') || Date.now() - t0 > 20000 ? ok(true) : setTimeout(go, 100); go(); })")
+            pg.js(SETTLED)
+            s = pg.js(TL_SKEL)
+            if s['strip'] or s['shapes'] or not s['main'] or not s['drawn']:
+                fails.append(f'the forecast in, still a skeleton or no reading: {s}')
+            r = pg.js(TL_ROW)
+            if not r['head'] or not r['more'] or r['left'] < 31 or r['right'] < 31 or r['fade'] != 'more-l more-r':
+                fails.append(f'the row in the head: Temperature {r["left"]} px from its left and {r["right"]} px from its right (not under a fade, 32 px), fading at “{r["fade"]}”, in the head before ⋯ {r["head"]}')
+            fails += pg.js(TL_SWITCH, timeout=60000)
+            for hr in (0, 24):
+                pg.js(f'polku.weather.setHour({hr}); {FRAMES}')
+                png = pg.c.send('Page.captureScreenshot', {'format': 'png'}, pg.s)['data']
+                k = pg.js(f'{TL_KNOB}({json.dumps(png)})', timeout=60000)
+                if any(abs(a - b) > 1 for a, b in zip(k['strip'], k['slider'])):
+                    fails.append(f"at +{hr} h the strip is at x {k['strip'][0]:.1f}–{k['strip'][1]:.1f}, the slider with its margins at {k['slider'][0]:.1f}–{k['slider'][1]:.1f}")
+                if k['knob'] is None or k['needle'] is None or abs(k['knob'] - k['needle']) > 2:
+                    fails.append(f"at +{hr} h the knob's centre is at x {k['knob']}, the needle at {k['needle']}")
+            # where there was no forecast, one that fails: the skeleton, then the failure in words
+            pg.js("polku.weather.setHour(0); __wx.hold = true; __wx.fail = true; polku.map.jumpTo({ center: [27.5, 65.5] }); true")
+            if not pg.js(TL_HELD):
+                fails.append('panned away, no new forecast was asked for')
+            else:
+                time.sleep(1)
+                a = pg.js(TL_SKEL)
+                pg.js('__wx.release()')
+                pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.weather.loading || Date.now() - t0 > 20000 ? ok(true) : setTimeout(go, 100); go(); })")
+                pg.js(FRAMES)
+                b = pg.js(TL_SKEL)
+                if not a['strip'] or a['shapes'] != 3:
+                    fails.append(f'panned to where there’s no forecast yet, no skeleton: {a}')
+                if b['strip'] or b['shapes'] or not b['words']:
+                    fails.append(f'the forecast failed, and the skeleton stays or nothing says so: {b}')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the weather layers on a phone (#869): the sideways row, nothing moves, the knob under the needle, the skeleton while the forecast comes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The weather layers in a narrow window with a mouse (#869: a screen size is not a device): the row in the head scrolls
+# sideways, with the hour strip's arrow at the edge where there's more and none where there isn't; a real mouse's click on
+# the arrow pages it, a drag from a button moves it and switches nothing, and a click without a move (on the button in the
+# row's middle, clear of the arrows) switches its layer
+TL_MOUSE_ROW = """(() => {
+  const row = document.querySelector('#wx-bar .tl-layers'), a = (s) => document.querySelector(`#wx-bar .tl-lwrap > .wx-hs-arrow.${s}`);
+  const seen = (e) => { const c = getComputedStyle(e); return c.display !== 'none' && +c.opacity > 0.5 && c.pointerEvents !== 'none'; }, mid = (k) => { const r = (k === 'r' ? a('r') : row.querySelector(`[data-k=${k}]`)).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const box = row.getBoundingClientRect(), middle = [...row.children].sort((x, y) => Math.abs(mid(x.dataset.k)[0] - (box.left + box.right) / 2) - Math.abs(mid(y.dataset.k)[0] - (box.left + box.right) / 2))[0].dataset.k; // (clear of the arrows)
+  return { left: Math.round(row.scrollLeft), l: seen(a('l')), r: seen(a('r')), more: row.scrollWidth > row.clientWidth, arrow: mid('r'), rain: mid('rain'), middle, at: mid(middle), on: Object.entries(polku.weather.on).filter(([, v]) => v).map(([k]) => k).join() };
+})()"""
+
+
+def timeline_mouse(chrome):
+    fails = []
+    pg = chrome.page(600, 800, False)
+
+    def mouse(kind, x, y, down):
+        pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left', 'buttons': 1 if down else 0, 'clickCount': 1}, pg.s)
+
+    def click(x, y):
+        mouse('mouseMoved', x, y, False); mouse('mousePressed', x, y, True); mouse('mouseReleased', x, y, False); time.sleep(0.8)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True}}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
+        pg.js(SETTLED)
+        a = pg.js(TL_MOUSE_ROW)
+        if not a['more'] or a['left'] or a['l'] or not a['r']:
+            fails.append(f'at its start the row has no arrow to its right, or one to its left: {a}')
+        else:
+            click(*a['arrow'])
+            b = pg.js(TL_MOUSE_ROW)
+            if b['left'] < 50 or not b['l'] or b['on'] != 'rain':
+                fails.append(f'a click on the right arrow: the row at {b["left"]} px, the left arrow {b["l"]}, on: {b["on"]}')
+            pg.js("document.querySelector('#wx-bar .tl-layers').scrollLeft = 0; new Promise((ok) => setTimeout(() => ok(true), 400))")
+            x, y = pg.js(TL_MOUSE_ROW)['rain']
+            mouse('mouseMoved', x, y, False); mouse('mousePressed', x, y, True)
+            for dx in (10, 40, 80, 120):
+                mouse('mouseMoved', x - dx, y, True)
+            mouse('mouseReleased', x - 120, y, False); time.sleep(0.5)
+            c = pg.js(TL_MOUSE_ROW)
+            if c['left'] < 60 or c['on'] != 'rain':
+                fails.append(f'a drag from Rain 120 px to the left: the row at {c["left"]} px, on: {c["on"]} (want it moved, Rain still on)')
+            click(*c['at'])
+            on = pg.js(TL_MOUSE_ROW)['on'].split(',')
+            if c['middle'] not in on or 'rain' not in on or len(on) != 2:
+                fails.append(f'a click on {c["middle"]}, in the row\'s middle, after the drag: on {on}')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the weather layers in a narrow window with a mouse (#869): the arrows, a drag that switches nothing, a click" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The weather layers as buttons (#869's build, PR 1; #182's legend and look): the six on a row of their own under a
+# desktop's title bar, in Layers' order and names, each turning its layer on and off with its aria-pressed, its line in a
+# tooltip; Wind says Wind lines while Temperature is on; switching any of them but Snow depth (a fourth line in the
+# reading) moves no button; ⋯ beside ✕ ticks Weather at places and Effects and stays open; the legend over the map comes
+# and goes with the layers, the rain is drawn in its steps (0.4 mm/h is the first step's colour), Effects is on at first
+# and remembered, its rain falls at a later hour from the forecast even where the radar is dry now (before, the drops
+# kept the radar's rates until the map moved), and in reduced motion it is drawn once, still. Open-Meteo's answer is
+# WX_FIXED's (0.4 mm/h, +4 °C).
 WX_MENU = """(async () => {
-  const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), pill = document.querySelector('#wx-bar .wl-layer');
+  const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), row = document.querySelector('#wx-bar .tl-layers');
   for (let k = 0; k < 100 && !w.cur; k++) await wait(200);
   if (!w.cur) return ['no forecast after 20 s'];
-  if (pill.textContent.trim() !== 'Rain') out.push(`the pill says “${pill.textContent.trim()}”, not “Rain”`);
+  const said = () => [...row.children].map((b) => `${b.innerText.trim()}:${b.getAttribute('aria-pressed')}`).join();
+  if (row.getAttribute('role') !== 'group' || row.getAttribute('aria-label') !== 'Weather layers' || !row.parentElement.previousElementSibling?.matches('.tl-head')) out.push('the buttons aren’t a group “Weather layers” on a row of their own under the title bar');
+  if (said() !== 'Rain:true,Clouds:false,Thunder:false,Wind:false,Temperature:false,Snow depth:false') out.push(`the buttons: ${said()}`);
   const legend = () => document.querySelector('.map-hints .wx-legend');
   if (!legend() || legend().hidden || !/Rain 0\\.1 · 0\\.5 · 2 · 5 · 15 mm\\/h/.test(legend().textContent) || !/light · moderate · heavy · very heavy/.test(legend().textContent))
     out.push(`the legend over the map: ${legend() && !legend().hidden ? legend().textContent : 'not shown'}`);
-  pill.click(); await wait(300);
+  """ + WX_SWITCH + """
+  // Wind lines while Temperature colours the map (in the same width: the switching above)
+  btn('temp').click(); await wait(250);
+  if (btn('wind').innerText.trim() !== 'Wind lines') out.push(`with Temperature on, Wind says “${btn('wind').innerText.trim()}”`);
+  btn('temp').click(); await wait(250);
+  if (btn('wind').innerText.trim() !== 'Wind') out.push(`with Temperature off again, Wind says “${btn('wind').innerText.trim()}”`);
+  // a mouse over a button: its name and line, as the menu had them
+  btn('rain').dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(700);
+  const tip = document.querySelector('#tip');
+  if (!tip || tip.hidden || tip.textContent !== 'Rain and snowfallThe radar now, then the forecast') out.push(`Rain's tooltip: ${tip && !tip.hidden ? tip.textContent : 'none'}`);
+  btn('rain').dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' })); await wait(300);
+  // ⋯: Weather at places and Effects, ticking, the menu staying open with the focus on what was ticked
+  const more = document.querySelector('#wx-bar .tl-more');
+  more.click(); await wait(300);
   const item = (k) => document.querySelector(`.menu-pop .wx-${k}`);
   const items = [...document.querySelectorAll('.menu-pop [role=menuitemcheckbox]')].map((b) => `${b.textContent.trim().split(/(?=[A-Z])/)[0]}:${b.getAttribute('aria-checked')}`);
-  if (items.join() !== 'Rain and snowfall:true,Clouds:false,Thunder:false,Wind:false,Temperature:false,Snow on the ground:false,Weather at places:false,Effects:true') out.push(`the menu: ${items.join()}`);
-  if (!item('rain')?.querySelector('.menu-tick') || item('wind')?.querySelector('.menu-tick')) out.push('a ticked layer has no tick, or one off has');
-  item('wind').click(); await wait(300);
-  if (!item('wind') || item('wind').getAttribute('aria-checked') !== 'true' || document.activeElement !== item('wind')) out.push('Wind: not ticked, or the menu closed, or the focus left it');
-  if (pill.textContent.trim() !== 'Rain +1' || !w.on.wind) out.push(`with Wind on, the pill says “${pill.textContent.trim()}”`);
-  item('wind').click(); await wait(300);
+  if (items.join() !== 'Weather at places:false,Effects:true' || more.getAttribute('aria-expanded') !== 'true' || !/Points/.test(document.querySelector('.menu-pop')?.textContent)) out.push(`⋯'s menu: ${items.join()}, aria-expanded ${more.getAttribute('aria-expanded')}`);
+  item('towns').click(); await wait(300);
+  if (!item('towns') || item('towns').getAttribute('aria-checked') !== 'true' || !w.on.towns || document.activeElement !== item('towns')) out.push('Weather at places: not ticked, or not on, or the menu closed, or the focus left it');
+  item('towns').click(); await wait(300);
+  if (w.on.towns) out.push('Weather at places ticked off is still on');
   // the rain's steps: Effects off, the forecast's image at +3 h is the first step's colour, as it is
   w.setHour(3); item('fx').click(); await wait(600);
+  if (item('fx')?.getAttribute('aria-checked') !== 'false') out.push('Effects off: not ticked off in ⋯');
   if (localStorage.getItem('polku:wxEffects') !== 'false' || !w.rainCv.hidden) out.push('Effects off: not remembered, or the rain still falls');
   const img = new Image(); img.src = polku.map.getStyle().sources.wxRain.url; await img.decode();
   const cv = Object.assign(document.createElement('canvas'), { width: img.width, height: img.height }), ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
@@ -12506,7 +12682,7 @@ WX_MENU = """(async () => {
   if (px.join() !== '165,228,251,255') out.push(`0.4 mm/h is drawn ${px.join()}, not the first step (165,228,251,255)`);
   item('fx').click(); await wait(300);
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await wait(200);
-  if (document.querySelector('.menu-pop') || pill.getAttribute('aria-expanded') !== 'false') out.push('Escape left the menu open');
+  if (document.querySelector('.menu-pop') || more.getAttribute('aria-expanded') !== 'false') out.push('Escape left ⋯’s menu open');
   // a dry radar now, raining later: at +3 h the drops follow the forecast
   w.setHour(0); await wait(300); w.fiRate = () => 0; w.setHour(3); await wait(400);
   const drawn = () => w.rainCv.getContext('2d').getImageData(0, 0, w.rainCv.width, w.rainCv.height).data.some((v, i) => i % 4 === 3 && v);
@@ -12523,9 +12699,7 @@ WX_STILL = """(async () => {
   const b = px();
   if (!a.every((v, i) => v === b[i])) out.push('reduced motion: the rain moves');
   // the last layer off: no legend
-  const pill = document.querySelector('#wx-bar .wl-layer');
-  pill.click(); await wait(300); document.querySelector('.menu-pop .wx-rain').click(); await wait(300);
-  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  document.querySelector('#wx-bar .tl-layers [data-k=rain]').click(); await wait(300);
   const lg = document.querySelector('.map-hints .wx-legend');
   if (lg && !lg.hidden) out.push('no layer on, and the legend is still over the map');
   return out;
@@ -12567,7 +12741,19 @@ def timeline_open(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the timeline apart: a layer doesn't open it, ✕ goes back to Now with the layers on" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    # a desktop's place for it kept at the window's foot, and a reload: open, all of it is on screen (its place was kept
+    # while it was hidden, from a guess at its height, and #869's buttons made it taller than the guess)
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:winter': '"off"', 'polku:timelineFloat': json.dumps({'left': 400, 'top': 880, 'width': 640})}, '#11/61.5/23.8')
+        top, bottom = pg.js("(() => { const r = document.getElementById('wx-bar').getBoundingClientRect(); return [r.top, r.bottom]; })()")
+        if bottom > 900 - 7:
+            fails.append(f'placed at the foot and reloaded, the timeline is at y {top:.0f}–{bottom:.0f}, past the window’s 900 px')
+        fails += [f'placed: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline apart: a layer doesn't open it, ✕ goes back to Now with the layers on; placed at the foot, on screen" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -12583,14 +12769,14 @@ def weather_menu(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the weather's menu, the legend over the map and the rain's steps (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the weather layers as buttons and ⋯ (#869), the legend over the map and the rain's steps (#182)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
 
 # #916, the towns' weather: the sky, °C and wind at the places the map names, from the grid (WX_FIXED: +4 °C,
 # 4 m/s from 220°); apart from each other; none over the route (a straight line through Tampere); zoomed in too, at the
-# villages and suburbs; the menu's Points item names it Weather at places, and the pill says "Places". A press on a town's symbol (a real
+# villages and suburbs; ⋯'s Points item names it Weather at places, ticked. A press on a town's symbol (a real
 # mouse's, below) pins the reading there and isn't the map's click (a card).
 WX_TOWNS = """(async () => {
   const out = [], w = polku.weather, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -12603,9 +12789,7 @@ WX_TOWNS = """(async () => {
   const bad = t.filter((x) => !/^\\S+: [a-z ]+, 4 °C, wind 4 m\\/s from the SW$/.test(x.label) || !/^4°4 m\\/s$/.test(x.text));
   if (bad.length) out.push(`a town's symbol says “${bad[0].text}” (${bad[0].label})`);
   t.forEach((a, i) => t.slice(i + 1).forEach((b) => { if (a.r.left < b.r.right && b.r.left < a.r.right && a.r.top < b.r.bottom && b.r.top < a.r.bottom) out.push(`${a.name} and ${b.name} over each other`); }));
-  const pill = document.querySelector('#wx-bar .wl-layer');
-  if (pill.textContent.trim() !== 'Places') out.push(`the pill says “${pill.textContent.trim()}”`);
-  pill.click(); await wait(300);
+  document.querySelector('#wx-bar .tl-more').click(); await wait(300);
   const item = document.querySelector('.menu-pop .wx-towns');
   if (!item || item.getAttribute('aria-checked') !== 'true' || !/^Weather at places/.test(item.textContent) || !/Points/.test(document.querySelector('.menu-pop').textContent)) out.push('no ticked Weather at places under Points in the menu');
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await wait(200);
@@ -18175,9 +18359,9 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const ref = way.querySelector('.rt-chips .chip[aria-pressed=true]');
   box.innerHTML = `<div class="chips"><button class="chip" aria-pressed="true">Grade</button></div>
     <div class="style-presets"><span class="chip chip-on">Custom</span></div><div class="act-chips"><button class="act-chip" aria-pressed="true">Canoe</button></div>
-    <div class="menu-chips"><button class="menu-item chip" aria-checked="true"><span>Flowy</span></button></div>`;
+    <div class="menu-chips"><button class="menu-item chip" aria-checked="true"><span>Flowy</span></button></div><div class="tl-layers"><button class="chip" aria-pressed="true">Rain</button></div>`;
   if (!ref) out.push('no chosen length in the round trip');
-  else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
+  else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip'], ['.tl-layers .chip', 'a weather layer that’s on']])
     if (chip(box.querySelector(sel)) !== chip(ref)) out.push(`${what}, chosen: ${chip(box.querySelector(sel))}, not the round trip's ${chip(ref)}`);
   // switches: one height in a place, --target; the chosen one white (--seg-on), with black words and a green icon (the green where
   // it sits: the glass's on the glass, #547)
@@ -18452,7 +18636,7 @@ TG_LOOK = """(() => {
   for (const [what, sel] of [['the search', '#search-input'], ['the sport pill', '#activity-bar .act-current'], ['Settings', '#btn-settings'],
     ['the Polku mark', '.topbar .brand'], ['Zoom in to see every trail', '#zoom-hint'], ["the credits' (i)", '.maplibregl-ctrl-attrib-button'],
     ['the compass', '.ctrl-compass button'], ['Locate', '#btn-locate'], ['3D', '.ctrl-3d'], ['Weather', '#btn-time'], ['Layers', '#btn-layers'],
-    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the weather menu's pill", '#wx-bar .wl-layer'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
+    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the timeline's ⋯", '#wx-bar .tl-more'], ['a weather layer on (its row opens with it in sight)', '#wx-bar .tl-layers [aria-pressed=true]'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
     ["a map popup's ✕", '.polku-popup .maplibregl-popup-close-button']]) {
     const e = document.querySelector(sel);
     if (!e || !e.getClientRects().length) fails.push(`${what} isn't there (${sel})`); else hit(what, e);
@@ -20673,7 +20857,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather\'s menu, the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

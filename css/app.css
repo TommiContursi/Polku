@@ -405,12 +405,28 @@ body:not(.ready) .map-ctrls { display: none; }
 body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-head { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px 8px; }
 .tl-title { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 13px; white-space: nowrap; }
-/* a pill naming what's on, opening its menu (#182's weather layers; the weather line's, step 6b) */
+/* a pill naming what's chosen, opening its menu (When's, #878) */
 .rt-pill { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); max-width: 100%; padding: 4px 10px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
 .rt-pill > span { min-width: 0; display: grid; }
-.rt-pill.wl-layer { min-height: 36px; padding: 2px 8px; gap: 4px; font-size: 13px; flex: none; margin-right: auto; }
 .rt-pill:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.tl-close { width: 28px; height: 28px; }
+.tl-close, .tl-more { width: 28px; height: 28px; }
+.tl-more { margin-left: auto; }
+/* the weather layers, a chip each (#869), any of them at once: off, a hairline; on, the chosen chip's green and 2 px
+   border, 1 px of padding less so it keeps its width; a desktop's on a row of their own, wrapping in a narrow window */
+.tl-layers { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 0 8px 8px; }
+.tl-layers .chip { flex: none; position: relative; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px 0 8px; font-size: 13px; color: var(--text); white-space: nowrap; -webkit-user-select: none; user-select: none; } /* (a finger held on one while the row scrolls selects no words) */
+.tl-layers .chip[aria-pressed="true"] { padding: 0 9px 0 7px; }
+.tl-layers .chip .ic { color: var(--muted); }
+.tl-layers .chip[aria-pressed="true"] .ic { color: var(--accent); }
+/* Wind holds both its names in one place, the one not shown hidden, so nothing moves when Temperature is switched */
+.tl-layers [data-k=wind] { display: inline-grid; justify-items: center; }
+.tl-layers [data-k=wind] > span { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 4px; }
+.tl-layers [data-k=wind] > span:last-child, .tl-layers [data-k=wind].lines > span:first-child { visibility: hidden; }
+.tl-layers [data-k=wind].lines > span:last-child { visibility: visible; }
+/* a row too narrow for them scrolls sideways; a mouse has the hour strip's arrows at its edges, and a drag */
+.tl-lwrap { position: relative; min-width: 0; }
+.tl-lwrap > .wx-hs-arrow { top: 50%; margin-top: -16px; }
+.tl-layers.drag { cursor: grabbing; }
 /* lines up with the slider: play button (34) + gap (8) on the left, gap (8) + time (132) on the right */
 .tl-main { display: flex; gap: 8px; align-items: stretch; }
 .tl-strip { display: block; flex: 1; min-width: 0; margin-left: 42px; height: 66px; cursor: ew-resize; touch-action: none; border-radius: 8px; }
@@ -537,8 +553,9 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 /* a finger's 44 px around the smaller controls outside the planner, which keep their look (#235) */
 @media (pointer: coarse) {
   .search input { height: 44px; margin: -2px 0; } /* (taller than its pill, which draws it) */
-  :is(.act-current, .top-btn, .wl-layer, .lg-fold, .tl-close, .wx-row > .tool) { position: relative; }
-  :is(.act-current, .top-btn, .wl-layer, .lg-fold, .tl-close, .wx-row > .tool, .polku-popup .maplibregl-popup-close-button)::after {
+  :is(.act-current, .top-btn, .lg-fold, .tl-more, .tl-close, .wx-row > .tool) { position: relative; }
+  .tl-more { margin-right: 10px; } /* (its 44 px and ✕'s side by side, not over each other) */
+  :is(.act-current, .top-btn, .tl-layers .chip, .lg-fold, .tl-more, .tl-close, .wx-row > .tool, .polku-popup .maplibregl-popup-close-button)::after {
     content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%);
   }
   .maplibregl-ctrl-attrib-button::after { content: ""; position: absolute; inset: -14px -10px -6px; } /* (more above: the timeline is just under it) */
@@ -2149,10 +2166,16 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .pick-prof { position: relative; height: 64px; margin: 2px 0 0; }
 /* while a pick's ways come (#574): its shapes, after 300 ms and breathing as the busy bar; delays count from the tap */
 .pick-skel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 2px 0 8px; }
-.pick-skel i { display: block; border-radius: 8px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
+.pick-skel i, .tl-strip.skel, .tl-now > .tl-skel { display: block; border-radius: 8px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
   animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards, pulse 1.6s ease-in-out calc(480ms - var(--since)) infinite; }
 .pick-skel .pick-note { animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards; } /* what's asked, in words, with the shapes */
-@media (prefers-reduced-motion: reduce) { .pick-skel i { animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards; } } /* (the words say it's loading: the shapes stop breathing) */
+@media (prefers-reduced-motion: reduce) { .pick-skel i, .tl-strip.skel, .tl-now > .tl-skel { animation: bar-in var(--t-open) var(--ease-out) calc(300ms - var(--since)) backwards; } } /* (the words say it's loading: the shapes stop breathing) */
+/* the timeline's while its forecast comes (#869): the strip's shape, and each of the reading's lines in its own room, so
+   nothing moves when the forecast is in; drawn once, so a mouse moving over the map doesn't start them again (the time
+   says it's loading, in words) */
+.tl-strip.skel, .tl-now > .tl-skel { --since: 0ms; }
+.tl-now > .tl-skel { height: calc(var(--tl-row) - 6px); margin: 3px 0; width: 80%; border-radius: 4px; }
+.tl-now > .tl-skel:first-of-type { height: calc(var(--tl-icon) - 4px); margin: 2px 0; width: 60%; }
 .pick-skel-nums { display: flex; gap: 20px; }
 .pick-skel-nums i { flex: 0 1 64px; min-width: 0; height: 40px; } /* (narrower on a narrow card: 200 %) */
 .pick-skel-chart { height: 110px; }
@@ -2344,11 +2367,22 @@ body.dropping .drop-hint { display: flex; }
   .view3d { padding: 8px 6px 6px; }
   .wx-bar { width: calc(100% - 24px); bottom: calc(var(--sheet-h) + 40px); }
   .tl-title { display: none; }
-  .tl-strip { margin-left: 0; height: 56px; }
+  /* the weather layers in the head's row (a narrow window's too), sideways, fading at the edge where there's more; the
+     padding is room for the focus ring and a finger's 44 px inside the scroller */
+  .tl-head { gap: 6px; }
+  .tl-head .tl-lwrap { flex: 1; }
+  .tl-head .tl-layers { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; padding: 4px; margin: -4px 0 -4px -4px; }
+  .tl-layers::-webkit-scrollbar { display: none; }
+  .tl-layers.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+  .tl-layers.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
+  .tl-layers.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+  /* the strip from Play's column (a phone's tool is 30 px) to the reading's, as the slider is from Play to the time: the
+     knob under the needle */
+  .tl-strip { height: 56px; margin-left: 38px; }
   .tl-now { --tl-row: 14px; width: 112px; font-size: 11px; } /* (three lines in the strip's 56 px) */
   .tl-now-main b { font-size: 19px; }
   .tl-note { display: none; }
-  .wx-time { width: auto; flex: 0 1 auto; }
+  .wx-time { width: 112px; white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; } /* (on two lines where it must: the row is as tall as Play and the slider) */
   body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */
   body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers) */
   .wx-bar.docked { width: auto; }
