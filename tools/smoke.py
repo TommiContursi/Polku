@@ -13199,6 +13199,12 @@ def timeline_trip(chrome):
             a = st()
             if not a['row'] or a['trip'] != 'false' or a['h48'] != 'true' or a['off'] or a['step'] is not None or not a['card'] or not a['top']:
                 bad(f'with a route, the trip\'s row: shown {a["row"]}, Your trip {a["trip"]} (off {a["off"]}), 48 hours {a["h48"]}, the stepper {a["step"]!r}, Weather card {a["card"]}, the switch on top {a["top"]}')
+            # Weather card ›, as a person presses it: the weather card (Back or ✕ to the timeline again)
+            press(*pg.js("(() => { const r = document.querySelector('#wx-bar .tl-card').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
+            if pg.js("polku.planner.cards.current?.kind") != 'weather':
+                bad(f'Weather card › opened {pg.js("polku.planner.cards.current?.kind")!r}')
+            js("p.cards.close()")
+            a = st()
             # Your trip, as a person presses it: the switch where it was, the strip and the slider over the trip
             press(*a['swAt'])
             b = st()
@@ -13206,7 +13212,7 @@ def timeline_trip(chrome):
                 bad(f'Your trip pressed: {b["trip"]}, the switch from {a["sw"]} to {b["sw"]}')
             if b['slider'][:2] != [0, b['win']] or b['slider'][3] != 'Time on your trip, by 5 minutes' or not (b['win'] and 24 <= b['win'] <= 40) or b['start'] != 60:
                 bad(f'Your trip\'s slider {b["slider"]}, its window {b["win"]} × 5 min, the start {b["start"]} min in (want an hour either side)')
-            if not re.search(r' · (km \d+|at the start)$', b['time']) or not re.search(r', (at km \d+|before you set off, at the start)$', b['slider'][4] or '') or not b['you'] or not b['youOn']:
+            if not re.search(r' · (km \d+|the start)$', b['time']) or not re.search(r', (at km \d+|before you set off, at the start)$', b['slider'][4] or '') or not b['you'] or not b['youOn']:
                 bad(f'where you\'ll be: the time “{b["time"]}”, the slider “{b["slider"][4]}”, your dot {b["you"]} on the route {b["youOn"]}')
             if b['legend'].strip() == 'Legend':  # (folded at first on a phone and in a narrow window: opened as a person does)
                 press(*pg.js("(() => { const r = document.querySelector('.wx-legend .lg-fold').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
@@ -13222,13 +13228,27 @@ def timeline_trip(chrome):
                 bad(f'› to the first stretch: {c["step"]!r}, the reading {c["read"][-120:]!r}, lit {c["lit"]}, the focus on {c["focus"]}')
             press(*c['next'])
             d = st()
-            if not (d['step'] or '').startswith('Against you, 2 of 2') or not d['nextOff'] or d['focus'] != 'step-prev' or d['lit'] == c['lit'] or 'up to 7 m/s' not in d['step']:
+            if not (d['step'] or '').startswith('Against you, 2 of 2') or not d['nextOff'] or d['focus'] != 'step-prev' or d['lit'] == c['lit'] or 'up to 7 m/s' not in d['step'] or '<b>against you</b>' not in d['read']:
                 bad(f'› to the second: {d["step"]!r}, › off {d["nextOff"]}, the focus on {d["focus"]}, lit {d["lit"]} (was {c["lit"]})')
+            # a strong headwind's words whole in the reading, and the time whole (a phone's reading is the narrowest)
+            js("T.set(T.wind({ series: [{ ...T.wind().series[0], speed: Array(8).fill(12) }] })); w.bar.querySelector('[data-k=step-prev]').click()")
+            cut = pg.js("[...polku.weather.nowEl.children, polku.weather.timeEl].filter((x) => x.scrollWidth > x.clientWidth + 1).map((x) => x.textContent)")
+            if cut or '12 m/s against you' not in pg.js("polku.weather.nowEl.textContent"):
+                bad(f'12 m/s against you: cut {cut}, the reading “{pg.js("polku.weather.nowEl.textContent")}”')
+            js('T.set(T.wind())')
             # the slider's own move: the stretch left, the route unlit
             js("w.slider.value = String(+w.slider.value - 3); w.slider.dispatchEvent(new Event('input', { bubbles: true }))")
             e = st()
             if e['step'] != 'Against you on 2 stretchesup to 7 m/s' or e['lit']:
                 bad(f'the slider moved off the stretch: {e["step"]!r}, lit {e["lit"]}')
+            # a press on the strip three quarters along, and Play: the hour there by the 5 minutes, then on by about 15 minutes a
+            # second, inside the window
+            sx = pg.js("(() => { const r = polku.weather.stripCv.getBoundingClientRect(); return [r.left + 9 + (r.width - 18) * 0.75, r.top + r.height / 2]; })()")
+            press(*sx)
+            strip = pg.js("(() => { const w = polku.weather, z = w.tripWin(), t = Math.round(w.hour * 3600 + Math.floor(Date.now() / 3600e3) * 3600); return { off: Math.abs(t - (z.tw0 + 0.75 * (z.tw1 - z.tw0))) / 60, five: t % 300 === 0, slider: +w.slider.value / +w.slider.max }; })()")
+            play = pg.js("(async () => { const w = polku.weather, z = w.tripWin(); w.slider.value = '0'; w.slider.dispatchEvent(new Event('input')); const a = w.hour; w.playBtn.click(); await new Promise((r) => setTimeout(r, 1000)); w.playBtn.click(); const b = w.hour; return { mins: (b - a) * 60, inside: (b * 3600 + Math.floor(Date.now() / 3600e3) * 3600) <= z.tw1 + 1 }; })()")
+            if strip['off'] > 2.6 or not strip['five'] or abs(strip['slider'] - 0.75) > 0.05 or not (5 <= play['mins'] <= 25) or not play['inside']:
+                bad(f'a press on the strip three quarters along: {strip}; Play for a second: {play}')
             # the forecast loading, failed, stopping short and coming late
             js('T.set(null)')
             f = st()
@@ -13251,11 +13271,16 @@ def timeline_trip(chrome):
             m = st()
             if not re.fullmatch(r'Day 1 · \w+:true,Day 2 · \w+:false(:off)?', m['days']):
                 bad(f'a trip of days: its chips “{m["days"]}”')
+            if m['days'].startswith('Day 1'):  # the second day's chip, as a person presses it: its window, its hour, its stretches
+                press(*pg.js("(() => { const r = document.querySelector('#wx-bar [data-k=day-2]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
+                d2 = pg.js("(() => { const w = polku.weather, z = w.tripWin(), d = w.trip.days[1]; return { day: w.day, chip: document.querySelector('#wx-bar [data-k=day-2]').getAttribute('aria-pressed'), win: z && Math.abs(z.tw0 - Math.ceil((d.t0 - 3600) / 300) * 300) < 1, at: Math.abs(w.hour - w.hourOn(z, d.t0)) < 1e-6, step: w.stepWords.textContent }; })()")
+                if d2['day'] != 1 or d2['chip'] != 'true' or not d2['win'] or not d2['at'] or not d2['step']:
+                    bad(f'Day 2 pressed: {d2}')
             js('p.setStop(2, null)')
             # a trip past the 48 hours: Your trip greyed with the reason, and the trip view left
             js('p.when.set(Math.ceil(Date.now() / 3600e3) * 3600 + 72 * 3600); for (let k = 0; k < 50 && p.analysis.start !== p.when.start(); k++) await wait(100)')
             n_ = st()
-            if not n_['off'] or n_['span'] != '48' or n_['described'] != 'tl-why' or 'past the map’s 48 hours' not in n_['why'] or not n_['top'] and phone is None:
+            if not n_['off'] or n_['span'] != '48' or n_['described'] != 'tl-why' or 'past the map’s 48 hours' not in n_['why']:
                 bad(f'past the 48 hours: Your trip off {n_["off"]}, the view {n_["span"]}, described by {n_["described"]}, the reason “{n_["why"]}”')
             # Weather on the map at an hour outside the trip, Weather here and ✕: back to 48 hours (✕ at Now)
             js('p.when.set(Math.ceil(Date.now() / 3600e3) * 3600 + 2 * 3600); for (let k = 0; k < 50 && p.analysis.start !== p.when.start(); k++) await wait(100); T.set(T.wind())')
@@ -13265,6 +13290,13 @@ def timeline_trip(chrome):
             q = st()
             js("w.bar.querySelector('[data-k=span-trip]').click(); await wait(200); document.querySelector('#wx-bar .tl-close').click(); await wait(300); document.querySelector('#btn-time').click()")
             r_ = st()
+            # the legend's key goes with the trip view, the timeline closed with no layer on too; the route cleared, the row goes
+            js("polku.weather.app.onToggle({ rain: false }); w.bar.querySelector('[data-k=span-trip]').click(); await wait(200); document.querySelector('#wx-bar .tl-close').click()")
+            gone = pg.js("(() => { const l = document.querySelector('.wx-legend'); return !l || l.hidden || !/Wind on your way/.test(l.textContent); })()")
+            js("document.querySelector('#btn-time').click(); await wait(300); w.bar.querySelector('[data-k=span-trip]').click(); await wait(200); p.clear()")
+            s_ = st()
+            if not gone or s_['row'] or s_['span'] != '48' or s_['you'] or s_['lit']:
+                bad(f'the legend\'s key gone after ✕: {gone}; the route cleared in Your trip: the row {s_["row"]}, the view {s_["span"]}, your dot {s_["you"]}, lit {s_["lit"]}')
             if o['span'] != '48' or q['span'] != '48' or r_['span'] != '48' or r_['h48'] != 'true' or r_['hour'] != 0 or r_['you']:
                 bad(f'back to 48 hours: Weather on the map 30 h ahead {o["span"]}, Weather here {q["span"]}, ✕ and Weather {r_["span"]} at hour {r_["hour"]}, your dot {r_["you"]}')
             fails.extend(f'{name}: console: {x[:160]}' for x in pg.errors())

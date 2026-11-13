@@ -1243,6 +1243,7 @@ export class WeatherOverlay {
     const zoomed = this.span === 'trip', far = !!tr && !this.reaches(days[0]), off = days.find((d) => !this.reaches(d));
     if (!zoomed) this.stepAt = null;
     this.tripRow.hidden = !tr;
+    this.bar.classList.toggle('trip', zoomed); // (a phone's reading and time a little wider: css/app.css)
     const [b48, bTrip] = this.spanSeg.children;
     b48.setAttribute('aria-pressed', String(!zoomed));
     bTrip.setAttribute('aria-pressed', String(zoomed));
@@ -1265,6 +1266,7 @@ export class WeatherOverlay {
     this.renderStrip();
     this.renderTime();
     this.readout();
+    this.renderLegend(); // (the band's key goes with the trip view, the timeline closed too)
     this.placeFloat(); // (rows come and go: kept on screen)
   }
 
@@ -1318,12 +1320,9 @@ export class WeatherOverlay {
     this.setHour(this.hourOn(this.tripWin(), this.trip.days[j].t0));
   }
 
-  // where ‹ › put the hour on a stretch against you: its first 5 minutes inside it (its first sample's, or the nearest
-  // 5 minutes on a stretch shorter than that)
-  stretchHour(z, r) {
-    const { T } = this.trip, t = T.at(r.i0 + 1), up = Math.ceil(t / 300) * 300;
-    return this.hourOn(z, up <= T.at(r.i1) ? up : t);
-  }
+  // where ‹ › put the hour on a stretch against you: when you reach its first point, to the minute (a stretch can be
+  // shorter than the slider's 5 minutes, and none of them fall inside it), inside the window
+  stretchHour(z, r) { return hourAt(Math.max(z.tw0, Math.min(z.tw1, this.trip.T.at(r.i0 + 1)))); }
   // ‹ and ›: the hour to the stretch against you before or after it, lit on the band and the route
   step(dir) {
     const z = this.tripWin(), list = this.stretches(z), at = list.map((r) => this.stretchHour(z, r));
@@ -1665,7 +1664,7 @@ export class WeatherOverlay {
     if (this.loading) label += ' · loading…';
     // Your trip: the time and where you'll be (the grid's loading is the map's: the strip and the reading are the route's)
     const z = this.tripWin(), w = z && this.trip.a.wind;
-    this.timeEl.textContent = z ? `${day} ${clock} · ${this.whereOn(z, 'at the start', 'at the finish')}` : label;
+    this.timeEl.textContent = z ? `${day} ${clock} · ${this.whereOn(z, 'the start', 'the finish')}` : label;
     const route = !!(this.app.hasRoute && this.app.hasRoute());
     if (this.noteEl) {
       const g = this.grid;
@@ -1766,7 +1765,7 @@ export class WeatherOverlay {
         this.nowEl.title = `${SKY[kind]} · ${out ? `at ${out}` : `on your route at km ${km}`}${way ? `, the wind ${way}` : ''}${s.gust > s.speed + 2 ? ` · gusts ${Math.round(s.gust)} m/s` : ''}`;
         this.nowEl.innerHTML =
           `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${out || `km ${km}`}</small></div>` +
-          `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${way === 'against you' ? '<b>against you</b>' : compass(s.dir)}`}</div>` +
+          `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${Math.round(s.speed)} m/s ${way === 'against you' ? '<b>against you</b>' : compass(s.dir)}`}</div>` + // (whole m/s: room for the words)
           `<div>${icon('drop', 12)}${rain >= 0.05 ? `${rain.toFixed(1)} mm/h` : 'dry'}</div>` + snow;
         return;
       }
