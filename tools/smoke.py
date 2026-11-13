@@ -13442,16 +13442,22 @@ def resize_window(chrome):
                     c = size(pg, 1440, 900)
                     if c['card'] != 'point' or meets(c['beside'], c['panel']):
                         fails.append(f'{label}, back at 1440 × 900: the card {c["card"]!r} at {c["beside"]}')
-                    # the panel moved to the bottom with its button, the card beside it again: it goes with it, not left over it
+                    # Escape, the card beside the panel again, and the panel moved to the bottom with its button: the card goes
+                    # with it, not left over it
+                    for kind in ('keyDown', 'keyUp'):
+                        pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': 'Escape', 'code': 'Escape', 'windowsVirtualKeyCode': 27}, pg.s)
+                    time.sleep(0.5)
                     for sel in ("[...document.querySelectorAll('#planner .wpl .row')].find((e) => /Start/.test(e.textContent))", "document.querySelector('#planner .sheet-dock')"):
                         x0, y0 = pg.js(f"(() => {{ const r = {sel}.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
                         for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
                             pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x0, 'y': y0, 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
                         time.sleep(0.8)
+                        if 'Start' in sel and not pg.js(RESIZE_LAYOUT)['beside']:
+                            fails.append(f'{label}: Escape, then the Start row clicked again, no card beside the panel ({pg.js(RESIZE_LAYOUT)["card"]})')
                     placed(pg)
                     c = pg.js(RESIZE_LAYOUT)
                     if c['beside'] or c['card'] != 'point':
-                        fails.append(f'{label}: Move to the bottom pressed, the card {c["card"]!r} still beside where the side panel was, at {c["beside"]}')
+                        fails.append(f'{label}: Move to the bottom pressed, the card {c["card"]!r} beside where the side panel was, at {c["beside"]}')
             fails.extend(f'{label}: console: {e[:160]}' for e in pg.errors())
         finally:
             pg.close()
