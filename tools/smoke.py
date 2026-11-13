@@ -18636,7 +18636,7 @@ TG_LOOK = """(() => {
   for (const [what, sel] of [['the search', '#search-input'], ['the sport pill', '#activity-bar .act-current'], ['Settings', '#btn-settings'],
     ['the Polku mark', '.topbar .brand'], ['Zoom in to see every trail', '#zoom-hint'], ["the credits' (i)", '.maplibregl-ctrl-attrib-button'],
     ['the compass', '.ctrl-compass button'], ['Locate', '#btn-locate'], ['3D', '.ctrl-3d'], ['Weather', '#btn-time'], ['Layers', '#btn-layers'],
-    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the timeline's ⋯", '#wx-bar .tl-more'], ['the Rain button', '#wx-bar .tl-layers [data-k=rain]'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
+    ['Plan', '.plan-btn'], ["the timeline's ✕", '#wx-bar .tl-close'], ["the timeline's ⋯", '#wx-bar .tl-more'], ['a weather layer on (its row opens with it in sight)', '#wx-bar .tl-layers [aria-pressed=true]'], ['Play', '#wx-bar .wx-row > .tool'], ['the time slider', '#wx-bar .wx-row input[type=range]'],
     ["a map popup's ✕", '.polku-popup .maplibregl-popup-close-button']]) {
     const e = document.querySelector(sel);
     if (!e || !e.getClientRects().length) fails.push(`${what} isn't there (${sel})`); else hit(what, e);
