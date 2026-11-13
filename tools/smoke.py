@@ -13329,11 +13329,12 @@ def timeline_trip(chrome):
                 narrow, back = sizes[1100], sizes[1440]
                 if wide['rows'] != 1 or not (wide['seg'] == wide['card'] == wide['step']):
                     bad(f'at 1440 × 900: the layers on {wide["rows"]} rows, the trip row {wide}')
-                # (at 1100 px the switch and Weather card › share the foot; at 900 the timeline is 296 px, too narrow for both,
-                # so the switch is at the foot alone)
+                # (by the timeline's own width, its container query's 560 px: beside the side panel it's 600 px at 1100 and one
+                # row, and 452 at 900, where the panel gives way to it (#1002), with the switch and Weather card › at the foot)
                 for ww in (1100, 900):
                     x = sizes[ww]
-                    if x['side'] == 'side' and (x['rows'] != 1 or (ww == 1100 and x['seg'] != x['card']) or x['seg'] < x['card'] or not (x['step'] is not None and x['step'] < x['seg'])):
+                    one = x['width'] > 560
+                    if x['side'] == 'side' and (x['rows'] != 1 or (one and not (x['seg'] == x['card'] == x['step'])) or (not one and (x['seg'] != x['card'] or not (x['step'] is not None and x['step'] < x['seg'])))):
                         bad(f'the window resized to {ww} px with the side panel: the layers on {x["rows"]} rows, the trip row {x}')
                 if back['rows'] != 1 or not (back['seg'] == back['card'] == back['step']):
                     bad(f'back at 1440 × 900: the layers on {back["rows"]} rows, the trip row {back}')
@@ -13353,6 +13354,141 @@ def timeline_trip(chrome):
         finally:
             pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the timeline zoomed to your trip (#869): the switch still under the finger, where you'll be, ‹ › between the headwinds, missing and late forecasts, a day at a time, past 48 hours, back to 48 hours" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1002: where the planner's side panel, its toolbar, the timeline, the map's buttons, the credits and a card beside the
+# panel are (left, top, right, bottom), and how far apart the toolbar's buttons' middles are (0: one row)
+RESIZE_LAYOUT = """(() => {
+  const vis = (e) => e && !e.hidden && !e.closest('[hidden]') && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
+  const R = (e) => { if (!vis(e)) return null; const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };
+  const q = (s) => document.querySelector(s), p = polku.planner, a = q('.maplibregl-ctrl-attrib');
+  const mids = [...q('.pl-tools').querySelectorAll('button')].filter(vis).map((b) => { const r = b.getBoundingClientRect(); return r.top + r.height / 2; });
+  return { side: p.active && p.layout() === 'side', panel: R(p.panel), tools: R(q('.pl-tools')), rows: mids.length ? Math.round(Math.max(...mids) - Math.min(...mids)) : 0,
+    wx: R(q('#wx-bar')), col: R(q('#map-ctrls')), credits: a.classList.contains('maplibregl-compact-show') ? R(a) : null, beside: R(q('.card-beside')), card: p.cards.current?.kind || null };
+})()"""
+
+
+def resize_window(chrome):
+    """#1002: a desktop window made smaller by its edge, from 1440 px down to 721, and larger again, as a person drags it
+    with a mouse: the side panel open with a route and the timeline, dragged wide, with a card from the list beside it,
+    and the planner closed. Nothing takes a row of its own or overlaps, and the layout comes back."""
+    fails = []
+
+    def size(pg, w, h):
+        pg.c.send('Emulation.setDeviceMetricsOverride', {'width': w, 'height': h, 'deviceScaleFactor': 1, 'mobile': False}, pg.s)
+        time.sleep(1.2)
+        placed(pg)
+        return pg.js(RESIZE_LAYOUT)
+
+    def meets(a, b):
+        return bool(a and b and min(a[2], b[2]) - max(a[0], b[0]) > 1 and min(a[3], b[3]) - max(a[1], b[1]) > 1)
+
+    def side_ok(name, x):
+        # the toolbar on one row; the timeline as wide as its room between the panel and the map's buttons (12 px from
+        # each, up to 640 px), in it; nothing over anything else
+        room = x['col'][0] - 12 - (x['panel'][2] + 12)
+        if x['rows'] > 4:
+            fails.append(f'{name}: the toolbar on more than one row ({x["rows"]} px between its buttons\' middles) at {x["tools"]}')
+        if x['wx'] and (x['wx'][0] < x['panel'][2] + 11 or x['wx'][2] > x['col'][0] - 11 or x['wx'][2] - x['wx'][0] < min(640, room) - 2):
+            fails.append(f'{name}: the timeline at {x["wx"]}, its room from {x["panel"][2] + 12} to {x["col"][0] - 12}')
+        for a, b in (('tools', 'col'), ('tools', 'wx'), ('wx', 'col'), ('panel', 'wx'), ('panel', 'tools')):
+            if meets(x[a], x[b]):
+                fails.append(f'{name}: {a} {x[a]} over {b} {x[b]}')
+
+    def page(storage=None):
+        pg = chrome.page(1440, 900, False)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', **(storage or {})}, '#13/61.514/23.822')
+        return pg
+
+    # the side panel open, a route and the timeline: the window's edge dragged in (its height too, then the width alone),
+    # past the side panel's 900 px to the bottom panel's 721, and out again
+    for label, storage, sizes in (('the side panel', None, [(1100, 800), (1000, 800), (950, 780), (900, 760), (899, 760), (721, 760), (900, 900), (1440, 900)]),
+                                  ('the side panel dragged wide', {'polku:panelWidth': '700'}, [(1200, 900), (1000, 900), (900, 900), (1440, 900)])):
+        pg = page(storage)
+        try:
+            if not pg.js(TL_TRIP_SETUP, timeout=40000):
+                fails.append(f'{label}: no route')
+                continue
+            pg.js("(async () => { polku.planner.setSheetState('open'); await new Promise((r) => setTimeout(r, 400)); return true; })()")
+            first = size(pg, 1440, 900)
+            side_ok(f'{label}, 1440 × 900', first)
+            for w, h in sizes:
+                x = size(pg, w, h)
+                if x['side']:
+                    side_ok(f'{label}, {w} × {h}', x)
+            if x != first:
+                fails.append(f'{label}: back at 1440 × 900 the layout isn\'t the one it had: {first} then {x}')
+            if not storage:
+                # a card from the list, opened with a mouse, beside the panel: still at its edge and clear of the timeline
+                # in a smaller window, and in the bottom panel's peek once the panel is at the bottom, not over it
+                pg.js("(() => { document.querySelector('#planner').scrollTop = 0; return true; })()")
+                x0, y0 = pg.js("(() => { const r = [...document.querySelectorAll('#planner .wpl .row')].find((e) => /Start/.test(e.textContent)).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+                for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x0, 'y': y0, 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                time.sleep(0.8)
+                c0 = size(pg, 1440, 900)
+                if not c0['beside']:
+                    fails.append(f'{label}: the Start row clicked, no card beside the panel ({c0["card"]})')
+                else:
+                    for w, h in ((1000, 800), (900, 760)):
+                        c = size(pg, w, h)
+                        if not c['beside'] or abs(c['beside'][0] - (c['panel'][2] + 12)) > 2 or meets(c['beside'], c['wx']) or meets(c['beside'], c['panel']):
+                            fails.append(f'{label}, {w} × {h}: the card beside the panel at {c["beside"]}, the panel to {c["panel"][2]}, the timeline at {c["wx"]}')
+                    c = size(pg, 820, 760)
+                    if c['beside'] or c['card'] != 'point':
+                        fails.append(f'{label}, 820 × 760: the card {c["card"]!r} beside the bottom panel at {c["beside"]}, not in it')
+                    c = size(pg, 1440, 900)
+                    if c['card'] != 'point' or meets(c['beside'], c['panel']):
+                        fails.append(f'{label}, back at 1440 × 900: the card {c["card"]!r} at {c["beside"]}')
+                    # Escape, the card beside the panel again, and the panel moved to the bottom with its button: the card goes
+                    # with it, not left over it
+                    for kind in ('keyDown', 'keyUp'):
+                        pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': 'Escape', 'code': 'Escape', 'windowsVirtualKeyCode': 27}, pg.s)
+                    time.sleep(0.5)
+                    for sel in ("[...document.querySelectorAll('#planner .wpl .row')].find((e) => /Start/.test(e.textContent))", "document.querySelector('#planner .sheet-dock')"):
+                        x0, y0 = pg.js(f"(() => {{ const r = {sel}.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+                        for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x0, 'y': y0, 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                        time.sleep(0.8)
+                        if 'Start' in sel and not pg.js(RESIZE_LAYOUT)['beside']:
+                            fails.append(f'{label}: Escape, then the Start row clicked again, no card beside the panel ({pg.js(RESIZE_LAYOUT)["card"]})')
+                    placed(pg)
+                    c = pg.js(RESIZE_LAYOUT)
+                    if c['beside'] or c['card'] != 'point':
+                        fails.append(f'{label}: Move to the bottom pressed, the card {c["card"]!r} beside where the side panel was, at {c["beside"]}')
+            fails.extend(f'{label}: console: {e[:160]}' for e in pg.errors())
+        finally:
+            pg.close()
+
+    # the planner closed, the timeline open: the credits MapLibre opens on a wide window fold behind their ⓘ where they'd
+    # wrap, and never run under the map's buttons or the timeline
+    pg = page()
+    try:
+        pg.js("(async () => { if (!polku.state.timeline) document.querySelector('#btn-time').click(); await new Promise((r) => setTimeout(r, 600)); return true; })()")
+        for w, h in ((1440, 900), (1100, 800), (950, 780), (900, 760), (820, 760), (721, 760), (1440, 900)):
+            x = size(pg, w, h)
+            if x['wx'] and (x['wx'][2] > x['col'][0] - 11 or x['wx'][0] < 11):
+                fails.append(f'the planner closed, {w} × {h}: the timeline at {x["wx"]}, the map\'s buttons from {x["col"][0]}')
+            for b in ('col', 'wx'):
+                if meets(x['credits'], x[b]):
+                    fails.append(f'the planner closed, {w} × {h}: the credits {x["credits"]} under {b} {x[b]}')
+        # the timeline dragged by its title bar to a place of its own: a smaller window narrows it clear of the map's buttons,
+        # and it's where you left it, as wide, once the window is larger again
+        hx, hy = pg.js("(() => { const r = document.querySelector('#wx-bar .tl-title').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+        for kind, xx, yy in (('mouseMoved', hx, hy), ('mousePressed', hx, hy), ('mouseMoved', hx - 60, hy - 100), ('mouseMoved', hx - 120, hy - 200), ('mouseReleased', hx - 120, hy - 200)):
+            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': xx, 'y': yy, 'button': 'left', 'buttons': 1 if kind != 'mouseReleased' else 0, 'clickCount': 1}, pg.s)
+        time.sleep(0.5)
+        mine = pg.js(RESIZE_LAYOUT)['wx']
+        small = size(pg, 721, 760)
+        back = size(pg, 1440, 900)['wx']
+        if not pg.js("document.querySelector('#wx-bar').classList.contains('placed')") or small['wx'][2] > small['col'][0] - 8 or back != mine:
+            fails.append(f'the timeline dragged to {mine}: at 721 × 760 at {small["wx"]} (the map\'s buttons from {small["col"][0]}), back at 1440 × 900 at {back}')
+        fails.extend(f'the planner closed: console: {e[:160]}' for e in pg.errors())
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a desktop window made smaller and larger again (#1002): the toolbar on one row, the timeline in its room beside the side panel, the panel dragged wide, a card beside it, the credits, a dragged timeline" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -14159,15 +14295,15 @@ def toolbox(chrome):
             fails.append(f"{name}: Show the whole route isn’t in the map’s column alone (the toolbar has {', '.join(d['bar'])})")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
-    # the narrowest window with the panel beside the map: fully folded, the toolbar still doesn't fit beside it, so it
-    # takes a second row, growing upward, clear of the map's buttons, and the scale and the credits ride above it (#468)
+    # the narrowest window with the panel beside the map: the panel gives way so the toolbar stays on one row (#1002), clear
+    # of the map's buttons, and the scale and the credits ride above it (#468)
     name = '900x700'
     pg = page(900, 700, False)
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
     placed(pg)
     pg.js(SETTLED)
     e = pg.js(ON_EDGE)
-    if not (e['edge'] and e['round'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' not in e['folds']:
+    if not (e['edge'] and e['round'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' in e['folds']:
         fails.append(f'{name}: the toolbar {e}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
@@ -21134,6 +21270,7 @@ GROUPS = [
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a hidden Heads-up kind shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
+    ('resize', [resize_window], 'desktops (#1002): the window made smaller by its edge, down to 721 px, and larger again, by mouse: the planner\'s toolbar on one row and the timeline in its room beside the side panel, the panel dragged wide giving way, a card from the list beside the panel and then where cards go with the panel at the bottom (a narrow window, Move to the bottom), the credits folded where they\'d run under the map\'s buttons, a timeline you\'ve dragged clear of them, and the layout as it was when the window is large again'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
     ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),

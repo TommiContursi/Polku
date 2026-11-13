@@ -4,6 +4,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-13
 
+### A smaller desktop window ([#1002](https://github.com/TommiContursi/Polku/issues/1002))
+
+- In a smaller desktop window the planner at the side gets narrower, down to its narrowest, so its toolbar stays on one row beside the map's buttons. A planner you've dragged wider gives way the same way, and both are as wide as before once the window is larger again.
+- The weather timeline beside the planner is as wide as the room between the planner and the map's buttons, up to its usual width, instead of keeping a wide margin on each side.
+- A timeline you've dragged to a place of its own stays clear of the map's buttons in a smaller window, and it's back where you left it, as wide, once the window is larger again.
+- A card opened from the route's list stays beside the planner and above the timeline when the window changes size. When the planner moves to the bottom, in a narrow window or with its **Move to the bottom** button, the card moves with it instead of staying where the side panel was.
+- The map's credits fold behind their ⓘ where they would take more than one line, instead of running under the map's buttons and the timeline.
+
 ### The timeline zoomed to your trip ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - With a route that has times, the weather timeline has **48 hours · Your trip** under its slider. **Your trip** zooms the strip and the slider to your trip's day, an hour either side, so you can set the time by the 5 minutes.

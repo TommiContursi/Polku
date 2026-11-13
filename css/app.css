@@ -397,9 +397,12 @@ body:not(.ready) .map-ctrls { display: none; }
 /* Weather */
 .wx-canvas { position: absolute; top: 0; left: 0; pointer-events: none; transition: opacity .3s; }
 .wx-canvas.wx-hide { opacity: 0; transition: opacity .1s; }
+/* as wide as the room between the side panel (or the window's edge) and the map's buttons, 12 px from each, up to 640 px:
+   centred on the map where that leaves it room, else on its room (#1002) */
 .wx-bar {
-  position: absolute; left: calc(50% + var(--pl-left) / 2); transform: translateX(-50%); bottom: calc(var(--sheet-h) + max(40px, var(--tools-h, 0px) + 8px)); z-index: 6;
-  width: min(640px, calc(100% - 200px - var(--pl-left))); padding: 6px 12px 8px 6px; border-radius: 16px;
+  --tl-w: min(640px, calc(100% - var(--pl-left) - 96px));
+  position: absolute; left: clamp(calc(var(--pl-left) + 12px + var(--tl-w) / 2), calc(50% + var(--pl-left) / 2), calc(100% - 84px - var(--tl-w) / 2)); transform: translateX(-50%); bottom: calc(var(--sheet-h) + max(40px, var(--tools-h, 0px) + 8px)); z-index: 6;
+  width: var(--tl-w); padding: 6px 12px 8px 6px; border-radius: 16px;
 }
 /* beside the side panel the scale and the credits are under its left end: above them, on the toolbar at the map's foot (#468) */
 body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
@@ -561,7 +564,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 /* --tools-h: the planner's toolbox floating above the sheet, its toolbar above a bottom panel, or beside the side panel the
    room from the window's foot to its toolbar's top (planner.js placeTools()) */
 .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + var(--tools-h, 0px) + 4px); }
-.maplibregl-ctrl-bottom-left { left: var(--pl-left); display: flex; align-items: flex-end; }
+.maplibregl-ctrl-bottom-left { left: var(--pl-left); max-width: calc(100% - var(--pl-left) - 84px); display: flex; align-items: flex-end; } /* (opened, the credits wrap before the map's buttons, #1002) */
 /* scale bar and the attribution (i) side by side, bottom left */
 .maplibregl-ctrl-bottom-left .maplibregl-ctrl { float: none; clear: none; }
 .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib { margin-left: 6px; }
@@ -2398,7 +2401,7 @@ body.dropping .drop-hint { display: flex; }
   body:not(.planning) .toast { bottom: calc(var(--wx-h, 0px) + 56px); }
   .fab { width: 54px; height: 52px; border-radius: 14px; font-size: 12px; }
   .view3d { padding: 8px 6px 6px; }
-  .wx-bar { width: calc(100% - 24px); bottom: calc(var(--sheet-h) + 40px); }
+  .wx-bar { left: 50%; width: calc(100% - 24px); bottom: calc(var(--sheet-h) + 40px); }
   .tl-title { display: none; }
   /* the weather layers in the head's row (a narrow window's too), sideways, fading at the edge where there's more; the
      padding is room for the focus ring and a finger's 44 px inside the scroller */

@@ -189,16 +189,16 @@ map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-lef
 {
   const attrib = $('.maplibregl-ctrl-attrib');
   attrib.insertBefore(h('span', { class: 'attrib-own', html: '<a href="https://github.com/TommiContursi/Polku" target="_blank" rel="noopener">Polku</a> © <a href="https://github.com/TommiContursi" target="_blank" rel="noopener">TommiContursi</a> | ' }), attrib.querySelector('.maplibregl-ctrl-attrib-inner'));
-  // On a phone-wide window the credits stay folded behind their ⓘ until you open them: MapLibre
-  // opens them by itself when their text first comes in (often after the map has loaded), and
-  // a window narrowed to phone width folds them too
-  const narrow = () => innerWidth < 720;
-  let tapped = 0;
+  // Where the credits don't fit on one line beside the map's buttons (a phone, a smaller window, #1002) they stay
+  // folded behind their ⓘ until you open them: MapLibre opens them by itself when their text first comes in (often
+  // after the map has loaded), and a window narrowed until they wrap folds them too
+  const own = attrib.querySelector('.attrib-own'), inner = attrib.querySelector('.maplibregl-ctrl-attrib-inner');
+  const wraps = () => attrib.classList.contains('maplibregl-compact-show') && new Set([...own.getClientRects(), ...inner.getClientRects()].map((r) => Math.round(r.top))).size > 1;
+  let tapped = 0, wrapped = false;
   const fold = () => { if (attrib.classList.contains('maplibregl-compact-show')) { attrib.classList.remove('maplibregl-compact-show'); attrib.setAttribute('open', ''); } };
   attrib.querySelector('.maplibregl-ctrl-attrib-button')?.addEventListener('click', () => { tapped = Date.now(); }, true);
-  new MutationObserver(() => { if (narrow() && Date.now() - tapped > 600) fold(); }).observe(attrib, { attributes: true, attributeFilter: ['class'] });
-  let wasNarrow = narrow();
-  addEventListener('resize', () => { const n = narrow(); if (n && !wasNarrow) fold(); wasNarrow = n; });
+  new MutationObserver(() => { if (wraps() && Date.now() - tapped > 600) fold(); wrapped = wraps(); }).observe(attrib, { attributes: true, attributeFilter: ['class'] });
+  addEventListener('resize', () => { const w = wraps(); if (w && !wrapped) fold(); wrapped = w; });
 }
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
 // Zoom, compass and locate live in Polku's own control column (bottom right).
