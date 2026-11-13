@@ -120,7 +120,7 @@ export class WeatherOverlay {
     this.drops = [];
     this.span = '48'; // what the timeline shows: '48' hours, or 'trip', zoomed to your trip (#869)
     this.day = 0; // Your trip's day, on a trip of days
-    this.stepAt = null; // the headwind ‹ › stepped to, while the hour stays at its start
+    this.stepAt = null; // the weather card's note ‹ › stepped to, while the hour stays at it
     this.trip = null; // the route's times, from app.trip(): renderTrip()
     this.buildCanvases();
     this.buildBar();
@@ -1182,16 +1182,16 @@ export class WeatherOverlay {
       this.moreBtn,
       h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) }));
     // the trip's row, under the slider while the route has times (#869): what the timeline shows (48 hours or Your trip,
-    // greyed past the map's 48 hours with the reason), and in Your trip its days and ‹ › between the headwinds;
+    // greyed past the map's 48 hours with the reason), and in Your trip its days and ‹ › through the weather card's notes;
     // then the weather card. Its line with the switch is the last, so the switch stays under the finger as rows come and
     // go over it (the timeline grows up from its foot)
     const spanBtn = (k, words) => h('button', { type: 'button', 'data-k': `span-${k}`, 'aria-pressed': 'false', onclick: () => this.setSpan(k) }, words);
     this.spanSeg = h('div', { class: 'seg small', role: 'group', 'aria-label': 'What the timeline shows' }, spanBtn('48', '48 hours'), spanBtn('trip', 'Your trip'));
     this.daysEl = h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' });
-    const stepBtn = (dir) => h('button', { type: 'button', class: 'tool', 'data-k': dir < 0 ? 'step-prev' : 'step-next', 'aria-label': dir < 0 ? 'The headwind before' : 'The next headwind',
+    const stepBtn = (dir) => h('button', { type: 'button', class: 'tool', 'data-k': dir < 0 ? 'step-prev' : 'step-next', 'aria-label': dir < 0 ? 'The note before' : 'The next note',
       html: icon(dir < 0 ? 'chevronLeft' : 'chevronRight', 18), onclick: () => this.step(dir) });
     this.stepWords = h('span', { 'aria-live': 'polite' });
-    this.stepEl = h('div', { class: 'tl-step', role: 'group', 'aria-label': 'Headwinds on the way' }, stepBtn(-1), this.stepWords, stepBtn(1));
+    this.stepEl = h('div', { class: 'tl-step', role: 'group', 'aria-label': 'The weather card’s notes' }, stepBtn(-1), this.stepWords, stepBtn(1));
     this.whyEl = h('p', { class: 'tl-why', id: 'tl-why' });
     this.tripRow = h('div', { class: 'tl-trip', hidden: true }, this.spanSeg, this.stepEl,
       h('button', { type: 'button', class: 'btn small quiet tl-card', onclick: () => this.app.openWeather(this.span === 'trip' ? this.day : 0), html: `Weather card${icon('chevronRight', 16)}` }), this.daysEl, this.whyEl);
@@ -1288,22 +1288,23 @@ export class WeatherOverlay {
     while (lo < hi) { const m = (lo + hi) >> 1; if (T.at(m) < t) lo = m + 1; else hi = m; }
     return lo;
   }
-  // the day's headwinds (the weather card's stretches, from Wind on the way) that start inside the window; a new list (a
-  // new forecast, day or window) lets go of the one stepped to
-  stretches(z) {
+  // the day's notes, the weather card's (worst first, three at most), that start inside the window; null without the day's
+  // forecast. A new list (a new forecast, day or window) lets go of the one stepped to
+  notes(z) {
     const { a, T } = this.trip, c = this.stepList;
-    if (!a.wind) return [];
     if (c && c.w === a.wind && c.d === z.d && c.tw1 === z.tw1) return c.list;
+    const all = a.wind && this.trip.notes(z.d);
     this.stepAt = null;
-    this.stepList = { w: a.wind, d: z.d, tw1: z.tw1, list: this.trip.against(z.d).filter((r) => T.at(r.i0) <= z.tw1) };
+    this.stepList = { w: a.wind, d: z.d, tw1: z.tw1, list: all ? all.filter((x) => T.at(x.i0) <= z.tw1) : null };
     return this.stepList.list;
   }
 
-  // 48 hours or Your trip, switched at once (nothing moves): Your trip at the day the hour is in, else its first day, and
-  // at the day's start unless the hour is already in its window; 48 hours keeps the hour
-  setSpan(k) {
-    if (k === this.span) return;
-    const t = timeAtHour(this.hour); // (before the trip view keeps the hour inside its window)
+  // 48 hours or Your trip, switched at once (nothing moves): Your trip at the day time `at` is in (the hour shown, unless
+  // the weather card gives one), else its first day, and at that time if it's in the day's window, else the day's start;
+  // 48 hours keeps the hour
+  setSpan(k, at = null) {
+    if (k === this.span && at == null) return;
+    const t = at ?? timeAtHour(this.hour); // (before the trip view keeps the hour inside its window)
     if (k === 'trip') {
       const j = this.trip.days.findIndex((d) => t >= d.t0 - 3600 && t <= d.t1 + 3600);
       this.day = j >= 0 && this.reaches(this.trip.days[j]) ? j : 0;
@@ -1322,23 +1323,31 @@ export class WeatherOverlay {
     this.setHour(this.hourOn(this.tripWin(), this.trip.days[j].t0));
   }
 
-  // where ‹ › put the hour on a headwind: when you reach its first point, to the minute (a stretch can be
-  // shorter than the slider's 5 minutes, and none of them fall inside it), inside the window
-  stretchHour(z, r) { return hourAt(Math.max(z.tw0, Math.min(z.tw1, this.trip.T.at(r.i0 + 1)))); }
-  // ‹ and ›: the hour to the headwind before or after it, lit on the band and the route
+  // the weather card's way to the timeline (its hours of Rain and Wind, its lanes, Weather on the map): Your trip at time t
+  // when a day of it the map reaches holds t, else the 48 hours at its hour (one before you leave, say)
+  showAt(t) {
+    if ((this.trip ? this.trip.days : []).some((d) => this.reaches(d) && t >= d.t0 - 3600 && t <= d.t1 + 3600)) this.setSpan('trip', t);
+    else if (hourAt(t) >= 0) this.setHour(Math.floor(hourAt(t)));
+  }
+
+  // where ‹ › put the hour on a note: when you reach it (a stretch's first point), to the minute (a stretch can be shorter
+  // than the slider's 5 minutes, and none of them fall inside it), inside the window
+  noteHour(z, x) { return hourAt(Math.max(z.tw0, Math.min(z.tw1, this.trip.T.at(Math.min(x.i1, x.i0 + 1))))); }
+  // ‹ and ›: the note before or after it in the card's order, worst first: the hour to it, its layer on, lit on the band
+  // and the route
   step(dir) {
-    const z = this.tripWin(), list = this.stretches(z), at = list.map((r) => this.stretchHour(z, r));
-    const j = dir > 0 ? at.findIndex((x) => x > this.hour + 1e-4) : at.findLastIndex((x) => x < this.hour - 1e-4);
-    if (j < 0) return;
+    const z = this.tripWin(), list = this.notes(z) || [], j = this.stepAt == null ? (dir > 0 ? 0 : -1) : this.stepAt + dir, x = list[j];
+    if (!x) return;
     this.playing = false;
     this.syncPlay();
     this.stepAt = j;
-    this.setHour(at[j]);
+    this.setHour(this.noteHour(z, x));
+    if (x.layer && !this.on[x.layer]) this.app.onToggle({ [x.layer]: true });
   }
 
-  // What follows the hour in Your trip: your dot on the route, ‹ › and their words (the forecast loading, failed or stopping
-  // short said so), and the stretch stepped to lit. The focus stays on the arrow, or goes to the other at the end (to the
-  // slider when neither has another)
+  // What follows the hour in Your trip: your dot on the route, ‹ › and their words (the forecast loading or failed said so;
+  // stopping short is a note of its own), and the note stepped to lit. The focus stays on the arrow, or goes to the other at
+  // the end (to the slider when neither has another)
   syncTrip() {
     const z = this.tripWin(), tr = this.trip;
     if (!z) {
@@ -1349,21 +1358,20 @@ export class WeatherOverlay {
     const { a } = tr, w = a.wind, i = this.sampleOn(z.d, timeAtHour(this.hour));
     if (!this.youPin) this.youPin = new maplibregl.Marker({ element: h('div', { class: 'wx-you', 'aria-hidden': 'true' }) }).setLngLat(a.pts[i]).addTo(this.map);
     else this.youPin.setLngLat(a.pts[i]);
-    const list = this.stretches(z), n = list.length, at = list[this.stepAt], km = (j) => Math.max(1, Math.round(a.along[j] / 1000));
-    const short = w && forecastKnown(w, z.d.i0) && !forecastKnown(w, z.d.i1) ? ` · no forecast past km ${km(w.beyond)}` : '';
-    const [b, sm] = !w ? [`Wind on the way: ${a.windError ? 'no forecast' : 'loading'}`, '']
-      : !forecastKnown(w, z.d.i0) ? ['Wind on the way: no forecast yet', '']
-        : !n ? ['No long headwinds', short.slice(3)]
-          : at ? [`Headwind ${this.stepAt + 1} of ${n}`, `km ${km(at.i0)}${km(at.i1) > km(at.i0) ? ` to ${km(at.i1)}` : ''} · up to ${Math.round(at.max)} m/s`]
-            : [`Headwind on ${n} stretch${n > 1 ? 'es' : ''}`, `up to ${Math.round(Math.max(...list.map((r) => r.max)))} m/s${short}`];
+    const list = this.notes(z), n = list ? list.length : 0, at = list && list[this.stepAt];
+    const [b, sm] = !w ? [`Weather notes: ${a.windError ? 'no forecast' : 'loading'}`, '']
+      : !list ? ['Weather notes: no forecast yet', '']
+        : !n ? ['No weather notes', '']
+          : at ? [at.text, `${this.stepAt + 1} of ${n}`]
+            : [`${n} weather note${n > 1 ? 's' : ''}`, 'the worst first'];
     if (this.stepWords.dataset.said !== b + sm) {
       this.stepWords.dataset.said = b + sm;
       this.stepWords.replaceChildren(h('b', {}, b), sm ? h('small', {}, sm) : '');
     }
-    const [prev, next] = this.stepEl.querySelectorAll('button'), had = this.stepEl.contains(document.activeElement), hrs = list.map((r) => this.stretchHour(z, r));
-    prev.disabled = !hrs.some((x) => x < this.hour - 1e-4);
-    next.disabled = !hrs.some((x) => x > this.hour + 1e-4);
-    if (had && document.activeElement.disabled) (prev.disabled ? (next.disabled ? this.slider : next) : prev).focus({ preventScroll: true }); // (one stretch: the slider)
+    const [prev, next] = this.stepEl.querySelectorAll('button'), had = this.stepEl.contains(document.activeElement);
+    prev.disabled = !(this.stepAt > 0);
+    next.disabled = !(this.stepAt == null ? n : this.stepAt < n - 1);
+    if (had && document.activeElement.disabled) (prev.disabled ? (next.disabled ? this.slider : next) : prev).focus({ preventScroll: true }); // (one note: the slider)
     const key = at ? `${at.i0}-${at.i1}` : null;
     if (key !== (this.litKey || null)) { this.litKey = key; this.app.light(at ? [at.i0, at.i1] : null); }
   }
@@ -1535,7 +1543,7 @@ export class WeatherOverlay {
     if (z) {
       // Your trip's wind on the way, a band under the hours by the samples you're at (windClass(): headwind, the strong in
       // the darker red, crosswind, tailwind, calm), none while you wait at a stop; past the forecast's reach, said so; the
-      // headwind ‹ › stepped to, ringed
+      // note ‹ › stepped to, ringed where it is on the way
       const { T } = this.trip, w = a.wind, band = H - 7;
       for (let i = z.d.i0 + 1; i <= z.d.i1 && forecastKnown(w, i) && T.at(i - 1) < z.tw1; i++) {
         const x0 = Xt(Math.max(z.tw0, T.at(i - 1))), x1 = Xt(Math.min(z.tw1, T.at(i) - (a.waitAt ? a.waitAt[i] : 0)));
@@ -1546,7 +1554,7 @@ export class WeatherOverlay {
         ctx.fillStyle = muted; ctx.globalAlpha = 0.12; ctx.fillRect(x, 0, W - PAD - x, H); ctx.globalAlpha = 1;
         ctx.fillText('No forecast yet', x + 4, H / 2);
       }
-      const r = this.stepAt != null && this.stretches(z)[this.stepAt];
+      const r = this.stepAt != null && this.notes(z)?.[this.stepAt];
       if (r) { ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.strokeRect(Xt(T.at(r.i0)) - 1, band - 2, Xt(T.at(r.i1)) - Xt(T.at(r.i0)) + 2, 10); }
     }
     // cursor, and the temperature where it crosses the line

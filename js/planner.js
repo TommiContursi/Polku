@@ -7370,6 +7370,13 @@ export class Planner {
     const T = tripTimes(a), days = T.days();
     return days.length ? days : [{ n: 1, from: 0, to: a.total, i0: 0, i1: a.along.length - 1, t0: T.start, t1: T.end }];
   }
+  // a day's notes as the weather card shows them, worst first, three at most (none on a day under half an hour, its one
+  // line); null without the day's forecast. The timeline's ‹ › step through them
+  wxNotes(a, d) {
+    const wx = a.wind && dayWeather(a.wind, a, d.i0, d.i1);
+    if (!wx || wx.none) return null;
+    return this.wxDays(a).length > 1 && d.t1 - d.t0 < 1800 ? [] : this.dayFacts(a, d, wx).notes;
+  }
   // the dark on a day as Check has it (from the sun: no forecast needed), in the card's words and where it falls on the day;
   // null in the light
   darkNote(a, d) {
@@ -7429,6 +7436,9 @@ export class Planner {
   openWeather({ day = 0, time = false, from = 'box', el = null } = {}) {
     const a = this.analysis;
     if (!a || !this.trip()) return;
+    // (folded to its banner by a tap on the map's weather, on a phone: back as it was)
+    const cur = this.cards.current;
+    if (this.cards.folded && cur?.kind === 'weather' && (cur.day || 0) === day && !time) { this.cards.unfold(); return; }
     const days = this.wxDays(a);
     if (days.length > 1 && !time) this.focusRange(days[day].i0, days[day].i1, null);
     // (a desktop's beside the panel, level with its row, as Check's items')
@@ -7596,7 +7606,7 @@ export class Planner {
       return p.alt > 0 && p.alt < 10 && Math.abs(((p.az - hd + 540) % 360) - 180) <= 30; })()).filter((r) => r.len >= 500);
     if (sunny.length) add(36, 'plain', 'sun', `Low sun ahead around ${around(sunny[0].i0)}, km ${km(sunny[0].i0)} to ${km(sunny[0].i1)}`, sunny[0].i0, sunny[0].i1);
     if (this.wet && this.wet.on && ['mtb', 'gravel', 'trailrun', 'hike'].includes(sport(i0))) add(39, 'plain', 'drop', `It rained ${Math.round(this.wet.mm)} mm in the last day: trails may be wet and muddy`, i0);
-    const shown = notes.sort((x, y) => x.rank - y.rank || x.i0 - y.i0).slice(0, 3).map((x, j) => ({ ...x, n: j + 1 }));
+    const shown = notes.sort((x, y) => x.rank - y.rank || x.i0 - y.i0).slice(0, 3).map((x, j) => ({ ...x, n: j + 1, layer: NOTE_LAYERS[x.rank] }));
     // the numbers in their places; the waves a fourth on a paddle, where they're known
     const wave = this.dayWaves(d), paddle = Array.from({ length: i1 - i0 + 1 }, (_, j) => i0 + j).some(water);
     const nums = [[degRange(wx.tMin, wx.tMax).replace(' °C', '°'), feel != null ? `feels like ${deg(feel)}` : ''], [`${Math.round(wx.wind)} m/s`, `gusts ${Math.round(wx.gust)}`],
@@ -7865,7 +7875,7 @@ export class Planner {
     return { against: pc('against'), side: pc('side'), behind: pc('behind'), most: pc(top) >= 60 ? words[top] : null, line: `${cap(words[top])} ${pc(top)} %` };
   }
   // The stretches against you between samples i0 and i1, in the route's order, each with its strongest headwind (`max`):
-  // 500 m or more, any on the water; none past the forecast. Wind on the way lists them and the timeline steps through them
+  // 500 m or more, any on the water; none past the forecast. Wind on the way lists them
   headwinds(a, i0, i1) {
     const w = a.wind, water = (i) => (a.attr[i] || {}).mode === 'water' || isWater((a.attr[i] && a.attr[i].sport) || a.activity);
     return runsOf(a, i0, i1, (i) => forecastKnown(w, i) && w.head[i] >= 1.5).filter((r) => r.len >= 500 || water(r.i1))
@@ -7994,6 +8004,10 @@ const LANE_WORDS = {
   thunder: { thunder: 'thunder possible' },
   waves: { under: 'under the craft’s limit', over: 'over it' },
 };
+// the map's weather layer of each kind of the weather card's notes, by its rank, where it has one (the timeline's ‹ › turn
+// it on): thunder; frostbite, slippery, very cold and hot; rough water, gusts, headwinds and the wind on the water; rain
+// or snow falling; snow on the ground
+const NOTE_LAYERS = { 13: 'thunder', 14: 'temp', 21: 'temp', 31: 'temp', 15: 'wind', 22: 'wind', 34: 'wind', 32: 'rain', 33: 'snow' };
 // stretches of a route where pred(i) holds, from sample to sample: [{ i0, i1, len }]
 function runsOf(a, i0, i1, pred) {
   const out = [];

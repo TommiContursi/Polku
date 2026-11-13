@@ -451,14 +451,14 @@ const planner = new Planner(map, {
     if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
   },
   weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
-  // the map's weather at a time of the trip, a layer turned on with it (the weather card's Weather on the map and its lanes);
-  // past the map's 48 hours it says so, and shows nothing that would pass for the trip's weather
+  // the map's weather at a time of the trip, a layer turned on with it (the weather card's Weather on the map, its lanes and
+  // its hours of Rain and Wind): Your trip at that time (weather.showAt()); past the map's 48 hours it says so, and shows
+  // nothing that would pass for the trip's weather
   weatherOn: (sec, layer) => {
-    const k = Math.floor((sec - Math.floor(Date.now() / 3600000) * 3600) / 3600);
-    if (k > 48) { toast('The map’s weather only reaches 48 hours ahead: it can’t show your trip yet'); return; }
+    if (Math.floor((sec - Math.floor(Date.now() / 3600000) * 3600) / 3600) > 48) { toast('The map’s weather only reaches 48 hours ahead: it can’t show your trip yet'); return; }
     if (layer) setWeather({ [layer]: true });
     if (!state.timeline) setTimeline(true);
-    if (k >= 0) weather.setHour(k);
+    weather.showAt(sec);
   },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
@@ -578,11 +578,11 @@ const weather = new WeatherOverlay(map, {
   departure: () => planner.when.start(),
   hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
-  // Your trip on the timeline (#869): the route's analysis and times, its days and the stretches against you on a day, as
-  // the weather card has them; null without a timed route
+  // Your trip on the timeline (#869): the route's analysis and times, its days and a day's notes, as the weather card has
+  // them; null without a timed route
   trip: () => {
     const a = planner.analysis, T = planner.points.length > 1 && planner.trip();
-    return T ? { a, T, days: planner.wxDays(a), against: (d) => planner.headwinds(a, d.i0 + 1, d.i1) } : null; // (from the day's first piece: not the one before its night)
+    return T ? { a, T, days: planner.wxDays(a), notes: (d) => planner.wxNotes(a, d) } : null;
   },
   // the stretch Your trip stepped to, lit on the profile and the route without moving the map; null unlights it, unless
   // something else has been lit since
