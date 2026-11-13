@@ -1988,7 +1988,8 @@ function syncWxH() {
   planner.placeToolsSoon();
   fitColumn();
 }
-new ResizeObserver(syncWxH).observe($('#wx-bar'));
+// (its rows come and go, Your trip's too: a card beside the side panel kept clear of it, as when the window changes size)
+new ResizeObserver(() => { syncWxH(); if (planner.layout() === 'side') planner.keepBeside(); }).observe($('#wx-bar'));
 
 // ------------------------------------------------------------------ GPX / KML import (button + drag & drop)
 async function importFile(file) {
