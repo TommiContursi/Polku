@@ -6,8 +6,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### The weather card and the timeline one tap apart ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
-- A tap on an hour of the weather card's **Rain** or **Wind**, or on one of its lanes, opens the weather timeline zoomed to your trip at that time, with the map's matching weather on. **Weather on the map** opens your trip too. An hour outside your trip opens the whole 48 hours at that hour.
-- On a desktop the weather card stays open beside the map. On a phone it folds to a banner, and **Back** on the banner, or **Weather card ›** in the timeline, brings it back as it was. **48 hours** goes back to the whole timeline.
+- A tap on an hour of the weather card's **Rain** or **Wind**, or on one of its lanes, opens the weather timeline zoomed to your trip at that time, with the map's matching weather on. **Weather on the map** opens your trip too. An hour outside your trip opens the whole 48 hours at that hour, and one already past shows now.
+- On a desktop the weather card stays open beside the map, above the timeline and where you had scrolled it, also as the timeline gets taller. On a phone it folds to a banner, and **Back** on the banner, or **Weather card ›** in the timeline, brings it back with its hours and sections as they were. **48 hours** goes back to the whole timeline.
 - Zoomed to your trip, **‹ ›** step through the weather card's notes for the day, worst first, in their own words: thunder, heavy rain, gusts, a headwind over your sport's limit, the dark and the rest. Each puts the time where it happens, turns the map's weather that shows it on, such as **Thunder** or **Rain**, and lights its place on the route. They replace stepping from one headwind to the next, and have a line of their own over **48 hours · Your trip** on a desktop too.
 - While the forecast loads, fails or stops short of your trip, the timeline's notes say so. The dark is there without a forecast, as in the weather card.
 
@@ -23,7 +23,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - With a route that has times, the weather timeline has **48 hours · Your trip** under its slider. **Your trip** zooms the strip and the slider to your trip's day, an hour either side, so you can set the time by the 5 minutes.
 - Zoomed to your trip, the timeline reads the weather where you'll be at that time, from the same forecast as the weather card: the reading and the time say where you are on the route, the reading says whether the wind there is a headwind, a crosswind or a tailwind, and a dot on the route shows the place.
-- A band under the strip's hours shows the wind on the way in the route's wind colours: headwind, crosswind, tailwind or calm. **‹ Headwind 1 of 3 ›** steps from one headwind stretch to the next, lighting it on the route.
+- A band under the strip's hours shows the wind on the way in the route's wind colours: headwind, crosswind, tailwind or calm.
 - A trip with nights goes a day at a time, with a chip for each day. A trip that starts past the map's 48 hours can't be zoomed to yet: **Your trip** is grey, and the timeline says from when you can.
 - While the forecast loads, or if it fails or stops short of your trip, the timeline says so instead of showing an empty band.
 - **Weather card ›** beside the switch opens the weather card. In the weather card's **Wind on the way**, a trip with no long headwind says **No long headwinds**.

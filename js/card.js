@@ -472,7 +472,7 @@ export class CardHost {
       document.body.append(el);
     }
     const el = this.popup.besideEl;
-    el.replaceChildren(box);
+    if (el.firstChild !== box) el.replaceChildren(box); // (put in again, it would scroll to its top: re-placed as the window or the timeline changes)
     if (rect) {
       el.style.left = `${Math.round(rect.right + 8)}px`;
       // above the timeline where it's open under the card (a desktop's) and the toolbar at the map's foot (#468),

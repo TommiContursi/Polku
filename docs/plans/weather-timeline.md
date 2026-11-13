@@ -159,8 +159,9 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
 - **PR 3, the weather card and the timeline one tap apart** (2026-11-13): as listed, with ‹ › through the card's notes
   as the user chose. Decisions made in building: the card's hours of Rain and Wind, its lanes and Weather on the map all
   open Your trip at their time (the timeline's `showAt()`), and an hour outside the trip (the strip's hours before you
-  leave) the 48 hours at that hour, so the map always shows the hour tapped; on a phone the timeline's Weather card ›
-  unfolds the card as it was (its strip and sections), as its banner's Back does. ‹ › go through the notes in the card's
+  leave) the 48 hours at that hour, so the map shows the hour tapped (one already past: now); on a phone the timeline's
+  Weather card › unfolds the card with its hours and sections as they were, as its banner's Back does; on a desktop the card
+  beside the planner is placed again clear of the timeline as Your trip makes it taller, keeping its scroll. ‹ › go through the notes in the card's
   order (worst first, as numbered), each in its own words with "1 of 3" under it, at the minute you reach it, with the
   map's layer that shows it turned on: thunder; rain or snow falling (Rain); snow on the ground (Snow depth); gusts,
   headwinds, the wind on the water and rough water (Wind); frostbite, very cold, hot and slippery (Temperature); the

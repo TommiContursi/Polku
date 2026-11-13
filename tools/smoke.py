@@ -13188,6 +13188,7 @@ TL_CARD_STATE = """(() => {
   const w = polku.weather, p = polku.planner, c = p.cards.current;
   return { span: w.span, t: Math.round(w.hour * 3600 + Math.floor(Date.now() / 3600e3) * 3600), on: { ...polku.state.weather }, folded: !!p.cards.folded, card: c?.kind || null,
     same: c === window.__card, rainOpen: p.cards.box?.querySelector('[data-sec=rain] .wx-sec-h')?.getAttribute('aria-expanded') || null, place: p.cards.place,
+    scroll: p.cards.folded || !p.cards.box ? null : [Math.round(p.cards.box.scrollTop), Math.round(p.cards.box.querySelector('.wx-hs-x')?.scrollLeft ?? -1)],
     clear: (() => { const e = document.querySelector('.card-beside'), b = document.querySelector('#wx-bar'); if (!e || b.hidden) return null; const r = e.getBoundingClientRect(), q = b.getBoundingClientRect();
       return r.right <= q.left || r.left >= q.right || r.bottom <= q.top + 1; })() };
 })()"""
@@ -13251,15 +13252,17 @@ def timeline_trip(chrome):
             else:
                 time.sleep(0.4)
                 col = pg.js(TL_CARD_AT + "('[data-sec=rain] .wx-sec-cols [data-h=\"$j\"]')")
+                was = cs()['scroll']
                 press(col[0], col[1])
                 x = cs()
-                if x['span'] != 'trip' or x['t'] != col[2] or not x['on']['rain'] or x['folded'] != (place != 'float') or x['card'] != 'weather' or x['clear'] is False:
-                    bad(f'the card\'s Rain pressed at {col[2]} (the card {place}): {x}')
-                # Weather card › in the trip's row: the card again, as it was where it folded (the same card, Rain open)
+                kept = place != 'float' or (x['scroll'] and all(abs(a - b) <= 2 for a, b in zip(x['scroll'], was)))  # (beside the map: where it was scrolled, its hours too)
+                if x['span'] != 'trip' or x['t'] != col[2] or not x['on']['rain'] or x['folded'] != (place != 'float') or x['card'] != 'weather' or x['clear'] is False or not kept:
+                    bad(f'the card\'s Rain pressed at {col[2]} (the card {place}, scrolled {was}): {x}')
+                # Weather card › in the trip's row: the card again where it folded (the same card, Rain open, its hours as they were)
                 press(*pg.js("(() => { const r = document.querySelector('#wx-bar .tl-card').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
                 y = cs()
-                if y['card'] != 'weather' or y['folded'] or (place != 'float' and (not y['same'] or y['rainOpen'] != 'true')):
-                    bad(f'Weather card › after the card folded: {y}')
+                if y['card'] != 'weather' or y['folded'] or (place != 'float' and (not y['same'] or y['rainOpen'] != 'true' or not y['scroll'] or abs(y['scroll'][1] - was[1]) > 2)):
+                    bad(f'Weather card › after the card folded (its hours were at {was[1]}): {y}')
                 # the Thunder lane under The whole trip: Your trip where the thunder starts, Thunder on
                 press(*pg.js(TL_CARD_AT + "('[data-k=trip]')")[:2])
                 lane = pg.js(TL_CARD_AT + "('[data-k=lane-thunder]')")
