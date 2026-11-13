@@ -121,7 +121,10 @@ Four PRs in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16
 3. **The weather card and the timeline, one tap apart** (line 5): the card's hours of Rain and Wind and its lanes open
    the timeline on your trip at that hour with that layer on (on a phone the card folds to its banner with Back, as
    today); Weather card › and 48 hours. The separate bar for a lane's tap is dropped, and CONTEXT.md's Weather line with
-   it.
+   it. **Chosen by the user, 2026-11-13, after trying PR 2:** the trip's ‹ › step through the weather card's notes for
+   the day (up to three, worst first: thunder, heavy rain, the dark, gusts, a headwind over the sport's limit…, in
+   their own words), each opening the timeline at its hour with its layer on, in place of PR 2's headwinds alone
+   (line 4 asked for the wind only). Its words follow AGENTS.md's "Writing" rule, read aloud where they sit.
 4. **Room for your trip on a phone** (line 6): the planner folds to its line while the timeline shows your trip, and
    comes back as it was on 48 hours or ✕; the reading on one line over a full-width strip there; checked at 360 px and
    200 %.
@@ -137,6 +140,22 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
   is the screen's. The skeleton fades in after 300 ms and breathes, as the cards' does (`pick-skel`). Found in testing
   (2026-11-13): the sideways row is also a narrow desktop window's, where a mouse couldn't move it, so a mouse has the
   hour strip's arrows at its edges and a drag there (a screen size isn't a device).
+- **PR 2, the timeline zoomed to your trip** (2026-11-13): as listed, on `main`'s timeline. Decisions made in building:
+  ‹ › step through the weather card's Wind on the way stretches (against you, 500 m or more; the Wind lane's count is
+  only those over the sport's limit, so the two can differ), in the route's order, the hour to when you reach each one, to
+  the minute (a stretch can be shorter than the slider's 5 minutes); the strip and the reading in Your trip are the route's own forecast (the weather card's), not the map's grid,
+  so a missing route forecast says so there while the map's layers still show; a stretch is lit on the route without
+  moving the map; the window starts at Now when you leave within the hour; a day that runs past the map's 48 hours is
+  zoomed to as far as they reach, and the row says where they end; the trip's lines wrap upwards, so the switch stays
+  under the finger when the stepper comes (#594's stillness), on a phone too; your dot has the route's hover dot's look.
+  Found in testing (2026-11-13): on a desktop with the planner beside it, a smaller window made the timeline narrow, the
+  layer buttons wrapped onto two or three rows and the trip row's Weather card › jumped over the switch. The buttons now
+  stay on one row everywhere, scrolling sideways with the arrows where they don't fit (PR 1's wrapping is gone), the trip
+  row follows the timeline's own width (a container query), and a dragged timeline keeps clear of the side panel. A
+  timeline too narrow at a 900 px window beside the panel (296 px) is the app's, in its own issue.
+  The words (the user's choice, 2026-11-13): the wind's way in Colour by's words, headwind, crosswind, tailwind and
+  calm, in the reading, the band's key and the stepper (**‹ Headwind 1 of 3 ›**, "No long headwinds", in the weather
+  card's Wind on the way too), in place of the mock-up's "against you", which said nothing of the wind on its own.
 
 ## What stays as it is
 

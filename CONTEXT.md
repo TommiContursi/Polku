@@ -128,7 +128,11 @@ The trip's weather: where you'll be, at the time you're there.
 _Avoid_: weather window
 
 **Weather timeline**:
-The map's weather hour by hour, not tied to the route.
+The map's weather hour by hour over 48 hours, at the map's centre; or, with a route that has times, zoomed to your trip.
+
+**Your trip**:
+The weather timeline zoomed to the trip's day and an hour either side, by the 5 minutes, read where you'll be at each time.
+_Avoid_: trip view, zoom
 
 **Weather at places**:
 The sky, the temperature and the wind at the places the map names, a layer of the weather timeline.

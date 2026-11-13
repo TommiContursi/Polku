@@ -445,7 +445,7 @@ const planner = new Planner(map, {
   lipasRide: (props, click = null) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   setData,
   onAnalysis: () => {
-    weather.renderTime(); weather.renderStrip();
+    weather.renderTrip(); // (the timeline's trip row and Your trip follow the route's times and forecast)
     // All layers open as a route comes or goes: its Your route group with it (#424's C)
     const has = planner.points.length > 1;
     if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
@@ -557,6 +557,7 @@ initSearch(map, $('#search-input'), $('#search-results'), {
 
 // Weather overlay: image sources are swapped in place when possible; adding or
 // removing one goes through a (diffed) style rebuild.
+let tripLit = null;
 const weather = new WeatherOverlay(map, {
   setData,
   setImage(id, img) {
@@ -577,6 +578,20 @@ const weather = new WeatherOverlay(map, {
   departure: () => planner.when.start(),
   hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
+  // Your trip on the timeline (#869): the route's analysis and times, its days and the stretches against you on a day, as
+  // the weather card has them; null without a timed route
+  trip: () => {
+    const a = planner.analysis, T = planner.points.length > 1 && planner.trip();
+    return T ? { a, T, days: planner.wxDays(a), against: (d) => planner.headwinds(a, d.i0 + 1, d.i1) } : null; // (from the day's first piece: not the one before its night)
+  },
+  // the stretch Your trip stepped to, lit on the profile and the route without moving the map; null unlights it, unless
+  // something else has been lit since
+  light: (r) => {
+    if (r) { planner.focusRange(r[0], r[1], null, { frame: false }); tripLit = planner.focusHl; return; }
+    if (tripLit && planner.focusHl === tripLit) planner.unfocusRange();
+    tripLit = null;
+  },
+  openWeather: (day) => planner.openWeather({ day }),
   onToggle: (patch) => setWeather(patch),
   onClose: () => setTimeline(false),
   onTime: (hr) => {
@@ -669,6 +684,7 @@ function syncPlannerPadding() {
   const r = sheet.getBoundingClientRect();
   document.documentElement.style.setProperty('--pl-left', `${side ? r.right : 0}px`);
   document.documentElement.style.setProperty('--pl-mid', `${side ? r.top + r.height / 2 : 0}px`); // (its resize grip, beside it)
+  weather.placeFloat(); // (a timeline placed by hand stays clear of the side panel)
   placePanels();
   if (quickOpen()) placeQuick();
   syncWxH(); // (and the map's column)

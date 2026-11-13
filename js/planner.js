@@ -7853,13 +7853,18 @@ export class Planner {
     const words = { against: 'against you', side: 'from the side', behind: 'behind you' };
     return { against: pc('against'), side: pc('side'), behind: pc('behind'), most: pc(top) >= 60 ? words[top] : null, line: `${cap(words[top])} ${pc(top)} %` };
   }
+  // The stretches against you between samples i0 and i1, in the route's order, each with its strongest headwind (`max`):
+  // 500 m or more, any on the water; none past the forecast. Wind on the way lists them and the timeline steps through them
+  headwinds(a, i0, i1) {
+    const w = a.wind, water = (i) => (a.attr[i] || {}).mode === 'water' || isWater((a.attr[i] && a.attr[i].sport) || a.activity);
+    return runsOf(a, i0, i1, (i) => forecastKnown(w, i) && w.head[i] >= 1.5).filter((r) => r.len >= 500 || water(r.i1))
+      .map((r) => ({ ...r, max: Math.max(...Array.from({ length: r.i1 - r.i0 }, (_, j) => w.head[r.i0 + 1 + j])) }));
+  }
   // Wind on the way, opened: one stacked bar with its key on one line, then every stretch against you, strongest first, each
   // framing it on the map; the strongest gusts; and the wind on the map
   wxWindOpen(a) {
     const w = a.wind, T = tripTimes(a), n = a.along.length, sh = this.windShares(a, 0, n - 1), d = { from: 0, to: a.total };
-    const water = (i) => (a.attr[i] || {}).mode === 'water' || isWater((a.attr[i] && a.attr[i].sport) || a.activity);
-    const head = runsOf(a, 1, n - 1, (i) => forecastKnown(w, i) && w.head[i] >= 1.5).filter((r) => r.len >= 500 || water(r.i1))
-      .map((r) => ({ ...r, max: Math.max(...Array.from({ length: r.i1 - r.i0 }, (_, j) => w.head[r.i0 + 1 + j])) })).sort((x, y) => y.max - x.max);
+    const head = this.headwinds(a, 1, n - 1).sort((x, y) => y.max - x.max);
     let gi = 1;
     for (let i = 1; i < n; i++) if (forecastKnown(w, i) && w.gust[i] > w.gust[gi]) gi = i;
     const pv = this.wxPreview(a, d, null), km = (i) => Math.max(1, Math.round(a.along[i] / 1000)); // (on the map: a stretch's km are the trip's, not one day's line)
@@ -7867,7 +7872,7 @@ export class Planner {
     return h('div', { class: 'wx-open' },
       h('div', { class: 'wx-stack', role: 'img', 'aria-label': PARTS.map(([k, , t]) => `${t} ${sh[k]} %`).join(', ') }, ...PARTS.map(([k, c]) => h('i', { style: `width: ${sh[k]}%; background: var(${c})` }))),
       h('p', { class: 'wx-key', 'aria-hidden': 'true' }, ...PARTS.map(([k, c, t]) => h('span', { style: `--k: var(${c})` }, `${t} ${sh[k]} %`))),
-      h('p', { class: 'wx-foot' }, head.length ? 'Where it’s against you, strongest first' : 'Nowhere against you for long.'),
+      h('p', { class: 'wx-foot' }, head.length ? 'Where it’s against you, strongest first' : 'No long headwinds.'),
       rows(...head.map((r) => pv(h('button', { type: 'button', class: 'row', 'data-k': 'headwind', onclick: () => this.focusRange(r.i0, r.i1, null) },
         h('span', {}, h('b', {}, `km ${km(r.i0)} to ${km(r.i1)} · up to ${Math.round(r.max)} m/s`), h('small', {}, `around ${this.clockOf(Math.round(T.at(r.i0) / 600) * 600)} to ${this.clockOf(Math.round(T.at(r.i1) / 600) * 600)}`)),
         h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })), r.i0, r.i1))),

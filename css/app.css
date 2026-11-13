@@ -412,8 +412,14 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-close, .tl-more { width: 28px; height: 28px; }
 .tl-more { margin-left: auto; }
 /* the weather layers, a chip each (#869), any of them at once: off, a hairline; on, the chosen chip's green and 2 px
-   border, 1 px of padding less so it keeps its width; a desktop's on a row of their own, wrapping in a narrow window */
-.tl-layers { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 0 8px 8px; }
+   border, 1 px of padding less so it keeps its width; one row (a desktop's of its own under the title bar), scrolling
+   sideways where the timeline is too narrow for all six, a desktop's too, and fading at the edge where there's more; the
+   padding is room for the focus ring and a finger's 44 px inside the scroller */
+.tl-layers { display: flex; gap: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; padding: 4px 4px 4px 8px; margin: -4px 0 4px; }
+.tl-layers::-webkit-scrollbar { display: none; }
+.tl-layers.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+.tl-layers.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
+.tl-layers.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
 .tl-layers .chip { flex: none; position: relative; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px 0 8px; font-size: 13px; color: var(--text); white-space: nowrap; -webkit-user-select: none; user-select: none; } /* (a finger held on one while the row scrolls selects no words) */
 .tl-layers .chip[aria-pressed="true"] { padding: 0 9px 0 7px; }
 .tl-layers .chip .ic { color: var(--muted); }
@@ -444,6 +450,33 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-now .tl-arrow { width: 12px; height: 12px; fill: currentColor; flex: none; }
 .tl-now div .ic { flex: none; }
 .tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
+/* the trip's row under the slider while the route has times (#869): 48 hours · Your trip, and Weather card › on its last
+   line (wrap-reverse: lines that come go above it, so the switch stays under the finger, the timeline growing from its
+   foot); in Your trip ‹ the stretches against you › between them, and a trip of days' chips on a line over it */
+.tl-trip { display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 6px 8px; padding: 6px 0 0 42px; }
+.tl-trip .wx-days { flex-basis: 100%; flex-wrap: nowrap; gap: 6px; margin: 0; }
+.tl-step { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; }
+.tl-step > span { flex: 1; min-width: 0; display: grid; text-align: center; font-size: 12.5px; line-height: 1.25; }
+.tl-step b { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-step small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-card { margin-left: auto; white-space: nowrap; }
+.tl-why { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--muted); }
+/* a narrow timeline (a phone's, or a desktop's beside the side panel): the switch and Weather card › at the foot, the
+   headwinds and the day's chips each a line over them. By the timeline's own width, not the window's */
+.wx-bar { container: wxbar / inline-size; }
+@container wxbar (max-width: 560px) {
+  .tl-trip { padding-left: 0; }
+  .tl-trip > .seg { order: -2; }
+  .tl-trip > .tl-card { order: -1; }
+  .tl-trip > .tl-step { flex-basis: 100%; }
+}
+.tl-now div:not(.tl-now-main) b { font-weight: 650; } /* (the wind against you, in Your trip's reading) */
+.tl-note .wx-key, .wx-legend .wx-key { margin: 0; font-size: inherit; gap: 0 10px; }
+.tl-note .wx-key { display: inline-flex; margin-left: 4px; }
+.wx-legend .wx-key { margin-top: 2px; }
+/* your dot on the route in Your trip: where you'll be at the timeline's hour, as the route's own hover dot */
+.wx-you { width: 14px; height: 14px; border-radius: 50%; background: #111827; box-shadow: 0 0 0 3px #fff; pointer-events: none; }
+@media (pointer: coarse) { .tl-card { min-height: 44px; } .tl-step .tool { width: 44px; height: 44px; } } /* (a finger's 44 px, #235) */
 /* docked in the planner while planning: a plain section, no second panel */
 .wx-bar.docked { position: static; transform: none; width: auto; padding: 0 0 4px; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0; transition: none; }
 .wx-bar.docked .tl-title, .wx-bar.docked .tl-close, .wx-bar.docked .tl-grip { display: none; }
@@ -2371,11 +2404,7 @@ body.dropping .drop-hint { display: flex; }
      padding is room for the focus ring and a finger's 44 px inside the scroller */
   .tl-head { gap: 6px; }
   .tl-head .tl-lwrap { flex: 1; }
-  .tl-head .tl-layers { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; padding: 4px; margin: -4px 0 -4px -4px; }
-  .tl-layers::-webkit-scrollbar { display: none; }
-  .tl-layers.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
-  .tl-layers.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
-  .tl-layers.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+  .tl-head .tl-layers { padding: 4px; margin: -4px 0 -4px -4px; }
   /* the strip from Play's column (a phone's tool is 30 px) to the reading's, as the slider is from Play to the time: the
      knob under the needle */
   .tl-strip { height: 56px; margin-left: 38px; }
