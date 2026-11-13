@@ -1353,7 +1353,7 @@ export class WeatherOverlay {
     const [b, sm] = !w ? [`The wind on your way: ${a.windError ? 'no forecast' : 'loading'}`, '']
       : !forecastKnown(w, z.d.i0) ? ['The wind on your way: no forecast yet', '']
         : !n ? ['Nowhere against you for long', short.slice(3)]
-          : at ? [`Against you, ${this.stepAt + 1} of ${n}`, `km ${km(at.i0)} to ${km(at.i1)} · up to ${Math.round(at.max)} m/s`]
+          : at ? [`Against you, ${this.stepAt + 1} of ${n}`, `km ${km(at.i0)}${km(at.i1) > km(at.i0) ? ` to ${km(at.i1)}` : ''} · up to ${Math.round(at.max)} m/s`]
             : [`Against you on ${n} stretch${n > 1 ? 'es' : ''}`, `up to ${Math.round(Math.max(...list.map((r) => r.max)))} m/s${short}`];
     if (this.stepWords.dataset.said !== b + sm) {
       this.stepWords.dataset.said = b + sm;
