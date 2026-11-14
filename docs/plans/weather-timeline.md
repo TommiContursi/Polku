@@ -19,6 +19,8 @@ the user says so. `main`'s look stays.
 - Starting a trip from scratch: the ways to begin, and a searched place's card with Start a route here and Add to my
   route (#871, `spotActs()` in `js/cards.js`).
 - When you leave: Leave now and Leave at…, a row on the first screen and the trip box's pill (#878, #969, `js/when.js`).
+- Arrive by, When's third item (#219, 2026-11-14): the departure worked out with the wind, the last morning on a trip
+  with nights, a round trip's How long by Time.
 - Multisport: each part's heading opens its sport, speed and route style (#848), and a waypoint's card has Sport from
   here.
 - The profile in the peek (#742, #889).
@@ -47,7 +49,7 @@ Frames 9 to 11 on the [design canvas](https://claude.ai/artifact/WD6i6g3rustC7TK
 
 **To do, the rest of the planner (from #869, not started in the code; the order in
 [planner-rethought.md](planner-rethought.md)'s PRs, the user's to set):**
-- Arrive by, When's third item (#219).
+- Best time to leave, from the weather (#273, #856): next, after Arrive by (the user's order of 2026-11-14).
 - A clear home for On the route: the profile card, with On the route as Colour by's list (#796, #758). Today it is a
   section of Check.
 - The tabs go: the warnings' box in the numbers opens the Check card. Today Route and Check are tabs.
@@ -66,7 +68,7 @@ Frames 9 to 11 on the [design canvas](https://claude.ai/artifact/WD6i6g3rustC7TK
   3 h 10 min"), its times under it ("Fri 13:00 → 16:10"), a hairline, then a row a day with the sky and ›.
 
 **Later, each its own issue:**
-- Best time to leave, from the weather (#273, #856), and later transport (#857).
+- Best time to leave with transport (#857).
 - What is still open of #431 and #794: a temperature lane on the weather card, and the trip box's When hidden while the
   card is open beside it on a desktop. (#794's sun times are #914's; #431's first idea, the timeline as a card in the
   peek, is this plan's line 6.)
