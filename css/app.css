@@ -2653,7 +2653,7 @@ body.dropping .drop-hint { display: flex; }
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
 /* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
-@media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } }
+@media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } body.planning.wx-over.wx-low .wx-bar { top: auto; bottom: 8px; } } /* (nor under its header, a phone turned sideways: over it at the window's foot, #1019) */
 .pl-tools.desk.docked { position: static; height: 56px; flex-wrap: nowrap; margin: 0 8px 0 10px; padding: 0 0 4px; border-radius: 0; border-bottom: 1px solid var(--line); box-shadow: none; background: none; }
 .pl-tools.desk .tbtn { width: 40px; height: 40px; }
 /* desktops: the drawing mode, a value you pick (#869, Mode ▾): the sport button's look, as wide as the longest mode's

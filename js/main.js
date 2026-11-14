@@ -562,7 +562,7 @@ initSearch(map, $('#search-input'), $('#search-results'), {
 // Weather overlay: image sources are swapped in place when possible; adding or
 // removing one goes through a (diffed) style rebuild.
 let tripLit = null, tripFold = null; // (what Your trip folded in a phone's sheet: tripInSheet())
-let wxFoot = true, wxPinned = -1; // (a phone's timeline held to its room, scrolled to its foot, where it stays as it grows: syncWxH())
+let wxSeenH = 0; // (the timeline's height as syncWxH() last saw it: at its foot then, it stays at its foot as it grows)
 // what's in the sheet: a card open at its peek, else the planner
 const tripInSheet = () => (planner.cards.place === 'peek' ? planner.cards.current : 'planner');
 const weather = new WeatherOverlay(map, {
@@ -2006,23 +2006,25 @@ function syncWxH() {
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
   // desktops: a bottom panel raised too high for it above (unless you've placed it yourself)
   const deskOver = shown && !phone && planner.active && planner.layout() === 'sheet' && !b.classList.contains('placed')
-    && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < top;
+    && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.scrollHeight < top; // (its whole height: not the room it's held to, below)
   const sheet = !planner.panel.hidden && !planner.panel.classList.contains('leaving'); // (the planner, or a card's sheet with it put away: #572)
   // (a peek with no room above it too, 200 %: by the timeline's whole height, which its place doesn't change, #590)
   const over = deskOver || (open && sheet && (st === 'half' || st === 'full' || (st !== 'folded' && innerHeight - css('--sheet-h') - 16 - b.scrollHeight < top)));
   document.body.classList.toggle('wx-over', over);
-  // …and where the sheet's header leaves no room under it either (200 %), over the sheet at the window's foot
-  const low = over && phone && css('--sheet-h') - css('--sheet-head') < b.scrollHeight;
+  // …and where the sheet's header leaves no room under it either (200 %, a phone turned sideways), over the sheet at the window's foot
+  const low = over && css('--sheet-h') - css('--sheet-head') < b.scrollHeight;
   document.body.classList.toggle('wx-low', low);
-  // a phone's timeline no taller than its room, scrolling inside where nothing gives it more (Your trip at 200 %, #590): its
-  // foot in sight, so the switch stays under the finger as it grows from there, its head a scroll up
-  const cs = getComputedStyle(b), room = open ? Math.floor(over && !low ? innerHeight - 8 - parseFloat(cs.top) : innerHeight - parseFloat(cs.bottom) - top) : 0;
-  const capped = open && b.scrollHeight > room;
-  const fresh = capped && !b.style.maxHeight;
+  // no taller than its room, scrolling inside where nothing gives it more (Your trip at 200 %, #590; a phone turned sideways,
+  // #1019), unless you've placed it: its foot in sight, so the switch stays under the finger as it grows from there, its
+  // head a scroll up
+  const free = shown && !b.classList.contains('placed');
+  const cs = getComputedStyle(b), room = free ? Math.floor(over && !low ? innerHeight - 8 - parseFloat(cs.top) : innerHeight - parseFloat(cs.bottom) - top) : 0;
+  const capped = free && b.scrollHeight > room;
+  const fresh = capped && !b.style.maxHeight, foot = b.scrollTop + b.clientHeight >= wxSeenH - 2;
   b.style.maxHeight = capped ? `${room}px` : '';
   b.style.overflowY = capped ? 'auto' : '';
-  if (capped && (fresh || wxFoot)) { b.scrollTop = b.scrollHeight; wxPinned = b.scrollTop; wxFoot = true; } // (not when you've scrolled up to its head)
-  if (!capped) wxFoot = true;
+  if (capped && (fresh || foot)) b.scrollTop = b.scrollHeight; // (not when you've scrolled up to its head)
+  wxSeenH = b.scrollHeight;
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
   document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
@@ -2033,8 +2035,6 @@ function syncWxH() {
 }
 // (its rows come and go, Your trip's too: a card beside the side panel kept clear of it, as when the window changes size;
 // its rows watched too, which change no size of its own where it's held to its room)
-// (scrolled by you; the scroll it was put to itself comes after its rows have grown, and isn't yours)
-$('#wx-bar').addEventListener('scroll', (e) => { if (e.target.scrollTop !== wxPinned) wxFoot = e.target.scrollTop + e.target.clientHeight >= e.target.scrollHeight - 2; });
 const wxRows = new ResizeObserver(() => { syncWxH(); if (planner.layout() === 'side') planner.keepBeside(); });
 [$('#wx-bar'), ...$('#wx-bar').children].forEach((el) => wxRows.observe(el));
 

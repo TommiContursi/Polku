@@ -4146,7 +4146,8 @@ def warnfix(chrome):
         pg.close()
     # (#440) the Avoided place menu, opened by a tap on its circle: whole on the screen less 8 px each side at 200 % (a 390
     # phone's 195 × 422) and on the phone itself, where Stop avoiding is in reach and works
-    for w, h_ in ((195, 422), (390, 844)):
+    # (sizes, the planner's sizes there, None for a side panel as it is, and whether Your trip is checked)
+    for w, h_, sizes, trip in ((195, 422, ['peek', 'half', 'full'], True), (390, 844, ['peek'], False), (844, 390, ['peek'], True), (932, 430, [None], True)):
         pg = chrome.page(w, h_, True)
         try:
             pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
@@ -13289,7 +13290,8 @@ TL_ROOM = """(() => {
 # window's foot at the planner's peek, half and full, ✕ at its top: on the sheet under its header where there's no room
 # above it (whole at the peek; held to its room above a raised sheet), and not flipping between the two over a few frames; in Your trip, with the planner folded and no room for all of
 # it anywhere, it's held to its room and scrolls inside, 48 hours in sight at its foot and ✕ a scroll up. At 390 × 844
-# its peek is as before, over the map and whole.
+# its peek is as before, over the map and whole. On a phone turned sideways (#1019: 844 × 390, the planner at the foot; 932 ×
+# 430, beside the map), on 48 hours and in Your trip, the same: between the top bar and the window's foot.
 TL_ZOOM = """(async () => {
   const b = document.querySelector('#wx-bar'), r = b.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom, seen = [];
   for (let k = 0; k < 6; k++) { seen.push(document.body.classList.contains('wx-over')); await new Promise((ok) => requestAnimationFrame(ok)); }
@@ -13303,7 +13305,8 @@ TL_ZOOM = """(async () => {
 
 def timeline_zoom(chrome):
     fails = []
-    for w, h_ in ((195, 422), (390, 844)):
+    # (sizes, the planner's sizes there, None for a side panel as it is, and whether Your trip is checked)
+    for w, h_, sizes, trip in ((195, 422, ['peek', 'half', 'full'], True), (390, 844, ['peek'], False), (844, 390, ['peek'], True), (932, 430, [None], True)):
         pg = chrome.page(w, h_, True)
         bad = lambda what: fails.append(f'{w}x{h_}: {what}')
         try:
@@ -13312,17 +13315,18 @@ def timeline_zoom(chrome):
             if not pg.js(TL_TRIP_SETUP, timeout=40000):
                 bad('no timed route')
                 continue
-            for st in (['peek', 'half', 'full'] if w < 300 else ['peek']):
-                pg.js(f"polku.planner.setSheetState('{st}'); true")
+            for st in sizes:
+                if st:
+                    pg.js(f"polku.planner.setSheetState('{st}'); true")
                 pg.js(SETTLED)
                 z = pg.js(TL_ZOOM)
-                if z['top'] < z['bar'] or z['bottom'] > z['vh'] or len(set(z['over'])) > 1 or not z['x'] or (st == 'peek' and z['scrolls']):
-                    bad(f"the planner at its {st}: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), on the sheet {z['over']}, ✕ at its top {z['x']}, scrolling {z['scrolls']}")
-            if w < 300:
-                pg.js("polku.planner.setSheetState('peek'); polku.weather.setSpan('trip'); true")
+                if z['top'] < z['bar'] or z['bottom'] > z['vh'] or len(set(z['over'])) > 1 or not z['x'] or (st == 'peek' and w < 400 and z['scrolls']):
+                    bad(f"the planner {f'at its {st}' if st else 'beside the map'}: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), on the sheet {z['over']}, ✕ at its top {z['x']}, scrolling {z['scrolls']}")
+            if trip:
+                pg.js(("polku.planner.setSheetState('peek'); " if sizes[0] else '') + "polku.weather.setSpan('trip'); true")
                 pg.js(SETTLED)
                 z = pg.js(TL_ZOOM)
-                if not z['trip'] or z['sheet'] != 'folded' or z['top'] < z['bar'] or z['bottom'] > z['vh'] or not z['x'] or not z['sw'] or len(set(z['over'])) > 1:
+                if not z['trip'] or (w < 721 and z['sheet'] != 'folded') or z['top'] < z['bar'] or z['bottom'] > z['vh'] or not z['x'] or not z['sw'] or len(set(z['over'])) > 1:
                     bad(f"Your trip: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), the planner {z['sheet']}, ✕ a scroll up {z['x']}, scrolling {z['scrolls']}, 48 hours in sight at its foot {z['sw']}")
                 # scrolled up to its head, it stays there as it grows (Snow depth's fourth line)
                 up = pg.js("(async () => { const b = document.querySelector('#wx-bar'), snow = b.querySelector('.tl-layers [data-k=snow]'), wait = (ms) => new Promise((r) => setTimeout(r, ms)); b.scrollTop = 0; await wait(200); snow.click(); await wait(800); const t = b.scrollTop; snow.click(); await wait(300); return t; })()")
@@ -13331,7 +13335,7 @@ def timeline_zoom(chrome):
             fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the timeline at 200 % on a phone (#590): between the top bar and the window's foot at every sheet size and in Your trip" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline at 200 % on a phone (#590) and on a phone turned sideways (#1019): between the top bar and the window's foot at every sheet size and in Your trip" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
