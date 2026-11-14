@@ -4670,6 +4670,11 @@ def fit_phone(chrome):
             fails += pg.js("fitT.importCard(['peek', 'half', 'full'])", timeout=90000)
             tap(pg, pg.js('fitT.firstTap()'))
             fails += pg.js('fitT.loopFromStart()', timeout=120000)
+            # a loop's card counts its items in Check's words: warnings, and what's good to know (#993)
+            said = pg.js("(() => { const r = polku.planner.loop.results[0]; if (!r) return 'no loop'; const keep = [r.a.warnings, r.a.trailWarn]; r.a.warnings = [{ tier: 'read' }, { tier: 'look' }]; r.a.trailWarn = [{ tier: 'look' }];"
+                         " try { return polku.planner.loopCards('mtb').querySelector('.loop-card-line.muted').textContent; } finally { [r.a.warnings, r.a.trailWarn] = keep; } })()")
+            if not re.search(r'(^| · )1 warning · 2 good to know( · |$)', said or ''):
+                fails.append(f"a loop with a warning and two items good to know says “{said}” (#993)")
             s = pg.js('fitT.loopSpot()')
             if s:
                 tap(pg, s)
