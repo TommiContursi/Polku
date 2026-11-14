@@ -176,7 +176,7 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
   Decisions made in building: the room is the timeline's at a phone's foot (under 721 px, a narrow window with a mouse
   too), not a phone's; what's in the sheet folds, the planner or a card open at its peek (Weather on the map), and a card
   the weather card's hours or lanes fold to its banner leaves the planner under it to fold, and folded when it closes;
-  it opens again on 48 hours or ✕ only, and stays folded when Your trip is left another way (Weather here, a place's weather, an hour outside the trip: the review of the motion, 2026-11-14); a planner folded already stays folded, and one you open or fold again yourself while you look at your trip stays as you
+  it opens again on 48 hours or ✕ only, and stays folded when Your trip is left another way (Weather here, a place's weather, an hour outside the trip: the review of the motion, 2026-11-14); a planner folded already stays folded, and one you open or fold again yourself while you look at your trip, the planner or that card, stays as you
   have it on 48 hours; the first time, a toast says "The planner folds while you look at your trip, and opens again on 48
   hours" (the plan's proposal, the user's to keep or change). The reading line leaves its km to the time at its end; a
   reading too long for the line goes on to a second, and at 200 % the time takes a line of its own. Your trip's hour

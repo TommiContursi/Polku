@@ -13363,6 +13363,25 @@ def timeline_trip(chrome):
                 press(*mine['tripAt'])
                 if mine['sheet'] != 'folded' or pg.js(TL_ROOM)['sheet'] != 'folded':
                     bad(f'the planner opened and folded again by hand in Your trip, then 48 hours: {mine["sheet"]}; Your trip again: {pg.js(TL_ROOM)["sheet"]}')
+                # the same for a card at its peek (Codex on #1008): the weather card raised to half as a person drags it,
+                # Weather on the map pressed (Your trip, the card folded to its line), the card opened and ⌄ pressed by hand
+                # (by touch to its line, by mouse a size down), then 48 hours: the card stays as you left it
+                press(*pg.js(TL_ROOM)['h48At'])
+                pg.js("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.els.foldGo.click(); await wait(600); p.openWeather({ day: 0 }); await wait(600); p.setSheetState('half'); await wait(600); return true; })()")
+                wmap = pg.js("""(() => { const b = polku.planner.cards.box?.querySelector('[data-k=wx-map]'); if (!b) return null; const box = polku.planner.cards.box; box.scrollTop += b.getBoundingClientRect().top - box.getBoundingClientRect().top - 60;
+                  const r = b.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2; return document.elementFromPoint(x, y)?.closest('button') === b ? [x, y] : null; })()""")
+                if not wmap:
+                    bad('no Weather on the map in sight on the weather card at half')
+                else:
+                    press(*wmap)
+                    c1 = pg.js("({ span: polku.weather.span, sheet: polku.planner.panel.dataset.state, card: polku.planner.cards.current?.kind || null, place: polku.planner.cards.place })")
+                    left = pg.js("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.els.foldGo.click(); await wait(600); p.els.foldBtn.click(); await wait(600); return p.panel.dataset.state; })()")  # (by mouse ⌄ is a size down: half to peek)
+                    press(*pg.js(TL_ROOM)['h48At'])
+                    c2 = pg.js("({ span: polku.weather.span, sheet: polku.planner.panel.dataset.state, card: polku.planner.cards.current?.kind || null, place: polku.planner.cards.place })")
+                    if c1 != {'span': 'trip', 'sheet': 'folded', 'card': 'weather', 'place': 'peek'} or c2 != {'span': '48', 'sheet': left, 'card': 'weather', 'place': 'peek'}:
+                        bad(f'the weather card folded by Your trip, opened and made smaller again by hand ({left}), then 48 hours: {c1}, then {c2}')
+                pg.js("(async () => { polku.planner.cards.close(); await new Promise((r) => setTimeout(r, 600)); return true; })()")
+                press(*pg.js(TL_ROOM)['tripAt'])
             # the turn of the hour (#1004), the page's clock moved on an hour and the route's analysis drawn again: Your
             # trip's time stays the time it was, and with the clock back too; the 48 hours' +3 h stays three hours from now
             turn = pg.js("""(async () => { const w = polku.weather, p = polku.planner, real = Date.now, wait = (ms) => new Promise((r) => setTimeout(r, ms));

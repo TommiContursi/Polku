@@ -557,7 +557,9 @@ initSearch(map, $('#search-input'), $('#search-results'), {
 
 // Weather overlay: image sources are swapped in place when possible; adding or
 // removing one goes through a (diffed) style rebuild.
-let tripLit = null, tripFold = false;
+let tripLit = null, tripFold = null; // (what Your trip folded in a phone's sheet: tripInSheet())
+// what's in the sheet: a card open at its peek, else the planner
+const tripInSheet = () => (planner.cards.place === 'peek' ? planner.cards.current : 'planner');
 const weather = new WeatherOverlay(map, {
   setData,
   setImage(id, img) {
@@ -594,16 +596,18 @@ const weather = new WeatherOverlay(map, {
   // a phone's Your trip takes the room of the planner's peek (#869): what's in the sheet (the planner, or a card at its
   // peek) folds to its line while the timeline shows your trip, said in words the first time, and opens as it was on 48
   // hours or ✕ (`back`); left another way (Weather here, a place's weather, an hour outside the trip, the route changed)
-  // it stays folded, yours from then on. One folded already is left folded, and one you open again meanwhile is yours (below)
+  // it stays folded, yours from then on. One folded already is left folded, and one you open again meanwhile is yours
+  // (below), the card as the planner; one that's no longer in the sheet (the card closed) isn't Your trip's to open
   onTripView: (on, back) => {
     const p = planner;
     if (on && !weather.floatMQ.matches && p.layout() === 'sheet' && !p.panel.hidden && p.panel.dataset.state !== 'folded' && p.foldable()) {
+      tripFold = tripInSheet();
       p.fold();
-      tripFold = true;
       if (!store.get('tripFoldTold', false)) { store.set('tripFoldTold', true); toast('The planner folds while you look at your trip, and opens again on 48 hours'); }
     } else if (!on && tripFold) {
-      tripFold = false;
-      if (back && p.panel.dataset.state === 'folded') p.unfold();
+      const ours = tripFold === tripInSheet();
+      tripFold = null;
+      if (back && ours && p.panel.dataset.state === 'folded') p.unfold();
     } else return;
     if (p.cards.folded && p.cards.saved) p.cards.saved = p.cards.keepState(); // (under a card's banner: closing the card leaves the planner as this left it)
   },
@@ -727,9 +731,9 @@ let seenBefore = null;
 $('#planner').addEventListener('sheetchange', () => { seenBefore = new Map(riding().map((el) => [el, el.getBoundingClientRect().bottom])); });
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 $('#planner').addEventListener('sheetstate', syncPlannerPadding);
-// the planner opened again by you while Your trip folded it: it stays as you have it when you leave your trip (a card in
-// the peek has sizes of its own)
-$('#planner').addEventListener('sheetstate', () => { if (planner.cards.place !== 'peek' && planner.panel.dataset.state !== 'folded') tripFold = false; });
+// what Your trip folded, opened again by you (the planner, or the card it folded): it stays as you have it when you leave
+// your trip (a card opened over the folded planner has sizes of its own, and isn't what Your trip folded)
+$('#planner').addEventListener('sheetstate', () => { if (tripFold && tripFold === tripInSheet() && planner.panel.dataset.state !== 'folded') tripFold = null; });
 
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
 // the sheet, leaving out the compass first while north is up (it's back once the map turns), then 3D
