@@ -233,7 +233,7 @@ export class Planner {
     this.analysis = null;
     this.colorMode = store.get('colorMode', 'grade');
     this.colorOnMap = store.get('colorOnMap', false);
-    this.when = new When({ changed: (o) => this.whenChanged(o), coarse: () => this.coarse() }); // when you leave (js/when.js)
+    this.when = new When({ changed: (o) => this.whenChanged(o), coarse: () => this.coarse(), there: () => this.trip()?.end ?? null }); // when you leave (js/when.js)
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.moveOn(); });
     setInterval(() => this.moveOn(), 5 * 60000);
     this.nogos = []; // places to avoid: [{ll, r, label}]
@@ -335,7 +335,7 @@ export class Planner {
     this.routeName = s.routeName || '';
     if (s.styles) this.styles = { ...s.styles };
     if (s.read) this.readKeys = new Set(s.read);
-    if ('leave' in s) this.when.open(s.leave);
+    if ('leave' in s) this.when.open(s.leave, s.arrive);
     this.matchMode();
     this.update();
   }
@@ -531,8 +531,8 @@ export class Planner {
   }
   // (across another route put in place: each comes back with what was read on it, freshRead(); across one opened, with
   // when it leaves, restoreSnapshot())
-  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.when.at ?? this.when.passed; this.future.push(t); this.restoreSnap(s); } }
-  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.when.at ?? this.when.passed; this.past.push(t); this.restoreSnap(s); } }
+  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) Object.assign(t, this.when.kept()); this.future.push(t); this.restoreSnap(s); } }
+  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) Object.assign(t, this.when.kept()); this.past.push(t); this.restoreSnap(s); } }
 
   // `name`: a place's own name for it (#886), in the same step of Undo
   addPoint(ll, { name = '' } = {}) {
@@ -783,7 +783,7 @@ export class Planner {
     this.fitRoute(); // above the sheet that just opened
   }
 
-  restore({ points, modes, style, legStyles, lipas, sports, changes, stops, carry, nogos, nogosLost, alts, ice, leave }) {
+  restore({ points, modes, style, legStyles, lipas, sports, changes, stops, carry, nogos, nogosLost, alts, ice, leave, arrive }) {
     const sport = this.app.activity();
     this.points = points;
     this.readKeys = new Set(); // (what's been read isn't in links)
@@ -805,7 +805,7 @@ export class Planner {
     }
     for (const [i, k] of alts || []) if (this.legs[i] && this.legs[i].mode === 'auto') this.legs[i].alt = k;
     for (const i of ice || []) if (this.legs[i] && this.legs[i].mode === 'line') this.legs[i].ice = true;
-    this.when.open(leave);
+    this.when.open(leave, arrive);
     this.nextFromLast();
     this.update();
     this.loadSources();
@@ -1339,6 +1339,7 @@ export class Planner {
 
   async routeAll() {
     const gen = ++this.gen;
+    this.routedFrom = this.when.start(); // (the departure water legs are routed for: legStartSec())
     const previous = this.routing;
     const ctrl = this.routing = new AbortController();
     const todo = []; // legs to route: { leg, key, from, to, nogos, profile }
@@ -2119,7 +2120,7 @@ export class Planner {
   useAnalysis(a) {
     this.analysis = a;
     a.gen = this.gen; // (the routing it's of: both callers checked it's this one; analysisFits())
-    this.setTimes(a, this.when.start());
+    this.settle(a);
     a.waterWarn = this.waterWarnings();
     a.darkWarn = this.darkWarnings(a);
     a.accessWarn = [...this.standInAccess(a), ...this.detourWarnings(a)];
@@ -2417,7 +2418,7 @@ export class Planner {
     if (!cls || !a.wind) { this.renderWarnings(); return; }
     a.winterCls = cls;
     const snow = this.snowOf(a, a.wind);
-    this.setTimes(a, a.start, a.wind, snow); // (from the minute the wind was sampled for)
+    this.settle(a, a.wind, snow, a.start); // (from the minute the wind was sampled for)
     this.setSnow(a, snow);
     this.renderAnalysis();
   }
@@ -2537,6 +2538,8 @@ export class Planner {
     const waits = this.waitsAlong();
     // waitAt[i]: the wait that starts with sample i (so breakdowns can leave it out of moving time)
     const waitAt = new Float32Array(a.along.length);
+    // Arrive by on a trip with nights (#219): the last night lasts until the morning that gets you there by then
+    const by = this.when.nights ? this.when.by : null, last = by != null ? waits.findLast((w) => isNight(w.stop)) : null, n = a.along.length;
     let k = 0, add = 0;
     if (waits.length) {
       for (let i = 0; i < a.along.length; i++) {
@@ -2544,6 +2547,7 @@ export class Planner {
           const w = waits[k++];
           w.arrive = start + t.tAt[i] + add;
           w.rest = restSec(w.stop, w.arrive, w.change);
+          if (w === last) this.byMorning(w, by - (t.tAt[n - 1] - t.tAt[i]) - waits.slice(k).reduce((sum, x) => sum + x.change + restSec(x.stop, 0), 0));
           w.sec = w.change + w.rest;
           add += w.sec;
           waitAt[i] += w.sec;
@@ -2556,6 +2560,35 @@ export class Planner {
     a.waitAt = waitAt;
     return t;
   }
+  // The last night's morning for Arrive by: going on at `go` (rounded down to the minute, so you're there by then), if
+  // that's on the morning its nights end and after you're ready; else as its Go on at says, and the note says when
+  // you're there (`w.by`: worked out)
+  byMorning(w, go) {
+    go = Math.floor(go / 60) * 60;
+    const ready = w.arrive + w.change, day = new Date((ready + w.rest) * 1000);
+    day.setHours(0, 0, 0, 0);
+    const d0 = day.getTime() / 1000, d1 = day.setDate(day.getDate() + 1) / 1000;
+    if (go >= ready && go >= d0 && go < d1) { w.rest = go - ready; w.by = true; }
+  }
+  // The trip timed from When, the one place that does it (#956): from the departure (`start`: the minute the wind was
+  // sampled for, else When's), or with Arrive by (#219) from the departure worked back from it, never before now; on a
+  // trip with nights Arrive by is the last morning's instead (timed()). What it works out goes back to When to say.
+  settle(a, w = null, snow = null, start = this.when.start()) {
+    const W = this.when;
+    W.nights = this.waitsAlong().some((x) => isNight(x.stop));
+    if (W.by == null) { W.got = null; this.setTimes(a, start, w, snow); return; }
+    let leave = null;
+    if (!W.nights) {
+      this.setTimes(a, start, w, snow); // (how long it takes, which doesn't depend on when you leave without nights)
+      W.got = { leave: (leave = this.leaveFor(a.timeWind || a.time)) };
+    }
+    this.setTimes(a, W.start(), w, snow);
+    const end = tripTimes(a).end, morning = (a.waits || []).find((x) => x.by);
+    W.got = { leave, there: end, late: W.nights ? !morning : end > W.by, go: morning ? morning.arrive + morning.sec : null, about: a.timeWind != null && Math.abs(a.timeWind - a.time) >= 60 };
+    W.put();
+  }
+  // Arrive by's departure for a trip `total` seconds long (without nights): rounded down to the minute, so you're there by then
+  leaveFor(total) { return Math.floor((this.when.by - total) / 60) * 60; }
   // The route timed from `start`: with wind `w`'s head- and tailwinds (and `snow`) its wind's times, else its own. These
   // are the times every view reads (js/trip.js).
   setTimes(a, start, w = null, snow = null) {
@@ -2567,7 +2600,7 @@ export class Planner {
   }
   // The route timed again from the departure, at once, with the wind as it was sampled (the forecast follows: loadWind).
   restart(a) {
-    this.setTimes(a, this.when.start(), a.tAtWind ? a.wind : null, a.tAtWind ? this.snowOf(a, a.wind) : null);
+    this.settle(a, a.tAtWind ? a.wind : null, a.tAtWind ? this.snowOf(a, a.wind) : null);
     this.drawMarks();
     this.renderSpeed(); this.renderBox(); this.renderWaypoints(); // (the box's and the list's times, and an open card's)
   }
@@ -2597,7 +2630,7 @@ export class Planner {
   retime() {
     const a = this.analysis;
     if (!a) return;
-    this.setTimes(a, this.when.start());
+    this.settle(a);
     this.renderAnalysis();
     clearTimeout(this.retimeTimer);
     this.retimeTimer = setTimeout(() => { if (this.analysis === a) this.loadWind(a); }, 400);
@@ -2608,6 +2641,10 @@ export class Planner {
   whenChanged({ opened = false }) {
     this.cards.refresh();
     if (opened) return;
+    this.byRouted = null;
+    // Arrive by on a round trip's form fills How long by Time: from now until then, in quarter hours (#219)
+    const L = this.loop, by = this.when.by;
+    if (by != null && L.open && !L.results.length) { L.mode = 'min'; L.min = Math.max(15, Math.min(600, Math.floor((by - Date.now() / 1000) / 900) * 15)); this.loopChanged(); }
     this.clearCategoryPreview();
     if (this.analysis) this.restart(this.analysis); // the clock times move immediately while the new forecast loads
     clearTimeout(this.windTimer);
@@ -2622,20 +2659,35 @@ export class Planner {
   // Wind at the time each part of the route is reached: time the route without
   // wind, fetch the forecast, re-time it with the wind, and sample again.
   async loadWind(a, { hazards = true } = {}) {
-    const start = this.when.start(), gen = ++this.windGen;
+    let start = this.when.start();
+    const gen = ++this.windGen, W = this.when;
     const stale = () => this.analysis !== a || this.windGen !== gen; // a newer route, or a newer call's departure (#70)
     a.darkWarn = this.darkWarnings(a); // the departure may have moved (without the wind's times, these do)
     try {
       let w = await windAlong(a.pts, a.along, a.tAt, start);
       if (stale()) return;
-      const t = this.timed(a, w.head, this.snowOf(a, w), start);
-      w = await windAlong(a.pts, a.along, t.tAt, start); // same forecast, cached
-      if (stale()) return;
+      // sampled again at the wind's times (the same forecast, cached); with Arrive by the wind moves the departure, and
+      // the wind then is sampled again from there: it settles in a step or two (#219)
+      for (let k = 0; k < 3; k++) {
+        const t = this.timed(a, w.head, this.snowOf(a, w), start);
+        const go = W.by != null && !W.nights ? Math.max(Math.round(Date.now() / 60000) * 60, this.leaveFor(t.total)) : start;
+        w = await windAlong(a.pts, a.along, t.tAt, go);
+        if (stale()) return;
+        const moved = Math.abs(go - start) >= 60;
+        start = go;
+        if (!moved) break;
+      }
       const snow = this.snowOf(a, w);
       a.wind = w;
       a.windError = false; // (a failure stays until the forecast answers: 25d part 2)
       this.answered('weather');
-      this.setTimes(a, start, w, snow); // nights timed with the wind's arrival times
+      this.settle(a, w, snow, start); // nights timed with the wind's arrival times
+      // Arrive by: water legs that keep out of the wind are routed once more, for the departure worked out (#219)
+      if (W.by != null && this.byRouted !== W.by && Math.abs(W.start() - this.routedFrom) >= 900 && this.legs.some((l, i) => l.mode === 'water' && this.routerFor(i).water.wind !== 'ignore')) {
+        this.byRouted = W.by;
+        this.routeAll();
+        return;
+      }
       this.setSnow(a, snow);
       if (snow && !a.winterCls && !a.winterLoading) this.loadWinterAlong(a);
       a.darkWarn = this.darkWarnings(a);
@@ -3118,7 +3170,7 @@ export class Planner {
   pointRow(i, ro, { shape = false, w = null, leave = false, brk = false } = {}) {
     const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
     const name = this.nameOf(i), lab = this.label(i), at = this.timesAt(i), out = i === 0 || leave;
-    const when = i === 0 ? this.when.words() : at ? this.clockOf(out ? at.leave : at.arrive) : '';
+    const when = i === 0 ? this.when.words(this.when.got?.leave != null ? this.when.start() : this.when.at) : at ? this.clockOf(out ? at.leave : at.arrive) : '';
     const sky = this.wxOf(w, out ? at && at.leave : at && at.arrive, p), shown = this.listShow.weather ? sky : [];
     // (#761, Phase 1: how far and how long from the start in a column left of the line, the distance first as the planner's
     // numbers have it; the clock's time in its card, its tooltip and what a screen reader hears)
@@ -3180,8 +3232,8 @@ export class Planner {
     if (!this.analysisFits()) return null;
     const arrive = this.arriveAt(i);
     if (arrive == null) return null;
-    const ch = this.changeAt(i), chSec = ch ? ch.min * 60 : 0, stop = this.stopAt(i);
-    return { arrive, change: arrive + chSec, leave: arrive + chSec + restSec(stop, arrive, chSec) };
+    const ch = this.changeAt(i), chSec = ch ? ch.min * 60 : 0, w = (this.analysis.waits || []).find((x) => x.i === i);
+    return { arrive, change: arrive + chSec, leave: arrive + (w ? w.sec : chSec + restSec(this.stopAt(i), arrive, chSec)) }; // (as timed: Arrive by's last night, #219)
   }
   // the weather at a forecast sample, as icons and words: the sky and the temperature, the wind; [] where there's none
   wxOf(w, sec, ll) {
@@ -3940,7 +3992,10 @@ export class Planner {
   }
   // Share link's line: what the link carries beyond the route, the date once one is set (#364's C; to share without it,
   // set Now first)
-  shareSub() { const at = this.when.at; return at == null ? '' : `Includes when you leave: ${dayOf(at)}, ${timeOf(at)}`; }
+  shareSub() {
+    const { at, by } = this.when, when = (t) => `${dayOf(t)}, ${timeOf(t)}`;
+    return by != null ? `Includes Arrive by ${when(by)}${at != null ? ' and when you leave' : ''}` : at != null ? `Includes when you leave: ${when(at)}` : '';
+  }
   loopsHere() { return roundTripSports.includes(this.app.activity()); }
   importFile() { $('#file-input').click(); }
 
@@ -4359,13 +4414,14 @@ export class Planner {
       tags: table,
       read: [...this.readKeys], // Check's items marked read: on this device only, not in share links; none in older saved routes
       leave: this.when.at, // when you leave (#364), null: now
+      arrive: this.when.by, // Arrive by (#219), or null
     });
   }
 
   loadSaved() {
     const r = store.get('route', null);
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
-    if (!r || !r.points || !r.points.length) { if (r && r.leave) this.when.open(r.leave); return false; } // (a time set before the first point: When's)
+    if (!r || !r.points || !r.points.length) { if (r && (r.leave || r.arrive)) this.when.open(r.leave, r.arrive); return false; } // (a time set before the first point: When's)
     this.points = r.points;
     this.routeName = r.routeName || '';
     this.readKeys = new Set(r.read || []);
@@ -4392,7 +4448,7 @@ export class Planner {
     (r.legStyles || []).forEach((c, i) => { if (c && this.legs[i]) this.legs[i].style = decodeStyle(this.legSport(i), c); });
     (r.alts || []).forEach((k, i) => { if (k > 0 && k <= 3 && this.legs[i] && this.legs[i].mode === 'auto') this.legs[i].alt = k; });
     (r.ice || []).forEach((on, i) => { if (on && this.legs[i] && this.legs[i].mode === 'line') this.legs[i].ice = true; });
-    this.when.open(r.leave);
+    this.when.open(r.leave, r.arrive);
     this.nextFromLast();
     this.update();
     return true;
@@ -4429,12 +4485,13 @@ export class Planner {
       nogos: this.nogos,
       legs: this.legs.map((l) => ({ mode: l.mode, key: l.key, src: l.src || null, sport: l.sport || null, alt: l.alt || 0, ice: !!l.ice, result: l.status === 'ok' || l.mode === 'fixed' ? l.result : null })),
       leave: this.when.at,
+      arrive: this.when.by,
     };
   }
 
   restoreSnapshot(s) {
     const had = this.points.length > 0;
-    if (had) { this.commit(); this.past[this.past.length - 1].leave = this.when.at ?? this.when.passed; } // (Undo brings back the route you had, leaving when it did)
+    if (had) { this.commit(); Object.assign(this.past[this.past.length - 1], this.when.kept()); } // (Undo brings back the route you had, leaving when it did)
     this.points = s.points;
     this.freshRead(had);
     this.nameAll(s.names);
@@ -4451,7 +4508,7 @@ export class Planner {
       const alt = l.mode === 'auto' && l.alt > 0 && l.alt <= 3 ? l.alt : 0, ice = l.mode === 'line' && !!l.ice;
       return l.result ? { mode: l.mode, key: l.key, status: 'ok', result: l.result, style, src: l.src || null, sport, alt, ice } : { mode: l.mode === 'fixed' ? 'auto' : l.mode, style, sport, alt, ice };
     });
-    this.when.open(s.leave);
+    this.when.open(s.leave, s.arrive);
     this.nextFromLast();
     this.update();
   }
@@ -4503,6 +4560,8 @@ export class Planner {
     if (ic) u.searchParams.set('ic', ic);
     // when you leave, in minutes since 1970 (#364's C); older links have none, and leave now
     if (this.when.at != null) u.searchParams.set('lv', String(Math.round(this.when.at / 60)));
+    // Arrive by (#219), in minutes too: whoever opens it works out the departure again
+    if (this.when.by != null) u.searchParams.set('ab', String(Math.round(this.when.by / 60)));
     return u.toString();
   }
 
@@ -6566,7 +6625,7 @@ export class Planner {
     const dep = this.when.words();
     const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · Time on the way`, onclick: () => this.openWeather({ time: true }) },
       // the whole time, its waits too, and under it the time on the move where they differ (#761), else when you leave
-      h('b', {}, nights ? shortDuration(a.timeWind || a.time) : fmtDuration(a.timeWind || a.time)), h('small', {}, waitSec ? `${shortDuration((a.timeWind || a.time) - waitSec)} moving` : `from ${dep}`));
+      h('b', {}, nights ? shortDuration(a.timeWind || a.time) : fmtDuration(a.timeWind || a.time)), h('small', {}, waitSec ? `${shortDuration((a.timeWind || a.time) - waitSec)} moving` : this.when.leaving() || `from ${dep}`));
     sum.append(time);
     const carry = a.ways.find(([k]) => k === 'portage');
     if (paddle) key('carry', carry ? fmtDist(carry[1]) : '0 m');
@@ -7409,7 +7468,7 @@ export class Planner {
     const a = this.analysis, T = a && this.trip();
     this.els.box.hidden = !T;
     if (!T) return;
-    this.els.there.textContent = `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`;
+    this.els.there.textContent = this.thereWords(T);
     const days = this.wxDays(a), many = days.length > 1;
     this.els.boxDays.replaceChildren(...days.map((d, k) => {
       const wx = a.wind && forecastKnown(a.wind, d.i0) && dayWeather(a.wind, a, ...ownSamples(a, d)), line = this.boxLine(a, d);
@@ -7457,8 +7516,10 @@ export class Planner {
   weatherHead() {
     const T = this.trip();
     return h('span', { class: 'trip-when' }, h('span', { class: 'sr-only' }, 'Weather on the way. '), this.when.control('pill'),
-      h('span', { class: 'trip-there' }, `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`));
+      h('span', { class: 'trip-there' }, this.thereWords(T)));
   }
+  // the words after When's pill: "→ there at 20:02", or with Arrive by its other end, "· leave 19:19" (#219)
+  thereWords(T) { const l = this.when.leaving(); return l ? `· ${l}` : `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`; }
   // The weather card (#869, the plan's Round 5, version G, with #979's hour strip), a day at a time (a chip a day on a trip
   // of days): one sentence with the sky's icon; up to three notes, worst first; the numbers in their places; the hour strip
   // and its sections. Then #973's other ways to see the same hours, folded: The whole trip (the trip line and its lanes),
@@ -8136,8 +8197,8 @@ export function parseShared(params) {
     const avoid = decodeAvoid(params.get('av'));
     const alts = (params.get('al') || '').split(',').map((x) => x.split(':').map(Number)).filter(([i, k]) => Number.isInteger(i) && Number.isInteger(k) && k >= 1 && k <= 3);
     const ice = (params.get('ic') || '').split(',').filter((x) => /^\d+$/.test(x)).map(Number);
-    const lv = /^\d{1,10}$/.test(params.get('lv') || '') ? +params.get('lv') * 60 : null;
-    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '', lipas, sports, changes, stops, carry, nogos: avoid.nogos, nogosLost: avoid.lost, alts, ice, leave: lv };
+    const min = (k) => (/^\d{1,10}$/.test(params.get(k) || '') ? +params.get(k) * 60 : null), lv = min('lv');
+    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '', lipas, sports, changes, stops, carry, nogos: avoid.nogos, nogosLost: avoid.lost, alts, ice, leave: lv, arrive: min('ab') };
   } catch {
     return null;
   }

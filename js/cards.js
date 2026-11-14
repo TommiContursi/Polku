@@ -118,12 +118,13 @@ function pointBody(pl, card, body) {
       const n = stop.n || 1, go = w ? w.arrive + w.sec : null, after = n === 1 ? 'the next morning' : `after ${n} nights`;
       body.append(stepper({ lead: 'Stay', value: n, unit: n === 1 ? 'night' : 'nights', step: 1, min: 1, max: MAX_NIGHTS, label: `Nights at ${name}`,
         less: 'One night less', more: 'One night more', set: (k) => set({ on: stop.on, n: k }) }));
+      // (the last night's, with Arrive by: the morning worked out from it, until a time of your own takes its place, #219)
       const goOn = pickRow({ icon: 'clock', label: 'Go on at', type: 'time', set: (v) => {
         const m = parseHhmm(v), k = card.i;
-        if (m != null && k >= 0) pl.setStop(k, { on: m, n });
+        if (m != null && k >= 0) { if (w && w.by) pl.when.setBy(null); pl.setStop(k, { on: m, n }); }
         put();
       } });
-      const put = () => { const on = hhmm((pl.stopAt(card.i) || stop).on); goOn.put({ line: go ? `${dayOf(go)}, ${after}` : `${after[0].toUpperCase()}${after.slice(1)}`, val: on, value: on, set: true }); };
+      const put = () => { const on = w && w.by ? hhmm(new Date(go * 1000).getHours() * 60 + new Date(go * 1000).getMinutes()) : hhmm((pl.stopAt(card.i) || stop).on); goOn.put({ line: go ? `${dayOf(go)}, ${after}${w.by ? ' · for Arrive by' : ''}` : `${after[0].toUpperCase()}${after.slice(1)}`, val: on, value: on, set: true }); };
       put();
       body.append(rows(goOn.el));
       body.append(rows(item({ icon: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km', chev: true, onclick: () => pl.cards.open(staysCard(pl, card), { at: card.key, from: card }) })));

@@ -356,6 +356,14 @@ Each is small and tried on a phone before the next, in this order (decided 2026-
 
    The forecast is `windAlong()`'s hourly series, so there are no new requests; past two days it's the ten-day one (`LONG_HOURS`). `weather`, `water`.
 7. **Arrive by** (#219): the menu's third item, worked back with the wind ("about" where the wind changes it); on a trip with nights, the end of the last day; on a round trip, How long by Time; the states listed above. `leave`, `stops`, `loops`.
+
+   **Built (2026-11-14, before Best time to leave, by the user's order):** the menu's third item, "Arrive by 20:30 ▾ · leave 19:19" in the trip's box and "leave 19:19" in the numbers. What the plan left open, settled with the user on 2026-11-14 ([#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6877339496)):
+   - **The wind:** the departure is worked back from the time without wind, then sampled again with the forecast already loaded, up to three times; it's rounded down to the minute, so you're there by the time, never after it. "About" where the wind changes the trip's time. Water legs that keep out of the wind are routed again once, for the departure worked out.
+   - **A trip with nights:** a night ends at its Go on at, so the first departure doesn't move the arrival. Arrive by sets the last night's Go on at instead, and the first day leaves as you set it; the menu has a group for each, **First day** (Leave now, Leave at…) and **Last day** (Any time, Arrive by…). Where the nights can't get you there by then, the note says when they do.
+   - **Saved and shared:** the time itself (`arrive`, `ab=`), so a route opened again works the departure out with that day's forecast.
+   - **Too soon:** it leaves now, "Leave now and you're there at 20:42"; the time passed, Arrive by goes, saying so.
+   - **A round trip:** Arrive by on its form sets How long to Time, from now until then, in quarter hours, at most 10 h.
+   No mock-up: the plan's draws the pill and the menu item; the notes under the pill are its own. Nothing new moves (/animate).
 8. **The profile card, with On the route as Colour by's list** (#796, #758), and Colour by and On map in it. Check's On the route goes.
 9. **The warnings as a box in the numbers row, opening the Check card;** the tabs go. Each sport's row loses its distance.
 10. **The Add row** (#761's PR 8), with the search in the sheet.
