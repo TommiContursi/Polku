@@ -4624,8 +4624,9 @@ export class Planner {
       keep: () => ({ sheet: this.panel.dataset.state, scroll: this.listScroller().scrollTop, unfoldTo: this.unfoldTo }),
       restore: (was) => {
         if (!this.active) return;
-        if (this.layout() === 'sheet' && was.sheet && was.sheet !== this.panel.dataset.state) this.setSheetState(was.sheet, { remember: false });
-        this.unfoldTo = was.unfoldTo; // (its line opens to the size it left, not to a card's)
+        const held = this.app.tripHolds(was.sheet), to = held ? 'folded' : was.sheet; // (Your trip on a phone: main.js)
+        if (this.layout() === 'sheet' && to && to !== this.panel.dataset.state) this.setSheetState(to, { remember: false });
+        this.unfoldTo = held ? was.sheet : was.unfoldTo; // (its line opens to the size it left, not to a card's)
         requestAnimationFrame(() => { this.listScroller().scrollTop = was.scroll; });
       },
       // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox; not the weather card, which
