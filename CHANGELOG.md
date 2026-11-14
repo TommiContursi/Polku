@@ -4,13 +4,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-14
 
-### The weather timeline in its room ([#343](https://github.com/TommiContursi/Polku/issues/343), [#457](https://github.com/TommiContursi/Polku/issues/457), [#590](https://github.com/TommiContursi/Polku/issues/590), [#925](https://github.com/TommiContursi/Polku/issues/925), [#1015](https://github.com/TommiContursi/Polku/issues/1015))
+### The weather timeline in its room ([#343](https://github.com/TommiContursi/Polku/issues/343), [#457](https://github.com/TommiContursi/Polku/issues/457), [#590](https://github.com/TommiContursi/Polku/issues/590), [#925](https://github.com/TommiContursi/Polku/issues/925), [#1015](https://github.com/TommiContursi/Polku/issues/1015), [#1017](https://github.com/TommiContursi/Polku/issues/1017))
 
 - On a desktop, a note such as "Link copied" comes above the weather timeline instead of over its foot.
 - The timeline's reading fits its box on phones and desktops. The gusts are in brackets after the wind, as FMI writes them, such as "4 (9) m/s SW", and the next six hours' rain shows beside "dry", such as "dry · 6 h 2.4 mm". While it rains, the reading gives the hour's rain and the strip shows what's ahead. Pointing at the reading shows all of it, and a screen reader reads all of it.
 - On a phone at 200 % text size, the timeline stays below the top bar and on the screen. Where the planner leaves no room for it, it sits over the planner at the screen's foot. In **Your trip** it scrolls inside the room above the planner's line, with **48 hours** in sight.
 - With reduced motion on, the wind's lines are drawn still, as the rain already is: short strokes along the wind, drawn again when the map moves or the hour changes.
 - On a phone, a card brought back from its banner, such as the weather card by **Back** or **Weather card ›**, is where you had scrolled it, as on a desktop ([#869](https://github.com/TommiContursi/Polku/issues/869)). A second lane or hour pressed in the weather card folds the planner under its banner again, as the first does.
+- In **Your trip** on a phone, the planner you open with **On the profile** or **All in Check ›** stays yours: a card closed afterwards puts it back as you had it, instead of folding it ([#1017](https://github.com/TommiContursi/Polku/issues/1017)).
 
 ### Check's words everywhere ([#993](https://github.com/TommiContursi/Polku/issues/993))
 

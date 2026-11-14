@@ -452,6 +452,8 @@ const planner = new Planner(map, {
   },
   // a card closed while Your trip holds the planner folded (onTripView, below): it stays folded, its line opening to the size it had
   tripHolds: (sheet) => tripFold === 'planner' && sheet !== 'folded',
+  // …unless it was open when the card came (On the profile and All in Check › open it at half with no change of size, #1017)
+  tripLetGo: () => { if (tripFold === 'planner') tripFold = null; },
   weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
   // the map's weather at a time of the trip, a layer turned on with it (the weather card's Weather on the map, its lanes and
   // its hours of Rain and Wind): Your trip at that time (weather.showAt()); past the map's 48 hours it says so, and shows

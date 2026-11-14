@@ -4622,7 +4622,10 @@ export class Planner {
       onPop: () => this.keepView(),
       pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
       // Back and ✕ leave the planner as it was before the card: its sheet's size, its list's scroll
-      keep: () => ({ sheet: this.panel.dataset.state, scroll: this.listScroller().scrollTop, unfoldTo: this.unfoldTo }),
+      keep: () => {
+        if (this.panel.dataset.state !== 'folded') this.app.tripLetGo(); // (a planner open under a new card is yours, #1017: main.js)
+        return { sheet: this.panel.dataset.state, scroll: this.listScroller().scrollTop, unfoldTo: this.unfoldTo };
+      },
       restore: (was) => {
         if (!this.active) return;
         const held = this.app.tripHolds(was.sheet), to = held ? 'folded' : was.sheet; // (Your trip on a phone: main.js)

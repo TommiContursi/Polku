@@ -13317,6 +13317,43 @@ def timeline_zoom(chrome):
     return not fails
 
 
+# Your trip on a phone (390 × 844) after On the profile (#1017): with the planner folded for Your trip, a waypoint's card
+# raised to half and its On the profile pressed show the planner at half; it's yours then, so another card closed with ✕
+# puts it back at half, not folded.
+TL_TRIP_PROFILE = """(async () => {
+  const p = polku.planner, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = [], st = () => p.panel.dataset.state;
+  const x = () => [p.els.topX, p.cards.box?.querySelector('.way-x')].find((e) => e && e.getBoundingClientRect().width);
+  w.setSpan('trip'); await wait(900);
+  if (st() !== 'folded') out.push(`Your trip: the planner ${st()}, not folded`);
+  p.openPointCard(p.points[1]); await wait(600); p.setSheetState('half'); await wait(700);
+  const prof = p.cards.box?.querySelector('[data-k=profile]');
+  if (!prof) return [...out, 'no On the profile in the waypoint’s card'];
+  prof.click(); await wait(900);
+  if (st() !== 'half' || p.cards.current) out.push(`On the profile: the planner ${st()}, a card ${p.cards.current?.kind || 'none'}`);
+  p.openPointCard(p.points[2]); await wait(700);
+  x().click(); await wait(900);
+  if (st() !== 'half') out.push(`another card closed with ✕ after On the profile: the planner ${st()}, not half (#1017)`);
+  return out;
+})()"""
+
+
+def trip_profile(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
+        if not pg.js(TL_TRIP_SETUP, timeout=40000):
+            fails.append('no timed route')
+        else:
+            fails += pg.js(TL_TRIP_PROFILE, timeout=40000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Your trip after On the profile (#1017): the planner shown at half is yours, a card closed puts it back there" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def timeline_trip(chrome):
     fails = []
     for name, (wd, ht, phone) in [('desktop', (1440, 900, False)), ('phone', (390, 844, True)), ('narrow window', (600, 800, False))]:
@@ -21664,7 +21701,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip, timeline_zoom], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip, timeline_zoom, trip_profile], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); the planner yours after On the profile in Your trip (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
