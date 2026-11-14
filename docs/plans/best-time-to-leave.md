@@ -6,7 +6,9 @@ PR 6 of [planner-rethought.md](planner-rethought.md), step 5 of [the one order o
 
 - **2026-11-14:** this plan and the mock-up, waiting for the user's answers to the four questions at the end. Then the build, as one PR.
 - **2026-11-15, round 2:** from the user's look at round 1: a good idea, but too much grey text explaining it, and rows of facts run together. Round 2 lets the drawing carry the meaning (the bars in their cause's colour, the named hours labelled on the strip, the facts as columns) and drops the notes. Round 1 stays on the mock-up's switch.
-- **2026-11-15, round 3:** the design round's rule, as the user asked: no grey words explaining things. What needs explaining is a round ⓘ in the accent, its words in a tooltip (a mouse's hover and the keyboard's focus, `tooltip()`; a finger's tap shows the same bubble). The folded row keeps its label alone, with the best time as its value. Rounds 1 and 2 stay on the switch. What follows is round 3.
+- **2026-11-15, round 3:** the design round's rule, as the user asked: no grey words explaining things. What needs explaining is a round ⓘ in the accent, its words in a tooltip (a mouse's hover and the keyboard's focus, `tooltip()`; a finger's tap shows the same bubble). The folded row keeps its label alone, with the best time as its value. Rounds 1 and 2 stay on the switch.
+- **2026-11-15, round 4:** from the user's look at round 3: each departure shows its weather as the card's hours do (the sky's coloured icon, the temperature, the wind's arrow and speed, the rain), coloured sky icons where there are any, and the open section sits in a faint box of its own, so the weather card plainly starts under it. Rounds 1 to 3 stay on the switch. What follows is round 4.
+- **Decided by the user, 2026-11-15:** all four questions as recommended (1A, 2A, 3A, 4A; "Decided" below). Next: the build.
 - **Already on `main`:** the map's hour no longer moves the departure. 6b did it (#988): `js/wxmap.js` never sets When. Nothing is left of that line for this PR.
 
 ## Already decided (2026-11-06)
@@ -31,15 +33,16 @@ The mock-up draws it at 390 and 360 px, 200 % and on a desktop, for an MTB ride 
 - **A row in the weather card,** right under When: **Best time to leave**, its line saying what it found in a few words ("Better: Sun 08:00, dry", "Good time to leave", "No good time"). It folds open in place, as Hour by hour does (`wxFoldRow()`). When's menu opens the card with it open. On a trip with nights it sits above the day chips and says "First day".
 - **The day,** with ‹ › around it (the timeline's `tl-step`): "Tomorrow, Sun 15 Nov", with a line under it only when the forecast is less certain or ends that day. It opens at the departure's day; ‹ stops at today, › at the forecast's tenth day.
 - **The strip:** a slot for each hour of the day, 00 to 23.
-  - A bar is how much of the trip leaving then would be in the rain, the heat or the wind (the rule below). A shorter bar is better. A bar is in its main cause's colour (the route's rain or headwind colours), with the cause's icon over a tall one, so a tall blue bar with a raindrop needs no key.
+  - A bar is how much of the trip leaving then would be in the rain, the heat or the wind (the rule below). A shorter bar is better. A bar is in its main cause's colour (the route's rain or headwind colours), with the cause's icon over a tall one (the sky's coloured rain or snow), so a tall blue bar under a rain cloud needs no key.
   - Behind the bars, the departures whose trip would be in the dark are shaded, with the moon, and those that run into it half shaded, from the sun.
   - The current departure has a ring; a named departure's bar is green, with its hour over it ("08"), the same hour as its row.
   - **An hour that has passed, or past the forecast's reach, has no bar** (a missing bar must never read as the best). A passed hour is a dotted slot; past the forecast it's an outline with "no forecast" in the reading. An hour ruled out (question 4) is a full bar, hatched, with ✕.
-- **The reading over the strip:** the hour under the finger, the pointer or the focus, else the current departure: "14:00 → 16:05", then its facts, each an icon and a word or two ("Rain 40 min", "Headwind", "Dark from 15:46"). It changes as the finger moves.
+- **The reading over the strip:** the hour under the finger, the pointer or the focus, else the current departure: "14:00 → 16:05", the sky's coloured icon, the temperature, the wind's arrow (behind you, from the side, against you, as the card's hours draw it) and its speed, the rain in mm, the waves on a paddle, and the dark where it falls ("Dark from 15:46"). It changes as the finger moves.
 - **A scrub previews, lifting the finger sets.** Dragging along the strip moves the reading; lifting the finger sets Leave at to that hour; a tap on a bar sets it at once. Setting it on every hour crossed would redraw the card under the finger, save the route each time, and route a sheltering paddle leg again for every hour (`whenChanged()`).
 - **A desktop and the keyboard:** pointing at a bar shows its reading, as pointing at the hour strip does; a click sets it. Under the bars lies a native range (as the timeline's strip), its value text the reading, so a screen reader hears it; the arrow keys move the reading, and the departure is set when they rest for a moment, or at once with Enter. The named rows are the 44 px targets for one tap; the bars (13 px each at 360 px) are for the drag.
-- **The rows:** up to three, under two small headings, **In the light** and **In the dark**, each the best hour of a stretch of good hours, a `row` with the sun or the moon and a tick on the one set, its parts in columns: the hour ("13:00"), its facts ("Dry", "Headwind"), and when you're back ("→ 15:05"). A tap sets Leave at; the card then shows that departure's weather below. Two named departures are at least two hours apart.
+- **The rows:** up to three, under two small headings, **In the light** and **In the dark**, each the best hour of a stretch of good hours, a `row` with a tick on the one set, its parts in columns: the sky's coloured icon, the hour with when you're back under it ("13:00", "→ 15:05"), the temperature, the wind's arrow and speed, then the rain, the waves or the dark. A tap sets Leave at; the card then shows that departure's weather below. Two named departures are at least two hours apart.
 - **The crossing window** (#856, on a paddle or a swim): one line under the strip, "Leave by 15:00 to cross in small waves" ("Too rough to cross all day", "Small waves on the crossing all day"). The hours outside it are ruled out, hatched, with the paddle over the first.
+- **Its own faint box,** from the folded row to the last named departure, so the weather card starts plainly under it.
 - **No notes explaining it.** The drawing says what the bars are. What still needs a word has a round ⓘ: the bars (how to read and drag them), a day more than three days ahead or where the forecast ends, and the crossing (its length and what small waves are). The folded row is **Best time to leave** with the best time as its value ("Sun 08:00", "Good now").
 
 ## The rule (question 1)
@@ -113,7 +116,15 @@ One PR, in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16)
 - On a trip too long for the day's light, the light's group is **Most in the light**.
 - On a trip with nights, the first day's departure, scored on the first day only.
 
-## The questions
+## Decided (2026-11-15)
+
+The user took every recommendation:
+1. **The dark apart:** the bars show the weather, the dark is shaded behind them, and the rows name the best in the light and the best in the dark (Most in the light on a trip too long for the day's light).
+2. **A day when every hour is bad:** the least bad is named, saying so, with a row for a better day.
+3. **When's menu:** Best time to leave › is the last item (First day's, with nights), and a pick is a plain Leave at that takes Arrive by's place.
+4. **Ruled out:** thunder where you'd be, a frostbite risk, and waves over the craft's comfort on the crossing.
+
+## The questions (answered: see "Decided")
 
 1. **How the parts weigh.** Recommended: the dark apart. The bars show the weather, the dark is shaded behind them, and the rows name the best in the light and the best in the dark. The weather counts minute for minute: minutes in rain (heavy rain double), feeling hot, or lost to a headwind or strong wind on the water. Or minute for minute with the dark in the same sum.
 2. **A day when every hour is bad.** Recommended: name the least bad and say so, with a row for a better day. Or name nothing.
