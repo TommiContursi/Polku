@@ -17,6 +17,7 @@ A design round on Polku's whole layout and look, apart from the map: the planner
 - **Not this:** the list of waypoints simplified to rows with a ›. In the app a list's legs are editable and its rows carry actions on hover, so the drawing lost what the elements do.
 - **The next round starts from what each element does:** every control in the planner, the list and the cards, with what a tap, a hover, a drag or a hold does on `main`, before anything is redrawn.
 - **Not discarded:** Optical glass and Liquid glass have good parts to carry on: Settings' grouped sections on frosted glass, the floating layer's depth, and the lit segments.
+- **Also for round 5:** the scrollbars in today's planner and cards look poor (the user, 2026-11-14). A scrolling sheet or card needs a quiet scroll indicator of its own, in light and dark, with a mouse and by touch.
 - **Next:** a fresh session (this one's context is long), from the Hand-over on #382.
 
 **Round 4 (2026-11-14), after the user tried round 3:** Liquid glass's see-through buttons were hard to read, and the planner itself (the toolbar merged into the sheet's head, and the key facts as a stack of boxed rows) hurt in every direction. The glass worked well for Settings. The user chose to go back to C, much improved, with the planner properly redesigned.
