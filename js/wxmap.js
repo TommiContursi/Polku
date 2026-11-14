@@ -126,6 +126,8 @@ export class WeatherOverlay {
     this.buildBar();
     map.on('movestart', () => this.onMoveStart());
     map.on('moveend', () => this.onMoveEnd());
+    // reduced motion turned on or off: the wind and rain drawn again the other way, the stopped loop started again
+    REDUCED.addEventListener('change', () => { this.precipStill = this.windStill = false; if (this.animated && !this.anim) this.startAnim(); });
     map.on('idle', () => this.renderTowns(true)); // (the map's own place labels are placed by then)
     map.on('resize', () => { this.resizeCanvases(); this.onMoveEnd(); });
     // the card shows the spot under the mouse, else the map centre
@@ -186,8 +188,8 @@ export class WeatherOverlay {
   // Weather here (25d part 6b): the readout is for a spot of the map you chose, with a pin on it, until the timeline
   // closes or you pick another; the forecast it reads is the grid's, so no request carries the spot
   holdAt(ll) {
+    this.heldLL = ll; // (first: Your trip left for a spot leaves a phone's planner folded, main.js onTripView)
     if (this.span === 'trip') { this.span = '48'; this.renderTrip(); } // (the reading goes to the spot, not where you'll be)
-    this.heldLL = ll;
     if (this.heldPin) this.heldPin.remove();
     this.heldPin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(ll).addTo(this.map);
     this.readout();
@@ -1011,7 +1013,8 @@ export class WeatherOverlay {
       if (rain[i] >= 0.1) wet++;
     }
     this.field = { vx, vy, rain, snow, wet: wet / n };
-    this.precipStill = false; // (reduced motion: the still rain is drawn again for the new field)
+    this.precipStill = this.windStill = false; // (reduced motion: the still rain and wind are drawn again for the new field)
+    if (this.animated && !this.anim) this.startAnim();
   }
 
   // FMI's radar rate now (mm/h), or null where it doesn't reach or at a later hour (its fiRate is
@@ -1030,12 +1033,33 @@ export class WeatherOverlay {
       last = now;
       if (this.playing) this.advancePlay(k);
       const flashing = this.moving ? !!this.lightning?.list.some((s) => s.born && !s.shown) : this.flashStrikes(now);
-      if (!flashing && !this.playing && !this.animated) { cancelAnimationFrame(this.anim); this.anim = 0; return; } // (nothing moves)
+      // (nothing moves: in reduced motion too, once the still wind and rain are drawn; buildField() starts it for a new field)
+      const still = REDUCED.matches && this.field && (!this.on.wind || this.hour < 0 || this.windStill) && (!this.falling || this.precipStill);
+      if (!flashing && !this.playing && (!this.animated || still)) { cancelAnimationFrame(this.anim); this.anim = 0; return; }
       if (this.moving || !this.field) return;
       const f = this.field, cols = this.cam.cols;
       const cellAt = (x, y) => Math.round(y / CELL) * cols + Math.round(x / CELL);
 
-      if (this.on.wind && this.hour >= 0) {
+      // in reduced motion the wind is drawn once, still: a stroke where each particle would have trailed, until the field
+      // changes (#925, as Effects' rain)
+      if (this.on.wind && this.hour >= 0 && REDUCED.matches) {
+        if (!this.windStill) {
+          const ctx = this.windCtx, n = Math.min(2200, Math.round((this.W * this.H) / 800));
+          ctx.clearRect(0, 0, this.W, this.H);
+          ctx.lineWidth = 1.3;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = this.app.dark() ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,42,0.55)';
+          ctx.beginPath();
+          for (let j = 0; j < n; j++) {
+            const x = Math.random() * this.W, y = Math.random() * this.H, i = cellAt(x, y);
+            if (!(f.vx[i] || f.vy[i])) continue;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + f.vx[i] * 7, y + f.vy[i] * 7); // (the moving trail's length: it fades by 0.86 a frame)
+          }
+          ctx.stroke();
+          this.windStill = true;
+        }
+      } else if (this.on.wind && this.hour >= 0) {
         const ctx = this.windCtx;
         ctx.globalCompositeOperation = 'destination-in';
         ctx.fillStyle = `rgba(0,0,0,${Math.pow(0.86, k).toFixed(3)})`;
@@ -1072,7 +1096,7 @@ export class WeatherOverlay {
     if (still && this.precipStill) return;
     const ctx = this.rainCtx;
     ctx.clearRect(0, 0, this.W, this.H);
-    if (f.wet <= 0) return;
+    if (f.wet <= 0) { this.precipStill = still; return; }
     const n = Math.min(1000, Math.round((this.W * this.H) / 1500));
     while (this.drops.length < n) this.drops.push({ age: 1, max: 0, x: -1 });
     this.drops.length = n;
@@ -1269,7 +1293,8 @@ export class WeatherOverlay {
     this.bar.classList.toggle('trip', zoomed); // (a phone's reading on one line over the strip: css/app.css)
     // the app hears when Your trip comes into sight or goes (a phone's planner folds for it), not on every drawing
     const shown = zoomed && this.open;
-    if (shown !== !!this.tripShown) { this.tripShown = shown; this.app.onTripView?.(shown, back); }
+    // (and 48 hours or ✕ on the 48 hours, after Weather here: a planner Your trip folded opens then, #1018)
+    if (shown !== !!this.tripShown || (back && !shown)) { this.tripShown = shown; this.app.onTripView?.(shown, back); }
     this.tripRow.hidden = !tr;
     const [b48, bTrip] = this.spanSeg.children;
     b48.setAttribute('aria-pressed', String(!zoomed));
@@ -1332,7 +1357,7 @@ export class WeatherOverlay {
   // the weather card gives one), else its first day, and at that time if it's in the day's window, else the day's start;
   // 48 hours keeps the hour
   setSpan(k, at = null) {
-    if (k === this.span && at == null) return;
+    if (k === this.span && at == null) { if (k === '48') this.renderTrip(true); return; } // (48 hours pressed again: back, #1018)
     const t = at ?? timeAtHour(this.hour); // (before the trip view keeps the hour inside its window)
     if (k === 'trip') {
       const j = this.trip.days.findIndex((d) => t >= d.t0 - 3600 && t <= d.t1 + 3600);
@@ -1355,8 +1380,10 @@ export class WeatherOverlay {
   // the weather card's way to the timeline (its hours of Rain and Wind, its lanes, Weather on the map): Your trip at time t
   // when a day of it the map reaches holds t, else the 48 hours at its hour (one before you leave, say)
   showAt(t) {
+    const was = this.tripShown;
     if ((this.trip ? this.trip.days : []).some((d) => this.reaches(d) && t >= d.t0 - 3600 && t <= d.t1 + 3600)) this.setSpan('trip', t);
     else if (hourAt(t) >= 0) this.setHour(Math.floor(hourAt(t)));
+    if (was && this.tripShown) this.app.onTripView?.(true, false, true); // (Your trip asked for again, a second lane: a phone's sheet folds again, #1015)
   }
 
   // where ‹ › put the hour on a note: when you reach it (a stretch's first point), to the minute (a stretch can be shorter
@@ -1815,15 +1842,16 @@ export class WeatherOverlay {
           `<div>${icon('drop', 12)}${rain >= 0.05 ? `${rain.toFixed(1)} mm/h` : 'dry'}</div>` + snow;
         return;
       }
-      const sum = this.accum(ll, 6);
-      const rainTxt = rain >= 0.05 ? `${rain.toFixed(1)} mm/h` : 'dry';
-      const gust = s.gust > s.speed + 2 ? ` <span>gusts ${s.gust.toFixed(0)}</span>` : '';
+      // the box's lines short enough for it (#457): the gusts in brackets, FMI's way, and the next 6 hours' rain beside "dry"
+      // only (raining, the strip shows what's ahead); whole in the tooltip and for a screen reader
+      const sum = this.accum(ll, 6), six = sum != null && sum >= 0.05 ? `6 h ${sum.toFixed(sum < 10 ? 1 : 0)} mm` : ''; // (whole mm from 10)
+      const g = s.gust > s.speed + 2 ? s.gust.toFixed(0) : '', speed = s.speed.toFixed(s.speed < 3 ? 1 : 0);
       const where = this.heldLL ? 'at the spot' : this.pointerLL ? 'under the mouse' : 'at the map centre';
-      this.nowEl.title = `${SKY[kind]} · ${where}`;
+      this.nowEl.title = `${SKY[kind]} · ${where}${g ? ` · gusts ${g} m/s` : ''}${six ? ` · ${sum.toFixed(1)} mm in the next 6 hours` : ''}`;
       this.nowEl.innerHTML =
         `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${this.heldLL ? 'the spot' : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
-        `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
-        `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` + snow;
+        `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${speed}${g ? ` <span aria-hidden="true">(${g})</span>` : ''} m/s ${compass(s.dir)}${g ? `<span class="sr-only">, gusts ${g}</span>` : ''}`}</div>` +
+        `<div>${icon('drop', 12)}${rain >= 0.05 ? `${rain.toFixed(1)} mm/h${six ? `<span class="sr-only"> · ${six}</span>` : ''}` : `dry${six ? ` <span>· ${six}</span>` : ''}`}</div>` + snow;
     });
   }
 }

@@ -452,6 +452,8 @@ const planner = new Planner(map, {
   },
   // a card closed while Your trip holds the planner folded (onTripView, below): it stays folded, its line opening to the size it had
   tripHolds: (sheet) => tripFold === 'planner' && sheet !== 'folded',
+  // …unless it was open when the card came (On the profile and All in Check › open it at half with no change of size, #1017)
+  tripLetGo: () => { if (tripFold === 'planner') tripFold = null; },
   weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
   // the map's weather at a time of the trip, a layer turned on with it (the weather card's Weather on the map, its lanes and
   // its hours of Rain and Wind): Your trip at that time (weather.showAt()); past the map's 48 hours it says so, and shows
@@ -560,6 +562,7 @@ initSearch(map, $('#search-input'), $('#search-results'), {
 // Weather overlay: image sources are swapped in place when possible; adding or
 // removing one goes through a (diffed) style rebuild.
 let tripLit = null, tripFold = null; // (what Your trip folded in a phone's sheet: tripInSheet())
+let wxUp = false, wxPinning = false; // (a timeline held to its room, scrolled up by you; its own scroll to its foot on its way: syncWxH())
 // what's in the sheet: a card open at its peek, else the planner
 const tripInSheet = () => (planner.cards.place === 'peek' ? planner.cards.current : 'planner');
 const weather = new WeatherOverlay(map, {
@@ -596,19 +599,20 @@ const weather = new WeatherOverlay(map, {
   },
   openWeather: (day) => planner.openWeather({ day }),
   // a phone's Your trip takes the room of the planner's peek (#869): what's in the sheet (the planner, or a card at its
-  // peek) folds to its line while the timeline shows your trip, said in words the first time, and opens as it was on 48
-  // hours or ✕ (`back`); left another way (Weather here, a place's weather, an hour outside the trip, the trip out of reach
-  // while the route changes) it stays folded until then. One folded already is left folded, and one you open again
-  // meanwhile is yours (below), the card as the planner; one that's no longer in the sheet (the card closed) isn't Your
+  // peek) folds to its line while the timeline shows your trip, said in words the first time, and opens as it was when you
+  // leave your trip: 48 hours or ✕ (`back`), an hour outside the trip, the trip out of reach (the user's choice of 2026-11-14
+  // on #1018); Weather here and a place's weather (`heldLL`) leave it folded, clear of the spot's pin, until 48 hours or ✕.
+  // One folded already is left folded, and one you open again meanwhile is yours (below), the card as the planner; one that's no longer in the sheet (the card closed) isn't Your
   // trip's to open. Under a card's banner the planner folds, and stays folded when the card closes (`tripHolds`), unless it
-  // was folded before the card: then only the card's sheet folds, and the planner isn't Your trip's to open
-  onTripView: (on, back) => {
+  // was folded before the card: then only the card's sheet folds, and the planner isn't Your trip's to open. Asked for
+  // `again` (a second lane, #1015), it folds the sheet again, still holding what it held
+  onTripView: (on, back, again = false) => {
     const p = planner;
     if (on && !weather.floatMQ.matches && p.layout() === 'sheet' && !p.panel.hidden && p.panel.dataset.state !== 'folded' && p.foldable()) {
-      tripFold = p.cards.folded && p.cards.saved?.sheet === 'folded' ? p.cards.current : tripInSheet();
+      tripFold = again && tripFold ? tripFold : p.cards.folded && p.cards.saved?.sheet === 'folded' ? p.cards.current : tripInSheet();
       p.fold();
       if (!store.get('tripFoldTold', false)) { store.set('tripFoldTold', true); toast('The planner folds while you look at your trip, and opens again on 48 hours'); }
-    } else if (!on && back && tripFold) {
+    } else if (!on && tripFold && (back || !weather.heldLL)) {
       if (tripFold === tripInSheet() && p.panel.dataset.state === 'folded') p.unfold();
       tripFold = null;
     }
@@ -1997,23 +2001,44 @@ $('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 // planning; the map's buttons and the planner's toolbox ride above it. Where they wouldn't fit above it
 // (a half or full sheet, or a short phone), it's on the sheet under its header instead (body.wx-over).
 function syncWxH() {
-  const b = $('#wx-bar'), st = planner.panel.dataset.state, phone = matchMedia('(max-width: 720px)').matches;
+  const b = $('#wx-bar'), st = planner.panel.dataset.state, phone = matchMedia('(max-width: 720px)').matches, top = $('.topbar').getBoundingClientRect().bottom + 8;
   const shown = !b.hidden && !b.classList.contains('docked'), open = shown && phone;
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
   // desktops: a bottom panel raised too high for it above (unless you've placed it yourself)
   const deskOver = shown && !phone && planner.active && planner.layout() === 'sheet' && !b.classList.contains('placed')
-    && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < $('.topbar').getBoundingClientRect().bottom + 8;
+    && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.scrollHeight < top; // (its whole height: not the room it's held to, below)
   const sheet = !planner.panel.hidden && !planner.panel.classList.contains('leaving'); // (the planner, or a card's sheet with it put away: #572)
-  const over = deskOver || (open && sheet && (st === 'half' || st === 'full'));
+  // (a peek with no room above it too, 200 %: by the timeline's whole height, which its place doesn't change, #590)
+  const over = deskOver || (open && sheet && (st === 'half' || st === 'full' || (st !== 'folded' && innerHeight - css('--sheet-h') - 16 - b.scrollHeight < top)));
   document.body.classList.toggle('wx-over', over);
+  // …and where the sheet's header leaves no room under it either (200 %, a phone turned sideways), over the sheet at the window's foot
+  const low = over && css('--sheet-h') - css('--sheet-head') < b.scrollHeight;
+  document.body.classList.toggle('wx-low', low);
+  // no taller than its room, scrolling inside where nothing gives it more (Your trip at 200 %, #590; a phone turned sideways,
+  // #1019), unless you've placed it: its foot in sight, so the switch stays under the finger as it grows from there, its
+  // head a scroll up
+  const free = shown && !b.classList.contains('placed');
+  const cs = getComputedStyle(b), room = free ? Math.floor(over && !low ? innerHeight - 8 - parseFloat(cs.top) : innerHeight - parseFloat(cs.bottom) - top) : 0;
+  const capped = free && b.scrollHeight > room;
+  const fresh = capped && !b.style.maxHeight;
+  b.style.maxHeight = capped ? `${room}px` : '';
+  b.style.overflowY = capped ? 'auto' : '';
+  if (!capped || fresh) wxUp = false;
+  if (capped && !wxUp) { const was = b.scrollTop; b.scrollTop = b.scrollHeight; wxPinning = b.scrollTop !== was; } // (not when you've scrolled up to its head)
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
   document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
+  // desktops: a note goes above the timeline at the map's foot (#343), which --wx-h does on phones; not one placed by hand
+  document.documentElement.style.setProperty('--wx-top', `${shown && !phone && !over && !b.classList.contains('placed') ? Math.round(innerHeight - b.getBoundingClientRect().top) : 0}px`);
   planner.placeToolsSoon();
   fitColumn();
 }
-// (its rows come and go, Your trip's too: a card beside the side panel kept clear of it, as when the window changes size)
-new ResizeObserver(() => { syncWxH(); if (planner.layout() === 'side') planner.keepBeside(); }).observe($('#wx-bar'));
+// (its rows come and go, Your trip's too: a card beside the side panel kept clear of it, as when the window changes size;
+// its rows watched too, which change no size of its own where it's held to its room)
+// (scrolled by you, up from its foot or back to it; not the scroll it put itself to, whenever its event comes)
+$('#wx-bar').addEventListener('scroll', (e) => { if (wxPinning) { wxPinning = false; return; } wxUp = e.target.scrollTop + e.target.clientHeight < e.target.scrollHeight - 2; });
+const wxRows = new ResizeObserver(() => { syncWxH(); if (planner.layout() === 'side') planner.keepBeside(); });
+[$('#wx-bar'), ...$('#wx-bar').children].forEach((el) => wxRows.observe(el));
 
 // ------------------------------------------------------------------ GPX / KML import (button + drag & drop)
 async function importFile(file) {
