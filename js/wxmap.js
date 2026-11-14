@@ -1377,7 +1377,7 @@ export class WeatherOverlay {
     const was = this.tripShown;
     if ((this.trip ? this.trip.days : []).some((d) => this.reaches(d) && t >= d.t0 - 3600 && t <= d.t1 + 3600)) this.setSpan('trip', t);
     else if (hourAt(t) >= 0) this.setHour(Math.floor(hourAt(t)));
-    if (was && this.tripShown) this.app.onTripView?.(true); // (Your trip asked for again, a second lane: a phone's sheet folds again, #1015)
+    if (was && this.tripShown) this.app.onTripView?.(true, false, true); // (Your trip asked for again, a second lane: a phone's sheet folds again, #1015)
   }
 
   // where ‹ › put the hour on a note: when you reach it (a stretch's first point), to the minute (a stretch can be shorter
@@ -1838,7 +1838,7 @@ export class WeatherOverlay {
       }
       // the box's lines short enough for it (#457): the gusts in brackets, FMI's way, and the next 6 hours' rain beside "dry"
       // only (raining, the strip shows what's ahead); whole in the tooltip and for a screen reader
-      const sum = this.accum(ll, 6), six = sum != null && sum >= 0.05 ? `6 h ${sum.toFixed(1)} mm` : '';
+      const sum = this.accum(ll, 6), six = sum != null && sum >= 0.05 ? `6 h ${sum.toFixed(sum < 10 ? 1 : 0)} mm` : ''; // (whole mm from 10)
       const g = s.gust > s.speed + 2 ? s.gust.toFixed(0) : '', speed = s.speed.toFixed(s.speed < 3 ? 1 : 0);
       const where = this.heldLL ? 'at the spot' : this.pointerLL ? 'under the mouse' : 'at the map centre';
       this.nowEl.title = `${SKY[kind]} · ${where}${g ? ` · gusts ${g} m/s` : ''}${six ? ` · ${sum.toFixed(1)} mm in the next 6 hours` : ''}`;
