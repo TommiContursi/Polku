@@ -2339,7 +2339,7 @@ body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit besi
 
 /* ---------------------------------------------------------------- misc */
 .toast {
-  position: absolute; left: calc(50% + var(--pl-left) / 2); bottom: min(calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 24px), calc(100% - 150px)); z-index: 20; transform: translateX(-50%); translate: 0 10px;
+  position: absolute; left: calc(50% + var(--pl-left) / 2); bottom: min(max(calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 24px), calc(var(--wx-top, 0px) + 12px)), calc(100% - 150px)); z-index: 20; transform: translateX(-50%); translate: 0 10px;
   max-width: min(520px, calc(100vw - 32px)); padding: 10px 16px; border-radius: 12px;
   background: #111a16; color: #fff; box-shadow: var(--shadow); font-weight: 500; opacity: 0; transition: opacity var(--t-press) var(--ease-out), translate var(--t-press) var(--ease-out);
 }

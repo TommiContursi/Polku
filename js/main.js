@@ -1997,18 +1997,26 @@ $('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 // planning; the map's buttons and the planner's toolbox ride above it. Where they wouldn't fit above it
 // (a half or full sheet, or a short phone), it's on the sheet under its header instead (body.wx-over).
 function syncWxH() {
-  const b = $('#wx-bar'), st = planner.panel.dataset.state, phone = matchMedia('(max-width: 720px)').matches;
+  const b = $('#wx-bar'), st = planner.panel.dataset.state, phone = matchMedia('(max-width: 720px)').matches, top = $('.topbar').getBoundingClientRect().bottom + 8;
   const shown = !b.hidden && !b.classList.contains('docked'), open = shown && phone;
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
   // desktops: a bottom panel raised too high for it above (unless you've placed it yourself)
   const deskOver = shown && !phone && planner.active && planner.layout() === 'sheet' && !b.classList.contains('placed')
-    && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < $('.topbar').getBoundingClientRect().bottom + 8;
+    && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < top;
   const sheet = !planner.panel.hidden && !planner.panel.classList.contains('leaving'); // (the planner, or a card's sheet with it put away: #572)
-  const over = deskOver || (open && sheet && (st === 'half' || st === 'full'));
+  // (a peek with no room above it too, 200 %: by the timeline's whole height, which its place doesn't change, #590)
+  const over = deskOver || (open && sheet && (st === 'half' || st === 'full' || (st !== 'folded' && innerHeight - css('--sheet-h') - 16 - b.scrollHeight < top)));
   document.body.classList.toggle('wx-over', over);
+  // a phone's timeline no taller than its room, scrolling inside where nothing gives it more (Your trip at 200 %, #590)
+  const room = open ? Math.floor(over ? innerHeight - 8 - parseFloat(getComputedStyle(b).top) : innerHeight - parseFloat(getComputedStyle(b).bottom) - top) : 0;
+  const capped = open && b.scrollHeight > room;
+  b.style.maxHeight = capped ? `${room}px` : '';
+  b.style.overflowY = capped ? 'auto' : '';
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
   document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
+  // desktops: a note goes above the timeline at the map's foot (#343), which --wx-h does on phones; not one placed by hand
+  document.documentElement.style.setProperty('--wx-top', `${shown && !phone && !over && !b.classList.contains('placed') ? Math.round(innerHeight - b.getBoundingClientRect().top) : 0}px`);
   planner.placeToolsSoon();
   fitColumn();
 }

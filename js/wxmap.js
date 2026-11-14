@@ -1011,7 +1011,7 @@ export class WeatherOverlay {
       if (rain[i] >= 0.1) wet++;
     }
     this.field = { vx, vy, rain, snow, wet: wet / n };
-    this.precipStill = false; // (reduced motion: the still rain is drawn again for the new field)
+    this.precipStill = this.windStill = false; // (reduced motion: the still rain and wind are drawn again for the new field)
   }
 
   // FMI's radar rate now (mm/h), or null where it doesn't reach or at a later hour (its fiRate is
@@ -1035,7 +1035,26 @@ export class WeatherOverlay {
       const f = this.field, cols = this.cam.cols;
       const cellAt = (x, y) => Math.round(y / CELL) * cols + Math.round(x / CELL);
 
-      if (this.on.wind && this.hour >= 0) {
+      // in reduced motion the wind is drawn once, still: a stroke where each particle would have trailed, until the field
+      // changes (#925, as Effects' rain)
+      if (this.on.wind && this.hour >= 0 && REDUCED.matches) {
+        if (!this.windStill) {
+          const ctx = this.windCtx, n = Math.min(2200, Math.round((this.W * this.H) / 800));
+          ctx.clearRect(0, 0, this.W, this.H);
+          ctx.lineWidth = 1.3;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = this.app.dark() ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,42,0.55)';
+          ctx.beginPath();
+          for (let j = 0; j < n; j++) {
+            const x = Math.random() * this.W, y = Math.random() * this.H, i = cellAt(x, y);
+            if (!(f.vx[i] || f.vy[i])) continue;
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + f.vx[i] * 7, y + f.vy[i] * 7); // (the moving trail's length: it fades by 0.86 a frame)
+          }
+          ctx.stroke();
+          this.windStill = true;
+        }
+      } else if (this.on.wind && this.hour >= 0) {
         const ctx = this.windCtx;
         ctx.globalCompositeOperation = 'destination-in';
         ctx.fillStyle = `rgba(0,0,0,${Math.pow(0.86, k).toFixed(3)})`;
@@ -1355,8 +1374,10 @@ export class WeatherOverlay {
   // the weather card's way to the timeline (its hours of Rain and Wind, its lanes, Weather on the map): Your trip at time t
   // when a day of it the map reaches holds t, else the 48 hours at its hour (one before you leave, say)
   showAt(t) {
+    const was = this.tripShown;
     if ((this.trip ? this.trip.days : []).some((d) => this.reaches(d) && t >= d.t0 - 3600 && t <= d.t1 + 3600)) this.setSpan('trip', t);
     else if (hourAt(t) >= 0) this.setHour(Math.floor(hourAt(t)));
+    if (was && this.tripShown) this.app.onTripView?.(true); // (Your trip asked for again, a second lane: a phone's sheet folds again, #1015)
   }
 
   // where ‹ › put the hour on a note: when you reach it (a stretch's first point), to the minute (a stretch can be shorter

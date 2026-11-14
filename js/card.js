@@ -257,18 +257,20 @@ export class CardHost {
   // The card gives way to a banner under the top bar while the map answers (Move: "Tap where it goes", Cancel);
   // unfold() shows the card again
   fold(text, cancel, { icon: ic = 'move', label = 'Cancel' } = {}) {
+    if (!this.folded) this.foldScroll = this.box?.scrollTop || 0; // (unfolded, it's where it was scrolled, as on a desktop)
     this.folded = { text, cancel, icon: ic, label };
     this.render({ fresh: true });
   }
   unfold() {
     if (!this.folded) return;
     this.folded = null;
-    if (this.current) this.render({ fresh: true });
+    if (this.current) this.unfolded();
   }
+  unfolded() { this.render({ fresh: true }); this.box.scrollTop = this.foldScroll; }
 
   // Escape: a fold is cancelled, else one card back. True when it did something.
   escape() {
-    if (this.folded) { const f = this.folded; this.folded = null; f.cancel(); if (this.current) this.render({ fresh: true }); return true; }
+    if (this.folded) { const f = this.folded; this.folded = null; f.cancel(); if (this.current) this.unfolded(); return true; }
     if (!this.current) return false;
     this.back();
     return true;
