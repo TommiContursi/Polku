@@ -1814,8 +1814,8 @@ MULTI = """(async () => {
   if (tags.join(' / ') !== 'Changeover · 15 min / Changeover · 3 min' || document.querySelector('.wpl-point .wpl-tag')) errs.push(`changeovers in the list: ${tags.join(' / ') || 'none'}`);
   const titles = [...document.querySelectorAll('.wpl .sec2-head b')].map((x) => x.textContent.split(' · ')[0]);
   if (titles.join() !== 'MTB,Paddle,Run') errs.push(`the list's sections: ${titles.join(', ')}`);
-  p.openWeather({ time: true });
-  await wait(300);
+  p.openWeather(); await wait(300);
+  p.cards.box.querySelector('[data-k=time]').click(); await wait(300);
   const rows = [...p.cards.box.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
   if (!rows.some((t) => /Paddle/.test(t)) || !rows.some((t) => /^Changeovers \\(2\\)/.test(t))) errs.push(`time by sport: ${rows.join(' / ')}`);
   // the share link: sports and the hand-set minutes come back
@@ -2059,8 +2059,8 @@ STOPS = """(async () => {
   const kind = (k) => waits.filter((t) => t.startsWith(`${k}: `));
   if (kind('stop').length !== 1 || kind('night').length !== 1 || !/^stop: Stop · \\d+ min\\d\\d:\\d\\d–/.test(kind('stop')[0]) || !/^night: Night · \\d+ h/.test(kind('night')[0]) || !document.querySelector('.wpl > li.wait .wpl-wait[data-wait=night]')
     || !/^Day 1 · /.test(document.querySelector('.wpl .sec2-head b')?.textContent || '')) errs.push(`stops in the waypoint list: ${waits.join(' / ') || 'none'}`);
-  p.openWeather({ time: true });
-  await wait(300);
+  p.openWeather(); await wait(300);
+  p.cards.box.querySelector('[data-k=time]').click(); await wait(300);
   const rows = [...p.cards.box.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
   if (!rows.some((t) => /^Breaks \\(1\\)/.test(t)) || !rows.some((t) => /^Nights \\(1\\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
   // the point's card has the stop, places to sleep for a night, and the gear switch (25d)
@@ -7923,14 +7923,13 @@ MARKS = r"""(async () => {
     switches()[0].click(); switches()[2].click();
   }
   document.querySelector('#layers-panel .panel-x, #layers-panel [aria-label=Close]')?.click(); await wait(300);
-  // The estimate opens the weather card at Time on the way, unfolded, from Check and with the sheet folded (#869's step 3)
+  // The time is from your departure: it opens When's menu at it, from Check and with the sheet folded too, and no card (#1026)
   if (p.layout() === 'sheet') p.setSheetState('peek', { remember: false });
   document.querySelector('.sum-time').click(); await wait(500);
   const settled = await __DEPARTURE_SETTLED__;
   if (settled) errs.push(`departure sheet: ${settled}`);
-  const tt = p.cards.box?.querySelector('[data-k=time]');
-  if (p.cards.current?.kind !== 'weather' || tt?.getAttribute('aria-expanded') !== 'true' || !p.cards.box.querySelector('.speed-table')) errs.push('the estimate did not open the weather card at Time on the way');
-  p.cards.close(); await wait(300);
+  if (!document.querySelector('.menu-pop[aria-label="When"]') || document.querySelector('.sum-time').getAttribute('aria-expanded') !== 'true' || p.cards.current) errs.push(`the time did not open When’s menu (a card: ${p.cards.current?.kind})`);
+  p.when.pop?.close(); await wait(300);
   // (the trip's box's When pill and its menu, #869; the leave group tries them as a person)
   p.reveal('points'); await wait(500);
   p.els.box.scrollIntoView({ block: 'nearest' }); await wait(100);
@@ -14423,10 +14422,11 @@ def toolbox(chrome):
             pg.js("document.getElementById('tb-rerender').remove(); polku.planner.setSheetState('half'); true")
             pg.js(SETTLED)
             tap(pg, '#planner .sum-time', f'{name}: the time')
-            # (it opens the weather card at Time on the way, #869's step 3: at its peek, as a first card opens; not a fold)
-            if pg.js("polku.planner.cards.current?.kind") != 'weather':
-                fails.append(f'{name}: a touch tap on the time opened no weather card, the sheet at {pg.js("polku.planner.panel.dataset.state")} (#251)')
-            pg.js("polku.planner.cards.close(); true")
+            # (it opens When's menu, #1026, and leaves the sheet at half)
+            r = pg.js("({ menu: !!document.querySelector('.menu-pop[aria-label=\"When\"]'), state: polku.planner.panel.dataset.state })")
+            if not r['menu'] or r['state'] != 'half':
+                fails.append(f'{name}: a touch tap on the time: When’s menu {r["menu"]}, the sheet at {r["state"]} (#251, #1026)')
+            pg.js("polku.planner.when.pop?.close(); true")
             # a reload: the route is back, undo and redo can't do anything yet (#241)
             pg.reload()
             if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => polku.planner.points.length || Date.now() - t0 > 20000 ? ok(polku.planner.points.length) : setTimeout(go, 100); go(); })"):

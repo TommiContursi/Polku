@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-14
 
+### The route's time opens When ([#1026](https://github.com/TommiContursi/Polku/issues/1026))
+
+- A tap on the time in the route's numbers, at the top of the planner, opens **When**'s menu right there, to change when you leave or set **Arrive by…**. The time counts from your departure, as the line under it says. **Time on the way** is in the weather card, which the trip's box opens.
+
 ### Arrive by ([#219](https://github.com/TommiContursi/Polku/issues/219))
 
 - **When**'s menu has **Arrive by…**: pick when you want to be there, and Polku works out when to leave. The trip's box says both, such as "Arrive by 20:30 ▾ · leave 19:19", and the route's numbers say "leave 19:19" under the time.

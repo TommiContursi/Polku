@@ -6624,9 +6624,9 @@ export class Planner {
     const waitSec = (a.waits || []).reduce((t, w) => t + w.sec, 0);
     const nights = (a.waits || []).reduce((c, w) => c + (isNight(w.stop) ? w.stop.n || 1 : 0), 0);
     key('distance', fmtDist(a.total));
-    // the time is from your departure: tapping it opens the clock (one control for both)
+    // the time is from your departure: a tap opens When's menu at it, as the trip's box's pill does
     const dep = this.when.words();
-    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · Time on the way`, onclick: () => this.openWeather({ time: true }) },
+    const time = h('button', { type: 'button', class: 'sum-item sum-time', 'aria-haspopup': 'menu', 'aria-expanded': 'false', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · When`, onclick: () => this.when.menu(time) },
       // the whole time, its waits too, and under it the time on the move where they differ (#761), else when you leave
       h('b', {}, nights ? shortDuration(a.timeWind || a.time) : fmtDuration(a.timeWind || a.time)), h('small', {}, waitSec ? `${shortDuration((a.timeWind || a.time) - waitSec)} moving` : this.when.leaving() || `from ${dep}`));
     sum.append(time);
@@ -7495,23 +7495,21 @@ export class Planner {
     return r.wet ? (r.snow ? 'snow' : 'rain') : this.skyAt(a, Math.round((i0 + i1) / 2));
   }
 
-  // The weather card from the trip's box, the numbers' time, Check's items or the key facts: at a day (framed on the map
-  // on a trip of days), or at Time on the way, unfolded. `from`: the card it came from, for Back; from the planner, ✕ alone
+  // The weather card from the trip's box, Check's items or the key facts: at a day (framed on the map on a trip of
+  // days). `from`: the card it came from, for Back; from the planner, ✕ alone
   // (Escape and the back gesture still go back), as Check's items
-  openWeather({ day = 0, time = false, from = 'box', el = null } = {}) {
+  openWeather({ day = 0, from = 'box', el = null } = {}) {
     const a = this.analysis;
     if (!a || !this.trip()) return;
     // (the day's weather card open already: as it is, unfolded where a tap on the map's weather folded it to its banner)
     const cur = this.cards.current;
-    if (cur?.kind === 'weather' && (cur.day || 0) === day && !time && !this.cards.rolled) { this.cards.unfold(); return; }
+    if (cur?.kind === 'weather' && (cur.day || 0) === day && !this.cards.rolled) { this.cards.unfold(); return; }
     const days = this.wxDays(a);
-    if (days.length > 1 && !time) this.focusRange(days[day].i0, days[day].i1, null);
+    if (days.length > 1) this.focusRange(days[day].i0, days[day].i1, null);
     // (a desktop's beside the panel, level with its row, as Check's items')
     const panel = this.panel.getBoundingClientRect(), side = this.layout() === 'side' && this.active;
     const beside = this.cards.where() === 'float' ? (side ? { right: panel.right + 4, top: el ? el.getBoundingClientRect().top : panel.top + 60 } : { right: 4, top: 72 }) : null;
-    this.cards.open(weatherCard(this, { time, day }), { beside, from });
-    // (the card scrolled to it, not the page)
-    if (time) requestAnimationFrame(() => { const box = this.cards.box, el = box?.querySelector('[data-k=time]'); if (el) box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - 8; });
+    this.cards.open(weatherCard(this, { day }), { beside, from });
   }
 
   // The weather card's head, in its title's place (the user's choice, 2026-11-11): When and when you're there, so the
