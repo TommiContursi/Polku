@@ -306,8 +306,8 @@ WX_LAYERS_ON = "(async () => { const w = polku.weather, wait = (ms) => new Promi
 # first stretch against you (none on a calm day: the stepper says so)
 WX_TRIP = "(async () => { const w = polku.weather, p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); w.app.onToggle({ rain: true }); for (let k = 0; k < 150 && !(w.cur && p.analysis.wind); k++) await wait(200); w.bar.querySelector('[data-k=span-trip]').click(); await wait(300); w.bar.querySelector('[data-k=step-next]').click(); await wait(800); return true; })()"
 # Time on the way unfolded, scrolled to, as a person opens it (the card has no option for it since #1026)
-TIME_OPEN = ("const box = p.cards.box; box.querySelector('[data-k=time]').click(); await wait(400);"
-             " box.scrollTop += box.querySelector('[data-k=time]').getBoundingClientRect().top - box.getBoundingClientRect().top - 8; await wait(300); ")
+TIME_OPEN = ("p.cards.box.querySelector('[data-k=time]').click(); await wait(400);"  # (the card is built again: its box anew)
+             " { const box = p.cards.box; box.scrollTop += box.querySelector('[data-k=time]').getBoundingClientRect().top - box.getBoundingClientRect().top - 8; } await wait(300); ")
 WEATHER = lambda time=False, full=False: f"(async () => {{ const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (let k = 0; k < 150 && !p.analysis.wind; k++) await wait(100); p.openWeather(); await wait(700); {TIME_OPEN if time else ''}{FULL if full else ''} return true; }})()"
 START_CARD = lambda far=False: "(async () => { const p = polku.planner; " + (FAR if far else '') + "p.openPointCard(p.points[0]); await new Promise((r) => setTimeout(r, 600)); return true; })()"
 
