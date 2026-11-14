@@ -610,10 +610,8 @@ const weather = new WeatherOverlay(map, {
     } else if (!on && tripFold) {
       const ours = tripFold === tripInSheet();
       tripFold = null;
-      if (back && ours && p.panel.dataset.state === 'folded') {
-        p.unfold();
-        if (tripKept && p.cards.saved === tripKept[1]) p.cards.saved = tripKept[0];
-      }
+      if (back && ours && p.panel.dataset.state === 'folded') p.unfold();
+      if (back && tripKept && p.cards.saved === tripKept[1]) p.cards.saved = tripKept[0]; // (the card still the one it was kept for)
       tripKept = null;
     }
   },
