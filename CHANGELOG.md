@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-14
 
+### The weather timeline's words ([#991](https://github.com/TommiContursi/Polku/issues/991), [#990](https://github.com/TommiContursi/Polku/issues/990))
+
+- When the forecast can't be loaded or is paused, the timeline's hour strip no longer says "Zoom in to see the forecast here": zooming in wouldn't help. The reading and the note under the timeline say why there's no forecast. The strip still asks you to zoom in when the map is zoomed too far out for a forecast.
+- On a desktop, the timeline's time shows whole, on two lines where it needs them, such as "Now · 20:14 · FMI radar" instead of "Now · 20:14 · FMI r…".
+
 ### Each day's weather on a trip with nights ([#981](https://github.com/TommiContursi/Polku/issues/981))
 
 - On a trip with nights, each day's weather comes from that day's own hours. The day before a night no longer counts the next morning's weather at the place you stop, so its notes, numbers and sky no longer say "around Sat 08:00" on a Friday. A warning on the next day starts where you set off again.

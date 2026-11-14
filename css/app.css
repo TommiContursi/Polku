@@ -503,7 +503,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .fab.ahead[aria-pressed="true"] .fab-time-label { color: #fff; }
 .wx-row { display: flex; align-items: center; gap: 8px; }
 .wx-row input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
-.wx-time { font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; width: 132px; flex: none; text-align: right; overflow: hidden; text-overflow: ellipsis; }
+.wx-time { font-size: 12px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; width: 132px; flex: none; text-align: right; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } /* (on two lines where it must, #990: its width keeps the slider still) */
 /* the legend over the map, top left, while a weather layer is on (#182, as yr's app shows it) */
 .wx-legend { display: flex; flex-direction: column; gap: 4px; max-width: min(300px, calc(100vw - var(--pl-left) - 88px)); padding: 7px 10px 8px; border-radius: 12px; color: var(--text); }
 .wx-legend[hidden] { display: none; }
@@ -2413,7 +2413,7 @@ body.dropping .drop-hint { display: flex; }
   .tl-now { --tl-row: 14px; width: 112px; font-size: 11px; } /* (three lines in the strip's 56 px) */
   .tl-now-main b { font-size: 19px; }
   .tl-note { display: none; }
-  .wx-time { width: 112px; white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; } /* (on two lines where it must: the row is as tall as Play and the slider) */
+  .wx-time { width: 112px; }
   /* Your trip, the planner folded (#869): the reading on one line over a strip the bar's whole width, from Play's column
      to the edge, as the slider is, with the time at the line's end (the km is the time's): the knob under the needle. A
      reading too long for the bar (360 px, 200 %) goes on to a second line, and the time to a line of its own where the
