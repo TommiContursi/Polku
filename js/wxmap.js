@@ -126,6 +126,8 @@ export class WeatherOverlay {
     this.buildBar();
     map.on('movestart', () => this.onMoveStart());
     map.on('moveend', () => this.onMoveEnd());
+    // reduced motion turned on or off: the wind and rain drawn again the other way, the stopped loop started again
+    REDUCED.addEventListener('change', () => { this.precipStill = this.windStill = false; if (this.animated && !this.anim) this.startAnim(); });
     map.on('idle', () => this.renderTowns(true)); // (the map's own place labels are placed by then)
     map.on('resize', () => { this.resizeCanvases(); this.onMoveEnd(); });
     // the card shows the spot under the mouse, else the map centre
