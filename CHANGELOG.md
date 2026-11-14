@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-14
 
+### A place's weather in the timeline's reading ([#1028](https://github.com/TommiContursi/Polku/issues/1028))
+
+- A tap on a place's weather on the map names the place in the timeline's reading, such as "2° Tuomarinkylä", and rings the place's weather on the map while the reading is there. A long name goes onto two lines and is cut short after them; pointing at the reading shows all of it. **Weather here** on a spot of the map still says "the spot".
+
 ### Words that read over the map ([#989](https://github.com/TommiContursi/Polku/issues/989))
 
 - In dark mode, the warnings in Route's list are a lighter red, so they read over the map behind the planner. In light mode, what's good to know is a darker amber everywhere, so it reads over the aerial photos too.
