@@ -85,6 +85,15 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 .frame .mk-menu .menu-item > .ic:last-child { margin-left: auto; color: var(--muted); }
 
 /* ======================================================= new: Best time to leave (#273) */
+/* round 3 (2026-11-15): no grey words; what needs explaining is a round ⓘ in the accent (it can be tapped), its words in a
+   tooltip, a 44 px target by touch */
+.bt .tool.bt-info { flex: none; width: 28px; height: 28px; min-height: 0; padding: 0; position: relative; color: var(--accent); }
+@media (pointer: coarse) { .bt-info.tool::after { content: ""; position: absolute; inset: -8px; } }
+.r3 .bt-read > .bt-info { margin-left: auto; }
+.bt-day b .bt-info { display: inline-grid; vertical-align: middle; margin: -6px 0 -6px 2px; }
+.r3 .row.bt-row > .bt-row-in > small, .r3 .bt-best .note { color: var(--text); }
+.r3 .bt-cross { align-items: center; }
+.r3 .bt-cross > .bt-info { margin-left: auto; }
 /* round 2 (2026-11-15): the drawing says it, so no notes. A bar in its cause's colour, with its icon over a tall one; a named
    bar with its time over it; the facts as an icon and a word or two, in columns */
 .r2 .bt-strip { height: 80px; }
@@ -155,7 +164,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
   <h1>Best time to leave</h1>
   <p>#273 and #856: which departure makes the best trip, in the weather card and When’s menu. <b>Best time to leave</b> is the proposal; <b>Today (main)</b> is the card and the menu as they are. The bars, the ‹ ›, the rows and When’s pill all work: drag a finger (or the mouse) along the bars to try each hour, and let go to leave then. The plan and its four questions: <a href="../best-time-to-leave.md">docs/plans/best-time-to-leave.md</a>.</p>
   <div class="bars">
-    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="r2">Round 2: less text</button><button data-v="new">Round 1</button><button data-v="today">Today (main)</button></div></div>
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="r3">Round 3: ⓘ, no grey</button><button data-v="r2">Round 2: less text</button><button data-v="new">Round 1</button><button data-v="today">Today (main)</button></div></div>
     <div class="bar"><span>Screen</span><div class="sw" data-k="s"><button data-v="card">The card, from When’s menu</button><button data-v="menu">When’s menu</button><button data-v="box">The card, from the trip’s box</button></div></div>
     <div class="bar"><span>The day</span><div class="sw" data-k="c"><button data-v="day">A usual day</button><button data-v="evening">November, after work</button><button data-v="flat">A flat day</button><button data-v="bad">Every hour bad</button><button data-v="late">Late evening</button><button data-v="far">Past the forecast</button><button data-v="loading">Loading</button><button data-v="failed">Failed</button></div></div>
     <div class="bar"><span>Route</span><div class="sw" data-k="r"><button data-v="mtb">MTB loop</button><button data-v="long">Gravel, 10 hours</button><button data-v="paddle">Sea kayak, a crossing</button><button data-v="fi">Long Finnish names</button></div>
@@ -185,10 +194,10 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
   </div>
 </div>
 <script type="module">
-import { icon, h } from '../../../js/ui.js';
+import { icon, h, tooltip } from '../../../js/ui.js';
 
 // ---------------------------------------------------------------- the switches
-const OPT = { v: ['r2', 'new', 'today'], s: ['card', 'menu', 'box'], c: ['day', 'evening', 'flat', 'bad', 'late', 'far', 'loading', 'failed'], r: ['mtb', 'long', 'paddle', 'fi'], w: ['at', 'now', 'by'], n: ['day', 'nights'], f: ['390', '360', 'desk'], z: ['100', '200'] };
+const OPT = { v: ['r3', 'r2', 'new', 'today'], s: ['card', 'menu', 'box'], c: ['day', 'evening', 'flat', 'bad', 'late', 'far', 'loading', 'failed'], r: ['mtb', 'long', 'paddle', 'fi'], w: ['at', 'now', 'by'], n: ['day', 'nights'], f: ['390', '360', 'desk'], z: ['100', '200'] };
 const Q = new URLSearchParams(location.search);
 const S = Object.fromEntries(Object.entries(OPT).map(([k, vals]) => [k, vals.includes(Q.get(k)) ? Q.get(k) : vals[0]]));
 let T; // what changes while you try it: { w, dep, dd, open, try, menu }
@@ -296,7 +305,27 @@ function why(x) {
   if (r.water && !x.out) p.push(`waves about ${Math.max(0.1, x.wave).toFixed(1)} m on the crossing`);
   return p;
 }
-const R2 = () => S.v === 'r2';
+const R3 = () => S.v === 'r3';
+const R2 = () => S.v === 'r2' || R3(); // (round 3 builds on round 2)
+// round 3 (the design round's rule, 2026-11-15): what needs explaining gets a round ⓘ, its words in a tooltip: a mouse's
+// hover and the keyboard's focus (ui.js's tooltip()), and a finger's tap the same words in a bubble until the next tap
+let bub = null;
+function infoDot(name, text) {
+  const b = h('button', { type: 'button', class: 'tool bt-info', 'aria-label': `${name}: ${text}`, html: icon('info', 16) });
+  tooltip(b, { name, text });
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const was = bub?.dataset.for === name; bub?.remove(); bub = null;
+    if (was) return;
+    bub = h('div', { class: 'tip', role: 'tooltip', 'data-for': name }, h('b', {}, name), text);
+    document.body.append(bub);
+    const r = b.getBoundingClientRect(), w = bub.offsetWidth;
+    Object.assign(bub.style, { left: `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`, top: `${r.bottom + 8}px` });
+    const off = (ev) => { if (bub && !bub.contains(ev.target) && ev.target !== b && !b.contains(ev.target)) { bub.remove(); bub = null; document.removeEventListener('pointerdown', off, true); } };
+    setTimeout(() => document.addEventListener('pointerdown', off, true));
+  });
+  return b;
+}
 const dur = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`);
 // round 2: at most three facts, each an icon and a word or two (the dark left out in the dark's own rows)
 function facts(x, inDark = false) {
@@ -415,19 +444,27 @@ function reading(x, trying) {
 }
 function best() {
   const r = R(), k = T.dd, d = day(k), x = dep(), N = named(k), hrs = N.hrs, open = T.open;
-  const row = foldRow('best', 'sunrise', 'Best time to leave', foldLine(), open, () => { T.open = !T.open; draw(); });
-  const box = h('section', { class: `bt${R2() ? ' r2' : ''}`, 'aria-label': 'Best time to leave' }, h('div', { class: 'rows' }, row));
+  const row = foldRow('best', 'sunrise', 'Best time to leave', R3() ? '' : foldLine(), open, () => { T.open = !T.open; draw(); });
+  if (R3()) {
+    const line = foldLine(), v = /^(First day · )?Better: (.+?),/.exec(line)?.[2] ?? (/Good time/.test(line) ? 'Good now' : '');
+    if (v) row.insertBefore(h('span', { class: 'val' }, v), row.lastChild);
+    tooltip(row, { name: 'Best time to leave', text: line });
+  }
+  const box = h('section', { class: `bt${R2() ? ' r2' : ''}${R3() ? ' r3' : ''}`, 'aria-label': 'Best time to leave' }, h('div', { class: 'rows' }, row));
   if (!open) return box;
   // the day, ‹ › (tl-step)
   const lit0 = N.lit[0], sub = [S.c === 'loading' ? 'loading the forecast' : S.c === 'failed' ? 'no forecast: the dark alone' : good(lit0) ? `best in the light ${hm(lit0.best.M0)}` : 'no good time in the light', k >= 3 ? 'less certain' : '', k === 9 ? 'no forecast yet from 20:00' : ''].filter(Boolean).join(' · ');
   const step = (dir) => () => { T.dd = Math.max(0, Math.min(9, T.dd + dir)); T.try = null; draw(); };
   box.append(h('div', { class: 'tl-step bt-day' },
     h('button', { type: 'button', class: 'tool', 'aria-label': 'The day before', disabled: k === 0 ? true : null, onclick: step(-1), html: icon('chevronLeft', 20) }),
-    h('span', { 'aria-live': 'polite' }, ...(R2() ? (() => { const w = k === 9 ? 'Forecast ends at 20:00' : k >= 3 ? 'Forecast less certain' : ''; return [h('b', {}, `${k === 0 ? 'Today, ' : k === 1 ? 'Tomorrow, ' : ''}${d.short} ${d.date}`), w ? h('span', { class: 'sr-only' }, '. ') : null, w ? h('small', {}, w) : null]; })() : [h('b', {}, dayWords(k)), h('span', { class: 'sr-only' }, '. '), h('small', {}, sub)])),
+    h('span', { 'aria-live': 'polite' }, ...(R2() ? (() => { const w = k === 9 ? 'Forecast ends at 20:00' : k >= 3 ? 'Forecast less certain' : ''; const day1 = `${k === 0 ? 'Today, ' : k === 1 ? 'Tomorrow, ' : ''}${d.short} ${d.date}`;
+      if (R3()) return [h('b', {}, day1, w ? infoDot(w, k === 9 ? `The forecast reaches 20:00 on ${d.name}. Later departures show the dark only.` : 'More than three days ahead, the forecast can still change.') : null)];
+      return [h('b', {}, day1), w ? h('span', { class: 'sr-only' }, '. ') : null, w ? h('small', {}, w) : null]; })() : [h('b', {}, dayWords(k)), h('span', { class: 'sr-only' }, '. '), h('small', {}, sub)])),
     h('button', { type: 'button', class: 'tool', 'aria-label': 'The day after', disabled: k === 9 ? true : null, onclick: step(1), html: icon('chevronRight', 20) })));
   // the reading: the hour you're trying, else the departure set
   const shown = T.try != null ? hrs[T.try] : x.k === k ? (hrs.find((y) => !y.past && y.M0 <= x.M0 && x.M0 < y.M0 + 60) || x) : null;
   const read = h('p', { class: `bt-read${T.try != null ? ' try' : ''}` }, ...(S.c === 'loading' || S.c === 'failed' ? [] : shown ? reading(T.try != null ? hrs[T.try] : x, T.try != null) : [h('span', {}, `Your departure is ${x.k < k ? 'before' : 'after'} this day: try an hour here.`)]));
+  if (R3() && S.c !== 'loading' && S.c !== 'failed') read.append(infoDot('The bars', 'Each bar is the weather on your trip if you leave at that hour: the shorter, the better. Shaded hours are dark. Drag along the bars, and let go to leave then.'));
   // the strip: the dark behind, a bar an hour (the weather alone), the departure ringed, the named ones filled with a mark
   const marks = new Set([...N.lit, ...N.dark].map((w) => w.i));
   const slots = h('div', { class: 'bt-slots', 'aria-hidden': 'true' }, ...hrs.map((y, i) => {
@@ -451,7 +488,7 @@ function best() {
     h('div', { class: 'bt-axis', 'aria-hidden': 'true' }, ...[0, 6, 12, 18].map((v) => h('span', { style: `left: ${(v / 24) * 100}%` }, pad(v)))),
     ...(R2() ? [] : [h('p', { class: 'bt-sun' }, h('span', { html: `${icon('sunrise', 15)}${hm(d.rise)}` }), h('span', { html: `${icon('sunset', 15)}${hm(d.set)}` }), h('span', {}, 'shaded: the trip in the dark'))]));
   wire(strip, range, hrs);
-  if (S.c === 'loading') { box.append(h('p', { class: 'note wx-note' }, R2() ? 'Loading the forecast…' : 'Loading the forecast along the route…')); return box; }
+  if (S.c === 'loading') { if (!R3()) box.append(h('p', { class: 'note wx-note' }, R2() ? 'Loading the forecast…' : 'Loading the forecast along the route…')); return box; }
   if (S.c === 'failed') {
     const lby = day(k).set - r.dur - ((day(k).set - r.dur) % 5);
     box.append(h('div', { class: 'bt-fail' }, ...(R2() ? [h('p', { class: 'bt-read' }, 'The forecast didn’t load.'), h('p', { class: 'bt-read' }, `Leave by ${hm(lby)} to be ${endWord()} before dark.`)] : [h('p', { class: 'note wx-note' }, `The forecast couldn’t be loaded, so only the dark counts. Leave by ${hm(lby)} to be ${endWord()} in the light.`)]),
@@ -465,7 +502,9 @@ function best() {
       : !rough.length ? `Crossing window all day: waves under 0.35 m on the ${r.crossKm} km crossing from ${r.from} to ${r.to}, comfortable for a kayak.`
       : `Crossing window: leave by ${hm(hrs[last].M0)} to cross from ${r.from} to ${r.to} (${r.crossKm} km of open water) in waves under 0.35 m, comfortable for a kayak. Later it’s rougher.`;
     const t2 = firstOk < 0 ? 'Too rough to cross all day' : !rough.length ? 'Small waves on the crossing all day' : `Leave by ${hm(hrs[last].M0)} to cross in small waves`;
-    box.append(h('p', { class: 'bt-cross', html: `${icon('paddle', 18)}<span>${R2() ? t2 : t}</span>` }));
+    const cross = h('p', { class: 'bt-cross', html: `${icon('paddle', 18)}<span>${R2() ? t2 : t}</span>` });
+    if (R3()) cross.append(infoDot('The crossing', `${r.crossKm} km of open water from ${r.from} to ${r.to}. Small waves are under 0.35 m, comfortable for a kayak: an estimate from the forecast wind over the open water.`));
+    box.append(cross);
   }
   // the named departures: in the light, in the dark (question 1); the least bad, said so (question 2)
   const pick = (w, ic) => { const y = w.best, on = x.k === y.k && x.M0 >= hrs[w.a].M0 && x.M0 === (y.nowSlot ? NOW().m + y.k * 1440 : y.M0);

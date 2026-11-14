@@ -5,7 +5,8 @@ PR 6 of [planner-rethought.md](planner-rethought.md), step 5 of [the one order o
 ## Where it stands
 
 - **2026-11-14:** this plan and the mock-up, waiting for the user's answers to the four questions at the end. Then the build, as one PR.
-- **2026-11-15, round 2:** from the user's look at round 1: a good idea, but too much grey text explaining it, and rows of facts run together. Round 2 lets the drawing carry the meaning (the bars in their cause's colour, the named hours labelled on the strip, the facts as columns) and drops the notes. Round 1 stays on the mock-up's switch. What follows is round 2.
+- **2026-11-15, round 2:** from the user's look at round 1: a good idea, but too much grey text explaining it, and rows of facts run together. Round 2 lets the drawing carry the meaning (the bars in their cause's colour, the named hours labelled on the strip, the facts as columns) and drops the notes. Round 1 stays on the mock-up's switch.
+- **2026-11-15, round 3:** the design round's rule, as the user asked: no grey words explaining things. What needs explaining is a round ⓘ in the accent, its words in a tooltip (a mouse's hover and the keyboard's focus, `tooltip()`; a finger's tap shows the same bubble). The folded row keeps its label alone, with the best time as its value. Rounds 1 and 2 stay on the switch. What follows is round 3.
 - **Already on `main`:** the map's hour no longer moves the departure. 6b did it (#988): `js/wxmap.js` never sets When. Nothing is left of that line for this PR.
 
 ## Already decided (2026-11-06)
@@ -39,7 +40,7 @@ The mock-up draws it at 390 and 360 px, 200 % and on a desktop, for an MTB ride 
 - **A desktop and the keyboard:** pointing at a bar shows its reading, as pointing at the hour strip does; a click sets it. Under the bars lies a native range (as the timeline's strip), its value text the reading, so a screen reader hears it; the arrow keys move the reading, and the departure is set when they rest for a moment, or at once with Enter. The named rows are the 44 px targets for one tap; the bars (13 px each at 360 px) are for the drag.
 - **The rows:** up to three, under two small headings, **In the light** and **In the dark**, each the best hour of a stretch of good hours, a `row` with the sun or the moon and a tick on the one set, its parts in columns: the hour ("13:00"), its facts ("Dry", "Headwind"), and when you're back ("→ 15:05"). A tap sets Leave at; the card then shows that departure's weather below. Two named departures are at least two hours apart.
 - **The crossing window** (#856, on a paddle or a swim): one line under the strip, "Leave by 15:00 to cross in small waves" ("Too rough to cross all day", "Small waves on the crossing all day"). The hours outside it are ruled out, hatched, with the paddle over the first.
-- **No notes explaining it.** The drawing says what the bars are; nothing says "shorter is better" or what the shade means.
+- **No notes explaining it.** The drawing says what the bars are. What still needs a word has a round ⓘ: the bars (how to read and drag them), a day more than three days ahead or where the forecast ends, and the crossing (its length and what small waves are). The folded row is **Best time to leave** with the best time as its value ("Sun 08:00", "Good now").
 
 ## The rule (question 1)
 
