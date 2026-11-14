@@ -20224,11 +20224,12 @@ ARRIVE_JS = """(async () => {
     await wait(200);
     if (ab != null || W.by != null || LV.when('box').note !== `Arrive by ${when(soon)} has passed: pick a new time above.`) errs.push(`Arrive by passed while open: ab=${ab}, by ${W.by}, “${LV.when('box').note}”`);
   } finally { Date.now = realNow; }
-  // a night at waypoint 1, on at 08:00: Arrive by tomorrow 12:00 is the last morning's, the first day leaving as it was
+  // a night at waypoint 1, on at 08:00, the first day leaving tomorrow at 18:00 (fixed, so the night ends the morning
+  // after whatever the hour now): Arrive by noon that day is the last morning's, the first day leaving as it was
   p.setStop(1, { on: 480 });
   for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 1); k++) await wait(200);
-  const noon = LV.at(1, 12, 0);
-  W.set(Math.ceil(Date.now() / 900000) * 900 + 1800);
+  const noon = LV.at(2, 12, 0);
+  W.set(LV.at(1, 18, 0));
   const first = W.at;
   pickBy(LV.iso(noon));
   await settled();
@@ -20253,7 +20254,7 @@ ARRIVE_JS = """(async () => {
   W.pop.close();
   if (groups.join() !== 'First day,Last day' || ticks.length !== 2) errs.push(`the menu with a night: ${JSON.stringify({ groups, ticks })}`);
   // too soon for the night: it says when you're there
-  W.setBy(LV.at(0, 23, 0) > Date.now() / 1000 + 600 ? LV.at(0, 23, 0) : Date.now() / 1000 + 600);
+  W.setBy(LV.at(1, 23, 0));
   await settled();
   r = read();
   if (W.got?.go != null || r.note !== `With your nights you’re there at ${p.clockOf(r.end)}.`) errs.push(`Arrive by too soon for the night: ${JSON.stringify(r)}`);
