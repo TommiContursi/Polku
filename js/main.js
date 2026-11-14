@@ -599,10 +599,10 @@ const weather = new WeatherOverlay(map, {
   },
   openWeather: (day) => planner.openWeather({ day }),
   // a phone's Your trip takes the room of the planner's peek (#869): what's in the sheet (the planner, or a card at its
-  // peek) folds to its line while the timeline shows your trip, said in words the first time, and opens as it was on 48
-  // hours or ✕ (`back`); left another way (Weather here, a place's weather, an hour outside the trip, the trip out of reach
-  // while the route changes) it stays folded until then. One folded already is left folded, and one you open again
-  // meanwhile is yours (below), the card as the planner; one that's no longer in the sheet (the card closed) isn't Your
+  // peek) folds to its line while the timeline shows your trip, said in words the first time, and opens as it was when you
+  // leave your trip: 48 hours or ✕ (`back`), an hour outside the trip, the trip out of reach (the user's choice of 2026-11-14
+  // on #1018); Weather here and a place's weather (`heldLL`) leave it folded, clear of the spot's pin, until 48 hours or ✕.
+  // One folded already is left folded, and one you open again meanwhile is yours (below), the card as the planner; one that's no longer in the sheet (the card closed) isn't Your
   // trip's to open. Under a card's banner the planner folds, and stays folded when the card closes (`tripHolds`), unless it
   // was folded before the card: then only the card's sheet folds, and the planner isn't Your trip's to open. Asked for
   // `again` (a second lane, #1015), it folds the sheet again, still holding what it held
@@ -612,7 +612,7 @@ const weather = new WeatherOverlay(map, {
       tripFold = again && tripFold ? tripFold : p.cards.folded && p.cards.saved?.sheet === 'folded' ? p.cards.current : tripInSheet();
       p.fold();
       if (!store.get('tripFoldTold', false)) { store.set('tripFoldTold', true); toast('The planner folds while you look at your trip, and opens again on 48 hours'); }
-    } else if (!on && back && tripFold) {
+    } else if (!on && tripFold && (back || !weather.heldLL)) {
       if (tripFold === tripInSheet() && p.panel.dataset.state === 'folded') p.unfold();
       tripFold = null;
     }

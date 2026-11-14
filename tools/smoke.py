@@ -12736,6 +12736,7 @@ WX_STILL = """(async () => {
   await wait(600);
   const d = wpx();
   if (!c.every((v, i) => v === d[i])) out.push('reduced motion: the wind moves');
+  if (w.anim) out.push('reduced motion: the wind and the rain drawn still, and the animation loop still runs every frame');
   // drawn again for a new field: after a move, and turned off and on
   const drawn = () => wpx().some((v, i) => i % 4 === 3 && v);
   polku.map.panBy([120, 0], { animate: false }); await wait(1200);
@@ -13345,6 +13346,20 @@ TL_TRIP_BACK = """(async () => {
   if (st() !== 'peek') out.push(`Your trip, Weather card ›, a lane, Back, ✕ and 48 hours: the planner ${st()}, not at its peek as before Your trip`);
   return out;
 })()"""
+# …and Your trip left another way (#1018, the user's choice of 2026-11-14): by an hour outside it, the planner opens at its
+# peek again; by Weather here it stays folded, clear of the spot's pin, and 48 hours then opens it
+TL_TRIP_LEFT = """(async () => {
+  const p = polku.planner, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = [], st = () => p.panel.dataset.state, bar = document.querySelector('#wx-bar');
+  w.setSpan('trip'); await wait(900);
+  w.setHour(30); await wait(900);
+  if (w.span !== '48' || st() !== 'peek') out.push(`Your trip left by an hour outside it: the span ${w.span}, the planner ${st()}, not at its peek again (#1018)`);
+  w.setSpan('trip'); await wait(900);
+  w.holdAt(polku.map.getCenter().toArray()); await wait(900);
+  if (w.span !== '48' || st() !== 'folded') out.push(`Weather here from Your trip: the span ${w.span}, the planner ${st()}, not left folded`);
+  bar.querySelector('[data-k=span-48]').click(); await wait(900);
+  if (st() !== 'peek') out.push(`Weather here, then 48 hours: the planner ${st()}, not at its peek again (#1018)`);
+  w.release(); return out;
+})()"""
 TL_TRIP_PROFILE = """(async () => {
   const p = polku.planner, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = [], st = () => p.panel.dataset.state;
   const x = () => [p.els.topX, p.cards.box?.querySelector('.way-x')].find((e) => e && e.getBoundingClientRect().width);
@@ -13373,11 +13388,12 @@ def trip_fold(chrome):
         else:
             pg.js(TL_TRIP_NOTES)
             fails += pg.js(TL_TRIP_BACK, timeout=40000)
+            fails += pg.js(TL_TRIP_LEFT, timeout=40000)
             fails += pg.js(TL_TRIP_PROFILE, timeout=40000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} Your trip's fold on a phone: 48 hours after a lane, Back and ✕ (#1015), the planner yours after On the profile (#1017)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} Your trip's fold on a phone: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -21728,7 +21744,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), the planner yours after On the profile (#1017)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

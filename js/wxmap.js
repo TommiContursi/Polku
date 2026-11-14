@@ -186,8 +186,8 @@ export class WeatherOverlay {
   // Weather here (25d part 6b): the readout is for a spot of the map you chose, with a pin on it, until the timeline
   // closes or you pick another; the forecast it reads is the grid's, so no request carries the spot
   holdAt(ll) {
+    this.heldLL = ll; // (first: Your trip left for a spot leaves a phone's planner folded, main.js onTripView)
     if (this.span === 'trip') { this.span = '48'; this.renderTrip(); } // (the reading goes to the spot, not where you'll be)
-    this.heldLL = ll;
     if (this.heldPin) this.heldPin.remove();
     this.heldPin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(ll).addTo(this.map);
     this.readout();
@@ -1012,6 +1012,7 @@ export class WeatherOverlay {
     }
     this.field = { vx, vy, rain, snow, wet: wet / n };
     this.precipStill = this.windStill = false; // (reduced motion: the still rain and wind are drawn again for the new field)
+    if (this.animated && !this.anim) this.startAnim();
   }
 
   // FMI's radar rate now (mm/h), or null where it doesn't reach or at a later hour (its fiRate is
@@ -1030,7 +1031,9 @@ export class WeatherOverlay {
       last = now;
       if (this.playing) this.advancePlay(k);
       const flashing = this.moving ? !!this.lightning?.list.some((s) => s.born && !s.shown) : this.flashStrikes(now);
-      if (!flashing && !this.playing && !this.animated) { cancelAnimationFrame(this.anim); this.anim = 0; return; } // (nothing moves)
+      // (nothing moves: in reduced motion too, once the still wind and rain are drawn; buildField() starts it for a new field)
+      const still = REDUCED.matches && this.field && (!this.on.wind || this.hour < 0 || this.windStill) && (!this.falling || this.precipStill);
+      if (!flashing && !this.playing && (!this.animated || still)) { cancelAnimationFrame(this.anim); this.anim = 0; return; }
       if (this.moving || !this.field) return;
       const f = this.field, cols = this.cam.cols;
       const cellAt = (x, y) => Math.round(y / CELL) * cols + Math.round(x / CELL);
@@ -1091,7 +1094,7 @@ export class WeatherOverlay {
     if (still && this.precipStill) return;
     const ctx = this.rainCtx;
     ctx.clearRect(0, 0, this.W, this.H);
-    if (f.wet <= 0) return;
+    if (f.wet <= 0) { this.precipStill = still; return; }
     const n = Math.min(1000, Math.round((this.W * this.H) / 1500));
     while (this.drops.length < n) this.drops.push({ age: 1, max: 0, x: -1 });
     this.drops.length = n;
@@ -1288,7 +1291,8 @@ export class WeatherOverlay {
     this.bar.classList.toggle('trip', zoomed); // (a phone's reading on one line over the strip: css/app.css)
     // the app hears when Your trip comes into sight or goes (a phone's planner folds for it), not on every drawing
     const shown = zoomed && this.open;
-    if (shown !== !!this.tripShown) { this.tripShown = shown; this.app.onTripView?.(shown, back); }
+    // (and 48 hours or ✕ on the 48 hours, after Weather here: a planner Your trip folded opens then, #1018)
+    if (shown !== !!this.tripShown || (back && !shown)) { this.tripShown = shown; this.app.onTripView?.(shown, back); }
     this.tripRow.hidden = !tr;
     const [b48, bTrip] = this.spanSeg.children;
     b48.setAttribute('aria-pressed', String(!zoomed));
@@ -1351,7 +1355,7 @@ export class WeatherOverlay {
   // the weather card gives one), else its first day, and at that time if it's in the day's window, else the day's start;
   // 48 hours keeps the hour
   setSpan(k, at = null) {
-    if (k === this.span && at == null) return;
+    if (k === this.span && at == null) { if (k === '48') this.renderTrip(true); return; } // (48 hours pressed again: back, #1018)
     const t = at ?? timeAtHour(this.hour); // (before the trip view keeps the hour inside its window)
     if (k === 'trip') {
       const j = this.trip.days.findIndex((d) => t >= d.t0 - 3600 && t <= d.t1 + 3600);
