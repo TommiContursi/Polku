@@ -5,6 +5,7 @@ PR 6 of [planner-rethought.md](planner-rethought.md), step 5 of [the one order o
 ## Where it stands
 
 - **2026-11-14:** this plan and the mock-up, waiting for the user's answers to the four questions at the end. Then the build, as one PR.
+- **2026-11-15, round 2:** from the user's look at round 1: a good idea, but too much grey text explaining it, and rows of facts run together. Round 2 lets the drawing carry the meaning (the bars in their cause's colour, the named hours labelled on the strip, the facts as columns) and drops the notes. Round 1 stays on the mock-up's switch. What follows is round 2.
 - **Already on `main`:** the map's hour no longer moves the departure. 6b did it (#988): `js/wxmap.js` never sets When. Nothing is left of that line for this PR.
 
 ## Already decided (2026-11-06)
@@ -26,19 +27,19 @@ PR 6 of [planner-rethought.md](planner-rethought.md), step 5 of [the one order o
 
 The mock-up draws it at 390 and 360 px, 200 % and on a desktop, for an MTB ride and a paddle with a crossing, beside **Today** (the card and the menu on `main`).
 
-- **A row in the weather card,** right under When: **Best time to leave**, its line saying what it found ("Sun 10:00: light and dry", "No good time today · Sun 10:00 is dry", "You're leaving at a good time"). It folds open in place, as Hour by hour does (`wxFoldRow()`). When's menu opens the card with it open. On a trip with nights it sits above the day chips and says "the first day".
-- **The day,** with ‹ › around it (the timeline's `tl-step`): "Sunday 15 Nov", and under it the best hour, or why there's none. It opens at the departure's day; ‹ stops at today, › at the forecast's tenth day.
+- **A row in the weather card,** right under When: **Best time to leave**, its line saying what it found in a few words ("Better: Sun 08:00, dry", "Good time to leave", "No good time"). It folds open in place, as Hour by hour does (`wxFoldRow()`). When's menu opens the card with it open. On a trip with nights it sits above the day chips and says "First day".
+- **The day,** with ‹ › around it (the timeline's `tl-step`): "Tomorrow, Sun 15 Nov", with a line under it only when the forecast is less certain or ends that day. It opens at the departure's day; ‹ stops at today, › at the forecast's tenth day.
 - **The strip:** a slot for each hour of the day, 00 to 23.
-  - A bar is how much of the trip leaving then would be in the rain, the heat or the wind (the rule below). A shorter bar is better.
-  - Behind the bars, the departures whose trip would be in the dark are shaded, and those that run into it half shaded, from the sun. The day's light is said under the axis ("Light 08:22–15:46"), so the shade isn't the only sign.
-  - The current departure has a ring; a named departure's bar is filled in the accent, with a mark over it.
+  - A bar is how much of the trip leaving then would be in the rain, the heat or the wind (the rule below). A shorter bar is better. A bar is in its main cause's colour (the route's rain or headwind colours), with the cause's icon over a tall one, so a tall blue bar with a raindrop needs no key.
+  - Behind the bars, the departures whose trip would be in the dark are shaded, with the moon, and those that run into it half shaded, from the sun.
+  - The current departure has a ring; a named departure's bar is green, with its hour over it ("08"), the same hour as its row.
   - **An hour that has passed, or past the forecast's reach, has no bar** (a missing bar must never read as the best). A passed hour is a dotted slot; past the forecast it's an outline with "no forecast" in the reading. An hour ruled out (question 4) is a full bar, hatched, with ✕.
-- **The reading over the strip:** the hour under the finger, the pointer or the focus, else the current departure: "Leave 14:00 → back 16:05 · 40 min in the rain · headwind on the way home". It changes as the finger moves.
+- **The reading over the strip:** the hour under the finger, the pointer or the focus, else the current departure: "14:00 → 16:05", then its facts, each an icon and a word or two ("Rain 40 min", "Headwind", "Dark from 15:46"). It changes as the finger moves.
 - **A scrub previews, lifting the finger sets.** Dragging along the strip moves the reading; lifting the finger sets Leave at to that hour; a tap on a bar sets it at once. Setting it on every hour crossed would redraw the card under the finger, save the route each time, and route a sheltering paddle leg again for every hour (`whenChanged()`).
 - **A desktop and the keyboard:** pointing at a bar shows its reading, as pointing at the hour strip does; a click sets it. Under the bars lies a native range (as the timeline's strip), its value text the reading, so a screen reader hears it; the arrow keys move the reading, and the departure is set when they rest for a moment, or at once with Enter. The named rows are the 44 px targets for one tap; the bars (13 px each at 360 px) are for the drag.
-- **The rows:** up to three, under two small headings, **In the light** and **In the dark**, each the best hour of a stretch of good hours, a `row` with the sun or the moon and a tick on the one set: "Sun 13:00", its line "Dry · headwind costs 6 min · as good until 14:00 · back at 15:05". A tap sets Leave at; the card then shows that departure's weather below. Two stretches next to each other are never both named.
-- **The crossing window** (#856, on a paddle or a swim): one line under the strip. "Crossing window 06–10: waves under 0.35 m for a kayak on the 2.1 km crossing from Kaivopuisto to Suomenlinna. Rougher after 10:00." The hours outside it are ruled out.
-- **What it weighed,** one quiet line at the end: "For the MTB: the dark, rain, heat and headwind." On a route of several sports, a line a sport.
+- **The rows:** up to three, under two small headings, **In the light** and **In the dark**, each the best hour of a stretch of good hours, a `row` with the sun or the moon and a tick on the one set, its parts in columns: the hour ("13:00"), its facts ("Dry", "Headwind"), and when you're back ("→ 15:05"). A tap sets Leave at; the card then shows that departure's weather below. Two named departures are at least two hours apart.
+- **The crossing window** (#856, on a paddle or a swim): one line under the strip, "Leave by 15:00 to cross in small waves" ("Too rough to cross all day", "Small waves on the crossing all day"). The hours outside it are ruled out, hatched, with the paddle over the first.
+- **No notes explaining it.** The drawing says what the bars are; nothing says "shorter is better" or what the shade means.
 
 ## The rule (question 1)
 
