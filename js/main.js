@@ -560,6 +560,8 @@ initSearch(map, $('#search-input'), $('#search-results'), {
 let tripLit = null, tripFold = null, tripKept = null; // (what Your trip folded in a phone's sheet: tripInSheet(); under a card's banner, the planner's state the card keeps, before and as Your trip changed it)
 // what's in the sheet: a card open at its peek, else the planner
 const tripInSheet = () => (planner.cards.place === 'peek' ? planner.cards.current : 'planner');
+// the planner's kept state put back as it was before Your trip folded it under a card's banner (the card still the one it was kept for)
+const tripUnkeep = () => { if (tripKept && planner.cards.saved === tripKept[1]) planner.cards.saved = tripKept[0]; tripKept = null; };
 const weather = new WeatherOverlay(map, {
   setData,
   setImage(id, img) {
@@ -612,8 +614,8 @@ const weather = new WeatherOverlay(map, {
       const ours = tripFold === tripInSheet();
       tripFold = null;
       if (back && ours && p.panel.dataset.state === 'folded') p.unfold();
-      if (back && tripKept && p.cards.saved === tripKept[1]) p.cards.saved = tripKept[0]; // (the card still the one it was kept for)
-      tripKept = null;
+      if (back) tripUnkeep();
+      else tripKept = null;
     }
   },
   onToggle: (patch) => setWeather(patch),
@@ -738,7 +740,7 @@ new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 $('#planner').addEventListener('sheetstate', syncPlannerPadding);
 // what Your trip folded, opened again by you (the planner, or the card it folded): it stays as you have it when you leave
 // your trip (a card opened over the folded planner has sizes of its own, and isn't what Your trip folded)
-$('#planner').addEventListener('sheetstate', () => { if (tripFold && tripFold === tripInSheet() && planner.panel.dataset.state !== 'folded') tripFold = null; });
+$('#planner').addEventListener('sheetstate', () => { if (tripFold && tripFold === tripInSheet() && planner.panel.dataset.state !== 'folded') { tripFold = null; tripUnkeep(); } });
 
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
 // the sheet, leaving out the compass first while north is up (it's back once the map turns), then 3D
