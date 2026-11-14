@@ -2,6 +2,7 @@
 
 The plan for making Polku's look consistent and readable, without changing what it looks like. What's still to do, and its status, is on GitHub: #382, whose steps are in the order of [25d's plan](25d-check-and-points.md#where-25d-stands) (#383).
 
+- **2026-11-14: the whole look, rethought.** A design round on hierarchy and Polku's own voice, three directions over today's look: [design-system-directions.md](design-system-directions.md).
 - **Status (2026-10-23): the user's choices are made** ("Where it stands"), and the user merged the plan (#389). The values PR and the controls PR are built ("The values, as built" and "The controls, as built", in §8); 25d's Journey C is next.
 - **From:**
   - a design-system review with the user on 2026-10-22 (the draft, kept on #382);

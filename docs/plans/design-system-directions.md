@@ -2,13 +2,13 @@
 
 A design round on Polku's whole layout and look, apart from the map: the planner, the top bar and search, Settings and Layers, the toolbar, the cards, and Polku's own web pages. Asked for on 2026-11-14, when the design system was set to run beside Calmer planner ([#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6881674854)): Polku shows a great many numbers, meters, switches and buttons, and today they all look alike, so nothing stands out. The aim is a clear hierarchy, where a number, a value you set, an action and a heading are each told apart at a glance, outdoors, on a phone. Milestone: [Design system](https://github.com/TommiContursi/Polku/milestone/22). No app code is written in this round.
 
-- **The mock-up:** [mockups/design-system-directions.html](mockups/design-system-directions.html). Today is `main`'s own markup, captured from the running app; each direction is one layer of CSS over it, so what the directions change is exactly what a build would change.
+- **The mock-up:** [mockups/design-system-directions.html](mockups/design-system-directions.html), and on a phone the private Artifact [Polku design directions](https://claude.ai/artifact/9LDccat5kUXEy9PCSKH7ki). Today is `main`'s own markup, captured from the running app; each direction is one layer of CSS over it, so what the directions change is exactly what a build would change. **Direction** and **Screen** are in the bar at the foot; **More switches** has the typeface, light or dark, 360 px and 200 %, Finnish-length words, and **Label the kinds**, which tags every number, value, action, heading and warning so the hierarchy can be checked by eye. Its pictures are on `pr-screenshots` under `claude/design-system-round/`.
 - **From:** `main` at 85876014, looked at on 2026-11-14 at 390 × 844 and 1440 × 900 with `tools/shoot.py` and the words and sizes read from the page; the brand drawings of #995; the open PRs #935, #723, #749 and #712; and two pieces of research on interfaces that handle dense numbers (below). Skills: Impeccable's shape, typeset and Operate rules, emil-design-eng, apple-design, mobile-native, break-ui, the dataviz skill. Impeccable's concept roll wasn't used, since Polku's world (look B, #547) is chosen: as in #547, only how each kind of thing looks is open.
 
 ## Where it stands
 
-- **Waiting for the user:** which direction, and which typeface (the fonts cost bytes: [The typeface](#the-typeface)).
-- **Next, once chosen:** the build order in this plan, as small PRs, each tried on a phone. Calmer planner's steps 6 and 8 to 16 wait for this choice, not for its build (#869, 2026-11-14).
+- **Waiting for the user:** which direction. **The recommendation is B, Field guide:** it tells a number, a heading and a control apart by voice as well as by size, keeps look B's glass as it is, and gives the app and the web pages one family, the one #995 drew. It costs about 111 KB of fonts once (kept offline) and a rewrite of DESIGN.md's typography. The one alternative is C with B's typefaces, for the strongest separation in sun at the cost of more solid blocks over the map.
+- **Next, once chosen:** [the build order](#once-chosen-the-build-order), as small PRs, each tried on a phone. Calmer planner's steps 6 and 8 to 16 wait for this choice, not for its build (#869, 2026-11-14).
 
 ## What's wrong today
 
@@ -115,6 +115,22 @@ Today Polku uses the device's own font (`system-ui`: San Francisco on an iPhone,
 - **Before they arrive** (`font-display: swap`): the text shows at once in the device's font and changes face when the files land, once per device. A fallback with matched metrics (`size-adjust`) keeps lines from jumping.
 - **Where each would go:** Bricolage only at display sizes (headings, card titles, the big numbers), never for labels or small text (Datawrapper's and Carbon's lesson); Atkinson for everything read or tapped.
 
+## Once chosen: the build order
+
+A draft, made final with the choice. Each step is a PR of its own, tried on a phone before the next, and none waits for the web pages.
+1. **The kinds as values:** each kind's size, weight and face on `:root` (`--font-figure`, `--font-unit`, `--font-heading`…), and a number's unit in an element of its own where the numbers are written (the planner's numbers, the list, a card, On the route). DESIGN.md's typography and Shared controls rewritten to the kinds.
+2. **Headings and rows:** sentence case everywhere and nothing under 12 px (#767, step 15 of #869), Settings' groups as rows, the dotted time words gone.
+3. **Values you set and actions:** the value's look (When, Colour by, the toolbar's mode, sport and style, the top bar's sport), buttons, and one filled green on the map's edge; Clear route off the list's foot, and the toolbar's Take it along to More first (#797).
+4. **The typefaces,** if the choice has them: Polku's own subset files, `@font-face` with a matched fallback, kept by the service worker; bytes measured.
+5. **Then Calmer planner's cards and list** (#869's steps 6 and 8 to 16) build on the rules, and #379's second audit checks the result.
+6. **Polku's web pages** (main page, help, notes) and the showcase (#994) on the same values: a milestone step of their own.
+
+Each step: its checks in `tools/smoke.py` first (the `controls` and `values` groups, and the `glass` group for anything on the glass), screenshots before and after, and DESIGN.md and DEVELOPING's Shared controls in the same PR.
+
 ## Not checked
 
-*To be completed.*
+- **A real phone:** the directions were looked at headless at 390 × 844, 360 × 740 and 200 % (195 × 422), light and dark, and in Finnish-length words; not on a phone in the sun.
+- **Contrast of the new pairs:** the green value words on their soft well (the accent on `--accent-soft`, which Polku already uses for chosen chips) and B's spruce dark surfaces are drawn, not measured; the build's `values` and `glass` groups measure them.
+- **The fonts' real cost:** the bytes are Google's files; Polku's own subset isn't cut yet. How the page looks while they load wasn't measured.
+- **What the frames can't show:** they're the app's markup at one moment, so nothing in them works, and sizes the app's JavaScript sets (the peek's height, the profile) stay as captured; the full planner's profile wasn't drawn yet when captured, so its profile shows on the desktop and the peek only.
+- **Not looked at closely:** the dark theme of every screen, the desktop at its own size beside the cards, the search frame in Finnish, the mouse in a narrow window.
