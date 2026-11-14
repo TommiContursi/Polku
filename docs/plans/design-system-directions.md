@@ -7,6 +7,18 @@ A design round on Polku's whole layout and look, apart from the map: the planner
 
 ## Where it stands
 
+**After round 4 (2026-11-14): the user's verdict, to build on in the next round**
+- **Keep:**
+  - the planner's head (the route's plate, the profile, When and the weather under it), without its ⌄ and ✕;
+  - keys in a row that scrolls sideways, used for a card's actions too;
+  - Reorder, Reverse and Back to start as keys;
+  - Route style and Your speed as a grouped section;
+  - the toolbar as a group of its own, apart from the sheet.
+- **Not this:** the list of waypoints simplified to rows with a ›. In the app a list's legs are editable and its rows carry actions on hover, so the drawing lost what the elements do.
+- **The next round starts from what each element does:** every control in the planner, the list and the cards, with what a tap, a hover, a drag or a hold does on `main`, before anything is redrawn.
+- **Not discarded:** Optical glass and Liquid glass have good parts to carry on: Settings' grouped sections on frosted glass, the floating layer's depth, and the lit segments.
+- **Next:** a fresh session (this one's context is long), from the Hand-over on #382.
+
 **Round 4 (2026-11-14), after the user tried round 3:** Liquid glass's see-through buttons were hard to read, and the planner itself (the toolbar merged into the sheet's head, and the key facts as a stack of boxed rows) hurt in every direction. The glass worked well for Settings. The user chose to go back to C, much improved, with the planner properly redesigned.
 - **Drawn:** [C, improved](#round-4-c-improved-the-planner-redrawn) below, first in the mock-up's bar (**C, improved**, with **Palette**). The planner at the peek and at full is new markup; the other screens are a CSS layer over `main`. Rounds 1 to 3 are behind **More switches**.
 - **Waiting for the user:** whether this is the direction and the planner's arrangement. **The recommendation is yes**, then the typeface question.
