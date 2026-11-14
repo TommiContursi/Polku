@@ -3,17 +3,22 @@
 A design round on Polku's whole layout and look, apart from the map: the planner, the top bar and search, Settings and Layers, the toolbar, the cards, and Polku's own web pages. Asked for on 2026-11-14, when the design system was set to run beside Calmer planner ([#869](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6881674854)): Polku shows a great many numbers, meters, switches and buttons, and today they all look alike, so nothing stands out. The aim is a clear hierarchy, where a number, a value you set, an action and a heading are each told apart at a glance, outdoors, on a phone. Milestone: [Design system](https://github.com/TommiContursi/Polku/milestone/22). No app code is written in this round.
 
 - **The mock-up:** [mockups/design-system-directions.html](mockups/design-system-directions.html), and on a phone the private Artifact [Polku design directions](https://claude.ai/artifact/9LDccat5kUXEy9PCSKH7ki). Today is `main`'s own markup, captured from the running app; each direction is one layer of CSS over it, so what the directions change is exactly what a build would change. **Direction** and **Screen** are in the bar at the foot; **More switches** has the typeface, light or dark, 360 px and 200 %, Finnish-length words, and **Label the kinds**, which tags every number, value, action, heading and warning so the hierarchy can be checked by eye. Its pictures are on `pr-screenshots` under `claude/design-system-round/`.
-- **From:** `main` at 85876014, looked at on 2026-11-14 at 390 × 844 and 1440 × 900 with `tools/shoot.py` and the words and sizes read from the page; the brand drawings of #995; the open PRs #935, #723, #749 and #712; and two pieces of research on interfaces that handle dense numbers (below). Skills: Impeccable's shape, typeset and Operate rules; the worst cases (360 px, 200 %, Finnish-length words) checked by hand as break-ui would. emil-design-eng, apple-design, mobile-native and dataviz weren't run in this round: they review the chosen direction before its first build PR. Impeccable's concept roll wasn't used, since Polku's world (look B, #547) is chosen: as in #547, only how each kind of thing looks is open.
+- **From:** `main` at 85876014, looked at on 2026-11-14 at 390 × 844 and 1440 × 900 with `tools/shoot.py` and the words and sizes read from the page; the brand drawings of #995; the open PRs #935, #723, #749 and #712; and two pieces of research on interfaces that handle dense numbers (below). Skills: Impeccable's shape, typeset and Operate rules; the worst cases (360 px, 200 %, Finnish-length words) checked by hand as break-ui would. emil-design-eng, apple-design, mobile-native and dataviz weren't run in this round: they review the chosen direction before its first build PR. Impeccable's concept roll wasn't used, since Polku's world (look B, #547) is chosen: as in #547, only how each kind of thing looks is open. Round 5 starts from `main` at 0c5293c7, with every one of those skills run (see its section).
 
 ## Where it stands
 
-**Round 5 (2026-11-14), started:** a fresh session, from the Hand-over on #382.
-- **Done:** [what each element does on `main`](#round-5-what-each-element-does-on-main), at 12061f1f: the planner, the route's list and the cards, with what a tap, a hover, a drag, a hold, a right-click and the keys do.
-- **Waiting for the user, three questions:**
-  1. Where ⌄ and ✕ go now that the head drops them. On `main` they're on the grabber's row, not in the head. **The recommendation is to keep them there**, so nothing takes an extra tap.
-  2. Whether a leg's row gets its own ✎ for **Edit this stretch**, one tap instead of two. **The recommendation is yes**, with a tap on the rest of the row still opening the leg's card.
-  3. The desktop's arrangement. **The recommendation is today's**, in round 5's look: the planner as a side panel, a card beside it, the toolbar at the map's foot.
-- **Then:** round 5 drawn from round 4's "C, improved" with the list's affordances back, the desktop planner and a card, and two kinds of scroll indicator to choose between on a phone.
+**Round 5 (2026-11-14 and 15), drawn:** a fresh session, from the Hand-over on #382.
+- **Done:** [what each element does on `main`](#round-5-what-each-element-does-on-main), at 12061f1f: the planner, the route's list and the cards, with what a tap, a hover, a drag, a hold, a right-click and the keys do. Then [round 5](#round-5-c-with-everything-the-planner-does), drawn on `main` at 0c5293c7, first in the mock-up's bar as **Round 5**.
+- **Waiting for the user:** to try round 5 on a phone and choose:
+  1. **Whether round 5 is the direction for the planner, its list and the cards. The recommendation is yes.**
+  2. **Which scroll indicator. The recommendation is Polku's own,** the same thin bar everywhere; the browser's, made quiet, costs less and looks the same on a phone.
+- **Then:** the [build order](#once-chosen-the-build-order), from its step 1.
+- **Decided by the user (2026-11-14):**
+  1. ⌄ and ✕ stay at the top of the sheet and of a card, as on `main`, but not as raised keys, and on a row of their own, never beside the planner's or a card's heading.
+  2. A leg's row gets its own ✎ for **Edit this stretch**, by touch and with a mouse; the rest of the row still opens the leg's card.
+  3. The desktop keeps today's arrangement in round 5's look: the planner as a side panel, a card beside it, the toolbar at the map's foot. The toolbar moving with the sheet's size is a worry, though not the main one.
+- **Also from the user:** a long-time wish that every window (the panel, the cards, Layers, Settings) can be moved and ideally resized, and above all that the profile can be opened big (added to #179). And Layers marks a chosen layer with a tick, which nothing else does.
+- **Round 5 answers these:** on a phone the toolbar stays at the foot of the screen at every size, and the sheet sits on it (a reading of the worry, not the user's words); a desktop card has a move grip and a resize edge, and the profile opens big (a sketch, outside the choice); Layers' chosen tiles take the one chosen look.
 
 **After round 4 (2026-11-14): the user's verdict, to build on in the next round**
 - **Keep:**
@@ -135,6 +140,45 @@ All three share the givens above and one markup change: a number's unit gets an 
 - **A heading:** 16–23 px heavy words in the text's colour.
 - **The typeface:** Atkinson Hyperlegible Next alone, made for legibility (its zero is slashed).
 - **Costs:** about 34 KB of fonts once; the most CSS of the three (every control's background and edge). **Risk:** more edges and solid blocks over the map, the opposite of look B's light glass, chosen on 2026-10-28 for showing the map through.
+
+## Round 5: C, with everything the planner does
+
+Drawn in the mock-up as **Round 5**, first in its bar; rounds 1 to 4 are under **More switches**. The planner at the peek, at half and at full, Reorder, a point's card, a stretch's card, Edit this stretch, the desktop and the profile opened big are new markup (`r5Doc()` in the build), and their taps work: a row opens its card, ‹ Route goes back, ✎ opens Edit this stretch, Reorder and Done, the grabber, ⌄, ✕ and Plan, and the menus. On the route, Layers, Settings and search are a layer of CSS over `main`'s markup, as in earlier rounds.
+
+- **Kept from round 4:**
+  - the head: the route's name, its plate (distance, time with the moving time under it, carry or climb, the warnings), the profile at the peek, When with "→ there at", the day's weather, and each sport's key fact as a key in a row that scrolls sideways;
+  - Reorder, Reverse and Back to start as keys;
+  - Route style and Your speed as a grouped section;
+  - the toolbar apart from the sheet.
+- **Back from `main`** ([the inventory](#round-5-what-each-element-does-on-main)), each part a timeline with the line in its sport's colour:
+  - a part's heading with ⚙ opens its sport, speed and route style;
+  - a waypoint's row opens its card, and stays lit while the card is open; under a mouse it shows Rename, Remove and its grip where › is;
+  - a stretch's row opens This stretch's card, and its lines say how it's drawn, its warnings, and the dark;
+  - **Show all waypoints**, a stretch's ⌄ 2 with its beads and shaping waypoints, and the list's settings;
+  - a changeover's row opens its waypoint's card;
+  - Reorder: every point with its grip, Earlier and Later.
+- **The user's answers, drawn:**
+  - ⌄ and ✕ stay at the top, on a row of their own with the grabber (and ⋯ for a card's settings, the dock on a desktop), never beside a heading. They're quiet icons, not keys: no edge and no lip, a soft fill only under a mouse or while held, 44 px to touch. This is the one exception to round 2's rule that every control has a visible edge, because they're the sheet's own handles, as the grabber is. With a mouse, ⌃ beside ⌄ raises the sheet one size, as on `main`.
+  - A stretch's row ends in **✎**, a key that opens Edit this stretch at once; a tap anywhere else on the row still opens its card.
+  - The desktop is today's arrangement: the panel at the left, a card beside it level with its row, the toolbar at the map's foot.
+- **The toolbar on a phone stays at the foot of the screen** at every size, and the sheet sits on it, so Done and Undo never move. This is round 5's reading of the worry that the toolbar moves with the sheet's size. It costs the sheet the toolbar's height at full (as `main`'s docked toolbar does), and with a card open the toolbar keeps all its keys, where `main` leaves only Undo and Redo.
+- **From rounds 2 and 3:** grouped sections on frosted glass (the profile, the route's styles and speed, a card's rows); the floating layer's depth (a lit rim, a contact shadow and a wide soft one) on opaque keys; the lit segments (Route and Check, Pass by · Stop · Night, how a stretch is drawn).
+- **One chosen look:** Layers' chosen tiles lose their tick and take a chosen key's look, the accent's 2 px ring and its tint, as chips, segments and styles have; the ring's width says it, so it isn't colour alone.
+- **The scroll indicator,** two kinds to choose between (**Scroll indicator** in the bar):
+  - **Polku's own:** a thin bar, 4 px, in the panel's own ink at about a third, inset from the rounded edge and clear of the top row. It shows while you scroll, and fades a second after; with a mouse it also shows while the pointer is over the panel, widens to 8 px under it and can be dragged, and a click on its track jumps there. Nothing moves but its fade. It costs a small script, and the scroller's own bar is hidden.
+  - **The browser's, made quiet:** CSS only (`scrollbar-width: thin`, the same ink, no track), with the scroller inset from the rounded corner. A phone shows its own indicator while you scroll, so on a phone the two look alike; the difference is in a desktop window.
+  - Either way, where content scrolls under the top row it fades out over 16 px rather than meeting a line (Apple's scroll edge).
+- **Rows that scroll sideways** (a card's actions, the key facts, the list's foot) fade where more continues; with a mouse they get arrows at their ends and the wheel moves them, as the weather card's hour strip does.
+- **Movable windows, a sketch outside the choice** (#179): on the desktop the card beside the panel has a move grip and a resize corner, and **The profile, big** opens the profile as a window that moves and resizes, with its wind and gusts labelled and a readout under the pointer.
+- **What it costs to build:** the most CSS of any round (keys, the plate, sections, the chrome row); markup for the plate's cells, a stretch's ✎, the cards' rows of keys and the desktop's chrome row; the toolbar's place on a phone in `js/planner.js`; and a small module for the scroll indicator, if it's Polku's own.
+- **Skills:** Impeccable (shape; its critique, below), apple-design (materials, depth, the sheet's scroll edge), emil-design-eng (presses at 97 to 98 %, nothing animates on first paint), mobile-native (hover only with a mouse, no tap flash, the scrollers' overscroll kept in), break-ui's worst cases (360 px, 200 %, Finnish-length words, a mouse in a narrow window) and dataviz (the big profile: one axis, its lines and sports labelled, a readout).
+- **Critique, on the drawn frames:**
+  - a ✎ on every stretch adds a key a stretch, so a long route's list gets busier; if it reads busy on a phone, a quieter ✎ (no edge, like the row's ›) is the fallback;
+  - the peek is taller than `main`'s (about 400 px against 296), since the head now holds When and the weather;
+  - the key facts' row shows one key at 390 px; the second is a swipe away, hinted only by the fade;
+  - the plate's third figure, "0 m carry", reads oddly on a route whose bike part climbs 40 m (noticed in round 4; not checked).
+- **Checked headless:** 390 × 844 in light and dark; 360 × 740 and 200 % in Finnish-length words; a phone's frame with a mouse; the desktop at 1440 × 900; every element of the inventory found in round 5's markup (83 of them, `check_r5.js` in the build); the taps tried in the browser pane; rounds 1 to 4 still drawn over the new capture.
+- **Not checked:** a real phone; the Artifact inside claude.ai's viewer; the contrast of every pair, measured; reduced motion, reduced transparency and the keyboard's order in the frames; a stop and a night in the list (they share the changeover's row); Check's own content in this arrangement (its look is on the On the route screen); the warning's, a place's and the whole route's cards.
 
 ## Round 5: what each element does on `main`
 
@@ -340,6 +384,11 @@ A draft, made final with the choice. Each step is a PR of its own, tried on a ph
 4. **The typefaces,** if the choice has them: Polku's own subset files, `@font-face` with a matched fallback, kept by the service worker; bytes measured.
 5. **Then Calmer planner's cards and list** (#869's steps 6 and 8 to 16) build on the rules, and #379's second audit checks the result.
 6. **Polku's web pages** (main page, help, notes) and the showcase (#994) on the same values: a milestone step of their own.
+
+**Round 5 adds,** if it's chosen, in the steps they belong to:
+- step 3: the one chosen look (Layers' tick goes), and the quiet icons on the sheet's and a card's top row;
+- step 5, with Calmer planner's cards and list: a stretch's ✎, the cards' actions as rows of keys, the toolbar at the foot of a phone's screen, the sideways rows' arrows, and the scroll indicator (its own small PR, with `/animate` for its fade);
+- movable and resizable windows, and the profile opened big, stay with #179, after this milestone.
 
 Each step: its checks in `tools/smoke.py` first (the `controls` and `values` groups, and the `glass` group for anything on the glass), screenshots before and after, and DESIGN.md and DEVELOPING's Shared controls in the same PR.
 
