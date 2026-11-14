@@ -41,7 +41,7 @@
      takes them when it's next touched; DESIGN.md lists them, and `tools/smoke.py values` keeps the two equal. */
   /* Check's three groups (25d): Warnings, Good to know, Not checked, and the box behind each */
   --danger: #b4232a; --danger-soft: #fbe9e9;
-  --look: #8a5a00; --look-soft: #fbf4e2;
+  --look: #7a4f00; --look-soft: #fbf4e2; /* (4.5:1 on the glass over the aerial photos too, #989) */
   --unk: #47607a; --unk-soft: #eaf0f6;
   --focus: #1f6f4a; /* the focus ring */
   --ink: #000000; /* black words on one of the map's colours (a climb's badge, a loop's letter): the same in both themes */
@@ -119,7 +119,7 @@
   --good: #3ddc71; --ok: #ffd34d; --warn: #ffa24a;
   --you: #4c9bff;
   --you-soft: rgba(76, 155, 255, 0.16);
-  --danger: #ff8a8a; --danger-soft: #3a2124; /* (solid: Check's box doesn't take the glass's tint) */
+  --danger: #ffb0b0; --danger-soft: #3a2124; /* (solid: Check's box doesn't take the glass's tint; 4.5:1 on the glass over the map, #989) */
   --look: #f2c45a; --look-soft: rgba(242, 196, 90, 0.12);
   --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, 0.13);
   --focus: #6fd3a2;
@@ -2217,7 +2217,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .pick-skel-by { width: 55%; height: 40px; }
 .pick-chart { display: block; width: 100%; height: 110px; cursor: crosshair; touch-action: none; }
 .pick-prof svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.pick-prof .ax { position: absolute; left: 0; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pick-prof .ax { position: absolute; left: -3px; padding: 0 3px; border-radius: 4px; background: var(--surface-solid); font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; } /* (on a backing of the card's colour: clear over the profile's fill, #989) */
 .pick-prof .ax.top { top: -2px; }
 .pick-prof .ax.bot { bottom: -2px; }
 .pick-by { margin-top: 6px; }
