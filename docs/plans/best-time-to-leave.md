@@ -1,6 +1,6 @@
 # Best time to leave (#273, #856)
 
-PR 6 of [planner-rethought.md](planner-rethought.md), step 5 of [the one order of 2026-11-14](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6880721897), in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16). The mock-up is [mockups/best-time-to-leave.html](mockups/best-time-to-leave.html), also a private Artifact to try on a phone (link on #273's Hand-over). No app code is written here.
+PR 6 of [planner-rethought.md](planner-rethought.md), step 5 of [the one order of 2026-11-14](https://github.com/TommiContursi/Polku/issues/869#issuecomment-6880721897), in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16). The mock-up is [mockups/best-time-to-leave.html](mockups/best-time-to-leave.html), also a [private Artifact](https://claude.ai/artifact/W7tHHgHKmYKRS2SAS1YS3u) to try on a phone (built with `css/app.css` and `js/ui.js` inlined). Its bars, ‹ ›, rows and When's pill work: drag along the bars, and let go to leave then. No app code is written here.
 
 ## Where it stands
 
@@ -29,30 +29,32 @@ The mock-up draws it at 390 and 360 px, 200 % and on a desktop, for an MTB ride 
 - **A row in the weather card,** right under When: **Best time to leave**, its line saying what it found ("Sun 10:00: light and dry", "No good time today · Sun 10:00 is dry", "You're leaving at a good time"). It folds open in place, as Hour by hour does (`wxFoldRow()`). When's menu opens the card with it open. On a trip with nights it sits above the day chips and says "the first day".
 - **The day,** with ‹ › around it (the timeline's `tl-step`): "Sunday 15 Nov", and under it the best hour, or why there's none. It opens at the departure's day; ‹ stops at today, › at the forecast's tenth day.
 - **The strip:** a slot for each hour of the day, 00 to 23.
-  - A bar is how much of the trip leaving then would be in the dark, the rain, the heat or the wind (the rule below). A shorter bar is better.
-  - The hours when it's dark at the start are shaded behind the bars, from the sun.
-  - The current departure has a ring; the named departures carry their number (1, 2, 3) over their bar, matching the rows.
+  - A bar is how much of the trip leaving then would be in the rain, the heat or the wind (the rule below). A shorter bar is better.
+  - Behind the bars, the departures whose trip would be in the dark are shaded, and those that run into it half shaded, from the sun. The day's light is said under the axis ("Light 08:22–15:46"), so the shade isn't the only sign.
+  - The current departure has a ring; a named departure's bar is filled in the accent, with a mark over it.
   - **An hour that has passed, or past the forecast's reach, has no bar** (a missing bar must never read as the best). A passed hour is a dotted slot; past the forecast it's an outline with "no forecast" in the reading. An hour ruled out (question 4) is a full bar, hatched, with ✕.
 - **The reading over the strip:** the hour under the finger, the pointer or the focus, else the current departure: "Leave 14:00 → back 16:05 · 40 min in the rain · headwind on the way home". It changes as the finger moves.
 - **A scrub previews, lifting the finger sets.** Dragging along the strip moves the reading; lifting the finger sets Leave at to that hour; a tap on a bar sets it at once. Setting it on every hour crossed would redraw the card under the finger, save the route each time, and route a sheltering paddle leg again for every hour (`whenChanged()`).
 - **A desktop and the keyboard:** pointing at a bar shows its reading, as pointing at the hour strip does; a click sets it. Under the bars lies a native range (as the timeline's strip), its value text the reading, so a screen reader hears it; the arrow keys move the reading, and the departure is set when they rest for a moment, or at once with Enter. The named rows are the 44 px targets for one tap; the bars (13 px each at 360 px) are for the drag.
-- **The rows:** up to three, each the best hour of a stretch of good hours, a `row` with a clock and a tick on the one set: "Sun 10:00", its line "Light and dry the whole way · tailwind home · as good until 12:00 · back at 12:05". A tap sets Leave at; the card then shows that departure's weather below.
+- **The rows:** up to three, under two small headings, **In the light** and **In the dark**, each the best hour of a stretch of good hours, a `row` with the sun or the moon and a tick on the one set: "Sun 13:00", its line "Dry · headwind costs 6 min · as good until 14:00 · back at 15:05". A tap sets Leave at; the card then shows that departure's weather below. Two stretches next to each other are never both named.
 - **The crossing window** (#856, on a paddle or a swim): one line under the strip. "Crossing window 06–10: waves under 0.35 m for a kayak on the 2.1 km crossing from Kaivopuisto to Suomenlinna. Rougher after 10:00." The hours outside it are ruled out.
 - **What it weighed,** one quiet line at the end: "For the MTB: the dark, rain, heat and headwind." On a route of several sports, a line a sport.
 
 ## The rule (question 1)
 
-Recommended: **every minute counts the same.** For each departure on the hour, the trip is timed from it and read where you'd be at each minute:
+Recommended: **the dark apart.** In November every departure after work is in the dark. Count the dark in the same sum as the rain, and the rows would name the middle of the day every weekday, while the evening's dry and wet hours differed only by a little on bars that were already tall. So the dark sorts the departures, and the weather ranks them:
 
-- **the dark:** minutes with the sun below 6° under the horizon; dusk counts half (`darkness()`, the sun's);
-- **rain or snow:** minutes in 0.1 mm an hour or more; heavy (4 mm an hour) counts double;
-- **heat:** minutes feeling 27 °C or more (the card's limit);
-- **headwind, on a bike's legs:** the minutes the wind adds to the time on the move (a tailwind takes minutes off);
-- **wind on the water, on a paddle's or a swim's legs:** minutes in wind of 5 m/s or more (the card's limit for the water).
+- **the dark:** a departure is **in the light** when at most a tenth of its trip is in the dark (the sun more than 6° under the horizon; dusk counts half, from `darkness()`), **in the dark** when half of it or more is. In between it runs into the dark: shaded lighter, and never named. Behind the bars it's the shade; in the rows, the two headings.
+- **the bar, the weather alone,** in minutes where you'd be at each minute of the trip timed from that hour:
+  - **rain or snow:** minutes in 0.1 mm an hour or more; heavy (4 mm an hour) counts double;
+  - **heat:** minutes feeling 27 °C or more (the card's limit);
+  - **headwind, on a bike's legs:** the minutes the wind adds to the time on the move (a tailwind is said in the words, but never makes up for rain);
+  - **wind on the water, on a paddle's or a swim's legs:** minutes in wind of 5 m/s or more (the card's limit for the water).
 
-The bar is the sum over twice the trip's time on the move, so a trip in the dark the whole way is half a bar, and the bar tops out at a trip that's dark and wet the whole way. The words say the two parts that cost most. **Good** is at most a tenth of the trip, and nothing ruled out; hours within 5 % of each other are about the same, so a stretch of them is named once, by its best hour, "as good until 12:00".
+  The bar is their sum over the trip's time on the move, topping out at a trip that's wet the whole way. The words say the two parts that cost most.
+- **Named:** up to two stretches in the light and the best one in the dark, leaving between 05:00 and 23:00 (the bars still show the night, but nobody's sent off at 02:00). **Good** is at most a tenth of the trip, and nothing ruled out; hours within 5 % of each other are about the same, so a stretch of them is named once, by its best hour, "as good until 14:00", and between two about the same, the one nearer the time of day you came with wins (the departure set when the row was opened), so the rows stay put while you pick.
 
-The cost: the dark counts no more than rain, minute for minute, so a dry trip that ends 20 minutes after sunset can beat a wet one in daylight. The alternatives: **daylight first** (the least weather among the departures that end in the light, and only then the dark), which is simple but lets two hours of heavy rain beat ten minutes of dusk; or **weights by sport** (rain worse on a bike, the dark worse on foot), which needs numbers nobody can check.
+The cost: three rows to read instead of one answer, and a dry evening in the dark can look as good as a dry noon. The alternative: **minute for minute**, the dark in the same sum as the weather, one ranking and one answer, at the price of naming the daylight hours on every November weekday.
 
 ## When every hour is bad (question 2)
 
@@ -102,7 +104,7 @@ One PR, in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16)
 
 ## The questions
 
-1. **How the parts weigh.** Recommended: every minute in the dark, the rain, the heat or the wind counts the same. Or daylight first, or weights by sport.
+1. **How the dark counts.** Recommended: the dark apart. The bars show the weather, the dark is shaded behind them, and the rows name the best in the light and the best in the dark. Or minute for minute, the dark in one sum with the weather.
 2. **A day when every hour is bad.** Recommended: name the least bad and say so, with a row for a better day. Or name nothing.
 3. **When's menu and Arrive by.** Recommended: Best time to leave › last, a pick is a Leave at that takes Arrive by's place. Or grey the late hours while Arrive by is set.
 4. **What rules an hour out.** Recommended: the card's dangers to life (thunder, frostbite, waves over the craft's comfort). Or nothing does.
@@ -111,4 +113,4 @@ One PR, in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16)
 
 - **Illustrative:** every hour and number in the mock-up. The weather under the new row is drawn from the card's classes for the departure picked, and only its top half (the sentence, a note, the numbers and the hours).
 - **Not drawn:** the map, the trip's box, the timeline, Check.
-- **Not known:** how a drag along the strip sits with the sheet's swipe on a real phone (`touch-action: pan-y`); how long 24 departures take to time on a slow phone (the sweep runs once a day is shown, not on every draw); whether the dark, counted minute for minute, favours the middle of the day too much in summer.
+- **Not known:** how a drag along the strip sits with the sheet's swipe on a real phone (`touch-action: pan-y`); how long 24 departures take to time on a slow phone (the sweep runs once a day is shown, not on every draw); whether a tenth of the trip is the right line between in the light and in the dark for a trip that runs into dusk.
