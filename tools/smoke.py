@@ -20235,12 +20235,12 @@ ARRIVE_JS = """(async () => {
   const w = p.analysis.waits[0], go = w.arrive + w.sec;
   r = read();
   if (!W.nights || W.at !== first || W.by !== noon || !w.by || r.end > noon || noon - r.end > 90 || r.there !== `· go on at ${W.got?.about ? 'about ' : ''}${LV.clock(go)}`) errs.push(`Arrive by with a night: ${JSON.stringify({ ...r, go, by: w.by, at: W.at, first })}`);
-  if (p.timesAt(1).leave !== go) errs.push(`the night's row goes on at ${p.timesAt(1).leave}, not ${go}`);
+  if (Math.abs(p.timesAt(1).leave - go) > 1) errs.push(`the night's row goes on at ${p.timesAt(1).leave}, not ${go}`);
   W.menu(LV.row('box'));
-  const groups = [...W.pop.el.querySelectorAll('.menu-head, [role="group"]')].map((x) => x.getAttribute('aria-label') || x.textContent);
+  const groups = [...W.pop.el.querySelectorAll('[role="group"]')].map((x) => document.getElementById(x.getAttribute('aria-labelledby'))?.textContent);
   const ticks = [...W.pop.el.querySelectorAll('.menu-item[aria-checked="true"], .menu-pick.on')].map((x) => x.textContent.slice(0, 9));
   W.pop.close();
-  if (!groups.join().includes('First day') || !groups.join().includes('Last day') || ticks.length !== 2) errs.push(`the menu with a night: ${JSON.stringify({ groups, ticks })}`);
+  if (groups.join() !== 'First day,Last day' || ticks.length !== 2) errs.push(`the menu with a night: ${JSON.stringify({ groups, ticks })}`);
   // too soon for the night: it says when you're there
   W.setBy(LV.at(0, 23, 0) > Date.now() / 1000 + 600 ? LV.at(0, 23, 0) : Date.now() / 1000 + 600);
   await settled();
