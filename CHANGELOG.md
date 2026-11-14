@@ -2,6 +2,13 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-14
+
+### Check's words everywhere ([#993](https://github.com/TommiContursi/Polku/issues/993))
+
+- The last places that still said "heads-up" use Check's words: its tab's tooltip and its note before a route is drawn say warnings, and a round trip's card counts its warnings and what's good to know, such as "2 warnings · 1 good to know".
+- In Settings, the kinds you've hidden in Check are under **Hidden in Check**.
+
 ## 2026-11-13
 
 ### The weather card and the timeline one tap apart ([#869](https://github.com/TommiContursi/Polku/issues/869))

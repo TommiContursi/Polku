@@ -118,7 +118,7 @@ export const dockOf = () => store.get('plannerDock', 'left');
 // the weather card, #869's step 3.)
 const TABS = [
   { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: waypoints, legs, round trips, route style' },
-  { id: 'check', label: 'Check', icon: 'warn', title: 'What’s on the way: heads-up, climbs, the ground' },
+  { id: 'check', label: 'Check', icon: 'warn', title: 'What’s on the way: warnings, climbs, the ground' },
 ];
 const TAB_OF = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check' };
 // "wet ground: auto" turns on after this much rain in the last 24 hours (mm)
@@ -1874,8 +1874,9 @@ export class Planner {
         const PAVED_S = ['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates', 'unknown'];
         const unpaved = a.surfaces.filter(([k]) => !PAVED_S.includes(k)).reduce((m, [, d]) => m + d, 0);
         what = `${sport === 'road' || sport === 'gravel' ? `unpaved ${Math.round((100 * unpaved) / a.total)} %` : `trails ${Math.round((100 * trails) / a.total)} %`}`;
-        const hu = a.warnings.length + (a.trailWarn || []).length;
-        notes = [r.twice > 0.05 ? `${Math.round(r.twice * 100)} % ridden twice` : 'no stretch twice', hu ? `${hu} heads-up` : 'no heads-up', r.line.provider === 'valhalla' ? 'via Valhalla' : ''];
+        // (Check's two groups, in its words: an item without one counts as a warning, as in Check)
+        const hu = [...a.warnings, ...(a.trailWarn || [])], look = hu.filter((w) => w.tier === 'look').length, read = hu.length - look;
+        notes = [r.twice > 0.05 ? `${Math.round(r.twice * 100)} % ridden twice` : 'no stretch twice', read ? `${read} warning${read === 1 ? '' : 's'}` : 'no warnings', look ? `${look} good to know` : '', r.line.provider === 'valhalla' ? 'via Valhalla' : ''];
       }
       const line1 = `${fmtDuration(a.time)} · ${wet ? '' : `↑${Number.isFinite(a.up) ? Math.round(a.up) : '?'} m · `}${what}`, line2 = notes.filter(Boolean).join(' · ');
       const on = i === L.on;
@@ -4698,7 +4699,7 @@ export class Planner {
         // Fine-tune too, the same elements: borrowHow())
         this.section('style', 'Route style', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap)),
       check: pane('check',
-        this.els.checkEmpty = h('p', { class: 'note pl-empty' }, 'Draw a route to see what’s on the way: heads-up, climbs, the ground.'),
+        this.els.checkEmpty = h('p', { class: 'note pl-empty' }, 'Draw a route to see what’s on the way: warnings, climbs, the ground.'),
         this.els.stats,
         // the two short lists share a column in a wide panel
         h('div', { class: 'sec-stack' }, this.checksSection(), this.section('climbs', 'Climbs', this.els.climbs)),
