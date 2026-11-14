@@ -6,7 +6,7 @@ code is written here. The mock-up is [mockups/weather-timeline.html](mockups/wea
 `js/ui.js` inlined); **Today** in it is `main`'s timeline (with #988).
 
 **Where it stands (2026-11-13):** chosen by the user on the whole, after trying the mock-up: see "Chosen" below.
-The build of lines 1 to 7 is the four PRs under "The build", one at a time, each tried on a phone before the next.
+The build of lines 1 to 7 is the four PRs under "The build", one at a time, each tried on a phone before the next; PR 4, the last, is built (2026-11-14).
 
 ## The list that counts (set by the user, 2026-11-12)
 
@@ -172,6 +172,18 @@ screenshots on `pr-screenshots`, and the strongest model at high (AGENTS.md's "M
   forecast the dark is the one note, as in the card. The route's analysis drawn again keeps the note stepped to while
   it says the same. Nothing moves (/animate's verdict). The separate bar for a lane's tap and CONTEXT.md's Weather line
   are gone.
+- **PR 4, room for your trip on a phone** (2026-11-14): as listed, on `main`'s timeline and the planner's own fold.
+  Decisions made in building: the room is the timeline's at a phone's foot (under 721 px, a narrow window with a mouse
+  too), not a phone's; what's in the sheet folds, the planner or a card open at its peek (Weather on the map), and a card
+  the weather card's hours or lanes fold to its banner leaves the planner under it to fold, and folded when it closes;
+  it opens again on 48 hours or ✕ only, and stays folded when Your trip is left another way (Weather here, a place's weather, an hour outside the trip: the review of the motion, 2026-11-14); a planner folded already stays folded, and one you open or fold again yourself while you look at your trip, the planner or that card, stays as you
+  have it on 48 hours; the first time, a toast says "The planner folds while you look at your trip, and opens again on 48
+  hours" (the plan's proposal, the user's to keep or change). The reading line leaves its km to the time at its end; a
+  reading too long for the line goes on to a second, and at 200 % the time takes a line of its own. Your trip's hour
+  stays the same time past the turn of the hour (#1004, in this PR at the user's choice). The switch rides down with the
+  folding planner on that tap, so it isn't under the finger afterwards; rows inside Your trip still don't move it.
+  Nothing new moves: the fold and the timeline's ride with the sheet are `main`'s (/animate). At 200 % on a phone the
+  planner already rests at its line, and Your trip still runs under the top bar, more than the 48 hours do (#590).
 
 ## What stays as it is
 
