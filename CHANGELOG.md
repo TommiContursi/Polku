@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-14
 
+### Each day's weather on a trip with nights ([#981](https://github.com/TommiContursi/Polku/issues/981))
+
+- On a trip with nights, each day's weather comes from that day's own hours. The day before a night no longer counts the next morning's weather at the place you stop, so its notes, numbers and sky no longer say "around Sat 08:00" on a Friday. A warning on the next day starts where you set off again.
+- In **Wind on the way** and the weather card's notes, a short stretch inside one kilometre says that kilometre once, such as "km 2", instead of "km 2 to 2".
+
 ### Room for your trip on a phone ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
 - On a phone, or in a narrow window, **Your trip** in the weather timeline folds the planner to its line, so the map has room above the timeline. **48 hours** or the timeline's **✕** opens the planner again as it was; leaving your trip another way, such as a tap on a place's weather, leaves it folded. If you open the planner yourself meanwhile, or it was folded already, it stays as you have it. The first time, a note says so.

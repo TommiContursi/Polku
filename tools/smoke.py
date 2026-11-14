@@ -2026,15 +2026,27 @@ STOPS = """(async () => {
   // a lane's tap on a desktop leaves the card open beside the map (a phone's folds, weather_card)
   p.wxLane({ k: 'waves', name: 'Waves', stretches: [] }); await wait(200);
   if (p.cards.folded || !p.cards.box?.querySelector('.wx-day')) errs.push(`a lane's tap on a desktop: the card ${p.cards.folded ? 'folded' : 'gone'}`);
-  // a warning that crosses the night counts on both days (#973's review): thunder all along, a note of its own each day
+  // a warning that crosses the night counts on both days (#973's review): thunder all along, a note of its own each day,
+  // each on that day's own stretch (#981: day 2's from the night's stop, not from day 1's last piece)
   {
-    const { dayWeather } = await import(location.origin + '/js/stops.js'), a = p.analysis, keep = a.wind;
+    const a = p.analysis, keep = a.wind, days = p.wxDays(a), j = days[0]?.i1;
     if (!keep) errs.push('no forecast to test thunder over the night on');
     else {
       a.wind = { ...keep, thunder: new Uint8Array(a.along.length).fill(1), beyond: -1 };
-      const tells = p.wxDays(a).map((d) => p.dayFacts(a, d, dayWeather(a.wind, a, d.i0, d.i1)).notes.filter((x) => /^Thunder possible/.test(x.text)).length);
+      const tells = days.map((d) => p.wxNotes(a, d).filter((x) => /^Thunder possible/.test(x.text)));
+      // …and a gust at the night's stop alone: its forecast is the morning's, when you go on (#981), so it's neither day's
+      a.wind = { ...keep, gust: Float32Array.from(keep.gust, (v, i) => (i === j ? 30 : Math.min(v, 5))), beyond: -1 };
+      const gusts = days.map((d) => p.wxNotes(a, d).filter((x) => /^Gusts/.test(x.text)).map((x) => x.text));
+      // Wind on the way: a stretch against you inside one km says its km once (#999)
+      a.wind = { ...keep, head: Float32Array.from(keep.head, (v, i) => (a.along[i] > 1600 && a.along[i] <= 2400 ? 3 : 0)), beyond: -1 };
+      const stretch = p.wxWindOpen(a).querySelector('[data-k=headwind] b')?.textContent;
       a.wind = keep;
-      if (tells.length !== 2 || tells.some((k) => k !== 1)) errs.push(`thunder over both days: ${tells.join(' and ')} notes, not one on each`);
+      // a day of one piece (a night one point from the start) still has its weather, in the card and Hour by hour
+      try { const d1 = { ...days[0], i1: 1 }; p.wxDay(a, d1, 0, true, {}); p.wxHours(a, [d1]); } catch (e) { errs.push(`a day of one piece: ${e.message} (#981)`); }
+      if (stretch !== 'km 2 · up to 3 m/s') errs.push(`a stretch against you from km 1.6 to 2.4: “${stretch}” (#999)`);
+      if (tells.length !== 2 || tells.some((t) => t.length !== 1)) errs.push(`thunder over both days: ${tells.map((t) => t.length).join(' and ')} notes, not one on each`);
+      else if (tells[0][0].i1 > j || tells[1][0].i0 < j) errs.push(`thunder over the night: day 1's to sample ${tells[0][0].i1}, day 2's from ${tells[1][0].i0}, the night's stop ${j} (#981)`);
+      if (gusts.flat().length) errs.push(`a gust at the night's stop, timed when you go on: ${gusts.map((g, k) => `day ${k + 1} “${g.join(' / ')}”`).join(', ')} (#981)`);
     }
   }
   p.cards.close();
