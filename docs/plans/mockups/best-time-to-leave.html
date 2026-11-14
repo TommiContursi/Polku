@@ -73,6 +73,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 .frame.z2 .card-beside .card { max-height: calc(350px - 88px); }
 .frame.z2.desk .card-beside { left: 8px; right: 8px; top: 34px; } /* (a desktop at 200 %: the app takes its phone rules; the card where the planner was) */
 .frame.z2.desk .sheet[data-layout="side"] { display: none; }
+.frame.z2.desk .card-beside .card { width: auto; }
 .frame .mk-standin { padding: 14px; color: var(--muted); font-size: 13px; display: grid; gap: 8px; }
 .frame .mk-standin b { color: var(--text); font-size: 15px; }
 /* When's menu, where popMenu() puts it: under the pill */
@@ -136,7 +137,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
     <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="new">Best time to leave</button><button data-v="today">Today (main)</button></div></div>
     <div class="bar"><span>Screen</span><div class="sw" data-k="s"><button data-v="card">The card, from When’s menu</button><button data-v="menu">When’s menu</button><button data-v="box">The card, from the trip’s box</button></div></div>
     <div class="bar"><span>The day</span><div class="sw" data-k="c"><button data-v="day">A usual day</button><button data-v="evening">November, after work</button><button data-v="flat">A flat day</button><button data-v="bad">Every hour bad</button><button data-v="late">Late evening</button><button data-v="far">Past the forecast</button><button data-v="loading">Loading</button><button data-v="failed">Failed</button></div></div>
-    <div class="bar"><span>Route</span><div class="sw" data-k="r"><button data-v="mtb">MTB loop</button><button data-v="paddle">Sea kayak, a crossing</button><button data-v="fi">Long Finnish names</button></div>
+    <div class="bar"><span>Route</span><div class="sw" data-k="r"><button data-v="mtb">MTB loop</button><button data-v="long">Gravel, 10 hours</button><button data-v="paddle">Sea kayak, a crossing</button><button data-v="fi">Long Finnish names</button></div>
       <span>When</span><div class="sw" data-k="w"><button data-v="at">Leave at</button><button data-v="now">Leave now</button><button data-v="by">Arrive by</button></div>
       <span>Nights</span><div class="sw" data-k="n"><button data-v="day">A day trip</button><button data-v="nights">With nights</button></div></div>
     <div class="bar"><span>Frame</span><div class="sw" data-k="f"><button data-v="390">390 × 844</button><button data-v="360">360 × 740</button><button data-v="desk">1440 × 900</button></div>
@@ -147,10 +148,10 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
   <div class="notes">
     <h2>The questions (the plan has each one’s cost)</h2>
     <ol>
-      <li><b>How the dark counts.</b> Recommended: the dark apart. The bars show the weather alone (rain, heat, the wind), the dark is shaded behind them, and the rows name the best in the light and the best in the dark. Or minute for minute: the dark in one sum with the weather, one ranking, and on a November weekday the rows always name the middle of the day (try <b>November, after work</b>).</li>
+      <li><b>How the parts weigh.</b> Recommended: the dark apart. The bars show the weather alone, minute for minute (minutes in rain, heavy rain double; feeling hot; lost to a headwind or strong wind on the water), the dark is shaded behind them, and the rows name the best in the light and the best in the dark (on a ten-hour ride, <b>Most in the light</b>: try <b>Gravel, 10 hours</b>). Or minute for minute: the dark in one sum with the weather, one ranking, and on a November weekday the rows always name the middle of the day (try <b>November, after work</b>).</li>
       <li><b>A day when every hour is bad.</b> Recommended: name the least bad and say so, with a row for a better day (<b>Every hour bad</b>, <b>Late evening</b>). Or name nothing.</li>
       <li><b>When’s menu and Arrive by.</b> Recommended: Best time to leave › is the menu’s last item (First day’s, with nights), and a pick is a plain Leave at, which takes Arrive by’s place. Or, while Arrive by is set, the bars also grey the departures that would get you there late.</li>
-      <li><b>What rules an hour out.</b> Recommended: the card’s dangers to life: thunder where you’d be, a frostbite risk, and waves over the craft’s comfort on the crossing (hatched, never named: the sea kayak on <b>Friday</b>, three days on with ›). Or nothing does.</li>
+      <li><b>What rules an hour out.</b> Recommended: the card’s dangers to life: thunder where you’d be, a frostbite risk, and waves over the craft’s comfort on the crossing (hatched, never named: <b>Every hour bad</b> with the sea kayak). Or nothing does.</li>
     </ol>
     <h2>Illustrative, or left out</h2>
     <ul>
@@ -166,7 +167,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 import { icon, h } from '../../../js/ui.js';
 
 // ---------------------------------------------------------------- the switches
-const OPT = { v: ['new', 'today'], s: ['card', 'menu', 'box'], c: ['day', 'evening', 'flat', 'bad', 'late', 'far', 'loading', 'failed'], r: ['mtb', 'paddle', 'fi'], w: ['at', 'now', 'by'], n: ['day', 'nights'], f: ['390', '360', 'desk'], z: ['100', '200'] };
+const OPT = { v: ['new', 'today'], s: ['card', 'menu', 'box'], c: ['day', 'evening', 'flat', 'bad', 'late', 'far', 'loading', 'failed'], r: ['mtb', 'long', 'paddle', 'fi'], w: ['at', 'now', 'by'], n: ['day', 'nights'], f: ['390', '360', 'desk'], z: ['100', '200'] };
 const Q = new URLSearchParams(location.search);
 const S = Object.fromEntries(Object.entries(OPT).map(([k, vals]) => [k, vals.includes(Q.get(k)) ? Q.get(k) : vals[0]]));
 let T; // what changes while you try it: { w, dep, dd, open, try, menu }
@@ -190,6 +191,7 @@ const WX = [ // a day's rain [from, to, mm an hour], its wind at noon and how it
 ];
 const ROUTES = {
   mtb: { name: 'MTB loop, Kauppi', dur: 125, km: 28, loop: true, sport: 'mtb', label: 'the MTB', water: false },
+  long: { name: 'Gravel, round Näsijärvi', dur: 600, km: 150, loop: true, sport: 'gravel', label: 'the gravel bike', water: false },
   paddle: { name: 'Sea kayak, Kaivopuisto to Vallisaari', dur: 135, km: 9.4, loop: false, sport: 'paddle', label: 'the sea kayak', water: true, from: 'Kaivopuisto', to: 'Suomenlinna', crossKm: 2.1 },
   fi: { name: 'Merimelonta, Suomenlinnan Tykistölahden ranta – Vallisaaren Aleksanterin patterin laituri', dur: 135, km: 9.4, loop: false, sport: 'paddle', label: 'the sea kayak', water: true, from: 'Suomenlinnan Tykistölahden ranta', to: 'Vallisaaren Aleksanterin patterin laituri', crossKm: 2.1 },
 };
@@ -232,7 +234,7 @@ function hoursOf(k) {
   return Array.from({ length: 24 }, (_, hr) => k === now.k && hr < nh ? { past: true, k, m0: hr * 60, M0: k * 1440 + hr * 60 } : k === now.k && hr === nh ? score(k, now.m, true) : score(k, hr * 60));
 }
 // (named in the dark only from 05:00 to 23:00: the bars still show the night, but nobody's sent off at 02:00)
-const usable = (x, inLight) => x && !x.past && !x.none && !x.out && x.light === inLight && (inLight || (x.M0 % 1440) >= 300);
+const usable = (x, inLight) => x && !x.past && !x.none && !x.out && x.grp === (inLight ? 'light' : 'dark') && (inLight || (x.M0 % 1440) >= 300);
 // up to `max` stretches of good (or fair) hours, never two side by side; on a day when all are poor, the least bad
 function windows(hrs, inLight, max) {
   const all = hrs.filter((x) => usable(x, inLight)), poor = all.length && all.every((x) => x.bar > 0.4), used = new Set(), out = [];
@@ -249,7 +251,14 @@ function windows(hrs, inLight, max) {
   }
   return out;
 }
-const named = (k) => { const hrs = hoursOf(k); return { hrs, lit: windows(hrs, true, 2), dark: windows(hrs, false, 1) }; };
+// a day's groups: in the light when at most a tenth of the trip is in the dark, or, on a trip too long for the day's light,
+// within a tenth of the day's least dark ("Most in the light"); in the dark when half of it or more is; between, never named
+function sortDay(hrs) {
+  const r = R(), live = hrs.filter((x) => !x.past && !x.none), least = Math.min(...live.map((x) => x.dark / r.dur)), lim = least < 0.4 ? Math.max(0.1, least + 0.1) : 0.1; // (a day with nothing under 40 % in the dark has no light to speak of)
+  for (const x of live) x.grp = x.dark / r.dur <= lim ? 'light' : x.dark >= r.dur * 0.5 ? 'dark' : 'into';
+  return least > 0.1 && least < 0.4;
+}
+const named = (k) => { const hrs = hoursOf(k), most = sortDay(hrs); return { hrs, most, lit: windows(hrs, true, 2), dark: windows(hrs, false, 1) }; };
 const good = (w) => w && !w.least && w.best.bar <= 0.1;
 // the next day within the forecast with a good hour in the light
 function better(k) { for (let j = k + 1; j <= 9; j++) { const w = named(j).lit[0]; if (good(w)) return w; } return null; }
@@ -386,7 +395,7 @@ function best() {
   hrs.forEach((y, i) => { const c = dk(y); if (c && runs.length && runs.at(-1).c === c && runs.at(-1).b === i - 1) runs.at(-1).b = i; else if (c) runs.push({ c, a: i, b: i }); });
   const shade = h('div', { class: 'bt-shade', 'aria-hidden': 'true' }, ...runs.map((s) => h('i', { class: s.c, style: `left: ${(s.a / 24) * 100}%; width: ${((s.b - s.a + 1) / 24) * 100}%`, html: s.c === 'dark' && s.b - s.a >= 1 ? icon('moon', 12) : '' })));
   const first = hrs.findIndex((y) => !y.past);
-  const range = h('input', { type: 'range', class: 'bt-range', min: String(first), max: '23', step: '1', value: String(T.try ?? Math.max(first, Math.floor((x.M0 - k * 1440) / 60))), 'aria-label': `Departure on ${d.name}`, disabled: S.c === 'loading' || S.c === 'failed' ? true : null });
+  const range = h('input', { type: 'range', class: 'bt-range', min: String(first), max: '23', step: '1', value: String(T.try ?? (x.k === k ? Math.max(first, Math.floor((x.M0 - k * 1440) / 60)) : N.lit[0]?.i ?? first)), 'aria-label': `Departure on ${d.name}`, disabled: S.c === 'loading' || S.c === 'failed' ? true : null });
   const valtext = (i) => { const y = hrs[i]; return reading(y, true).map((n) => (typeof n === 'string' ? n : n?.textContent || '')).join(''); };
   range.setAttribute('aria-valuetext', valtext(+range.value));
   const strip = h('div', { class: 'bt-strip' }, shade, slots, range);
@@ -417,9 +426,9 @@ function best() {
   const litGood = N.lit.filter((w) => !w.least);
   const nb = !litGood.length ? better(k) : null;
   const empty = (title, words) => [h('div', { class: 'menu-h' }, title), h('p', { class: 'note wx-note' }, words)];
-  const anyOut = hrs.some((y) => y.out), gone = (inLight) => (k === 0 && !hrs.some((y) => !y.past && y.light === inLight) ? `Nothing left ${inLight ? 'in the light' : 'in the dark'} today.` : anyOut ? 'Every departure is ruled out: see the crossing above.' : `No departure on ${d.name}.`);
+  const anyOut = hrs.some((y) => y.out), gone = (inLight) => (k === 0 && !hrs.some((y) => !y.past && y.grp === (inLight ? 'light' : 'dark')) ? `Nothing left ${inLight ? 'in the light' : 'in the dark'} today.` : anyOut ? 'Every departure is ruled out: see the crossing above.' : `No departure on ${d.name}.`);
   const parts = [
-    ...(N.lit.length ? group('In the light', N.lit, 'sun') : empty('In the light', gone(true))),
+    ...(N.lit.length ? group(N.most ? 'Most in the light' : 'In the light', N.lit, 'sun') : empty('In the light', gone(true))),
     ...(N.dark.length ? group('In the dark', N.dark, 'moon') : empty('In the dark', gone(false))),
   ];
   if (nb) parts.push(h('div', { class: 'rows' }, h('button', { type: 'button', class: 'row', 'data-k': 'better-day', onclick: () => { T.dd = nb.best.k; T.try = null; draw(); } }, h('span', { 'aria-hidden': 'true', html: icon('calendar', 20) }),
@@ -445,7 +454,7 @@ function wire(strip, range, hrs) {
   range.addEventListener('input', () => { clearTimeout(rest); const i = +range.value; T.try = i; draw(true, true); rest = setTimeout(() => { if (!hrs[i].none) setDep(hrs[i]); refocus(); }, 900); });
   range.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(rest); const i = +range.value; if (!hrs[i].none) { setDep(hrs[i]); refocus(); } } });
 }
-const refocus = () => requestAnimationFrame(() => document.querySelector('.bt-range')?.focus());
+const refocus = () => setTimeout(() => document.querySelector('.bt-range')?.focus());
 
 // ---------------------------------------------------------------- When's menu (js/when.js), static where popMenu() puts it
 function menu() {

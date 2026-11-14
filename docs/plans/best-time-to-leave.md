@@ -44,7 +44,7 @@ The mock-up draws it at 390 and 360 px, 200 % and on a desktop, for an MTB ride 
 
 Recommended: **the dark apart.** In November every departure after work is in the dark. Count the dark in the same sum as the rain, and the rows would name the middle of the day every weekday, while the evening's dry and wet hours differed only by a little on bars that were already tall. So the dark sorts the departures, and the weather ranks them:
 
-- **the dark:** a departure is **in the light** when at most a tenth of its trip is in the dark (the sun more than 6° under the horizon; dusk counts half, from `darkness()`), **in the dark** when half of it or more is. In between it runs into the dark: shaded lighter, and never named. Behind the bars it's the shade; in the rows, the two headings.
+- **the dark:** a departure is **in the light** when at most a tenth of its trip is in the dark (the sun more than 6° under the horizon; dusk counts half, from `darkness()`). On a trip too long for the day's light (ten hours in November), it's those within a tenth of the day's least dark, headed **Most in the light**, as long as that least is under 40 %. It's **in the dark** when half of it or more is. In between it runs into the dark: shaded lighter, and never named. Behind the bars it's the shade; in the rows, the two headings.
 - **the bar, the weather alone,** in minutes where you'd be at each minute of the trip timed from that hour:
   - **rain or snow:** minutes in 0.1 mm an hour or more; heavy (4 mm an hour) counts double;
   - **heat:** minutes feeling 27 °C or more (the card's limit);
@@ -58,7 +58,7 @@ The cost: three rows to read instead of one answer, and a dry evening in the dar
 
 ## When every hour is bad (question 2)
 
-Recommended: **name the least bad, and say so.** The fold's line and the day's line say "No good time on Saturday"; the rows are headed "The least bad", each with its reason ("Sat 10:00: 25 min in the rain, the least today"). When another day within the forecast has a good hour, one more row says it, "Sunday 10:00 is light and dry ›", and a tap steps there. When every hour is ruled out, no row is named: "No departure on Saturday keeps you clear of thunder", with the better day's row. Late in the evening, with nothing better left today, the same row offers tomorrow.
+Recommended: **name the least bad, and say so.** The fold's line and the day's line say "No good time on Saturday"; each row's line starts "The least bad" ("Sat 10:00 · The least bad: 25 min in the rain"). When another day within the forecast has a good hour, one more row says it, "Sunday 10:00 is light and dry ›", and a tap steps there. When every hour is ruled out, no row is named: "No departure on Saturday keeps you clear of thunder", with the better day's row. Late in the evening, with nothing better left today, the same row offers tomorrow.
 
 The alternative: name nothing on a bad day, only "No good time on Saturday" and the better day. Cleaner, but someone who has to go today gets no help.
 
@@ -80,7 +80,7 @@ The alternative: only the decided list counts, and thunder or frostbite only mak
 - **Failed:** the dark alone, and what the sun gives without a forecast: "Leave by 13:20 to be back in the light" (#273's part 1), with Retry. Stale: the card's own "Older forecast" note covers it.
 - **Today's passed hours:** dotted slots, never named. The current hour stays, as Leave now.
 - **Past the forecast's reach** (the tenth day): "No forecast yet from 21:00 Tuesday: only the dark counts". More than three days ahead, the day's line says "less certain", as the card does.
-- **Midnight sun and the polar night:** no shade, or all of it; the dark then costs every hour the same, so the weather decides.
+- **Midnight sun and the polar night:** no shade, or all of it: every departure is in the light, or in the dark, and the weather alone ranks them.
 - **A trip with nights:** the first day's departure, scored on the first day's trip only (a night ends at its Go on at, so later days don't move).
 - **A day trip past midnight:** scored whole.
 - **A water leg Polku didn't route** (from a file, or drawn as a line): its waves aren't counted, and the crossing line says so.
@@ -102,9 +102,18 @@ One PR, in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16)
 - **Docs:** CHANGELOG, USING (When's menu and the card), README (the capability, with its limits), DEVELOPING (Weather: the sweep; Shared controls: the strip), CONTEXT (Crossing window), and this plan's "Built".
 - **Motion:** nothing new moves (decided with /animate). The scrub, ‹ › and a pick change in place, and the card opens as every card does. So no /review-animations.
 
+## As it will be built unless the user says otherwise
+
+- A drag along the bars tries each hour; lifting the finger, a tap on a bar or on a row sets Leave at.
+- Departures in the dark are named only from 05:00 to 23:00; the bars still show the night.
+- A tailwind is said, but never makes up for rain.
+- Between two departures about the same, the one nearer the time of day you came with wins, so the rows stay put while you pick.
+- On a trip too long for the day's light, the light's group is **Most in the light**.
+- On a trip with nights, the first day's departure, scored on the first day only.
+
 ## The questions
 
-1. **How the dark counts.** Recommended: the dark apart. The bars show the weather, the dark is shaded behind them, and the rows name the best in the light and the best in the dark. Or minute for minute, the dark in one sum with the weather.
+1. **How the parts weigh.** Recommended: the dark apart. The bars show the weather, the dark is shaded behind them, and the rows name the best in the light and the best in the dark. The weather counts minute for minute: minutes in rain (heavy rain double), feeling hot, or lost to a headwind or strong wind on the water. Or minute for minute with the dark in the same sum.
 2. **A day when every hour is bad.** Recommended: name the least bad and say so, with a row for a better day. Or name nothing.
 3. **When's menu and Arrive by.** Recommended: Best time to leave › last, a pick is a Leave at that takes Arrive by's place. Or grey the late hours while Arrive by is set.
 4. **What rules an hour out.** Recommended: the card's dangers to life (thunder, frostbite, waves over the craft's comfort). Or nothing does.
