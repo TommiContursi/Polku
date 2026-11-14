@@ -12458,7 +12458,7 @@ TL_READING = """new Promise((done) => {
     if (!main) { if (Date.now() - t0 < 20000) { setTimeout(go, 200); return; } done({ out: [`no reading after 20 s: ${box ? box.textContent : 'no timeline'}`] }); return; }
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const out = [], b = box.getBoundingClientRect();
-      for (const e of box.querySelectorAll(':scope > div, :scope > div > :not(svg)')) {
+      for (const e of box.querySelectorAll(':scope > div, :scope > div > :not(svg, .sr-only)')) {
         const r = e.getBoundingClientRect(), t = e.textContent.trim() || e.tagName;
         if (r.right > b.right + 0.5 || r.left < b.left - 0.5 || r.bottom > b.bottom + 0.5) out.push(`“${t}” at x ${Math.round(r.left)}–${Math.round(r.right)}, out of its box (x ${Math.round(b.left)}–${Math.round(b.right)})`);
         else if (e.scrollWidth > e.clientWidth + 1 && e.clientWidth) out.push(`“${t}” cut (${e.scrollWidth} px in ${e.clientWidth})`);

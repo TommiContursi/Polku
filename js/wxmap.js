@@ -1836,15 +1836,16 @@ export class WeatherOverlay {
           `<div>${icon('drop', 12)}${rain >= 0.05 ? `${rain.toFixed(1)} mm/h` : 'dry'}</div>` + snow;
         return;
       }
-      const sum = this.accum(ll, 6);
-      const rainTxt = rain >= 0.05 ? `${rain.toFixed(1)} mm/h` : 'dry';
-      const gust = s.gust > s.speed + 2 ? ` <span>gusts ${s.gust.toFixed(0)}</span>` : '';
+      // the box's lines short enough for it (#457): the gusts in brackets, FMI's way, and the next 6 hours' rain beside "dry"
+      // only (raining, the strip shows what's ahead); whole in the tooltip and for a screen reader
+      const sum = this.accum(ll, 6), six = sum != null && sum >= 0.05 ? `6 h ${sum.toFixed(1)} mm` : '';
+      const g = s.gust > s.speed + 2 ? s.gust.toFixed(0) : '', speed = s.speed.toFixed(s.speed < 3 ? 1 : 0);
       const where = this.heldLL ? 'at the spot' : this.pointerLL ? 'under the mouse' : 'at the map centre';
-      this.nowEl.title = `${SKY[kind]} · ${where}`;
+      this.nowEl.title = `${SKY[kind]} · ${where}${g ? ` · gusts ${g} m/s` : ''}${six ? ` · ${sum.toFixed(1)} mm in the next 6 hours` : ''}`;
       this.nowEl.innerHTML =
         `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${this.heldLL ? 'the spot' : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
-        `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
-        `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` + snow;
+        `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${speed}${g ? ` <span aria-hidden="true">(${g})</span>` : ''} m/s ${compass(s.dir)}${g ? `<span class="sr-only">, gusts ${g}</span>` : ''}`}</div>` +
+        `<div>${icon('drop', 12)}${rain >= 0.05 ? `${rain.toFixed(1)} mm/h${six ? `<span class="sr-only"> · ${six}</span>` : ''}` : `dry${six ? ` <span>· ${six}</span>` : ''}`}</div>` + snow;
     });
   }
 }
