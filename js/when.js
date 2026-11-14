@@ -41,12 +41,12 @@ export class When {
     return at == null ? 'now' : new Date(at * 1000).toDateString() === new Date().toDateString() ? timeOf(at) : `${dayOf(at)}, ${timeOf(at)}`;
   }
   // Arrive by's other end, once it's worked out: "leave 19:19", "leave about 19:20" where the wind changes it, "leave now"
-  // when it's too soon; on a trip with nights, the last morning, "go on at Sun 07:40" ('' where it can't be met: the note says)
+  // when it's too soon; on a trip with nights, the last morning, "go on at 07:40" ('' where it can't be met: the note says)
   leaving() {
     const g = this.got, about = g?.about ? 'about ' : '';
     if (this.by == null || !g) return '';
-    if (this.nights) return g.go != null ? `go on at ${about}${clockOf(g.go, this.start())}` : '';
-    return g.late ? 'leave now' : `leave ${about}${this.words(g.leave)}`;
+    if (this.nights) return g.go != null ? `go on at ${about}${clockOf(g.go, this.by)}` : '';
+    return g.late ? 'leave now' : `leave ${about}${clockOf(g.leave, this.by)}`; // (with its day where it isn't Arrive by's)
   }
   // what's kept with a route: the departure and Arrive by, those that had passed too (Undo brings them back as they were)
   kept() {

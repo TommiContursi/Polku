@@ -19906,7 +19906,7 @@ def leave(chrome):
             return
         press(pg, at, f'{name}: When on the start\'s card', touch)
         m = pg.js("(() => { const m = LV.menu(); return m && { items: [...m.querySelectorAll('.menu-item')].map((x) => x.matches('input') ? x.type : x.textContent), expanded: LV.row('start').getAttribute('aria-expanded') }; })()")
-        if not m or m['items'] != (['Leave now', 'datetime-local'] if phone else ['Leave now', 'Leave at…']) or m['expanded'] != 'true':
+        if not m or m['items'] != (['Leave now', 'datetime-local', 'datetime-local'] if phone else ['Leave now', 'Leave at…', 'Arrive by…']) or m['expanded'] != 'true':
             fails.append(f"{name}: When's menu on the start's card: {m}")
         # its field: a phone's own picker from a tap; on a desktop, Leave at… shows it with Set. Its quarter hours on the
         # clock's: min on a quarter hour, so the next whole hour is a step, never a mismatch (the review of #475)
@@ -20081,7 +20081,7 @@ def when_start(chrome):
         pg.js(SETTLED)
         press(pg, pg.js("WN.at(WN.row())"), f'{name}: the When row', touch)
         m = pg.js("WN.menu()")
-        want_items = ['Leave now ✓', 'datetime-local: Leave at… Pick a day and a time'] if phone else ['Leave now ✓', 'Leave at…']
+        want_items = ['Leave now ✓', 'datetime-local: Leave at… Pick a day and a time', 'datetime-local: Arrive by… Pick a day and a time'] if phone else ['Leave now ✓', 'Leave at…', 'Arrive by…']
         if not m or m['items'] != want_items or (phone and not m['over']) or pg.js("WN.row().getAttribute('aria-expanded')") != 'true':
             fails.append(f"{name}: When's menu: {m}")
             pg.close()
@@ -20146,6 +20146,141 @@ def when_start(chrome):
     one(390, 844, True)
     one(1440, 900, False)
     print(f"{'ok  ' if not fails else 'FAIL'} when on the first screen" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Arrive by (#219), in one page's JS: picked in When's menu, the departure worked back from it, never after it; too soon,
+# passed while open, Leave at in its place; share links, the saved route, a route saved offline and Undo; a trip with
+# nights, where it's the last morning's; a round trip's form, where it fills How long by Time
+ARRIVE_JS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, W = p.when;
+  const P = await import(location.origin + '/js/planner.js');
+  const when = (sec) => `${LV.day(sec)}, ${LV.clock(sec)}`, settled = () => Promise.resolve(p.analysing).then(() => wait(600), () => wait(600));
+  // Arrive by…, picked in the menu at the box's pill as a phone picks it (its own field) or a desktop sets it (the field and Set)
+  const pickBy = (value) => {
+    W.pop?.close();
+    W.menu(LV.row('box'));
+    const fields = [...W.pop.el.querySelectorAll('input')];
+    if (fields.length === 2) { const f = fields[1]; f.focus(); f.value = value; f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); return; }
+    [...W.pop.el.querySelectorAll('button.menu-item')].find((x) => x.textContent.startsWith('Arrive by')).click();
+    const f = W.pop.el.querySelector('.menu-when input');
+    f.value = value;
+    W.pop.el.querySelector('.menu-when .btn.primary').click();
+  };
+  const read = () => { const T = p.trip(); return { name: LV.when('box').name, note: LV.when('box').note, there: p.els.there.textContent, nums: document.querySelector('.sum-time small')?.textContent, start: T.start, end: T.end }; };
+  const by = Math.ceil(Date.now() / 900000) * 900 + 3 * 3600;
+  pickBy(LV.iso(by));
+  await settled();
+  let r = read();
+  const leave = `leave ${W.got?.about ? 'about ' : ''}${LV.clock(r.start)}`;
+  if (W.by !== by || W.at != null || W.pop || r.end > by || by - r.end > 90 || r.name !== `Arrive by ${LV.clock(by)}` || r.there !== `· ${leave}` || r.nums !== leave || r.note)
+    errs.push(`Arrive by in three hours: ${JSON.stringify({ ...r, by, at: W.at, menu: !!W.pop })}`);
+  // its menu: Arrive by… ticked, with its time
+  W.menu(LV.row('box'));
+  const ticked = [...W.pop.el.querySelectorAll('.menu-item[aria-checked="true"], .menu-pick.on')].map((x) => x.textContent);
+  W.pop.close();
+  if (ticked.length !== 1 || !ticked[0].startsWith('Arrive by…') || !ticked[0].includes(LV.clock(by))) errs.push(`the menu ticks ${JSON.stringify(ticked)}`);
+  // a share link carries it (ab=, no lv=), and says so; whoever opens it works the departure out again
+  const q = new URL(p.shareUrl()).searchParams;
+  if (q.get('ab') !== String(by / 60) || q.has('lv') || p.shareSub() !== `Includes Arrive by ${when(by)}`) errs.push(`the share link: ab=${q.get('ab')}, lv=${q.get('lv')}, “${p.shareSub()}”`);
+  W.set(null);
+  p.restore(P.parseShared(q));
+  await settled();
+  if (W.by !== by || p.trip().end > by) errs.push(`from the link: arrives by ${W.by}, there ${p.trip().end - by} s after it`);
+  // the saved route keeps it; so does a route saved offline, and Undo after opening one brings back the time you had
+  p.save();
+  const kept = JSON.parse(localStorage.getItem('polku:route'));
+  W.set(null);
+  p.legs = []; p.points = [];
+  p.loadSaved();
+  await settled();
+  if (kept.arrive !== by || kept.leave != null || W.by !== by) errs.push(`the saved route: arrive ${kept.arrive}, leave ${kept.leave}, opened arriving by ${W.by}`);
+  const snap = p.routeSnapshot();
+  W.set(null);
+  p.restoreSnapshot(snap);
+  await settled();
+  if (W.by !== by) errs.push(`a route saved offline arrives by ${W.by}`);
+  p.undo();
+  await settled();
+  if (W.by != null || LV.when('box').name !== 'Leave now') errs.push(`Undo after opening it: arrives by ${W.by}, the box says ${LV.when('box').name}`);
+  p.redo();
+  await settled();
+  if (W.by !== by) errs.push(`Redo after that: arrives by ${W.by}`);
+  // Leave at takes its place
+  LV.pick('box', LV.iso(by));
+  await settled();
+  if (W.by != null || W.at !== by || LV.when('box').name !== `Leave ${LV.clock(by)}`) errs.push(`Leave at after Arrive by: arrives by ${W.by}, leaves ${W.at}, the box says ${LV.when('box').name}`);
+  // too soon: it leaves now, and says when you're there
+  const soon = Math.ceil(Date.now() / 60000) * 60 + 120;
+  W.setBy(soon);
+  await settled();
+  r = read();
+  if (Math.abs(r.start - Date.now() / 1000) > 60 || r.there !== '· leave now' || r.note !== `Leave now and you’re there at ${LV.clock(r.end)}.`) errs.push(`Arrive by too soon: ${JSON.stringify(r)}`);
+  // passed while open: it goes, saying so, and a link made then carries none
+  const realNow = Date.now;
+  try {
+    Date.now = () => realNow() + 10 * 60000;
+    const ab = new URL(p.shareUrl()).searchParams.get('ab');
+    await wait(200);
+    if (ab != null || W.by != null || LV.when('box').note !== `Arrive by ${when(soon)} has passed: pick a new time above.`) errs.push(`Arrive by passed while open: ab=${ab}, by ${W.by}, “${LV.when('box').note}”`);
+  } finally { Date.now = realNow; }
+  // a night at waypoint 1, on at 08:00: Arrive by tomorrow 12:00 is the last morning's, the first day leaving as it was
+  p.setStop(1, { on: 480 });
+  for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 1); k++) await wait(200);
+  const noon = LV.at(1, 12, 0);
+  W.set(Math.ceil(Date.now() / 900000) * 900 + 1800);
+  const first = W.at;
+  pickBy(LV.iso(noon));
+  await settled();
+  const w = p.analysis.waits[0], go = w.arrive + w.sec;
+  r = read();
+  if (!W.nights || W.at !== first || W.by !== noon || !w.by || r.end > noon || noon - r.end > 90 || r.there !== `· go on at ${W.got?.about ? 'about ' : ''}${LV.clock(go)}`) errs.push(`Arrive by with a night: ${JSON.stringify({ ...r, go, by: w.by, at: W.at, first })}`);
+  if (p.timesAt(1).leave !== go) errs.push(`the night's row goes on at ${p.timesAt(1).leave}, not ${go}`);
+  W.menu(LV.row('box'));
+  const groups = [...W.pop.el.querySelectorAll('.menu-head, [role="group"]')].map((x) => x.getAttribute('aria-label') || x.textContent);
+  const ticks = [...W.pop.el.querySelectorAll('.menu-item[aria-checked="true"], .menu-pick.on')].map((x) => x.textContent.slice(0, 9));
+  W.pop.close();
+  if (!groups.join().includes('First day') || !groups.join().includes('Last day') || ticks.length !== 2) errs.push(`the menu with a night: ${JSON.stringify({ groups, ticks })}`);
+  // too soon for the night: it says when you're there
+  W.setBy(LV.at(0, 23, 0) > Date.now() / 1000 + 600 ? LV.at(0, 23, 0) : Date.now() / 1000 + 600);
+  await settled();
+  r = read();
+  if (W.got?.go != null || r.note !== `With your nights you’re there at ${p.clockOf(r.end)}.`) errs.push(`Arrive by too soon for the night: ${JSON.stringify(r)}`);
+  W.setBy(null);
+  p.setStop(1, null);
+  await settled();
+  // a round trip's form: How long by Time, from now until then
+  p.clear();
+  p.openLoop([23.8, 61.512]);
+  await wait(300);
+  const later = Math.ceil(Date.now() / 900000) * 900 + 2 * 3600 + 600;
+  W.setBy(later);
+  await wait(300);
+  const L = p.loop, want = Math.floor((later - Date.now() / 1000) / 900) * 15;
+  if (L.mode !== 'min' || L.min !== want || document.querySelector('[data-k="unit-min"]')?.getAttribute('aria-pressed') !== 'true') errs.push(`a round trip's How long: ${L.mode}, ${L.min} min, not ${want}`);
+  W.setBy(null);
+  p.closeLoop();
+  return errs;
+})()"""
+
+
+def arrive_by(chrome):
+    fails = []
+    for w, h_, phone in ((390, 844, True), (1440, 900, False)):
+        name = f'{w}x{h_}'
+        pg = chrome.page(w, h_, phone)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        if not pg.js(PC_ROUTE, timeout=30000):
+            fails.append(f'{name}: no route')
+            pg.close()
+            continue
+        pg.js(LV_JS)
+        pg.js("polku.planner.reveal('points'); polku.planner.els.box.scrollIntoView({ block: 'nearest' }); true")
+        fails.extend(f'{name}: {e}' for e in pg.js(ARRIVE_JS, timeout=120000))
+        fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} arrive by" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # Key facts (25d, #471's A2 [kf2-gravel, kf2-gravel-calm, kf2-gravel-check, kf2-multi, kf2-multi-tap, kf2-days, kf2-paddle]) and
@@ -21655,7 +21790,7 @@ GROUPS = [
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list, tick_under], 'Leave now\'s refresh leaving focus and a Reorder drag alone (#966); Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
-    ('leave', [leave, when_start], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
+    ('leave', [leave, when_start, arrive_by], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
     ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
