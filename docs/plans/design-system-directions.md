@@ -7,6 +7,14 @@ A design round on Polku's whole layout and look, apart from the map: the planner
 
 ## Where it stands
 
+**Round 5 (2026-11-14), started:** a fresh session, from the Hand-over on #382.
+- **Done:** [what each element does on `main`](#round-5-what-each-element-does-on-main), at 12061f1f: the planner, the route's list and the cards, with what a tap, a hover, a drag, a hold, a right-click and the keys do.
+- **Waiting for the user, three questions:**
+  1. Where ⌄ and ✕ go now that the head drops them. On `main` they're on the grabber's row, not in the head. **The recommendation is to keep them there**, so nothing takes an extra tap.
+  2. Whether a leg's row gets its own ✎ for **Edit this stretch**, one tap instead of two. **The recommendation is yes**, with a tap on the rest of the row still opening the leg's card.
+  3. The desktop's arrangement. **The recommendation is today's**, in round 5's look: the planner as a side panel, a card beside it, the toolbar at the map's foot.
+- **Then:** round 5 drawn from round 4's "C, improved" with the list's affordances back, the desktop planner and a card, and two kinds of scroll indicator to choose between on a phone.
+
 **After round 4 (2026-11-14): the user's verdict, to build on in the next round**
 - **Keep:**
   - the planner's head (the route's plate, the profile, When and the weather under it), without its ⌄ and ✕;
@@ -127,6 +135,110 @@ All three share the givens above and one markup change: a number's unit gets an 
 - **A heading:** 16–23 px heavy words in the text's colour.
 - **The typeface:** Atkinson Hyperlegible Next alone, made for legibility (its zero is slashed).
 - **Costs:** about 34 KB of fonts once; the most CSS of the three (every control's background and edge). **Risk:** more edges and solid blocks over the map, the opposite of look B's light glass, chosen on 2026-10-28 for showing the map through.
+
+## Round 5: what each element does on `main`
+
+Round 4 redrew the route's list as rows with a ›, and so lost what the list does. Round 5 starts from this inventory instead: every element of the planner, the list and the cards on `main` at 12061f1f, from `js/planner.js`, `js/cards.js`, `js/card.js`, `js/when.js`, `css/app.css` and `docs/USING.md`, and tried in the browser pane at 390 × 844 and 1440 × 900 with the three-sport route. A drawing keeps each of these, or says where it went.
+
+**Widths and pointers.** Up to 720 px the planner is a sheet from the bottom; from 721 to 899 px it's a bottom sheet a mouse can drag; from 900 px it's a side panel on the left, or a bottom panel when docked there. "Mouse" below means `(hover: hover) and (pointer: fine)`, at any width. Where a gesture isn't listed, it does nothing.
+
+**Where it differs from what round 4 assumed:**
+- The planner's head has no title and no ⌄ or ✕ of its own: ⌄ and ✕ are on the grabber's row (on a desktop, ✕ is in the numbers' row). The ⋯ on that row is a card's settings, shown only while a card is in the sheet.
+- The list's foot is Reorder, Reverse, Back to start and Clear route. Route style and Your speed are rows under it.
+- Take it along (Share link, Export GPX, Save offline…) is on the toolbar, in ⋯ More and on the whole route's card. There's no Save: the route is kept on the device by itself.
+- Nothing in the list adds or inserts a point: the map does, and a card's Add a waypoint here, Add to my route, Start here and End here.
+
+### The sheet and its head
+
+| Element | Where | What it does | States |
+|---|---|---|---|
+| The sheet | Phone: folded, peek, half, full. Desktop: open, folded | A swipe from the grabber, the top rows, the head, the profile's top row, the tabs, or the list at its top moves it: a flick goes one size, a slow release to the nearest. From the line, a swipe down puts it away. A mouse grabs only the grabber, the line, the head or the tabs | The peek is 296 px or 40 % of the screen. Never grabbed from the profile, a grip or a Reorder row |
+| The grabber, "Planner size: drag, or press to change" | Top row, middle; phone and mid widths | A press goes between the peek and the last open size; from the line it opens as it was. ↑ and ↓ step one size | Does nothing while a card is in the peek |
+| ⌄ "Fold the planner to a line" | Top row, left | Folds it to the line. With a mouse it lowers one size instead, and ⌃ beside it raises one size | Only with a route of two points or more. On a desktop: ⌄ in the numbers' row folds to a line at the map's foot |
+| ✕ "Put the planner away: your route stays" | Top row, right (phone); numbers' row (desktop) | Puts the planner away, or closes the card it holds. R toggles the planner | On a phone it's the only way to put it away: Plan is hidden behind the sheet |
+| ⋯ Card settings | Top row, right, beside ✕ | Colour by, Colours on the map | Only with a card in the sheet that has settings |
+| The line | Folded | Opens as it was (↑ too); its ✕ puts it away; a swipe up opens, down puts away | The warnings' count, the numbers, Routing…; with a card, its mark, name and two numbers |
+| The numbers in the top row | Sticky, once the numbers scroll under it | — | The numbers and the route's name, for the eye only |
+| Dock left or bottom | Numbers' row, desktop | Moves the panel and frames the route again | From 900 px |
+| The panel's width grip | The side panel's right edge | Drag: 340 px up to 62 % of the window; ← → 32 px; double-click or Enter: narrow or wide | Desktop |
+| The busy bar | The sheet's top edge | — | While routing, after 300 ms |
+
+### The numbers, the key facts, the profile, When and the tabs
+
+| Element | Where | What it does | States |
+|---|---|---|---|
+| Distance | Numbers' row | — | Tooltip |
+| Time, "1 h 05 min · 40 min moving" | Numbers' row | Opens the weather card at Time on the way | Its line: moving time, "from 18:00" or "leave 19:19" |
+| Climb, "↑ 40 m" (carry on a route with paddling) | Numbers' row | — | "↑? ↓?" with no terrain |
+| The key facts | Under the numbers | A warning's row opens Check at the first unread one and its card; a climb lights its range; Unpaved colours by surface; a high point shows the profile; a sport's row lights its part in the list; the rest open the weather card | A row per sport on a route of several sports. Hidden under 520 px of height, where a count in the numbers' row opens Check |
+| Colour by | Profile's top row | Way type, Wind, Temperature, Rain, Sport… | Chips instead of the select in a panel 1080 px wide or more |
+| On map | Profile's top row | Colours the route line as the profile | A switch |
+| A smaller or taller profile | Profile's top row, right | Compact or tall, remembered | |
+| The profile | Profile | Mouse: a tooltip and a dot on the map; a click centres the map; a drag selects a range, which the profile and the map zoom to; Whole route zooms out. Touch: a drag scrubs; a double tap zooms. Ctrl and the wheel, or a pinch, zoom | A tap on it at a phone's peek opens the half |
+| When, "Leave now ▾" | The trip's box (and the start's row, the start's card, the weather card) | Leave now, Leave at…, Arrive by…; with nights, the first and last day's. A phone's own picker; a field and Set on a desktop | A note under it: the time has passed, no forecast yet, Arrive by can't be met |
+| "→ there at Sun 00:37" | The trip's box | — | "· leave 19:19" with Arrive by |
+| A day's weather, "−1 °C · dry · in the dark ›" | The trip's box | Opens the weather card at that day (beside the panel on a desktop); with nights, frames the day on the map | Hidden until the trip has a time |
+| Route and Check | Tabs | Switch; on a phone from the line or the peek they open the half. ← → | Check's badge: red ▲ and the count, else Good to know's count, "?" when not checked |
+
+### The route's list
+
+| Element | Where | What it does | States |
+|---|---|---|---|
+| Show all waypoints · 3 hidden, Fold all waypoints | Over the list | Unfolds or folds every stretch's waypoints | Only when a stretch folds some; not in Reorder |
+| List settings | Over the list, right | Times: From start or Clock. Show: Warnings, Good to know, Drawing mode, Darkness, Weather, Speed | Also in Settings |
+| A part's heading, with ⚙ | Top of each part | Its menu: Sport · this part (changes only its legs), Your speed and Change, Route style's chips and Fine-tune | The sport's icon in its colour, "Day 2 · MTB", "1.53 km · 9 min · ↑40 m". Several parts only on a route of several sports or nights |
+| A waypoint's row: Start, 1, 2…, End | In a part | A tap opens the point's card (beside the panel on a desktop), and the row stays lit while it's open. A mouse lights its leg on the map and the profile and shows a tooltip (from the start, arrive and leave, height, grade, way, weather). ↑ ↓ to the next row, Enter opens, Alt+↑ ↓ moves the point, Delete removes it with Undo | A column of distance over time from the start (or the clock); the weather with Weather on; ›. After a changeover or night the point starts the next part again |
+| Its tools: ✎ Rename, 🗑 Remove (red) and the grip | The row's right end, in place of › | Rename turns the name into a field (Enter keeps, Esc cancels); Remove removes it with Undo; the grip drags it in the list, with a drop line, one step of Undo | **A mouse only, while drawing, waypoints only.** By touch: the card, or Reorder |
+| A stretch's row, "1.53 km · 9 min · ↑40 m" | Between waypoints | Opens This stretch's card; its **Edit this stretch** is one tap further. A mouse lights the stretch and shows a tooltip (times, speed, grade, way, wind, weather) | Its lines: how it's drawn (Follow paths, Freehand, Over water, its own line; a carry), up to three warnings, in the dark. Beads for folded waypoints, a moon where the dark starts. No tools on hover |
+| ⌄ 3 (unfold) | A stretch's right end, when it folds waypoints | Shows each leg as a row, with its shaping waypoints between | |
+| A leg's row, unfolded | Inside a stretch | Opens that leg's card; its Edit changes one leg | |
+| A stop, "Stop · 30 min, 12:10–12:40" | After its waypoint | Opens the point's card, where it's set | Tooltip: where, when, the weather as you go on |
+| A changeover, "Changeover · 15 min, 23:40–23:55, Your bike stays here" | Between parts | Opens the point's card | A route of several sports only |
+| A night, "1 night · 12 h" | Between days | Opens the point's card | Sunset and sunrise; "Go on at 07:00" when not timed |
+| Reorder | Replaces the list | Every point with its grip and Earlier ⌃ and Later ⌄. A mouse drags by the grip; a finger holds a row 0.45 s, then drags; each move is one step of Undo | "MTB → Paddle · 15 min" at a changeover |
+| Reorder, then Done | The list's foot | Turns Reorder on and off | Two points or more; not in the route's view |
+| Reverse, Back to start | The list's foot | Reverses the route; adds a leg back to the start, with Undo | Back to start not on a loop |
+| Clear route (red) | The list's foot, last | Clears it, with Undo | Leaves the foot in this milestone (#869's step 15) |
+| Route style, one row a sport | Under the foot | Opens the Route style step (‹ Route back): the whole route or a leg, presets, chips, Wet ground | The sport's icon in its colour, the style, › |
+| Your speed | Under the foot | Opens the Your speed step | Its line: each sport's speed |
+
+### The toolbar
+
+| Element | Where | What it does | States |
+|---|---|---|---|
+| Done, or Edit in the route's view | First | Ends or starts drawing (E) | Hidden before the first point and in a round trip; off with one point |
+| A phone's mode, "Freehand · Run ▾" | Phone | Draw the next leg (Follow paths, Freehand, Over water), Sport · the legs you draw next, Your speed, Route style's chips (P, S, W) | Narrows to its icon |
+| Mode, Next leg, Route style | Desktop | Their menus | Each narrows to its icon as room goes |
+| Undo, Redo | All | Ctrl or ⌘ Z, Ctrl or ⌘ ⇧ Z | Off with nothing to undo; hidden in the route's view |
+| Reverse, Back to start, Share link, Export GPX, Save offline…, Clear route (red) | After Undo, as room allows | As named | Dropped from the last as room goes; never both here and in More |
+| ⋯ More | Last | The route's name ("Kept on this device"); The whole route: Reverse, Back to start; Take it along: Share link, Export GPX, Save offline…; Round trip from the start; Import GPX or KML…; Clear route | Only what isn't on the bar. On a phone at 375 px: all of these |
+| Where it sits | | Phone: floats above the sheet at the left, the map's buttons rise over it; docks as the sheet's first row at full or when there's no room; a card leaves only Undo and Redo. Desktop: 12 px from the panel, at the map's foot | One Tab stop; ← → move along it |
+
+### The cards
+
+| Card | What it holds and does | Closes |
+|---|---|---|
+| Any card | Phone: in the sheet, at its four sizes; at half and full a finger scrolls the card first. Desktop: at its spot (320 px) or beside the panel, level with its row, foldable to its title (⌄, ⌃). ‹ Route (or the card before) goes back one; ✕ closes; ⋯ its settings | ✕, Esc (one card back, then closed), the back gesture, a tap on the map, a swipe down from its line, or its thing going away |
+| A point's card | Its name and "Waypoint 1"; there at, from the start, height; **Move**, **Rename** (a field and Save), **Remove** (red, Undo). At a via point: At this waypoint, Pass by · Stop · Night, and the stop's or night's minutes (−, +, typable), Go on at, Places to sleep nearby. Sport from here ›, Changeover −/+ and Take the bike along at a change of sport, Next stretch, to Waypoint 2 ›, the profile and On the profile; More for this waypoint: Start here, End here (or Reverse and Back to start at the ends) | Also opened by a marker's tap, hold, right-click or Enter; the marker drags to move the point while drawing |
+| A leg's card, at a spot on the route | The way's name and kind, three numbers; Add a waypoint here, Avoid this spot, Other ways (a BRouter leg), its warnings, This stretch ›, What's here ›, Edit this stretch ›; More for this leg: On the profile, The whole route › | Opened by a tap within 24 px of the line (16 px with a mouse); a hold or right-click on the line opens Edit this stretch while drawing |
+| This stretch, "Hämeenkatu → Waypoint 1" | Look out for (its warnings, each opening its card), **Edit this stretch** (the main action), On the profile | |
+| Edit this stretch | Sport ›; How it's drawn: Follow paths or Freehand (Over water or Freehand on water; none on a line of its own); Route style ›; Other ways, Stop here, Avoid this spot, On the profile | One step of Undo for the whole stretch |
+| The whole route | Share link, Export GPX, Save offline…; Round trip from the start, Reverse, Back to start, Import GPX or KML…; Clear route (red) | |
+| A warning's | Its action (Avoid it, Retry, Use BRouter…), Got it or Mark unread, More for this warning; on a phone ‹ Previous, "2 of 5", Next › and All in Check › | |
+| A place's (a search result, a point of interest, a LIPAS place) | The round row: Add to my route (green; Add a waypoint here within 30 m; Start a route here with no route), Avoid this spot, Share, Weather here; Part of a route ›, links, More for this place (Start here, End here, Round trip from here, Paddle from here, Copy, All OpenStreetMap details), Not right? | |
+
+### What scrolls, and its scrollbar today
+
+| What | Scrolls | Its scrollbar |
+|---|---|---|
+| The planner's sheet at half and full, the side panel | Up and down, under its sticky top row | **None set:** the browser's own, flush with the rounded edge |
+| The tabs' body (when the sheet doesn't scroll as one), the start's steps and every card | Up and down | `scrollbar-width: thin` |
+| The menus (⋯ More, List settings, a part's ⚙, When, the mode) | Up and down | None set |
+| Layers and Settings | Up and down | None set |
+| A round trip's loops, the timeline's layer chips | Sideways | Hidden |
+| The weather card's hours | Sideways | Hidden, with arrows at its edges and a mouse drag |
+
+**Not inventoried:** the forms inside Round trip and Marked routes, the speed editor's own controls, and the whole of the Route style step. Unsure: whether the list's ↑ ↓, Alt+↑ ↓ and Delete are meant to work in the route's view; the code doesn't stop them there.
 
 ## Round 4: C, improved, the planner redrawn
 
