@@ -2,6 +2,13 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-14
+
+### The weather timeline's words ([#991](https://github.com/TommiContursi/Polku/issues/991), [#990](https://github.com/TommiContursi/Polku/issues/990))
+
+- When the forecast can't be loaded or is paused, the timeline's hour strip no longer says "Zoom in to see the forecast here": zooming in wouldn't help. The reading and the note under the timeline say why there's no forecast. The strip still asks you to zoom in when the map is zoomed too far out for a forecast.
+- On a desktop, the timeline's time shows whole, on two lines where it needs them, such as "Now · 20:14 · FMI radar" instead of "Now · 20:14 · FMI r…".
+
 ## 2026-11-13
 
 ### The weather card and the timeline one tap apart ([#869](https://github.com/TommiContursi/Polku/issues/869))

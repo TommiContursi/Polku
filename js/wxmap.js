@@ -1462,7 +1462,9 @@ export class WeatherOverlay {
     const loading = z ? !a.wind && !a.windError : this.loading;
     cv.classList.toggle('skel', !d && loading);
     if (!d) {
-      if (!loading) { ctx.fillStyle = muted; ctx.fillText(z ? (a.wind ? 'No forecast yet for your trip' : 'The forecast couldn’t be loaded') : 'Zoom in to see the forecast here', PAD, H / 2); }
+      // (with no forecast for the map's middle, the reading and the note say why: "Zoom in" only where it would help, #991)
+      const say = z ? (a.wind ? 'No forecast yet for your trip' : 'The forecast couldn’t be loaded') : this.map.getZoom() < 3 ? 'Zoom in to see the forecast here' : '';
+      if (!loading && say) { ctx.fillStyle = muted; ctx.fillText(say, PAD, H / 2); }
       return;
     }
     // night
@@ -1686,7 +1688,7 @@ export class WeatherOverlay {
     if (past && !this.on.rain) label += ' (Rain is off)';
     else if (past && this.scanFailed === scanAt(this.hour)) label += ' couldn’t be loaded';
     else if (past && this.scanLoading === scanAt(this.hour)) label += ' · loading…';
-    else if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? (past ? '' : ' · FMI radar') : past ? '' : ' · radar';
+    else if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? (past ? '' : ' · FMI\u00a0radar') : past ? '' : ' · radar';
     if (this.loading) label += ' · loading…';
     // Your trip: the time and where you'll be (the grid's loading is the map's: the strip and the reading are the route's)
     const z = this.tripWin(), w = z && this.trip.a.wind;

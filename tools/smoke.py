@@ -12573,6 +12573,10 @@ def timeline_phone(chrome):
                     fails.append(f'panned to where there’s no forecast yet, no skeleton: {a}')
                 if b['strip'] or b['shapes'] or not b['words']:
                     fails.append(f'the forecast failed, and the skeleton stays or nothing says so: {b}')
+                # …and the strip leaves the why to the reading and the note: zooming in wouldn't help (#991)
+                said = pg.js("(() => { const w = polku.weather, ctx = w.stripCv.getContext('2d'), said = [], t = ctx.fillText; ctx.fillText = function (s, ...r) { said.push(String(s)); return t.call(this, s, ...r); }; try { w.renderStrip(); } finally { delete ctx.fillText; } return said; })()")
+                if any('Zoom in' in x for x in said):
+                    fails.append(f'the forecast failed, and the strip says “{" / ".join(said)}” (#991)')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -12764,6 +12768,10 @@ def weather_menu(chrome):
         pg.open_app({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True}}, {'polku:winter': '"off"'}, '#11/61.5/23.8')
         pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
         fails = pg.js(WX_MENU, timeout=60000)
+        # the timeline's time whole on a desktop, at its longest: at Now with Rain on, while the forecast comes (#990)
+        t = pg.js("(() => { const w = polku.weather, el = w.timeEl, keep = w.loading; w.setHour(0); w.loading = true; w.renderTime(); const r = { text: el.textContent, cut: el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1 }; w.loading = keep; w.renderTime(); return r; })()")
+        if t['cut']:
+            fails.append(f"the timeline's time cut on a desktop: “{t['text']}” (#990)")
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fails += pg.js(WX_STILL, timeout=30000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
