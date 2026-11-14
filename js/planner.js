@@ -2584,7 +2584,7 @@ export class Planner {
     }
     this.setTimes(a, W.start(), w, snow);
     const end = tripTimes(a).end, morning = (a.waits || []).find((x) => x.by);
-    W.got = { leave, there: end, late: end > W.by, early: W.nights && !morning && end <= W.by, go: morning ? morning.arrive + morning.sec : null, about: a.timeWind != null && Math.abs(a.timeWind - a.time) >= 60 };
+    W.got = { leave, there: end, late: end > W.by, early: W.nights && !morning && end <= W.by, go: morning ? morning.arrive + morning.sec : null, about: Math.abs(a.windSec) >= 60 };
     W.put();
   }
   // Arrive by's departure for a trip `total` seconds long (without nights): rounded down to the minute, so you're there by then
@@ -2593,10 +2593,11 @@ export class Planner {
   // are the times every view reads (js/trip.js).
   setTimes(a, start, w = null, snow = null) {
     const t = this.timed(a, null, null, start); // (without the wind too, from the same start: Go's wind row is the difference)
-    Object.assign(a, { time: t.total, tAt: t.tAt, timeWind: null, tAtWind: null, waits: t.waits, start });
+    Object.assign(a, { time: t.total, tAt: t.tAt, timeWind: null, tAtWind: null, waits: t.waits, start, windSec: 0 });
     if (!w) return;
-    const tw = this.timed(a, w.head, snow, start);
-    Object.assign(a, { timeWind: tw.total, tAtWind: tw.tAt, waits: tw.waits });
+    const tw = this.timed(a, w.head, snow, start), moving = (x) => x.total - x.waits.reduce((sum, y) => sum + y.sec, 0);
+    // windSec: what the wind adds to the time on the move (a night's wait can make up for it: Arrive by's last morning)
+    Object.assign(a, { timeWind: tw.total, tAtWind: tw.tAt, waits: tw.waits, windSec: moving(tw) - moving(t) });
   }
   // The route timed again from the departure, at once, with the wind as it was sampled (the forecast follows: loadWind).
   restart(a) {
@@ -2630,6 +2631,7 @@ export class Planner {
   retime() {
     const a = this.analysis;
     if (!a) return;
+    this.byRerouted = null; // (a new solve, as in whenChanged())
     this.settle(a);
     this.renderAnalysis();
     clearTimeout(this.retimeTimer);
@@ -2641,7 +2643,7 @@ export class Planner {
   whenChanged({ opened = false }) {
     this.cards.refresh();
     if (opened) return;
-    this.byRouted = null;
+    this.byRerouted = null; // (a new solve: its water legs may be routed once more, loadWind())
     // Arrive by on a round trip's form fills How long by Time: from now until then, in quarter hours (#219)
     const L = this.loop, by = this.when.by;
     if (by != null && L.open && !L.results.length) { L.mode = 'min'; L.min = Math.max(15, Math.min(600, Math.floor((by - Date.now() / 1000) / 900) * 15)); this.loopChanged(); }
@@ -2683,9 +2685,9 @@ export class Planner {
       this.answered('weather');
       this.settle(a, w, snow, start); // nights timed with the wind's arrival times
       // Arrive by: water legs that keep out of the wind are routed once more, for the departure worked out, where it
-      // moved one into another hour's wind (legKey(); #219)
-      if (W.by != null && this.byRouted !== W.by && this.legs.some((l, i) => l.mode === 'water' && l.key && l.key !== this.legKey(i).key)) {
-        this.byRouted = W.by;
+      // moved one into another hour's wind (legKey(); #219); not again from the route that makes, until a new solve
+      if (W.by != null && a.gen !== this.byRerouted && this.legs.some((l, i) => l.mode === 'water' && l.key && l.key !== this.legKey(i).key)) {
+        this.byRerouted = this.gen + 1; // (the routing routeAll() starts)
         this.routeAll();
         return;
       }

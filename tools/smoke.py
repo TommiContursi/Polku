@@ -20236,6 +20236,17 @@ ARRIVE_JS = """(async () => {
   r = read();
   if (!W.nights || W.at !== first || W.by !== noon || !w.by || r.end > noon || noon - r.end > 90 || r.there !== `· go on at ${W.got?.about ? 'about ' : ''}${LV.clock(go)}`) errs.push(`Arrive by with a night: ${JSON.stringify({ ...r, go, by: w.by, at: W.at, first })}`);
   if (Math.abs(p.timesAt(1).leave - go) > 1) errs.push(`the night's row goes on at ${p.timesAt(1).leave}, not ${go}`);
+  // a strong headwind on the way moves the last morning, which the night's wait makes up for in the whole time: still
+  // "about" (Codex's review of #1016)
+  const a2 = p.analysis;
+  p.settle(a2, { head: new Float32Array(a2.along.length).fill(8) }, null);
+  const windy = { about: W.got?.about, leaving: W.leaving(), windSec: a2.windSec };
+  p.restart(a2);
+  if (!windy.about || !windy.leaving.startsWith('go on at about')) errs.push(`a headwind with a night: ${JSON.stringify(windy)}`);
+  // Your speed changed after water legs were routed once more for Arrive by: a new solve, which may route them again
+  p.byRerouted = a2.gen;
+  p.retime();
+  if (p.byRerouted != null) errs.push(`Your speed changed: the reroute is still held (${p.byRerouted})`);
   W.menu(LV.row('box'));
   const groups = [...W.pop.el.querySelectorAll('[role="group"]')].map((x) => document.getElementById(x.getAttribute('aria-labelledby'))?.textContent);
   const ticks = [...W.pop.el.querySelectorAll('.menu-item[aria-checked="true"], .menu-pick.on')].map((x) => x.textContent.slice(0, 9));
