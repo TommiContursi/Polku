@@ -562,7 +562,7 @@ initSearch(map, $('#search-input'), $('#search-results'), {
 // Weather overlay: image sources are swapped in place when possible; adding or
 // removing one goes through a (diffed) style rebuild.
 let tripLit = null, tripFold = null; // (what Your trip folded in a phone's sheet: tripInSheet())
-let wxSeenH = 0; // (the timeline's height as syncWxH() last saw it: at its foot then, it stays at its foot as it grows)
+let wxUp = false, wxPinning = false; // (a timeline held to its room, scrolled up by you; its own scroll to its foot on its way: syncWxH())
 // what's in the sheet: a card open at its peek, else the planner
 const tripInSheet = () => (planner.cards.place === 'peek' ? planner.cards.current : 'planner');
 const weather = new WeatherOverlay(map, {
@@ -2020,11 +2020,11 @@ function syncWxH() {
   const free = shown && !b.classList.contains('placed');
   const cs = getComputedStyle(b), room = free ? Math.floor(over && !low ? innerHeight - 8 - parseFloat(cs.top) : innerHeight - parseFloat(cs.bottom) - top) : 0;
   const capped = free && b.scrollHeight > room;
-  const fresh = capped && !b.style.maxHeight, foot = b.scrollTop + b.clientHeight >= wxSeenH - 2;
+  const fresh = capped && !b.style.maxHeight;
   b.style.maxHeight = capped ? `${room}px` : '';
   b.style.overflowY = capped ? 'auto' : '';
-  if (capped && (fresh || foot)) b.scrollTop = b.scrollHeight; // (not when you've scrolled up to its head)
-  wxSeenH = b.scrollHeight;
+  if (!capped || fresh) wxUp = false;
+  if (capped && !wxUp) { const was = b.scrollTop; b.scrollTop = b.scrollHeight; wxPinning = b.scrollTop !== was; } // (not when you've scrolled up to its head)
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
   document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
@@ -2035,6 +2035,8 @@ function syncWxH() {
 }
 // (its rows come and go, Your trip's too: a card beside the side panel kept clear of it, as when the window changes size;
 // its rows watched too, which change no size of its own where it's held to its room)
+// (scrolled by you, up from its foot or back to it; not the scroll it put itself to, whenever its event comes)
+$('#wx-bar').addEventListener('scroll', (e) => { if (wxPinning) { wxPinning = false; return; } wxUp = e.target.scrollTop + e.target.clientHeight < e.target.scrollHeight - 2; });
 const wxRows = new ResizeObserver(() => { syncWxH(); if (planner.layout() === 'side') planner.keepBeside(); });
 [$('#wx-bar'), ...$('#wx-bar').children].forEach((el) => wxRows.observe(el));
 

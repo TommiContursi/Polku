@@ -13297,7 +13297,7 @@ TL_ZOOM = """(async () => {
   for (let k = 0; k < 6; k++) { seen.push(document.body.classList.contains('wx-over')); await new Promise((ok) => requestAnimationFrame(ok)); }
   const scrolls = b.scrollHeight > b.clientHeight + 1, sw = b.querySelector('[data-k=span-48]').getBoundingClientRect(), q = b.getBoundingClientRect(), at = b.scrollTop;
   b.scrollTop = 0; await new Promise((ok) => requestAnimationFrame(ok));
-  const x = b.querySelector('.tl-close').getBoundingClientRect(); b.scrollTop = at;
+  const x = b.querySelector('.tl-close').getBoundingClientRect(); b.scrollTop = at; await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))); // (back at its foot, as a person's scroll would be, before the next step)
   return { top: Math.round(r.top), bottom: Math.round(r.bottom), bar: Math.round(top), vh: innerHeight, over: seen, sheet: polku.planner.panel.dataset.state, trip: b.classList.contains('trip'),
     scrolls, x: x.top >= r.top && x.bottom <= r.bottom, sw: sw.height > 0 && sw.top >= q.top - 0.5 && sw.bottom <= q.bottom + 0.5 };
 })()"""
