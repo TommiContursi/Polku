@@ -4624,8 +4624,9 @@ export class Planner {
       keep: () => ({ sheet: this.panel.dataset.state, scroll: this.listScroller().scrollTop, unfoldTo: this.unfoldTo }),
       restore: (was) => {
         if (!this.active) return;
-        if (this.layout() === 'sheet' && was.sheet && was.sheet !== this.panel.dataset.state) this.setSheetState(was.sheet, { remember: false });
-        this.unfoldTo = was.unfoldTo; // (its line opens to the size it left, not to a card's)
+        const held = this.app.tripHolds(was.sheet), to = held ? 'folded' : was.sheet; // (Your trip on a phone: main.js)
+        if (this.layout() === 'sheet' && to && to !== this.panel.dataset.state) this.setSheetState(to, { remember: false });
+        this.unfoldTo = held ? was.sheet : was.unfoldTo; // (its line opens to the size it left, not to a card's)
         requestAnimationFrame(() => { this.listScroller().scrollTop = was.scroll; });
       },
       // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox; not the weather card, which
@@ -7832,10 +7833,11 @@ export class Planner {
   wxLane(l, at = null) {
     const a = this.analysis, s = l.stretches[0];
     if (l.k === 'wind' || l.k === 'rain') this.pickColor(l.k);
+    // (on a desktop the card stays beside the map; on a phone, where it covers the map, it folds to a banner with Back,
+    // before the timeline opens on your trip, so it's the planner under it that folds there: main.js onTripView)
+    if (this.cards.place !== 'float') this.cards.fold(`${l.name} on the map`, () => {}, { icon: { wind: 'wind', rain: 'rain', thunder: 'thunder', waves: 'paddle' }[l.k], label: 'Back' });
     if (l.k !== 'waves') this.app.weatherOn(at ?? tripTimes(a).at(s ? s.i0 : 0), l.k);
     if (s) this.focusRange(s.i0, s.i1, null);
-    // (on a desktop the card stays beside the map; on a phone, where it covers the map, it folds to a banner with Back)
-    if (this.cards.place !== 'float') this.cards.fold(`${l.name} on the map`, () => {}, { icon: { wind: 'wind', rain: 'rain', thunder: 'thunder', waves: 'paddle' }[l.k], label: 'Back' });
   }
   // pointing at a note, a lane or a stretch (or the keyboard's focus on it) lights it on the trip line and on the map, with
   // the map staying where it is; a click then frames it, as a tap does
