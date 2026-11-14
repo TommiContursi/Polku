@@ -126,14 +126,15 @@ export function initHover(map, app) {
   const cursor = () => {
     frame = 0;
     if (!at || app.isDrawing()) { pointer = false; light(null); return; }
-    // what a click picks first is what's lit: your route's line and a place's icon win over a LIPAS route (inspect.js)
-    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon'].filter((id) => map.getLayer(id))];
+    // what a click picks first is what's lit: your route's line, an alternative route (#1029) and a place's icon win over
+    // a LIPAS route (inspect.js)
+    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
     const feats = map.queryRenderedFeatures(hitBox({ x: at[0], y: at[1] }, false), { layers });
     const hit = feats.some((f) => f.layer.id !== 'route-casing' || f.properties.kind !== 'gap');
     pointer = hit; canvas.style.cursor = hit ? 'pointer' : '';
-    const top = pickFeature(feats), leg = feats.some((f) => f.layer.id === 'route-casing' && f.properties.kind === 'leg');
+    const top = pickFeature(feats), ours = feats.some((f) => (f.layer.id === 'route-casing' && f.properties.kind === 'leg') || (ALT_LAYERS.includes(f.layer.id) && !f.properties.route));
     // (a warning marker's hit area is wider than the box, and wins over the route: asked only when the route would light)
-    const lights = top && top.layer.id === 'lipas-route' && !leg && !app.headAt({ x: at[0], y: at[1] }, false);
+    const lights = top && top.layer.id === 'lipas-route' && !ours && !app.headAt({ x: at[0], y: at[1] }, false);
     light(lights ? top.properties : null);
   };
   const press = () => { hide(); light(null); if (pointer) { pointer = false; canvas.style.cursor = ''; } };

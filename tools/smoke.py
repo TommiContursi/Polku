@@ -2933,34 +2933,43 @@ OTHERWAYS_UNDO = """(async () => {
   return errs;
 })()"""
 
-# #1029: an alternative route with a road or a path under it: a spot on it, on the open map, where the map's hover would
-# read that road or path (its layers and pickFeature(), as js/hover.js asks them), for the mouse to rest on
-OTHERWAYS_HOVER = """(async () => {
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, m = polku.map;
-  const I = await import(location.origin + '/js/inspect.js');
-  p.checkWet = async () => {};
-  p.wet = { on: false, mm: 0, at: Date.now() };
-  p.setActive(true);
-  p.setMode('auto');
-  p.addPoint([24.930, 60.170]);
-  p.addPoint([24.950, 60.170]);
-  for (let k = 0; k < 60 && !(p.alts && p.alts.ways.length); k++) await wait(200);
-  if (!p.alts || !p.alts.ways.length) return { why: 'no alternative offered' };
-  m.jumpTo({ center: [24.940, 60.174], zoom: 16 });
-  await new Promise((ok) => { const t = setTimeout(ok, 10000); m.once('idle', () => { clearTimeout(t); ok(); }); });
-  const c = m.getCanvas().getBoundingClientRect(), box = (x, y, r) => [[x - r, y - r], [x + r, y + r]];
-  const layers = I.inspectLayers(m).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
-  const line = p.alts.ways[0].parts[0].map((ll) => m.project(ll));
-  for (let s = 0; s < line.length - 1; s++) {
-    const a = line[s], b = line[s + 1], n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 3);
-    for (let i = 0; i <= n; i++) {
-      const x = a.x + ((b.x - a.x) * i) / n, y = a.y + ((b.y - a.y) * i) / n;
-      if (document.elementFromPoint(c.left + x, c.top + y) !== m.getCanvas() || m.queryRenderedFeatures(box(x, y, 8), { layers: ['route-casing'] }).length) continue;
-      const f = I.pickFeature(m.queryRenderedFeatures(box(x, y, 5), { layers }));
-      if (f && /^(path|track|cycleway|road)-/.test(f.layer.id)) return { x: c.left + x, y: c.top + y, way: f.layer.id };
-    }
-  }
-  return { why: `no road or path under the alternative on the open map (${m.queryRenderedFeatures({ layers }).length} of the map's features drawn)` };
+# #1029: a route whose alternative crosses a marked route (MARKED_LIPAS's) at one of its points: that point on the screen,
+# for the mouse to rest on, while drawing and then in the route's view (Done, and Other ways, as the route's card asks
+# for them), and what the map shows there
+OTHERWAYS_HOVER = """(() => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, m = polku.map, ow = (window.ow = {});
+  const routes = () => m.getSource('lipasRoutes').serialize().data.features;
+  ow.at = async () => {
+    for (let k = 0; k < 60 && !(p.alts && p.alts.ways.length); k++) await wait(200);
+    if (!p.alts || !p.alts.ways.length) return { why: 'no alternative offered' };
+    m.jumpTo({ center: ow.P, zoom: 15 });
+    await new Promise((ok) => { const t = setTimeout(ok, 10000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+    const I = await import(location.origin + '/js/inspect.js'), q = m.project(ow.P), r = m.getCanvas().getBoundingClientRect();
+    const alt = m.queryRenderedFeatures([[q.x - 5, q.y - 5], [q.x + 5, q.y + 5]], { layers: ['route-alts-line'] }).length;
+    const top = I.pickFeature(m.queryRenderedFeatures(I.hitBox(q, false), { layers: I.inspectLayers(m) }));
+    if (!alt || !top || top.layer.id !== 'lipas-route') return { why: `the alternative ${alt ? 'is' : 'isn’t'} at the marked route’s point, and ${top ? top.layer.id : 'nothing'} is under it (the marked route)` };
+    return { x: r.left + q.x, y: r.top + q.y };
+  };
+  ow.draw = async () => {
+    for (let k = 0; k < 80 && !routes().length; k++) await wait(150);
+    const f = routes()[0];
+    if (!f) return { why: 'no marked route on the map' };
+    const c = f.geometry.coordinates;
+    ow.P = c[Math.floor(c.length / 2)];
+    ow.id = f.properties.lipasId;
+    p.checkWet = async () => {};
+    p.wet = { on: false, mm: 0, at: Date.now() };
+    p.setActive(true);
+    p.setMode('auto');
+    p.addPoint([ow.P[0] - 0.01, ow.P[1] - 0.004]); // (the mocked alternative runs 0.004° north of the leg, through P)
+    p.addPoint([ow.P[0] + 0.01, ow.P[1] - 0.004]);
+    return ow.at();
+  };
+  ow.done = () => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Done' && x.offsetParent), r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+  ow.view = () => { if (!p.inView()) return { why: 'Done didn’t open the route’s view' }; p.offerAlts(0, true); return ow.at(); };
+  ow.state = () => ({ lit: p.altLit, tip: !document.querySelector('.hover-tip').hidden && document.querySelector('.hover-tip').textContent, drawn: m.querySourceFeatures('pick').length,
+    route: !!(m.getFeatureState({ source: 'lipasRoutes', id: ow.id }) || {}).hover, capable: matchMedia('(hover: hover) and (pointer: fine)').matches });
+  return true;
 })()"""
 
 
@@ -2982,24 +2991,35 @@ def otherways(chrome):
             fails += [f'{label}: console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
-    # #1029: the mouse resting on an alternative route with a road or a path under it: the alternative lights up, and the map's
-    # hover gives way to it (no readout for the way under it, nothing drawn there), as a click takes the alternative
+    # #1029: the mouse resting on an alternative route over a marked route, while drawing and in the route's view: the
+    # alternative lights up, and the map's hover gives way to it (no readout for what's under it, nothing drawn there, the
+    # marked route not lit), as a click takes the alternative
     pg = chrome.page(1440, 900, False)
+    mouse = lambda kind, at: pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                                     'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': OTHERWAYS_ROUTER}, pg.s)
-        pg.open_app({'activity': 'run'}, {'polku:plannerDock': '"left"'}, '#14/60.171/24.94')
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': MARKED_LIPAS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"'}, '#13/62.4345/25.9026')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-        at = pg.js(OTHERWAYS_HOVER, timeout=60000)
-        if 'why' in at:
-            fails.append(f"the mouse on an alternative route: {at['why']}")
-        else:
-            for dx in (-12, -6, 0):
-                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'] + dx, 'y': at['y'], 'button': 'none'}, pg.s)
+        pg.js(OTHERWAYS_HOVER)
+        for label, step in (('while drawing', 'ow.draw()'), ("in the route's view", 'ow.view()')):
+            if step == 'ow.view()':
+                for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                    mouse(kind, pg.js('ow.done()'))
+                time.sleep(1)
+            at = pg.js(step, timeout=60000)
+            if 'why' in at:
+                fails.append(f"the mouse on an alternative route {label}: {at['why']}")
+                break
+            for dx in (-12, -6, 0):  # (along the alternative)
+                mouse('mouseMoved', {'x': at['x'] + dx, 'y': at['y']})
                 time.sleep(0.05)
             time.sleep(1.5)
-            h = pg.js("({ lit: polku.planner.altLit, tip: !document.querySelector('.hover-tip').hidden && document.querySelector('.hover-tip').textContent, drawn: polku.map.querySourceFeatures('pick').length, capable: matchMedia('(hover: hover) and (pointer: fine)').matches })")
-            if h['lit'] is None or h['tip'] or h['drawn']:
-                fails.append(f"the mouse on an alternative route over {at['way']}: lit {h['lit'] is not None}, the readout “{h['tip']}”, {h['drawn']} lines drawn (lit, no readout, nothing drawn; a hover pointer: {h['capable']})")
+            h = pg.js('ow.state()')
+            if not h['capable'] or h['lit'] is None or h['tip'] or h['drawn'] or h['route']:
+                fails.append(f"the mouse on an alternative route over a marked route, {label}: a hover pointer {h['capable']}, the alternative lit {h['lit'] is not None}, "
+                             f"the readout “{h['tip'] or ''}”, {h['drawn']} lines drawn, the marked route lit {h['route']} (a hover pointer, the alternative lit, and nothing of what’s under it)")
         fails += [f'the mouse on an alternative route: console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()

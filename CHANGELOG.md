@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### An alternative route under the pointer ([#1029](https://github.com/TommiContursi/Polku/issues/1029))
 
-- With the mouse on an alternative route, only the alternative lights up. The map doesn't show the readout of the road or path under it or draw that road or path, so it's clear that a click takes the alternative.
+- With the mouse on an alternative route, only the alternative lights up. The road, path or marked route under it is no longer named, drawn or lit, so it's clear that a click takes the alternative.
 
 ## 2026-11-14
 
