@@ -1878,10 +1878,10 @@ function renderSettingsPanel() {
 
   // the Heads-up kinds you've hidden in Check (#143), each to show again; Check lists them at its end too
   const hidden = Object.entries(hiddenKinds());
-  p.append(group('hidden', 'Hidden Heads-up',
+  p.append(group('hidden', 'Hidden in Check',
     hidden.length ? h('div', { class: 'rows' }, ...hidden.map(([key, label]) => item({ icon: 'eyeOff', label, val: 'Show again', k: key,
       onclick: () => { planner.hideWarnKind({ key, label }, false); renderSettingsPanel(); ($('#settings-body [data-group="settings-hidden"] .row') || $('#settings-body [data-group="settings-hidden"] summary')).focus(); } }))) : null,
-    h('p', { class: 'note' }, hidden.length ? 'Hidden from Check on every route.' : 'Nothing hidden. A Heads-up row’s ⋯ hides a kind you don’t need, and it’s listed here to show again.')));
+    h('p', { class: 'note' }, hidden.length ? 'Hidden from Check on every route.' : 'Nothing hidden. The ⋯ on a row in Check hides a kind you don’t need, and it’s listed here to show again.')));
 
   const offlineBox = h('div', { class: 'off-list' });
   p.append(group('offline', 'Offline maps', offlineBox));

@@ -4682,6 +4682,11 @@ def fit_phone(chrome):
             fails += pg.js("fitT.importCard(['peek', 'half', 'full'])", timeout=90000)
             tap(pg, pg.js('fitT.firstTap()'))
             fails += pg.js('fitT.loopFromStart()', timeout=120000)
+            # a loop's card counts its items in Check's words: warnings, and what's good to know (#993)
+            said = pg.js("(() => { const r = polku.planner.loop.results[0]; if (!r) return 'no loop'; const keep = [r.a.warnings, r.a.trailWarn]; r.a.warnings = [{ tier: 'read' }, { tier: 'look' }]; r.a.trailWarn = [{ tier: 'look' }];"
+                         " try { return polku.planner.loopCards('mtb').querySelector('.loop-card-line.muted').textContent; } finally { [r.a.warnings, r.a.trailWarn] = keep; } })()")
+            if not re.search(r'(^| · )1 warning · 2 good to know( · |$)', said or ''):
+                fails.append(f"a loop with a warning and two items good to know says “{said}” (#993)")
             s = pg.js('fitT.loopSpot()')
             if s:
                 tap(pg, s)
@@ -9316,7 +9321,7 @@ def panels(chrome):
 # (under 320 px), they open over it.
 def settings_groups(chrome):
     """Settings in folding groups (#321): they fit a phone folded, stay as left over a reload, planned settings can't be
-    used, and the moves work by touch: a hidden Heads-up kind shown again (#143), recent searches cleared, 3D height
+    used, and the moves work by touch: a kind hidden in Check shown again (#143), recent searches cleared, 3D height
     here and not in Layers, and another sport's tiles edited from its row."""
     fails = []
     pg = chrome.page(390, 844, True)
@@ -9339,7 +9344,7 @@ def settings_groups(chrome):
         st = pg.js("""(() => { const b = document.querySelector('#settings-body'), g = [...b.querySelectorAll(':scope > .lg-group')];
           return { titles: g.map((d) => d.querySelector('.lg-title').textContent), open: g.filter((d) => d.open).length, fits: b.scrollHeight <= b.clientHeight + 1,
             coming: b.querySelectorAll('.coming').length, usable: [...b.querySelectorAll('.coming')].flatMap((c) => [c, ...c.querySelectorAll('input, button')]).filter((c) => 'disabled' in c && !c.disabled).length }; })()""")
-        want = ['Speeds and tiles by sport', 'Display', 'Language and units', 'Route’s list', 'Route arrows and marks', 'Map and planner', 'Hidden Heads-up', 'Offline maps', 'Saved on this device', 'Strava and Garmin', 'Data sources', 'About Polku']
+        want = ['Speeds and tiles by sport', 'Display', 'Language and units', 'Route’s list', 'Route arrows and marks', 'Map and planner', 'Hidden in Check', 'Offline maps', 'Saved on this device', 'Strava and Garmin', 'Data sources', 'About Polku']
         if st['titles'] != want:
             fails.append(f"the groups are {st['titles']}")
         if st['open'] or not st['fits']:
@@ -9347,8 +9352,8 @@ def settings_groups(chrome):
         if st['coming'] < 12 or st['usable']:
             fails.append(f"{st['coming']} planned settings, {st['usable']} of their controls usable")
 
-        # a hidden Heads-up kind, shown again
-        tap(group('hidden') + ' > summary', 'Hidden Heads-up')
+        # a kind hidden in Check, shown again
+        tap(group('hidden') + ' > summary', 'Hidden in Check')
         if tap(group('hidden') + ' .row[data-k="roadwork"]', 'Road works, Show again'):
             r = pg.js(f"""({{ kept: JSON.parse(localStorage.getItem('polku:hideWarn') || '{{}}'), note: document.querySelector('{group('hidden')} .note').textContent }})""")
             if r['kept'] or not r['note'].startswith('Nothing hidden'):
@@ -21630,7 +21635,7 @@ GROUPS = [
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
-    ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a hidden Heads-up kind shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
+    ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a kind hidden in Check shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('resize', [resize_window], 'desktops (#1002): the window made smaller by its edge, down to 721 px, and larger again, by mouse: the planner\'s toolbar on one row and the timeline in its room beside the side panel, the panel dragged wide giving way, a card from the list beside the panel and then where cards go with the panel at the bottom (a narrow window, Move to the bottom), the credits folded where they\'d run under the map\'s buttons, a timeline you\'ve dragged clear of them, and the layout as it was when the window is large again'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),

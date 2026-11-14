@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-14
 
+### Check's words everywhere ([#993](https://github.com/TommiContursi/Polku/issues/993))
+
+- The last places that still said "heads-up" use Check's words: its tab's tooltip and its note before a route is drawn say warnings, and a round trip's card counts its warnings and what's good to know, such as "2 warnings · 1 good to know".
+- In Settings, the kinds you've hidden in Check are under **Hidden in Check**.
+
 ### The weather timeline's words ([#991](https://github.com/TommiContursi/Polku/issues/991), [#990](https://github.com/TommiContursi/Polku/issues/990))
 
 - When the forecast can't be loaded or is paused, the timeline's hour strip no longer says "Zoom in to see the forecast here": zooming in wouldn't help. The reading and the note under the timeline say why there's no forecast. The strip still asks you to zoom in when the map is zoomed too far out for a forecast.
