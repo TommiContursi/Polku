@@ -41,7 +41,7 @@
      takes them when it's next touched; DESIGN.md lists them, and `tools/smoke.py values` keeps the two equal. */
   /* Check's three groups (25d): Warnings, Good to know, Not checked, and the box behind each */
   --danger: #b4232a; --danger-soft: #fbe9e9;
-  --look: #8a5a00; --look-soft: #fbf4e2;
+  --look: #7a4f00; --look-soft: #fbf4e2; /* (4.5:1 on the glass over the aerial photos too, #989) */
   --unk: #47607a; --unk-soft: #eaf0f6;
   --focus: #1f6f4a; /* the focus ring */
   --ink: #000000; /* black words on one of the map's colours (a climb's badge, a loop's letter): the same in both themes */
@@ -109,7 +109,7 @@
   --seg-on: #3f4843; /* lighter than its track, never a gap */
   --text: #f2f5f3;
   --muted: #9aa69f;
-  --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffa3a3;
+  --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffb0b0;
   --line: rgba(232, 236, 233, 0.16);
   --rail: #7d8882;
   --muted-hc: #c3ccc6; --line-hc: rgba(232, 236, 233, 0.32); --hc-border: rgba(0, 0, 0, 0.8); --hc-inner: rgba(255, 255, 255, 0.4);
@@ -1719,7 +1719,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .wpl-warns { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 2px; }
 .wpl-warns > span { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: var(--weight-name); }
 .wpl-warns .ic { flex: none; }
-.wpl-warns .read { color: var(--danger); }
+.wpl-warns .read { color: var(--bad); } /* (the glass's red, on the planner: 4.5:1 over the map, #989) */
 .wpl-warns .unk { color: var(--unk); }
 .wpl-warns .look { color: var(--look); font-weight: var(--weight-regular); }
 .wpl-warns :is(.dark, .more) { color: var(--muted); font-weight: var(--weight-regular); }
@@ -2217,7 +2217,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .pick-skel-by { width: 55%; height: 40px; }
 .pick-chart { display: block; width: 100%; height: 110px; cursor: crosshair; touch-action: none; }
 .pick-prof svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.pick-prof .ax { position: absolute; left: 0; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pick-prof .ax { position: absolute; left: -3px; padding: 0 3px; border-radius: 4px; background: var(--surface-solid); font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; } /* (on a backing of the card's colour: clear over the profile's fill, #989) */
 .pick-prof .ax.top { top: -2px; }
 .pick-prof .ax.bot { bottom: -2px; }
 .pick-by { margin-top: 6px; }
@@ -2339,7 +2339,7 @@ body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit besi
 
 /* ---------------------------------------------------------------- misc */
 .toast {
-  position: absolute; left: calc(50% + var(--pl-left) / 2); bottom: min(calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 24px), calc(100% - 150px)); z-index: 20; transform: translateX(-50%); translate: 0 10px;
+  position: absolute; left: calc(50% + var(--pl-left) / 2); bottom: min(max(calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 24px), calc(var(--wx-top, 0px) + 12px)), calc(100% - 150px)); z-index: 20; transform: translateX(-50%); translate: 0 10px;
   max-width: min(520px, calc(100vw - 32px)); padding: 10px 16px; border-radius: 12px;
   background: #111a16; color: #fff; box-shadow: var(--shadow); font-weight: 500; opacity: 0; transition: opacity var(--t-press) var(--ease-out), translate var(--t-press) var(--ease-out);
 }
@@ -2427,6 +2427,7 @@ body.dropping .drop-hint { display: flex; }
   .wx-bar.trip .wx-row .wx-time { display: none; }
   body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */
   body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers) */
+  body.wx-over.wx-low .wx-bar { top: auto; bottom: 8px; } /* (nor under its header, 200 %: over it at the window's foot, #590) */
   .wx-bar.docked { width: auto; }
   .orbit { width: 62px; height: 62px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
@@ -2652,7 +2653,7 @@ body.dropping .drop-hint { display: flex; }
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
 /* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
-@media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } }
+@media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } body.planning.wx-over.wx-low .wx-bar { top: auto; bottom: 8px; } } /* (nor under its header, a phone turned sideways: over it at the window's foot, #1019) */
 .pl-tools.desk.docked { position: static; height: 56px; flex-wrap: nowrap; margin: 0 8px 0 10px; padding: 0 0 4px; border-radius: 0; border-bottom: 1px solid var(--line); box-shadow: none; background: none; }
 .pl-tools.desk .tbtn { width: 40px; height: 40px; }
 /* desktops: the drawing mode, a value you pick (#869, Mode ▾): the sport button's look, as wide as the longest mode's

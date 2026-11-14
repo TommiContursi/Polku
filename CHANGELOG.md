@@ -4,6 +4,30 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-14
 
+### Words that read over the map ([#989](https://github.com/TommiContursi/Polku/issues/989))
+
+- In dark mode, the warnings in Route's list are a lighter red, so they read over the map behind the planner. In light mode, what's good to know is a darker amber everywhere, so it reads over the aerial photos too.
+- The heights beside a point's profile sit on a small backing in the card's colour, so they read over the profile's colours.
+
+### The weather timeline in its room ([#343](https://github.com/TommiContursi/Polku/issues/343), [#457](https://github.com/TommiContursi/Polku/issues/457), [#590](https://github.com/TommiContursi/Polku/issues/590), [#925](https://github.com/TommiContursi/Polku/issues/925), [#1015](https://github.com/TommiContursi/Polku/issues/1015), [#1017](https://github.com/TommiContursi/Polku/issues/1017), [#1018](https://github.com/TommiContursi/Polku/issues/1018))
+
+- On a desktop, a note such as "Link copied" comes above the weather timeline instead of over its foot.
+- The timeline's reading fits its box on phones and desktops. The gusts are in brackets after the wind, as FMI writes them, such as "4 (9) m/s SW", and the next six hours' rain shows beside "dry", such as "dry · 6 h 2.4 mm". While it rains, the reading gives the hour's rain and the strip shows what's ahead. Pointing at the reading shows all of it, and a screen reader reads all of it.
+- On a phone at 200 % text size, the timeline stays below the top bar and on the screen. Where the planner leaves no room for it, it sits over the planner at the screen's foot. In **Your trip** it scrolls inside the room above the planner's line, with **48 hours** in sight. On a phone turned sideways the same holds: the timeline stays below the top bar and on the screen, over the planner at the screen's foot or scrolling inside its room ([#1019](https://github.com/TommiContursi/Polku/issues/1019)).
+- With reduced motion on, the wind's lines are drawn still, as the rain already is: short strokes along the wind, drawn again when the map moves or the hour changes.
+- On a phone, a card brought back from its banner, such as the weather card by **Back** or **Weather card ›**, is where you had scrolled it, as on a desktop ([#869](https://github.com/TommiContursi/Polku/issues/869)). A second lane or hour pressed in the weather card folds the planner under its banner again, as the first does.
+- In **Your trip** on a phone, leaving your trip opens the planner again as it was, whichever way you leave: **48 hours**, closing the timeline, an hour outside the trip, or the trip moving out of reach. After **Weather here** the planner stays folded, clear of the spot's pin, until **48 hours** or closing the timeline ([#1018](https://github.com/TommiContursi/Polku/issues/1018)).
+- In **Your trip** on a phone, the planner you open with **On the profile** or **All in Check ›** stays yours: a card closed afterwards puts it back as you had it, instead of folding it ([#1017](https://github.com/TommiContursi/Polku/issues/1017)).
+
+### Arrive by ([#219](https://github.com/TommiContursi/Polku/issues/219))
+
+- **When**'s menu has **Arrive by…**: pick when you want to be there, and Polku works out when to leave. The trip's box says both, such as "Arrive by 20:30 ▾ · leave 19:19", and the route's numbers say "leave 19:19" under the time.
+- The departure is worked out with the wind on the way and says "about" where the wind changes the time. It's rounded down to the minute, so you're there by your time, never after it.
+- When there isn't enough time, the trip leaves now and says when you'd be there: "Leave now and you're there at 20:42." Once the time itself has passed, Arrive by goes, and the box says so.
+- On a trip with nights, Arrive by is the last day's: it sets the last night's **Go on at**, and the first day leaves when you set it. The menu has a group for each day. Setting **Go on at** yourself on that night takes Arrive by's place. When your nights get you there late, or days early, the box says when you'd arrive.
+- On a round trip's form, **Arrive by…** sets **How long** to **Time**, from now until then.
+- A saved route and a share link keep Arrive by. Whoever opens the link has the departure worked out again, with that day's forecast and their own speeds.
+
 ### Check's words everywhere ([#993](https://github.com/TommiContursi/Polku/issues/993))
 
 - The last places that still said "heads-up" use Check's words: its tab's tooltip and its note before a route is drawn say warnings, and a round trip's card counts its warnings and what's good to know, such as "2 warnings · 1 good to know".
