@@ -451,6 +451,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-now-main b { font-size: 22px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
 .tl-now-main small { margin-left: auto; align-self: flex-start; font-size: 11px; color: var(--muted); white-space: normal; text-align: right; line-height: 1.15; } /* (on two short lines where there's no room: never cut, the row no taller than its icon, #243) */
 .tl-now .tl-arrow { width: 12px; height: 12px; fill: currentColor; flex: none; }
+.tl-at { display: none; } /* (the time at the end of a phone's one-line reading in Your trip: below) */
 .tl-now div .ic { flex: none; }
 .tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
 /* the trip's row under the slider while the route has times (#869): 48 hours · Your trip and Weather card › on its last
@@ -502,7 +503,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .fab.ahead[aria-pressed="true"] .fab-time-label { color: #fff; }
 .wx-row { display: flex; align-items: center; gap: 8px; }
 .wx-row input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
-.wx-time { font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; width: 132px; flex: none; text-align: right; overflow: hidden; text-overflow: ellipsis; }
+.wx-time { font-size: 12px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; width: 132px; flex: none; text-align: right; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } /* (on two lines where it must, #990: its width keeps the slider still) */
 /* the legend over the map, top left, while a weather layer is on (#182, as yr's app shows it) */
 .wx-legend { display: flex; flex-direction: column; gap: 4px; max-width: min(300px, calc(100vw - var(--pl-left) - 88px)); padding: 7px 10px 8px; border-radius: 12px; color: var(--text); }
 .wx-legend[hidden] { display: none; }
@@ -2412,7 +2413,18 @@ body.dropping .drop-hint { display: flex; }
   .tl-now { --tl-row: 14px; width: 112px; font-size: 11px; } /* (three lines in the strip's 56 px) */
   .tl-now-main b { font-size: 19px; }
   .tl-note { display: none; }
-  .wx-time { width: 112px; white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; } /* (on two lines where it must: the row is as tall as Play and the slider) */
+  .wx-time { width: 112px; }
+  /* Your trip, the planner folded (#869): the reading on one line over a strip the bar's whole width, from Play's column
+     to the edge, as the slider is, with the time at the line's end (the km is the time's): the knob under the needle. A
+     reading too long for the bar (360 px, 200 %) goes on to a second line, and the time to a line of its own where the
+     reading's widest part wouldn't fit beside it; the timeline grows up from its foot, so the switch stays put */
+  .wx-bar.trip .tl-main { flex-wrap: wrap; gap: 6px 10px; }
+  .wx-bar.trip .tl-now { flex: 1 1 0; width: auto; min-width: min-content; min-height: var(--tl-icon); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; }
+  .wx-bar.trip .tl-now-main small { display: none; }
+  .wx-bar.trip .tl-now > .tl-skel { width: 64px; }
+  .wx-bar.trip .tl-at { display: block; align-self: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .wx-bar.trip .tl-strip { flex: 1 1 100%; order: 1; }
+  .wx-bar.trip .wx-row .wx-time { display: none; }
   body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */
   body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers) */
   .wx-bar.docked { width: auto; }

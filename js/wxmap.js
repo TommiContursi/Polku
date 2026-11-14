@@ -107,7 +107,7 @@ export class WeatherOverlay {
     this.townMarks = new Map();
     this.effects = store.get('wxEffects', true); // softer edges and falling rain, over the steps (#182)
     this.open = false; // timeline bar visible
-    this.hour = 0;
+    this.hour = 0; // (counted from the whole hour it's set in: get hour())
     this.grid = null;
     this.viewZoom = map.getZoom();
     this.cur = null;
@@ -135,6 +135,19 @@ export class WeatherOverlay {
     // Open-Meteo may be used again (or works again): refresh an old or missing forecast
     onStatus((src, s) => { if (src === 'openmeteo' && (!s || s.retry) && this.active) this.maybeFetch(); });
   }
+
+  // The timeline's hour, counted from the whole hour it was set in (timeAtHour()). In Your trip it's a time of your trip, so
+  // past the turn of the hour it's counted from the new one and stays that time, never before Now (#1004); the 48 hours'
+  // "+3 h" stays three hours from now
+  get hour() {
+    const b = Math.floor(Date.now() / 3600e3);
+    if (b !== this.hourBase) {
+      if (this.span === 'trip') this.hr = Math.max(0, this.hr - (b - this.hourBase));
+      this.hourBase = b;
+    }
+    return this.hr;
+  }
+  set hour(v) { this.hourBase = Math.floor(Date.now() / 3600e3); this.hr = v; }
 
   get layersOn() { return Object.values(this.on).some(Boolean); }
   // forecast data is needed for the weather layers and for the timeline strip
@@ -189,7 +202,7 @@ export class WeatherOverlay {
   setOpen(on) {
     if (!on) { this.release(); this.span = '48'; } // (closed, it opens again at 48 hours, at Now)
     this.open = on;
-    this.renderTrip();
+    this.renderTrip(!on);
     if (!this.docked) this.bar.hidden = !on;
     this.wake();
     // a phone's row of layers opens with the first that's on in sight, clear of the fade at its edge (32 px), at once (a
@@ -1151,6 +1164,7 @@ export class WeatherOverlay {
       this.setHour(z ? this.hourOn(z, z.tw0 + e.target.value * 300) : hourOf(+e.target.value));
     } });
     this.timeEl = h('div', { class: 'wx-time' });
+    this.atEl = h('div', { class: 'tl-at' }); // (the time at the end of a phone's reading line in Your trip: css/app.css)
     // the map's layers: a button each, one tap, any of them at once, their state in sight (#869)
     this.layerRow = h('div', { class: 'tl-layers', role: 'group', 'aria-label': 'Weather layers' });
     for (const [k, name, line, word, ic] of LAYERS) {
@@ -1205,7 +1219,7 @@ export class WeatherOverlay {
       h('button', { type: 'button', class: 'btn small quiet tl-card', onclick: () => this.app.openWeather(this.span === 'trip' ? this.day : 0), html: `Weather card${icon('chevronRight', 16)}` }), this.daysEl, this.whyEl);
     bar.append(
       head,
-      h('div', { class: 'tl-main' }, this.stripCv, this.nowEl),
+      h('div', { class: 'tl-main' }, this.stripCv, this.nowEl, this.atEl),
       h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl),
       this.tripRow,
       this.noteEl,
@@ -1244,13 +1258,18 @@ export class WeatherOverlay {
   // ------------------------------------------------------------------ your trip (#869's build, PR 2)
   // The trip's row as the route's times are (app.onAnalysis(), on every change of the route, its departure and its
   // forecast, and Leave now's clock): shown while the route has times, Your trip greyed when it starts past the map's 48
-  // hours, the trip view left when the trip goes or moves out of reach, and its hour kept inside the trip's window
-  renderTrip() {
+  // hours, the trip view left when the trip goes or moves out of reach, and its hour kept inside the trip's window.
+  // `back`: Your trip left by 48 hours or ✕, the ways back to the 48 hours you asked for (a phone's planner opens again)
+  renderTrip(back = false) {
     const tr = this.trip = this.app.trip ? this.app.trip() : null, days = tr ? tr.days : [];
     this.day = Math.min(this.day, Math.max(0, days.length - 1));
     if (this.span === 'trip' && !(tr && this.reaches(days[this.day]))) this.span = '48';
     const zoomed = this.span === 'trip', far = !!tr && !this.reaches(days[0]), off = days.find((d) => !this.reaches(d));
     if (!zoomed) this.stepAt = null;
+    this.bar.classList.toggle('trip', zoomed); // (a phone's reading on one line over the strip: css/app.css)
+    // the app hears when Your trip comes into sight or goes (a phone's planner folds for it), not on every drawing
+    const shown = zoomed && this.open;
+    if (shown !== !!this.tripShown) { this.tripShown = shown; this.app.onTripView?.(shown, back); }
     this.tripRow.hidden = !tr;
     const [b48, bTrip] = this.spanSeg.children;
     b48.setAttribute('aria-pressed', String(!zoomed));
@@ -1323,7 +1342,7 @@ export class WeatherOverlay {
     this.stepAt = null;
     const z = this.tripWin();
     if (z) this.hour = this.hourOn(z, at != null || (t >= z.tw0 && t <= z.tw1) ? t : z.d.t0); // (the card's time kept inside the window)
-    this.renderTrip();
+    this.renderTrip(k === '48');
     if (z) this.setHour(this.hour);
   }
   setDay(j) {
@@ -1462,7 +1481,9 @@ export class WeatherOverlay {
     const loading = z ? !a.wind && !a.windError : this.loading;
     cv.classList.toggle('skel', !d && loading);
     if (!d) {
-      if (!loading) { ctx.fillStyle = muted; ctx.fillText(z ? (a.wind ? 'No forecast yet for your trip' : 'The forecast couldn’t be loaded') : 'Zoom in to see the forecast here', PAD, H / 2); }
+      // (with no forecast for the map's middle, the reading and the note say why: "Zoom in" only where it would help, #991)
+      const say = z ? (a.wind ? 'No forecast yet for your trip' : 'The forecast couldn’t be loaded') : this.map.getZoom() < 3 ? 'Zoom in to see the forecast here' : '';
+      if (!loading && say) { ctx.fillStyle = muted; ctx.fillText(say, PAD, H / 2); }
       return;
     }
     // night
@@ -1686,11 +1707,11 @@ export class WeatherOverlay {
     if (past && !this.on.rain) label += ' (Rain is off)';
     else if (past && this.scanFailed === scanAt(this.hour)) label += ' couldn’t be loaded';
     else if (past && this.scanLoading === scanAt(this.hour)) label += ' · loading…';
-    else if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? (past ? '' : ' · FMI radar') : past ? '' : ' · radar';
+    else if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? (past ? '' : ' · FMI\u00a0radar') : past ? '' : ' · radar';
     if (this.loading) label += ' · loading…';
     // Your trip: the time and where you'll be (the grid's loading is the map's: the strip and the reading are the route's)
     const z = this.tripWin(), w = z && this.trip.a.wind;
-    this.timeEl.textContent = z ? `${day} ${clock} · ${this.whereOn(z, 'the start', 'the finish')}` : label;
+    this.timeEl.textContent = this.atEl.textContent = z ? `${day} ${clock} · ${this.whereOn(z, 'the start', 'the finish')}` : label;
     if (this.noteEl) {
       const g = this.grid;
       const st = sourceStatus('openmeteo');
