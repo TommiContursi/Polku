@@ -100,7 +100,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
 .r2 .bt-read { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 2.6em; }
 .bt-facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; }
 .bt-fact { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow-wrap: break-word; }
-.bt-fact .ic { flex: none; color: var(--muted); }
+.bt-fact .ic, .bt-read .bt-fact .ic { flex: none; color: var(--muted); }
 .row.bt-row > .bt-row-in { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; align-items: center; gap: 2px 14px; }
 @container (max-width: 260px) { .row.bt-row > .bt-row-in { grid-template-columns: max-content minmax(0, 1fr); } .row.bt-row > .bt-row-in > .bt-facts { grid-column: 1 / -1; grid-row: 2; } } /* (200 % on a phone: the facts under the time) */
 .row.bt-row > .bt-row-in > b { font-variant-numeric: tabular-nums; }
