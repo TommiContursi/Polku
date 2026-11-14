@@ -8008,8 +8008,8 @@ const LANE_WORDS = {
 };
 // The samples whose forecast is a day's own (#981), [i0, i1]: each stands for the piece of the route that ends at it, so a
 // day after a night starts with the piece after the stop, and a day before one leaves out the stop's own sample (it's timed
-// when you go on in the morning)
-const ownSamples = (a, d) => [d.i0 + 1, d.i1 < a.along.length - 1 ? d.i1 - 1 : d.i1];
+// when you go on in the morning); a day of one piece keeps it
+const ownSamples = (a, d) => { const i0 = d.i0 + 1; return [i0, Math.max(i0, d.i1 < a.along.length - 1 ? d.i1 - 1 : d.i1)]; };
 // a stretch's kilometres by `km(i)`'s whole km: "km 12 to 20", or one km where both ends round to it (#999)
 const kmSpan = (km, i0, i1) => (km(i0) === km(i1) ? `km ${km(i0)}` : `km ${km(i0)} to ${km(i1)}`);
 // stretches of a route where pred(i) holds, from sample to sample: [{ i0, i1, len }]

@@ -2041,6 +2041,8 @@ STOPS = """(async () => {
       a.wind = { ...keep, head: Float32Array.from(keep.head, (v, i) => (a.along[i] > 1600 && a.along[i] <= 2400 ? 3 : 0)), beyond: -1 };
       const stretch = p.wxWindOpen(a).querySelector('[data-k=headwind] b')?.textContent;
       a.wind = keep;
+      // a day of one piece (a night one point from the start) still has its weather, in the card and Hour by hour
+      try { const d1 = { ...days[0], i1: 1 }; p.wxDay(a, d1, 0, true, {}); p.wxHours(a, [d1]); } catch (e) { errs.push(`a day of one piece: ${e.message} (#981)`); }
       if (stretch !== 'km 2 · up to 3 m/s') errs.push(`a stretch against you from km 1.6 to 2.4: “${stretch}” (#999)`);
       if (tells.length !== 2 || tells.some((t) => t.length !== 1)) errs.push(`thunder over both days: ${tells.map((t) => t.length).join(' and ')} notes, not one on each`);
       else if (tells[0][0].i1 > j || tells[1][0].i0 < j) errs.push(`thunder over the night: day 1's to sample ${tells[0][0].i1}, day 2's from ${tells[1][0].i0}, the night's stop ${j} (#981)`);
