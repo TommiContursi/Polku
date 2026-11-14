@@ -2,11 +2,28 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-11-14
+## 2026-11-15
 
 ### The route's time opens When ([#1026](https://github.com/TommiContursi/Polku/issues/1026))
 
 - A tap on the time in the route's numbers, at the top of the planner, opens **When**'s menu right there, to change when you leave or set **Arrive by…**. The time counts from your departure, as the line under it says. **Time on the way** is in the weather card, which the trip's box opens.
+
+## 2026-11-14
+
+### Words that read over the map ([#989](https://github.com/TommiContursi/Polku/issues/989))
+
+- In dark mode, the warnings in Route's list are a lighter red, so they read over the map behind the planner. In light mode, what's good to know is a darker amber everywhere, so it reads over the aerial photos too.
+- The heights beside a point's profile sit on a small backing in the card's colour, so they read over the profile's colours.
+
+### The weather timeline in its room ([#343](https://github.com/TommiContursi/Polku/issues/343), [#457](https://github.com/TommiContursi/Polku/issues/457), [#590](https://github.com/TommiContursi/Polku/issues/590), [#925](https://github.com/TommiContursi/Polku/issues/925), [#1015](https://github.com/TommiContursi/Polku/issues/1015), [#1017](https://github.com/TommiContursi/Polku/issues/1017), [#1018](https://github.com/TommiContursi/Polku/issues/1018))
+
+- On a desktop, a note such as "Link copied" comes above the weather timeline instead of over its foot.
+- The timeline's reading fits its box on phones and desktops. The gusts are in brackets after the wind, as FMI writes them, such as "4 (9) m/s SW", and the next six hours' rain shows beside "dry", such as "dry · 6 h 2.4 mm". While it rains, the reading gives the hour's rain and the strip shows what's ahead. Pointing at the reading shows all of it, and a screen reader reads all of it.
+- On a phone at 200 % text size, the timeline stays below the top bar and on the screen. Where the planner leaves no room for it, it sits over the planner at the screen's foot. In **Your trip** it scrolls inside the room above the planner's line, with **48 hours** in sight. On a phone turned sideways the same holds: the timeline stays below the top bar and on the screen, over the planner at the screen's foot or scrolling inside its room ([#1019](https://github.com/TommiContursi/Polku/issues/1019)).
+- With reduced motion on, the wind's lines are drawn still, as the rain already is: short strokes along the wind, drawn again when the map moves or the hour changes.
+- On a phone, a card brought back from its banner, such as the weather card by **Back** or **Weather card ›**, is where you had scrolled it, as on a desktop ([#869](https://github.com/TommiContursi/Polku/issues/869)). A second lane or hour pressed in the weather card folds the planner under its banner again, as the first does.
+- In **Your trip** on a phone, leaving your trip opens the planner again as it was, whichever way you leave: **48 hours**, closing the timeline, an hour outside the trip, or the trip moving out of reach. After **Weather here** the planner stays folded, clear of the spot's pin, until **48 hours** or closing the timeline ([#1018](https://github.com/TommiContursi/Polku/issues/1018)).
+- In **Your trip** on a phone, the planner you open with **On the profile** or **All in Check ›** stays yours: a card closed afterwards puts it back as you had it, instead of folding it ([#1017](https://github.com/TommiContursi/Polku/issues/1017)).
 
 ### Arrive by ([#219](https://github.com/TommiContursi/Polku/issues/219))
 

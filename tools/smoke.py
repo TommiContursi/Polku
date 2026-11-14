@@ -4146,7 +4146,8 @@ def warnfix(chrome):
         pg.close()
     # (#440) the Avoided place menu, opened by a tap on its circle: whole on the screen less 8 px each side at 200 % (a 390
     # phone's 195 × 422) and on the phone itself, where Stop avoiding is in reach and works
-    for w, h_ in ((195, 422), (390, 844)):
+    # (sizes, the planner's sizes there, None for a side panel as it is, and whether Your trip is checked)
+    for w, h_, sizes, trip in ((195, 422, ['peek', 'half', 'full'], True), (390, 844, ['peek'], False), (844, 390, ['peek'], True), (932, 430, [None], True)):
         pg = chrome.page(w, h_, True)
         try:
             pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
@@ -8733,9 +8734,10 @@ GLASS_INK = r"""(() => {
     }
   }
   for (const svg of document.querySelectorAll('svg.ic')) {
-    if (svg.querySelector(':is([stroke], [fill]):not([stroke="currentColor"], [stroke="none"], [fill="currentColor"], [fill="none"])')) continue; // (a key in colours of its own)
-    const s = getComputedStyle(svg);
-    add(svg, 'icon', svg.closest('[aria-label], [title]')?.getAttribute('aria-label') || name(svg.parentElement), [svg.getBoundingClientRect()], s.stroke !== 'none' ? s.stroke : s.fill);
+    const s = getComputedStyle(svg), ink = s.stroke !== 'none' ? s.stroke : s.fill;
+    // (a key or a sky in colours of its own, by its attributes or its classes: drawn in them, not in its ink, #989)
+    if ([...svg.querySelectorAll('*')].some((e) => e instanceof SVGGeometryElement && [getComputedStyle(e).fill, getComputedStyle(e).stroke].some((c) => c !== 'none' && c !== ink && c !== s.color))) continue;
+    add(svg, 'icon', svg.closest('[aria-label], [title]')?.getAttribute('aria-label') || name(svg.parentElement), [svg.getBoundingClientRect()], ink);
   }
   pe.remove();
   return out;
@@ -12440,23 +12442,23 @@ WX_FIXED = """(() => {
     W.asked++;
     const q = new URL(url).searchParams, lats = q.get('latitude').split(',').map(Number), lons = q.get('longitude').split(',').map(Number);
     const n = 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
-    const hourly = (lat, lon) => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(4), wind_direction_10m: fill(220), wind_gusts_10m: fill(9),
-      temperature_2m: fill(W.temp), precipitation: fill(W.precip ? W.precip(lat, lon) : 0.4), cloud_cover: fill(W.cloud ? W.cloud(lat, lon) : 60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: fill(W.code(lat, lon)) });
+    const hourly = (lat, lon) => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(W.speed ?? 4), wind_direction_10m: fill(220), wind_gusts_10m: fill(W.gust ?? 9),
+      temperature_2m: fill(W.temp), precipitation: Array.from({ length: n }, (_, i) => (W.precip ? W.precip(lat, lon, i) : 0.4)), cloud_cover: fill(W.cloud ? W.cloud(lat, lon) : 60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: fill(W.code(lat, lon)) });
     const answer = () => W.fail ? new Response('', { status: 500 }) : new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly(lat, lons[i]) }))), { headers: { 'Content-Type': 'application/json' } });
     return W.hold ? new Promise((ok) => W.held.push(() => ok(answer()))) : Promise.resolve(answer());
   };
 })();"""
 
-# The timeline's reading on phones (#243): opened with a tap on Weather, the forecast answering (WX_FIXED), its first
-# line (the sky's icon, the temperature, "map centre") is whole inside its box. (The wind's and the rain's lines can
-# still be longer than the box: #457.)
+# The timeline's reading (#243, #457): opened with a tap on Weather, the forecast answering (WX_FIXED), each of its lines
+# is whole inside its box: the first (the sky's icon, the temperature, "map centre"), the wind's with its gusts and the
+# rain's with its six hours, on phones and a desktop, in light weather, in a gale with heavy rain, and dry before 200 mm.
 TL_READING = """new Promise((done) => {
   const t0 = Date.now(), go = () => {
     const box = document.querySelector('#wx-bar .tl-now'), main = box && box.querySelector('.tl-now-main');
     if (!main) { if (Date.now() - t0 < 20000) { setTimeout(go, 200); return; } done({ out: [`no reading after 20 s: ${box ? box.textContent : 'no timeline'}`] }); return; }
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const out = [], b = box.getBoundingClientRect();
-      for (const e of [main, ...main.children]) {
+      for (const e of box.querySelectorAll(':scope > div, :scope > div > :not(svg, .sr-only)')) {
         const r = e.getBoundingClientRect(), t = e.textContent.trim() || e.tagName;
         if (r.right > b.right + 0.5 || r.left < b.left - 0.5 || r.bottom > b.bottom + 0.5) out.push(`“${t}” at x ${Math.round(r.left)}–${Math.round(r.right)}, out of its box (x ${Math.round(b.left)}–${Math.round(b.right)})`);
         else if (e.scrollWidth > e.clientWidth + 1 && e.clientWidth) out.push(`“${t}” cut (${e.scrollWidth} px in ${e.clientWidth})`);
@@ -12472,21 +12474,28 @@ TL_READING = """new Promise((done) => {
 
 def timeline_reading(chrome):
     fails = []
-    for w, h_ in ((390, 844), (360, 740)):
-        name = f'{w}x{h_}'
-        pg = chrome.page(w, h_, True)
+    gale = 'window.__wx.speed = 12; window.__wx.gust = 18; window.__wx.precip = () => 12.5;'
+    later = 'window.__wx.precip = (lat, lon, i) => (i < 3 ? 0 : 40);'  # (dry to the hour after Now's, then 40 mm an hour)
+    for (w, h_), (weather, wx) in [(size, x) for size in ((390, 844), (360, 740), (1440, 900)) for x in (('', ''), (', a gale', gale), (', dry before a downpour', later))]:
+        name = f'{w}x{h_}{weather}'
+        pg = chrome.page(w, h_, w < 720)
         try:
-            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + wx}, pg.s)
             pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#12/62.2289/25.7652')
             pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
             b = pg.js("(() => { const r = document.getElementById('btn-time').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
-            pg.quick_tap(*b)
+            if w < 720:
+                pg.quick_tap(*b)
+            else:
+                pg.js("document.getElementById('btn-time').click(); true")
             r = pg.js(TL_READING)
             fails += [f"{name}: the timeline's reading: {f}" for f in r['out']]
+            if wx == later and 'dry · 6 h 200 mm' not in r.get('text', ''):
+                fails.append(f"{name}: the reading says “{r.get('text')}”, not dry with the next 6 hours' 200 mm")
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the timeline's reading on phones: its first line whole in its box (#243)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline's reading: each line whole in its box, on phones and a desktop, in a gale too (#243, #457)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -12719,6 +12728,22 @@ WX_STILL = """(async () => {
   await wait(600);
   const b = px();
   if (!a.every((v, i) => v === b[i])) out.push('reduced motion: the rain moves');
+  // …and the wind, its strokes drawn once (#925)
+  const wind = document.querySelector('#wx-bar .tl-layers [data-k=wind]'), wc = w.windCv, wpx = () => wc.getContext('2d').getImageData(0, 0, wc.width, wc.height).data;
+  wind.click(); await wait(800);
+  const c = wpx();
+  if (!c.some((v, i) => i % 4 === 3 && v)) out.push('reduced motion: the wind isn’t drawn');
+  await wait(600);
+  const d = wpx();
+  if (!c.every((v, i) => v === d[i])) out.push('reduced motion: the wind moves');
+  if (w.anim) out.push('reduced motion: the wind and the rain drawn still, and the animation loop still runs every frame');
+  // drawn again for a new field: after a move, and turned off and on
+  const drawn = () => wpx().some((v, i) => i % 4 === 3 && v);
+  polku.map.panBy([120, 0], { animate: false }); await wait(1200);
+  if (!drawn()) out.push('reduced motion: after a move, the wind isn’t drawn again');
+  wind.click(); await wait(300); wind.click(); await wait(800);
+  if (!drawn()) out.push('reduced motion: the wind off and on again isn’t drawn');
+  wind.click(); await wait(300);
   // the last layer off: no legend
   document.querySelector('#wx-bar .tl-layers [data-k=rain]').click(); await wait(300);
   const lg = document.querySelector('.map-hints .wx-legend');
@@ -12744,6 +12769,10 @@ WX_OPEN = """(async () => {
   document.querySelector('#layers-panel .panel-close').click(); await wait(300);
   document.querySelector('#btn-time').click(); await wait(300);
   if (!w.open || bar().hidden) out.push('Weather didn’t open the timeline');
+  // a note comes above it, not over its foot (#343)
+  (await import(location.origin + '/js/ui.js')).toast('Link copied', { ms: 3000 }); await wait(600);
+  { const t = document.querySelector('#toast').getBoundingClientRect(), b = bar().getBoundingClientRect();
+    if (t.bottom > b.top && t.top < b.bottom && t.right > b.left && t.left < b.right) out.push(`a note at y ${Math.round(t.top)}–${Math.round(t.bottom)}, over the timeline at y ${Math.round(b.top)}–${Math.round(b.bottom)} (#343)`); }
   w.setHour(6); await wait(300);
   if (Math.abs(polku.safety.app.time() - W.timeAtHour(6)) > 1) out.push('at +6 h, road works and road conditions aren’t at the timeline’s hour');
   document.querySelector('#wx-bar .tl-close').click(); await wait(300);
@@ -12791,6 +12820,16 @@ def weather_menu(chrome):
             fails.append(f"the timeline's time cut on a desktop: “{t['text']}” (#990)")
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fails += pg.js(WX_STILL, timeout=30000)
+        # reduced motion turned off with the still wind shown: it moves again, without a move of the map (Codex on #1021)
+        wind = "document.querySelector('#wx-bar .tl-layers [data-k=wind]').click(); true"
+        pg.js(wind)
+        time.sleep(1)
+        stopped = pg.js('polku.weather.anim')
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+        moves = pg.js("(async () => { const cv = polku.weather.windCv, px = () => cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, wait = (ms) => new Promise((r) => setTimeout(r, ms)); await wait(400); const a = px(); await wait(400); const b = px(); return !!polku.weather.anim && a.some((v, i) => v !== b[i]); })()")
+        if stopped or not moves:
+            fails.append(f'reduced motion turned off with the still wind shown: the loop stopped before {not stopped}, the wind moving after {moves}')
+        pg.js(wind)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -13246,6 +13285,131 @@ TL_ROOM = """(() => {
 })()"""
 
 
+# A phone at 200 % (195 × 422) with a route and the timeline on (#590): the timeline stays between the top bar and the
+# window's foot at the planner's peek, half and full, ✕ at its top: on the sheet under its header where there's no room
+# above it (whole at the peek; held to its room above a raised sheet), and not flipping between the two over a few frames; in Your trip, with the planner folded and no room for all of
+# it anywhere, it's held to its room and scrolls inside, 48 hours in sight at its foot and ✕ a scroll up. At 390 × 844
+# its peek is as before, over the map and whole. On a phone turned sideways (#1019: 844 × 390, the planner at the foot; 932 ×
+# 430, beside the map), on 48 hours and in Your trip, the same: between the top bar and the window's foot.
+TL_ZOOM = """(async () => {
+  const b = document.querySelector('#wx-bar'), r = b.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom, seen = [];
+  for (let k = 0; k < 6; k++) { seen.push(document.body.classList.contains('wx-over')); await new Promise((ok) => requestAnimationFrame(ok)); }
+  const scrolls = b.scrollHeight > b.clientHeight + 1, sw = b.querySelector('[data-k=span-48]').getBoundingClientRect(), q = b.getBoundingClientRect(), at = b.scrollTop;
+  b.scrollTop = 0; await new Promise((ok) => requestAnimationFrame(ok));
+  const x = b.querySelector('.tl-close').getBoundingClientRect(); b.scrollTop = at; await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))); // (back at its foot, as a person's scroll would be, before the next step)
+  return { top: Math.round(r.top), bottom: Math.round(r.bottom), bar: Math.round(top), vh: innerHeight, over: seen, sheet: polku.planner.panel.dataset.state, trip: b.classList.contains('trip'),
+    scrolls, x: x.top >= r.top && x.bottom <= r.bottom, sw: sw.height > 0 && sw.top >= q.top - 0.5 && sw.bottom <= q.bottom + 0.5 };
+})()"""
+
+
+def timeline_zoom(chrome):
+    fails = []
+    # (sizes, the planner's sizes there, None for a side panel as it is, and whether Your trip is checked)
+    for w, h_, sizes, trip in ((195, 422, ['peek', 'half', 'full'], True), (390, 844, ['peek'], False), (844, 390, ['peek'], True), (932, 430, [None], True)):
+        pg = chrome.page(w, h_, True)
+        bad = lambda what: fails.append(f'{w}x{h_}: {what}')
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
+            if not pg.js(TL_TRIP_SETUP, timeout=40000):
+                bad('no timed route')
+                continue
+            for st in sizes:
+                if st:
+                    pg.js(f"polku.planner.setSheetState('{st}'); true")
+                pg.js(SETTLED)
+                z = pg.js(TL_ZOOM)
+                if z['top'] < z['bar'] or z['bottom'] > z['vh'] or len(set(z['over'])) > 1 or not z['x'] or (st == 'peek' and w < 400 and z['scrolls']):
+                    bad(f"the planner {f'at its {st}' if st else 'beside the map'}: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), on the sheet {z['over']}, ✕ at its top {z['x']}, scrolling {z['scrolls']}")
+            if trip:
+                pg.js(("polku.planner.setSheetState('peek'); " if sizes[0] else '') + "polku.weather.setSpan('trip'); true")
+                pg.js(SETTLED)
+                z = pg.js(TL_ZOOM)
+                if not z['trip'] or (w < 721 and z['sheet'] != 'folded') or z['top'] < z['bar'] or z['bottom'] > z['vh'] or not z['x'] or not z['sw'] or len(set(z['over'])) > 1:
+                    bad(f"Your trip: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), the planner {z['sheet']}, ✕ a scroll up {z['x']}, scrolling {z['scrolls']}, 48 hours in sight at its foot {z['sw']}")
+                # scrolled up to its head, it stays there as it grows (Snow depth's fourth line)
+                up = pg.js("(async () => { const b = document.querySelector('#wx-bar'), snow = b.querySelector('.tl-layers [data-k=snow]'), wait = (ms) => new Promise((r) => setTimeout(r, ms)); b.scrollTop = 0; await wait(200); snow.click(); await wait(800); const t = b.scrollTop; snow.click(); await wait(300); return t; })()")
+                if up > 2:
+                    bad(f'Your trip: scrolled up to the timeline\'s head, Snow depth turned on moved it {up} px down')
+            fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline at 200 % on a phone (#590) and on a phone turned sideways (#1019): between the top bar and the window's foot at every sheet size and in Your trip" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Your trip's fold on a phone (390 × 844), with the weather card's notes (TL_TRIP_NOTES): from the planner's peek, Your
+# trip, Weather card ›, a lane (the planner folded under its banner), Back, ✕ and 48 hours open the planner at its peek
+# again (#1015's second lane asks for Your trip again, and must leave what it holds); then after On the profile (#1017),
+# with the planner folded for Your trip, a waypoint's card raised to half and its On the profile pressed show the planner
+# at half; it's yours then, so another card closed with ✕ puts it back at half, not folded.
+TL_TRIP_BACK = """(async () => {
+  const p = polku.planner, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = [], st = () => p.panel.dataset.state, bar = document.querySelector('#wx-bar');
+  const x = () => [p.els.topX, p.cards.box?.querySelector('.way-x')].find((e) => e && e.getBoundingClientRect().width);
+  w.setSpan('trip'); await wait(900);
+  bar.querySelector('.tl-card').click(); await wait(900);
+  if (!p.cards.box?.querySelector('[data-k^=lane-]')) { p.cards.box?.querySelector('[data-k=trip]')?.click(); await wait(600); }
+  const lane = p.cards.box?.querySelector('[data-k^=lane-]');
+  if (!lane) return ['no lane in the weather card'];
+  lane.click(); await wait(900);
+  if (st() !== 'folded' || !p.cards.folded) out.push(`a lane after Your trip and Weather card ›: the planner ${st()}, the card folded ${!!p.cards.folded}`);
+  document.querySelector('.card-banner button').click(); await wait(900);
+  x().click(); await wait(900);
+  bar.querySelector('[data-k=span-48]').click(); await wait(900);
+  if (st() !== 'peek') out.push(`Your trip, Weather card ›, a lane, Back, ✕ and 48 hours: the planner ${st()}, not at its peek as before Your trip`);
+  return out;
+})()"""
+# …and Your trip left another way (#1018, the user's choice of 2026-11-14): by an hour outside it, the planner opens at its
+# peek again; by Weather here it stays folded, clear of the spot's pin, and 48 hours then opens it
+TL_TRIP_LEFT = """(async () => {
+  const p = polku.planner, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = [], st = () => p.panel.dataset.state, bar = document.querySelector('#wx-bar');
+  w.setSpan('trip'); await wait(900);
+  w.setHour(30); await wait(900);
+  if (w.span !== '48' || st() !== 'peek') out.push(`Your trip left by an hour outside it: the span ${w.span}, the planner ${st()}, not at its peek again (#1018)`);
+  w.setSpan('trip'); await wait(900);
+  w.holdAt(polku.map.getCenter().toArray()); await wait(900);
+  if (w.span !== '48' || st() !== 'folded') out.push(`Weather here from Your trip: the span ${w.span}, the planner ${st()}, not left folded`);
+  bar.querySelector('[data-k=span-48]').click(); await wait(900);
+  if (st() !== 'peek') out.push(`Weather here, then 48 hours: the planner ${st()}, not at its peek again (#1018)`);
+  w.release(); return out;
+})()"""
+TL_TRIP_PROFILE = """(async () => {
+  const p = polku.planner, w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = [], st = () => p.panel.dataset.state;
+  const x = () => [p.els.topX, p.cards.box?.querySelector('.way-x')].find((e) => e && e.getBoundingClientRect().width);
+  w.setSpan('trip'); await wait(900);
+  if (st() !== 'folded') out.push(`Your trip: the planner ${st()}, not folded`);
+  p.openPointCard(p.points[1]); await wait(600); p.setSheetState('half'); await wait(700);
+  const prof = p.cards.box?.querySelector('[data-k=profile]');
+  if (!prof) return [...out, 'no On the profile in the waypoint’s card'];
+  prof.click(); await wait(900);
+  if (st() !== 'half' || p.cards.current) out.push(`On the profile: the planner ${st()}, a card ${p.cards.current?.kind || 'none'}`);
+  p.openPointCard(p.points[2]); await wait(700);
+  x().click(); await wait(900);
+  if (st() !== 'half') out.push(`another card closed with ✕ after On the profile: the planner ${st()}, not half (#1017)`);
+  return out;
+})()"""
+
+
+def trip_fold(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
+        if not pg.js(TL_TRIP_SETUP, timeout=40000):
+            fails.append('no timed route')
+        else:
+            pg.js(TL_TRIP_NOTES)
+            fails += pg.js(TL_TRIP_BACK, timeout=40000)
+            fails += pg.js(TL_TRIP_LEFT, timeout=40000)
+            fails += pg.js(TL_TRIP_PROFILE, timeout=40000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Your trip's fold on a phone: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def timeline_trip(chrome):
     fails = []
     for name, (wd, ht, phone) in [('desktop', (1440, 900, False)), ('phone', (390, 844, True)), ('narrow window', (600, 800, False))]:
@@ -13303,11 +13467,15 @@ def timeline_trip(chrome):
                     rm = pg.js(TL_ROOM)
                     if rm['sheet'] != 'folded' or 'The planner folds while you look at your trip' not in rm['toast'] or rm['told'] != 'true':
                         bad(f'Your trip from the card\'s Rain: the planner {rm["sheet"]}, the words “{rm["toast"]}” (told {rm["told"]})')
-                # Weather card › in the trip's row: the same card, Rain open, its hours as they were (beside the map, where it
-                # was scrolled too: it was open all along)
+                # Weather card › in the trip's row: the same card, Rain open, its hours as they were, where it was scrolled
+                # (beside the map it was open all along; in the sheet it unfolds from its banner as it was, the user's choice
+                # of 2026-11-14 on #869)
                 press(*pg.js("(() => { const r = document.querySelector('#wx-bar .tl-card').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
+                pg.js(SETTLED)
                 y = cs()
-                if y['card'] != 'weather' or y['folded'] or not y['same'] or y['rainOpen'] != 'true' or not y['scroll'] or abs(y['scroll'][1] - was[1]) > 2 or (place == 'float' and abs(y['scroll'][0] - was[0]) > 2):
+                if place != 'float' and not was[0]:
+                    bad('the card wasn’t scrolled before its Rain was pressed: where Weather card › brings it back proves nothing')
+                if y['card'] != 'weather' or y['folded'] or not y['same'] or y['rainOpen'] != 'true' or not y['scroll'] or abs(y['scroll'][1] - was[1]) > 2 or abs(y['scroll'][0] - was[0]) > 2:
                     bad(f'Weather card › with the card {"open beside the map" if place == "float" else "folded"} (scrolled {was}): {y}')
                 # the Thunder lane under The whole trip: Your trip where the thunder starts, Thunder on
                 press(*pg.js(TL_CARD_AT + "('[data-k=trip]')")[:2])
@@ -13321,6 +13489,9 @@ def timeline_trip(chrome):
                     t0 = pg.js("(() => { const p = polku.planner, a = p.analysis; return Math.round(p.trip().at(p.wxNotes(a, p.wxDays(a)[0])[0].i0)); })()")
                     if z['span'] != 'trip' or abs(z['t'] - t0) > 150 or not z['on']['thunder'] or z['folded'] != (place != 'float'):
                         bad(f'the Thunder lane pressed (the thunder from {t0}): {z}')
+                    # a second lane: the planner under the card's banner folds again, as for the first (#1015)
+                    if wd <= 720 and pg.js("polku.planner.panel.dataset.state") != 'folded':
+                        bad(f'the Thunder lane pressed after Weather card ›: the planner under the banner {pg.js("polku.planner.panel.dataset.state")}, not folded (#1015)')
                 # 48 hours, as a person presses it: the full 48 hours at that hour
                 press(*pg.js("(() => { const r = document.querySelector('#wx-bar [data-k=span-48]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"))
                 if cs()['span'] != '48' or (wd <= 720 and pg.js("polku.planner.panel.dataset.state") != 'peek'):
@@ -21759,7 +21930,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), the turn of the hour (#1004)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
