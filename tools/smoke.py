@@ -13272,16 +13272,16 @@ TL_ROOM = """(() => {
 
 
 # A phone at 200 % (195 × 422) with a route and the timeline on (#590): the timeline stays between the top bar and the
-# window's foot at the planner's peek, half and full, ✕ in sight: on the sheet under its header where there's no room
+# window's foot at the planner's peek, half and full, ✕ at its top: on the sheet under its header where there's no room
 # above it (whole at the peek; held to its room above a raised sheet), and not flipping between the two over a few frames; in Your trip, with the planner folded and no room for all of
-# it anywhere, it's held to its room and scrolls inside, ✕ in sight at its top and 48 hours a scroll away. At 390 × 844
+# it anywhere, it's held to its room and scrolls inside, 48 hours in sight at its foot and ✕ a scroll up. At 390 × 844
 # its peek is as before, over the map and whole.
 TL_ZOOM = """(async () => {
   const b = document.querySelector('#wx-bar'), r = b.getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom, seen = [];
   for (let k = 0; k < 6; k++) { seen.push(document.body.classList.contains('wx-over')); await new Promise((ok) => requestAnimationFrame(ok)); }
-  const x = b.querySelector('.tl-close').getBoundingClientRect(), scrolls = b.scrollHeight > b.clientHeight + 1;
-  b.scrollTop = b.scrollHeight; await new Promise((ok) => requestAnimationFrame(ok));
-  const sw = b.querySelector('[data-k=span-48]').getBoundingClientRect(), q = b.getBoundingClientRect(); b.scrollTop = 0;
+  const scrolls = b.scrollHeight > b.clientHeight + 1, sw = b.querySelector('[data-k=span-48]').getBoundingClientRect(), q = b.getBoundingClientRect(), at = b.scrollTop;
+  b.scrollTop = 0; await new Promise((ok) => requestAnimationFrame(ok));
+  const x = b.querySelector('.tl-close').getBoundingClientRect(); b.scrollTop = at;
   return { top: Math.round(r.top), bottom: Math.round(r.bottom), bar: Math.round(top), vh: innerHeight, over: seen, sheet: polku.planner.panel.dataset.state, trip: b.classList.contains('trip'),
     scrolls, x: x.top >= r.top && x.bottom <= r.bottom, sw: sw.height > 0 && sw.top >= q.top - 0.5 && sw.bottom <= q.bottom + 0.5 };
 })()"""
@@ -13303,13 +13303,13 @@ def timeline_zoom(chrome):
                 pg.js(SETTLED)
                 z = pg.js(TL_ZOOM)
                 if z['top'] < z['bar'] or z['bottom'] > z['vh'] or len(set(z['over'])) > 1 or not z['x'] or (st == 'peek' and z['scrolls']):
-                    bad(f"the planner at its {st}: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), on the sheet {z['over']}, ✕ in sight {z['x']}, scrolling {z['scrolls']}")
+                    bad(f"the planner at its {st}: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), on the sheet {z['over']}, ✕ at its top {z['x']}, scrolling {z['scrolls']}")
             if w < 300:
                 pg.js("polku.planner.setSheetState('peek'); polku.weather.setSpan('trip'); true")
                 pg.js(SETTLED)
                 z = pg.js(TL_ZOOM)
                 if not z['trip'] or z['sheet'] != 'folded' or z['top'] < z['bar'] or z['bottom'] > z['vh'] or not z['x'] or not z['sw'] or len(set(z['over'])) > 1:
-                    bad(f"Your trip: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), the planner {z['sheet']}, ✕ in sight {z['x']}, scrolling {z['scrolls']}, 48 hours in sight at its foot {z['sw']}")
+                    bad(f"Your trip: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), the planner {z['sheet']}, ✕ a scroll up {z['x']}, scrolling {z['scrolls']}, 48 hours in sight at its foot {z['sw']}")
             fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()

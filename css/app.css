@@ -2427,6 +2427,7 @@ body.dropping .drop-hint { display: flex; }
   .wx-bar.trip .wx-row .wx-time { display: none; }
   body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */
   body.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers) */
+  body.wx-over.wx-low .wx-bar { top: auto; bottom: 8px; } /* (nor under its header, 200 %: over it at the window's foot, #590) */
   .wx-bar.docked { width: auto; }
   .orbit { width: 62px; height: 62px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }

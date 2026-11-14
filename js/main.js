@@ -2007,11 +2007,16 @@ function syncWxH() {
   // (a peek with no room above it too, 200 %: by the timeline's whole height, which its place doesn't change, #590)
   const over = deskOver || (open && sheet && (st === 'half' || st === 'full' || (st !== 'folded' && innerHeight - css('--sheet-h') - 16 - b.scrollHeight < top)));
   document.body.classList.toggle('wx-over', over);
-  // a phone's timeline no taller than its room, scrolling inside where nothing gives it more (Your trip at 200 %, #590)
-  const room = open ? Math.floor(over ? innerHeight - 8 - parseFloat(getComputedStyle(b).top) : innerHeight - parseFloat(getComputedStyle(b).bottom) - top) : 0;
+  // …and where the sheet's header leaves no room under it either (200 %), over the sheet at the window's foot
+  const low = over && phone && css('--sheet-h') - css('--sheet-head') < b.scrollHeight;
+  document.body.classList.toggle('wx-low', low);
+  // a phone's timeline no taller than its room, scrolling inside where nothing gives it more (Your trip at 200 %, #590): its
+  // foot in sight, so the switch stays under the finger as it grows from there, its head a scroll up
+  const cs = getComputedStyle(b), room = open ? Math.floor(over && !low ? innerHeight - 8 - parseFloat(cs.top) : innerHeight - parseFloat(cs.bottom) - top) : 0;
   const capped = open && b.scrollHeight > room;
   b.style.maxHeight = capped ? `${room}px` : '';
   b.style.overflowY = capped ? 'auto' : '';
+  if (capped) b.scrollTop = b.scrollHeight;
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
   document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
@@ -2020,8 +2025,10 @@ function syncWxH() {
   planner.placeToolsSoon();
   fitColumn();
 }
-// (its rows come and go, Your trip's too: a card beside the side panel kept clear of it, as when the window changes size)
-new ResizeObserver(() => { syncWxH(); if (planner.layout() === 'side') planner.keepBeside(); }).observe($('#wx-bar'));
+// (its rows come and go, Your trip's too: a card beside the side panel kept clear of it, as when the window changes size;
+// its rows watched too, which change no size of its own where it's held to its room)
+const wxRows = new ResizeObserver(() => { syncWxH(); if (planner.layout() === 'side') planner.keepBeside(); });
+[$('#wx-bar'), ...$('#wx-bar').children].forEach((el) => wxRows.observe(el));
 
 // ------------------------------------------------------------------ GPX / KML import (button + drag & drop)
 async function importFile(file) {
