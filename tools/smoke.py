@@ -13398,6 +13398,27 @@ def timeline_trip(chrome):
                     got = pg.js("(async () => { const p = polku.planner; p.cards.close(); await new Promise((r) => setTimeout(r, 600)); return [p.panel.dataset.state, p.listScroller().scrollTop]; })()")
                     if mid['span'] != 'trip' or not mid['folded'] or got[0] != want or abs(got[1] - scr) > 2:
                         bad(f'the planner at {want} (scrolled {scr}) under the weather card, its Rain hour, 48 hours, the card closed: {mid["span"]}, banner {mid["folded"]}; the planner {got}')
+                # the other way round (Codex on #1008): the planner folded, the card's Rain hour, the banner's Back and the
+                # card's ✕ in Your trip, then 48 hours: the planner stays folded, as it was before the card
+                press(*pg.js(TL_ROOM)['h48At'])
+                pg.js("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setSheetState('folded'); await wait(600); p.openWeather({ day: 0 }); await wait(600); return true; })()")
+                col = pg.js(TL_CARD_AT + "('[data-sec=rain] .wx-sec-cols [data-h=\"$j\"]')")
+                if not col:
+                    bad('no Rain section in the weather card over the folded planner')
+                else:
+                    time.sleep(0.4)
+                    press(*pg.js(TL_CARD_AT + "('[data-sec=rain] .wx-sec-cols [data-h=\"$j\"]')")[:2])
+                    at = lambda sel: pg.js(f"(() => {{ const b = document.querySelector('{sel}'); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+                    steps = []
+                    for sel in ('.card-banner button', '.way-x'):
+                        xy = at(sel)
+                        steps.append(bool(xy))
+                        if xy:
+                            press(*xy)
+                    press(*pg.js(TL_ROOM)['h48At'])
+                    got = pg.js("({ span: polku.weather.span, sheet: polku.planner.panel.dataset.state, card: polku.planner.cards.current?.kind || null })")
+                    if steps != [True, True] or got != {'span': '48', 'sheet': 'folded', 'card': None}:
+                        bad(f'the planner folded, the card\'s Rain hour, Back and ✕ in Your trip (found {steps}), then 48 hours: {got}')
                 press(*pg.js(TL_ROOM)['tripAt'])
             # the turn of the hour (#1004), the page's clock moved on an hour and the route's analysis drawn again: Your
             # trip's time stays the time it was, and with the clock back too; the 48 hours' +3 h stays three hours from now

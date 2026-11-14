@@ -601,9 +601,10 @@ const weather = new WeatherOverlay(map, {
   onTripView: (on, back) => {
     const p = planner;
     if (on && !weather.floatMQ.matches && p.layout() === 'sheet' && !p.panel.hidden && p.panel.dataset.state !== 'folded' && p.foldable()) {
-      tripFold = tripInSheet();
-      // under a card's banner the sheet is the card's: the planner it keeps folds, its list where it was, its line opening to its size
+      // under a card's banner the sheet is the card's: the planner it keeps folds, its list where it was, its line opening to
+      // its size; one folded before the card was never Your trip's to open, only the card's sheet
       const s = p.cards.folded && p.cards.saved;
+      tripFold = s && s.sheet === 'folded' ? p.cards.current : tripInSheet();
       tripKept = s && [s, (p.cards.saved = { ...s, sheet: 'folded', unfoldTo: s.sheet === 'folded' ? s.unfoldTo : s.sheet })];
       p.fold();
       if (!store.get('tripFoldTold', false)) { store.set('tripFoldTold', true); toast('The planner folds while you look at your trip, and opens again on 48 hours'); }
