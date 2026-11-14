@@ -13381,6 +13381,23 @@ def timeline_trip(chrome):
                     if c1 != {'span': 'trip', 'sheet': 'folded', 'card': 'weather', 'place': 'peek'} or c2 != {'span': '48', 'sheet': left, 'card': 'weather', 'place': 'peek'}:
                         bad(f'the weather card folded by Your trip, opened and made smaller again by hand ({left}), then 48 hours: {c1}, then {c2}')
                 pg.js("(async () => { polku.planner.cards.close(); await new Promise((r) => setTimeout(r, 600)); return true; })()")
+                # the planner under the weather card's banner (Codex on #1008): folded, or at half and scrolled, the card
+                # opened, its Rain hour pressed (Your trip, the card at its banner), 48 hours, the card closed: the planner as
+                # it was before the card, its list where it was
+                for want in ('folded', 'half'):
+                    press(*pg.js(TL_ROOM)['h48At'])
+                    scr = pg.js(f"(async () => {{ const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setSheetState('{want}'); await wait(600); p.listScroller().scrollTop = 60; await wait(100); const s = p.listScroller().scrollTop; p.openWeather({{ day: 0 }}); await wait(600); return s; }})()")
+                    col = pg.js(TL_CARD_AT + "('[data-sec=rain] .wx-sec-cols [data-h=\"$j\"]')")
+                    if not col:
+                        bad(f'no Rain section in the weather card over the planner at {want}')
+                        continue
+                    time.sleep(0.4)
+                    press(*pg.js(TL_CARD_AT + "('[data-sec=rain] .wx-sec-cols [data-h=\"$j\"]')")[:2])
+                    mid = cs()
+                    press(*pg.js(TL_ROOM)['h48At'])
+                    got = pg.js("(async () => { const p = polku.planner; p.cards.close(); await new Promise((r) => setTimeout(r, 600)); return [p.panel.dataset.state, p.listScroller().scrollTop]; })()")
+                    if mid['span'] != 'trip' or not mid['folded'] or got[0] != want or abs(got[1] - scr) > 2:
+                        bad(f'the planner at {want} (scrolled {scr}) under the weather card, its Rain hour, 48 hours, the card closed: {mid["span"]}, banner {mid["folded"]}; the planner {got}')
                 press(*pg.js(TL_ROOM)['tripAt'])
             # the turn of the hour (#1004), the page's clock moved on an hour and the route's analysis drawn again: Your
             # trip's time stays the time it was, and with the clock back too; the 48 hours' +3 h stays three hours from now

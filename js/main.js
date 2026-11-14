@@ -557,7 +557,7 @@ initSearch(map, $('#search-input'), $('#search-results'), {
 
 // Weather overlay: image sources are swapped in place when possible; adding or
 // removing one goes through a (diffed) style rebuild.
-let tripLit = null, tripFold = null; // (what Your trip folded in a phone's sheet: tripInSheet())
+let tripLit = null, tripFold = null, tripKept = null; // (what Your trip folded in a phone's sheet: tripInSheet(); under a card's banner, the planner's state the card keeps, before and as Your trip changed it)
 // what's in the sheet: a card open at its peek, else the planner
 const tripInSheet = () => (planner.cards.place === 'peek' ? planner.cards.current : 'planner');
 const weather = new WeatherOverlay(map, {
@@ -602,14 +602,20 @@ const weather = new WeatherOverlay(map, {
     const p = planner;
     if (on && !weather.floatMQ.matches && p.layout() === 'sheet' && !p.panel.hidden && p.panel.dataset.state !== 'folded' && p.foldable()) {
       tripFold = tripInSheet();
+      // under a card's banner the sheet is the card's: the planner it keeps folds, its list where it was, its line opening to its size
+      const s = p.cards.folded && p.cards.saved;
+      tripKept = s && [s, (p.cards.saved = { ...s, sheet: 'folded', unfoldTo: s.sheet === 'folded' ? s.unfoldTo : s.sheet })];
       p.fold();
       if (!store.get('tripFoldTold', false)) { store.set('tripFoldTold', true); toast('The planner folds while you look at your trip, and opens again on 48 hours'); }
     } else if (!on && tripFold) {
       const ours = tripFold === tripInSheet();
       tripFold = null;
-      if (back && ours && p.panel.dataset.state === 'folded') p.unfold();
-    } else return;
-    if (p.cards.folded && p.cards.saved) p.cards.saved = p.cards.keepState(); // (under a card's banner: closing the card leaves the planner as this left it)
+      if (back && ours && p.panel.dataset.state === 'folded') {
+        p.unfold();
+        if (tripKept && p.cards.saved === tripKept[1]) p.cards.saved = tripKept[0];
+      }
+      tripKept = null;
+    }
   },
   onToggle: (patch) => setWeather(patch),
   onClose: () => setTimeline(false),
