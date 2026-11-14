@@ -13459,15 +13459,6 @@ def timeline_trip(chrome):
                     got = pg.js("({ sheet: polku.planner.panel.dataset.state, card: polku.planner.cards.current?.kind || null })")
                     if left != '48' or steps != [True] * 3 or got != {'sheet': 'half', 'card': None}:
                         bad(f'the planner at half, the card\'s Rain hour, Your trip left by an hour outside it ({left}), the planner\'s line, Back and ✕ (found {steps}): {got}')
-                # a route changed in Your trip, still in reach: 48 hours opens the planner again
-                press(*pg.js(TL_ROOM)['tripAt'])
-                js("p.movePoint(2, [p.points[2][0] + 0.002, p.points[2][1]]); await wait(1500)")
-                held = pg.js("({ span: polku.weather.span, sheet: polku.planner.panel.dataset.state })")
-                press(*pg.js(TL_ROOM)['h48At'])
-                got = pg.js("polku.planner.panel.dataset.state")
-                if held != {'span': 'trip', 'sheet': 'folded'} or got != 'half':
-                    bad(f'the planner at half, Your trip, a point moved: {held}; 48 hours: the planner {got}')
-                js("p.undo(); await wait(1500)")  # (the route the forecast below is made for)
                 press(*pg.js(TL_ROOM)['tripAt'])
             # the turn of the hour (#1004), the page's clock moved on an hour and the route's analysis drawn again: Your
             # trip's time stays the time it was, and with the clock back too; the 48 hours' +3 h stays three hours from now
@@ -13688,6 +13679,17 @@ def timeline_trip(chrome):
                 bad(f'Your trip pressed: the planner {was["sheet"]}, {rm["sheet"]}, then {r48["sheet"]} on 48 hours; the switch on top {rm["swTop"]}, cut {rm["cut"]}, the time at {rm["at"]} (the slider\'s row “{rm["time"]}”), the strip at {rm["strip"]}')
             if any(abs(x - y) > 1 for x, y in zip(k['strip'], k['slider'])) or k['knob'] is None or k['needle'] is None or abs(k['knob'] - k['needle']) > 2:
                 bad(f'Your trip: the strip at {k["strip"]}, the slider at {k["slider"]}, the knob at {k["knob"]}, the needle at {k["needle"]}')
+            # a point moved in Your trip, the trip still in reach (out of it for a moment while its forecast comes): 48 hours
+            # opens the planner again (the advisor's probe on #1008)
+            if wd >= 300:
+                pg.tap(*pg.js(TL_ROOM)['tripAt'])
+                time.sleep(0.8)
+                pg.js("(async () => { const p = polku.planner; p.movePoint(2, [p.points[2][0] + 0.002, p.points[2][1]]); await new Promise((r) => setTimeout(r, 1500)); return true; })()")
+                held = pg.js("({ span: polku.weather.span, sheet: polku.planner.panel.dataset.state })")
+                pg.tap(*pg.js(TL_ROOM)['h48At'])
+                time.sleep(0.8)
+                if held != {'span': 'trip', 'sheet': 'folded'} or pg.js("polku.planner.panel.dataset.state") != 'peek':
+                    bad(f'Your trip, a point moved: {held}; 48 hours: the planner {pg.js("polku.planner.panel.dataset.state")}')
             fails.extend(f'{name}: console: {x[:160]}' for x in pg.errors())
         finally:
             pg.close()
