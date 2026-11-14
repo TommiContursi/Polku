@@ -80,6 +80,24 @@
         ],
         "createdAt": "2026-11-12T18:24:40.150Z",
         "reason": "Claude: nothing auto-scrolls; the phone's row of layer buttons scrolls only by the user's swipe, with a fade at the edge (scrollLeft is set once on open to show the first layer that is on)"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/best-time-to-leave.html"
+        ],
+        "createdAt": "2026-11-14T22:15:37.167Z",
+        "reason": "Claude: the mock-up has no auto-scrolling content, no @keyframes or animation; the hour strip's scrollLeft is set once on draw"
+      },
+      {
+        "rule": "radial-halo",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/best-time-to-leave.html"
+        ],
+        "createdAt": "2026-11-14T22:15:37.223Z",
+        "reason": "Claude: hard-edged radial gradients (0 60%, transparent 61%) draw the stand-in map's water and woods behind the phone frame, not a glow"
       }
     ]
   }
