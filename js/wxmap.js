@@ -202,7 +202,7 @@ export class WeatherOverlay {
   setOpen(on) {
     if (!on) { this.release(); this.span = '48'; } // (closed, it opens again at 48 hours, at Now)
     this.open = on;
-    this.renderTrip();
+    this.renderTrip(!on);
     if (!this.docked) this.bar.hidden = !on;
     this.wake();
     // a phone's row of layers opens with the first that's on in sight, clear of the fade at its edge (32 px), at once (a
@@ -1258,8 +1258,9 @@ export class WeatherOverlay {
   // ------------------------------------------------------------------ your trip (#869's build, PR 2)
   // The trip's row as the route's times are (app.onAnalysis(), on every change of the route, its departure and its
   // forecast, and Leave now's clock): shown while the route has times, Your trip greyed when it starts past the map's 48
-  // hours, the trip view left when the trip goes or moves out of reach, and its hour kept inside the trip's window
-  renderTrip() {
+  // hours, the trip view left when the trip goes or moves out of reach, and its hour kept inside the trip's window.
+  // `back`: Your trip left by 48 hours or ✕, the ways back to the 48 hours you asked for (a phone's planner opens again)
+  renderTrip(back = false) {
     const tr = this.trip = this.app.trip ? this.app.trip() : null, days = tr ? tr.days : [];
     this.day = Math.min(this.day, Math.max(0, days.length - 1));
     if (this.span === 'trip' && !(tr && this.reaches(days[this.day]))) this.span = '48';
@@ -1268,7 +1269,7 @@ export class WeatherOverlay {
     this.bar.classList.toggle('trip', zoomed); // (a phone's reading on one line over the strip: css/app.css)
     // the app hears when Your trip comes into sight or goes (a phone's planner folds for it), not on every drawing
     const shown = zoomed && this.open;
-    if (shown !== !!this.tripShown) { this.tripShown = shown; this.app.onTripView?.(shown); }
+    if (shown !== !!this.tripShown) { this.tripShown = shown; this.app.onTripView?.(shown, back); }
     this.tripRow.hidden = !tr;
     const [b48, bTrip] = this.spanSeg.children;
     b48.setAttribute('aria-pressed', String(!zoomed));
@@ -1341,7 +1342,7 @@ export class WeatherOverlay {
     this.stepAt = null;
     const z = this.tripWin();
     if (z) this.hour = this.hourOn(z, at != null || (t >= z.tw0 && t <= z.tw1) ? t : z.d.t0); // (the card's time kept inside the window)
-    this.renderTrip();
+    this.renderTrip(k === '48');
     if (z) this.setHour(this.hour);
   }
   setDay(j) {

@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Room for your trip on a phone ([#869](https://github.com/TommiContursi/Polku/issues/869))
 
-- On a phone, or in a narrow window, **Your trip** in the weather timeline folds the planner to its line, so the map has room above the timeline. **48 hours** or the timeline's **✕** opens the planner again as it was. If you open the planner yourself meanwhile, or it was folded already, it stays as you have it. The first time, a note says so.
+- On a phone, or in a narrow window, **Your trip** in the weather timeline folds the planner to its line, so the map has room above the timeline. **48 hours** or the timeline's **✕** opens the planner again as it was; leaving your trip another way, such as a tap on a place's weather, leaves it folded. If you open the planner yourself meanwhile, or it was folded already, it stays as you have it. The first time, a note says so.
 - Zoomed to your trip there, the weather reading is one line over the strip, with the time and where you'll be at its end, and the strip runs the timeline's whole width, so you can set the time more precisely. The slider's knob stays under the strip's line for the time.
 - Your trip's time no longer jumps an hour ahead when the clock passes the hour while the timeline is open ([#1004](https://github.com/TommiContursi/Polku/issues/1004)).
 

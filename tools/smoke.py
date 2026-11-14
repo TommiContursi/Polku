@@ -13340,6 +13340,21 @@ def timeline_trip(chrome):
                 r2 = pg.js(TL_ROOM)
                 if r48['sheet'] != 'peek' or r48['sw'][:2] != a['sw'] or r48['at'] is not None or r2['sheet'] != 'folded' or r2['sw'] != rm['sw'] or 'The planner folds' in r2['toast']:
                     bad(f'48 hours, then Your trip again: the planner {r48["sheet"]} then {r2["sheet"]}, the switch at {a["sw"]}, {r48["sw"]} then {r2["sw"]} (was {rm["sw"]}), the time over the strip {r48["at"]}, the words “{r2["toast"]}”')
+                # Weather here on a spot's card in Your trip (the spot's card as a hold on the map opens it, Weather here pressed
+                # as a person does): the 48 hours at the spot, and the planner left folded, not opened over the spot's pin
+                # (the review of the motion, 2026-11-14)
+                pg.js("(async () => { polku.planner.openSpotCard(polku.map.unproject([innerWidth / 2, 200]).toArray(), { pin: true }); await new Promise((r) => setTimeout(r, 800)); return true; })()")
+                here = pg.js("""(() => { const b = [...(polku.planner.cards.box?.querySelectorAll('button') || [])].find((x) => /^Weather here/.test(x.textContent.trim()));
+                  if (!b) return null; const r = b.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2; return document.elementFromPoint(x, y)?.closest('button') === b ? [x, y] : null; })()""")
+                if not here:
+                    bad('no Weather here in sight on the spot\'s card at its peek')
+                else:
+                    press(*here)
+                    held = pg.js("({ span: polku.weather.span, held: !!polku.weather.heldLL, sheet: polku.planner.panel.dataset.state, card: polku.planner.cards.current?.kind || null })")
+                    if held['span'] != '48' or not held['held'] or held['sheet'] != 'folded':
+                        bad(f'Weather here in Your trip: {held}')
+                pg.js("(async () => { polku.planner.cards.close(); polku.weather.release(); await new Promise((r) => setTimeout(r, 300)); return true; })()")
+                press(*pg.js(TL_ROOM)['tripAt'])
                 # the planner opened again by you while you look at your trip (its line tapped), then folded again: yours, so
                 # it stays folded on 48 hours
                 pg.js("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.els.foldGo.click(); await wait(600); p.els.foldBtn.click(); await wait(600); return true; })()")

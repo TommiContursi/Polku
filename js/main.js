@@ -593,8 +593,9 @@ const weather = new WeatherOverlay(map, {
   openWeather: (day) => planner.openWeather({ day }),
   // a phone's Your trip takes the room of the planner's peek (#869): what's in the sheet (the planner, or a card at its
   // peek) folds to its line while the timeline shows your trip, said in words the first time, and opens as it was on 48
-  // hours or ✕. One folded already is left folded, and one you open again meanwhile is yours (below)
-  onTripView: (on) => {
+  // hours or ✕ (`back`); left another way (Weather here, a place's weather, an hour outside the trip, the route changed)
+  // it stays folded, yours from then on. One folded already is left folded, and one you open again meanwhile is yours (below)
+  onTripView: (on, back) => {
     const p = planner;
     if (on && !weather.floatMQ.matches && p.layout() === 'sheet' && !p.panel.hidden && p.panel.dataset.state !== 'folded' && p.foldable()) {
       p.fold();
@@ -602,7 +603,7 @@ const weather = new WeatherOverlay(map, {
       if (!store.get('tripFoldTold', false)) { store.set('tripFoldTold', true); toast('The planner folds while you look at your trip, and opens again on 48 hours'); }
     } else if (!on && tripFold) {
       tripFold = false;
-      if (p.panel.dataset.state === 'folded') p.unfold();
+      if (back && p.panel.dataset.state === 'folded') p.unfold();
     } else return;
     if (p.cards.folded && p.cards.saved) p.cards.saved = p.cards.keepState(); // (under a card's banner: closing the card leaves the planner as this left it)
   },
