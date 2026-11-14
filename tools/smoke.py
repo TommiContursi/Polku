@@ -5864,7 +5864,8 @@ ROUTE_BITS = """(async () => {
   if (p.cards.current) errs.push('a click beside an open card left it open');
   p.openPointCard(p.points[0]);
   if (![...document.querySelectorAll('.pl-way.card .way-x, #planner .sheet-x')].some((b) => b.getClientRects().length)) errs.push('the point’s card has no close button');
-  if (![...document.querySelectorAll('.pl-way.card .row b')].some((b) => b.textContent === 'Leave')) errs.push('no Leave in the start point’s card');
+  // When's row (#969), found by its control, not its words: "Leave now", "Leave at 18:00" (#978)
+  if (!document.querySelector('.pl-way.card .when-row[data-k=when]')?.getClientRects().length) errs.push('no When row in the start point’s card');
   p.cards.close();
   p.clear();
   return errs;
@@ -12984,7 +12985,8 @@ WC_JS = """(async () => {
   if (!/^0 mmrain$/.test(dry)) errs.push(`a dry day's rain: “${dry}”`);
   // snow on you is the forecast's snowfall in cm, as Check sums it, not the rain's mm called cm (#973's review)
   set(wind({ temp: fill(-2), precip: fill(3), snowfall: fill(0.3), series: [series(-6, -2)] })); await wait(200);
-  const snow = p.cards.box?.querySelectorAll('.wx-nums .sum-item')[2]?.textContent || '', hrs = (T.at(n - 1) - T.at(0)) / 3600, got = parseFloat(snow);
+  // (the trip's times as they are now: each forecast set times the route again, #1006)
+  const snow = p.cards.box?.querySelectorAll('.wx-nums .sum-item')[2]?.textContent || '', Ts = p.trip(), hrs = (Ts.at(n - 1) - Ts.at(0)) / 3600, got = parseFloat(snow);
   if (!/ cmsnow$/.test(snow) || Math.abs(got - Math.max(0.1, 0.3 * hrs)) > 0.15 + 0.05 * hrs) errs.push(`snow on you: “${snow}” for ${hrs.toFixed(2)} h of 0.3 cm an hour (3 mm an hour of water)`);
   // Time on the way: the wind's row only where it changes the time (#766)
   p.cards.box.querySelector('[data-k=time]').click(); await wait(200);
@@ -13032,7 +13034,7 @@ WC_JS = """(async () => {
   const picked = { pressed: cols()[firstOn + 1]?.getAttribute('aria-pressed'), dot: await dot() };
   cols()[firstOn + 1]?.click(); await wait(100);
   const unpicked = { pressed: cols()[firstOn + 1]?.getAttribute('aria-pressed'), dot: await dot() };
-  const mid = Math.round(n / 2), want = String(Math.round((T.at(mid) - H[0].t) / 3600));
+  const mid = Math.round(n / 2), Tm = p.trip(), want = String(Math.round((Tm.at(mid) - H[0].t) / 3600)); // (the times now, as wxPoint() reads them, #1006)
   p.hoverAt(mid); await wait(50);
   const lit = [...(strip()?.querySelectorAll('.wx-hs-strip .lit') || [])].map((c) => c.dataset.h);
   p.hoverAt(-1); await wait(50);
@@ -13042,7 +13044,7 @@ WC_JS = """(async () => {
   p.hoverAt(-1); strip().dataset.h0 = String(+strip().dataset.h0 - 86400); await wait(50);
   if (other.length) errs.push(`the route's pointer at an hour a day before the strip's lit ${other.join(',')}, not none`);
   if (picked.pressed !== 'true' || !picked.dot || unpicked.pressed !== 'false' || unpicked.dot || !lit.length || lit.some((h) => h !== want) || strip()?.querySelector('.lit'))
-    errs.push(`an hour's tap: ${JSON.stringify(picked)}, again ${JSON.stringify(unpicked)}; the route's pointer at ${p.clockOf(T.at(mid))} lit ${lit.join(',') || 'none'} (want ${want}), then ${strip()?.querySelector('.lit') ? 'stays lit' : 'none'}`);
+    errs.push(`an hour's tap: ${JSON.stringify(picked)}, again ${JSON.stringify(unpicked)}; the route's pointer at ${p.clockOf(Tm.at(mid))} lit ${lit.join(',') || 'none'} (want ${want}), then ${strip()?.querySelector('.lit') ? 'stays lit' : 'none'}`);
   // …a tap on the rain's columns at an hour: the route by the rain, the map's weather at that hour, the card a banner
   set(wind({ precip: fill(1), series: [{ ...series(1), precip: hours(1) }] })); await wait(300);
   const j = firstOn + 1, k0 = Math.floor((H[j].t - Math.floor(Date.now() / 3600000) * 3600) / 3600);
