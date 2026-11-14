@@ -13313,6 +13313,10 @@ def timeline_zoom(chrome):
                 z = pg.js(TL_ZOOM)
                 if not z['trip'] or z['sheet'] != 'folded' or z['top'] < z['bar'] or z['bottom'] > z['vh'] or not z['x'] or not z['sw'] or len(set(z['over'])) > 1:
                     bad(f"Your trip: the timeline at y {z['top']}–{z['bottom']} (the top bar's foot {z['bar']}, the window {z['vh']}), the planner {z['sheet']}, ✕ a scroll up {z['x']}, scrolling {z['scrolls']}, 48 hours in sight at its foot {z['sw']}")
+                # scrolled up to its head, it stays there as it grows (Snow depth's fourth line)
+                up = pg.js("(async () => { const b = document.querySelector('#wx-bar'), snow = b.querySelector('.tl-layers [data-k=snow]'), wait = (ms) => new Promise((r) => setTimeout(r, ms)); b.scrollTop = 0; await wait(200); snow.click(); await wait(800); const t = b.scrollTop; snow.click(); await wait(300); return t; })()")
+                if up > 2:
+                    bad(f'Your trip: scrolled up to the timeline\'s head, Snow depth turned on moved it {up} px down')
             fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()

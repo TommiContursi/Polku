@@ -562,7 +562,7 @@ initSearch(map, $('#search-input'), $('#search-results'), {
 // Weather overlay: image sources are swapped in place when possible; adding or
 // removing one goes through a (diffed) style rebuild.
 let tripLit = null, tripFold = null; // (what Your trip folded in a phone's sheet: tripInSheet())
-let wxFoot = true; // (a phone's timeline held to its room, scrolled to its foot, where it stays as it grows: syncWxH())
+let wxFoot = true, wxPinned = -1; // (a phone's timeline held to its room, scrolled to its foot, where it stays as it grows: syncWxH())
 // what's in the sheet: a card open at its peek, else the planner
 const tripInSheet = () => (planner.cards.place === 'peek' ? planner.cards.current : 'planner');
 const weather = new WeatherOverlay(map, {
@@ -2021,7 +2021,8 @@ function syncWxH() {
   const fresh = capped && !b.style.maxHeight;
   b.style.maxHeight = capped ? `${room}px` : '';
   b.style.overflowY = capped ? 'auto' : '';
-  if (capped && (fresh || wxFoot)) b.scrollTop = b.scrollHeight; // (not when you've scrolled up to its head)
+  if (capped && (fresh || wxFoot)) { b.scrollTop = b.scrollHeight; wxPinned = b.scrollTop; wxFoot = true; } // (not when you've scrolled up to its head)
+  if (!capped) wxFoot = true;
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
   document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
@@ -2032,7 +2033,8 @@ function syncWxH() {
 }
 // (its rows come and go, Your trip's too: a card beside the side panel kept clear of it, as when the window changes size;
 // its rows watched too, which change no size of its own where it's held to its room)
-$('#wx-bar').addEventListener('scroll', (e) => { wxFoot = e.target.scrollTop + e.target.clientHeight >= e.target.scrollHeight - 2; });
+// (scrolled by you; the scroll it was put to itself comes after its rows have grown, and isn't yours)
+$('#wx-bar').addEventListener('scroll', (e) => { if (e.target.scrollTop !== wxPinned) wxFoot = e.target.scrollTop + e.target.clientHeight >= e.target.scrollHeight - 2; });
 const wxRows = new ResizeObserver(() => { syncWxH(); if (planner.layout() === 'side') planner.keepBeside(); });
 [$('#wx-bar'), ...$('#wx-bar').children].forEach((el) => wxRows.observe(el));
 
