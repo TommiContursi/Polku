@@ -146,7 +146,7 @@ const DIRS = {
 // than its rows; a row's name is in the text's weight; a value you set is green on a soft well; an action is a button.
 a: GIVENS + `
 .sum-item > b { font-family: var(--f-fig) !important; font-size: 27px !important; font-weight: 700 !important; line-height: 1.05; letter-spacing: -.025em; }
-.u { font-size: .58em !important; font-weight: 500 !important; letter-spacing: 0; color: var(--muted); }
+.u { font-size: max(.58em, 12px) !important; font-weight: 500 !important; letter-spacing: 0; color: var(--muted); }
 .sum-item > small { font-size: 13px !important; font-weight: 400 !important; color: var(--muted); margin-top: 3px; }
 .top-sum b { font-weight: 700; }
 .trip-there { font-size: 17px !important; font-weight: 700 !important; }
@@ -167,7 +167,7 @@ a: GIVENS + `
 .mode-select-chev { color: var(--accent); }
 .row .val, .sec-sum { color: var(--accent); font-weight: 700; }
 .modebtn b, .stylebtn .two > span, .sportbtn > span { color: var(--accent); }
-.act-current { background: var(--glass-control); color: var(--accent); box-shadow: var(--shadow), var(--edge); }
+.act-current { background: var(--glass-control); -webkit-backdrop-filter: var(--glass-control-filter); backdrop-filter: var(--glass-control-filter); color: var(--accent); box-shadow: var(--shadow), var(--edge); }
 .btn { font-weight: 600; }
 .btn:not(.primary):not(.danger):not(.danger-text) { background: var(--surface-solid); border-color: var(--line-hc); }
 .pl-tab { font-size: 15px; }
@@ -181,13 +181,13 @@ b: GIVENS + `
 :root:not([data-theme="dark"]) { --surface-2: #e8eee2; }
 :root[data-theme="dark"] { --glass-read: rgba(10, 30, 22, .76); --glass-control: rgba(10, 30, 22, .86); --surface-solid: #0f241b; --surface-2: #183327; --seg-on: #2e4c3d; }
 .sum-item > b { font-family: var(--f-fig) !important; font-variation-settings: var(--f-shape); font-size: 33px !important; font-weight: 750 !important; line-height: 1; letter-spacing: -.01em; }
-.u { font-family: var(--f-ui) !important; font-variation-settings: normal; font-size: .46em !important; font-weight: 400 !important; letter-spacing: 0; color: var(--muted); }
+.u { font-family: var(--f-ui) !important; font-variation-settings: normal; font-size: max(.46em, 12px) !important; font-weight: 400 !important; letter-spacing: 0; color: var(--muted); }
 .sum-item > small { font-size: 13px !important; font-weight: 400 !important; color: var(--muted); margin-top: 4px; }
 .top-sum b { font-family: var(--f-fig); font-variation-settings: var(--f-shape); font-weight: 750; }
 .trip-there { font-family: var(--f-fig) !important; font-variation-settings: var(--f-shape); font-size: 19px !important; font-weight: 750 !important; }
-.wpl-when > b { font-family: var(--f-fig) !important; font-variation-settings: var(--f-shape); font-size: 17px !important; font-weight: 750 !important; }
+.wpl-when > b { font-size: 16px !important; font-weight: 700 !important; }
 .wpl-when > small { font-size: 13px !important; font-weight: 400 !important; }
-.wpl-nums, .sec2-t small, .kf-b b, .bd-item > b { font-family: var(--f-fig); font-variation-settings: var(--f-shape); font-weight: 700; font-size: 16px; }
+.wpl-nums, .sec2-t small, .kf-b b, .bd-item > b { font-weight: 700; }
 .sec2-t small { color: var(--text); }
 .menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .bd-group-toggle, #search-results li.r-group, .how-h, .speed-sport, .style-label, .bd-heading > span:first-child, .tl-title, .qd-lab, .qd-lab h3 { font-family: var(--f-hd) !important; font-variation-settings: "wdth" 92, "opsz" 20; font-size: 17px !important; font-weight: 700 !important; color: var(--text); }
 .sec2-t b { font-family: var(--f-hd) !important; font-variation-settings: "wdth" 90, "opsz" 24; font-size: 19px !important; font-weight: 750 !important; }
@@ -201,7 +201,7 @@ b: GIVENS + `
 .mode-select-chev { color: var(--accent); }
 .row .val, .sec-sum { color: var(--accent); font-weight: 700; }
 .modebtn b, .stylebtn .two > span, .sportbtn > span { color: var(--accent); }
-.act-current { background: var(--glass-control); color: var(--accent); box-shadow: var(--shadow), var(--edge); }
+.act-current { background: var(--glass-control); -webkit-backdrop-filter: var(--glass-control-filter); backdrop-filter: var(--glass-control-filter); color: var(--accent); box-shadow: var(--shadow), var(--edge); }
 .btn { font-weight: 700; }
 .btn:not(.primary):not(.danger):not(.danger-text) { background: var(--surface-solid); border-color: var(--line-hc); }
 .pl-tab { font-size: 15px; font-weight: 700; }
@@ -217,7 +217,7 @@ c: GIVENS + `
 .sum-item:first-child { border-left: 0; }
 .sum-item > small { order: -1; font-size: 12px !important; font-weight: 700 !important; color: var(--muted); margin: 0 0 2px; line-height: 1.2; }
 .sum-item > b { font-family: var(--f-fig) !important; font-size: 23px !important; font-weight: 800 !important; line-height: 1.05; letter-spacing: -.02em; white-space: nowrap; }
-.u { font-size: .56em !important; font-weight: 600 !important; letter-spacing: 0; color: var(--muted); }
+.u { font-size: max(.56em, 12px) !important; font-weight: 600 !important; letter-spacing: 0; color: var(--muted); }
 .trip-box, .when-box, .day { background: var(--surface-solid); }
 .trip-there { font-size: 17px !important; font-weight: 800 !important; }
 .wpl-when > b { font-size: 16px !important; font-weight: 800 !important; }
@@ -337,7 +337,7 @@ const UNIT = /(\d)(\s?)(km\/h|m\/s|min\/km|m\/h|km|min|h|m|°C|°|%)(?![\p{L}\d]
 function unitWrap(doc) {
   // the one markup change: a number's unit in its own element, so it can be smaller and quieter than the number
   // a number that stands alone (the numbers row, a point's distance, the arrival, a card's numbers); not in running text
-  for (const el of doc.querySelectorAll('.sum-item > b, .bd-item > b, .top-sum b, .fold-go b, .wpl-when > b, .trip-there, .insp-num b, .pt-num b, .stat b, .card-num b, .wpl-nums, .sec2-t small')) {
+  for (const el of doc.querySelectorAll('.sum-item > b, .top-sum b, .fold-go b, .wpl-when > b, .trip-there, .insp-num b, .pt-num b, .stat b, .card-num b')) {
     const walk = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT); const nodes = []; while (walk.nextNode()) nodes.push(walk.currentNode);
     for (const n of nodes) {
       if (n.parentElement.closest('.u')) continue;
@@ -531,9 +531,12 @@ table { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums li
 
 // The notes under the frames: what each direction is, what it costs, and the recommendation. The plan has the rest.
 document.getElementById('notes').innerHTML = `
-<h2>The recommendation: B, Field guide</h2>
-<p>It tells a number, a heading and a control apart by voice as well as by size: numbers at the glance size in narrow Bricolage, headings in Bricolage, everything you read or tap in Atkinson, made for legibility. It keeps look B's glass as it is, and it gives the app and Polku's web pages one family, the one #995 drew.</p>
-<p><b>What it costs:</b> about 111 KB of fonts, loaded once and kept offline with the app (less once cut to the letters Polku uses); on a slow first load the words show in the device's font until the files arrive. DESIGN.md's typography is rewritten. <b>The one alternative:</b> C with B's typefaces (<b>More switches → Typeface → Bricolage + Atkinson</b>), if you want the strongest separation in bright sun, at the cost of more solid blocks over the map.</p>
+<h2>Two choices, one at a time</h2>
+<p>A and B share one way of telling things apart (type, and green wells for what you set); B adds its two typefaces, bigger numbers and a spruce dark theme. C tells them apart by material. So the choice is really two: <b>how things are told apart</b>, then <b>the typeface</b>, which <b>More switches → Typeface</b> puts on any direction.</p>
+<p><b>First, the recommendation: C's plates and keys.</b> The numbers you read at a glance sit on a solid plate, never on the glass, and everything you press is a key with an edge, so a number and a control can't be mistaken for each other in the sun. The sheet and the panels stay glass. <b>What it costs:</b> the most CSS of the three (every control's background and edge) and more solid blocks over the map. <b>The alternative:</b> A's type and wells, lighter and closest to today.</p>
+<p><b>Then the typeface,</b> asked once the first is settled: the lean is #995's Bricolage + Atkinson (about 111 KB once, kept offline), with Atkinson alone (34 KB) or the device's own (none) as the cheaper ways.</p>
+<h2>What this round doesn't answer yet</h2>
+<p>Layout. The glass cards stacked at the peek, the desktop toolbar's fifteen controls, the meters (On the route's bars, the profile) and the switches look the same in every direction here: that's the next pass, on the chosen direction.</p>
 <h2>What every direction keeps</h2>
 <ul>
 <li>Look B: the glass, its edge, one shadow, the modes that turn it solid, the map first.</li>
