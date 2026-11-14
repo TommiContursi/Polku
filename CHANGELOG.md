@@ -2,6 +2,13 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-14
+
+### Each day's weather on a trip with nights ([#981](https://github.com/TommiContursi/Polku/issues/981))
+
+- On a trip with nights, each day's weather comes from that day's own hours. The day before a night no longer counts the next morning's weather at the place you stop, so its notes, numbers and sky no longer say "around Sat 08:00" on a Friday. A warning on the next day starts where you set off again.
+- In **Wind on the way** and the weather card's notes, a short stretch inside one kilometre says that kilometre once, such as "km 2", instead of "km 2 to 2".
+
 ## 2026-11-13
 
 ### The weather card and the timeline one tap apart ([#869](https://github.com/TommiContursi/Polku/issues/869))

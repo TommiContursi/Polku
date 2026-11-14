@@ -7373,7 +7373,7 @@ export class Planner {
   // a day's notes as the weather card has them, worst first, three at most (the dark alone without the day's forecast;
   // a day under half an hour, the card's one line, has them too). The timeline's ‹ › step through them
   wxNotes(a, d) {
-    const wx = a.wind && dayWeather(a.wind, a, d.i0, d.i1);
+    const wx = a.wind && dayWeather(a.wind, a, ...ownSamples(a, d));
     return !wx || wx.none ? this.darkNotes(a, d) : this.dayFacts(a, d, wx).notes;
   }
   // …the dark as the day's one note, the sun's: no forecast needed
@@ -7395,7 +7395,7 @@ export class Planner {
   // A day's weather in the box: the temperature, rain and the dark, never the wind (each sport's row says it); missing
   // or late forecasts in words
   boxLine(a, d) {
-    const w = a.wind, wx = w && dayWeather(w, a, d.i0, d.i1), dark = this.darkOf(a, d), rain = wx && !wx.none && this.dayRain(a, d, wx);
+    const w = a.wind, wx = w && dayWeather(w, a, ...ownSamples(a, d)), dark = this.darkOf(a, d), rain = wx && !wx.none && this.dayRain(a, d, wx);
     const said = !w ? (a.windError ? 'forecast unavailable' : 'loading the forecast…') : !wx ? '' : wx.none ? 'no forecast yet'
       : [degRange(wx.tMin, wx.tMax), !rain.wet ? 'dry' : wx.wetM > 0 ? `${rain.snow ? 'snow' : 'rain'} on ${fmtDist(wx.wetM)}` : `a little ${rain.snow ? 'snow' : 'rain'}`,
         this.daySky(a, d, wx) === 'thunder' && 'a risk of thunder', wx.beyond ? `no forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}` : wx.unsure ? 'less certain' : ''].filter(Boolean).join(' · ');
@@ -7410,7 +7410,7 @@ export class Planner {
     this.els.there.textContent = `→ ${this.isLoop() ? 'back' : 'there'} at ${T.clock(T.end)}`;
     const days = this.wxDays(a), many = days.length > 1;
     this.els.boxDays.replaceChildren(...days.map((d, k) => {
-      const wx = a.wind && forecastKnown(a.wind, d.i0) && dayWeather(a.wind, a, d.i0, d.i1), line = this.boxLine(a, d);
+      const wx = a.wind && forecastKnown(a.wind, d.i0) && dayWeather(a.wind, a, ...ownSamples(a, d)), line = this.boxLine(a, d);
       const row = item({ icon: wx && !wx.none ? `sky-${this.daySky(a, d, wx)}` : 'cloudSun', label: many ? `Day ${d.n} · ${shortDate(d.t0)}` : line, line: many ? line : '', chev: true, k: `day-${d.n}`,
         onclick: (e) => this.openWeather({ day: k, el: e.currentTarget }) });
       row.setAttribute('aria-label', `${many ? `Day ${d.n} · ${shortDate(d.t0)}` : 'The weather'}: ${line}. Open the weather on the way`); // (its words as shown, WCAG 2.5.3)
@@ -7426,9 +7426,9 @@ export class Planner {
   }
   // the day's sky, for the box and the card alike: thunder anywhere you are that day, then rain or snow, else the sky midway
   daySky(a, d, wx) {
-    const w = a.wind, i0 = Math.max(1, d.i0), r = this.dayRain(a, d, wx);
-    if (w.thunder && runsOf(a, i0, d.i1, (i) => forecastKnown(w, i) && w.thunder[i] === 1).length) return 'thunder';
-    return r.wet ? (r.snow ? 'snow' : 'rain') : this.skyAt(a, Math.round((i0 + d.i1) / 2));
+    const w = a.wind, [i0, i1] = ownSamples(a, d), r = this.dayRain(a, d, wx);
+    if (w.thunder && runsOf(a, i0, i1, (i) => forecastKnown(w, i) && w.thunder[i] === 1).length) return 'thunder';
+    return r.wet ? (r.snow ? 'snow' : 'rain') : this.skyAt(a, Math.round((i0 + i1) / 2));
   }
 
   // The weather card from the trip's box, the numbers' time, Check's items or the key facts: at a day (framed on the map
@@ -7509,7 +7509,7 @@ export class Planner {
     // with no forecast (loading, failed, or not this far yet) the dark still counts: it's the sun's
     const dark = () => { const dn = this.darkNotes(a, d); if (dn.length) el.append(tell(dn, false)); return [el, null]; };
     if (!w) return dark();
-    const wx = dayWeather(w, a, d.i0, d.i1);
+    const wx = dayWeather(w, a, ...ownSamples(a, d));
     const say = (sky, text, none = false) => h('p', { class: `wx-say${none ? ' none' : ''}` }, h('span', { class: `wx-sky ${sky}`, role: 'img', 'aria-label': SKY_WORDS[sky], html: icon(`sky-${sky}`, 28) }), h('span', {}, text));
     if (wx.none) {
       if (w.beyond !== 0 || k === 0) el.append(say('cloud', `No forecast yet for ${dayOf(d.t0)}`, true), h('p', { class: 'note wx-note' }, 'The forecast reaches 10 days ahead.'));
@@ -7536,7 +7536,7 @@ export class Planner {
   // where Check has the limit), its numbers (one feels like: at 10 °C or colder Polku's own at your speed, warmer the
   // forecast's), and the trip line's legs and lanes, every value read where you are when you're there
   dayFacts(a, d, wx) {
-    const w = a.wind, T = tripTimes(a), n = a.along.length, i0 = Math.max(1, d.i0), i1 = d.i1, span = Math.max(1, d.to - d.from);
+    const w = a.wind, T = tripTimes(a), n = a.along.length, [i0, i1] = ownSamples(a, d), span = Math.max(1, d.to - d.from);
     const pos = (i) => Math.max(0, Math.min(1, (a.along[i] - d.from) / span)), km = (i) => Math.max(1, Math.round(a.along[i] / 1000));
     const known = (i) => forecastKnown(w, i), sport = (i) => (a.attr[i] && a.attr[i].sport) || a.activity;
     const water = (i) => (a.attr[i] || {}).mode === 'water' || isWater(sport(i)), group = (i) => groupOf(sport(i));
@@ -7565,7 +7565,7 @@ export class Planner {
     const air = (wx.tMin + wx.tMax) / 2, skyMid = this.skyAt(a, Math.round((i0 + i1) / 2));
     const tw = air <= -10 ? 'Very cold' : air <= 0 ? 'Freezing' : air <= 7 ? 'Cold' : air <= 14 ? 'Cool' : air <= 22 ? 'Mild' : air <= 27 ? 'Warm' : 'Hot';
     const rw = !rain.wet ? (skyMid === 'sun' ? 'sunny' : skyMid === 'moon' ? 'clear' : 'dry') : rain.peak >= 4 ? `heavy ${fall}` : fell >= 1 ? fall : `a little ${fall}`;
-    const later = rain.wet && wet.length && pos(wet[0].i0) > 0.15 ? 'then ' : '', sh = this.windShares(a, d.i0, d.i1);
+    const later = rain.wet && wet.length && pos(wet[0].i0) > 0.15 ? 'then ' : '', sh = this.windShares(a, i0, i1);
     const ww = `${wx.wind < 4 ? 'a light wind' : wx.wind < 8 ? 'a moderate wind' : wx.wind < 14 ? 'a fresh wind' : wx.wind < 21 ? 'a strong wind' : 'a storm'}${sh.most ? ` ${sh.most}` : ''}`;
     const sky = this.daySky(a, d, wx);
     const sentence = storm.length ? `${tw}, ${rain.wet ? `${later}${rw} and ` : ''}a risk of thunder` : rain.wet ? `${tw}, ${later}${rw}, ${ww}` : `${tw} and ${rw}, ${ww}`;
@@ -7599,14 +7599,14 @@ export class Planner {
     check(33, 'plain', 'snow', (x) => x.kind === 'winter' && /^Snow/.test(x.text), 'snow');
     if (strong.length) {
       const long = strong.reduce((b, r) => (r.len > b.len ? r : b)), max = Math.round(Math.max(...strong.map((r) => top(r, w.head))));
-      add(34, 'plain', 'wind', strong.length === 1 ? `Headwind up to ${max} m/s, km ${km(long.i0)} to ${km(long.i1)}` : `Headwind up to ${max} m/s on ${strong.length} stretches, the longest km ${km(long.i0)} to ${km(long.i1)}`, long.i0, long.i1, 'wind');
+      add(34, 'plain', 'wind', strong.length === 1 ? `Headwind up to ${max} m/s, ${kmSpan(km, long.i0, long.i1)}` : `Headwind up to ${max} m/s on ${strong.length} stretches, the longest ${kmSpan(km, long.i0, long.i1)}`, long.i0, long.i1, 'wind');
     }
-    if (sea.length) add(34, 'plain', 'paddle', `Wind up to ${Math.round(Math.max(...sea.map((r) => top(r, w.speed))))} m/s on the water, km ${km(sea[0].i0)} to ${km(sea.at(-1).i1)}`, sea[0].i0, sea.at(-1).i1, 'wind');
+    if (sea.length) add(34, 'plain', 'paddle', `Wind up to ${Math.round(Math.max(...sea.map((r) => top(r, w.speed))))} m/s on the water, ${kmSpan(km, sea[0].i0, sea.at(-1).i1)}`, sea[0].i0, sea.at(-1).i1, 'wind');
     const dn = this.darkNote(a, d);
     if (dn) add(35, 'plain', 'moon', dn.text, dn.i0, dn.i1);
     const sunny = runs((i) => !water(i) && group(i) !== 'water' && w.cloud[i] < 50 && (() => { const p = sunPosition(T.at(i), a.pts[i]), hd = bearing(a.pts[Math.max(0, i - 2)], a.pts[Math.min(n - 1, i + 2)]);
       return p.alt > 0 && p.alt < 10 && Math.abs(((p.az - hd + 540) % 360) - 180) <= 30; })()).filter((r) => r.len >= 500);
-    if (sunny.length) add(36, 'plain', 'sun', `Low sun ahead around ${around(sunny[0].i0)}, km ${km(sunny[0].i0)} to ${km(sunny[0].i1)}`, sunny[0].i0, sunny[0].i1);
+    if (sunny.length) add(36, 'plain', 'sun', `Low sun ahead around ${around(sunny[0].i0)}, ${kmSpan(km, sunny[0].i0, sunny[0].i1)}`, sunny[0].i0, sunny[0].i1);
     if (this.wet && this.wet.on && ['mtb', 'gravel', 'trailrun', 'hike'].includes(sport(i0))) add(39, 'plain', 'drop', `It rained ${Math.round(this.wet.mm)} mm in the last day: trails may be wet and muddy`, i0);
     const shown = notes.sort((x, y) => x.rank - y.rank || x.i0 - y.i0).slice(0, 3).map((x, j) => ({ ...x, n: j + 1 }));
     // the numbers in their places; the waves a fourth on a paddle, where they're known
@@ -7711,7 +7711,7 @@ export class Planner {
             h('span', { class: 'wx-hs-p' }, wet ? h('i', { class: 'wx-hs-bar', style: `height: ${Math.max(3, Math.min(26, 10 * o.x.precip)).toFixed(1)}px; background: var(${LANE_COLOURS.rain[rainBand(o.x.precip, o.x.temp).key]})` }) : null)]; },
         (t) => this.wxLane(rl || { k: 'rain', name: Fall, stretches: [] }, t)),
       sec('wind', 'wind', 'Wind', `up to ${Math.round(wx.wind)} m/s`, !!wl || f.notes.some((m) => m.ic === 'wind'),
-        (() => { const sh = this.windShares(a, d.i0, d.i1), g = `, gusts up to ${Math.round(wx.gust)} m/s`; return wl ? lines(h('b', {}, cap(wl.val)), g) : sh.most ? lines(h('b', {}, `${cap(sh.most)} most of the way`), g) : lines(`Gusts up to ${Math.round(wx.gust)} m/s`); })(),
+        (() => { const sh = this.windShares(a, ...ownSamples(a, d)), g = `, gusts up to ${Math.round(wx.gust)} m/s`; return wl ? lines(h('b', {}, cap(wl.val)), g) : sh.most ? lines(h('b', {}, `${cap(sh.most)} most of the way`), g) : lines(`Gusts up to ${Math.round(wx.gust)} m/s`); })(),
         (o) => [h('span', { class: 'wx-hs-v' }, String(Math.round(o.x.speed))), h('span', { class: 'wx-hs-p', html: o.cls && o.cls !== 'calm' ? windArrow(o.rot, WIND_PAL[o.cls]) : '<i class="wx-hs-dot"></i>' })],
         (t) => this.wxLane(wl || { k: 'wind', name: 'Wind', stretches: [] }, t),
         [h('p', { class: 'wx-key wx-hs-key wx-pin', 'aria-hidden': 'true' }, ...[[180, 'against', 'against you'], [90, 'side', 'from the side'], [0, 'behind', 'behind you']].map(([r, c, t]) => h('span', { html: `${windArrow(r, c, 16)}${t}` }))),
@@ -7897,7 +7897,7 @@ export class Planner {
       h('p', { class: 'wx-key', 'aria-hidden': 'true' }, ...PARTS.map(([k, c, t]) => h('span', { style: `--k: var(${c})` }, `${t} ${sh[k]} %`))),
       h('p', { class: 'wx-foot' }, head.length ? 'Where it’s against you, strongest first' : 'No long headwinds.'),
       rows(...head.map((r) => pv(h('button', { type: 'button', class: 'row', 'data-k': 'headwind', onclick: () => this.focusRange(r.i0, r.i1, null) },
-        h('span', {}, h('b', {}, `km ${km(r.i0)} to ${km(r.i1)} · up to ${Math.round(r.max)} m/s`), h('small', {}, `around ${this.clockOf(Math.round(T.at(r.i0) / 600) * 600)} to ${this.clockOf(Math.round(T.at(r.i1) / 600) * 600)}`)),
+        h('span', {}, h('b', {}, `${kmSpan(km, r.i0, r.i1)} · up to ${Math.round(r.max)} m/s`), h('small', {}, `around ${this.clockOf(Math.round(T.at(r.i0) / 600) * 600)} to ${this.clockOf(Math.round(T.at(r.i1) / 600) * 600)}`)),
         h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })), r.i0, r.i1))),
       h('p', { class: 'wx-foot' }, `Strongest gusts ${Math.round(w.gust[gi])} m/s, around km ${km(gi)}`),
       h('button', { type: 'button', class: 'btn wx-map', 'data-k': 'wind-map', onclick: () => this.wxLane({ k: 'wind', name: 'Wind', stretches: head }) }, 'Show the wind on the map'));
@@ -7908,7 +7908,7 @@ export class Planner {
     const own = (i) => (i < 1 ? 0 : ((a.along[i] - a.along[i - 1]) / Math.max(1, T.at(i) - T.at(i - 1) - (a.waitAt ? a.waitAt[i] : 0))) * 3.6);
     const bodies = [];
     for (const d of days) {
-      if (dayWeather(w, a, d.i0, d.i1).none) continue;
+      if (dayWeather(w, a, ...ownSamples(a, d)).none) continue;
       const h0 = Math.floor(d.t0 / 3600) * 3600, h1 = Math.floor(d.t1 / 3600) * 3600, hours = this.dayHours(a, d).filter((x) => x.t >= h0 - 3600 && x.t <= h1 + 3600);
       if (many) bodies.push(h('tbody', {}, h('tr', {}, h('th', { scope: 'rowgroup', colspan: String(cols.length), class: 'wx-hday' }, `Day ${d.n} · ${shortDate(d.t0)}`))));
       bodies.push(h('tbody', {}, ...hours.map(({ t, x, on, sky, i }) => {
@@ -8006,6 +8006,12 @@ const LANE_WORDS = {
   thunder: { thunder: 'thunder possible' },
   waves: { under: 'under the craft’s limit', over: 'over it' },
 };
+// The samples whose forecast is a day's own (#981), [i0, i1]: each stands for the piece of the route that ends at it, so a
+// day after a night starts with the piece after the stop, and a day before one leaves out the stop's own sample (it's timed
+// when you go on in the morning)
+const ownSamples = (a, d) => [d.i0 + 1, d.i1 < a.along.length - 1 ? d.i1 - 1 : d.i1];
+// a stretch's kilometres by `km(i)`'s whole km: "km 12 to 20", or one km where both ends round to it (#999)
+const kmSpan = (km, i0, i1) => (km(i0) === km(i1) ? `km ${km(i0)}` : `km ${km(i0)} to ${km(i1)}`);
 // stretches of a route where pred(i) holds, from sample to sample: [{ i0, i1, len }]
 function runsOf(a, i0, i1, pred) {
   const out = [];
