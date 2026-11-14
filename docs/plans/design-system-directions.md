@@ -7,6 +7,10 @@ A design round on Polku's whole layout and look, apart from the map: the planner
 
 ## Where it stands
 
+**Round 4 (2026-11-14), after the user tried round 3:** Liquid glass's see-through buttons were hard to read, and the planner itself (the toolbar merged into the sheet's head, and the key facts as a stack of boxed rows) hurt in every direction. The glass worked well for Settings. The user chose to go back to C, much improved, with the planner properly redesigned.
+- **Drawn:** [C, improved](#round-4-c-improved-the-planner-redrawn) below, first in the mock-up's bar (**C, improved**, with **Palette**). The planner at the peek and at full is new markup; the other screens are a CSS layer over `main`. Rounds 1 to 3 are behind **More switches**.
+- **Waiting for the user:** whether this is the direction and the planner's arrangement. **The recommendation is yes**, then the typeface question.
+
 **Round 3 (2026-11-14), after the user tried round 2:** Neo-brutalism didn't work for the app (its web page did). Optical glass was closer, but its plain white plates broke the glass, and only the buttons felt raised while everything else stayed flat, so nothing seemed to float. The user pointed to Apple's guidance for Liquid Glass and welcomed a new arrangement of the planner where it helps.
 - **Drawn:** [Liquid glass](#round-3-liquid-glass) below, first in the mock-up's bar (**Liquid glass**, with **Palette**); round 2 and round 1 are behind **More switches**.
 - **Waiting for the user:** whether Liquid glass is the direction. **The recommendation is yes, with Moss green to start**, then the typeface question.
@@ -110,6 +114,35 @@ All three share the givens above and one markup change: a number's unit gets an 
 - **A heading:** 16–23 px heavy words in the text's colour.
 - **The typeface:** Atkinson Hyperlegible Next alone, made for legibility (its zero is slashed).
 - **Costs:** about 34 KB of fonts once; the most CSS of the three (every control's background and edge). **Risk:** more edges and solid blocks over the map, the opposite of look B's light glass, chosen on 2026-10-28 for showing the map through.
+
+## Round 4: C, improved, the planner redrawn
+
+**What three rounds taught:**
+- the numbers read best on a solid plate (round 1's C);
+- a control reads best when it's opaque, with an edge (C's keys), not see-through (round 3);
+- the glass works best as a panel holding grouped sections (rounds 2 and 3's Settings);
+- the planner's trouble is its arrangement, so a new skin doesn't fix it.
+
+**The planner, rearranged** (`plannerDoc()` in the build):
+- **The toolbar is never part of the sheet.** It's one group of keys floating on the map at the thumb: above the sheet at the peek, at the foot of the screen over a full sheet. Today it docks into the sheet's head at full height.
+- **The sheet's head is the route's plate:** distance, time and the warnings in one solid plate. The warnings cell is as decided for the Check card (#869, step 7), and ⚠ 1 opens it. Under the plate come the profile, as decided for the peek (2026-11-06), then **Leave now ▾ → there 21:36** and the day's weather. So the trip's box joins the head, and its frame goes.
+- **No stack of boxed rows:** each sport's one standout fact becomes a key in a row that scrolls ("Steep descent", "Wind 5 m/s, gusts 7", "↑4 m"); a tap opens that part. This replaces the sports' rows of 2026-11-06.
+- **At half and full height:**
+  - the profile becomes a plate with its colouring as a key and **On map** as a switch;
+  - Route and Check become one segmented key;
+  - the list stays a timeline, grouped by part with each part's ⚙;
+  - the list's foot keeps Reorder, Reverse and Back to start;
+  - Route style and Your speed become a grouped section, as in Settings.
+
+**The look:**
+- Frosted panels holding grouped sections (from rounds 2 and 3).
+- Opaque keys with an edge and a lip, the main action filled in the accent.
+- The numbers on plates, labels over them; Bricolage for numbers and headings, Atkinson for the rest.
+- Switches as solid tracks.
+- Three palettes, in light and dark.
+
+- **Checked headless:** the peek and the full planner in light, in dark (Lake ice blue), at 360 px in Finnish-length words and at 200 % (the toolbar's mode goes to its icon); the card and Settings in light and dark. No sideways scroll or errors at 360 and 390 px on the Artifact's page.
+- **Not checked:** the desktop's planner in the new arrangement (its frame is still the CSS layer over today's panel), a real phone, contrast over every map and palette, and the Artifact inside claude.ai's viewer.
 
 ## Round 3: Liquid glass
 

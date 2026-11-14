@@ -73,7 +73,7 @@ const SC = JSON.parse(document.getElementById('scenes').textContent);
 
 /* ------------------------------------------------------------------ the switches */
 const OPTS = {
-  dir: [['today', 'Today'], ['lg', 'Liquid glass'], ['og', 'Round 2: Optical glass'], ['nb', 'Round 2: Neo-brutalism'], ['a', 'Round 1: A · Plain and exact'], ['b', 'Round 1: B · Field guide'], ['c', 'Round 1: C · Plates and keys']],
+  dir: [['today', 'Today'], ['c2', 'C, improved'], ['lg', 'Round 3: Liquid glass'], ['og', 'Round 2: Optical glass'], ['nb', 'Round 2: Neo-brutalism'], ['a', 'Round 1: A · Plain and exact'], ['b', 'Round 1: B · Field guide'], ['c', 'Round 1: C · Plates and keys']],
   pal: [['0', 'Palette 1'], ['1', 'Palette 2'], ['2', 'Palette 3']],
   screen: [['peek', 'Peek'], ['full', 'Full'], ['check', 'On the route'], ['card', 'Card'], ['layers', 'Layers'], ['settings', 'Settings'], ['search', 'Search'], ['desk', 'Desktop'], ['web', 'Web page'], ['type', 'Typefaces'], ['all', 'All']],
   type: [['own', 'As drawn'], ['system', 'System'], ['atk', 'Atkinson'], ['brand', 'Bricolage + Atkinson']],
@@ -83,15 +83,15 @@ const OPTS = {
   kinds: [['off', 'Off'], ['on', 'On']],
 };
 const LABEL = { pal: 'Palette', dir: 'Direction', screen: 'Screen', type: 'Typeface', theme: 'Theme', size: 'Size', words: 'Words', kinds: 'Label the kinds' };
-const S = { pal: '0', dir: 'lg', screen: 'full', type: 'own', theme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), size: '390', words: 'en', kinds: 'off' };
+const S = { pal: '0', dir: 'c2', screen: 'full', type: 'own', theme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), size: '390', words: 'en', kinds: 'off' };
 try { const q = new URLSearchParams(location.search); for (const k of Object.keys(S)) if (q.get(k) && OPTS[k].some(([v]) => v === q.get(k))) S[k] = q.get(k); } catch (e) {}
 const bar = document.getElementById('bar'), dock = document.getElementById('dock');
-const SHORT = { today: 'Today', lg: 'Liquid glass', og: 'Optical', nb: 'Brutalism', a: 'A', b: 'B', c: 'C' };
+const SHORT = { today: 'Today', c2: 'C, improved', lg: 'Liquid', og: 'Optical', nb: 'Brutalism', a: 'A', b: 'B', c: 'C' };
 for (const [k, list] of Object.entries(OPTS)) {
   const g = document.createElement('div'); g.className = 'grp'; g.setAttribute('role', 'group'); g.setAttribute('aria-label', LABEL[k]);
   if (k === 'screen' || k === 'pal') { g.innerHTML = `<span>${LABEL[k]}</span><select data-k="${k}" aria-label="${LABEL[k]}">${list.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>`; dock.append(g); continue; }
   g.innerHTML = `<span>${LABEL[k]}</span>` + list.map(([v, t]) => `<button type="button" data-k="${k}" data-v="${v}"${k === 'dir' ? ` aria-label="${t}"` : ''}>${k === 'dir' ? SHORT[v] : t}</button>`).join('');
-  if (k === 'dir') { const round1 = document.createElement('div'); round1.className = 'grp'; round1.innerHTML = '<span>Round 1</span>'; for (const b of [...g.querySelectorAll('button')].slice(4)) round1.append(b); bar.append(round1); const round2 = document.createElement('div'); round2.className = 'grp'; round2.innerHTML = '<span>Round 2</span>'; round2.append(g.querySelector('[data-v=nb]')); bar.prepend(round2); }
+  if (k === 'dir') { const round1 = document.createElement('div'); round1.className = 'grp'; round1.innerHTML = '<span>Round 1</span>'; for (const b of [...g.querySelectorAll('button')].slice(5)) round1.append(b); bar.append(round1); const round2 = document.createElement('div'); round2.className = 'grp'; round2.innerHTML = '<span>Rounds 2 and 3</span>'; round2.append(g.querySelector('[data-v=og]'), g.querySelector('[data-v=nb]')); bar.prepend(round2); }
   (k === 'dir' ? dock : bar).append(g);
 }
 for (const box of [bar, dock]) {
@@ -123,7 +123,7 @@ const TYPE = {
   atk: { fig: '"Atkinson Hyperlegible Next", system-ui, sans-serif', hd: '"Atkinson Hyperlegible Next", system-ui, sans-serif', ui: '"Atkinson Hyperlegible Next", system-ui, sans-serif', wide: '' },
   brand: { fig: '"Bricolage Grotesque", system-ui, sans-serif', hd: '"Bricolage Grotesque", system-ui, sans-serif', ui: '"Atkinson Hyperlegible Next", system-ui, sans-serif', wide: '"wdth" 88, "opsz" 32' },
 };
-const OWN_TYPE = { today: 'system', a: 'system', b: 'brand', c: 'atk', nb: 'brand', og: 'brand', lg: 'brand' };
+const OWN_TYPE = { today: 'system', a: 'system', b: 'brand', c: 'atk', nb: 'brand', og: 'brand', lg: 'brand', c2: 'brand' };
 const typeCss = (t) => `:root { --f-fig: ${TYPE[t].fig}; --f-hd: ${TYPE[t].hd}; --f-ui: ${TYPE[t].ui}; --f-shape: ${TYPE[t].wide || 'normal'}; }`;
 
 /* ------------------------------------------------------------------ the directions: one layer of CSS each */
@@ -488,6 +488,186 @@ body[data-sheet="full"] .sheet, .panel, .qd { background: linear-gradient(160deg
 Object.assign(DIRS, { lg: LG });
 PALETTES.lg = PALETTES.og;
 
+// Round 4 (2026-11-14): C, improved. What three rounds taught: numbers read best on a solid plate (C); a control
+// reads best when it's opaque, with an edge (C's keys; Liquid glass's see-through buttons were hard to read); the
+// glass works best as a panel holding grouped sections (Optical and Liquid glass's Settings, which the user liked);
+// and the planner needs a new arrangement, not a new skin: the toolbar is never part of the sheet, and the key facts
+// are no longer a stack of boxed rows. The planner is drawn here as new markup (plannerDoc); the other screens take
+// the C2 layer over main's markup.
+const C2 = GIVENS + INFO + `
+:root { --text: var(--p-ink); --muted: var(--p-muted); --muted-glass: var(--p-muted);
+  --c2-panel: linear-gradient(165deg, rgba(255, 255, 255, .84), rgba(255, 255, 255, .7) 55%, rgba(var(--p-tint), .78));
+  --c2-blur: blur(24px) saturate(170%); --c2-section: rgba(255, 255, 255, .55); --c2-section-rim: inset 0 0 0 1px rgba(15, 26, 20, .06);
+  --c2-plate: #fff; --c2-key: #fff; --c2-key-edge: rgba(15, 26, 20, .2); --c2-lip: inset 0 -2px 0 rgba(15, 26, 20, .1);
+  --c2-float: 0 1px 2px rgba(15, 26, 20, .12), 0 10px 28px rgba(15, 26, 20, .16);
+  --accent: var(--p-accent); --accent-glass: var(--p-accent); --accent-bg: var(--p-accent); --accent-soft: color-mix(in srgb, var(--p-accent) 14%, white); --focus: var(--p-accent);
+  --surface-solid: #fff; --surface-2: rgba(15, 26, 20, .06); --line: rgba(15, 26, 20, .1); --seg-on: #fff; }
+:root[data-theme="dark"] { --c2-panel: linear-gradient(165deg, rgba(34, 39, 37, .9), rgba(24, 28, 26, .86) 55%, rgba(var(--p-tint), .86));
+  --c2-section: rgba(255, 255, 255, .05); --c2-section-rim: inset 0 0 0 1px rgba(255, 255, 255, .06);
+  --c2-plate: #1d2220; --c2-key: #262c29; --c2-key-edge: rgba(255, 255, 255, .18); --c2-lip: inset 0 -2px 0 rgba(0, 0, 0, .35); --c2-float: 0 12px 30px rgba(0, 0, 0, .5);
+  --accent-soft: color-mix(in srgb, var(--p-accent) 22%, transparent); --surface-solid: #1d2220; --surface-2: rgba(255, 255, 255, .08); --line: rgba(255, 255, 255, .1); --seg-on: #3a423e; }
+body, button, input, select { color: var(--p-ink); }
+/* panels: frosted glass holding grouped sections */
+.sheet, .panel, .qd, .card-beside, .wx-bar { background: var(--c2-panel) !important; -webkit-backdrop-filter: var(--c2-blur) !important; backdrop-filter: var(--c2-blur) !important; border: 0 !important; border-radius: 26px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), var(--c2-float) !important; }
+.panel-body > .lg-group, .kf, .trip-box, .breakdown, .rows:not(:has(.wpl-name)):not(.btns) { background: var(--c2-section) !important; box-shadow: var(--c2-section-rim) !important; border-radius: 18px !important; border: 0 !important; }
+.panel-body > .lg-group { padding: 2px 14px; margin: 0 0 10px; } .panel-body > .lg-group > summary { border: 0 !important; }
+.rows:not(:has(.wpl-name)):not(.btns) > .row + .row { border-top: 1px solid var(--line); } .rows:not(:has(.wpl-name)):not(.btns) > .row { padding-inline: 14px !important; margin: 0 !important; }
+/* what floats on the map: solid keys, so they read over any map */
+.brand, .search, .top-btn, .act-current, .zoom-hint, .fab, .ctrl-btn, .ctrl-zoom, .ctrl-compass .maplibregl-ctrl-group, .plan-btn, .pl-tools {
+  background: var(--c2-key) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border: 1px solid var(--c2-key-edge) !important; box-shadow: var(--c2-lip), var(--c2-float) !important; }
+.search, .act-current, .zoom-hint { border-radius: 999px !important; } .top-btn { border-radius: 50% !important; }
+.top-btn[aria-pressed="true"] { background: var(--p-accent) !important; border-color: var(--p-accent) !important; color: var(--p-on-accent) !important; } .fab, .ctrl-btn, .plan-btn { border-radius: 16px !important; } .pl-tools { border-radius: 18px !important; }
+/* keys: opaque, an edge and a lip; the main action filled */
+.btn, .rt-pill, .mode-select select, .modebtn, .stylebtn, .sportbtn, .chip, .qt, .qd-base, .qd-edit-btn, .search-plan, .rows.btns > .row {
+  background: var(--c2-key) !important; border: 1px solid var(--c2-key-edge) !important; border-radius: 12px !important; box-shadow: var(--c2-lip) !important; font-weight: 700; }
+.qt, .qd-base { border-radius: 16px !important; } .chip { border-radius: 999px !important; }
+.btn.primary, .plan-btn, .btn.done, .fab[aria-pressed="true"] { background: var(--p-accent) !important; border-color: var(--p-accent) !important; color: var(--p-on-accent) !important; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .22), var(--c2-float) !important; }
+:is(.btn.primary, .plan-btn, .btn.done, .fab[aria-pressed="true"]) :is(*, small, .fab-time-label) { color: var(--p-on-accent) !important; }
+.rows.btns > .row[data-k="remove"] { color: var(--danger) !important; }
+.chip[aria-pressed="true"], .chip.chip-on, .qt.on, .qd-base[aria-pressed="true"], .qd-base[aria-checked="true"] { background: color-mix(in srgb, var(--p-accent) 14%, var(--c2-key)) !important; border: 2px solid var(--p-accent) !important; }
+.rt-pill, .mode-select select, .modebtn b, .stylebtn .two > span, .sportbtn > span, .row .val, .sec-sum, .qd-edit-btn, .act-current { color: var(--p-accent) !important; }
+.row .way-chev { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: var(--c2-key); border: 1px solid var(--c2-key-edge); box-shadow: var(--c2-lip); color: var(--p-ink); }
+/* switches and tabs: a solid track, the chosen segment a key */
+.seg { background: var(--surface-2) !important; border-radius: 12px !important; padding: 3px !important; } .seg button { border-radius: 9px !important; }
+.seg button[aria-pressed="true"], .seg button[aria-checked="true"], .pl-tab[aria-selected="true"] { background: var(--c2-key) !important; color: var(--p-ink) !important; box-shadow: 0 0 0 1px var(--c2-key-edge), var(--c2-lip), 0 1px 3px rgba(0, 0, 0, .1) !important; }
+.tg-ui { width: 48px; height: 28px; background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--c2-key-edge); }
+.tg-ui::after { top: 3px; left: 3px; width: 22px; height: 22px; background: var(--c2-key); box-shadow: 0 0 0 1px var(--c2-key-edge), 0 1px 3px rgba(0, 0, 0, .2); }
+.tg input:checked + .tg-ui { background: var(--p-accent); box-shadow: none; } .tg input:checked + .tg-ui::after { transform: translateX(20px); background: #fff; }
+/* numbers on a solid plate, headings as words */
+.sheet-sum { background: var(--c2-plate); border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, .06); padding: 10px 0 9px; gap: 0; flex-wrap: nowrap; align-items: stretch; }
+.sum-item { flex: 1 1 auto; min-width: 0; padding: 0 12px; border-left: 1px solid var(--line); justify-content: flex-end; } .sum-item:first-child { border-left: 0; }
+.sum-item > small { order: -1; font-size: 12px !important; font-weight: 700 !important; color: var(--p-muted) !important; margin: 0 0 2px; overflow-wrap: normal; }
+.sum-item > b { font-family: var(--f-fig) !important; font-variation-settings: "wdth" 88, "opsz" 36; font-size: 28px !important; font-weight: 700 !important; line-height: 1.05; white-space: nowrap; }
+.u { font-family: var(--f-ui) !important; font-variation-settings: normal; font-size: max(.46em, 12px) !important; font-weight: 600 !important; color: var(--p-muted) !important; }
+@media (max-width: 340px) { .sheet-sum { flex-wrap: wrap; padding: 4px 0; } .sum-item { flex: 1 1 100%; border-left: 0; border-top: 1px solid var(--line); padding: 6px 12px; } .sum-item:first-child { border-top: 0; } }
+.menu-h, .act-head, .lg-title, .qd-lab, .qd-lab h3, .chip-group-label, .sec-title, .bd-group-toggle, #search-results li.r-group, .how-h, .speed-sport, .style-label, .bd-heading > span:first-child, .tl-title, .sec2-t b {
+  font-family: var(--f-hd) !important; font-variation-settings: "wdth" 92, "opsz" 24; font-size: 17px !important; font-weight: 700 !important; color: var(--p-ink) !important; }
+.panel-head h2, .qd h2, .insp-title, .way-hint, .way-hint b { font-family: var(--f-hd) !important; font-variation-settings: "wdth" 90, "opsz" 40; font-size: 26px !important; font-weight: 700 !important; }
+.row b, .wpl-name, #search-results .r-name, .tg-text, .qt-l { font-weight: 600 !important; }
+`;
+Object.assign(DIRS, { c2: C2 });
+PALETTES.c2 = PALETTES.og;
+
+// The planner, redrawn: the toolbar floats at the thumb, never in the sheet; the sheet's head is the route's plate
+// with When under it; the parts are a row of keys, not a stack of boxes; the profile is a plate with its colouring as
+// a key; the list stays a timeline, grouped by part; route style and speeds are a grouped section, as in Settings.
+const IC = {
+  bike: '<path d="M5.5 17.5a3 3 0 1 0 0-.01M18.5 17.5a3 3 0 1 0 0-.01M5.5 17.5l3.5-7h6l3.5 7M9 10.5 7.5 7H6M15 10.5l-1.5-4h2.5"/>',
+  paddle: '<path d="M3 17c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M4 13l14-6M17 5l2 4"/>',
+  run: '<path d="M13 4.5a1.5 1.5 0 1 0 0-.01M9 20l2.5-5 3 2V21M8 11l3-3 3 1.5 2 2.5h3M11.5 15l1-4"/>',
+  warn: '<path d="M12 3 2 20h20L12 3zM12 10v4M12 17v.5"/>', clock: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/>',
+  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>', chev: '<path d="m9 6 6 6-6 6"/>', caret: '<path d="M7 10h10l-5 6z" fill="currentColor" stroke="none"/>',
+  undo: '<path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/>', redo: '<path d="m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"/>', more: '<circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>',
+  line: '<path d="M5 19 19 5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/>', cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>', down: '<path d="m6 9 6 6 6-6"/>', sliders: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+};
+const ic = (n, s = 20) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+const SPORT = { MTB: ['bike', '#c2410c'], Paddle: ['paddle', '#0369a1'], Run: ['run', '#0f766e'] };
+const fi = (en, fiText) => (S.words === 'fi' ? fiText : en);
+function plannerDoc(state) {
+  const r = SC[state === 'full' ? 'full' : 'peek'], dark = S.theme === 'dark';
+  const prof = PIC + ((dark ? SC.peek.picsDark : SC.peek.pics)[1] || '');
+  const fig = (n, u) => `<span class="n"><b>${n}</b>${u ? `<span class="u">${u}</span>` : ''}</span>`;
+  const part = (name, nums, pills) => `<li class="part"><div class="part-h"><span class="dot" style="--c:${SPORT[name][1]}">${ic(SPORT[name][0], 16)}</span><h3>${fi(name, { MTB: 'Maastopyörä', Paddle: 'Melonta', Run: 'Juoksu' }[name])}</h3><span class="nums">${nums}</span><button class="key sq" aria-label="${name}: its style and speed">${ic('cog', 18)}</button></div>${pills}</li>`;
+  const stop = (name, d, t, wx) => `<li class="stop"><span class="when">${fig(...d)}<small>${t}</small></span><span class="mark"></span><span class="what"><b>${name}</b><small>${wx}</small></span><button class="key sq" aria-label="Open ${name}">${ic('chev', 18)}</button></li>`;
+  const leg = (lines) => `<li class="leg"><span class="when"></span><span class="mark line"></span><span class="what">${lines}</span></li>`;
+  const body = `
+<div class="map"><img src="${PIC + r.map}" alt=""></div>
+<header class="top"><a class="logo key sq" aria-label="Polku">${MARK(24)}</a><label class="search key"><svg class="i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><span>${fi('Search places', 'Hae paikkoja')}</span></label><button class="key sport">${ic('bike')}<span class="cr">${ic('caret', 16)}</span></button><button class="key sq round" aria-label="Settings">${ic('cog')}</button></header>
+<nav class="tools key-group" aria-label="Drawing"><button class="key main">${fi('Done', 'Valmis')}</button><button class="key mode">${ic('line', 18)}<span><b>${fi('Freehand', 'Vapaalla kädellä')}</b><small>${fi('Run', 'Juoksu')}</small></span><span class="cr">${ic('caret', 16)}</span></button><span class="sep"></span><button class="key sq" aria-label="Undo">${ic('undo')}</button><button class="key sq" aria-label="Redo" disabled>${ic('redo')}</button><button class="key sq" aria-label="More">${ic('more')}</button></nav>
+<section class="sheet ${state}" aria-label="Planner">
+  <div class="grab"><span></span></div>
+  <div class="head"><h2>${fi('Hämeenkatu to Viikinsaari', 'Hämeenkadulta Viikinsaaren laivarantaan')}</h2><button class="key sq" aria-label="Fold">${ic('down', 18)}</button><button class="key sq" aria-label="Close">${ic('close', 18)}</button></div>
+  <div class="plate"><div class="cell"><small>${fi('distance', 'kokonaismatka')}</small>${fig('4.31', 'km')}</div><div class="cell"><small>${fi('40 min moving', '40 min liikkeellä')}</small><span class="n"><b>1</b><span class="u">h</span> <b>05</b><span class="u">min</span></span></div><button class="cell warn"><small>${fi('warning', 'varoitus')}</small><b>${ic('warn', 22)} 1</b></button></div>
+  <img class="mini-prof" src="${prof}" alt="The route's profile, coloured by wind">
+  <div class="when"><button class="key val">${ic('clock', 18)}<span>${fi('Leave now', 'Lähde nyt')}</span><span class="cr">${ic('caret', 16)}</span></button><span class="arr">→ ${fi('there', 'perillä')} <b>21:36</b></span></div>
+  <button class="wx">${ic('moon', 18)}<span>−1…0 °C · ${fi('dry', 'poutaa')} · ${fi('in the dark', 'pimeässä')}</span>${ic('chev', 18)}</button>
+  <div class="parts" role="list"><button class="key chip" role="listitem"><span class="dot" style="--c:#c2410c">${ic('bike', 14)}</span>${fi('Steep descent', 'Jyrkkä alamäki')}</button><button class="key chip" role="listitem"><span class="dot" style="--c:#0369a1">${ic('paddle', 14)}</span>${fi('Wind 5 m/s, gusts 7', 'Tuulta 5 m/s, puuskissa 7')}</button><button class="key chip" role="listitem"><span class="dot" style="--c:#0f766e">${ic('run', 14)}</span>↑4 m</button></div>
+  <div class="more">
+  <section class="card prof"><div class="card-h"><h3>${fi('Profile', 'Profiili')}</h3><button class="key val sm">${fi('Wind', 'Tuuli')}<span class="cr">${ic('caret', 14)}</span></button><label class="sw"><span>${fi('On map', 'Kartalla')}</span><input type="checkbox"><i></i></label></div><img src="${prof}" alt="The route's profile, coloured by wind"></section>
+  <div class="seg"><button aria-pressed="true">${fi('Route', 'Reitti')}</button><button aria-pressed="false">${fi('Check', 'Tarkistus')} <span class="badge">${ic('warn', 12)} 1</span></button></div>
+  <ol class="tl">
+    ${part('MTB', '1.53 km · 9 min · ↑40 m', '')}
+    ${stop(fi('Start', 'Lähtö'), ['0', 'm'], '0 min', '0° · 5 m/s')}
+    ${leg(`<small>${ic('line', 14)} Freehand</small><small class="look">${fi('Steep descent', 'Jyrkkä alamäki')}</small><small>${fi('1.53 km in the dark', '1,53 km pimeässä')}</small>`)}
+    ${stop(fi('Waypoint 1', 'Pirunvuoren näköalapaikan pohjoisrinne'), ['1.53', 'km'], '9 min', fi('Changeover · 15 min · your bike stays here', 'Lajinvaihto · 15 min · pyöräsi jää tähän'))}
+    ${part('Paddle', '2.35 km · 28 min', '')}
+    ${leg(`<small>${fi('Over water', 'Vesillä')}</small><small>${fi('2.35 km in the dark', '2,35 km pimeässä')}</small>`)}
+    ${stop(fi('Waypoint 2', 'Viikinsaaren laivalaituri'), ['3.89', 'km'], '52 min', fi('Changeover · 10 min · your kayak stays here', 'Lajinvaihto · 10 min · kajakkisi jää tähän'))}
+    ${part('Run', '423 m · 3 min · ↑4 m', '')}
+    ${stop(fi('End', 'Määränpää'), ['4.31', 'km'], '1 h 05 min', '−1° · 4 m/s')}
+  </ol>
+  <div class="foot"><button class="key">${fi('Reorder', 'Järjestä')}</button><button class="key">${fi('Reverse', 'Käännä')}</button><button class="key">${fi('Back to start', 'Takaisin alkuun')}</button></div>
+  <section class="group"><button class="row"><span><b>${fi('Route style', 'Reittityyli')}</b><small>MTB · Paddle · Run</small></span><span class="v">${fi('Balanced', 'Tasapainoinen')}</span>${ic('chev', 18)}</button><button class="row"><span><b>${fi('Your speed', 'Oma nopeus')}</b><small>Sea kayak 6.5 km/h · MTB 20 km/h</small></span><span class="v">${fi('Normal', 'Tavallinen')}</span>${ic('chev', 18)}</button></section>
+  </div>
+</section>`;
+  const css = `
+* { box-sizing: border-box; } html, body { margin: 0; height: 100%; overflow: hidden; } body { font: 15px/1.4 var(--f-ui); color: var(--p-ink); -webkit-font-smoothing: antialiased; }
+:root { --line: rgba(15, 26, 20, .1); --key: #fff; --key-edge: rgba(15, 26, 20, .2); --lip: inset 0 -2px 0 rgba(15, 26, 20, .1); --float: 0 1px 2px rgba(15, 26, 20, .12), 0 10px 28px rgba(15, 26, 20, .16);
+  --panel: linear-gradient(165deg, rgba(255, 255, 255, .86), rgba(255, 255, 255, .72) 55%, rgba(var(--p-tint), .8)); --section: rgba(255, 255, 255, .55); --plate: #fff; --danger: #b4232a; --danger-soft: #fbe9e9; --look: #8a5a00; }
+:root[data-theme="dark"] { --line: rgba(255, 255, 255, .1); --key: #262c29; --key-edge: rgba(255, 255, 255, .18); --lip: inset 0 -2px 0 rgba(0, 0, 0, .35); --float: 0 12px 30px rgba(0, 0, 0, .5);
+  --panel: linear-gradient(165deg, rgba(34, 39, 37, .92), rgba(24, 28, 26, .88) 55%, rgba(var(--p-tint), .88)); --section: rgba(255, 255, 255, .05); --plate: #1d2220; --danger: #ff8a8a; --danger-soft: #3a2124; --look: #f2c45a; }
+.map { position: absolute; inset: 0; } .map img { width: 100%; height: 100%; object-fit: cover; }
+.i { flex: none; display: block; }
+button { font: inherit; color: inherit; cursor: pointer; } button:focus-visible { outline: 2px solid var(--p-accent); outline-offset: 2px; }
+.key { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid var(--key-edge); border-radius: 12px; background: var(--key); color: var(--p-ink); box-shadow: var(--lip); font-weight: 700; text-decoration: none; }
+.key:active { transform: translateY(1px); box-shadow: none; } .key[disabled] { opacity: .45; }
+.key.sq { width: 44px; padding: 0; } .key.round { border-radius: 50%; } .key.main { background: var(--p-accent); border-color: var(--p-accent); color: var(--p-on-accent); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .22); }
+.key.val { color: var(--p-accent); } .key.val.sm { min-height: 36px; padding: 0 10px; font-size: 14px; } .cr { color: var(--p-muted); display: grid; }
+/* the top bar and the toolbar float on the map as solid keys */
+.top { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; gap: 8px; align-items: center; }
+.top .key { box-shadow: var(--lip), var(--float); } .logo { background: #1f6f4a; border-color: #1f6f4a; }
+.search { flex: 1; min-width: 0; justify-content: flex-start; border-radius: 999px; font-weight: 400; color: var(--p-muted); } .search span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sport { border-radius: 999px; padding: 0 10px 0 12px; color: var(--p-accent); gap: 2px; }
+.tools { position: absolute; left: 12px; right: 12px; display: flex; gap: 6px; align-items: center; padding: 6px; border-radius: 18px; background: var(--key); border: 1px solid var(--key-edge); box-shadow: var(--float); z-index: 3; }
+.tools .key { box-shadow: none; border-color: transparent; background: transparent; } .tools .key.main { background: var(--p-accent); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .22); }
+.tools .mode { flex: 1; min-width: 0; justify-content: flex-start; padding: 0 8px; border-color: var(--key-edge); box-shadow: var(--lip); } .mode span:not(.cr) { display: grid; text-align: left; line-height: 1.15; min-width: 0; } .mode b { color: var(--p-accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mode small { color: var(--p-muted); font-weight: 600; font-size: 12px; }
+.tools .sep { width: 1px; align-self: stretch; margin: 6px 0; background: var(--line); }
+/* the sheet: frosted glass, inset; its head is the route's plate */
+.sheet { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 12px; padding: 0 14px 16px; border-radius: 28px; background: var(--panel); -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), var(--float); overflow: hidden; }
+.sheet.peek { height: 466px; } .sheet.full { top: 76px; overflow-y: auto; padding-bottom: 96px; }
+.peek ~ .tools, .tools { bottom: 486px; } body:has(.sheet.full) .tools { bottom: 16px; left: 20px; right: 20px; }
+.grab { display: grid; place-items: center; height: 18px; } .grab span { width: 40px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--p-ink) 30%, transparent); }
+.head { display: flex; align-items: center; gap: 6px; margin-top: -6px; } .head h2 { flex: 1; min-width: 0; margin: 0; font: 700 18px/1.2 var(--f-hd); font-variation-settings: "wdth" 92, "opsz" 24; overflow-wrap: anywhere; }
+.head .key { width: 36px; min-height: 36px; border-radius: 50%; }
+.plate { display: flex; background: var(--plate); border-radius: 18px; box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, .06); }
+.cell { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 12px; border: 0; background: none; text-align: left; }
+.cell + .cell { border-left: 1px solid var(--line); } .cell small { font-size: 12px; font-weight: 700; color: var(--p-muted); margin-bottom: 2px; }
+.cell b, .when b, .stop .when b { font: 700 30px/1.05 var(--f-fig); font-variation-settings: "wdth" 88, "opsz" 36; font-variant-numeric: tabular-nums lining-nums; letter-spacing: -.02em; white-space: nowrap; }
+.n { white-space: nowrap; } .u { font: 600 13px var(--f-ui); color: var(--p-muted); margin-left: 2px; }
+.mini-prof { width: 100%; height: 56px; object-fit: fill; display: block; margin: -4px 0 -2px; } .full .mini-prof { display: none; }
+.cell.warn { flex: 0 0 auto; background: var(--danger-soft); border-radius: 0 18px 18px 0; color: var(--danger); } .cell.warn small { color: var(--danger); } .cell.warn b { display: flex; align-items: center; gap: 4px; }
+.when { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; } .when .arr { font-weight: 600; } .when .arr b { font-size: 24px; }
+.wx { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-top: -6px; padding: 0 2px; border: 0; background: none; text-align: left; font-weight: 600; } .wx span { flex: 1; } .wx .i:first-child { color: #c88a00; }
+.parts { display: flex; gap: 8px; overflow-x: auto; margin: 0 -14px; padding: 0 14px 2px; scrollbar-width: none; } .chip { flex: none; border-radius: 999px; padding: 0 14px 0 6px; font-size: 14px; }
+.dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--c); color: #fff; flex: none; } .chip .dot { width: 30px; height: 30px; }
+.more { display: flex; flex-direction: column; gap: 14px; } .peek .more { display: none; }
+.card { background: var(--section); border-radius: 18px; padding: 10px 12px 12px; box-shadow: inset 0 0 0 1px var(--line); } .card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; } .card-h h3 { flex: 1; margin: 0; font: 700 17px var(--f-hd); }
+.prof img { width: 100%; height: auto; display: block; }
+.sw { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--p-muted); } .sw input { position: absolute; opacity: 0; } .sw i { width: 48px; height: 28px; border-radius: 999px; background: color-mix(in srgb, var(--p-ink) 10%, transparent); box-shadow: inset 0 0 0 1.5px var(--key-edge); position: relative; }
+.sw i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--key); box-shadow: 0 0 0 1px var(--key-edge), 0 1px 3px rgba(0, 0, 0, .2); }
+.seg { display: flex; padding: 3px; gap: 3px; border-radius: 14px; background: color-mix(in srgb, var(--p-ink) 7%, transparent); } .seg button { flex: 1; min-height: 40px; border: 0; border-radius: 11px; background: none; font-weight: 700; display: inline-flex; justify-content: center; align-items: center; gap: 6px; }
+.seg button[aria-pressed="true"] { background: var(--key); box-shadow: 0 0 0 1px var(--key-edge), var(--lip), 0 1px 3px rgba(0, 0, 0, .1); }
+.badge { display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 12px; }
+/* the list: a timeline, grouped by part */
+.tl { list-style: none; margin: 0; padding: 0; display: grid; }
+.part { margin: 10px 0 4px; } .part-h { display: flex; align-items: center; gap: 10px; } .part-h h3 { margin: 0; font: 700 18px var(--f-hd); font-variation-settings: "wdth" 92, "opsz" 24; } .part-h .nums { flex: 1; color: var(--p-muted); font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; }
+.stop, .leg { display: grid; grid-template-columns: 62px 22px 1fr auto; gap: 0 10px; align-items: center; min-height: 52px; }
+.stop .when { display: grid; justify-items: end; gap: 0; } .stop .when b { font-size: 18px; } .stop .when small { font-size: 12px; color: var(--p-muted); }
+.mark { justify-self: center; width: 14px; height: 14px; border-radius: 50%; background: var(--key); box-shadow: 0 0 0 3px var(--p-ink); } .mark.line { width: 3px; height: 100%; min-height: 52px; border-radius: 2px; background: color-mix(in srgb, var(--p-ink) 25%, transparent); box-shadow: none; }
+.what { display: grid; } .what b { font-weight: 700; overflow-wrap: anywhere; } .what small { color: var(--p-muted); font-size: 13px; display: flex; gap: 6px; align-items: center; } .what small.look { color: var(--look); }
+.stop .key.sq, .part-h .key.sq { width: 36px; min-height: 36px; border-radius: 10px; }
+.foot { display: flex; gap: 8px; flex-wrap: wrap; } .foot .key { flex: 1 1 auto; }
+.group { background: var(--section); border-radius: 18px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.group .row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 6px 14px; border: 0; background: none; text-align: left; } .group .row + .row { border-top: 1px solid var(--line); }
+.group .row > span:first-child { flex: 1; display: grid; } .group .row b { font-weight: 700; } .group .row small { color: var(--p-muted); font-size: 13px; } .group .v { color: var(--p-accent); font-weight: 700; }
+@media (max-height: 600px) { .sheet.peek { top: 132px; height: auto; } .tools, body:has(.sheet.peek) .tools { top: 66px; bottom: auto; } }
+@media (max-width: 340px) { .tools { gap: 2px; padding: 4px; } .tools .mode { flex: none; width: 44px; padding: 0; justify-content: center; } .tools .mode > span { display: none; } .tools .sep { display: none; } .sport .cr { display: none; } .plate { flex-wrap: wrap; } .cell { flex: 1 1 100%; } .cell + .cell { border-left: 0; border-top: 1px solid var(--line); } .cell.warn { border-radius: 0 0 18px 18px; } .stop, .leg { grid-template-columns: 52px 18px 1fr auto; } .head h2 { font-size: 16px; } }`;
+  const t = S.type === 'own' ? 'brand' : S.type;
+  return `<!doctype html><html data-theme="${S.theme}" lang="en"><head><meta charset="utf-8">${FONTS}<style>${typeCss(t)}${palCss('c2', +S.pal)}${css}</style></head><body>${body}</body></html>`;
+}
+
 
 /* ------------------------------------------------------------------ Finnish-length words, for the worst case */
 const FI = {
@@ -616,6 +796,7 @@ const TAGGER = `<script>(() => { if (!document.documentElement.dataset.kinds) re
 const SCROLL = `<script>for (const el of document.querySelectorAll('[data-scroll]')) { const [t, l] = el.dataset.scroll.split(','); el.scrollTop = +t; el.scrollLeft = +l; }<\/script>`;
 
 function appDoc(key) {
+  if (S.dir === 'c2' && (key === 'peek' || key === 'full')) return plannerDoc(key); // the planner, redrawn
   const r = SC[key], dark = S.theme === 'dark';
   const doc = new DOMParser().parseFromString(`<body>${r.html}</body>`, 'text/html');
   const m = doc.querySelector('.map-pic'); if (m) m.setAttribute('src', PIC + r.map);
@@ -624,7 +805,7 @@ function appDoc(key) {
   doc.querySelectorAll('.maplibregl-marker, .maplibregl-popup').forEach((el) => el.remove()); // (they're in the map's picture)
   for (const b of doc.querySelectorAll('.profile-box')) { const im = b.querySelector('img.cv-pic'); if (im && /width:0px/.test(im.getAttribute('style') || '')) b.querySelector('.chart-sports')?.remove(); } // (a profile not drawn yet when captured)
   if (S.dir !== 'today') unitWrap(doc);
-  if (['nb', 'og', 'lg'].includes(S.dir)) infoBalls(doc);
+  if (['nb', 'og', 'lg', 'c2'].includes(S.dir)) infoBalls(doc);
   if (S.words === 'fi') finnish(doc);
   const t = S.type === 'own' ? OWN_TYPE[S.dir] : S.type;
   const root = attrs(r.root, { 'data-theme': S.theme, ...(S.kinds === 'on' ? { 'data-kinds': '1' } : {}) });
@@ -803,7 +984,7 @@ h2 { font: 650 34px/1.05 "Bricolage Grotesque", sans-serif; font-variation-setti
 footer { padding: 28px 0; font-size: 15px; color: var(--p-muted); }
 @media (min-width: 900px) { body { padding: 0 40px 48px; } .nav .btn { display: inline-flex; min-height: 42px; } .hero { padding: 64px 0; } }`;
 
-WEB.lg = WEB.og;
+WEB.lg = WEB.og; WEB.c2 = WEB.c;
 function webDoc(w) {
   if (S.dir === 'today') return `<!doctype html><html><body style="margin:0;display:grid;place-items:center;height:100vh;font:17px/1.5 system-ui,sans-serif;color:#4a5750;background:#fff;padding:24px;text-align:center">Polku has no web pages today: polku.si opens the app. Pick a direction to see the page it would make.</body></html>`;
   return `<!doctype html><html data-theme="${S.theme}" lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=${w}">${FONTS}<style>${palCss(S.dir, +S.pal)}${WEB_BASE}${WEB[S.dir]}</style></head><body>${webBody()}</body></html>`;
@@ -834,11 +1015,21 @@ table { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums li
 
 // The notes under the frames: round 2's two directions, what was decided, and the recommendation. The plan has the rest.
 document.getElementById('notes').innerHTML = `
+<h2>Round 4: C, improved, with the planner redrawn</h2>
+<p>What three rounds taught. The numbers read best on a solid plate (C). A control reads best when it's opaque and has an edge (C's keys); Liquid glass's see-through buttons were hard to read. The glass works best as a panel holding grouped sections, as in Optical and Liquid glass's Settings. And the planner needs a new arrangement, not a new skin.</p>
+<ul>
+<li><b>The toolbar is never part of the sheet.</b> It floats on the map as one group of keys at the thumb: above the sheet at the peek, at the foot of the screen over a full sheet. It never docks into the sheet's head.</li>
+<li><b>The sheet's head is the route's plate:</b> distance, time and the warnings as one solid plate, as decided for the Check card (⚠ 1 opens it). Under it are the profile, then <b>Leave now ▾ → there 21:36</b> with the day's weather.</li>
+<li><b>No stack of boxed rows:</b> each sport's one standout fact is a key in a row you can scroll ("Steep descent", "Wind 5 m/s, gusts 7", "↑4 m"); a tap opens that part.</li>
+<li><b>Further down:</b> the profile as a plate with its colouring as a key, Route and Check as one segmented key, the list as a timeline grouped by part with each part's ⚙, and Route style and Your speed as a grouped section, as in Settings.</li>
+<li><b>The other screens</b> take the same look: frosted panels with grouped sections, opaque keys over the map, the numbers on plates.</li>
+</ul>
+<p><b>The recommendation is this one.</b> The planner frames are drawn as new markup, since the arrangement changes. Every other screen is a layer of CSS over today's markup.</p>
 <h2>Round 3: Liquid glass</h2>
 <p>Redrawn from Apple's guidance for Liquid Glass. Glass is the layer that floats over the map: the top bar, the map's buttons, the toolbar as one capsule, and the planner as an inset half sheet, so the map shows round it. At full height the sheet turns more frosted, to keep the focus on reading.</p>
 <p>Nothing on the sheet is glass again, and nothing is plain white. Its content sits on the sheet in grouped sections of a faint fill. Its controls are filled capsules, the tabs and switches are segmented capsules with a lit pill, and the main action (<b>Done</b>, <b>Plan</b>) is the one tinted control.</p>
 <p>The floating layer gets its depth from a lens rim, light at the top left and soft at the bottom right, a refraction shade along the bottom, a contact shadow and a wide soft one. Switches are deep tracks, and the knob turns to glass while held.</p>
-<p><b>The recommendation is Liquid glass</b>, with Moss green to start; <b>Palette</b> tries the others, light and dark. Round 2's Optical glass and Neo-brutalism are under <b>More switches</b>. Neo-brutalism doesn't work for the app, though its web page did.</p>
+<p>Round 3 is under <b>More switches</b>. Round 2's Optical glass and Neo-brutalism are under <b>More switches</b>. Neo-brutalism doesn't work for the app, though its web page did.</p>
 <h2>Round 2: two directions</h2>
 <p><b>Neo-brutalism:</b> solid paper panels with an ink edge and a hard shadow. Everything you can press has the same edge and shadow, and pressing it takes the shadow away. The main action and what's chosen are in the accent. No glass.</p>
 <p><b>Optical glass:</b> one clear glass surface per panel, lit from above. Its content sits on clearer, near-solid glass in grouped lists, with no glass inside glass. Every control is a lit pill with a rim, and the main action and what's chosen are the accent, lit. The route's numbers are big on their own plate.</p>
