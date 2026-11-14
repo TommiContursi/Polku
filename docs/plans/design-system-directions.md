@@ -66,11 +66,54 @@ Decided already, so no direction is chosen for them:
 
 Drawn in the mock-up on the same screens: the planner at the peek (with the weather window) and at full, Check's On the route, a point's card, Layers, Settings, search, the desktop with its toolbar, and the main web page.
 
-*To be completed from the mock-up: each direction's thesis, how each kind looks, what it costs and its risk.*
+All three share the givens above and one markup change: a number's unit gets an element of its own, so it can be smaller and quieter than the number ("4.31 km" becomes 4.31 with a small km). Each is otherwise one layer of CSS over today's markup.
+
+### A · Plain and exact
+
+**Size, weight and colour each mean one thing, in the device's own font.** Look B stays as it is; what changes is what each size and weight is for.
+- **A number:** 27 px bold on the planner, tabular; its unit at about 60 % in grey; its label 13 px regular under it.
+- **A heading:** a word in sentence case, 15–22 px bold, in the text's colour, bigger than the rows under it. No grey capitals anywhere.
+- **A row's name:** the text's weight (500), so a row reads apart from a heading (700) and a number (700).
+- **A value you set:** green words with ▾ on a soft green well (When, Colour by, the toolbar's mode, sport and style, the top bar's sport); a row's value green before ›.
+- **An action:** a button in words, white with a firmer edge; the main one filled green.
+- **Costs:** CSS only, no bytes. **Risk:** it looks least changed, and Polku's web pages would still need a voice of their own.
+
+### B · Field guide
+
+**Polku's own two voices, from #995.** Bricolage Grotesque, narrow, for the numbers and the headings; Atkinson Hyperlegible Next for every word you read or tap.
+- **A number:** 33 px, the glance size, in Bricolage at 86 % width, so three still fit a phone; the unit in Atkinson at under half its size.
+- **A heading:** Bricolage, 17 px for a section, 24 px for a panel, 27 px for a card's title.
+- **A row and a value:** Atkinson, 16 px regular for the name; the value green and bold, on the soft well.
+- **The dark theme** takes the spruce of #995's palette (Kuusi) instead of near-black; the light theme's recessed grey becomes lichen (Jäkälä).
+- **The dash** stays on the logo, the busy bar and the web pages. In the app a dashed edge already means "not known" (Check's dashed "?"), so it isn't used for decoration there.
+- **Costs:** about 111 KB of fonts once, kept offline; DESIGN.md's typography rewritten. **Risk:** a display face in a working screen can feel loud; on a slow first load the text shows in the device's font until the files arrive.
+
+### C · Plates and keys
+
+**The material says what a thing is.** What you read at a glance sits on a solid plate, never on the glass; what you press is a key; the glass is left to what explains.
+- **A number:** on a solid plate in cells, like an instrument's fields, its label over it in 12 px bold grey, the number 25 px heavy under it (the glance size's rule and the FAA's: no see-through behind numbers).
+- **A value you set:** a key with its name over its value ("When" over "Leave now"), the value green.
+- **An action:** a key with an edge and a lower lip; the main one filled green with a darker lip.
+- **A heading:** 16–23 px heavy words in the text's colour.
+- **The typeface:** Atkinson Hyperlegible Next alone, made for legibility (its zero is slashed).
+- **Costs:** about 34 KB of fonts once; the most CSS of the three (every control's background and edge). **Risk:** more edges and solid blocks over the map, the opposite of look B's light glass, chosen on 2026-10-28 for showing the map through.
 
 ## The typeface
 
-*To be completed: the fonts' bytes, how the page looks before they arrive, offline, the zero and the tabular figures in each face.*
+Today Polku uses the device's own font (`system-ui`: San Francisco on an iPhone, Roboto on Android, Segoe UI on Windows); Inter is named first in the stack but never loaded. #995 proposes two faces Polku would serve itself. The mock-up's **Typeface** switch puts any of them on any direction, and its **Typefaces** screen shows Polku's numbers and words in each.
+
+| | The device's own | Atkinson Hyperlegible Next | Bricolage Grotesque |
+|---|---|---|---|
+| **Made for** | Each platform's interface | Legibility for low vision (the Braille Institute): letters that can't be mistaken for each other | Display: character, and narrow widths that give long Finnish words and big numbers room |
+| **Bytes, once** | 0 | about 34 KB (one variable file, weights 200–800) | about 77 KB (optical size and weight variable, width fixed); about 131 KB with the width axis |
+| **Tabular figures** | Yes | Yes (`tnum`) | Yes (`tnum`) |
+| **The zero** | Plain | Slashed by design (no switch: neither face has a `zero` feature) | Plain |
+| **å ä ö, → ↑ ⋯ °** | Yes | Yes | Yes |
+
+- **The sizes are leads:** the Latin files as Google Fonts serves them, measured by download on 2026-11-14. Polku's own files, cut to the letters it uses, would be smaller; that's measured in the build.
+- **Served by Polku:** from its own files, kept by the service worker with the app, so they work offline; no font host is asked.
+- **Before they arrive** (`font-display: swap`): the text shows at once in the device's font and changes face when the files land, once per device. A fallback with matched metrics (`size-adjust`) keeps lines from jumping.
+- **Where each would go:** Bricolage only at display sizes (headings, card titles, the big numbers), never for labels or small text (Datawrapper's and Carbon's lesson); Atkinson for everything read or tapped.
 
 ## Not checked
 
