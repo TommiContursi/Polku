@@ -7,6 +7,10 @@ A design round on Polku's whole layout and look, apart from the map: the planner
 
 ## Where it stands
 
+**Round 3 (2026-11-14), after the user tried round 2:** Neo-brutalism didn't work for the app (its web page did). Optical glass was closer, but its plain white plates broke the glass, and only the buttons felt raised while everything else stayed flat, so nothing seemed to float. The user pointed to Apple's guidance for Liquid Glass and welcomed a new arrangement of the planner where it helps.
+- **Drawn:** [Liquid glass](#round-3-liquid-glass) below, first in the mock-up's bar (**Liquid glass**, with **Palette**); round 2 and round 1 are behind **More switches**.
+- **Waiting for the user:** whether Liquid glass is the direction. **The recommendation is yes, with Moss green to start**, then the typeface question.
+
 **Round 2 (2026-11-14), after the user tried round 1:** round 1's plates were liked, but they broke the glass, and many controls were still hard to tell from the background (switches, rows with ›, text-only buttons, controls with a sentence of explanation under them). The user asked for two distinct directions, **Neo-brutalism** and **Optical glass**, as visual languages around the map rather than copies of their quick sketch.
 - **Decided by the user:** the look plus the layout fixes it needs; solid panels in Neo-brutalism, glass in Optical glass; every control gets a visible edge (this reopens "green words" in the rule for controls of 2026-11-06); a control's explanation becomes a round ⓘ, a tooltip on hover and a tap on a phone, in Settings and Layers; both directions use #995's two typefaces, set differently; colours aren't held to the old rules in this round, so each direction has three palettes to try, light and dark.
 - **Drawn:** [Round 2](#round-2-neo-brutalism-and-optical-glass) below, in the same mock-up (**Brutalism** and **Glass** in its bar, with **Palette**); round 1 is behind **More switches → Round 1**.
@@ -106,6 +110,33 @@ All three share the givens above and one markup change: a number's unit gets an 
 - **A heading:** 16–23 px heavy words in the text's colour.
 - **The typeface:** Atkinson Hyperlegible Next alone, made for legibility (its zero is slashed).
 - **Costs:** about 34 KB of fonts once; the most CSS of the three (every control's background and edge). **Risk:** more edges and solid blocks over the map, the opposite of look B's light glass, chosen on 2026-10-28 for showing the map through.
+
+## Round 3: Liquid glass
+
+From Apple's "Adopting Liquid Glass" (read 2026-11-14 through its documentation data):
+- glass is "a distinct functional layer for controls and navigation", floating above the content, and used sparingly;
+- no glass layered on glass;
+- a half sheet is inset so the content shows round it, and turns more opaque at full height;
+- related toolbar items share one capsule;
+- lists sit in grouped sections with larger corners;
+- headers are words, never capitals;
+- the main action takes the prominent, tinted style.
+
+The guidance gives no blur, opacity or shadow values; those below are this round's.
+
+| | Liquid glass |
+|---|---|
+| **The floating layer** | The top bar, the map's buttons, the toolbar (one capsule, **Done** tinted inside it) and the weather window: clear glass with a lens rim (light top-left, soft bottom-right), a refraction shade along the bottom, a contact shadow and a wide soft one |
+| **The planner** | An inset half sheet with 34 px corners, its glass tinted faintly by the palette; more frosted at full height, never plain white |
+| **On the sheet** | No glass again: the key facts, the trip's box, On the route and the rows in grouped sections of a faint fill; the route's list stays a timeline on the sheet |
+| **Controls** | Filled capsules (When, Colour by, a card's Move and Rename, Remove tinted red); chosen chips and tiles an accent tint with an accent ring; the tabs and switches segmented capsules with a lit pill |
+| **A switch** | A deep track; on, the accent; the knob a white pill that turns to glass while held |
+| **Numbers and headings** | Bricolage 600–650, open; the route's numbers 38 px in columns with hairlines between them |
+| **Settings and Layers** | Frosted panels, Settings' groups as grouped sections, explanations in ⓘ tooltips |
+| **Palettes** | Moss green, Cloudberry orange, Lake ice blue, light and dark |
+
+- **Checked headless:** the peek with the weather window, the full planner, the card, Settings, Layers in dark, the full planner in dark with the blue palette, and the desktop. The Artifact's page has no sideways scroll or errors at 360 px, at 200 % and in Finnish-length Settings in dark.
+- **Not checked:** contrast over every map and palette, the blur's cost on a phone (it's stronger than look B's), a real phone, and the Artifact inside claude.ai's viewer.
 
 ## Round 2: Neo-brutalism and Optical glass
 

@@ -73,7 +73,7 @@ const SC = JSON.parse(document.getElementById('scenes').textContent);
 
 /* ------------------------------------------------------------------ the switches */
 const OPTS = {
-  dir: [['today', 'Today'], ['nb', 'Neo-brutalism'], ['og', 'Optical glass'], ['a', 'Round 1: A · Plain and exact'], ['b', 'Round 1: B · Field guide'], ['c', 'Round 1: C · Plates and keys']],
+  dir: [['today', 'Today'], ['lg', 'Liquid glass'], ['og', 'Round 2: Optical glass'], ['nb', 'Round 2: Neo-brutalism'], ['a', 'Round 1: A · Plain and exact'], ['b', 'Round 1: B · Field guide'], ['c', 'Round 1: C · Plates and keys']],
   pal: [['0', 'Palette 1'], ['1', 'Palette 2'], ['2', 'Palette 3']],
   screen: [['peek', 'Peek'], ['full', 'Full'], ['check', 'On the route'], ['card', 'Card'], ['layers', 'Layers'], ['settings', 'Settings'], ['search', 'Search'], ['desk', 'Desktop'], ['web', 'Web page'], ['type', 'Typefaces'], ['all', 'All']],
   type: [['own', 'As drawn'], ['system', 'System'], ['atk', 'Atkinson'], ['brand', 'Bricolage + Atkinson']],
@@ -83,15 +83,15 @@ const OPTS = {
   kinds: [['off', 'Off'], ['on', 'On']],
 };
 const LABEL = { pal: 'Palette', dir: 'Direction', screen: 'Screen', type: 'Typeface', theme: 'Theme', size: 'Size', words: 'Words', kinds: 'Label the kinds' };
-const S = { pal: '0', dir: 'nb', screen: 'full', type: 'own', theme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), size: '390', words: 'en', kinds: 'off' };
+const S = { pal: '0', dir: 'lg', screen: 'full', type: 'own', theme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), size: '390', words: 'en', kinds: 'off' };
 try { const q = new URLSearchParams(location.search); for (const k of Object.keys(S)) if (q.get(k) && OPTS[k].some(([v]) => v === q.get(k))) S[k] = q.get(k); } catch (e) {}
 const bar = document.getElementById('bar'), dock = document.getElementById('dock');
-const SHORT = { today: 'Today', nb: 'Brutalism', og: 'Glass', a: 'A', b: 'B', c: 'C' };
+const SHORT = { today: 'Today', lg: 'Liquid glass', og: 'Optical', nb: 'Brutalism', a: 'A', b: 'B', c: 'C' };
 for (const [k, list] of Object.entries(OPTS)) {
   const g = document.createElement('div'); g.className = 'grp'; g.setAttribute('role', 'group'); g.setAttribute('aria-label', LABEL[k]);
   if (k === 'screen' || k === 'pal') { g.innerHTML = `<span>${LABEL[k]}</span><select data-k="${k}" aria-label="${LABEL[k]}">${list.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>`; dock.append(g); continue; }
   g.innerHTML = `<span>${LABEL[k]}</span>` + list.map(([v, t]) => `<button type="button" data-k="${k}" data-v="${v}"${k === 'dir' ? ` aria-label="${t}"` : ''}>${k === 'dir' ? SHORT[v] : t}</button>`).join('');
-  if (k === 'dir') { const round1 = document.createElement('div'); round1.className = 'grp'; round1.innerHTML = '<span>Round 1</span>'; for (const b of [...g.querySelectorAll('button')].slice(3)) round1.append(b); bar.append(round1); }
+  if (k === 'dir') { const round1 = document.createElement('div'); round1.className = 'grp'; round1.innerHTML = '<span>Round 1</span>'; for (const b of [...g.querySelectorAll('button')].slice(4)) round1.append(b); bar.append(round1); const round2 = document.createElement('div'); round2.className = 'grp'; round2.innerHTML = '<span>Round 2</span>'; round2.append(g.querySelector('[data-v=nb]')); bar.prepend(round2); }
   (k === 'dir' ? dock : bar).append(g);
 }
 for (const box of [bar, dock]) {
@@ -123,7 +123,7 @@ const TYPE = {
   atk: { fig: '"Atkinson Hyperlegible Next", system-ui, sans-serif', hd: '"Atkinson Hyperlegible Next", system-ui, sans-serif', ui: '"Atkinson Hyperlegible Next", system-ui, sans-serif', wide: '' },
   brand: { fig: '"Bricolage Grotesque", system-ui, sans-serif', hd: '"Bricolage Grotesque", system-ui, sans-serif', ui: '"Atkinson Hyperlegible Next", system-ui, sans-serif', wide: '"wdth" 88, "opsz" 32' },
 };
-const OWN_TYPE = { today: 'system', a: 'system', b: 'brand', c: 'atk', nb: 'brand', og: 'brand' };
+const OWN_TYPE = { today: 'system', a: 'system', b: 'brand', c: 'atk', nb: 'brand', og: 'brand', lg: 'brand' };
 const typeCss = (t) => `:root { --f-fig: ${TYPE[t].fig}; --f-hd: ${TYPE[t].hd}; --f-ui: ${TYPE[t].ui}; --f-shape: ${TYPE[t].wide || 'normal'}; }`;
 
 /* ------------------------------------------------------------------ the directions: one layer of CSS each */
@@ -396,6 +396,98 @@ body, button, input, select { color: var(--p-ink); }
 `;
 Object.assign(DIRS, { nb: NB, og: OG });
 
+// Round 3 (2026-11-14): Liquid glass, from Apple's "Adopting Liquid Glass". Glass is the layer that floats over the
+// map: the top bar, the map's buttons, the toolbar, and the planner's sheet as an inset half sheet that turns more
+// opaque at full height. Nothing in the sheet is glass again: its content sits on the sheet in grouped sections of a
+// faint fill (never plain white), its controls are filled capsules, and the main action is the one tinted control.
+// Depth comes from the floating layer: a lens rim (light top-left, soft bottom-right), a refraction shade along the
+// bottom, a contact shadow and a wide soft one.
+const LG = GIVENS + INFO + `
+:root { --text: var(--p-ink); --muted: var(--p-muted); --muted-glass: var(--p-muted);
+  --lg-blur: blur(18px) saturate(190%) brightness(1.05); --lg-sheet-blur: blur(26px) saturate(180%) brightness(1.04);
+  --lg-fill: linear-gradient(135deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, .16) 46%, rgba(255, 255, 255, .28));
+  --lg-sheet: linear-gradient(160deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .48) 40%, rgba(var(--p-tint), .52));
+  --lg-rim: inset 1.5px 1.5px 0 rgba(255, 255, 255, .9), inset -1px -1px 0 rgba(255, 255, 255, .3), inset 0 0 0 1px rgba(255, 255, 255, .22), inset 0 -14px 22px -10px rgba(15, 26, 20, .1);
+  --lg-depth: 0 1px 1px rgba(15, 26, 20, .1), 0 6px 14px rgba(15, 26, 20, .12), 0 22px 44px rgba(15, 26, 20, .18);
+  --lg-section: rgba(255, 255, 255, .36); --lg-section-rim: inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 0 0 1px rgba(255, 255, 255, .25);
+  --lg-ctl: rgba(15, 26, 20, .07); --lg-ctl-hi: rgba(15, 26, 20, .12);
+  --accent: var(--p-accent); --accent-glass: var(--p-accent); --accent-bg: var(--p-accent); --accent-soft: color-mix(in srgb, var(--p-accent) 16%, transparent); --focus: var(--p-accent);
+  --surface-solid: rgba(255, 255, 255, .92); --surface-2: var(--lg-ctl); --line: rgba(15, 26, 20, .1); --seg-on: rgba(255, 255, 255, .95); }
+:root[data-theme="dark"] { --lg-fill: linear-gradient(135deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .04) 46%, rgba(255, 255, 255, .08)), rgba(22, 26, 24, .34);
+  --lg-sheet: linear-gradient(160deg, rgba(40, 46, 43, .72), rgba(20, 24, 22, .62) 40%, rgba(var(--p-tint), .66));
+  --lg-rim: inset 1.5px 1.5px 0 rgba(255, 255, 255, .32), inset -1px -1px 0 rgba(255, 255, 255, .08), inset 0 0 0 1px rgba(255, 255, 255, .1), inset 0 -14px 22px -10px rgba(0, 0, 0, .3);
+  --lg-depth: 0 1px 1px rgba(0, 0, 0, .3), 0 6px 14px rgba(0, 0, 0, .3), 0 22px 44px rgba(0, 0, 0, .45);
+  --lg-section: rgba(255, 255, 255, .06); --lg-section-rim: inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 0 0 1px rgba(255, 255, 255, .05);
+  --lg-ctl: rgba(255, 255, 255, .1); --lg-ctl-hi: rgba(255, 255, 255, .16); --surface-solid: rgba(30, 34, 32, .94); --line: rgba(255, 255, 255, .1); --seg-on: rgba(255, 255, 255, .2); }
+body, button, input, select { color: var(--p-ink); }
+
+/* the floating layer: lens-like glass with depth */
+.brand, .search, .top-btn, .act-current, .zoom-hint, .fab, .ctrl-btn, .ctrl-zoom, .ctrl-compass .maplibregl-ctrl-group, .pl-tools, .wx-bar, .plan-btn {
+  background: var(--lg-fill) !important; -webkit-backdrop-filter: var(--lg-blur) !important; backdrop-filter: var(--lg-blur) !important;
+  border: 0 !important; box-shadow: var(--lg-rim), var(--lg-depth) !important; }
+.search, .act-current, .zoom-hint, .pl-tools { border-radius: 999px !important; }
+.top-btn, .fab, .ctrl-btn, .plan-btn { border-radius: 50% !important; }
+.fab, .plan-btn { border-radius: 22px !important; }
+.brand { border-radius: 16px !important; }
+/* the sheet and the panels: an inset half sheet, the map peeking round it; more opaque at full height */
+.sheet, .panel, .qd, .card-beside { background: var(--lg-sheet) !important; -webkit-backdrop-filter: var(--lg-sheet-blur) !important; backdrop-filter: var(--lg-sheet-blur) !important;
+  border: 0 !important; border-radius: 34px !important; box-shadow: var(--lg-rim), var(--lg-depth) !important; }
+body[data-sheet="full"] .sheet, .panel, .qd { background: linear-gradient(160deg, rgba(255, 255, 255, .8), rgba(255, 255, 255, .62) 50%, rgba(var(--p-tint), .7)) !important; }
+:root[data-theme="dark"] body[data-sheet="full"] .sheet, :root[data-theme="dark"] .panel, :root[data-theme="dark"] .qd { background: linear-gradient(160deg, rgba(36, 40, 38, .92), rgba(24, 28, 26, .9)) !important; }
+/* the main action: the one tinted glass control */
+.btn.primary, .plan-btn, .btn.done, .fab[aria-pressed="true"] { background: linear-gradient(160deg, color-mix(in srgb, var(--p-accent2) 92%, white), var(--p-accent)) !important; color: var(--p-on-accent) !important;
+  box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, .55), inset -1px -1px 0 rgba(0, 0, 0, .12), 0 4px 12px color-mix(in srgb, var(--p-accent) 40%, transparent), 0 1px 2px rgba(0, 0, 0, .15) !important; border: 0 !important; }
+.btn.done { border-radius: 999px !important; }
+:is(.btn.primary, .plan-btn, .btn.done, .fab[aria-pressed="true"]) :is(*, small, .fab-time-label) { color: var(--p-on-accent) !important; }
+
+/* inside the sheet: no glass again. Grouped sections of a faint fill, controls as filled capsules */
+.kf, .trip-box, .breakdown, .rows:not(:has(.wpl-name)):not(.btns) { background: var(--lg-section) !important; box-shadow: var(--lg-section-rim) !important; border-radius: 20px !important; }
+.kf { padding: 4px 6px; } .trip-box { padding: 10px 12px; }
+.rows:not(:has(.wpl-name)):not(.btns) > .row + .row { border-top: 1px solid var(--line); } .rows:not(:has(.wpl-name)):not(.btns) > .row { padding-inline: 14px !important; margin: 0 !important; }
+.kf-b { min-height: 44px; }
+.btn, .rt-pill, .mode-select select, .modebtn, .stylebtn, .sportbtn, .chip, .qt, .qd-base, .qd-edit-btn, .search-plan {
+  background: var(--lg-ctl) !important; border: 0 !important; border-radius: 999px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5) !important; font-weight: 700; }
+:root[data-theme="dark"] :is(.btn, .rt-pill, .mode-select select, .modebtn, .stylebtn, .sportbtn, .chip, .qt, .qd-base, .qd-edit-btn) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08) !important; }
+.qt, .qd-base { border-radius: 20px !important; }
+.pl-tools :is(.btn, .modebtn, .stylebtn, .sportbtn) { background: transparent !important; box-shadow: none !important; }
+.pl-tools .btn.done { background: linear-gradient(160deg, color-mix(in srgb, var(--p-accent2) 92%, white), var(--p-accent)) !important; }
+.rt-pill, .mode-select select, .modebtn b, .stylebtn .two > span, .sportbtn > span, .row .val, .sec-sum, .qd-edit-btn, .act-current { color: var(--p-accent) !important; }
+/* a card's actions: filled capsules side by side; Remove tinted red */
+.rows.btns { gap: 8px; } .rows.btns > .row { background: var(--lg-ctl) !important; border: 0 !important; border-radius: 999px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5) !important; min-height: 48px; }
+.rows.btns > .row.danger, .rows.btns > .row[data-k="remove"] { background: color-mix(in srgb, var(--danger) 14%, transparent) !important; color: var(--danger) !important; }
+/* chosen: the accent tint behind, the words in the accent: no solid block */
+.chip[aria-pressed="true"], .chip.chip-on, .qt.on, .qd-base[aria-pressed="true"], .qd-base[aria-checked="true"] { background: color-mix(in srgb, var(--p-accent) 18%, transparent) !important; color: var(--p-ink) !important; box-shadow: inset 0 0 0 2px var(--p-accent) !important; }
+/* the tabs and switches: a segmented capsule, the chosen segment a lit pill */
+.pl-tabs { display: inline-flex !important; gap: 2px; padding: 3px; margin: 6px 0 4px; border: 0 !important; border-radius: 999px; background: var(--lg-ctl); }
+.pl-tab { height: 36px !important; border: 0 !important; border-radius: 999px !important; margin: 0 !important; padding-inline: 16px !important; color: var(--p-ink) !important; }
+.pl-tab[aria-selected="true"], .seg button[aria-pressed="true"], .seg button[aria-checked="true"] { background: var(--seg-on) !important; color: var(--p-ink) !important;
+  box-shadow: inset 1px 1px 0 #fff, 0 1px 2px rgba(15, 26, 20, .14), 0 4px 10px rgba(15, 26, 20, .1) !important; }
+:root[data-theme="dark"] :is(.pl-tab[aria-selected="true"], .seg button[aria-pressed="true"]) { box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .2), 0 2px 6px rgba(0, 0, 0, .4) !important; }
+.seg { background: var(--lg-ctl) !important; border-radius: 999px !important; padding: 3px !important; } .seg button { border-radius: 999px !important; }
+.tg-ui { width: 50px; height: 30px; background: var(--lg-ctl-hi); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .12); border-radius: 999px; }
+.tg-ui::after { top: 3px; left: 3px; width: 30px; height: 24px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 3px 8px rgba(0, 0, 0, .14); }
+.tg input:checked + .tg-ui { background: var(--p-accent); } .tg input:checked + .tg-ui::after { transform: translateX(14px); }
+.tg:active .tg-ui::after { background: rgba(255, 255, 255, .35); box-shadow: inset 1.5px 1.5px 0 #fff, inset -1px -1px 0 rgba(255, 255, 255, .4), 0 4px 12px rgba(0, 0, 0, .2); transform: scale(1.15); } /* the knob turns to glass while held */
+/* a row that opens: its › in a small round well */
+.row .way-chev { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--lg-ctl); color: var(--p-ink); }
+/* type: big open numbers on the glass, headings as words, no grey capitals */
+.sum-item > b, .top-sum b, .trip-there { font-family: var(--f-fig) !important; font-variation-settings: "wdth" 92, "opsz" 48; font-weight: 600 !important; letter-spacing: -.025em; }
+.sheet-sum { gap: 0 !important; } .sum-item { padding: 0 16px; border-left: 1px solid var(--line); } .sum-item:first-child { padding-left: 2px; border-left: 0; }
+.sum-item > b { font-size: 38px !important; line-height: 1 !important; }
+.u { font-family: var(--f-ui) !important; font-variation-settings: normal; font-size: max(.38em, 13px) !important; font-weight: 500 !important; color: var(--p-muted) !important; letter-spacing: 0; }
+.sum-item > small { font-size: 13px !important; color: var(--p-muted) !important; margin-top: 4px; }
+.trip-there { font-size: 21px !important; color: var(--p-ink); }
+.menu-h, .act-head, .lg-title, .qd-lab, .qd-lab h3, .chip-group-label, .sec-title, .bd-group-toggle, #search-results li.r-group, .how-h, .speed-sport, .style-label, .bd-heading > span:first-child, .tl-title, .sec2-t b {
+  font-family: var(--f-hd) !important; font-variation-settings: "wdth" 96, "opsz" 24; font-size: 17px !important; font-weight: 650 !important; color: var(--p-ink) !important; }
+.panel-head h2, .qd h2, .insp-title, .way-hint, .way-hint b { font-family: var(--f-hd) !important; font-variation-settings: "wdth" 94, "opsz" 40; font-size: 28px !important; font-weight: 650 !important; letter-spacing: -.02em; }
+.row b, .wpl-name, #search-results .r-name, .tg-text, .qt-l { font-weight: 500 !important; }
+/* Settings as grouped sections (Apple's grouped lists): each group a faint rounded section */
+.panel-body > .lg-group { background: var(--lg-section); box-shadow: var(--lg-section-rim); border-radius: 20px; padding: 2px 14px; margin: 0 0 10px; border: 0 !important; }
+.panel-body > .lg-group > summary { border: 0 !important; }
+`;
+Object.assign(DIRS, { lg: LG });
+PALETTES.lg = PALETTES.og;
+
 
 /* ------------------------------------------------------------------ Finnish-length words, for the worst case */
 const FI = {
@@ -532,7 +624,7 @@ function appDoc(key) {
   doc.querySelectorAll('.maplibregl-marker, .maplibregl-popup').forEach((el) => el.remove()); // (they're in the map's picture)
   for (const b of doc.querySelectorAll('.profile-box')) { const im = b.querySelector('img.cv-pic'); if (im && /width:0px/.test(im.getAttribute('style') || '')) b.querySelector('.chart-sports')?.remove(); } // (a profile not drawn yet when captured)
   if (S.dir !== 'today') unitWrap(doc);
-  if (S.dir === 'nb' || S.dir === 'og') infoBalls(doc);
+  if (['nb', 'og', 'lg'].includes(S.dir)) infoBalls(doc);
   if (S.words === 'fi') finnish(doc);
   const t = S.type === 'own' ? OWN_TYPE[S.dir] : S.type;
   const root = attrs(r.root, { 'data-theme': S.theme, ...(S.kinds === 'on' ? { 'data-kinds': '1' } : {}) });
@@ -711,6 +803,7 @@ h2 { font: 650 34px/1.05 "Bricolage Grotesque", sans-serif; font-variation-setti
 footer { padding: 28px 0; font-size: 15px; color: var(--p-muted); }
 @media (min-width: 900px) { body { padding: 0 40px 48px; } .nav .btn { display: inline-flex; min-height: 42px; } .hero { padding: 64px 0; } }`;
 
+WEB.lg = WEB.og;
 function webDoc(w) {
   if (S.dir === 'today') return `<!doctype html><html><body style="margin:0;display:grid;place-items:center;height:100vh;font:17px/1.5 system-ui,sans-serif;color:#4a5750;background:#fff;padding:24px;text-align:center">Polku has no web pages today: polku.si opens the app. Pick a direction to see the page it would make.</body></html>`;
   return `<!doctype html><html data-theme="${S.theme}" lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=${w}">${FONTS}<style>${palCss(S.dir, +S.pal)}${WEB_BASE}${WEB[S.dir]}</style></head><body>${webBody()}</body></html>`;
@@ -741,6 +834,11 @@ table { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums li
 
 // The notes under the frames: round 2's two directions, what was decided, and the recommendation. The plan has the rest.
 document.getElementById('notes').innerHTML = `
+<h2>Round 3: Liquid glass</h2>
+<p>Redrawn from Apple's guidance for Liquid Glass. Glass is the layer that floats over the map: the top bar, the map's buttons, the toolbar as one capsule, and the planner as an inset half sheet, so the map shows round it. At full height the sheet turns more frosted, to keep the focus on reading.</p>
+<p>Nothing on the sheet is glass again, and nothing is plain white. Its content sits on the sheet in grouped sections of a faint fill. Its controls are filled capsules, the tabs and switches are segmented capsules with a lit pill, and the main action (<b>Done</b>, <b>Plan</b>) is the one tinted control.</p>
+<p>The floating layer gets its depth from a lens rim, light at the top left and soft at the bottom right, a refraction shade along the bottom, a contact shadow and a wide soft one. Switches are deep tracks, and the knob turns to glass while held.</p>
+<p><b>The recommendation is Liquid glass</b>, with Moss green to start; <b>Palette</b> tries the others, light and dark. Round 2's Optical glass and Neo-brutalism are under <b>More switches</b>. Neo-brutalism doesn't work for the app, though its web page did.</p>
 <h2>Round 2: two directions</h2>
 <p><b>Neo-brutalism:</b> solid paper panels with an ink edge and a hard shadow. Everything you can press has the same edge and shadow, and pressing it takes the shadow away. The main action and what's chosen are in the accent. No glass.</p>
 <p><b>Optical glass:</b> one clear glass surface per panel, lit from above. Its content sits on clearer, near-solid glass in grouped lists, with no glass inside glass. Every control is a lit pill with a rim, and the main action and what's chosen are the accent, lit. The route's numbers are big on their own plate.</p>
