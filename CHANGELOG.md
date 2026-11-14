@@ -19,6 +19,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - In **Your trip** on a phone, leaving your trip opens the planner again as it was, whichever way you leave: **48 hours**, closing the timeline, an hour outside the trip, or the trip moving out of reach. After **Weather here** the planner stays folded, clear of the spot's pin, until **48 hours** or closing the timeline ([#1018](https://github.com/TommiContursi/Polku/issues/1018)).
 - In **Your trip** on a phone, the planner you open with **On the profile** or **All in Check ›** stays yours: a card closed afterwards puts it back as you had it, instead of folding it ([#1017](https://github.com/TommiContursi/Polku/issues/1017)).
 
+### Arrive by ([#219](https://github.com/TommiContursi/Polku/issues/219))
+
+- **When**'s menu has **Arrive by…**: pick when you want to be there, and Polku works out when to leave. The trip's box says both, such as "Arrive by 20:30 ▾ · leave 19:19", and the route's numbers say "leave 19:19" under the time.
+- The departure is worked out with the wind on the way and says "about" where the wind changes the time. It's rounded down to the minute, so you're there by your time, never after it.
+- When there isn't enough time, the trip leaves now and says when you'd be there: "Leave now and you're there at 20:42." Once the time itself has passed, Arrive by goes, and the box says so.
+- On a trip with nights, Arrive by is the last day's: it sets the last night's **Go on at**, and the first day leaves when you set it. The menu has a group for each day. Setting **Go on at** yourself on that night takes Arrive by's place. When your nights get you there late, or days early, the box says when you'd arrive.
+- On a round trip's form, **Arrive by…** sets **How long** to **Time**, from now until then.
+- A saved route and a share link keep Arrive by. Whoever opens the link has the departure worked out again, with that day's forecast and their own speeds.
+
 ### Check's words everywhere ([#993](https://github.com/TommiContursi/Polku/issues/993))
 
 - The last places that still said "heads-up" use Check's words: its tab's tooltip and its note before a route is drawn say warnings, and a round trip's card counts its warnings and what's good to know, such as "2 warnings · 1 good to know".
