@@ -89,7 +89,7 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui
    tooltip, a 44 px target by touch */
 .bt .tool.bt-info { flex: none; width: 28px; height: 28px; min-height: 0; padding: 0; position: relative; color: var(--accent); }
 @media (pointer: coarse) { .bt-info.tool::after { content: ""; position: absolute; inset: -8px; } }
-.r3 .bt-read > .bt-info { margin-left: auto; }
+.bt .bt-axis > .tool.bt-info { position: absolute; right: 0; top: -6px; } /* (at the axis's end, under the bars it explains) */
 .bt-day b .bt-info { display: inline-grid; vertical-align: middle; margin: -6px 0 -6px 2px; }
 .r3 .row.bt-row > .bt-row-in > small, .r3 .bt-best .note { color: var(--text); }
 .r3 .bt-cross { align-items: center; }
@@ -464,7 +464,6 @@ function best() {
   // the reading: the hour you're trying, else the departure set
   const shown = T.try != null ? hrs[T.try] : x.k === k ? (hrs.find((y) => !y.past && y.M0 <= x.M0 && x.M0 < y.M0 + 60) || x) : null;
   const read = h('p', { class: `bt-read${T.try != null ? ' try' : ''}` }, ...(S.c === 'loading' || S.c === 'failed' ? [] : shown ? reading(T.try != null ? hrs[T.try] : x, T.try != null) : [h('span', {}, `Your departure is ${x.k < k ? 'before' : 'after'} this day: try an hour here.`)]));
-  if (R3() && S.c !== 'loading' && S.c !== 'failed') read.append(infoDot('The bars', 'Each bar is the weather on your trip if you leave at that hour: the shorter, the better. Shaded hours are dark. Drag along the bars, and let go to leave then.'));
   // the strip: the dark behind, a bar an hour (the weather alone), the departure ringed, the named ones filled with a mark
   const marks = new Set([...N.lit, ...N.dark].map((w) => w.i));
   const slots = h('div', { class: 'bt-slots', 'aria-hidden': 'true' }, ...hrs.map((y, i) => {
@@ -485,7 +484,8 @@ function best() {
   range.setAttribute('aria-valuetext', valtext(+range.value));
   const strip = h('div', { class: 'bt-strip' }, shade, slots, range);
   box.append(read, strip,
-    h('div', { class: 'bt-axis', 'aria-hidden': 'true' }, ...[0, 6, 12, 18].map((v) => h('span', { style: `left: ${(v / 24) * 100}%` }, pad(v)))),
+    h('div', { class: 'bt-axis' }, ...[0, 6, 12, 18].map((v) => h('span', { 'aria-hidden': 'true', style: `left: ${(v / 24) * 100}%` }, pad(v))),
+      R3() && S.c !== 'loading' && S.c !== 'failed' ? infoDot('The bars', 'Each bar is the weather on your trip if you leave at that hour: the shorter, the better. Shaded hours are dark. Drag along the bars, and let go to leave then.') : null),
     ...(R2() ? [] : [h('p', { class: 'bt-sun' }, h('span', { html: `${icon('sunrise', 15)}${hm(d.rise)}` }), h('span', { html: `${icon('sunset', 15)}${hm(d.set)}` }), h('span', {}, 'shaded: the trip in the dark'))]));
   wire(strip, range, hrs);
   if (S.c === 'loading') { if (!R3()) box.append(h('p', { class: 'note wx-note' }, R2() ? 'Loading the forecast…' : 'Loading the forecast along the route…')); return box; }
