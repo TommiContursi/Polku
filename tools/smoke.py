@@ -12910,7 +12910,7 @@ def towns_weather(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} weather at places, at every zoom, apart and off the route, a press pins the reading (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} weather at places, at every zoom, apart and off the route, a press pins the reading and names the place (#916, #1028)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
