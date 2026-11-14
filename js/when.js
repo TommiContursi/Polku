@@ -18,7 +18,7 @@ export class When {
     this.at = null; // epoch seconds, or null to leave now
     this.by = null; // Arrive by (#219): epoch seconds to be there by, or null
     this.nights = false; // the route has nights: Arrive by is its last morning's then, and the first day leaves at `at` (the planner says)
-    this.got = null; // what the planner worked out for Arrive by: { leave, there, late, about, go } (settle())
+    this.got = null; // what the planner worked out for Arrive by: { leave, there, late, early, about, go } (settle())
     this.passed = null; // a planned time that had passed when its route was opened (said until a new one)
     this.passedBy = false; // (an Arrive by's)
     this.changed = changed;
@@ -47,6 +47,12 @@ export class When {
     if (this.by == null || !g) return '';
     if (this.nights) return g.go != null ? `go on at ${about}${clockOf(g.go, this.by)}` : '';
     return g.late ? 'leave now' : `leave ${about}${clockOf(g.leave, this.by)}`; // (with its day where it isn't Arrive by's)
+  }
+  // Whether the route has nights (the planner says, as it times it, and none once it goes): without, Arrive by takes the
+  // departure's place, so a first day's Leave at left from a trip with nights goes (the review of #1016)
+  trip(nights) {
+    this.nights = nights;
+    if (!nights && this.by != null) this.at = null;
   }
   // what's kept with a route: the departure and Arrive by, those that had passed too (Undo brings them back as they were)
   kept() {
@@ -130,12 +136,13 @@ export class When {
         b.innerHTML = `<span>${icon(ic, 20)}</span><span><b>${escapeHtml(name)}</b><small>${escapeHtml(line)}</small></span>${caret}`;
         return;
       }
-      const name = by != null ? `Arrive by ${this.words(by)}` : `Leave ${this.words()}`, g = this.got, miss = by != null && g?.late;
+      // (Arrive by that can't be met, or on a trip with nights met days early: when you're there)
+      const name = by != null ? `Arrive by ${this.words(by)}` : `Leave ${this.words()}`, g = this.got, early = by != null && !!g?.early, miss = by != null && (!!g?.late || early);
       b.setAttribute('aria-label', `When: ${name}`);
       b.innerHTML = `<span>${icon(ic, 16)}</span><span>${escapeHtml(name)}</span>${caret}`;
       note.hidden = !miss && !far && !passed;
-      note.classList.toggle('info', !miss && !far && !!passed);
-      note.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(miss ? 'warn' : far ? 'cloudSun' : 'info', 16) }),
+      note.classList.toggle('info', early || (!miss && !far && !!passed));
+      note.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(miss && !early ? 'warn' : far && !miss ? 'cloudSun' : 'info', 16) }),
         h('span', {}, miss ? (this.nights ? `With your nights you’re there at ${clockOf(g.there, this.start())}.` : `Leave now and you’re there at ${clockOf(g.there, this.start())}.`)
           : far ? `No forecast yet for ${dayOf(t)}. Sunset and the dark still count.`
           : !passed ? '' : this.passedBy ? `Arrive by ${dayOf(passed)}, ${timeOf(passed)} has passed: pick a new time above.`

@@ -20246,17 +20246,42 @@ ARRIVE_JS = """(async () => {
   await settled();
   r = read();
   if (W.got?.go != null || r.note !== `With your nights you’re there at ${p.clockOf(r.end)}.`) errs.push(`Arrive by too soon for the night: ${JSON.stringify(r)}`);
-  W.setBy(null);
+  // days early for the night: said, but not as a warning
+  const later = LV.at(3, 18, 0);
+  W.setBy(later);
+  await settled();
+  r = read();
+  if (!W.got?.early || W.got?.late || r.note !== `With your nights you’re there at ${p.clockOf(r.end)}.` || !document.querySelector('.trip-box .pick-note.info')) errs.push(`Arrive by days after the night: ${JSON.stringify({ ...r, got: W.got })}`);
+  // the night removed, with a Leave at beside Arrive by: Arrive by takes the departure's place, so the Leave at goes and
+  // can't clear Arrive by when its time passes (the review of #1016)
+  W.set(Math.ceil(Date.now() / 60000) * 60 + 120);
+  W.setBy(noon);
   p.setStop(1, null);
   await settled();
-  // a round trip's form: How long by Time, from now until then
+  if (W.nights || W.at != null || W.by !== noon) errs.push(`the night removed: nights ${W.nights}, at ${W.at}, by ${W.by}`);
+  const realNow2 = Date.now;
+  try {
+    Date.now = () => realNow2() + 5 * 60000;
+    W.expire();
+    if (W.by !== noon) errs.push(`Arrive by after the old Leave at's time: ${W.by}`);
+  } finally { Date.now = realNow2; }
+  // a route with a night cleared: the first screen's When has no nights, nothing worked out
+  p.setStop(1, { on: 480 });
+  await settled();
   p.clear();
+  await settled();
+  W.menu(p.whenRow());
+  const cleared = { nights: W.nights, got: W.got, groups: [...W.pop.el.querySelectorAll('[role="group"]')].length };
+  W.pop.close();
+  if (cleared.nights || cleared.got || cleared.groups !== 1) errs.push(`a route with a night cleared: ${JSON.stringify(cleared)}`);
+  W.setBy(null);
+  // a round trip's form: How long by Time, from now until then
   p.openLoop([23.8, 61.512]);
   await wait(300);
-  const later = Math.ceil(Date.now() / 900000) * 900 + 2 * 3600 + 600;
-  W.setBy(later);
+  const loopBy = Math.ceil(Date.now() / 900000) * 900 + 2 * 3600 + 600;
+  W.setBy(loopBy);
   await wait(300);
-  const L = p.loop, want = Math.floor((later - Date.now() / 1000) / 900) * 15;
+  const L = p.loop, want = Math.floor((loopBy - Date.now() / 1000) / 900) * 15;
   if (L.mode !== 'min' || L.min !== want || document.querySelector('[data-k="unit-min"]')?.getAttribute('aria-pressed') !== 'true') errs.push(`a round trip's How long: ${L.mode}, ${L.min} min, not ${want}`);
   W.setBy(null);
   p.closeLoop();

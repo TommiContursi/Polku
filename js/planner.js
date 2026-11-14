@@ -1339,7 +1339,6 @@ export class Planner {
 
   async routeAll() {
     const gen = ++this.gen;
-    this.routedFrom = this.when.start(); // (the departure water legs are routed for: legStartSec())
     const previous = this.routing;
     const ctrl = this.routing = new AbortController();
     const todo = []; // legs to route: { leg, key, from, to, nogos, profile }
@@ -2108,6 +2107,9 @@ export class Planner {
       // with it, so an open item's card closes
       this.analysis = null;
       this.headsList = null;
+      this.when.trip(false); // (no nights, nothing worked out: the first screen's When as for a new route, the review of #1016)
+      this.when.got = null;
+      this.when.put();
       this.unlightItem();
       this.renderAnalysis();
       return;
@@ -2547,7 +2549,15 @@ export class Planner {
           const w = waits[k++];
           w.arrive = start + t.tAt[i] + add;
           w.rest = restSec(w.stop, w.arrive, w.change);
-          if (w === last) this.byMorning(w, by - (t.tAt[n - 1] - t.tAt[i]) - waits.slice(k).reduce((sum, x) => sum + x.change + restSec(x.stop, 0), 0));
+          if (w === last) {
+            // going on at the minute that gets you there by then, if that's on the morning its nights end and after
+            // you're ready; else as its Go on at says, and the note says when you're there (`w.by`: worked out)
+            const go = Math.floor((by - (t.tAt[n - 1] - t.tAt[i]) - waits.slice(k).reduce((sum, x) => sum + x.change + restSec(x.stop, 0), 0)) / 60) * 60;
+            const ready = w.arrive + w.change, day = new Date((ready + w.rest) * 1000);
+            day.setHours(0, 0, 0, 0);
+            const d0 = day.getTime() / 1000, d1 = day.setDate(day.getDate() + 1) / 1000;
+            if (go >= ready && go >= d0 && go < d1) { w.rest = go - ready; w.by = true; }
+          }
           w.sec = w.change + w.rest;
           add += w.sec;
           waitAt[i] += w.sec;
@@ -2560,22 +2570,12 @@ export class Planner {
     a.waitAt = waitAt;
     return t;
   }
-  // The last night's morning for Arrive by: going on at `go` (rounded down to the minute, so you're there by then), if
-  // that's on the morning its nights end and after you're ready; else as its Go on at says, and the note says when
-  // you're there (`w.by`: worked out)
-  byMorning(w, go) {
-    go = Math.floor(go / 60) * 60;
-    const ready = w.arrive + w.change, day = new Date((ready + w.rest) * 1000);
-    day.setHours(0, 0, 0, 0);
-    const d0 = day.getTime() / 1000, d1 = day.setDate(day.getDate() + 1) / 1000;
-    if (go >= ready && go >= d0 && go < d1) { w.rest = go - ready; w.by = true; }
-  }
   // The trip timed from When, the one place that does it (#956): from the departure (`start`: the minute the wind was
   // sampled for, else When's), or with Arrive by (#219) from the departure worked back from it, never before now; on a
   // trip with nights Arrive by is the last morning's instead (timed()). What it works out goes back to When to say.
   settle(a, w = null, snow = null, start = this.when.start()) {
     const W = this.when;
-    W.nights = this.waitsAlong().some((x) => isNight(x.stop));
+    W.trip(this.waitsAlong().some((x) => isNight(x.stop)));
     if (W.by == null) { W.got = null; this.setTimes(a, start, w, snow); return; }
     let leave = null;
     if (!W.nights) {
@@ -2584,7 +2584,7 @@ export class Planner {
     }
     this.setTimes(a, W.start(), w, snow);
     const end = tripTimes(a).end, morning = (a.waits || []).find((x) => x.by);
-    W.got = { leave, there: end, late: W.nights ? !morning : end > W.by, go: morning ? morning.arrive + morning.sec : null, about: a.timeWind != null && Math.abs(a.timeWind - a.time) >= 60 };
+    W.got = { leave, there: end, late: end > W.by, early: W.nights && !morning && end <= W.by, go: morning ? morning.arrive + morning.sec : null, about: a.timeWind != null && Math.abs(a.timeWind - a.time) >= 60 };
     W.put();
   }
   // Arrive by's departure for a trip `total` seconds long (without nights): rounded down to the minute, so you're there by then
@@ -2682,8 +2682,9 @@ export class Planner {
       a.windError = false; // (a failure stays until the forecast answers: 25d part 2)
       this.answered('weather');
       this.settle(a, w, snow, start); // nights timed with the wind's arrival times
-      // Arrive by: water legs that keep out of the wind are routed once more, for the departure worked out (#219)
-      if (W.by != null && this.byRouted !== W.by && Math.abs(W.start() - this.routedFrom) >= 900 && this.legs.some((l, i) => l.mode === 'water' && this.routerFor(i).water.wind !== 'ignore')) {
+      // Arrive by: water legs that keep out of the wind are routed once more, for the departure worked out, where it
+      // moved one into another hour's wind (legKey(); #219)
+      if (W.by != null && this.byRouted !== W.by && this.legs.some((l, i) => l.mode === 'water' && l.key && l.key !== this.legKey(i).key)) {
         this.byRouted = W.by;
         this.routeAll();
         return;
