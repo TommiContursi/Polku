@@ -73,7 +73,8 @@ const SC = JSON.parse(document.getElementById('scenes').textContent);
 
 /* ------------------------------------------------------------------ the switches */
 const OPTS = {
-  dir: [['today', 'Today'], ['a', 'A · Plain and exact'], ['b', 'B · Field guide'], ['c', 'C · Plates and keys']],
+  dir: [['today', 'Today'], ['nb', 'Neo-brutalism'], ['og', 'Optical glass'], ['a', 'Round 1: A · Plain and exact'], ['b', 'Round 1: B · Field guide'], ['c', 'Round 1: C · Plates and keys']],
+  pal: [['0', 'Palette 1'], ['1', 'Palette 2'], ['2', 'Palette 3']],
   screen: [['peek', 'Peek'], ['full', 'Full'], ['check', 'On the route'], ['card', 'Card'], ['layers', 'Layers'], ['settings', 'Settings'], ['search', 'Search'], ['desk', 'Desktop'], ['web', 'Web page'], ['type', 'Typefaces'], ['all', 'All']],
   type: [['own', 'As drawn'], ['system', 'System'], ['atk', 'Atkinson'], ['brand', 'Bricolage + Atkinson']],
   theme: [['light', 'Light'], ['dark', 'Dark']],
@@ -81,15 +82,16 @@ const OPTS = {
   words: [['en', 'English'], ['fi', 'Finnish-length']],
   kinds: [['off', 'Off'], ['on', 'On']],
 };
-const LABEL = { dir: 'Direction', screen: 'Screen', type: 'Typeface', theme: 'Theme', size: 'Size', words: 'Words', kinds: 'Label the kinds' };
-const S = { dir: 'a', screen: 'full', type: 'own', theme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), size: '390', words: 'en', kinds: 'off' };
+const LABEL = { pal: 'Palette', dir: 'Direction', screen: 'Screen', type: 'Typeface', theme: 'Theme', size: 'Size', words: 'Words', kinds: 'Label the kinds' };
+const S = { pal: '0', dir: 'nb', screen: 'full', type: 'own', theme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), size: '390', words: 'en', kinds: 'off' };
 try { const q = new URLSearchParams(location.search); for (const k of Object.keys(S)) if (q.get(k) && OPTS[k].some(([v]) => v === q.get(k))) S[k] = q.get(k); } catch (e) {}
 const bar = document.getElementById('bar'), dock = document.getElementById('dock');
-const SHORT = { today: 'Today', a: 'A', b: 'B', c: 'C' };
+const SHORT = { today: 'Today', nb: 'Brutalism', og: 'Glass', a: 'A', b: 'B', c: 'C' };
 for (const [k, list] of Object.entries(OPTS)) {
   const g = document.createElement('div'); g.className = 'grp'; g.setAttribute('role', 'group'); g.setAttribute('aria-label', LABEL[k]);
-  if (k === 'screen') { g.innerHTML = `<span>${LABEL[k]}</span><select data-k="screen" aria-label="Screen">${list.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>`; dock.append(g); continue; }
+  if (k === 'screen' || k === 'pal') { g.innerHTML = `<span>${LABEL[k]}</span><select data-k="${k}" aria-label="${LABEL[k]}">${list.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>`; dock.append(g); continue; }
   g.innerHTML = `<span>${LABEL[k]}</span>` + list.map(([v, t]) => `<button type="button" data-k="${k}" data-v="${v}"${k === 'dir' ? ` aria-label="${t}"` : ''}>${k === 'dir' ? SHORT[v] : t}</button>`).join('');
+  if (k === 'dir') { const round1 = document.createElement('div'); round1.className = 'grp'; round1.innerHTML = '<span>Round 1</span>'; for (const b of [...g.querySelectorAll('button')].slice(3)) round1.append(b); bar.append(round1); }
   (k === 'dir' ? dock : bar).append(g);
 }
 for (const box of [bar, dock]) {
@@ -121,7 +123,7 @@ const TYPE = {
   atk: { fig: '"Atkinson Hyperlegible Next", system-ui, sans-serif', hd: '"Atkinson Hyperlegible Next", system-ui, sans-serif', ui: '"Atkinson Hyperlegible Next", system-ui, sans-serif', wide: '' },
   brand: { fig: '"Bricolage Grotesque", system-ui, sans-serif', hd: '"Bricolage Grotesque", system-ui, sans-serif', ui: '"Atkinson Hyperlegible Next", system-ui, sans-serif', wide: '"wdth" 88, "opsz" 32' },
 };
-const OWN_TYPE = { today: 'system', a: 'system', b: 'brand', c: 'atk' };
+const OWN_TYPE = { today: 'system', a: 'system', b: 'brand', c: 'atk', nb: 'brand', og: 'brand' };
 const typeCss = (t) => `:root { --f-fig: ${TYPE[t].fig}; --f-hd: ${TYPE[t].hd}; --f-ui: ${TYPE[t].ui}; --f-shape: ${TYPE[t].wide || 'normal'}; }`;
 
 /* ------------------------------------------------------------------ the directions: one layer of CSS each */
@@ -249,6 +251,151 @@ c: GIVENS + `
 `,
 };
 
+// Round 2 (2026-11-14): two directions the user named, Neo-brutalism and Optical glass. Each takes a palette from
+// PALETTES (light and dark), set as --p-* values; every control has a visible edge, and a control's explanation
+// becomes a round ⓘ with a tooltip (infoBalls()).
+const PALETTES = {
+  nb: [
+    { id: 'signal', name: 'Signal lime', light: { bg: '#fffdf4', ink: '#111511', accent: '#d7f23a', onAccent: '#111511', soft: '#f0f3dc', muted: '#4b5249', page: '#f4f1e6' },
+      dark: { bg: '#1a1d19', ink: '#f3f6ea', accent: '#d7f23a', onAccent: '#111511', soft: '#2a2f26', muted: '#b8c0b0', page: '#0f110e' } },
+    { id: 'marker', name: 'Trail marker orange', light: { bg: '#fffaf2', ink: '#16120e', accent: '#ff7a1a', onAccent: '#16120e', soft: '#fbe9d6', muted: '#57493d', page: '#f5eee3' },
+      dark: { bg: '#1e1a16', ink: '#fbf3ea', accent: '#ff8a33', onAccent: '#16120e', soft: '#342a20', muted: '#c9b8a6', page: '#12100d' } },
+    { id: 'lake', name: 'Lake blue', light: { bg: '#f7fbff', ink: '#0d1622', accent: '#57b8ff', onAccent: '#0d1622', soft: '#dcecfa', muted: '#43505f', page: '#eaf1f7' },
+      dark: { bg: '#141b24', ink: '#eef5fc', accent: '#6cc3ff', onAccent: '#0d1622', soft: '#22303e', muted: '#aebdcc', page: '#0b1017' } },
+  ],
+  og: [
+    { id: 'moss', name: 'Moss green', light: { accent: '#1f8a5b', accent2: '#2fb07a', onAccent: '#ffffff', tint: '232, 244, 236', ink: '#0f1a14', muted: '#46554c' },
+      dark: { accent: '#3cc488', accent2: '#5fdca2', onAccent: '#06140d', tint: '10, 28, 20', ink: '#eef6f1', muted: '#b3c4ba' } },
+    { id: 'cloudberry', name: 'Cloudberry orange', light: { accent: '#f26b1d', accent2: '#ff9147', onAccent: '#ffffff', tint: '255, 241, 230', ink: '#1a120c', muted: '#5a4a3e' },
+      dark: { accent: '#ff8a3d', accent2: '#ffab6e', onAccent: '#1a0d04', tint: '30, 18, 10', ink: '#fbf2ea', muted: '#cdb9a8' } },
+    { id: 'ice', name: 'Lake ice blue', light: { accent: '#1f6fd1', accent2: '#4a93ea', onAccent: '#ffffff', tint: '233, 241, 250', ink: '#0d1622', muted: '#44516a' },
+      dark: { accent: '#5aa6ff', accent2: '#86c0ff', onAccent: '#06101e', tint: '10, 20, 34', ink: '#eef4fc', muted: '#b0bfd3' } },
+  ],
+};
+const palCss = (dir, i) => {
+  const p = (PALETTES[dir] || [])[i]; if (!p) return '';
+  const set = (o) => Object.entries(o).map(([k, v]) => `--p-${k.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())}: ${v};`).join(' ');
+  return `:root { ${set(p.light)} } :root[data-theme="dark"] { ${set(p.dark)} }`;
+};
+
+// a control's explanation as a round ⓘ: hover on a desktop, a tap on a phone (focus shows the tip)
+const INFO = `
+.info { position: relative; flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; margin: 0 0 0 6px; padding: 0; border-radius: 50%;
+  border: 1.5px solid currentColor; background: transparent; color: var(--muted); font: 700 13px/1 Georgia, 'Times New Roman', serif; font-style: italic; cursor: help; vertical-align: middle; }
+.info::before { content: ""; position: absolute; inset: -11px; } /* 44 px to touch */
+.info:hover::after, .info:focus::after { content: attr(data-tip); position: absolute; z-index: 50; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+  width: max-content; max-width: 240px; padding: 8px 10px; border-radius: 10px; background: var(--text); color: var(--surface-solid); font: 400 13px/1.35 var(--f-ui); font-style: normal; text-align: left; white-space: normal; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
+.tg-text:has(.info) { flex-direction: row !important; flex-wrap: wrap; align-items: center; justify-content: flex-start; text-align: left; column-gap: 0; }
+.tg-text:has(.info) > small, .tg-text:has(.info) > span { flex-basis: auto; }
+`;
+
+const NB = GIVENS + INFO + `
+/* Neo-brutalism: solid paper panels with an ink edge and a hard shadow; every control the same: an ink edge, a hard
+   shadow that a press takes away; the main action and what's chosen in the accent. No glass. */
+:root { --text: var(--p-ink); --muted: var(--p-muted); --muted-glass: var(--p-muted); --line: color-mix(in srgb, var(--p-ink) 22%, transparent);
+  --surface-solid: var(--p-bg); --surface-2: var(--p-soft); --glass-read: var(--p-bg); --glass-control: var(--p-bg); --glass-read-filter: none; --glass-control-filter: none;
+  --accent: var(--p-ink); --accent-glass: var(--p-ink); --accent-bg: var(--p-accent); --accent-soft: var(--p-accent); --seg-on: var(--p-accent); --focus: var(--p-ink);
+  --nb-edge: 2px solid var(--p-ink); --nb-shadow: 3px 3px 0 var(--p-ink); --edge: 0 0 0 0 transparent; --shadow: 4px 4px 0 var(--p-ink); }
+body, button, input, select { color: var(--p-ink); }
+.sheet, .panel, .qd, .pl-tools, .wx-bar, .brand, .search, .top-btn, .act-current, .zoom-hint, .card-beside, .track-card { background: var(--p-bg) !important; border: var(--nb-edge) !important; box-shadow: 4px 4px 0 var(--p-ink) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.sheet { border-radius: 16px !important; }
+/* every control: an ink edge and a hard shadow; pressed, it sits down */
+.btn, .rt-pill, .mode-select select, .modebtn, .stylebtn, .sportbtn, .chip, .seg, .qt, .qd-base, .fab, .ctrl-btn, .plan-btn, .ctrl-zoom, .ctrl-compass .maplibregl-ctrl-group, .row:not(:has(.wpl-name, .wpl-nums, .wpl-when)), .kf-b, .qd-edit-btn, .search-plan, .pl-tab, .sec2-head .tool, .tool {
+  border: var(--nb-edge) !important; border-radius: 10px !important; box-shadow: var(--nb-shadow) !important; background: var(--p-bg); }
+.btn:active, .rt-pill:active, .chip:active, .row:active, .qt:active, .fab:active, .tool:active, .kf-b:active { transform: translate(2px, 2px) !important; box-shadow: 1px 1px 0 var(--p-ink) !important; }
+.tool { width: 40px; height: 40px; display: inline-grid; place-items: center; }
+.seg { padding: 3px !important; gap: 3px; } .seg button { border-radius: 7px !important; }
+.seg button[aria-pressed="true"], .seg button[aria-checked="true"], .chip[aria-pressed="true"], .chip.chip-on, .qt.on, .qd-base[aria-pressed="true"], .qd-base[aria-checked="true"], .pl-tab[aria-selected="true"] { background: var(--p-accent) !important; color: var(--p-on-accent) !important; }
+.btn.primary, .plan-btn, .btn.done { background: var(--p-accent) !important; color: var(--p-on-accent) !important; font-weight: 800 !important; }
+:is(.qt.on, .chip[aria-pressed="true"], .chip.chip-on, .seg button[aria-pressed="true"], .seg button[aria-checked="true"], .qd-base[aria-pressed="true"], .pl-tab[aria-selected="true"], .btn.primary, .plan-btn, .btn.done) :is(*, small) { color: var(--p-on-accent) !important; }
+.btn.danger { color: var(--danger) !important; }
+.fab[aria-pressed="true"] { background: var(--p-accent) !important; color: var(--p-on-accent) !important; box-shadow: var(--nb-shadow) !important; }
+.pl-tab { margin: 0 6px 6px 0; padding-inline: 12px; height: 40px; border-bottom-width: 2px !important; }
+.pl-tabs { border-bottom: 0 !important; gap: 4px; }
+/* rows are tiles you can press, one gap apart */
+.rows:not(:has(.wpl-name)) { display: grid; gap: 8px; } .row:not(:has(.wpl-name, .wpl-nums, .wpl-when)) { padding-inline: 12px !important; margin: 0 !important; }
+.row:has(.wpl-name, .wpl-nums, .wpl-when) .way-chev { width: 30px; height: 30px; display: grid; place-items: center; border: var(--nb-edge); border-radius: 8px; box-shadow: 2px 2px 0 var(--p-ink); background: var(--p-bg); }
+.row .way-chev { color: var(--p-ink); }
+.act-current { color: var(--p-ink) !important; } .act-current .ic { color: var(--p-ink); }
+.kf { gap: 8px; } .kf-b { margin: 0 !important; padding: 6px 10px !important; }
+/* a switch: a strong track; on, the accent with the knob at the right */
+.tg-ui { width: 44px; height: 26px; border: var(--nb-edge); box-shadow: none; background: var(--p-bg); }
+.tg-ui::after { top: 2px; left: 2px; width: 18px; height: 18px; background: var(--p-bg); border: var(--nb-edge); box-shadow: none; }
+.tg input:checked + .tg-ui { background: var(--p-accent); box-shadow: none; } .tg input:checked + .tg-ui::after { transform: translateX(18px); background: var(--p-ink); }
+/* type: Bricolage heavy and tight for numbers and headings, Atkinson for the rest */
+.sum-item > b, .top-sum b, .trip-there { font-family: var(--f-fig) !important; font-variation-settings: "wdth" 84, "opsz" 48; font-weight: 800 !important; letter-spacing: -.02em; }
+.sum-item > b { font-size: 34px !important; line-height: 1 !important; }
+.u { font-family: var(--f-ui) !important; font-variation-settings: normal; font-size: max(.42em, 13px) !important; font-weight: 700 !important; color: var(--p-ink) !important; letter-spacing: 0; }
+.sum-item > small { font-size: 13px !important; font-weight: 700 !important; color: var(--p-muted) !important; }
+.trip-there { font-size: 20px !important; }
+.menu-h, .act-head, .lg-title, .qd-lab, .qd-lab h3, .chip-group-label, .sec-title, .bd-group-toggle, #search-results li.r-group, .how-h, .speed-sport, .style-label, .bd-heading > span:first-child, .tl-title, .sec2-t b {
+  font-family: var(--f-hd) !important; font-variation-settings: "wdth" 88, "opsz" 24; font-size: 18px !important; font-weight: 800 !important; color: var(--p-ink) !important; letter-spacing: -.01em; }
+.panel-head h2, .qd h2, .insp-title, .way-hint, .way-hint b { font-family: var(--f-hd) !important; font-variation-settings: "wdth" 84, "opsz" 40; font-size: 26px !important; font-weight: 800 !important; letter-spacing: -.02em; }
+.row b, .wpl-name, #search-results .r-name, .tg-text, .qt-l { font-weight: 700 !important; }
+.row .val, .sec-sum { color: var(--p-ink) !important; background: var(--p-accent); padding: 2px 8px; border-radius: 6px; font-weight: 800 !important; }
+.warn-row.danger, .kf-b.warn.danger::before { background: #ffd7d2 !important; border: var(--nb-edge) !important; }
+:root[data-theme="dark"] .warn-row.danger, :root[data-theme="dark"] .kf-b.warn.danger::before { background: #5a1f1a !important; }
+.logo-mark rect, .brand svg rect { fill: var(--p-ink); } .brand svg path { stroke: var(--p-accent); }
+`;
+
+const OG = GIVENS + INFO + `
+/* Optical glass: one clear surface per panel, lit from above (a light rim along its top), its content on clearer,
+   near-solid glass in one grouped list, no glass inside glass; the main action a lit accent, every control a lit
+   rim; the route's numbers big on their own plate. */
+:root { --text: var(--p-ink); --muted: var(--p-muted); --muted-glass: var(--p-muted);
+  --og-glass: rgba(var(--p-tint), .58); --og-clear: rgba(255, 255, 255, .82); --og-rim: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 0 0 1px rgba(255, 255, 255, .45);
+  --og-drop: 0 1px 2px rgba(15, 26, 20, .06), 0 16px 40px rgba(15, 26, 20, .18);
+  --accent: var(--p-accent); --accent-glass: var(--p-accent); --accent-bg: var(--p-accent); --accent-soft: color-mix(in srgb, var(--p-accent) 14%, white); --focus: var(--p-accent);
+  --surface-solid: rgba(255, 255, 255, .9); --surface-2: rgba(255, 255, 255, .6); --line: rgba(15, 26, 20, .1); --seg-on: #fff; }
+:root[data-theme="dark"] { --og-clear: rgba(255, 255, 255, .08); --og-rim: inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 0 0 1px rgba(255, 255, 255, .08); --og-drop: 0 18px 44px rgba(0, 0, 0, .5);
+  --accent-soft: color-mix(in srgb, var(--p-accent) 22%, transparent); --surface-solid: rgba(28, 32, 30, .92); --surface-2: rgba(255, 255, 255, .07); --line: rgba(255, 255, 255, .1); --seg-on: rgba(255, 255, 255, .16); }
+body, button, input, select { color: var(--p-ink); }
+.sheet, .panel, .qd, .pl-tools, .wx-bar, .brand, .search, .top-btn, .act-current, .zoom-hint, .card-beside, .fab, .ctrl-btn, .ctrl-zoom, .ctrl-compass .maplibregl-ctrl-group {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 120px), var(--og-glass) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(160%) !important; backdrop-filter: blur(22px) saturate(160%) !important; box-shadow: var(--og-rim), var(--og-drop) !important; border: 0 !important; }
+:root[data-theme="dark"] :is(.sheet, .panel, .qd, .pl-tools, .wx-bar, .brand, .search, .top-btn, .act-current, .zoom-hint, .card-beside, .fab, .ctrl-btn, .ctrl-zoom) { background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, 0) 120px), rgba(var(--p-tint), .7) !important; }
+.sheet { border-radius: 24px !important; } .panel, .qd { border-radius: 22px !important; }
+/* the content: clearer glass, grouped, no glass inside glass */
+.sheet-sum, .trip-box, .rows, .kf, .breakdown, .wpl-foot + .rows { background: var(--og-clear); border-radius: 16px; box-shadow: var(--og-rim); }
+.sheet-sum { padding: 12px 14px; gap: 6px 22px; } .rows { padding: 2px 0; overflow: hidden; } .kf { padding: 4px 8px; }
+.rows:not(:has(.wpl-name)) > .row + .row { border-top: 1px solid var(--line); } .rows:not(:has(.wpl-name)) > .row { padding-inline: 14px !important; margin: 0 !important; }
+.rows:has(.wpl-name) { background: transparent; box-shadow: none; }
+.act-current { color: var(--p-accent) !important; }
+.row .way-chev { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(15, 26, 20, .06); color: var(--p-ink); }
+:root[data-theme="dark"] .row .way-chev { background: rgba(255, 255, 255, .1); }
+/* every control: a lit rim on a pale fill; the main action the accent, lit from above */
+.btn, .rt-pill, .mode-select select, .modebtn, .stylebtn, .sportbtn, .chip, .qt, .qd-base, .qd-edit-btn, .search-plan, .kf-b {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(255, 255, 255, .7)) !important; border: 1px solid rgba(15, 26, 20, .12) !important; border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(15, 26, 20, .12), 0 4px 10px rgba(15, 26, 20, .06) !important; font-weight: 700; }
+:root[data-theme="dark"] :is(.btn, .rt-pill, .mode-select select, .modebtn, .stylebtn, .sportbtn, .chip, .qt, .qd-base, .qd-edit-btn, .search-plan, .kf-b) { background: linear-gradient(180deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .07)) !important; border-color: rgba(255, 255, 255, .14) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 2px 6px rgba(0, 0, 0, .3) !important; }
+.qt, .qd-base, .kf-b { border-radius: 16px !important; }
+.btn.primary, .plan-btn, .btn.done, .fab[aria-pressed="true"], .chip[aria-pressed="true"], .chip.chip-on, .qt.on, .seg button[aria-pressed="true"], .seg button[aria-checked="true"] {
+  background: linear-gradient(180deg, var(--p-accent2), var(--p-accent)) !important; color: var(--p-on-accent) !important; border-color: transparent !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 2px 8px color-mix(in srgb, var(--p-accent) 35%, transparent) !important; }
+.qt.on *, .chip[aria-pressed="true"] *, .seg button[aria-pressed="true"] * { color: inherit !important; }
+.seg { background: rgba(15, 26, 20, .07) !important; border-radius: 999px !important; } :root[data-theme="dark"] .seg { background: rgba(255, 255, 255, .08) !important; }
+.seg button { border-radius: 999px !important; }
+.rt-pill, .mode-select select, .modebtn b, .stylebtn .two > span, .sportbtn > span, .row .val, .sec-sum, .qd-edit-btn { color: var(--p-accent) !important; }
+.tool { border-radius: 50%; }
+.pl-tab[aria-selected="true"] { color: var(--p-ink); border-bottom: 3px solid var(--p-accent) !important; }
+/* a switch: a deep track, the knob a lit bead */
+.tg-ui { width: 46px; height: 28px; background: rgba(15, 26, 20, .16); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .25); }
+:root[data-theme="dark"] .tg-ui { background: rgba(255, 255, 255, .16); }
+.tg-ui::after { top: 3px; left: 3px; width: 22px; height: 22px; background: linear-gradient(180deg, #fff, #eef1ef); box-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
+.tg input:checked + .tg-ui { background: linear-gradient(180deg, var(--p-accent2), var(--p-accent)); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .2); } .tg input:checked + .tg-ui::after { transform: translateX(18px); }
+/* type: Bricolage light and open for the big numbers and headings, Atkinson for the rest */
+.sum-item > b, .top-sum b, .trip-there { font-family: var(--f-fig) !important; font-variation-settings: "wdth" 92, "opsz" 48; font-weight: 600 !important; letter-spacing: -.02em; }
+.sum-item > b { font-size: 36px !important; line-height: 1 !important; }
+.u { font-family: var(--f-ui) !important; font-variation-settings: normal; font-size: max(.4em, 13px) !important; font-weight: 400 !important; color: var(--p-muted) !important; letter-spacing: 0; }
+.sum-item > small { font-size: 13px !important; color: var(--p-muted) !important; }
+.trip-there { font-size: 20px !important; color: var(--p-ink); }
+.menu-h, .act-head, .lg-title, .qd-lab, .qd-lab h3, .chip-group-label, .sec-title, .bd-group-toggle, #search-results li.r-group, .how-h, .speed-sport, .style-label, .bd-heading > span:first-child, .tl-title, .sec2-t b {
+  font-family: var(--f-hd) !important; font-variation-settings: "wdth" 96, "opsz" 24; font-size: 17px !important; font-weight: 650 !important; color: var(--p-ink) !important; }
+.panel-head h2, .qd h2, .insp-title, .way-hint, .way-hint b { font-family: var(--f-hd) !important; font-variation-settings: "wdth" 94, "opsz" 40; font-size: 26px !important; font-weight: 650 !important; letter-spacing: -.02em; }
+.row b, .wpl-name, #search-results .r-name, .tg-text, .qt-l { font-weight: 500 !important; }
+`;
+Object.assign(DIRS, { nb: NB, og: OG });
+
 
 /* ------------------------------------------------------------------ Finnish-length words, for the worst case */
 const FI = {
@@ -347,6 +494,19 @@ function unitWrap(doc) {
     }
   }
 }
+function infoBalls(doc) {
+  // a control's explanation becomes a round ⓘ with a tooltip (hover with a mouse, a tap on a phone); a row that opens
+  // something keeps its label alone, the explanation in its tooltip, so a tap on the row still opens it
+  for (const el of doc.querySelectorAll('.row > span > small:not([class]), .tg-text > small, .lg-group > p.note, p.style-help')) {
+    const t = el.textContent.trim(); if (t.split(/\s+/).length < 5 || /\d/.test(t)) continue;
+    const row = el.closest('.row'); if (row) { row.setAttribute('title', t); el.remove(); continue; }
+    const ball = doc.createElement('span'); ball.className = 'info'; ball.tabIndex = 0; ball.setAttribute('role', 'button'); ball.setAttribute('aria-label', 'About: ' + t); ball.dataset.tip = t; ball.textContent = 'i';
+    let host = el.closest('.tg-text');
+    if (!host) { let p = el.previousElementSibling; for (let k = 0; p && k < 4 && !host; k++, p = p.previousElementSibling) host = p.matches('.tg-text, h4, label, .coming') ? (p.querySelector('.tg-text') || p) : p.querySelector('.tg-text'); }
+    if (!host) host = el.closest('details')?.querySelector('summary .lg-title');
+    el.remove(); if (host) host.append(ball);
+  }
+}
 function finnish(doc) {
   const walk = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT); const nodes = []; while (walk.nextNode()) nodes.push(walk.currentNode);
   for (const n of nodes) { const t = n.textContent.trim(); if (FI[t]) n.textContent = n.textContent.replace(t, FI[t]); }
@@ -372,10 +532,11 @@ function appDoc(key) {
   doc.querySelectorAll('.maplibregl-marker, .maplibregl-popup').forEach((el) => el.remove()); // (they're in the map's picture)
   for (const b of doc.querySelectorAll('.profile-box')) { const im = b.querySelector('img.cv-pic'); if (im && /width:0px/.test(im.getAttribute('style') || '')) b.querySelector('.chart-sports')?.remove(); } // (a profile not drawn yet when captured)
   if (S.dir !== 'today') unitWrap(doc);
+  if (S.dir === 'nb' || S.dir === 'og') infoBalls(doc);
   if (S.words === 'fi') finnish(doc);
   const t = S.type === 'own' ? OWN_TYPE[S.dir] : S.type;
   const root = attrs(r.root, { 'data-theme': S.theme, ...(S.kinds === 'on' ? { 'data-kinds': '1' } : {}) });
-  return `<!doctype html><html ${root}><head><meta charset="utf-8">${cssLink()}${FONTS}<style>${FRAME_BASE}</style><style>${typeCss(t)}</style><style>${S.dir === 'today' ? (S.type === 'own' ? '' : TODAY_TYPE) : DIRS[S.dir]}</style>${S.kinds === 'on' ? `<style>${kindsCss()}</style>` : ''}</head><body ${attrs(r.body)}>${doc.body.innerHTML}${SCROLL}${TAGGER}</body></html>`;
+  return `<!doctype html><html ${root}><head><meta charset="utf-8">${cssLink()}${FONTS}<style>${FRAME_BASE}</style><style>${typeCss(t)}</style><style>${S.dir === 'today' ? (S.type === 'own' ? '' : TODAY_TYPE) : DIRS[S.dir]}</style><style>${palCss(S.dir, +S.pal)}</style>${S.kinds === 'on' ? `<style>${kindsCss()}</style>` : ''}</head><body ${attrs(r.body)}>${doc.body.innerHTML}${SCROLL}${TAGGER}</body></html>`;
 }
 const TODAY_TYPE = 'body, button, input, select { font-family: var(--f-ui); }';
 
@@ -391,6 +552,7 @@ function frame(key, title, cap, html, w, h, zoom) {
   return f;
 }
 
+const SCREENS_ = 0;
 const SCREENS = {
   peek: ['The planner at the peek, with the weather window', 'A route of three sports (bike, paddle, run), drawn in straight legs; the toolbar, the weather window and the sheet stacked as on a phone today.'],
   full: ['The planner at full', 'The numbers, the key facts, the profile, the trip\'s box, the list of three parts and the rows under it. It scrolls, as in the app.'],
@@ -407,7 +569,9 @@ const board = document.getElementById('board');
 function draw() {
   document.documentElement.dataset.theme = S.theme;
   for (const b of document.querySelectorAll('button[data-k]')) b.setAttribute('aria-pressed', String(S[b.dataset.k] === b.dataset.v));
-  dock.querySelector('select').value = S.screen;
+  for (const s of dock.querySelectorAll('select')) s.value = S[s.dataset.k];
+  const pals = PALETTES[S.dir]; const ps = dock.querySelector('select[data-k=pal]'); ps.parentElement.hidden = !pals;
+  if (pals) [...ps.options].forEach((o, i) => { o.textContent = pals[i].name; });
   try { history.replaceState(null, '', '?' + new URLSearchParams(S)); } catch (e) {}
   board.textContent = '';
   const list = S.screen === 'all' ? Object.keys(SCREENS) : [S.screen];
@@ -501,9 +665,55 @@ h2 { font-size: 26px; font-weight: 800; margin: 0 0 18px; } .facts { padding: 36
 footer { padding: 28px 16px; font-size: 15px; }
 @media (min-width: 900px) { .nav { padding: 0 40px; } .nav .btn { display: inline-flex; min-height: 42px; } .hero { grid-template-columns: 1fr; } .hero-pic { aspect-ratio: 21 / 9; } .hero-text { position: absolute; left: 40px; top: 60px; margin: 0; max-width: 520px; } .facts { padding: 48px 40px; } .news { margin: 0 40px; } footer { padding: 32px 40px; } }`,
 };
+
+WEB.nb = `body { font: 18px/1.5 "Atkinson Hyperlegible Next", system-ui, sans-serif; background: var(--p-page); color: var(--p-ink); padding: 0 16px 40px; }
+.nav { display: flex; align-items: center; gap: 14px; height: 64px; margin: 12px 0 0; padding: 0 12px; background: var(--p-bg); border: 2px solid var(--p-ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--p-ink); }
+.logo { display: flex; gap: 10px; align-items: center; text-decoration: none; font: 800 24px/1 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 84, "opsz" 48; }
+.logo rect { fill: var(--p-ink); } .logo path { stroke: var(--p-accent); }
+.nav nav { display: flex; gap: 14px; margin-left: auto; font-size: 16px; font-weight: 700; } .nav nav a { text-decoration: none; padding: 4px 6px; border-radius: 6px; } .nav nav a[aria-current] { background: var(--p-accent); color: var(--p-on-accent); } .nav .btn { display: none; }
+.btn { border: 2px solid var(--p-ink); border-radius: 12px; background: var(--p-bg); box-shadow: 3px 3px 0 var(--p-ink); font-weight: 800; } .btn.main { background: var(--p-accent); color: var(--p-on-accent); }
+.hero { padding: 36px 0 32px; display: grid; gap: 26px; } .kicker { display: inline-block; font-size: 14px; font-weight: 800; padding: 4px 10px; border: 2px solid var(--p-ink); border-radius: 999px; background: var(--p-bg); }
+h1 { font: 800 clamp(48px, 12vw, 96px)/.92 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 80, "opsz" 96; letter-spacing: -.02em; margin: 14px 0 14px; }
+.lead { font-size: 20px; max-width: 32ch; } .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0 12px; } .fine { font-size: 15px; font-weight: 700; }
+.hero-pic { border: 2px solid var(--p-ink); border-radius: 16px; box-shadow: 6px 6px 0 var(--p-ink); aspect-ratio: 4 / 3; } .hero-pic img { width: 100%; height: 100%; object-fit: cover; }
+.readout { background: var(--p-bg); border: 2px solid var(--p-ink); border-radius: 12px; padding: 8px 12px; color: var(--p-ink); box-shadow: 3px 3px 0 var(--p-ink); } .r-name { font-size: 13px; font-weight: 800; }
+.r-nums b { font: 800 28px/1 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 84, "opsz" 36; font-variant-numeric: tabular-nums; } .r-nums i { font-size: 14px; font-weight: 700; } .r-nums small { font-size: 13px; font-weight: 700; }
+h2 { font: 800 36px/1 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 84, "opsz" 40; margin: 0 0 20px; } .facts { padding: 36px 0; } .facts li { background: var(--p-bg); border: 2px solid var(--p-ink); border-radius: 14px; padding: 16px; box-shadow: 4px 4px 0 var(--p-ink); }
+.facts .n { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: var(--p-accent); color: var(--p-on-accent); border: 2px solid var(--p-ink); font: 800 16px/1 "Bricolage Grotesque", sans-serif; }
+.facts h3 { font: 800 21px/1.1 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 88, "opsz" 24; margin: 10px 0 6px; }
+.news { padding: 18px; background: var(--p-bg); border: 2px solid var(--p-ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--p-ink); } .news time { font-weight: 800; min-width: 100px; } .news a { font-weight: 700; } .more { display: inline-block; margin-top: 14px; font-weight: 800; background: var(--p-accent); color: var(--p-on-accent); padding: 4px 10px; border: 2px solid var(--p-ink); border-radius: 8px; text-decoration: none; }
+footer { padding: 28px 0; font-size: 15px; font-weight: 700; }
+@media (min-width: 900px) { body { padding: 0 40px 48px; } .nav .btn { display: inline-flex; min-height: 42px; } .hero { padding: 64px 0; } }`;
+WEB.og = `body { font: 18px/1.5 "Atkinson Hyperlegible Next", system-ui, sans-serif; color: var(--p-ink); padding: 0 16px 40px; min-height: 100vh;
+  background: radial-gradient(120% 60% at 20% 0%, rgba(var(--p-tint), 1), transparent 70%), linear-gradient(180deg, rgba(var(--p-tint), .7), #dfe6e0); }
+:root[data-theme="dark"] body { background: radial-gradient(120% 60% at 20% 0%, rgba(var(--p-tint), 1), transparent 70%), #0d110f; }
+.glass { background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.25)); -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%); box-shadow: inset 0 1px 0 rgba(255,255,255,.9), inset 0 0 0 1px rgba(255,255,255,.4), 0 16px 40px rgba(15,26,20,.14); }
+:root[data-theme="dark"] .glass { background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.03)); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 16px 40px rgba(0,0,0,.5); }
+.nav { display: flex; align-items: center; gap: 14px; height: 60px; margin: 12px 0 0; padding: 0 14px; border-radius: 999px; background: rgba(255,255,255,.55); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: inset 0 1px 0 #fff, 0 10px 30px rgba(15,26,20,.1); }
+:root[data-theme="dark"] .nav { background: rgba(255,255,255,.08); box-shadow: inset 0 1px 0 rgba(255,255,255,.2); }
+.logo { display: flex; gap: 10px; align-items: center; text-decoration: none; font: 650 23px/1 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 94, "opsz" 48; } .logo rect { fill: var(--p-accent); }
+.nav nav { display: flex; gap: 16px; margin-left: auto; font-size: 16px; } .nav nav a { text-decoration: none; padding: 4px 0; } .nav nav a[aria-current] { font-weight: 700; color: var(--p-accent); } .nav .btn { display: none; }
+.btn { border-radius: 999px; border: 1px solid rgba(15,26,20,.12); background: linear-gradient(180deg, #fff, rgba(255,255,255,.75)); box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(15,26,20,.1); color: var(--p-ink); }
+:root[data-theme="dark"] .btn { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.2); }
+.btn.main { background: linear-gradient(180deg, var(--p-accent2), var(--p-accent)); color: var(--p-on-accent); border-color: transparent; box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 4px 14px color-mix(in srgb, var(--p-accent) 35%, transparent); }
+.hero { padding: 40px 0 32px; display: grid; gap: 28px; } .kicker { font-size: 15px; color: var(--p-muted); }
+h1 { font: 650 clamp(46px, 11vw, 88px)/.95 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 94, "opsz" 96; letter-spacing: -.03em; margin: 10px 0 16px; }
+.lead { font-size: 20px; max-width: 32ch; color: var(--p-muted); } .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0 12px; } .fine { font-size: 15px; color: var(--p-muted); }
+.hero-pic { border-radius: 26px; aspect-ratio: 4 / 3; box-shadow: 0 24px 60px rgba(15,26,20,.25), inset 0 0 0 1px rgba(255,255,255,.5); } .hero-pic img { width: 100%; height: 100%; object-fit: cover; }
+.readout { background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.5)); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); border-radius: 18px; padding: 10px 14px; color: #0f1a14; box-shadow: inset 0 1px 0 #fff, 0 8px 20px rgba(15,26,20,.18); }
+.r-name { font-size: 13px; color: #46554c; } .r-nums b { font: 600 30px/1 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 92, "opsz" 36; font-variant-numeric: tabular-nums; } .r-nums i { font-size: 14px; color: #46554c; } .r-nums small { font-size: 13px; color: #46554c; }
+h2 { font: 650 34px/1.05 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 94, "opsz" 40; letter-spacing: -.02em; margin: 0 0 20px; }
+.facts { padding: 36px 0; } .facts li { padding: 18px; border-radius: 20px; background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.36)); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: inset 0 1px 0 #fff, 0 10px 30px rgba(15,26,20,.08); }
+:root[data-theme="dark"] .facts li { background: rgba(255,255,255,.06); box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
+.facts .n { font: 650 15px/1 "Bricolage Grotesque", sans-serif; color: var(--p-accent); } .facts h3 { font: 650 21px/1.15 "Bricolage Grotesque", sans-serif; font-variation-settings: "wdth" 94, "opsz" 24; margin: 6px 0 6px; } .facts p { color: var(--p-muted); }
+.news { padding: 20px; border-radius: 20px; background: rgba(255,255,255,.5); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: inset 0 1px 0 #fff; } :root[data-theme="dark"] .news { background: rgba(255,255,255,.06); }
+.news time { color: var(--p-muted); min-width: 100px; } .news a { font-weight: 700; } .more { display: inline-block; margin-top: 14px; font-weight: 700; color: var(--p-accent); }
+footer { padding: 28px 0; font-size: 15px; color: var(--p-muted); }
+@media (min-width: 900px) { body { padding: 0 40px 48px; } .nav .btn { display: inline-flex; min-height: 42px; } .hero { padding: 64px 0; } }`;
+
 function webDoc(w) {
   if (S.dir === 'today') return `<!doctype html><html><body style="margin:0;display:grid;place-items:center;height:100vh;font:17px/1.5 system-ui,sans-serif;color:#4a5750;background:#fff;padding:24px;text-align:center">Polku has no web pages today: polku.si opens the app. Pick a direction to see the page it would make.</body></html>`;
-  return `<!doctype html><html data-theme="${S.theme}" lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=${w}">${FONTS}<style>${WEB_BASE}${WEB[S.dir]}</style></head><body>${webBody()}</body></html>`;
+  return `<!doctype html><html data-theme="${S.theme}" lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=${w}">${FONTS}<style>${palCss(S.dir, +S.pal)}${WEB_BASE}${WEB[S.dir]}</style></head><body>${webBody()}</body></html>`;
 }
 
 // The typefaces, side by side: what Polku's numbers and words look like in each, and what each costs to load.
@@ -529,39 +739,25 @@ table { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums li
 }
 
 
-// The notes under the frames: what each direction is, what it costs, and the recommendation. The plan has the rest.
+// The notes under the frames: round 2's two directions, what was decided, and the recommendation. The plan has the rest.
 document.getElementById('notes').innerHTML = `
-<h2>Two choices, one at a time</h2>
-<p>A and B share one way of telling things apart (type, and green wells for what you set); B adds its two typefaces, bigger numbers and a spruce dark theme. C tells them apart by material. So the choice is really two: <b>how things are told apart</b>, then <b>the typeface</b>, which <b>More switches → Typeface</b> puts on any direction.</p>
-<p><b>First, the recommendation: C's plates and keys.</b> The numbers you read at a glance sit on a solid plate, never on the glass, and everything you press is a key with an edge, so a number and a control can't be mistaken for each other in the sun. The sheet and the panels stay glass. <b>What it costs:</b> the most CSS of the three (every control's background and edge) and more solid blocks over the map. <b>The alternative:</b> A's type and wells, lighter and closest to today.</p>
-<p><b>Then the typeface,</b> asked once the first is settled: the lean is #995's Bricolage + Atkinson (about 111 KB once, kept offline), with Atkinson alone (34 KB) or the device's own (none) as the cheaper ways.</p>
-<h2>What this round doesn't answer yet</h2>
-<p>Layout. The glass cards stacked at the peek, the desktop toolbar's fifteen controls, the meters (On the route's bars, the profile) and the switches look the same in every direction here: that's the next pass, on the chosen direction.</p>
-<h2>What every direction keeps</h2>
+<h2>Round 2: two directions</h2>
+<p><b>Neo-brutalism:</b> solid paper panels with an ink edge and a hard shadow. Everything you can press has the same edge and shadow, and pressing it takes the shadow away. The main action and what's chosen are in the accent. No glass.</p>
+<p><b>Optical glass:</b> one clear glass surface per panel, lit from above. Its content sits on clearer, near-solid glass in grouped lists, with no glass inside glass. Every control is a lit pill with a rim, and the main action and what's chosen are the accent, lit. The route's numbers are big on their own plate.</p>
+<p>Both use Bricolage for numbers and headings and Atkinson for the rest: heavy and tight in Neo-brutalism, light and open in Optical glass. <b>Palette</b> in the bar at the foot swaps each direction's colours, in light and dark.</p>
+<h2>What's decided for both (2026-11-14)</h2>
 <ul>
-<li>Look B: the glass, its edge, one shadow, the modes that turn it solid, the map first.</li>
-<li>Headings in sentence case, nothing under 12 px (#767); the dotted time words gone; Clear route off the list's foot.</li>
-<li>Green means you can tap it, and the one filled green is the main action: on the map's edge only <b>Plan</b> is filled, so the sport and <b>Weather</b> while it's on aren't.</li>
-<li>Magenta is the route, red is danger, blue is water and you; nothing by colour alone; 44 px to touch.</li>
-<li>A number's unit is smaller and quieter than the number (the one markup change: the unit gets an element of its own).</li>
+<li>Every control has a visible edge: no text-only buttons, a strong track on every switch, rows that open something drawn as something you can press. The route's list stays a timeline; its › is a small key.</li>
+<li>A control's explanation becomes a round ⓘ: a tooltip on hover with a mouse, a tap on a phone (Settings and Layers). A row that opens something keeps its label alone, its explanation in the tooltip.</li>
+<li>The colours aren't held to the old rules in this round, so the palettes try lime, orange and blue as well as green.</li>
 </ul>
-<h2>The three directions</h2>
-<div class="wide"><table>
-<tr><th></th><th>A · Plain and exact</th><th>B · Field guide</th><th>C · Plates and keys</th></tr>
-<tr><th>The idea</th><td>Size, weight and colour each mean one thing, in the device's own font</td><td>Polku's own two voices (#995): narrow Bricolage for numbers and headings, Atkinson for everything you read or tap</td><td>The material says what it is: numbers on solid plates, what you press a key with an edge, the glass for the rest</td></tr>
-<tr><th>A number</th><td>27 px bold, unit small and grey</td><td>33 px, the glance size, narrow so three fit a phone</td><td>25 px heavy in a cell of a solid plate, its label over it</td></tr>
-<tr><th>A value you set</th><td>Green words on a soft green well, with ▾</td><td>The same, in Atkinson</td><td>A key with its name over its value: "When / Leave now"</td></tr>
-<tr><th>An action</th><td>A button; one filled green</td><td>The same, bolder words</td><td>A key with a lower lip; the main one green</td></tr>
-<tr><th>A heading</th><td>15–22 px bold words</td><td>Bricolage, 17–27 px</td><td>16–23 px heavy words</td></tr>
-<tr><th>Dark theme</th><td>As today</td><td>Spruce instead of black</td><td>As today, plates solid dark</td></tr>
-<tr><th>Bytes</th><td>None</td><td>About 111 KB once, then kept offline</td><td>About 34 KB once, then kept offline</td></tr>
-<tr><th>The risk</th><td>Looks least changed; Polku's web pages would need a voice of their own anyway</td><td>A display face in a working screen can feel loud; text shows in the device's font until the fonts arrive on a slow network</td><td>More edges and solid blocks over the map, the opposite of B's light glass; the most CSS to change</td></tr>
-</table></div>
+<h2>The recommendation: Optical glass</h2>
+<p>It keeps Polku's idea of the map showing through, which round 1's plates broke, and now every control has a rim and a fill you can see. The route's numbers and the lists sit on clearer glass, so they read over any map. <b>What it costs:</b> about as much CSS as Neo-brutalism, and the blur Polku already draws. <b>The alternative:</b> Neo-brutalism, the clearest about what you can press, louder, and it hides more of the map.</p>
 <h2>What isn't drawn</h2>
 <ul>
-<li>The frames are the app's markup at one moment: the switches restyle it, but nothing in them works, and what the app's JavaScript sizes (the peek's height) stays as it was captured.</li>
-<li>Your own phone's touch: on a desktop the frames have a mouse's hover, on a phone a finger's.</li>
-<li>Splash, help and notes pages: #995 drew them in B's world; the main page here shows each direction's.</li>
+<li>Layout: the glass cards stacked at the peek and the desktop toolbar keep today's arrangement.</li>
+<li>The frames are the app's markup at one moment: nothing in them works, and sizes the app's JavaScript sets stay as captured.</li>
+<li>Round 1 (A, B and C) is under <b>More switches → Round 1</b>.</li>
 </ul>`;
 
 draw();

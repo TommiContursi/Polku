@@ -7,6 +7,12 @@ A design round on Polku's whole layout and look, apart from the map: the planner
 
 ## Where it stands
 
+**Round 2 (2026-11-14), after the user tried round 1:** round 1's plates were liked, but they broke the glass, and many controls were still hard to tell from the background (switches, rows with ›, text-only buttons, controls with a sentence of explanation under them). The user asked for two distinct directions, **Neo-brutalism** and **Optical glass**, as visual languages around the map rather than copies of their quick sketch.
+- **Decided by the user:** the look plus the layout fixes it needs; solid panels in Neo-brutalism, glass in Optical glass; every control gets a visible edge (this reopens "green words" in the rule for controls of 2026-11-06); a control's explanation becomes a round ⓘ, a tooltip on hover and a tap on a phone, in Settings and Layers; both directions use #995's two typefaces, set differently; colours aren't held to the old rules in this round, so each direction has three palettes to try, light and dark.
+- **Drawn:** [Round 2](#round-2-neo-brutalism-and-optical-glass) below, in the same mock-up (**Brutalism** and **Glass** in its bar, with **Palette**); round 1 is behind **More switches → Round 1**.
+- **Waiting for the user:** which of the two. **The recommendation is Optical glass:** it keeps the map showing through, which round 1's plates broke, and every control now has a rim and a fill you can see. The alternative is Neo-brutalism, the clearest about what you can press, louder, and it hides more of the map.
+
+**Round 1, for the record:**
 - **Waiting for the user, one choice at a time.** A and B turned out to share one way of telling things apart (type, and green wells for what you set); B adds its typefaces, bigger numbers and a spruce dark. So the choice is two:
   1. **How things are told apart. The recommendation is C's plates and keys:** numbers on a solid plate, never on the glass, and everything you press a key, so a number and a control can't be mistaken in the sun; the sheet and panels stay glass. It costs the most CSS (every control's background and edge) and puts more solid blocks over the map. The alternative is A's type and wells, lighter and closest to today.
   2. **Then the typeface,** asked once the first is settled: the lean is #995's Bricolage + Atkinson (about 111 KB once, kept offline), with Atkinson alone (34 KB) or the device's own as the cheaper ways.
@@ -100,6 +106,24 @@ All three share the givens above and one markup change: a number's unit gets an 
 - **A heading:** 16–23 px heavy words in the text's colour.
 - **The typeface:** Atkinson Hyperlegible Next alone, made for legibility (its zero is slashed).
 - **Costs:** about 34 KB of fonts once; the most CSS of the three (every control's background and edge). **Risk:** more edges and solid blocks over the map, the opposite of look B's light glass, chosen on 2026-10-28 for showing the map through.
+
+## Round 2: Neo-brutalism and Optical glass
+
+Both are again layers of CSS over `main`'s captured markup (`dirs2.js` in the build), with one more markup change: a control's explanation becomes a round ⓘ, its words in a tooltip. A row that opens something keeps its label alone, the explanation in its tooltip, so a tap on the row still opens it. In the build the ⓘ sits outside a switch's label, so tapping it doesn't flip the switch.
+
+| | Neo-brutalism | Optical glass |
+|---|---|---|
+| **Character** | Sturdy, direct, a bit loud: trail signage and printed maps | Calm, luminous, exact: a compass's glass, lake ice |
+| **Panels** | Solid paper with a 2 px ink edge and a hard 4 px shadow; no blur | One clear glass surface per panel, lit from above (a light rim along the top), stronger blur; its content on clearer, near-solid glass in grouped lists, never glass inside glass |
+| **A control** | The same ink edge and a 3 px hard shadow on every one; pressed, it sits down and the shadow goes | A pale pill with a light rim; the main action and what's chosen a lit accent |
+| **A switch** | A track with an ink edge; on, the accent with an ink knob | A deep track; on, the accent; the knob a lit bead |
+| **A row that opens** | A tile with the ink edge; the route's list stays a timeline, its › a small key | A row in a grouped list with hairlines, its › in a round well |
+| **Numbers and headings** | Bricolage 800, narrow and tight; numbers 34 px | Bricolage 600–650, open; numbers 36 px on their plate |
+| **Palettes** | Signal lime, Trail marker orange, Lake blue | Moss green, Cloudberry orange, Lake ice blue |
+| **The web page** | Ink-edged cards, a big narrow headline, the accent on the current page | Glass cards over a soft field of the palette's tint |
+
+- **Checked headless:** every screen at 390 × 844 in both, Settings and Layers in light and dark, two palettes each, the web page; the Artifact's page has no sideways scroll or errors at 360 and 390 px. Fixed on the way: the sport button's icon on the new surfaces, the list's rows (kept a timeline), Settings' switch labels with their ⓘ, Neo-brutalism's chosen tiles and logo in dark.
+- **Not checked yet:** 200 % and Finnish-length words in round 2, the contrast of every palette (the orange and lime palettes are tried against the old rules on purpose, see the [Colours](../../DESIGN.md#colors) they'd change), a real phone, and the Artifact inside claude.ai's viewer.
 
 ## The typeface
 
