@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-15
+
+### An alternative route under the pointer ([#1029](https://github.com/TommiContursi/Polku/issues/1029))
+
+- With the mouse on an alternative route, only the alternative lights up. The map doesn't show the readout of the road or path under it or draw that road or path, so it's clear that a click takes the alternative.
+
 ## 2026-11-14
 
 ### Words that read over the map ([#989](https://github.com/TommiContursi/Polku/issues/989))

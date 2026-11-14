@@ -2933,6 +2933,36 @@ OTHERWAYS_UNDO = """(async () => {
   return errs;
 })()"""
 
+# #1029: an alternative route with a road or a path under it: a spot on it, on the open map, where the map's hover would
+# read that road or path (its layers and pickFeature(), as js/hover.js asks them), for the mouse to rest on
+OTHERWAYS_HOVER = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, m = polku.map;
+  const I = await import(location.origin + '/js/inspect.js');
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  p.setActive(true);
+  p.setMode('auto');
+  p.addPoint([24.930, 60.170]);
+  p.addPoint([24.950, 60.170]);
+  for (let k = 0; k < 60 && !(p.alts && p.alts.ways.length); k++) await wait(200);
+  if (!p.alts || !p.alts.ways.length) return { why: 'no alternative offered' };
+  m.jumpTo({ center: [24.940, 60.174], zoom: 16 });
+  await new Promise((ok) => { const t = setTimeout(ok, 10000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+  const c = m.getCanvas().getBoundingClientRect(), box = (x, y, r) => [[x - r, y - r], [x + r, y + r]];
+  const layers = I.inspectLayers(m).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
+  const line = p.alts.ways[0].parts[0].map((ll) => m.project(ll));
+  for (let s = 0; s < line.length - 1; s++) {
+    const a = line[s], b = line[s + 1], n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 3);
+    for (let i = 0; i <= n; i++) {
+      const x = a.x + ((b.x - a.x) * i) / n, y = a.y + ((b.y - a.y) * i) / n;
+      if (document.elementFromPoint(c.left + x, c.top + y) !== m.getCanvas() || m.queryRenderedFeatures(box(x, y, 8), { layers: ['route-casing'] }).length) continue;
+      const f = I.pickFeature(m.queryRenderedFeatures(box(x, y, 5), { layers }));
+      if (f && /^(path|track|cycleway|road)-/.test(f.layer.id)) return { x: c.left + x, y: c.top + y, way: f.layer.id };
+    }
+  }
+  return { why: `no road or path under the alternative on the open map (${m.queryRenderedFeatures({ layers }).length} of the map's features drawn)` };
+})()"""
+
 
 def otherways(chrome):
     fails = []
@@ -2952,6 +2982,27 @@ def otherways(chrome):
             fails += [f'{label}: console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
+    # #1029: the mouse resting on an alternative route with a road or a path under it: the alternative lights up, and the map's
+    # hover gives way to it (no readout for the way under it, nothing drawn there), as a click takes the alternative
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': OTHERWAYS_ROUTER}, pg.s)
+        pg.open_app({'activity': 'run'}, {'polku:plannerDock': '"left"'}, '#14/60.171/24.94')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        at = pg.js(OTHERWAYS_HOVER, timeout=60000)
+        if 'why' in at:
+            fails.append(f"the mouse on an alternative route: {at['why']}")
+        else:
+            for dx in (-12, -6, 0):
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'] + dx, 'y': at['y'], 'button': 'none'}, pg.s)
+                time.sleep(0.05)
+            time.sleep(1.5)
+            h = pg.js("({ lit: polku.planner.altLit, tip: !document.querySelector('.hover-tip').hidden && document.querySelector('.hover-tip').textContent, drawn: polku.map.querySourceFeatures('pick').length, capable: matchMedia('(hover: hover) and (pointer: fine)').matches })")
+            if h['lit'] is None or h['tip'] or h['drawn']:
+                fails.append(f"the mouse on an alternative route over {at['way']}: lit {h['lit'] is not None}, the readout “{h['tip']}”, {h['drawn']} lines drawn (lit, no readout, nothing drawn; a hover pointer: {h['capable']})")
+        fails += [f'the mouse on an alternative route: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} other ways for a new leg" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
