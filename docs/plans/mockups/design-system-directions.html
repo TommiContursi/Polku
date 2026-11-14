@@ -30,7 +30,8 @@ h1 { font-size: 22px; line-height: 1.2; margin: 18px 0 4px; letter-spacing: -.01
 .lede { margin: 0 0 12px; color: var(--mut); max-width: 62ch; }
 .opts { margin: 4px 0 0; } .opts summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; color: var(--acc); }
 .bar { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 4px 0 8px; }
-.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; padding: 8px max(12px, env(safe-area-inset-left, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-right, 0px)); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: center; }
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; padding: 8px max(12px, env(safe-area-inset-left, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-right, 0px)); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); display: flex; flex-wrap: nowrap; gap: 6px 12px; justify-content: safe center; overflow-x: auto; scrollbar-width: none; }
+.dock > * { flex: none; } .dock .grp { flex-wrap: nowrap; } .dock::-webkit-scrollbar { display: none; } /* one row that scrolls sideways on a phone, so it never covers a frame's foot */
 .dock .grp > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .dock select { min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-weight: 600; }
 body { padding-bottom: 150px !important; }
@@ -80,7 +81,7 @@ const OPTS = {
   type: [['own', 'As drawn'], ['system', 'System'], ['atk', 'Atkinson'], ['brand', 'Bricolage + Atkinson']],
   theme: [['light', 'Light'], ['dark', 'Dark']],
   size: [['390', '390 × 844'], ['360', '360 × 740'], ['200', '200 %']],
-  words: [['en', 'English'], ['fi', 'Finnish-length']],
+  words: [['en', 'English'], ['fi', 'Finnish-length'], ['worst', 'Worst case']],
   kinds: [['off', 'Off'], ['on', 'On']],
 };
 const LABEL = { sbar: 'Scroll indicator', pal: 'Palette', dir: 'Direction', screen: 'Screen', type: 'Typeface', theme: 'Theme', size: 'Size', words: 'Words', kinds: 'Label the kinds' };
@@ -95,6 +96,7 @@ for (const [k, list] of Object.entries(OPTS)) {
   if (k === 'dir') { const grp = (label, vs) => { const d = document.createElement('div'); d.className = 'grp'; d.innerHTML = `<span>${label}</span>`; for (const v of vs) d.append(g.querySelector(`[data-v=${v}]`)); return d; }; bar.prepend(grp('Rounds 2 to 4', ['c2', 'lg', 'og', 'nb'])); bar.append(grp('Round 1', ['a', 'b', 'c'])); }
   (k === 'dir' ? dock : bar).append(g);
 }
+dock.insertBefore(dock.querySelector('select[data-k=screen]').parentElement, dock.querySelector('select[data-k=pal]').parentElement); // Screen first after Direction: on a phone the row scrolls
 for (const box of [bar, dock]) {
   box.addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (!b) return; S[b.dataset.k] = b.dataset.v; draw(); });
   box.addEventListener('change', (e) => { const s = e.target.closest('select[data-k]'); if (!s) return; S[s.dataset.k] = s.value; draw(); });
@@ -565,7 +567,7 @@ const IC = {
 };
 const ic = (n, s = 20) => `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
 const SPORT = { MTB: ['bike', '#c2410c'], Paddle: ['paddle', '#0369a1'], Run: ['run', '#0f766e'] };
-const fi = (en, fiText) => (S.words === 'fi' ? fiText : en);
+const fi = (en, fiText) => (S.words !== 'en' ? fiText : en);
 function plannerDoc(state) {
   const r = SC[state === 'full' ? 'full' : 'peek'], dark = S.theme === 'dark';
   const prof = PIC + ((dark ? SC.peek.picsDark : SC.peek.pics)[1] || '');
@@ -731,7 +733,8 @@ function r5Doc(screen) {
   const SP = { MTB: ['bike', 'var(--sp-mtb)', T('MTB', 'Maastopyöräily')], Paddle: ['paddle', 'var(--sp-paddle)', T('Paddle', 'Melonta')], Run: ['run', 'var(--sp-run)', T('Run', 'Juoksu')] };
   const dot = (s, size = 14) => `<span class="dot" style="--c:${SP[s][1]}">${ic(SP[s][0], size)}</span>`;
   const W1 = T('Waypoint 1', 'Pirunvuoren näköalatasanteen pohjoisrinne'), W2 = T('Waypoint 2', 'Viikinsaaren laivalaituri'), START = 'Hämeenkatu', END = T('End', 'Määränpää');
-  const wx = `−1° · 4 m/s`;
+  const WC = S.words === 'worst', wc = (a, b) => (WC ? b : a);
+  const wx = wc('−1° · 4 m/s', '–');
 
   // ---------------------------------------------------------------- the sheet's head: the route's plate, the profile, When and the weather, the sports' keys
   const plate = (cells) => `<div class="plate">${cells}</div>`;
@@ -739,10 +742,10 @@ function r5Doc(screen) {
   const headRoute = `
   <div class="head" data-part="head">
     <h2 class="title">${START} → ${END}</h2>
-    ${plate(`${cell(T('distance', 'kokonaismatka'), '4.31', 'km')}<button class="cell time" data-pop="time" title="Time on the way: the weather card"><small>${T('time', 'aika')}</small><span class="n"><b>1</b><span class="u">h</span> <b>05</b><span class="u">min</span></span><small class="sub">40 min ${T('moving', 'liikkeellä')}</small></button>${cell(T('carry', 'kanto'), '0', 'm')}<button class="cell warn" data-pop="check" aria-label="1 warning: open Check"><small>${T('warning', 'varoitus')}</small><b>${ic('warn', 20)}1</b></button>`)}
+    ${plate(`${cell(T('distance', 'kokonaismatka'), wc('4.31', '128.4'), 'km')}<button class="cell time" data-pop="time" title="Time on the way: the weather card"><small>${T('time', 'aika')}</small><span class="n"><b>${wc('1', '14')}</b><span class="u">h</span> <b>05</b><span class="u">min</span></span><small class="sub">${wc('40 min', '9 h 40 min')} ${T('moving', 'liikkeellä')}</small></button>${WC ? cell('nousu, ei maastotietoja', '↑?', 'm') : cell(T('carry', 'kanto'), '0', 'm')}<button class="cell warn" data-pop="check" aria-label="${wc('1 warning', '12 warnings')}: open Check"><small>${wc(T('warning', 'varoitus'), 'varoitusta')}</small><b>${ic('warn', 20)}${wc('1', '12')}</b></button>`)}
     <img class="mini-prof" src="${pic('peek', 1)}" alt="The route's profile, coloured by wind">
-    <div class="when"><button class="key val" data-pop="when">${ic('clock', 18)}<span>${T('Leave now', 'Lähde nyt')}</span><span class="cr">${ic('caret', 16)}</span></button><span class="arr">→ ${T('there at', 'perillä')} <b>Sun 00:37</b></span></div>
-    <button class="wxrow">${ic('moon', 18)}<span>−1 °C · ${T('dry', 'poutaa')} · ${T('in the dark', 'pimeässä')}</span>${ic('chev', 18)}</button>
+    <div class="when"><button class="key val" data-pop="when">${ic('clock', 18)}<span>${wc(T('Leave now', 'Lähde nyt'), 'Lähde la 6.12. klo 7.30')}</span><span class="cr">${ic('caret', 16)}</span></button><span class="arr">→ ${T('there at', 'perillä')} <b>${wc('Sun 00:37', 'su 7.12. klo 21.35')}</b></span></div>
+    ${WC ? `<div class="wxrow miss">${ic('warn', 18)}<span>Säätietoja ei saatu: sää puuttuu reitiltä</span><button class="key sm">Yritä uudelleen</button></div>` : `<button class="wxrow">${ic('moon', 18)}<span>−1 °C · ${T('dry', 'poutaa')} · ${T('in the dark', 'pimeässä')}</span>${ic('chev', 18)}</button>`}
     ${xrow(`<button class="key chip">${dot('Paddle')}<span><b>${SP.Paddle[2]}</b> 2.35 km · ${T('wind up to 4 m/s, gusts 7', 'tuulta jopa 4 m/s, puuskissa 7')}</span></button><button class="key chip">${dot('Run')}<span><b>${SP.Run[2]}</b> 423 m · ↑4 m</span></button>`, 'facts')}
   </div>`;
 
@@ -750,7 +753,7 @@ function r5Doc(screen) {
   const tools = (name) => `<span class="rtools">${q('pencil', `Rename ${name}`)}${q('trash', `Remove ${name}`, 'danger')}<span class="grip" title="Drag to move it">${ic('grip', 18)}</span></span>`;
   const mark = (kind, n) => `<span class="mk ${kind}">${n || ''}</span>`;
   const pt = (o) => `<li class="tr pt${o.lit ? ' lit' : ''}${o.hov ? ' hov' : ''}" style="--c:${SP[o.sport][1]}${o.next ? `;--c2:${SP[o.next][1]}` : ''}">
-      <button class="hit" data-open="point"><span class="at">${fig(...o.d)}<small>${o.t}</small></span><span class="rail ${o.rail || ''}">${mark(o.kind, o.n)}</span><span class="what"><b>${o.name}</b><small>${o.line}</small></span><span class="chev">${ic('chev', 18)}</span></button>
+      <button class="hit" data-open="point"><span class="at">${fig(...o.d)}<small>${o.t}</small></span><span class="rail ${o.rail || ''}">${mark(o.kind, o.n)}</span><span class="what"><b>${o.name}</b>${o.line === '–' ? '' : `<small>${o.line}</small>`}</span><span class="chev">${ic('chev', 18)}</span></button>
       ${o.tools === false ? '' : tools(o.name)}</li>`;
   const st = (o) => `<li class="tr st" style="--c:${SP[o.sport][1]}">
       <button class="hit" data-open="leg"><span class="at"></span><span class="rail">${o.beads ? '<i class="bead"></i><i class="bead"></i>' : ''}</span><span class="what"><b class="nums">${o.nums.split(' · ').map((x) => `<span>${x}</span>`).join('')}</b>${o.lines.map((l) => `<small class="${l[0]}">${ic(l[1], 15)}${l[2]}</small>`).join('')}</span></button>
@@ -840,7 +843,7 @@ function r5Doc(screen) {
     : `<nav class="tools" aria-label="Drawing">${key(T('Done', 'Valmis'), 'main')}${key(`${ic('line', 18)}<span><b>${T('Freehand', 'Vapaalla kädellä')}</b><small>${SP.Run[2]}</small></span><span class="cr">${ic('caret', 16)}</span>`, 'mode', 'data-pop="mode"')}<span class="sep"></span>${key(ic('undo'), 'sq ic', 'aria-label="Undo"')}${key(ic('redo'), 'sq ic', 'aria-label="Redo" disabled')}${key(ic('more'), 'sq ic', 'aria-label="More: the whole route’s actions" data-pop="more"')}</nav>`;
 
   // ---------------------------------------------------------------- the sheet (phone) and the panel and its card (desktop)
-  const chrome = (card) => `<div class="chrome">${q('down', 'Fold the planner to a line', 'fold', 'data-act="fold"')}${desk ? '' : q('up', 'Raise the planner one size', 'raise mouse', 'data-act="raise"')}${desk ? '' : '<button class="grab" data-act="grab" aria-label="Planner size: drag, or press to change"><span></span></button>'}<span class="sp"></span>${desk ? q('dock', 'Dock the planner at the bottom') : ''}${card ? q('more', 'Card settings', '', 'data-pop="cardset"') : ''}${q('close', card ? 'Close the card' : 'Put the planner away: your route stays', 'x', 'data-act="close"')}</div>`;
+  const chrome = (card) => `<div class="chrome">${q('down', 'Fold the planner to a line', 'fold', 'data-act="fold"')}${desk ? '' : q('up', 'Raise the planner one size', 'raise mouse', 'data-act="raise"')}${desk ? '' : '<button class="grab" data-act="grab" aria-label="Planner size: drag, or press to change"><span></span></button>'}<span class="sp"></span>${desk ? q('dock', 'Dock the planner at the bottom') : ''}${desk ? '' : q('more', 'Card settings', 'cardset', 'data-pop="cardset"')}${q('close', 'Put the planner away: your route stays', 'x', 'data-act="close"')}</div>`;
   const view0 = { peek: 'route', half: 'route', full: 'route', reorder: 'route', card: 'point', leg: 'leg', edit: 'edit', desk: 'route', prof: 'route' }[screen];
   const size0 = { peek: 'peek', half: 'half', full: 'full', reorder: 'full', card: 'full', leg: 'half', edit: 'full', desk: 'open', prof: 'open' }[screen];
   const views = (o) => `<div class="view" data-view="route">${routeView(o)}</div><div class="view card-v" data-view="point">${pointCard}</div><div class="view card-v" data-view="leg">${legCard}</div><div class="view card-v" data-view="edit">${editCard}</div>`;
@@ -850,7 +853,7 @@ function r5Doc(screen) {
     ? `<section class="panel sheet" aria-label="Planner">${chrome(false)}<div class="scroller">${views({ hover: true, lit: true, open: true, big: screen === 'prof' })}</div>${sbar}<span class="wgrip" title="Drag to resize · double-click: narrow or wide"></span></section>
        <section class="float card-beside" aria-label="Waypoint 1"><div class="chrome">${q('grip', 'Drag to move the card', 'mover')}<span class="sp"></span>${q('down', 'Fold the card to its title', '')}${q('more', 'Card settings', '', 'data-pop="cardset"')}${q('close', 'Close the card', 'x')}</div><div class="scroller">${pointCard.replace(back, '')}</div>${sbar}<span class="resize" title="Drag to resize"></span></section>`
     : `<section class="sheet" aria-label="Planner">${chrome(view0 !== 'route')}<div class="scroller">${views({ reorder: screen === 'reorder' })}</div>${sbar}${line}</section>`;
-  const bigProf = screen === 'prof' ? `<section class="float bigprof" aria-label="The profile, big"><div class="chrome">${q('grip', 'Drag to move the profile', 'mover')}<h3>${T('Profile', 'Profiili')}</h3><button class="key val sm" data-pop="colour"><small>${T('Colour by', 'Väritä')}</small>${T('Wind', 'Tuuli')}<span class="cr">${ic('caret', 14)}</span></button><label class="sw"><input type="checkbox" checked><i></i><span>${T('On map', 'Kartalla')}</span></label><span class="sp"></span><button class="key sm quiet">${T('Whole route', 'Koko reitti')}</button>${q('close', 'Close the big profile', 'x')}</div>${bigProfileSvg()}<span class="resize" title="Drag to resize"></span></section>` : '';
+  const bigProf = screen === 'prof' ? `<section class="float bigprof" aria-label="The profile, big"><div class="chrome">${q('grip', 'Drag to move the profile', 'mover')}<span class="sp"></span>${q('close', 'Close the big profile', 'x')}</div><div class="bp-h"><h3>${T('Profile', 'Profiili')}</h3><button class="key val sm" data-pop="colour"><small>${T('Colour by', 'Väritä')}</small>${T('Wind', 'Tuuli')}<span class="cr">${ic('caret', 14)}</span></button><label class="sw"><input type="checkbox" checked><i></i><span>${T('On map', 'Kartalla')}</span></label><span class="sp"></span><button class="key sm quiet">${T('Whole route', 'Koko reitti')}</button></div>${bigProfileSvg()}<span class="resize" title="Drag to resize"></span></section>` : '';
   const toast = `<div class="toast" role="status"></div><div class="pop" role="menu" hidden></div>`;
 
   const body = `<div class="map"><img src="${PIC + (desk ? SC.desk.map : SC.peek.map)}" alt=""></div>${top}${desk ? '' : mapbtns}${desk ? mapbtns : ''}${toolbar}${sheet}${bigProf}<button class="key fab main planbtn" data-act="plan">${ic('line')}<small>${T('Plan', 'Suunnittele')}</small></button>${toast}`;
@@ -921,7 +924,7 @@ button, input { font: inherit; color: inherit; } button { cursor: pointer; -webk
 .mapbtns .fab { flex-direction: column; gap: 0; width: 56px; min-height: 56px; padding: 4px 0; border-radius: 16px; font-size: 12px; } .mapbtns .fab small { font-size: 12px; font-weight: 700; }
 .mapbtns .tile { padding: 0; overflow: hidden; position: relative; } .mapbtns .tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; } .mapbtns .tile small { position: relative; margin-top: auto; width: 100%; padding: 2px 0; background: rgba(0, 0, 0, .55); color: #fff; }
 .t3d { font: 800 14px var(--f-ui); }
-body[data-size="full"] .mapbtns, body[data-size="half"] .mapbtns.low { opacity: 0; pointer-events: none; }
+body[data-size="full"] .mapbtns { opacity: 0; pointer-events: none; }
 .tools { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; gap: 6px; align-items: center; padding: 6px; border-radius: 20px; background: var(--key); border: 1px solid var(--key-edge); box-shadow: var(--depth); z-index: 5; }
 .tools .key { box-shadow: none; } .tools .key.ic { border-color: transparent; background: transparent; } .tools .key.main { box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .22); }
 .tools .mode { flex: 1; min-width: 0; justify-content: flex-start; padding: 0 6px; gap: 6px; } .tools .mode b { font-size: 15px; } .mode > span:not(.cr) { display: grid; text-align: left; line-height: 1.15; min-width: 0; } .mode b { color: var(--p-accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mode small { color: var(--p-muted); font-weight: 600; font-size: 12px; }
@@ -935,8 +938,8 @@ body[data-size="away"] .planbtn { display: inline-flex; }
 :root[data-theme="dark"] .sheet { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), var(--depth); }
 .chrome { flex: none; display: flex; align-items: center; gap: 2px; padding: 4px 6px 0; min-height: 48px; position: relative; z-index: 2; }
 .grab { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); width: 120px; height: 44px; border: 0; background: none; display: grid; place-items: center; cursor: grab; } .grab span { width: 40px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--p-ink) 32%, transparent); }
-.chrome .sp { flex: 1; }
-.scroller { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 14px 18px; scrollbar-width: none; }
+.chrome .sp { flex: 1; } body[data-view="route"] .sheet > .chrome .cardset { display: none; }
+.scroller { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 18px; scrollbar-width: none; }
 .scroller::-webkit-scrollbar { display: none; }
 .scroller.scrolled { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px); mask-image: linear-gradient(to bottom, transparent 0, #000 16px); }
 .view { display: none; flex-direction: column; gap: 12px; } body[data-view="route"] .view[data-view="route"], body[data-view="point"] .view[data-view="point"], body[data-view="leg"] .view[data-view="leg"], body[data-view="edit"] .view[data-view="edit"] { display: flex; }
@@ -955,15 +958,15 @@ body[data-sbar="native"] .scroller::-webkit-scrollbar { display: block; width: 8
 /* the head: the route's name, its plate, the profile, When and the weather, and the sports' keys */
 .title, .ctitle h2 { margin: 0; font: 700 19px/1.2 var(--f-hd); font-variation-settings: "wdth" 92, "opsz" 24; overflow-wrap: anywhere; }
 .head { display: flex; flex-direction: column; gap: 10px; }
-.plate { display: flex; background: var(--plate); border-radius: 18px; box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, .06); overflow: hidden; }
-.cell { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 9px 11px; border: 0; background: none; text-align: left; color: inherit; }
-button.cell { cursor: pointer; } .cell + .cell { border-left: 1px solid var(--line); } .cell small { font-size: 12px; font-weight: 700; color: var(--p-muted); margin-bottom: 2px; overflow-wrap: anywhere; line-height: 1.2; }
+.plate { display: flex; flex-wrap: wrap; background: var(--plate); border-radius: 18px; box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, .06); overflow: hidden; }
+.cell { flex: 1 1 0; min-width: min-content; display: flex; flex-direction: column; justify-content: flex-end; padding: 9px 11px; border: 0; background: none; text-align: left; color: inherit; }
+button.cell { cursor: pointer; } .cell { box-shadow: -1px 0 0 var(--line), 0 -1px 0 var(--line); } .cell small { font-size: 12px; font-weight: 700; color: var(--p-muted); margin-bottom: 2px; overflow-wrap: anywhere; line-height: 1.2; }
 .cell b, .at b, .step b { font: 700 26px/1.05 var(--f-fig); font-variation-settings: "wdth" 88, "opsz" 36; font-variant-numeric: tabular-nums lining-nums; letter-spacing: -.02em; white-space: nowrap; }
 .n { white-space: nowrap; } .u { font: 600 13px var(--f-ui); color: var(--p-muted); margin-left: 2px; letter-spacing: 0; }
 .cell.time { flex-grow: 1.45; } .cell small.sub { margin: 2px 0 0; font-weight: 600; white-space: normal; } .cell.warn { flex: 0 0 auto; background: var(--danger-soft); color: var(--danger); } .cell.warn small { color: var(--danger); } .cell.warn b { display: flex; align-items: center; gap: 3px; }
 .mini-prof { width: 100%; height: 56px; object-fit: fill; display: block; margin: -4px 0 -2px; } body:not([data-size="peek"]) .mini-prof { display: none; }
 .when { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; } .when .key { padding: 0 10px; gap: 6px; } .when .arr { font-weight: 600; white-space: nowrap; } .when .arr b { font: 700 20px var(--f-fig); font-variant-numeric: tabular-nums; }
-.wxrow { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: -6px 0 -4px; padding: 0 2px; border: 0; background: none; text-align: left; font-weight: 600; border-radius: 12px; } .wxrow span { flex: 1; } .wxrow .i:first-child { color: #c88a00; }
+.wxrow.miss { color: var(--danger); margin: 0; flex-wrap: wrap; } .wxrow.miss span { color: var(--p-ink); min-width: 10em; } .wxrow { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: -6px 0 -4px; padding: 0 2px; border: 0; background: none; text-align: left; font-weight: 600; border-radius: 12px; } .wxrow span { flex: 1; } .wxrow .i:first-child { color: #c88a00; }
 /* rows of keys that scroll sideways: a fade where more continues; with a mouse, arrows at its ends and the wheel */
 .xrow { position: relative; margin: 0 -14px; } .xs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 14px 4px; scrollbar-width: none; overscroll-behavior-x: contain; } .xs::-webkit-scrollbar { display: none; }
 .xrow.ml .xs { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 40px); mask-image: linear-gradient(to right, transparent 0, #000 40px); }
@@ -1039,7 +1042,7 @@ body[data-desk="1"] .chrome { min-height: 40px; padding: 4px 6px 0; } body[data-
 .float { position: absolute; display: flex; flex-direction: column; border-radius: 22px; background: var(--panel); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), var(--depth); overflow: hidden; z-index: 4; }
 .card-beside { left: 436px; top: 236px; width: 384px; height: 580px; } .card-beside .scroller { display: flex; flex-direction: column; gap: 12px; padding-top: 2px; } .card-beside .scroller > * { flex: none; } .card-beside .ctitle h2 { font-size: 20px; }
 .resize { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 0 55%, color-mix(in srgb, var(--p-ink) 30%, transparent) 55% 62%, transparent 62% 72%, color-mix(in srgb, var(--p-ink) 30%, transparent) 72% 79%, transparent 79%); border-radius: 0 0 14px 0; }
-.bigprof { left: 436px; right: 84px; bottom: 84px; height: 380px; } .bigprof .chrome { gap: 8px; padding: 6px 8px 0; flex-wrap: wrap; } .bigprof .chrome h3 { margin: 0 6px 0 0; font: 700 19px var(--f-hd); }
+.bigprof { left: 436px; right: 84px; bottom: 84px; height: 380px; } .bigprof .chrome { padding: 4px 6px 0; min-height: 40px; } .bp-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 14px; } .bp-h h3 { margin: 0 6px 0 0; font: 700 19px var(--f-hd); } .bp-h .sp { flex: 1; }
 body[data-screen="prof"] .card-beside { display: none; }
 .bigsvg { flex: 1; min-height: 0; width: 100%; padding: 6px 14px 10px; } .bigsvg .ax { font: 600 13px var(--f-ui); fill: var(--chart-ink); } .bigsvg .lab { font: 700 13px var(--f-ui); fill: var(--chart-ink); } .bigsvg .g { stroke: var(--chart-grid); } .bigsvg .ln { fill: none; stroke: var(--chart-ink); stroke-width: 2; }
 .bigsvg .gu { fill: none; stroke: var(--chart-ink); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .8; } .bigsvg .arw { fill: var(--chart-ink); } .bigsvg .wpl { stroke: var(--chart-ink); stroke-dasharray: 2 4; opacity: .5; }
@@ -1082,13 +1085,15 @@ function size(s) {
   if (desk) return;
   if (s === 'half' || s === 'full') last = s;
   B.dataset.size = s;
-  const top = innerHeight * (s === 'full' ? 0 : s === 'half' ? .42 : 0), foot = 76;
+  const foot = 76, full = innerHeight - 68 - foot;
+  // the peek holds the head; half is a clear step above it (a quarter of the screen more), full reaches the top bar
+  const peekH = () => { const was = B.dataset.size; B.dataset.size = 'peek'; const want = B.dataset.view === 'route' ? $('.chrome').offsetHeight + $('.head').offsetHeight + 22 : innerHeight * .4; B.dataset.size = was; return Math.min(want, innerHeight * .55, full); };
   let h;
-  if (s === 'full') h = innerHeight - 68 - foot; else if (s === 'half') h = innerHeight - top - foot;
-  else if (s === 'peek') { const head = $('.view[data-view="' + B.dataset.view + '"] > :first-child'), chrome = $('.chrome'); const want = B.dataset.view === 'route' ? chrome.offsetHeight + $('.head').offsetHeight + 22 : innerHeight * .4; h = Math.min(want, innerHeight * .55, innerHeight - 68 - foot); }
+  if (s === 'full') h = full; else if (s === 'half') h = Math.min(full, Math.max(innerHeight * .74 - foot, peekH() + innerHeight * .12));
+  else if (s === 'peek') h = peekH();
   else h = 56;
   sheet.style.setProperty('--sh', h + 'px'); document.documentElement.style.setProperty('--sh', h + 'px');
-  const mb = $('.mapbtns'); if (mb) mb.classList.toggle('low', innerHeight - h - foot - 84 < mb.offsetHeight + 70);
+  const mb = $('.mapbtns'); if (mb) { const room = innerHeight - h - 84 - 64; let used = 0; for (const b of [...mb.children].reverse()) { used += b.offsetHeight + 8; b.style.display = used > room ? 'none' : ''; } }
   requestAnimationFrame(bar);
 }
 function view(v) { B.dataset.view = v; $('.scroller').scrollTop = 0; if (v !== 'route' && B.dataset.size === 'peek') size('half'); else size(B.dataset.size); }
@@ -1294,7 +1299,7 @@ function appDoc(key) {
   for (const b of doc.querySelectorAll('.profile-box')) { const im = b.querySelector('img.cv-pic'); if (im && /width:0px/.test(im.getAttribute('style') || '')) b.querySelector('.chart-sports')?.remove(); } // (a profile not drawn yet when captured)
   if (S.dir !== 'today') unitWrap(doc);
   if (['nb', 'og', 'lg', 'c2', 'r5'].includes(S.dir)) infoBalls(doc);
-  if (S.words === 'fi') finnish(doc);
+  if (S.words !== 'en') finnish(doc);
   const t = S.type === 'own' ? OWN_TYPE[S.dir] : S.type;
   const root = attrs(r.root, { 'data-theme': S.theme, ...(S.kinds === 'on' ? { 'data-kinds': '1' } : {}) });
   return `<!doctype html><html ${root}><head><meta charset="utf-8">${cssLink()}${FONTS}<style>${FRAME_BASE}</style><style>${typeCss(t)}</style><style>${S.dir === 'today' ? (S.type === 'own' ? '' : TODAY_TYPE) : DIRS[S.dir]}</style><style>${palCss(S.dir, +S.pal)}</style>${S.kinds === 'on' ? `<style>${kindsCss()}</style>` : ''}</head><body ${attrs(r.body)}>${doc.body.innerHTML}${SCROLL}${TAGGER}</body></html>`;
