@@ -13637,7 +13637,7 @@ def timeline_trip(chrome):
                 # (by touch to its line, by mouse a size down), then 48 hours: the card stays as you left it
                 press(*pg.js(TL_ROOM)['h48At'])
                 pg.js("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.els.foldGo.click(); await wait(600); p.openWeather({ day: 0 }); await wait(600); p.setSheetState('half'); await wait(600); return true; })()")
-                wmap = pg.js("""(() => { const b = polku.planner.cards.box?.querySelector('[data-k=wx-map]'); if (!b) return null; const box = polku.planner.cards.box; box.scrollTop += b.getBoundingClientRect().top - box.getBoundingClientRect().top - 60;
+                wmap = pg.js("""(() => { const b = polku.planner.cards.box?.querySelector('[data-k=wx-map]'); if (!b) return null; const box = polku.planner.cards.box; box.scrollTop += b.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom + 12; // (at the card's foot, clear of the timeline over its top)
                   const r = b.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2; return document.elementFromPoint(x, y)?.closest('button') === b ? [x, y] : null; })()""")
                 if not wmap:
                     bad('no Weather on the map in sight on the weather card at half')
@@ -20399,7 +20399,8 @@ def leave(chrome):
             return
         press(pg, at, f'{name}: When on the start\'s card', touch)
         m = pg.js("(() => { const m = LV.menu(); return m && { items: [...m.querySelectorAll('.menu-item')].map((x) => x.matches('input') ? x.type : x.textContent), expanded: LV.row('start').getAttribute('aria-expanded') }; })()")
-        if not m or m['items'] != (['Leave now', 'datetime-local', 'datetime-local'] if phone else ['Leave now', 'Leave at…', 'Arrive by…']) or m['expanded'] != 'true':
+        # (Best time to leave last, once there's a route: #273)
+        if not m or m['items'] != (['Leave now', 'datetime-local', 'datetime-local'] if phone else ['Leave now', 'Leave at…', 'Arrive by…']) + ['Best time to leaveFrom the weather along the route'] or m['expanded'] != 'true':
             fails.append(f"{name}: When's menu on the start's card: {m}")
         # its field: a phone's own picker from a tap; on a desktop, Leave at… shows it with Set. Its quarter hours on the
         # clock's: min on a quarter hour, so the next whole hour is a step, never a mismatch (the review of #475)

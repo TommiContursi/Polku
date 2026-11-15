@@ -7591,9 +7591,18 @@ export class Planner {
     sweepDay(this, a, dayStart(k), () => this.analysis !== a || card.bt[k] !== next).then((res) => {
       if (!res) return;
       next.res = res;
-      if (this.cards.current === card) this.cards.refresh();
+      this.btRedraw(card);
     });
     return next.res;
+  }
+  // a sweep that's done draws the section again in place, and nothing else of the card: the hours and the rest stay
+  // as they are under a finger
+  btRedraw(card) {
+    const old = this.cards.current === card && this.cards.box?.querySelector('.bt');
+    if (!old) return;
+    const k = old.contains(document.activeElement) ? document.activeElement.dataset.k : null, box = this.bestBox(card);
+    old.replaceWith(box);
+    if (k) box.querySelector(`[data-k="${k}"]`)?.focus({ preventScroll: true });
   }
   // the next day in the forecast with a good time in the light, its days swept one after another; null while looking
   btBetter(card, k) {
@@ -7618,7 +7627,7 @@ export class Planner {
     const first = nights ? 'First day · ' : '';
     const line = !r0 ? 'Loading the forecast…' : r0.failed ? 'No forecast' : inside ? `${first}Good time to leave` : b0 ? `${first}Better: ${clockOf(b0.best.t, Date.now() / 1000)}` : `${first}No good time`;
     const row = this.wxFoldRow(card, 'best', 'sunrise', 'Best time to leave', '', inside ? 'Good now' : b0 ? clockOf(b0.best.t, Date.now() / 1000) : null,
-      () => { if (card.best) card.best = false; else this.bestOpen(card); this.cards.refresh(); });
+      () => { if (card.best) card.best = false; else this.bestOpen(card); this.btRedraw(card); });
     tooltip(row, { name: 'Best time to leave', text: line });
     const box = h('section', { class: 'bt', 'aria-label': 'Best time to leave' }, h('div', { class: 'rows' }, row));
     if (!card.best) return box;
@@ -7626,7 +7635,7 @@ export class Planner {
     const hrs = res?.hrs, N = res && !res.failed ? nameDay(res, anchor) : { lit: [], dark: [] };
     const sky = (ic, size) => icon(`sky-${ic}`, size);
     // the day, ‹ ›; an ⓘ when the forecast is less certain, or ends that day
-    const step = (dir) => () => { card.btK = k + dir; card.btTry = null; this.cards.refresh(); };
+    const step = (dir) => () => { card.btK = k + dir; card.btTry = null; this.btRedraw(card); };
     const known = hrs?.filter((x) => !x.past && !x.unknown) || [], ends = known.some((x) => x.none) && known.some((x) => !x.none) ? known.find((x) => x.none) : null;
     const word = ends ? ['Forecast ends', `The forecast reaches ${timeOf(ends.t)} on ${new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' })}. Later departures show the dark only.`]
       : known.length && known.every((x) => x.none) ? ['No forecast yet', 'The forecast reaches ten days ahead. Only the dark counts here.']
@@ -7666,7 +7675,7 @@ export class Planner {
       const lit = hrs.filter((x) => !x.past && !x.darkWords), by = lit.at(-1);
       box.append(h('div', { class: 'bt-fail' }, h('p', { class: 'bt-read' }, typeof failed === 'string' ? failed : 'The forecast didn’t load.'),
         by ? h('p', { class: 'bt-read' }, `Leave by ${timeOf(by.t)} to be ${this.isLoop() ? 'back' : 'there'} before dark.`) : null,
-        h('button', { type: 'button', class: 'btn small', 'data-k': 'bt-retry', onclick: () => { delete card.bt[k]; this.cards.refresh(); } }, 'Retry')));
+        h('button', { type: 'button', class: 'btn small', 'data-k': 'bt-retry', onclick: () => { delete card.bt[k]; this.btRedraw(card); } }, 'Retry')));
       return box;
     }
     // the crossing window (#856), on the water
@@ -7695,7 +7704,7 @@ export class Planner {
     box.append(h('div', { class: 'bt-best', role: 'radiogroup', 'aria-labelledby': 'bt-pick' }, h('h4', { class: 'bt-pick', id: 'bt-pick' }, 'Pick a time'),
       named.length ? h('div', { class: 'rows bt-tiles' }, ...named.map(pick)) : h('p', { class: 'note wx-note' }, none)));
     const nb = !N.lit.some((w) => good(w)) && this.btBetter(card, k);
-    if (nb) box.append(h('div', { class: 'rows bt-tiles' }, h('button', { type: 'button', class: 'row bt-row', 'data-k': 'better-day', onclick: () => { card.btK = dayOffset(nb.best.t); card.btTry = null; this.cards.refresh(); } },
+    if (nb) box.append(h('div', { class: 'rows bt-tiles' }, h('button', { type: 'button', class: 'row bt-row', 'data-k': 'better-day', onclick: () => { card.btK = dayOffset(nb.best.t); card.btTry = null; this.btRedraw(card); } },
       h('span', { 'aria-hidden': 'true', html: sky(nb.best.sky, 26) }),
       h('span', { class: 'bt-row-in' }, h('b', {}, h('span', { class: 'bt-time' }, clockOf(nb.best.t, Date.now() / 1000)), h('small', {}, `→ ${timeOf(nb.best.back)}`)), this.btFacts(nb.best)),
       h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }))));
