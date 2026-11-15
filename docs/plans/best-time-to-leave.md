@@ -46,6 +46,13 @@ The mock-up draws it at 390 and 360 px, 200 % and on a desktop, for an MTB ride 
 - **Its own faint box,** from the folded row to the last named departure, so the weather card starts plainly under it.
 - **No notes explaining it.** The drawing says what the bars are. What still needs a word has a round ⓘ: the bars (how to read and drag them), a day more than three days ahead or where the forecast ends, and the crossing (its length and what small waves are). The folded row is **Best time to leave** with the best time as its value ("Sun 08:00", "Good now").
 
+## Also in this PR: two changes to the weather card (the user's, 2026-11-15)
+
+- **A heading over the card's weather,** right under Best time to leave's box and above the sentence: **Weather on the way** (the card's name, said today only to a screen reader; an earlier stand-in drew "Weather card" there). On a trip with nights the day's own heading stays under it. Plain ink, the card's heading style, no grey line under it.
+- **Weather on the map** (`btn wx-map`) moves from the card's end to right under the hour strip (`wx-hs`), before The whole trip, Hour by hour and Time on the way.
+
+A small visual change each, so no mock-up of their own.
+
 ## The rule (question 1)
 
 Recommended: **the dark apart.** In November every departure after work is in the dark. Count the dark in the same sum as the rain, and the rows would name the middle of the day every weekday, while the evening's dry and wet hours differed only by a little on bars that were already tall. So the dark sorts the departures, and the weather ranks them:
