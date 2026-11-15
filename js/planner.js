@@ -7686,10 +7686,10 @@ export class Planner {
       const y = w.best, on = cur === w.i && (y.now ? this.when.at == null && this.when.by == null : this.when.at === y.t);
       return h('button', { type: 'button', class: 'row bt-row', role: 'radio', 'aria-checked': String(on), 'data-k': `bt-${y.t}`, onclick: () => this.btSet(card, y) },
         h('span', { 'aria-hidden': 'true', html: sky(y.sky, 26) }),
-        h('span', { class: 'bt-row-in' }, h('b', {}, h('span', { class: 'bt-time' }, y.now ? 'Now' : timeOf(y.t)), h('small', {}, `→ ${timeOf(y.back)}`)), this.btFacts(y, w.dark)),
+        h('span', { class: 'bt-row-in' }, h('b', {}, h('span', { class: 'bt-time' }, y.now ? 'Now' : timeOf(y.t)), h('small', {}, `→ ${timeOf(y.back)}`)), this.btFacts(y)),
         h('span', { class: `bt-radio${on ? ' on' : ''}`, 'aria-hidden': 'true', html: on ? icon('check', 14) : '' }));
     };
-    const named = [...N.lit, ...N.dark.map((w) => ({ ...w, dark: true }))];
+    const named = [...N.lit, ...N.dark];
     const dayName = new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' });
     const none = k === 0 && !hrs.some((x) => !x.past && x.grp !== 'into') ? 'Nothing left today' : hrs.some((x) => x.out) ? 'Every departure is ruled out' : `No departure on ${dayName}`;
     box.append(h('div', { class: 'bt-best', role: 'radiogroup', 'aria-labelledby': 'bt-pick' }, h('h4', { class: 'bt-pick', id: 'bt-pick' }, 'Pick a time'),
@@ -7702,20 +7702,20 @@ export class Planner {
     return box;
   }
   // a departure's weather as the card's hours show it: the temperature, the wind's arrow and speed, the rain, the waves,
-  // the dark (left out in the dark's own choices) and what rules it out
-  btFacts(x, inDark = false) {
+  // what rules it out, and the dark
+  btFacts(x) {
     const f = [], dark = x.darkWords;
     if (x.none || x.unknown) f.push(['', x.none ? 'No forecast yet' : 'No forecast', 'none']);
     else {
       f.push(['', `${Math.round(x.temp)}°`, 'temp']);
       const way = x.head >= 1.5 ? [180, 'against', 'against you'] : x.head <= -1.5 ? [0, 'behind', 'behind you'] : [90, 'side', 'from the side'];
       f.push([windArrow(way[0], way[1], 16), `${Math.round(x.speed)} m/s`, 'wind', way[2]]);
-      if (x.mm >= 0.05) f.push([icon('drop', 14), `${Math.max(0.1, x.mm).toFixed(1)} mm`, 'rain']);
+      if (x.rain > 0) f.push([icon('drop', 14), `${Math.max(0.1, x.mm).toFixed(1)} mm`, 'rain']);
       if (x.wave != null) f.push([icon('paddle', 15), x.rough ? 'Too rough' : `${Math.max(0.1, x.wave).toFixed(1)} m`, 'waves']);
       if (x.out === 'thunder') f.push([icon('sky-thunder', 15), 'Thunder', 'out']);
       if (x.out === 'frost') f.push([icon('temp', 15), 'Frostbite risk', 'out']);
     }
-    if (dark && !inDark) f.push([icon('moon', 15), dark === 'all' ? 'Dark' : dark.startsWith('from:') ? `Dark from ${timeOf(+dark.slice(5))}` : `Dark until ${timeOf(+dark.slice(6))}`, 'dark']);
+    if (dark) f.push([icon('moon', 15), dark === 'all' ? 'Dark' : dark.startsWith('from:') ? `Dark from ${timeOf(+dark.slice(5))}` : `Dark until ${timeOf(+dark.slice(6))}`, 'dark']);
     return h('span', { class: 'bt-facts' }, ...f.map(([ic, t, k, said]) => h('span', { class: `bt-fact ${k}`, 'aria-label': said ? `${t} ${said}` : null, html: `${ic}<span>${escapeHtml(t)}</span>` })));
   }
   // the reading over the strip: "14:00 → 16:05", the sky, the facts; the departure set has a tick

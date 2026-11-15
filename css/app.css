@@ -1597,7 +1597,7 @@ div.wx-sec-cols { cursor: default; }
 .bt-axis { position: relative; height: 16px; margin-top: -4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .bt-axis > span { position: absolute; top: 0; transform: translateX(-50%); }
 .bt-axis > span:first-child { transform: none; }
-.bt-axis > .info-dot { position: absolute; right: 0; top: -6px; } /* (at the axis's end, under the bars it explains) */
+.bt-axis > .tool.info-dot { position: absolute; right: 0; top: -6px; } /* (at the axis's end, under the bars it explains) */
 .tool.info-dot { flex: none; position: relative; width: 28px; height: 28px; min-height: 0; padding: 0; color: var(--accent); }
 @media (pointer: coarse) { .tool.info-dot::after { content: ""; position: absolute; inset: -8px; } } /* (a finger's 44 px) */
 .bt-cross { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 13px; }
