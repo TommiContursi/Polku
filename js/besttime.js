@@ -53,7 +53,7 @@ export function openWater(pl, a) {
 function score(pl, a, start, t, t0, w, water) {
   const n = a.along.length, night = t.waits.find((x) => isNight(x.stop));
   const e = night ? Math.max(1, a.along.findIndex((m) => m >= night.at - 1)) : n - 1;
-  const end = start + t.tAt[e], dur = Math.max(60, t.tAt[e]);
+  const to = t.tAt[e] - (night ? t.waitAt[e] : 0), end = start + to, dur = Math.max(60, to); // (there at the night, before its wait)
   // the dark: minutes in it (dusk half), from the sun
   const dk = darkness(start, end, a.pts[0]);
   const darkS = dk.reduce((s, x) => s + (x.to - x.from) * (x.kind === 'dark' ? 1 : 0.5), 0);
