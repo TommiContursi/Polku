@@ -220,7 +220,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 - The map's own colours (land, water, parks, labels) are in `js/style.js`, one palette per map style. The sports' own line colours are `--sport-…` (`SPORT_COLORS` in `js/config.js`).
 
 ### Named Rules
-**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Magenta belongs to the route, red to danger, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
+**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Magenta belongs to the route, red to danger, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Green means you can tap it** (decided 2026-11-06 in #869, written here 2026-11-15): a value you pick, a fold, a way back or the one main action, and never plain information. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
 
 **The Never by Colour Alone Rule.** Every colour that means something (a warning, a difficulty, a chosen state) is also said in words, a tick, an icon or a shape (PRODUCT.md, WCAG 2.2 AA).
 
@@ -297,6 +297,36 @@ On the glass:
 - **The Layers button**: its map picture with a light inner rim (`--tile-rim`) and the glass's soft outer line; its word on a dark band that's 4.5:1 or more over a white picture.
 - **An undo that can't undo** on the toolbox: the glass's grey at 70 %, readable and still dimmer than redo.
 - **The logo on a phone**: the green mark alone, 44 px, with no pill round it. On a desktop its pill's corners are concentric with the mark's.
+
+### Controls by job
+
+Decided 2026-11-15 (#382, from #869's rule for controls), not built yet: the mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html). What a control does decides how it looks, and there are three levels of emphasis, so nothing is heavier than its job:
+
+1. **The one main action:** filled green (`--accent-bg`, white words), at most one in a panel. The planner, the toolbar and each card are panels of their own: the toolbar's **Done**, a stretch's **Edit this stretch**.
+2. **Does something now:** a button in words, an icon before them when it helps, on `--surface-solid` with a 1 px edge (the text at 22 %) and `--radius-control` corners, so it never looks like a value or a chip. No lip and no shadow. Removing is red words and comes last.
+3. **Bare icons,** from a fixed few: ⌄ ⌃ ✕ ⋯ ↶ ↷ ⚙, the list's sliders and full screen. No ground until pressed.
+
+Beside those three:
+- **A value you pick** (Leave now ▾, Colour by ▾, the drawing mode ▾): the value in green on `--accent-soft`, a pill with ▾. Never a white button.
+- **A row that opens something** (Route style ›, Your speed ›, Sport from here ›, the list's rows): the whole row is the target, its value green before ›. In a group, a line between rows, inset from the left.
+- **A switch** for on and off; **segments** for one of a few, the chosen one white with an edge rather than a shadow; **chips** (a pill with an edge) for one of many and for a part's key fact; **a stepper** as − and + buttons of level 2 around the value.
+- **Not pressable:** numbers and their words have no edge, no › and no ▾.
+- **Explanations:** a grey line that only explains a control goes. With a mouse the control's tooltip says it; by touch an ⓘ in its own place beside the row (never inside it) opens it. A line stays when it holds data: a time, a distance, what stays where, what failed. A safety note stays as words.
+
+**Groups:** each section of the planner and of a card sits on its own group, `--surface-solid` on a sheet a shade darker (`--surface-2`; in dark mode the other way round), `--radius` corners, 8 px in from the sheet's edge. A section's heading is a word in sentence case over its group.
+
+### A card's places
+
+Every card has the same places, in this order. A place it has nothing for is left out; the order never changes:
+1. **The top row:** fold at the left, ⋯ and ✕ at the right.
+2. **Stepping:** ‹ Route, the previous and the next with ‹ ›, and the strip of the route's points and stretches (on a card opened from the route).
+3. **The title:** the map's own mark and the name.
+4. **The numbers:** one aligned row with thin lines between, the most important first, the rest scrolling sideways; warnings a red ball with their count, last.
+5. **The profile,** where the thing has one.
+6. **The actions:** one row that scrolls sideways, the main action first and filled, removing last in red, one ⓘ for the row's explanations.
+7. **The sections:** its settings first, then what's on the way (Look out for), each a heading and a group.
+
+The planner keeps its own order: the numbers and the key facts, When and the weather, the profile with Colour by and On map under it, the route's list, its actions, Route style and Your speed. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
 
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).
