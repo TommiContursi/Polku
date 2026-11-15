@@ -14212,6 +14212,7 @@ def best_time(chrome):
             fails.append('no route')
         else:
             fails += pg.js(BT_JS, timeout=90000)
+        if not fails:
             # a finger along the bars from 20:00 to 12:00: the reading follows and When waits; lifting it leaves at 12:00
             at = pg.js(f'({PC_AT})(".bt .bt-strip")')
             box = pg.js("(() => { const r = document.querySelector('.bt .bt-strip').getBoundingClientRect(); return { x: r.left, w: r.width }; })()")
