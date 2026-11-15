@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-15
 
+### An alternative route under the pointer ([#1029](https://github.com/TommiContursi/Polku/issues/1029))
+
+- With the mouse on an alternative route, only the alternative lights up. The road, path or marked route under it is no longer named, drawn or lit, so it's clear that a click takes the alternative.
+
 ### The route's time opens When ([#1026](https://github.com/TommiContursi/Polku/issues/1026))
 
 - A tap on the time in the route's numbers, at the top of the planner, opens **When**'s menu right there, to change when you leave or set **Arrive by…**. The time counts from your departure, as the line under it says. **Time on the way** is in the weather card, which the trip's box opens.
