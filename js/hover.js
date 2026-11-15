@@ -19,6 +19,7 @@ const WARM = 60;
 const DETAIL_FIRST = 260, DETAIL_WARM = 90; // unchanged: a brief hover starts no extra OSM/terrain request
 const RADIUS = 5; // px around the pointer
 const DRIFT = 16; // px the pointer may move before a shown tooltip hides
+const ALT_LAYERS = ['route-alts-line', 'route-alts-casing', 'route-alts-glow', 'route-alts-label']; // the planner's, for its hover and click
 
 export const hoverCapable = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 
@@ -69,7 +70,7 @@ export function initHover(map, app) {
     if (!at || !app.enabled() || map.isMoving() || map.getContainer().querySelector('.polku-popup')) return;
     const planning = app.isPlanning();
     const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
-    if (planning) layers.push(...['route-casing', 'nogo-fill'].filter((id) => map.getLayer(id)));
+    if (planning) layers.push(...['route-casing', 'nogo-fill', ...ALT_LAYERS].filter((id) => map.getLayer(id)));
     const [x, y] = at;
     const feats = map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers });
     let d = null;
@@ -81,6 +82,8 @@ export function initHover(map, app) {
     if (planning) {
       // the route line has its own live readout (see route() below)
       if (feats.some((f) => f.layer.id === 'route-casing')) { if (!route) hide(); return; }
+      // an alternative route lights up and a click takes it (the planner's onMapMove()), so nothing under it is read (#1029)
+      if (feats.some((f) => ALT_LAYERS.includes(f.layer.id) && !f.properties.route)) { hide(); return; }
       const ng = feats.find((f) => f.layer.id === 'nogo-fill');
       if (ng) d = { title: ng.properties.label || 'Avoided place', bits: ['Routes go around it · click to change'] };
     }
@@ -123,14 +126,15 @@ export function initHover(map, app) {
   const cursor = () => {
     frame = 0;
     if (!at || app.isDrawing()) { pointer = false; light(null); return; }
-    // what a click picks first is what's lit: your route's line and a place's icon win over a LIPAS route (inspect.js)
-    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon'].filter((id) => map.getLayer(id))];
+    // what a click picks first is what's lit: your route's line, an alternative route (#1029) and a place's icon win over
+    // a LIPAS route (inspect.js)
+    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
     const feats = map.queryRenderedFeatures(hitBox({ x: at[0], y: at[1] }, false), { layers });
     const hit = feats.some((f) => f.layer.id !== 'route-casing' || f.properties.kind !== 'gap');
     pointer = hit; canvas.style.cursor = hit ? 'pointer' : '';
-    const top = pickFeature(feats), leg = feats.some((f) => f.layer.id === 'route-casing' && f.properties.kind === 'leg');
+    const top = pickFeature(feats), ours = feats.some((f) => (f.layer.id === 'route-casing' && f.properties.kind === 'leg') || (ALT_LAYERS.includes(f.layer.id) && !f.properties.route));
     // (a warning marker's hit area is wider than the box, and wins over the route: asked only when the route would light)
-    const lights = top && top.layer.id === 'lipas-route' && !leg && !app.headAt({ x: at[0], y: at[1] }, false);
+    const lights = top && top.layer.id === 'lipas-route' && !ours && !app.headAt({ x: at[0], y: at[1] }, false);
     light(lights ? top.properties : null);
   };
   const press = () => { hide(); light(null); if (pointer) { pointer = false; canvas.style.cursor = ''; } };

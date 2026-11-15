@@ -1814,8 +1814,8 @@ MULTI = """(async () => {
   if (tags.join(' / ') !== 'Changeover · 15 min / Changeover · 3 min' || document.querySelector('.wpl-point .wpl-tag')) errs.push(`changeovers in the list: ${tags.join(' / ') || 'none'}`);
   const titles = [...document.querySelectorAll('.wpl .sec2-head b')].map((x) => x.textContent.split(' · ')[0]);
   if (titles.join() !== 'MTB,Paddle,Run') errs.push(`the list's sections: ${titles.join(', ')}`);
-  p.openWeather({ time: true });
-  await wait(300);
+  p.openWeather(); await wait(300);
+  p.cards.box.querySelector('[data-k=time]').click(); await wait(300);
   const rows = [...p.cards.box.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
   if (!rows.some((t) => /Paddle/.test(t)) || !rows.some((t) => /^Changeovers \\(2\\)/.test(t))) errs.push(`time by sport: ${rows.join(' / ')}`);
   // the share link: sports and the hand-set minutes come back
@@ -2059,8 +2059,8 @@ STOPS = """(async () => {
   const kind = (k) => waits.filter((t) => t.startsWith(`${k}: `));
   if (kind('stop').length !== 1 || kind('night').length !== 1 || !/^stop: Stop · \\d+ min\\d\\d:\\d\\d–/.test(kind('stop')[0]) || !/^night: Night · \\d+ h/.test(kind('night')[0]) || !document.querySelector('.wpl > li.wait .wpl-wait[data-wait=night]')
     || !/^Day 1 · /.test(document.querySelector('.wpl .sec2-head b')?.textContent || '')) errs.push(`stops in the waypoint list: ${waits.join(' / ') || 'none'}`);
-  p.openWeather({ time: true });
-  await wait(300);
+  p.openWeather(); await wait(300);
+  p.cards.box.querySelector('[data-k=time]').click(); await wait(300);
   const rows = [...p.cards.box.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
   if (!rows.some((t) => /^Breaks \\(1\\)/.test(t)) || !rows.some((t) => /^Nights \\(1\\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
   // the point's card has the stop, places to sleep for a night, and the gear switch (25d)
@@ -2933,6 +2933,45 @@ OTHERWAYS_UNDO = """(async () => {
   return errs;
 })()"""
 
+# #1029: a route whose alternative crosses a marked route (MARKED_LIPAS's) at one of its points: that point on the screen,
+# for the mouse to rest on, while drawing and then in the route's view (Done, and Other ways, as the route's card asks
+# for them), and what the map shows there
+OTHERWAYS_HOVER = """(() => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, m = polku.map, ow = (window.ow = {});
+  const routes = () => m.getSource('lipasRoutes').serialize().data.features;
+  ow.at = async () => {
+    for (let k = 0; k < 60 && !(p.alts && p.alts.ways.length); k++) await wait(200);
+    if (!p.alts || !p.alts.ways.length) return { why: 'no alternative offered' };
+    m.jumpTo({ center: ow.P, zoom: 15 });
+    await new Promise((ok) => { const t = setTimeout(ok, 10000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+    const I = await import(location.origin + '/js/inspect.js'), q = m.project(ow.P), r = m.getCanvas().getBoundingClientRect();
+    const alt = m.queryRenderedFeatures([[q.x - 5, q.y - 5], [q.x + 5, q.y + 5]], { layers: ['route-alts-line'] }).length;
+    const top = I.pickFeature(m.queryRenderedFeatures(I.hitBox(q, false), { layers: I.inspectLayers(m) }));
+    if (!alt || !top || top.layer.id !== 'lipas-route') return { why: `the alternative ${alt ? 'is' : 'isn’t'} at the marked route’s point, and ${top ? top.layer.id : 'nothing'} is under it (the marked route)` };
+    return { x: r.left + q.x, y: r.top + q.y };
+  };
+  ow.draw = async () => {
+    for (let k = 0; k < 80 && !routes().length; k++) await wait(150);
+    const f = routes()[0];
+    if (!f) return { why: 'no marked route on the map' };
+    const c = f.geometry.coordinates;
+    ow.P = c[Math.floor(c.length / 2)];
+    ow.id = f.properties.lipasId;
+    p.checkWet = async () => {};
+    p.wet = { on: false, mm: 0, at: Date.now() };
+    p.setActive(true);
+    p.setMode('auto');
+    p.addPoint([ow.P[0] - 0.01, ow.P[1] - 0.004]); // (the mocked alternative runs 0.004° north of the leg, through P)
+    p.addPoint([ow.P[0] + 0.01, ow.P[1] - 0.004]);
+    return ow.at();
+  };
+  ow.done = () => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Done' && x.offsetParent), r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+  ow.view = () => { if (!p.inView()) return { why: 'Done didn’t open the route’s view' }; p.offerAlts(0, true); return ow.at(); };
+  ow.state = () => ({ lit: p.altLit, tip: !document.querySelector('.hover-tip').hidden && document.querySelector('.hover-tip').textContent, drawn: m.querySourceFeatures('pick').length,
+    route: !!(m.getFeatureState({ source: 'lipasRoutes', id: ow.id }) || {}).hover, capable: matchMedia('(hover: hover) and (pointer: fine)').matches });
+  return true;
+})()"""
+
 
 def otherways(chrome):
     fails = []
@@ -2952,6 +2991,38 @@ def otherways(chrome):
             fails += [f'{label}: console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
+    # #1029: the mouse resting on an alternative route over a marked route, while drawing and in the route's view: the
+    # alternative lights up, and the map's hover gives way to it (no readout for what's under it, nothing drawn there, the
+    # marked route not lit), as a click takes the alternative
+    pg = chrome.page(1440, 900, False)
+    mouse = lambda kind, at: pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                                     'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': OTHERWAYS_ROUTER}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': MARKED_LIPAS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"'}, '#13/62.4345/25.9026')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js(OTHERWAYS_HOVER)
+        for label, step in (('while drawing', 'ow.draw()'), ("in the route's view", 'ow.view()')):
+            if step == 'ow.view()':
+                for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                    mouse(kind, pg.js('ow.done()'))
+                time.sleep(1)
+            at = pg.js(step, timeout=60000)
+            if 'why' in at:
+                fails.append(f"the mouse on an alternative route {label}: {at['why']}")
+                break
+            for dx in (-12, -6, 0):  # (along the alternative)
+                mouse('mouseMoved', {'x': at['x'] + dx, 'y': at['y']})
+                time.sleep(0.05)
+            time.sleep(1.5)
+            h = pg.js('ow.state()')
+            if not h['capable'] or h['lit'] is None or h['tip'] or h['drawn'] or h['route']:
+                fails.append(f"the mouse on an alternative route over a marked route, {label}: a hover pointer {h['capable']}, the alternative lit {h['lit'] is not None}, "
+                             f"the readout “{h['tip'] or ''}”, {h['drawn']} lines drawn, the marked route lit {h['route']} (a hover pointer, the alternative lit, and nothing of what’s under it)")
+        fails += [f'the mouse on an alternative route: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} other ways for a new leg" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -7924,14 +7995,13 @@ MARKS = r"""(async () => {
     switches()[0].click(); switches()[2].click();
   }
   document.querySelector('#layers-panel .panel-x, #layers-panel [aria-label=Close]')?.click(); await wait(300);
-  // The estimate opens the weather card at Time on the way, unfolded, from Check and with the sheet folded (#869's step 3)
+  // The time is from your departure: it opens When's menu at it, from Check and with the sheet folded too, and no card (#1026)
   if (p.layout() === 'sheet') p.setSheetState('peek', { remember: false });
   document.querySelector('.sum-time').click(); await wait(500);
   const settled = await __DEPARTURE_SETTLED__;
   if (settled) errs.push(`departure sheet: ${settled}`);
-  const tt = p.cards.box?.querySelector('[data-k=time]');
-  if (p.cards.current?.kind !== 'weather' || tt?.getAttribute('aria-expanded') !== 'true' || !p.cards.box.querySelector('.speed-table')) errs.push('the estimate did not open the weather card at Time on the way');
-  p.cards.close(); await wait(300);
+  if (!document.querySelector('.menu-pop[aria-label="When"]') || document.querySelector('.sum-time').getAttribute('aria-expanded') !== 'true' || p.cards.current) errs.push(`the time did not open When’s menu (a card: ${p.cards.current?.kind})`);
+  p.when.pop?.close(); await wait(300);
   // (the trip's box's When pill and its menu, #869; the leave group tries them as a person)
   p.reveal('points'); await wait(500);
   p.els.box.scrollIntoView({ block: 'nearest' }); await wait(100);
@@ -14594,10 +14664,11 @@ def toolbox(chrome):
             pg.js("document.getElementById('tb-rerender').remove(); polku.planner.setSheetState('half'); true")
             pg.js(SETTLED)
             tap(pg, '#planner .sum-time', f'{name}: the time')
-            # (it opens the weather card at Time on the way, #869's step 3: at its peek, as a first card opens; not a fold)
-            if pg.js("polku.planner.cards.current?.kind") != 'weather':
-                fails.append(f'{name}: a touch tap on the time opened no weather card, the sheet at {pg.js("polku.planner.panel.dataset.state")} (#251)')
-            pg.js("polku.planner.cards.close(); true")
+            # (it opens When's menu, #1026, and leaves the sheet at half)
+            r = pg.js("({ menu: !!document.querySelector('.menu-pop[aria-label=\"When\"]'), state: polku.planner.panel.dataset.state })")
+            if not r['menu'] or r['state'] != 'half':
+                fails.append(f'{name}: a touch tap on the time: When’s menu {r["menu"]}, the sheet at {r["state"]} (#251, #1026)')
+            pg.js("polku.planner.when.pop?.close(); true")
             # a reload: the route is back, undo and redo can't do anything yet (#241)
             pg.reload()
             if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => polku.planner.points.length || Date.now() - t0 > 20000 ? ok(polku.planner.points.length) : setTimeout(go, 100); go(); })"):
@@ -20395,11 +20466,12 @@ ARRIVE_JS = """(async () => {
     await wait(200);
     if (ab != null || W.by != null || LV.when('box').note !== `Arrive by ${when(soon)} has passed: pick a new time above.`) errs.push(`Arrive by passed while open: ab=${ab}, by ${W.by}, “${LV.when('box').note}”`);
   } finally { Date.now = realNow; }
-  // a night at waypoint 1, on at 08:00: Arrive by tomorrow 12:00 is the last morning's, the first day leaving as it was
+  // a night at waypoint 1, on at 08:00, the first day leaving tomorrow at 18:00 (fixed, so the night ends the morning
+  // after whatever the hour now): Arrive by noon that day is the last morning's, the first day leaving as it was
   p.setStop(1, { on: 480 });
   for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 1); k++) await wait(200);
-  const noon = LV.at(1, 12, 0);
-  W.set(Math.ceil(Date.now() / 900000) * 900 + 1800);
+  const noon = LV.at(2, 12, 0);
+  W.set(LV.at(1, 18, 0));
   const first = W.at;
   pickBy(LV.iso(noon));
   await settled();
@@ -20424,7 +20496,7 @@ ARRIVE_JS = """(async () => {
   W.pop.close();
   if (groups.join() !== 'First day,Last day' || ticks.length !== 2) errs.push(`the menu with a night: ${JSON.stringify({ groups, ticks })}`);
   // too soon for the night: it says when you're there
-  W.setBy(LV.at(0, 23, 0) > Date.now() / 1000 + 600 ? LV.at(0, 23, 0) : Date.now() / 1000 + 600);
+  W.setBy(LV.at(1, 23, 0));
   await settled();
   r = read();
   if (W.got?.go != null || r.note !== `With your nights you’re there at ${p.clockOf(r.end)}.`) errs.push(`Arrive by too soon for the night: ${JSON.stringify(r)}`);
