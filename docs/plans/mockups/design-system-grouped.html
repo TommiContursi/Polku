@@ -3130,8 +3130,9 @@ html.g2 :is(.mk-i, .mk-strip button, .mk-quiet) { touch-action: manipulation; -w
 html.g2 :is(.mk-acts, .rows.acts.btns, .kf.mk-facts, .sheet-sum) { overscroll-behavior-x: contain; }
 html.g2 body > #pl-tools.mk-dock { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
 /* a value's pill as wide as its words, never cut */
-html.g2 .pl-profile .profile-top .mode-select-box { flex: 0 1 auto; min-width: 0; }
-html.g2 .mode-select-box select { width: auto; max-width: 100%; padding-right: 30px; text-overflow: ellipsis; }
+html.g2 .pl-profile .profile-top .mode-select-box { flex: 1 1 auto; min-width: 0; }
+html.g2 .mode-select-box select { width: 100%; padding-right: 28px; text-overflow: ellipsis; }
+html.g2 .pl-profile .profile-top { gap: 6px 8px; }
 /* the strip fades at the ends where more of the route continues, as the other sideways rows do */
 html.g2 .mk-strip.mk-fade { -webkit-mask-image: linear-gradient(to left, transparent 0, #000 28px); mask-image: linear-gradient(to left, transparent 0, #000 28px); }
 html.g2 .mk-strip.mk-fade-l { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px); mask-image: linear-gradient(to right, transparent 0, #000 28px); }
