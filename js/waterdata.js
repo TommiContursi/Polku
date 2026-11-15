@@ -170,3 +170,5 @@ export const COMFORT_WAVE = { kayak: 0.35, canoe: 0.25, sup: 0.2, swim: 0.15 };
  * guide to how rough it gets, not a forecast.
  */
 export const waveHeight = (wind, fetch) => 0.0016 * wind * Math.sqrt(Math.max(0, fetch) / 9.81);
+// the wind that makes them (m/s): the mean wind and a quarter of its gusts over it
+export const waveWind = ({ speed, gust }) => speed + 0.25 * Math.max(0, (gust || speed) - speed);

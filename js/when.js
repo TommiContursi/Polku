@@ -13,8 +13,8 @@ const caret = `<span class="caret" aria-hidden="true">${icon('caret', 12)}</span
 export class When {
   // changed({ opened }): after the departure changes; `opened` when it came with a route (open()), which the
   // planner draws next. coarse(): a phone, whose own picker the menu opens. there(): when the route's timed to end
-  // (epoch seconds), or null: Arrive by…'s first time.
-  constructor({ changed, coarse, there }) {
+  // (epoch seconds), or null: Arrive by…'s first time. best(): the weather card with Best time to leave open.
+  constructor({ changed, coarse, there, best }) {
     this.at = null; // epoch seconds, or null to leave now
     this.by = null; // Arrive by (#219): epoch seconds to be there by, or null
     this.nights = false; // the route has nights: Arrive by is its last morning's then, and the first day leaves at `at` (the planner says)
@@ -24,6 +24,7 @@ export class When {
     this.changed = changed;
     this.coarse = coarse;
     this.there = there;
+    this.best = best;
     this.controls = new Set(); // (WeakRefs to the controls, so a card's row goes with its card)
     this.puts = new WeakMap(); // (each control's put())
     this.pop = null;
@@ -154,8 +155,8 @@ export class When {
     return el;
   }
 
-  // The menu: Leave now, Leave at… and Arrive by…; on a trip with nights, the first day's departure and the last day's
-  // arrival, each a group of its own. On a phone a time's date field lies unseen over its item, so a tap opens the
+  // The menu: Leave now, Leave at… and Arrive by…, then Best time to leave › once there's a route (a way to pick a Leave at,
+  // not a mode of its own); on a trip with nights, the first day's departure and the last day's arrival, each a group of its own. On a phone a time's date field lies unseen over its item, so a tap opens the
   // phone's own picker (an iPhone has no showPicker()), and the field is what the keyboard and a screen reader reach;
   // the menu stays while the picker is open, and goes once a time is picked and the picker is put away. A desktop
   // browser's picker has no OK, so there the item shows the field itself in the menu, with Set (and Enter).
@@ -172,9 +173,10 @@ export class When {
       this.setBy(sec);
     } });
     const leaveNow = { icon: 'clock', label: 'Leave now', radio: true, checked: at == null && (by == null || this.nights), fn: () => this.set(null) };
+    const best = this.there() != null ? { icon: 'sunrise', label: 'Best time to leave', desc: 'From the weather along the route', after: `<span class="menu-go">${icon('chevronRight', 16)}</span>`, fn: () => this.best() } : null;
     const groups = this.nights
-      ? [{ group: 'First day', items: [leaveNow, leaveAt.item] }, { group: 'Last day', items: [{ icon: 'clock', label: 'Any time', radio: true, checked: by == null, fn: () => this.setBy(null) }, arriveBy.item] }]
-      : [{ group: 'When', items: [leaveNow, leaveAt.item, arriveBy.item] }];
+      ? [{ group: 'First day', items: [leaveNow, leaveAt.item, best] }, { group: 'Last day', items: [{ icon: 'clock', label: 'Any time', radio: true, checked: by == null, fn: () => this.setBy(null) }, arriveBy.item] }]
+      : [{ group: 'When', items: [leaveNow, leaveAt.item, arriveBy.item, best] }];
     anchor.setAttribute('aria-expanded', 'true');
     this.pop = popMenu(anchor, groups, { label: 'When', align: 'left', sheet: true, onClose: () => { this.pop = null; anchor.setAttribute('aria-expanded', 'false'); } });
     // a phone's, with a time set: the focus on its field from the keyboard, and on none from a tap: on Leave now it

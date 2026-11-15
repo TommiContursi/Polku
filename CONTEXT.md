@@ -84,6 +84,10 @@ When you're there. Arrive by… sets it, and Polku works out the departure.
 The departures the weather along the route favours.
 _Avoid_: When to go
 
+**Crossing window**:
+The hours in which a paddle's crossing of open water stays in waves the craft is comfortable in.
+_Avoid_: weather window
+
 ### Reading the trip
 
 **Check**:

@@ -4,6 +4,20 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-15
 
+### Best time to leave ([#273](https://github.com/TommiContursi/Polku/issues/273), [#856](https://github.com/TommiContursi/Polku/issues/856))
+
+- The weather card has **Best time to leave**, right under **When**, with the best time as its value ("Good now", "Sun 08:00"). **When**'s menu has it too, as its last item, which opens the card with it open. On a trip with nights it's the first day's departure.
+- Open, it shows a day at a time, with ‹ › up to ten days ahead, and a bar for each hour: how much of the trip leaving then would be in the rain, the heat or a headwind, or in strong wind on the water. A shorter bar is better, and a bar is in its cause's colour. The departures whose trip would be in the dark are shaded behind the bars, with the moon.
+- Under **Pick a time** are up to three choices, each the best hour of a stretch of good hours: the best in the light first, then the best in the dark. Each shows its weather as the card's hours do. A tap sets **Leave at** to that time, in **Arrive by**'s place. On a day with no good time, the least bad is named, with its hour in grey and **Least bad** as its first word. When another day is better, a choice after them goes to that day.
+- A finger along the bars tries each hour, and lifting it leaves then; a tap or a click on a bar leaves then at once. With the keyboard, the arrow keys try an hour and Enter leaves then.
+- Thunder where you'd be, a frostbite risk, and waves over your craft's comfort rule an hour out: its bar is hatched, and it's never picked. On the water a line says when to leave to cross in small waves.
+- Hours that have passed, and hours past the forecast's reach, have no bar. When an older forecast stands in for one that couldn't be loaded, it says so. When the forecast doesn't load, the bars show the dark alone, with **Retry**. A **ⓘ** explains the bars, a day when the forecast is less certain or ends, and the crossing. The waves are an estimate from the forecast wind over the open water: plan with them, and look at the water before you cross.
+
+### The weather card's heading and Weather on the map
+
+- The card's weather has a heading, **Weather on the way**, under **Best time to leave**.
+- **Weather on the map** is right under the hours, before **The whole trip**, **Hour by hour** and **Time on the way**.
+
 ### An alternative route under the pointer ([#1029](https://github.com/TommiContursi/Polku/issues/1029))
 
 - With the mouse on an alternative route, only the alternative lights up. The road, path or marked route under it is no longer named, drawn or lit, so it's clear that a click takes the alternative.

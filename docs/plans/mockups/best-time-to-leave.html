@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Best time to leave</title>
+<meta name="description" content="Mock-up for #273 and #856: Best time to leave in the weather card and When's menu, beside the card and the menu on main.">
+<!--
+  #273 and #856, 2026-11-14, on main at 0c5293c7 (after Arrive by, #1016, and the timeline's fixes, #1021). The plan is
+  docs/plans/best-time-to-leave.md. Not wired to the app: nothing here is loaded by Polku.
+
+  Today is the weather card and When's menu on main, drawn with css/app.css's own classes as js/planner.js builds them
+  (weatherHead(), weatherBody(), wxDay(), wxStrip(), wxFoldRow()) and js/when.js (menu()); captured from the running app
+  on 2026-11-14 for their markup. The card's weather under Best time to leave is only its top half (the sentence, a note,
+  the numbers, the hours and the sections' headings, folded), drawn for the departure picked. What's new is marked "new".
+  The forecast is made up, at a fixed clock (Saturday 14 November, 19:56; the late evening at 23:47).
+
+  ?v=new|today  &s=card|menu|box  &r=mtb|paddle|fi  &c=day|evening|flat|bad|late|loading|failed|far  &w=at|now|by
+  &n=day|nights  &f=390|360|desk  &z=100|200
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<script>document.documentElement.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; /* (the app sets it from Settings; here the system's) */</script>
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; }
+* { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; } /* (app.css holds the app's page still; this page scrolls) */
+body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+.cv { max-width: 1500px; margin: 0 auto; }
+.cv a { color: var(--page-link); }
+.cv h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+.cv > p { margin: 0 0 8px; max-width: 900px; }
+.bars { margin: 12px -16px 0; padding: 8px 16px; border-bottom: 1px solid rgba(128,128,128,.25); }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.bar > span { min-width: 60px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 28px; padding: 3px 11px; border: 0; border-radius: 18px; background: none; color: var(--switch-fg); font: inherit; font-size: 13px; cursor: pointer; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 650; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.stage { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 28px; margin-top: 18px; }
+.cap { margin: 10px 0 0; font-size: 12.5px; color: var(--page-cap); max-width: 900px; }
+.notes { margin-top: 28px; max-width: 900px; }
+.notes h2 { font-size: 16px; margin: 20px 0 6px; }
+.notes ul, .notes ol { padding-left: 20px; }
+.notes li { margin: 3px 0; }
+
+/* the frames: a phone's screen and a desktop's window, the map drawn by hand (illustrative) */
+:root { --mk-land: #eef1e8; --mk-wood: #d9e6cf; --mk-water: #a9cbe9; }
+:root[data-theme="dark"] { --mk-land: #23272a; --mk-wood: #1f2b22; --mk-water: #1b3346; }
+.frame { font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; position: relative; flex: none; overflow: hidden; border-radius: 26px; box-shadow: 0 0 0 1px rgba(0,0,0,.18), 0 18px 40px rgba(0,0,0,.18);
+  background: radial-gradient(60% 40% at 80% 20%, var(--mk-water) 0 60%, transparent 61%), radial-gradient(50% 35% at 15% 60%, var(--mk-wood) 0 70%, transparent 71%), var(--mk-land); }
+.frame.ph { width: 390px; height: 844px; }
+.frame.ph.narrow { width: 360px; height: 740px; }
+.frame.desk { width: min(1100px, calc(100vw - 32px)); height: 700px; border-radius: 10px; }
+.frame.z2 { zoom: 2; }
+.frame.z2.ph { width: 195px; height: 422px; }
+.frame.z2.ph.narrow { width: 180px; height: 370px; }
+.frame.z2.desk { width: min(550px, calc(50vw - 16px)); height: 350px; border-radius: 5px; }
+@media (max-width: 440px) { .frame.ph:not(.z2) { width: calc(100vw - 32px); } }
+.frame .mk-top { position: absolute; left: 12px; right: 12px; top: 12px; height: 44px; border-radius: 22px; background: var(--surface-solid); box-shadow: var(--shadow); display: flex; align-items: center; padding: 0 16px; color: var(--muted); font-size: 14px; }
+.frame.desk .mk-top { right: auto; width: 392px; }
+/* the planner's sheet with its card, where the app has it (position absolute, its top under the top bar) */
+.frame .sheet[data-layout="sheet"][data-state] { top: 68px; height: auto; transition: none; }
+/* css/app.css's phone rules (max-width: 720px) the frame needs, the page being wide */
+.frame.ph .sheet { left: 8px; right: 8px; bottom: 8px; }
+.frame.ph .sheet.foldable .sheet-top { height: 40px; }
+.frame.ph .sheet.foldable :is(.sheet-fold, .sheet-x) { display: inline-flex; }
+.frame.ph .card .sheet-sum .sum-item b { font-size: 18px; }
+.frame .sheet[data-layout="side"] { top: 64px; left: 12px; width: 340px; height: auto; max-height: calc(100% - 76px); }
+.frame .card-beside { position: absolute; left: 364px; top: 64px; }
+.frame .card-beside .card { max-height: calc(700px - 88px); }
+.frame.z2 .card-beside .card { max-height: calc(350px - 88px); }
+.frame.z2.desk .card-beside { left: 8px; right: 8px; top: 34px; } /* (a desktop at 200 %: the app takes its phone rules; the card where the planner was) */
+.frame.z2.desk .sheet[data-layout="side"] { display: none; }
+.frame.z2.desk .card-beside .card { width: auto; }
+.frame .mk-standin { padding: 14px; color: var(--muted); font-size: 13px; display: grid; gap: 8px; }
+.frame .mk-standin b { color: var(--text); font-size: 15px; }
+/* When's menu, where popMenu() puts it: under the pill */
+.frame .menu.mk-menu { position: absolute; z-index: 20; width: min(310px, calc(100% - 16px)); max-height: calc(100% - 140px); overflow-y: auto; overscroll-behavior: contain; }
+.frame.ph .mk-menu { left: 18px; top: 156px; }
+.frame.desk .mk-menu { left: 378px; top: 112px; }
+.frame.z2 .mk-menu { left: 8px; right: 8px; top: 64px; bottom: 8px; width: auto; min-width: 0; max-height: none; } /* (a sheet of its own at 200 %, as popMenu()'s menu-sheet) */
+.frame.ph .mk-menu .menu-item { min-height: 44px; }
+.frame .mk-menu .menu-item > .ic:last-child { margin-left: auto; color: var(--muted); }
+
+/* ======================================================= new: Best time to leave (#273) */
+/* round 5 (2026-11-15): the named departures are choices, plainly: under "Pick a time", each a tile with an edge and a
+   radio's circle, the chosen one in the chosen chip's look (a green tint and a 2 px green border); its hour in the same
+   green tag as over its bar, so the strip and the tiles read as one */
+.bt-pick { margin: 6px 0 2px; font-size: var(--font-row, 15px); font-weight: 650; }
+.r5 .rows.bt-tiles { display: grid; gap: 8px; margin: 0; }
+.r5 .bt-tiles > .row.bt-row { min-height: 58px; border: 1px solid color-mix(in srgb, var(--text) 24%, transparent); border-radius: 14px; box-shadow: none; }
+.r5 .bt-tiles > .row.bt-row[aria-checked="true"] { background: var(--accent-soft); border: 2px solid var(--accent); padding: 5px 9px; }
+.r5 .bt-time, .r5 .bt-lab { padding: 1px 5px; border-radius: 6px; background: var(--accent); color: var(--surface-solid); }
+.r5 .bt-lab { padding: 1px 3px; font-size: 10.5px; }
+.bt-slot:first-child > .bt-lab { left: 0; transform: none; } .bt-slot:last-child > .bt-lab { left: auto; right: 0; transform: none; } /* (the day's ends: the tag stays over the strip) */
+.r5 .row.bt-row > .bt-row-in > b > .bt-time { justify-self: start; }
+.bt-radio { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--text) 50%, transparent); }
+.bt-radio.on { border-color: var(--accent); background: var(--accent); color: var(--surface-solid); }
+/* round 4 (2026-11-15): the weather of each departure, as the card's hours show it: the sky's coloured icon, the temperature,
+   the wind's arrow (behind you, from the side, against you) and its speed, the rain; and the open section in a faint box of
+   its own, so the weather card plainly starts under it */
+.bt.r4 { padding: 2px 8px 10px; margin: 0 -8px; border-radius: 16px; background: color-mix(in srgb, var(--text) 5%, transparent); }
+.bt.r4 > .rows > .row[aria-expanded="true"] { background: none; }
+.r4 .row.bt-row > .bt-row-in { grid-template-columns: minmax(4.1em, max-content) 2.4em 5.2em minmax(0, 1fr); gap: 2px 10px; }
+.r4 .row.bt-row > .bt-row-in > b { display: grid; line-height: 1.2; }
+.r4 .row.bt-row > .bt-row-in > b > small { font-size: 13px; font-weight: 400; color: var(--text); }
+.r4 .row.bt-row > .bt-row-in > .bt-facts { display: contents; }
+.r4 .bt-row .bt-fact:nth-child(n+3) { grid-column: 4; }
+.r4 .row.bt-row > span:first-child .ic { width: 26px; height: 26px; }
+.r4 .bt-fact .wx-arr { display: inline-block; }
+.r4 .bt-fact.rain .ic { color: var(--rain-rain); }
+.r4 .bt-fact > span { min-width: 0; }
+@container (max-width: 260px) { .r4 .row.bt-row > .bt-row-in { grid-template-columns: 4.1em minmax(0, 1fr); } .r4 .bt-row .bt-fact:nth-child(n) { grid-column: 2; } }
+/* round 3 (2026-11-15): no grey words; what needs explaining is a round ⓘ in the accent (it can be tapped), its words in a
+   tooltip, a 44 px target by touch */
+.bt .tool.bt-info { flex: none; width: 28px; height: 28px; min-height: 0; padding: 0; position: relative; color: var(--accent); }
+@media (pointer: coarse) { .bt-info.tool::after { content: ""; position: absolute; inset: -8px; } }
+.bt .bt-axis > .tool.bt-info { position: absolute; right: 0; top: -6px; } /* (at the axis's end, under the bars it explains) */
+.bt-day b .bt-info { display: inline-grid; vertical-align: middle; margin: -6px 0 -6px 2px; }
+.r3 .row.bt-row > .bt-row-in > small, .r3 .bt-best .note { color: var(--text); }
+.r3 .bt-cross { align-items: center; }
+.r3 .bt-cross > .bt-info { margin-left: auto; }
+/* round 2 (2026-11-15): the drawing says it, so no notes. A bar in its cause's colour, with its icon over a tall one; a named
+   bar with its time over it; the facts as an icon and a word or two, in columns */
+.r2 .bt-strip { height: 80px; }
+.r2 .bt-slot.c-rain .bt-bar { background: var(--rain-rain); }
+.r2 .bt-slot.c-snow .bt-bar { background: var(--rain-snow); }
+.r2 .bt-slot.c-wind .bt-bar { background: var(--wind-head); }
+.r2 .bt-slot.best .bt-bar { background: var(--accent); }
+.r2 .bt-slot.best::before { content: none; }
+.bt-lab, .bt-ic { position: absolute; left: 50%; bottom: calc(var(--v, 0) * 52px + 6px); transform: translateX(-50%); line-height: 1; pointer-events: none; }
+.bt-lab { font-size: 11px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.bt-slot.out .bt-ic, .bt-slot.out .bt-lab { bottom: 61px; }
+.bt-ic .ic { display: block; color: var(--muted); }
+.r2 .bt-read { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 2.6em; }
+.bt-facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; }
+.bt-fact { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow-wrap: break-word; }
+.bt-fact .ic, .bt-read .bt-fact .ic { flex: none; color: var(--muted); }
+.row.bt-row > .bt-row-in { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; align-items: center; gap: 2px 14px; }
+@container (max-width: 260px) { .row.bt-row > .bt-row-in { grid-template-columns: max-content minmax(0, 1fr); } .row.bt-row > .bt-row-in > .bt-facts { grid-column: 1 / -1; grid-row: 2; } } /* (200 % on a phone: the facts under the time) */
+.row.bt-row > .bt-row-in > b { font-variant-numeric: tabular-nums; }
+.row.bt-row > .bt-row-in > .bt-facts { font-size: 14px; }
+.row.bt-row > .bt-row-in > small { font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bt { display: grid; gap: 8px; min-width: 0; }
+.bt-day.tl-step { align-items: center; gap: 4px; }
+.bt-day.tl-step > span { font-size: var(--font-row, 14px); }
+.bt-day.tl-step small { white-space: normal; font-size: 12.5px; }
+.bt-day.tl-step b { overflow-wrap: break-word; } /* (tl-step's `anywhere` breaks Monday in two at 200 %: a word breaks only where it can't fit whole) */
+.bt-read { margin: 0; min-height: 2.7em; font-size: 13.5px; line-height: 1.35; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bt-read b { font-weight: 650; }
+.bt-read .ic { display: inline-block; vertical-align: -3px; margin-right: 2px; color: var(--accent); }
+.bt-read.try { color: var(--text); }
+.bt-strip { position: relative; height: 70px; touch-action: pan-y; cursor: ew-resize; border-bottom: 1px solid var(--muted); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.bt-strip:has(.bt-range:focus-visible) { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+.bt-slots { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 1px; }
+.bt-slot { position: relative; display: flex; align-items: flex-end; justify-content: center; border-radius: 3px 3px 0 0; }
+.bt-shade { position: absolute; inset: 0; pointer-events: none; } /* the dark, behind the bars, one band (from the sun) */
+.bt-shade > i { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--text) 9%, transparent); }
+.bt-shade > i.into { background: color-mix(in srgb, var(--text) 4.5%, transparent); } /* (running into it) */
+.bt-shade > i > .ic { position: absolute; top: 3px; left: 3px; color: var(--muted); }
+.bt-bar { display: block; width: 72%; height: calc(var(--v, 0) * 52px + 3px); border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--muted) 75%, transparent); }
+.bt-slot.best .bt-bar { background: var(--accent); }
+.bt-slot.best::before { content: ""; position: absolute; top: 3px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--accent); } /* (a mark as well as the fill) */
+.bt-slot.cur .bt-bar { outline: 2px solid var(--text); outline-offset: 1px; }
+.bt-slot.lit { box-shadow: inset 0 0 0 2px var(--focus); }
+.bt-slot.out .bt-bar { height: 55px; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--danger) 60%, transparent) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1px var(--danger); }
+.bt-slot.past .bt-bar { display: none; }
+.bt-slot.past { background: none; border-bottom: 2px dotted var(--line); }
+.bt-slot.none .bt-bar { height: 55px; background: none; outline: 1px dashed var(--muted); outline-offset: -1px; }
+.bt-slot.skel .bt-bar { height: 28px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.bt-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none; }
+.bt-axis { position: relative; height: 16px; margin-top: -4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bt-axis > span { position: absolute; top: 0; transform: translateX(-50%); }
+.bt-axis > span:first-child { transform: none; }
+.bt-sun { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin: 0; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bt-sun > span { display: inline-flex; align-items: center; gap: 4px; }
+.bt-sun .ic { color: var(--muted); }
+.bt-best { display: grid; gap: 2px; min-width: 0; }
+.bt-best .menu-h { margin: 6px 0 0; }
+.bt-best .row > .menu-tick { flex: none; display: grid; margin-left: auto; color: var(--accent); }
+.bt-best .row small { white-space: normal; }
+.bt-cross { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 13px; color: var(--text); }
+.bt-cross > .ic { flex: none; margin-top: 1px; color: var(--sport-paddle); }
+.bt .wx-note { font-size: 12.5px; }
+.bt-fail { display: grid; gap: 6px; justify-items: start; }
+</style>
+</head>
+<body class="mk">
+<div class="cv">
+  <h1>Best time to leave</h1>
+  <p>#273 and #856: which departure makes the best trip, in the weather card and When’s menu. <b>Best time to leave</b> is the proposal; <b>Today (main)</b> is the card and the menu as they are. The bars, the ‹ ›, the rows and When’s pill all work: drag a finger (or the mouse) along the bars to try each hour, and let go to leave then. The plan and its four questions: <a href="../best-time-to-leave.md">docs/plans/best-time-to-leave.md</a>.</p>
+  <div class="bars">
+    <div class="bar"><span>Version</span><div class="sw" data-k="v"><button data-v="r5">Round 5: pick one</button><button data-v="r4">Round 4: the weather in each</button><button data-v="r3">Round 3: ⓘ, no grey</button><button data-v="r2">Round 2: less text</button><button data-v="new">Round 1</button><button data-v="today">Today (main)</button></div></div>
+    <div class="bar"><span>Screen</span><div class="sw" data-k="s"><button data-v="card">The card, from When’s menu</button><button data-v="menu">When’s menu</button><button data-v="box">The card, from the trip’s box</button></div></div>
+    <div class="bar"><span>The day</span><div class="sw" data-k="c"><button data-v="day">A usual day</button><button data-v="evening">November, after work</button><button data-v="flat">A flat day</button><button data-v="bad">Every hour bad</button><button data-v="late">Late evening</button><button data-v="far">Past the forecast</button><button data-v="loading">Loading</button><button data-v="failed">Failed</button></div></div>
+    <div class="bar"><span>Route</span><div class="sw" data-k="r"><button data-v="mtb">MTB loop</button><button data-v="long">Gravel, 10 hours</button><button data-v="paddle">Sea kayak, a crossing</button><button data-v="fi">Long Finnish names</button></div>
+      <span>When</span><div class="sw" data-k="w"><button data-v="at">Leave at</button><button data-v="now">Leave now</button><button data-v="by">Arrive by</button></div>
+      <span>Nights</span><div class="sw" data-k="n"><button data-v="day">A day trip</button><button data-v="nights">With nights</button></div></div>
+    <div class="bar"><span>Frame</span><div class="sw" data-k="f"><button data-v="390">390 × 844</button><button data-v="360">360 × 740</button><button data-v="desk">1440 × 900</button></div>
+      <span>Zoom</span><div class="sw" data-k="z"><button data-v="100">100 %</button><button data-v="200">200 %</button></div></div>
+  </div>
+  <div class="stage" id="stage"></div>
+  <p class="cap" id="cap"></p>
+  <div class="notes">
+    <h2>The questions (the plan has each one’s cost)</h2>
+    <ol>
+      <li><b>How the parts weigh.</b> Recommended: the dark apart. The bars show the weather alone, minute for minute (minutes in rain, heavy rain double; feeling hot; lost to a headwind or strong wind on the water), the dark is shaded behind them, and the rows name the best in the light and the best in the dark (on a ten-hour ride, <b>Most in the light</b>: try <b>Gravel, 10 hours</b>). Or minute for minute: the dark in one sum with the weather, one ranking, and on a November weekday the rows always name the middle of the day (try <b>November, after work</b>).</li>
+      <li><b>A day when every hour is bad.</b> Recommended: name the least bad and say so, with a row for a better day (<b>Every hour bad</b>, <b>Late evening</b>). Or name nothing.</li>
+      <li><b>When’s menu and Arrive by.</b> Recommended: Best time to leave › is the menu’s last item (First day’s, with nights), and a pick is a plain Leave at, which takes Arrive by’s place. Or, while Arrive by is set, the bars also grey the departures that would get you there late.</li>
+      <li><b>What rules an hour out.</b> Recommended: the card’s dangers to life: thunder where you’d be, a frostbite risk, and waves over the craft’s comfort on the crossing (hatched, never named: <b>Every hour bad</b> with the sea kayak). Or nothing does.</li>
+    </ol>
+    <h2>Illustrative, or left out</h2>
+    <ul>
+      <li><b>Illustrative:</b> every hour, number and word of the forecast, and the waves. The rule that makes them is the plan’s, run on made-up hours.</li>
+      <li><b>The weather under the new row</b> is the card’s top half for the departure set: the sentence, one note, the numbers, the hours and the sections’ headings (folded; they don’t open here). The Whole trip, Hour by hour and Time on the way rows don’t open either. Weather on the map does nothing.</li>
+      <li><b>Not drawn:</b> the map, the top bar (a stand-in), the planner beside the card on a desktop (a stand-in), the timeline, Check. A route of several sports (a line a sport in “For …”).</li>
+      <li><b>Nothing new moves</b> (decided with /animate): the bars, ‹ › and a pick change in place, and the card opens as every card does. The skeleton while loading is drawn still.</li>
+      <li><b>The phone’s picker</b> for Leave at… and Arrive by… isn’t drawn: in the menu here they set Sunday 10:00 and Arrive by 16:30.</li>
+    </ul>
+  </div>
+</div>
+<script type="module">
+import { icon, h, tooltip } from '../../../js/ui.js';
+
+// ---------------------------------------------------------------- the switches
+const OPT = { v: ['r5', 'r4', 'r3', 'r2', 'new', 'today'], s: ['card', 'menu', 'box'], c: ['day', 'evening', 'flat', 'bad', 'late', 'far', 'loading', 'failed'], r: ['mtb', 'long', 'paddle', 'fi'], w: ['at', 'now', 'by'], n: ['day', 'nights'], f: ['390', '360', 'desk'], z: ['100', '200'] };
+const Q = new URLSearchParams(location.search);
+const S = Object.fromEntries(Object.entries(OPT).map(([k, vals]) => [k, vals.includes(Q.get(k)) ? Q.get(k) : vals[0]]));
+let T; // what changes while you try it: { w, dep, dd, open, try, menu }
+
+// ---------------------------------------------------------------- the made-up world: Saturday 14 November 2026, Tampere
+const WD = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Monday'];
+const day = (k) => ({ name: WD[k], short: WD[k].slice(0, 3), date: `${14 + k} Nov`, rise: 500 + 2 * k, set: 948 - 2 * k }); // (minutes: 08:20, 15:48)
+const NOW = () => ({ k: 0, m: S.c === 'late' ? 23 * 60 + 47 : 19 * 60 + 56 });
+const ENDS = 9 * 1440 + 20 * 60; // the forecast's reach: 240 hours on
+const SKY = ['cloud', 'cloudSun', 'cloud', 'cloud', 'sun', 'cloudSun', 'cloud', 'cloud', 'sun', 'cloudSun']; // (a day's sky when dry and light)
+const WX = [ // a day's rain [from, to, mm an hour], its wind at noon and how it changes an hour, its temperature
+  { rain: [], wind: 3, slope: 0, temp: 1 },
+  { rain: [[11, 13, 1.2]], wind: 3.5, slope: 0.35, temp: 4 },
+  { rain: [[17, 20, 0.9]], wind: 3, slope: 0.1, temp: 3 },
+  { rain: [[0, 24, 0.7]], wind: 6, slope: 0, temp: 5 },
+  { rain: [], wind: 2.5, slope: 0, temp: 2 },
+  { rain: [[7, 10, 1]], wind: 5, slope: -0.1, temp: 3 },
+  { rain: [], wind: 8.5, slope: 0, temp: 4 },
+  { rain: [[13, 15, 0.5]], wind: 4, slope: 0, temp: 0 },
+  { rain: [], wind: 3, slope: 0, temp: -2 },
+  { rain: [], wind: 3, slope: 0, temp: 1 },
+];
+const ROUTES = {
+  mtb: { name: 'MTB loop, Kauppi', dur: 125, km: 28, loop: true, sport: 'mtb', label: 'the MTB', water: false },
+  long: { name: 'Gravel, round Näsijärvi', dur: 600, km: 150, loop: true, sport: 'gravel', label: 'the gravel bike', water: false },
+  paddle: { name: 'Sea kayak, Kaivopuisto to Vallisaari', dur: 135, km: 9.4, loop: false, sport: 'paddle', label: 'the sea kayak', water: true, from: 'Kaivopuisto', to: 'Suomenlinna', crossKm: 2.1 },
+  fi: { name: 'Merimelonta, Suomenlinnan Tykistölahden ranta – Vallisaaren Aleksanterin patterin laituri', dur: 135, km: 9.4, loop: false, sport: 'paddle', label: 'the sea kayak', water: true, from: 'Suomenlinnan Tykistölahden ranta', to: 'Vallisaaren Aleksanterin patterin laituri', crossKm: 2.1 },
+};
+const R = () => ROUTES[S.r];
+const CASE_DAY = { day: 1, evening: 2, flat: 4, bad: 3, late: 0, far: 9, loading: 1, failed: 1 };
+const CASE_AT = { day: 10, evening: 17, flat: 10, bad: 10, late: 23, far: 10, loading: 10, failed: 10 };
+
+const pad = (x) => String(x).padStart(2, '0');
+const hm = (M) => { const m = ((M % 1440) + 1440) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const light = (M) => { const k = Math.floor(M / 1440), m = M % 1440, d = day(Math.min(9, k)); return m >= d.rise && m < d.set ? 'light' : (m >= d.rise - 45 && m < d.rise) || (m >= d.set && m < d.set + 45) ? 'dusk' : 'dark'; };
+const at = (M) => {
+  const k = Math.min(9, Math.floor(M / 1440)), hr = Math.floor((M % 1440) / 60), w = WX[k], r = w.rain.find(([a, b]) => hr >= a && hr < b);
+  return { rain: r ? r[2] : 0, wind: Math.max(1, w.wind + w.slope * (hr - 12)), temp: w.temp + (hr >= 11 && hr <= 15 ? 1 : 0) - (hr < 7 ? 1 : 0), none: M >= ENDS };
+};
+
+// ---------------------------------------------------------------- the plan's rule (question 1, the dark apart), on the made-up hours
+function score(k, m0, nowSlot = false) {
+  const r = R(), M0 = k * 1440 + m0, M1 = M0 + r.dur;
+  let dark = 0, rain = 0, mm = 0, snow = false, wsum = 0, n = 0, none = false, waterWind = 0, darkFrom = null, lightFrom = null;
+  const startDark = light(M0) !== 'light';
+  for (let M = M0; M < M1; M += 5) {
+    const s = light(M); dark += s === 'dark' ? 5 : s === 'dusk' ? 2.5 : 0;
+    if (s !== 'light' && darkFrom == null && !startDark) darkFrom = Math.floor(M / 1440) * 1440 + day(Math.min(9, Math.floor(M / 1440))).set; // (the sunset itself)
+    if (s === 'light' && lightFrom == null && startDark) lightFrom = Math.floor(M / 1440) * 1440 + day(Math.min(9, Math.floor(M / 1440))).rise; // (the sunrise itself)
+    const x = at(M); if (x.none) none = true;
+    if (x.rain >= 0.1) { rain += x.rain >= 4 ? 10 : 5; mm += x.rain / 12; if (x.temp < 0.5) snow = true; }
+    wsum += x.wind; n++;
+    if (r.water && x.wind >= 5) waterWind += 5;
+  }
+  const wind = wsum / n, lost = r.water ? 0 : Math.round((wind - 4.5) * 2.4 * r.dur / 125);
+  const wave = r.water ? 0.02 + at(M0 + 30).wind * 0.068 : 0;
+  const out = r.water && wave > 0.35 ? `waves about ${wave.toFixed(1)} m on the crossing` : null;
+  const cost = rain + Math.max(0, lost) + waterWind; // (a tailwind is said, but never makes up for rain)
+  return { k, m0, M0, M1, dark, darkFrom, lightFrom, startDark, rain, mm, snow, wind, lost, waterWind, wave, out, none, nowSlot, bar: Math.min(1, cost / r.dur), light: dark <= r.dur * 0.1 ? true : dark >= r.dur * 0.5 ? false : null }; // (in between: running into the dark, never named)
+}
+// a day's 24 slots: a passed hour, today's hour as Leave now, the rest on the hour
+function hoursOf(k) {
+  const now = NOW(), nh = Math.floor(now.m / 60);
+  return Array.from({ length: 24 }, (_, hr) => k === now.k && hr < nh ? { past: true, k, m0: hr * 60, M0: k * 1440 + hr * 60 } : k === now.k && hr === nh ? score(k, now.m, true) : score(k, hr * 60));
+}
+// (named in the dark only from 05:00 to 23:00: the bars still show the night, but nobody's sent off at 02:00)
+const usable = (x, inLight) => x && !x.past && !x.none && !x.out && x.grp === (inLight ? 'light' : 'dark') && (inLight || (x.M0 % 1440) >= 300);
+// up to `max` stretches of good (or fair) hours, never two side by side; on a day when all are poor, the least bad
+function windows(hrs, inLight, max, used = new Set()) {
+  const all = hrs.filter((x) => usable(x, inLight)), poor = all.length && all.every((x) => x.bar > 0.4), out = [];
+  const near = (x) => { const d = Math.abs((x.M0 % 1440) - T.anchor); return Math.min(d, 1440 - d); }; // (about the same: the one nearest the time of day you came with, so the rows stay put while you pick)
+  for (const c of [...all].sort((a, b) => Math.round(a.bar * 20) - Math.round(b.bar * 20) || near(a) - near(b))) {
+    if (out.length >= max) break;
+    const i = hrs.indexOf(c);
+    if (used.has(i) || (c.bar > 0.4 && !(poor && !out.length))) continue;
+    let a = i, b = i;
+    while (a > 0 && usable(hrs[a - 1], inLight) && hrs[a - 1].bar <= c.bar + 0.05) a--;
+    while (b < 23 && usable(hrs[b + 1], inLight) && hrs[b + 1].bar <= c.bar + 0.05) b++;
+    for (let j = a - 2; j <= b + 2; j++) used.add(j); // (two named departures at least two hours apart, so their times fit over the bars)
+    out.push({ best: c, a, b, least: c.bar > 0.4, i });
+  }
+  return out;
+}
+// a day's groups: in the light when at most a tenth of the trip is in the dark, or, on a trip too long for the day's light,
+// within a tenth of the day's least dark ("Most in the light"); in the dark when half of it or more is; between, never named
+function sortDay(hrs) {
+  const r = R(), live = hrs.filter((x) => !x.past && !x.none), least = Math.min(...live.map((x) => x.dark / r.dur)), lim = least < 0.4 ? Math.max(0.1, least + 0.1) : 0.1; // (a day with nothing under 40 % in the dark has no light to speak of)
+  for (const x of live) x.grp = x.dark / r.dur <= lim ? 'light' : x.dark >= r.dur * 0.5 ? 'dark' : 'into';
+  return least > 0.1 && least < 0.4;
+}
+const named = (k) => { const hrs = hoursOf(k), most = sortDay(hrs), used = new Set(), lit = windows(hrs, true, 2, used); return { hrs, most, lit, dark: windows(hrs, false, 1, used) }; };
+const good = (w) => w && !w.least && w.best.bar <= 0.1;
+// the next day within the forecast with a good hour in the light
+function better(k) { for (let j = k + 1; j <= 9; j++) { const w = named(j).lit[0]; if (good(w)) return w; } return null; }
+
+// ---------------------------------------------------------------- words
+const label = (x) => (x.nowSlot ? 'Now' : `${day(x.k).short} ${hm(x.M0)}`);
+const endWord = () => (R().loop ? 'back' : 'there');
+function why(x) {
+  const r = R(), p = [];
+  if (x.light !== true) p.push(x.dark >= r.dur * 0.9 || (x.startDark && x.lightFrom == null) ? 'in the dark the whole way' : x.startDark ? `in the dark until ${hm(x.lightFrom)}` : `into the dark from ${hm(x.darkFrom)}`);
+  p.push(x.rain ? `${x.rain} min in the ${x.snow ? 'snow' : 'rain'}` : 'dry');
+  if (x.lost >= 3) p.push(`headwind costs ${x.lost} min`); else if (x.lost <= -3) p.push(`tailwind saves ${-x.lost} min`);
+  if (x.waterWind >= 10) p.push(`wind over 5 m/s for ${x.waterWind} min`);
+  if (r.water && !x.out) p.push(`waves about ${Math.max(0.1, x.wave).toFixed(1)} m on the crossing`);
+  return p;
+}
+const R5 = () => S.v === 'r5';
+const R4 = () => S.v === 'r4' || R5(); // (round 5 builds on round 4)
+const R3 = () => S.v === 'r3' || R4(); // (round 4 builds on round 3)
+const R2 = () => S.v === 'r2' || R3(); // (round 3 builds on round 2)
+// round 3 (the design round's rule, 2026-11-15): what needs explaining gets a round ⓘ, its words in a tooltip: a mouse's
+// hover and the keyboard's focus (ui.js's tooltip()), and a finger's tap the same words in a bubble until the next tap
+let bub = null;
+function infoDot(name, text) {
+  const b = h('button', { type: 'button', class: 'tool bt-info', 'aria-label': `${name}: ${text}`, html: icon('info', 16) });
+  tooltip(b, { name, text });
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const was = bub?.dataset.for === name; bub?.remove(); bub = null;
+    if (was) return;
+    bub = h('div', { class: 'tip', role: 'tooltip', 'data-for': name }, h('b', {}, name), text);
+    document.body.append(bub);
+    const r = b.getBoundingClientRect(), w = bub.offsetWidth;
+    Object.assign(bub.style, { left: `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`, top: `${r.bottom + 8}px` });
+    const off = (ev) => { if (bub && !bub.contains(ev.target) && ev.target !== b && !b.contains(ev.target)) { bub.remove(); bub = null; document.removeEventListener('pointerdown', off, true); } };
+    setTimeout(() => document.addEventListener('pointerdown', off, true));
+  });
+  return b;
+}
+const dur = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`);
+// round 2: at most three facts, each an icon and a word or two (the dark left out in the dark's own rows)
+function facts(x, inDark = false) {
+  const r = R(), f = [];
+  if (x.light !== true && !inDark) f.push(['moon', x.dark >= r.dur * 0.9 || (x.startDark && x.lightFrom == null) ? 'Dark' : x.startDark ? `Dark until ${hm(x.lightFrom)}` : `Dark from ${hm(x.darkFrom)}`]);
+  f.push(x.rain ? [x.snow ? 'snow' : 'rain', `${x.snow ? 'Snow' : 'Rain'} ${dur(x.rain)}`] : ['', 'Dry']);
+  if (x.lost >= 5) f.push(['wind', 'Headwind']); else if (x.lost <= -5) f.push(['wind', 'Tailwind']); else if (x.waterWind >= 10) f.push(['wind', 'Windy']);
+  if (r.water) f.push(['paddle', x.out ? 'Too rough' : `Waves ${Math.max(0.1, x.wave).toFixed(1)} m`]);
+  return f.slice(0, 3);
+}
+const arrow = (rot, cls) => `<svg class="wx-arr ${cls}" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="transform: rotate(${rot}deg)"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const skyOf = (x) => (x.rain ? (x.snow ? 'snow' : 'rain') : x.light === true ? SKY[Math.min(9, x.k)] : x.dark >= R().dur * 0.5 ? 'moon' : 'cloud');
+function facts4(x, inDark = false) {
+  const r = R(), mid = at(x.M0 + r.dur / 2), f = [];
+  f.push(['', `${mid.temp}°`, 'temp']);
+  const w = x.lost >= 3 ? [180, 'against', 'against you'] : x.lost <= -3 ? [0, 'behind', 'behind you'] : [90, 'side', 'from the side'];
+  f.push([arrow(w[0], w[1]), `${Math.round(x.wind)} m/s`, 'wind', w[2]]);
+  if (x.rain) f.push([icon('drop', 14), `${Math.max(0.1, x.mm).toFixed(1)} ${x.snow ? 'cm' : 'mm'}`, 'rain']);
+  if (r.water) f.push([icon('paddle', 15), x.out ? 'Too rough' : `${Math.max(0.1, x.wave).toFixed(1)} m`, 'waves']);
+  if (x.light !== true && !inDark) f.push([icon('moon', 15), x.dark >= r.dur * 0.9 || (x.startDark && x.lightFrom == null) ? 'Dark' : x.startDark ? `Dark until ${hm(x.lightFrom)}` : `Dark from ${hm(x.darkFrom)}`, 'dark']);
+  return f;
+}
+const facts4El = (list) => h('span', { class: 'bt-facts' }, ...list.map(([ic, t, k, said]) => h('span', { class: `bt-fact ${k}`, 'aria-label': said ? `${t} ${said}` : null, html: `${ic}<span>${t}</span>` })));
+const factsEl = (list) => h('span', { class: 'bt-facts' }, ...list.map(([ic, t]) => h('span', { class: 'bt-fact', html: `${ic ? icon(ic, 15) : ''}<span>${t}</span>` })));
+const cause = (y) => (y.past || y.none || y.out || !(y.bar >= 0.12) ? '' : y.rain >= Math.max(0, y.lost) + y.waterWind ? (y.snow ? 'snow' : 'rain') : 'wind');
+const span = (w, hrs) => { const as = w.least ? 'about the same' : 'as good'; return w.a === w.b ? '' : w.a < w.i ? ` · ${as} from ${hm(hrs[w.a].M0)} to ${hm(hrs[w.b].M0)}` : ` · ${as} until ${hm(hrs[w.b].M0)}`; };
+const dayWords = (k) => (k === 0 ? `Today, ${day(k).name} ${day(k).date}` : k === 1 ? `Tomorrow, ${day(k).name} ${day(k).date}` : `${day(k).name} ${day(k).date}`);
+
+// ---------------------------------------------------------------- the departure When holds
+function init() {
+  const k = CASE_DAY[S.c], w = S.c === 'late' ? 'now' : S.w;
+  T = { w, dep: w === 'now' ? { k: 0, m: NOW().m } : w === 'by' ? { k, m: 16 * 60 + 30 - R().dur } : { k, m: CASE_AT[S.c] * 60 }, by: w === 'by' ? { k, m: 16 * 60 + 30 } : null, dd: null, open: S.s === 'card', try: null, menu: S.s === 'menu' };
+  if (w === 'now' && S.c !== 'late') T.dep = { k: 0, m: NOW().m };
+  T.dd = T.dep.k;
+  T.anchor = T.dep.m;
+}
+const dep = () => score(T.dep.k, T.dep.m, T.w === 'now');
+function setDep(x) { T.w = 'at'; T.by = null; T.dep = { k: x.k, m: x.nowSlot ? NOW().m : x.m0 }; if (x.nowSlot) T.w = 'now'; T.try = null; draw(); }
+const pillWords = () => (T.w === 'now' ? 'Leave now' : T.w === 'by' ? `Arrive by ${day(T.by.k).short} 16:30` : `Leave ${T.dep.k === 0 ? hm(T.dep.m) : `${day(T.dep.k).short} ${hm(T.dep.m)}`}`);
+const thereWords = () => { const x = dep(); return T.w === 'by' ? `· leave ${hm(x.M0)}` : `→ ${endWord()} at ${hm(x.M1)}`; };
+
+// ---------------------------------------------------------------- the card (main's markup, js/planner.js)
+const chev = (open) => h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(open ? 'chevronUp' : 'chevronDown', 18) });
+const foldRow = (k, ic, b, small, open, onclick) => { const row = h('button', { type: 'button', class: 'row', 'data-k': k, 'aria-expanded': String(!!open), onclick }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, b), small ? h('small', {}, small) : null), chev(open)); return row; };
+function whenPill() {
+  const b = h('button', { type: 'button', class: 'rt-pill when-pill', 'data-k': 'when', 'aria-haspopup': 'menu', 'aria-expanded': String(T.menu), 'aria-label': `When: ${pillWords()}`, onclick: () => { T.menu = !T.menu; draw(); } },
+    h('span', { html: icon(T.w === 'by' ? 'flagend' : T.w === 'now' ? 'clock' : 'calendar', 16) }), h('span', {}, pillWords()), h('span', { class: 'caret', 'aria-hidden': 'true', html: icon('caret', 12) }));
+  return h('div', { class: 'when-box' }, b, h('p', { class: 'pick-note', hidden: true }));
+}
+function head() {
+  return h('div', { class: 'way-head' }, h('h3', { class: 'way-hint', tabindex: '-1' }, h('span', { class: 'trip-when' }, h('span', { class: 'sr-only' }, 'Weather on the way. '), whenPill(), h('span', { class: 'trip-there' }, thereWords()))),
+    h('button', { type: 'button', class: 'tool card-set', 'aria-label': 'Card settings', title: 'Card settings', html: icon('more', 20) }),
+    h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', title: 'Close (Esc)', html: icon('close', 20) }));
+}
+// the weather for the departure set: the card's top half (wxDay()), illustrative
+function weather() {
+  const r = R(), x = dep(), mid = at(x.M0 + r.dur / 2), wet = x.rain > 0, dark = x.dark >= r.dur * 0.9;
+  const sky = wet ? (x.snow ? 'snow' : 'rain') : dark ? 'moon' : 'cloudSun';
+  const tw = mid.temp <= 0 ? 'Freezing' : mid.temp <= 7 ? 'Cold' : 'Cool';
+  const rw = wet ? (x.rain < r.dur * 0.6 ? `then ${x.snow ? 'snow' : 'rain'}` : x.snow ? 'snow' : 'rain') : dark ? 'clear' : 'dry';
+  const ww = `${x.wind < 4 ? 'a light wind' : x.wind < 8 ? 'a moderate wind' : 'a fresh wind'}${x.lost >= 3 ? ' against you on the way home' : x.lost <= -3 ? ' behind you' : ''}`;
+  const say = wet ? `${tw}, ${rw}, ${ww}` : `${tw} and ${rw}, ${ww}`;
+  const note = x.dark && x.light !== true ? `${cap(why(x)[0])}: take a light` : wet ? `${x.snow ? 'Snow' : 'Rain'} on the way, ${x.rain} min of it` : null;
+  const el = h('section', { class: 'wx-day', 'aria-label': 'The weather' },
+    h('p', { class: 'wx-say' }, h('span', { class: `wx-sky ${sky}`, role: 'img', 'aria-label': sky, html: icon(`sky-${sky}`, 28) }), h('span', {}, say)),
+    note ? h('ul', { class: 'wx-notes' }, h('li', {}, h('button', { type: 'button', class: 'wx-tell plain', 'data-note': '1' }, h('span', { class: 'wx-n plain', 'aria-hidden': 'true' }, '1'), h('span', {}, note)))) : null,
+    h('div', { class: 'sheet-sum wx-nums', style: `--n: ${r.water ? 4 : 3}` },
+      ...[[`${mid.temp - 1}…${mid.temp + 1}°`, `feels like ${mid.temp - 5}°`], [`${Math.round(x.wind)} m/s`, `gusts ${Math.round(x.wind * 1.8)}`], [`${x.mm ? x.mm.toFixed(1) : 0} ${x.snow ? 'cm' : 'mm'}`, x.snow ? 'snow' : 'rain'], ...(r.water ? [[`${Math.max(0.1, x.wave).toFixed(1)} m`, 'waves, estimate']] : [])]
+        .map(([b, s]) => h('span', { class: 'sum-item' }, h('b', {}, b), h('small', {}, s)))));
+  // the hours, two either side (wxStrip()), the trip across them in its sport's colour
+  const h0 = Math.floor(x.M0 / 60) - 2, h1 = Math.floor(x.M1 / 60) + 2, hrs = Array.from({ length: h1 - h0 + 1 }, (_, j) => (h0 + j) * 60), cw = 54;
+  const temps = hrs.map((M) => at(M).temp), lo = Math.min(...temps) - 2, hi = lo + Math.max(4, Math.max(...temps) - lo);
+  const y = (t) => ((hi - t) / (hi - lo)).toFixed(3);
+  const on = (M) => M + 60 > x.M0 && M < x.M1;
+  const skyAt = (M) => { const a = at(M); return a.rain >= 0.1 ? (a.temp < 0.5 ? 'snow' : 'rain') : light(M + 30) === 'light' ? 'cloudSun' : 'moon'; };
+  const time = (M) => h('span', { class: 'wx-hs-h', style: on(M) ? `--leg: var(--sport-${r.sport})` : null }, (M % 1440) === 0 ? day(Math.floor(M / 1440)).short : hm(M));
+  const pts = hrs.map((M, j) => `${j + 0.5},${y(at(M).temp)}`).join(' ');
+  const strip = h('div', { class: 'wx-hs-strip' },
+    h('div', { class: 'wx-hs-curve', 'aria-hidden': 'true', html: `<svg viewBox="0 0 ${hrs.length} 1" preserveAspectRatio="none"><g class="all"><polyline points="${pts}"/></g></svg>` }),
+    h('div', { class: 'wx-hs-row' }, ...hrs.map((M) => h('button', { type: 'button', class: `wx-hs-col${on(M) ? ' on' : ''}`, tabindex: '-1', 'aria-pressed': 'false' },
+      h('span', { class: 'wx-hs-t', 'aria-hidden': 'true', style: `--y: ${y(at(M).temp)}` }, `${at(M).temp}°`), h('span', { class: 'wx-hs-sky', 'aria-hidden': 'true', html: icon(`sky-${skyAt(M)}`, 26) }), time(M)))),
+    h('div', { class: 'wx-hs-trip', 'aria-hidden': 'true' }, h('i', { style: `left: calc(var(--cw) * ${((x.M0 - h0 * 60) / 60 + 0.5).toFixed(3)}); width: calc(var(--cw) * ${(r.dur / 60).toFixed(3)}); background: var(--sport-${r.sport})` })),
+    h('div', { class: 'wx-hs-row wx-hs-at', 'aria-hidden': 'true' }, ...hrs.map((M) => h('span', { class: `wx-hs-col${on(M) ? ' on' : ''}` }, !on(M) ? '' : M <= x.M0 ? 'start' : `km ${Math.max(1, Math.round(((M - x.M0) / r.dur) * r.km))}`))));
+  const sec = (key, ic, name, val) => h('div', { class: 'wx-sec', 'data-sec': key }, h('button', { type: 'button', class: 'row wx-sec-h wx-pin', 'aria-expanded': 'false', 'data-k': `wx-${key}` },
+    h('span', { class: `wx-tile ${key}`, 'aria-hidden': 'true', html: icon(ic, 18) }), h('span', {}, h('span', {}, h('b', {}, name), ` · ${val}`)), chev(false)));
+  const hs = h('div', { class: 'wx-hs', style: `--n: ${hrs.length}; --cw: ${cw}px` },
+    h('button', { type: 'button', class: 'tool wx-hs-arrow l', 'aria-label': 'Earlier hours', tabindex: '-1', html: icon('chevronLeft', 20) }),
+    h('div', { class: 'wx-hs-x', role: 'group', 'aria-label': 'The hours where you’ll be' }, h('div', { class: 'wx-hs-in' }, strip,
+      sec('rain', x.snow ? 'snow' : 'rain', x.snow ? 'Snow' : 'Rain', wet ? `${x.mm.toFixed(1)} ${x.snow ? 'cm' : 'mm'}` : 'dry'), sec('wind', 'wind', 'Wind', `up to ${Math.round(x.wind + 1)} m/s`),
+      x.dark ? sec('dark', 'moon', 'Dark', why(x)[0].replace(/^in the dark |^into the dark /, '')) : null)),
+    h('button', { type: 'button', class: 'tool wx-hs-arrow r on', 'aria-label': 'Later hours', tabindex: '-1', html: icon('chevronRight', 20) }));
+  el.append(hs);
+  requestAnimationFrame(() => { const sx = hs.querySelector('.wx-hs-x'); if (sx) sx.scrollLeft = cw; });
+  return el;
+}
+
+// ---------------------------------------------------------------- new: Best time to leave in the card
+function foldLine() {
+  if (S.c === 'loading') return 'Loading the forecast…';
+  if (R2()) {
+    if (S.c === 'failed') return 'No forecast';
+    const x = dep(), N = named(x.k), first = S.n === 'nights' ? 'First day · ' : '', inside = (list) => list.some((w) => !w.least && x.M0 >= N.hrs[w.a].M0 && x.M0 <= N.hrs[w.b].M0 + 59);
+    if (inside(N.lit)) return `${first}Good time to leave`;
+    if (inside(N.dark)) return `${first}Good time in the dark`;
+    const b = good(N.lit[0]) ? N.lit[0] : better(x.k);
+    return b ? `${first}Better: ${label(b.best)}, ${facts(b.best, true)[0][1].toLowerCase()}` : `${first}No good time`;
+  }
+  const r = R(), lby = `${hm(day(T.dd).set - r.dur - ((day(T.dd).set - r.dur) % 5))}`;
+  if (S.c === 'failed') return `Forecast unavailable · leave by ${lby} to be ${endWord()} in the light`;
+  const x = dep(), N = named(x.k), first = S.n === 'nights' ? 'For the first day · ' : '';
+  const inside = (list) => list.some((w) => !w.least && x.M0 >= N.hrs[w.a].M0 && x.M0 <= N.hrs[w.b].M0 + 59);
+  if (inside(N.lit)) return `${first}You’re leaving at a good time`;
+  if (inside(N.dark)) return `${first}You’re leaving at the best time in the dark`;
+  const b = good(N.lit[0]) ? N.lit[0] : better(x.k);
+  if (!b) return `${first}No good time on ${day(x.k).name}`;
+  return `${first}${b.best.k === x.k ? label(b.best) : `${day(b.best.k).name} ${hm(b.best.M0)}`} is better: ${why(b.best).slice(0, 2).join(', ')}`;
+}
+function reading(x, trying) {
+  const r = R();
+  if (!x) return [];
+  if (x.past) return [h('span', {}, `${hm(x.M0)} has passed`)];
+  if (R2()) {
+    const lead = `${x.nowSlot ? 'Now' : hm(x.M0)} → ${hm(x.M1)}`;
+    if (R4()) return [trying ? null : h('span', { html: icon('check', 16) }), h('b', {}, lead), x.none ? factsEl([['', 'No forecast yet']]) : h('span', { class: 'bt-fact', html: icon(`sky-${skyOf(x)}`, 22) }), x.none ? null : facts4El(facts4(x))];
+    return [trying ? null : h('span', { html: icon('check', 16) }), h('b', {}, lead), factsEl(x.none ? [['', 'No forecast yet']] : facts(x))];
+  }
+  const lead = x.nowSlot ? 'Leave now' : `Leave ${trying || x.k !== dep().k ? `${day(x.k).short} ` : ''}${hm(x.M0)}`;
+  if (x.none) return [h('b', {}, lead), ` · no forecast yet for then: only the dark counts${x.light ? ', and it’s light' : `, ${why(x)[0]}`}`];
+  return [trying ? null : h('span', { html: icon('check', 16) }), h('b', {}, lead), ` → ${endWord()} ${hm(x.M1)} · ${why(x).join(' · ')}`, x.out ? h('span', {}, ` · ruled out: ${x.out}, over a kayak’s 0.35 m`) : null];
+}
+function best() {
+  const r = R(), k = T.dd, d = day(k), x = dep(), N = named(k), hrs = N.hrs, open = T.open;
+  const row = foldRow('best', 'sunrise', 'Best time to leave', R3() ? '' : foldLine(), open, () => { T.open = !T.open; draw(); });
+  if (R3()) {
+    const line = foldLine(), v = /^(First day · )?Better: (.+?),/.exec(line)?.[2] ?? (/Good time/.test(line) ? 'Good now' : '');
+    if (v) row.insertBefore(h('span', { class: 'val' }, v), row.lastChild);
+    tooltip(row, { name: 'Best time to leave', text: line });
+  }
+  const box = h('section', { class: `bt${R2() ? ' r2' : ''}${R3() ? ' r3' : ''}${R4() ? ' r4' : ''}${R5() ? ' r5' : ''}`, 'aria-label': 'Best time to leave' }, h('div', { class: 'rows' }, row));
+  if (!open) return box;
+  // the day, ‹ › (tl-step)
+  const lit0 = N.lit[0], sub = [S.c === 'loading' ? 'loading the forecast' : S.c === 'failed' ? 'no forecast: the dark alone' : good(lit0) ? `best in the light ${hm(lit0.best.M0)}` : 'no good time in the light', k >= 3 ? 'less certain' : '', k === 9 ? 'no forecast yet from 20:00' : ''].filter(Boolean).join(' · ');
+  const step = (dir) => () => { T.dd = Math.max(0, Math.min(9, T.dd + dir)); T.try = null; draw(); };
+  box.append(h('div', { class: 'tl-step bt-day' },
+    h('button', { type: 'button', class: 'tool', 'aria-label': 'The day before', disabled: k === 0 ? true : null, onclick: step(-1), html: icon('chevronLeft', 20) }),
+    h('span', { 'aria-live': 'polite' }, ...(R2() ? (() => { const w = k === 9 ? 'Forecast ends at 20:00' : k >= 3 ? 'Forecast less certain' : ''; const day1 = `${k === 0 ? 'Today, ' : k === 1 ? 'Tomorrow, ' : ''}${d.short} ${d.date}`;
+      if (R3()) return [h('b', {}, day1, w ? infoDot(w, k === 9 ? `The forecast reaches 20:00 on ${d.name}. Later departures show the dark only.` : 'More than three days ahead, the forecast can still change.') : null)];
+      return [h('b', {}, day1), w ? h('span', { class: 'sr-only' }, '. ') : null, w ? h('small', {}, w) : null]; })() : [h('b', {}, dayWords(k)), h('span', { class: 'sr-only' }, '. '), h('small', {}, sub)])),
+    h('button', { type: 'button', class: 'tool', 'aria-label': 'The day after', disabled: k === 9 ? true : null, onclick: step(1), html: icon('chevronRight', 20) })));
+  // the reading: the hour you're trying, else the departure set
+  const shown = T.try != null ? hrs[T.try] : x.k === k ? (hrs.find((y) => !y.past && y.M0 <= x.M0 && x.M0 < y.M0 + 60) || x) : null;
+  const read = h('p', { class: `bt-read${T.try != null ? ' try' : ''}` }, ...(S.c === 'loading' || S.c === 'failed' ? [] : shown ? reading(T.try != null ? hrs[T.try] : x, T.try != null) : [h('span', {}, `Your departure is ${x.k < k ? 'before' : 'after'} this day: try an hour here.`)]));
+  // the strip: the dark behind, a bar an hour (the weather alone), the departure ringed, the named ones filled with a mark
+  const marks = new Set([...N.lit, ...N.dark].map((w) => w.i));
+  const slots = h('div', { class: 'bt-slots', 'aria-hidden': 'true' }, ...hrs.map((y, i) => {
+    const kind = S.c === 'loading' ? ' skel' : S.c === 'failed' ? ' past' : y.past ? ' past' : y.none ? ' none' : y.out ? ' out' : marks.has(i) ? ' best' : '';
+    const cur = x.k === k && !y.past && y.M0 <= x.M0 && x.M0 < y.M0 + 60 ? ' cur' : '';
+    const c = R2() && S.c !== 'loading' && S.c !== 'failed' ? cause(y) : '';
+    const top = !R2() || S.c === 'loading' || S.c === 'failed' ? null : marks.has(i) ? h('span', { class: 'bt-lab' }, pad(Math.floor((y.M0 % 1440) / 60))) : y.out && !hrs[i - 1]?.out ? h('span', { class: 'bt-ic', html: icon('paddle', 12) }) : c && y.bar >= 0.35 ? h('span', { class: 'bt-ic', html: R4() && c !== 'wind' ? icon(`sky-${c}`, 16) : icon(c, 12) }) : null;
+    return h('span', { class: `bt-slot${kind}${c ? ` c-${c}` : ''}${cur}${T.try === i ? ' lit' : ''}`, style: `--v: ${y.bar ?? 0}` }, h('i', { class: 'bt-bar' }), top);
+  }));
+  // the dark behind: one band where the trip would be in the dark, a lighter one where it runs into it (passed hours too)
+  const dk = (y) => { const s = y.dark ?? score(y.k, y.m0).dark; return s >= r.dur * 0.9 ? 'dark' : s > 0 ? 'into' : ''; };
+  const runs = [];
+  hrs.forEach((y, i) => { const c = dk(y); if (c && runs.length && runs.at(-1).c === c && runs.at(-1).b === i - 1) runs.at(-1).b = i; else if (c) runs.push({ c, a: i, b: i }); });
+  const shade = h('div', { class: 'bt-shade', 'aria-hidden': 'true' }, ...runs.map((s) => h('i', { class: s.c, style: `left: ${(s.a / 24) * 100}%; width: ${((s.b - s.a + 1) / 24) * 100}%`, html: s.c === 'dark' && s.b - s.a >= 1 ? icon('moon', 12) : '' })));
+  const first = hrs.findIndex((y) => !y.past);
+  const range = h('input', { type: 'range', class: 'bt-range', min: String(first), max: '23', step: '1', value: String(T.try ?? (x.k === k ? Math.max(first, Math.floor((x.M0 - k * 1440) / 60)) : N.lit[0]?.i ?? first)), 'aria-label': `Departure on ${d.name}`, disabled: S.c === 'loading' || S.c === 'failed' ? true : null });
+  const valtext = (i) => { const y = hrs[i]; return reading(y, true).map((n) => (typeof n === 'string' ? n : n?.classList?.contains('bt-facts') ? ` ${[...n.children].map((c) => c.textContent).join(', ')}` : n?.textContent || '')).join(''); };
+  range.setAttribute('aria-valuetext', valtext(+range.value));
+  const strip = h('div', { class: 'bt-strip' }, shade, slots, range);
+  box.append(read, strip,
+    h('div', { class: 'bt-axis' }, ...[0, 6, 12, 18].map((v) => h('span', { 'aria-hidden': 'true', style: `left: ${(v / 24) * 100}%` }, pad(v))),
+      R3() && S.c !== 'loading' && S.c !== 'failed' ? infoDot('The bars', 'Each bar is the weather on your trip if you leave at that hour: the shorter, the better. Shaded hours are dark. Drag along the bars, and let go to leave then.') : null),
+    ...(R2() ? [] : [h('p', { class: 'bt-sun' }, h('span', { html: `${icon('sunrise', 15)}${hm(d.rise)}` }), h('span', { html: `${icon('sunset', 15)}${hm(d.set)}` }), h('span', {}, 'shaded: the trip in the dark'))]));
+  wire(strip, range, hrs);
+  if (S.c === 'loading') { if (!R3()) box.append(h('p', { class: 'note wx-note' }, R2() ? 'Loading the forecast…' : 'Loading the forecast along the route…')); return box; }
+  if (S.c === 'failed') {
+    const lby = day(k).set - r.dur - ((day(k).set - r.dur) % 5);
+    box.append(h('div', { class: 'bt-fail' }, ...(R2() ? [h('p', { class: 'bt-read' }, 'The forecast didn’t load.'), h('p', { class: 'bt-read' }, `Leave by ${hm(lby)} to be ${endWord()} before dark.`)] : [h('p', { class: 'note wx-note' }, `The forecast couldn’t be loaded, so only the dark counts. Leave by ${hm(lby)} to be ${endWord()} in the light.`)]),
+      h('button', { type: 'button', class: 'btn small', 'data-k': 'retry', onclick: () => { S.c = 'day'; sync(); } }, 'Retry')));
+    return box;
+  }
+  // the crossing window (#856)
+  if (r.water) {
+    const ok = hrs.map((y) => !y.past && !y.none && !y.out), last = ok.lastIndexOf(true), firstOk = ok.indexOf(true), rough = hrs.filter((y) => !y.past && y.out);
+    const t = firstOk < 0 ? `No crossing window on ${d.name}: waves about ${Math.max(...rough.map((y) => y.wave)).toFixed(1)} m on the crossing from ${r.from} to ${r.to} all day, over a kayak’s comfortable 0.35 m.`
+      : !rough.length ? `Crossing window all day: waves under 0.35 m on the ${r.crossKm} km crossing from ${r.from} to ${r.to}, comfortable for a kayak.`
+      : `Crossing window: leave by ${hm(hrs[last].M0)} to cross from ${r.from} to ${r.to} (${r.crossKm} km of open water) in waves under 0.35 m, comfortable for a kayak. Later it’s rougher.`;
+    const t2 = firstOk < 0 ? 'Too rough to cross all day' : !rough.length ? 'Small waves on the crossing all day' : `Leave by ${hm(hrs[last].M0)} to cross in small waves`;
+    const cross = h('p', { class: 'bt-cross', html: `${icon('paddle', 18)}<span>${R2() ? t2 : t}</span>` });
+    if (R3()) cross.append(infoDot('The crossing', `${r.crossKm} km of open water from ${r.from} to ${r.to}. Small waves are under 0.35 m, comfortable for a kayak: an estimate from the forecast wind over the open water.`));
+    box.append(cross);
+  }
+  // the named departures: in the light, in the dark (question 1); the least bad, said so (question 2)
+  const pick = (w, ic) => { const y = w.best, on = x.k === y.k && x.M0 >= hrs[w.a].M0 && x.M0 === (y.nowSlot ? NOW().m + y.k * 1440 : y.M0);
+    if (R5()) return h('button', { type: 'button', class: 'row bt-row', role: 'radio', 'aria-checked': String(on), onclick: () => setDep(y) }, h('span', { 'aria-hidden': 'true', html: icon(`sky-${skyOf(y)}`, 26) }),
+      h('span', { class: 'bt-row-in' }, h('b', {}, h('span', { class: 'bt-time' }, y.nowSlot ? 'Now' : hm(y.M0)), h('small', {}, `→ ${hm(y.M1)}`)), facts4El(facts4(y))), h('span', { class: `bt-radio${on ? ' on' : ''}`, 'aria-hidden': 'true', html: on ? icon('check', 14) : '' }));
+    if (R4()) return h('button', { type: 'button', class: 'row bt-row', role: 'radio', 'aria-checked': String(on), onclick: () => setDep(y) }, h('span', { 'aria-hidden': 'true', html: icon(`sky-${skyOf(y)}`, 26) }),
+      h('span', { class: 'bt-row-in' }, h('b', {}, y.nowSlot ? 'Now' : hm(y.M0), h('small', {}, `→ ${hm(y.M1)}`)), facts4El(facts4(y, ic === 'moon'))), on ? h('span', { class: 'menu-tick', html: icon('check', 18) }) : null);
+    if (R2()) return h('button', { type: 'button', class: 'row bt-row', role: 'radio', 'aria-checked': String(on), onclick: () => setDep(y) }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }),
+      h('span', { class: 'bt-row-in' }, h('b', {}, y.nowSlot ? 'Now' : hm(y.M0)), factsEl(facts(y, ic === 'moon')), h('small', {}, `→ ${hm(y.M1)}`)), on ? h('span', { class: 'menu-tick', html: icon('check', 18) }) : null);
+    return h('button', { type: 'button', class: 'row', role: 'radio', 'aria-checked': String(on), onclick: () => setDep(y) }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }),
+      h('span', {}, h('b', {}, label(y)), h('small', {}, `${w.least ? 'The least bad: ' : ''}${(w.least ? (t) => t : cap)(why(y).join(' · '))}${span(w, hrs)} · ${endWord()} at ${hm(y.M1)}`)), on ? h('span', { class: 'menu-tick', html: icon('check', 18) }) : null); };
+  const group = (title, list, ic) => (list.length ? [h('div', { class: 'menu-h' }, title), h('div', { class: 'rows' }, ...list.map((w) => pick(w, ic)))] : []);
+  const litGood = N.lit.filter((w) => !w.least);
+  const nb = !litGood.length ? better(k) : null;
+  const empty = (title, words) => [h('div', { class: 'menu-h' }, title), h('p', { class: 'note wx-note' }, R2() ? (/today/.test(words) ? 'Nothing left today' : /ruled out/.test(words) ? 'Too rough to cross' : 'None') : words)];
+  const anyOut = hrs.some((y) => y.out), gone = (inLight) => (k === 0 && !hrs.some((y) => !y.past && y.grp === (inLight ? 'light' : 'dark')) ? `Nothing left ${inLight ? 'in the light' : 'in the dark'} today.` : anyOut ? 'Every departure is ruled out: see the crossing above.' : `No departure on ${d.name}.`);
+  const parts = R5() ? [h('h4', { class: 'bt-pick', id: `bt-pick-${k}` }, 'Pick a time'),
+    ...(N.lit.length || N.dark.length ? [h('div', { class: 'rows bt-tiles' }, ...N.lit.map((w) => pick(w, 'sun')), ...N.dark.map((w) => pick(w, 'moon')))] : [h('p', { class: 'note wx-note' }, empty('', gone(true))[1].textContent)])] : [
+    ...(N.lit.length ? group(N.most ? 'Most in the light' : 'In the light', N.lit, 'sun') : empty('In the light', gone(true))),
+    ...(N.dark.length ? group('In the dark', N.dark, 'moon') : empty('In the dark', gone(false))),
+  ];
+  const nbTile = nb && R5() ? h('div', { class: 'rows bt-tiles bt-next' }, h('button', { type: 'button', class: 'row bt-row', 'data-k': 'better-day', onclick: () => { T.dd = nb.best.k; T.try = null; draw(); } }, h('span', { 'aria-hidden': 'true', html: icon(`sky-${skyOf(nb.best)}`, 26) }),
+    h('span', { class: 'bt-row-in' }, h('b', {}, label(nb.best), h('small', {}, `→ ${hm(nb.best.M1)}`)), facts4El(facts4(nb.best))), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }))) : null; // (a way to another day, outside the choices)
+  if (nb && R4() && !R5()) parts.push(h('div', { class: 'menu-h' }, 'Another day'), h('div', { class: 'rows' }, h('button', { type: 'button', class: 'row bt-row', 'data-k': 'better-day', onclick: () => { T.dd = nb.best.k; T.try = null; draw(); } }, h('span', { 'aria-hidden': 'true', html: icon(`sky-${skyOf(nb.best)}`, 26) }),
+    h('span', { class: 'bt-row-in' }, h('b', {}, label(nb.best), h('small', {}, `→ ${hm(nb.best.M1)}`)), facts4El(facts4(nb.best))), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }))));
+  else if (nb && R2()) parts.push(h('div', { class: 'menu-h' }, 'Another day'), h('div', { class: 'rows' }, h('button', { type: 'button', class: 'row bt-row', 'data-k': 'better-day', onclick: () => { T.dd = nb.best.k; T.try = null; draw(); } }, h('span', { 'aria-hidden': 'true', html: icon('calendar', 20) }),
+    h('span', { class: 'bt-row-in' }, h('b', {}, label(nb.best)), factsEl(facts(nb.best)), h('small', {}, `→ ${hm(nb.best.M1)}`)), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }))));
+  else if (nb) parts.push(h('div', { class: 'rows' }, h('button', { type: 'button', class: 'row', 'data-k': 'better-day', onclick: () => { T.dd = nb.best.k; T.try = null; draw(); } }, h('span', { 'aria-hidden': 'true', html: icon('calendar', 20) }),
+    h('span', {}, h('b', {}, `${day(nb.best.k).name} ${hm(nb.best.M0)} is better`), h('small', {}, cap(why(nb.best).join(' · ')))), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }))));
+  box.append(h('div', { class: 'bt-best', role: 'radiogroup', 'aria-label': R5() ? `Pick a time on ${d.name}` : `The best departures on ${d.name}` }, ...parts));
+  if (nbTile) box.append(nbTile);
+  if (!R2()) box.append(h('p', { class: 'note wx-note' }, `Shorter bars, better weather. For ${r.label}: ${r.water ? 'rain, heat, wind and waves, and the crossing' : 'rain, heat and headwind'}; the dark is shaded behind.`));
+  return box;
+}
+// a finger or the mouse along the bars tries each hour; letting go leaves then; a tap is the same. The keys: the arrows
+// try, and a moment's rest or Enter leaves then
+function wire(strip, range, hrs) {
+  if (S.c === 'loading' || S.c === 'failed') return;
+  const idx = (e) => { const r = strip.getBoundingClientRect(), z = parseFloat(getComputedStyle(strip.closest('.frame')).zoom) || 1; return Math.max(0, Math.min(23, Math.floor(((e.clientX / (z === 1 ? 1 : 1)) - r.left) / (r.width / 24)))); };
+  const ok = (i) => !hrs[i].past;
+  const tryAt = (i) => { if (!ok(i) || T.try === i) return; T.try = i; draw(true); };
+  let down = false;
+  strip.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; down = true; strip.setPointerCapture(e.pointerId); tryAt(idx(e)); });
+  strip.addEventListener('pointermove', (e) => { if (down || e.pointerType === 'mouse') tryAt(idx(e)); });
+  strip.addEventListener('pointerup', (e) => { if (!down) return; down = false; const i = idx(e); if (ok(i) && !hrs[i].none) setDep(hrs[i]); else { T.try = null; draw(true); } });
+  strip.addEventListener('pointercancel', () => { down = false; T.try = null; draw(true); }); // (the sheet took the swipe)
+  strip.addEventListener('pointerleave', (e) => { if (!down && e.pointerType === 'mouse' && T.try != null) { T.try = null; draw(true); } });
+  let rest;
+  range.addEventListener('input', () => { clearTimeout(rest); const i = +range.value; T.try = i; draw(true, true); rest = setTimeout(() => { if (!hrs[i].none) setDep(hrs[i]); refocus(); }, 900); });
+  range.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(rest); const i = +range.value; if (!hrs[i].none) { setDep(hrs[i]); refocus(); } } });
+}
+const refocus = () => setTimeout(() => document.querySelector('.bt-range')?.focus());
+
+// ---------------------------------------------------------------- When's menu (js/when.js), static where popMenu() puts it
+function menu() {
+  const item = (ic, labelText, desc, checked, fn, after = '') => h('button', { type: 'button', role: checked == null ? 'menuitem' : 'menuitemradio', class: `menu-item${desc ? ' two-line' : ''}`, 'aria-checked': checked == null ? null : String(checked),
+    html: `${icon(ic, 17)}<span>${labelText}${desc ? `<small>${desc}</small>` : ''}</span>${checked ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}${after}`, onclick: () => { T.menu = false; fn(); T.anchor = T.dep.m; draw(); } });
+  const leaveNow = item('clock', 'Leave now', '', T.w === 'now', () => { T.w = 'now'; T.by = null; T.dep = { k: 0, m: NOW().m }; T.dd = 0; });
+  const leaveAt = item('calendar', 'Leave at…', T.w === 'at' ? `${day(T.dep.k).short} ${day(T.dep.k).date}, ${hm(T.dep.m)}` : '', T.w === 'at', () => { T.w = 'at'; T.by = null; T.dep = { k: 1, m: 600 }; T.dd = 1; });
+  const arriveBy = item('flagend', 'Arrive by…', T.w === 'by' ? `${day(T.by.k).short} ${day(T.by.k).date}, 16:30` : '', T.w === 'by', () => { const k = T.dep.k; T.w = 'by'; T.by = { k, m: 990 }; T.dep = { k, m: 990 - R().dur }; T.dd = k; });
+  const bestItem = S.v !== 'today' ? item('sunrise', 'Best time to leave', S.v === 'r2' ? '' : 'From the weather along the route', null, () => { T.open = true; T.dd = T.dep.k; }, icon('chevronRight', 16)) : null;
+  const grp = (title, ...items) => [h('div', { class: 'menu-h' }, title), h('div', { role: 'group', 'aria-label': title }, ...items.filter(Boolean))];
+  const body = S.n === 'nights' ? [...grp('First day', leaveNow, leaveAt, bestItem), ...grp('Last day', item('clock', 'Any time', '', T.w !== 'by', () => {}), arriveBy)] : grp('When', leaveNow, leaveAt, arriveBy, bestItem);
+  return h('div', { class: 'menu mk-menu', role: 'menu', 'aria-label': 'When' }, ...body);
+}
+
+// ---------------------------------------------------------------- the frame
+function card() {
+  const nights = S.n === 'nights' ? h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' }, h('button', { type: 'button', class: 'chip', 'aria-pressed': 'true' }, `Day 1 · ${day(dep().k).short}`), h('button', { type: 'button', class: 'chip', 'aria-pressed': 'false' }, `Day 2 · ${day(Math.min(9, dep().k + 1)).short}`)) : null;
+  const c = h('div', { class: 'pl-way card cut', 'data-kind': 'weather' }, head(), S.v !== 'today' ? best() : null, nights, weather(),
+    h('div', { class: 'rows' }, foldRow('hours', 'cloudSun', 'Hour by hour', 'Feels like, gusts and where you’ll be', false), foldRow('time', 'clock', 'Time on the way', `${Math.floor(R().dur / 60)} h ${pad(R().dur % 60)} min`, false)),
+    h('button', { type: 'button', class: 'btn wx-map', 'data-k': 'wx-map', html: `${icon('layers', 18)}<span>Weather on the map</span>` }));
+  return c;
+}
+function frame() {
+  const desk = S.f === 'desk', z2 = S.z === '200';
+  const f = h('div', { class: `frame ${desk ? 'desk' : `ph${S.f === '360' ? ' narrow' : ''}`}${z2 ? ' z2' : ''}` }, h('div', { class: 'mk-top', 'aria-hidden': 'true' }, 'Search places or paths (stand-in)'));
+  if (desk) {
+    f.append(h('section', { class: 'sheet', 'data-layout': 'side', 'data-state': 'half', 'aria-label': 'Route planner (stand-in)' },
+      h('div', { class: 'mk-standin' }, h('b', {}, R().name), h('span', {}, `${R().km} km · ${Math.floor(R().dur / 60)} h ${pad(R().dur % 60)} min`), h('span', {}, 'The planner, with the trip’s box whose row opened the card (stand-in)'))),
+      h('div', { class: 'card-float card-beside' }, card()));
+  } else {
+    f.append(h('section', { class: 'sheet foldable carded fold-card', 'data-layout': 'sheet', 'data-state': 'full', 'aria-label': 'Route planner' },
+      h('div', { class: 'sheet-top' }, h('span', { class: 'sheet-top-start' }, h('button', { type: 'button', class: 'tool sheet-fold', 'aria-label': 'Fold the card to a line', html: icon('chevronDown', 19) })),
+        h('button', { type: 'button', class: 'sheet-handle', 'aria-label': 'Planner size' }), h('span', { class: 'sheet-top-end' }, h('button', { type: 'button', class: 'tool sheet-set', 'aria-label': 'Card settings', html: icon('more', 19) }), h('button', { type: 'button', class: 'tool sheet-x', 'aria-label': 'Close', html: icon('close', 20) }))),
+      h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, h('div', { class: 'card-peek' }, card())))));
+  }
+  if (T.menu) f.append(menu());
+  return f;
+}
+const CAPS = {
+  card: 'The weather card opened from When’s menu (Best time to leave ›): the row is open, at the departure’s day. Drag along the bars to try each hour, let go to leave then, or tap a row. ‹ › go a day at a time, up to ten days.',
+  menu: 'When’s menu from the pill: Best time to leave › is the last item, after Arrive by…, since it doesn’t hold a time of its own: it picks a Leave at. On a trip with nights it’s the First day’s.',
+  box: 'The weather card opened from the trip’s box: Best time to leave is folded, its line saying what it found. The weather under it is the card’s as on main.',
+  today: 'Today on main: the card from the trip’s box, and When’s menu with Leave now, Leave at… and Arrive by….',
+};
+let keep = 0;
+function draw(local = false, keyed = false) {
+  const stage = document.getElementById('stage'), old = stage.querySelector('.card');
+  const sc = old ? old.scrollTop : 0;
+  if (local && old) { // (trying an hour: only the row's part changes, so the finger keeps its strip)
+    const bt = old.querySelector('.bt'), fresh = best(), sx = bt?.querySelector('.bt-strip');
+    if (bt && sx) {
+      bt.querySelector('.bt-read').replaceWith(fresh.querySelector('.bt-read'));
+      const ns = fresh.querySelector('.bt-slots'); sx.querySelector('.bt-slots').replaceWith(ns);
+      const r = sx.querySelector('.bt-range'); r.setAttribute('aria-valuetext', fresh.querySelector('.bt-range').getAttribute('aria-valuetext'));
+      return;
+    }
+  }
+  stage.replaceChildren(frame());
+  const c = stage.querySelector('.card'); if (c) c.scrollTop = sc;
+  document.getElementById('cap').textContent = S.v === 'today' ? CAPS.today : CAPS[S.s];
+  if (keyed) refocus();
+}
+function sync() {
+  for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[sw.dataset.k] === b.dataset.v));
+  try { history.replaceState(null, '', `?${new URLSearchParams(S)}`); } catch {} // (a viewer's frame may refuse it)
+  init(); draw();
+}
+for (const sw of document.querySelectorAll('.sw')) sw.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; S[sw.dataset.k] = b.dataset.v; sync(); });
+sync();
+</script>
+</body>
+</html>

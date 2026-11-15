@@ -12503,7 +12503,8 @@ def weather_requests(chrome):
 
 # Before the page loads: Open-Meteo's forecast answers at once with the same weather everywhere (__wx.temp, −12 °C:
 # the widest reading; __wx.code(lat, lon), WMO's code, overcast unless a check says so), so a check of the timeline doesn't wait for the service or depend on its weather. With
-# __wx.hold set, the answers wait until __wx.release(); with __wx.fail set, they're a server error (500).
+# __wx.hold set, the answers wait until __wx.release(); with __wx.fail set, they're a server error (500). __wx.speedAt(i) and
+# __wx.dir set the wind by the hour (i from the last whole hour but one), __wx.n the hours answered (52).
 WX_FIXED = """(() => {
   const real = window.fetch.bind(window), W = window.__wx = { temp: -12, code: () => 3, asked: 0, hold: false, held: [] };
   W.release = () => { W.hold = false; W.held.splice(0).forEach((go) => go()); return true; };
@@ -12512,9 +12513,9 @@ WX_FIXED = """(() => {
     if (!/^https:\\/\\/api\\.open-meteo\\.com\\/v1\\/forecast\\?.*temperature_2m/.test(url)) return real(input, init);
     W.asked++;
     const q = new URL(url).searchParams, lats = q.get('latitude').split(',').map(Number), lons = q.get('longitude').split(',').map(Number);
-    const n = 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
-    const hourly = (lat, lon) => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(W.speed ?? 4), wind_direction_10m: fill(220), wind_gusts_10m: fill(W.gust ?? 9),
-      temperature_2m: fill(W.temp), precipitation: Array.from({ length: n }, (_, i) => (W.precip ? W.precip(lat, lon, i) : 0.4)), cloud_cover: fill(W.cloud ? W.cloud(lat, lon) : 60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: fill(W.code(lat, lon)) });
+    const n = W.n ?? 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
+    const hourly = (lat, lon) => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: Array.from({ length: n }, (_, i) => (W.speedAt ? W.speedAt(i) : W.speed ?? 4)), wind_direction_10m: fill(W.dir ?? 220), wind_gusts_10m: fill(W.gust ?? 9),
+      temperature_2m: fill(W.temp), precipitation: Array.from({ length: n }, (_, i) => (W.precip ? W.precip(lat, lon, i) : 0.4)), cloud_cover: fill(W.cloud ? W.cloud(lat, lon) : 60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: Array.from({ length: n }, (_, i) => W.code(lat, lon, i)) });
     const answer = () => W.fail ? new Response('', { status: 500 }) : new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly(lat, lons[i]) }))), { headers: { 'Content-Type': 'application/json' } });
     return W.hold ? new Promise((ok) => W.held.push(() => ok(answer()))) : Promise.resolve(answer());
   };
@@ -13646,7 +13647,7 @@ def timeline_trip(chrome):
                 # (by touch to its line, by mouse a size down), then 48 hours: the card stays as you left it
                 press(*pg.js(TL_ROOM)['h48At'])
                 pg.js("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.els.foldGo.click(); await wait(600); p.openWeather({ day: 0 }); await wait(600); p.setSheetState('half'); await wait(600); return true; })()")
-                wmap = pg.js("""(() => { const b = polku.planner.cards.box?.querySelector('[data-k=wx-map]'); if (!b) return null; const box = polku.planner.cards.box; box.scrollTop += b.getBoundingClientRect().top - box.getBoundingClientRect().top - 60;
+                wmap = pg.js("""(() => { const b = polku.planner.cards.box?.querySelector('[data-k=wx-map]'); if (!b) return null; const box = polku.planner.cards.box; box.scrollTop += b.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom + 12; // (at the card's foot, clear of the timeline over its top)
                   const r = b.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2; return document.elementFromPoint(x, y)?.closest('button') === b ? [x, y] : null; })()""")
                 if not wmap:
                     bad('no Weather on the map in sight on the weather card at half')
@@ -14120,6 +14121,332 @@ def weather_card(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the trip's box and the weather card: missing, late and partial forecasts in words, feels like, the dark" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Best time to leave (#273; docs/plans/best-time-to-leave.md). The forecast (WX_FIXED, 100 hours) rains tomorrow but at 10,
+# 11, 20 and 21 o'clock (each hour's rain runs into the hour before it) and all the day after, and is dry today and later; the route leaves tomorrow at 09:00. Helpers for the checks that follow: `BT.tom(hh)`,
+# tomorrow at hh:00; `BT.clock(t)`, as the app says a time; `BT.box()`, the open section; `BT.until(f)`.
+BT_WX = """window.__wx.n = 100; window.__wx.precip = (lat, lon, i) => { const d = new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), t = new Date(), u = new Date(); t.setDate(t.getDate() + 1); u.setDate(u.getDate() + 2);
+  return (d.getDate() === t.getDate() && ![10, 11, 20, 21].includes(d.getHours())) || d.getDate() === u.getDate() ? 2 : 0; };"""
+BT_HELP = """(() => { window.BT = {
+  wait: (ms) => new Promise((r) => setTimeout(r, ms)),
+  async until(f, ms = 20000) { for (let t = 0; t < ms && !f(); t += 100) await BT.wait(100); return f(); },
+  day: (k, hh) => { const d = new Date(); d.setDate(d.getDate() + k); d.setHours(hh, 0, 0, 0); return d.getTime() / 1000; },
+  tom: (hh) => BT.day(1, hh),
+  clock: (t) => new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  box: () => polku.planner.cards.box?.querySelector('.bt'),
+  times: () => [...(BT.box()?.querySelectorAll('.bt-best .bt-time') || [])].map((e) => e.textContent),
+  slots: (cls) => [...(BT.box()?.querySelectorAll('.bt-slot') || [])].map((e, i) => (e.classList.contains(cls) ? i : -1)).filter((i) => i >= 0),
+  // the day's sweep is done: its slots drawn from it, not the skeleton's
+  done: () => !!BT.box()?.querySelector('.bt-slot') && !BT.box().querySelector('.bt-slot.skel'),
+  async leave(t) { const p = polku.planner; p.when.set(t); return BT.until(() => p.analysis?.wind && p.analysis.start === t && p.analysis.tAtWind); },
+}; return true; })()"""
+
+# The card from When's place (openWeather({ best: true })): tomorrow, the bars and the choices from the forecast, 10:00
+# in the light and 20:00 in the dark, the sweep leaving the route's times and When as they were; the heading over the
+# card's weather, and Weather on the map right under the hours; a tile's tap a plain Leave at
+BT_JS = """(async () => {
+  const errs = [], p = polku.planner;
+  if (!(await BT.leave(BT.tom(9)))) return ['the route isn’t timed from tomorrow 09:00 with its forecast'];
+  const a = p.analysis, before = () => JSON.stringify({ tAt: [...a.tAt], waitAt: [...a.waitAt], got: p.when.got, at: p.when.at, by: p.when.by, start: a.start, time: a.time });
+  const was = before();
+  p.openWeather({ best: true });
+  if (!(await BT.until(BT.done))) return ['no bars after 20 s'];
+  const day = BT.box().querySelector('.bt-day b')?.textContent || '';
+  if (!/^Tomorrow, /.test(day)) errs.push(`the day: “${day}”, not tomorrow`);
+  const want = [BT.clock(BT.tom(10)), BT.clock(BT.tom(20))];
+  if (JSON.stringify(BT.times()) !== JSON.stringify(want)) errs.push(`the choices: ${BT.times().join(', ') || 'none'}, not ${want.join(', ')}`);
+  if (JSON.stringify(BT.slots('best')) !== '[10,20]') errs.push(`the green bars: ${BT.slots('best')}, not 10 and 20`);
+  if (!BT.slots('c-rain').includes(13)) errs.push(`13:00 in the rain isn't a rain bar: ${BT.slots('c-rain')}`);
+  if (BT.box().querySelector('.bt-time.least, .bt-fact.least, .bt-slot.least')) errs.push('a good time is said to be the least bad');
+  if (before() !== was) errs.push('the sweep changed the route’s times or When');
+  // ‹ › and back: the sweep of another day touches nothing either
+  BT.box().querySelector('[data-k=bt-prev]').click();
+  await BT.until(() => /^Today, /.test(BT.box()?.querySelector('.bt-day b')?.textContent) && BT.done());
+  const now = new Date().getHours(), past = BT.slots('past'), best = BT.slots('best');
+  if (now > 0 && JSON.stringify(past) !== JSON.stringify([...Array(now).keys()])) errs.push(`today's passed hours: ${past}, not 0 to ${now - 1}`);
+  if (best.some((i) => i < now)) errs.push(`a passed hour is named: ${best}`);
+  BT.box().querySelector('[data-k=bt-next]').click();
+  await BT.until(() => /^Tomorrow, /.test(BT.box()?.querySelector('.bt-day b')?.textContent) && BT.done());
+  if (before() !== was) errs.push('stepping the days changed the route’s times or When');
+  // the card's weather under its heading, and Weather on the map under the hours
+  const head = BT.box().nextElementSibling;
+  if (head?.tagName !== 'H3' || head.textContent !== 'Weather on the way') errs.push(`under the box: ${head?.outerHTML.slice(0, 80)}`);
+  const map = p.cards.box.querySelector('.wx-map');
+  if (!map || !map.previousElementSibling?.classList.contains('wx-day')) errs.push(`Weather on the map follows ${map?.previousElementSibling?.className || 'nothing'}, not the day's weather`);
+  if (p.cards.box.querySelector('.way-hint .sr-only')?.textContent === 'Weather on the way. ') errs.push('the card’s name is said twice');
+  // a tile: Leave at that time, ticked
+  [...BT.box().querySelectorAll('.bt-best .row')].find((r) => r.textContent.startsWith(want[0])).click();
+  if (!(await BT.until(() => p.when.at === BT.tom(10) && BT.box()?.querySelector('.bt-best .row[aria-checked=true]')?.textContent.startsWith(want[0])))) errs.push(`a tap on ${want[0]}: When ${p.when.at && BT.clock(p.when.at)}, ticked ${BT.box()?.querySelector('.bt-best .row[aria-checked=true]')?.textContent}`);
+  return errs;
+})()"""
+
+# Then the forecast fails, and comes back, as days past two are asked for: the dark alone and Retry; one request each
+# time; past the forecast's reach no bars and no choices, with an ⓘ saying so, and nothing asked
+BT_STATES = """(async () => {
+  const errs = [], W = window.__wx, N = await import(location.origin + '/js/net.js'), step = async (want) => { BT.box().querySelector('[data-k=bt-next]').click(); await BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(want) && (BT.done() || BT.box().querySelector('.bt-fail'))); };
+  const name = (k) => new Date(BT.day(k, 12) * 1000).toLocaleDateString([], { weekday: 'short' });
+  W.fail = true; let n = W.asked;
+  await step(name(2));
+  const fail = BT.box().querySelector('.bt-fail');
+  if (!fail || !/Open-Meteo/.test(fail.textContent) || !fail.querySelector('[data-k=bt-retry]')) errs.push(`the day after tomorrow with the forecast failing: ${BT.box().textContent.slice(0, 200)}`);
+  if (W.asked - n !== 1) errs.push(`a failed day asked ${W.asked - n} times, not once`);
+  if (BT.slots('best').length || BT.box().querySelector('.bt-best')) errs.push('with no forecast, a time is named');
+  // (a server error holds Open-Meteo back for a minute: Retry once it may be asked again)
+  W.fail = false;
+  await BT.until(() => !N.sourceStatus('openmeteo'), 75000); n = W.asked;
+  BT.box().querySelector('[data-k=bt-retry]')?.click();
+  await BT.until(() => BT.done() && !BT.box().querySelector('.bt-fail'));
+  if (BT.box().querySelector('.bt-fail') || !BT.box().querySelector('.bt-best')) errs.push(`after Retry: ${BT.box().textContent.slice(0, 200)}`);
+  if (W.asked - n !== 1) errs.push(`Retry asked ${W.asked - n} times, not once`);
+  // (2A) a day with rain in every hour names the least bad: grey tags over its bars and on its tiles, saying so first
+  const tiles = [...BT.box().querySelectorAll('.bt-best .row')];
+  if (!tiles.length || tiles.some((r) => !r.querySelector('.bt-time.least') || r.querySelector('.bt-fact')?.textContent !== 'Least bad')) errs.push(`a day with no good time: the choices ${tiles.map((r) => r.textContent).join(' / ') || 'none'}, not each Least bad with a grey tag`);
+  if (!BT.slots('best').length || BT.slots('best').some((i) => !BT.slots('least').includes(i))) errs.push(`a day with no good time: green bars ${BT.slots('best').filter((i) => !BT.slots('least').includes(i))}`);
+  const lb = BT.box().querySelector('.bt-slot.least .bt-bar')?.getBoundingClientRect().height;
+  if (!(lb > 20)) errs.push(`a day of rain: the least bad's bar is ${lb} px high, not as high as its rain`); // (#1030's review: drawn flat)
+  if (!(await BT.until(() => BT.box()?.querySelector('[data-k=better-day]')))) errs.push('a day with no good time has no better day after its choices'); // (once the next days are swept)
+  n = W.asked;
+  await step(name(3)); await step(name(4)); await step(name(5));
+  const none = BT.slots('none').length, info = BT.box().querySelector('.bt-day .info-dot')?.getAttribute('aria-label') || '';
+  if (none !== 24 || BT.slots('best').length || BT.times().length) errs.push(`five days ahead (the forecast reaches four): ${none} hours without a bar, choices ${BT.times()}`);
+  if (!/^No forecast yet: /.test(info)) errs.push(`five days ahead, the day's ⓘ: “${info}”`);
+  if (W.asked !== n) errs.push(`stepping on asked ${W.asked - n} more times, with the ten-day forecast in hand`);
+  // (#1030's review) an hour on, the forecast failing: the day after tomorrow from the copy an hour old, and saying so
+  for (const k of [4, 3, 2]) { BT.box().querySelector('[data-k=bt-prev]').click(); await BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(name(k)) && BT.done()); }
+  const now = Date.now; Date.now = () => now() + 3700e3; W.fail = true;
+  try {
+    polku.planner.btRedraw(polku.planner.cards.current);
+    await BT.until(() => BT.box()?.querySelector('.stale-note, .bt-fail') && BT.done());
+    const old = BT.box().querySelector('.stale-note')?.textContent || '';
+    if (!/^Older forecast \(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
+  } finally { Date.now = now; W.fail = false; }
+  return errs;
+})()"""
+
+
+def best_time(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + BT_WX + 'window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
+        pg.js(BT_HELP)
+        if not pg.js(PC_ROUTE, timeout=30000):
+            fails.append('no route')
+        else:
+            fails += pg.js(BT_JS, timeout=90000)
+        if not fails:
+            # a finger along the bars from 20:00 to 12:00: the reading follows and When waits, a sweep done meanwhile doesn't draw
+            # the bars again under it; lifting it leaves at 12:00
+            at = pg.js(f'({PC_AT})(".bt .bt-strip")')
+            box = pg.js("(() => { const r = document.querySelector('.bt .bt-strip').getBoundingClientRect(); return { x: r.left, w: r.width }; })()")
+            x = lambda i: box['x'] + (i + 0.5) * box['w'] / 24
+            was = pg.js('polku.planner.when.at')
+            pg.touch('start', x(20), at['y'])
+            for k in range(1, 9):
+                time.sleep(0.04)
+                pg.touch('move', x(20) - k * (x(20) - x(12)) / 8, at['y'])
+            time.sleep(0.3)
+            pg.js('polku.planner.btRedraw(polku.planner.cards.current); true')  # (a sweep that finishes under the finger waits for it)
+            r = pg.js("({ at: polku.planner.when.at, read: document.querySelector('.bt .bt-read').textContent, lit: BT.slots('lit') })")
+            if r['at'] != was or not r['read'].startswith(pg.js('BT.clock(BT.tom(12))')) or r['lit'] != [12]:
+                fails.append(f"a finger held at 12:00: When {r['at']} (was {was}), reading “{r['read']}”, lit {r['lit']}")
+            pg.touch('end')
+            if not pg.js('BT.until(() => polku.planner.when.at === BT.tom(12))', timeout=25000):
+                fails.append(f"the finger lifted at 12:00: When {pg.js('polku.planner.when.at && BT.clock(polku.planner.when.at)')}")
+            fails += pg.js(BT_STATES, timeout=150000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave: the bars and choices, a pick, a finger along the bars, the sweep touching nothing, failed, Retry and past the forecast" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Best time to leave in When's menu (#273): its last item once there's a route, after Arrive by…, opening the weather
+# card with the section open; a pick there is a plain Leave at, which takes Arrive by's place, and the menu says so
+BT_MENU = """(async () => {
+  const errs = [], p = polku.planner, items = () => [...document.querySelectorAll('.menu [role=group] .menu-item, .menu [role=group] .menu-pick')].map((e) => e.textContent.trim());
+  if (!(await BT.until(() => p.analysis?.wind))) return ['no forecast for the route'];
+  p.when.setBy(BT.tom(12));
+  if (!(await BT.until(() => p.analysis.tAtWind && p.when.got))) return ['Arrive by isn’t worked out'];
+  p.els.box.querySelector('[data-k=when]').click();
+  await BT.wait(300);
+  const list = items();
+  if (!/^Arrive by/.test(list.at(-2) || '') || !/^Best time to leave/.test(list.at(-1) || '')) errs.push(`When's menu: ${list.join(' / ')}`);
+  [...document.querySelectorAll('.menu .menu-item')].find((e) => /^Best time to leave/.test(e.textContent.trim())).click();
+  if (!(await BT.until(() => p.cards.current?.kind === 'weather' && BT.done()))) return [...errs, `the menu's item opened ${p.cards.current?.kind || 'nothing'}, the section ${BT.box() ? 'loading' : 'folded'}`];
+  const tile = BT.box().querySelector('.bt-best .row[role=radio]'), t = +tile.dataset.k.slice(3);
+  tile.click();
+  if (!(await BT.until(() => p.when.at === t && p.when.by == null))) errs.push(`a pick with Arrive by set: Leave at ${p.when.at}, Arrive by ${p.when.by}, not a plain Leave at ${t}`);
+  p.cards.box.querySelector('[data-k=when]').click();
+  await BT.wait(300);
+  const ticked = [...document.querySelectorAll('.menu [aria-checked=true]')].map((e) => e.textContent.trim().split(/\\s/)[0]);
+  if (ticked.join() !== 'Leave') errs.push(`after a pick the menu ticks ${ticked.join(', ') || 'nothing'}, not Leave at…`);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  return errs;
+})()"""
+
+
+def best_time_menu(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
+        pg.js(BT_HELP)
+        fails += ['no route'] if not pg.js(PC_ROUTE, timeout=30000) else pg.js(BT_MENU, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave in When's menu: the last item, a pick a plain Leave at in Arrive by's place" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Best time to leave on a trip with nights (#273): the item is the First day's, and each departure is scored on the first
+# day only, to the night, the rest of the trip as it was
+BT_NIGHTS = """(async () => {
+  const errs = [], p = polku.planner;
+  p.setStop(2, { on: 480 });
+  if (!(await BT.leave(BT.tom(10)))) return ['the trip with a night isn’t timed from tomorrow 10:00'];
+  const night = p.trip().arrive(p.lengthTo(2)), end = p.trip().end;
+  p.els.box.querySelector('[data-k=when]').click();
+  await BT.wait(300);
+  const first = [...document.querySelectorAll('.menu [role=group]')][0], firstH = first && document.getElementById(first.getAttribute('aria-labelledby'))?.textContent;
+  if (firstH !== 'First day' || !/^Best time to leave/.test([...first.querySelectorAll('.menu-item')].at(-1)?.textContent.trim())) errs.push(`When's menu with a night: ${firstH} ends with ${[...(first?.querySelectorAll('.menu-item') || [])].at(-1)?.textContent}`);
+  [...first.querySelectorAll('.menu-item')].at(-1)?.click();
+  if (!(await BT.until(() => BT.done()))) return [...errs, 'no bars after 20 s'];
+  const x = p.cards.current.bt[1].res.hrs[10];
+  if (Math.abs(x.back - night) > 60 || x.back >= end) errs.push(`leaving at 10:00, the first day ends at ${BT.clock(x.back)}, not at the night (${BT.clock(night)}; the trip ends ${new Date(end * 1000).toString().slice(0, 21)})`);
+  if (x.out) errs.push(`leaving at 10:00, ruled out by ${x.out}: the morning's after the night`); // (#1030's review)
+  return errs;
+})()"""
+
+
+def best_time_nights(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        # (thunder only the morning after the night, from 06:00 to 10:00 the day after tomorrow)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.n = 100; window.__wx.temp = 4; window.__wx.precip = () => 0; window.__wx.code = (lat, lon, i) => { const d = new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), u = new Date(); u.setDate(u.getDate() + 2); return d.getDate() === u.getDate() && d.getHours() >= 6 && d.getHours() <= 10 ? 95 : 3; };'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
+        pg.js(BT_HELP)
+        fails += ['no route'] if not pg.js(PC_ROUTE, timeout=30000) else pg.js(BT_NIGHTS, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave on a trip with nights: the first day's item, scored to the night" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The crossing window on the water (#856): the water router keeps the open water upwind of each leg in eight directions
+# (water.js's reach); a forecast calm until 14:00 tomorrow and a gale from 15:00, from where the leg has the most open
+# water, rules the windy hours out (hatched) and says when to leave to cross in small waves, with an ⓘ for the crossing
+BT_WATER = """(async () => {
+  const errs = [], wait = BT.wait, W = window.__wx;
+  const fx = await (await fetch(location.origin + '/tools/fixtures/water-helsinki.json')).json();
+  const D = await import(location.origin + '/js/waterdata.js'), R = await import(location.origin + '/js/water.js');
+  const fc = (features) => ({ type: 'FeatureCollection', features });
+  D.seedWater((box, want) => ({ fairways: want.fairways ? fc(fx.fairways) : fc([]), hazards: fc([]), wind: want.wind ? { speed: 2, gust: 3, dir: 180 } : null, missing: [] }));
+  const from = [24.9585, 60.1540], to = [24.9800, 60.1480];
+  const leg = await R.routeWater(from, to, { at: 0, hazards: 'ignore', wind: 'ignore' }), reach = leg.water.reach;
+  if (!reach || !reach.f.length || reach.f.some((f) => f && f.length !== 8)) return [`the leg's open water: ${JSON.stringify(reach)?.slice(0, 120)}`];
+  const k = [...Array(8).keys()].sort((a, b) => Math.max(...reach.f.map((f) => f?.[b] || 0)) - Math.max(...reach.f.map((f) => f?.[a] || 0)))[0];
+  if (Math.max(...reach.f.map((f) => f?.[k] || 0)) < 1000) return [`no kilometre of open water on any side of the leg (${Math.max(...reach.f.map((f) => f?.[k] || 0))} m at most)`];
+  const hourOf = (i) => new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), tom = new Date(BT.tom(12) * 1000).getDate();
+  const day2 = new Date(BT.day(2, 12) * 1000).getDate(); // (the day after tomorrow: a gale until 10:00 and from 15:00)
+  W.n = 100; W.dir = k * 45; W.gust = 0; W.speedAt = (i) => { const d = hourOf(i), hh = d.getHours(); return (d.getDate() === tom && hh >= 15) || (d.getDate() === day2 && (hh < 10 || hh >= 15)) ? 25 : 2; };
+  polku.set({ activity: 'paddle' }); await wait(800);
+  const p = polku.planner; p.setActive(true); p.clear(); p.setMode('water'); p.addPoint(from); p.addPoint(to);
+  if (!(await BT.until(() => p.legs[0]?.result?.water?.reach && p.analysis))) return ['the planner’s water leg has no open water'];
+  if (!(await BT.leave(BT.tom(9)))) return ['the paddle isn’t timed from tomorrow 09:00'];
+  p.openWeather({ best: true });
+  if (!(await BT.until(() => BT.done() && BT.box().querySelector('.bt-cross'), 30000))) return [`no crossing line: ${BT.box()?.textContent.slice(0, 200)}`];
+  const line = BT.box().querySelector('.bt-cross').textContent, by = /^Leave by (\\S+) to cross in small waves/.exec(line);
+  if (!by || ![BT.clock(BT.tom(13)), BT.clock(BT.tom(14))].includes(by[1])) errs.push(`the crossing: “${line}”, not Leave by 13:00 or 14:00`);
+  if (!BT.box().querySelector('.bt-cross .info-dot[aria-label^="The crossing: "]')) errs.push('the crossing has no ⓘ');
+  const out = BT.slots('out');
+  if ([...Array(9).keys()].map((j) => 15 + j).some((i) => !out.includes(i)) || out.some((i) => i < 13)) errs.push(`hours ruled out: ${out}, not 15 to 23`);
+  if (BT.slots('best').some((i) => i >= 15)) errs.push(`a gale's hour is named: ${BT.slots('best')}`);
+  // (#1030's review) the day after tomorrow: the window's both ends; past the forecast, nothing said of the crossing
+  const cross = () => [...BT.box().querySelectorAll('.bt-cross')].map((e) => e.textContent);
+  const step = async (k) => { BT.box().querySelector('[data-k=bt-next]').click(); return BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(new Date(BT.day(k, 12) * 1000).toLocaleDateString([], { weekday: 'short' })) && BT.done(), 30000); };
+  await step(2);
+  const two = /^Leave between (\S+) and (\S+) to cross in small waves/.exec(cross()[0] || '');
+  if (!two || two[1] !== BT.clock(BT.day(2, 10)) || ![BT.clock(BT.day(2, 13)), BT.clock(BT.day(2, 14))].includes(two[2])) errs.push(`the day after tomorrow, calm from 10:00 to 15:00: “${cross().join(' / ')}”`);
+  for (const k of [3, 4, 5]) await step(k);
+  if (cross().length) errs.push(`five days ahead, past the forecast: “${cross().join(' / ')}”`);
+  // a drawn leg on the water first, then a night, then the routed crossing: the first day's waves aren't known, and the
+  // crossing isn't the first day's; without the night, both
+  const p0 = [24.9520, 60.1600];
+  p.clear(); p.setMode('line'); p.addPoint(p0); p.addPoint(from); p.setMode('water'); p.addPoint(to);
+  if (!(await BT.until(() => p.legs[1]?.result?.water?.reach && p.analysis?.wind, 30000))) return [...errs, 'the drawn leg and the crossing aren’t routed'];
+  p.setStop(1, { on: 480 });
+  if (!(await BT.leave(BT.tom(9)))) return [...errs, 'the trip with a night isn’t timed from tomorrow 09:00'];
+  p.openWeather({ best: true });
+  if (!(await BT.until(() => BT.done() && BT.box().querySelector('.bt-best, .bt-tiles, .note'), 30000))) return [...errs, 'no bars for the trip with a night'];
+  if (cross().join(' / ') !== 'Waves not known on some of the water') errs.push(`a drawn leg, a night, then the crossing: “${cross().join(' / ')}”`);
+  p.setStop(1, null);
+  if (!(await BT.leave(BT.tom(8)))) return [...errs, 'the trip without its night isn’t timed from tomorrow 08:00'];
+  p.openWeather({ best: true });
+  await BT.until(() => BT.done() && cross().length > 1, 30000);
+  if (cross().length !== 2 || cross()[1] !== 'Waves not known on some of the water') errs.push(`a drawn leg and the crossing on one day: “${cross().join(' / ')}”`);
+  return errs;
+})()"""
+
+
+# Best time to leave in the snow (#1030's review): on a calm, dry day with snow on the ground the snow slows the ride, and
+# none of it is lost to a headwind, so every hour's bar is empty
+BT_SNOW = """(async () => {
+  const errs = [], p = polku.planner;
+  if (!(await BT.leave(BT.tom(9)))) return ['the ride isn’t timed from tomorrow 09:00'];
+  if (!p.snowOf(p.analysis, p.analysis.wind)) return ['no snow on the ground slows the ride'];
+  p.openWeather({ best: true });
+  if (!(await BT.until(BT.done))) return ['no bars after 20 s'];
+  const hrs = p.cards.current.bt[1].res.hrs.filter((x) => !x.past), lost = hrs.filter((x) => x.lost || x.bar);
+  if (lost.length) errs.push(`calm and dry in the snow: ${lost.length} hours lose time to a headwind (${Math.round(lost[0].lost / 60)} min at ${BT.clock(lost[0].t)})`);
+  return errs;
+})()"""
+
+
+def best_time_snow(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = -3; window.__wx.speed = 0; window.__wx.gust = 0;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"on"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
+        pg.js(BT_HELP)
+        fails += ['no route'] if not pg.js(PC_ROUTE, timeout=30000) else pg.js(BT_SNOW, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave in the snow: its slowing no headwind" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+def best_time_water(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 8;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/60.152/24.97')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
+        pg.js(BT_HELP)
+        fails += pg.js(BT_WATER, timeout=120000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave on the water: the open water kept per leg, the crossing window, a gale's hours ruled out" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -20158,7 +20485,8 @@ def leave(chrome):
             return
         press(pg, at, f'{name}: When on the start\'s card', touch)
         m = pg.js("(() => { const m = LV.menu(); return m && { items: [...m.querySelectorAll('.menu-item')].map((x) => x.matches('input') ? x.type : x.textContent), expanded: LV.row('start').getAttribute('aria-expanded') }; })()")
-        if not m or m['items'] != (['Leave now', 'datetime-local', 'datetime-local'] if phone else ['Leave now', 'Leave at…', 'Arrive by…']) or m['expanded'] != 'true':
+        # (Best time to leave last, once there's a route: #273)
+        if not m or m['items'] != (['Leave now', 'datetime-local', 'datetime-local'] if phone else ['Leave now', 'Leave at…', 'Arrive by…']) + ['Best time to leaveFrom the weather along the route'] or m['expanded'] != 'true':
             fails.append(f"{name}: When's menu on the start's card: {m}")
         # its field: a phone's own picker from a tap; on a desktop, Leave at… shows it with Set. Its quarter hours on the
         # clock's: min on a quarter hour, so the next whole hour is a step, never a mismatch (the review of #475)
@@ -22011,7 +22339,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, best_time, best_time_snow, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
@@ -22021,7 +22349,7 @@ GROUPS = [
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_late, water_back, water_long, water_hidden, paddle_map], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
+    ('water', [water, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
@@ -22029,7 +22357,7 @@ GROUPS = [
     ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun, the routing bar and the folded line while a leg is held (no routing)'),
     ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
     ('sunlight', [sunlight, sky_3d], 'the hills lit by the sun at the timeline\'s hour and their shadows (#910): the sun\'s place, a wall\'s shadow, the light and the switch over the hours and a reload; the sky in 3D by the hour and the forecast (#644)'),
-    ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
+    ('stops', [stops, best_time_nights], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
     ('heads', [heads], 'Check in three groups (25d part 2): every Heads-up item\'s group and source, set where it\'s made (each maker fed its smallest input, no network); Not checked with Retry; the groups, What Polku looked at and the badge'),
@@ -22079,7 +22407,7 @@ GROUPS = [
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list, tick_under], 'Leave now\'s refresh leaving focus and a Reorder drag alone (#966); Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
-    ('leave', [leave, when_start, arrive_by], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
+    ('leave', [leave, when_start, arrive_by, best_time_menu], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
     ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),

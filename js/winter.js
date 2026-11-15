@@ -350,3 +350,7 @@ export function windChill(t, airKmh) {
 // The air moving past you (km/h): your own speed with the wind by its direction against your heading (m/s: `head` > 0
 // against you, `cross` from the side), so a headwind adds to what you make yourself and a tailwind takes from it (#869).
 export const airPast = (ownKmh, head, cross) => Math.hypot(ownKmh / 3.6 + head, cross) * 3.6;
+// How it feels at sample i of windAlong()'s `w`, moving at `kmh`: at 10 °C or colder the wind chill of the air past you,
+// warmer the forecast's apparent temperature (null where a cell from before it has none). The weather card's and Best
+// time to leave's one rule
+export const feelsLike = (w, i, kmh) => (w.temp[i] <= 10 ? windChill(w.temp[i], airPast(Math.min(40, kmh), w.head[i], w.cross[i])) : Number.isFinite(w.feel[i]) ? w.feel[i] : null);
