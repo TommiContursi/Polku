@@ -14236,6 +14236,130 @@ def best_time(chrome):
     return not fails
 
 
+# Best time to leave in When's menu (#273): its last item once there's a route, after Arrive by…, opening the weather
+# card with the section open; a pick there is a plain Leave at, which takes Arrive by's place, and the menu says so
+BT_MENU = """(async () => {
+  const errs = [], p = polku.planner, items = () => [...document.querySelectorAll('.menu [role=group] .menu-item, .menu [role=group] .menu-pick')].map((e) => e.textContent.trim());
+  if (!(await BT.until(() => p.analysis?.wind))) return ['no forecast for the route'];
+  p.when.setBy(BT.tom(12));
+  if (!(await BT.until(() => p.analysis.tAtWind && p.when.got))) return ['Arrive by isn’t worked out'];
+  p.els.box.querySelector('[data-k=when]').click();
+  await BT.wait(300);
+  const list = items();
+  if (!/^Arrive by/.test(list.at(-2) || '') || !/^Best time to leave/.test(list.at(-1) || '')) errs.push(`When's menu: ${list.join(' / ')}`);
+  [...document.querySelectorAll('.menu .menu-item')].find((e) => /^Best time to leave/.test(e.textContent.trim())).click();
+  if (!(await BT.until(() => p.cards.current?.kind === 'weather' && BT.done()))) return [...errs, `the menu's item opened ${p.cards.current?.kind || 'nothing'}, the section ${BT.box() ? 'loading' : 'folded'}`];
+  const tile = BT.box().querySelector('.bt-best .row[role=radio]'), t = +tile.dataset.k.slice(3);
+  tile.click();
+  if (!(await BT.until(() => p.when.at === t && p.when.by == null))) errs.push(`a pick with Arrive by set: Leave at ${p.when.at}, Arrive by ${p.when.by}, not a plain Leave at ${t}`);
+  p.cards.box.querySelector('[data-k=when]').click();
+  await BT.wait(300);
+  const ticked = [...document.querySelectorAll('.menu [aria-checked=true]')].map((e) => e.textContent.trim().split(/\\s/)[0]);
+  if (ticked.join() !== 'Leave') errs.push(`after a pick the menu ticks ${ticked.join(', ') || 'nothing'}, not Leave at…`);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  return errs;
+})()"""
+
+
+def best_time_menu(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js(BT_HELP)
+        fails += ['no route'] if not pg.js(PC_ROUTE, timeout=30000) else pg.js(BT_MENU, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave in When's menu: the last item, a pick a plain Leave at in Arrive by's place" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Best time to leave on a trip with nights (#273): the item is the First day's, and each departure is scored on the first
+# day only, to the night, the rest of the trip as it was
+BT_NIGHTS = """(async () => {
+  const errs = [], p = polku.planner;
+  p.setStop(2, { on: 480 });
+  if (!(await BT.leave(BT.tom(10)))) return ['the trip with a night isn’t timed from tomorrow 10:00'];
+  const night = p.trip().arrive(p.lengthTo(2)), end = p.trip().end;
+  p.els.box.querySelector('[data-k=when]').click();
+  await BT.wait(300);
+  const first = [...document.querySelectorAll('.menu [role=group]')][0], firstH = first && document.getElementById(first.getAttribute('aria-labelledby'))?.textContent;
+  if (firstH !== 'First day' || !/^Best time to leave/.test([...first.querySelectorAll('.menu-item')].at(-1)?.textContent.trim())) errs.push(`When's menu with a night: ${firstH} ends with ${[...(first?.querySelectorAll('.menu-item') || [])].at(-1)?.textContent}`);
+  [...first.querySelectorAll('.menu-item')].at(-1)?.click();
+  if (!(await BT.until(() => BT.done()))) return [...errs, 'no bars after 20 s'];
+  const x = p.cards.current.bt[1].res.hrs[10];
+  if (Math.abs(x.back - night) > 60 || x.back >= end) errs.push(`leaving at 10:00, the first day ends at ${BT.clock(x.back)}, not at the night (${BT.clock(night)}; the trip ends ${new Date(end * 1000).toString().slice(0, 21)})`);
+  return errs;
+})()"""
+
+
+def best_time_nights(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 4;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js(BT_HELP)
+        fails += ['no route'] if not pg.js(PC_ROUTE, timeout=30000) else pg.js(BT_NIGHTS, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave on a trip with nights: the first day's item, scored to the night" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The crossing window on the water (#856): the water router keeps the open water upwind of each leg in eight directions
+# (water.js's reach); a forecast calm until 14:00 tomorrow and a gale from 15:00, from where the leg has the most open
+# water, rules the windy hours out (hatched) and says when to leave to cross in small waves, with an ⓘ for the crossing
+BT_WATER = """(async () => {
+  const errs = [], wait = BT.wait, W = window.__wx;
+  const fx = await (await fetch(location.origin + '/tools/fixtures/water-helsinki.json')).json();
+  const D = await import(location.origin + '/js/waterdata.js'), R = await import(location.origin + '/js/water.js');
+  const fc = (features) => ({ type: 'FeatureCollection', features });
+  D.seedWater((box, want) => ({ fairways: want.fairways ? fc(fx.fairways) : fc([]), hazards: fc([]), wind: want.wind ? { speed: 2, gust: 3, dir: 180 } : null, missing: [] }));
+  const from = [24.9585, 60.1540], to = [24.9800, 60.1480];
+  const leg = await R.routeWater(from, to, { at: 0, hazards: 'ignore', wind: 'ignore' }), reach = leg.water.reach;
+  if (!reach || !reach.f.length || reach.f.some((f) => f && f.length !== 8)) return [`the leg's open water: ${JSON.stringify(reach)?.slice(0, 120)}`];
+  const k = [...Array(8).keys()].sort((a, b) => Math.max(...reach.f.map((f) => f?.[b] || 0)) - Math.max(...reach.f.map((f) => f?.[a] || 0)))[0];
+  if (Math.max(...reach.f.map((f) => f?.[k] || 0)) < 1000) return [`no kilometre of open water on any side of the leg (${Math.max(...reach.f.map((f) => f?.[k] || 0))} m at most)`];
+  const hourOf = (i) => new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), tom = new Date(BT.tom(12) * 1000).getDate();
+  W.dir = k * 45; W.gust = 0; W.speedAt = (i) => (hourOf(i).getDate() === tom && hourOf(i).getHours() >= 15 ? 25 : 2);
+  polku.set({ activity: 'paddle' }); await wait(800);
+  const p = polku.planner; p.setActive(true); p.clear(); p.setMode('water'); p.addPoint(from); p.addPoint(to);
+  if (!(await BT.until(() => p.legs[0]?.result?.water?.reach && p.analysis))) return ['the planner’s water leg has no open water'];
+  if (!(await BT.leave(BT.tom(9)))) return ['the paddle isn’t timed from tomorrow 09:00'];
+  p.openWeather({ best: true });
+  if (!(await BT.until(() => BT.done() && BT.box().querySelector('.bt-cross'), 30000))) return [`no crossing line: ${BT.box()?.textContent.slice(0, 200)}`];
+  const line = BT.box().querySelector('.bt-cross').textContent, by = /^Leave by (\\S+) to cross in small waves/.exec(line);
+  if (!by || ![BT.clock(BT.tom(13)), BT.clock(BT.tom(14))].includes(by[1])) errs.push(`the crossing: “${line}”, not Leave by 13:00 or 14:00`);
+  if (!BT.box().querySelector('.bt-cross .info-dot[aria-label^="The crossing: "]')) errs.push('the crossing has no ⓘ');
+  const out = BT.slots('out');
+  if ([...Array(9).keys()].map((j) => 15 + j).some((i) => !out.includes(i)) || out.some((i) => i < 13)) errs.push(`hours ruled out: ${out}, not 15 to 23`);
+  if (BT.slots('best').some((i) => i >= 15)) errs.push(`a gale's hour is named: ${BT.slots('best')}`);
+  return errs;
+})()"""
+
+
+def best_time_water(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 8;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/60.152/24.97')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js(BT_HELP)
+        fails += pg.js(BT_WATER, timeout=120000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave on the water: the open water kept per leg, the crossing window, a gale's hours ruled out" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def weather_layers(chrome):
     fails = []
     for width, height, phone in ((1440, 900, False), (390, 844, True)):
@@ -22134,7 +22258,7 @@ GROUPS = [
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_late, water_back, water_long, water_hidden, paddle_map], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
+    ('water', [water, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
@@ -22142,7 +22266,7 @@ GROUPS = [
     ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun, the routing bar and the folded line while a leg is held (no routing)'),
     ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
     ('sunlight', [sunlight, sky_3d], 'the hills lit by the sun at the timeline\'s hour and their shadows (#910): the sun\'s place, a wall\'s shadow, the light and the switch over the hours and a reload; the sky in 3D by the hour and the forecast (#644)'),
-    ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
+    ('stops', [stops, best_time_nights], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
     ('heads', [heads], 'Check in three groups (25d part 2): every Heads-up item\'s group and source, set where it\'s made (each maker fed its smallest input, no network); Not checked with Retry; the groups, What Polku looked at and the badge'),
@@ -22192,7 +22316,7 @@ GROUPS = [
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list, tick_under], 'Leave now\'s refresh leaving focus and a Reorder drag alone (#966); Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
-    ('leave', [leave, when_start, arrive_by], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
+    ('leave', [leave, when_start, arrive_by, best_time_menu], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
     ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs, tabs_names], 'the planner\'s tabs, C (25d, #424): Route opens with the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, the tabs\' counts and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),

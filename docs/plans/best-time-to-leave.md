@@ -10,6 +10,7 @@ PR 6 of [planner-rethought.md](planner-rethought.md), step 5 of [the one order o
 - **2026-11-15, round 4:** from the user's look at round 3: each departure shows its weather as the card's hours do (the sky's coloured icon, the temperature, the wind's arrow and speed, the rain), coloured sky icons where there are any, and the open section sits in a faint box of its own, so the weather card plainly starts under it. Rounds 1 to 3 stay on the switch.
 - **2026-11-15, round 5:** from the user's look at round 4: the named departures looked like a list, not something to pick. Round 5 heads them **Pick a time**, makes each a tile with an edge and a radio's circle (the chosen one in the chosen chip's look), and gives its hour the same green tag as over its bar. Rounds 1 to 4 stay on the switch. What follows is round 5.
 - **Decided by the user, 2026-11-15:** all four questions as recommended (1A, 2A, 3A, 4A; "Decided" below). Next: the build.
+- **2026-11-15, built** in [#1030](https://github.com/TommiContursi/Polku/pull/1030): see "Built" at the end.
 - **Already on `main`:** the map's hour no longer moves the departure. 6b did it (#988): `js/wxmap.js` never sets When. Nothing is left of that line for this PR.
 
 ## Already decided (2026-11-06)
@@ -144,3 +145,15 @@ The user took every recommendation:
 - **Illustrative:** every hour and number in the mock-up. The weather under the new row is drawn from the card's classes for the departure picked, and only its top half (the sentence, a note, the numbers and the hours).
 - **Not drawn:** the map, the trip's box, the timeline, Check.
 - **Not known:** how a drag along the strip sits with the sheet's swipe on a real phone (`touch-action: pan-y`); how long 24 departures take to time on a slow phone (the sweep runs once a day is shown, not on every draw); whether a tenth of the trip is the right line between in the light and in the dark for a trip that runs into dusk.
+
+## Built (2026-11-15)
+
+What [#1030](https://github.com/TommiContursi/Polku/pull/1030) built, as "How it's built" lists it: `js/besttime.js` (`sweepDay()`, `score()`, `nameDay()`, `openWater()`), the planner's `timing()` (the core of `timed()`), `bestBox()` and its helpers in `weatherBody()`, `openWeather({ best: true })`, When's last item, `reach` on each water leg (`reachAlong()` in `js/water.js`), the `bt-` CSS, the ⓘ as a shared control (`infoDot()` in `js/ui.js`), and the two changes to the weather card. Checks: `best_time` (weather), `best_time_water` (water), `best_time_menu` (leave), `best_time_nights` (stops).
+
+Where the build settled what the plan left open:
+
+- **Rough water rules an hour out anywhere on the water legs,** as Check's Rough does, so the strip and Check never disagree; the crossing, the longest stretch with a kilometre of open water on some side, is what the line and its ⓘ name.
+- **Round 5 draws no group headings,** so "Most in the light" is the rule that sorts the hours, not a heading, and a least-bad choice isn't said in words: its bar, its facts and the folded row's better day say it.
+- **A failure says why:** a back-off's own words ("Open-Meteo isn't responding — trying again at 12:34"), as the card's forecast line does. A server error holds Open-Meteo back for a minute, so Retry asks again only after it.
+- **A water leg saved before this PR** has no open water kept: its waves aren't counted, and the line says so, until the leg is routed again.
+- **The fold's value:** "Good now" when the departure is in a named stretch, else the better time ("Sun 08:00"), else none; its line in a tooltip.
