@@ -14114,11 +14114,11 @@ def weather_card(chrome):
     return not fails
 
 
-# Best time to leave (#273; docs/plans/best-time-to-leave.md). The forecast (WX_FIXED) rains tomorrow but at 10, 11 and
-# 20 o'clock, and is dry today; the route leaves tomorrow at 09:00. Helpers for the checks that follow: `BT.tom(hh)`,
+# Best time to leave (#273; docs/plans/best-time-to-leave.md). The forecast (WX_FIXED, 100 hours) rains tomorrow but at 10,
+# 11, 20 and 21 o'clock (each hour's rain runs into the hour before it) and all the day after, and is dry today and later; the route leaves tomorrow at 09:00. Helpers for the checks that follow: `BT.tom(hh)`,
 # tomorrow at hh:00; `BT.clock(t)`, as the app says a time; `BT.box()`, the open section; `BT.until(f)`.
-BT_WX = """window.__wx.precip = (lat, lon, i) => { const d = new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), t = new Date(); t.setDate(t.getDate() + 1);
-  return d.getDate() === t.getDate() && ![10, 11, 20].includes(d.getHours()) ? 2 : 0; };"""
+BT_WX = """window.__wx.n = 100; window.__wx.precip = (lat, lon, i) => { const d = new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), t = new Date(), u = new Date(); t.setDate(t.getDate() + 1); u.setDate(u.getDate() + 2);
+  return (d.getDate() === t.getDate() && ![10, 11, 20, 21].includes(d.getHours())) || d.getDate() === u.getDate() ? 2 : 0; };"""
 BT_HELP = """(() => { window.BT = {
   wait: (ms) => new Promise((r) => setTimeout(r, ms)),
   async until(f, ms = 20000) { for (let t = 0; t < ms && !f(); t += 100) await BT.wait(100); return f(); },
@@ -14149,6 +14149,7 @@ BT_JS = """(async () => {
   if (JSON.stringify(BT.times()) !== JSON.stringify(want)) errs.push(`the choices: ${BT.times().join(', ') || 'none'}, not ${want.join(', ')}`);
   if (JSON.stringify(BT.slots('best')) !== '[10,20]') errs.push(`the green bars: ${BT.slots('best')}, not 10 and 20`);
   if (!BT.slots('c-rain').includes(13)) errs.push(`13:00 in the rain isn't a rain bar: ${BT.slots('c-rain')}`);
+  if (BT.box().querySelector('.bt-time.least, .bt-fact.least, .bt-slot.least')) errs.push('a good time is said to be the least bad');
   if (before() !== was) errs.push('the sweep changed the route’s times or When');
   // ‹ › and back: the sweep of another day touches nothing either
   BT.box().querySelector('[data-k=bt-prev]').click();
@@ -14189,11 +14190,16 @@ BT_STATES = """(async () => {
   await BT.until(() => BT.done() && !BT.box().querySelector('.bt-fail'));
   if (BT.box().querySelector('.bt-fail') || !BT.box().querySelector('.bt-best')) errs.push(`after Retry: ${BT.box().textContent.slice(0, 200)}`);
   if (W.asked - n !== 1) errs.push(`Retry asked ${W.asked - n} times, not once`);
+  // (2A) a day with rain in every hour names the least bad: grey tags over its bars and on its tiles, saying so first
+  const tiles = [...BT.box().querySelectorAll('.bt-best .row')];
+  if (!tiles.length || tiles.some((r) => !r.querySelector('.bt-time.least') || r.querySelector('.bt-fact')?.textContent !== 'Least bad')) errs.push(`a day with no good time: the choices ${tiles.map((r) => r.textContent).join(' / ') || 'none'}, not each Least bad with a grey tag`);
+  if (!BT.slots('best').length || BT.slots('best').some((i) => !BT.slots('least').includes(i))) errs.push(`a day with no good time: green bars ${BT.slots('best').filter((i) => !BT.slots('least').includes(i))}`);
+  if (!(await BT.until(() => BT.box()?.querySelector('[data-k=better-day]')))) errs.push('a day with no good time has no better day after its choices'); // (once the next days are swept)
   n = W.asked;
-  await step(name(3)); await step(name(4));
+  await step(name(3)); await step(name(4)); await step(name(5));
   const none = BT.slots('none').length, info = BT.box().querySelector('.bt-day .info-dot')?.getAttribute('aria-label') || '';
-  if (none !== 24 || BT.slots('best').length || BT.times().length) errs.push(`four days ahead (the forecast reaches two): ${none} hours without a bar, choices ${BT.times()}`);
-  if (!/^No forecast yet: /.test(info)) errs.push(`four days ahead, the day's ⓘ: “${info}”`);
+  if (none !== 24 || BT.slots('best').length || BT.times().length) errs.push(`five days ahead (the forecast reaches four): ${none} hours without a bar, choices ${BT.times()}`);
+  if (!/^No forecast yet: /.test(info)) errs.push(`five days ahead, the day's ⓘ: “${info}”`);
   if (W.asked !== n) errs.push(`stepping on asked ${W.asked - n} more times, with the ten-day forecast in hand`);
   return errs;
 })()"""

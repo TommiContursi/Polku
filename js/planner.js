@@ -7648,7 +7648,7 @@ export class Planner {
       h('button', { type: 'button', class: 'tool', 'aria-label': 'The day after', 'data-k': 'bt-next', disabled: k === 9 ? true : null, onclick: step(1), html: icon('chevronRight', 20) })));
     const loading = !res, failed = res?.failed;
     const cur = hrs ? hrs.findIndex((x) => !x.past && x.h0 <= dep && dep < x.h0 + 3600) : -1;
-    const marks = new Set([...N.lit, ...N.dark].map((w) => w.i));
+    const marks = new Map([...N.lit, ...N.dark].map((w) => [w.i, w.least])); // (the named hours: least bad or not)
     const read = h('p', { class: 'bt-read' }), range = h('input', { type: 'range', class: 'bt-range', 'data-k': 'bt-range', min: '0', max: '23', step: '1', 'aria-label': `Departure on ${new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' })}`, disabled: loading || failed ? true : null });
     const slots = h('div', { class: 'bt-slots', 'aria-hidden': 'true' });
     // the reading and the bars for the hour tried (`i`), else the departure: drawn again in place while a finger moves
@@ -7697,7 +7697,7 @@ export class Planner {
       const y = w.best, on = cur === w.i && (y.now ? this.when.at == null && this.when.by == null : this.when.at === y.t);
       return h('button', { type: 'button', class: 'row bt-row', role: 'radio', 'aria-checked': String(on), 'data-k': `bt-${y.t}`, onclick: () => this.btSet(card, y) },
         h('span', { 'aria-hidden': 'true', html: sky(y.sky, 26) }),
-        h('span', { class: 'bt-row-in' }, h('b', {}, h('span', { class: 'bt-time' }, y.now ? 'Now' : timeOf(y.t)), h('small', {}, `→ ${timeOf(y.back)}`)), this.btFacts(y)),
+        h('span', { class: 'bt-row-in' }, h('b', {}, h('span', { class: `bt-time${w.least ? ' least' : ''}` }, y.now ? 'Now' : timeOf(y.t)), h('small', {}, `→ ${timeOf(y.back)}`)), this.btFacts(y, w.least)),
         h('span', { class: `bt-radio${on ? ' on' : ''}`, 'aria-hidden': 'true', html: on ? icon('check', 14) : '' }));
     };
     const named = [...N.lit, ...N.dark];
@@ -7714,8 +7714,8 @@ export class Planner {
   }
   // a departure's weather as the card's hours show it: the temperature, the wind's arrow and speed, the rain, the waves,
   // what rules it out, and the dark
-  btFacts(x) {
-    const f = [], dark = x.darkWords;
+  btFacts(x, least = false) {
+    const f = least ? [['', 'Least bad', 'least']] : [], dark = x.darkWords; // (2A: a day with no good hour names the least bad, and says so)
     if (x.none || x.unknown) f.push(['', x.none ? 'No forecast yet' : 'No forecast', 'none']);
     else {
       f.push(['', `${Math.round(x.temp)}°`, 'temp']);
@@ -7738,10 +7738,10 @@ export class Planner {
   // an hour's slot: its bar in its main cause's colour (lower is better), its icon over a tall one; a named one green
   // with its hour in a tag; passed, unknown and ruled out hours never look like the best
   btSlot(y, i, hrs, marks, loading, failed, cur, lit) {
-    const kind = y.past ? ' past' : failed || y.none || y.unknown ? ' none' : y.out ? ' out' : marks.has(i) ? ' best' : '';
+    const kind = y.past ? ' past' : failed || y.none || y.unknown ? ' none' : y.out ? ' out' : marks.has(i) ? (marks.get(i) ? ' best least' : ' best') : '';
     const c = kind || !(y.bar >= 0.12) ? '' : y.rain >= Math.max(0, y.lost) + y.windy + y.heat ? (y.snow ? 'snow' : 'rain') : y.heat > y.windy + Math.max(0, y.lost) ? 'heat' : 'wind';
     const outIc = { waves: 'paddle', thunder: 'sky-thunder', frost: 'temp' }[y.out];
-    const top = kind === ' best' ? h('span', { class: 'bt-lab' }, String(new Date(y.t * 1000).getHours()).padStart(2, '0'))
+    const top = kind.startsWith(' best') ? h('span', { class: 'bt-lab' }, String(new Date(y.t * 1000).getHours()).padStart(2, '0'))
       : kind === ' out' && hrs[i - 1]?.out !== y.out ? h('span', { class: 'bt-ic', html: icon(outIc, 12) })
       : c && y.bar >= 0.35 ? h('span', { class: 'bt-ic', html: c === 'rain' || c === 'snow' ? icon(`sky-${c}`, 16) : icon(c === 'heat' ? 'temp' : 'wind', 12) }) : null;
     return h('span', { class: `bt-slot${kind}${c ? ` c-${c}` : ''}${cur ? ' cur' : ''}${lit ? ' lit' : ''}`, style: `--v: ${kind ? 0 : (y.bar ?? 0).toFixed(3)}` }, h('i', { class: 'bt-bar' }), top);

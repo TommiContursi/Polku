@@ -129,7 +129,7 @@ One PR, in [Calmer planner](https://github.com/TommiContursi/Polku/milestone/16)
 
 The user took every recommendation:
 1. **The dark apart:** the bars show the weather, the dark is shaded behind them, and the rows name the best in the light and the best in the dark (Most in the light on a trip too long for the day's light).
-2. **A day when every hour is bad:** the least bad is named, saying so, with a row for a better day.
+2. **A day when every hour is bad:** the least bad is named, saying so, with a row for a better day. In round 5's tiles (the user's choice, 2026-11-15, A): its hour tag grey instead of green, and **Least bad** as its first fact.
 3. **When's menu:** Best time to leave › is the last item (First day's, with nights), and a pick is a plain Leave at that takes Arrive by's place.
 4. **Ruled out:** thunder where you'd be, a frostbite risk, and waves over the craft's comfort on the crossing.
 
@@ -153,7 +153,8 @@ What [#1030](https://github.com/TommiContursi/Polku/pull/1030) built, as "How it
 Where the build settled what the plan left open:
 
 - **Rough water rules an hour out anywhere on the water legs,** as Check's Rough does, so the strip and Check never disagree; the crossing, the longest stretch with a kilometre of open water on some side, is what the line and its ⓘ name.
-- **Round 5 draws no group headings,** so "Most in the light" is the rule that sorts the hours, not a heading, and a least-bad choice isn't said in words: its bar, its facts and the folded row's better day say it.
+- **Round 5 draws no group headings,** so "Most in the light" is the rule that sorts the hours, not a heading.
+- **The least bad** (2A, as the user chose on 2026-11-15): its tile's hour tag and the tag over its bar are grey, never green, its bar its own height in grey, and its first fact is **Least bad**. A named bar is drawn at its own height, so a least-bad hour never looks short.
 - **A failure says why:** a back-off's own words ("Open-Meteo isn't responding — trying again at 12:34"), as the card's forecast line does. A server error holds Open-Meteo back for a minute, so Retry asks again only after it.
 - **A water leg saved before this PR** has no open water kept: its waves aren't counted, and the line says so, until the leg is routed again.
 - **The fold's value:** "Good now" when the departure is in a named stretch, else the better time ("Sun 08:00"), else none; its line in a tooltip.
