@@ -12515,7 +12515,7 @@ WX_FIXED = """(() => {
     const q = new URL(url).searchParams, lats = q.get('latitude').split(',').map(Number), lons = q.get('longitude').split(',').map(Number);
     const n = W.n ?? 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
     const hourly = (lat, lon) => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: Array.from({ length: n }, (_, i) => (W.speedAt ? W.speedAt(i) : W.speed ?? 4)), wind_direction_10m: fill(W.dir ?? 220), wind_gusts_10m: fill(W.gust ?? 9),
-      temperature_2m: fill(W.temp), precipitation: Array.from({ length: n }, (_, i) => (W.precip ? W.precip(lat, lon, i) : 0.4)), cloud_cover: fill(W.cloud ? W.cloud(lat, lon) : 60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: fill(W.code(lat, lon)) });
+      temperature_2m: fill(W.temp), precipitation: Array.from({ length: n }, (_, i) => (W.precip ? W.precip(lat, lon, i) : 0.4)), cloud_cover: fill(W.cloud ? W.cloud(lat, lon) : 60), snow_depth: fill(0.1), snowfall: fill(0), weather_code: Array.from({ length: n }, (_, i) => W.code(lat, lon, i)) });
     const answer = () => W.fail ? new Response('', { status: 500 }) : new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly(lat, lons[i]) }))), { headers: { 'Content-Type': 'application/json' } });
     return W.hold ? new Promise((ok) => W.held.push(() => ok(answer()))) : Promise.resolve(answer());
   };
@@ -14204,6 +14204,8 @@ BT_STATES = """(async () => {
   const tiles = [...BT.box().querySelectorAll('.bt-best .row')];
   if (!tiles.length || tiles.some((r) => !r.querySelector('.bt-time.least') || r.querySelector('.bt-fact')?.textContent !== 'Least bad')) errs.push(`a day with no good time: the choices ${tiles.map((r) => r.textContent).join(' / ') || 'none'}, not each Least bad with a grey tag`);
   if (!BT.slots('best').length || BT.slots('best').some((i) => !BT.slots('least').includes(i))) errs.push(`a day with no good time: green bars ${BT.slots('best').filter((i) => !BT.slots('least').includes(i))}`);
+  const lb = BT.box().querySelector('.bt-slot.least .bt-bar')?.getBoundingClientRect().height;
+  if (!(lb > 20)) errs.push(`a day of rain: the least bad's bar is ${lb} px high, not as high as its rain`); // (#1030's review: drawn flat)
   if (!(await BT.until(() => BT.box()?.querySelector('[data-k=better-day]')))) errs.push('a day with no good time has no better day after its choices'); // (once the next days are swept)
   n = W.asked;
   await step(name(3)); await step(name(4)); await step(name(5));
@@ -14211,6 +14213,15 @@ BT_STATES = """(async () => {
   if (none !== 24 || BT.slots('best').length || BT.times().length) errs.push(`five days ahead (the forecast reaches four): ${none} hours without a bar, choices ${BT.times()}`);
   if (!/^No forecast yet: /.test(info)) errs.push(`five days ahead, the day's ⓘ: “${info}”`);
   if (W.asked !== n) errs.push(`stepping on asked ${W.asked - n} more times, with the ten-day forecast in hand`);
+  // (#1030's review) an hour on, the forecast failing: the day after tomorrow from the copy an hour old, and saying so
+  for (const k of [4, 3, 2]) { BT.box().querySelector('[data-k=bt-prev]').click(); await BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(name(k)) && BT.done()); }
+  const now = Date.now; Date.now = () => now() + 3700e3; W.fail = true;
+  try {
+    polku.planner.btRedraw(polku.planner.cards.current);
+    await BT.until(() => BT.box()?.querySelector('.stale-note, .bt-fail') && BT.done());
+    const old = BT.box().querySelector('.stale-note')?.textContent || '';
+    if (!/^Older forecast \(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
+  } finally { Date.now = now; W.fail = false; }
   return errs;
 })()"""
 
@@ -14312,6 +14323,7 @@ BT_NIGHTS = """(async () => {
   if (!(await BT.until(() => BT.done()))) return [...errs, 'no bars after 20 s'];
   const x = p.cards.current.bt[1].res.hrs[10];
   if (Math.abs(x.back - night) > 60 || x.back >= end) errs.push(`leaving at 10:00, the first day ends at ${BT.clock(x.back)}, not at the night (${BT.clock(night)}; the trip ends ${new Date(end * 1000).toString().slice(0, 21)})`);
+  if (x.out) errs.push(`leaving at 10:00, ruled out by ${x.out}: the morning's after the night`); // (#1030's review)
   return errs;
 })()"""
 
@@ -14320,7 +14332,8 @@ def best_time_nights(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
     try:
-        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 4;'}, pg.s)
+        # (thunder only the morning after the night, from 06:00 to 10:00 the day after tomorrow)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.n = 100; window.__wx.temp = 4; window.__wx.precip = () => 0; window.__wx.code = (lat, lon, i) => { const d = new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), u = new Date(); u.setDate(u.getDate() + 2); return d.getDate() === u.getDate() && d.getHours() >= 6 && d.getHours() <= 10 ? 95 : 3; };'}, pg.s)
         pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
@@ -14348,7 +14361,8 @@ BT_WATER = """(async () => {
   const k = [...Array(8).keys()].sort((a, b) => Math.max(...reach.f.map((f) => f?.[b] || 0)) - Math.max(...reach.f.map((f) => f?.[a] || 0)))[0];
   if (Math.max(...reach.f.map((f) => f?.[k] || 0)) < 1000) return [`no kilometre of open water on any side of the leg (${Math.max(...reach.f.map((f) => f?.[k] || 0))} m at most)`];
   const hourOf = (i) => new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), tom = new Date(BT.tom(12) * 1000).getDate();
-  W.dir = k * 45; W.gust = 0; W.speedAt = (i) => (hourOf(i).getDate() === tom && hourOf(i).getHours() >= 15 ? 25 : 2);
+  const day2 = new Date(BT.day(2, 12) * 1000).getDate(); // (the day after tomorrow: a gale until 10:00 and from 15:00)
+  W.n = 100; W.dir = k * 45; W.gust = 0; W.speedAt = (i) => { const d = hourOf(i), hh = d.getHours(); return (d.getDate() === tom && hh >= 15) || (d.getDate() === day2 && (hh < 10 || hh >= 15)) ? 25 : 2; };
   polku.set({ activity: 'paddle' }); await wait(800);
   const p = polku.planner; p.setActive(true); p.clear(); p.setMode('water'); p.addPoint(from); p.addPoint(to);
   if (!(await BT.until(() => p.legs[0]?.result?.water?.reach && p.analysis))) return ['the planner’s water leg has no open water'];
@@ -14361,8 +14375,62 @@ BT_WATER = """(async () => {
   const out = BT.slots('out');
   if ([...Array(9).keys()].map((j) => 15 + j).some((i) => !out.includes(i)) || out.some((i) => i < 13)) errs.push(`hours ruled out: ${out}, not 15 to 23`);
   if (BT.slots('best').some((i) => i >= 15)) errs.push(`a gale's hour is named: ${BT.slots('best')}`);
+  // (#1030's review) the day after tomorrow: the window's both ends; past the forecast, nothing said of the crossing
+  const cross = () => [...BT.box().querySelectorAll('.bt-cross')].map((e) => e.textContent);
+  const step = async (k) => { BT.box().querySelector('[data-k=bt-next]').click(); return BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(new Date(BT.day(k, 12) * 1000).toLocaleDateString([], { weekday: 'short' })) && BT.done(), 30000); };
+  await step(2);
+  const two = /^Leave between (\S+) and (\S+) to cross in small waves/.exec(cross()[0] || '');
+  if (!two || two[1] !== BT.clock(BT.day(2, 10)) || ![BT.clock(BT.day(2, 13)), BT.clock(BT.day(2, 14))].includes(two[2])) errs.push(`the day after tomorrow, calm from 10:00 to 15:00: “${cross().join(' / ')}”`);
+  for (const k of [3, 4, 5]) await step(k);
+  if (cross().length) errs.push(`five days ahead, past the forecast: “${cross().join(' / ')}”`);
+  // a drawn leg on the water first, then a night, then the routed crossing: the first day's waves aren't known, and the
+  // crossing isn't the first day's; without the night, both
+  const p0 = [24.9520, 60.1600];
+  p.clear(); p.setMode('line'); p.addPoint(p0); p.addPoint(from); p.setMode('water'); p.addPoint(to);
+  if (!(await BT.until(() => p.legs[1]?.result?.water?.reach && p.analysis?.wind, 30000))) return [...errs, 'the drawn leg and the crossing aren’t routed'];
+  p.setStop(1, { on: 480 });
+  if (!(await BT.leave(BT.tom(9)))) return [...errs, 'the trip with a night isn’t timed from tomorrow 09:00'];
+  p.openWeather({ best: true });
+  if (!(await BT.until(() => BT.done() && BT.box().querySelector('.bt-best, .bt-tiles, .note'), 30000))) return [...errs, 'no bars for the trip with a night'];
+  if (cross().join(' / ') !== 'Waves not known on some of the water') errs.push(`a drawn leg, a night, then the crossing: “${cross().join(' / ')}”`);
+  p.setStop(1, null);
+  if (!(await BT.leave(BT.tom(8)))) return [...errs, 'the trip without its night isn’t timed from tomorrow 08:00'];
+  p.openWeather({ best: true });
+  await BT.until(() => BT.done() && cross().length > 1, 30000);
+  if (cross().length !== 2 || cross()[1] !== 'Waves not known on some of the water') errs.push(`a drawn leg and the crossing on one day: “${cross().join(' / ')}”`);
   return errs;
 })()"""
+
+
+# Best time to leave in the snow (#1030's review): on a calm, dry day with snow on the ground the snow slows the ride, and
+# none of it is lost to a headwind, so every hour's bar is empty
+BT_SNOW = """(async () => {
+  const errs = [], p = polku.planner;
+  if (!(await BT.leave(BT.tom(9)))) return ['the ride isn’t timed from tomorrow 09:00'];
+  if (!p.snowOf(p.analysis, p.analysis.wind)) return ['no snow on the ground slows the ride'];
+  p.openWeather({ best: true });
+  if (!(await BT.until(BT.done))) return ['no bars after 20 s'];
+  const hrs = p.cards.current.bt[1].res.hrs.filter((x) => !x.past), lost = hrs.filter((x) => x.lost || x.bar);
+  if (lost.length) errs.push(`calm and dry in the snow: ${lost.length} hours lose time to a headwind (${Math.round(lost[0].lost / 60)} min at ${BT.clock(lost[0].t)})`);
+  return errs;
+})()"""
+
+
+def best_time_snow(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = -3; window.__wx.speed = 0; window.__wx.gust = 0;'}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"on"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
+        pg.js(BT_HELP)
+        fails += ['no route'] if not pg.js(PC_ROUTE, timeout=30000) else pg.js(BT_SNOW, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} best time to leave in the snow: its slowing no headwind" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 
 def best_time_water(chrome):
@@ -22271,7 +22339,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, best_time, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, best_time, best_time_snow, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

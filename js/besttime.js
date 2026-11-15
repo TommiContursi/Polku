@@ -26,15 +26,16 @@ export const dayOffset = (t) => Math.round((new Date(t * 1000).setHours(0, 0, 0,
 // The open water on the route's water legs, as the water router left it (water.js's `reach`): each sample's place along
 // the route, the leg's craft and the fetch from eight directions; the crossing, the longest stretch with a kilometre or
 // more of open water on some side ({ from, to } in metres, its leg's craft and comfort); and whether any water has no
-// open water kept (drawn, imported, or routed before Polku kept it), its waves unknown
+// open water kept (drawn, imported, or routed before Polku kept it), its waves unknown. On a trip with nights, the first
+// day's water only, as score() counts it
 export function openWater(pl, a) {
-  const pts = [], covered = [];
+  const pts = [], covered = [], night = pl.waitsAlong().find((x) => isNight(x.stop)), end = night ? night.at : Infinity;
   pl.legs.forEach((l, li) => {
     const r = l.mode === 'water' && l.status === 'ok' && l.result?.water?.reach;
     if (!r) return;
     const base = pl.lengthTo(li);
     covered.push([base, pl.lengthTo(li + 1)]);
-    r.f.forEach((f, j) => { const m = base + (j + 0.5) * r.step; if (f) pts.push({ m, i: sampleAt(a, m), f, craft: pl.craftOf(li), comfort: COMFORT_WAVE[pl.craftOf(li)] || 0.3, step: r.step }); });
+    r.f.forEach((f, j) => { const m = base + (j + 0.5) * r.step; if (f && m <= end) pts.push({ m, i: sampleAt(a, m), f, craft: pl.craftOf(li), comfort: COMFORT_WAVE[pl.craftOf(li)] || 0.3, step: r.step }); });
   });
   let cross = null, run = null;
   for (const p of pts) {
@@ -45,13 +46,14 @@ export function openWater(pl, a) {
     if (run && (!cross || run.to - run.from > cross.to - cross.from)) cross = { ...run };
   }
   const sport = (i) => (a.attr[i] && a.attr[i].sport) || a.activity;
-  const unrouted = a.along.some((m, i) => i && isWater(sport(i)) && !(a.attr[i].tags || {}).portage && !covered.some(([x, y]) => m >= x - 1 && m <= y + 1));
+  const unrouted = a.along.some((m, i) => i && m <= end && isWater(sport(i)) && !(a.attr[i].tags || {}).portage && !covered.some(([x, y]) => m >= x - 1 && m <= y + 1));
   return { pts, cross, unrouted };
 }
 
 // One departure at `start` (epoch seconds): the trip timed from it, the dark, and with the forecast `w` (null: none, or
-// it failed) its weather. On a trip with nights, the first day only (a night ends at its Go on at, so later days don't move)
-function score(pl, a, start, t, t0, w, water) {
+// it failed) its weather. On a trip with nights, the first day only (a night ends at its Go on at, so later days don't move),
+// without the night's own sample, timed for the morning (as the card's ownSamples()). `calm`: the trip timed without wind
+function score(pl, a, start, t, calm, w, water) {
   const n = a.along.length, night = t.waits.find((x) => isNight(x.stop));
   const e = night ? Math.max(1, a.along.findIndex((m) => m >= night.at - 1)) : n - 1;
   const to = t.tAt[e] - (night ? t.waitAt[e] : 0), end = start + to, dur = Math.max(60, to); // (there at the night, before its wait)
@@ -68,8 +70,9 @@ function score(pl, a, start, t, t0, w, water) {
   if (!w) return x;
   const sport = (i) => (a.attr[i] && a.attr[i].sport) || a.activity;
   const wet = (i) => (a.attr[i] || {}).mode === 'water' || isWater(sport(i));
+  const ew = night && e > 1 ? e - 1 : e;
   let move = 0, rain = 0, mm = 0, snow = false, heat = 0, lost = 0, windy = 0, head = 0, speed = 0, out = null, none = false;
-  for (let i = 1; i <= e; i++) {
+  for (let i = 1; i <= ew; i++) {
     if (!forecastKnown(w, i)) { none = true; break; }
     const dt = t.tAt[i] - t.tAt[i - 1] - t.waitAt[i], kmh = ((a.along[i] - a.along[i - 1]) / Math.max(1, dt)) * 3.6;
     move += dt; head += w.head[i] * dt; speed += w.speed[i] * dt;
@@ -78,7 +81,7 @@ function score(pl, a, start, t, t0, w, water) {
     if (feel >= HOT) heat += dt;
     if (w.thunder && w.thunder[i] === 1) out = out || 'thunder';
     if (!wet(i) && feel != null && feel <= FROST) out = out || 'frost';
-    if (groupOf(sport(i)) === 'bike') lost += dt - (t0.tAt[i] - t0.tAt[i - 1] - t0.waitAt[i]);
+    if (groupOf(sport(i)) === 'bike') lost += dt - (calm.tAt[i] - calm.tAt[i - 1] - calm.waitAt[i]);
     if (wet(i) && w.speed[i] >= WATER_WIND) windy += dt;
   }
   if (none) return { ...x, none: true };
@@ -86,7 +89,7 @@ function score(pl, a, start, t, t0, w, water) {
   let wave = null, rough = false;
   for (const p of water.pts) {
     const i = p.i;
-    if (i > e) continue;
+    if (i > ew) continue;
     const v = waveHeight(waveWind({ speed: w.speed[i], gust: w.gust[i] }), p.f[dirIndex(w.dir[i])]);
     wave = Math.max(wave ?? 0, v);
     if (v > p.comfort) { out = out || 'waves'; rough = true; }
@@ -98,29 +101,33 @@ function score(pl, a, start, t, t0, w, water) {
 }
 
 // A day's 24 departures, from local midnight `day0`: a passed hour has only its dark; the current hour is Leave now,
-// from this minute. `failed`: true, or a back-off's words. `stale()`: the route or the forecast changed, so the answer is dropped (null). The forecast is asked
+// from this minute. `failed`: true, or a back-off's words. `stale()`: the route or the forecast changed, so the answer is dropped (null). `old`: when the oldest copy of a forecast that
+// stood in for a failed request was fetched (ms), else null. The forecast is asked
 // for an hour at a time, so a failure stops the day at once (one failed request, not 24): the rest are the dark alone.
 export async function sweepDay(pl, a, day0, stale) {
   const now = Math.round(Date.now() / 60000) * 60, water = openWater(pl, a), hrs = [];
-  let failed = false;
+  let failed = false, old = null;
   for (let j = 0; j < 24; j++) {
     const h0 = day0 + j * 3600;
     if (h0 + 3600 <= now) { const t = pl.timing(a, null, null, h0); hrs.push({ ...score(pl, a, h0, t, t, null, water), h0, past: true }); continue; } // (its dark, for the shade)
     const start = Math.max(h0, now), t0 = pl.timing(a, null, null, start);
-    let w = null, t = t0;
+    let w = null, t = t0, calm = t0;
     if (!failed) {
       try {
         w = await windAlong(a.pts, a.along, t0.tAt, start);
-        t = pl.timing(a, w.head, pl.snowOf(a, w), start);
+        const snow = pl.snowOf(a, w);
+        t = pl.timing(a, w.head, snow, start);
+        calm = pl.timing(a, null, snow, start); // (what the snow takes isn't the wind's)
         w = await windAlong(a.pts, a.along, t.tAt, start); // (sampled again at the wind's times, as loadWind() does)
-      } catch (err) { failed = err?.name === 'Limited' ? err.message : true; w = null; t = t0; } // (a back-off says which service, and when)
+        if (w.stale) old = Math.min(old ?? Infinity, w.from ?? Date.now());
+      } catch (err) { failed = err?.name === 'Limited' ? err.message : true; w = null; t = calm = t0; } // (a back-off says which service, and when)
       if (stale()) return null;
     }
-    hrs.push({ ...score(pl, a, start, t, t0, w, water), h0, now: start === now, unknown: !w });
+    hrs.push({ ...score(pl, a, start, t, calm, w, water), h0, now: start === now, unknown: !w });
     await new Promise((r) => setTimeout(r)); // (the page keeps answering while it works)
     if (stale()) return null;
   }
-  return { day0, hrs, failed, water };
+  return { day0, hrs, failed, old, water };
 }
 
 // The departures to name (the plan's rule): each hour sorted into the light (at most a tenth of the trip in the dark; on

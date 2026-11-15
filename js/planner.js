@@ -7647,6 +7647,7 @@ export class Planner {
       h('span', { 'aria-live': 'polite' }, h('b', {}, dayOf(day0 + 43200, true), word ? infoDot(...word) : null)),
       h('button', { type: 'button', class: 'tool', 'aria-label': 'The day after', 'data-k': 'bt-next', disabled: k === 9 ? true : null, onclick: step(1), html: icon('chevronRight', 20) })));
     const loading = !res, failed = res?.failed;
+    if (res?.old) box.append(h('p', { class: 'note wx-note stale-note' }, `Older forecast (from ${timeOf(res.old / 1000)}): Open-Meteo couldn’t be reached.`));
     const cur = hrs ? hrs.findIndex((x) => !x.past && x.h0 <= dep && dep < x.h0 + 3600) : -1;
     const marks = new Map([...N.lit, ...N.dark].map((w) => [w.i, w.least])); // (the named hours: least bad or not)
     const read = h('p', { class: 'bt-read' }), range = h('input', { type: 'range', class: 'bt-range', 'data-k': 'bt-range', min: '0', max: '23', step: '1', 'aria-label': `Departure on ${new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' })}`, disabled: loading || failed ? true : null });
@@ -7680,18 +7681,18 @@ export class Planner {
         h('button', { type: 'button', class: 'btn small', 'data-k': 'bt-retry', onclick: () => { delete card.bt[k]; this.btRedraw(card); } }, 'Retry')));
       return box;
     }
-    // the crossing window (#856), on the water
-    const water = res.water;
-    if (water.cross || water.unrouted) {
-      const live = hrs.filter((x) => !x.past && !x.none), calm = live.filter((x) => !x.rough), craft = water.cross?.craft === 'swim' ? 'swimmer' : (CRAFT[water.cross?.craft] || CRAFT.kayak).label.toLowerCase(); // (Check's words for a craft)
+    // the crossing window (#856), on the water: on a day with a forecast; and the water whose waves aren't known, beside it
+    const water = res.water, live = hrs.filter((x) => !x.past && !x.none), say = (t, info) => h('p', { class: 'bt-cross' }, h('span', { 'aria-hidden': 'true', html: icon('paddle', 18) }), h('span', {}, t), info);
+    if (water.cross && live.length) {
+      const calm = live.filter((x) => !x.rough), craft = water.cross.craft === 'swim' ? 'swimmer' : (CRAFT[water.cross.craft] || CRAFT.kayak).label.toLowerCase(); // (Check's words for a craft)
       const i0 = live.findIndex((x) => !x.rough), i1 = i0 < 0 ? -1 : live.findIndex((x, j) => j > i0 && x.rough);
-      const t = !water.cross ? 'Waves not known on some of the water'
-        : !calm.length ? 'Too rough to cross all day' : calm.length === live.length ? 'Small waves on the crossing all day'
-        : i0 === 0 ? `Leave by ${timeOf(live[(i1 < 0 ? live.length : i1) - 1].t)} to cross in small waves` : `Leave from ${timeOf(live[i0].t)} to cross in small waves`;
-      const km = water.cross && ((water.cross.to - water.cross.from) / 1000 + 0.1).toFixed(1), comfort = water.cross?.comfort;
-      box.append(h('p', { class: 'bt-cross' }, h('span', { 'aria-hidden': 'true', html: icon('paddle', 18) }), h('span', {}, t),
-        water.cross ? infoDot('The crossing', `${km} km of open water. Small waves are under ${comfort} m, comfortable for a ${craft}: an estimate from the forecast wind over the open water.`) : null));
+      const t = !calm.length ? 'Too rough to cross all day' : calm.length === live.length ? 'Small waves on the crossing all day'
+        : i0 === 0 ? `Leave by ${timeOf(live[i1 - 1].t)} to cross in small waves`
+        : i1 < 0 ? `Leave from ${timeOf(live[i0].t)} to cross in small waves` : `Leave between ${timeOf(live[i0].t)} and ${timeOf(live[i1 - 1].t)} to cross in small waves`;
+      const km = ((water.cross.to - water.cross.from) / 1000 + 0.1).toFixed(1);
+      box.append(say(t, infoDot('The crossing', `${km} km of open water. Small waves are under ${water.cross.comfort} m, comfortable for a ${craft}: an estimate from the forecast wind over the open water.`)));
     }
+    if (water.unrouted) box.append(say('Waves not known on some of the water'));
     // the choices: the best in the light, then in the dark; a better day after them, outside their group
     const pick = (w) => {
       const y = w.best, on = cur === w.i && (y.now ? this.when.at == null && this.when.by == null : this.when.at === y.t);
@@ -7744,7 +7745,7 @@ export class Planner {
     const top = kind.startsWith(' best') ? h('span', { class: 'bt-lab' }, String(new Date(y.t * 1000).getHours()).padStart(2, '0'))
       : kind === ' out' && hrs[i - 1]?.out !== y.out ? h('span', { class: 'bt-ic', html: icon(outIc, 12) })
       : c && y.bar >= 0.35 ? h('span', { class: 'bt-ic', html: c === 'rain' || c === 'snow' ? icon(`sky-${c}`, 16) : icon(c === 'heat' ? 'temp' : 'wind', 12) }) : null;
-    return h('span', { class: `bt-slot${kind}${c ? ` c-${c}` : ''}${cur ? ' cur' : ''}${lit ? ' lit' : ''}`, style: `--v: ${kind ? 0 : (y.bar ?? 0).toFixed(3)}` }, h('i', { class: 'bt-bar' }), top);
+    return h('span', { class: `bt-slot${kind}${c ? ` c-${c}` : ''}${cur ? ' cur' : ''}${lit ? ' lit' : ''}`, style: `--v: ${kind && !marks.has(i) ? 0 : (y.bar ?? 0).toFixed(3)}` }, h('i', { class: 'bt-bar' }), top);
   }
   // a pick: a plain Leave at (When's), the current hour Leave now
   btSet(card, y) { card.btTry = null; this.when.set(y.now ? null : y.t); }
