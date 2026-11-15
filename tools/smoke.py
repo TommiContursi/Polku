@@ -14269,6 +14269,7 @@ def best_time_menu(chrome):
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 4;'}, pg.s)
         pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
         pg.js(BT_HELP)
         fails += ['no route'] if not pg.js(PC_ROUTE, timeout=30000) else pg.js(BT_MENU, timeout=90000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
@@ -14304,6 +14305,7 @@ def best_time_nights(chrome):
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 4;'}, pg.s)
         pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
         pg.js(BT_HELP)
         fails += ['no route'] if not pg.js(PC_ROUTE, timeout=30000) else pg.js(BT_NIGHTS, timeout=90000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
@@ -14352,6 +14354,7 @@ def best_time_water(chrome):
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.precip = () => 0; window.__wx.temp = 8;'}, pg.s)
         pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/60.152/24.97')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")  # (no forecast kept by an earlier check)
         pg.js(BT_HELP)
         fails += pg.js(BT_WATER, timeout=120000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
