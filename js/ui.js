@@ -372,6 +372,27 @@ export function tooltip(el, { name, keys = '', text = '', lines = [], beside = f
   el.addEventListener('blur', () => { if (tipFor === el) hideTip(0); });
   el.addEventListener('pointerdown', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(0); });
 }
+// A round ⓘ for what a drawing can't say itself (the design round's rule: no grey words explaining things): its words in
+// tooltip() for a mouse and the keyboard, and in the same bubble on a tap, until the next tap anywhere. `tool info-dot`
+let infoTip = null;
+export function infoDot(name, text) {
+  const b = h('button', { type: 'button', class: 'tool info-dot', 'aria-label': `${name}: ${text}`, html: icon('info', 16) });
+  tooltip(b, { name, text });
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const was = infoTip?.for === b;
+    infoTip?.close();
+    if (was) return;
+    const el = h('div', { class: 'tip', role: 'tooltip' }, h('b', {}, name), text);
+    document.body.append(el);
+    const r = b.getBoundingClientRect(), w = el.offsetWidth;
+    Object.assign(el.style, { left: `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`, top: `${r.bottom + 8}px` });
+    const off = (ev) => { if (!el.contains(ev.target) && !b.contains(ev.target)) infoTip?.close(); };
+    infoTip = { for: b, close: () => { el.remove(); document.removeEventListener('pointerdown', off, true); infoTip = null; } };
+    setTimeout(() => document.addEventListener('pointerdown', off, true));
+  });
+  return b;
+}
 // A mouse drags a sideways scroller that has more than it shows (a finger and a trackpad scroll it themselves), with a
 // grabbing hand (`drag`); a drag isn't a click. `skip(e)`: a press that isn't a hand on it (its arrows). Says whether a drag
 // is under way, for what a pointer over it would do (the weather card's hours, the timeline's layers)

@@ -12,7 +12,7 @@ import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './spe
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
-import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
+import { onWaterData, prefetchWater, forgetWaterFailures, COMFORT_WAVE } from './waterdata.js';
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
 import { tripTimes, sampleAt as sampleAtOf, timeOf, dayOf, clockOf } from './trip.js';
 import { clock } from './net.js';
@@ -21,7 +21,8 @@ import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decode
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
-import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag } from './ui.js';
+import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot } from './ui.js';
+import { sweepDay, nameDay, good, dayStart, dayOffset } from './besttime.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
@@ -233,7 +234,7 @@ export class Planner {
     this.analysis = null;
     this.colorMode = store.get('colorMode', 'grade');
     this.colorOnMap = store.get('colorOnMap', false);
-    this.when = new When({ changed: (o) => this.whenChanged(o), coarse: () => this.coarse(), there: () => this.trip()?.end ?? null }); // when you leave (js/when.js)
+    this.when = new When({ changed: (o) => this.whenChanged(o), coarse: () => this.coarse(), there: () => this.trip()?.end ?? null, best: () => this.openWeather({ best: true }) }); // when you leave (js/when.js)
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.moveOn(); });
     setInterval(() => this.moveOn(), 5 * 60000);
     this.nogos = []; // places to avoid: [{ll, r, label}]
@@ -7508,25 +7509,32 @@ export class Planner {
   // The weather card from the trip's box, Check's items or the key facts: at a day (framed on the map on a trip of
   // days). `from`: the card it came from, for Back; from the planner, ✕ alone
   // (Escape and the back gesture still go back), as Check's items
-  openWeather({ day = 0, from = 'box', el = null } = {}) {
+  // `best`: with Best time to leave open at the departure's day (When's menu)
+  openWeather({ day = 0, from = 'box', el = null, best = false } = {}) {
     const a = this.analysis;
     if (!a || !this.trip()) return;
     // (the day's weather card open already: as it is, unfolded where a tap on the map's weather folded it to its banner)
     const cur = this.cards.current;
-    if (cur?.kind === 'weather' && (cur.day || 0) === day && !this.cards.rolled) { this.cards.unfold(); return; }
+    if (cur?.kind === 'weather' && (cur.day || 0) === day && !this.cards.rolled) {
+      if (best) { this.bestOpen(cur); this.cards.refresh(); if (this.cards.box) this.cards.box.scrollTop = 0; }
+      this.cards.unfold();
+      return;
+    }
     const days = this.wxDays(a);
     if (days.length > 1) this.focusRange(days[day].i0, days[day].i1, null);
     // (a desktop's beside the panel, level with its row, as Check's items')
     const panel = this.panel.getBoundingClientRect(), side = this.layout() === 'side' && this.active;
     const beside = this.cards.where() === 'float' ? (side ? { right: panel.right + 4, top: el ? el.getBoundingClientRect().top : panel.top + 60 } : { right: 4, top: 72 }) : null;
-    this.cards.open(weatherCard(this, { day }), { beside, from });
+    const card = weatherCard(this, { day });
+    if (best) this.bestOpen(card);
+    this.cards.open(card, { beside, from });
   }
 
   // The weather card's head, in its title's place (the user's choice, 2026-11-11): When and when you're there, so the
   // weather starts right under the sheet's top row; its name is said, not shown
   weatherHead() {
     const T = this.trip();
-    return h('span', { class: 'trip-when' }, h('span', { class: 'sr-only' }, 'Weather on the way. '), this.when.control('pill'),
+    return h('span', { class: 'trip-when' }, this.when.control('pill'),
       h('span', { class: 'trip-there' }, this.thereWords(T)));
   }
   // the words after When's pill: "→ there at 20:02", or with Arrive by its other end, "· leave 19:19" (#219)
@@ -7539,6 +7547,7 @@ export class Planner {
   weatherBody(card, body) {
     const a = this.analysis, T = this.trip(), w = a.wind, days = this.wxDays(a), known = !!w && w.beyond !== 0;
     const note = (text, cls = '') => h('p', { class: `note wx-note ${cls}` }, text);
+    body.append(this.bestBox(card), h('h3', { class: 'wx-head' }, 'Weather on the way'));
     if (w && w.stale) body.append(note(`Older forecast (from ${timeOf(w.from / 1000)}): Open-Meteo couldn’t be reached.`, 'stale-note'));
     if (!w) {
       body.append(note(a.windError ? (typeof a.windError === 'string' ? a.windError : 'The forecast couldn’t be loaded.') : 'Loading the forecast…'));
@@ -7548,7 +7557,7 @@ export class Planner {
     if (many) body.append(h('div', { class: 'rt-chips wx-days', role: 'group', 'aria-label': 'The day' }, ...days.map((x, j) => h('button', { type: 'button', class: 'chip', 'aria-pressed': String(j === k), 'data-k': `wx-day-${j + 1}`,
       onclick: () => { if (j === k) return; card.day = j; card.hour = null; this.hoverAt(null, false, false); this.focusRange(x.i0, x.i1, null); this.cards.refresh(); } }, `Day ${x.n} · ${new Date(x.t0 * 1000).toLocaleDateString([], { weekday: 'short' })}`))));
     const [day, f] = this.wxDay(a, d, k, many, card);
-    body.append(day);
+    body.append(day, h('button', { type: 'button', class: 'btn wx-map', 'data-k': 'wx-map', onclick: () => this.app.weatherOn(card.hour ?? Math.max(T.start, d.t0)), html: `${icon('layers', 18)}<span>Weather on the map</span>` }));
     const fold = (k, ic, label, line) => this.wxFoldRow(card, k, ic, label, line);
     const wait = (a.waits || []).reduce((t, x) => t + x.sec, 0), dt = a.timeWind ? a.timeWind - a.time : 0;
     const timeLine = `${fmtDuration(a.timeWind || a.time)}${wait ? ` · ${shortDuration((a.timeWind || a.time) - wait)} moving` : Math.abs(dt) >= 60 ? ` · ${shortDuration(Math.abs(dt))} ${dt > 0 ? 'lost to' : 'won from'} the wind` : ''}`;
@@ -7556,16 +7565,195 @@ export class Planner {
     body.append(rows(
       lanes.length ? fold('trip', 'route', 'The whole trip', `${cap(list)} along the way`) : null, lanes.length && card.trip ? this.wxWhole(a, d, f) : null,
       known && w.series ? fold('hours', 'cloudSun', 'Hour by hour', 'Feels like, gusts and where you’ll be') : null, known && w.series && card.hours ? this.wxHours(a, [d]) : null,
-      fold('time', 'clock', 'Time on the way', timeLine), card.time ? this.speedTable(a) : null),
-      h('button', { type: 'button', class: 'btn wx-map', 'data-k': 'wx-map', onclick: () => this.app.weatherOn(card.hour ?? Math.max(T.start, d.t0)), html: `${icon('layers', 18)}<span>Weather on the map</span>` }));
+      fold('time', 'clock', 'Time on the way', timeLine), card.time ? this.speedTable(a) : null));
   }
 
   // a row that folds or opens a view in place under it, kept open from one drawing to the next
-  wxFoldRow(card, k, ic, label, line) {
-    const row = item({ icon: ic, label, line, k, onclick: () => { card[k] = !card[k]; this.cards.refresh(); } });
+  wxFoldRow(card, k, ic, label, line, val = null, onclick = () => { card[k] = !card[k]; this.cards.refresh(); }) {
+    const row = item({ icon: ic, label, line, val, k, onclick });
     row.setAttribute('aria-expanded', String(!!card[k]));
     row.append(h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon(card[k] ? 'chevronUp' : 'chevronDown', 18) }));
     return row;
+  }
+
+  // ---------------------------------------------------------------- Best time to leave (#273, #856; js/besttime.js)
+  // Opened (its row, or When's menu): at the departure's day, the choices kept near the time of day you came with
+  bestOpen(card) {
+    const t = this.trip().start;
+    Object.assign(card, { best: true, btK: dayOffset(t), btTry: null, btAnchor: Math.round((t - new Date(t * 1000).setHours(0, 0, 0, 0) / 1000) / 60) });
+  }
+  // A day's sweep, kept on the card for this route, these speeds and this hour of the clock (a pick only moves the
+  // departure, so it's kept through it); while a new one works, the last one stands
+  btDay(card, k) {
+    const a = this.analysis, key = `${Math.floor(Date.now() / 3600e3)}|${JSON.stringify(this.timeOpt().speedsBy)}|${this.craft}`, c = (card.bt ||= {})[k];
+    if (c && c.a === a && c.key === key) return c.res;
+    const next = card.bt[k] = { a, key, res: c?.res ?? null };
+    sweepDay(this, a, dayStart(k), () => this.analysis !== a || card.bt[k] !== next).then((res) => {
+      if (!res) return;
+      next.res = res;
+      if (this.cards.current === card) this.cards.refresh();
+    });
+    return next.res;
+  }
+  // the next day in the forecast with a good time in the light, its days swept one after another; null while looking
+  btBetter(card, k) {
+    for (let j = k + 1; j <= 9; j++) {
+      const r = this.btDay(card, j);
+      if (!r || r.failed) return null;
+      const w = nameDay(r, card.btAnchor ?? 600).lit[0];
+      if (good(w)) return w;
+    }
+    return null;
+  }
+  // The row in the weather card, right under When, and opened its section in a faint box of its own: the day with ‹ ›,
+  // the reading, a bar an hour with the dark behind, the crossing on the water, and the choices under Pick a time
+  bestBox(card) {
+    const a = this.analysis, T = this.trip(), dep = T.start, nights = (a.waits || []).some((x) => isNight(x.stop));
+    const depK = dayOffset(dep);
+    const anchor = card.btAnchor ?? Math.round((dep - new Date(dep * 1000).setHours(0, 0, 0, 0) / 1000) / 60);
+    // the folded row: the best time as its value ("Good now", "Sun 08:00"), its line in a tooltip
+    const r0 = this.btDay(card, depK), N0 = r0 && !r0.failed && nameDay(r0, anchor);
+    const inside = N0 && [...N0.lit, ...N0.dark].some((w) => !w.least && dep >= r0.hrs[w.a].h0 && dep < r0.hrs[w.b].h0 + 3600);
+    const b0 = N0 && (good(N0.lit[0]) ? N0.lit[0] : this.btBetter(card, depK));
+    const first = nights ? 'First day · ' : '';
+    const line = !r0 ? 'Loading the forecast…' : r0.failed ? 'No forecast' : inside ? `${first}Good time to leave` : b0 ? `${first}Better: ${clockOf(b0.best.t, Date.now() / 1000)}` : `${first}No good time`;
+    const row = this.wxFoldRow(card, 'best', 'sunrise', 'Best time to leave', '', inside ? 'Good now' : b0 ? clockOf(b0.best.t, Date.now() / 1000) : null,
+      () => { if (card.best) card.best = false; else this.bestOpen(card); this.cards.refresh(); });
+    tooltip(row, { name: 'Best time to leave', text: line });
+    const box = h('section', { class: 'bt', 'aria-label': 'Best time to leave' }, h('div', { class: 'rows' }, row));
+    if (!card.best) return box;
+    const k = Math.max(0, Math.min(9, card.btK ?? depK)), res = k === depK ? r0 : this.btDay(card, k), day0 = dayStart(k);
+    const hrs = res?.hrs, N = res && !res.failed ? nameDay(res, anchor) : { lit: [], dark: [] };
+    const sky = (ic, size) => icon(`sky-${ic}`, size);
+    // the day, ‹ ›; an ⓘ when the forecast is less certain, or ends that day
+    const step = (dir) => () => { card.btK = k + dir; card.btTry = null; this.cards.refresh(); };
+    const known = hrs?.filter((x) => !x.past && !x.unknown) || [], ends = known.some((x) => x.none) && known.some((x) => !x.none) ? known.find((x) => x.none) : null;
+    const word = ends ? ['Forecast ends', `The forecast reaches ${timeOf(ends.t)} on ${new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' })}. Later departures show the dark only.`]
+      : known.length && known.every((x) => x.none) ? ['No forecast yet', 'The forecast reaches ten days ahead. Only the dark counts here.']
+      : k >= 3 ? ['Forecast less certain', 'More than three days ahead, the forecast can still change.'] : null;
+    box.append(h('div', { class: 'tl-step bt-day' },
+      h('button', { type: 'button', class: 'tool', 'aria-label': 'The day before', 'data-k': 'bt-prev', disabled: k === 0 ? true : null, onclick: step(-1), html: icon('chevronLeft', 20) }),
+      h('span', { 'aria-live': 'polite' }, h('b', {}, dayOf(day0 + 43200, true), word ? infoDot(...word) : null)),
+      h('button', { type: 'button', class: 'tool', 'aria-label': 'The day after', 'data-k': 'bt-next', disabled: k === 9 ? true : null, onclick: step(1), html: icon('chevronRight', 20) })));
+    const loading = !res, failed = res?.failed;
+    const cur = hrs ? hrs.findIndex((x) => !x.past && x.h0 <= dep && dep < x.h0 + 3600) : -1;
+    const marks = new Set([...N.lit, ...N.dark].map((w) => w.i));
+    const read = h('p', { class: 'bt-read' }), range = h('input', { type: 'range', class: 'bt-range', 'data-k': 'bt-range', min: '0', max: '23', step: '1', 'aria-label': `Departure on ${new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' })}`, disabled: loading || failed ? true : null });
+    const slots = h('div', { class: 'bt-slots', 'aria-hidden': 'true' });
+    // the reading and the bars for the hour tried (`i`), else the departure: drawn again in place while a finger moves
+    const draw = (i) => {
+      const x = hrs?.[i ?? cur];
+      read.classList.toggle('try', i != null);
+      read.replaceChildren(...(!x ? [] : this.btReading(x, i == null)));
+      if (hrs) slots.replaceChildren(...hrs.map((y, j) => this.btSlot(y, j, hrs, marks, loading, failed, j === cur, j === i)));
+      if (x) range.setAttribute('aria-valuetext', read.textContent);
+    };
+    if (!hrs) slots.replaceChildren(...Array.from({ length: 24 }, () => h('span', { class: 'bt-slot skel' }, h('i', { class: 'bt-bar' }))));
+    const firstLive = hrs ? Math.max(0, hrs.findIndex((x) => !x.past)) : 0;
+    range.min = String(firstLive);
+    range.value = String(card.btTry ?? (cur >= 0 ? cur : N.lit[0]?.i ?? firstLive));
+    draw(card.btTry);
+    // the dark behind: one band where the trip would be in the dark, a lighter one where it runs into it
+    const runs = [];
+    (hrs || []).forEach((y, i) => { const c = y.dark >= 0.9 ? 'dark' : y.dark > 0 ? 'into' : ''; if (c && runs.at(-1)?.c === c && runs.at(-1).b === i - 1) runs.at(-1).b = i; else if (c) runs.push({ c, a: i, b: i }); });
+    const shade = h('div', { class: 'bt-shade', 'aria-hidden': 'true' }, ...runs.map((r) => h('i', { class: r.c, style: `left: ${(r.a / 24) * 100}%; width: ${((r.b - r.a + 1) / 24) * 100}%`, html: r.c === 'dark' && r.b > r.a ? icon('moon', 12) : '' })));
+    const strip = h('div', { class: 'bt-strip' }, shade, slots, range);
+    box.append(read, strip, h('div', { class: 'bt-axis' }, ...[0, 6, 12, 18].map((v) => h('span', { 'aria-hidden': 'true', style: `left: ${(v / 24) * 100}%` }, String(v).padStart(2, '0'))),
+      hrs && !failed ? infoDot('The bars', 'Each bar is the weather on your trip if you leave at that hour: the shorter, the better. Shaded hours are dark. Drag along the bars, and let go to leave then.') : null));
+    if (hrs && !failed) this.btWire(card, strip, range, hrs, draw);
+    if (loading) return box;
+    if (failed) {
+      const lit = hrs.filter((x) => !x.past && !x.darkWords), by = lit.at(-1);
+      box.append(h('div', { class: 'bt-fail' }, h('p', { class: 'bt-read' }, 'The forecast didn’t load.'),
+        by ? h('p', { class: 'bt-read' }, `Leave by ${timeOf(by.t)} to be ${this.isLoop() ? 'back' : 'there'} before dark.`) : null,
+        h('button', { type: 'button', class: 'btn small', 'data-k': 'bt-retry', onclick: () => { delete card.bt[k]; this.cards.refresh(); } }, 'Retry')));
+      return box;
+    }
+    // the crossing window (#856), on the water
+    const water = res.water;
+    if (water.cross || water.unrouted) {
+      const live = hrs.filter((x) => !x.past && !x.none), calm = live.filter((x) => !x.rough), craft = (CRAFT[this.craft] || CRAFT.kayak).label.toLowerCase();
+      const i0 = live.findIndex((x) => !x.rough), i1 = i0 < 0 ? -1 : live.findIndex((x, j) => j > i0 && x.rough);
+      const t = !water.cross ? 'Waves not known on water you drew or imported'
+        : !calm.length ? 'Too rough to cross all day' : calm.length === live.length ? 'Small waves on the crossing all day'
+        : i0 === 0 ? `Leave by ${timeOf(live[(i1 < 0 ? live.length : i1) - 1].t)} to cross in small waves` : `Leave from ${timeOf(live[i0].t)} to cross in small waves`;
+      const km = water.cross && ((water.cross.to - water.cross.from) / 1000 + 0.1).toFixed(1), comfort = COMFORT_WAVE[this.craft] || 0.3;
+      box.append(h('p', { class: 'bt-cross' }, h('span', { 'aria-hidden': 'true', html: icon('paddle', 18) }), h('span', {}, t),
+        water.cross ? infoDot('The crossing', `${km} km of open water. Small waves are under ${comfort} m, comfortable for a ${craft}: an estimate from the forecast wind over the open water.`) : null));
+    }
+    // the choices: the best in the light, then in the dark; a better day after them, outside their group
+    const pick = (w) => {
+      const y = w.best, on = cur === w.i && (y.now ? this.when.at == null && this.when.by == null : this.when.at === y.t);
+      return h('button', { type: 'button', class: 'row bt-row', role: 'radio', 'aria-checked': String(on), 'data-k': `bt-${y.t}`, onclick: () => this.btSet(card, y) },
+        h('span', { 'aria-hidden': 'true', html: sky(y.sky, 26) }),
+        h('span', { class: 'bt-row-in' }, h('b', {}, h('span', { class: 'bt-time' }, y.now ? 'Now' : timeOf(y.t)), h('small', {}, `→ ${timeOf(y.back)}`)), this.btFacts(y, w.dark)),
+        h('span', { class: `bt-radio${on ? ' on' : ''}`, 'aria-hidden': 'true', html: on ? icon('check', 14) : '' }));
+    };
+    const named = [...N.lit, ...N.dark.map((w) => ({ ...w, dark: true }))];
+    const dayName = new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' });
+    const none = k === 0 && !hrs.some((x) => !x.past && x.grp !== 'into') ? 'Nothing left today' : hrs.some((x) => x.out) ? 'Every departure is ruled out' : `No departure on ${dayName}`;
+    box.append(h('div', { class: 'bt-best', role: 'radiogroup', 'aria-labelledby': 'bt-pick' }, h('h4', { class: 'bt-pick', id: 'bt-pick' }, 'Pick a time'),
+      named.length ? h('div', { class: 'rows bt-tiles' }, ...named.map(pick)) : h('p', { class: 'note wx-note' }, none)));
+    const nb = !N.lit.some((w) => good(w)) && this.btBetter(card, k);
+    if (nb) box.append(h('div', { class: 'rows bt-tiles' }, h('button', { type: 'button', class: 'row bt-row', 'data-k': 'better-day', onclick: () => { card.btK = dayOffset(nb.best.t); card.btTry = null; this.cards.refresh(); } },
+      h('span', { 'aria-hidden': 'true', html: sky(nb.best.sky, 26) }),
+      h('span', { class: 'bt-row-in' }, h('b', {}, h('span', { class: 'bt-time' }, clockOf(nb.best.t, Date.now() / 1000)), h('small', {}, `→ ${timeOf(nb.best.back)}`)), this.btFacts(nb.best)),
+      h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }))));
+    return box;
+  }
+  // a departure's weather as the card's hours show it: the temperature, the wind's arrow and speed, the rain, the waves,
+  // the dark (left out in the dark's own choices) and what rules it out
+  btFacts(x, inDark = false) {
+    const f = [], dark = x.darkWords;
+    if (x.none || x.unknown) f.push(['', x.none ? 'No forecast yet' : 'No forecast', 'none']);
+    else {
+      f.push(['', `${Math.round(x.temp)}°`, 'temp']);
+      const way = x.head >= 1.5 ? [180, 'against', 'against you'] : x.head <= -1.5 ? [0, 'behind', 'behind you'] : [90, 'side', 'from the side'];
+      f.push([windArrow(way[0], way[1], 16), `${Math.round(x.speed)} m/s`, 'wind', way[2]]);
+      if (x.mm >= 0.05) f.push([icon('drop', 14), `${Math.max(0.1, x.mm).toFixed(1)} mm`, 'rain']);
+      if (x.wave != null) f.push([icon('paddle', 15), x.rough ? 'Too rough' : `${Math.max(0.1, x.wave).toFixed(1)} m`, 'waves']);
+      if (x.out === 'thunder') f.push([icon('sky-thunder', 15), 'Thunder', 'out']);
+      if (x.out === 'frost') f.push([icon('temp', 15), 'Frostbite risk', 'out']);
+    }
+    if (dark && !inDark) f.push([icon('moon', 15), dark === 'all' ? 'Dark' : dark.startsWith('from:') ? `Dark from ${timeOf(+dark.slice(5))}` : `Dark until ${timeOf(+dark.slice(6))}`, 'dark']);
+    return h('span', { class: 'bt-facts' }, ...f.map(([ic, t, k, said]) => h('span', { class: `bt-fact ${k}`, 'aria-label': said ? `${t} ${said}` : null, html: `${ic}<span>${escapeHtml(t)}</span>` })));
+  }
+  // the reading over the strip: "14:00 → 16:05", the sky, the facts; the departure set has a tick
+  btReading(x, set) {
+    if (x.past) return [h('span', {}, `${timeOf(x.t)} has passed`)];
+    return [set ? h('span', { 'aria-hidden': 'true', html: icon('check', 16) }) : null, h('b', {}, `${x.now ? 'Now' : timeOf(x.t)} → ${timeOf(x.back)}`),
+      x.sky && !x.none ? h('span', { class: 'bt-fact', 'aria-hidden': 'true', html: icon(`sky-${x.sky}`, 22) }) : null, ' ', this.btFacts(x)];
+  }
+  // an hour's slot: its bar in its main cause's colour (lower is better), its icon over a tall one; a named one green
+  // with its hour in a tag; passed, unknown and ruled out hours never look like the best
+  btSlot(y, i, hrs, marks, loading, failed, cur, lit) {
+    const kind = y.past ? ' past' : failed || y.none || y.unknown ? ' none' : y.out ? ' out' : marks.has(i) ? ' best' : '';
+    const c = kind || !(y.bar >= 0.12) ? '' : y.rain >= Math.max(0, y.lost) + y.windy + y.heat ? (y.snow ? 'snow' : 'rain') : y.heat > y.windy + Math.max(0, y.lost) ? 'heat' : 'wind';
+    const outIc = { waves: 'paddle', thunder: 'sky-thunder', frost: 'temp' }[y.out];
+    const top = kind === ' best' ? h('span', { class: 'bt-lab' }, String(new Date(y.t * 1000).getHours()).padStart(2, '0'))
+      : kind === ' out' && hrs[i - 1]?.out !== y.out ? h('span', { class: 'bt-ic', html: icon(outIc, 12) })
+      : c && y.bar >= 0.35 ? h('span', { class: 'bt-ic', html: c === 'rain' || c === 'snow' ? icon(`sky-${c}`, 16) : icon(c === 'heat' ? 'temp' : 'wind', 12) }) : null;
+    return h('span', { class: `bt-slot${kind}${c ? ` c-${c}` : ''}${cur ? ' cur' : ''}${lit ? ' lit' : ''}`, style: `--v: ${kind ? 0 : (y.bar ?? 0).toFixed(3)}` }, h('i', { class: 'bt-bar' }), top);
+  }
+  // a pick: a plain Leave at (When's), the current hour Leave now
+  btSet(card, y) { card.btTry = null; this.when.set(y.now ? null : y.t); }
+  // A finger or the mouse along the bars tries each hour, and letting go leaves then (a tap is the same); a mouse's
+  // pointing shows the reading. The keys: the arrows try, and a moment's rest or Enter leaves then
+  btWire(card, strip, range, hrs, draw) {
+    const idx = (e) => { const r = strip.getBoundingClientRect(); return Math.max(0, Math.min(23, Math.floor((e.clientX - r.left) / (r.width / 24)))); };
+    const ok = (i) => !hrs[i].past && !hrs[i].none;
+    const tryAt = (i) => { if (hrs[i].past || card.btTry === i) return; card.btTry = i; draw(i); };
+    const done = () => { card.btTry = null; draw(null); };
+    let down = false;
+    strip.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; down = true; strip.setPointerCapture(e.pointerId); tryAt(idx(e)); });
+    strip.addEventListener('pointermove', (e) => { if (down || e.pointerType === 'mouse') tryAt(idx(e)); });
+    strip.addEventListener('pointerup', (e) => { if (!down) return; down = false; const i = idx(e); if (ok(i)) this.btSet(card, hrs[i]); else done(); });
+    strip.addEventListener('pointercancel', () => { down = false; done(); }); // (the sheet took the swipe)
+    strip.addEventListener('pointerleave', (e) => { if (!down && e.pointerType === 'mouse' && card.btTry != null) done(); });
+    let rest;
+    range.addEventListener('input', () => { clearTimeout(rest); const i = +range.value; tryAt(i); rest = setTimeout(() => { if (ok(i)) this.btSet(card, hrs[i]); }, 900); });
+    range.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(rest); const i = +range.value; if (ok(i)) this.btSet(card, hrs[i]); } });
+    range.addEventListener('blur', () => { clearTimeout(rest); if (card.btTry != null) done(); });
   }
 
   // One day: its heading on a trip of days; the sentence; the notes; the numbers; the hour strip. A day under half an hour

@@ -250,7 +250,7 @@ export class CardHost {
     if (this.stack.some((e) => e.card.alive && !e.card.alive())) { this.close(); return; }
     if (this.folded) return; // (built again when it unfolds)
     // not while you type in it (a name)
-    if (this.box && this.box.contains(document.activeElement) && document.activeElement.matches('input:not([type=checkbox]), textarea')) return;
+    if (this.box && this.box.contains(document.activeElement) && document.activeElement.matches('input:not([type=checkbox], [type=range]), textarea')) return;
     this.render();
   }
 

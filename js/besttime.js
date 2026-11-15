@@ -20,6 +20,8 @@ const HEAVY = 4; // mm an hour
 
 // Local midnight `k` days from today (epoch seconds)
 export function dayStart(k) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + k); return d.getTime() / 1000; }
+// …and back: how many days from today epoch second `t` is
+export const dayOffset = (t) => Math.round((new Date(t * 1000).setHours(0, 0, 0, 0) / 1000 - dayStart(0)) / 86400);
 
 // The open water on the route's water legs, as the water router left it (water.js's `reach`): each sample's place along
 // the route, the leg's craft and the fetch from eight directions; the crossing, the longest stretch with a kilometre or
@@ -80,16 +82,16 @@ function score(pl, a, start, t, t0, w, water) {
   }
   if (none) return { ...x, none: true };
   // the waves on the open water, from the hour's wind where you are then
-  let wave = null;
+  let wave = null, rough = false;
   for (const p of water.pts) {
     const i = p.i;
     if (i > e) continue;
     const v = waveHeight(waveWind({ speed: w.speed[i], gust: w.gust[i] }), p.f[dirIndex(w.dir[i])]);
     wave = Math.max(wave ?? 0, v);
-    if (v > p.comfort) out = out || 'waves';
+    if (v > p.comfort) { out = out || 'waves'; rough = true; }
   }
   const mid = sampleAt(a, a.along[e] / 2), cost = rain + heat + Math.max(0, lost) + windy; // (a tailwind never makes up for rain)
-  return { ...x, bar: Math.min(1, cost / Math.max(60, move)), rain, mm, snow, heat, lost, windy, out, wave,
+  return { ...x, bar: Math.min(1, cost / Math.max(60, move)), rain, mm, snow, heat, lost, windy, out, wave, rough,
     head: head / Math.max(1, move), speed: speed / Math.max(1, move), temp: w.temp[mid],
     sky: skyKind(w.precip[mid], w.temp[mid], w.cloud ? w.cloud[mid] : NaN, nightAt(start + t.tAt[mid], a.pts[mid]), w.thunder?.[mid] === 1) };
 }
@@ -102,7 +104,7 @@ export async function sweepDay(pl, a, day0, stale) {
   let failed = false;
   for (let j = 0; j < 24; j++) {
     const h0 = day0 + j * 3600;
-    if (h0 + 3600 <= now) { hrs.push({ t: h0, past: true }); continue; }
+    if (h0 + 3600 <= now) { const t = pl.timing(a, null, null, h0); hrs.push({ ...score(pl, a, h0, t, t, null, water), h0, past: true }); continue; } // (its dark, for the shade)
     const start = Math.max(h0, now), t0 = pl.timing(a, null, null, start);
     let w = null, t = t0;
     if (!failed) {
@@ -113,7 +115,7 @@ export async function sweepDay(pl, a, day0, stale) {
       } catch { failed = true; w = null; t = t0; }
       if (stale()) return null;
     }
-    hrs.push({ ...score(pl, a, start, t, t0, w, water), now: start === now, unknown: !w });
+    hrs.push({ ...score(pl, a, start, t, t0, w, water), h0, now: start === now, unknown: !w });
     await new Promise((r) => setTimeout(r)); // (the page keeps answering while it works)
     if (stale()) return null;
   }
@@ -121,7 +123,7 @@ export async function sweepDay(pl, a, day0, stale) {
 }
 
 // The departures to name (the plan's rule): each hour sorted into the light (at most a tenth of the trip in the dark; on
-// a trip too long for the day's light, within a tenth of the day's least, "Most in the light"), the dark (half or more)
+// a trip too long for the day's light, within a tenth of the day's least: the most in the light), the dark (half or more)
 // or neither (running into it: never named). Up to two stretches in the light and the best one in the dark, leaving
 // between 05:00 and 23:00, each named once by its best hour; hours within 5 % are about the same, and between two about
 // the same the one nearer `anchor` (minutes into the day: the departure when the row was opened) wins, so the choices
@@ -130,7 +132,7 @@ export function nameDay(day, anchor) {
   const hrs = day.hrs, live = hrs.filter((x) => !x.past);
   const least = Math.min(...live.map((x) => x.dark)), lim = least < 0.4 ? Math.max(0.1, least + 0.1) : 0.1;
   for (const x of live) x.grp = x.dark <= lim ? 'light' : x.dark >= 0.5 ? 'dark' : 'into';
-  const most = least > 0.1 && least < 0.4, used = new Set();
+  const used = new Set();
   const mins = (x) => Math.round((x.t - day.day0) / 60);
   const usable = (x, lit) => x && !x.past && !x.none && !x.unknown && !x.out && x.grp === (lit ? 'light' : 'dark') && (lit || mins(x) >= 300);
   const near = (x) => { const d = Math.abs(mins(x) - anchor); return Math.min(d, 1440 - d); };
@@ -149,7 +151,7 @@ export function nameDay(day, anchor) {
     return out;
   };
   const lit = windows(true, 2);
-  return { most, lit, dark: windows(false, 1) };
+  return { lit, dark: windows(false, 1) };
 }
 // whether a named stretch is good: no worse than a tenth of the trip
 export const good = (w) => !!w && !w.least && w.best.bar <= 0.1;
