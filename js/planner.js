@@ -7644,7 +7644,7 @@ export class Planner {
     const draw = (i) => {
       const x = hrs?.[i ?? cur];
       read.classList.toggle('try', i != null);
-      read.replaceChildren(...(!x ? [] : this.btReading(x, i == null)));
+      read.replaceChildren(...(!x ? [] : this.btReading(x, i == null).filter(Boolean)));
       if (hrs) slots.replaceChildren(...hrs.map((y, j) => this.btSlot(y, j, hrs, marks, loading, failed, j === cur, j === i)));
       if (x) range.setAttribute('aria-valuetext', read.textContent);
     };
@@ -7664,7 +7664,7 @@ export class Planner {
     if (loading) return box;
     if (failed) {
       const lit = hrs.filter((x) => !x.past && !x.darkWords), by = lit.at(-1);
-      box.append(h('div', { class: 'bt-fail' }, h('p', { class: 'bt-read' }, 'The forecast didn’t load.'),
+      box.append(h('div', { class: 'bt-fail' }, h('p', { class: 'bt-read' }, typeof failed === 'string' ? failed : 'The forecast didn’t load.'),
         by ? h('p', { class: 'bt-read' }, `Leave by ${timeOf(by.t)} to be ${this.isLoop() ? 'back' : 'there'} before dark.`) : null,
         h('button', { type: 'button', class: 'btn small', 'data-k': 'bt-retry', onclick: () => { delete card.bt[k]; this.cards.refresh(); } }, 'Retry')));
       return box;

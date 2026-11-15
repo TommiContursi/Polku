@@ -96,8 +96,8 @@ function score(pl, a, start, t, t0, w, water) {
     sky: skyKind(w.precip[mid], w.temp[mid], w.cloud ? w.cloud[mid] : NaN, nightAt(start + t.tAt[mid], a.pts[mid]), w.thunder?.[mid] === 1) };
 }
 
-// A day's 24 departures, from local midnight `day0`: a passed hour has only its time; the current hour is Leave now,
-// from this minute. `stale()`: the route or the forecast changed, so the answer is dropped (null). The forecast is asked
+// A day's 24 departures, from local midnight `day0`: a passed hour has only its dark; the current hour is Leave now,
+// from this minute. `failed`: true, or a back-off's words. `stale()`: the route or the forecast changed, so the answer is dropped (null). The forecast is asked
 // for an hour at a time, so a failure stops the day at once (one failed request, not 24): the rest are the dark alone.
 export async function sweepDay(pl, a, day0, stale) {
   const now = Math.round(Date.now() / 60000) * 60, water = openWater(pl, a), hrs = [];
@@ -112,7 +112,7 @@ export async function sweepDay(pl, a, day0, stale) {
         w = await windAlong(a.pts, a.along, t0.tAt, start);
         t = pl.timing(a, w.head, pl.snowOf(a, w), start);
         w = await windAlong(a.pts, a.along, t.tAt, start); // (sampled again at the wind's times, as loadWind() does)
-      } catch { failed = true; w = null; t = t0; }
+      } catch (err) { failed = err?.name === 'Limited' ? err.message : true; w = null; t = t0; } // (a back-off says which service, and when)
       if (stale()) return null;
     }
     hrs.push({ ...score(pl, a, start, t, t0, w, water), h0, now: start === now, unknown: !w });
