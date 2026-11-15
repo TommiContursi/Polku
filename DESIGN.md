@@ -298,35 +298,43 @@ On the glass:
 - **An undo that can't undo** on the toolbox: the glass's grey at 70 %, readable and still dimmer than redo.
 - **The logo on a phone**: the green mark alone, 44 px, with no pill round it. On a desktop its pill's corners are concentric with the mark's.
 
-### Controls by job
+### One style for the planner and the cards
 
-Decided 2026-11-15 (#382, from #869's rule for controls), not built yet: the mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html). What a control does decides how it looks, and there are three levels of emphasis, so nothing is heavier than its job:
+Decided 2026-11-15 (#382, from #869's rule for controls, #690's cards and round 5's look), not built yet: the mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html), version **Mine**. Polku is read outdoors on a phone, in sun and with one thumb, so what you read is big enough and what you can press is plain to see.
 
-1. **The one main action:** filled green (`--accent-bg`, white words), at most one in a panel. The planner, the toolbar and each card are panels of their own: the toolbar's **Done**, a stretch's **Edit this stretch**.
-2. **Does something now:** a button in words, an icon before them when it helps, on `--surface-solid` with a 1 px edge (the text at 22 %) and `--radius-control` corners, so it never looks like a value or a chip. No lip and no shadow. Removing is red words and comes last.
-3. **Bare icons,** from a fixed few: ⌄ ⌃ ✕ ⋯ ↶ ↷ ⚙, the list's sliders and full screen. No ground until pressed.
+**Type, four steps.** A card's title 22 px; a section's heading 17 px, bold, in sentence case; a row's name and a button's words 16 px; a line under a row 14 px in `--muted`. Numbers are 20 to 24 px with their unit at 14 px and their word under them at 13 px (smaller only where the planner's four numbers must fit 360 px).
+
+**Space, two steps.** 8 px between things in a section, 18 px between sections. A section's heading sits 18 px under the section before it and 8 px over its own group.
+
+**Headings.** Every section has one. The planner's are **Weather on the route** (When and the day's weather), **Route profile**, **Route** (the list, with its settings at the heading's end) and **Route style and your speed**. A card's are its own: At this waypoint, Look out for, Profile.
+
+**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a lighter group on it with 16 px corners, so the groups read as one sheet's parts and the map still shows around them.
+
+**Controls by job:**
+1. **The one main action:** filled green (`--accent-bg`, white words), the whole width, at most one in a panel. The planner, the toolbar and each card are panels of their own: a stretch's **Edit this stretch**, a spot's **Add a waypoint here**.
+2. **Does something now:** a key, white with a clear edge and a light lip at its foot, 44 px tall, its words 16 px and an icon before them. A card's keys are one row that scrolls sideways, as Google Maps' are, so none hides at the card's end; removing comes last, in red.
+3. **Bare icons,** from a fixed few: ⌄ ⌃ ✕ ⋯ ↶ ↷ ⚙, the list's settings and full screen.
 
 Beside those three:
-- **A value you pick** (Leave now ▾, Colour by ▾, the drawing mode ▾): the value in green on `--accent-soft`, a pill with ▾. Never a white button.
-- **A row that opens something** (Route style ›, Your speed ›, Sport from here ›, the list's rows): the whole row is the target, its value green before ›. In a group, a line between rows, inset from the left.
-- **A switch** for on and off; **segments** for one of a few, the chosen one white with an edge rather than a shadow; **chips** (a pill with an edge) for one of many and for a part's key fact; **a stepper** as − and + buttons of level 2 around the value.
+- **A value you pick** (Leave now ▾, Colour by ▾): green words on a white key with an edge and ▾, never a pale green field.
+- **A row that opens something** (Route style ›, Your speed ›, Sport from here ›, the list's rows): 56 px, the whole row a target, its value green before ›, a line between rows.
+- **A switch** for on and off; **segments** for one of a few, the chosen one a white key; **the key facts** as round keys; **a stepper** as − and + keys around the value.
 - **Not pressable:** numbers and their words have no edge, no › and no ▾.
-- **Explanations:** a grey line that only explains a control goes. With a mouse or the keyboard the control's tooltip says it, on hover and on focus; by touch an ⓘ in its own place beside the row (never inside it) opens it. A line stays when it holds data: a time, a distance, what stays where, what failed. A safety note stays as words.
-
-**Groups:** each section of the planner and of a card sits on its own group, `--surface-solid` on a sheet a shade darker (`--surface-2`; in dark mode the other way round), `--radius` corners, 8 px in from the sheet's edge. A section's heading is a word in sentence case over its group.
+- **Lines that stay:** a row keeps its line when it guides (To the next change of sport, or the end) or holds data (a time, what stays where, what failed). Filler goes. A key has no line: with a mouse its tooltip says more.
+- **Before a button:** each action is asked whether it needs one. On the profile goes from a point's card, whose own profile is right there.
 
 ### A card's places
 
 Every card has the same places, in this order. A place it has nothing for is left out; the order never changes:
-1. **The top row:** fold at the left, ⋯ and ✕ at the right.
-2. **Stepping:** ‹ Route, the previous and the next with ‹ ›, and the strip of the route's points and stretches (on a card opened from the route).
+1. **The top row:** ⌄ at the left, ⋯ and ✕ at the right.
+2. **‹ Route,** on its own line, where the card was opened from the route.
 3. **The title:** the map's own mark and the name.
-4. **The numbers:** one aligned row with thin lines between, the most important first, the rest scrolling sideways; warnings a red ball with their count, last.
-5. **The profile,** where the thing has one.
-6. **The actions:** one row that scrolls sideways, the main action first and filled, removing last in red, one ⓘ for the row's explanations.
-7. **The sections:** its settings first, then what's on the way (Look out for), each a heading and a group.
+4. **The numbers:** one aligned row with thin lines between, the most important first; warnings a red ball with their count, last.
+5. **The actions:** the main one, whole width, then the row of keys.
+6. **The sections:** what the card is for first (At this waypoint, Look out for), then its profile.
+7. **The foot:** stepping along the route, ‹ and › around the strip of the route's points and stretches (or "3 of 9"), as the warning card's ‹ 1 of 2 ›. It stays at the card's foot while the card scrolls.
 
-The planner keeps its own order: the numbers and the key facts, When and the weather, the profile with Colour by and On map under it, the route's list, its actions, Route style and Your speed. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
+The planner keeps its own order: the numbers and the key facts, then its four sections. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
 
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).
