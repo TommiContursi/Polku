@@ -1616,7 +1616,8 @@ div.wx-sec-cols { cursor: default; }
 .row.bt-row > .bt-row-in > .bt-facts { display: contents; }
 .bt-row .bt-fact:nth-child(n+3) { grid-column: 4; }
 .bt-row .bt-fact > span { white-space: nowrap; } /* (a value whole: "0.1 m" never on two lines) */
-@container (max-width: 350px) { .row.bt-row > .bt-row-in { grid-template-columns: max-content minmax(0, 1fr); } .row.bt-row > .bt-row-in > .bt-facts { display: flex; gap: 2px 10px; } } /* (a small phone, 200 %: the facts beside the time, wrapping) */
+@container (max-width: 350px) { .row.bt-row > .bt-row-in { grid-template-columns: max-content minmax(0, 1fr); } .row.bt-row > .bt-row-in > .bt-facts { display: flex; gap: 2px 10px; } } /* (a small phone: the facts beside the time, wrapping) */
+@container (max-width: 250px) { .row.bt-row > .bt-row-in { grid-template-columns: minmax(0, 1fr); } .row.bt-row > .bt-row-in > .bt-facts { grid-column: 1; } } /* (200 %: the facts under the time) */
 .bt-facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; font-size: 14px; }
 .bt-fact { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow-wrap: break-word; }
 .bt-fact .ic { flex: none; color: var(--muted); }

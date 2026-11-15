@@ -12,7 +12,7 @@ import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './spe
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
-import { onWaterData, prefetchWater, forgetWaterFailures, COMFORT_WAVE } from './waterdata.js';
+import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
 import { tripTimes, sampleAt as sampleAtOf, timeOf, dayOf, clockOf } from './trip.js';
 import { clock } from './net.js';
@@ -7582,10 +7582,10 @@ export class Planner {
     const t = this.trip().start;
     Object.assign(card, { best: true, btK: dayOffset(t), btTry: null, btAnchor: Math.round((t - new Date(t * 1000).setHours(0, 0, 0, 0) / 1000) / 60) });
   }
-  // A day's sweep, kept on the card for this route, these speeds and this hour of the clock (a pick only moves the
-  // departure, so it's kept through it); while a new one works, the last one stands
+  // A day's sweep, kept on the card for this route, these speeds, stops and craft, and this hour of the clock (a pick only
+  // moves the departure, so it's kept through it); while a new one works, the last one stands
   btDay(card, k) {
-    const a = this.analysis, key = `${Math.floor(Date.now() / 3600e3)}|${JSON.stringify(this.timeOpt().speedsBy)}|${this.craft}`, c = (card.bt ||= {})[k];
+    const a = this.analysis, key = JSON.stringify([Math.floor(Date.now() / 3600e3), this.timeOpt().speedsBy, this.craft, this.waitsAlong().map((w) => [w.at, w.change, w.stop])]), c = (card.bt ||= {})[k];
     if (c && c.a === a && c.key === key) return c.res;
     const next = card.bt[k] = { a, key, res: c?.res ?? null };
     sweepDay(this, a, dayStart(k), () => this.analysis !== a || card.bt[k] !== next).then((res) => {
@@ -7600,6 +7600,7 @@ export class Planner {
   btRedraw(card) {
     const old = this.cards.current === card && this.cards.box?.querySelector('.bt');
     if (!old) return;
+    if (card.btTry != null) { card.btLate = true; return; } // (not under a finger trying the hours: when it lets go)
     const k = old.contains(document.activeElement) ? document.activeElement.dataset.k : null, box = this.bestBox(card);
     old.replaceWith(box);
     if (k) box.querySelector(`[data-k="${k}"]`)?.focus({ preventScroll: true });
@@ -7629,6 +7630,7 @@ export class Planner {
     const row = this.wxFoldRow(card, 'best', 'sunrise', 'Best time to leave', '', inside ? 'Good now' : b0 ? clockOf(b0.best.t, Date.now() / 1000) : null,
       () => { if (card.best) card.best = false; else this.bestOpen(card); this.btRedraw(card); });
     tooltip(row, { name: 'Best time to leave', text: line });
+    row.setAttribute('aria-label', `Best time to leave${row.querySelector('.val') ? `, ${row.querySelector('.val').textContent}` : ''}: ${line}`); // (the line for a finger and a screen reader too)
     const box = h('section', { class: 'bt', 'aria-label': 'Best time to leave' }, h('div', { class: 'rows' }, row));
     if (!card.best) return box;
     const k = Math.max(0, Math.min(9, card.btK ?? depK)), res = k === depK ? r0 : this.btDay(card, k), day0 = dayStart(k);
@@ -7681,12 +7683,12 @@ export class Planner {
     // the crossing window (#856), on the water
     const water = res.water;
     if (water.cross || water.unrouted) {
-      const live = hrs.filter((x) => !x.past && !x.none), calm = live.filter((x) => !x.rough), craft = (CRAFT[this.craft] || CRAFT.kayak).label.toLowerCase();
+      const live = hrs.filter((x) => !x.past && !x.none), calm = live.filter((x) => !x.rough), craft = water.cross?.craft === 'swim' ? 'swimmer' : (CRAFT[water.cross?.craft] || CRAFT.kayak).label.toLowerCase(); // (Check's words for a craft)
       const i0 = live.findIndex((x) => !x.rough), i1 = i0 < 0 ? -1 : live.findIndex((x, j) => j > i0 && x.rough);
-      const t = !water.cross ? 'Waves not known on water you drew or imported'
+      const t = !water.cross ? 'Waves not known on some of the water'
         : !calm.length ? 'Too rough to cross all day' : calm.length === live.length ? 'Small waves on the crossing all day'
         : i0 === 0 ? `Leave by ${timeOf(live[(i1 < 0 ? live.length : i1) - 1].t)} to cross in small waves` : `Leave from ${timeOf(live[i0].t)} to cross in small waves`;
-      const km = water.cross && ((water.cross.to - water.cross.from) / 1000 + 0.1).toFixed(1), comfort = COMFORT_WAVE[this.craft] || 0.3;
+      const km = water.cross && ((water.cross.to - water.cross.from) / 1000 + 0.1).toFixed(1), comfort = water.cross?.comfort;
       box.append(h('p', { class: 'bt-cross' }, h('span', { 'aria-hidden': 'true', html: icon('paddle', 18) }), h('span', {}, t),
         water.cross ? infoDot('The crossing', `${km} km of open water. Small waves are under ${comfort} m, comfortable for a ${craft}: an estimate from the forecast wind over the open water.`) : null));
     }
@@ -7752,7 +7754,7 @@ export class Planner {
     const idx = (e) => { const r = strip.getBoundingClientRect(); return Math.max(0, Math.min(23, Math.floor((e.clientX - r.left) / (r.width / 24)))); };
     const ok = (i) => !hrs[i].past && !hrs[i].none;
     const tryAt = (i) => { if (hrs[i].past || card.btTry === i) return; card.btTry = i; draw(i); };
-    const done = () => { card.btTry = null; draw(null); };
+    const done = () => { card.btTry = null; draw(null); if (card.btLate) { card.btLate = false; this.btRedraw(card); } };
     let down = false;
     strip.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button) return; down = true; strip.setPointerCapture(e.pointerId); tryAt(idx(e)); });
     strip.addEventListener('pointermove', (e) => { if (down || e.pointerType === 'mouse') tryAt(idx(e)); });

@@ -25,7 +25,8 @@ export const dayOffset = (t) => Math.round((new Date(t * 1000).setHours(0, 0, 0,
 
 // The open water on the route's water legs, as the water router left it (water.js's `reach`): each sample's place along
 // the route, the leg's craft and the fetch from eight directions; the crossing, the longest stretch with a kilometre or
-// more of open water on some side ({ from, to } in metres); and whether any water was drawn or imported, its waves unknown
+// more of open water on some side ({ from, to } in metres, its leg's craft and comfort); and whether any water has no
+// open water kept (drawn, imported, or routed before Polku kept it), its waves unknown
 export function openWater(pl, a) {
   const pts = [], covered = [];
   pl.legs.forEach((l, li) => {
@@ -33,13 +34,13 @@ export function openWater(pl, a) {
     if (!r) return;
     const base = pl.lengthTo(li);
     covered.push([base, pl.lengthTo(li + 1)]);
-    r.f.forEach((f, j) => { const m = base + (j + 0.5) * r.step; if (f) pts.push({ m, i: sampleAt(a, m), f, comfort: COMFORT_WAVE[pl.craftOf(li)] || 0.3, step: r.step }); });
+    r.f.forEach((f, j) => { const m = base + (j + 0.5) * r.step; if (f) pts.push({ m, i: sampleAt(a, m), f, craft: pl.craftOf(li), comfort: COMFORT_WAVE[pl.craftOf(li)] || 0.3, step: r.step }); });
   });
   let cross = null, run = null;
   for (const p of pts) {
     const open = Math.max(...p.f) >= 1000;
     if (open && run && p.m - run.to <= p.step * 1.5) run.to = p.m;
-    else if (open) run = { from: p.m, to: p.m };
+    else if (open) run = { from: p.m, to: p.m, craft: p.craft, comfort: p.comfort };
     else run = null;
     if (run && (!cross || run.to - run.from > cross.to - cross.from)) cross = { ...run };
   }

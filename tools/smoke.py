@@ -14213,7 +14213,8 @@ def best_time(chrome):
         else:
             fails += pg.js(BT_JS, timeout=90000)
         if not fails:
-            # a finger along the bars from 20:00 to 12:00: the reading follows and When waits; lifting it leaves at 12:00
+            # a finger along the bars from 20:00 to 12:00: the reading follows and When waits, a sweep done meanwhile doesn't draw
+            # the bars again under it; lifting it leaves at 12:00
             at = pg.js(f'({PC_AT})(".bt .bt-strip")')
             box = pg.js("(() => { const r = document.querySelector('.bt .bt-strip').getBoundingClientRect(); return { x: r.left, w: r.width }; })()")
             x = lambda i: box['x'] + (i + 0.5) * box['w'] / 24
@@ -14223,6 +14224,7 @@ def best_time(chrome):
                 time.sleep(0.04)
                 pg.touch('move', x(20) - k * (x(20) - x(12)) / 8, at['y'])
             time.sleep(0.3)
+            pg.js('polku.planner.btRedraw(polku.planner.cards.current); true')  # (a sweep that finishes under the finger waits for it)
             r = pg.js("({ at: polku.planner.when.at, read: document.querySelector('.bt .bt-read').textContent, lit: BT.slots('lit') })")
             if r['at'] != was or not r['read'].startswith(pg.js('BT.clock(BT.tom(12))')) or r['lit'] != [12]:
                 fails.append(f"a finger held at 12:00: When {r['at']} (was {was}), reading “{r['read']}”, lit {r['lit']}")
