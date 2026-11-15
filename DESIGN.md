@@ -302,11 +302,15 @@ On the glass:
 
 Decided 2026-11-15 (#382, from #869's rule for controls, #690's cards and round 5's look), not built yet: the mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html), version **Mine**. Polku is read outdoors on a phone, in sun and with one thumb, so what you read is big enough and what you can press is plain to see.
 
-**Type, four steps.** A card's title 22 px; a section's heading 17 px, bold, in sentence case; a row's name and a button's words 16 px; a line under a row 14 px in `--muted`. Numbers are 20 to 24 px with their unit at 14 px and their word under them at 13 px (smaller only where the planner's four numbers must fit 360 px).
+**Type, four steps.** A title (the route's name, a card's name) 22 px; a section's heading 17 px, bold, in sentence case; a row's name and a button's words 16 px; a line under a row 14 px in `--muted`. Numbers are 24 px (20 px in a desktop's card) with their unit at 14 px and their word under them at 13 px.
+
+**The numbers' box.** A route's or a card's numbers sit in one white box, as round 5 has them, a thin line between them. When they don't fit one line they wrap to a second rather than shrink.
 
 **Space, two steps.** 8 px between things in a section, 18 px between sections. A section's heading sits 18 px under the section before it and 8 px over its own group.
 
-**Headings.** Every section has one. The planner's are **Weather on the route** (When and the day's weather), **Route profile**, **Route** (the list, with its settings at the heading's end) and **Route style and your speed**. A card's are its own: At this waypoint, Look out for, Profile.
+**The planner's head.** The route's name as its title, the warnings beside it (a red ball and its count, opening Check), the numbers' box, the sports' facts (all in sight, wrapping), and When on a line of its own (Leave now ▾ → there at…).
+
+**Headings.** Every section under the head has one: **Weather on the route**, **Route profile** (its fold at the heading's end), **Route** (Show all waypoints and the list's settings on the heading's line) and **Route style and your speed**. A card's are its own: At this waypoint, Look out for, Profile. A heading's tools sit at its end, never inside the group.
 
 **Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a lighter group on it with 16 px corners, so the groups read as one sheet's parts and the map still shows around them.
 
@@ -334,7 +338,9 @@ Every card has the same places, in this order. A place it has nothing for is lef
 6. **The sections:** what the card is for first (At this waypoint, Look out for), then its profile.
 7. **The foot:** stepping along the route, ‹ and › around the strip of the route's points and stretches (or "3 of 9"), as the warning card's ‹ 1 of 2 ›. It stays at the card's foot while the card scrolls.
 
-The planner keeps its own order: the numbers and the key facts, then its four sections. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
+The planner keeps its own order: its head, then its four sections.
+
+**Settings and Layers** use the same look with groups that fold: each group's heading inside it (17 px, a chevron at its end), groups 12 px apart. There a switch's explanation goes behind an ⓘ after its name (outside the label that flips it), and a group's note behind an ⓘ at its heading; a note that holds data, shows the way into an empty list or promises something about your data stays as words. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
 
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).
