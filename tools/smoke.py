@@ -12912,7 +12912,8 @@ def weather_menu(chrome):
 # #916, the towns' weather: the sky, °C and wind at the places the map names, from the grid (WX_FIXED: +4 °C,
 # 4 m/s from 220°); apart from each other; none over the route (a straight line through Tampere); zoomed in too, at the
 # villages and suburbs; ⋯'s Points item names it Weather at places, ticked. A press on a town's symbol (a real
-# mouse's, below) pins the reading there and isn't the map's click (a card).
+# mouse's, below) pins the reading there and isn't the map's click (a card); the reading names the place, its symbol is
+# the one marked, a long name stays in the reading's first row, and Weather here is "the spot" again (#1028).
 WX_TOWNS = """(async () => {
   const out = [], w = polku.weather, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const idle = () => new Promise((r) => { map.once('idle', r); map.triggerRepaint(); });
@@ -12945,10 +12946,19 @@ WX_TOWNS = """(async () => {
 })()"""
 WX_TOWN_PRESSED = """(async () => {
   const out = [], w = polku.weather, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const said = () => document.querySelector('.tl-now-main small')?.textContent;
+  const marked = () => [...document.querySelectorAll('.wx-town[aria-current="true"]')].map((e) => e.getAttribute('aria-label').split(':')[0]).join(', ') || 'none';
   await wait(400);
-  const el = [...document.querySelectorAll('.wx-town')].find((e) => e.getAttribute('aria-label').startsWith(__at.name + ':'));
   if (!w.heldLL) out.push(`pressing ${__at.name}'s symbol didn't pin the reading there`);
-  else if (el && Math.hypot(...[0, 1].map((i) => w.heldLL[i] - el.__ll?.[i] || 0)) > 1e-6 && !/the spot/.test(document.querySelector('.tl-now')?.textContent || '')) out.push(`the reading isn't at ${__at.name}: ${document.querySelector('.tl-now')?.textContent}`);
+  else {
+    if (said() !== __at.name) out.push(`the reading at ${__at.name} says “${said()}”`);
+    if (marked() !== __at.name) out.push(`marked after pressing ${__at.name}: ${marked()}`);
+    w.holdAt(w.heldLL, 'Jyväskylän maalaiskunta'); await wait(300);
+    const sm = document.querySelector('.tl-now-main small')?.getBoundingClientRect(), row = document.querySelector('.tl-now-main').getBoundingClientRect();
+    if (!sm || sm.bottom > row.bottom + 2 || sm.right > row.right + 1) out.push(`a long place's name runs out of the reading's first row (${sm && [sm.right, sm.bottom].map(Math.round)} past ${[row.right, row.bottom].map(Math.round)})`);
+    w.holdAt(polku.map.getCenter().toArray()); await wait(300);
+    if (said() !== 'the spot' || marked() !== 'none') out.push(`Weather here after a place says “${said()}”, marked: ${marked()}`);
+  }
   if (window.__mapClicks) out.push(`pressing a town's symbol was the map's click too (${window.__mapClicks})`);
   return out;
 })()"""
@@ -12970,7 +12980,7 @@ def towns_weather(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} weather at places, at every zoom, apart and off the route, a press pins the reading (#916)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} weather at places, at every zoom, apart and off the route, a press pins the reading and names the place (#916, #1028)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -22001,7 +22011,7 @@ GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading (#916); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
+    ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),

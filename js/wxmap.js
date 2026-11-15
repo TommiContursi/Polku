@@ -15,7 +15,7 @@ import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind, 
 import { compass, dist } from './geo.js';
 import { strikesIn } from './lightning.js';
 import { STRIKE_COLOURS } from './icons.js';
-import { h, icon, store, popMenu, tooltip, mouseDrag } from './ui.js';
+import { h, icon, store, popMenu, tooltip, mouseDrag, escapeHtml } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 import { fmiRadar, FI_BOUNDS, rainviewerCoverage } from './radar.js';
 import { sunPosition } from './sun.js';
@@ -187,18 +187,18 @@ export class WeatherOverlay {
   // While docked in the planner it stays there; this only sets what comes back.
   // Weather here (25d part 6b): the readout is for a spot of the map you chose, with a pin on it, until the timeline
   // closes or you pick another; the forecast it reads is the grid's, so no request carries the spot
-  holdAt(ll) {
-    this.heldLL = ll; // (first: Your trip left for a spot leaves a phone's planner folded, main.js onTripView)
+  holdAt(ll, name = null) {
+    this.heldLL = ll; this.heldName = name; // (first: Your trip left for a spot leaves a phone's planner folded, main.js onTripView; a place's weather names it)
     if (this.span === 'trip') { this.span = '48'; this.renderTrip(); } // (the reading goes to the spot, not where you'll be)
     if (this.heldPin) this.heldPin.remove();
     this.heldPin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(ll).addTo(this.map);
-    this.readout();
+    this.readout(); this.renderTowns();
   }
   release() {
     if (!this.heldLL) return;
     this.heldLL = null;
     if (this.heldPin) { this.heldPin.remove(); this.heldPin = null; }
-    this.readout();
+    this.readout(); this.renderTowns();
   }
 
   setOpen(on) {
@@ -745,8 +745,9 @@ export class WeatherOverlay {
       const label = `${name}: ${SKY[kind].toLowerCase()}, ${t} °C, wind ${ms} m/s from the ${compass(s.dir)}`;
       let m = marks.get(name);
       // a tap pins the timeline's reading there, as a spot on the map does (not the map's click under it: a card)
-      if (!m) marks.set(name, m = new maplibregl.Marker({ element: h('button', { type: 'button', class: 'wx-town', onclick: (e) => { e.stopPropagation(); this.holdAt(ll); } }), anchor: 'bottom', offset: [0, -10] }).setLngLat(ll).addTo(this.map));
+      if (!m) marks.set(name, m = new maplibregl.Marker({ element: h('button', { type: 'button', class: 'wx-town', onclick: (e) => { e.stopPropagation(); this.holdAt(ll, name); } }), anchor: 'bottom', offset: [0, -10] }).setLngLat(ll).addTo(this.map));
       const el = m.getElement();
+      if (this.heldLL && this.heldName === name) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current'); // (the one the reading is at)
       if (el.getAttribute('aria-label') !== label) {
         el.setAttribute('aria-label', label);
         el.innerHTML = `${icon(`sky-${kind}`, 18)}<b class="${t <= 0 ? 'cold' : ''}">${t}°</b><small><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${Math.round(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${ms} m/s</small>`;
@@ -1846,10 +1847,10 @@ export class WeatherOverlay {
       // only (raining, the strip shows what's ahead); whole in the tooltip and for a screen reader
       const sum = this.accum(ll, 6), six = sum != null && sum >= 0.05 ? `6 h ${sum.toFixed(sum < 10 ? 1 : 0)} mm` : ''; // (whole mm from 10)
       const g = s.gust > s.speed + 2 ? s.gust.toFixed(0) : '', speed = s.speed.toFixed(s.speed < 3 ? 1 : 0);
-      const where = this.heldLL ? 'at the spot' : this.pointerLL ? 'under the mouse' : 'at the map centre';
+      const spot = this.heldName || 'the spot', where = this.heldLL ? `at ${spot}` : this.pointerLL ? 'under the mouse' : 'at the map centre';
       this.nowEl.title = `${SKY[kind]} · ${where}${g ? ` · gusts ${g} m/s` : ''}${six ? ` · ${sum.toFixed(1)} mm in the next 6 hours` : ''}`;
       this.nowEl.innerHTML =
-        `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small>${this.heldLL ? 'the spot' : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
+        `<div class="tl-now-main">${icon(`sky-${kind}`, 24)}<b>${Math.round(s.temp)}°</b><small${this.heldLL && this.heldName ? ' lang="fi"' : ''}>${this.heldLL ? escapeHtml(spot) : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
         `<div>${arrow}${s.speed < 0.5 ? 'calm' : `${speed}${g ? ` <span aria-hidden="true">(${g})</span>` : ''} m/s ${compass(s.dir)}${g ? `<span class="sr-only">, gusts ${g}</span>` : ''}`}</div>` +
         `<div>${icon('drop', 12)}${rain >= 0.05 ? `${rain.toFixed(1)} mm/h${six ? `<span class="sr-only"> · ${six}</span>` : ''}` : `dry${six ? ` <span>· ${six}</span>` : ''}`}</div>` + snow;
     });
