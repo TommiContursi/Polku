@@ -311,7 +311,7 @@ Beside those three:
 - **A row that opens something** (Route style ›, Your speed ›, Sport from here ›, the list's rows): the whole row is the target, its value green before ›. In a group, a line between rows, inset from the left.
 - **A switch** for on and off; **segments** for one of a few, the chosen one white with an edge rather than a shadow; **chips** (a pill with an edge) for one of many and for a part's key fact; **a stepper** as − and + buttons of level 2 around the value.
 - **Not pressable:** numbers and their words have no edge, no › and no ▾.
-- **Explanations:** a grey line that only explains a control goes. With a mouse the control's tooltip says it; by touch an ⓘ in its own place beside the row (never inside it) opens it. A line stays when it holds data: a time, a distance, what stays where, what failed. A safety note stays as words.
+- **Explanations:** a grey line that only explains a control goes. With a mouse or the keyboard the control's tooltip says it, on hover and on focus; by touch an ⓘ in its own place beside the row (never inside it) opens it. A line stays when it holds data: a time, a distance, what stays where, what failed. A safety note stays as words.
 
 **Groups:** each section of the planner and of a card sits on its own group, `--surface-solid` on a sheet a shade darker (`--surface-2`; in dark mode the other way round), `--radius` corners, 8 px in from the sheet's edge. A section's heading is a word in sentence case over its group.
 
