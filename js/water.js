@@ -16,7 +16,7 @@
 
 import { OFM_TILEJSON } from './config.js';
 import { dist } from './geo.js';
-import { waterInputs, lateAnswers, waveHeight, COMFORT_WAVE } from './waterdata.js';
+import { waterInputs, lateAnswers, waveHeight, waveWind, COMFORT_WAVE } from './waterdata.js';
 
 const MAX_PX = 1400;
 const MIN_RES_M = 3; // never rasterise finer than this (ground metres per pixel)
@@ -186,10 +186,11 @@ function rasteriseCosts(grid, { fairways, hazards, nogos }) {
 // Fetch (metres of open water upwind, to 8 km) for every water cell, along the
 // nearest of eight directions, then a wave height from the wind over it. The
 // window's edge counts as 2 km more water: the lake usually goes on.
+const DIRS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]]; // N, NE, E … in pixels (y down)
+export const dirIndex = (deg) => Math.round(((deg % 360) + 360) % 360 / 45) % 8; // the nearest of the eight
 function exposure(grid, wind) {
   const { W, H, type, res } = grid;
-  const k = Math.round(((wind.dir % 360) + 360) % 360 / 45) % 8; // where the wind comes from
-  const DIRS = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]]; // N, NE, E … in pixels (y down)
+  const k = dirIndex(wind.dir); // where the wind comes from
   const [dx, dy] = DIRS[k];
   const step = (dx && dy ? Math.SQRT2 : 1) * res;
   const F = new Float32Array(W * H);
@@ -204,10 +205,36 @@ function exposure(grid, wind) {
       F[i] = Math.min(8000, up + step);
     }
   }
-  const u = wind.speed + 0.25 * Math.max(0, (wind.gust || wind.speed) - wind.speed);
+  const u = waveWind(wind);
   const wave = new Float32Array(W * H);
   for (let i = 0; i < F.length; i++) if (F[i]) wave[i] = waveHeight(u, F[i]);
   grid.wave = wave;
+}
+
+// The open water upwind along a leg's line (Best time to leave, #273, #856): every REACH_STEP metres, the fetch from each
+// of the eight directions as exposure() counts it (the window's edge 2 km more, to 8 km), in metres rounded to 10; null on
+// land. It doesn't depend on the wind, so any hour's wind makes a wave from it (waveHeight(), waveWind()).
+const REACH_STEP = 100;
+function reachAlong(grid, coords) {
+  const { W, H, type, res } = grid, f = [];
+  let m = 0, k = 1, next = REACH_STEP / 2;
+  for (; k < coords.length; k++) {
+    const a = coords[k - 1], b = coords[k], d = dist(a, b);
+    for (; next <= m + d; next += REACH_STEP) {
+      const t = (next - m) / (d || 1), p = grid.project([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+      const x = Math.floor(p.x), y = Math.floor(p.y);
+      if (x < 0 || y < 0 || x >= W || y >= H || type[y * W + x] !== 1) { f.push(null); continue; }
+      f.push(DIRS.map(([dx, dy]) => {
+        const step = (dx && dy ? Math.SQRT2 : 1) * res;
+        let n = 0, ux = x, uy = y;
+        while (n * step < 8000 && ux >= 0 && uy >= 0 && ux < W && uy < H && type[uy * W + ux] === 1) { n++; ux += dx; uy += dy; }
+        const out = ux < 0 || uy < 0 || ux >= W || uy >= H;
+        return Math.round(Math.min(8000, n * step + (out ? 2000 : 0)) / 10) * 10;
+      }));
+    }
+    m += d;
+  }
+  return { step: REACH_STEP, f };
 }
 
 // Chamfer distance (in cells, capped) from every water cell to the nearest land.
@@ -465,8 +492,10 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
   }
   const { events, wave } = eventsAlong(grid, coords, comfort, got);
   lap('events');
+  const reach = reachAlong(grid, coords);
+  lap('reach');
   delete T.t;
-  return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wave, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
+  return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wave, reach, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
 }
 
 // Where the finished line meets what costs: shipping lanes and harbours it
@@ -599,7 +628,7 @@ export async function routeWater(from, to, { allowPortage = true, shore, carry, 
   const out = {
     coords: best.coords, tags: best.tags, portage: best.portage, note,
     // (at: the departure its wind is for)
-    water: { events: best.events, wave: best.wave, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, skipped: best.skipped, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
+    water: { events: best.events, wave: best.wave, reach: best.reach, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, skipped: best.skipped, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
   };
   if (!best.missing.length) memo.set(key, out); // a leg routed without a source is routed again when it answers
   if (memo.size > 60) memo.delete(memo.keys().next().value);

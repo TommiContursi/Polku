@@ -16,7 +16,7 @@ import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js'
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
 import { tripTimes, sampleAt as sampleAtOf, timeOf, dayOf, clockOf } from './trip.js';
 import { clock } from './net.js';
-import { winterAlong, windChill, airPast, WINTER_TEXT, forgetWinterFailures } from './winter.js';
+import { winterAlong, windChill, airPast, feelsLike, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
@@ -2536,12 +2536,19 @@ export class Planner {
   // and stops (so arrival times, and the weather when you get there, move on by them).
   // A night lasts until its morning hour after you arrive, so it's timed on the way, from `start` (epoch seconds).
   timed(a, head, snow, start) {
+    const t = this.timing(a, head, snow, start, this.when.nights ? this.when.by : null);
+    a.waitAt = t.waitAt;
+    return t;
+  }
+  // …what it works out, touching nothing: the route, When and the trip stay as they are (Best time to leave's sweep).
+  // `by`: Arrive by's last morning on a trip with nights (#219), else null
+  timing(a, head, snow, start, by = null) {
     const t = estimateTime(a, this.timeOpt(), head, snow);
     const waits = this.waitsAlong();
     // waitAt[i]: the wait that starts with sample i (so breakdowns can leave it out of moving time)
     const waitAt = new Float32Array(a.along.length);
     // Arrive by on a trip with nights (#219): the last night lasts until the morning that gets you there by then
-    const by = this.when.nights ? this.when.by : null, last = by != null ? waits.findLast((w) => isNight(w.stop)) : null, n = a.along.length;
+    const last = by != null ? waits.findLast((w) => isNight(w.stop)) : null, n = a.along.length;
     let k = 0, add = 0;
     if (waits.length) {
       for (let i = 0; i < a.along.length; i++) {
@@ -2567,7 +2574,7 @@ export class Planner {
       t.total = t.tAt[a.along.length - 1];
     }
     t.waits = waits;
-    a.waitAt = waitAt;
+    t.waitAt = waitAt;
     return t;
   }
   // The trip timed from When, the one place that does it (#956): from the departure (`start`: the minute the wind was
@@ -7616,7 +7623,7 @@ export class Planner {
     let feel = null, feelAt = i0;
     for (let i = i0; i <= i1; i++) {
       if (!known(i)) continue;
-      const v = w.temp[i] <= 10 ? windChill(w.temp[i], airPast(Math.min(40, own(i)), w.head[i], w.cross[i])) : Number.isFinite(w.feel[i]) ? w.feel[i] : null;
+      const v = feelsLike(w, i, own(i));
       if (v != null && (feel == null || (cold ? v < feel : v > feel))) { feel = v; feelAt = i; }
     }
     // what falls on you: rain in mm, snow in cm from the forecast's own snowfall as Check sums it; a wet day at least 0.1
