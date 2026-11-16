@@ -939,12 +939,14 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet-row { display: grid; gap: var(--space-8); }
 /* the head's title (#382, Mine 8): the route's name, its sports and changeovers under it, what to read and (wider screens)
    the planner's own keys at its end */
-.pl-title { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
+.pl-title { display: flex; align-items: center; gap: var(--space-8); min-width: 0; min-height: var(--target); } /* (as tall as what to read, so nothing moves when Check answers late, #741) */
+.pl-title:has(> .pl-title-t[hidden]) { min-height: 0; }
 .pl-title-t { flex: 1; min-width: 0; display: grid; gap: 2px; padding-left: 17px; } /* (its words where the groups' are: 16 + 15 px in) */
 .pl-title-t[hidden], .pl-sports[hidden] { display: none; }
 .pl-name { font-size: var(--font-number); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
 .pl-sports { color: var(--muted); font-size: var(--font-control); font-weight: var(--weight-name); }
 .pl-sports > b { font-weight: var(--weight-strong); }
+.pl-sports > :is(b, span) { white-space: nowrap; } /* (it wraps between them, so "2 changeovers" stays one) */
 /* the numbers in one box on the key's face (round 5), wrapping to a second line rather than shrinking */
 .sheet-row > .sheet-sum { margin: 0 6px 0 2px; padding: var(--space-8) var(--space-12); border: 1px solid var(--key-edge); border-radius: var(--radius); background: var(--surface-solid); }
 .sheet-row > .sheet-sum:has(> .sum-empty) { padding: 0; border: 0; background: none; }
@@ -1317,6 +1319,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
   .sheet-cols { display: flex; flex-wrap: wrap; gap: 6px 28px; align-items: flex-start; }
   .sheet-cols > .sec { flex: 1 1 280px; min-width: 260px; }
   .sheet-cols > .sec-break { display: block; flex: 0 0 100%; height: 0; }
+  .sheet-cols > :is(.pl-h, .pl-group:not(.sec)) { flex: 0 0 100%; } /* (a heading and a group of rows across the panel, #382) */
   .sheet-cols > .sec[data-sec="profile"], .sheet-cols > .sec[data-sec="loop"] { flex-basis: 100%; }
   /* climbs above heads-up, in one column; gone when both are empty */
   .sheet-cols > .sec-stack { display: flex; flex-direction: column; flex: 1 1 280px; min-width: 260px; }
@@ -1438,7 +1441,11 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 :is(.pl-group.rows, .pl-group > .rows) > .row:last-child:not(:only-child) { border-radius: 0 0 10px 10px; }
 .pl-pane > .pl-h:has(+ :is([hidden], .how-rows:empty)) { display: none; }
 /* (200 %: groups lose their edge and padding, so their words get the planner's width, the user's choice of 2026-11-11) */
-@media (max-width: 300px) { .pl-group { padding: 0; border: 0; } .pl-h { padding-left: 0; } }
+@media (max-width: 300px) {
+  .pl-group { padding: 0; border: 0; } .pl-h { padding-left: 0; }
+  .sheet-head .pl-title { padding-right: 0; } .sheet-head .pl-title-t { padding-left: 0; } .sheet-head .sheet-row > .sheet-sum { margin: 0; }
+  .pl-readrow-go { padding: 0 6px; } .pl-readrow-go > span { display: none; } /* (the ball alone, so the name keeps its room: its name says the rest) */
+}
 /* the box over the profile (the order of 2026-11-15): When and when you're there, then a row a day with › */
 .sheet > .trip-box { flex: none; display: grid; gap: var(--space-2); margin-inline: 16px; }
 .sheet > .trip-box > .trip-when { padding: var(--space-4) var(--space-10) 0; }
@@ -2096,10 +2103,10 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .pl-readrow { flex: none; }
 .pl-readrow-go { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); padding: 0 12px 0 6px; border: 0; border-radius: var(--radius-pill); background: var(--danger-soft); color: var(--danger); font: inherit; font-weight: var(--weight-name); cursor: pointer; }
 .pl-readrow-go > b { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--danger); color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; }
-.pl-readrow.unk .pl-readrow-go { background: var(--unk-soft); color: var(--unk); }
-.pl-readrow.unk .pl-readrow-go > b { background: none; box-shadow: inset 0 0 0 1.5px var(--unk); border: 0; color: var(--unk); }
+.pl-readrow-go.unk { background: var(--unk-soft); color: var(--unk); }
+.pl-readrow-go.unk > b { background: none; box-shadow: inset 0 0 0 1.5px var(--unk); border: 0; color: var(--unk); }
 .pl-readrow-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-@media (hover: hover) { .pl-readrow-go:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); } .pl-readrow.unk .pl-readrow-go:hover { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); } }
+@media (hover: hover) { .pl-readrow-go:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); } .pl-readrow-go.unk:hover { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); } }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }

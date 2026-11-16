@@ -6338,7 +6338,7 @@ export class Planner {
     const sports = this.routeSports(), n = this.legs.filter((_, i) => i && this.legSport(i) !== this.legSport(i - 1)).length;
     this.els.sports.hidden = sports.length < 2;
     this.els.sports.replaceChildren(...sports.flatMap((x) => [h('b', { style: `color: var(--sport-${x})` }, ACTIVITIES[x].label), ' · ']),
-      `${n} changeover${n === 1 ? '' : 's'}`);
+      h('span', {}, `${n} changeover${n === 1 ? '' : 's'}`));
   }
 
   // Key facts (#471's A2) [kf2-gravel, kf2-multi, kf2-days]: one line under the route's numbers saying what stands out on
@@ -7208,10 +7208,9 @@ export class Planner {
     const el = this.els.readRow, R = this.readSays();
     if (!el) return;
     el.hidden = !R;
-    if (!R) return;
-    el.className = `pl-readrow ${R.n1 ? 'danger' : 'unk'}`;
-    el.replaceChildren(h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': R.aria, onclick: () => this.openFromRow() },
-      h('b', { 'aria-hidden': 'true' }, R.n1 ? String(R.n1) : '?'), h('span', { 'aria-hidden': 'true' }, R.n1 ? `warning${R.n1 === 1 ? '' : 's'}` : `${R.n3} not checked`)));
+    if (!R) { el.replaceChildren(); return; }
+    el.replaceChildren(h('button', { type: 'button', class: `pl-readrow-go ${R.n1 ? 'danger' : 'unk'}`, 'aria-label': R.aria, onclick: () => this.openFromRow() },
+      h('b', R.n1 ? {} : { 'aria-hidden': 'true' }, R.n1 ? String(R.n1) : '?'), ' ', h('span', {}, R.n1 ? `warning${R.n1 === 1 ? '' : 's'}` : `${R.n3} not checked`)));
   }
   // the line (or the count): Check, at the first unread one, with its card (a phone's sheet at half under it) [jc-desk-sel]
   openFromRow() {

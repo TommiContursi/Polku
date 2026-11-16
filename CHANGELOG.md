@@ -4,10 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-16
 
-### Check, a view of its own ([#382](https://github.com/TommiContursi/Polku/issues/382))
+### The planner in sections ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
-- The planner has no tabs now. **Check**, the first row under the trip's box, opens Check's warnings, climbs and the ground in a view of its own, with **‹ Route** to go back. The row shows the warnings' count in red, else Good to know's, and **?** while something wasn't checked, as the tab did.
-- The warnings line under the route's numbers still opens Check at the first warning.
+- The planner's top shows your route's name, such as "Start → End", and on a route of more than one sport each sport in its colour and how many changeovers it has. What to read sits beside the name: a red ball with how many warnings, or **?** with how many places weren't checked. A tap on it opens Check at the first.
+- The route's numbers are in one box under the name. **When** and the weather come next, then the profile under the heading **Route profile**, with **Colour by** and **On map** under the chart and the key facts after them.
+- The rest of the planner has headings too, **Route** with **Show all waypoints** and the list's settings at its end, and **Route style and your speed**. Each part sits in a box of its own, so the parts are easy to tell apart.
+- The planner has no tabs now. **Check**, the first row under the profile, opens Check's warnings, climbs and the ground in a view of its own, with **‹ Route** to go back. The row shows the warnings' count in red, else Good to know's, and **?** while something wasn't checked, as the tab did.
+- At its smallest size on a phone the planner shows the name, the numbers and the profile.
 
 ### Settings' explanations behind ⓘ ([#382](https://github.com/TommiContursi/Polku/issues/382))
 

@@ -403,6 +403,9 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 |---|---|---|
 | Back, in words, and ✕ on a row of their own | `way-bar`, `btn small quiet way-back`, `tool way-x` | the start's steps ("‹ Ways to begin") |
 | A heading and its line | `way-head`, `way-hint`: the title 17 px (`--font-title`), 15 px on a desktop's card; a long name breaks rather than leave its card | "Round trip from your start" |
+| A section's heading in the planner, its tools at its end | `pl-h` holding an `h3` (17 px, `--font-title`, its words 15 px in, where its group's are) and its tools (`heading()` in `js/planner.js`); hidden with its section | Route profile, Route, Route style and your speed (#382) |
+| A group: a section's parts set apart on the sheet | `pl-group`: a 1 px `--line` edge, `--radius`, 4 px round what it holds, its `rows`' corners 10 px (nesting), so its words start 15 px in; 12 px between groups; at 200 % no edge and no padding | the trip's box, the profile, Check's row, Route's list, Route style and your speed (#382) |
+| The route's name, its sports and changeovers | `pl-title` holding `pl-title-t` (`pl-name`, `pl-sports` with each sport in `--sport-…`, bold), then what to read and, on a wider screen, the planner's own keys (`renderTitle()`) | the planner's head (#382, Mine 8) |
 | A small heading | `menu-h`; `act-head`, `lg-title`, `qd-lab`, `chip-group-label`, `sec-title`, `stat-label` and the rest share its one rule: 12 px capitals in `--muted`, .06em | the ⋯ menu's groups |
 | A choice to begin with | `way-tile` with `way-ic`, `way-t`, `way-chev`: a tile, with a green icon (the start's tiles stay tiles) | Ways to begin |
 | A choice with its value | `stylebtn` with `two` | Route style, Direction |
@@ -422,7 +425,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | Choices in a menu that tick, any of them at once | `menu-item` with `role="menuitemcheckbox"` and `menu-tick` (`checked` in `popMenu()`, `keep` so it stays open) | the timeline's ⋯: Weather at places and Effects (#182, #869) |
 | Actions in a group | `menu-h`, `menu-item two-line`, `hr`, `menu-item danger menu-apart` for the dangerous one; built by `popMenu()` in `js/ui.js`, which a tap or a click outside closes and does nothing else: it holds back that press's click only, never a later one (#845) | the ⋯ menu |
 | A choice in a list | `menu-item` with `role="menuitemradio"`, `menu-tick`, `cur` ("your route") | the sport menus |
-| Numbers with their labels | `sheet-sum`, `sum-item` | the peek's summary |
+| Numbers with their labels | `sheet-sum`, `sum-item`; in the planner's head one box on the key's face with `--key-edge`, wrapping to a second line rather than shrinking (#382) | the peek's summary |
 | A note with its action | `pl-viewnote` | Move's banner on a card |
 | A toggle | `tg` with `tg-text`, `tg-ui`; off, the track has a `--muted` edge (3:1) | Settings |
 | A switch that can't be used now (a mark's times with no marks) | `tg off`: half opacity | Layers' Your route, Settings |
@@ -430,7 +433,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | A row of Check's (Good to know, Not checked) | `row` in a `rows` list, with its group's icon in its colour (`tier-look`, `tier-not`); lit (`aria-current`) while its card is open | Check (25d's Journey C) |
 | Check's group heading, its count and All read | `tier-top`, `tier-h`, `tier-n`, `tier-sub`, `tier-all` (`btn small quiet`) | Check (25d's Journey C) |
 | What Polku looked at | `looked`, rows `ok`, `bad`, `wait`, `na` with ✓, ?, a clock, — | Check (25d's Journey C) |
-| What to read where the key facts' line isn't shown | `warn-row pl-readrow compact` (`danger` or `unk`) holding `pl-readrow-go` with the count | the numbers' row (#438, #741) |
+| What to read, beside the route's name | `pl-readrow` holding `pl-readrow-go`: a red ball (`b`) with the count and its word on a soft red key; `unk`: a dashed ring with ? and how many weren't checked (`renderReadRow()`); a tap opens Check at the first | the planner's head (#382, Mine 8) |
 | A climb's row | `li` | Check |
 | Facts as rows | `insp-row`, `insp-info` for the source | the map's card |
 | A card's mark: the thing's own mark from the map, left of its name | `card-mark` (holding the map's `wp`, …) | 25d's cards (#355) |
@@ -450,7 +453,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | A grade's one word, under its number | `sum-item` with an `em` ("S1", "intermediate path", "difficulty") | the route's card (1b) |
 | A row the phone's own picker sets: a time | `row pick` (`pickRow()` in `js/card.js`): the field unseen over the row (16 px, so an iPhone doesn't zoom), `showPicker()` on a click and on Enter, the ring on the row; `set` when it has a value of its own (its line, the day, shows on a desktop's card too); `pick-note` under it (`info` for a plain one) | Leave, Go on at (#364's C) |
 | When: the departure, opening its menu (Leave now, Leave at…, Arrive by…, Best time to leave ›; on a trip with nights First day and Last day) | `row when-row` on the first screen and the start's card; `rt-pill when-pill` in the trip's box and the weather card, in a `when-box` with its `pick-note` (`control()` in `js/when.js`), on a line with "→ there at" or Arrive by's "· leave 19:19" (`trip-when`) | #869, #219 |
-| The trip's box: When, then a row a day opening the weather card | `trip-box` (after the profile) holding `trip-when` and a `rows trip-days` list of `row`s (`item()`), each the sky's icon, the day's weather and › | #869's step 3 |
+| The trip's box: When, then a row a day opening the weather card | `trip-box pl-group` (over the profile, the order of 2026-11-15) holding `trip-when` and a `rows trip-days` list of `row`s (`item()`), each the sky's icon, the day's weather and › | #869's step 3 |
 | A day's weather in words | `wx-say`: the sky's icon (`wx-sky`, its words its name) and one sentence; then up to three notes, `wx-tell` buttons with their number (`wx-n`, in its tier's colour) | the weather card (#869, Round 5) |
 | The trip's line and its lanes | `wx-trip`: `wx-trip-line` with a `wx-leg` a sport and the notes' `wx-n`, `wx-ticks` under it; a `wx-lane` button a fact, its `wx-track` in the route's own colours and its `wx-key` under it | the weather card (#869, Round 5) |
 | The hours sideways, a column an hour, and a section a fact under them | `wx-hs`: one scroller (`wx-hs-x`) of `wx-hs-col`s (the hours a `button` each, `aria-pressed` when picked), the temperature's line (`wx-hs-curve`), the trip (`wx-hs-trip`) and where you are; each `wx-sec` a `row` header (`wx-sec-h`, its icon in a `wx-tile`, ⌄), a line (`wx-sec-line`) and its hours (one `button` showing the fact on the map); `wx-pin` keeps a header in view; a desktop's `tool wx-hs-arrow`s at the edges | the weather card's hour strip (#979) |
@@ -464,7 +467,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | A menu's item the phone's own picker sets | `menu-pick` (`menu()` in `js/when.js`): the field unseen over the item, with the class `menu-item` so the menu's arrow keys reach it, as `row pick`'s, and a look of a `menu-item` under it (`on` when it holds the value); the menu goes once a time is picked and the picker is put away | When's Leave at… (#869) and Arrive by… (#219) |
 | A value typed in a menu, with Set | `menu-when`: a `name-field` and a `btn primary` Set, the menu refilled with them (`refill()`); Enter sets too, and Set closes the menu | When's Leave at… and Arrive by… on a desktop |
 | Fold to a line, and open it as it was | ⌄, a `tool` (`sheet-fold` at the right of the sheet's top row on a phone, `sheet-min` in the header row on a wider screen; with a mouse or trackpad ⌃ before it, `sheet-up` and `sheet-up-min`, and each moves the planner one size, `stepSheet()`, `way-fold` on a desktop's card, its icon ⌃ while folded); the line `fold-line`, one row with the handle drawn in its top padding, with one button `fold-go` (`fold-warn` for the count of warnings) and ✕ at its end (`fold-x`) | step 3 of #233's mock-up (Fold, then away), and its fix round of 2026-10-28 |
-| The line of key facts under the route's numbers | `kf` with `kf-b` buttons (`miss` for weather not known; `legs` a row a sport, `kf-d` its distance; `warn` with `danger` or `unk` for what Check found to read, in Check's warning box at the line's height, #741) | the planner's header (#471's A2) |
+| The key facts under the route's profile | `kf` with `kf-b` buttons (`miss` for weather not known; `legs` a row a sport, `kf-d` its distance); not at the peek | the planner (#471's A2, moved under the profile by #382) |
 | A spot's mark while its card is open (a shared spot's, the held Weather here's, a pick's and the route's at a spot) | `card-pin`, a `maplibregl.Marker` | 25d's cards (5, 6b) |
 | The ring that fills under a finger held on the map | `hold-ring` (still with reduced motion) | the hold (25d's part 5) |
 | The keyboard's crosshair and its keys | `crosshair`, `map-keys` (`dt` with `kbd`, `dd`) | the map in focus (25d's 5b) |

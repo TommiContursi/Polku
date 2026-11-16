@@ -303,15 +303,15 @@ Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's c
 
 **Type, four steps.** A title (the route's name, a card's name) 22 px; a section's heading 17 px, bold, in sentence case; a row's name and a button's words 16 px; a line under a row 14 px in `--muted`. Numbers are 24 px (20 px in a desktop's card) with their unit at 14 px and their word under them at 13 px.
 
-**The numbers' box.** A route's or a card's numbers sit in one white box, as round 5 has them, a thin line between them. When they don't fit one line they wrap to a second rather than shrink.
+**The numbers' box.** A route's or a card's numbers sit in one white box, as round 5 has them, a thin line between them. When they don't fit one line they wrap to a second rather than shrink. Built for the planner (2026-11-16): the box on the key's face with `--key-edge`, main's three numbers in it; the lines between them, and more numbers (in the dark, a carry) are not built yet.
 
 **Space, two steps.** 8 px between things in a section, 18 px between sections. A section's heading sits 18 px under the section before it and 8 px over its own group.
 
-**The planner's head.** The route's name as its title, the warnings beside it (a red ball and its count, opening Check), the numbers' box, the sports' facts (all in sight, wrapping), and When on a line of its own (Leave now ▾ → there at…).
+**The planner's head** (built 2026-11-16). The route's name as its title (19 px), its sports in their colours and its changeovers under it on a route of more than one sport, the warnings beside it (a red ball with its count and its word, or **?** in a dashed ring for what wasn't checked; a tap opens Check at the first), then the numbers' box. When and the weather follow in a group of their own, over the profile; the key facts go under the profile. The peek is the title, the numbers and the chart.
 
-**Headings.** Every section under the head has one: **Weather on the route**, **Route profile** (its fold at the heading's end), **Route** (Show all waypoints and the list's settings on the heading's line) and **Route style and your speed**. A card's are its own: At this waypoint, Look out for, Profile. A heading's tools sit at its end, never inside the group.
+**Headings.** Every section under the head has one: **Route profile** (its size at the heading's end; **Conditions** on the water), **Route** (Show all waypoints and the list's settings on the heading's line) and **Route style and your speed** (built 2026-11-16, `pl-h`: 17 px, its words in line with its group's). When and the weather have none: they follow the numbers. A card's are its own: At this waypoint, Look out for, Profile. A heading's tools sit at its end, never inside the group.
 
-**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a lighter group on it with 16 px corners, so the groups read as one sheet's parts and the map still shows around them.
+**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a group on it, so the groups read as one sheet's parts and the map still shows around them. Built 2026-11-16 as one class, `pl-group`: a 1 px `--line` edge, 14 px corners, 4 px round what it holds and its rows' corners nesting at 10 px, so a group's words start 15 px in; 12 px between groups. Mine 8 fills its groups white at 74 %; the app keeps the glass, an edge alone, until that's chosen.
 
 **Controls by job:**
 1. **The one main action:** filled green (`--accent-bg`, white words), the whole width, at most one in a panel. The planner, the toolbar and each card are panels of their own: a stretch's **Edit this stretch**, a spot's **Add a waypoint here**.

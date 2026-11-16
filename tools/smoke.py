@@ -3667,7 +3667,7 @@ def onroute(chrome):
         fails += pg.js("""(async () => {
           const errs = [];
         """ + CHECK_ROUTE + """
-          const line = () => p.els.facts.querySelector('.kf-b.warn');
+          const line = () => p.els.readRow.querySelector('.pl-readrow-go');
           const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
           p.setView('route'); p.setSheetState('peek');
           await wait(500);
@@ -3684,7 +3684,7 @@ def onroute(chrome):
           p.setView('route');
           return errs;
         })()""", timeout=90000)
-        at = pg.js("(async () => { await " + SETTLED + "; return (" + ROW_STILL + ")(polku.planner.els.facts.querySelector('.kf-b.warn')); })()")
+        at = pg.js("(async () => { await " + SETTLED + "; return (" + ROW_STILL + ")(polku.planner.els.readRow.querySelector('.pl-readrow-go')); })()")
         pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
         pg.js(CARD_OPEN)
         fails += card(pg, 'Road works: Teiskontie', 3, {'group': 'Warning', 'src': 'Live · Fintraffic'})
@@ -3695,7 +3695,7 @@ def onroute(chrome):
           p.cards.box.querySelector('.way-x').click();
           await wait(800);
           if (p.view !== 'check') errs.push(`✕ brought back ${p.panel.dataset.state} at ${p.view}, not Check, where the line opened it`);
-          const line = () => p.els.facts.querySelector('.kf-b.warn');
+          const line = () => p.els.readRow.querySelector('.pl-readrow-go');
           if (!line()) errs.push('the line let go of the warning after ✕');
           // only something not checked: the dashed box
           p.hideWarnKind({ key: 'roadwork', label: 'Road works' });
@@ -3835,7 +3835,7 @@ def onroute(chrome):
           const errs = [];
         """ + CHECK_ROUTE + """
           if (typeof p.markRead !== 'function') return ['no marking read'];
-          const line = () => p.els.facts.querySelector('.kf-b.warn');
+          const line = () => p.els.readRow.querySelector('.pl-readrow-go');
           const marks = () => (polku.map.getSource('heads').serialize().data.features || []).map((f) => f.properties.g).sort().join(',');
           const note = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
           p.setView('route'); p.setSheetState('peek');
@@ -3950,7 +3950,7 @@ def onroute(chrome):
               p.toggleSection('points', true);
               await wait(200);
               if (p.els.points.querySelector('.sec2 .warn-row')) errs.push('the list’s section says the warning too');
-              const line = p.els.facts.querySelector('.kf-b.warn');
+              const line = p.els.readRow.querySelector('.pl-readrow-go');
               if (!line || !line.offsetParent) return [...errs, 'no warning in the key facts\\' line at the top of the panel'];
               line.click();
               await wait(600);
@@ -3992,7 +3992,7 @@ WARNFIX = """(async () => {
   if (c446b.lng !== c446.lng || c446b.lat !== c446.lat) errs.push('pressed on the map, then the peek changed: the route was framed again under the press');
   p.renderFacts(p.analysis); await wait(500);
   // (9) the line's warning: one button, as big to touch as the header's other buttons (#443), opening the first item once
-  const line = p.els.facts.querySelector('.kf-b.warn');
+  const line = p.els.readRow.querySelector('.pl-readrow-go');
   if (!line || line.tagName !== 'BUTTON' || line.querySelector('button')) errs.push(`the line's warning: ${line ? line.outerHTML.slice(0, 80) : 'missing'}`);
   else if (line.offsetHeight < 44) errs.push(`the line's warning is ${line.offsetHeight} px tall, under 44 px to touch`);
   let opened = 0;
@@ -4279,7 +4279,7 @@ def warnfix(chrome):
           const cv = document.getElementById('profile-canvas').getBoundingClientRect(), sb = p.panel.getBoundingClientRect().bottom;
           if (cv.height < 60 || cv.bottom > sb + 1) errs.push(`half with a warning: the chart ${Math.round(cv.top)}–${Math.round(cv.bottom)}, the sheet ends at ${Math.round(sb)}`);
           p.setSheetState('peek'); await wait(400); await """ + SETTLED + """;
-          const line = p.els.facts.querySelector('.kf-b.warn'), lr = line && line.getBoundingClientRect(), nr = p.els.row.getBoundingClientRect(), pr = p.panel.getBoundingClientRect();
+          const line = p.els.readRow.querySelector('.pl-readrow-go'), lr = line && line.getBoundingClientRect(), nr = p.els.row.getBoundingClientRect(), pr = p.panel.getBoundingClientRect();
           if (!lr || !lr.height) errs.push('back at the peek, no warning in the line');
           else if (lr.bottom > pr.bottom + 1 || nr.top < pr.top) errs.push(`back at the peek, the numbers and the line ${Math.round(nr.top)}–${Math.round(lr.bottom)} in a sheet of ${Math.round(pr.top)}–${Math.round(pr.bottom)}`);
           return errs; })()""", timeout=90000)
@@ -4314,7 +4314,7 @@ def warnfix(chrome):
         pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
         fails += pg.js("""(async () => { const errs = [];""" + CHECK_ROUTE + """
           p.setView('route'); await wait(300);
-          p.els.facts.querySelector('.kf-b.warn').click();
+          p.els.readRow.querySelector('.pl-readrow-go').click();
           await wait(700);
           document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
           await wait(500);
@@ -18812,7 +18812,7 @@ SE_STATE = """(() => {
       : { at: b.dataset.i, line: [...b.querySelectorAll('small:not(.wpl-tag)')].map((x) => x.textContent).join(' ') })),
     kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.listScroller().scrollTop,
     short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button, .wpl-head-tools button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
-    slot: p.els.facts.querySelector('.kf-b.warn')?.textContent || null, text: L.textContent };
+    slot: p.els.readRow.querySelector('.pl-readrow-go')?.textContent || null, text: L.textContent };
 })()"""
 
 
@@ -19279,7 +19279,7 @@ def sections_list(chrome):
         if not s['slot'] or any(x['warn'] for x in s['secs']):
             fails.append(f"{name}: a Read item on the route: the line says {s['slot']!r}, the sections {[x['warn'] for x in s['secs']]}")
         else:
-            press(pg, at(pg, "polku.planner.els.facts.querySelector('.kf-b.warn')"), f'{name}: the line’s warning', touch)
+            press(pg, at(pg, "polku.planner.els.readRow.querySelector('.pl-readrow-go')"), f'{name}: the line’s warning', touch)
             if st(pg)['kind'] != 'item':
                 fails.append(f"{name}: the line's warning: {st(pg)['kind']} card")
             pg.js("polku.planner.cards.close(); polku.planner.setView('route'); true")
@@ -20992,22 +20992,22 @@ KF_CLIMBS = """(() => {
 # and in both of a desktop's docks; the route's list doesn't say it again, and the line opens Check at the item.
 WARN_SLOT = """async (st, n) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, errs = [];
-  p.markRead([...p.unread(p.heads, 'read'), ...p.unread(p.heads, 'not')]); // (nothing left to read: the key fact)
+  p.markRead([...p.unread(p.heads, 'read'), ...p.unread(p.heads, 'not')]); // (nothing left to read: no ball)
   if (st) p.setSheetState(st); else st = 'side';
   await wait(400); await """ + SETTLED + """;
   const at = () => ({ top: Math.round(p.panel.getBoundingClientRect().top), sum: Math.round(p.els.sum.getBoundingClientRect().top) });
-  const line = () => p.els.facts.querySelector('.kf-b'), b = at();
-  if (!line() || line().classList.contains('warn')) errs.push(`${st}: before the answer the line says "${line() && line().textContent}"`);
+  const rr = p.els.readRow, b = at();
+  if (!rr.hidden) errs.push(`${st}: before the answer the name has "${rr.textContent}" beside it`);
   p.analysis.darkWarn = [{ at: 900, len: 40, kind: 'test', ic: 'warn', noHide: true, text: `In the dark for ${n} km`, note: 'A test item.', tier: 'read', src: { kind: 'calculated', by: 'the sun’s times' }, lngLat: p.analysis.pts[90] }];
   p.renderWarnings(); // (Check's answer, late)
   await wait(300); await """ + SETTLED + """;
-  const a = at(), l = line(), rr = p.els.readRow;
+  const a = at(), go = rr.querySelector('.pl-readrow-go');
   if (a.top !== b.top || a.sum !== b.sum) errs.push(`${st}: as Check answered, the sheet's top went ${b.top} → ${a.top} px, the numbers ${b.sum} → ${a.sum} px`);
-  if (!l || !l.classList.contains('warn') || l.textContent.trim() !== '1 warning') errs.push(`${st}: the line under the numbers says "${l && l.textContent.trim()}"`);
+  if (rr.hidden || !go || !go.classList.contains('danger') || go.textContent.trim() !== '1 warning' || !rr.closest('.pl-title')) errs.push(`${st}: beside the route's name: "${rr.hidden ? '' : rr.textContent.trim()}"`);
+  if (p.els.facts.querySelector('.kf-b.warn')) errs.push(`${st}: the key facts say it too`);
   if (p.els.points.querySelector('.sec2 .warn-row')) errs.push(`${st}: the route's list says it again`);
   const onLine = [...p.els.points.querySelectorAll('.wpl-stretch .wpl-warns .read')].map((x) => x.textContent);
   if (onLine.length !== 1 || !/^In the dark for \\d+ km$/.test(onLine[0])) errs.push(`${st}: the stretch's warnings in the list: ${onLine.join(' / ') || 'none'} (#761: the one warning by its name)`);
-  if (rr && !rr.hidden && rr.offsetParent) errs.push(`${st}: a row says it too: "${rr.textContent}"`);
   return errs;
 }"""
 
@@ -21022,10 +21022,10 @@ def warn_slot(chrome):
             pg.js("(async () => {" + CHECK_ROUTE + " p.setView('route'); return true; })()", timeout=90000)
             for k, st in enumerate(states):
                 fails += [f'{name}: {e}' for e in pg.js(f"({WARN_SLOT})({json.dumps(st)}, {k + 2})", timeout=30000)]
-            # the line opens Check at the item, with its card
-            at = pg.js("(() => { const r = polku.planner.els.facts.querySelector('.kf-b.warn')?.getBoundingClientRect(); return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; })()")
+            # the ball opens Check at the item, with its card
+            at = pg.js("(() => { const r = polku.planner.els.readRow.querySelector('.pl-readrow-go')?.getBoundingClientRect(); return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; })()")
             if not at:
-                fails.append(f'{name}: no line to tap')
+                fails.append(f'{name}: no ball to tap')
             else:
                 if phone:
                     pg.quick_tap(at['x'], at['y'])
@@ -21036,11 +21036,11 @@ def warn_slot(chrome):
                 time.sleep(1)
                 r = pg.js("(() => { const p = polku.planner, c = p.cards.current; return { tab: p.view, card: c && c.kind, key: c && c.itemKey }; })()")
                 if r['tab'] != 'check' or r['card'] != 'item' or 'In the dark' not in (r['key'] or ''):
-                    fails.append(f'{name}: the line opened {r}, not Check at the item')
+                    fails.append(f'{name}: the ball opened {r}, not Check at the item')
             fails += [f'{name}: console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a warning takes the key fact's slot: nothing moves when Check answers, both docks, the line opens Check" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} a warning beside the route's name: nothing moves when Check answers, both docks, the ball opens Check" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
