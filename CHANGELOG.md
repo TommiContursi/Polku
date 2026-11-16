@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-16
 
+### Clearer choices ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- Chips, such as the timeline's weather layers, Settings' **Appearance** and the sports menu's craft, have a white face and the same clear edge as buttons, with black words; a chosen one is still green. **When** and **Colour by** have the same edge.
+- **Colour by** is a little taller with a mouse and as tall as a chip by touch, so it's easier to tap.
+
 ### Clearer buttons ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 - Buttons have a clearer edge and the same rounded corners everywhere, so they read as buttons in bright sun. That includes a card's actions, such as **Move** and **Rename**, its main action, such as **Edit this stretch**, and the buttons in the planner and Settings.
