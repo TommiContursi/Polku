@@ -955,11 +955,10 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .pl-sports > b { font-weight: var(--weight-strong); }
 .pl-sports > :is(b, span) { white-space: nowrap; } /* (it wraps between them, so "2 changeovers" stays one) */
 /* the numbers in one box on the key's face (round 5), wrapping to a second line rather than shrinking */
-.sheet-row > .side-wrap { margin: 0 6px 0 2px; }
-.sheet-row .sheet-sum { flex-wrap: nowrap; gap: 0; align-items: stretch; border-radius: var(--radius); background: var(--surface-solid); box-shadow: inset 0 0 0 1px var(--line); touch-action: pan-x; }
+.sheet-row > .sheet-sum { margin: 0 6px 0 2px; }
+.sheet-row .sheet-sum { gap: 0; align-items: stretch; border-radius: var(--radius); background: var(--surface-solid); box-shadow: inset 0 0 0 1px var(--line); } /* (they wrap to a second line rather than shrink, as DESIGN.md says) */
 .sheet-row .sheet-sum > .sum-item { flex: none; padding: var(--space-8) var(--space-12) 9px; }
 .sheet-row .sheet-sum > .sum-item + .sum-item { box-shadow: -1px 0 0 var(--line); } /* (a thin line between them, round 5's) */
-.sheet-row .sheet-sum small { white-space: nowrap; } /* (nothing is cut: the box scrolls) */
 .sheet-row .sheet-sum:has(> .sum-empty) { border-radius: 0; background: none; box-shadow: none; }
 .sheet-row .sheet-sum > .sum-empty { padding: 0; }
 /* key facts (#471's A2): a line under the route's numbers, a row a sport on a route of two; each opens where it's told */
@@ -1092,7 +1091,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile :is(.profile-top, .prof-size) { display: none; }
 /* the peek is the head and the chart (#742): no heading, no key facts, and a long name on two lines (whole one size up) */
 .sheet[data-layout="sheet"][data-state="peek"] .pl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile .side-wrap { display: none; }
+.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .side-wrap { display: none; }
 /* (at the peek, while a drag moves it and at half, the profile has no heading and When follows it: the chart stays where the
    peek has it, #742; at full When leads, the order of 2026-11-15) */
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .pl-h { display: none; }
@@ -1466,9 +1465,8 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* (200 %: groups lose their edge and padding, so their words get the planner's width, the user's choice of 2026-11-11) */
 @media (max-width: 300px) {
   .pl-group { padding: 0; border: 0; } .pl-h { padding-left: 0; }
-  .sheet-head .pl-title { padding-right: 0; } .sheet-head .pl-title-t { padding-left: 0; } .sheet-head .sheet-row > .side-wrap { margin: 0; }
-  .sheet-row .sheet-sum { flex-wrap: wrap; } .sheet-row .sheet-sum > .sum-item + .sum-item { box-shadow: none; } /* (they wrap, never scroll: DESIGN.md) */
-  .sheet[data-state="peek"] .pl-title-t { display: none; } /* (its numbers and the chart: the name at half) */
+  .sheet-head .pl-title { padding-right: 0; } .sheet-head .pl-title-t { padding-left: 0; } .sheet-head .sheet-row > .sheet-sum { margin: 0; }
+  .sheet-row .sheet-sum > .sum-item + .sum-item { box-shadow: none; } /* (wrapped: no lines between) */
   .pl-readrow-go { padding: 0 6px; } .pl-readrow-go > span { display: none; } /* (the ball alone, so the name keeps its room: its name says the rest) */
 }
 /* the box over the profile (the order of 2026-11-15): When and when you're there, then a row a day with › */
@@ -2572,7 +2570,7 @@ body.dropping .drop-hint { display: flex; }
   .orbit { width: 62px; height: 62px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
-  .pl-title { padding-right: 8px; } .pl-title-t { padding-left: 19px; } .sheet-row > .side-wrap { margin: 0 8px 0 4px; } /* (the groups' 16 px edges) */
+  .pl-title { padding-right: 8px; } .pl-title-t { padding-left: 19px; } .sheet-row > .sheet-sum { margin: 0 8px 0 4px; } /* (the groups' 16 px edges) */
   .sheet-row { min-height: 44px; } /* (the numbers' row as tall as Done made it before #745: the peek doesn't change when they come) */
   .pl-viewnote .btn { min-height: 44px; }
   /* a note with the planner closed stays left of the map's buttons, so it never covers Layers or Plan (25c) */

@@ -4633,7 +4633,7 @@ export class Planner {
     // (wider screens: the planner's own keys on a line of their own over the name, so a long name keeps its room, Mine 8's)
     this.els.title = h('div', { class: 'pl-title' }, h('div', { class: 'pl-keys' }, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX()),
       this.els.titleT = h('div', { class: 'pl-title-t' }, this.els.name, this.els.sports), this.els.readRow);
-    this.els.row = h('div', { class: 'sheet-row' }, this.els.title, sideways(this.els.sum, 'The route’s numbers'));
+    this.els.row = h('div', { class: 'sheet-row' }, this.els.title, this.els.sum);
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
     this.els.card = h('div', { class: 'card-peek', hidden: true });

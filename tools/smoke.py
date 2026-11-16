@@ -21071,8 +21071,9 @@ def keyfacts(chrome):
             fails.append(f'{name}: no route')
             pg.close()
             return
-        # (the forecast in, or failed, before the cases set their own)
-        pg.js("(async () => { const p = polku.planner; for (let k = 0; k < 150 && !(p.analysis.wind || p.analysis.windError); k++) await new Promise((r) => setTimeout(r, 100)); return true; })()")
+        # (the forecast in, or failed, before the cases set their own; the planner raised: the key facts are under the profile, not
+        # at a phone's peek, since #382)
+        pg.js("(async () => { const p = polku.planner; for (let k = 0; k < 150 && !(p.analysis.wind || p.analysis.windError); k++) await new Promise((r) => setTimeout(r, 100)); if (p.layout() === 'sheet') p.setSheetState('full', { remember: false }); await new Promise((r) => setTimeout(r, 400)); return true; })()")
         pg.js(KF_JS)
         # nothing stands out: the usual fact, the hardest climb by the uphill grade; Climbs says it and tags it
         r = pg.js("KF.set({ add: 3 })")
