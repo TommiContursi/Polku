@@ -2017,7 +2017,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .card .pl-viewnote { margin: 0; }
 /* a switch with icons over its words; the chosen one white, black words, a green icon (#356) */
 .seg.icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
-.seg.icons button { height: auto; padding: 6px 4px; flex-direction: row; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; white-space: normal; text-align: center; overflow-wrap: break-word; }
+.seg.icons button { height: auto; min-height: var(--target); padding: 6px 4px; flex-direction: row; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; white-space: normal; text-align: center; overflow-wrap: break-word; }
 .seg.icons button span { display: inline; }
 .seg.icons button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* a warning: the box in its group's colour, with its shape and its group's name (Journey C builds the parts that use it) */

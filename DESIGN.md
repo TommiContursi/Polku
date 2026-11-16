@@ -322,7 +322,7 @@ Beside those:
 - **A value you pick** (Leave now ▾, Colour by ▾): the value in the text's colour on a round key with the key's face and edge, and a grey ▾, never a pale green field. Colour by is M; When stays L, the planner's first value.
 - **A choice** (a chip): a round key with the key's face and edge, its words in the text's colour, M where a chip has no size of its own; a chosen one has a green tint and a 2 px green edge.
 - **A row that opens something** (Route style ›, Your speed ›, Sport from here ›, the list's rows): 56 px, the whole row a target, its value green before ›, a line between rows.
-- **A switch** for on and off; **segments** for one of a few: M buttons on a grey track 3 px round them with the key's edge, corners 10 px outside and 7 inside, the chosen one green as a chosen chip is (built 2026-11-16); **the key facts** as round keys; **a stepper** as − and + keys around the value.
+- **A switch** for on and off; **segments** for one of a few: M buttons on a grey track 3 px round them with the key's edge, corners 10 px outside and 7 inside, the chosen one green as a chosen chip is (built 2026-11-16). A card's icon segments (Pass by · Stop · Night) stay L, as every key on a card is; **the key facts** as round keys; **a stepper** as − and + keys around the value.
 - **Not pressable:** numbers and their words have no edge, no › and no ▾.
 - **Lines that stay:** a row keeps its line when it guides (To the next change of sport, or the end) or holds data (a time, what stays where, what failed). Filler goes. A key has no line: with a mouse its tooltip says more.
 - **Before a button:** each action is asked whether it needs one. On the profile goes from a point's card, whose own profile is right there.
