@@ -14,7 +14,6 @@
   --tile-rim: rgba(255, 255, 255, 0.85); /* the Layers tile's light rim, over its picture */
   --surface-solid: #ffffff;
   --surface-2: #f3f4f1;
-  --seg-on: var(--surface-solid); /* a switch's chosen segment */
   --text: #141b17;
   --muted: #5f6b65;
   /* words on the glass: a darker grey (every glass surface sets --muted to it), green and red, for 4.5:1 over the map */
@@ -108,7 +107,6 @@
   --tile-rim: rgba(255, 255, 255, 0.5);
   --surface-solid: #181c1a;
   --surface-2: #232825;
-  --seg-on: #3f4843; /* lighter than its track, never a gap */
   --text: #f2f5f3;
   --muted: #9aa69f;
   --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffb0b0;
@@ -686,16 +684,19 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .key-row input { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); font: inherit; }
 
 /* segmented controls & chips */
-.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: 12px; }
+/* one of a few (#382): M buttons on a grey track 3 px round them with the key's edge, corners nesting 10 outside and 7 inside;
+   the chosen one green, as a chosen chip */
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: 10px; box-shadow: inset 0 0 0 1px var(--key-edge); }
 .seg.full { display: flex; flex-wrap: wrap; }
 .seg.full button { flex: 1 1 auto; }
 .seg button {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: var(--target); padding: 0 12px; border: 0; border-radius: 9px; background: transparent; cursor: pointer;
+  position: relative; min-height: var(--size-m); padding: 0 12px; border: 0; border-radius: 7px; background: transparent; cursor: pointer;
   color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap;
-} /* (one height in a place, #356: 36 px with a mouse, 44 px by touch) */
+} /* (one height in a place, #356: M, 32 px with a mouse, 40 by touch) */
+@media (pointer: coarse) { .seg button::after { content: ""; position: absolute; inset: calc((var(--size-m) - 44px) / 2) 0; } } /* (a finger's 44 px, inside the track) */
 .seg.small button { padding: 0 10px; font-size: 12px; }
-.seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.seg button:is([aria-pressed="true"], [aria-checked="true"]) { background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 2px var(--accent); }
 /* the pressed one's colour and shadow fade in as the press lets go; with reduced motion the fade stays, the press's scale goes */
 .seg button { transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, color var(--t-press) ease, box-shadow var(--t-press) ease; }
 @media (prefers-reduced-motion: reduce) { .seg button { transition: background-color var(--t-press) ease, color var(--t-press) ease, box-shadow var(--t-press) ease; } }
@@ -2015,11 +2016,9 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .card .tg-text small { font-size: 13px; font-weight: 400; }
 .card .pl-viewnote { margin: 0; }
 /* a switch with icons over its words; the chosen one white, black words, a green icon (#356) */
-.seg.icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 15px; }
-.seg.icons button { height: auto; min-height: var(--target); padding: 6px 4px; border-radius: 12px; flex-direction: row; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; white-space: normal; text-align: center; overflow-wrap: break-word; }
+.seg.icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+.seg.icons button { height: auto; min-height: var(--target); padding: 6px 4px; flex-direction: row; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; white-space: normal; text-align: center; overflow-wrap: break-word; }
 .seg.icons button span { display: inline; }
-.seg.icons button[aria-checked="true"] { background: var(--seg-on); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
-.seg.icons button[aria-checked="true"] .ic { color: var(--accent); }
 .seg.icons button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* a warning: the box in its group's colour, with its shape and its group's name (Journey C builds the parts that use it) */
 .warn-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; border: 1.5px solid transparent; }

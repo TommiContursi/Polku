@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-16
 
+### One of a few, in green ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- Switches between a few choices, such as the timeline's **48 hours · Your trip**, a round trip's **Distance · Time** and **Pass by · Stop · Night** on a waypoint's card, show the chosen one in green, as a chosen chip, rather than white. Their track has the same clear edge as buttons.
+- Outside the cards they're a little shorter: 32 px with a mouse and 40 by touch, with room for a finger round each.
+
 ### Clearer choices ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 - Chips, such as the timeline's weather layers, Settings' **Appearance** and the sports menu's craft, have a white face and the same clear edge as buttons, with black words; a chosen one is still green. **When** and **Colour by** have the same edge.
