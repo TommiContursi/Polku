@@ -385,8 +385,9 @@ export function infoDot(name, text) {
     if (was) return;
     const el = h('div', { class: 'tip', role: 'tooltip' }, h('b', {}, name), text);
     document.body.append(el);
-    const r = b.getBoundingClientRect(), w = el.offsetWidth;
-    Object.assign(el.style, { left: `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`, top: `${r.bottom + 8}px` });
+    const r = b.getBoundingClientRect(), w = el.offsetWidth, th = el.offsetHeight, below = r.bottom + 8 + th <= innerHeight - 8;
+    // under its button, or above it where there's no room, as tooltip() (an ⓘ low in Settings on a phone)
+    Object.assign(el.style, { left: `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`, top: `${below ? r.bottom + 8 : r.top - 8 - th}px` });
     const off = (ev) => { if (!el.contains(ev.target) && !b.contains(ev.target)) infoTip?.close(); };
     infoTip = { for: b, close: () => { el.remove(); document.removeEventListener('pointerdown', off, true); infoTip = null; } };
     setTimeout(() => document.addEventListener('pointerdown', off, true));

@@ -19677,6 +19677,13 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
       out.push(`Settings: ${name}'s row ${Math.round(info.getBoundingClientRect().height)} px, a switch's without an ⓘ ${Math.round(bare.getBoundingClientRect().height)}`);
   }
   if (disp) disp.open = wasOpen;
+  // a tapped ⓘ low on the screen shows its words above it, on the screen (#1049's review)
+  const low = document.body.appendChild(U.infoDot('Low', 'Words long enough to take a few lines, as a setting’s explanation does, so a bubble under the ⓘ would leave the screen'));
+  Object.assign(low.style, { position: 'fixed', left: '50%', bottom: '4px' });
+  low.click(); await wait(100);
+  const lowTip = [...document.querySelectorAll('body > .tip')].find((t) => t.textContent.startsWith('Low')), lr = lowTip && lowTip.getBoundingClientRect();
+  if (!lr || lr.top < 0 || lr.bottom > innerHeight) out.push(`a tapped ⓘ at the screen's foot: its words ${lr ? `at ${Math.round(lr.top)}–${Math.round(lr.bottom)} px` : 'not shown'}, the screen ${innerHeight} px`);
+  document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); low.remove();
   document.querySelector('#btn-settings').click(); await wait(400);
   // the chosen chip: green with a 2 px border everywhere, as the round trip's lengths have it
   p.openLoop(polku.map.getCenter().toArray()); await wait(800);
