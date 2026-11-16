@@ -4298,7 +4298,7 @@ def warnfix(chrome):
               if (!go) return ['no row at 200 % (""" + f'{w} × {h}' + """)'];
               const room = () => p.panel.getBoundingClientRect().top - document.querySelector('.topbar').getBoundingClientRect().bottom;
               const withRow = room();
-              row.hidden = true; p.els.row.classList.remove('with-count'); await """ + SETTLED + """;
+              row.hidden = true; await """ + SETTLED + """;
               const without = room();
               p.renderReadRow(); await """ + SETTLED + """;
               if (withRow < without - 4) errs.push(`""" + f'{w} × {h}' + """: the row takes ${Math.round(without - withRow)} px of the map (${Math.round(withRow)} px left, ${Math.round(without)} without it)`);
@@ -18826,7 +18826,7 @@ SE_LINE = """(() => {
   return {
     inTop: vis(p.els.pointsTop.querySelector('.sec2-head')),
     heads: [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', sum: s.querySelector('.sec2-head small')?.textContent || '',
-      ring: !!s.querySelector('.sec2-head .ic') && ps(s.querySelector('.sec2-head .ic')).backgroundColor === col(getComputedStyle(s).getPropertyValue('--part') || 'transparent') })), // (its ball filled in its colour since #382, on the line)
+      ring: !!s.querySelector('.sec2-head .bub') && ps(s.querySelector('.sec2-head .bub')).backgroundColor === col(getComputedStyle(s).getPropertyValue('--part') || 'transparent') })), // (its ball filled in its colour since #382, on the line)
     stretches: [...L.querySelectorAll('.wpl-stretch')].filter(vis).map((b) => { const ln = b.querySelector('.wpl-line'), bf = ps(ln, '::before');
       return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', weight: ps(b.querySelector('.how')).fontWeight, line: /repeating/.test(bf.backgroundImage) ? (bf.backgroundImage.match(/rgba?\\([^)]*\\)/) || [''])[0] : bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
         want: col(getComputedStyle(b.closest('.sec2')).getPropertyValue('--part') || 'transparent'), beads: ln.querySelectorAll('.bead').length, fold: b.parentElement.querySelector('.wpl-unfold')?.textContent.trim() ?? null }; }),
@@ -21312,7 +21312,7 @@ def views(chrome):
         # no Go (#869's step 3): the trip's box after the profile, over the views (the order of 2026-11-06), When and there
         # at, then the day's weather, whose › opens the weather card; no tabs (#382)
         r = pg.js("""(() => { const p = polku.planner, b = p.els.box; p.setView('route');
-          return { tabs: document.querySelectorAll('#planner [role=tab], #planner [role=tablist]').length, first: b.previousElementSibling === p.els.profZone && !!(b.compareDocumentPosition(p.els.body) & Node.DOCUMENT_POSITION_FOLLOWING), when: !!b.querySelector('.trip-when .when-pill'),
+          return { tabs: document.querySelectorAll('#planner [role=tab], #planner [role=tablist]').length, first: b.nextElementSibling === p.els.profZone && !!(b.compareDocumentPosition(p.els.body) & Node.DOCUMENT_POSITION_FOLLOWING), when: !!b.querySelector('.trip-when .when-pill'),
             there: b.querySelector('.trip-there').textContent, days: b.querySelectorAll('.trip-days > .row').length }; })()""")
         if r['tabs'] or not r['first'] or not r['when'] or not r['there'].startswith('→ there at ') or r['days'] != 1:
             fails.append(f"{name}: the trip's box: {r}")
@@ -21329,7 +21329,7 @@ def views(chrome):
         if [x.split(' · ')[0] for x in r] != ['Route style', 'Route style', 'Your speed']:
             fails.append(f"{name}: Route's rows on a multisport route: {r}")
         # (#761) each style's row says its sport, its icon in the sport's colour
-        r2 = pg.js("[...TB.pane().querySelectorAll('.how-rows > .row')].slice(0, -1).map((b) => `${b.querySelector('small')?.textContent}|${(/--sport-(\\w+)/.exec(b.firstElementChild.style.color) || [])[1]}`)")
+        r2 = pg.js("[...TB.pane().querySelectorAll('.how-rows > .row')].slice(0, -1).map((b) => `${b.querySelector('small')?.textContent}|${(/--sport-(\\w+)/.exec(b.firstElementChild.style.getPropertyValue('--part')) || [])[1]}`)")
         if r2 != ['MTB|mtb', 'Paddle|paddle']:
             fails.append(f"{name}: the style rows' sports: {r2} (want each its sport's name, its icon in the sport's colour, #761)")
         else:

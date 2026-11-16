@@ -3128,7 +3128,7 @@ export class Planner {
       // (the whole heading a button: the part's sport, its speed and its route style, as the drawing menu has the next leg's;
       // its numbers under its sport, and a ⚙ at its end, where a waypoint's › is, #761)
       const head = h('button', { type: 'button', class: 'sec2-head', 'aria-label': `${title}, ${sum}: sport, speed and route style`, 'aria-haspopup': 'menu', 'aria-expanded': 'false' },
-        h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 16) }), h('span', { class: 'sec2-t' }, h('b', {}, title), h('small', {}, sum)), h('span', { class: 'sec2-set', 'aria-hidden': 'true', html: icon('cog', 18) }));
+        h('span', { 'aria-hidden': 'true' }, h('span', { class: 'bub', html: icon(this.sportIcon(sec.sport), 18) })), h('span', { class: 'sec2-t' }, h('b', {}, title), h('small', {}, sum)), h('span', { class: 'sec2-set', 'aria-hidden': 'true', html: icon('cog', 18) }));
       head.onclick = () => this.partMenu(head, sec);
       tooltip(head, { name: 'Sport, speed and route style' });
       const rows = h('div', { class: 'rows', role: 'group', 'aria-label': `${title}, ${sum}` });
@@ -4632,7 +4632,7 @@ export class Planner {
     this.els.sports = h('small', { class: 'pl-sports' });
     // (wider screens: the planner's own keys on a line of their own over the name, so a long name keeps its room, Mine 8's)
     this.els.title = h('div', { class: 'pl-title' }, h('div', { class: 'pl-keys' }, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX()),
-      h('div', { class: 'pl-title-t' }, this.els.name, this.els.sports), this.els.readRow);
+      this.els.titleT = h('div', { class: 'pl-title-t' }, this.els.name, this.els.sports), this.els.readRow);
     this.els.row = h('div', { class: 'sheet-row' }, this.els.title, sideways(this.els.sum, 'The route’s numbers'));
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
@@ -4723,7 +4723,7 @@ export class Planner {
     // The profile, one, under the header: always in sight (but at the summary size), with the
     // legs and their points on it and what colours it right above it (22a)
     this.profCompact = store.get('profileCompact', false);
-    this.els.profSize = h('button', { type: 'button', class: 'tool small prof-size', onclick: () => this.setProfileCompact(!this.profCompact) });
+    this.els.profSize = h('button', { type: 'button', class: 'tool key prof-size', onclick: () => this.setProfileCompact(!this.profCompact) });
     // its heading with its size at its end, the chart in a group with Colour by and On map under it, the key facts after (#382)
     const profTitle = h('span', {}, 'Route profile');
     this.els.profZone = h('section', { class: `pl-profile${this.profCompact ? ' compact' : ''}`, 'data-sec': 'profile', 'aria-labelledby': 'pl-profile-h' },
@@ -4860,7 +4860,8 @@ export class Planner {
       const st = this.panel.dataset.state;
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(st)) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'folded') this.setSheetState('open');
-      (id === 'check' ? this.els.checkBack : this.els.checkGo).focus({ preventScroll: true }); // (at once: the view it left is hidden, which would leave the focus nowhere)
+      const to = id === 'check' ? this.els.checkBack : this.els.panes.route.dataset.step ? this.els.stepHead.querySelector('.way-back') : this.els.checkGo;
+      to.focus({ preventScroll: true }); // (at once: the view it left is hidden, which would leave the focus nowhere)
     }
     this.renderOnRoute(); // (Good to know's markers while Check is in sight)
   }
@@ -6330,8 +6331,7 @@ export class Planner {
 
   // The head's title: the route's name, and on a route of more than one sport each in its colour and the changeovers
   renderTitle(a) {
-    const t = this.els.title.firstElementChild;
-    t.hidden = !a;
+    this.els.titleT.hidden = !a;
     if (!a) return;
     this.els.name.textContent = this.routeTitle();
     const sports = this.routeSports(), n = this.legs.filter((_, i) => i && this.legSport(i) !== this.legSport(i - 1)).length;
@@ -6353,7 +6353,7 @@ export class Planner {
     const ICON = { wind: 'wind', rain: 'rain', bwind: 'wind', unpaved: 'route', day: 'moon', climb: 'mountain', high: 'mountain', wx: 'cloudSun' };
     const at = [...box.children].indexOf(document.activeElement); // (a late answer keeps the focus where it was)
     // (a round key each, in a row that scrolls sideways, #382: a sport's in its bubble, as Route style's rows and the list's parts)
-    box.replaceChildren(...list.map((x) => h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
+    box.replaceChildren(...list.map((x) => h('button', { type: 'button', class: `chip kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
       h('span', { class: x.sport && !ICON[x.k] ? 'bub' : null, style: x.sport && !ICON[x.k] ? `--part: var(--sport-${x.sport})` : null, 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }),
       h('span', { html: x.html }))));
     if (at >= 0) box.children[Math.min(at, box.children.length - 1)].focus({ preventScroll: true });

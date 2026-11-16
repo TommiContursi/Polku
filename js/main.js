@@ -751,7 +751,7 @@ $('#planner').addEventListener('sheetstate', () => { if (tripFold && tripFold ==
 const quietBar = new WeakMap();
 document.addEventListener('scroll', (e) => {
   const el = e.target;
-  if (!(el instanceof Element) || !el.matches('.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body')) return;
+  if (!(el instanceof Element)) return; // (css/app.css says which show it)
   el.classList.add('scrolling');
   clearTimeout(quietBar.get(el));
   quietBar.set(el, setTimeout(() => el.classList.remove('scrolling'), 900));

@@ -731,6 +731,9 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
   width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer;
 }
+/* an icon key (#382): M, the key's face and edge, a finger's 44 px round it (the profile's size) */
+.tool.key { position: relative; width: var(--size-m); height: var(--size-m); border: 1px solid var(--key-edge); border-radius: var(--radius-control); background: var(--surface-solid); }
+@media (pointer: coarse) { .tool.key::after { content: ""; position: absolute; inset: calc((var(--size-m) - 44px) / 2); } }
 @media (hover: hover) { .tool:hover { background: var(--surface-2); } }
 .tool:disabled { opacity: .35; cursor: default; background: transparent; }
 @media (hover: hover) { .tool.danger:hover { color: var(--bad); } }
@@ -947,7 +950,6 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .pl-keys { order: -1; flex: 1 0 100%; display: flex; justify-content: flex-end; gap: 2px; margin-bottom: -4px; }
 @media (max-width: 720px) { .pl-keys { display: none; } } /* (a phone's are in the sheet's top row) */ /* (as tall as what to read, so nothing moves when Check answers late, #741) */
 .pl-title-t { flex: 1; min-width: 0; min-height: var(--target); display: grid; align-content: center; gap: 2px; padding-left: 17px; } /* (its words where the groups' are: 16 + 15 px in; as tall as what to read beside it, so nothing moves when Check answers late, #741) */
-.pl-title-t[hidden], .pl-sports[hidden] { display: none; }
 .pl-name { font-size: var(--pl-title); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
 .pl-sports { color: var(--muted); font-size: var(--font-control); font-weight: var(--weight-name); }
 .pl-sports > b { font-weight: var(--weight-strong); }
@@ -964,14 +966,13 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 /* the key facts (#471's A2) under the profile, as round keys in a row that scrolls sideways (#382, Mine 8): M, the key's face
    and edge, a sport's in its bubble; no ›, as a key has none */
 .kf { display: flex; gap: var(--space-8); padding: 2px; }
-.kf-b { flex: none; display: inline-flex; align-items: center; gap: var(--space-6); min-height: var(--size-m); padding: 0 12px 0 8px; border: 1px solid var(--key-edge); border-radius: var(--radius-pill); background: var(--surface-solid); color: var(--text); font: inherit; font-size: var(--font-body); white-space: nowrap; cursor: pointer; }
+.kf-b { flex: none; display: inline-flex; align-items: center; gap: var(--space-6); height: auto; min-height: var(--size-m); padding: 0 12px 0 8px; font-size: var(--font-body); font-weight: var(--weight-regular); white-space: nowrap; } /* (a chip, its words a value's, not a choice's) */
 .kf-b > span:first-child { flex: none; display: grid; place-items: center; color: var(--muted); }
 .kf-b > .bub { width: 26px; height: 26px; margin-left: -4px; }
 .kf-b.miss > span:first-child { color: var(--unk); }
 .kf-d { color: var(--muted); font-variant-numeric: tabular-nums; }
-.kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .kf-b:hover { background: var(--surface-2); } }
-@media (pointer: coarse) { .kf-b { min-height: 44px; } } /* (a finger's 44 px, the key itself: #471's check) */
+@media (pointer: coarse) { .kf-b { min-height: 44px; } } /* (44 px by touch, as the round trip's chips) */
 @media (max-height: 520px) { .kf { display: none; } }
 /* the header is one row: the route's numbers, which wrap onto lines of their own before they touch (#242), and Done */
 .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
@@ -1010,15 +1011,11 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet .trip-when { font-weight: var(--weight-name); }
 /* a quiet scrollbar (#382, round 5's and Mine 8's): thin, and seen only while it scrolls (main.js: .scrolling, 0.9 s) and under a
    mouse, for the planner, the cards and the panels */
-:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body) { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body) { --bar: transparent; scrollbar-width: thin; scrollbar-color: var(--bar) transparent; }
 :is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body)::-webkit-scrollbar { width: 6px; height: 6px; }
-:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body)::-webkit-scrollbar-thumb { border-radius: 3px; background: transparent; }
-:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body).scrolling { scrollbar-color: color-mix(in srgb, var(--text) 32%, transparent) transparent; }
-:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body).scrolling::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 32%, transparent); }
-@media (hover: hover) and (pointer: fine) {
-  :is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body):hover { scrollbar-color: color-mix(in srgb, var(--text) 32%, transparent) transparent; }
-  :is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body):hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 32%, transparent); }
-}
+:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body)::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--bar); }
+.scrolling { --bar: color-mix(in srgb, var(--text) 32%, transparent); } /* (main.js sets it on what scrolls, 0.9 s) */
+@media (hover: hover) and (pointer: fine) { :is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body):hover { --bar: color-mix(in srgb, var(--text) 32%, transparent); } }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 /* the routing bar, on the sheet's top edge (js/planner.js setBusy()), a child of the sheet so folding doesn't hide it: it waits
    300 ms, so a quick answer shows nothing, fades in, and its gradient slides on transform alone; with reduced motion a full
@@ -1069,8 +1066,6 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-profile[hidden] { display: none; }
 .pl-profile .profile-top { margin: var(--space-4) 0 0; padding: 0 var(--space-4) 0 11px; flex-wrap: nowrap; }
 .pl-profile .side-wrap { margin: var(--space-8) 0 0; }
-.pl-h > .prof-size { position: relative; flex: none; display: grid; place-items: center; width: var(--size-m); height: var(--size-m); padding: 0; border: 1px solid var(--key-edge); border-radius: var(--radius-control); background: color-mix(in srgb, var(--surface-solid) 86%, transparent); color: var(--text); }
-@media (pointer: coarse) { .pl-h > .prof-size::after { content: ""; position: absolute; inset: -2px; } } /* (its key M, on the chart's side of the heading, #382; a finger's 44 px) */
 .pl-profile .mode-select { flex: 0 1 auto; }
 .pl-profile .tg-inline { flex: none; }
 /* a narrow profile (a phone at 200 %): Colour by and its choice on rows of their own, On map and the size under them (#242) */
@@ -1082,7 +1077,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-profile.compact #profile-canvas { height: 72px; }
 /* Check's row, leading Route's view (#382, in place of #424's tabs), and its badge (25d part 2): the warnings' count with
    a triangle in the warning colour, else a neutral count; "?" beside it while something wasn't checked */
-.check-row { grid-column: 1 / -1; flex: 0 0 100%; margin-bottom: 6px; }
+.check-row { grid-column: 1 / -1; flex: 0 0 100%; }
 .check-badge { display: inline-flex; align-items: center; gap: 4px; }
 .check-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; gap: 2px; border-radius: 9px; background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .check-n.read:not(:empty) { background: var(--danger); color: var(--surface-solid); box-shadow: none; }
@@ -1097,8 +1092,13 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile :is(.profile-top, .prof-size) { display: none; }
 /* the peek is the head and the chart (#742): no heading, no key facts, and a long name on two lines (whole one size up) */
 .sheet[data-layout="sheet"][data-state="peek"] .pl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile :is(.pl-h, .side-wrap) { display: none; }
-.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > .pl-group { margin-top: 0; padding: 0; border: 0; }
+.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile .side-wrap { display: none; }
+/* (at the peek, while a drag moves it and at half, the profile has no heading and When follows it: the chart stays where the
+   peek has it, #742; at full When leads, the order of 2026-11-15) */
+.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .pl-h { display: none; }
+.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile > .pl-group { margin-top: 0; padding: 0; border: 0; background: none; }
+.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) > .trip-box { order: 1; margin-top: var(--space-6); }
+.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) > .sheet-body { order: 2; }
 /* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
    for half (.prof-open); a mouse, which moves the sheet only by its top rows, reads it at the peek as anywhere */
 .prof-open { display: none; }
@@ -1232,7 +1232,6 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .speed-go { margin-top: 10px; }
 /* Settings' speeds: every sport a row, its speeds in one line; a tap opens the editor under it */
 .speed-list .speed-box { padding: 8px 8px 12px 42px; } /* (under the sport's name) */
-.wpl-foot .btn { white-space: nowrap; }
 .onmap .tg { max-width: 360px; }
 /* Route's two rows, and their steps (#424's C): a step shows the route style or your speeds alone, with Back to Route */
 .how-rows { grid-column: 1 / -1; margin-bottom: 6px; }
@@ -1449,9 +1448,9 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
    (one on solid glass), 4 px round what it holds and its rows' corners nesting in its own (14 outside, 10 inside), so its
    words start 15 px in, its heading's too; 12 px between groups */
 .pl-group { padding: var(--space-4); border: 1px solid var(--group-edge); border-radius: var(--radius); background: var(--group); }
-.pl-h { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-8) 0 var(--space-4) 11px; }
-.pl-h > h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--pl-head); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: anywhere; }
-.pl-h > :not(h3) { margin-block: -10px; } /* (its tools keep their targets without making the heading taller) */
+.pl-h { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); padding: var(--space-8) 0 var(--space-4) 11px; }
+.pl-h > h3 { flex: 1 1 auto; margin: 0; font-size: var(--pl-head); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: break-word; } /* (a word stays whole, #1050's review) */
+.pl-h > :not(h3) { margin-block: -10px; margin-left: auto; } /* (its tools keep their targets without making the heading taller) */
 .sheet > .trip-box { margin-top: var(--space-4); } /* (with the head's 8 px: When and the weather stay with the numbers) */
 .pl-profile > .pl-group { margin-top: var(--space-12); }
 .pl-pane > :is(.pl-group, .sec.pl-group) { margin-top: var(--space-12); }
@@ -1462,13 +1461,14 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 :is(.pl-group.rows, .pl-group > .rows) { margin-inline: 0; }
 :is(.pl-group.rows, .pl-group > .rows) > .row { border-radius: 10px; }
 :is(.pl-group.rows, .pl-group > .rows) > .row + .row { border-radius: 0; }
-:is(.pl-group.rows, .pl-group > .rows) > .row:first-child:not(:only-child) { border-radius: 10px 10px 0 0; }
+:is(.pl-group.rows, .pl-group > .rows:first-child) > .row:first-child:not(:only-child) { border-radius: 10px 10px 0 0; } /* (under a heading, square) */
 :is(.pl-group.rows, .pl-group > .rows) > .row:last-child:not(:only-child) { border-radius: 0 0 10px 10px; }
-.how-box > .how-rows > .row:first-child:not(:only-child) { border-radius: 0; } /* (under its heading) */
 /* (200 %: groups lose their edge and padding, so their words get the planner's width, the user's choice of 2026-11-11) */
 @media (max-width: 300px) {
   .pl-group { padding: 0; border: 0; } .pl-h { padding-left: 0; }
   .sheet-head .pl-title { padding-right: 0; } .sheet-head .pl-title-t { padding-left: 0; } .sheet-head .sheet-row > .side-wrap { margin: 0; }
+  .sheet-row .sheet-sum { flex-wrap: wrap; } .sheet-row .sheet-sum > .sum-item + .sum-item { box-shadow: none; } /* (they wrap, never scroll: DESIGN.md) */
+  .sheet[data-state="peek"] .pl-title-t { display: none; } /* (its numbers and the chart: the name at half) */
   .pl-readrow-go { padding: 0 6px; } .pl-readrow-go > span { display: none; } /* (the ball alone, so the name keeps its room: its name says the rest) */
 }
 /* the box over the profile (the order of 2026-11-15): When and when you're there, then a row a day with › */
@@ -1750,9 +1750,8 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .wpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wpl-main small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .wpl-foot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); margin-top: var(--space-8); } /* (two to a row, every one in sight: actions never scroll away, #690's rule) */
-.wpl-foot .btn { justify-content: center; }
 @media (max-width: 300px) { .wpl-foot { grid-template-columns: minmax(0, 1fr); } }
-.wpl-foot .btn { flex: none; min-height: var(--target); padding: 0 var(--space-12); font-size: var(--font-row); }
+.wpl-foot .btn { justify-content: center; min-height: var(--target); padding: 0 var(--space-12); white-space: nowrap; }
 /* the dangerous one at the row's far end, apart from the others (on a line of its own where they don't fit) */
 .wpl-foot:empty { display: none; }
 .tool.small { width: 28px; height: 28px; }
@@ -1777,8 +1776,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .sec2-head > span:first-child { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
 /* a part's sport on the list's line, as #761 built it, bigger and filled in its colour (the user's choice of 2026-11-16 over
    Mine 8's bubble at the list's left: the ball lined up with the line reads calmer) */
-.wpl .sec2-head > span:first-child > .ic { width: 18px; height: 18px; padding: 7px; margin-top: -4px; background: var(--part); box-shadow: none; color: #fff; }
-:root[data-theme="dark"] .wpl .sec2-head > span:first-child > .ic { color: #000; } /* (black on dark mode's lighter colours) */
+.wpl .sec2-head .bub { position: relative; z-index: 1; margin-top: -4px; } /* (on the line, over its rail) */
 .wpl .sec2-head b { font-size: var(--pl-row); }
 .bub { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--part); color: #fff !important; }
 :root[data-theme="dark"] .bub { color: #000 !important; } /* (the dark mode's lighter sport colours: black reads on every one) */
@@ -2137,11 +2135,11 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
    a dashed ring, with how many weren't checked, while nothing is to read but that. A tap opens Check at the first */
 .pl-readrow { flex: none; }
 .pl-readrow-go { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); padding: 0 12px 0 6px; border: 0; border-radius: var(--radius-pill); background: var(--danger-soft); color: var(--danger); font: inherit; font-weight: var(--weight-name); cursor: pointer; }
-.pl-readrow-go > b { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--danger); color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; }
+.pl-readrow-go > b { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--danger); color: var(--surface-solid); font-size: 13px; font-variant-numeric: tabular-nums; }
 .pl-readrow-go.unk { background: var(--unk-soft); color: var(--unk); }
 .pl-readrow-go.unk > b { background: none; box-shadow: inset 0 0 0 1.5px var(--unk); border: 0; color: var(--unk); }
 .pl-readrow-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-@media (hover: hover) { .pl-readrow-go:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); } .pl-readrow-go.unk:hover { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); } }
+@media (hover: hover) and (pointer: fine) { .pl-readrow-go:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); } .pl-readrow-go.unk:hover { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); } }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }
