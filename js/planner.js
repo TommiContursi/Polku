@@ -2954,7 +2954,7 @@ export class Planner {
     // red button, with Undo in its note as ever. Reorder's place stays put while reordering, as Done, and at half on a phone
     // the start and the first stretch stay in sight. Round trip and Import are in ⋯ and the route's cards, not here too (#745).
     this.els.pointsFoot.replaceChildren(...[
-      n >= 2 && !ro ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); this.els.pointsFoot.querySelector('[aria-pressed]')?.focus(); },
+      n >= 2 && !ro ? h('button', { type: 'button', class: this.reordering ? 'btn primary' : 'btn', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); this.els.pointsFoot.querySelector('[aria-pressed]')?.focus(); },
         html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder') : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: TIPS.reverse.text, onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
       // (beside Reverse, the other way to change the whole route's shape from here; a loop has no leg back to add)
@@ -4727,12 +4727,11 @@ export class Planner {
     // its heading with its size at its end, the chart in a group with Colour by and On map under it, the key facts after (#382)
     const profTitle = h('span', {}, 'Route profile');
     this.els.profZone = h('section', { class: `pl-profile${this.profCompact ? ' compact' : ''}`, 'data-sec': 'profile', 'aria-labelledby': 'pl-profile-h' },
-      this.heading(h('h3', { id: 'pl-profile-h' }, profTitle), this.els.profSize),
-      h('div', { class: 'pl-group' }, h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas', role: 'img' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true }),
+      h('div', { class: 'pl-group' }, this.heading(h('h3', { id: 'pl-profile-h' }, profTitle), this.els.profSize), h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas', role: 'img' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true }),
         // at a phone's peek (#742): a tap opens the profile at half, where it's scrubbed, and a drag moves the sheet
         h('button', { type: 'button', class: 'prof-open', 'aria-label': 'Open the profile', title: 'Open the profile', onclick: () => this.setSheetState('half') })),
-      h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow)),
-      sideways(this.els.facts, 'Key facts'));
+      h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow),
+      sideways(this.els.facts, 'Key facts')));
     this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
     this.renderProfileSize();
 
@@ -4757,12 +4756,10 @@ export class Planner {
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
         h('div', { class: 'rows check-row pl-group' }, this.els.checkGo),
-        this.heading(h('h3', {}, 'Route'), this.els.pointsTools = h('div', { class: 'wpl-head-tools' })),
-        this.section('points', 'Route', this.els.pointsTop = h('div', { class: 'wpl-top' }),
-          this.els.points = h('ol', { class: 'wpl pl-group', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
+        this.section('points', 'Route', this.heading(h('h3', {}, 'Route'), this.els.pointsTools = h('div', { class: 'wpl-head-tools' })), this.els.pointsTop = h('div', { class: 'wpl-top' }),
+          this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // Route style › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
-        this.els.howH = this.heading(h('h3', {}, 'Route style and your speed')),
-        this.els.howRows = h('div', { class: 'rows how-rows pl-group' }),
+        h('div', { class: 'pl-group how-box' }, this.heading(h('h3', {}, 'Route style and your speed')), this.els.howRows = h('div', { class: 'rows how-rows' })),
         // the route style: which ways the router prefers, and how fast the time is counted (shown in a start step's
         // Fine-tune too, the same elements: borrowHow())
         this.section('style', 'Route style', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap)),
@@ -4775,6 +4772,7 @@ export class Planner {
         h('div', { class: 'sec-stack' }, this.checksSection(), this.section('climbs', 'Climbs', this.els.climbs)),
         this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown)),
     };
+    this.sec.points.el.classList.add('pl-group');
     this.els.body = h('div', { class: 'sheet-body' }, this.els.panes.route, this.els.panes.check);
     p.addEventListener('scroll', () => { // (the body's, or the sheet's where it scrolls as one)
       const owner = this.categoryPreview?.owner;

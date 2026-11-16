@@ -1068,7 +1068,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-profile { flex: none; padding: 0 16px 6px; container-type: inline-size; }
 .pl-profile[hidden] { display: none; }
 .pl-profile .profile-top { margin: var(--space-4) 0 0; padding: 0 var(--space-4) 0 11px; flex-wrap: nowrap; }
-.pl-profile > .side-wrap { margin: var(--space-8) -2px 0; }
+.pl-profile .side-wrap { margin: var(--space-8) 0 0; }
 .pl-h > .prof-size { position: relative; flex: none; display: grid; place-items: center; width: var(--size-m); height: var(--size-m); padding: 0; border: 1px solid var(--key-edge); border-radius: var(--radius-control); background: color-mix(in srgb, var(--surface-solid) 86%, transparent); color: var(--text); }
 @media (pointer: coarse) { .pl-h > .prof-size::after { content: ""; position: absolute; inset: -2px; } } /* (its key M, on the chart's side of the heading, #382; a finger's 44 px) */
 .pl-profile .mode-select { flex: 0 1 auto; }
@@ -1097,8 +1097,8 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile :is(.profile-top, .prof-size) { display: none; }
 /* the peek is the head and the chart (#742): no heading, no key facts, and a long name on two lines (whole one size up) */
 .sheet[data-layout="sheet"][data-state="peek"] .pl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > :is(.pl-h, .side-wrap) { display: none; }
-.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > .pl-group { padding: 0; border: 0; }
+.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile :is(.pl-h, .side-wrap) { display: none; }
+.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > .pl-group { margin-top: 0; padding: 0; border: 0; }
 /* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
    for half (.prof-open); a mouse, which moves the sheet only by its top rows, reads it at the peek as anywhere */
 .prof-open { display: none; }
@@ -1337,7 +1337,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
   .sheet-cols { display: flex; flex-wrap: wrap; gap: 6px 28px; align-items: flex-start; }
   .sheet-cols > .sec { flex: 1 1 280px; min-width: 260px; }
   .sheet-cols > .sec-break { display: block; flex: 0 0 100%; height: 0; }
-  .sheet-cols > :is(.pl-h, .pl-group:not(.sec)) { flex: 0 0 100%; } /* (a heading and a group of rows across the panel, #382) */
+  .sheet-cols > .pl-group:not(.sec) { flex: 0 0 100%; } /* (a group of rows across the panel, #382) */
   .sheet-cols > .sec[data-sec="profile"], .sheet-cols > .sec[data-sec="loop"] { flex-basis: 100%; }
   /* climbs above heads-up, in one column; gone when both are empty */
   .sheet-cols > .sec-stack { display: flex; flex-direction: column; flex: 1 1 280px; min-width: 260px; }
@@ -1444,23 +1444,27 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .pill { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .pill.warn { background: rgba(234,88,12,.14); color: var(--warn-text); }
 /* ---------------------------------------------------------------- the trip's box and the weather card (#869's step 3) */
-/* the planner's sections (#382, Mine 8): a heading, its tools at its end, then the section in a group. A group is one edge, 4 px
-   round what it holds, its rows' corners nesting in its own (14 outside, 10 inside), so its words start 15 px in, as the
-   heading's do; 12 px between groups */
-.pl-h { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-24) 0 var(--space-8); padding-left: 15px; }
-.pl-h > h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--pl-head); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: anywhere; }
-.pl-h > :not(h3) { margin-block: -10px; } /* (its tools keep their targets without making the heading taller: it stays near its group) */
+/* the planner's sections (#382): each a group on the glass, its heading inside it with its tools at its end (as Settings'
+   and Layers' groups, the user's question of 2026-11-16), so a section reads as one thing. A group is no edge on the glass
+   (one on solid glass), 4 px round what it holds and its rows' corners nesting in its own (14 outside, 10 inside), so its
+   words start 15 px in, its heading's too; 12 px between groups */
 .pl-group { padding: var(--space-4); border: 1px solid var(--group-edge); border-radius: var(--radius); background: var(--group); }
+.pl-h { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-8) 0 var(--space-4) 11px; }
+.pl-h > h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--pl-head); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: anywhere; }
+.pl-h > :not(h3) { margin-block: -10px; } /* (its tools keep their targets without making the heading taller) */
 .sheet > .trip-box { margin-top: var(--space-4); } /* (with the head's 8 px: When and the weather stay with the numbers) */
-.pl-pane > .check-row { margin: 18px 0 0; } /* (a section of its own: with the profile's 6 px, 24 px from it) */
+.pl-profile > .pl-group { margin-top: var(--space-12); }
+.pl-pane > :is(.pl-group, .sec.pl-group) { margin-top: var(--space-12); }
+.pl-pane > .check-row { margin: 6px 0 0; } /* (with the profile's 6 px, 12 px from it) */
 .pl-pane > .sec[data-sec="points"] { border-top: 0; }
-.wpl.pl-group { margin: 0; padding: 0 var(--space-4); }
+.sec[data-sec="points"] .wpl { padding-left: var(--space-8); } /* (its times 15 px in, where its heading's words are) */
+.how-box:has(> .how-rows:empty) { display: none; }
 :is(.pl-group.rows, .pl-group > .rows) { margin-inline: 0; }
 :is(.pl-group.rows, .pl-group > .rows) > .row { border-radius: 10px; }
 :is(.pl-group.rows, .pl-group > .rows) > .row + .row { border-radius: 0; }
 :is(.pl-group.rows, .pl-group > .rows) > .row:first-child:not(:only-child) { border-radius: 10px 10px 0 0; }
 :is(.pl-group.rows, .pl-group > .rows) > .row:last-child:not(:only-child) { border-radius: 0 0 10px 10px; }
-.pl-pane > .pl-h:has(+ :is([hidden], .how-rows:empty)) { display: none; }
+.how-box > .how-rows > .row:first-child:not(:only-child) { border-radius: 0; } /* (under its heading) */
 /* (200 %: groups lose their edge and padding, so their words get the planner's width, the user's choice of 2026-11-11) */
 @media (max-width: 300px) {
   .pl-group { padding: 0; border: 0; } .pl-h { padding-left: 0; }
@@ -1745,10 +1749,11 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .wp-mini.wp-end::after { width: 6px; height: 6px; }
 .wpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wpl-main small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.wpl-foot { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-8); } /* (actions in sight, never scrolled away: they wrap, #690's rule, the user's of 2026-11-16) */
+.wpl-foot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); margin-top: var(--space-8); } /* (two to a row, every one in sight: actions never scroll away, #690's rule) */
+.wpl-foot .btn { justify-content: center; }
+@media (max-width: 300px) { .wpl-foot { grid-template-columns: minmax(0, 1fr); } }
 .wpl-foot .btn { flex: none; min-height: var(--target); padding: 0 var(--space-12); font-size: var(--font-row); }
 /* the dangerous one at the row's far end, apart from the others (on a line of its own where they don't fit) */
-.wpl-foot .btn.danger { margin-left: auto; }
 .wpl-foot:empty { display: none; }
 .tool.small { width: 28px; height: 28px; }
 /* Route's list in sections (25d's part 4, Revision 5 [jd-multi]): a section's title, its numbers, its warnings, then
@@ -1775,7 +1780,6 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .wpl .sec2-head > span:first-child > .ic { width: 18px; height: 18px; padding: 7px; margin-top: -4px; background: var(--part); box-shadow: none; color: #fff; }
 :root[data-theme="dark"] .wpl .sec2-head > span:first-child > .ic { color: #000; } /* (black on dark mode's lighter colours) */
 .wpl .sec2-head b { font-size: var(--pl-row); }
-.wpl .sec2-head > span:first-child { margin-right: var(--space-4); } /* (the ball is wider than the line's column: room before its name) */
 .bub { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--part); color: #fff !important; }
 :root[data-theme="dark"] .bub { color: #000 !important; } /* (the dark mode's lighter sport colours: black reads on every one) */
 .sec2-head > span:first-child > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
@@ -1915,7 +1919,6 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
   .style-label { width: 100%; }
   .style-help { margin-left: 0; }
 }
-.wpl-foot .btn[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .pt-style { align-self: stretch; }
 .pt-style .mode-select-box, .pt-style select { width: 100%; }
 /* multisport: a changeover's badge on the map */
