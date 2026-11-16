@@ -407,7 +407,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | A choice to begin with | `way-tile` with `way-ic`, `way-t`, `way-chev`: a tile, with a green icon (the start's tiles stay tiles) | Ways to begin |
 | A choice with its value | `stylebtn` with `two` | Route style, Direction |
 | A switch | `seg` (`full`, `small`, `rt-unit`): one height in a place, `--target` (36 px with a mouse, 44 px by touch); the chosen one with `aria-pressed`: white, black words, a green icon or tick | Distance · Time |
-| Chips to pick one | `rt-chips` or `way-chips` with `chip`; chosen (`aria-pressed`): a green tint, a 2 px green border, black words. `act-chip`, `chip-on` and a menu's chips (`menu-chips`) look the same | the round trip's lengths |
+| Chips to pick one | `rt-chips` or `way-chips` with `chip`: the key's white face and `--key-edge`, black words, M (`--size-m`) where its place sets no height; chosen (`aria-pressed`): a green tint, a 2 px green border, black words. `act-chip`, `chip-on` and a menu's chips (`menu-chips`) look the same | the round trip's lengths |
 | The one main action | `btn primary big`, with `rt-make-t` for a line under it; its words wrap (a least height) | Make 3 loops |
 | A number with − and +, typable | `rt-step` with `rt-len`, one box holding `tool` −, the field, its unit and `tool` +; its lead and its line beside it | the round trip's Other…, a stop's and a changeover's minutes |
 | A button | `btn` (`quiet`, `primary`): a key, a flat white face with a 1 px `--key-edge` and 10 px corners (#382); a least height, never a fixed one, so its words wrap inside it (#373). Sizes by the pointer: L is `--target` (DESIGN.md) | everywhere; the toolbar's Done keeps `--line` until #1042 |

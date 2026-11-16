@@ -19707,16 +19707,23 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (!len || parts.some((e) => !e)) out.push('no stepper after Other…');
   else if (parts.some((e) => !inside(e, len))) out.push('the stepper’s − and + aren’t in its box');
   // the keys (#382, Mine 8): one look, a flat face with a 1 px --key-edge and 10 px corners; sizes by the pointer, never the
-  // width: L is --target, 36 px with a mouse and 44 by touch
-  const L = matchMedia('(pointer: coarse)').matches ? 44 : 36;
-  if (val('--target') !== `${L}px`) out.push(`L is ${val('--target')}, not ${L}px`);
+  // width: L is --target, 36 px with a mouse and 44 by touch, M a size smaller (32, 40) for a value or a choice
+  const coarse = matchMedia('(pointer: coarse)').matches, L = coarse ? 44 : 36, M = coarse ? 40 : 32;
+  if (val('--target') !== `${L}px` || val('--size-m') !== `${M}px`) out.push(`sizes: L ${val('--target')}, M ${val('--size-m')}, not ${L}px and ${M}px`);
   const kb = document.body.appendChild(document.createElement('div'));
   kb.innerHTML = `<div class="pl-way card"><div class="rows acts btns"><button class="row"><span></span><span><b>Move</b></span></button></div><button class="btn">Share</button>
-    <button class="btn primary big">Edit this stretch</button></div><div class="panel-head"><button class="tool">✕</button></div>`;
+    <button class="btn primary big">Edit this stretch</button></div><div class="panel-head"><button class="tool">✕</button></div>
+    <button class="chip" aria-pressed="false">Grade</button><div class="mode-select"><span class="mode-select-box"><select><option>Gradient</option></select></span></div><button class="rt-pill">Leave now</button>`;
   const keyEdge = col(val('--key-edge'));
   for (const [sel, what] of [['.btn:not(.quiet):not(.primary)', 'a key'], ['.rows.acts.btns > .row', 'a card’s action']]) {
     const c = cs(kb.querySelector(sel)), got = `${c.borderTopWidth} ${c.borderTopColor} ${c.borderTopLeftRadius}`;
     if (got !== `1px ${keyEdge} 10px`) out.push(`${what}: its edge ${got}, not 1px ${keyEdge} 10px`);
+  }
+  // a value to pick and a choice: the key's face and edge, round; a chip and Colour by are M
+  for (const [sel, what, h] of [['.chip', 'a chip', M], ['.mode-select select', 'Colour by', M], ['.rt-pill', 'When', null]]) {
+    const e = kb.querySelector(sel), c = cs(e), got = `${c.borderTopWidth} ${c.borderTopColor} ${c.backgroundColor}`, want = `1px ${keyEdge} ${col(val('--surface-solid'))}`;
+    if (got !== want) out.push(`${what}: ${got}, not ${want}`);
+    if (h && Math.round(e.getBoundingClientRect().height) !== h) out.push(`${what} ${Math.round(e.getBoundingClientRect().height)} px tall, not M ${h}`);
   }
   if (cs(kb.querySelector('.btn.big')).borderTopLeftRadius !== '10px') out.push(`the main action's corners ${cs(kb.querySelector('.btn.big')).borderTopLeftRadius}, not 10px`);
   const x = kb.querySelector('.panel-head .tool').getBoundingClientRect();

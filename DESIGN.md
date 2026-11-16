@@ -220,7 +220,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 - The map's own colours (land, water, parks, labels) are in `js/style.js`, one palette per map style. The sports' own line colours are `--sport-…` (`SPORT_COLORS` in `js/config.js`).
 
 ### Named Rules
-**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Magenta belongs to the route, red to danger, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Green means you can tap it** (decided 2026-11-06 in #869, written here 2026-11-15): a value you pick, a fold, a way back or the one main action, and never plain information. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
+**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Magenta belongs to the route, red to danger, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Green is for what's chosen** (decided 2026-11-16 in #382, after #869's "green means you can tap it"): a chosen chip or segment, the one main action, and a fold's or a way back's words, never plain information. A value you pick is in the text's colour with a grey ▾, as any key's words are. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
 
 **The Never by Colour Alone Rule.** Every colour that means something (a warning, a difficulty, a chosen state) is also said in words, a tick, an icon or a shape (PRODUCT.md, WCAG 2.2 AA).
 
@@ -302,7 +302,7 @@ On the glass:
 
 Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's cards and round 5's look), and built a small PR at a time; what isn't built yet says so. The mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html), version **Mine 8**. It's a sketch: where a detail looks better otherwise in the app (dark mode, a padding, a colour), the app decides. Polku is read outdoors on a phone, in sun and with one thumb, so what you read is big enough and what you can press is plain to see.
 
-**Sizes, by the pointer, never the window's width** (decided 2026-11-16). By touch XS 28, S 32, M 40, L 44 and XL 52 px, and every control's target is 44 px however small it draws. With a mouse each is a size smaller: M 32 and L 36 (XS 24, S 28 and XL 44 proposed). L is `--target`; each other size gets its value with the first control that uses it. The words stay the same size with a mouse.
+**Sizes, by the pointer, never the window's width** (decided 2026-11-16). By touch XS 28, S 32, M 40, L 44 and XL 52 px, and every control's target is 44 px however small it draws. With a mouse each is a size smaller: M 32 and L 36 (XS 24, S 28 and XL 44 proposed). L is `--target` and M `--size-m`; each other size gets its value with the first control that uses it. The words stay the same size with a mouse.
 
 **Type, four steps.** A title (the route's name, a card's name) 22 px; a section's heading 17 px, bold, in sentence case; a row's name and a button's words 16 px; a line under a row 14 px in `--muted`. Numbers are 24 px (20 px in a desktop's card) with their unit at 14 px and their word under them at 13 px.
 
@@ -322,7 +322,8 @@ Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's c
 3. **Bare icons,** from a fixed few: ⌄ ⌃ ✕ ⋯ ↶ ↷ ⚙, the list's settings and full screen, L: the sheet's top row and a panel's ✕.
 
 Beside those:
-- **A value you pick** (Leave now ▾, Colour by ▾): green words on a white key with an edge and ▾, never a pale green field.
+- **A value you pick** (Leave now ▾, Colour by ▾): the value in the text's colour on a round key with the key's face and edge, and a grey ▾, never a pale green field. Colour by is M; When stays L, the planner's first value.
+- **A choice** (a chip): a round key with the key's face and edge, its words in the text's colour, M where a chip has no size of its own; a chosen one has a green tint and a 2 px green edge.
 - **A row that opens something** (Route style ›, Your speed ›, Sport from here ›, the list's rows): 56 px, the whole row a target, its value green before ›, a line between rows.
 - **A switch** for on and off; **segments** for one of a few, the chosen one a white key; **the key facts** as round keys; **a stepper** as − and + keys around the value.
 - **Not pressable:** numbers and their words have no edge, no › and no ▾.

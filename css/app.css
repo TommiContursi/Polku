@@ -63,8 +63,9 @@
   --t-press: 120ms; --t-open: 180ms; --t-sheet: 260ms; /* closing takes the next shorter one */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px; --space-12: 12px; --space-16: 16px; --space-24: 24px;
-  /* sizes by the pointer, never the window's width (#382): L, a target, 36 px with a mouse and 44 px by touch (#380); a row, a card's mark */
-  --target: 36px; --row-h: 50px; --mark: 34px;
+  /* sizes by the pointer, never the window's width (#382): L, a target, 36 px with a mouse and 44 px by touch (#380); M a size smaller,
+     32 and 40, for a value or a choice; a row, a card's mark */
+  --target: 36px; --size-m: 32px; --row-h: 50px; --mark: 34px;
   /* The colour scales (the plan's §2), read by the JavaScript through js/palette.js. Each step keeps the colour
      it had; a scale's words and keys are in its table in js/config.js, js/chart.js or js/weather.js. */
   --diff-s0: #22a447; --diff-s1: #c7c100; --diff-s2: #f59e0b; --diff-s3: #ef4444; --diff-s4: #c026d3; --diff-s5: #7e22ce; --diff-s6: #4c1d95;
@@ -90,7 +91,7 @@
   --winter-ploughed: #3b82f6; --winter-not: #94a3b8; --winter-nobikes: #dc2626; --winter-ski: #7c3aed;
   color-scheme: light;
 }
-@media (pointer: coarse) { :root { --target: 44px; } }
+@media (pointer: coarse) { :root { --target: 44px; --size-m: 40px; } }
 /* a desktop's card at the point is one step smaller (Revision 5 of #363) */
 .card-float { --row-h: 36px; --mark: 28px; --font-title: 0.9375rem; --font-number: 1.0625rem; --font-numeral: 1.0625rem; --font-row: 0.875rem; }
 /* Dark: data-theme on <html>, from Settings → Appearance (#323), set before the first paint by index.html and
@@ -288,7 +289,7 @@ html { -webkit-tap-highlight-color: transparent; }
 /* with Paddle, its craft under the sports, as chips */
 .act-craft { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
 .act-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 12px 2px; }
-.act-chip { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.act-chip { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; border: 1px solid var(--key-edge); border-radius: 999px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
 .act-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (pointer: coarse) { .act-chip { min-height: 44px; } }
 
@@ -410,7 +411,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-head { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px 8px; }
 .tl-title { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 13px; white-space: nowrap; }
 /* a pill naming what's chosen, opening its menu (When's, #878) */
-.rt-pill { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); max-width: 100%; padding: 4px 10px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.rt-pill { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); max-width: 100%; padding: 4px 10px; border: 1px solid var(--key-edge); border-radius: 22px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
 .rt-pill > span { min-width: 0; display: grid; }
 .rt-pill:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .tl-close, .tl-more { width: 28px; height: 28px; }
@@ -702,8 +703,8 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .seg button:disabled { opacity: .45; cursor: not-allowed; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip {
-  height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line); background: transparent;
-  color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer;
+  height: var(--size-m); padding: 0 12px; border-radius: 999px; border: 1px solid var(--key-edge); background: var(--surface-solid);
+  color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
 }
 /* the chosen chip, everywhere: green with a 2 px border (#356) */
 .chip[aria-pressed="true"], .chip.chip-on, .act-chip[aria-pressed="true"], .menu-chips .menu-item.chip[aria-checked="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
@@ -1267,8 +1268,8 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .mode-select-label { white-space: nowrap; }
 .mode-select-box { position: relative; display: flex; min-width: 0; }
 .mode-select select {
-  appearance: none; -webkit-appearance: none; height: 30px; min-width: 0; max-width: 100%; padding: 0 30px 0 12px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  appearance: none; -webkit-appearance: none; height: var(--size-m); min-width: 0; max-width: 100%; padding: 0 30px 0 12px; border-radius: 999px;
+  border: 1px solid var(--key-edge); background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
 }
 @media (hover: hover) { .mode-select select:hover { background: var(--surface-2); } }
 .mode-select select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -2814,7 +2815,7 @@ body.dropping .drop-hint { display: flex; }
 .menu-pick:has(> input:focus-visible) > span { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (hover: hover) { .menu-pick:hover > span { background: var(--surface-2); } }
 .menu-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 8px; max-width: 320px; }
-.menu-chips .menu-item.chip { height: 36px; padding: 0 12px; gap: 4px; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; }
+.menu-chips .menu-item.chip { height: 36px; padding: 0 12px; gap: 4px; border: 1px solid var(--key-edge); border-radius: 999px; font-weight: 600; }
 .menu-chips .menu-item.chip > span { display: inline; }
 .menu-chips .menu-item.chip:disabled { opacity: 1; }
 /* with no room beside its button (enlarged text, a raised sheet): a sheet of its own */
