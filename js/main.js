@@ -1274,7 +1274,7 @@ function trailControls() {
 // one overlay's switch, with its opacity under it while it's on (Lit ways: its look, then its opacity)
 const overlayToggle = (id) => {
   const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
-  const tg = toggleInfo(overlayLabel(id), !!state.overlays[id], rerender((v) => {
+  const tg = (o?.keepNote ? toggle : toggleInfo)(overlayLabel(id), !!state.overlays[id], rerender((v) => {
     setOverlay(id, v);
     if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
