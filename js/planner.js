@@ -4851,7 +4851,7 @@ export class Planner {
       const st = this.panel.dataset.state;
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(st)) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'folded') this.setSheetState('open');
-      requestAnimationFrame(() => (id === 'check' ? this.els.checkBack : this.els.checkGo).focus({ preventScroll: true }));
+      (id === 'check' ? this.els.checkBack : this.els.checkGo).focus({ preventScroll: true }); // (at once: the view it left is hidden, which would leave the focus nowhere)
     }
     this.renderOnRoute(); // (Good to know's markers while Check is in sight)
   }
