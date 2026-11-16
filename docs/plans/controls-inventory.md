@@ -132,7 +132,8 @@ No chip has a hover state.
 
 Every button on the drawing toolbar (`buildTools()` in `js/planner.js`, app.css:2624–2683). An idea from testing,
 2026-11-16: none needs designing anew, but each gets its new version from the component sheet, and the toolbar's icons
-become square icon keys. Not drawn in Components yet.
+become square icon keys. Mine 7 draws them on its screens and in Components (a phone's and a desktop's, with a mouse and
+by touch).
 
 | Button | Main now | New version (Components) |
 |---|---|---|
@@ -151,3 +152,14 @@ become square icon keys. Not drawn in Components yet.
 
 Sizes, decided 2026-11-16: by touch as the sheet draws them; with a mouse, one size smaller, as main's `--target` is
 (36 with a mouse, 44 by touch).
+
+| Size | By touch | With a mouse |
+|---|---|---|
+| XS | 28 | 24 |
+| S | 32 | 28 |
+| M | 40 | 32 |
+| L | 44 | 36 |
+| XL | 52 | 44 |
+
+L and M with a mouse are as decided; XS, S and XL with a mouse follow on from them in Mine 7 and wait for the user's OK.
+By touch every control's target is 44 px, however small it draws. The words stay the same size with a mouse.
