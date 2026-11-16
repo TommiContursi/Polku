@@ -2,6 +2,13 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-16
+
+### Clearer buttons ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- Buttons have a clearer edge and the same rounded corners everywhere, so they read as buttons in bright sun. That includes a card's actions, such as **Move** and **Rename**, its main action, such as **Edit this stretch**, and the buttons in the planner and Settings.
+- Sizes follow how you point, never how wide the window is: with a mouse, buttons are a size smaller than by touch. **‹ Route** and the ✕ at the top of Settings and Layers now follow that too. By touch, everything you can tap keeps room for a finger, and Settings' ✕ is as big as Layers'.
+
 ## 2026-11-15
 
 ### Best time to leave ([#273](https://github.com/TommiContursi/Polku/issues/273), [#856](https://github.com/TommiContursi/Polku/issues/856))

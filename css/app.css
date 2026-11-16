@@ -20,6 +20,7 @@
   /* words on the glass: a darker grey (every glass surface sets --muted to it), green and red, for 4.5:1 over the map */
   --muted-glass: #3b4741; --accent-glass: #165a3a; --bad-glass: #9b1f27;
   --line: rgba(28, 36, 32, 0.14);
+  --key-edge: var(--line-hc); /* a key's 1 px edge: as clear as High contrast's lines, so a key reads as one in the sun (#382) */
   --rail: #858f8a; /* the route's line in the route's list where it has no sport's colour, and its dotted breaks: 3:1 on the sheet (#761) */
   /* more contrast (prefers-contrast: more, or Settings' High contrast): a darker grey, heavier lines and a 3:1 rim */
   --muted-hc: #46514b; --line-hc: rgba(28, 36, 32, 0.35); --hc-border: rgba(16, 24, 20, 0.7); --hc-inner: rgba(255, 255, 255, 0.8);
@@ -62,8 +63,9 @@
   --t-press: 120ms; --t-open: 180ms; --t-sheet: 260ms; /* closing takes the next shorter one */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px; --space-12: 12px; --space-16: 16px; --space-24: 24px;
-  /* sizes by context: a target 36 px with a mouse and 44 px by touch (#380), a row, a card's mark */
-  --target: 36px; --row-h: 50px; --mark: 34px;
+  /* sizes by the pointer, never the window's width (#382): L, a target, 36 px with a mouse and 44 px by touch (#380);
+     M a size smaller, 32 and 40; a row; a card's mark */
+  --target: 36px; --size-m: 32px; --row-h: 50px; --mark: 34px;
   /* The colour scales (the plan's §2), read by the JavaScript through js/palette.js. Each step keeps the colour
      it had; a scale's words and keys are in its table in js/config.js, js/chart.js or js/weather.js. */
   --diff-s0: #22a447; --diff-s1: #c7c100; --diff-s2: #f59e0b; --diff-s3: #ef4444; --diff-s4: #c026d3; --diff-s5: #7e22ce; --diff-s6: #4c1d95;
@@ -89,7 +91,7 @@
   --winter-ploughed: #3b82f6; --winter-not: #94a3b8; --winter-nobikes: #dc2626; --winter-ski: #7c3aed;
   color-scheme: light;
 }
-@media (pointer: coarse) { :root { --target: 44px; } }
+@media (pointer: coarse) { :root { --target: 44px; --size-m: 40px; } }
 /* a desktop's card at the point is one step smaller (Revision 5 of #363) */
 .card-float { --row-h: 36px; --mark: 28px; --font-title: 0.9375rem; --font-number: 1.0625rem; --font-numeral: 1.0625rem; --font-row: 0.875rem; }
 /* Dark: data-theme on <html>, from Settings → Appearance (#323), set before the first paint by index.html and
@@ -709,7 +711,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 
 .btn {
   display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border-radius: 10px;
-  border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px;
+  border: 1px solid var(--key-edge); background: var(--surface-solid); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px;
   overflow-wrap: break-word; text-align: center; /* (its words wrap in it, never out of it: #373) */
 }
 @media (hover: hover) { .btn:hover { background: var(--surface-2); } }
@@ -836,8 +838,8 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 /* the full panel's way back to the drawer */
 #layers-panel .panel-head { justify-content: flex-start; gap: 4px; padding-left: 8px; }
 #layers-panel .panel-head h2 { flex: 1; min-width: 0; }
-#layers-panel .panel-back { width: 44px; height: 44px; color: var(--accent); }
-#layers-panel .panel-close { width: 44px; height: 44px; }
+#layers-panel .panel-back { color: var(--accent); }
+.panel-head > .tool { width: var(--target); height: var(--target); } /* (Back and ✕ in Settings' and Layers' heads: L) */
 #layers-panel > .qd-grab { display: none; }
 .qd-scrim { position: fixed; inset: 0; z-index: 11; background: transparent; -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
@@ -879,7 +881,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet-top .pl-tools.docked { flex-wrap: nowrap; margin: 0; padding: 0 0 0 6px; border: 0; } /* (off the sheet's rounded corner) */
 .sheet-top-start { display: flex; min-width: 0; }
 .sheet-top-end { display: flex; justify-content: flex-end; }
-:is(.sheet-top-start, .sheet-top-end) > .tool { display: none; width: 44px; height: 44px; }
+:is(.sheet-top-start, .sheet-top-end) > .tool { display: none; width: var(--target); height: var(--target); }
 .sheet[data-layout="side"] .sheet-top { display: none; }
 /* on a phone, and over a card in the peek, one row: ⌄ (with a mouse ⌃ too) at the top row's left, the handle in the
    middle, and ✕ at its right, with a card's ⋯ beside it (#889) */
@@ -1131,7 +1133,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .way-bar { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
 .btn.quiet { border-color: transparent; background: transparent; }
 @media (hover: hover) { .btn.quiet:hover { background: var(--surface-2); } }
-.way-back { min-height: 44px; padding-inline: 4px 10px; color: var(--accent); font-size: 15px; font-weight: 650; }
+.way-back { min-height: var(--size-m); padding-inline: 4px 10px; color: var(--accent); font-size: 15px; font-weight: 650; }
 .way-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .way-tile { display: flex; gap: 10px; align-items: flex-start; min-width: 0; min-height: 64px; padding: 12px; border: 1px solid var(--line); border-radius: 14px;
   background: var(--surface-solid); color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
@@ -1182,7 +1184,7 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .rt-start { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; }
 .rt-start .chip { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px; color: var(--text); font-size: 14.5px; }
 .rt-cost { display: grid; gap: 2px; margin: -4px 0 0; color: var(--muted); font-size: 13px; }
-.btn.big { justify-content: center; width: 100%; min-height: 52px; padding-block: 8px; border-radius: 14px; font-size: 17px; line-height: 1.25; }
+.btn.big { justify-content: center; width: 100%; min-height: 52px; padding-block: 8px; border-radius: var(--radius-control); font-size: 17px; line-height: 1.25; }
 .btn.big:disabled { opacity: .55; cursor: default; }
 .rt-making { display: grid; gap: 6px; justify-items: center; width: 70%; }
 .rt-progress { width: 100%; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .35); overflow: hidden; }
@@ -1942,7 +1944,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
    follows them shows at the peek, fading (cut) */
 .card .rows.acts.btns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
 .card .rows.acts.btns:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
-.card .rows.acts.btns > .row { min-height: var(--target); padding: 0 10px; gap: 8px; border: 1px solid var(--line); border-radius: 10px; box-shadow: none; background: var(--surface-solid); }
+.card .rows.acts.btns > .row { min-height: var(--target); padding: 0 10px; gap: 8px; border: 1px solid var(--key-edge); border-radius: 10px; box-shadow: none; background: var(--surface-solid); }
 .card .rows.acts.btns > .row.danger { grid-column: 1 / -1; justify-content: center; border: 1.5px solid var(--bad); }
 .card .rows.acts.btns > .row.danger > span:nth-child(2) { flex: none; }
 @container card (max-width: 290px) { .card .rows.acts.btns { grid-template-columns: minmax(0, 1fr); } } /* (200 %: one to a row, words whole) */
@@ -2202,7 +2204,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .maplibregl-popup-content { padding: 8px 12px 10px; border-radius: 16px; }
 .card-float .card { width: 320px; max-width: calc(100vw - 32px); max-height: min(480px, var(--card-max, 70vh)); gap: 8px; }
 .card-float .card > .way-bar { min-height: 36px; margin-bottom: -4px; }
-.card-float .way-back { min-height: 36px; font-size: 14px; }
+.card-float .way-back { font-size: 14px; }
 .card-float :is(.way-x, .card-set) { width: 36px; height: 36px; }
 /* a desktop's card folds to its title row (step 3 of #233); in a phone's peek the sheet's top row has its ⌄, ⋯ and ✕ (#889) */
 .card .way-fold { display: none; }
@@ -2235,7 +2237,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .menu-h:has(+ .rows.acts) { display: none; }
 .card-float .rows.acts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
 .card-float .rows.acts:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
-.card-float .rows.acts > .row { min-height: 36px; padding: 0 10px; gap: 8px; border: 1px solid var(--line); border-radius: 10px; box-shadow: none; background: var(--surface-solid); font-size: 13.5px; }
+.card-float .rows.acts > .row { min-height: 36px; padding: 0 10px; gap: 8px; border: 1px solid var(--key-edge); border-radius: 10px; box-shadow: none; background: var(--surface-solid); font-size: 13.5px; }
 .card-float .rows.acts > .row b { font-size: 13.5px; }
 .card-float .rows.acts > .row > span:nth-child(2) { display: block; }
 .card-float .rows.acts > .row.danger { justify-content: center; border: 1.5px solid var(--bad); background: transparent; }
@@ -2319,6 +2321,9 @@ body[data-activity="paddle"] #zoom-hint { display: none; } /* (Paddle's map isn'
 .card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
 @media (pointer: coarse) {
   .card .btn, .card .tool { min-height: 44px; min-width: 44px; }
+  .card .way-back { min-height: var(--size-m); } /* (M: 40 px drawn, its target 44 px, as below) */
+  .way-back { position: relative; }
+  .way-back::after { content: ""; position: absolute; inset: calc((var(--size-m) - 44px) / 2) 0; } /* (a finger's 44 px round an M key) */
   .card .rt-len { min-height: 44px; }
   .card .tg { min-height: 44px; } /* (the whole row is the switch's target) */
 }
@@ -2752,7 +2757,7 @@ body.dropping .drop-hint { display: flex; }
 .sportbtn { margin-right: 4px; height: 40px; flex: none; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .sportbtn > .ic:first-child { color: var(--accent); }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
-.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; } /* (first on the toolbar, E of #594; phones too, #745) */
+.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-right: 4px; border-color: var(--line); } /* (first on the toolbar, E of #594; phones too, #745; its edge stays as it is until the toolbar's keys, #1042) */
 .pl-tools:not(.desk) .btn.done { min-height: 44px; }
 .pl-tools .btn.done:disabled { opacity: .7; color: var(--muted); cursor: default; } /* (a first point: no route to read yet, as undo with nothing to undo) */
 /* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo, redo and More */

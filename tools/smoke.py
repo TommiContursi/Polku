@@ -19635,7 +19635,7 @@ CT_HELP = r"""
 # One look for each job (#356), at a phone's size or a desktop's: the start's sport, Draw it's Fine-tune and Settings'
 # speeds are rows, as a card's; every chosen chip is the round trip's; a switch is --target tall, the chosen one white
 # with black words and a green icon; a switch's off track has an edge; small headings are one size; the map's card's
-# title is a step's; the round trip's stepper is one box; Plan is green
+# title is a step's; the round trip's stepper is one box; Plan is green; the keys have one edge and their sizes by the pointer (#382)
 CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const p = polku.planner, C = await import(location.origin + '/js/card.js'), U = await import(location.origin + '/js/ui.js'), desk = p.sideMQ.matches;
   for (const id of ['#btn-plan', '#btn-plan-search']) {
@@ -19706,6 +19706,26 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const st = document.querySelector('.pl-way .rt-step'), len = st && st.querySelector('.rt-len'), parts = st ? [st.querySelector('[data-k=dec]'), st.querySelector('input'), st.querySelector('[data-k=inc]')] : [];
   if (!len || parts.some((e) => !e)) out.push('no stepper after Other…');
   else if (parts.some((e) => !inside(e, len))) out.push('the stepper’s − and + aren’t in its box');
+  // the keys (#382, Mine 8): one look, a flat face with a 1 px --key-edge and 10 px corners; sizes by the pointer, never the
+  // width: L is --target (36 px with a mouse, 44 by touch), M a size smaller (32, 40), and by touch an M key's target is 44 px
+  const coarse = matchMedia('(pointer: coarse)').matches, L = coarse ? 44 : 36, M = coarse ? 40 : 32;
+  if (val('--target') !== `${L}px` || val('--size-m') !== `${M}px`) out.push(`sizes: L ${val('--target')}, M ${val('--size-m')}, not ${L}px and ${M}px`);
+  const kb = document.body.appendChild(document.createElement('div'));
+  kb.innerHTML = `<div class="pl-way card"><div class="way-bar"><button class="btn small quiet way-back">Route</button></div>
+    <div class="rows acts btns"><button class="row"><span></span><span><b>Move</b></span></button></div><button class="btn">Share</button>
+    <button class="btn primary big">Edit this stretch</button></div><div class="panel-head"><button class="tool">✕</button></div>`;
+  const edge = col(val('--key-edge'));
+  for (const [sel, what] of [['.btn:not(.quiet):not(.primary)', 'a key'], ['.rows.acts.btns > .row', 'a card’s action']]) {
+    const c = cs(kb.querySelector(sel)), got = `${c.borderTopWidth} ${c.borderTopColor} ${c.borderTopLeftRadius}`;
+    if (got !== `1px ${edge} 10px`) out.push(`${what}: its edge ${got}, not 1px ${edge} 10px`);
+  }
+  if (cs(kb.querySelector('.btn.big')).borderTopLeftRadius !== '10px') out.push(`the main action's corners ${cs(kb.querySelector('.btn.big')).borderTopLeftRadius}, not 10px`);
+  const back = kb.querySelector('.way-back'), bh = Math.round(back.getBoundingClientRect().height), hit = bh - 2 * parseFloat(cs(back, '::after').top);
+  if (bh !== M) out.push(`‹ Route ${bh} px tall, not M ${M}`);
+  if (coarse && Math.round(hit) !== 44) out.push(`‹ Route's target ${Math.round(hit)} px by touch, not 44`);
+  const x = kb.querySelector('.panel-head .tool').getBoundingClientRect();
+  if (Math.round(x.width) !== L || Math.round(x.height) !== L) out.push(`a panel's ✕ ${Math.round(x.width)}×${Math.round(x.height)}, not L ${L}`);
+  kb.remove();
   probe.remove();
   return out;
 })()"""
