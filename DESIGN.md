@@ -18,7 +18,6 @@ colors:
   glass-control: "rgba(255, 255, 255, 0.84)"
   surface-solid: "#ffffff"
   surface-2: "#f3f4f1"
-  seg-on: "#ffffff"
   text: "#141b17"
   muted: "#5f6b65"
   muted-glass: "#3b4741"
@@ -62,7 +61,6 @@ colors:
   dark-glass-control: "rgba(8, 10, 9, 0.84)"
   dark-surface-solid: "#181c1a"
   dark-surface-2: "#232825"
-  dark-seg-on: "#3f4843"
   dark-text: "#f2f5f3"
   dark-muted: "#9aa69f"
   dark-muted-glass: "#c5cec9"
@@ -209,7 +207,6 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 - **Muted-glass, accent-glass and bad-glass**: a darker grey, green and red on the glass (lighter in dark mode), so words keep 4.5:1 and icons 3:1 over the Trail map, Maastokartta and the aerial photos (`tools/smoke.py glass`). Every glass surface sets its grey, green and red to these, so its lines, borders and rings take them too; those aren't measured over the map yet.
 - **Surface-solid (white)**: menus, popups, dialogs, inputs and buttons that need an opaque background, and every glass when the person asks for more contrast or less transparency.
 - **Surface-2 (pale grey-green)**: hover on rows and buttons, and recessed areas.
-- **Seg-on**: a switch's chosen segment: white, and in dark mode a grey lighter than its track, so it never reads as a gap.
 - **Text (near-black green)** and **Muted (grey-green)**: body text and secondary text, such as hints, units and section labels.
 - **Line (text at 14 %)**: borders and dividers.
 - **For more contrast**: **Muted-hc**, a grey closer to the text; **Line-hc**, lines at 35 %; and the rim, **Hc-border** outside and **Hc-inner** inside, 3:1 against any map.
@@ -325,7 +322,7 @@ Beside those:
 - **A value you pick** (Leave now ▾, Colour by ▾): the value in the text's colour on a round key with the key's face and edge, and a grey ▾, never a pale green field. Colour by is M; When stays L, the planner's first value.
 - **A choice** (a chip): a round key with the key's face and edge, its words in the text's colour, M where a chip has no size of its own; a chosen one has a green tint and a 2 px green edge.
 - **A row that opens something** (Route style ›, Your speed ›, Sport from here ›, the list's rows): 56 px, the whole row a target, its value green before ›, a line between rows.
-- **A switch** for on and off; **segments** for one of a few, the chosen one a white key; **the key facts** as round keys; **a stepper** as − and + keys around the value.
+- **A switch** for on and off; **segments** for one of a few: M buttons on a grey track 3 px round them with the key's edge, corners 10 px outside and 7 inside, the chosen one green as a chosen chip is (built 2026-11-16); **the key facts** as round keys; **a stepper** as − and + keys around the value.
 - **Not pressable:** numbers and their words have no edge, no › and no ▾.
 - **Lines that stay:** a row keeps its line when it guides (To the next change of sport, or the end) or holds data (a time, what stays where, what failed). Filler goes. A key has no line: with a mouse its tooltip says more.
 - **Before a button:** each action is asked whether it needs one. On the profile goes from a point's card, whose own profile is right there.

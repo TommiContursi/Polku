@@ -19633,8 +19633,8 @@ CT_HELP = r"""
   const inside = (a, b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect(); return x.left >= y.left - 1 && x.right <= y.right + 1 && x.top >= y.top - 1 && x.bottom <= y.bottom + 1; };
 """
 # One look for each job (#356), at a phone's size or a desktop's: the start's sport, Draw it's Fine-tune and Settings'
-# speeds are rows, as a card's; every chosen chip is the round trip's; a switch is --target tall, the chosen one white
-# with black words and a green icon; a switch's off track has an edge; small headings are one size; the map's card's
+# speeds are rows, as a card's; every chosen chip is the round trip's; a switch is M tall, the chosen one green as a
+# chosen chip, with black words and a green icon; a switch's off track has an edge; small headings are one size; the map's card's
 # title is a step's; the round trip's stepper is one box; Plan is green; the keys have one edge and their sizes by the pointer (#382)
 CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   const p = polku.planner, C = await import(location.origin + '/js/card.js'), U = await import(location.origin + '/js/ui.js'), desk = p.sideMQ.matches;
@@ -19672,20 +19672,21 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (!ref) out.push('no chosen length in the round trip');
   else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip'], ['.tl-layers .chip', 'a weather layer that’s on']])
     if (chip(box.querySelector(sel)) !== chip(ref)) out.push(`${what}, chosen: ${chip(box.querySelector(sel))}, not the round trip's ${chip(ref)}`);
-  // switches: one height in a place, --target; the chosen one white (--seg-on), with black words and a green icon (the green where
-  // it sits: the glass's on the glass, #547)
+  // switches: one height in a place, M (--size-m, #382); the chosen one green as a chosen chip, a tint and a 2 px edge, with black
+  // words and a green icon (the green where it sits: the glass's on the glass, #547)
   box.innerHTML = `<div class="seg"><button aria-pressed="true">${U.icon('route', 16)}<span>Distance</span></button><button aria-pressed="false">${U.icon('roundtrip', 16)}<span>Time</span></button></div>
     <div class="seg small"><button aria-pressed="true">Small</button></div>`;
-  const target = parseFloat(val('--target'));
+  const target = parseFloat(val('--size-m'));
   for (const b of [...box.querySelectorAll('.seg button'), ...way.querySelectorAll('.rt-unit button')]) {
     const t = Math.round(b.getBoundingClientRect().height);
-    if (t !== target) out.push(`a switch's ${b.textContent.trim()} ${t} px tall, not ${target}`);
+    if (t !== target) out.push(`a switch's ${b.textContent.trim()} ${t} px tall, not M ${target}`);
   }
   for (const b of [box.querySelector('.seg button'), way.querySelector('.rt-unit button[aria-pressed=true]')]) {
     const ic = b && b.querySelector('.ic');
     if (!b) out.push('no chosen switch in the round trip');
-    else if (cs(b).backgroundColor !== col(val('--seg-on')) || cs(b).color !== col(val('--text')) || !ic || cs(ic).color !== col(cs(b).getPropertyValue('--accent').trim()))
-      out.push(`a chosen switch: ${cs(b).backgroundColor}, words ${cs(b).color}, icon ${ic && cs(ic).color}`);
+    else if (cs(b).backgroundColor !== col(cs(b).getPropertyValue('--accent-soft').trim()) || !cs(b).boxShadow.includes(`${col(cs(b).getPropertyValue('--accent').trim())} 0px 0px 0px 2px inset`)
+      || cs(b).color !== col(val('--text')) || !ic || cs(ic).color !== col(cs(b).getPropertyValue('--accent').trim()))
+      out.push(`a chosen switch: ${cs(b).backgroundColor}, edge ${cs(b).boxShadow}, words ${cs(b).color}, icon ${ic && cs(ic).color}`);
   }
   // a switch's off track: its edge at 3:1 on the card (#376)
   box.innerHTML = `<label class="tg"><span class="tg-text">Avoid main roads</span><input type="checkbox"><span class="tg-ui"></span></label>`;
