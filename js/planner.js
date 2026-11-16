@@ -189,11 +189,9 @@ export class Planner {
     this.points = [];
     this.legs = [];
     this.readKeys = new Set(); // Check's items marked read (25d part 3): with the saved route on this device, not in links
-    // (what to read as a count beside the numbers where the key facts' line isn't shown: a phone on its side, 200 % on a
-    // phone, css/app.css .kf; narrow, above Done, else before it)
+    // (what to read as a count beside the numbers: narrow, above Done, else before it)
     this.narrowMQ = matchMedia('(max-width: 300px)');
-    this.shortMQ = matchMedia('(max-height: 520px)');
-    for (const mq of [this.narrowMQ, this.shortMQ]) mq.addEventListener('change', () => this.renderReadRow());
+    this.narrowMQ.addEventListener('change', () => this.renderReadRow());
     this.mode = ACTIVITIES[app.activity()].mode;
     this.craft = store.get('craft', 'kayak');
     this.past = [];
@@ -4638,7 +4636,7 @@ export class Planner {
     this.els.card = h('div', { class: 'card-peek', hidden: true });
     // key facts (#471's A2): what stands out on this route, under its numbers
     this.els.facts = h('div', { class: 'kf', role: 'group', 'aria-label': 'Key facts', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.row, this.els.facts, this.els.way), this.els.said);
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.row, this.els.way), this.els.said);
     // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, the
     // planner put away too, at its spot elsewhere (js/card.js, 25d)
     this.cards = new CardHost(this.map, {
@@ -4723,12 +4721,15 @@ export class Planner {
     // legs and their points on it and what colours it right above it (22a)
     this.profCompact = store.get('profileCompact', false);
     this.els.profSize = h('button', { type: 'button', class: 'tool small prof-size', onclick: () => this.setProfileCompact(!this.profCompact) });
-    const profTitle = h('span', { class: 'sr-only' }, 'Profile');
-    this.els.profZone = h('section', { class: `pl-profile${this.profCompact ? ' compact' : ''}`, 'data-sec': 'profile', 'aria-label': 'Profile' },
-      h('div', { class: 'profile-top' }, profTitle, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow, this.els.profSize),
-      h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas', role: 'img' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true }),
+    // its heading with its size at its end, the chart in a group with Colour by and On map under it, the key facts after (#382)
+    const profTitle = h('span', {}, 'Route profile');
+    this.els.profZone = h('section', { class: `pl-profile${this.profCompact ? ' compact' : ''}`, 'data-sec': 'profile', 'aria-labelledby': 'pl-profile-h' },
+      this.heading(h('h3', { id: 'pl-profile-h' }, profTitle), this.els.profSize),
+      h('div', { class: 'pl-group' }, h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas', role: 'img' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true }),
         // at a phone's peek (#742): a tap opens the profile at half, where it's scrubbed, and a drag moves the sheet
-        h('button', { type: 'button', class: 'prof-open', 'aria-label': 'Open the profile', title: 'Open the profile', onclick: () => this.setSheetState('half') })));
+        h('button', { type: 'button', class: 'prof-open', 'aria-label': 'Open the profile', title: 'Open the profile', onclick: () => this.setSheetState('half') })),
+      h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow)),
+      this.els.facts);
     this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
     this.renderProfileSize();
 
@@ -4746,17 +4747,19 @@ export class Planner {
     this.els.leave = this.when.control('pill');
     this.els.there = h('span', { class: 'trip-there' });
     this.els.boxDays = h('div', { class: 'rows trip-days' });
-    this.els.box = h('div', { class: 'trip-box', role: 'group', 'aria-label': 'The trip', hidden: true }, h('div', { class: 'trip-when' }, this.els.leave, this.els.there), this.els.boxDays);
+    this.els.box = h('div', { class: 'trip-box pl-group', role: 'group', 'aria-label': 'The trip', hidden: true }, h('div', { class: 'trip-when' }, this.els.leave, this.els.there), this.els.boxDays);
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
       route: pane('route',
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
-        h('div', { class: 'rows check-row' }, this.els.checkGo),
-        this.section('points', 'Waypoints', this.els.pointsTools = h('div', { class: 'wpl-head-tools' }), this.els.pointsTop = h('div', { class: 'wpl-top' }),
+        h('div', { class: 'rows check-row pl-group' }, this.els.checkGo),
+        this.heading(h('h3', {}, 'Route'), this.els.pointsTools = h('div', { class: 'wpl-head-tools' })),
+        this.section('points', 'Route', this.els.pointsTop = h('div', { class: 'wpl-top' }),
           this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // Route style › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
-        this.els.howRows = h('div', { class: 'rows how-rows' }),
+        this.els.howH = this.heading(h('h3', {}, 'Route style and your speed')),
+        this.els.howRows = h('div', { class: 'rows how-rows pl-group' }),
         // the route style: which ways the router prefers, and how fast the time is counted (shown in a start step's
         // Fine-tune too, the same elements: borrowHow())
         this.section('style', 'Route style', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap)),
@@ -4769,6 +4772,7 @@ export class Planner {
         h('div', { class: 'sec-stack' }, this.checksSection(), this.section('climbs', 'Climbs', this.els.climbs)),
         this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown)),
     };
+    this.sec.points.el.classList.add('pl-group');
     this.els.body = h('div', { class: 'sheet-body' }, this.els.panes.route, this.els.panes.check);
     p.addEventListener('scroll', () => { // (the body's, or the sheet's where it scrolls as one)
       const owner = this.categoryPreview?.owner;
@@ -4784,7 +4788,7 @@ export class Planner {
     this.els.top = h('div', { class: 'sheet-top' }, h('span', { class: 'sheet-top-start' }, this.els.up, this.els.foldBtn), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.topSet, this.els.topX), this.els.topSum);
     this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
     // (the views' headings, h3, under one of the planner's own: its title row has the route's name only in the route's view)
-    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.box, h('h2', { class: 'sr-only' }, 'Planner'), this.els.body, this.els.bar);
+    p.append(this.els.top, this.els.fold, this.els.head, this.els.box, this.els.profZone, h('h2', { class: 'sr-only' }, 'Planner'), this.els.body, this.els.bar);
     p.after(this.els.grip); // (beside the panel, not in it: the side panel scrolls as one, which would clip it and scroll it away)
     this.setView('route');
     this.renderOnMap();
@@ -4803,6 +4807,11 @@ export class Planner {
   }
 
   // A collapsible section; its open state is remembered across visits.
+  // A section's heading in the planner (#382): its words, then its tools at its end
+  heading(hd, ...tools) {
+    return h('div', { class: 'pl-h' }, hd, ...tools);
+  }
+
   section(id, title, ...kids) {
     const fold = id !== 'points'; // (the waypoints' list doesn't fold: Fold all waypoints folds its rows, #761)
     const open = !fold || (store.get('sections', {})[id]) !== false;
@@ -5531,7 +5540,7 @@ export class Planner {
     // under the peek's last row, 14 px (the header's padding and 6 px more). With ⌄'s row (40 px, the handle's alone is 18),
     // none under a row with room of its own, the key facts' line or a card (whose header has none, css/app.css), so the row
     // costs the map 8 px, not 22; the header's 8 px under the numbers where a short phone has no key facts (step 3 of #233)
-    const under = () => (this.els.top.offsetHeight <= 18 ? 6 : this.els.facts.offsetParent ? -8 : 0);
+    const under = () => (this.els.top.offsetHeight <= 18 ? 6 : 0);
     const sizes = () => {
       const hd = this.els.head, w = this.els.way, from = this.shownHeight();
       // the start's view as tall as it is, not as tall as the sheet let it be: it scrolls inside only once the
@@ -6330,14 +6339,10 @@ export class Planner {
     if (!a) { box.replaceChildren(); return; }
     const list = multi ? sportFacts(a, { noWeather: this.noWeather(a) }) : factLine(this.keyFacts(a));
     const ICON = { wind: 'wind', rain: 'rain', bwind: 'wind', unpaved: 'route', day: 'moon', climb: 'mountain', high: 'mountain', wx: 'cloudSun' };
-    const R = this.readSays(), at = [...box.children].indexOf(document.activeElement); // (a late answer keeps the focus where it was)
-    box.replaceChildren(...(R ? [R, ...list.slice(1)] : list).map((x) => (x === R
-      ? h('button', { type: 'button', class: `kf-b warn ${R.n1 ? 'danger' : 'unk'}`, 'aria-label': R.aria, onclick: () => this.openFromRow() },
-        h('span', { 'aria-hidden': 'true', html: icon(R.n1 ? 'warnf' : 'unk', 18) }), h('span', {}, R.n1 ? `${R.n1} warning${R.n1 === 1 ? '' : 's'}` : `${R.n3} not checked`),
-        h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) }))
-      : h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
-        h('span', { 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }), h('span', { html: x.html }),
-        h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) })))));
+    const at = [...box.children].indexOf(document.activeElement); // (a late answer keeps the focus where it was)
+    box.replaceChildren(...list.map((x) => h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
+      h('span', { 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }), h('span', { html: x.html }),
+      h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) }))));
     if (at >= 0) box.children[Math.min(at, box.children.length - 1)].focus({ preventScroll: true });
   }
   openFact(x) {
@@ -6692,7 +6697,7 @@ export class Planner {
     // its name says what it shows, as the weather timeline's does (#386)
     this.chart.canvas.setAttribute('aria-label', paddle ? `Wind along the route, ${fmtDist(a.total)}` : a.terrain && a.terrain.all ? `Elevation profile, ${fmtDist(a.total)}: ${terrainTitle(a.terrain).toLowerCase()}`
       : `Elevation profile, ${fmtDist(a.total)}, up ${Math.round(a.up)} m, down ${Math.round(a.down)} m${a.terrain ? ', part estimated' : ''}`);
-    this.setSection('profile', { title: paddle ? 'Conditions' : 'Profile', summary: this.profileSummary() });
+    this.setSection('profile', { title: paddle ? 'Conditions' : 'Route profile', summary: this.profileSummary() });
     this.renderBreakdown();
     this.renderClimbs();
     this.renderWarnings();
@@ -7175,21 +7180,20 @@ export class Planner {
   }
 
   // What Check found that's still unread [jc-peek, jc-desk]: the warnings, else what wasn't checked; null
-  // with neither. The key facts' line says it in its first line's place (renderFacts()), a tap opens Check at the first.
-  // Got it on an item's card and Check's All read mark them read, and the line is the key fact again.
+  // with neither. Its count says it beside the route's numbers (renderReadRow()), a tap opens Check at the first.
+  // Got it on an item's card and Check's All read mark them read, and the count goes.
   readSays() {
     const H = this.heads, R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
     if (!this.analysis || !(n1 || n3)) return null;
     const first = n1 ? R1[0] : R3[0];
     return { n1, n3, aria: `${[n1 && `${n1} warning${n1 === 1 ? '' : 's'}`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}${n1 + n3 > 1 ? ` and ${n1 + n3 - 1} more` : ''}. Open Check at the first` };
   }
-  // where the key facts' line isn't shown (css/app.css .kf: a phone on its side, 200 % on a phone, a short phone whose
-  // map's buttons need its room, js/main.js fitColumn()), the count alone says it in the numbers' row, taking none of the
+  // the count says it in the numbers' row, at every size (the key facts went under the profile, #382), taking none of the
   // map (the review of #416, #438): narrow, beside the numbers above Done; else before Done, in the numbers' line
   renderReadRow() {
     const el = this.els.readRow, row = this.els.row, R = this.readSays(), narrow = this.narrowMQ.matches;
     if (!el) return;
-    el.hidden = !R || !(this.shortMQ.matches || document.body.classList.contains('kf-off'));
+    el.hidden = !R;
     row.classList.toggle('with-count', narrow && !el.hidden);
     row.classList.toggle('count-inline', !narrow && !el.hidden);
     if (el.hidden) return;

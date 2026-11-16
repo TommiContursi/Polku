@@ -963,7 +963,6 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 @media (hover: hover) { .kf-b:hover { background: var(--surface-2); } }
 @media (pointer: coarse) { .kf-b { min-height: 44px; } }
 @media (max-height: 520px) { .kf { display: none; } }
-body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the map's buttons need its room: fitColumn() in js/main.js) */ /* (200 %, a phone on its side: no room under the top bar; Check's top has them) */
 /* the header is one row: the route's numbers, which wrap onto lines of their own before they touch (#242), and Done */
 .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
 .sum-item { display: flex; flex-direction: column; min-width: 0; }
@@ -1039,7 +1038,8 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .pl-profile { flex: none; padding: 0 16px 6px; container-type: inline-size; }
 .pl-profile[hidden] { display: none; }
-.pl-profile .profile-top { margin: 0 0 4px; flex-wrap: nowrap; }
+.pl-profile .profile-top { margin: var(--space-4) 0 0; padding: 0 var(--space-4) 0 11px; flex-wrap: nowrap; }
+.pl-profile > .kf { margin: var(--space-8) 0 0; }
 .pl-profile .mode-select { flex: 0 1 auto; }
 .pl-profile .tg-inline { flex: none; }
 .pl-profile .prof-size { flex: none; color: var(--muted); }
@@ -1065,6 +1065,9 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-state="peek"]:not(.dragging) .trip-box, .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile #profile-canvas { height: var(--prof-peek, 64px); }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .profile-top { display: none; }
+/* the peek is the head and the chart (#742): no heading, no key facts */
+.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > :is(.pl-h, .kf) { display: none; }
+.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > .pl-group { padding: 0; border: 0; }
 /* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
    for half (.prof-open); a mouse, which moves the sheet only by its top rows, reads it at the peek as anywhere */
 .prof-open { display: none; }
@@ -1409,15 +1412,30 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .pill { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .pill.warn { background: rgba(234,88,12,.14); color: var(--warn-text); }
 /* ---------------------------------------------------------------- the trip's box and the weather card (#869's step 3) */
-/* the box after the profile, over the views (the order of 2026-11-06): When and when you're there, then a row a day with › */
-.sheet > .trip-box { flex: none; display: grid; gap: var(--space-2); margin: 0 16px var(--space-10); padding: var(--space-8) var(--space-10) 0; border: 1px solid var(--line); border-radius: var(--radius); }
-.trip-box .trip-days { margin: 0 -10px; }
-.trip-box .trip-days > .row:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+/* the planner's sections (#382, Mine 8): a heading, its tools at its end, then the section in a group. A group is one edge, 4 px
+   round what it holds, its rows' corners nesting in its own (14 outside, 10 inside), so its words start 15 px in, as the
+   heading's do; 12 px between groups */
+.pl-h { display: flex; align-items: center; gap: var(--space-4); min-height: 32px; margin: 0 0 var(--space-4); padding-left: 15px; }
+.pl-h > h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: anywhere; }
+.pl-h > :not(h3) { margin-block: -6px; } /* (its tools keep their targets without making the heading taller) */
+.pl-group { padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius); }
+.pl-pane > .pl-group, .pl-pane > .sec.pl-group, .sheet > .trip-box { margin-bottom: var(--space-12); }
+:is(.pl-group.rows, .pl-group > .rows) { margin: 0; }
+:is(.pl-group.rows, .pl-group > .rows) > .row { border-radius: 10px; }
+:is(.pl-group.rows, .pl-group > .rows) > .row + .row { border-radius: 0; }
+:is(.pl-group.rows, .pl-group > .rows) > .row:first-child:not(:only-child) { border-radius: 10px 10px 0 0; }
+:is(.pl-group.rows, .pl-group > .rows) > .row:last-child:not(:only-child) { border-radius: 0 0 10px 10px; }
+.pl-pane > .pl-h:has(+ :is([hidden], .how-rows:empty)) { display: none; }
+/* (200 %: groups lose their edge and padding, so their words get the planner's width, the user's choice of 2026-11-11) */
+@media (max-width: 300px) { .pl-group { padding: 0; border: 0; } .pl-h { padding-left: 0; } }
+/* the box over the profile (the order of 2026-11-15): When and when you're there, then a row a day with › */
+.sheet > .trip-box { flex: none; display: grid; gap: var(--space-2); margin-inline: 16px; }
+.sheet > .trip-box > .trip-when { padding: var(--space-4) var(--space-10) 0; }
 /* When's pill and "→ there at" on a line, the pill's note (past the forecast, a passed time) under both */
 .trip-when { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-10); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
 .trip-when .when-box { display: contents; }
 .trip-when .pick-note { order: 1; flex-basis: 100%; font-weight: var(--weight-regular); }
-@media (max-width: 300px) { .sheet > .trip-box { margin: 0 12px var(--space-8); padding: 0; border: 0; } } /* (200 %: its words get the planner's width, the user's choice of 2026-11-11) */
+@media (max-width: 300px) { .sheet > .trip-box { margin: 0 12px var(--space-8); } .sheet > .trip-box > .trip-when { padding: 0; } }
 /* the weather card (#869, the plan's Round 5, version G): a day's sentence with its sky, the notes with their numbers, the
    numbers in their places, the trip line with its lanes, then the folded rows and Weather on the map */
 /* the sky's icons (ui.js's sky-…), filled and in colour: the sun's amber, a cloud's grey (darker with rain or snow, darkest with
