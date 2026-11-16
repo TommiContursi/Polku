@@ -1206,6 +1206,9 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .onmap .tg { max-width: 360px; }
 /* Route's two rows, and their steps (#424's C): a step shows the route style or your speeds alone, with Back to Route */
 .how-rows { grid-column: 1 / -1; margin-bottom: 6px; }
+/* the planner's sections as groups, as When and the weather are (#382): Route's list and its two rows */
+#pl-pane-route > .sec[data-sec="points"], #pl-pane-route > .how-rows { padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius); }
+#pl-pane-route > .sec[data-sec="points"] { margin-block: var(--space-10); }
 .step-head { grid-column: 1 / -1; display: grid; justify-items: start; gap: 4px; }
 .step-head h3 { margin: 6px 0 0; font-size: var(--font-title); }
 .step-head p { margin: 0 0 6px; color: var(--muted); font-size: var(--font-body); }

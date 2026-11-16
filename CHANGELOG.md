@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-16
 
+### The planner in groups ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- In the planner, the route's list and its **Route style** and **Your speed** rows each sit in a group with a light edge, as **When** and the weather already do, so the planner reads as a few clear parts.
+
 ### Settings' explanations behind ⓘ ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 - In Settings, what a switch does is behind an **ⓘ** right after its name, such as **High contrast** and **Fewer effects**, instead of in grey words under it. A tap on the ⓘ shows the words until the next tap; with a mouse they also show when you point at it. A tap on the name still turns the switch on or off.

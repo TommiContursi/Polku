@@ -311,7 +311,7 @@ Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's c
 
 **Headings.** Every section under the head has one: **Weather on the route**, **Route profile** (its fold at the heading's end), **Route** (Show all waypoints and the list's settings on the heading's line) and **Route style and your speed**. A card's are its own: At this waypoint, Look out for, Profile. A heading's tools sit at its end, never inside the group.
 
-**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a lighter group on it with 16 px corners, so the groups read as one sheet's parts and the map still shows around them.
+**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a group on it, so the groups read as one sheet's parts and the map still shows around them. Built 2026-11-16 with When and the weather's look (`trip-box`): a 1 px `--line` edge and `--radius` corners, no fill of its own, so it holds in dark mode, High contrast and Fewer effects. Route's list and its two rows (Route style, Your speed) are groups; the profile isn't yet, as a group round it would change the peek.
 
 **Controls by job:**
 1. **The one main action:** filled green (`--accent-bg`, white words), the whole width, at most one in a panel. The planner, the toolbar and each card are panels of their own: a stretch's **Edit this stretch**, a spot's **Add a waypoint here**.
