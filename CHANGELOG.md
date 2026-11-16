@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-16
 
+### Check, a view of its own ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- The planner has no tabs now. **Check**, the first row under the trip's box, opens Check's warnings, climbs and the ground in a view of its own, with **‹ Route** to go back. The row shows the warnings' count in red, else Good to know's, and **?** while something wasn't checked, as the tab did.
+- The warnings line under the route's numbers still opens Check at the first warning.
+
 ### Settings' explanations behind ⓘ ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 - In Settings, what a switch does is behind an **ⓘ** right after its name, such as **High contrast** and **Fewer effects**, instead of in grey words under it. A tap on the ⓘ shows the words until the next tap; with a mouse they also show when you point at it. A tap on the name still turns the switch on or off.

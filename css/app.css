@@ -905,13 +905,13 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet[data-layout="sheet"] .fold-line::before { left: calc(50% - 16px); right: auto; width: 32px; top: 5px; pointer-events: none; }
 .sheet[data-state="folded"] .fold-line { opacity: 1; visibility: visible; pointer-events: auto; filter: none; transition-delay: 0s; }
 .sheet.dragging .fold-line { visibility: visible; pointer-events: none; filter: none; transition: none; }
-.sheet > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: opacity .15s var(--ease-out), filter .15s var(--ease-out), visibility 0s; }
-.sheet[data-state="folded"] > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition-delay: 0s, 0s, .15s; }
-.sheet.dragging > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: none; }
-.sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { opacity: 0; visibility: hidden; }
+.sheet > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .sheet-body) { transition: opacity .15s var(--ease-out), filter .15s var(--ease-out), visibility 0s; }
+.sheet[data-state="folded"] > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .sheet-body) { transition-delay: 0s, 0s, .15s; }
+.sheet.dragging > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .sheet-body) { transition: none; }
+.sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head, .pl-profile, .trip-box, .sheet-body) { opacity: 0; visibility: hidden; }
 .sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head) { filter: blur(var(--fade-blur)); }
 /* from the keyboard it changes at once (planner.js setSheetState()); with reduced motion it's a fade alone, no blur */
-.sheet.instant > :is(.fold-line, .sheet-top, .sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { transition: none; }
+.sheet.instant > :is(.fold-line, .sheet-top, .sheet-head, .pl-profile, .trip-box, .sheet-body) { transition: none; }
 @media (prefers-reduced-motion: reduce) { .sheet { --fade-blur: 0px; } }
 .fold-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 14px 0 2px 14px; border: 0; border-radius: var(--radius-control); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .fold-line > .fold-x { flex: none; width: 44px; height: 44px; margin-top: 16px; }
@@ -1019,7 +1019,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="side"] .sheet-handle { display: none; }
 .sheet[data-layout="side"] .sheet-head { padding-top: 12px; touch-action: auto; }
 .sheet[data-layout="side"][data-state="folded"] { top: auto; bottom: 12px; }
-.sheet[data-layout="side"][data-state="folded"] > :is(.sheet-head, .pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
+.sheet[data-layout="side"][data-state="folded"] > :is(.sheet-head, .pl-profile, .trip-box, .sheet-body) { display: none; }
 .sheet[data-layout="side"] .fold-line { display: none; }
 .sheet[data-layout="side"][data-state="folded"] .fold-line { display: flex; position: static; align-items: center; }
 .sheet[data-layout="side"] .fold-go { min-height: 56px; padding: 0 0 0 14px; }
@@ -1035,7 +1035,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet.resizing { user-select: none; }
 
 /* the drawer in three tabs (22a): the header (summary and tools) as before; under it the profile,
-   always in sight once there's a route; then the tabs and the active tab's sections */
+   always in sight once there's a route; then Route's view or Check's */
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .pl-profile { flex: none; padding: 0 16px 6px; container-type: inline-size; }
 .pl-profile[hidden] { display: none; }
@@ -1050,23 +1050,19 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
   .pl-profile .mode-select-box, .pl-profile .mode-select select { flex: 1 1 100%; width: 100%; }
 }
 .pl-profile.compact #profile-canvas { height: 72px; }
-.pl-tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
-@media (max-width: 300px) { .pl-tabs { flex-wrap: wrap; } } /* (200 %: they wrap where they don't fit, #453) */
-.pl-tab { height: 38px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-@media (hover: hover) { .pl-tab:hover { color: var(--text); } }
-.pl-tabs .sheet-dock { align-self: center; color: var(--muted); }
-.pl-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
-.pl-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 6px; }
-/* Check's badge (25d part 2): the warnings' count with a triangle in the warning colour, else a neutral count;
-   "?" beside it while something wasn't checked */
-.pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; gap: 2px; border-radius: 9px; background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
-.pl-tab-n.read:not(:empty) { background: var(--danger); color: var(--surface-solid); box-shadow: none; }
-.pl-tab-unk { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--unk); box-shadow: inset 0 0 0 1.5px var(--unk); font-size: 11px; font-weight: 800; }
+/* Check's row, leading Route's view (#382, in place of #424's tabs), and its badge (25d part 2): the warnings' count with
+   a triangle in the warning colour, else a neutral count; "?" beside it while something wasn't checked */
+.check-row { grid-column: 1 / -1; flex: 0 0 100%; margin-bottom: 6px; }
+.check-badge { display: inline-flex; align-items: center; gap: 4px; }
+.check-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; gap: 2px; border-radius: 9px; background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.check-n.read:not(:empty) { background: var(--danger); color: var(--surface-solid); box-shadow: none; }
+.check-unk { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--unk); box-shadow: inset 0 0 0 1.5px var(--unk); font-size: 11px; font-weight: 800; }
+.check-unk[hidden] { display: none; }
 .pl-pane[hidden] { display: none !important; }
 .pl-empty { margin: 14px 0; }
 /* the sheet's sizes: the peek is the header and the profile (#742), as tall as it leaves room for (--prof-peek, measureSheet()),
-   and so is half's, so it doesn't move when the sheet does; half and full add the tabs, full the profile's own row */
-.sheet[data-state="peek"]:not(.dragging) :is(.trip-box, .pl-tabs), .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
+   and so is half's, so it doesn't move when the sheet does; half and full add the views, full the profile's own row */
+.sheet[data-state="peek"]:not(.dragging) .trip-box, .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile #profile-canvas { height: var(--prof-peek, 64px); }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .profile-top { display: none; }
 /* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
@@ -1079,7 +1075,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
    start instead of the route's numbers: the ways to begin, a step (Draw it, Round trip, Marked routes) or the
    first point's peek. On a phone the peek is as tall as it, and the rest of the sheet waits for a route. */
 .sheet-row[hidden], .pl-way[hidden] { display: none; }
-.sheet.starting :is(.pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
+.sheet.starting :is(.pl-profile, .trip-box, .sheet-body) { display: none; }
 .pl-way { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; /* (a held sheet never squeezes its rows: it scrolls) */ gap: 10px; padding: 2px 2px 4px; min-width: 0;
   overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
 /* as tall as there's room: the sheet stops below the top bar (a docked toolbox, 200 % zoom), and the view scrolls inside */
@@ -1088,7 +1084,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet.way-only .pl-way { flex: 0 1 auto; min-height: 0; }
 /* (the body waits under a held sheet: its padding would take the bottom of the view, cutting Make 3 loops) */
 .sheet[data-layout="sheet"].way-only:not(.dragging) .sheet-body { display: none; }
-/* beside the side panel the tabs under a round trip give way (they scroll), not the form: it scrolls only past the panel's room */
+/* beside the side panel the views under a round trip give way (they scroll), not the form: it scrolls only past the panel's room */
 .sheet[data-layout="side"].way-only :is(.sheet-head, .sheet-head-in) { flex: none; }
 .sheet[data-layout="side"] .pl-way { max-height: calc(100vh - 110px); max-height: calc(100dvh - 110px); }
 .sheet[data-layout="side"] .pl-way { padding-top: 0; }
@@ -1209,11 +1205,11 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .step-head { grid-column: 1 / -1; display: grid; justify-items: start; gap: 4px; }
 .step-head h3 { margin: 6px 0 0; font-size: var(--font-title); }
 .step-head p { margin: 0 0 6px; color: var(--muted); font-size: var(--font-body); }
-.pl-pane[data-tab="route"]:not([data-step]) > :is(.step-head, [data-sec=style]) { display: none; }
-.pl-pane[data-tab="route"][data-step] > :not(.step-head, [data-sec=style]) { display: none; }
-.pl-pane[data-tab="route"][data-step] [data-sec=style] { grid-column: 1 / -1; }
-.pl-pane[data-tab="route"][data-step] [data-sec=style] > .sec-head, .pl-pane[data-tab="route"][data-step] [data-sec=style] :is(.sec-body > .how-h, .speed-wrap > .how-h) { display: none; }
-.pl-pane[data-tab="route"][data-step] [data-sec=style] > .sec-body { display: block; }
+.pl-pane[data-view="route"]:not([data-step]) > :is(.step-head, [data-sec=style]) { display: none; }
+.pl-pane[data-view="route"][data-step] > :not(.step-head, [data-sec=style]) { display: none; }
+.pl-pane[data-view="route"][data-step] [data-sec=style] { grid-column: 1 / -1; }
+.pl-pane[data-view="route"][data-step] [data-sec=style] > .sec-head, .pl-pane[data-view="route"][data-step] [data-sec=style] :is(.sec-body > .how-h, .speed-wrap > .how-h) { display: none; }
+.pl-pane[data-view="route"][data-step] [data-sec=style] > .sec-body { display: block; }
 .pl-pane[data-step="how"] .speed-wrap, .pl-pane[data-step="speed"] [data-sec=style] .style-box { display: none; }
 .tg.off { opacity: .5; } /* a mark's time while there are no marks (Layers, Settings) */
 
@@ -1413,7 +1409,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .pill { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .pill.warn { background: rgba(234,88,12,.14); color: var(--warn-text); }
 /* ---------------------------------------------------------------- the trip's box and the weather card (#869's step 3) */
-/* the box after the profile, over the tabs (the order of 2026-11-06): When and when you're there, then a row a day with › */
+/* the box after the profile, over the views (the order of 2026-11-06): When and when you're there, then a row a day with › */
 .sheet > .trip-box { flex: none; display: grid; gap: var(--space-2); margin: 0 16px var(--space-10); padding: var(--space-8) var(--space-10) 0; border: 1px solid var(--line); border-radius: var(--radius); }
 .trip-box .trip-days { margin: 0 -10px; }
 .trip-box .trip-days > .row:last-child { border-radius: 0 0 var(--radius) var(--radius); }
@@ -2036,7 +2032,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .warn-row.unk { background: var(--unk-soft); border: 1.5px dashed var(--unk); }
 .warn-row.unk > span:first-child, .warn-row.unk em { color: var(--unk); }
 /* ---------------------------------------------------------------- Check's groups (25d part 2, #366)
-   Warnings, Not checked and Good to know lead the Check tab, with no header of their own: Read's items the
+   Warnings, Not checked and Good to know lead Check's view, with no header of their own: Read's items the
    red warning box (warn-row danger), the others rows (row) with their group's icon in its colour, each lit while its
    card is open (aria-current). Then What Polku looked at, and the kinds hidden, to bring back. */
 .tier + .tier { margin-top: 8px; }
@@ -2192,7 +2188,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
 /* the card has the whole sheet (step 3 of #233): the planner's profile, tabs and list wait behind it; swiped up, the sheet
    is the planner's half and full (#889), and the card scrolls inside it, or sits at its top with room under it */
-.sheet.carded > :is(.pl-profile, .trip-box, .pl-tabs, .sheet-body) { display: none; }
+.sheet.carded > :is(.pl-profile, .trip-box, .sheet-body) { display: none; }
 .sheet.carded:is([data-state="half"], [data-state="full"]) > .sheet-head, .sheet.carded:is([data-state="half"], [data-state="full"]) :is(.sheet-head-in, .card-peek) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sheet.carded:is([data-state="half"], [data-state="full"]) .card-peek .card { flex: 0 1 auto; min-height: 0; max-height: none; }
 /* at its spot (desktops, the planner put away), Revision 5: a quick look, not a sheet. 320 px wide and 480 px tall at

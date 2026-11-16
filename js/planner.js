@@ -115,13 +115,9 @@ const token = (k) => parseFloat(cssVar(k));
 const slid = (el) => parseFloat(getComputedStyle(el).translate.split(' ')[1]) || 0;
 // where the planner sits on a wide screen: on the left, unless you moved it to the bottom
 export const dockOf = () => store.get('plannerDock', 'left');
-// The drawer's tabs (22a): drawing, and what's on the way. Each section lives in one. (Go's went to the trip's box and
-// the weather card, #869's step 3.)
-const TABS = [
-  { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: waypoints, legs, round trips, route style' },
-  { id: 'check', label: 'Check', icon: 'warn', title: 'What’s on the way: warnings, climbs, the ground' },
-];
-const TAB_OF = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check' };
+// The planner's two views: Route, for drawing, and Check, what's on the way, a view of its own that Route's first row opens
+// (#382, the user's choice of 2026-11-16, in place of #424's tabs). Each section lives in one.
+const VIEW_OF = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check' };
 // "wet ground: auto" turns on after this much rain in the last 24 hours (mm)
 const WET_MM = 3;
 const MODE_CODE = { auto: 'a', line: 'l', water: 'w', fixed: 'a' };
@@ -4736,25 +4732,16 @@ export class Planner {
     this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
     this.renderProfileSize();
 
-    // Two tabs for two moments: drawing (Route), and what's on the way (Check)
-    this.tab = TABS.some((t) => t.id === store.get('plannerTab', 'route')) ? store.get('plannerTab', 'route') : 'route';
-    this.els.tabBtn = {};
-    this.els.tabs = h('div', { class: 'pl-tabs', role: 'tablist', 'aria-label': 'Planner',
-      onkeydown: (e) => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-        e.preventDefault();
-        const k = TABS.findIndex((t) => t.id === this.tab), next = TABS[(k + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length].id;
-        this.setTab(next, { user: true });
-        this.els.tabBtn[next].focus();
-      } },
-    ...TABS.map((t) => (this.els.tabBtn[t.id] = h('button', {
-      type: 'button', role: 'tab', class: 'pl-tab', id: `pl-tab-${t.id}`, 'aria-controls': `pl-pane-${t.id}`, title: t.title,
-      onclick: () => this.setTab(t.id, { user: true }),
-    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-unk', hidden: true, 'aria-hidden': 'true' }, '?')))));
-    const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
+    // Check's row, leading Route's view: the warnings' count, else Good to know's, and "?" while something wasn't checked,
+    // as #424's tab had them (renderBadge())
+    this.view = 'route';
+    this.els.checkN = h('span', { class: 'check-n' });
+    this.els.checkUnk = h('span', { class: 'check-unk', hidden: true, 'aria-hidden': 'true' }, '?');
+    this.els.checkGo = item({ icon: 'warn', label: 'Check', line: 'Warnings, climbs and the ground', val: h('span', { class: 'check-badge' }, this.els.checkN, this.els.checkUnk), chev: true, k: 'check', onclick: () => this.setView('check', { user: true }) });
+    const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', id: `pl-pane-${id}`, 'data-view': id }, ...kids);
     // the marks on the map: Layers' Your route group shows them while a route is drawn (#424's C) [tabs-c-layers]
     this.els.onMap = h('div', { class: 'onmap' });
-    // the trip's box after the profile, over the tabs (#869's step 3; the order of 2026-11-06): When and when you're there,
+    // the trip's box after the profile, over the views (#869's step 3; the order of 2026-11-06): When and when you're there,
     // then each day's weather
     this.els.leave = this.when.control('pill');
     this.els.there = h('span', { class: 'trip-there' });
@@ -4765,6 +4752,7 @@ export class Planner {
       route: pane('route',
         this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
           this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
+        h('div', { class: 'rows check-row' }, this.els.checkGo),
         this.section('points', 'Waypoints', this.els.pointsTools = h('div', { class: 'wpl-head-tools' }), this.els.pointsTop = h('div', { class: 'wpl-top' }),
           this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // Route style › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
@@ -4773,6 +4761,8 @@ export class Planner {
         // Fine-tune too, the same elements: borrowHow())
         this.section('style', 'Route style', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap)),
       check: pane('check',
+        h('div', { class: 'step-head' }, this.els.checkBack = h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.setView('route', { user: true }), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
+          h('h3', { id: 'pl-check-h' }, 'Check')),
         this.els.checkEmpty = h('p', { class: 'note pl-empty' }, 'Draw a route to see what’s on the way: warnings, climbs, the ground.'),
         this.els.stats,
         // the two short lists share a column in a wide panel
@@ -4793,10 +4783,10 @@ export class Planner {
     // ⌃ and ⌄ at its left, the route's view's Edit and More docked after them at full, a card's ⋯ and ✕ at its right (#889)
     this.els.top = h('div', { class: 'sheet-top' }, h('span', { class: 'sheet-top-start' }, this.els.up, this.els.foldBtn), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.topSet, this.els.topX), this.els.topSum);
     this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
-    // (the tabs' headings, h3, under one of the planner's own: its title row has the route's name only in the route's view)
-    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.box, h('h2', { class: 'sr-only' }, 'Planner'), this.els.tabs, this.els.body, this.els.bar);
+    // (the views' headings, h3, under one of the planner's own: its title row has the route's name only in the route's view)
+    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.box, h('h2', { class: 'sr-only' }, 'Planner'), this.els.body, this.els.bar);
     p.after(this.els.grip); // (beside the panel, not in it: the side panel scrolls as one, which would clip it and scroll it away)
-    this.setTab(this.tab);
+    this.setView('route');
     this.renderOnMap();
     this.renderLoop();
     this.renderStyle();
@@ -4805,7 +4795,7 @@ export class Planner {
     this.bindResize();
   }
 
-  // Check's groups (25d part 2): they lead the Check tab, with no header of their own and no fold
+  // Check's groups (25d part 2): they lead Check's view, after its ‹ Route and heading, with no header of their own and no fold
   checksSection() {
     const el = h('section', { class: 'sec checks', 'data-sec': 'warnings', 'aria-label': 'What’s on the way' }, this.els.warnings);
     this.sec.warnings = { el, head: null, titleEl: h('span'), count: h('span'), sum: h('span') };
@@ -4819,7 +4809,7 @@ export class Planner {
     const titleEl = h('span', { class: 'sec-title' }, title);
     const count = h('span', { class: 'sec-count' });
     const sum = h('span', { class: 'sec-sum' });
-    // (nor has it a heading: the Route tab says what it is, and Show all waypoints leads it, #761; its name for a screen reader)
+    // (nor has it a heading: Show all waypoints leads it, #761; its name for a screen reader)
     const head = fold ? h('button', { type: 'button', class: 'sec-head', 'aria-expanded': String(open), onclick: () => this.toggleSection(id) },
       titleEl, count, sum, h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) })) : null;
     const el = h('section', { class: 'sec', 'data-sec': id, 'data-open': String(open), 'aria-label': fold ? null : title }, head, h('div', { class: 'sec-body' }, ...kids));
@@ -4847,25 +4837,21 @@ export class Planner {
     s.el.hidden = empty;
   }
 
-  // ---------------------------------------------------------------- the tabs (22a)
-  // `user`: a tap on a tab, which opens a folded sheet at it
-  setTab(id, { user = false } = {}) {
+  // ---------------------------------------------------------------- the views (22a's tabs, a view of its own for Check since #382)
+  // `user`: a press, which opens a folded sheet at it
+  // Route's view or Check's. From a press, Check's ‹ Route takes the focus, and back on Route its row has it again
+  setView(id, { user = false } = {}) {
     if (!this.els.panes[id]) id = 'route';
-    const changed = id !== this.tab;
+    const changed = id !== this.view;
     if (changed) this.clearCategoryPreview();
-    this.tab = id;
-    store.set('plannerTab', id);
-    for (const t of TABS) {
-      const on = t.id === id;
-      this.els.tabBtn[t.id].setAttribute('aria-selected', String(on));
-      this.els.tabBtn[t.id].tabIndex = on ? 0 : -1;
-      this.els.panes[t.id].hidden = !on;
-    }
+    this.view = id;
+    for (const [k, el] of Object.entries(this.els.panes)) el.hidden = k !== id;
     if (changed) this.listToTop();
     if (user) {
       const st = this.panel.dataset.state;
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(st)) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'folded') this.setSheetState('open');
+      requestAnimationFrame(() => (id === 'check' ? this.els.checkBack : this.els.checkGo).focus({ preventScroll: true }));
     }
     this.renderOnRoute(); // (Good to know's markers while Check is in sight)
   }
@@ -5397,10 +5383,10 @@ export class Planner {
   }
   // The whole sheet scrolls as one under its top row, which stays: on a phone at half and full and on the side panel (D of
   // the sheet's stops, #233), so a finger on the numbers scrolls it too; wider, at full where the header, the profile, the
-  // trip's box and the tabs take more than half of it (#453), and at half where they leave the list under a quarter of it
-  // (the box over the tabs, #869's step 3), so the list can be reached; and a peek cut below the top bar
+  // trip's box take more than half of it (#453), and at half where they leave the list under a quarter of it
+  // (the box over the views, #869's step 3), so the list can be reached; and a peek cut below the top bar
   scrollAll(scrolled = this.panel.scrollTop) {
-    const p = this.panel, st = p.dataset.state, over = this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.box.offsetHeight + this.els.tabs.offsetHeight;
+    const p = this.panel, st = p.dataset.state, over = this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.box.offsetHeight;
     const on = this.layout() === 'side' ? st === 'open' && !this.peekOnly()
       : !this.cards.current && ((st === 'peek' && this.peekCut)
         || (innerWidth <= 720 && st === 'half')
@@ -5435,12 +5421,12 @@ export class Planner {
   }
   // what scrolls the list: its body, or the sheet where it scrolls as one
   listScroller() { return this.panel.classList.contains('scroll-all') ? this.panel : this.els.body; }
-  // a tab or a step from its start: the body at its top, or where the sheet scrolls as one, the tabs back under the top row
-  // once they've gone past it (not the sheet's own top, which at 200 % would take the tab's content out of sight)
+  // a view or a step from its start: the body at its top, or where the sheet scrolls as one, the body back under the top
+  // row once it's gone past it (not the sheet's own top, which at 200 % would take the view's content out of sight)
   listToTop() {
     const p = this.panel;
     if (!p.classList.contains('scroll-all')) { this.els.body.scrollTop = 0; return; }
-    const at = this.els.tabs.offsetTop - this.els.top.offsetHeight;
+    const at = this.els.body.offsetTop - this.els.top.offsetHeight;
     if (p.scrollTop > at) p.scrollTop = at;
   }
   // the peek, or the line where the peek would cover more than half the screen (#453: 200 %, long words)
@@ -5524,7 +5510,7 @@ export class Planner {
   restSheet(name) {
     const p = this.panel;
     this.restingSheet = true;
-    for (const el of [this.els.fold, this.els.top, this.els.head, this.els.profZone, this.els.tabs, this.els.body]) el.style.opacity = '';
+    for (const el of [this.els.fold, this.els.top, this.els.head, this.els.profZone, this.els.body]) el.style.opacity = '';
     if (name === 'closed') this.foldAway();
     else if (name) this.setSheetState(name);
     p.style.height = '';
@@ -5626,7 +5612,7 @@ export class Planner {
     new ResizeObserver(sizes).observe(this.els.top); // (⌄'s row comes with a route: the header moves down without changing its size)
     addEventListener('resize', sizes);
     // One swipe for every sheet (js/sheet.js, #96): from the handle, the header (its buttons too), the
-    // profile's top row and the tabs, and from the body where it can't scroll that way itself. While it
+    // profile's top row, and from the body where it can't scroll that way itself. While it
     // moves, the sheet is as tall as its full size and follows the finger with transform; its size, and
     // --sheet-h that the map's buttons follow, change once, when it comes to rest (restSheet()).
     const px = (v) => parseFloat(this.panel.style.getPropertyValue(v)) || 0;
@@ -5639,7 +5625,7 @@ export class Planner {
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows, not a card (a
       // finger on a card moves the sheet at its peek and where the card can't scroll that way itself, js/sheet.js, #603)
       grab: (t, type) => !t.closest('#profile-canvas, .pick-chart, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')
-        && (type !== 'mouse' || (!!t.closest('.sheet-handle, .fold-line, .sheet-head, .pl-tabs') && !t.closest('.card'))),
+        && (type !== 'mouse' || (!!t.closest('.sheet-handle, .fold-line, .sheet-head') && !t.closest('.card'))),
       // the sizes, lowest first (stops(): the start's views are the peek only, so a swipe up springs back). From the line a
       // second swipe down puts the planner away, or closes the card (Fold, then away): a single swipe stops at the line
       start: () => {
@@ -5673,7 +5659,7 @@ export class Planner {
         if (!this.foldable()) return;
         const top = px('--peek-h'), line = px('--fold-h'), f = Math.max(0, Math.min(1, (top - v) / Math.max(1, top - line)));
         this.els.fold.style.opacity = f;
-        for (const el of [this.els.top, this.els.head, this.els.profZone, this.els.tabs, this.els.body]) el.style.opacity = 1 - f;
+        for (const el of [this.els.top, this.els.head, this.els.profZone, this.els.body]) el.style.opacity = 1 - f;
       },
       aim: (name, ride) => {
         const p = this.panel, to = ride.sizes.find((z) => z.name === name), open = ['half', 'full'].includes(name), c = p.classList.contains('carded') && this.cards.box;
@@ -6250,7 +6236,7 @@ export class Planner {
 
   // ---------------------------------------------------------------- More (⋯)
   // The whole route's actions: the whole route, take it along, and what starts again, Clear route apart (with Undo in a note).
-  // Moving the panel stays at the end of the tabs' row and in Settings.
+  // Moving the panel stays at the end of the numbers' row and in Settings.
   toggleMore() {
     if (this.moreMenu) { this.moreMenu.close(); return; }
     this.modesMenu?.close();
@@ -6486,7 +6472,7 @@ export class Planner {
   // Open a section and bring it into view (expanding a peeking sheet).
   reveal(id, { flash = true } = {}) {
     if (id === 'style') { this.openStep('how'); return; }
-    if (TAB_OF[id] && TAB_OF[id] !== this.tab) this.setTab(TAB_OF[id]);
+    if (VIEW_OF[id] && VIEW_OF[id] !== this.view) this.setView(VIEW_OF[id]);
     this.toggleSection(id, true);
     const st = this.panel.dataset.state;
     if (this.layout() === 'sheet' && ['folded', 'peek'].includes(st)) this.setSheetState('half');
@@ -6526,7 +6512,7 @@ export class Planner {
         : this.isMulti() ? `${label}, for the route’s ${label} legs. A change routes them again.` : `${label}, for the whole route. A change routes the route again.`;
       if (k === 'speed') this.renderSpeed();
       pane.dataset.step = k;
-      if (this.tab !== 'route') this.setTab('route');
+      if (this.view !== 'route') this.setView('route');
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(this.panel.dataset.state)) this.setSheetState('half');
       else if (this.layout() === 'side' && this.panel.dataset.state === 'folded') this.setSheetState('open');
       this.listToTop();
@@ -6626,7 +6612,7 @@ export class Planner {
       this.renderBreakdown();
       this.renderSpeed(); // your speeds for the sport, before there's a route and after Clear (#87)
       this.els.climbs.innerHTML = '';
-      this.renderWarnings(); // (Check's tab and the peek's row too: nothing on the way, #463)
+      this.renderWarnings(); // (Check's row and the peek's row too: nothing on the way, #463)
       this.drawColored(); // no route: its colours and wind arrows go from the map too
       if (this.app.onAnalysis) this.app.onAnalysis(null);
       return;
@@ -6832,7 +6818,7 @@ export class Planner {
   previewCategory(mode, key, owner, announce = false) {
     this.clearCategoryPreview();
     const a = this.analysis;
-    if (!a || this.panel.hidden || this.tab !== 'check' || this.sec.colours.el.dataset.open !== 'true' || !owner?.isConnected || owner.closest('[hidden]')) return;
+    if (!a || this.panel.hidden || this.view !== 'check' || this.sec.colours.el.dataset.open !== 'true' || !owner?.isConnected || owner.closest('[hidden]')) return;
     const row = this.breakdownRows(mode).find((r) => r[3] === key);
     if (!row) return;
     const features = [];
@@ -7107,9 +7093,9 @@ export class Planner {
     this.drawHeads();
     this.renderFold();
   }
-  // whether Check is in sight: a desktop's Check tab, a phone's with the sheet above its peek
+  // whether Check is in sight: a desktop's Check, a phone's with the sheet above its peek
   checkInSight(st = this.panel.dataset.state) {
-    return this.active && this.tab === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || !['folded', 'peek'].includes(st));
+    return this.active && this.view === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || !['folded', 'peek'].includes(st));
   }
 
   // Check's items on the map [jc-peek, jc-check, jc-worst, jc-step]: Warnings and Not checked with a place
@@ -7179,7 +7165,7 @@ export class Planner {
     const k = card.itemKey;
     this.cards.close({ restore: false });
     if (!this.active) this.setActive(true);
-    this.setTab('check');
+    this.setView('check');
     if (this.layout() === 'sheet' && ['folded', 'peek'].includes(this.panel.dataset.state)) this.setSheetState('half');
     setTimeout(() => {
       const it = this.itemByKey(k), el = this.els.warnings.querySelector(`[data-key="${CSS.escape(k)}"]`);
@@ -7215,7 +7201,7 @@ export class Planner {
   openFromRow() {
     const H = this.heads, first = this.unread(H, 'read')[0] || this.unread(H, 'not')[0];
     if (!first) return;
-    this.setTab('check', { user: true });
+    this.setView('check', { user: true });
     requestAnimationFrame(() => {
       const el = this.els.warnings.querySelector(`[data-key="${CSS.escape(itemKey(first))}"]`);
       if (el) { el.scrollIntoView({ block: 'nearest' }); el.focus({ preventScroll: true }); } // (Escape and ✕ bring the focus back to it)
@@ -7261,18 +7247,17 @@ export class Planner {
     if (next) this.openItemCard(next, { from: c.from });
   }
 
-  // The Check tab's badge [chk-phone]: the warnings' count with a triangle in the warning colour, else Good to
-  // know's count, neutral; "?" beside it while something wasn't checked. Its name says all three.
+  // Check's row's badge [chk-phone]: the warnings' count with a triangle in the warning colour, else Good to know's
+  // count, neutral; "?" beside it while something wasn't checked. Its name says all three.
   renderBadge(H) {
-    const tab = this.els.tabBtn && this.els.tabBtn.check;
-    if (!tab) return;
-    const n = tab.querySelector('.pl-tab-n'), unk = tab.querySelector('.pl-tab-unk');
+    const n = this.els.checkN, unk = this.els.checkUnk, go = this.els.checkGo;
+    if (!n) return;
     const r = H.read.length, l = H.look.length, q = H.not.length;
     n.classList.toggle('read', !!r);
     n.innerHTML = r ? `${icon('warnf', 11)}${r}` : l ? String(l) : '';
     unk.hidden = !q;
     const say = [r && `${r} warning${r === 1 ? '' : 's'}`, q && `${q} not checked`, l && `${l} good to know`].filter(Boolean).join(', ');
-    if (say) tab.setAttribute('aria-label', `Check: ${say}`); else tab.removeAttribute('aria-label');
+    if (say) go.setAttribute('aria-label', `Check: ${say}`); else go.removeAttribute('aria-label');
   }
 
   // Every item along the route, for ‹ › on its card and the markers (25d part 3): [{ g: 'read' | 'look' | 'not', w }],
