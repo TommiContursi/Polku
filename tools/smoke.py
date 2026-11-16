@@ -9415,7 +9415,7 @@ def settings_groups(chrome):
         tap('#btn-settings', 'Settings')
         st = pg.js("""(() => { const b = document.querySelector('#settings-body'), g = [...b.querySelectorAll(':scope > .lg-group')];
           return { titles: g.map((d) => d.querySelector('.lg-title').textContent), open: g.filter((d) => d.open).length, fits: b.scrollHeight <= b.clientHeight + 1,
-            coming: b.querySelectorAll('.coming').length, usable: [...b.querySelectorAll('.coming')].flatMap((c) => [c, ...c.querySelectorAll('input, button')]).filter((c) => 'disabled' in c && !c.disabled).length }; })()""")
+            coming: b.querySelectorAll('.coming').length, usable: [...b.querySelectorAll('.coming')].flatMap((c) => [c, ...c.querySelectorAll('input, button:not(.info-dot)')]).filter((c) => 'disabled' in c && !c.disabled).length }; })()""")  # (an ⓘ still says what it will do, #382)
         want = ['Speeds and tiles by sport', 'Display', 'Language and units', 'Route’s list', 'Route arrows and marks', 'Map and planner', 'Hidden in Check', 'Offline maps', 'Saved on this device', 'Strava and Garmin', 'Data sources', 'About Polku']
         if st['titles'] != want:
             fails.append(f"the groups are {st['titles']}")
