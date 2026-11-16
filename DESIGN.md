@@ -220,7 +220,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 - The map's own colours (land, water, parks, labels) are in `js/style.js`, one palette per map style. The sports' own line colours are `--sport-…` (`SPORT_COLORS` in `js/config.js`).
 
 ### Named Rules
-**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Magenta belongs to the route, red to danger, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
+**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Magenta belongs to the route, red to danger, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Green means you can tap it** (decided 2026-11-06 in #869, written here 2026-11-15): a value you pick, a fold, a way back or the one main action, and never plain information. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
 
 **The Never by Colour Alone Rule.** Every colour that means something (a warning, a difficulty, a chosen state) is also said in words, a tick, an icon or a shape (PRODUCT.md, WCAG 2.2 AA).
 
@@ -297,6 +297,50 @@ On the glass:
 - **The Layers button**: its map picture with a light inner rim (`--tile-rim`) and the glass's soft outer line; its word on a dark band that's 4.5:1 or more over a white picture.
 - **An undo that can't undo** on the toolbox: the glass's grey at 70 %, readable and still dimmer than redo.
 - **The logo on a phone**: the green mark alone, 44 px, with no pill round it. On a desktop its pill's corners are concentric with the mark's.
+
+### One style for the planner and the cards
+
+Decided 2026-11-15 (#382, from #869's rule for controls, #690's cards and round 5's look), not built yet: the mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html), version **Mine**. Polku is read outdoors on a phone, in sun and with one thumb, so what you read is big enough and what you can press is plain to see.
+
+**Type, four steps.** A title (the route's name, a card's name) 22 px; a section's heading 17 px, bold, in sentence case; a row's name and a button's words 16 px; a line under a row 14 px in `--muted`. Numbers are 24 px (20 px in a desktop's card) with their unit at 14 px and their word under them at 13 px.
+
+**The numbers' box.** A route's or a card's numbers sit in one white box, as round 5 has them, a thin line between them. When they don't fit one line they wrap to a second rather than shrink.
+
+**Space, two steps.** 8 px between things in a section, 18 px between sections. A section's heading sits 18 px under the section before it and 8 px over its own group.
+
+**The planner's head.** The route's name as its title, the warnings beside it (a red ball and its count, opening Check), the numbers' box, the sports' facts (all in sight, wrapping), and When on a line of its own (Leave now ▾ → there at…).
+
+**Headings.** Every section under the head has one: **Weather on the route**, **Route profile** (its fold at the heading's end), **Route** (Show all waypoints and the list's settings on the heading's line) and **Route style and your speed**. A card's are its own: At this waypoint, Look out for, Profile. A heading's tools sit at its end, never inside the group.
+
+**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a lighter group on it with 16 px corners, so the groups read as one sheet's parts and the map still shows around them.
+
+**Controls by job:**
+1. **The one main action:** filled green (`--accent-bg`, white words), the whole width, at most one in a panel. The planner, the toolbar and each card are panels of their own: a stretch's **Edit this stretch**, a spot's **Add a waypoint here**.
+2. **Does something now:** a key, white with a clear edge and a light lip at its foot, 44 px tall, its words 16 px and an icon before them. A card's keys are one row that scrolls sideways, as Google Maps' are, so none hides at the card's end; removing comes last, in red.
+3. **Bare icons,** from a fixed few: ⌄ ⌃ ✕ ⋯ ↶ ↷ ⚙, the list's settings and full screen.
+
+Beside those three:
+- **A value you pick** (Leave now ▾, Colour by ▾): green words on a white key with an edge and ▾, never a pale green field.
+- **A row that opens something** (Route style ›, Your speed ›, Sport from here ›, the list's rows): 56 px, the whole row a target, its value green before ›, a line between rows.
+- **A switch** for on and off; **segments** for one of a few, the chosen one a white key; **the key facts** as round keys; **a stepper** as − and + keys around the value.
+- **Not pressable:** numbers and their words have no edge, no › and no ▾.
+- **Lines that stay:** a row keeps its line when it guides (To the next change of sport, or the end) or holds data (a time, what stays where, what failed). Filler goes. A key has no line: with a mouse its tooltip says more.
+- **Before a button:** each action is asked whether it needs one. On the profile goes from a point's card, whose own profile is right there.
+
+### A card's places
+
+Every card has the same places, in this order. A place it has nothing for is left out; the order never changes:
+1. **The top row:** ⌄ at the left, ⋯ and ✕ at the right.
+2. **‹ Route,** on its own line, where the card was opened from the route.
+3. **The title:** the map's own mark and the name.
+4. **The numbers:** one aligned row with thin lines between, the most important first; warnings a red ball with their count, last.
+5. **The actions:** the main one, whole width, then the row of keys.
+6. **The sections:** what the card is for first (At this waypoint, Look out for), then its profile.
+7. **The foot:** stepping along the route, ‹ and › around the strip of the route's points and stretches (or "3 of 9"), as the warning card's ‹ 1 of 2 ›. It stays at the card's foot while the card scrolls.
+
+The planner keeps its own order: its head, then its four sections.
+
+**Settings and Layers** use the same look with groups that fold: each group's heading inside it (17 px, a chevron at its end), groups 12 px apart. There a switch's explanation goes behind an ⓘ after its name (outside the label that flips it), and a group's note behind an ⓘ at its heading; a note that holds data, shows the way into an empty list or promises something about your data stays as words. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
 
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).
