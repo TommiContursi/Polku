@@ -1078,7 +1078,8 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-state="peek"]:not(.dragging) .trip-box, .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile #profile-canvas { height: var(--prof-peek, 64px); }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .profile-top { display: none; }
-/* the peek is the head and the chart (#742): no heading, no key facts */
+/* the peek is the head and the chart (#742): no heading, no key facts, and a long name on two lines (whole one size up) */
+.sheet[data-layout="sheet"][data-state="peek"] .pl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > :is(.pl-h, .kf) { display: none; }
 .sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > .pl-group { padding: 0; border: 0; }
 /* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
