@@ -302,7 +302,7 @@ On the glass:
 
 Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's cards and round 5's look), and built a small PR at a time; what isn't built yet says so. The mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html), version **Mine 8**. It's a sketch: where a detail looks better otherwise in the app (dark mode, a padding, a colour), the app decides. Polku is read outdoors on a phone, in sun and with one thumb, so what you read is big enough and what you can press is plain to see.
 
-**Sizes, by the pointer, never the window's width** (decided 2026-11-16). By touch XS 28, S 32, M 40, L 44 and XL 52 px, and every control's target is 44 px however small it draws. With a mouse each is a size smaller: M 32 and L 36 (XS 24, S 28 and XL 44 proposed). L is `--target` and M `--size-m`; a size gets its value with the first control that uses it. The words stay the same size with a mouse.
+**Sizes, by the pointer, never the window's width** (decided 2026-11-16). By touch XS 28, S 32, M 40, L 44 and XL 52 px, and every control's target is 44 px however small it draws. With a mouse each is a size smaller: M 32 and L 36 (XS 24, S 28 and XL 44 proposed). L is `--target`; each other size gets its value with the first control that uses it. The words stay the same size with a mouse.
 
 **Type, four steps.** A title (the route's name, a card's name) 22 px; a section's heading 17 px, bold, in sentence case; a row's name and a button's words 16 px; a line under a row 14 px in `--muted`. Numbers are 24 px (20 px in a desktop's card) with their unit at 14 px and their word under them at 13 px.
 
@@ -320,7 +320,6 @@ Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's c
 1. **The one main action:** filled green (`--accent-bg`, white words), the whole width, at most one in a panel. The planner, the toolbar and each card are panels of their own: a stretch's **Edit this stretch**, a spot's **Add a waypoint here**.
 2. **Does something now:** a key: a flat white face, a 1 px edge in `--key-edge` (as clear as High contrast's lines, so it reads as a key in the sun), 10 px corners and an icon before its words, L tall. Built for every `btn` and a card's actions; the main action has the same corners. The drawing toolbar keeps its own keys until #1042. Not built yet: a card's keys in one row that scrolls sideways, as Google Maps' are, so none hides at the card's end, with removing last, in red.
 3. **Bare icons,** from a fixed few: ⌄ ⌃ ✕ ⋯ ↶ ↷ ⚙, the list's settings and full screen, L: the sheet's top row and a panel's ✕.
-4. **A quiet action:** green words and no face, M: **‹ Route**.
 
 Beside those:
 - **A value you pick** (Leave now ▾, Colour by ▾): green words on a white key with an edge and ▾, never a pale green field.

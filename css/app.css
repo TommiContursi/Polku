@@ -63,9 +63,8 @@
   --t-press: 120ms; --t-open: 180ms; --t-sheet: 260ms; /* closing takes the next shorter one */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px; --space-12: 12px; --space-16: 16px; --space-24: 24px;
-  /* sizes by the pointer, never the window's width (#382): L, a target, 36 px with a mouse and 44 px by touch (#380);
-     M a size smaller, 32 and 40; a row; a card's mark */
-  --target: 36px; --size-m: 32px; --row-h: 50px; --mark: 34px;
+  /* sizes by the pointer, never the window's width (#382): L, a target, 36 px with a mouse and 44 px by touch (#380); a row, a card's mark */
+  --target: 36px; --row-h: 50px; --mark: 34px;
   /* The colour scales (the plan's §2), read by the JavaScript through js/palette.js. Each step keeps the colour
      it had; a scale's words and keys are in its table in js/config.js, js/chart.js or js/weather.js. */
   --diff-s0: #22a447; --diff-s1: #c7c100; --diff-s2: #f59e0b; --diff-s3: #ef4444; --diff-s4: #c026d3; --diff-s5: #7e22ce; --diff-s6: #4c1d95;
@@ -91,7 +90,7 @@
   --winter-ploughed: #3b82f6; --winter-not: #94a3b8; --winter-nobikes: #dc2626; --winter-ski: #7c3aed;
   color-scheme: light;
 }
-@media (pointer: coarse) { :root { --target: 44px; --size-m: 40px; } }
+@media (pointer: coarse) { :root { --target: 44px; } }
 /* a desktop's card at the point is one step smaller (Revision 5 of #363) */
 .card-float { --row-h: 36px; --mark: 28px; --font-title: 0.9375rem; --font-number: 1.0625rem; --font-numeral: 1.0625rem; --font-row: 0.875rem; }
 /* Dark: data-theme on <html>, from Settings → Appearance (#323), set before the first paint by index.html and
@@ -1133,7 +1132,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .way-bar { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
 .btn.quiet { border-color: transparent; background: transparent; }
 @media (hover: hover) { .btn.quiet:hover { background: var(--surface-2); } }
-.way-back { min-height: var(--size-m); padding-inline: 4px 10px; color: var(--accent); font-size: 15px; font-weight: 650; }
+.way-back { min-height: 44px; padding-inline: 4px 10px; color: var(--accent); font-size: 15px; font-weight: 650; }
 .way-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .way-tile { display: flex; gap: 10px; align-items: flex-start; min-width: 0; min-height: 64px; padding: 12px; border: 1px solid var(--line); border-radius: 14px;
   background: var(--surface-solid); color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
@@ -2204,7 +2203,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .maplibregl-popup-content { padding: 8px 12px 10px; border-radius: 16px; }
 .card-float .card { width: 320px; max-width: calc(100vw - 32px); max-height: min(480px, var(--card-max, 70vh)); gap: 8px; }
 .card-float .card > .way-bar { min-height: 36px; margin-bottom: -4px; }
-.card-float .way-back { font-size: 14px; }
+.card-float .way-back { min-height: 36px; font-size: 14px; }
 .card-float :is(.way-x, .card-set) { width: 36px; height: 36px; }
 /* a desktop's card folds to its title row (step 3 of #233); in a phone's peek the sheet's top row has its ⌄, ⋯ and ✕ (#889) */
 .card .way-fold { display: none; }
@@ -2321,9 +2320,6 @@ body[data-activity="paddle"] #zoom-hint { display: none; } /* (Paddle's map isn'
 .card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
 @media (pointer: coarse) {
   .card .btn, .card .tool { min-height: 44px; min-width: 44px; }
-  .card .way-back { min-height: var(--size-m); } /* (M: 40 px drawn, its target 44 px, as below) */
-  .way-back { position: relative; }
-  .way-back::after { content: ""; position: absolute; inset: calc((var(--size-m) - 44px) / 2) 0; } /* (a finger's 44 px round an M key) */
   .card .rt-len { min-height: 44px; }
   .card .tg { min-height: 44px; } /* (the whole row is the switch's target) */
 }
