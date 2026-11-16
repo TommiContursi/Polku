@@ -6,13 +6,18 @@ from datetime import datetime, timedelta, timezone
 from email.message import Message
 import ftplib
 import hashlib
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import io
 import importlib.util
 import json
+import os
 from pathlib import Path
 import posixpath
+import subprocess
 from types import SimpleNamespace
 import tempfile
+from textwrap import dedent
+from threading import Thread
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -365,6 +370,51 @@ class PublishTests(unittest.TestCase):
                     expr = expr.replace(name, repr(value))
                 self.assertEqual(eval(expr.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
         self.assertIn('run-id: ${{ needs.geometry.outputs.run_id }}', job)
+
+    def test_snapshot_retries_temporary_failure_and_requires_one_complete_date(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        step = workflow.split('\n  snapshot:\n', 1)[1].split('\n  build:', 1)[0]
+        script = dedent(step.split('        run: |\n', 1)[1])
+        latest = '/europe-261115.osm.pbf.md5'
+        older = '/europe-261114.osm.pbf.md5'
+        requests = []
+        responses = {}
+
+        class Checksums(BaseHTTPRequestHandler):
+            def do_HEAD(self):
+                requests.append(self.path)
+                codes = responses.get(self.path)
+                self.send_response_only(codes.pop(0) if codes else 200)
+                self.end_headers()
+
+        with HTTPServer(('127.0.0.1', 0), Checksums) as server, tempfile.TemporaryDirectory() as tmp:
+            worker = Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                script = script.replace('https://download.geofabrik.de', f'http://127.0.0.1:{server.server_port}')
+                date = 'date() { case "$3" in "1 days ago") echo 261115;; "2 days ago") echo 261114;; esac; }\n'
+                output = Path(tmp) / 'output'
+                env = dict(os.environ, GITHUB_OUTPUT=str(output), GITHUB_STEP_SUMMARY=os.devnull,
+                           NO_PROXY='127.0.0.1', no_proxy='127.0.0.1')
+                for latest_codes, older_codes, selected in [([503, 200], [], '261115'), ([404], [], '261114'), ([404], [404], '')]:
+                    with self.subTest(selected=selected):
+                        responses.update({latest: latest_codes, older: older_codes})
+                        requests.clear()
+                        output.write_text('')
+                        result = subprocess.run(['bash', '-e', '-c', date + script], env=env,
+                                                capture_output=True, text=True, timeout=12)
+                        self.assertEqual(result.returncode, 0 if selected else 1, result)
+                        self.assertEqual(output.read_text(), f'stamp={selected}\n' if selected else '')
+                        self.assertEqual(requests.count(latest), 2 if selected == '261115' else 1)
+                        self.assertEqual(requests.count(older), 0 if selected == '261115' else 1)
+                        for stamp in ['261115'] if selected == '261115' else ['261115', '261114']:
+                            for region in ['europe/finland', 'europe/sweden', 'europe/norway', 'europe/estonia']:
+                                self.assertIn(f'/{region}-{stamp}.osm.pbf.md5 HTTP 200 (curl 0)', result.stdout)
+                        status = '200 (curl 0)' if selected == '261115' else '404 (curl 22)'
+                        self.assertIn(f'{latest} HTTP {status}', result.stdout)
+            finally:
+                server.shutdown()
+                worker.join()
 
     def test_country_download_leaves_time_to_build(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
