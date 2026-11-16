@@ -3674,8 +3674,7 @@ def onroute(chrome):
           if (!line()) return ['no warning in the peek\\'s line with something to read'];
           if (!line().classList.contains('danger') || said(line()) !== '2 warnings') errs.push(`the line: ${line().className} "${said(line())}"`);
           if (line().getAttribute('aria-label') !== '2 warnings, 1 not checked: Road works: Teiskontie and 2 more. Open Check at the first') errs.push(`the line's name: ${line().getAttribute('aria-label')}`);
-          const sum = p.els.row.getBoundingClientRect(), lr = line().getBoundingClientRect();
-          if (lr.top < sum.bottom - 1) errs.push('the line isn\\'t under the numbers');
+          if (!line().closest('.pl-title')) errs.push('the ball isn\\'t beside the route\\'s name'); // (#382: no longer a line under the numbers)
           p.reveal('warnings');
           await wait(600);
           if (!line()) errs.push('the line let go of the warning with Check in sight');
@@ -3854,7 +3853,8 @@ def onroute(chrome):
           if (lines().filter((t) => /✓ Read/.test(t)).length !== 3) errs.push(`Check after All read: ${lines().join(' / ')}`);
           [...document.querySelectorAll('.toast button')].find((b) => /Undo/.test(b.textContent))?.click();
           await wait(300);
-          if (!line() || line().textContent.trim() !== '1 not checked') errs.push(`Undo brought back "${line() && line().textContent}", not the forecast not checked`);
+          const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
+          if (!line() || said(line()) !== '1 not checked') errs.push(`Undo brought back "${line() && said(line())}", not the forecast not checked`);
           p.readKeys = new Set(); p.save(); p.renderWarnings(); // (all unread again, for Got it)
           // Got it, one by one: read, and the next unread along the route (a phone)
           p.reveal('warnings');
