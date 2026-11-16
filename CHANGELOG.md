@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-16
 
+### Settings' explanations behind ⓘ ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- In Settings, what a switch does is behind an **ⓘ** right after its name, such as **High contrast** and **Fewer effects**, instead of in grey words under it. A tap on the ⓘ shows the words until the next tap; with a mouse they also show when you point at it. A tap on the name still turns the switch on or off.
+- Every ⓘ is grey now, including those in **Best time to leave**: green is kept for what's chosen.
+
 ### One of a few, in green ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 - Switches between a few choices, such as the timeline's **48 hours · Your trip**, a round trip's **Distance · Time** and **Pass by · Stop · Night** on a waypoint's card, show the chosen one in green, as a chosen chip, rather than white. Their track has the same clear edge as buttons.

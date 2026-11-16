@@ -25,7 +25,7 @@ import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflin
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist, compass as side } from './geo.js';
-import { $, $$, h, icon, toast, store, popMenu, settleControls } from './ui.js';
+import { $, $$, h, icon, toast, store, popMenu, settleControls, infoDot } from './ui.js';
 import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
@@ -1150,6 +1150,15 @@ const toggle = (label, on, fn, note = '') => {
     h('input', { type: 'checkbox', id, checked: on, role: 'switch', onchange: (e) => { fn(e.target.checked); e.target.defaultChecked = e.target.checked; } }), // (as drawn: settleControls())
     h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
 };
+// Settings: a switch whose explanation is behind an ⓘ after its name (#382). A press on the ⓘ, a button in the label,
+// doesn't flip the switch; the switch is named by its name alone
+const toggleInfo = (label, on, fn, note, name = label) => {
+  const tg = toggle(label, on, fn);
+  tg.classList.add('tg-info');
+  tg.querySelector('.tg-text').append(infoDot(name, note));
+  tg.querySelector('input').setAttribute('aria-label', name);
+  return tg;
+};
 const seg = (options, value, fn) => h('div', { class: 'seg small full' },
   ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
 // A raster layer's opacity, right under its switch while it's on; remembered per layer
@@ -1795,11 +1804,11 @@ let speedNew = null; // the sport whose speeds a tap has just opened: they fade 
 const soon = () => h('span', { class: 'cur' }, 'Coming');
 const coming = (el) => {
   el.classList.add('coming');
-  for (const c of [el, ...el.querySelectorAll('input, button')]) if ('disabled' in c) c.disabled = true;
+  for (const c of [el, ...el.querySelectorAll('input, button:not(.info-dot)')]) if ('disabled' in c) c.disabled = true; // (its ⓘ still says what it will do)
   return el;
 };
 const comingChoice = (label, options) => coming(h('div', {}, h('div', { class: 'tg-text' }, h('span', {}, label, ' ', soon())), seg(options.map((o) => [o, o]), options[0], () => {})));
-const comingToggle = (label, note, on = false) => coming(toggle(h('span', {}, label, ' ', soon()), on, () => {}, note));
+const comingToggle = (label, note, on = false) => coming(toggleInfo(h('span', {}, label, ' ', soon()), on, () => {}, note, label));
 const comingRow = (ic, label, line, val = null) => coming(item({ icon: ic, label: h('span', {}, label, ' ', soon()), line, val, chev: val == null, k: label }));
 function renderSettingsPanel() {
   const p = $('#settings-body');
@@ -1843,10 +1852,10 @@ function renderSettingsPanel() {
     }))),
     h('p', { class: 'note' }, 'Automatic follows your device. Match the map is dark over the aerial photos and the night map, and light over the rest. Kept on this device only.'),
     comingChoice('Text and buttons', ['Standard', 'Smaller', 'Larger']),
-    toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails, solid panels and darker grey words, for bright sunlight'),
+    toggleInfo('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails, solid panels and darker grey words, for bright sunlight'),
         comingToggle('Colours for colour blindness', 'Difficulty, the profile and warnings in colours that stay apart'),
     comingToggle('Less motion', 'Panels appear without sliding; the route’s arrows stand still'),
-    toggle('Fewer effects', state.fewerEffects, setFewerEffects, 'Solid panels instead of the see-through glass, for a phone or browser that scrolls or moves the map slowly'),
+    toggleInfo('Fewer effects', state.fewerEffects, setFewerEffects, 'Solid panels instead of the see-through glass, for a phone or browser that scrolls or moves the map slowly'),
     effectsToggle()));
 
   p.append(group('language', 'Language and units',
@@ -1870,8 +1879,8 @@ function renderSettingsPanel() {
     h('div', { class: 'rows' }, item({ icon: 'layers', label: 'Layers', line: 'The base map, trails, 3D, the timeline and weather on the map', chev: true, onclick: () => openPanel('quick-layers') })),
     ...hillsControls(),
     hillshadeControls(),
-    hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
-    hoverCapable() ? toggle('Trackpad rotates', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates. Up/down and pinch zoom; Shift+scroll tilts') : null,
+    hoverCapable() ? toggleInfo('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
+    hoverCapable() ? toggleInfo('Trackpad rotates', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates. Up/down and pinch zoom; Shift+scroll tilts') : null,
     comingToggle('Turn the map with two fingers', 'Off keeps north up; a pinch only zooms', true),
     comingChoice('When Polku opens', ['Where you left off', 'A fresh start']),
     comingToggle('Keep the screen on while following', 'Only while Follow me is on'),

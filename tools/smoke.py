@@ -9415,7 +9415,7 @@ def settings_groups(chrome):
         tap('#btn-settings', 'Settings')
         st = pg.js("""(() => { const b = document.querySelector('#settings-body'), g = [...b.querySelectorAll(':scope > .lg-group')];
           return { titles: g.map((d) => d.querySelector('.lg-title').textContent), open: g.filter((d) => d.open).length, fits: b.scrollHeight <= b.clientHeight + 1,
-            coming: b.querySelectorAll('.coming').length, usable: [...b.querySelectorAll('.coming')].flatMap((c) => [c, ...c.querySelectorAll('input, button')]).filter((c) => 'disabled' in c && !c.disabled).length }; })()""")
+            coming: b.querySelectorAll('.coming').length, usable: [...b.querySelectorAll('.coming')].flatMap((c) => [c, ...c.querySelectorAll('input, button:not(.info-dot)')]).filter((c) => 'disabled' in c && !c.disabled).length }; })()""")  # (an ⓘ still says what it will do, #382)
         want = ['Speeds and tiles by sport', 'Display', 'Language and units', 'Route’s list', 'Route arrows and marks', 'Map and planner', 'Hidden in Check', 'Offline maps', 'Saved on this device', 'Strava and Garmin', 'Data sources', 'About Polku']
         if st['titles'] != want:
             fails.append(f"the groups are {st['titles']}")
@@ -19660,6 +19660,30 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (desk) { p.openWay('draw'); await wait(600); sameRow(document.querySelector('.pl-way .way-srow'), 'Draw it’s Fine-tune'); }
   document.querySelector('#btn-settings').click(); await wait(600);
   sameRow(document.querySelector('#settings-body .speed-sport-row'), 'Settings’ speeds');
+  // Settings: a switch's explanation behind an ⓘ after its name (#382): the name alone names the switch, a click on the ⓘ shows
+  // the words and leaves the switch as it was, and the row is as tall as a switch's without one
+  const disp = document.querySelector('#settings-body [data-group=settings-display]'), wasOpen = disp && disp.open;
+  if (disp) { disp.open = true; await wait(200); }
+  const info = document.querySelector('#settings-body .tg-info'), bare = disp && [...disp.querySelectorAll('.tg')].find((t) => !t.classList.contains('tg-info'));
+  if (!info || info.querySelector('small')) out.push('Settings: no switch with its explanation behind an ⓘ');
+  else {
+    const inp = info.querySelector('input'), was = inp.checked, name = info.querySelector('.tg-text').firstChild.textContent.trim();
+    info.querySelector('.info-dot').click(); await wait(150);
+    if (inp.checked !== was) out.push(`Settings: a click on ${name}'s ⓘ flipped its switch`);
+    if (![...document.querySelectorAll('body > .tip')].some((t) => t.textContent.startsWith(name))) out.push(`Settings: ${name}'s ⓘ showed no words`);
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); await wait(50);
+    if (inp.getAttribute('aria-label') !== name) out.push(`Settings: ${name}'s switch is named "${inp.getAttribute('aria-label')}"`);
+    if (bare && Math.round(info.getBoundingClientRect().height) !== Math.round(bare.getBoundingClientRect().height))
+      out.push(`Settings: ${name}'s row ${Math.round(info.getBoundingClientRect().height)} px, a switch's without an ⓘ ${Math.round(bare.getBoundingClientRect().height)}`);
+  }
+  if (disp) disp.open = wasOpen;
+  // a tapped ⓘ low on the screen shows its words above it, on the screen (#1049's review)
+  const low = document.body.appendChild(U.infoDot('Low', 'Words long enough to take a few lines, as a setting’s explanation does, so a bubble under the ⓘ would leave the screen'));
+  Object.assign(low.style, { position: 'fixed', left: '50%', bottom: '4px' });
+  low.click(); await wait(100);
+  const lowTip = [...document.querySelectorAll('body > .tip')].find((t) => t.textContent.startsWith('Low')), lr = lowTip && lowTip.getBoundingClientRect();
+  if (!lr || lr.top < 0 || lr.bottom > innerHeight) out.push(`a tapped ⓘ at the screen's foot: its words ${lr ? `at ${Math.round(lr.top)}–${Math.round(lr.bottom)} px` : 'not shown'}, the screen ${innerHeight} px`);
+  document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); low.remove();
   document.querySelector('#btn-settings').click(); await wait(400);
   // the chosen chip: green with a 2 px border everywhere, as the round trip's lengths have it
   p.openLoop(polku.map.getCenter().toArray()); await wait(800);

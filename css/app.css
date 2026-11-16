@@ -657,7 +657,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
 .tg-text { flex: 1; display: flex; flex-direction: column; }
 .tg-text small { color: var(--muted); font-size: 11px; }
-.lg-group > .tg-text, .lg-group > .coming > .tg-text, .speed-box > .tg-text { padding: 7px 0 8px; } /* a setting's name over its chips (Appearance) */
+.lg-group > .tg-text, .lg-group > .coming:not(.tg) > .tg-text, .speed-box > .tg-text { padding: 7px 0 8px; } /* a setting's name over its chips (Appearance) */
 /* a setting its issue hasn't built yet: its control greyed and off, its words readable, Coming beside its name (Settings, #321) */
 .coming .tg-ui, .coming > span[aria-hidden]:first-child, .coming .way-chev { opacity: .5; }
 .coming .tg-text, .coming b, .coming .val, .coming .seg button:disabled { color: var(--muted); }
@@ -676,6 +676,9 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .range { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); padding: 4px 0 8px; }
 /* an overlay's opacity, under its switch */
 .tg-group { display: flex; flex-direction: column; }
+/* Settings: a switch's name, its ⓘ right after it, then the switch (#382) */
+.tg-info .tg-text { flex-direction: row; align-items: center; gap: 2px; }
+.tg-info .info-dot { margin-block: -4px; } /* (the row as tall as a switch's without one) */
 .range.op-row { flex-direction: row; align-items: center; gap: 10px; padding: 0 0 8px 2px; }
 .range.op-row input { flex: 1; min-width: 0; accent-color: var(--accent); }
 .op-val { width: 40px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
@@ -1604,7 +1607,7 @@ div.wx-sec-cols { cursor: default; }
 .bt-axis > span { position: absolute; top: 0; transform: translateX(-50%); }
 .bt-axis > span:first-child { transform: none; }
 .bt-axis > .tool.info-dot { position: absolute; right: 0; top: -6px; } /* (at the axis's end, under the bars it explains) */
-.tool.info-dot { flex: none; position: relative; width: 28px; height: 28px; min-height: 0; padding: 0; color: var(--accent); }
+.tool.info-dot { flex: none; position: relative; width: 28px; height: 28px; min-height: 0; padding: 0; color: var(--muted); } /* (grey: green is for what's chosen, #382) */
 @media (pointer: coarse) { .tool.info-dot::after { content: ""; position: absolute; inset: -8px; } } /* (a finger's 44 px) */
 .bt-cross { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 13px; }
 .bt-cross > span:first-child { flex: none; display: grid; color: var(--sport-paddle); }
