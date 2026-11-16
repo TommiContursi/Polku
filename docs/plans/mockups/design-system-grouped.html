@@ -4148,7 +4148,11 @@ const boxOf = (e) => { const c = getComputedStyle(e), h = e.offsetHeight ?? e.ge
 let MAINCSS = null;
 // main's control, drawn by main's CSS alone: a shadow root keeps Mine's rules off it
 function mainCell(label, html, sel) {
-  if (!MAINCSS) { MAINCSS = new CSSStyleSheet(); MAINCSS.replaceSync($('style').textContent); } // (the page's first style is main's app.css)
+  if (!MAINCSS) { // main's app.css, found by what's in it: claude.ai's viewer puts a style of its own before the page's
+    const app = $$('style').find((e) => e.textContent.includes('.seg button {') && e.textContent.includes('.tg-ui {'));
+    if (!app) throw new Error('Components: main’s app.css is not on the page');
+    MAINCSS = new CSSStyleSheet(); MAINCSS.replaceSync(app.textContent);
+  }
   const item = document.createElement('div'); item.className = 'ds-item';
   const host = document.createElement('div'); host.className = 'ds-host';
   const root = host.attachShadow({ mode: 'open' }); root.adoptedStyleSheets = [MAINCSS];
