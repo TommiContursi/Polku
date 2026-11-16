@@ -403,7 +403,11 @@ Actual uploads and the publication fit the configured limits; artifact account a
 reproducibility; daily monitoring does not rebuild or upload these artifacts.
 
 The workflow first chooses one completed dated Geofabrik export shared by all
-four countries. Country sources must have identical replication timestamps.
+four countries and the Europe reference. The snapshot step logs each checksum
+URL, its HTTP status and the curl exit code. It retries transient errors up to
+twice within the existing five-minute job limit. A missing checksum rejects
+that date and the workflow checks the previous day. Country sources must have
+identical replication timestamps.
 Their actual clipping polygons and hashes are retained; overlapping original
 objects are compared by type/ID and canonical content. A conflict fails assembly.
 Country archives preserve whole ways and original relation references, while

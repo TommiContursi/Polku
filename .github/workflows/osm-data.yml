@@ -112,10 +112,12 @@ jobs:
           for osm_days in 1 2; do
             osm_stamp=$(date -u -d "$osm_days days ago" +%y%m%d)
             osm_ready=true
-            for osm_country in finland sweden norway estonia; do
-              curl --head --fail --silent --location --max-time 20 "https://download.geofabrik.de/europe/$osm_country-$osm_stamp.osm.pbf.md5" -o /dev/null || osm_ready=false
+            for osm_region in europe/finland europe/sweden europe/norway europe/estonia europe; do
+              curl --head --fail --silent --show-error --location \
+                --connect-timeout 5 --max-time 8 --retry 2 --retry-connrefused --retry-max-time 15 \
+                --output /dev/null --write-out '%{url} HTTP %{http_code} (curl %{exitcode})\n' \
+                "https://download.geofabrik.de/$osm_region-$osm_stamp.osm.pbf.md5" || osm_ready=false
             done
-            curl --head --fail --silent --location --max-time 20 "https://download.geofabrik.de/europe-$osm_stamp.osm.pbf.md5" -o /dev/null || osm_ready=false
             if $osm_ready; then
               echo "stamp=$osm_stamp" >> "$GITHUB_OUTPUT"
               echo "Shared dated snapshot: $osm_stamp" >> "$GITHUB_STEP_SUMMARY"
