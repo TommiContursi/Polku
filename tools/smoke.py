@@ -18945,6 +18945,11 @@ def sections_list(chrome):
         # a point is a row and a plain stretch a line between two (#761): four MTB points along paths, each stretch's line
         # its numbers alone (how it's drawn in its label), no point's line a distance; a straight leg says so first, set apart
         route(pg, name, {'mode': 'auto', 'pts': PTS[:4], 'names': [[1, 'Hämeentie'], [2, 'Tihtaalinkatu']]})
+        # Route's list and its two rows are groups, with When and the weather's edge (#382)
+        g = pg.js("""(() => { const edge = (e) => { if (!e) return 'none'; const c = getComputedStyle(e); return `${c.borderTopWidth} ${c.borderTopColor} ${c.borderTopLeftRadius}`; };
+          return { trip: edge(document.querySelector('#planner > .trip-box')), list: edge(document.querySelector('#pl-pane-route > .sec[data-sec=points]')), how: edge(document.querySelector('#pl-pane-route > .how-rows')) }; })()""")
+        if g['trip'] == 'none' or not (g['trip'] == g['list'] == g['how']):
+            fails.append(f"{name}: the planner's groups: When and the weather {g['trip']}, Route's list {g['list']}, its rows {g['how']}")
         if pg.js("polku.planner.els.points.querySelectorAll('.wpl-tools, .wpl-ptrow').length"):
             fails.append(f"{name}: a phone's rows have a desktop's tools (#761)")
         for what, straight in (('four MTB points', None), ('a straight leg', '~1')):
