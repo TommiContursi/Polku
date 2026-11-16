@@ -340,7 +340,7 @@ Every card has the same places, in this order. A place it has nothing for is lef
 
 The planner keeps its own order: its head, then its four sections.
 
-**Settings and Layers** use the same look with groups that fold: each group's heading inside it (17 px, a chevron at its end), groups 12 px apart. There a switch's explanation goes behind an ⓘ right after its name (built for Settings, 2026-11-16: the ⓘ is a button in the switch's label, so a press on it doesn't flip the switch, and the switch is named by its name alone), and a group's note behind an ⓘ at its heading (not built yet); a note that holds data, shows the way into an empty list or promises something about your data stays as words. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
+**Settings and Layers** use the same look with groups that fold: each group's heading inside it (17 px, a chevron at its end), groups 12 px apart. There a switch's explanation goes behind an ⓘ right after its name (built for Settings and Layers, 2026-11-16: the ⓘ is a button in the switch's label, so a press on it doesn't flip the switch, and the switch is named by its name alone; a note that keeps you safe, as Sea ice's and the ski tracks', stays as words), and a group's note behind an ⓘ at its heading (not built yet); a note that holds data, shows the way into an empty list or promises something about your data stays as words. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
 
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).

@@ -19685,6 +19685,16 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (!lr || lr.top < 0 || lr.bottom > innerHeight) out.push(`a tapped ⓘ at the screen's foot: its words ${lr ? `at ${Math.round(lr.top)}–${Math.round(lr.bottom)} px` : 'not shown'}, the screen ${innerHeight} px`);
   document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); low.remove();
   document.querySelector('#btn-settings').click(); await wait(400);
+  // Layers too (#382, after the user's review of 2026-11-16): a switch's explanation behind an ⓘ; a note that keeps you safe
+  // (Sea ice, Ski tracks) stays as words, which the winter group only shows in winter
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
+  await wait(500);
+  const lb = document.querySelector('#layers-body'), named = (l) => [...lb.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === l);
+  for (const l of ['Trail details', 'Hillshade']) {
+    const t = named(l);
+    if (!t || !t.classList.contains('tg-info') || t.querySelector('.tg-text small')) out.push(`Layers: ${l}'s explanation ${t ? 'in words' : 'not there'}, not behind an ⓘ`);
+  }
+  document.querySelector('#layers-panel .panel-head .panel-x, #layers-panel .panel-head button:last-child')?.click(); await wait(300);
   // the chosen chip: green with a 2 px border everywhere, as the round trip's lengths have it
   p.openLoop(polku.map.getCenter().toArray()); await wait(800);
   const way = document.querySelector('.pl-way'), box = way.appendChild(document.createElement('div'));

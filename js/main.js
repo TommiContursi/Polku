@@ -1150,10 +1150,11 @@ const toggle = (label, on, fn, note = '') => {
     h('input', { type: 'checkbox', id, checked: on, role: 'switch', onchange: (e) => { fn(e.target.checked); e.target.defaultChecked = e.target.checked; } }), // (as drawn: settleControls())
     h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
 };
-// Settings: a switch whose explanation is behind an ⓘ after its name (#382). A press on the ⓘ, a button in the label,
-// doesn't flip the switch; the switch is named by its name alone
+// Settings and Layers: a switch whose explanation is behind an ⓘ after its name (#382). A press on the ⓘ, a button in the
+// label, doesn't flip the switch; the switch is named by its name alone. A note that keeps you safe stays as words (toggle())
 const toggleInfo = (label, on, fn, note, name = label) => {
   const tg = toggle(label, on, fn);
+  if (!note) return tg;
   tg.classList.add('tg-info');
   tg.querySelector('.tg-text').append(infoDot(name, note));
   tg.querySelector('input').setAttribute('aria-label', name);
@@ -1229,7 +1230,7 @@ const heightRange = () => {
     h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), 'aria-label': '3D height',
       oninput: (e) => { state.exaggeration = +e.target.value; val.textContent = `${state.exaggeration.toFixed(1)}×`; if (map.getTerrain()) map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } }), val);
 };
-const arrowsToggle = () => toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery');
+const arrowsToggle = () => toggleInfo('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery');
 // the hills raised in 3D, and how tall, or 3D only tilting the map, flat; and the buildings standing up or flat
 const hillsControls = () => [
   toggle('Raised hills', state.raiseHills, setRaiseHills),
@@ -1237,7 +1238,7 @@ const hillsControls = () => [
   toggle('3D buildings', state.buildings3d, setBuildings3d),
 ];
 const terrain3dControls = () => [
-  toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
+  toggleInfo('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
   ...hillsControls(), // (found before 3D is on, too)
 ];
 function trailControls() {
@@ -1258,12 +1259,12 @@ function trailControls() {
     state.winterOn && state.trailColors !== 'winter' && state.trailColors !== 'off' ? h('p', { class: 'note' }, '❄ It’s winter here: the difficulty colours are faded, and the winter ways show over them (Winter, below).') : null,
     state.trailColors === 'down' || state.trailColors === 'both' ? trailColorOpacityRow('down', 'Difficulty') : null,
     state.trailColors === 'up' || state.trailColors === 'both' ? trailColorOpacityRow('up', 'Uphill') : null,
-    toggle('Trail details', state.trailDetails, rerender((v) => {
+    toggleInfo('Trail details', state.trailDetails, rerender((v) => {
       setTrail('trailDetails', v);
       if (v && map.getZoom() < DETAILS_ZOOM) toast(`Zoom in to level ${DETAILS_ZOOM}+ to see trail details`);
     }), `Width, faint trails, overgrown and wet stretches, fallen trees, gates, fords · zoom ${DETAILS_ZOOM}+ · from OpenStreetMap, where mapped`),
-    toggle('Difficulty numbers', state.labelsDown, rerender((v) => setTrail('labelsDown', v)), 'S0–S6 beside graded trails (zoom 15+)'),
-    toggle('Uphill numbers', state.labelsUp, rerender((v) => {
+    toggleInfo('Difficulty numbers', state.labelsDown, rerender((v) => setTrail('labelsDown', v)), 'S0–S6 beside graded trails (zoom 15+)'),
+    toggleInfo('Uphill numbers', state.labelsUp, rerender((v) => {
       setTrail('labelsUp', v);
       if (v && map.getZoom() < 14.5) toast('Zoom in to level 15 to see the numbers');
     }), '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)'),
@@ -1273,7 +1274,7 @@ function trailControls() {
 // one overlay's switch, with its opacity under it while it's on (Lit ways: its look, then its opacity)
 const overlayToggle = (id) => {
   const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
-  const tg = toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
+  const tg = toggleInfo(overlayLabel(id), !!state.overlays[id], rerender((v) => {
     setOverlay(id, v);
     if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
@@ -1294,7 +1295,7 @@ const sunNote = () => {
 };
 const hillshadeControls = () => {
   const sun = state.hillLight === 'sun';
-  const tg = toggle('Hillshade', state.hillshade, rerender((v) => { state.hillshade = v; applyStyle(); }), sun ? 'Lit by the sun at the map’s hour' : 'Lidar-based, lit from the north-west in 3D');
+  const tg = toggleInfo('Hillshade', state.hillshade, rerender((v) => { state.hillshade = v; applyStyle(); }), sun ? 'Lit by the sun at the map’s hour' : 'Lidar-based, lit from the north-west in 3D');
   if (!state.hillshade) return tg;
   return h('div', { class: 'tg-group' }, tg,
     seg(HILL_LIGHTS, state.hillLight, (v) => { state.hillLight = v; applyStyle(); renderLayersPanel(); }),
@@ -1313,12 +1314,12 @@ function open3dMenu(anchor) {
   anchor.setAttribute('aria-expanded', 'true');
 }
 // weather on the map: the same switches as on the Weather button's timeline
-const timelineToggle = () => toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
+const timelineToggle = () => toggleInfo('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
 const wxToggle = (k) => ({
-  wind: () => toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
-  temp: () => withOpacity('wx:temp', toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
-  rain: () => withOpacity('wx:rain', toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
-  snow: () => withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
+  wind: () => toggleInfo('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
+  temp: () => withOpacity('wx:temp', toggleInfo('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
+  rain: () => withOpacity('wx:rain', toggleInfo('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
+  snow: () => withOpacity('wx:snow', toggleInfo('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
   cloud: () => toggle('Clouds', state.weather.cloud, (v) => setWeather({ cloud: v })),
   thunder: () => toggle('Thunder', state.weather.thunder, (v) => setWeather({ thunder: v })),
   towns: () => toggle('Weather at places', state.weather.towns, (v) => setWeather({ towns: v })),
@@ -1393,8 +1394,8 @@ function renderLayersPanel() {
   // terrain shading right after the base maps and 3D, open unless you close it
   p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0, true,
     hillshadeControls(),
-    toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
-    withOpacity('maastoOverlay', toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
+    toggleInfo('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
+    withOpacity('maastoOverlay', toggleInfo(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
     state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null));
 
   // trails & difficulty (and the map key for the base map's lines): in every sport
@@ -1411,13 +1412,13 @@ function renderLayersPanel() {
       renderLayersPanel();
     }),
     h('p', { class: 'note' }, `${winterNote()}. Auto turns winter on from ${SNOW_ON} cm of snow where you look (FMI’s nearest station, else the forecast).`),
-    toggle('Winter ways', !!state.overlays.winterWays, rerender((v) => {
+    toggleInfo('Winter ways', !!state.overlays.winterWays, rerender((v) => {
       setOverlay('winterWays', v);
       if (v && wOn && map.getZoom() < WINTER_MIN_ZOOM) toast(`Zoom in to level ${WINTER_MIN_ZOOM}+ to see the winter ways`);
     }), 'How soon trails open after snow, ploughing, no access in winter, ski tracks · OpenStreetMap, where mapped · zoom 11+'),
     toggle('Ski tracks, skating & snowmobile routes', !!state.overlays.lipasWinter, rerender((v) => setOverlay('lipasWinter', v)), 'LIPAS · keep off ski tracks on foot and by bike'),
     withOpacity('seaIce', toggle('Sea ice', !!state.overlays.seaIce, rerender((v) => setOverlay('seaIce', v)), 'FMI’s daily ice charts (Copernicus Marine) · never a sign that ice is safe')),
-    withOpacity('wx:snow', toggle('Snow depth on the map', state.weather.snow, (v) => setWeather({ snow: v }), 'On the timeline, with FMI’s measured depths')),
+    withOpacity('wx:snow', toggleInfo('Snow depth on the map', state.weather.snow, (v) => setWeather({ snow: v }), 'On the timeline, with FMI’s measured depths')),
     wOn ? null : h('p', { class: 'note' }, 'These show while it’s winter.'),
     mapKey(...KEYS.winter())));
 
