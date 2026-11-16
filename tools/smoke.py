@@ -19701,8 +19701,10 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   }
   // an ⓘ answers a finger 18 px under its middle, above the next row (#1052's review)
   if (matchMedia('(pointer: coarse)').matches) {
-    const dot = named('Trail details')?.querySelector('.info-dot'), r = dot?.getBoundingClientRect(), hit = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2 + 18);
-    if (dot && !dot.contains(hit)) out.push(`Layers: 18 px under Trail details' ⓘ a tap goes to ${hit?.className || hit?.tagName}`);
+    const dot = named('Trail details')?.querySelector('.info-dot');
+    dot?.scrollIntoView({ block: 'center' }); await wait(200);
+    const r = dot?.getBoundingClientRect(), hit = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2 + 18);
+    if (!dot || !dot.contains(hit)) out.push(`Layers: 18 px under Trail details' ⓘ a tap goes to ${hit ? hit.className || hit.tagName : 'nothing'}`);
   }
   document.querySelector('#layers-panel .panel-head .panel-x, #layers-panel .panel-head button:last-child')?.click(); await wait(300);
   // the chosen chip: green with a 2 px border everywhere, as the round trip's lengths have it
