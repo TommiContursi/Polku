@@ -936,7 +936,18 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
   .fold-go .fold-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 }
 .sheet-head { flex: none; padding: 0 10px 8px 14px; touch-action: none; container-type: inline-size; }
-.sheet-row { display: flex; align-items: center; gap: 8px; }
+.sheet-row { display: grid; gap: var(--space-8); }
+/* the head's title (#382, Mine 8): the route's name, its sports and changeovers under it, what to read and (wider screens)
+   the planner's own keys at its end */
+.pl-title { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
+.pl-title-t { flex: 1; min-width: 0; display: grid; gap: 2px; padding-left: 17px; } /* (its words where the groups' are: 16 + 15 px in) */
+.pl-title-t[hidden], .pl-sports[hidden] { display: none; }
+.pl-name { font-size: var(--font-number); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
+.pl-sports { color: var(--muted); font-size: var(--font-control); font-weight: var(--weight-name); }
+.pl-sports > b { font-weight: var(--weight-strong); }
+/* the numbers in one box on the key's face (round 5), wrapping to a second line rather than shrinking */
+.sheet-row > .sheet-sum { margin: 0 6px 0 2px; padding: var(--space-8) var(--space-12); border: 1px solid var(--key-edge); border-radius: var(--radius); background: var(--surface-solid); }
+.sheet-row > .sheet-sum:has(> .sum-empty) { padding: 0; border: 0; background: none; }
 /* key facts (#471's A2): a line under the route's numbers, a row a sport on a route of two; each opens where it's told */
 .kf { display: grid; margin: 2px 0 0; }
 .kf-b { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; margin: 0 -6px; padding: 2px 6px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: var(--font-body); text-align: left; cursor: pointer; }
@@ -987,8 +998,8 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .pl-viewnote .btn { flex: none; gap: 6px; }
 b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere; }
 .sheet-min { display: none; }
-.sheet-row > .way-x { display: none; }
-@media (min-width: 721px) { .sheet-row > .way-x { display: inline-flex; } }
+.pl-title > .way-x { display: none; }
+@media (min-width: 721px) { .pl-title > .way-x { display: inline-flex; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 /* the routing bar, on the sheet's top edge (js/planner.js setBusy()), a child of the sheet so folding doesn't hide it: it waits
@@ -1420,7 +1431,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .pl-h > :not(h3) { margin-block: -6px; } /* (its tools keep their targets without making the heading taller) */
 .pl-group { padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius); }
 .pl-pane > .pl-group, .pl-pane > .sec.pl-group, .sheet > .trip-box { margin-bottom: var(--space-12); }
-:is(.pl-group.rows, .pl-group > .rows) { margin: 0; }
+:is(.pl-group.rows, .pl-group > .rows) { margin-inline: 0; }
 :is(.pl-group.rows, .pl-group > .rows) > .row { border-radius: 10px; }
 :is(.pl-group.rows, .pl-group > .rows) > .row + .row { border-radius: 0; }
 :is(.pl-group.rows, .pl-group > .rows) > .row:first-child:not(:only-child) { border-radius: 10px 10px 0 0; }
@@ -1771,7 +1782,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
   .wpl .wpl-when { position: static; width: auto; flex-direction: row; justify-content: flex-start; align-items: baseline; gap: 8px; text-align: left; }
 }
 .wpl .sec2 { --part: var(--rail); }
-:root[data-theme="dark"] :is(.wpl, .how-rows) { --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; } /* (the map's are for the map: some are under 3:1 on the dark glass) */
+:root[data-theme="dark"] :is(.wpl, .how-rows, .pl-sports) { --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; } /* (the map's are for the map: some are under 3:1 on the dark glass) */
 .wpl-point > span:first-child::before, .wpl-point > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); background: var(--part); }
 .wpl-point > span:first-child::before { top: -6px; bottom: 50%; }
 .wpl-point > span:first-child::after { top: 50%; bottom: -6px; }
@@ -2080,25 +2091,15 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .looked li small { margin-left: auto; color: var(--muted); text-align: right; }
 .looked p { margin: 10px 0 0; }
 .checks .hidden-kinds { padding-top: 10px; }
-/* what to read where the key facts' line isn't shown (#741; a phone on its side, 200 %): the count alone, in the numbers'
-   row, so it takes none of the map (the review of #416, #438). Narrow: beside the numbers above Done; else before Done,
-   in the numbers' line. Its sign and its name say what it is, a tap opens Check at the first */
-.pl-readrow-go { display: flex; align-items: center; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; }
-.pl-readrow-go > span:first-child { flex: none; display: grid; }
-.pl-readrow.danger .pl-readrow-go > span:first-child { color: var(--danger); }
-.pl-readrow.unk .pl-readrow-go > span:first-child { color: var(--unk); }
-.pl-readrow-go:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-/* (beside the distance and the time: the climb's line, the widest, keeps the room to its right) */
-.sheet-row.with-count { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr; gap: 4px 8px; align-items: start; }
-.sheet-row.with-count > .sheet-sum { grid-row: 1 / span 3; }
-.sheet-row.with-count > :not(.sheet-sum) { grid-column: 2; }
-.sheet-row > .pl-readrow { flex: none; margin: 0; padding: 0; }
-/* (in the numbers' line, they close up as on a 360 px phone, so the line holds them and the count) */
-.sheet-row.count-inline .sheet-sum { column-gap: 12px; }
-.sheet-row.count-inline .sum-item b { font-size: 16.5px; }
-/* (40 px high, so it and Done end above the climb's line) */
-.pl-readrow.compact .pl-readrow-go { min-height: 40px; gap: 4px; padding: 0 10px 0 8px; border-radius: 11px; }
-.pl-readrow.compact b { font-size: 18px; font-variant-numeric: tabular-nums; }
+/* what to read, beside the route's name (#382, Mine 8): a red ball with the count and its word on a soft red key; "?" in
+   a dashed ring, with how many weren't checked, while nothing is to read but that. A tap opens Check at the first */
+.pl-readrow { flex: none; }
+.pl-readrow-go { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); padding: 0 12px 0 6px; border: 0; border-radius: var(--radius-pill); background: var(--danger-soft); color: var(--danger); font: inherit; font-weight: var(--weight-name); cursor: pointer; }
+.pl-readrow-go > b { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--danger); color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; }
+.pl-readrow.unk .pl-readrow-go { background: var(--unk-soft); color: var(--unk); }
+.pl-readrow.unk .pl-readrow-go > b { background: none; box-shadow: inset 0 0 0 1.5px var(--unk); border: 0; color: var(--unk); }
+.pl-readrow-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (hover: hover) { .pl-readrow-go:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); } .pl-readrow.unk .pl-readrow-go:hover { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); } }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }
@@ -2531,6 +2532,7 @@ body.dropping .drop-hint { display: flex; }
   .orbit { width: 62px; height: 62px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
+  .pl-title { padding-right: 8px; } .pl-title-t { padding-left: 19px; } .sheet-row > .sheet-sum { margin: 0 8px 0 4px; } /* (the groups' 16 px edges) */
   .sheet-row { min-height: 44px; } /* (the numbers' row as tall as Done made it before #745: the peek doesn't change when they come) */
   .pl-viewnote .btn { min-height: 44px; }
   /* a note with the planner closed stays left of the map's buttons, so it never covers Layers or Plan (25c) */

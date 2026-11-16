@@ -189,9 +189,6 @@ export class Planner {
     this.points = [];
     this.legs = [];
     this.readKeys = new Set(); // Check's items marked read (25d part 3): with the saved route on this device, not in links
-    // (what to read as a count beside the numbers: narrow, above Done, else before it)
-    this.narrowMQ = matchMedia('(max-width: 300px)');
-    this.narrowMQ.addEventListener('change', () => this.renderReadRow());
     this.mode = ACTIVITIES[app.activity()].mode;
     this.craft = store.get('craft', 'kayak');
     this.past = [];
@@ -4628,9 +4625,13 @@ export class Planner {
     // the next leg is drawn, undo, redo and More are in the toolbox (buildTools(), #745). Before there's a route, and
     // while a round trip is open, it holds the start instead (renderStart(), A with 25b).
     // (wider screens: ✕ at the header row's end, as the mock-up of step 3 has it; phones: the folded line's)
-    // what to read, as a count beside the numbers where the key facts' line isn't shown (renderReadRow())
-    this.els.readRow = h('div', { class: 'warn-row pl-readrow compact', hidden: true });
-    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.readRow, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX());
+    // the head (#382, Mine 8): the route's name, its sports and changeovers under it, what to read beside it (renderReadRow()),
+    // then the numbers in their box
+    this.els.readRow = h('div', { class: 'pl-readrow', hidden: true });
+    this.els.name = h('b', { class: 'pl-name' });
+    this.els.sports = h('small', { class: 'pl-sports' });
+    this.els.title = h('div', { class: 'pl-title' }, h('div', { class: 'pl-title-t' }, this.els.name, this.els.sports), this.els.readRow, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX());
+    this.els.row = h('div', { class: 'sheet-row' }, this.els.title, this.els.sum);
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
     this.els.card = h('div', { class: 'card-peek', hidden: true });
@@ -6328,6 +6329,18 @@ export class Planner {
     return keyFacts(a, { sport: this.mainSport(), days, noWeather: this.noWeather(a) });
   }
 
+  // The head's title: the route's name, and on a route of more than one sport each in its colour and the changeovers
+  renderTitle(a) {
+    const t = this.els.title.firstElementChild;
+    t.hidden = !a;
+    if (!a) return;
+    this.els.name.textContent = this.routeTitle();
+    const sports = this.routeSports(), n = this.legs.filter((_, i) => i && this.legSport(i) !== this.legSport(i - 1)).length;
+    this.els.sports.hidden = sports.length < 2;
+    this.els.sports.replaceChildren(...sports.flatMap((x) => [h('b', { style: `color: var(--sport-${x})` }, ACTIVITIES[x].label), ' · ']),
+      `${n} changeover${n === 1 ? '' : 's'}`);
+  }
+
   // Key facts (#471's A2) [kf2-gravel, kf2-multi, kf2-days]: one line under the route's numbers saying what stands out on
   // this route, else the sport's usual fact; a row a sport on a route of two. A tap opens where it's told in full.
   // What Check found to read takes the first line's place (#741): the same height in the same place, so nothing moves when
@@ -6604,6 +6617,7 @@ export class Planner {
     this.renderOnMap();
     this.renderBox();
     this.renderFacts(a);
+    this.renderTitle(a);
     this.when.put(); // ("Tomorrow" becomes "Today" overnight)
     if (!a) {
       const tap = matchMedia('(pointer: coarse)').matches ? 'tap' : 'click';
@@ -7180,7 +7194,7 @@ export class Planner {
   }
 
   // What Check found that's still unread [jc-peek, jc-desk]: the warnings, else what wasn't checked; null
-  // with neither. Its count says it beside the route's numbers (renderReadRow()), a tap opens Check at the first.
+  // with neither. Its count says it beside the route's name (renderReadRow()), a tap opens Check at the first.
   // Got it on an item's card and Check's All read mark them read, and the count goes.
   readSays() {
     const H = this.heads, R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
@@ -7188,18 +7202,16 @@ export class Planner {
     const first = n1 ? R1[0] : R3[0];
     return { n1, n3, aria: `${[n1 && `${n1} warning${n1 === 1 ? '' : 's'}`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}${n1 + n3 > 1 ? ` and ${n1 + n3 - 1} more` : ''}. Open Check at the first` };
   }
-  // the count says it in the numbers' row, at every size (the key facts went under the profile, #382), taking none of the
-  // map (the review of #416, #438): narrow, beside the numbers above Done; else before Done, in the numbers' line
+  // the count, a red ball and its word beside the route's name (#382, Mine 8; "?" while something wasn't checked, never
+  // colour alone), taking none of the map (the review of #416, #438)
   renderReadRow() {
-    const el = this.els.readRow, row = this.els.row, R = this.readSays(), narrow = this.narrowMQ.matches;
+    const el = this.els.readRow, R = this.readSays();
     if (!el) return;
     el.hidden = !R;
-    row.classList.toggle('with-count', narrow && !el.hidden);
-    row.classList.toggle('count-inline', !narrow && !el.hidden);
-    if (el.hidden) return;
-    el.className = `warn-row pl-readrow compact ${R.n1 ? 'danger' : 'unk'}`;
+    if (!R) return;
+    el.className = `pl-readrow ${R.n1 ? 'danger' : 'unk'}`;
     el.replaceChildren(h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': R.aria, onclick: () => this.openFromRow() },
-      h('span', { 'aria-hidden': 'true', html: icon(R.n1 ? 'warnf' : 'unk', 22) }), h('b', { 'aria-hidden': 'true' }, String(R.n1 || R.n3))));
+      h('b', { 'aria-hidden': 'true' }, R.n1 ? String(R.n1) : '?'), h('span', { 'aria-hidden': 'true' }, R.n1 ? `warning${R.n1 === 1 ? '' : 's'}` : `${R.n3} not checked`)));
   }
   // the line (or the count): Check, at the first unread one, with its card (a phone's sheet at half under it) [jc-desk-sel]
   openFromRow() {
