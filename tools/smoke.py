@@ -21184,10 +21184,10 @@ def keyfacts(chrome):
 # group in Layers while a route is drawn (straight legs)
 TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; window.TB = {
   pane: () => document.getElementById('pl-pane-route'),
-  // (the trip's box after the profile, over the tabs: #869's step 3)
+  // (the trip's box over the profile, the order of 2026-11-15; the sections' headings aren't content, #382)
   route() {
-    const p = polku.planner, pane = TB.pane(), first = [...pane.children].find((e) => vis(e) && e !== p.els.checkGo.parentElement), rows = [...pane.querySelectorAll('.how-rows > .row')];
-    return { box: vis(p.els.box) && p.els.box.previousElementSibling === p.els.profZone, check: vis(p.els.checkGo) && pane.firstElementChild.nextElementSibling === p.els.checkGo.parentElement, first: first ? first.dataset.sec || first.className : '', rows: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
+    const p = polku.planner, pane = TB.pane(), first = [...pane.children].find((e) => vis(e) && e !== p.els.checkGo.parentElement && !e.classList.contains('pl-h')), rows = [...pane.querySelectorAll('.how-rows > .row')];
+    return { box: vis(p.els.box) && p.els.box.nextElementSibling === p.els.profZone, check: vis(p.els.checkGo) && pane.firstElementChild.nextElementSibling === p.els.checkGo.parentElement, first: first ? first.dataset.sec || first.className : '', rows: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
   },
   // Route's first content after Check's row (#382), from its top: what it is and whether its heading is in sight in the body
   // (#740); the trip's box in sight from the top, and where it takes the list's room (a phone's half, the bottom dock's),

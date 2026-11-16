@@ -4790,7 +4790,7 @@ export class Planner {
     this.els.top = h('div', { class: 'sheet-top' }, h('span', { class: 'sheet-top-start' }, this.els.up, this.els.foldBtn), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.topSet, this.els.topX), this.els.topSum);
     this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
     // (the views' headings, h3, under one of the planner's own: its title row has the route's name only in the route's view)
-    p.append(this.els.top, this.els.fold, this.els.head, this.els.box, this.els.profZone, h('h2', { class: 'sr-only' }, 'Planner'), this.els.body, this.els.bar);
+    p.append(this.els.top, this.els.fold, h('h2', { class: 'sr-only' }, 'Planner'), this.els.head, this.els.box, this.els.profZone, this.els.body, this.els.bar);
     p.after(this.els.grip); // (beside the panel, not in it: the side panel scrolls as one, which would clip it and scroll it away)
     this.setView('route');
     this.renderOnMap();
