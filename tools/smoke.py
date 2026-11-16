@@ -18826,7 +18826,7 @@ SE_LINE = """(() => {
   return {
     inTop: vis(p.els.pointsTop.querySelector('.sec2-head')),
     heads: [...L.querySelectorAll('.sec2')].map((s) => ({ title: s.querySelector('.sec2-head b')?.textContent || '', sum: s.querySelector('.sec2-head small')?.textContent || '',
-      ring: !!s.querySelector('.sec2-head .ic') && ps(s.querySelector('.sec2-head .ic')).boxShadow.startsWith(col(getComputedStyle(s).getPropertyValue('--part') || 'transparent')) })),
+      ring: !!s.querySelector('.sec2-head .ic') && ps(s.querySelector('.sec2-head .ic')).backgroundColor === col(getComputedStyle(s).getPropertyValue('--part') || 'transparent') })), // (its ball filled in its colour since #382, on the line)
     stretches: [...L.querySelectorAll('.wpl-stretch')].filter(vis).map((b) => { const ln = b.querySelector('.wpl-line'), bf = ps(ln, '::before');
       return { at: b.dataset.from, nums: b.querySelector('.wpl-nums')?.textContent || '', how: b.querySelector('small')?.textContent || '', weight: ps(b.querySelector('.how')).fontWeight, line: /repeating/.test(bf.backgroundImage) ? (bf.backgroundImage.match(/rgba?\\([^)]*\\)/) || [''])[0] : bf.backgroundColor, dash: /repeating/.test(bf.backgroundImage),
         want: col(getComputedStyle(b.closest('.sec2')).getPropertyValue('--part') || 'transparent'), beads: ln.querySelectorAll('.bead').length, fold: b.parentElement.querySelector('.wpl-unfold')?.textContent.trim() ?? null }; }),
@@ -18966,7 +18966,7 @@ def sections_list(chrome):
             # in the sport's colour, dashed where straight; the label starts with the numbers)
             ln = pg.js(SE_LINE)
             if ln['inTop'] or [h['title'] for h in ln['heads']] != ['MTB'] or not ln['heads'][0]['sum'][:1].isdigit() or not ln['heads'][0]['ring']:
-                fails.append(f"{name}: {what}: the part's heading {ln['heads']}, beside Reorder {ln['inTop']} (want MTB in the list, its totals, its ring in its colour)")
+                fails.append(f"{name}: {what}: the part's heading {ln['heads']}, beside Reorder {ln['inTop']} (want MTB in the list, its totals, its ball in its colour)")
             for x in ln['stretches']:
                 straight_one = x['at'] == (straight or '')[1:]
                 want = 'Freehand' if straight_one else 'Follow paths'

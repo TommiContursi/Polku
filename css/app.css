@@ -943,11 +943,10 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet-row { display: grid; gap: var(--space-8); }
 /* the head's title (#382, Mine 8): the route's name, its sports and changeovers under it, what to read and (wider screens)
    the planner's own keys at its end */
-.pl-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); min-width: 0; min-height: var(--target); }
+.pl-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); min-width: 0; }
 .pl-keys { order: -1; flex: 1 0 100%; display: flex; justify-content: flex-end; gap: 2px; margin-bottom: -4px; }
 @media (max-width: 720px) { .pl-keys { display: none; } } /* (a phone's are in the sheet's top row) */ /* (as tall as what to read, so nothing moves when Check answers late, #741) */
-.pl-title:has(> .pl-title-t[hidden]) { min-height: 0; }
-.pl-title-t { flex: 1; min-width: 0; display: grid; gap: 2px; padding-left: 17px; } /* (its words where the groups' are: 16 + 15 px in) */
+.pl-title-t { flex: 1; min-width: 0; min-height: var(--target); display: grid; align-content: center; gap: 2px; padding-left: 17px; } /* (its words where the groups' are: 16 + 15 px in; as tall as what to read beside it, so nothing moves when Check answers late, #741) */
 .pl-title-t[hidden], .pl-sports[hidden] { display: none; }
 .pl-name { font-size: var(--font-number); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
 .pl-sports { color: var(--muted); font-size: var(--font-control); font-weight: var(--weight-name); }
@@ -1763,14 +1762,13 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .sec2-head:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (hover: hover) and (pointer: fine) { .sec2-head:hover { background: var(--surface-2); } }
 .sec2-head > span:first-child { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
-/* a part's heading at the list's left, its sport in its bubble, the line starting at its first point (#382, Mine 8) */
-.wpl .sec2-head { align-items: center; gap: var(--space-10); min-height: 48px; padding-left: var(--space-4); }
-.wpl .sec2-head > span:first-child { width: 32px; height: 32px; align-self: center; margin: 0; border-radius: 50%; place-items: center; background: var(--part); color: #fff; }
-.wpl .sec2-head > span:first-child > .ic { padding: 0; background: none; box-shadow: none; }
-.wpl .sec2-head > span:first-child::before, .wpl .sec2-head > span:first-child::after { display: none; }
+/* a part's sport on the list's line, as #761 built it, bigger and filled in its colour (the user's choice of 2026-11-16 over
+   Mine 8's bubble at the list's left: the ball lined up with the line reads calmer) */
+.wpl .sec2-head > span:first-child > .ic { width: 18px; height: 18px; padding: 7px; margin-top: -4px; background: var(--part); box-shadow: none; color: #fff; }
+:root[data-theme="dark"] .wpl .sec2-head > span:first-child > .ic { color: #000; } /* (black on dark mode's lighter colours) */
 .wpl .sec2-head b { font-size: var(--font-title); }
 .bub { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--part); color: #fff !important; }
-:root[data-theme="dark"] :is(.bub, .wpl .sec2-head > span:first-child) { color: #000 !important; } /* (the dark mode's lighter sport colours: black reads on every one) */
+:root[data-theme="dark"] .bub { color: #000 !important; } /* (the dark mode's lighter sport colours: black reads on every one) */
 .sec2-head > span:first-child > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
 .sec2-head > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
 .wpl .sec2:not(:first-child) > .sec2-head > span:first-child::before { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; top: -12px; height: 12px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
