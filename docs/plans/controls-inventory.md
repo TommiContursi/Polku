@@ -133,7 +133,8 @@ No chip has a hover state.
 Every button on the drawing toolbar (`buildTools()` in `js/planner.js`, app.css:2624–2683). An idea from testing,
 2026-11-16: none needs designing anew, but each gets its new version from the component sheet, and the toolbar's icons
 become square icon keys. Mine 7 draws them on its screens and in Components (a phone's and a desktop's, with a mouse and
-by touch).
+by touch). Decided 2026-11-16: the toolbar is well made as it is, so this design round leaves it as main draws it (Mine 8),
+and its new versions get a design and a PR of their own; the questions below wait for that.
 
 | Button | Main now | New version (Components) |
 |---|---|---|
