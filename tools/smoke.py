@@ -19660,6 +19660,23 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (desk) { p.openWay('draw'); await wait(600); sameRow(document.querySelector('.pl-way .way-srow'), 'Draw it’s Fine-tune'); }
   document.querySelector('#btn-settings').click(); await wait(600);
   sameRow(document.querySelector('#settings-body .speed-sport-row'), 'Settings’ speeds');
+  // Settings: a switch's explanation behind an ⓘ after its name (#382): the name alone names the switch, a click on the ⓘ shows
+  // the words and leaves the switch as it was, and the row is as tall as a switch's without one
+  const disp = document.querySelector('#settings-body [data-group=settings-display]'), wasOpen = disp && disp.open;
+  if (disp) { disp.open = true; await wait(200); }
+  const info = document.querySelector('#settings-body .tg-info'), bare = disp && [...disp.querySelectorAll('.tg')].find((t) => !t.classList.contains('tg-info'));
+  if (!info || info.querySelector('small')) out.push('Settings: no switch with its explanation behind an ⓘ');
+  else {
+    const inp = info.querySelector('input'), was = inp.checked, name = info.querySelector('.tg-text').firstChild.textContent.trim();
+    info.querySelector('.info-dot').click(); await wait(150);
+    if (inp.checked !== was) out.push(`Settings: a click on ${name}'s ⓘ flipped its switch`);
+    if (![...document.querySelectorAll('body > .tip')].some((t) => t.textContent.startsWith(name))) out.push(`Settings: ${name}'s ⓘ showed no words`);
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); await wait(50);
+    if (inp.getAttribute('aria-label') !== name) out.push(`Settings: ${name}'s switch is named "${inp.getAttribute('aria-label')}"`);
+    if (bare && Math.round(info.getBoundingClientRect().height) !== Math.round(bare.getBoundingClientRect().height))
+      out.push(`Settings: ${name}'s row ${Math.round(info.getBoundingClientRect().height)} px, a switch's without an ⓘ ${Math.round(bare.getBoundingClientRect().height)}`);
+  }
+  if (disp) disp.open = wasOpen;
   document.querySelector('#btn-settings').click(); await wait(400);
   // the chosen chip: green with a 2 px border everywhere, as the round trip's lengths have it
   p.openLoop(polku.map.getCenter().toArray()); await wait(800);
