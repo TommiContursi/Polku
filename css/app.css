@@ -971,7 +971,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .kf-d { color: var(--muted); font-variant-numeric: tabular-nums; }
 .kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) { .kf-b:hover { background: var(--surface-2); } }
-@media (pointer: coarse) { .kf-b { position: relative; } .kf-b::after { content: ""; position: absolute; inset: calc((var(--size-m) - 44px) / 2) 0; } } /* (a finger's 44 px) */
+@media (pointer: coarse) { .kf-b { min-height: 44px; } } /* (a finger's 44 px, the key itself: #471's check) */
 @media (max-height: 520px) { .kf { display: none; } }
 /* the header is one row: the route's numbers, which wrap onto lines of their own before they touch (#242), and Done */
 .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
