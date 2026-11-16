@@ -9,8 +9,9 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The planner's top shows your route's name, such as "Start → End", and on a route of more than one sport each sport in its colour and how many changeovers it has. What to read sits beside the name: a red ball with how many warnings, or **?** with how many places weren't checked. A tap on it opens Check at the first.
 - The route's numbers are in one box under the name. **When** and the weather come next, then the profile under the heading **Route profile**, with **Colour by** and **On map** under the chart and the key facts after them.
 - The rest of the planner has headings too, **Route** with **Show all waypoints** and the list's settings at its end, and **Route style and your speed**. Each part sits on a lighter box of its own, so the parts are easy to tell apart; with **Fewer effects** or **High contrast** the boxes have an edge.
-- The key facts and the buttons under the route's list, such as **Reorder** and **Reverse**, are in one row that scrolls sideways when it doesn't fit, faded at the edge where there's more; with a mouse there's an arrow there too. So are the route's numbers.
-- Each sport shows in a round badge of its colour, at the start of its part of the list, in **Route style** and in the key facts.
+- The key facts and the route's numbers are in one row that scrolls sideways when it doesn't fit, faded at the edge where there's more; with a mouse there's an arrow there too.
+- Each sport shows in a round badge of its colour: bigger on the line at the start of its part of the list, in **Route style** and in the key facts.
+- With a mouse, the planner's words and rows are a size smaller, as its buttons already were, and its parts are spaced so each heading sits with what it heads.
 - The scrollbars of the planner, the cards and the panels stay out of sight until you scroll, or point at them with a mouse.
 - The planner has no tabs now. **Check**, the first row under the profile, opens Check's warnings, climbs and the ground in a view of its own, with **‹ Route** to go back. The row shows the warnings' count in red, else Good to know's, and **?** while something wasn't checked, as the tab did.
 - At its smallest size on a phone the planner shows the name, the numbers and the profile.

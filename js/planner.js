@@ -4759,7 +4759,7 @@ export class Planner {
         h('div', { class: 'rows check-row pl-group' }, this.els.checkGo),
         this.heading(h('h3', {}, 'Route'), this.els.pointsTools = h('div', { class: 'wpl-head-tools' })),
         this.section('points', 'Route', this.els.pointsTop = h('div', { class: 'wpl-top' }),
-          this.els.points = h('ol', { class: 'wpl pl-group', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), sideways(this.els.pointsFoot = h('div', { class: 'wpl-foot' }), 'Route actions')),
+          this.els.points = h('ol', { class: 'wpl pl-group', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // Route style › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
         this.els.howH = this.heading(h('h3', {}, 'Route style and your speed')),
         this.els.howRows = h('div', { class: 'rows how-rows pl-group' }),

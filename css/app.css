@@ -948,7 +948,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 @media (max-width: 720px) { .pl-keys { display: none; } } /* (a phone's are in the sheet's top row) */ /* (as tall as what to read, so nothing moves when Check answers late, #741) */
 .pl-title-t { flex: 1; min-width: 0; min-height: var(--target); display: grid; align-content: center; gap: 2px; padding-left: 17px; } /* (its words where the groups' are: 16 + 15 px in; as tall as what to read beside it, so nothing moves when Check answers late, #741) */
 .pl-title-t[hidden], .pl-sports[hidden] { display: none; }
-.pl-name { font-size: var(--font-number); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
+.pl-name { font-size: var(--pl-title); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
 .pl-sports { color: var(--muted); font-size: var(--font-control); font-weight: var(--weight-name); }
 .pl-sports > b { font-weight: var(--weight-strong); }
 .pl-sports > :is(b, span) { white-space: nowrap; } /* (it wraps between them, so "2 changeovers" stays one) */
@@ -1000,6 +1000,14 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-keys > .way-x { display: none; }
 @media (min-width: 721px) { .pl-keys > .way-x { display: inline-flex; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
+/* the planner's type (#382): five roles, the route's name, a section's heading, a number, a row's or a key's words and a
+   line under them; with a mouse each a size smaller and rows 40 px, as its keys are, so a desktop's planner isn't outsized */
+.sheet { --pl-title: 1.25rem; --pl-head: 1.0625rem; --pl-num: 1.125rem; --pl-row: .9375rem; --pl-line: .8125rem; }
+@media (hover: hover) and (pointer: fine) { .sheet { --pl-title: 1.0625rem; --pl-head: .9375rem; --pl-num: 1rem; --pl-row: .875rem; --pl-line: .75rem; --row-h: 40px; } }
+.sheet .row b, .sheet .row .val, .pl-pane .btn:not(.big), .sheet .kf-b, .sheet .trip-when, .pl-profile .mode-select select, .sheet .pl-readrow-go { font-size: var(--pl-row); }
+.sheet .row small, .pl-sports, .sheet-row .sum-item small, .pl-profile .mode-select-label, .pl-profile .tg-inline .tg-text, .wpl .wpl-when b { font-size: var(--pl-line); }
+.sheet-row .sum-item b { font-size: var(--pl-num); }
+.sheet .trip-when { font-weight: var(--weight-name); }
 /* a quiet scrollbar (#382, round 5's and Mine 8's): thin, and seen only while it scrolls (main.js: .scrolling, 0.9 s) and under a
    mouse, for the planner, the cards and the panels */
 :is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body) { scrollbar-width: thin; scrollbar-color: transparent transparent; }
@@ -1439,12 +1447,13 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* the planner's sections (#382, Mine 8): a heading, its tools at its end, then the section in a group. A group is one edge, 4 px
    round what it holds, its rows' corners nesting in its own (14 outside, 10 inside), so its words start 15 px in, as the
    heading's do; 12 px between groups */
-.pl-h { display: flex; align-items: center; gap: var(--space-4); min-height: 32px; margin: 0 0 var(--space-4); padding-left: 15px; }
-.pl-h > h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: anywhere; }
-.pl-h > :not(h3) { margin-block: -6px; } /* (its tools keep their targets without making the heading taller) */
+.pl-h { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-24) 0 var(--space-8); padding-left: 15px; }
+.pl-h > h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--pl-head); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: anywhere; }
+.pl-h > :not(h3) { margin-block: -10px; } /* (its tools keep their targets without making the heading taller: it stays near its group) */
 .pl-group { padding: var(--space-4); border: 1px solid var(--group-edge); border-radius: var(--radius); background: var(--group); }
-.pl-pane > .pl-group, .sheet > .trip-box { margin-bottom: var(--space-12); }
-.pl-pane > .sec[data-sec="points"] { margin-bottom: var(--space-12); border-top: 0; }
+.sheet > .trip-box { margin-top: var(--space-4); } /* (with the head's 8 px: When and the weather stay with the numbers) */
+.pl-pane > .check-row { margin: 18px 0 0; } /* (a section of its own: with the profile's 6 px, 24 px from it) */
+.pl-pane > .sec[data-sec="points"] { border-top: 0; }
 .wpl.pl-group { margin: 0; padding: 0 var(--space-4); }
 :is(.pl-group.rows, .pl-group > .rows) { margin-inline: 0; }
 :is(.pl-group.rows, .pl-group > .rows) > .row { border-radius: 10px; }
@@ -1736,8 +1745,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .wp-mini.wp-end::after { width: 6px; height: 6px; }
 .wpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wpl-main small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.wpl-foot { display: flex; gap: var(--space-8); padding: 2px; } /* (in a row that scrolls sideways, #382; 2 px for the focus ring) */
-.sec[data-sec="points"] > .sec-body > .side-wrap { margin: var(--space-12) -2px 0; }
+.wpl-foot { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-8); } /* (actions in sight, never scrolled away: they wrap, #690's rule, the user's of 2026-11-16) */
 .wpl-foot .btn { flex: none; min-height: var(--target); padding: 0 var(--space-12); font-size: var(--font-row); }
 /* the dangerous one at the row's far end, apart from the others (on a line of its own where they don't fit) */
 .wpl-foot .btn.danger { margin-left: auto; }
@@ -1766,7 +1774,8 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
    Mine 8's bubble at the list's left: the ball lined up with the line reads calmer) */
 .wpl .sec2-head > span:first-child > .ic { width: 18px; height: 18px; padding: 7px; margin-top: -4px; background: var(--part); box-shadow: none; color: #fff; }
 :root[data-theme="dark"] .wpl .sec2-head > span:first-child > .ic { color: #000; } /* (black on dark mode's lighter colours) */
-.wpl .sec2-head b { font-size: var(--font-title); }
+.wpl .sec2-head b { font-size: var(--pl-row); }
+.wpl .sec2-head > span:first-child { margin-right: var(--space-4); } /* (the ball is wider than the line's column: room before its name) */
 .bub { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--part); color: #fff !important; }
 :root[data-theme="dark"] .bub { color: #000 !important; } /* (the dark mode's lighter sport colours: black reads on every one) */
 .sec2-head > span:first-child > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
@@ -1848,7 +1857,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .wpl-strow > .row > .wpl-line { position: relative; align-self: stretch; width: 22px; }
 .wpl-line::before { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: -3px; bottom: -3px; background: var(--part); }
 .wpl-line .bead { position: absolute; z-index: 1; left: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--surface-solid); box-shadow: inset 0 0 0 2px var(--part); }
-.wpl-stretch .wpl-nums { font-size: 14px; font-variant-numeric: tabular-nums; }
+.wpl-stretch .wpl-nums { font-size: var(--pl-row); font-variant-numeric: tabular-nums; }
 .wpl-stretch small { font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .wpl-stretch small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; }
 /* how it's drawn, every stretch alike: Follow paths as Freehand, Over water or its own line (the line says which) */
