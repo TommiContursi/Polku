@@ -747,6 +747,16 @@ $('#planner').addEventListener('sheetstate', () => { if (tripFold && tripFold ==
 // With less room still (200 %, a raised start step, #344), the column lets go of Weather (T, and in Layers), then Show the
 // whole route (in ⋯), then Locate, and where not even Layers fits, of all of it: nothing goes under the top bar (step 3 of
 // #233).
+// the quiet scrollbar (css/app.css, #382): the planner's, a card's or a panel's shows while it scrolls, and 0.9 s after
+const quietBar = new WeakMap();
+document.addEventListener('scroll', (e) => {
+  const el = e.target;
+  if (!(el instanceof Element) || !el.matches('.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body')) return;
+  el.classList.add('scrolling');
+  clearTimeout(quietBar.get(el));
+  quietBar.set(el, setTimeout(() => el.classList.remove('scrolling'), 900));
+}, { capture: true, passive: true });
+
 const LETS_GO = ['no-wx', 'no-fit', 'no-locate', 'no-col'];
 function fitColumn() {
   const col = $('#map-ctrls');

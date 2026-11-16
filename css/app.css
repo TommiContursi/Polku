@@ -19,6 +19,7 @@
   /* words on the glass: a darker grey (every glass surface sets --muted to it), green and red, for 4.5:1 over the map */
   --muted-glass: #3b4741; --accent-glass: #165a3a; --bad-glass: #9b1f27;
   --line: rgba(28, 36, 32, 0.14);
+  --group: color-mix(in srgb, var(--surface-solid) 74%, transparent); --group-edge: transparent; /* a group on the planner's glass (#382, Mine 8): lighter than the glass, no edge */
   --key-edge: var(--line-hc); /* a key's 1 px edge: as clear as High contrast's lines, so a key reads as one in the sun (#382) */
   --rail: #858f8a; /* the route's line in the route's list where it has no sport's colour, and its dotted breaks: 3:1 on the sheet (#761) */
   /* more contrast (prefers-contrast: more, or Settings' High contrast): a darker grey, heavier lines and a 3:1 rim */
@@ -133,11 +134,11 @@
    on <html>, from the device (prefers-contrast: more) or Settings' High contrast, set as data-theme is (index.html,
    applyTheme()); it also takes a darker grey, heavier lines and a 3:1 rim. As specific as the dark block, and after it. */
 @media (prefers-reduced-transparency: reduce) {
-  :root[data-theme] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; }
+  :root[data-theme] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; --group-edge: var(--line); }
 }
-:root[data-glass="solid"] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; } /* Settings' Fewer effects (#632) */
+:root[data-glass="solid"] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; --group-edge: var(--line); } /* (on solid glass a group keeps an edge) */ /* Settings' Fewer effects (#632) */
 :root[data-contrast="more"] {
-  --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none;
+  --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; --group-edge: var(--line);
   --muted: var(--muted-hc); --muted-glass: var(--muted-hc); --line: var(--line-hc); --rail: var(--muted-hc);
   --edge: inset 0 0 0 1px var(--hc-inner), 0 0 0 1px var(--hc-border);
 }
@@ -418,11 +419,17 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
    border, 1 px of padding less so it keeps its width; one row (a desktop's of its own under the title bar), scrolling
    sideways where the timeline is too narrow for all six, a desktop's too, and fading at the edge where there's more; the
    padding is room for the focus ring and a finger's 44 px inside the scroller */
-.tl-layers { display: flex; gap: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; padding: 4px 4px 4px 8px; margin: -4px 0 4px; }
-.tl-layers::-webkit-scrollbar { display: none; }
-.tl-layers.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
-.tl-layers.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
-.tl-layers.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+/* a row that scrolls sideways (ui.js sideways(): #869's layers, the planner's numbers, key facts and keys, #382): no bar, a
+   fade at the edge where there's more, and with a mouse the arrows there */
+.side-x { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; }
+.side-x::-webkit-scrollbar { display: none; }
+.side-x.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+.side-x.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
+.side-x.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+.side-x.drag { cursor: grabbing; }
+.side-wrap { position: relative; min-width: 0; }
+.side-wrap > .wx-hs-arrow { top: 50%; margin-top: -16px; }
+.tl-layers { display: flex; gap: 4px; padding: 4px 4px 4px 8px; margin: -4px 0 4px; }
 .tl-layers .chip { flex: none; position: relative; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px 0 8px; font-size: 13px; color: var(--text); white-space: nowrap; -webkit-user-select: none; user-select: none; } /* (a finger held on one while the row scrolls selects no words) */
 .tl-layers .chip[aria-pressed="true"] { padding: 0 9px 0 7px; }
 .tl-layers .chip .ic { color: var(--muted); }
@@ -433,9 +440,6 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-layers [data-k=wind] > span:last-child, .tl-layers [data-k=wind].lines > span:first-child { visibility: hidden; }
 .tl-layers [data-k=wind].lines > span:last-child { visibility: visible; }
 /* a row too narrow for them scrolls sideways; a mouse has the hour strip's arrows at its edges, and a drag */
-.tl-lwrap { position: relative; min-width: 0; }
-.tl-lwrap > .wx-hs-arrow { top: 50%; margin-top: -16px; }
-.tl-layers.drag { cursor: grabbing; }
 /* lines up with the slider: play button (34) + gap (8) on the left, gap (8) + time (132) on the right */
 .tl-main { display: flex; gap: 8px; align-items: stretch; }
 .tl-strip { display: block; flex: 1; min-width: 0; margin-left: 42px; height: 66px; cursor: ew-resize; touch-action: none; border-radius: 8px; }
@@ -939,7 +943,9 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet-row { display: grid; gap: var(--space-8); }
 /* the head's title (#382, Mine 8): the route's name, its sports and changeovers under it, what to read and (wider screens)
    the planner's own keys at its end */
-.pl-title { display: flex; align-items: center; gap: var(--space-8); min-width: 0; min-height: var(--target); } /* (as tall as what to read, so nothing moves when Check answers late, #741) */
+.pl-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); min-width: 0; min-height: var(--target); }
+.pl-keys { order: -1; flex: 1 0 100%; display: flex; justify-content: flex-end; gap: 2px; margin-bottom: -4px; }
+@media (max-width: 720px) { .pl-keys { display: none; } } /* (a phone's are in the sheet's top row) */ /* (as tall as what to read, so nothing moves when Check answers late, #741) */
 .pl-title:has(> .pl-title-t[hidden]) { min-height: 0; }
 .pl-title-t { flex: 1; min-width: 0; display: grid; gap: 2px; padding-left: 17px; } /* (its words where the groups' are: 16 + 15 px in) */
 .pl-title-t[hidden], .pl-sports[hidden] { display: none; }
@@ -948,33 +954,25 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .pl-sports > b { font-weight: var(--weight-strong); }
 .pl-sports > :is(b, span) { white-space: nowrap; } /* (it wraps between them, so "2 changeovers" stays one) */
 /* the numbers in one box on the key's face (round 5), wrapping to a second line rather than shrinking */
-.sheet-row > .sheet-sum { margin: 0 6px 0 2px; padding: var(--space-8) var(--space-12); border: 1px solid var(--key-edge); border-radius: var(--radius); background: var(--surface-solid); }
-.sheet-row > .sheet-sum:has(> .sum-empty) { padding: 0; border: 0; background: none; }
+.sheet-row > .side-wrap { margin: 0 6px 0 2px; }
+.sheet-row .sheet-sum { flex-wrap: nowrap; gap: 0; align-items: stretch; border-radius: var(--radius); background: var(--surface-solid); box-shadow: inset 0 0 0 1px var(--line); touch-action: pan-x; }
+.sheet-row .sheet-sum > .sum-item { flex: none; padding: var(--space-8) var(--space-12) 9px; }
+.sheet-row .sheet-sum > .sum-item + .sum-item { box-shadow: -1px 0 0 var(--line); } /* (a thin line between them, round 5's) */
+.sheet-row .sheet-sum small { white-space: nowrap; } /* (nothing is cut: the box scrolls) */
+.sheet-row .sheet-sum:has(> .sum-empty) { border-radius: 0; background: none; box-shadow: none; }
+.sheet-row .sheet-sum > .sum-empty { padding: 0; }
 /* key facts (#471's A2): a line under the route's numbers, a row a sport on a route of two; each opens where it's told */
-.kf { display: grid; margin: 2px 0 0; }
-.kf-b { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; margin: 0 -6px; padding: 2px 6px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: var(--font-body); text-align: left; cursor: pointer; }
-.kf-b > span:first-child, .kf-b > span:last-child { flex: none; display: grid; color: var(--muted); }
-.kf-b > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* the key facts (#471's A2) under the profile, as round keys in a row that scrolls sideways (#382, Mine 8): M, the key's face
+   and edge, a sport's in its bubble; no ›, as a key has none */
+.kf { display: flex; gap: var(--space-8); padding: 2px; }
+.kf-b { flex: none; display: inline-flex; align-items: center; gap: var(--space-6); min-height: var(--size-m); padding: 0 12px 0 8px; border: 1px solid var(--key-edge); border-radius: var(--radius-pill); background: var(--surface-solid); color: var(--text); font: inherit; font-size: var(--font-body); white-space: nowrap; cursor: pointer; }
+.kf-b > span:first-child { flex: none; display: grid; place-items: center; color: var(--muted); }
+.kf-b > .bub { width: 26px; height: 26px; margin-left: -4px; }
 .kf-b.miss > span:first-child { color: var(--unk); }
-/* what Check found to read, in the first line's place (#741): Check's warning box (.warn-row), drawn inside the line so
-   it's as tall as the key fact's; on a phone the box is 36 px of the finger's 44, clear of the peek's edge under it */
-.kf-b.warn { position: relative; isolation: isolate; margin: 0; padding: 2px 10px; font-weight: var(--weight-name); }
-.kf-b.warn::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 10px; border: 1.5px solid transparent; }
-.kf-b.warn.danger::before { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
-.kf-b.warn.danger > span:first-child { color: var(--danger); }
-.kf-b.warn.unk::before { background: var(--unk-soft); border: 1.5px dashed var(--unk); }
-.kf-b.warn.unk > span:first-child { color: var(--unk); }
-@media (hover: hover) {
-  .kf-b.warn:hover { background: none; }
-  .kf-b.warn.danger:hover::before { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); }
-  .kf-b.warn.unk:hover::before { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); }
-}
-@media (pointer: coarse) { .kf-b.warn { padding-bottom: 10px; } .kf-b.warn::before { bottom: 8px; } }
-.kf.legs .kf-b > span:first-child { color: var(--accent); }
 .kf-d { color: var(--muted); font-variant-numeric: tabular-nums; }
-.kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-@media (hover: hover) { .kf-b:hover { background: var(--surface-2); } }
-@media (pointer: coarse) { .kf-b { min-height: 44px; } }
+.kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .kf-b:hover { background: var(--surface-2); } }
+@media (pointer: coarse) { .kf-b { position: relative; } .kf-b::after { content: ""; position: absolute; inset: calc((var(--size-m) - 44px) / 2) 0; } } /* (a finger's 44 px) */
 @media (max-height: 520px) { .kf { display: none; } }
 /* the header is one row: the route's numbers, which wrap onto lines of their own before they touch (#242), and Done */
 .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
@@ -1000,9 +998,20 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .pl-viewnote .btn { flex: none; gap: 6px; }
 b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere; }
 .sheet-min { display: none; }
-.pl-title > .way-x { display: none; }
-@media (min-width: 721px) { .pl-title > .way-x { display: inline-flex; } }
+.pl-keys > .way-x { display: none; }
+@media (min-width: 721px) { .pl-keys > .way-x { display: inline-flex; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
+/* a quiet scrollbar (#382, round 5's and Mine 8's): thin, and seen only while it scrolls (main.js: .scrolling, 0.9 s) and under a
+   mouse, for the planner, the cards and the panels */
+:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body) { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body)::-webkit-scrollbar { width: 6px; height: 6px; }
+:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body)::-webkit-scrollbar-thumb { border-radius: 3px; background: transparent; }
+:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body).scrolling { scrollbar-color: color-mix(in srgb, var(--text) 32%, transparent) transparent; }
+:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body).scrolling::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 32%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  :is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body):hover { scrollbar-color: color-mix(in srgb, var(--text) 32%, transparent) transparent; }
+  :is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body):hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text) 32%, transparent); }
+}
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 /* the routing bar, on the sheet's top edge (js/planner.js setBusy()), a child of the sheet so folding doesn't hide it: it waits
    300 ms, so a quick answer shows nothing, fades in, and its gradient slides on transform alone; with reduced motion a full
@@ -1052,10 +1061,11 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-profile { flex: none; padding: 0 16px 6px; container-type: inline-size; }
 .pl-profile[hidden] { display: none; }
 .pl-profile .profile-top { margin: var(--space-4) 0 0; padding: 0 var(--space-4) 0 11px; flex-wrap: nowrap; }
-.pl-profile > .kf { margin: var(--space-8) 0 0; }
+.pl-profile > .side-wrap { margin: var(--space-8) -2px 0; }
+.pl-h > .prof-size { position: relative; flex: none; display: grid; place-items: center; width: var(--size-m); height: var(--size-m); padding: 0; border: 1px solid var(--key-edge); border-radius: var(--radius-control); background: color-mix(in srgb, var(--surface-solid) 86%, transparent); color: var(--text); }
+@media (pointer: coarse) { .pl-h > .prof-size::after { content: ""; position: absolute; inset: -2px; } } /* (its key M, on the chart's side of the heading, #382; a finger's 44 px) */
 .pl-profile .mode-select { flex: 0 1 auto; }
 .pl-profile .tg-inline { flex: none; }
-.pl-profile .prof-size { flex: none; color: var(--muted); }
 /* a narrow profile (a phone at 200 %): Colour by and its choice on rows of their own, On map and the size under them (#242) */
 @container (max-width: 280px) {
   .pl-profile .profile-top { flex-wrap: wrap; }
@@ -1077,10 +1087,10 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
    and so is half's, so it doesn't move when the sheet does; half and full add the views, full the profile's own row */
 .sheet[data-state="peek"]:not(.dragging) .trip-box, .sheet[data-state="peek"]:not(.dragging, .prof-peek) .pl-profile { display: none; }
 .sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile #profile-canvas { height: var(--prof-peek, 64px); }
-.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile .profile-top { display: none; }
+.sheet[data-layout="sheet"]:is([data-state="peek"], [data-state="half"]) .pl-profile :is(.profile-top, .prof-size) { display: none; }
 /* the peek is the head and the chart (#742): no heading, no key facts, and a long name on two lines (whole one size up) */
 .sheet[data-layout="sheet"][data-state="peek"] .pl-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > :is(.pl-h, .kf) { display: none; }
+.sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > :is(.pl-h, .side-wrap) { display: none; }
 .sheet[data-layout="sheet"][data-state="peek"]:not(.dragging) .pl-profile > .pl-group { padding: 0; border: 0; }
 /* at the peek a tap on the profile opens it at half, and a finger dragged on it moves the sheet: scrubbing it by touch waits
    for half (.prof-open); a mouse, which moves the sheet only by its top rows, reads it at the peek as anywhere */
@@ -1433,8 +1443,10 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .pl-h { display: flex; align-items: center; gap: var(--space-4); min-height: 32px; margin: 0 0 var(--space-4); padding-left: 15px; }
 .pl-h > h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--font-title); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: anywhere; }
 .pl-h > :not(h3) { margin-block: -6px; } /* (its tools keep their targets without making the heading taller) */
-.pl-group { padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius); }
-.pl-pane > .pl-group, .pl-pane > .sec.pl-group, .sheet > .trip-box { margin-bottom: var(--space-12); }
+.pl-group { padding: var(--space-4); border: 1px solid var(--group-edge); border-radius: var(--radius); background: var(--group); }
+.pl-pane > .pl-group, .sheet > .trip-box { margin-bottom: var(--space-12); }
+.pl-pane > .sec[data-sec="points"] { margin-bottom: var(--space-12); border-top: 0; }
+.wpl.pl-group { margin: 0; padding: 0 var(--space-4); }
 :is(.pl-group.rows, .pl-group > .rows) { margin-inline: 0; }
 :is(.pl-group.rows, .pl-group > .rows) > .row { border-radius: 10px; }
 :is(.pl-group.rows, .pl-group > .rows) > .row + .row { border-radius: 0; }
@@ -1444,12 +1456,14 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* (200 %: groups lose their edge and padding, so their words get the planner's width, the user's choice of 2026-11-11) */
 @media (max-width: 300px) {
   .pl-group { padding: 0; border: 0; } .pl-h { padding-left: 0; }
-  .sheet-head .pl-title { padding-right: 0; } .sheet-head .pl-title-t { padding-left: 0; } .sheet-head .sheet-row > .sheet-sum { margin: 0; }
+  .sheet-head .pl-title { padding-right: 0; } .sheet-head .pl-title-t { padding-left: 0; } .sheet-head .sheet-row > .side-wrap { margin: 0; }
   .pl-readrow-go { padding: 0 6px; } .pl-readrow-go > span { display: none; } /* (the ball alone, so the name keeps its room: its name says the rest) */
 }
 /* the box over the profile (the order of 2026-11-15): When and when you're there, then a row a day with › */
 .sheet > .trip-box { flex: none; display: grid; gap: var(--space-2); margin-inline: 16px; }
-.sheet > .trip-box > .trip-when { padding: var(--space-4) var(--space-10) 0; }
+.sheet > .trip-box > .trip-when { padding: var(--space-4) var(--space-10) var(--space-4); }
+.trip-box > .trip-days { position: relative; }
+.trip-box > .trip-days::before { content: ""; position: absolute; top: 0; left: 10px; right: 10px; border-top: 1px solid var(--line); } /* (When, then the days: a line between, in from the edges) */
 /* When's pill and "→ there at" on a line, the pill's note (past the forecast, a passed time) under both */
 .trip-when { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-10); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
 .trip-when .when-box { display: contents; }
@@ -1723,7 +1737,9 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .wp-mini.wp-end::after { width: 6px; height: 6px; }
 .wpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .wpl-main small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-.wpl-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.wpl-foot { display: flex; gap: var(--space-8); padding: 2px; } /* (in a row that scrolls sideways, #382; 2 px for the focus ring) */
+.sec[data-sec="points"] > .sec-body > .side-wrap { margin: var(--space-12) -2px 0; }
+.wpl-foot .btn { flex: none; min-height: var(--target); padding: 0 var(--space-12); font-size: var(--font-row); }
 /* the dangerous one at the row's far end, apart from the others (on a line of its own where they don't fit) */
 .wpl-foot .btn.danger { margin-left: auto; }
 .wpl-foot:empty { display: none; }
@@ -1747,6 +1763,14 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .sec2-head:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (hover: hover) and (pointer: fine) { .sec2-head:hover { background: var(--surface-2); } }
 .sec2-head > span:first-child { position: relative; flex: none; display: grid; width: 22px; align-self: stretch; place-items: start center; margin-top: -2px; color: var(--part); }
+/* a part's heading at the list's left, its sport in its bubble, the line starting at its first point (#382, Mine 8) */
+.wpl .sec2-head { align-items: center; gap: var(--space-10); min-height: 48px; padding-left: var(--space-4); }
+.wpl .sec2-head > span:first-child { width: 32px; height: 32px; align-self: center; margin: 0; border-radius: 50%; place-items: center; background: var(--part); color: #fff; }
+.wpl .sec2-head > span:first-child > .ic { padding: 0; background: none; box-shadow: none; }
+.wpl .sec2-head > span:first-child::before, .wpl .sec2-head > span:first-child::after { display: none; }
+.wpl .sec2-head b { font-size: var(--font-title); }
+.bub { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--part); color: #fff !important; }
+:root[data-theme="dark"] :is(.bub, .wpl .sec2-head > span:first-child) { color: #000 !important; } /* (the dark mode's lighter sport colours: black reads on every one) */
 .sec2-head > span:first-child > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
 .sec2-head > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: 11px; bottom: -6px; background: var(--part); }
 .wpl .sec2:not(:first-child) > .sec2-head > span:first-child::before { content: ""; position: absolute; left: calc(50% - 1.5px); width: 3px; top: -12px; height: 12px; background: radial-gradient(circle, var(--rail) 1.3px, transparent 1.8px) 50% 0 / 3px 6px repeat-y; }
@@ -1790,7 +1814,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
   .wpl .wpl-when { position: static; width: auto; flex-direction: row; justify-content: flex-start; align-items: baseline; gap: 8px; text-align: left; }
 }
 .wpl .sec2 { --part: var(--rail); }
-:root[data-theme="dark"] :is(.wpl, .how-rows, .pl-sports) { --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; } /* (the map's are for the map: some are under 3:1 on the dark glass) */
+:root[data-theme="dark"] :is(.wpl, .how-rows, .pl-sports, .kf) { --sport-mtb: #f97316; --sport-gravel: #eab308; --sport-road: #f87171; --sport-hike: #22c55e; --sport-trailrun: #a3e635; --sport-run: #2dd4bf; --sport-paddle: #38bdf8; --sport-swim: #a78bfa; } /* (the map's are for the map: some are under 3:1 on the dark glass) */
 .wpl-point > span:first-child::before, .wpl-point > span:first-child::after { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); background: var(--part); }
 .wpl-point > span:first-child::before { top: -6px; bottom: 50%; }
 .wpl-point > span:first-child::after { top: 50%; bottom: -6px; }
@@ -2102,11 +2126,12 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 /* what to read, beside the route's name (#382, Mine 8): a red ball with the count and its word on a soft red key; "?" in
    a dashed ring, with how many weren't checked, while nothing is to read but that. A tap opens Check at the first */
 .pl-readrow { flex: none; }
-.pl-readrow-go { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); padding: 0 12px 0 6px; border: 0; border-radius: var(--radius-pill); background: var(--danger-soft); color: var(--danger); font: inherit; font-weight: var(--weight-name); cursor: pointer; }
+.pl-readrow-go { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: var(--size-m); padding: 0 12px 0 5px; border: 0; border-radius: var(--radius-pill); background: var(--danger-soft); color: var(--danger); font: inherit; font-weight: var(--weight-name); cursor: pointer; }
 .pl-readrow-go > b { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--danger); color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; }
 .pl-readrow-go.unk { background: var(--unk-soft); color: var(--unk); }
 .pl-readrow-go.unk > b { background: none; box-shadow: inset 0 0 0 1.5px var(--unk); border: 0; color: var(--unk); }
 .pl-readrow-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (pointer: coarse) { .pl-readrow-go::after { content: ""; position: absolute; inset: calc((var(--size-m) - 44px) / 2) 0; } } /* (M, a finger's 44 px) */
 @media (hover: hover) { .pl-readrow-go:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); } .pl-readrow-go.unk:hover { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); } }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
@@ -2513,7 +2538,7 @@ body.dropping .drop-hint { display: flex; }
   /* the weather layers in the head's row (a narrow window's too), sideways, fading at the edge where there's more; the
      padding is room for the focus ring and a finger's 44 px inside the scroller */
   .tl-head { gap: 6px; }
-  .tl-head .tl-lwrap { flex: 1; }
+  .tl-head .side-wrap { flex: 1; }
   .tl-head .tl-layers { padding: 4px; margin: -4px 0 -4px -4px; }
   /* the strip from Play's column (a phone's tool is 30 px) to the reading's, as the slider is from Play to the time: the
      knob under the needle */
@@ -2540,7 +2565,7 @@ body.dropping .drop-hint { display: flex; }
   .orbit { width: 62px; height: 62px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
-  .pl-title { padding-right: 8px; } .pl-title-t { padding-left: 19px; } .sheet-row > .sheet-sum { margin: 0 8px 0 4px; } /* (the groups' 16 px edges) */
+  .pl-title { padding-right: 8px; } .pl-title-t { padding-left: 19px; } .sheet-row > .side-wrap { margin: 0 8px 0 4px; } /* (the groups' 16 px edges) */
   .sheet-row { min-height: 44px; } /* (the numbers' row as tall as Done made it before #745: the peek doesn't change when they come) */
   .pl-viewnote .btn { min-height: 44px; }
   /* a note with the planner closed stays left of the map's buttons, so it never covers Layers or Plan (25c) */

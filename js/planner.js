@@ -21,7 +21,7 @@ import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decode
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
-import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot } from './ui.js';
+import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot, sideways } from './ui.js';
 import { sweepDay, nameDay, good, dayStart, dayOffset } from './besttime.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
@@ -4630,8 +4630,10 @@ export class Planner {
     this.els.readRow = h('div', { class: 'pl-readrow', hidden: true });
     this.els.name = h('b', { class: 'pl-name' });
     this.els.sports = h('small', { class: 'pl-sports' });
-    this.els.title = h('div', { class: 'pl-title' }, h('div', { class: 'pl-title-t' }, this.els.name, this.els.sports), this.els.readRow, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX());
-    this.els.row = h('div', { class: 'sheet-row' }, this.els.title, this.els.sum);
+    // (wider screens: the planner's own keys on a line of their own over the name, so a long name keeps its room, Mine 8's)
+    this.els.title = h('div', { class: 'pl-title' }, h('div', { class: 'pl-keys' }, this.els.dockBtn, this.els.upMin, this.els.min, this.closeX()),
+      h('div', { class: 'pl-title-t' }, this.els.name, this.els.sports), this.els.readRow);
+    this.els.row = h('div', { class: 'sheet-row' }, this.els.title, sideways(this.els.sum, 'The route’s numbers'));
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
     this.els.card = h('div', { class: 'card-peek', hidden: true });
@@ -4730,7 +4732,7 @@ export class Planner {
         // at a phone's peek (#742): a tap opens the profile at half, where it's scrubbed, and a drag moves the sheet
         h('button', { type: 'button', class: 'prof-open', 'aria-label': 'Open the profile', title: 'Open the profile', onclick: () => this.setSheetState('half') })),
       h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow)),
-      this.els.facts);
+      sideways(this.els.facts, 'Key facts'));
     this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
     this.renderProfileSize();
 
@@ -4757,7 +4759,7 @@ export class Planner {
         h('div', { class: 'rows check-row pl-group' }, this.els.checkGo),
         this.heading(h('h3', {}, 'Route'), this.els.pointsTools = h('div', { class: 'wpl-head-tools' })),
         this.section('points', 'Route', this.els.pointsTop = h('div', { class: 'wpl-top' }),
-          this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
+          this.els.points = h('ol', { class: 'wpl pl-group', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), sideways(this.els.pointsFoot = h('div', { class: 'wpl-foot' }), 'Route actions')),
         // Route style › and Your speed ›, after the route's list (#740), each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
         this.els.howH = this.heading(h('h3', {}, 'Route style and your speed')),
         this.els.howRows = h('div', { class: 'rows how-rows pl-group' }),
@@ -4773,7 +4775,6 @@ export class Planner {
         h('div', { class: 'sec-stack' }, this.checksSection(), this.section('climbs', 'Climbs', this.els.climbs)),
         this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown)),
     };
-    this.sec.points.el.classList.add('pl-group');
     this.els.body = h('div', { class: 'sheet-body' }, this.els.panes.route, this.els.panes.check);
     p.addEventListener('scroll', () => { // (the body's, or the sheet's where it scrolls as one)
       const owner = this.categoryPreview?.owner;
@@ -6353,9 +6354,10 @@ export class Planner {
     const list = multi ? sportFacts(a, { noWeather: this.noWeather(a) }) : factLine(this.keyFacts(a));
     const ICON = { wind: 'wind', rain: 'rain', bwind: 'wind', unpaved: 'route', day: 'moon', climb: 'mountain', high: 'mountain', wx: 'cloudSun' };
     const at = [...box.children].indexOf(document.activeElement); // (a late answer keeps the focus where it was)
+    // (a round key each, in a row that scrolls sideways, #382: a sport's in its bubble, as Route style's rows and the list's parts)
     box.replaceChildren(...list.map((x) => h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
-      h('span', { 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }), h('span', { html: x.html }),
-      h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) }))));
+      h('span', { class: x.sport && !ICON[x.k] ? 'bub' : null, style: x.sport && !ICON[x.k] ? `--part: var(--sport-${x.sport})` : null, 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }),
+      h('span', { html: x.html }))));
     if (at >= 0) box.children[Math.min(at, box.children.length - 1)].focus({ preventScroll: true });
   }
   openFact(x) {
@@ -6508,7 +6510,8 @@ export class Planner {
     box.replaceChildren(
       ...[main, ...this.routeSports().filter((x) => x !== main)].map((sport) => {
         const row = item({ icon: this.sportIcon(sport), label: 'Route style', line: ACTIVITIES[sport].label, val: styleName(sport, this.styleOf(sport)), chev: true, k: `how-${sport}`, onclick: () => { this.styleLeg = null; this.openStep('how', sport); } });
-        row.firstElementChild.style.color = `var(--sport-${sport}, currentColor)`;
+        row.firstElementChild.classList.add('bub'); // (the sport in its bubble, as the list's parts, #382)
+        row.firstElementChild.style.setProperty('--part', `var(--sport-${sport})`);
         return row;
       }),
       this.speedRow());

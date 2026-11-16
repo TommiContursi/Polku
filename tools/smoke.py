@@ -12689,7 +12689,7 @@ def timeline_phone(chrome):
 # the arrow pages it, a drag from a button moves it and switches nothing, and a click without a move (on the button in the
 # row's middle, clear of the arrows) switches its layer
 TL_MOUSE_ROW = """(() => {
-  const row = document.querySelector('#wx-bar .tl-layers'), a = (s) => document.querySelector(`#wx-bar .tl-lwrap > .wx-hs-arrow.${s}`);
+  const row = document.querySelector('#wx-bar .tl-layers'), a = (s) => document.querySelector(`#wx-bar .side-wrap > .wx-hs-arrow.${s}`);
   const seen = (e) => { const c = getComputedStyle(e); return c.display !== 'none' && +c.opacity > 0.5 && c.pointerEvents !== 'none'; }, mid = (k) => { const r = (k === 'r' ? a('r') : row.querySelector(`[data-k=${k}]`)).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
   const box = row.getBoundingClientRect(), middle = [...row.children].sort((x, y) => Math.abs(mid(x.dataset.k)[0] - (box.left + box.right) / 2) - Math.abs(mid(y.dataset.k)[0] - (box.left + box.right) / 2))[0].dataset.k; // (clear of the arrows)
   return { left: Math.round(row.scrollLeft), l: seen(a('l')), r: seen(a('r')), more: row.scrollWidth > row.clientWidth, arrow: mid('r'), rain: mid('rain'), middle, at: mid(middle), on: Object.entries(polku.weather.on).filter(([, v]) => v).map(([k]) => k).join() };

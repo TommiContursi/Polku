@@ -15,7 +15,7 @@ import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind, 
 import { compass, dist } from './geo.js';
 import { strikesIn } from './lightning.js';
 import { STRIKE_COLOURS } from './icons.js';
-import { h, icon, store, popMenu, tooltip, mouseDrag, escapeHtml } from './ui.js';
+import { h, icon, store, popMenu, tooltip, sideways, escapeHtml } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 import { fmiRadar, FI_BOUNDS, rainviewerCoverage } from './radar.js';
 import { sunPosition } from './sun.js';
@@ -1199,19 +1199,8 @@ export class WeatherOverlay {
       tooltip(b, { name, text: line });
       this.layerRow.append(b);
     }
-    // a row too narrow for them (a narrow window's, a phone's) scrolls sideways and fades at the edge where there's more;
-    // a mouse has the arrows there and a drag, as the weather card's hours (a finger and a trackpad scroll it themselves)
-    const arrow = (dir) => h('button', { type: 'button', class: `tool wx-hs-arrow ${dir < 0 ? 'l' : 'r'}`, tabindex: '-1', 'aria-label': dir < 0 ? 'Layers to the left' : 'Layers to the right', html: icon(dir < 0 ? 'chevronLeft' : 'chevronRight', 20),
-      onclick: () => this.layerRow.scrollBy({ left: dir * (this.layerRow.clientWidth - 64), behavior: REDUCED.matches ? 'auto' : 'smooth' }) });
-    const al = arrow(-1), ar = arrow(1);
-    this.layerWrap = h('div', { class: 'tl-lwrap' }, al, this.layerRow, ar);
-    const edge = () => {
-      const r = this.layerRow, l = r.scrollLeft > 2, m = r.scrollLeft + r.clientWidth < r.scrollWidth - 2;
-      r.classList.toggle('more-l', l); r.classList.toggle('more-r', m); al.classList.toggle('on', l); ar.classList.toggle('on', m);
-    };
-    this.layerRow.addEventListener('scroll', edge, { passive: true });
-    new ResizeObserver(edge).observe(this.layerRow);
-    mouseDrag(this.layerRow);
+    // a row too narrow for them (a narrow window's, a phone's) scrolls sideways and fades at the edge where there's more
+    this.layerWrap = sideways(this.layerRow, 'Layers');
     this.moreBtn = h('button', { type: 'button', class: 'tool tl-more', 'aria-label': 'More: Weather at places, Effects', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.moreMenu(), html: icon('more', 18) });
     // the legend over the map, top left, while a layer is on: apart from the timeline, wherever that is
     this.legendEl = h('div', { class: 'wx-legend', role: 'region', 'aria-label': 'Map legend', hidden: true });
