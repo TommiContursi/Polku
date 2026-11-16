@@ -127,3 +127,27 @@ No chip has a hover state.
 | `.off-field input` | 2528 | 36 | 1 px, r10, grey face |
 | `.search input` | 210 | the bar | 15, a 2 px green ring on focus |
 | `input[type=range]` | 506, 2325 | native, 44 by touch | `accent-color: --accent` |
+
+## The toolbar, and its new version
+
+Every button on the drawing toolbar (`buildTools()` in `js/planner.js`, app.css:2624–2683). An idea from testing,
+2026-11-16: none needs designing anew, but each gets its new version from the component sheet, and the toolbar's icons
+become square icon keys. Not drawn in Components yet.
+
+| Button | Main now | New version (Components) |
+|---|---|---|
+| Done | `.btn.done`: 40 on a desktop, 44 on a phone; 13 / 600; 1 px `--line`, r10 | An action |
+| Edit (the route's view) | `.btn.done.edit`, a pencil and its word | An action with its icon, as Done |
+| How the next leg is drawn, phone | `.modebtn`: 44, a grey face, r12; a green icon, its name 14 / 700, the style under it 12 | A value to pick, on two lines, a grey ▾ |
+| How the next leg is drawn, desktop | `.modepick`: 40, 1 px, r10, 13.5 / 650; a green icon, a grey ▾ | A value to pick |
+| The next leg's sport, desktop | `.sportbtn`: 40, 1 px, r10, 13.5 / 650 | A value to pick |
+| Route style, desktop | `.stylebtn`: 40, 1 px, r10, on two lines (13.5 and 11) | A value to pick, on two lines |
+| Undo, Redo | `.tbtn.tb-hist`: 44 on a phone, 40 on a desktop; no face, r12; greyed when there's nothing to undo | An icon key: square, with its face and edge |
+| Reverse, Back to start, Share link, Export GPX, Save offline… | `.tbtn`, shown where there's room, else in More | Icon keys, as Undo |
+| Clear route | `.tbtn.danger` | An icon key, its icon red |
+| More | `.tbtn`, `aria-haspopup="menu"` | An icon key with ⋯ |
+| Between groups | `.tb-sep`: 1 × 28 px, `--line` | Kept |
+| A menu open | `[aria-expanded="true"]`: a green tint | Open question: green is kept for what's chosen; an open menu may take the grey of a pressed key instead |
+
+Sizes, decided 2026-11-16: by touch as the sheet draws them; with a mouse, one size smaller, as main's `--target` is
+(36 with a mouse, 44 by touch).
