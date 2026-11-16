@@ -20267,7 +20267,9 @@ LV_JS = """(() => { window.LV = {
     for (let k = 0; k < 30 && same < 2; k++) {
       // (the trip's box scrolls with the sheet itself, under its top row, which stays: #869's step 3)
       const el = get(), s = el && el.isConnected && el.getClientRects().length && (el.closest('.pl-way.card') || el.closest('.sheet-body') || el.closest('.sheet'));
-      if (s) { const e = el.getBoundingClientRect(), r = s.getBoundingClientRect(), top = s.matches('.sheet') ? polku.planner.els.top.getBoundingClientRect().bottom : r.top; if (e.bottom > r.bottom) s.scrollTop += e.bottom - r.bottom + 8; else if (e.top < top) s.scrollTop -= top - e.top + 8; }
+      // (and under the numbers the top row takes once they've scrolled under it: a side panel's, over When since #382's order)
+      const P = polku.planner, under = (x) => (x.getClientRects().length ? x.getBoundingClientRect().bottom : 0);
+      if (s) { const e = el.getBoundingClientRect(), r = s.getBoundingClientRect(), top = s.matches('.sheet') ? Math.max(under(P.els.top), P.panel.classList.contains('sum-on') ? under(P.els.topSum) : 0) : r.top; if (e.bottom > r.bottom) s.scrollTop += e.bottom - r.bottom + 8; else if (e.top < top) s.scrollTop -= top - e.top + 8; }
       await frames();
       const b = s && get()?.getClientRects().length ? get().getBoundingClientRect() : null, at = b && { x: b.left + Math.min(60, b.width / 3), y: b.top + b.height / 2 };
       same = a && at && Math.abs(a.x - at.x) < 1 && Math.abs(a.y - at.y) < 1 && !polku.map.isMoving() ? same + 1 : 0;
