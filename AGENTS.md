@@ -58,8 +58,8 @@ November 2026").
   investigation are theirs too, and a review, an audit or a proposal decides
   nothing until they choose it. When what comes next is unclear, ask.
 - **One home for a decision.** A choice made in chat, on a mock-up or in a PR
-  goes into its issue's description the same day, as one dated line in a
-  "Decided" list, before anything is built on it. A Hand-over links there
+  goes into its issue's description (not a comment) the same day, as one
+  dated line in a "Decided" list, before anything is built on it. A Hand-over links there
   and doesn't retell it: a paraphrase isn't a decision. #382's description
   shows the form.
 - **Claim it first:** a comment on the issue with your branch, saying which
@@ -223,8 +223,8 @@ conversation again
   (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
   another agent's server.
 - **Smoke runs go one at a time,** alone on the machine, each commit in a
-  frozen worktree that stays put while a run uses it. Never `pkill` a pattern
-  another session's Chrome may match. Before calling a failure the change's,
+  frozen worktree that stays put while a run uses it. Stop only the Chrome
+  you started, by its process id. Before calling a failure the change's,
   run the same group on `main`.
 - **To test another branch,** make a worktree of its own
   (`git worktree add --detach <dir> <commit>`) and serve that on its own
@@ -263,8 +263,7 @@ conversation again
   changes. Never work on another agent's branch unless it was handed over.
 - Docs and tooling PRs stay on their one subject. **A PR carries one
   decision:** a big change is a package of PRs, each drawn on the whole
-  mock-up, which keeps the whole design and the review (#1050 grew too large
-  to review).
+  mock-up, which keeps the whole design and the review.
 - **The repo squash-merges:** the PR's title and description become its one
   commit on `main`, so keep the description true as the PR changes. When the
   PR below yours is merged, don't rebase a branch that's already pushed. To
