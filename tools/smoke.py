@@ -8019,7 +8019,7 @@ MARKS = r"""(async () => {
     if (p.when.start() !== hour(4) || pill.textContent !== `Leave ${p.when.words()}` || !pill.textContent.includes(clock(hour(4)))) errs.push(`the box's pill after a new departure: ${pill.textContent}`);
     const r = pill.getBoundingClientRect(), body = p.panel.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('the box’s When pill is out of view');
-    if (r.height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)) errs.push('the box’s When pill is too small'); // (--target: a finger's 44 px, a mouse's 36)
+    if (r.height < (matchMedia('(pointer: coarse)').matches ? 44 : 32)) errs.push('the box’s When pill is too small'); // (--target: a finger's 44 px, a mouse's 32)
     // (Route's list says it on the start's row, 25d's part 4, to a screen reader since #761; the start's card and the box set it)
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
     if (!waypoint().includes(`Leave ${p.when.words()}`) || !p.els.there.textContent.includes(p.clockOf(p.when.start() + (p.analysis.timeWind || p.analysis.time)))) errs.push('a new departure did not update the start’s row or the box’s there at immediately');
@@ -16508,8 +16508,8 @@ PC_LOOK = """((phone) => {
     'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'btns', 'card-set', 'peek-end', 'stylebtn', 'way-chips', 'chip', 'way-fold', 'way-facts', 'pick-prof', 'ax', 'top', 'bot']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
-  // targets: 44 px by touch, 36 px with a mouse (the user, 2026-10-22, #380)
-  const least = phone ? 44 : 36;
+  // targets: 44 px by touch, 32 px with a mouse (the user, 2026-10-22, #380; 2026-11-17, #382)
+  const least = phone ? 44 : 32;
   for (const b of c.querySelectorAll('button, input:not([type=checkbox]), .tg')) {
     const a = r(b);
     if (a.width && (a.width < least || a.height < least)) out.push(`${(b.textContent.trim() || b.getAttribute('aria-label') || b.tagName).slice(0, 30)} ${Math.round(a.width)} × ${Math.round(a.height)} px`);
@@ -16528,7 +16528,7 @@ PC_LOOK = """((phone) => {
     if (!row.querySelector('.ic')) out.push(`${row.querySelector('b').textContent}: no icon`);
     if (btn ? !row.title : !line) out.push(`${row.querySelector('b').textContent}: no ${btn ? 'tooltip' : 'line under it'}`);
     if (!phone && !btn) {
-      if (Math.round(r(row).height) !== 36) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not 36`);
+      if (Math.round(r(row).height) !== 32) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not 32`);
       if (line && line.getClientRects().length) out.push(`${row.querySelector('b').textContent}'s line shows on a desktop`);
       if (line && row.title !== line.textContent) out.push(`${row.querySelector('b').textContent}'s tooltip isn't its line`);
     }
@@ -17231,7 +17231,7 @@ RC_STATE = """(() => {
     main: c ? [...c.querySelectorAll('.btn.primary.big')].map((e) => e.textContent.trim()) : [],
     note: !!(c && c.querySelector('.pl-viewnote')), text: c ? c.textContent : '',
   }; })()"""
-# the card's controls are the shared ones, big enough, one fact a line; a desktop's rows 36 px with their lines as tooltips
+# the card's controls are the shared ones, big enough, one fact a line; a desktop's rows 32 px with their lines as tooltips
 RC_LOOK = """((phone) => {
   const c = document.querySelector('.pl-way.card'), out = [], r = (e) => e.getBoundingClientRect();
   if (!c) return ['no card'];
@@ -18791,7 +18791,7 @@ def spot_card_foot(chrome):
                 r = pg.js("""(() => { const c = document.querySelector('.pl-way.card'), f = c && c.querySelector('.card-foot'), box = (e) => e.getBoundingClientRect();
                   if (!f) return null;
                   const bs = [...f.querySelectorAll('.btn')], C = box(c);
-                  return { last: c.lastElementChild === f, words: bs.map((b) => b.textContent.trim()), small: bs.filter((b) => box(b).height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)).length,
+                  return { last: c.lastElementChild === f, words: bs.map((b) => b.textContent.trim()), small: bs.filter((b) => box(b).height < (matchMedia('(pointer: coarse)').matches ? 44 : 32)).length,
                     wide: [f.scrollWidth - f.clientWidth, c.scrollWidth - c.clientWidth], out: bs.filter((b) => box(b).left < C.left - 1 || box(b).right > C.right + 1).length,
                     lines: new Set(bs.map((b) => Math.round(box(b).top))).size, title: c.querySelector('.way-hint').textContent.length }; })()""")
                 # (#690: Share, Weather here, Copy and All OpenStreetMap details are the card's actions now; a place's last row is
@@ -19772,11 +19772,12 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   box.innerHTML = `<label class="tg"><span class="tg-text">Avoid main roads</span><input type="checkbox"><span class="tg-ui"></span></label>`;
   const ui = box.querySelector('.tg-ui'), edge = (cs(ui).boxShadow.match(/rgba?\([^)]*\)/) || [cs(ui).backgroundColor])[0], er = ratio(over(rgb(edge), solid), solid);
   if (er < 3) out.push(`a switch's off track: its edge ${er.toFixed(2)}:1, under 3:1`);
-  // small headings: 12 px capitals in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
+  // small headings: capitals a row's line tall (--font-line: 13 px by touch, 12 with a mouse) in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
   box.innerHTML = `<div class="menu-h">A</div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
     <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div>
     <span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
-  const want = `12px 700 0.72px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
+  const lineW = matchMedia('(pointer: coarse)').matches ? 13 : 12;
+  const want = `${lineW}px 700 ${+(lineW * 0.06).toFixed(2)}px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
   for (const e of box.querySelectorAll('.menu-h, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .cam-wx-title, .bd-group-toggle')) {
     const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
     if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
@@ -19788,8 +19789,8 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (!len || parts.some((e) => !e)) out.push('no stepper after Other…');
   else if (parts.some((e) => !inside(e, len))) out.push('the stepper’s − and + aren’t in its box');
   // the keys (#382, Mine 8): one look, a flat face with a 1 px --key-edge and 10 px corners; sizes by the pointer, never the
-  // width: L is --target, 36 px with a mouse and 44 by touch, M a size smaller (32, 40) for a value or a choice
-  const coarse = matchMedia('(pointer: coarse)').matches, L = coarse ? 44 : 36, M = coarse ? 40 : 32;
+  // width: L is --target, 32 px with a mouse and 44 by touch, M a size smaller (28, 40) for a value or a choice (#382, 2026-11-17)
+  const coarse = matchMedia('(pointer: coarse)').matches, L = coarse ? 44 : 32, M = coarse ? 40 : 28;
   if (val('--target') !== `${L}px` || val('--size-m') !== `${M}px`) out.push(`sizes: L ${val('--target')}, M ${val('--size-m')}, not ${L}px and ${M}px`);
   const kb = document.body.appendChild(document.createElement('div'));
   kb.innerHTML = `<div class="pl-way card"><div class="rows acts btns"><button class="row"><span></span><span><b>Move</b></span></button></div><button class="btn">Share</button>
@@ -20668,7 +20669,7 @@ def leave(chrome):
         time.sleep(0.4)
         at = show(pg, 'start')  # (in sight first: at night a box saying so comes before it)
         r = pg.js("LV.when('start')")
-        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or not r['caret'] or r['expanded'] != 'false' or r['h'] < (44 if phone else 36):
+        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or not r['caret'] or r['expanded'] != 'false' or r['h'] < (44 if phone else 32):
             fails.append(f"{name}: the start's card's When row: {r}")
             pg.close()
             return
@@ -20697,7 +20698,7 @@ def leave(chrome):
         pg.js("polku.planner.cards.close(); polku.planner.reveal('points'); polku.planner.els.box.scrollIntoView({ block: 'nearest' }); true")
         time.sleep(0.6)
         r = pg.js("({ ...LV.when('box'), want: `Leave ${LV.day(LV.at(1, 7, 30))}, ${LV.clock(LV.at(1, 7, 30))}` })")
-        if not r or r['name'] != r['want'] or r['lines'] != 1 or not r['caret'] or r['note'] or r['h'] < (44 if phone else 36):
+        if not r or r['name'] != r['want'] or r['lines'] != 1 or not r['caret'] or r['note'] or r['h'] < (44 if phone else 32):
             fails.append(f"{name}: the box's When pill: {r}")
             pg.close()
             return
