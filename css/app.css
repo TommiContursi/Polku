@@ -1,5 +1,5 @@
 /* Polku's two typefaces (Mine 9, #382), served from fonts/ and kept by the service worker; both SIL Open Font License
-   (fonts/OFL-*.txt), cut as DEVELOPING's "Typefaces" says. Bricolage Grotesque for numbers and headings, Atkinson
+   (fonts/OFL-*.txt), cut as DEVELOPING's "Hover and colours" says. Bricolage Grotesque for numbers and headings, Atkinson
    Hyperlegible Next for words; every figure is Bricolage's (Polku Figures, by unicode-range), so there is one zero. */
 @font-face { font-family: "Atkinson Hyperlegible Next"; src: url("../fonts/atkinson-hyperlegible-next.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
 @font-face { font-family: "Bricolage Grotesque"; src: url("../fonts/bricolage-grotesque.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
