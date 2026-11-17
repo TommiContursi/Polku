@@ -98,6 +98,12 @@
         ],
         "createdAt": "2026-11-14T22:15:37.223Z",
         "reason": "Claude: hard-edged radial gradients (0 60%, transparent 61%) draw the stand-in map's water and woods behind the phone frame, not a glow"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "polku figures",
+        "createdAt": "2026-11-17T17:21:09.952Z",
+        "reason": "#382 decided 2026-11-17 (One zero): Bricolage's digits by unicode-range, documented in DESIGN.md's Typography"
       }
     ]
   }
