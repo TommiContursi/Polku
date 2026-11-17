@@ -2,7 +2,7 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-11-16
+## 2026-11-17
 
 ### The planner in sections ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
@@ -15,6 +15,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - The scrollbars of the planner, the cards and the panels stay out of sight until you scroll, or point at them with a mouse.
 - The planner has no tabs now. **Check**, the first row under the profile, opens Check's warnings, climbs and the ground in a view of its own, with **‹ Route** to go back. The row shows the warnings' count in red, else Good to know's, and **?** while something wasn't checked, as the tab did.
 - At its smallest size on a phone the planner shows the name, the numbers and the profile.
+
+## 2026-11-16
+
+### Layers' explanations behind ⓘ ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- In Layers, what a switch shows is behind an **ⓘ** right after its name, as in Settings, such as **Trail details**, **Hillshade** and the weather layers, instead of in grey words under it. A tap on the ⓘ shows the words; with a mouse they also show when you point at it.
+- What keeps you safe stays in sight: the depth layers still say they're not for navigation, **Sea ice** that it's never a sign that ice is safe, and the ski tracks' switch to keep off them on foot and by bike.
 
 ### Settings' explanations behind ⓘ ([#382](https://github.com/TommiContursi/Polku/issues/382))
 

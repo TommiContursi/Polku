@@ -57,6 +57,11 @@ November 2026").
   order on `main`, however recent a Hand-over. Scope, order and any larger
   investigation are theirs too, and a review, an audit or a proposal decides
   nothing until they choose it. When what comes next is unclear, ask.
+- **One home for a decision.** A choice made in chat, on a mock-up or in a PR
+  goes into its issue's description (not a comment) the same day, as one
+  dated line in a "Decided" list, before anything is built on it. A Hand-over links there
+  and doesn't retell it: a paraphrase isn't a decision. #382's description
+  shows the form.
 - **Claim it first:** a comment on the issue with your branch, saying which
   agent you are (Claude or Codex: all post as the user's GitHub account).
   For a work package, claim it on the primary issue, list the issues it
@@ -181,17 +186,27 @@ conversation again
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
 - **A new panel, sheet or way of working starts as a clickable mock-up** in
-  `docs/plans/mockups/`, checked in the worst case too (360 px, 200 % zoom,
-  long Finnish words), with the design skills that help. Fix what breaks in
+  `docs/plans/mockups/`, checked in the worst case too (390 px, the
+  smallest phone; 200 % zoom; long Finnish words), with the design skills
+  that help. Fix what breaks in
   the mock-up, then present it. A small visual
   change needs none. The mock-up and a short plan are enough: no probe
   scripts, measurements or evidence files unless the user asks. The user
-  chooses before it's built; #123's plan shows how.
+  chooses before it's built; #123's plan shows how. A new version of a
+  mock-up says on its issue what it proposes and waits for that choice.
+- **Before showing a build made from a mock-up,** set it beside the mock-up
+  element by element at 390 × 844 and 1440 × 900, and list in the PR what
+  differs and why (left out, or done better). List the rules its area
+  already has (its DEVELOPING section, its smoke groups) and check each.
 - **One style, and don't redesign what works.** A control for a job the app
   already does is the one in DEVELOPING's "Shared controls", with its class,
   and a mock-up copies its CSS. A new kind is proposed to the user first. A
   mock-up keeps its earlier versions behind a switch, so they can be compared,
-  and a round adds at most two versions.
+  and a round adds at most two versions. **The design system is one list:**
+  type, spacing, sizes and the kinds of control are each written once, in
+  DESIGN.md, DEVELOPING's "Shared controls" and, from #1058 on, the kit page
+  `docs/kit.html`. A screen's own scale (like `--pl-*`) needs the user's OK
+  first.
 - **Motion follows DESIGN.md's "Motion"**, built on Emil Kowalski's rules.
   Every change to motion or interaction is decided with /animate. When a
   change moves something (a new or changed animation, transition, or a
@@ -207,6 +222,10 @@ conversation again
   (`python3 serve.py 8771`) and point the tests at it
   (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
   another agent's server.
+- **Smoke runs go one at a time,** alone on the machine, each commit in a
+  frozen worktree that stays put while a run uses it. Stop only the Chrome
+  you started, by its process id. Before calling a failure the change's,
+  run the same group on `main`.
 - **To test another branch,** make a worktree of its own
   (`git worktree add --detach <dir> <commit>`) and serve that on its own
   port. Never switch the branch of a checkout another session may be using:
@@ -242,7 +261,9 @@ conversation again
 - Branch from `main`, or from the PR below yours if it isn't merged yet ("after
   #N" in the PR's first line). First check the branch and any uncommitted
   changes. Never work on another agent's branch unless it was handed over.
-- Docs and tooling PRs stay on their one subject.
+- Docs and tooling PRs stay on their one subject. **A PR carries one
+  decision:** a big change is a package of PRs, each drawn on the whole
+  mock-up, which keeps the whole design and the review.
 - **The repo squash-merges:** the PR's title and description become its one
   commit on `main`, so keep the description true as the PR changes. When the
   PR below yours is merged, don't rebase a branch that's already pushed. To
@@ -272,7 +293,9 @@ conversation again
     in its factual style and keeping its qualifications, and docs/USING.md
     where controls or workflows change;
   - for a phase's part: what was built, in its plan in `docs/plans/`;
-  - DEVELOPING, where how something works has changed.
+  - DEVELOPING, where how something works has changed;
+  - DESIGN.md, which says only what's built: a change that replaces a rule
+    removes the old one, rather than adding a note beside it.
 - **Offer a review** when a phase PR, or a fix that touches routing, saved
   data or share links, is ready: a fresh session (Claude or Codex, whichever
   has usage left) gets only the PR and issue links, tries to break the

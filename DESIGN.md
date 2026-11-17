@@ -344,7 +344,9 @@ Every card has the same places, in this order. A place it has nothing for is lef
 
 The planner keeps its own order: its head, then its four sections.
 
-**Settings and Layers** are to use the same look with groups that fold: each group's heading inside it (a chevron at its end), groups 12 px apart (not built yet: they keep their capitals headings). There a switch's explanation goes behind an ⓘ right after its name (built for Settings, 2026-11-16: the ⓘ is a button in the switch's label, so a press on it doesn't flip the switch, and the switch is named by its name alone), and a group's note behind an ⓘ at its heading (not built yet); a note that holds data, shows the way into an empty list or promises something about your data stays as words. Check is a view of its own (built 2026-11-16, in place of #424's tabs): Check's row leads Route's view with the warnings' count, ‹ Route goes back, and the warnings ball beside the route's name opens it at the first one. The profile's full screen holding Check's climbs and ground isn't built.
+**Settings and Layers:** a switch's explanation is behind an ⓘ right after its name. The ⓘ is a button in the switch's label, so a press on it doesn't flip the switch, and the switch is named by its name alone. A note that keeps you safe stays as words, as the depth layers', Sea ice's and the ski tracks' do, and so does a note that holds data, shows the way into an empty list or promises something about your data.
+
+**Check** is a view of its own, in place of #424's tabs. Check's row leads Route's view with the warnings' count, ‹ Route goes back, and the warnings ball beside the route's name opens it at the first one.
 
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).

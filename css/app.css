@@ -1664,8 +1664,8 @@ div.wx-sec-cols { cursor: default; }
 .bt-axis > span { position: absolute; top: 0; transform: translateX(-50%); }
 .bt-axis > span:first-child { transform: none; }
 .bt-axis > .tool.info-dot { position: absolute; right: 0; top: -6px; } /* (at the axis's end, under the bars it explains) */
-.tool.info-dot { flex: none; position: relative; width: 28px; height: 28px; min-height: 0; padding: 0; color: var(--muted); } /* (grey: green is for what's chosen, #382) */
-@media (pointer: coarse) { .tool.info-dot::after { content: ""; position: absolute; inset: -8px; } } /* (a finger's 44 px) */
+.tool.info-dot { flex: none; position: relative; z-index: 1; width: 28px; height: 28px; min-height: 0; padding: 0; color: var(--muted); } /* (grey: green is for what's chosen, #382) */
+@media (pointer: coarse) { .tool.info-dot::after { content: ""; position: absolute; inset: -8px; } } /* (a finger's 44 px, over the next row's top, z-index: a 35 px row is shorter, #1052's review) */
 .bt-cross { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 13px; }
 .bt-cross > span:first-child { flex: none; display: grid; color: var(--sport-paddle); }
 .bt-cross > .info-dot { margin-left: auto; }
