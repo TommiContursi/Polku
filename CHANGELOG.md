@@ -7,7 +7,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### New typefaces ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 - Polku has typefaces of its own: Bricolage Grotesque for numbers and headings, and Atkinson Hyperlegible Next, made to be easy to read, for words. Every figure is set in Bricolage, so a zero looks the same in a row as in a number. Polku keeps the typefaces with the rest of the app, so they work offline too.
-- On a phone the route's numbers, a card's numbers and headings are bigger, and a row's second line is a little bigger.
+- On a phone the route's numbers, a card's numbers and headings are a little bigger, and so is a row's second line.
 - With a mouse, buttons, rows and the words in lists are a size smaller and closer together, so more fits beside the map.
 
 ### The planner in sections ([#382](https://github.com/TommiContursi/Polku/issues/382))

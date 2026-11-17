@@ -105,7 +105,7 @@ typography:
     fontWeight: 700
   number:
     fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
-    fontSize: "1.5rem"
+    fontSize: "1.25rem"
     fontWeight: 700
   unit:
     fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
@@ -248,7 +248,7 @@ One value for each role, on `:root`, in `rem`, so the browser's text size enlarg
 | A card's title | `--font-card` | 22 | 17 | Bricolage 700 |
 | The route's name | `--font-name` | 19 | 16 | Bricolage 700 |
 | A section's heading | `--font-heading` | 17 | 14 | Bricolage 700 |
-| A number | `--font-number` | 24 | 18 | Bricolage 700 |
+| A number | `--font-number` | 20 | 16 | Bricolage 700 |
 | A number's unit | `--font-unit` | 14 | 12 | Atkinson 400 |
 | A row's name, a key's words | `--font-row` | 15 | 13 | Atkinson 500, a key 600 |
 | A row's line, a number's word | `--font-line` | 13 | 12 | Atkinson 400 |

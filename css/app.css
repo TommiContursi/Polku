@@ -68,7 +68,7 @@
   --font-card: 1.0625rem; /* a card's title, Bricolage 700 */
   --font-name: 1rem; /* the route's name, Bricolage 700 */
   --font-heading: 0.875rem; /* a section's heading, Bricolage 700 */
-  --font-number: 1.125rem; /* a number, Bricolage 700 */
+  --font-number: 1rem; /* a number, Bricolage 700 */
   --font-unit: 0.75rem; /* a number's unit, 400 */
   --font-row: 0.8125rem; /* a row's name (500), a key's words (600) */
   --font-line: 0.75rem; /* a row's line, a number's word, 400 */
@@ -119,7 +119,7 @@
 }
 @media (pointer: coarse) {
   :root {
-    --font-card: 1.375rem; --font-name: 1.1875rem; --font-heading: 1.0625rem; --font-number: 1.5rem; --font-unit: 0.875rem;
+    --font-card: 1.375rem; --font-name: 1.1875rem; --font-heading: 1.0625rem; --font-number: 1.25rem; --font-unit: 0.875rem;
     --font-row: 0.9375rem; --font-line: 0.8125rem; --font-field: 1rem; /* (16 px: iOS doesn't zoom a field) */
     --size-s: 32px; --size-m: 40px; --target: 44px; --size-xl: 52px; --row-h: 50px;
   }
