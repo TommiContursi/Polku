@@ -2951,6 +2951,7 @@ body { background: var(--mk-bg); color: var(--text); padding-block: 20px 56px; p
 .mk-rec { box-shadow: inset 0 0 0 2px var(--accent); }
 .mk-rec h2, .mk-note h2 { margin: 0 0 6px; font-size: 16px; line-height: 1.25; text-wrap: balance; }
 .mk-rec p { margin: 0; font-size: 13.5px; }
+.mk-rec p + p { margin-top: 8px; }
 .mk-note dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; margin: 0; font-size: 13.5px; }
 .mk-note dt { font-weight: 600; color: var(--muted); font-size: 12.5px; padding-top: 1px; }
 .mk-note dd { margin: 0; }
@@ -3013,7 +3014,8 @@ body { background: var(--mk-bg); color: var(--text); padding-block: 20px 56px; p
   <aside class="mk-notes" aria-label="How the variant works">
     <div class="mk-rec">
       <h2>Recommended: B, with a mouse everything shows</h2>
-      <p>With a mouse the row wraps, so nothing is hidden and nothing moves under the pointer; by touch it stays as #1050 built it. It costs about six lines of CSS. Its cost to people: the row is as tall as its facts, so a forecast that comes in late can move Check's row and the list under it by a line.</p>
+      <p>With a mouse the row wraps, so nothing is hidden past an edge and nothing moves under a click or a hover; by touch it stays as #1050 built it. It costs about six lines of CSS. Its cost to people: the row is as tall as its facts, so when the forecast comes in late, Check's row and the list under it move by a line (40 px here). That's a late re-wrap, which #382 rules out for the route's name (#741), and it can move a row under a resting pointer, which #594 chose against.</p>
+      <p>The trade: A, C and D keep the row still but hide a fact that says data is missing past the edge; B and E show it but re-wrap when the forecast comes in.</p>
     </div>
 
     <section class="mk-note" data-v="A">
@@ -3035,7 +3037,7 @@ body { background: var(--mk-bg); color: var(--text); padding-block: 20px 56px; p
         <dt>By touch</dt><dd>As today (A): a swipe and the fade, so a phone's peek keeps its one line.</dd>
         <dt>By keys</dt><dd>Tab goes from chip to chip; nothing scrolls.</dd>
         <dt>Motion</dt><dd>None.</dd>
-        <dt>Watch</dt><dd>The row is as tall as what it holds. When the forecast comes in late and the facts change, the row can lose or gain a line, and Check's row and the list under it move with it (try "The forecast comes in" on the first route). With a mouse in a narrow timeline, the layers take two lines and the timeline grows by one.</dd>
+        <dt>Watch</dt><dd>The row is as tall as what it holds. When the forecast comes in late and the facts change, the row can lose or gain a line, and Check's row and the list under it move with it: 40 px on the first route (try "The forecast comes in"). That's the late re-wrap #741 ruled out for the route's name, and a move under a resting pointer, which #594 chose against. With a mouse in a narrow timeline, the layers take two lines and the timeline grows by one.</dd>
         <dt>Cost</dt><dd>About six lines of CSS for a mouse, under <code>(hover: hover) and (pointer: fine)</code>. <code>sideways()</code> stays for touch, and its arrows never show with a mouse, since nothing overflows. DEVELOPING's Shared controls on <code>main</code> already say the layers' row wraps where it isn't a phone's.</dd>
       </dl>
     </section>
@@ -3047,7 +3049,7 @@ body { background: var(--mk-bg); color: var(--text); padding-block: 20px 56px; p
         <dt>By touch</dt><dd>The cut chip and a swipe; no counts, since a button over the row would hide it.</dd>
         <dt>By keys</dt><dd>Tab goes from chip to chip, and a chip that takes the focus is scrolled into view whole, at once, with nothing over it.</dd>
         <dt>Motion</dt><dd>The counts change at once. The click's scroll is smooth, as A's; with reduced motion it jumps.</dd>
-        <dt>Watch</dt><dd>The arrows' room makes the row about 80 px narrower. On the key facts, with two chips, "1 ›" says little; the count earns its place on the six layers.</dd>
+        <dt>Watch</dt><dd>As in A, the MTB route's "Weather: no forecast yet" and the paddle route's "no forecast yet from km 12.4" are past the edge, and the arrows' room makes the row about 80 px narrower, so more of them is. On the key facts, with two chips, "1 ›" says little; the count earns its place on the six layers.</dd>
         <dt>Source</dt><dd><a href="https://www.nngroup.com/articles/horizontal-scrolling/">Beware horizontal scrolling</a> (Katie Sherwin, NN/g, 2014): partly shown items at the edges, and showing how much is left.</dd>
         <dt>Cost</dt><dd>Small: the arrows move out of the row into places of their own, and the counts come from the chips' places as the row scrolls (about 20 lines in <code>sideways()</code>).</dd>
       </dl>
@@ -3060,7 +3062,7 @@ body { background: var(--mk-bg); color: var(--text); padding-block: 20px 56px; p
         <dt>By touch</dt><dd>As A.</dd>
         <dt>By keys</dt><dd>As A, with A's fault: a chip at the edge takes the focus without coming into view.</dd>
         <dt>Motion</dt><dd>/animate says no. It moves what you're reading under a pointer that's only resting, it would be seen many times a day, and it runs far past DESIGN.md's 300 ms on a <code>requestAnimationFrame</code> loop. With reduced motion there's no hover scroll, so it's A.</dd>
-        <dt>Watch</dt><dd>It's what #594 turned down: things moving under the pointer. NN/g found Netflix's hover arrows slower than clicking to a whole new set would be. When the row ends, the arrow fades away and the pointer is on a chip.</dd>
+        <dt>Watch</dt><dd>It's what #594 turned down: things moving under the pointer. NN/g says clicking to a whole new set would be faster than Netflix's hover arrows. When the row ends, the arrow fades away and the pointer is on a chip. As in A, the missing forecast is past the edge until the row is scrolled.</dd>
         <dt>Source</dt><dd><a href="https://www.nngroup.com/articles/horizontal-scrolling/">Beware horizontal scrolling</a> (NN/g, 2014), on Netflix's rows.</dd>
         <dt>Cost</dt><dd>About 25 lines of JavaScript (a loop on the scroll), and a speed to tune.</dd>
       </dl>
@@ -3072,7 +3074,7 @@ body { background: var(--mk-bg); color: var(--text); padding-block: 20px 56px; p
         <dt>With a mouse and by touch</dt><dd>What fits shows on one line, then a chip "+2 more" at the line's end. It opens the row in place onto more lines and becomes "Fewer" where it was, so nothing moves under the pointer. A chip that says data is missing is never folded. Nothing scrolls sideways anywhere.</dd>
         <dt>By keys</dt><dd>The chip is a button with <code>aria-expanded</code>; folded chips are out of the tab order until it's opened.</dd>
         <dt>Motion</dt><dd>On a click, the chips that appear fade in (180 ms, <code>--t-open</code>, opacity only, reduced motion too). From the keys, and on Fewer, at once.</dd>
-        <dt>Watch</dt><dd>One more click to see the rest, and the folded chips' words are unseen until then. Open, the row is as tall as B's, with B's late-forecast caveat; folded, it's one line. The chip's green words are borrowed from Show all waypoints (<code>wpl-all</code>): it's a new kind of control.</dd>
+        <dt>Watch</dt><dd>One more click to see the rest, and the folded chips' words are unseen until then. Open, the row is as tall as B's. Folded, it's one line, except where a chip says data is missing: that never folds, so the MTB route's row is two lines until the forecast comes in, and then it has B's 40 px shift. The chip's green words are borrowed from Show all waypoints (<code>wpl-all</code>): it's a new kind of control.</dd>
         <dt>Source</dt><dd>The Priority+ pattern (<a href="https://bradfrost.com/blog/post/revisiting-the-priority-pattern/">Brad Frost, 2015</a>): as many as fit, the rest behind "more".</dd>
         <dt>Cost</dt><dd>The most JavaScript of these: measuring what fits on every resize and every change of the facts (about 40 lines), and its own smoke check.</dd>
       </dl>
