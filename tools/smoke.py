@@ -6125,11 +6125,47 @@ TERRAIN = """(async () => {
 })()"""
 
 
+# A bridge over a river (#576): made-up terrain at 100 m with an 80 m valley under the bridge. Over the bridge the height
+# runs straight from one end to the other, so the profile has no dip and no climb, and the bridge isn't missing terrain;
+# the same way without bridge=yes dips (the terrain is the mock's).
+BRIDGE = """(async () => {
+  const errs = [], A = await import(location.origin + '/js/analysis.js'), realFetch = window.fetch;
+  const lat = 68, river = [24.5, 24.502];
+  const tile = async (z, x) => {
+    const S = 256, c = new OffscreenCanvas(S, S), ctx = c.getContext('2d'), img = ctx.createImageData(S, S);
+    for (let px = 0; px < S; px++) {
+      const lon = ((x + (px + 0.5) / S) / 2 ** z) * 360 - 180, v = (lon > river[0] && lon < river[1] ? 80 : 100) + 32768;
+      for (let py = 0; py < S; py++) img.data.set([Math.floor(v / 256), Math.floor(v) % 256, 0, 255], (py * S + px) * 4);
+    }
+    ctx.putImageData(img, 0, 0);
+    return new Response(await c.convertToBlob({ type: 'image/png' }));
+  };
+  window.fetch = (url, init) => {
+    const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\/(\\d+)/.exec(String(url));
+    return m ? tile(+m[1], +m[2]) : realFetch(url, init);
+  };
+  try {
+    const coords = [[24.49, lat], [24.4995, lat], [24.5025, lat], [24.51, lat]];
+    const road = { highway: 'residential', surface: 'asphalt' };
+    const over = await A.analyse({ coords, attrs: [{ tags: road }, { tags: { ...road, bridge: 'yes' } }, { tags: road }] }, { activity: 'hike' });
+    const under = await A.analyse({ coords, attrs: [{ tags: road }, { tags: road }, { tags: road }] }, { activity: 'hike' });
+    if (!(under.down > 10)) errs.push(`the mock's valley: a way without bridge=yes goes down ${under.down} m, not about 20`);
+    const steep = Math.max(...over.grade.map(Math.abs));
+    if (over.up > 2 || over.down > 2 || steep > 1 || Math.min(...over.ele) < 99) errs.push(`over the bridge: ↑${over.up.toFixed(1)} m ↓${over.down.toFixed(1)} m, steepest ${steep.toFixed(1)} %, lowest ${Math.min(...over.ele).toFixed(1)} m (want level at 100 m)`);
+    if (over.terrain) errs.push(`over the bridge, the terrain says missing: ${JSON.stringify(over.terrain)}`);
+  } finally {
+    window.fetch = realFetch;
+  }
+  return errs;
+})()"""
+
+
 def terrain(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'hike', 'timeline': True}, {'polku:plannerDock': '"left"'}, '#13/61.513/23.83')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(TERRAIN, timeout=90000)
+    fails += [f'a bridge: {e}' for e in pg.js(BRIDGE, timeout=60000)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} terrain that doesn't load, loads in part, comes back" + ''.join(f'\n     - {f}' for f in fails), flush=True)
@@ -22612,7 +22648,7 @@ GROUPS = [
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
     ('backtostart', [back_to_start], 'Back to start buttons, closing leg and undo (straight legs)'),
     ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun, the routing bar and the folded line while a leg is held (no routing)'),
-    ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
+    ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs); a bridge\'s profile runs level over the river (#576)'),
     ('sunlight', [sunlight, sky_3d], 'the hills lit by the sun at the timeline\'s hour and their shadows (#910): the sun\'s place, a wall\'s shadow, the light and the switch over the hours and a reload; the sky in 3D by the hour and the forecast (#644)'),
     ('stops', [stops, best_time_nights], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
