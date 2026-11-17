@@ -3701,7 +3701,7 @@ def onroute(chrome):
           p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
           p.renderWarnings();
           const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
-          if (!line() || !line().classList.contains('unk') || said(line()) !== '1 not checked' || !/^1 not checked: The forecast didn.t answer\\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
+          if (!line() || !line().classList.contains('unk') || said(line()) !== '?' || !/^1 not checked: The forecast didn.t answer\\./.test(line().getAttribute('aria-label'))) errs.push(`the line with only Not checked: ${line() && line().className} "${line() && said(line())}" (${line() && line().getAttribute('aria-label')})`);
           p.hideWarnKind({ key: 'roadwork' }, false);
           // nothing to read and all checked: no row
           window.wx501 = false;
@@ -3854,7 +3854,7 @@ def onroute(chrome):
           [...document.querySelectorAll('.toast button')].find((b) => /Undo/.test(b.textContent))?.click();
           await wait(300);
           const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
-          if (!line() || said(line()) !== '1 not checked') errs.push(`Undo brought back "${line() && said(line())}", not the forecast not checked`);
+          if (!line() || said(line()) !== '?') errs.push(`Undo brought back "${line() && said(line())}", not the forecast not checked`);
           p.readKeys = new Set(); p.save(); p.renderWarnings(); // (all unread again, for Got it)
           // Got it, one by one: read, and the next unread along the route (a phone)
           p.reveal('warnings');
