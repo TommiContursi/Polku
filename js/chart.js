@@ -272,7 +272,8 @@ export class ProfileChart {
     this.resetBtn.addEventListener('click', () => this.setView(null, true));
     canvas.parentElement.append(this.resetBtn);
     new ResizeObserver(() => this.draw()).observe(canvas);
-    document.fonts.addEventListener('loadingdone', () => this.draw()); // (a canvas isn't drawn again when Polku's typefaces arrive)
+    // once Polku's typefaces are in (a canvas isn't drawn again when they arrive), and nothing kept after (#1066)
+    document.fonts.load(`10px ${getComputedStyle(document.documentElement).getPropertyValue('--face-text')}`, '0a').then(() => this.draw());
     this.bindPointer();
   }
 

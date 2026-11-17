@@ -8445,6 +8445,26 @@ def tokens(chrome):
     return ok
 
 
+def chart_fonts(chrome):
+    """A profile drawn on a canvas takes Polku's typefaces when they arrive, and leaves no listener behind on
+    document.fonts, which lives as long as the page: a pick card's chart, closed, would stay in memory (#1066)."""
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.goto(BASE + 'docs/kit.html')  # (app.css's values, without the map)
+        added = pg.js("""(async () => {
+          const added = [], add = document.fonts.addEventListener.bind(document.fonts);
+          document.fonts.addEventListener = (type, ...rest) => { added.push(type); return add(type, ...rest); };
+          const { ProfileChart } = await import(location.origin + '/js/chart.js');
+          for (let k = 0; k < 3; k++) { const box = document.body.appendChild(document.createElement('div')); new ProfileChart(box.appendChild(document.createElement('canvas')), null); box.remove(); }
+          return added; })()""")
+        fails = [f'three charts made and dropped left {len(added)} listeners on document.fonts ({", ".join(added)})'] if added else []
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a profile chart leaves no listener on document.fonts (#1066)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # What the map draws with: the route line's colours, its glow's, the trails' difficulty, and the colours of the
 # route coloured by its gradient on the map (Colour by), with the difficulty scale itself
 PALETTE_SEEN = """(async (dark) => {
@@ -22622,7 +22642,7 @@ GROUPS = [
     ('effects', [fewer_effects, flat_offer], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
-    ('tokens', [tokens], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did'),
+    ('tokens', [tokens, chart_fonts], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did; a profile chart leaves no listener on document.fonts (#1066)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls, sideways_row], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers; a row that scrolls sideways: › at its end, a key\'s focus clear of the fade (WCAG 2.4.11)'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a kind hidden in Check shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
