@@ -113,6 +113,8 @@ const PEEK = 296;
 const cssVar = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 const token = (k) => parseFloat(cssVar(k));
 const slid = (el) => parseFloat(getComputedStyle(el).translate.split(' ')[1]) || 0;
+// what changes place, or a view a press opens, fades in where it lands: opacity only, so reduced motion keeps it too
+const fadeIn = (el) => el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: token('--t-open'), easing: cssVar('--ease-out') });
 // where the planner sits on a wide screen: on the left, unless you moved it to the bottom
 export const dockOf = () => store.get('plannerDock', 'left');
 // The planner's two views: Route, for drawing, and Check, what's on the way, a view of its own that Route's first row opens
@@ -4856,6 +4858,7 @@ export class Planner {
     this.view = id;
     for (const [k, el] of Object.entries(this.els.panes)) el.hidden = k !== id;
     if (changed) this.listToTop();
+    if (changed && user && !this.keyed) fadeIn(this.els.panes[id]);
     if (user) {
       const st = this.panel.dataset.state;
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(st)) this.setSheetState('half');
@@ -5374,8 +5377,12 @@ export class Planner {
     const c = p.classList.contains('carded') && this.cards.box;
     if (c && c.scrollTop > 0 && !['half', 'full'].includes(st)) {
       c.scrollTop = 0;
-      if (!instant) c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: token('--t-open'), easing: cssVar('--ease-out') });
+      if (!instant) fadeIn(c);
     }
+    // a phone's full puts When over the profile, with its heading; the peek and half put the chart first (#742): from a
+    // swipe or a tap, the two fade in where they land rather than swap in one frame (the review of #1050)
+    const S = ['peek', 'half', 'full'];
+    if (!instant && lay === 'sheet' && S.includes(was) && S.includes(st) && (was === 'full') !== (st === 'full')) { fadeIn(this.els.box); fadeIn(this.els.profZone); }
     this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
     // its sizes measured for this size first, so it moves there once (not to one measured at the last size, then on)
     this.stopSheet();
@@ -5409,7 +5416,7 @@ export class Planner {
     // (scrolled: the size it goes to hides the list at once, so the content can't scroll back with the sheet's move; the
     // numbers fade in where the list was instead of appearing at once, but not from the keyboard. A swipe has already
     // scrolled it back, bindSheet()'s unscroll)
-    if (was > 0 && !this.keyed && !p.classList.contains('instant')) this.els.head.animate([{ opacity: 0 }, { opacity: 1 }], { duration: token('--t-open'), easing: cssVar('--ease-out') });
+    if (was > 0 && !this.keyed && !p.classList.contains('instant')) fadeIn(this.els.head);
     p.scrollTop = 0;
     p.classList.remove('sum-on', 'scrolled');
   }
@@ -6331,7 +6338,7 @@ export class Planner {
 
   // The head's title: the route's name, and on a route of more than one sport each in its colour and the changeovers
   renderTitle(a) {
-    this.els.titleT.hidden = !a;
+    this.els.titleT.hidden = this.els.readRow.hidden = !a; // (the ball's place with the name, so its answer moves nothing)
     if (!a) return;
     this.els.name.textContent = this.routeTitle();
     const sports = this.routeSports(), n = this.legs.filter((_, i) => i && this.legSport(i) !== this.legSport(i - 1)).length;
@@ -6542,6 +6549,7 @@ export class Planner {
       // (the row is under the route's list: brought into sight first, #740)
       if (was) requestAnimationFrame(() => { const el = this.els.howRows.querySelector(`[data-k="${row}"]`); if (el) { el.scrollIntoView({ block: 'nearest' }); el.focus({ preventScroll: true }); } });
     }
+    if ((k || was) && !this.keyed) fadeIn(pane); // (every caller is a press: from the keyboard it changes at once)
   }
 
   flash(el) {
@@ -7203,15 +7211,14 @@ export class Planner {
     const first = n1 ? R1[0] : R3[0];
     return { n1, n3, aria: `${[n1 && `${n1} warning${n1 === 1 ? '' : 's'}`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}${n1 + n3 > 1 ? ` and ${n1 + n3 - 1} more` : ''}. Open Check at the first` };
   }
-  // the count, a red ball and its word beside the route's name (#382, Mine 8; "?" while something wasn't checked, never
-  // colour alone), taking none of the map (the review of #416, #438)
+  // the count in a red ball beside the route's name, its words in its name (#382, Mine 8; "?" in a ring while something
+  // wasn't checked, never colour alone), taking none of the map (the review of #416, #438). Its place is kept, empty or
+  // not, so the name keeps its width when Check answers late (#741)
   renderReadRow() {
     const el = this.els.readRow, R = this.readSays();
     if (!el) return;
-    el.hidden = !R;
-    if (!R) { el.replaceChildren(); return; }
-    el.replaceChildren(h('button', { type: 'button', class: `pl-readrow-go ${R.n1 ? 'danger' : 'unk'}`, 'aria-label': R.aria, onclick: () => this.openFromRow() },
-      h('b', R.n1 ? {} : { 'aria-hidden': 'true' }, R.n1 ? String(R.n1) : '?'), ' ', h('span', {}, R.n1 ? `warning${R.n1 === 1 ? '' : 's'}` : `${R.n3} not checked`)));
+    el.replaceChildren(...R ? [h('button', { type: 'button', class: `pl-readrow-go ${R.n1 ? 'danger' : 'unk'}`, 'aria-label': R.aria, onclick: () => this.openFromRow() },
+      h('b', {}, R.n1 ? String(R.n1) : '?'))] : []);
   }
   // the line (or the count): Check, at the first unread one, with its card (a phone's sheet at half under it) [jc-desk-sel]
   openFromRow() {

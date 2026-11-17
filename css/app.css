@@ -164,14 +164,14 @@ button { font: inherit; color: inherit; }
 html { -webkit-tap-highlight-color: transparent; }
 /* a press answers at once: buttons, chips, tiles and switches shrink a little while held, with no grey flash; a row
    keeps its grey instead (the user's choice 3 of #382). A chosen look fades in, with reduced motion too. */
-:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button) {
+:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button, .pl-readrow-go) {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
   transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease;
 }
-:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: scale(0.97); }
+:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button, .pl-readrow-go):active:not(:disabled) { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) {
-  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button) { transition: background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease; }
-  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button):active:not(:disabled) { transform: none; }
+  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button, .pl-readrow-go) { transition: background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease; }
+  :is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .rt-pill, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back, .card-acts button, .pl-readrow-go):active:not(:disabled) { transform: none; }
 }
 /* a small heading, everywhere: 12 px capitals in grey (#356) */
 .menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
@@ -427,6 +427,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .side-x.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
 .side-x.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
 .side-x.drag { cursor: grabbing; }
+.side-x.drag .chip:active { transform: none; } /* (a drag isn't a press: the key it started on doesn't stay shrunk) */
 .side-wrap { position: relative; min-width: 0; }
 .side-wrap > .wx-hs-arrow { top: 50%; margin-top: -16px; }
 .tl-layers { display: flex; gap: 4px; padding: 4px 4px 4px 8px; margin: -4px 0 4px; }
@@ -1004,7 +1005,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
    line under them; with a mouse each a size smaller and rows 40 px, as its keys are, so a desktop's planner isn't outsized */
 .sheet { --pl-title: 1.25rem; --pl-head: 1.0625rem; --pl-num: 1.125rem; --pl-row: .9375rem; --pl-line: .8125rem; }
 @media (hover: hover) and (pointer: fine) { .sheet { --pl-title: 1.0625rem; --pl-head: .9375rem; --pl-num: 1rem; --pl-row: .875rem; --pl-line: .75rem; --row-h: 40px; } }
-.sheet .row b, .sheet .row .val, .pl-pane .btn:not(.big), .sheet .kf-b, .sheet .trip-when, .pl-profile .mode-select select, .sheet .pl-readrow-go { font-size: var(--pl-row); }
+.sheet .row b, .sheet .row .val, .pl-pane .btn:not(.big), .sheet .kf-b, .sheet .trip-when, .pl-profile .mode-select select { font-size: var(--pl-row); }
 .sheet .row small, .pl-sports, .sheet-row .sum-item small, .pl-profile .mode-select-label, .pl-profile .tg-inline .tg-text, .wpl .wpl-when b { font-size: var(--pl-line); }
 .sheet-row .sum-item b { font-size: var(--pl-num); }
 .sheet .trip-when { font-weight: var(--weight-name); }
@@ -1467,7 +1468,6 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
   .pl-group { padding: 0; border: 0; } .pl-h { padding-left: 0; }
   .sheet-head .pl-title { padding-right: 0; } .sheet-head .pl-title-t { padding-left: 0; } .sheet-head .sheet-row > .sheet-sum { margin: 0; }
   .sheet-row .sheet-sum > .sum-item + .sum-item { box-shadow: none; } /* (wrapped: no lines between) */
-  .pl-readrow-go { padding: 0 6px; } .pl-readrow-go > span { display: none; } /* (the ball alone, so the name keeps its room: its name says the rest) */
 }
 /* the box over the profile (the order of 2026-11-15): When and when you're there, then a row a day with › */
 .sheet > .trip-box { flex: none; display: grid; gap: var(--space-2); margin-inline: 16px; }
@@ -2129,15 +2129,14 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .looked li small { margin-left: auto; color: var(--muted); text-align: right; }
 .looked p { margin: 10px 0 0; }
 .checks .hidden-kinds { padding-top: 10px; }
-/* what to read, beside the route's name (#382, Mine 8): a red ball with the count and its word on a soft red key; "?" in
-   a dashed ring, with how many weren't checked, while nothing is to read but that. A tap opens Check at the first */
-.pl-readrow { flex: none; }
-.pl-readrow-go { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); padding: 0 12px 0 6px; border: 0; border-radius: var(--radius-pill); background: var(--danger-soft); color: var(--danger); font: inherit; font-weight: var(--weight-name); cursor: pointer; }
+/* what to read, beside the route's name (#382, Mine 8): a red ball with the count, or "?" in a ring while nothing is to read
+   but what wasn't checked; its words are its name. Its place is a target wide whether Check has answered or not, so the
+   name never re-wraps when it answers late (#741). A tap opens Check at the first */
+.pl-readrow { flex: none; display: grid; place-items: center; width: var(--target); min-height: var(--target); }
+.pl-readrow-go { display: grid; place-items: center; min-width: var(--target); min-height: var(--target); padding: 0; border: 0; border-radius: var(--radius-pill); background: none; font: inherit; cursor: pointer; }
 .pl-readrow-go > b { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--danger); color: var(--surface-solid); font-size: 13px; font-variant-numeric: tabular-nums; }
-.pl-readrow-go.unk { background: var(--unk-soft); color: var(--unk); }
 .pl-readrow-go.unk > b { background: none; box-shadow: inset 0 0 0 1.5px var(--unk); border: 0; color: var(--unk); }
-.pl-readrow-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-@media (hover: hover) and (pointer: fine) { .pl-readrow-go:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); } .pl-readrow-go.unk:hover { background: color-mix(in srgb, var(--unk) 18%, var(--surface-solid)); } }
+@media (hover: hover) and (pointer: fine) { .pl-readrow-go:hover { background: var(--danger-soft); } .pl-readrow-go.unk:hover { background: var(--unk-soft); } }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }

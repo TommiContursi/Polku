@@ -3672,7 +3672,7 @@ def onroute(chrome):
           p.setView('route'); p.setSheetState('peek');
           await wait(500);
           if (!line()) return ['no warning in the peek\\'s line with something to read'];
-          if (!line().classList.contains('danger') || said(line()) !== '2 warnings') errs.push(`the line: ${line().className} "${said(line())}"`);
+          if (!line().classList.contains('danger') || said(line()) !== '2') errs.push(`the line: ${line().className} "${said(line())}"`);
           if (line().getAttribute('aria-label') !== '2 warnings, 1 not checked: Road works: Teiskontie and 2 more. Open Check at the first') errs.push(`the line's name: ${line().getAttribute('aria-label')}`);
           if (!line().closest('.pl-title')) errs.push('the ball isn\\'t beside the route\\'s name'); // (#382: no longer a line under the numbers)
           p.reveal('warnings');
@@ -4300,7 +4300,7 @@ def warnfix(chrome):
               const withRow = room();
               row.hidden = true; await """ + SETTLED + """;
               const without = room();
-              p.renderReadRow(); await """ + SETTLED + """;
+              row.hidden = false; await """ + SETTLED + """;
               if (withRow < without - 4) errs.push(`""" + f'{w} × {h}' + """: the row takes ${Math.round(without - withRow)} px of the map (${Math.round(withRow)} px left, ${Math.round(without)} without it)`);
               if (withRow < 0) errs.push(`""" + f'{w} × {h}' + """: the peek's top ${Math.round(-withRow)} px under the top bar`);
               if (!/^\\d+ warnings?, /.test(go.getAttribute('aria-label') || '')) errs.push(`""" + f'{w} × {h}' + """: the count's name: ${go.getAttribute('aria-label')}`);
@@ -11782,14 +11782,24 @@ def stops_swipe(chrome):
         def at(size):
             pg.js(f"polku.planner.setSheetState('{size}', {{ remember: false }}); true")
             fold_settled(pg, fails, f'at {size}')
-        # a light flick, 80 px in 60 ms (1.3 px/ms): one stop its way, from each (from the line 40 px, short of the peek 66 px up)
+        # (the review of #1050: full puts When over the profile, half under it) what fades in as the sheet comes to rest
+        pg.js("(() => { const p = polku.planner; window.fades = []; for (const [k, el] of [['box', p.els.box], ['profile', p.els.profZone]]) { const real = el.animate.bind(el); el.animate = (f, o) => { window.fades.push(`${k} ${Object.keys(f[0])}`); return real(f, o); }; } return true; })()")
+        # a light flick, 80 px in 60 ms (1.3 px/ms): one stop its way, from each (from the line 40 px, short of the peek 66 px
+        # up); between half and full, When and the profile fade in where they land, and nothing else does
         for start, dy, want in (('peek', -80, 'half'), ('half', -80, 'full'), ('full', 80, 'half'), ('half', 80, 'peek'), ('folded', -40, 'peek')):
             at(start)
             x, y = handle()
+            pg.js("window.fades = []; true")
             pg.swipe(x, y, y + dy, ms=abs(dy) * 3 // 4, steps=4)
             fold_settled(pg, fails, f'a flick from {start}')
             if st() != want:
                 fails.append(f'a light flick {"up" if dy < 0 else "down"} from {start} came to {st()}, not {want}')
+            fades, fade = pg.js("window.fades.join(', ') || 'nothing'"), 'box opacity, profile opacity' if 'full' in (start, want) else 'nothing'
+            if fades != fade:
+                fails.append(f'a light flick from {start} to {want}: {fades} faded in, not {fade}')
+        fades = pg.js("(() => { const p = polku.planner; window.fades = []; document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true })); p.setSheetState(p.panel.dataset.state === 'full' ? 'half' : 'full', { remember: false }); return window.fades.join(', ') || 'nothing'; })()")
+        if fades != 'nothing':
+            fails.append(f'half and full from the keyboard: {fades} faded in, not nothing (at once)')
         # let go 50 px above half at 0.9 px/ms, just under a flick: it comes to rest about 90 px on, so at half (not full, as at 0.998)
         at('peek')
         x, y = handle()
@@ -21017,23 +21027,27 @@ KF_CLIMBS = """(() => {
 })()"""
 
 
-# A warning takes the key fact's slot (#741): Check's answer coming late changes the line under the route's numbers to
-# "1 warnings" in the same place, so neither the sheet's top nor the numbers move, at a phone's peek and half
-# and in both of a desktop's docks; the route's list doesn't say it again, and the line opens Check at the item.
+# A warning beside the route's name (#741, #382): Check's answer coming late fills the ball's place, kept for it, so
+# neither the sheet's top, the numbers nor a long name move (the review of #1050: the name re-wrapped), at a phone's peek
+# and half and in both of a desktop's docks; the ball is its count, pressed as a key is; the route's list doesn't say it
+# again, and the ball opens Check at the item.
 WARN_SLOT = """async (st, n) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, errs = [];
   p.markRead([...p.unread(p.heads, 'read'), ...p.unread(p.heads, 'not')]); // (nothing left to read: no ball)
+  p.routeTitle = () => 'Pyynikin näkötorni → Kaupin urheilupuisto'; p.renderTitle(p.analysis); // (a name that fills its lines)
   if (st) p.setSheetState(st); else st = 'side';
   await wait(400); await """ + SETTLED + """;
-  const at = () => ({ top: Math.round(p.panel.getBoundingClientRect().top), sum: Math.round(p.els.sum.getBoundingClientRect().top) });
+  const box = (el) => { const r = el.getBoundingClientRect(); return `${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}×${Math.round(r.height)}`; };
+  const at = () => ({ top: Math.round(p.panel.getBoundingClientRect().top), sum: Math.round(p.els.sum.getBoundingClientRect().top), name: box(p.els.name) });
   const rr = p.els.readRow, b = at();
-  if (!rr.hidden) errs.push(`${st}: before the answer the name has "${rr.textContent}" beside it`);
+  if (rr.querySelector('.pl-readrow-go')) errs.push(`${st}: before the answer the name has "${rr.textContent}" beside it`);
   p.analysis.darkWarn = [{ at: 900, len: 40, kind: 'test', ic: 'warn', noHide: true, text: `In the dark for ${n} km`, note: 'A test item.', tier: 'read', src: { kind: 'calculated', by: 'the sun’s times' }, lngLat: p.analysis.pts[90] }];
   p.renderWarnings(); // (Check's answer, late)
   await wait(300); await """ + SETTLED + """;
   const a = at(), go = rr.querySelector('.pl-readrow-go');
-  if (a.top !== b.top || a.sum !== b.sum) errs.push(`${st}: as Check answered, the sheet's top went ${b.top} → ${a.top} px, the numbers ${b.sum} → ${a.sum} px`);
-  if (rr.hidden || !go || !go.classList.contains('danger') || go.textContent.trim() !== '1 warning' || !rr.closest('.pl-title')) errs.push(`${st}: beside the route's name: "${rr.hidden ? '' : rr.textContent.trim()}"`);
+  if (a.top !== b.top || a.sum !== b.sum || a.name !== b.name) errs.push(`${st}: as Check answered, the sheet's top went ${b.top} → ${a.top} px, the numbers ${b.sum} → ${a.sum} px, the name ${b.name} → ${a.name}`);
+  if (rr.hidden || !go || !go.classList.contains('danger') || go.textContent.trim() !== '1' || !rr.closest('.pl-title')) errs.push(`${st}: beside the route's name: "${rr.hidden ? '' : rr.textContent.trim()}"`);
+  else if (!/transform/.test(getComputedStyle(go).transitionProperty)) errs.push(`${st}: the ball has no press (${getComputedStyle(go).transitionProperty})`);
   if (p.els.facts.querySelector('.kf-b.warn')) errs.push(`${st}: the key facts say it too`);
   if (p.els.points.querySelector('.sec2 .warn-row')) errs.push(`${st}: the route's list says it again`);
   const onLine = [...p.els.points.querySelectorAll('.wpl-stretch .wpl-warns .read')].map((x) => x.textContent);
@@ -21334,6 +21348,16 @@ def views(chrome):
         if s != {'step': 'speed', 'back': 'Route', 'title': 'Your speed', 'list': False, 'presets': False, 'speeds': True, 'sectionHead': False}:
             fails.append(f"{name}: Your speed's step: {s}")
         pg.js("polku.planner.openStep(null); true")
+        # (the review of #1050) a press fades in the view it opens and Route style's steps, opacity only, reduced motion or
+        # not; from the keyboard they change at once
+        r = pg.js("""(() => { const p = polku.planner, P = p.els.panes, got = [];
+          for (const k of ['route', 'check']) { const el = P[k], real = el.animate.bind(el); el.animate = (f, o) => { got.push(`${k} ${Object.keys(f[0])}`); return real(f, o); }; }
+          const run = (keyed, fn) => { got.length = 0; if (keyed) document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true })); fn(); return got.join(', ') || 'nothing'; };
+          const out = [run(false, () => p.setView('check', { user: true })), run(false, () => p.setView('route', { user: true })), run(false, () => p.openStep('how')), run(false, () => p.openStep(null)),
+            run(true, () => p.setView('check', { user: true })), run(true, () => p.setView('route', { user: true })), run(true, () => p.openStep('how')), run(true, () => p.openStep(null))];
+          delete P.route.animate; delete P.check.animate; return out; })()""")
+        if r != ['check opacity', 'route opacity', 'route opacity', 'route opacity'] + ['nothing'] * 4:
+            fails.append(f"{name}: what fades in on a press to Check, ‹ Route, Route style and back, then the same by the keyboard: {r}")
         # Check's top: the facts, without Speed and Style
         r = pg.js("(() => { const p = polku.planner; p.setView('check'); return [...p.els.stats.querySelectorAll('.stat-label')].map((x) => x.textContent); })()")
         if 'Speed' in r or 'Style' in r or not r:
