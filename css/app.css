@@ -188,7 +188,7 @@ body {
 }
 button { font: inherit; color: inherit; }
 /* numbers and headings in Bricolage (Mine 9): the route's name, a section's heading, the numbers, a card's and a panel's title */
-:is(.pl-name, .pl-h > h3, .sheet-sum .sum-item > b, .top-sum b, .fold-go > b, .stat-value, .loop-card-head b, .rt-len input, .speed-field input, .rt-how > b, .way-sh, .way-name, .way-hint b, .step-head h3, .panel-head h2, .qd-head h2, .modal-head h2) { font-family: var(--face-display); letter-spacing: -0.01em; }
+:is(.pl-name, .pl-h > h3, .sheet-sum .sum-item > b, .top-sum b, .name-field, .heads-mark, .fold-go > b, .stat-value, .loop-card-head b, .rt-len input, .speed-field input, .rt-how > b, .way-sh, .way-name, .way-hint b, .step-head h3, .panel-head h2, .qd-head h2, .modal-head h2) { font-family: var(--face-display); letter-spacing: -0.01em; }
 /* one focus ring for every control (idea B of #382): 2 px in --focus, outside a control and inside a row of a list */
 :where(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* a new light, dark or contrast is drawn once with no transitions (js/main.js applyTheme()) */
@@ -964,7 +964,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .fold-go .fold-name { white-space: normal; overflow-wrap: break-word; } /* (a name wraps whole, never cut with "…", the plan's §8; at 200 % two lines, below) */
 /* a card's words after its name (no numbers: a place's line, a stretch's points) stop at two lines, so they give way first */
 .fold-go .fold-name:only-child { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.fold-warn { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border-radius: var(--radius-pill); font-size: 13px; font-weight: var(--weight-strong); }
+.fold-warn { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border-radius: var(--radius-pill); font-size: var(--font-line); font-weight: var(--weight-strong); }
 .fold-warn.danger { background: var(--danger-soft); color: var(--danger); }
 .fold-warn.unk { background: var(--unk-soft); color: var(--unk); }
 /* narrow (200 %): the count above the numbers where its widest one doesn't fit beside it; a card's mark gives way and its
@@ -1249,13 +1249,13 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .rt-start { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--font-row); }
 .rt-start .chip { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px; color: var(--text); font-size: var(--font-row); }
 .rt-cost { display: grid; gap: 2px; margin: -4px 0 0; color: var(--muted); font-size: var(--font-line); }
-.btn.big { justify-content: center; width: 100%; min-height: 52px; padding-block: 8px; border-radius: var(--radius-control); font-size: 17px; line-height: 1.25; }
+.btn.big { justify-content: center; width: 100%; min-height: 52px; padding-block: 8px; border-radius: var(--radius-control); font-size: var(--font-row); line-height: 1.25; }
 .btn.big:disabled { opacity: .55; cursor: default; }
 .rt-making { display: grid; gap: 6px; justify-items: center; width: 70%; }
 .rt-progress { width: 100%; height: 4px; border-radius: var(--radius-pill); background: rgba(255, 255, 255, .35); overflow: hidden; }
 .rt-progress i { display: block; width: var(--p, 0%); height: 100%; background: #fff; }
 /* Route style's section: the route style, then your speed */
-.how-h { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 8px; font-size: 12px; font-weight: var(--weight-strong); }
+.how-h { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 8px; font-size: var(--font-row); font-weight: var(--weight-strong); }
 .how-h small { font-weight: var(--weight-row); color: var(--muted); }
 .speed-wrap { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); border-radius: 0; }
 .speed-at { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 10px 0 0; }
@@ -1462,7 +1462,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .li-tag { padding: 0 6px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--text); font-size: var(--font-line); font-weight: var(--weight-row); line-height: 1.5; }
 .climbs-hardest { margin: 0 0 4px; font-size: var(--font-row); font-weight: var(--weight-row); }
 .li-main span { color: var(--muted); font-size: var(--font-line); }
-.badge { flex: none; min-width: 32px; height: 22px; padding: 0 6px; border-radius: var(--radius-inner); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: var(--weight-strong); font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
+.badge { flex: none; min-width: 32px; height: 22px; padding: 0 6px; border-radius: var(--radius-inner); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: var(--weight-strong); font-size: var(--font-line); text-shadow: 0 1px 1px rgba(0,0,0,.25); }
 /* black words where white doesn't read on the colour (#376: js/palette.js darkWords()) */
 .badge.ink, .loop-dot.ink { color: var(--ink); text-shadow: none; }
 
@@ -2160,11 +2160,11 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
    name never re-wraps when it answers late (#741). A tap opens Check at the first */
 .pl-readrow { flex: none; display: grid; place-items: center; width: var(--target); min-height: var(--target); }
 .pl-readrow-go { display: grid; place-items: center; min-width: var(--target); min-height: var(--target); padding: 0; border: 0; border-radius: var(--radius-pill); background: none; font: inherit; cursor: pointer; }
-.pl-readrow-go > b { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--danger); color: var(--surface-solid); font-size: 13px; font-variant-numeric: tabular-nums; }
+.pl-readrow-go > b { display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: var(--radius-pill); background: var(--danger); color: var(--surface-solid); font-size: var(--font-line); font-variant-numeric: tabular-nums; }
 .pl-readrow-go.unk > b { background: none; box-shadow: inset 0 0 0 1.5px var(--unk); border: 0; color: var(--unk); }
 @media (hover: hover) and (pointer: fine) { .pl-readrow-go:hover { background: var(--danger-soft); } .pl-readrow-go.unk:hover { background: var(--unk-soft); } }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
-.heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: var(--weight-strong); }
+.heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: var(--font-number); font-weight: var(--weight-strong); }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }
 .heads-mark.look { color: var(--look); background: var(--look-soft); }
 .heads-mark.not { color: var(--unk); background: var(--unk-soft); border-style: dashed; }
@@ -2181,7 +2181,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .heads-got.on { color: var(--muted); border-style: dashed; }
 @container card (max-width: 290px) { .heads-step { flex-wrap: wrap; } .heads-all { flex-basis: 100%; margin-left: 0; } }
 /* the name typed where it's shown, with Save */
-.name-field { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 0 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 17px; font-weight: 600; }
+.name-field { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 0 12px; border: 2px solid var(--accent); border-radius: var(--radius-control); background: var(--surface-solid); color: var(--text); font: inherit; font-size: var(--font-card); font-weight: var(--weight-strong); }
 .name-field:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 .card .way-head:has(.name-field) .btn.primary, .menu-when .btn.primary { flex: none; min-height: 44px; padding-inline: 14px; font-size: var(--font-row); }
 /* a 360 px phone: the switch's words under their icons, so long words fit */
