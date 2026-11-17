@@ -10,12 +10,6 @@ Milestone: [Design system](https://github.com/TommiContursi/Polku/milestone/22),
 - #1049: Settings' ⓘ.
 - #1053: 390 px in AGENTS.md.
 
-**Open:**
-- #1050: the planner in Mine 8's shape (draft).
-- #1052: Layers' ⓘ (ready).
-- #1054: Mine 9's typefaces to compare (draft, another session's).
-- #1023: the directions document (draft, from round 1).
-
 **The way here:**
 - 2026-10-22: #382 started, with rounds 1 to 5 of looks.
 - 2026-11-15: a proof canvas ("Polku: the frame"), round 6, "Polku, yksi runko" (a proposal to fix the structure before the surface), then the grouped mock-up's versions Mine to Mine 8.
@@ -92,14 +86,4 @@ These are proposals for the user to decide; nothing here is applied:
 
 ## For the next session
 
-- Start from [the latest Hand-over on #382](https://github.com/TommiContursi/Polku/issues/382) and #1050's review and answers.
-- **Open decisions:**
-  - words a size smaller with a mouse in the whole app;
-  - /review-animations on #1050;
-  - Mine 9 (#1054);
-  - #1055, the rain said twice with two distances.
-- **Not built:**
-  - "yksi runko"'s living pattern page and its `anatomy` check;
-  - Settings' and Layers' headings inside their groups;
-  - the cards' places;
-  - the toolbar's keys (#1042).
+What's open, and what to decide, is on #382: start from [its latest Hand-over](https://github.com/TommiContursi/Polku/issues/382).
