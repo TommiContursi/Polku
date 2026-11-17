@@ -1,28 +1,159 @@
-# Design system: one look, readable everywhere (#382)
+# Design system: one look, made of one set of values (#382)
 
-The plan for making Polku's look consistent and readable, without changing what it looks like. What's still to do, and its status, is on GitHub: #382, whose steps are in the order of [25d's plan](25d-check-and-points.md#where-25d-stands) (#383).
-
-- **Status (2026-10-23): the user's choices are made** ("Where it stands"), and the user merged the plan (#389). The values PR and the controls PR are built ("The values, as built" and "The controls, as built", in §8); 25d's Journey C is next.
-- **From:**
-  - a design-system review with the user on 2026-10-22 (the draft, kept on #382);
-  - [the audit of the running app](design-system-audit.md), then a second look at `main` at 00c82e2, after 25d part 1 (#352), with `tools/census.py`, Impeccable's audit and critique, and the design-system and dataviz skills;
-  - a reading of 25d's plan, the calmer planner's plan and both approved mock-ups (Revision 5) in full.
-- **The mock-up:** [mockups/design-system.html](mockups/design-system.html). Its **Version** switch shows today and this plan side by side.
+The plan for Polku's whole look: the planner, the cards, Settings, Layers, the top bar, the toolbar, and later Polku's web pages. **The decisions are in #382's description**, one dated line each. This file holds the design and the order of the work. Until 2026-11-17 the plan was to keep today's look and make it consistent. That part is built, and its sections (§1 to §8) stay below for their reasons. From 2026-11-17 the look is lifted, on the foundation described next.
 
 ## Which document is which
 
 | Document | What it is | Who follows it |
 |---|---|---|
-| This plan | What the design system changes, in what order, what's decided and what waits | Anyone changing the look |
-| [design-system-audit.md](design-system-audit.md) | The evidence: the app measured and looked at, screen by screen. It decides nothing | Read it for the why |
-| [mockups/design-system.html](mockups/design-system.html) | This plan drawn beside today | The user approves from it |
-| [DESIGN.md](../../DESIGN.md) | Today's values, written down for agents and Impeccable. It changes with the CSS, step by step | Agents drawing a screen |
-| 25d's plan, the calmer planner's plan and their mock-ups (Revision 5) | What the planner and the cards do and how they look | **They win** wherever they decide something. This plan names their colours and sizes; it doesn't redesign them |
-| [20-map-style.md](20-map-style.md) (phase 20, #181) | The map's own drawing: roads, paths, LIPAS by kind, the typeface, the map's labels | It owns the cartography; this plan only names the colours Polku draws on top of it |
+| #382's description | Every decision, dated | Everyone, first |
+| This plan | The foundation's design and its order, then October's plan | Anyone changing the look |
+| [mockups/design-system-grouped.html](mockups/design-system-grouped.html), **Mine 9** (#1054) | The look, drawn: the planner, the cards, Settings, Check and Components. It's a sketch, and where the app shows something better, the app decides | Anyone building a screen |
+| `docs/kit.html`, from the foundation's first PR | Every control, chart and type role, drawn by `css/app.css` itself, light and dark | Anyone adding something: copy it from here |
+| [DESIGN.md](../../DESIGN.md) and DEVELOPING's "Shared controls" | What's built, and only that | Agents drawing a screen |
+| [what-polku-knows.md](what-polku-knows.md) | Every fact, its one home and its summaries | Anyone drawing a screen checks it against this |
+| [controls-inventory.md](controls-inventory.md) | `main`'s control styles on 2026-11-16 | The migration's list |
+| [design-system-audit.md](design-system-audit.md) | October's evidence | Read it for the why |
+| [20-map-style.md](20-map-style.md) (phase 20, #181) | The map's own drawing and labels | It owns the cartography, and this plan doesn't touch the map's labels |
 
-The draft and `design-system-notes.md` are folded in here; the notes file is gone (it's in git history, #372).
+The older mock-ups (`design-system.html`, `-main-and-mine.html`, `-round-6.html`, and #1023's directions) are history.
 
-## Where it stands
+## The foundation (from 2026-11-17)
+
+### What it's for
+
+Polku is a tool for planning, and it has to hold a great deal and keep growing. The foundation is there so that it can:
+- **Show a lot, and grow:** a new feature takes its type, controls and charts from the kit and draws nothing of its own, so the hundredth screen looks like the first.
+- **Fit the device:** a phone outdoors gets big type and 44 px targets. A desktop is used up close with a mouse, so it's smaller and denser and covers less of the map. This is by the pointer, never by the window's width.
+- **Move and resize its windows on a desktop:** the planner, the cards, Layers, Settings, the weather window and the profile (#179, a long-standing wish).
+- **Show numbers as pictures:** a share, a range, a trend along the route or a comparison is drawn as a bar, a meter, a profile or a timeline, not written out in grey words. Today too much of what Polku knows has to be read and searched for in grey text.
+
+### Why it's needed
+
+- On `main` (a4150e5), `css/app.css` types 226 font sizes in px, 18 different sizes from 10 to 22 px with halves between. It also has 8 weights, 19 corners and 136 different paddings, and only 55 rules use the `--font-*` values. A change of look can't reach the app through values, so each session drew its own controls (the retro, #1057).
+- The research of 2026-11-14 (#1023's `design-system-directions.md`) points the same way:
+  - name each kind of thing and give it one look;
+  - the figure is the heaviest thing, with its unit and word smaller and quiet;
+  - one filled green at a time;
+  - headings in sentence case, bigger than their rows;
+  - tabular figures, and a display face only for headings and numbers;
+  - a meter is one strong mark on a quiet track (Stephen Few's bullet graph).
+
+### The values
+
+- **Typefaces** (served by Polku and kept by the service worker; both are under the SIL Open Font License):
+  - Atkinson Hyperlegible Next for words, Bricolage Grotesque for numbers and headings.
+  - Every figure is set in Bricolage, rows included, so every zero looks the same: one text family takes its digits from Bricolage (`unicode-range`).
+  - Before the files arrive the device's font shows (`font-display: swap`), with matched metrics so lines don't jump.
+  - The profile's words on its canvas use the same families (`js/chart.js`). The map's own labels stay the map's (phase 20).
+- **The type list**, one value for each role, in `rem`. Both columns are the user's (2026-11-17). With a mouse they're denser than "a size smaller", since a desktop is used up close. Both are tuned on the kit page:
+
+  | Role | Value | By touch | With a mouse | Face, weight |
+  |---|---|---|---|---|
+  | A card's title | `--font-card` | 22 | 17 | Bricolage 700 |
+  | The route's name | `--font-name` | 19 | 16 | Bricolage 700 |
+  | A section's heading | `--font-heading` | 17 | 14 | Bricolage 700 |
+  | A number | `--font-number` | 24 | 18 | Bricolage 700 |
+  | A number's unit | `--font-unit` | 14 | 12 | Atkinson 400 |
+  | A row's name, a key's words | `--font-row` | 15 | 13 | Atkinson 500, a key 600 |
+  | A row's line, a number's word | `--font-line` | 13 | 12 | Atkinson 400 |
+  | What you type | `--font-field` | 16 | 13 | Atkinson 400 (16 by touch, so iOS doesn't zoom) |
+  | A number read while moving | `--font-glance` | 34 | 34 | Bricolage 700 |
+  | Small on purpose (the scale bar, the credits, a chart's axes) | `--font-small` | 11 | 11 | Atkinson 400 |
+
+  Reading text stays 12 px or more (the Small on Purpose Rule). Today's `--font-numeral`, `--font-title`, `--font-body`, `--font-control` and #1050's `--pl-*` go, each mapped onto a role in the migration.
+- **Weights:** 400, 500 and 700, and 600 for a key's words. 650, 750 and 800 go.
+- **Sizes**, by the pointer:
+  - By touch: XS 28, S 32, M 40, L 44 and XL 52 px, with every target 44 px.
+  - With a mouse, denser (the user, 2026-11-17): S 24, M 28, L 32 and XL 40 px, and a row 32 px. Today they're L 36, M 32 and a row 40. 24 px is WCAG 2.2's floor for a target. This replaces the 36 px with a mouse of #380 and §"The rules it keeps".
+  - One rule gives a small control its 44 px target by touch, instead of today's three.
+- **Space:** today's `--space-*` (2 to 24 px) stay. Each role that sets a space gets a value by the pointer:
+  - a group's padding;
+  - the gap between groups;
+  - `--words-in`, the inset that lines a group's words up with its heading. Today it's summed by hand as 17, 19, 11 and 8 px (#1050's review).
+- **Corners:** 6, 7 (inside a track), 10 (a control), 14 (a card or a group), 20 (a sheet), a pill and a circle. 2, 3, 4, 8, 9, 12, 16, 18 and the rest go.
+- **Colours** stay as they are (§1), and green means chosen.
+
+### The kit page
+
+`docs/kit.html` loads `css/app.css` and draws, light and dark, in Finnish-length words:
+- The type list, each role with its value as measured.
+- Every control by its job, from DEVELOPING's "Shared controls", in its states (rest, hover, pressed, focus, chosen, disabled):
+  - the main action, a key, a value ▾, a chip and segments;
+  - a switch, a row ›, a bare icon and the stepper;
+  - the numbers' box, and a group with its heading;
+  - a row that goes sideways (the key facts, the weather layers): with a mouse it wraps; by touch it scrolls with a fade; where it still scrolls with a mouse, it has arrows (#382, 2026-11-17, from #1060's mock-up).
+- **The charts.** Today Polku draws them each in its own code:
+  - the profile (`js/chart.js`);
+  - the weather timeline;
+  - Check's bars for the ground and the climbs;
+  - the hour strip;
+  - a part's colours along the route.
+
+  The foundation lists them and gives them one look. That means one axis, one label size, one way to show a missing stretch, and the sports' and scales' colours from the CSS. Then it adds the small pieces a new feature needs instead of a sentence:
+  - a **meter**: one strong mark on a quiet track, for a share or a value against a limit;
+  - a **share bar**: how a route splits into surfaces, ways or sports;
+  - a **range**: from a lowest to a highest, with where you are;
+  - a **sparkline**: a trend along the route, small enough for a row.
+
+  Each one says what's missing (AGENTS.md's "Missing data never looks complete"), works in both themes, and has words for a screen reader.
+- **The window:** the frame every card and panel shares, with its top row, its places in order (DESIGN.md's "A card's places"), and on a desktop a grip to move it and an edge to resize it.
+
+A session that needs something the kit doesn't have proposes it to the user first, then adds it to the kit before using it (AGENTS.md's "One style").
+
+### Windows that move and resize
+
+On a desktop every window has the same frame:
+- a grip on its top row to move it;
+- an edge to resize it;
+- its place and size remembered on this device;
+- a way back to where it started.
+
+The profile and the timeline can be opened big. On a phone, windows are sheets at their sizes, as today, and only one is open in a place at a time (#382, 2026-11-17). This builds #179 on the window of the kit page, after the foundation.
+
+### The checks
+
+- **`tokens`** reads `css/app.css` and counts the font sizes, weights and corners typed in px. It fails when the count grows. Each migration PR lowers the ceiling, until nothing is left outside the map's small text.
+- **`anatomy`** runs on the full recorded route. For every card it checks:
+  - the places are in DESIGN.md's order;
+  - at most one filled main action in a panel;
+  - Remove is last;
+  - no heading is in capitals;
+  - every button is one of the kit's classes.
+
+  It's turned on for each kind of card as the cards' PR makes it true.
+- **The kit page** gets a smoke group of its own, which loads it and measures each sample against the type list and the sizes, with a mouse and by touch.
+
+### The PRs, in order
+
+1. **The values and the typefaces,** after #1050 merges:
+   - the values above on `:root`, and the font files served;
+   - `js/chart.js` on the same families;
+   - `--pl-*` replaced;
+   - the kit page's first version (the type list and the values);
+   - `tokens` at today's count;
+   - DESIGN.md's Typography rewritten to the one list, with its older scales removed.
+2. **The migration, by area,** in two or three PRs: the planner and the cards; Settings, Layers and the menus; then the rest. Every font size, weight and corner typed in px moves onto a value, and `tokens`' ceiling drops each time. Each PR has before-and-after screenshots of every screen it touches.
+3. **The kit page complete,** with its controls and charts:
+   - DEVELOPING's "Shared controls" points to it;
+   - `anatomy` is turned on;
+   - the charts that exist now share one look.
+4. **Windows that move and resize** on a desktop (#179).
+5. **Then the screens,** in #382's order. Each one is built from the kit, and its grey sentences become pictures where they hold a number.
+
+Each PR comes with:
+- its smoke groups;
+- screenshots at 390 × 844 and 1440 × 900, in MTB and paddle, with a route drawn and the timeline open;
+- CHANGELOG, for what people see;
+- DESIGN.md, with only what's built.
+
+### Not decided here
+
+- The exact values of both columns: tuned on the kit page with the user.
+- The font files' bytes: measured once they're cut.
+- How a window's place is remembered when the screen's size changes.
+
+## October's plan (2026-10-22 and 23): where it stood
 
 **Decided by the user**
 - *2026-10-21, the app's controls (#356):* black icons in lists, green on the start's tiles and in switches; a chosen chip green with a 2 px border, everywhere; one stepper (− 30 min + in one box, the number typable); switches with icons where they help, and one chosen look for every switch: white, black words, a green icon or tick.
