@@ -21,7 +21,7 @@ import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decode
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
-import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot, sideways } from './ui.js';
+import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot, sideways, holdArrow } from './ui.js';
 import { sweepDay, nameDay, good, dayStart, dayOffset } from './besttime.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
@@ -8041,7 +8041,7 @@ export class Planner {
       (card.x ||= {})[k] = x.scrollLeft / cw;
       arrows();
     }, { passive: true });
-    wrap.querySelectorAll('.wx-hs-arrow').forEach((b) => b.addEventListener('click', () => page(b.matches('.l') ? -1 : 1)));
+    wrap.querySelectorAll('.wx-hs-arrow').forEach((b) => b.addEventListener('click', () => { page(b.matches('.l') ? -1 : 1); holdArrow(b); }));
     const btns = [...wrap.querySelectorAll('.wx-hs-strip button.wx-hs-col')];
     const inSight = (j) => { const c0 = PAD_HS + j * cw; if (c0 < x.scrollLeft + PAD_HS || c0 + cw > x.scrollLeft + x.clientWidth - PAD_HS) x.scrollLeft = c0 - (x.clientWidth - cw) / 2; };
     x.addEventListener('keydown', (e) => {

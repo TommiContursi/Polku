@@ -1605,13 +1605,12 @@ div.wx-sec-cols { cursor: default; }
 .wx-hs-arrow { position: absolute; top: 34px; z-index: 2; display: none; width: 32px; height: 32px; border-radius: var(--radius-round); background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line);
   opacity: 0; visibility: hidden; }
 /* its fade, and a tool's press and hover (over the Pressed list's, whose `.chip:not(.chip-on)` counts as two classes); it takes
-   clicks for a double-click's interval after it fades (visibility's 500 ms), so clicking › again and again at a row's end
-   doesn't reach the key under it */
-.tool.wx-hs-arrow { transition: opacity var(--t-press) var(--ease-out), visibility 500ms, transform var(--t-press) var(--ease-out), background-color var(--t-press) ease; }
-@media (prefers-reduced-motion: reduce) { .tool.wx-hs-arrow { transition: opacity var(--t-press) var(--ease-out), visibility 500ms, background-color var(--t-press) ease; } }
+   clicks until it has faded, and after its own click for a double-click's interval (`held`, holdArrow()) */
+.tool.wx-hs-arrow { transition: opacity var(--t-press) var(--ease-out), visibility var(--t-press), transform var(--t-press) var(--ease-out), background-color var(--t-press) ease; }
+@media (prefers-reduced-motion: reduce) { .tool.wx-hs-arrow { transition: opacity var(--t-press) var(--ease-out), visibility var(--t-press), background-color var(--t-press) ease; } }
 .wx-hs-arrow.l { left: 4px; } .wx-hs-arrow.r { right: 4px; }
 .wx-sec-line > .wx-hs-arrow { top: calc(100% + 28px); } .wx-sec-line > .wx-hs-arrow.l { left: -4px; } .wx-sec-line > .wx-hs-arrow.r { right: -4px; } /* (a section's, hanging from its pinned line beside its hours' pictures: #984) */
-@media (hover: hover) and (pointer: fine) { .wx-hs-arrow { display: grid; } .wx-hs-arrow.on { opacity: 1; visibility: visible; } }
+@media (hover: hover) and (pointer: fine) { .wx-hs-arrow { display: grid; } .wx-hs-arrow.on { opacity: 1; visibility: visible; } .wx-hs-arrow.held { visibility: visible; } }
 .wx-whole { gap: var(--space-8); }
 .card-float .card[data-kind="weather"] { width: 400px; } /* (room for six hours and a half) */
 /* a folded row opened in place: Wind on the way's one stacked bar and its stretches, or Hour by hour's table */

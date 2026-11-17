@@ -399,7 +399,7 @@ export function infoDot(name, text) {
 // themselves), and what's in it takes the focus as ever. Returns the row in its wrap, the arrows' place.
 export function sideways(row, label) {
   const arrow = (dir) => h('button', { type: 'button', class: `tool wx-hs-arrow ${dir < 0 ? 'l' : 'r'}`, tabindex: '-1', 'aria-label': `${label} to the ${dir < 0 ? 'left' : 'right'}`, html: icon(dir < 0 ? 'chevronLeft' : 'chevronRight', 20),
-    onclick: () => row.scrollBy({ left: dir * (row.clientWidth - 64), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }) });
+    onclick: (e) => { row.scrollBy({ left: dir * (row.clientWidth - 64), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); holdArrow(e.currentTarget); } });
   const al = arrow(-1), ar = arrow(1);
   const edge = () => {
     const l = row.scrollLeft > 2, m = row.scrollLeft + row.clientWidth < row.scrollWidth - 2;
@@ -415,6 +415,10 @@ export function sideways(row, label) {
   mouseDrag(row);
   return h('div', { class: 'side-wrap' }, al, row, ar);
 }
+
+// An arrow clicked takes clicks for a double-click's interval after the last (`held`), so clicking it again and again
+// at a row's end doesn't reach the key under it once it has faded; a scroll by a wheel or a drag leaves no arrow behind
+export function holdArrow(b) { b.classList.add('held'); clearTimeout(b.heldT); b.heldT = setTimeout(() => b.classList.remove('held'), 500); }
 
 // A mouse drags a sideways scroller that has more than it shows (a finger and a trackpad scroll it themselves), with a
 // grabbing hand (`drag`); a drag isn't a click. `skip(e)`: a press that isn't a hand on it (its arrows). Says whether a drag
