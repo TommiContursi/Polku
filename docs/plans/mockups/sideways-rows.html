@@ -3359,7 +3359,7 @@ function peek(row, label) {
     let left;
     if (dir > 0) left = row.scrollLeft + r[0].getBoundingClientRect().left - rr.left - 2;
     else left = row.scrollLeft + l[l.length - 1].getBoundingClientRect().right - rr.right + 2;
-    if (Math.abs(left - row.scrollLeft) < 8) left = row.scrollLeft + dir * (row.clientWidth - 48); // (a chip wider than the row: a page)
+    if ((left - row.scrollLeft) * dir < 8) left = row.scrollLeft + dir * (row.clientWidth - 48); // (inside a chip wider than the row: a page on, never back)
     row.scrollTo({ left, behavior: reduced() ? 'auto' : 'smooth' });
   }
   row.addEventListener('scroll', show, { passive: true });
