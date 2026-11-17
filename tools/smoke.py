@@ -21088,6 +21088,28 @@ def warn_slot(chrome):
     return not fails
 
 
+# The route's name over its numbers follows the road names that come late with the map's tiles, as the list and
+# the sticky summary do (the review of #1050: the heading kept "Start → End").
+HEAD_NAMES = """(async () => {""" + CHECK_ROUTE + """
+  const errs = [], last = p.points.length - 1;
+  p.autoName = (i) => (i === 0 ? 'Pyynikintie' : i === last ? 'Kaupintie' : '');
+  polku.map.fire('idle'); await wait(100);
+  const name = p.els.name.textContent, sum = p.els.topSum.textContent;
+  if (!name.includes('Pyynikintie → Kaupintie') || !sum.includes('Pyynikintie → Kaupintie')) errs.push(`once the road names came: the heading says "${name}", the summary "${sum}"`);
+  return errs; })()"""
+
+
+def head_names(chrome):
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, None, '#14/63.30/26.71')
+        fails = pg.js(HEAD_NAMES, timeout=90000) + [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the route's name follows the road names that come late" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def keyfacts(chrome):
     fails = []
 
@@ -22452,7 +22474,7 @@ GROUPS = [
     ('layers', [layers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
-    ('header', [header_fit], 'the planner header fitting its sheet'),
+    ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
     ('water', [water, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),

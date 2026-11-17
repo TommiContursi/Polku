@@ -2948,7 +2948,7 @@ export class Planner {
     const n = this.points.length;
     this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
     this.setSection('points', { count: n || '', empty: !n, summary: n > 1 ? `${this.nameOf(0)} → ${this.nameOf(n - 1)}` : '' });
-    this.renderTopSum(); // (the route's name: the names come with the map's tiles)
+    this.renderTopSum(); this.renderTitle(this.analysis); // (the route's name: the names come with the map's tiles)
     // the route's view (25c): the same sections, without Reorder; a point's card still edits it (#745)
     const ro = this.inView();
     if (ro || n < 2) this.reordering = false;
