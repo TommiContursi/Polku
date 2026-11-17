@@ -11887,7 +11887,9 @@ def stops_scroll(chrome):
                 r = pg.js("(() => { const p = polku.planner, t = (p.view === 'check' ? p.els.checkBack : p.els.stepHead).getBoundingClientRect(), row = p.els.top.getBoundingClientRect(), s = p.panel.getBoundingClientRect(); return { tabs: Math.round(t.top), row: Math.round(row.bottom), foot: Math.round(s.bottom), scroll: Math.round(p.panel.scrollTop) }; })()")
                 if r['tabs'] < r['row'] - 2 or r['tabs'] > r['foot'] - 80:
                     fails.append(f"{tag} at full, scrolled to the end, then {how}: its ‹ Route at {r['tabs']} px, not in sight between the top row ({r['row']}) and the foot ({r['foot']}) with room under it (scrolled {r['scroll']} px)")
-            pg.js("polku.planner.openStep(null); true")
+            # (two frames: closing the step brings its row into sight in the next one, #740, which would scroll the sheet again after
+            # the scrollTop below)
+            pg.js("(async () => { polku.planner.openStep(null); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); return true; })()")
             if w > 300:
                 # at the content's top, a finger down on the numbers lowers the sheet
                 pg.js("polku.planner.setSheetState('half', { remember: false }); polku.planner.panel.scrollTop = 0; true")
