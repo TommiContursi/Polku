@@ -1448,7 +1448,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
    words start 15 px in, its heading's too; 12 px between groups */
 .pl-group { padding: var(--space-4); border: 1px solid var(--group-edge); border-radius: var(--radius); background: var(--group); }
 .pl-h { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); padding: var(--space-8) 0 var(--space-4) 11px; }
-.pl-h > h3 { flex: 1 1 auto; margin: 0; font-size: var(--pl-head); font-weight: var(--weight-strong); line-height: 1.25; overflow-wrap: break-word; } /* (a word stays whole, #1050's review) */
+.pl-h > h3 { flex: 1 1 auto; margin: 0; font-size: var(--pl-head); font-weight: var(--weight-strong); line-height: 1.375rem; overflow-wrap: break-word; } /* (a whole number of pixels: a list scrolled to its end keeps its place, #846) */ /* (a word stays whole, #1050's review) */
 .pl-h > :not(h3) { margin-block: -10px; margin-left: auto; } /* (its tools keep their targets without making the heading taller) */
 .sheet > .trip-box { margin-top: var(--space-4); } /* (with the head's 8 px: When and the weather stay with the numbers) */
 .pl-profile > .pl-group { margin-top: var(--space-12); }
