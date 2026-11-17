@@ -416,7 +416,7 @@ MARKS_VIEW = """(async () => {
 })()"""
 DEPARTURE_VIEW = """(async () => {
   const p = polku.planner;
-  p.setView('check'); p.toggleSection('speed', false);
+  p.setView('check');
   if (p.layout() === 'sheet') p.setSheetState('half', { remember: false });
   document.querySelector('.sum-time').click();
   await new Promise((r) => setTimeout(r, 900));
