@@ -421,7 +421,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
    padding is room for the focus ring and a finger's 44 px inside the scroller */
 /* a row that scrolls sideways (ui.js sideways(): #869's layers, the planner's numbers, key facts and keys, #382): no bar, a
    fade at the edge where there's more, and with a mouse the arrows there */
-.side-x { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; }
+.side-x { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; scroll-padding-inline: 40px; } /* (what Tab reaches comes out from under the fade and an arrow: sideways()) */
 .side-x::-webkit-scrollbar { display: none; }
 .side-x.more-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
 .side-x.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
@@ -1603,11 +1603,14 @@ div.wx-sec-cols { cursor: default; }
 :root[data-theme="dark"] .wx-hs-light.dark { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4); } :root[data-theme="dark"] .wx-hs-light.day { background: #a3b0bf; box-shadow: none; } /* (on the dark card: the day light, the night ringed) */
 /* a desktop's arrows at the edges, while there's more that way (a finger and a trackpad scroll it themselves) */
 .wx-hs-arrow { position: absolute; top: 34px; z-index: 2; display: none; width: 32px; height: 32px; border-radius: var(--radius-round); background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line);
-  opacity: 0; pointer-events: none; transition: opacity var(--t-press) var(--ease-out), transform var(--t-press) var(--ease-out), background-color var(--t-press) ease; } /* (its fade, and a tool's press and hover) */
-@media (prefers-reduced-motion: reduce) { .wx-hs-arrow { transition: opacity var(--t-press) var(--ease-out), background-color var(--t-press) ease; } }
+  opacity: 0; visibility: hidden; }
+/* its fade, and a tool's press and hover (over the Pressed list's, whose `.chip:not(.chip-on)` counts as two classes); it takes
+   clicks until it has faded, so a second click at a row's end doesn't reach the key under it */
+.tool.wx-hs-arrow { transition: opacity var(--t-press) var(--ease-out), visibility var(--t-press), transform var(--t-press) var(--ease-out), background-color var(--t-press) ease; }
+@media (prefers-reduced-motion: reduce) { .tool.wx-hs-arrow { transition: opacity var(--t-press) var(--ease-out), visibility var(--t-press), background-color var(--t-press) ease; } }
 .wx-hs-arrow.l { left: 4px; } .wx-hs-arrow.r { right: 4px; }
 .wx-sec-line > .wx-hs-arrow { top: calc(100% + 28px); } .wx-sec-line > .wx-hs-arrow.l { left: -4px; } .wx-sec-line > .wx-hs-arrow.r { right: -4px; } /* (a section's, hanging from its pinned line beside its hours' pictures: #984) */
-@media (hover: hover) and (pointer: fine) { .wx-hs-arrow { display: grid; } .wx-hs-arrow.on { opacity: 1; pointer-events: auto; } }
+@media (hover: hover) and (pointer: fine) { .wx-hs-arrow { display: grid; } .wx-hs-arrow.on { opacity: 1; visibility: visible; } }
 .wx-whole { gap: var(--space-8); }
 .card-float .card[data-kind="weather"] { width: 400px; } /* (room for six hours and a half) */
 /* a folded row opened in place: Wind on the way's one stacked bar and its stretches, or Hour by hour's table */

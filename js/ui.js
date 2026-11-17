@@ -407,6 +407,9 @@ export function sideways(row, label) {
   };
   row.classList.add('side-x');
   row.addEventListener('scroll', edge, { passive: true });
+  // what Tab reaches comes out from under the fade and an arrow (WCAG 2.4.11, `scroll-padding-inline`); a tap or a
+  // click moves nothing under the pointer
+  row.addEventListener('focusin', (e) => { if (e.target.matches(':focus-visible')) e.target.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
   new ResizeObserver(edge).observe(row);
   new MutationObserver(edge).observe(row, { childList: true, subtree: true, characterData: true }); // (what it holds changed: its width)
   mouseDrag(row);

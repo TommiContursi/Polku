@@ -20094,6 +20094,84 @@ def targets(chrome):
     return not fails
 
 
+# A row that scrolls sideways (`sideways()`, #382), with a mouse: › keeps a click while it fades at the row's end, so a
+# second click doesn't open the key under it, and it lets clicks through once it has gone; a key's focus brings a key out
+# from under the fade on either side (WCAG 2.4.11), while a click on a key half under it moves nothing (the review of #1050).
+SIDEWAYS_ROW = """(async () => {
+  const { sideways } = await import(location.origin + '/js/ui.js');
+  const row = document.createElement('div'), box = document.createElement('div');
+  row.style.cssText = 'display: flex; width: 300px';
+  for (let i = 1; i <= 8; i++) row.append(Object.assign(document.createElement('button'), { type: 'button', className: 'chip', textContent: `Fact ${i}`, style: 'flex: none; width: 80px', onclick: () => window.opened.push(`Fact ${i}`) }));
+  box.id = 'sx-test'; box.style.cssText = 'position: fixed; left: 400px; top: 300px; z-index: 9999; padding: 8px; background: var(--surface-solid)';
+  box.append(sideways(row, 'Test')); document.body.append(box); window.opened = [];
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  return true; })()"""
+SX = "document.querySelector('#sx-test .side-x')"
+
+
+def sideways_row(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+
+    def click(x, y):
+        for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'none' if kind == 'mouseMoved' else 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+
+    def tab(back=False):
+        for event in ('rawKeyDown', 'keyUp'):
+            pg.c.send('Input.dispatchKeyEvent', {'type': event, 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9, 'modifiers': 8 if back else 0}, pg.s)
+        time.sleep(0.2)
+
+    # the focused key against the row's fades (32 px), on the side where there's more
+    clear = SX + """, k = document.activeElement.getBoundingClientRect(), r = x.getBoundingClientRect();
+      return { key: document.activeElement.textContent, l: Math.round(k.left - r.left), r: Math.round(r.right - k.right), more: [x.classList.contains('more-l'), x.classList.contains('more-r')] };"""
+    try:
+        pg.open_app({'activity': 'mtb'})
+        pg.js(SIDEWAYS_ROW)
+        at = pg.js("(() => { const r = document.querySelector('#sx-test .wx-hs-arrow.r').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()")
+        for _ in range(4):  # (› to the row's end: reduced motion, so each click's scroll is at once)
+            click(at['x'], at['y'])
+            if pg.js(f"new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {{ const x = {SX}; ok(x.scrollLeft + x.clientWidth >= x.scrollWidth - 2); }})))"):
+                break
+            time.sleep(0.3)
+        # a click more, a moment after the one that reached the end: › is fading (--t-press)
+        pg.js("new Promise((ok) => { const a = document.querySelector('#sx-test .wx-hs-arrow.r'), go = () => (a.classList.contains('on') ? requestAnimationFrame(go) : ok(true)); go(); })")
+        click(at['x'], at['y'])
+        time.sleep(0.5)
+        r = pg.js(f"(() => ({{ opened: window.opened, end: {SX}.scrollLeft, hit: document.elementFromPoint({at['x']}, {at['y']})?.closest('.wx-hs-arrow') ? 'the arrow' : 'a key' }}))()")
+        if r['opened']:
+            fails.append(f'a click on › as it faded at the row\'s end opened {r["opened"]}')
+        if r['hit'] != 'a key':
+            fails.append('› still takes clicks once it has faded at the row\'s end')
+        # a key's focus, both ways: Fact 4 shows 60 px, 32 of them under the fade
+        pg.js(f"{SX}.scrollLeft = 0; window.opened = []; document.querySelectorAll('#sx-test .chip')[2].focus(); true")
+        time.sleep(0.2)
+        tab()
+        k = pg.js(f"(() => {{ const x = {clear} }})()")
+        if k['key'] != 'Fact 4' or (k['more'][1] and k['r'] < 32) or (k['more'][0] and k['l'] < 32):
+            fails.append(f'Tab: {k["key"]} {k["l"]} px from the left edge, {k["r"]} px from the right, a fade at {k["more"]}')
+        pg.js(f"{SX}.scrollLeft = {SX}.scrollWidth; true")
+        time.sleep(0.2)
+        pg.js("document.querySelectorAll('#sx-test .chip')[5].focus(); true")  # (at the end, Fact 5 shows 60 px, 32 of them under the fade)
+        tab(True)
+        k = pg.js(f"(() => {{ const x = {clear} }})()")
+        if k['key'] != 'Fact 5' or (k['more'][1] and k['r'] < 32) or (k['more'][0] and k['l'] < 32):
+            fails.append(f'Shift+Tab: {k["key"]} {k["l"]} px from the left edge, {k["r"]} px from the right, a fade at {k["more"]}')
+        # a click on a key half under the fade opens it, and nothing moves under the pointer
+        c = pg.js(f"(() => {{ const x = {SX}; x.scrollLeft = 0; const k = x.querySelectorAll('.chip')[3].getBoundingClientRect(); return {{ x: k.left + 15, y: k.top + k.height / 2 }}; }})()")
+        time.sleep(0.2)
+        click(c['x'], c['y'])
+        time.sleep(0.3)
+        r = pg.js(f"(() => ({{ opened: window.opened, at: {SX}.scrollLeft }}))()")
+        if r['opened'] != ['Fact 4'] or r['at'] != 0:
+            fails.append(f'a click on Fact 4 half under the fade opened {r["opened"]} and scrolled the row to {r["at"]} px')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a sideways row: › at its end, a key's focus clear of the fade, a click moving nothing" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def controls(chrome):
     fails = []
 
@@ -22514,7 +22592,7 @@ GROUPS = [
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
-    ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
+    ('controls', [controls, sideways_row], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers; a row that scrolls sideways: › at its end, a key\'s focus clear of the fade (WCAG 2.4.11)'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a kind hidden in Check shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('resize', [resize_window], 'desktops (#1002): the window made smaller by its edge, down to 721 px, and larger again, by mouse: the planner\'s toolbar on one row and the timeline in its room beside the side panel, the panel dragged wide giving way, a card from the list beside the panel and then where cards go with the panel at the bottom (a narrow window, Move to the bottom), the credits folded where they\'d run under the map\'s buttons, a timeline you\'ve dragged clear of them, and the layout as it was when the window is large again'),
