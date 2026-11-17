@@ -81,7 +81,8 @@ Polku is a tool for planning, and it has to hold a great deal and keep growing. 
 - Every control by its job, from DEVELOPING's "Shared controls", in its states (rest, hover, pressed, focus, chosen, disabled):
   - the main action, a key, a value ▾, a chip and segments;
   - a switch, a row ›, a bare icon and the stepper;
-  - the numbers' box, and a group with its heading.
+  - the numbers' box, and a group with its heading;
+  - a row that goes sideways (the key facts, the weather layers): with a mouse it wraps; by touch it scrolls with a fade; where it still scrolls with a mouse, it has arrows (#382, 2026-11-17, from #1060's mock-up).
 - **The charts.** Today Polku draws them each in its own code:
   - the profile (`js/chart.js`);
   - the weather timeline;
