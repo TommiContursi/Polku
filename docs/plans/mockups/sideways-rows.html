@@ -3595,7 +3595,7 @@ const W = {
       { sport: 'hike', ic: 'hike', html: 'Hike <span class="kf-d">3.1 km</span> · <b>↑85 m</b>', opens: 'the hike in the list' },
       { sport: 'mtb', ic: 'bike', html: 'MTB <span class="kf-d">22.0 km</span> · <b>↑410 m</b>', opens: 'the MTB in the list' },
     ],
-    layers: [['rain', 'Rain', 'rain', true], ['cloud', 'Clouds', 'cloud'], ['thunder', 'Thunder', 'thunder'], ['wind', 'Wind', 'wind', true], ['temp', 'Temperature', 'temp'], ['snow', 'Snow depth', 'snow']],
+    layers: [['rain', 'Rain', 'rain', true], ['cloud', 'Clouds', 'cloud'], ['thunder', 'Thunder', 'thunder'], ['wind', 'Wind', 'wind', true, 'Wind lines'], ['temp', 'Temperature', 'temp'], ['snow', 'Snow depth', 'snow']],
     card: { title: 'Haukkalampi', sub: 'A lake · 1.2 km from your route', keys: [['plus', 'Add to route', true], ['avoid', 'Avoid this spot'], ['share', 'Share'], ['cloudSun', 'Weather here']] },
     check: ['Check', 'Warnings, climbs and the ground'],
     caps: ['MTB, the weather not known yet', 'Paddle, the forecast ends on the way', 'Three sports', 'The weather layers, with the timeline in the planner', 'A spot’s card: its keys are actions, so they wrap in every variant'],
@@ -3614,7 +3614,7 @@ const W = {
       { sport: 'hike', ic: 'hike', html: 'Vaellus <span class="kf-d">3,1 km</span> · <b>↑85 m</b>', opens: 'vaellus listassa' },
       { sport: 'mtb', ic: 'bike', html: 'Maastopyöräily <span class="kf-d">22,0 km</span> · <b>↑410 m</b>', opens: 'maastopyöräily listassa' },
     ],
-    layers: [['rain', 'Sade', 'rain', true], ['cloud', 'Pilvisyys', 'cloud'], ['thunder', 'Ukkonen', 'thunder'], ['wind', 'Tuuliviivat', 'wind', true], ['temp', 'Lämpötila', 'temp'], ['snow', 'Lumensyvyys', 'snow']],
+    layers: [['rain', 'Sade', 'rain', true], ['cloud', 'Pilvisyys', 'cloud'], ['thunder', 'Ukkonen', 'thunder'], ['wind', 'Tuuli', 'wind', true, 'Tuuliviivat'], ['temp', 'Lämpötila', 'temp'], ['snow', 'Lumensyvyys', 'snow']],
     card: { title: 'Pitkäjärvenulkoilualueen­pysäköintipaikka', sub: 'Pysäköinti · 1,2 km reitiltä', keys: [['plus', 'Lisää reitille', true], ['avoid', 'Vältä tätä paikkaa'], ['share', 'Jaa'], ['cloudSun', 'Sääennuste täällä']] },
     check: ['Tarkistus', 'Varoitukset, nousut ja maasto'],
     caps: ['MTB, sää ei vielä tiedossa', 'Melonta, ennuste loppuu matkalla', 'Kolme lajia', 'Säätasot, aikajana suunnittelijassa', 'Paikan kortti: sen näppäimet ovat toimintoja, joten ne rivittyvät joka vaihtoehdossa'],
@@ -3633,7 +3633,8 @@ function factRow(list, label) {
 }
 function layerRow(list) {
   return h('div', { class: 'tl-layers', role: 'group', 'aria-label': 'Weather layers', lang: S.words === 'fi' ? 'fi' : null },
-    ...list.map(([k, word, ic, on]) => h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': String(!!on), html: `${icon(ic, 16)}<span>${word}</span>`,
+    // (Wind holds both its names, the one not shown hidden, as wxmap.js has it)
+    ...list.map(([k, word, ic, on, alt]) => h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': String(!!on), html: alt ? `<span>${icon(ic, 16)}${word}</span><span>${icon(ic, 16)}${alt}</span>` : `${icon(ic, 16)}<span>${word}</span>`,
       onclick: (e) => { const b = e.currentTarget, v = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(v)); say(`${word}: ${v ? 'on' : 'off'}.`); } })));
 }
 
