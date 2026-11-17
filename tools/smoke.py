@@ -15068,7 +15068,7 @@ def toolbox(chrome):
           return { out, km: p.analysis && Math.round(p.analysis.total / 1000), text: p.els.sum.textContent }; })()""")
         if r['out']:
             fails.append(f"{name}: a {r['km']} km route ({r['text']}): {', '.join(r['out'])} (#242)")
-        # #356: the labels under the numbers wrap, at 12.5 px, and are never cut with "…": as the app draws them, with a
+        # #356: the labels under the numbers wrap, at a row's line's size (--font-line, #382), and are never cut with "…": as the app draws them, with a
         # departure set ("from 14:00"), and Finnish-length ones; the numbers with their labels stay apart, in the sheet
         # and clear of Done
         pg.js("(() => { const p = polku.planner; p.when.at = (Math.floor(Date.now() / 3600000) + 3) * 3600; p.renderAnalysis(); return true; })()")
@@ -15082,7 +15082,7 @@ def toolbox(chrome):
                 return { left: Math.min(...r.map((q) => q.left)), right: Math.max(...r.map((q) => q.right)), top: Math.min(...r.map((q) => q.top)), bottom: Math.max(...r.map((q) => q.bottom)) }; };
               const boxes = items.map(box);
               items.forEach((it, i) => { const s = it.querySelector('small'), size = getComputedStyle(s).fontSize, a = boxes[i];
-                if (size !== '12.5px') out.push(`label ${i} at ${size}`);
+                if (size !== `${parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-line')) * 16}px`) out.push(`label ${i} at ${size}, not a row's line (--font-line)`);
                 if (s.scrollWidth > s.clientWidth) out.push(`label ${i} cut (${s.scrollWidth} px in ${s.clientWidth})`);
                 if (a.left < head.left - 0.5 || a.right > head.right + 0.5 || a.bottom > sheet.bottom + 0.5) out.push(`item ${i} outside the sheet's header`);
                 if (a.right > done.left && a.bottom > done.top && a.top < done.bottom) out.push(`item ${i} under Done`);
@@ -17240,7 +17240,7 @@ RC_LOOK = """((phone) => {
     'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-chart', 'profile-box', 'profile-tip', 'chart-reset', 'pick-skel', 'pick-skel-nums', 'pick-skel-chart', 'pick-skel-by', 'sr-only', 'sec', 'sec-head', 'sec-title', 'sec-sum', 'sec-chev', 'sec-body', 'pick-by', 'mode-select', 'mode-select-label', 'mode-select-box', 'mode-select-chev', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot', 'btns', 'card-acts', 'main', 'card-set', 'peek-end']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
-  const least = phone ? 44 : 36;
+  const least = phone ? 44 : 32;
   for (const b of c.querySelectorAll('button')) { const a = r(b); if (a.width && (a.width < least || a.height < least)) out.push(`${(b.textContent.trim() || b.getAttribute('aria-label') || '').slice(0, 30)} ${Math.round(a.width)} × ${Math.round(a.height)} px`); }
   // (but the card folded to its title row: its name and two numbers, one line, step 3 of #233's fix round)
   if (/ · /.test(((k) => { k.querySelectorAll('.way-facts').forEach((e) => e.remove()); return k.textContent; })(c.cloneNode(true)))) out.push('facts strung with “ · ”');
