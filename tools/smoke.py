@@ -8131,6 +8131,11 @@ def changelog(chrome):
     pg.js("""(async()=>{await Promise.race([(async()=>{await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready;})(), new Promise((_,reject)=>setTimeout(()=>reject(new Error('service worker not ready after 15 s')),15000))]);
       const c=await caches.open('polku-shell-v1'); await c.delete(new URL('./CHANGELOG.md',location.href).href);
       })()""")
+    # the typefaces are kept as the worker installs, before anything has gone through it (#1062): a face is fetched only for
+    # the characters a page shows, so one never shown online would be missing offline
+    kept = pg.js("caches.open('polku-shell-v1').then((c) => Promise.all(['atkinson-hyperlegible-next', 'bricolage-grotesque'].map((f) => c.match(new URL(`./fonts/${f}.woff2`, location.href).href).then((r) => !!r))))")
+    if kept != [True, True]:
+        fails.append(f'the typefaces not kept by the worker as it installs (Atkinson, Bricolage): {kept}')
     pg.reload()  # a page originally loaded with bypass gains its controller on navigation
     if not pg.js('!!navigator.serviceWorker.controller'):
         fails.append('offline check: page is not controlled by the real worker')
