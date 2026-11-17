@@ -1,3 +1,12 @@
+/* Polku's two typefaces (Mine 9, #382), served from fonts/ and kept by the service worker; both SIL Open Font License
+   (fonts/OFL-*.txt), cut as DEVELOPING's "Hover and colours" says. Bricolage Grotesque for numbers and headings, Atkinson
+   Hyperlegible Next for words; every figure is Bricolage's (Polku Figures, by unicode-range), so there is one zero. */
+@font-face { font-family: "Atkinson Hyperlegible Next"; src: url("../fonts/atkinson-hyperlegible-next.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "Bricolage Grotesque"; src: url("../fonts/bricolage-grotesque.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "Polku Figures"; src: url("../fonts/bricolage-grotesque.woff2") format("woff2"); font-weight: 400 700; font-display: swap; unicode-range: U+0030-0039; }
+/* the device's font until they arrive, sized to theirs so lines don't jump */
+@font-face { font-family: "Atkinson Fallback"; src: local("Arial"), local("ArialMT"), local("Roboto"); size-adjust: 98.8%; ascent-override: 99.6%; descent-override: 32%; line-gap-override: 0%; }
+@font-face { font-family: "Bricolage Fallback"; src: local("Arial"), local("ArialMT"), local("Roboto"); size-adjust: 96.3%; ascent-override: 96.6%; descent-override: 28%; line-gap-override: 0%; }
 :root {
   --accent: #1f6f4a;
   --accent-2: #2f8f62;
@@ -52,20 +61,37 @@
   /* the route's legs: over water, a straight line, being routed (the same in both themes: it's on the map) */
   --route-water: #0369a1; --route-line: #9c0050; --route-loading: #9ca3af;
   --grip: rgba(95, 107, 101, 0.8); /* every grip and handle */
-  /* text sizes, in rem so the browser's text size enlarges them */
-  --font-small: 0.75rem; --font-control: 0.8125rem; --font-body: 0.875rem; --font-row: 0.9375rem; --font-field: 1rem;
-  --font-title: 1.0625rem; --font-number: 1.1875rem; --font-numeral: 1.375rem; --font-glance: 2.125rem;
-  --weight-regular: 400; --weight-name: 600; --weight-strong: 700;
-  --radius-small: 6px; --radius-control: 10px; --radius-sheet: 20px; --radius-pill: 999px; --radius-round: 50%; /* --radius (14px): cards, panels, tiles */
+  /* The type list (#382): one value for each role, in rem so the browser's text size enlarges it. With a mouse here,
+     by touch under (pointer: coarse) below: by the pointer, never the window's width. docs/kit.html draws it. */
+  --face-text: "Polku Figures", "Atkinson Hyperlegible Next", "Atkinson Fallback", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* words */
+  --face-display: "Bricolage Grotesque", "Bricolage Fallback", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* numbers and headings */
+  --font-card: 1.0625rem; /* a card's title, Bricolage 700 */
+  --font-name: 1rem; /* the route's name, Bricolage 700 */
+  --font-heading: 0.875rem; /* a section's heading, Bricolage 700 */
+  --font-number: 1rem; /* a number, Bricolage 700 */
+  --font-unit: 0.75rem; /* a number's unit, 400 */
+  --font-row: 0.8125rem; /* a row's name (500), a key's words (600) */
+  --font-line: 0.75rem; /* a row's line, a number's word, 400 */
+  --font-field: 0.8125rem; /* what you type */
+  --font-glance: 2.125rem; /* a number read while moving, Bricolage 700 */
+  --font-small: 0.6875rem; /* small on purpose: the scale bar, the credits, a chart's axes */
+  /* today's sizes outside the list, each mapped onto a role in the migration */
+  --font-control: 0.8125rem; --font-body: 0.875rem; --font-title: 1.0625rem; --font-numeral: 1.375rem;
+  --weight-regular: 400; --weight-row: 500; --weight-key: 600; --weight-strong: 700;
+  --weight-name: 600; /* (today's, mapped onto --weight-row or --weight-key in the migration) */
+  /* corners: 7 inside a track, --radius (14px) a card or a group */
+  --radius-small: 6px; --radius-inner: 7px; --radius-control: 10px; --radius-sheet: 20px; --radius-pill: 999px; --radius-round: 50%;
   --shadow-marker: 0 1px 4px rgba(0, 0, 0, 0.35); /* the same in both themes: it's on the map */
   --shadow-sheet: 0 -6px 28px rgba(16, 24, 20, 0.2);
   --shadow-dialog: 0 24px 60px rgba(0, 0, 0, 0.35); /* the same in both themes */
   --t-press: 120ms; --t-open: 180ms; --t-sheet: 260ms; /* closing takes the next shorter one */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px; --space-12: 12px; --space-16: 16px; --space-24: 24px;
-  /* sizes by the pointer, never the window's width (#382): L, a target, 36 px with a mouse and 44 px by touch (#380); M a size smaller,
-     32 and 40, for a value or a choice; a row, a card's mark */
-  --target: 36px; --size-m: 32px; --row-h: 50px; --mark: 34px;
+  /* sizes by the pointer, never the window's width (#382): S, M, L (--target) and XL, with a mouse here and by touch below,
+     where every target is 44 px; a row; a card's mark */
+  --size-s: 24px; --size-m: 28px; --target: 32px; --size-xl: 40px; --row-h: 32px; --mark: 34px;
+  /* space by role: a group's padding, the gap between groups, and the inset that lines a group's words up with its heading */
+  --group-pad: var(--space-4); --group-gap: var(--space-12); --words-in: 15px;
   /* The colour scales (the plan's §2), read by the JavaScript through js/palette.js. Each step keeps the colour
      it had; a scale's words and keys are in its table in js/config.js, js/chart.js or js/weather.js. */
   --diff-s0: #22a447; --diff-s1: #c7c100; --diff-s2: #f59e0b; --diff-s3: #ef4444; --diff-s4: #c026d3; --diff-s5: #7e22ce; --diff-s6: #4c1d95;
@@ -91,9 +117,15 @@
   --winter-ploughed: #3b82f6; --winter-not: #94a3b8; --winter-nobikes: #dc2626; --winter-ski: #7c3aed;
   color-scheme: light;
 }
-@media (pointer: coarse) { :root { --target: 44px; --size-m: 40px; } }
+@media (pointer: coarse) {
+  :root {
+    --font-card: 1.375rem; --font-name: 1.1875rem; --font-heading: 1.0625rem; --font-number: 1.25rem; --font-unit: 0.875rem;
+    --font-row: 0.9375rem; --font-line: 0.8125rem; --font-field: 1rem; /* (16 px: iOS doesn't zoom a field) */
+    --size-s: 32px; --size-m: 40px; --target: 44px; --size-xl: 52px; --row-h: 50px;
+  }
+}
 /* a desktop's card at the point is one step smaller (Revision 5 of #363) */
-.card-float { --row-h: 36px; --mark: 28px; --font-title: 0.9375rem; --font-number: 1.0625rem; --font-numeral: 1.0625rem; --font-row: 0.875rem; }
+.card-float { --mark: 28px; --font-title: 0.9375rem; --font-numeral: 1.0625rem; }
 /* Dark: data-theme on <html>, from Settings → Appearance (#323), set before the first paint by index.html and
    kept by js/main.js's applyTheme(). Every dark value is here, once. */
 :root[data-theme="dark"] {
@@ -150,12 +182,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
 html { touch-action: none; }
 .panel-body, .sheet-body, #search-results { touch-action: pan-y; }
 body {
-  font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 14px/1.4 var(--face-text);
   color: var(--text);
   background: var(--page);
   -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; }
+/* numbers and headings in Bricolage (Mine 9): the route's name, a section's heading, the numbers, a card's and a panel's title */
+:is(.pl-name, .pl-h > h3, .sheet-sum .sum-item > b, .top-sum b, .way-name, .way-hint b, .step-head h3, .panel-head h2, .qd-head h2, .modal-head h2) { font-family: var(--face-display); letter-spacing: -0.01em; }
 /* one focus ring for every control (idea B of #382): 2 px in --focus, outside a control and inside a row of a list */
 :where(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* a new light, dark or contrast is drawn once with no transitions (js/main.js applyTheme()) */
@@ -175,7 +209,7 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 /* a small heading, everywhere: 12 px capitals in grey (#356) */
 .menu-h, .act-head, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .cam-wx-title, .bd-group-toggle, #search-results li.r-group {
-  font-size: var(--font-small); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+  font-size: var(--font-line); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
 }
 #map { position: fixed; inset: 0; }
 .ic { flex: none; display: block; }
@@ -951,7 +985,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .pl-keys { order: -1; flex: 1 0 100%; display: flex; justify-content: flex-end; gap: 2px; margin-bottom: -4px; }
 @media (max-width: 720px) { .pl-keys { display: none; } } /* (a phone's are in the sheet's top row) */ /* (as tall as what to read, so nothing moves when Check answers late, #741) */
 .pl-title-t { flex: 1; min-width: 0; min-height: var(--target); display: grid; align-content: center; gap: 2px; padding-left: 17px; } /* (its words where the groups' are: 16 + 15 px in; as tall as what to read beside it, so nothing moves when Check answers late, #741) */
-.pl-name { font-size: var(--pl-title); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
+.pl-name { font-size: var(--font-name); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
 .pl-sports { color: var(--muted); font-size: var(--font-control); font-weight: var(--weight-name); }
 .pl-sports > b { font-weight: var(--weight-strong); }
 .pl-sports > :is(b, span) { white-space: nowrap; } /* (it wraps between them, so "2 changeovers" stays one) */
@@ -1003,11 +1037,9 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
 /* the planner's type (#382): five roles, the route's name, a section's heading, a number, a row's or a key's words and a
    line under them; with a mouse each a size smaller and rows 40 px, as its keys are, so a desktop's planner isn't outsized */
-.sheet { --pl-title: 1.25rem; --pl-head: 1.0625rem; --pl-num: 1.125rem; --pl-row: .9375rem; --pl-line: .8125rem; }
-@media (hover: hover) and (pointer: fine) { .sheet { --pl-title: 1.0625rem; --pl-head: .9375rem; --pl-num: 1rem; --pl-row: .875rem; --pl-line: .75rem; --row-h: 40px; } }
-.sheet .row b, .sheet .row .val, .pl-pane .btn:not(.big), .sheet .kf-b, .sheet .trip-when, .pl-profile .mode-select select { font-size: var(--pl-row); }
-.sheet .row small, .pl-sports, .sheet-row .sum-item small, .pl-profile .mode-select-label, .pl-profile .tg-inline .tg-text, .wpl .wpl-when b { font-size: var(--pl-line); }
-.sheet-row .sum-item b { font-size: var(--pl-num); }
+.sheet .row b, .sheet .row .val, .pl-pane .btn:not(.big), .sheet .kf-b, .sheet .trip-when, .pl-profile .mode-select select { font-size: var(--font-row); }
+.sheet .row small, .pl-sports, .sheet-row .sum-item small, .pl-profile .mode-select-label, .pl-profile .tg-inline .tg-text, .wpl .wpl-when b { font-size: var(--font-line); }
+.sheet-row .sum-item b { font-size: var(--font-number); }
 .sheet .trip-when { font-weight: var(--weight-name); }
 /* a quiet scrollbar (#382, round 5's and Mine 8's): thin, and seen only while it scrolls (main.js: .scrolling, 0.9 s) and under a
    mouse, for the planner, the cards and the panels */
@@ -1212,7 +1244,7 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .rt-len .tool { flex: none; width: var(--target); height: 100%; border-radius: 11px; color: var(--accent); }
 .rt-len input { flex: 0 1 3.2em; min-width: 0; width: 3.2em; height: 100%; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--font-numeral); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .rt-len input + span { flex: none; margin: 0 6px; }
-@container (max-width: 290px) { .rt-len input { font-size: var(--font-number); } } /* (a narrow card or sheet, 200 %: the box stays in it) */
+@container (max-width: 290px) { .rt-len input { font-size: var(--font-name); } } /* (a narrow card or sheet, 200 %: the box stays in it) */
 .rt-len input:focus { outline: none; }
 .rt-len:has(input:focus) { outline: 2px solid var(--focus); outline-offset: 1px; }
 .rt-start { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; }
@@ -1361,7 +1393,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 }
 .profile-box { position: relative; }
 /* where the forecast runs out (#465): over the profile's dashed line, kept inside the chart */
-.profile-box .nofc { position: absolute; top: 2px; max-width: 50%; padding: 1px 6px; border-radius: var(--radius-small); background: var(--surface-solid); color: var(--muted); font-size: var(--font-small); font-weight: 600; white-space: nowrap; pointer-events: none; }
+.profile-box .nofc { position: absolute; top: 2px; max-width: 50%; padding: 1px 6px; border-radius: var(--radius-small); background: var(--surface-solid); color: var(--muted); font-size: var(--font-line); font-weight: 600; white-space: nowrap; pointer-events: none; }
 .profile-box .nofc[hidden] { display: none; }
 .chart-reset { position: absolute; top: 0; right: 4px; z-index: 1; height: 24px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); color: var(--text); font-size: 11px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 @media (hover: hover) { .chart-reset:hover { background: var(--surface-2); } }
@@ -1431,7 +1463,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .li-main { display: flex; flex-direction: column; min-width: 0; }
 /* Climbs: the badges in a column of one width, so every climb's words start in line; the hardest has its tag under it */
 .li-badge { flex: none; width: 56px; display: grid; justify-items: center; gap: 3px; }
-.li-tag { padding: 0 6px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--text); font-size: var(--font-small); font-weight: 600; line-height: 1.5; }
+.li-tag { padding: 0 6px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--text); font-size: var(--font-line); font-weight: 600; line-height: 1.5; }
 .climbs-hardest { margin: 0 0 4px; font-size: var(--font-body); font-weight: 600; }
 .li-main span { color: var(--muted); font-size: 12px; }
 .badge { flex: none; min-width: 32px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
@@ -1447,13 +1479,13 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
    and Layers' groups, the user's question of 2026-11-16), so a section reads as one thing. A group is no edge on the glass
    (one on solid glass), 4 px round what it holds and its rows' corners nesting in its own (14 outside, 10 inside), so its
    words start 15 px in, its heading's too; 12 px between groups */
-.pl-group { padding: var(--space-4); border: 1px solid var(--group-edge); border-radius: var(--radius); background: var(--group); }
-.pl-h { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); padding: var(--space-8) 0 var(--space-4) 11px; }
-.pl-h > h3 { flex: 1 1 auto; margin: 0; font-size: var(--pl-head); font-weight: var(--weight-strong); line-height: 1.375rem; overflow-wrap: break-word; } /* (a whole number of pixels: a list scrolled to its end keeps its place, #846) */ /* (a word stays whole, #1050's review) */
+.pl-group { padding: var(--group-pad); border: 1px solid var(--group-edge); border-radius: var(--radius); background: var(--group); }
+.pl-h { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); padding: var(--space-8) 0 var(--space-4) calc(var(--words-in) - var(--group-pad)); }
+.pl-h > h3 { flex: 1 1 auto; margin: 0; font-size: var(--font-heading); font-weight: var(--weight-strong); line-height: 1.375rem; overflow-wrap: break-word; } /* (a whole number of pixels: a list scrolled to its end keeps its place, #846) */ /* (a word stays whole, #1050's review) */
 .pl-h > :not(h3) { margin-block: -10px; margin-left: auto; } /* (its tools keep their targets without making the heading taller) */
 .sheet > .trip-box { margin-top: var(--space-4); } /* (with the head's 8 px: When and the weather stay with the numbers) */
-.pl-profile > .pl-group { margin-top: var(--space-12); }
-.pl-pane > :is(.pl-group, .sec.pl-group) { margin-top: var(--space-12); }
+.pl-profile > .pl-group { margin-top: var(--group-gap); }
+.pl-pane > :is(.pl-group, .sec.pl-group) { margin-top: var(--group-gap); }
 .pl-pane > .check-row { margin: 6px 0 0; } /* (with the profile's 6 px, 12 px from it) */
 .pl-pane > .sec[data-sec="points"] { border-top: 0; }
 .sec[data-sec="points"] .wpl { padding-left: var(--space-8); } /* (its times 15 px in, where its heading's words are) */
@@ -1506,7 +1538,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wx-notes { display: grid; margin: calc(-1 * var(--space-2)) 0 0; padding: 0; list-style: none; }
 .wx-tell { display: flex; align-items: flex-start; gap: var(--space-10); width: 100%; min-height: var(--target); padding: var(--space-6) 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--font-row); line-height: 1.3; text-align: left; cursor: pointer; }
 .wx-tell > .ic { margin-top: 1px; color: var(--muted); } .wx-tell.danger > .ic { color: var(--danger); } .wx-tell.look > .ic { color: var(--look); } .wx-tell.unk > .ic { color: var(--unk); }
-.wx-n { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--radius-round); background: var(--text); color: var(--surface-solid); font-size: var(--font-small); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
+.wx-n { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--radius-round); background: var(--text); color: var(--surface-solid); font-size: var(--font-line); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
 .wx-n.danger { background: var(--danger); } .wx-n.look { background: var(--look); } .wx-n.unk { background: var(--unk); }
 /* the numbers in the same places every time: the temperature, the wind, the rain, and the waves on a paddle */
 .wx-nums.sheet-sum { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: var(--space-4) var(--space-10); align-items: start; }
@@ -1520,7 +1552,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 .wx-trip-line .wx-n { position: absolute; top: 4px; margin-left: -11px; box-shadow: 0 0 0 2px var(--surface-solid); }
 .wx-trip-line .wx-n.lit { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--focus); } /* (a ring, nothing moving) */
 .wx-hl { position: absolute; top: 9px; height: 13px; border-radius: 4px; background: color-mix(in srgb, var(--focus) 28%, transparent); outline: 2px solid var(--focus); pointer-events: none; }
-.wx-ticks, .wx-legnames { position: relative; display: flex; justify-content: space-between; gap: var(--space-8); font-size: var(--font-small); color: var(--muted); font-variant-numeric: tabular-nums; }
+.wx-ticks, .wx-legnames { position: relative; display: flex; justify-content: space-between; gap: var(--space-8); font-size: var(--font-line); color: var(--muted); font-variant-numeric: tabular-nums; }
 .wx-legnames { height: 16px; margin-top: calc(-1 * var(--space-6)); } .wx-legnames > span { position: absolute; white-space: nowrap; }
 /* a lane: its name and value at its start, its stretches on the trip line's axis in the route's own colours for that fact,
    on the route's white casing in the dark too, so the strong wind stands out on the card as it does on the map */
@@ -1532,7 +1564,7 @@ button.sec-head { cursor: pointer; } /* (the waypoints' heading folds nothing, #
 /* thunder: the map's own look for the forecast's thunder (the legend's lg-dash) */
 .wx-track > i.th { background: rgba(245, 158, 11, .3); outline: 1.5px dashed #b45309; outline-offset: -1.5px; }
 :root[data-theme="dark"] .wx-track > i.th { outline-color: #fbbf24; }
-.wx-key { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-12); margin: calc(-1 * var(--space-6)) 0 var(--space-2); font-size: var(--font-small); color: var(--muted); }
+.wx-key { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-12); margin: calc(-1 * var(--space-6)) 0 var(--space-2); font-size: var(--font-line); color: var(--muted); }
 .wx-key > span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; background: var(--k); }
 /* the hour strip (#979): a column an hour, the trip across your hours, then a section a fact on the same columns, all in one
    scroller out to the card's edges (its padding: planner.js's PAD_HS) with the headers and lines pinned to the visible width.
@@ -1569,12 +1601,12 @@ button.wx-hs-col:active { background: var(--surface-2); } /* (the finger's down:
 .wx-hs-col.on .wx-hs-t { font-weight: var(--weight-name); }
 .wx-hs-sky { display: grid; place-items: center; height: 28px; }
 .wx-hs-col:not(.on) .wx-hs-sky { opacity: .6; }
-.wx-hs-h { padding-bottom: 2px; border-bottom: 3px solid transparent; font-size: var(--font-small); line-height: 16px; white-space: nowrap; }
+.wx-hs-h { padding-bottom: 2px; border-bottom: 3px solid transparent; font-size: var(--font-line); line-height: 16px; white-space: nowrap; }
 .wx-hs-col.on .wx-hs-h { border-bottom-color: var(--leg); font-weight: var(--weight-name); }
 .wx-hs-trip { position: relative; width: calc(var(--n) * var(--cw, 56px)); height: 26px; }
 .wx-hs-trip > i { position: absolute; top: 11px; height: 5px; border-radius: 3px; }
 .wx-hs-trip > .wx-n { position: absolute; top: 2px; margin-left: -11px; box-shadow: 0 0 0 2px var(--surface-solid); }
-.wx-hs-at > .wx-hs-col { padding: 0; font-size: var(--font-small); line-height: 16px; white-space: nowrap; }
+.wx-hs-at > .wx-hs-col { padding: 0; font-size: var(--font-line); line-height: 16px; white-space: nowrap; }
 /* a section: its header (an icon in a tile, its name and value, ⌄), one line, then the columns: the value, a picture, the time */
 .wx-sec { display: grid; gap: var(--space-4); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--line); }
 .wx-sec-h.row { min-height: var(--target); padding: var(--space-4) 0; gap: var(--space-10); border-radius: var(--radius-small); }
@@ -1617,7 +1649,7 @@ div.wx-sec-cols { cursor: default; }
 .rows > .wx-open { display: grid; gap: var(--space-10); padding: var(--space-4) 8px var(--space-12); } /* (rows reach 8 px past the card's edges, for their own background) */
 .wx-open .rows { margin: 0; border: 1px solid var(--line); border-radius: var(--radius-control); }
 .wx-open .row > span:first-child { flex: 1; display: block; } /* (a stretch's row has no icon: its words take the room, › at the end) */
-.wx-open .row small { display: block; font-size: var(--font-small); color: var(--muted); font-weight: var(--weight-regular); }
+.wx-open .row small { display: block; font-size: var(--font-line); color: var(--muted); font-weight: var(--weight-regular); }
 .wx-stack { display: flex; height: 12px; border-radius: 6px; overflow: hidden; }
 .wx-foot { margin: 0; font-size: var(--font-control); color: var(--muted); }
 .btn.wx-map { justify-content: center; width: 100%; min-height: var(--target); }
@@ -1703,7 +1735,7 @@ div.wx-sec-cols { cursor: default; }
 svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2); }
 .wx-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
 .wx-hours { width: 100%; border-collapse: collapse; font-size: var(--font-control); font-variant-numeric: tabular-nums; }
-.wx-hours thead th { padding: 0 var(--space-4) var(--space-4); font-size: var(--font-small); font-weight: var(--weight-name); color: var(--muted); text-align: right; white-space: nowrap; }
+.wx-hours thead th { padding: 0 var(--space-4) var(--space-4); font-size: var(--font-line); font-weight: var(--weight-name); color: var(--muted); text-align: right; white-space: nowrap; }
 .wx-hours :is(td, tbody th) { height: 36px; padding: 0 var(--space-4); border-top: 1px solid var(--line); text-align: right; white-space: nowrap; font-weight: var(--weight-regular); }
 .wx-hours :is(th, td):first-child { padding-left: 0; text-align: left; } .wx-hours :is(th, td):last-child { padding-right: 0; }
 .wx-hours :is(th, td):nth-child(2) { text-align: center; } .wx-hours :is(th, td):nth-child(3) { text-align: left; }
@@ -1760,7 +1792,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
    the cards' own rows for its points and stretches, the weather on its last (#764) */
 .wpl-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 6px; }
 .wpl-top:empty { display: none; }
-.wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
+.wpl-hint { flex: 1; margin: 0; font-size: var(--font-line); color: var(--muted); }
 .wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
 .wpl > .sec2:first-child { padding-top: 2px; } /* (right under Show all's row: at half on a phone, the start and the first stretch in sight, #740) */
 .wpl .sec2:not(:first-child) { position: relative; box-shadow: none; }
@@ -1778,7 +1810,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 /* a part's sport on the list's line, as #761 built it, bigger and filled in its colour (the user's choice of 2026-11-16 over
    Mine 8's bubble at the list's left: the ball lined up with the line reads calmer) */
 .wpl .sec2-head .bub { position: relative; z-index: 1; margin-top: -4px; } /* (on the line, over its rail) */
-.wpl .sec2-head b { font-size: var(--pl-row); }
+.wpl .sec2-head b { font-size: var(--font-row); }
 .bub { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--part); color: #fff !important; }
 :root[data-theme="dark"] .bub { color: #000 !important; } /* (the dark mode's lighter sport colours: black reads on every one) */
 .sec2-head > span:first-child > .ic { position: relative; z-index: 1; box-sizing: content-box; padding: 3px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--part); }
@@ -1860,7 +1892,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .wpl-strow > .row > .wpl-line { position: relative; align-self: stretch; width: 22px; }
 .wpl-line::before { content: ""; position: absolute; left: calc(50% - var(--w) / 2); width: var(--w); top: -3px; bottom: -3px; background: var(--part); }
 .wpl-line .bead { position: absolute; z-index: 1; left: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--surface-solid); box-shadow: inset 0 0 0 2px var(--part); }
-.wpl-stretch .wpl-nums { font-size: var(--pl-row); font-variant-numeric: tabular-nums; }
+.wpl-stretch .wpl-nums { font-size: var(--font-row); font-variant-numeric: tabular-nums; }
 .wpl-stretch small { font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .wpl-stretch small .ic { display: inline-block; vertical-align: -3px; margin-right: 4px; }
 /* how it's drawn, every stretch alike: Follow paths as Freehand, Over water or its own line (the line says which) */
@@ -2029,7 +2061,7 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
 .sum-item.miss b { color: var(--muted); }
 .sum-item.wait b { color: var(--muted); } /* (being worked out: a "–" at its size, so the card stays still) */
-.sum-item em { font-style: normal; font-size: var(--font-small); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; } /* a grade's one word, under it (1b) */
+.sum-item em { font-style: normal; font-size: var(--font-line); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; } /* a grade's one word, under it (1b) */
 .card .sheet-sum { flex: none; align-items: flex-start; column-gap: 20px; }
 .card .sheet-sum .sum-item b { font-size: var(--font-number); } /* (the header's 360 px size isn't the card's) */
 @media (max-width: 720px) { .card .sheet-sum .sum-item b { font-size: 18px; } }
@@ -2093,8 +2125,8 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .warn-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; border: 1.5px solid transparent; }
 .warn-row > span:first-child { flex: none; display: grid; }
 .warn-row b { display: block; font-size: var(--font-row); font-weight: var(--weight-name); line-height: 1.25; overflow-wrap: anywhere; }
-.warn-row small { display: block; font-size: var(--font-small); color: var(--muted); overflow-wrap: anywhere; }
-.warn-row em { display: block; font-style: normal; font-size: var(--font-small); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; }
+.warn-row small { display: block; font-size: var(--font-line); color: var(--muted); overflow-wrap: anywhere; }
+.warn-row em { display: block; font-style: normal; font-size: var(--font-line); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; }
 .warn-row.danger { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
 .warn-row.danger > span:first-child, .warn-row.danger em { color: var(--danger); }
 .warn-row.look { background: var(--look-soft); border-color: color-mix(in srgb, var(--look) 35%, transparent); }
@@ -2110,8 +2142,8 @@ svg.arw { display: inline-block; vertical-align: -2px; margin: 0 var(--space-2);
 .tier-h { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 0; font-size: var(--font-row); font-weight: var(--weight-strong); }
 .tier-all { flex: none; }
 .tier-h > span:first-child { flex: none; display: grid; }
-.tier-n { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--font-small); font-weight: var(--weight-strong); }
-.tier-sub { margin: -6px 0 6px 28px; font-size: var(--font-small); color: var(--muted); }
+.tier-n { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--font-line); font-weight: var(--weight-strong); }
+.tier-sub { margin: -6px 0 6px 28px; font-size: var(--font-line); color: var(--muted); }
 .tier-read .tier-h > span:first-child { color: var(--danger); }
 .tier-look .tier-h > span:first-child, .tier-look .row > span:first-child { color: var(--look); }
 .tier-not .tier-h > span:first-child, .tier-not .row > span:first-child { color: var(--unk); }
@@ -2146,7 +2178,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .heads-mark.look { color: var(--look); background: var(--look-soft); }
 .heads-mark.not { color: var(--unk); background: var(--unk-soft); border-style: dashed; }
 .heads-where, .heads-note { margin: 0; }
-.heads-src { display: flex; align-items: center; gap: 6px; margin: -4px 0 0; font-size: var(--font-small); color: var(--muted); }
+.heads-src { display: flex; align-items: center; gap: 6px; margin: -4px 0 0; font-size: var(--font-line); color: var(--muted); }
 .heads-src > span:first-child { flex: none; display: grid; }
 .heads-src a { color: inherit; }
 .heads-step { display: flex; align-items: center; gap: 4px; margin: 0 -8px; }
@@ -2367,10 +2399,10 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .sign { display: inline-block; height: 1.4em; width: auto; vertical-align: -0.38em; overflow: visible; }
 .pick-facts .sign { margin-right: 0.3em; }
 .sign * { vector-effect: non-scaling-stroke; }
-.pick-facts .insp-row small { flex-basis: 100%; color: var(--muted); font-size: var(--font-small); }
-.pick-note, .pick-fail { margin: 0; font-size: var(--font-small); color: var(--muted); }
-.pick-unmapped { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font-size: var(--font-small); color: var(--muted); }
-.pick-unmapped .btn, .pick-fail .btn { min-height: var(--target); margin-block: calc((var(--target) - 1.4em) / -2); padding: 0 6px; font-size: var(--font-small); } /* (a finger's target, without growing the line) */
+.pick-facts .insp-row small { flex-basis: 100%; color: var(--muted); font-size: var(--font-line); }
+.pick-note, .pick-fail { margin: 0; font-size: var(--font-line); color: var(--muted); }
+.pick-unmapped { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font-size: var(--font-line); color: var(--muted); }
+.pick-unmapped .btn, .pick-fail .btn { min-height: var(--target); margin-block: calc((var(--target) - 1.4em) / -2); padding: 0 6px; font-size: var(--font-line); } /* (a finger's target, without growing the line) */
 .pick-unmapped .btn { color: var(--accent); }
 .card .insp-row .btn { flex: none; }
 .maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }

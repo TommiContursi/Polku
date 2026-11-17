@@ -272,6 +272,7 @@ export class ProfileChart {
     this.resetBtn.addEventListener('click', () => this.setView(null, true));
     canvas.parentElement.append(this.resetBtn);
     new ResizeObserver(() => this.draw()).observe(canvas);
+    document.fonts.addEventListener('loadingdone', () => this.draw()); // (a canvas isn't drawn again when Polku's typefaces arrive)
     this.bindPointer();
   }
 
@@ -440,8 +441,9 @@ export class ProfileChart {
     const ink = css.getPropertyValue('--chart-ink').trim() || '#334155';
     const grid = css.getPropertyValue('--chart-grid').trim() || 'rgba(100,116,139,0.18)';
     const muted = css.getPropertyValue('--muted').trim() || '#64748b';
+    const face = css.getPropertyValue('--face-text').trim(); // (its figures Bricolage's, as the page's are)
     const cond = this.kind === 'conditions';
-    const note = (text) => { ctx.fillStyle = muted; ctx.font = '12px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(text, g.x0, g.h / 2); };
+    const note = (text) => { ctx.fillStyle = muted; ctx.font = `12px ${face}`; ctx.textAlign = 'left'; ctx.fillText(text, g.x0, g.h / 2); };
     if (!a || a.pts.length < 2) { note('Add waypoints on the map to see the elevation profile'); return; }
     if (cond && !a.wind) { note(this.placeholder || 'Loading the wind along the route…'); return; }
     const [v0, v1] = this.domain();
@@ -465,7 +467,7 @@ export class ProfileChart {
     const Y = (e) => g.y1 - ((e - yMin) / (yMax - yMin)) * (g.y1 - g.y0);
 
     // grid + labels
-    ctx.font = '10px system-ui, sans-serif';
+    ctx.font = `10px ${face}`;
     ctx.fillStyle = muted;
     ctx.strokeStyle = grid;
     ctx.lineWidth = 1;
@@ -579,7 +581,7 @@ export class ProfileChart {
       // climb markers: a tag with an arrow ("↑1"), coloured by the climb, so they don't look like
       // the route's numbered points (those are round, below); the biggest climbs first, and a tag that would cover
       // one already drawn is left out (many climbs, a narrow profile: #242)
-      ctx.font = '700 10px system-ui, sans-serif';
+      ctx.font = `700 10px ${face}`;
       const tags = [];
       a.climbs.map((cl, k) => [cl, k]).sort(([p], [q]) => q.gain - p.gain).forEach(([cl, k]) => {
         const label = `↑${k + 1}`, w = ctx.measureText(label).width + 8;
@@ -631,7 +633,7 @@ export class ProfileChart {
     }
     if (pts.length) {
       ctx.save();
-      ctx.font = '700 9.5px system-ui, sans-serif';
+      ctx.font = `700 9.5px ${face}`;
       ctx.textAlign = 'center';
       for (const p of pts) {
         const x = Math.round(X(p.d)) + 0.5, y = g.y1 - 8;

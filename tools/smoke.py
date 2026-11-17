@@ -8019,7 +8019,7 @@ MARKS = r"""(async () => {
     if (p.when.start() !== hour(4) || pill.textContent !== `Leave ${p.when.words()}` || !pill.textContent.includes(clock(hour(4)))) errs.push(`the box's pill after a new departure: ${pill.textContent}`);
     const r = pill.getBoundingClientRect(), body = p.panel.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('the box’s When pill is out of view');
-    if (r.height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)) errs.push('the box’s When pill is too small'); // (--target: a finger's 44 px, a mouse's 36)
+    if (r.height < (matchMedia('(pointer: coarse)').matches ? 44 : 32)) errs.push('the box’s When pill is too small'); // (--target: a finger's 44 px, a mouse's 32)
     // (Route's list says it on the start's row, 25d's part 4, to a screen reader since #761; the start's card and the box set it)
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.getAttribute('aria-label') || '';
     if (!waypoint().includes(`Leave ${p.when.words()}`) || !p.els.there.textContent.includes(p.clockOf(p.when.start() + (p.analysis.timeWind || p.analysis.time)))) errs.push('a new departure did not update the start’s row or the box’s there at immediately');
@@ -8131,6 +8131,11 @@ def changelog(chrome):
     pg.js("""(async()=>{await Promise.race([(async()=>{await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready;})(), new Promise((_,reject)=>setTimeout(()=>reject(new Error('service worker not ready after 15 s')),15000))]);
       const c=await caches.open('polku-shell-v1'); await c.delete(new URL('./CHANGELOG.md',location.href).href);
       })()""")
+    # the typefaces are kept as the worker installs, before anything has gone through it (#1062): a face is fetched only for
+    # the characters a page shows, so one never shown online would be missing offline
+    kept = pg.js("caches.open('polku-shell-v1').then((c) => Promise.all(['atkinson-hyperlegible-next', 'bricolage-grotesque'].map((f) => c.match(new URL(`./fonts/${f}.woff2`, location.href).href).then((r) => !!r))))")
+    if kept != [True, True]:
+        fails.append(f'the typefaces not kept by the worker as it installs (Atkinson, Bricolage): {kept}')
     pg.reload()  # a page originally loaded with bypass gains its controller on navigation
     if not pg.js('!!navigator.serviceWorker.controller'):
         fails.append('offline check: page is not controlled by the real worker')
@@ -8419,6 +8424,25 @@ def design_colours(chrome):
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} DESIGN.md's {len(colours)} colours are css/app.css's, in both themes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
+
+
+# The font sizes, weights and corners typed in place in css/app.css, rather than taken from the values on :root (#382).
+# The count may only fall: each of the migration's PRs moves some onto the values and lowers TOKENS_CEILING to the new count.
+TOKENS_CEILING = 527
+TOKENS_TYPED = re.compile(r'(?<![-\w])(?:font-size\s*:[^;}]*\d(?:\.\d+)?px|font\s*:[^;}]*\d(?:\.\d+)?px|font-weight\s*:\s*\d+|border(?:-[a-z]+)*-radius\s*:[^;}]*\d(?:\.\d+)?px)')
+
+
+def tokens(chrome):
+    """css/app.css types no more font sizes (in px), weights (as numbers) or corners (in px) than TOKENS_CEILING."""
+    css = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'css', 'app.css')).read()
+    css = re.sub(r'@font-face\s*{[^}]*}', '', re.sub(r'/\*.*?\*/', '', css, flags=re.S))  # (a typeface's own weights)
+    found = TOKENS_TYPED.findall(css)
+    kinds = {k: sum(1 for f in found if f.startswith(k)) for k in ('font-size', 'font:', 'font-weight', 'border')}
+    ok = len(found) <= TOKENS_CEILING
+    print(f"{'ok  ' if ok else 'FAIL'} css/app.css types {len(found)} font sizes, weights and corners in place (at most {TOKENS_CEILING}: "
+          f"{kinds['font-size'] + kinds['font:']} sizes, {kinds['font-weight']} weights, {kinds['border']} corners)"
+          + ('' if ok else '\n     - a new rule takes its size, weight and corner from the values on :root (DESIGN.md\'s Typography and Shapes)'), flush=True)
+    return ok
 
 
 # What the map draws with: the route line's colours, its glow's, the trails' difficulty, and the colours of the
@@ -15049,7 +15073,7 @@ def toolbox(chrome):
           return { out, km: p.analysis && Math.round(p.analysis.total / 1000), text: p.els.sum.textContent }; })()""")
         if r['out']:
             fails.append(f"{name}: a {r['km']} km route ({r['text']}): {', '.join(r['out'])} (#242)")
-        # #356: the labels under the numbers wrap, at 12.5 px, and are never cut with "…": as the app draws them, with a
+        # #356: the labels under the numbers wrap, at a row's line's size (--font-line, #382), and are never cut with "…": as the app draws them, with a
         # departure set ("from 14:00"), and Finnish-length ones; the numbers with their labels stay apart, in the sheet
         # and clear of Done
         pg.js("(() => { const p = polku.planner; p.when.at = (Math.floor(Date.now() / 3600000) + 3) * 3600; p.renderAnalysis(); return true; })()")
@@ -15063,7 +15087,7 @@ def toolbox(chrome):
                 return { left: Math.min(...r.map((q) => q.left)), right: Math.max(...r.map((q) => q.right)), top: Math.min(...r.map((q) => q.top)), bottom: Math.max(...r.map((q) => q.bottom)) }; };
               const boxes = items.map(box);
               items.forEach((it, i) => { const s = it.querySelector('small'), size = getComputedStyle(s).fontSize, a = boxes[i];
-                if (size !== '12.5px') out.push(`label ${i} at ${size}`);
+                if (size !== `${parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-line')) * 16}px`) out.push(`label ${i} at ${size}, not a row's line (--font-line)`);
                 if (s.scrollWidth > s.clientWidth) out.push(`label ${i} cut (${s.scrollWidth} px in ${s.clientWidth})`);
                 if (a.left < head.left - 0.5 || a.right > head.right + 0.5 || a.bottom > sheet.bottom + 0.5) out.push(`item ${i} outside the sheet's header`);
                 if (a.right > done.left && a.bottom > done.top && a.top < done.bottom) out.push(`item ${i} under Done`);
@@ -16489,8 +16513,8 @@ PC_LOOK = """((phone) => {
     'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'btns', 'card-set', 'peek-end', 'stylebtn', 'way-chips', 'chip', 'way-fold', 'way-facts', 'pick-prof', 'ax', 'top', 'bot']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
-  // targets: 44 px by touch, 36 px with a mouse (the user, 2026-10-22, #380)
-  const least = phone ? 44 : 36;
+  // targets: 44 px by touch, 32 px with a mouse (the user, 2026-10-22, #380; 2026-11-17, #382)
+  const least = phone ? 44 : 32;
   for (const b of c.querySelectorAll('button, input:not([type=checkbox]), .tg')) {
     const a = r(b);
     if (a.width && (a.width < least || a.height < least)) out.push(`${(b.textContent.trim() || b.getAttribute('aria-label') || b.tagName).slice(0, 30)} ${Math.round(a.width)} × ${Math.round(a.height)} px`);
@@ -16509,7 +16533,7 @@ PC_LOOK = """((phone) => {
     if (!row.querySelector('.ic')) out.push(`${row.querySelector('b').textContent}: no icon`);
     if (btn ? !row.title : !line) out.push(`${row.querySelector('b').textContent}: no ${btn ? 'tooltip' : 'line under it'}`);
     if (!phone && !btn) {
-      if (Math.round(r(row).height) !== 36) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not 36`);
+      if (Math.round(r(row).height) !== 32) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not 32`);
       if (line && line.getClientRects().length) out.push(`${row.querySelector('b').textContent}'s line shows on a desktop`);
       if (line && row.title !== line.textContent) out.push(`${row.querySelector('b').textContent}'s tooltip isn't its line`);
     }
@@ -17212,7 +17236,7 @@ RC_STATE = """(() => {
     main: c ? [...c.querySelectorAll('.btn.primary.big')].map((e) => e.textContent.trim()) : [],
     note: !!(c && c.querySelector('.pl-viewnote')), text: c ? c.textContent : '',
   }; })()"""
-# the card's controls are the shared ones, big enough, one fact a line; a desktop's rows 36 px with their lines as tooltips
+# the card's controls are the shared ones, big enough, one fact a line; a desktop's rows 32 px with their lines as tooltips
 RC_LOOK = """((phone) => {
   const c = document.querySelector('.pl-way.card'), out = [], r = (e) => e.getBoundingClientRect();
   if (!c) return ['no card'];
@@ -17221,7 +17245,7 @@ RC_LOOK = """((phone) => {
     'pick-mark', 'pick-prof', 'ax', 'top', 'bot', 'pick-chart', 'profile-box', 'profile-tip', 'chart-reset', 'pick-skel', 'pick-skel-nums', 'pick-skel-chart', 'pick-skel-by', 'sr-only', 'sec', 'sec-head', 'sec-title', 'sec-sum', 'sec-chev', 'sec-body', 'pick-by', 'mode-select', 'mode-select-label', 'mode-select-box', 'mode-select-chev', 'bd-legend', 'bd-item', 'pick-facts', 'pick-note', 'pick-fail', 'pick-unmapped', 'insp-actions', 'card-foot', 'btns', 'card-acts', 'main', 'card-set', 'peek-end']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
-  const least = phone ? 44 : 36;
+  const least = phone ? 44 : 32;
   for (const b of c.querySelectorAll('button')) { const a = r(b); if (a.width && (a.width < least || a.height < least)) out.push(`${(b.textContent.trim() || b.getAttribute('aria-label') || '').slice(0, 30)} ${Math.round(a.width)} × ${Math.round(a.height)} px`); }
   // (but the card folded to its title row: its name and two numbers, one line, step 3 of #233's fix round)
   if (/ · /.test(((k) => { k.querySelectorAll('.way-facts').forEach((e) => e.remove()); return k.textContent; })(c.cloneNode(true)))) out.push('facts strung with “ · ”');
@@ -18772,7 +18796,7 @@ def spot_card_foot(chrome):
                 r = pg.js("""(() => { const c = document.querySelector('.pl-way.card'), f = c && c.querySelector('.card-foot'), box = (e) => e.getBoundingClientRect();
                   if (!f) return null;
                   const bs = [...f.querySelectorAll('.btn')], C = box(c);
-                  return { last: c.lastElementChild === f, words: bs.map((b) => b.textContent.trim()), small: bs.filter((b) => box(b).height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)).length,
+                  return { last: c.lastElementChild === f, words: bs.map((b) => b.textContent.trim()), small: bs.filter((b) => box(b).height < (matchMedia('(pointer: coarse)').matches ? 44 : 32)).length,
                     wide: [f.scrollWidth - f.clientWidth, c.scrollWidth - c.clientWidth], out: bs.filter((b) => box(b).left < C.left - 1 || box(b).right > C.right + 1).length,
                     lines: new Set(bs.map((b) => Math.round(box(b).top))).size, title: c.querySelector('.way-hint').textContent.length }; })()""")
                 # (#690: Share, Weather here, Copy and All OpenStreetMap details are the card's actions now; a place's last row is
@@ -19753,11 +19777,12 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   box.innerHTML = `<label class="tg"><span class="tg-text">Avoid main roads</span><input type="checkbox"><span class="tg-ui"></span></label>`;
   const ui = box.querySelector('.tg-ui'), edge = (cs(ui).boxShadow.match(/rgba?\([^)]*\)/) || [cs(ui).backgroundColor])[0], er = ratio(over(rgb(edge), solid), solid);
   if (er < 3) out.push(`a switch's off track: its edge ${er.toFixed(2)}:1, under 3:1`);
-  // small headings: 12 px capitals in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
+  // small headings: capitals a row's line tall (--font-line: 13 px by touch, 12 with a mouse) in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
   box.innerHTML = `<div class="menu-h">A</div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
     <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div>
     <span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
-  const want = `12px 700 0.72px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
+  const lineW = matchMedia('(pointer: coarse)').matches ? 13 : 12;
+  const want = `${lineW}px 700 ${+(lineW * 0.06).toFixed(2)}px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
   for (const e of box.querySelectorAll('.menu-h, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .cam-wx-title, .bd-group-toggle')) {
     const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
     if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
@@ -19769,8 +19794,8 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (!len || parts.some((e) => !e)) out.push('no stepper after Other…');
   else if (parts.some((e) => !inside(e, len))) out.push('the stepper’s − and + aren’t in its box');
   // the keys (#382, Mine 8): one look, a flat face with a 1 px --key-edge and 10 px corners; sizes by the pointer, never the
-  // width: L is --target, 36 px with a mouse and 44 by touch, M a size smaller (32, 40) for a value or a choice
-  const coarse = matchMedia('(pointer: coarse)').matches, L = coarse ? 44 : 36, M = coarse ? 40 : 32;
+  // width: L is --target, 32 px with a mouse and 44 by touch, M a size smaller (28, 40) for a value or a choice (#382, 2026-11-17)
+  const coarse = matchMedia('(pointer: coarse)').matches, L = coarse ? 44 : 32, M = coarse ? 40 : 28;
   if (val('--target') !== `${L}px` || val('--size-m') !== `${M}px`) out.push(`sizes: L ${val('--target')}, M ${val('--size-m')}, not ${L}px and ${M}px`);
   const kb = document.body.appendChild(document.createElement('div'));
   kb.innerHTML = `<div class="pl-way card"><div class="rows acts btns"><button class="row"><span></span><span><b>Move</b></span></button></div><button class="btn">Share</button>
@@ -20649,7 +20674,7 @@ def leave(chrome):
         time.sleep(0.4)
         at = show(pg, 'start')  # (in sight first: at night a box saying so comes before it)
         r = pg.js("LV.when('start')")
-        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or not r['caret'] or r['expanded'] != 'false' or r['h'] < (44 if phone else 36):
+        if not r or r['name'] != 'Leave now' or r['line'] != 'Times and weather along the route' or not r['caret'] or r['expanded'] != 'false' or r['h'] < (44 if phone else 32):
             fails.append(f"{name}: the start's card's When row: {r}")
             pg.close()
             return
@@ -20678,7 +20703,7 @@ def leave(chrome):
         pg.js("polku.planner.cards.close(); polku.planner.reveal('points'); polku.planner.els.box.scrollIntoView({ block: 'nearest' }); true")
         time.sleep(0.6)
         r = pg.js("({ ...LV.when('box'), want: `Leave ${LV.day(LV.at(1, 7, 30))}, ${LV.clock(LV.at(1, 7, 30))}` })")
-        if not r or r['name'] != r['want'] or r['lines'] != 1 or not r['caret'] or r['note'] or r['h'] < (44 if phone else 36):
+        if not r or r['name'] != r['want'] or r['lines'] != 1 or not r['caret'] or r['note'] or r['h'] < (44 if phone else 32):
             fails.append(f"{name}: the box's When pill: {r}")
             pg.close()
             return
@@ -22597,6 +22622,7 @@ GROUPS = [
     ('effects', [fewer_effects, flat_offer], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
+    ('tokens', [tokens], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls, sideways_row], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers; a row that scrolls sideways: › at its end, a key\'s focus clear of the fade (WCAG 2.4.11)'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a kind hidden in Check shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),

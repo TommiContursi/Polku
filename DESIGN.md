@@ -91,52 +91,53 @@ colors:
   dark-unk-soft: "rgba(156, 192, 228, 0.13)"
   dark-wx-text: "#93c5fd"
 typography:
-  glance:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "2.125rem"
-    fontWeight: 700
-    lineHeight: 1
-    fontFeature: "tnum"
-  numeral:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+  card:
+    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
     fontSize: "1.375rem"
     fontWeight: 700
-    lineHeight: 1
-    letterSpacing: "-0.02em"
-    fontFeature: "tnum"
-  number:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+  name:
+    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
     fontSize: "1.1875rem"
     fontWeight: 700
-    fontFeature: "tnum"
-  title:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+  heading:
+    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
     fontSize: "1.0625rem"
     fontWeight: 700
-    letterSpacing: "-0.01em"
-  field:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "1rem"
-    fontWeight: 400
-  row:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "0.9375rem"
-    fontWeight: 600
-  body:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+  number:
+    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 700
+  unit:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
-    lineHeight: 1.4
-  control:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+  row:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "0.9375rem"
+    fontWeight: 500
+  key:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "0.9375rem"
+    fontWeight: 600
+  line:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
     fontSize: "0.8125rem"
-    fontWeight: 600
+    fontWeight: 400
+  field:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+  glance:
+    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
+    fontSize: "2.125rem"
+    fontWeight: 700
   small:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "0.75rem"
-    fontWeight: 600
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 400
 rounded:
   small: "6px"
+  inner: "7px"
   control: "10px"
   card: "14px"
   sheet: "20px"
@@ -151,9 +152,16 @@ spacing:
   space-12: "12px"
   space-16: "16px"
   space-24: "24px"
-  target: "36px"
+  size-s: "24px"
+  size-m: "28px"
+  target: "32px"
+  size-xl: "40px"
   target-touch: "44px"
-  row-h: "50px"
+  row-h: "32px"
+  row-h-touch: "50px"
+  group-pad: "4px"
+  group-gap: "12px"
+  words-in: "15px"
   mark: "34px"
 ---
 
@@ -223,33 +231,41 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 
 ## Typography
 
-**Body Font:** the system's interface font (`system-ui`, San Francisco on Apple devices, Segoe UI on Windows, Roboto on Android). Inter is named first in the stack but is not loaded, so it shows only where it's installed.
+**Typefaces** (Mine 9, #382), served by Polku from `fonts/` and kept by the service worker, both under the SIL Open Font License:
+- **Bricolage Grotesque** (`--face-display`) for numbers and headings: a card's and a panel's title, the route's name, a section's heading, the numbers.
+- **Atkinson Hyperlegible Next** (`--face-text`) for words: everything else.
+- **One zero:** every figure is Bricolage's, in words too, so every zero looks the same (`Polku Figures`, Bricolage's digits by `unicode-range`, first in `--face-text`).
+- Until the files arrive the device's font shows (`font-display: swap`), sized to theirs so lines don't jump. The profile's words on its canvas use the same families. The map's own labels are the map's (phase 20).
 
-**Character:** one familiar sans-serif in a few weights, compact on a desktop and readable on a phone; bold carries the hierarchy, not size jumps.
+**Character:** two faces, numbers and headings apart from words; bold only for numbers, headings and the main action.
 
 ### Hierarchy
 
-The planner's five roles, by the pointer, are in **One style for the planner and the cards** → **Type and space** below. These are the nine sizes, values on `:root` named by what they're for (`--font-glance` … `--font-small`). They're in `rem`, so the browser's text size enlarges them. A control takes its value when it's next touched (the design-system plan's §3), so today most rules still type their size in px: 18 sizes between 9 and 22 px, half sizes included (11.5, 12.5, 13.5, 14.5, 16.5).
+One value for each role, on `:root`, in `rem`, so the browser's text size enlarges it. Each has two sizes by the pointer, never the window's width: by touch (`pointer: coarse`) and with a mouse, denser, since a desktop is used up close. [docs/kit.html](docs/kit.html) draws them, both columns, light and dark. The sizes are tuned there.
 
-- **Glance** (700, 34 px, `--font-glance`, tabular figures): a number read while moving, in `--text` on `--surface-solid`, never on the glass. Phase 23 is the first to use it.
-- **Numeral** (700, 22 px, `--font-numeral`, line-height 1, tabular figures): the big numbers, such as the time in the timeline and the round trip's length.
-- **Number** (700, 19 px, `--font-number`, tabular figures): a card's numbers.
-- **Title** (700, 17 px, `--font-title`): a step's title, such as "Round trip from your start", a card's name and the map's cards' titles (`insp-title`), and the main action's words (`btn primary big`). On a desktop's card at its spot it's 15 px.
-- **Field** (400, 16 px, `--font-field`): what you type, on phones, so iOS doesn't zoom the page. A panel's or drawer's heading is 16 px too today.
-- **Row** (600, 15 px, `--font-row`): the words of a row you tap, such as a sport, a point's action or a way to begin. Some other controls still use 650, which the system fonts draw as 600 or 700.
-- **Body** (400, 14 px, `--font-body`, line-height 1.4): the page's base size.
-- **Control** (600, 13 px, `--font-control`): button labels on a desktop, and a row's second line.
-- **Small** (600, 12 px, `--font-small`): hints, values and lists; the most used size in the panels. Reading text is never smaller (the Small on Purpose Rule below); today some still is (#235).
-- **Small heading** (700, 12 px, `--font-small`, letter-spacing 0.06em, uppercase, in `--muted`): a section label where a section has no heading of its own yet, such as a menu's group, a layer group, Check's groups or a search result group. One rule in `css/app.css` gives them all their look.
+| Role | Value | By touch | With a mouse | Face, weight |
+|---|---|---|---|---|
+| A card's title | `--font-card` | 22 | 17 | Bricolage 700 |
+| The route's name | `--font-name` | 19 | 16 | Bricolage 700 |
+| A section's heading | `--font-heading` | 17 | 14 | Bricolage 700 |
+| A number | `--font-number` | 20 | 16 | Bricolage 700 |
+| A number's unit | `--font-unit` | 14 | 12 | Atkinson 400 |
+| A row's name, a key's words | `--font-row` | 15 | 13 | Atkinson 500, a key 600 |
+| A row's line, a number's word | `--font-line` | 13 | 12 | Atkinson 400 |
+| What you type | `--font-field` | 16 | 13 | Atkinson 400 (16 by touch, so iOS doesn't zoom) |
+| A number read while moving | `--font-glance` | 34 | 34 | Bricolage 700 |
+| Small on purpose | `--font-small` | 11 | 11 | Atkinson 400 |
 
-The weights are `--weight-regular` (400), `--weight-name` (600) and `--weight-strong` (700). On a desktop's card at the point (`.card-float`) the title, the numbers and the rows are one step smaller (15, 17 and 14 px), set once on the card.
+The weights are `--weight-regular` (400), `--weight-row` (500), `--weight-key` (600) and `--weight-strong` (700).
+
+Not on the list yet: most rules still type their size in px (`python3 tools/smoke.py tokens` counts them, and the count only falls), and four of today's values (`--font-control`, `--font-body`, `--font-title`, `--font-numeral`) and `--weight-name` (600) wait for the migration to map them onto a role. A desktop's card at its spot (`.card-float`) still sets its title and its big number a step smaller.
 
 ### Named Rules
 **The Tabular Numbers Rule.** Numbers that change or line up (times, distances, the timeline) use tabular figures, so they don't jump as they update.
 
 **The Room for Finnish Rule.** Names, headings and labels wrap rather than run out of their box (`overflow-wrap: anywhere`), because Finnish and Swedish are coming (phase 18) and their words are long. A button's words wrap inside it: buttons have a least height, never a fixed one (#373). On a narrow card (under about 220 px, as at 200 %), a row's value goes under its name (#384).
 
-**The Small on Purpose Rule.** Polku is a map, and some text is small so the map has the room: the scale bar, the credits, the map's own labels, chart axes, units beside a number, a word under an icon, a number inside a mark. Those may go down to 10 px. Text you read to decide or act (names, values, actions, warnings, a row's line) is 12 px or more. Small or not, text passes 4.5:1 and grows with the browser's text size.
+**The Small on Purpose Rule.** Polku is a map, and some text is small so the map has the room: the scale bar, the credits, the map's own labels, chart axes, a word under an icon, a number inside a mark. Those take `--font-small` (11 px), and some still type 10 px until the migration. Text you read to decide or act (names, values, actions, warnings, a row's line) is 12 px or more. Small or not, text passes 4.5:1 and grows with the browser's text size.
 
 ## Layout
 
@@ -261,7 +277,7 @@ The map is fixed behind everything (`#map`, inset 0). Over it:
 
 The switch is at **720 px**: up to 720 px wide is the phone layout, 721 px and up the desktop one; there's a wider step at 900 px, and short screens (under 500 px or 760 px high) get a more compact sheet. Touch is decided by the pointer, not the width: `pointer: coarse` grows targets to 44 px, and hover styles apply only where `hover: hover`.
 
-Spacing is a tight rhythm: 6 and 8 px between items in a row, 10 to 14 px of padding inside cards, 12 px from the screen's edges. Its values are 2, 4, 6, 8, 10, 12, 16 and 24 px (`--space-2` … `--space-24`), for new work and for a control when it moves onto the values. Targets are 44 px by touch at any width and 36 px with a mouse, 8 px apart (#380): `--target` is 36 px, and 44 px under `pointer: coarse`. A row is `--row-h` (50 px; 36 px on a desktop's card) and a card's mark `--mark` (34 px; 28 px). A target is the area that answers a tap, not the size it looks: a control can be small to look at, with its touch area grown around it. Today many controls are still smaller (#235).
+Spacing is a tight rhythm: 6 and 8 px between items in a row, 10 to 14 px of padding inside cards, 12 px from the screen's edges. Its values are 2, 4, 6, 8, 10, 12, 16 and 24 px (`--space-2` … `--space-24`), for new work and for a control when it moves onto the values. Targets are 44 px by touch at any width, 8 px apart (#380), and 24 px or more with a mouse: `--target` is 32 px, and 44 px under `pointer: coarse`. A row is `--row-h` (50 px by touch, 32 px with a mouse) and a card's mark `--mark` (34 px; 28 px on a desktop's card). Space by role: a group's padding `--group-pad` (4 px), the gap between groups `--group-gap` (12 px), and `--words-in` (15 px), the inset that lines a group's words up with its heading. A target is the area that answers a tap, not the size it looks: a control can be small to look at, with its touch area grown around it. Today many controls are still smaller (#235).
 
 ## Elevation & Depth
 
@@ -284,7 +300,7 @@ Depth comes from floating over the map: what floats is glass with one soft shado
 
 ## Shapes
 
-Gently rounded, never sharp. The corners are values: `--radius-small` (6 px) for small things such as swatches and inputs, `--radius-control` (10 px) for a control, `--radius` (14 px) for cards, panels and tiles, `--radius-sheet` (20 px) for the top of a phone's sheet, `--radius-pill` (999 px) for chips, the sport pill and switches, and `--radius-round` (50 %) for icon-only map buttons and dots. Today buttons and rows are still 10 to 12 px. The planner's sheet floats 8 px in from the screen's edges on a phone, with 18 px corners all round; the layer drawer's and the panels' sheets have 20 px corners at the top only. Borders are a single 1 px line in `--line`, used sparingly.
+Gently rounded, never sharp. The corners are values: `--radius-small` (6 px) for small things such as swatches and inputs, `--radius-inner` (7 px) for a control inside a track, `--radius-control` (10 px) for a control, `--radius` (14 px) for cards, panels and tiles, `--radius-sheet` (20 px) for the top of a phone's sheet, `--radius-pill` (999 px) for chips, the sport pill and switches, and `--radius-round` (50 %) for icon-only map buttons and dots. Today buttons and rows are still 10 to 12 px. The planner's sheet floats 8 px in from the screen's edges on a phone, with 18 px corners all round; the layer drawer's and the panels' sheets have 20 px corners at the top only. Borders are a single 1 px line in `--line`, used sparingly.
 
 ## Components
 
@@ -299,7 +315,7 @@ On the glass:
 
 Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's cards and round 5's look), and built a small PR at a time; what isn't built yet says so. The mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html), version **Mine 8**. It's a sketch: where a detail looks better otherwise in the app (dark mode, a padding, a colour), the app decides. Polku is read outdoors on a phone, in sun and with one thumb, so what you read is big enough and what you can press is plain to see.
 
-**Sizes, by the pointer, never the window's width** (decided 2026-11-16). By touch XS 28, S 32, M 40, L 44 and XL 52 px, and every control's target is 44 px however small it draws. With a mouse each is a size smaller: M 32 and L 36 (XS 24, S 28 and XL 44 proposed). L is `--target` and M `--size-m`; each other size gets its value with the first control that uses it. The words: see **Type and space** below.
+**Sizes, by the pointer, never the window's width** (decided 2026-11-16). By touch XS 28, S 32, M 40, L 44 and XL 52 px, and every control's target is 44 px however small it draws. With a mouse they're denser: S 24, M 28, L 32 and XL 40 px. They're `--size-s`, `--size-m`, `--target` (L) and `--size-xl`; XS gets its value with the first control that uses it. The words: see **Type and space** below.
 
 **The numbers' box.** A route's or a card's numbers sit in one white box, as round 5 has them, a thin line between them. When they don't fit one line they wrap to a second rather than shrink. Built for the planner (2026-11-16): the box on the surface with a thin `--line` edge and lines between main's three numbers, wrapping where they don't fit (at 200 %, without the lines).
 
@@ -307,7 +323,7 @@ Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's c
 
 **Headings.** Every section under the head has one, inside its group at the group's top, its tools at its end (they go under it where its words need the room): **Route profile** (its size ⌃, an icon key, M; **Conditions** on the water), **Route** (Show all waypoints and the list's settings) and **Route style and your speed** (built 2026-11-16, `pl-h`). When and the weather have none: they follow the numbers. A card's are its own: At this waypoint, Look out for, Profile. At a phone's peek and half the profile has no heading and no group, and When follows the chart, so the chart doesn't move as the sheet does (#742).
 
-**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a group on it, so the groups read as one sheet's parts and the map still shows around them. Built 2026-11-16 as one class, `pl-group`: Mine 8's white at 74 % (`--group`, the surface's colour, so dark mode has its own), no edge on the glass and a `--line` edge where the glass is solid (Fewer effects, High contrast, reduced transparency: `--group-edge`), 14 px corners, 4 px round what it holds and its rows' corners nesting at 10 px, so a group's words start 15 px in; 12 px between groups.
+**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a group on it, so the groups read as one sheet's parts and the map still shows around them. Built 2026-11-16 as one class, `pl-group`: Mine 8's white at 74 % (`--group`, the surface's colour, so dark mode has its own), no edge on the glass and a `--line` edge where the glass is solid (Fewer effects, High contrast, reduced transparency: `--group-edge`), 14 px corners, 4 px round what it holds and its rows' corners nesting at 10 px, so a group's words start 15 px in (`--words-in`); 12 px between groups (`--group-gap`).
 
 **Rows that scroll sideways.** Where a row of chips doesn't fit (the key facts, the timeline's layers), it scrolls sideways rather than wrapping: no bar, a fade at the edge where there's more, and with a mouse an arrow there and a drag (`sideways()` in `js/ui.js`). Tab brings a chip out from under the fade and the arrow, and an arrow takes clicks for a double-click's interval (500 ms) after its last click, so clicking it again and again at the row's end doesn't open the chip under it once it has faded. A scroll by a wheel, a trackpad or a drag leaves no arrow behind. Nothing in it is cut. Actions never scroll away: a row of keys that does something (the list's Reorder, Reverse, Back to start, Clear route) wraps, so every action stays in sight.
 
@@ -315,7 +331,7 @@ Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's c
 
 **A sport in its bubble.** A sport's icon in a filled circle of its colour (white in light mode, black on dark mode's lighter colours): a part's heading in Route's list (on the list's line, 32 px, the user's choice of 2026-11-16 over Mine 8's ball at the list's left), Route style's rows and the key facts.
 
-**Type and space** (2026-11-16, from the user's review: a desktop's planner looked outsized, and every gap was alike, so nothing read as grouped). The planner has five roles, each one size smaller with a mouse, as the keys are: the route's name 20 px (17 with a mouse), a section's heading 17 (15), a number 18 (16), a row's or a key's words 15 (14) and a line under them 13 (12); with a mouse its rows are 40 px. They're `--pl-title`, `--pl-head`, `--pl-num`, `--pl-row` and `--pl-line` on `.sheet`. Space says what belongs together: a section is one group, its heading inside it; 8 px between things inside a group, 12 px between groups; When and the weather sit 12 px under the numbers, part of the head.
+**Type and space** (2026-11-16, from the user's review: a desktop's planner looked outsized, and every gap was alike, so nothing read as grouped). The planner takes the type list (**Typography**): the route's name `--font-name`, a section's heading `--font-heading`, a number `--font-number`, a row's or a key's words `--font-row` and a line under them `--font-line`; with a mouse its rows are `--row-h`, 32 px. Space says what belongs together: a section is one group, its heading inside it; 8 px between things inside a group, 12 px between groups; When and the weather sit 12 px under the numbers, part of the head.
 
 **Controls by job:**
 1. **The one main action:** filled green (`--accent-bg`, white words), the whole width, at most one in a panel. The planner, the toolbar and each card are panels of their own: a stretch's **Edit this stretch**, a spot's **Add a waypoint here**.

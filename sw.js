@@ -1,7 +1,8 @@
 // Polku service worker: keeps the app and saved offline areas working without
 // a connection.
 //
-// - App files (same origin): network first, the last copy seen after 3 s or offline.
+// - App files (same origin): network first, the last copy seen after 3 s or offline. The typefaces are kept
+//   when the worker installs.
 // - Versioned CDN files (unpkg): cache first.
 // - OpenFreeMap TileJSON, sprites and fonts: network first, cached copy as fallback.
 // - Map and terrain tiles saved with "Save offline" (js/offline.js): network
@@ -24,7 +25,13 @@ let previewNow = null; // the same, once known (so other requests can skip the w
 const previewOn = () => (preview ||= caches.open(SHELL).then((c) => c.match(FLAG)).then((r) => (previewNow = !!r)).catch(() => (previewNow = false)));
 previewOn();
 
-self.addEventListener('install', () => self.skipWaiting());
+// Polku's typefaces, kept from the start: a page fetches a face only for the characters it shows, so one first seen
+// offline would otherwise be missing (a failure leaves them to their first fetch rather than stopping the worker)
+const FONTS = ['fonts/atkinson-hyperlegible-next.woff2', 'fonts/bricolage-grotesque.woff2'];
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(FONTS)).catch(() => {}));
+});
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 // pages that got the saved copy of an app file (the server didn't answer in time), so the
