@@ -19685,6 +19685,28 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (!lr || lr.top < 0 || lr.bottom > innerHeight) out.push(`a tapped ⓘ at the screen's foot: its words ${lr ? `at ${Math.round(lr.top)}–${Math.round(lr.bottom)} px` : 'not shown'}, the screen ${innerHeight} px`);
   document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); low.remove();
   document.querySelector('#btn-settings').click(); await wait(400);
+  // Layers too (#382, after the user's review of 2026-11-16): a switch's explanation behind an ⓘ; a note that keeps you safe
+  // (Sea ice, Ski tracks) stays as words, which the winter group only shows in winter
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
+  await wait(500);
+  const lb = document.querySelector('#layers-body'), named = (l) => [...lb.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === l);
+  for (const l of ['Trail details', 'Hillshade']) {
+    const t = named(l);
+    if (!t || !t.classList.contains('tg-info') || t.querySelector('.tg-text small')) out.push(`Layers: ${l}'s explanation ${t ? 'in words' : 'not there'}, not behind an ⓘ`);
+  }
+  // (and what keeps you safe stays in sight: the depth layers say they're not for navigation, #1052's review)
+  for (const l of ['Depth areas', 'Depth contours']) {
+    const t = named(l);
+    if (!t || !/not for navigation/.test(t.querySelector('.tg-text small')?.textContent || '')) out.push(`Layers: ${l} ${t ? 'doesn\'t say "not for navigation" in words' : 'not there'}`);
+  }
+  // an ⓘ answers a finger 18 px under its middle, above the next row (#1052's review)
+  if (matchMedia('(pointer: coarse)').matches) {
+    const dot = named('Trail details')?.querySelector('.info-dot');
+    dot?.scrollIntoView({ block: 'center' }); await wait(200);
+    const r = dot?.getBoundingClientRect(), hit = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2 + 18);
+    if (!dot || !dot.contains(hit)) out.push(`Layers: 18 px under Trail details' ⓘ a tap goes to ${hit ? hit.className || hit.tagName : 'nothing'}`);
+  }
+  document.querySelector('#layers-panel .panel-head .panel-x, #layers-panel .panel-head button:last-child')?.click(); await wait(300);
   // the chosen chip: green with a 2 px border everywhere, as the round trip's lengths have it
   p.openLoop(polku.map.getCenter().toArray()); await wait(800);
   const way = document.querySelector('.pl-way'), box = way.appendChild(document.createElement('div'));

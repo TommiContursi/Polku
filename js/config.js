@@ -266,6 +266,7 @@ export const RASTER_OVERLAYS = {
   depthAreas: {
     label: 'Depth areas',
     attribution: '© Traficom nautical chart data (not for navigation)',
+    keepNote: true, // (Layers shows its note as words, not behind an ⓘ: it keeps you safe, #382)
     tiles: [wmsTiles(TRAFICOM_WMS, 'DepthArea_A', 'syvyysalue_a')],
     tileSize: 512,
     minzoom: 10,
@@ -275,6 +276,7 @@ export const RASTER_OVERLAYS = {
   depthContours: {
     label: 'Depth contours',
     attribution: '© Traficom nautical chart data (not for navigation)',
+    keepNote: true, // (Layers shows its note as words, not behind an ⓘ: it keeps you safe, #382)
     tiles: [wmsTiles(TRAFICOM_WMS, 'DepthContour_L', 'syvyyskayra')],
     tileSize: 512,
     minzoom: 10,
@@ -284,6 +286,7 @@ export const RASTER_OVERLAYS = {
   soundings: {
     label: 'Depth soundings',
     attribution: '© Traficom nautical chart data (not for navigation)',
+    keepNote: true, // (Layers shows its note as words, not behind an ⓘ: it keeps you safe, #382)
     tiles: [wmsTiles(TRAFICOM_WMS, 'Sounding_P', 'Syvyyspiste_point')],
     tileSize: 512,
     minzoom: 13,
@@ -293,6 +296,7 @@ export const RASTER_OVERLAYS = {
   fairways: {
     label: 'Shipping lanes',
     attribution: '© Traficom nautical chart data (not for navigation)',
+    keepNote: true, // (Layers shows its note as words, not behind an ⓘ: it keeps you safe, #382)
     tiles: [wmsTiles(TRAFICOM_WMS, 'TwoWayRoutePart_A,DeepWaterRoutePart_A,TrafficSeparationSchemeLanePart_A')],
     tileSize: 512,
     minzoom: 9,

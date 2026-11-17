@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-16
 
+### Layers' explanations behind ⓘ ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- In Layers, what a switch shows is behind an **ⓘ** right after its name, as in Settings, such as **Trail details**, **Hillshade** and the weather layers, instead of in grey words under it. A tap on the ⓘ shows the words; with a mouse they also show when you point at it.
+- What keeps you safe stays in sight: the depth layers still say they're not for navigation, **Sea ice** that it's never a sign that ice is safe, and the ski tracks' switch to keep off them on foot and by bike.
+
 ### Settings' explanations behind ⓘ ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 - In Settings, what a switch does is behind an **ⓘ** right after its name, such as **High contrast** and **Fewer effects**, instead of in grey words under it. A tap on the ⓘ shows the words until the next tap; with a mouse they also show when you point at it. A tap on the name still turns the switch on or off.
