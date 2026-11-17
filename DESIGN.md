@@ -229,7 +229,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 
 ### Hierarchy
 
-These are the nine sizes, values on `:root` named by what they're for (`--font-glance` … `--font-small`). They're in `rem`, so the browser's text size enlarges them. A control takes its value when it's next touched (the design-system plan's §3), so today most rules still type their size in px: 18 sizes between 9 and 22 px, half sizes included (11.5, 12.5, 13.5, 14.5, 16.5).
+The planner's five roles, by the pointer, are in **One style for the planner and the cards** → **Type and space** below. These are the nine sizes, values on `:root` named by what they're for (`--font-glance` … `--font-small`). They're in `rem`, so the browser's text size enlarges them. A control takes its value when it's next touched (the design-system plan's §3), so today most rules still type their size in px: 18 sizes between 9 and 22 px, half sizes included (11.5, 12.5, 13.5, 14.5, 16.5).
 
 - **Glance** (700, 34 px, `--font-glance`, tabular figures): a number read while moving, in `--text` on `--surface-solid`, never on the glass. Phase 23 is the first to use it.
 - **Numeral** (700, 22 px, `--font-numeral`, line-height 1, tabular figures): the big numbers, such as the time in the timeline and the round trip's length.
@@ -240,7 +240,7 @@ These are the nine sizes, values on `:root` named by what they're for (`--font-g
 - **Body** (400, 14 px, `--font-body`, line-height 1.4): the page's base size.
 - **Control** (600, 13 px, `--font-control`): button labels on a desktop, and a row's second line.
 - **Small** (600, 12 px, `--font-small`): hints, values and lists; the most used size in the panels. Reading text is never smaller (the Small on Purpose Rule below); today some still is (#235).
-- **Small heading** (700, 12 px, `--font-small`, letter-spacing 0.06em, uppercase, in `--muted`): every section label, such as a menu's group, a layer group, a planner section or a search result group. One rule in `css/app.css` gives them all their look.
+- **Small heading** (700, 12 px, `--font-small`, letter-spacing 0.06em, uppercase, in `--muted`): a section label where a section has no heading of its own yet, such as a menu's group, a layer group, Check's groups or a search result group. One rule in `css/app.css` gives them all their look.
 
 The weights are `--weight-regular` (400), `--weight-name` (600) and `--weight-strong` (700). On a desktop's card at the point (`.card-float`) the title, the numbers and the rows are one step smaller (15, 17 and 14 px), set once on the card.
 
@@ -299,19 +299,23 @@ On the glass:
 
 Decided 2026-11-15 and 2026-11-16 (#382, from #869's rule for controls, #690's cards and round 5's look), and built a small PR at a time; what isn't built yet says so. The mock-up is [mockups/design-system-grouped.html](docs/plans/mockups/design-system-grouped.html), version **Mine 8**. It's a sketch: where a detail looks better otherwise in the app (dark mode, a padding, a colour), the app decides. Polku is read outdoors on a phone, in sun and with one thumb, so what you read is big enough and what you can press is plain to see.
 
-**Sizes, by the pointer, never the window's width** (decided 2026-11-16). By touch XS 28, S 32, M 40, L 44 and XL 52 px, and every control's target is 44 px however small it draws. With a mouse each is a size smaller: M 32 and L 36 (XS 24, S 28 and XL 44 proposed). L is `--target` and M `--size-m`; each other size gets its value with the first control that uses it. The words stay the same size with a mouse.
+**Sizes, by the pointer, never the window's width** (decided 2026-11-16). By touch XS 28, S 32, M 40, L 44 and XL 52 px, and every control's target is 44 px however small it draws. With a mouse each is a size smaller: M 32 and L 36 (XS 24, S 28 and XL 44 proposed). L is `--target` and M `--size-m`; each other size gets its value with the first control that uses it. The words: see **Type and space** below.
 
-**Type, four steps.** A title (the route's name, a card's name) 22 px; a section's heading 17 px, bold, in sentence case; a row's name and a button's words 16 px; a line under a row 14 px in `--muted`. Numbers are 24 px (20 px in a desktop's card) with their unit at 14 px and their word under them at 13 px.
+**The numbers' box.** A route's or a card's numbers sit in one white box, as round 5 has them, a thin line between them. When they don't fit one line they wrap to a second rather than shrink. Built for the planner (2026-11-16): the box on the surface with a thin `--line` edge and lines between main's three numbers, wrapping where they don't fit (at 200 %, without the lines).
 
-**The numbers' box.** A route's or a card's numbers sit in one white box, as round 5 has them, a thin line between them. When they don't fit one line they wrap to a second rather than shrink.
+**The planner's head** (built 2026-11-16; a desktop's planner keys on a line of their own over it). The route's name as its title, its sports in their colours and its changeovers under it on a route of more than one sport, the warnings beside it (a red ball with its count, or **?** in a ring while only what wasn't checked is left, its words in its name; a tap opens Check at the first), then the numbers' box, a thin line between the numbers. When and the weather follow in a group of their own, a line between them, over the profile; the key facts go under the profile as round keys (M, the key's face and edge, a sport's in its bubble). The ball's place beside the name is kept whether or not Check has answered, so the name never re-wraps when the answer comes late (#741). The peek is the title, the numbers and the chart.
 
-**Space, two steps.** 8 px between things in a section, 18 px between sections. A section's heading sits 18 px under the section before it and 8 px over its own group.
+**Headings.** Every section under the head has one, inside its group at the group's top, its tools at its end (they go under it where its words need the room): **Route profile** (its size ⌃, an icon key, M; **Conditions** on the water), **Route** (Show all waypoints and the list's settings) and **Route style and your speed** (built 2026-11-16, `pl-h`). When and the weather have none: they follow the numbers. A card's are its own: At this waypoint, Look out for, Profile. At a phone's peek and half the profile has no heading and no group, and When follows the chart, so the chart doesn't move as the sheet does (#742).
 
-**The planner's head.** The route's name as its title, the warnings beside it (a red ball and its count, opening Check), the numbers' box, the sports' facts (all in sight, wrapping), and When on a line of its own (Leave now ▾ → there at…).
+**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a group on it, so the groups read as one sheet's parts and the map still shows around them. Built 2026-11-16 as one class, `pl-group`: Mine 8's white at 74 % (`--group`, the surface's colour, so dark mode has its own), no edge on the glass and a `--line` edge where the glass is solid (Fewer effects, High contrast, reduced transparency: `--group-edge`), 14 px corners, 4 px round what it holds and its rows' corners nesting at 10 px, so a group's words start 15 px in; 12 px between groups.
 
-**Headings.** Every section under the head has one: **Weather on the route**, **Route profile** (its fold at the heading's end), **Route** (Show all waypoints and the list's settings on the heading's line) and **Route style and your speed**. A card's are its own: At this waypoint, Look out for, Profile. A heading's tools sit at its end, never inside the group.
+**Rows that scroll sideways.** Where a row of chips doesn't fit (the key facts, the timeline's layers), it scrolls sideways rather than wrapping: no bar, a fade at the edge where there's more, and with a mouse an arrow there and a drag (`sideways()` in `js/ui.js`). Tab brings a chip out from under the fade and the arrow, and an arrow takes clicks for a double-click's interval (500 ms) after its last click, so clicking it again and again at the row's end doesn't open the chip under it once it has faded. A scroll by a wheel, a trackpad or a drag leaves no arrow behind. Nothing in it is cut. Actions never scroll away: a row of keys that does something (the list's Reorder, Reverse, Back to start, Clear route) wraps, so every action stays in sight.
 
-**Glass and groups.** The sheet is see-through over the map (the reading glass with a blur); each section is a lighter group on it with 16 px corners, so the groups read as one sheet's parts and the map still shows around them.
+**A quiet scrollbar.** The planner, the cards and the panels have a thin scrollbar that shows only while they scroll and under a mouse.
+
+**A sport in its bubble.** A sport's icon in a filled circle of its colour (white in light mode, black on dark mode's lighter colours): a part's heading in Route's list (on the list's line, 32 px, the user's choice of 2026-11-16 over Mine 8's ball at the list's left), Route style's rows and the key facts.
+
+**Type and space** (2026-11-16, from the user's review: a desktop's planner looked outsized, and every gap was alike, so nothing read as grouped). The planner has five roles, each one size smaller with a mouse, as the keys are: the route's name 20 px (17 with a mouse), a section's heading 17 (15), a number 18 (16), a row's or a key's words 15 (14) and a line under them 13 (12); with a mouse its rows are 40 px. They're `--pl-title`, `--pl-head`, `--pl-num`, `--pl-row` and `--pl-line` on `.sheet`. Space says what belongs together: a section is one group, its heading inside it; 8 px between things inside a group, 12 px between groups; When and the weather sit 12 px under the numbers, part of the head.
 
 **Controls by job:**
 1. **The one main action:** filled green (`--accent-bg`, white words), the whole width, at most one in a panel. The planner, the toolbar and each card are panels of their own: a stretch's **Edit this stretch**, a spot's **Add a waypoint here**.
@@ -340,12 +344,14 @@ Every card has the same places, in this order. A place it has nothing for is lef
 
 The planner keeps its own order: its head, then its four sections.
 
-**Settings and Layers** use the same look with groups that fold: each group's heading inside it (17 px, a chevron at its end), groups 12 px apart. There a switch's explanation goes behind an ⓘ right after its name (built for Settings and Layers, 2026-11-16: the ⓘ is a button in the switch's label, so a press on it doesn't flip the switch, and the switch is named by its name alone; a note that keeps you safe, as the depth layers', Sea ice's and the ski tracks', stays as words), and a group's note behind an ⓘ at its heading (not built yet); a note that holds data, shows the way into an empty list or promises something about your data stays as words. Check is a card the warnings open, and the profile's full screen holds Check's climbs and ground.
+**Settings and Layers:** a switch's explanation is behind an ⓘ right after its name. The ⓘ is a button in the switch's label, so a press on it doesn't flip the switch, and the switch is named by its name alone. A note that keeps you safe stays as words, as the depth layers', Sea ice's and the ski tracks' do, and so does a note that holds data, shows the way into an empty list or promises something about your data.
+
+**Check** is a view of its own, in place of #424's tabs. Check's row leads Route's view with the warnings' count, ‹ Route goes back, and the warnings ball beside the route's name opens it at the first one.
 
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).
 - **Hover:** `--surface-2` behind, only with a mouse. Today 38 of 57 hover rules also apply on touch screens, where they stay after a tap (#208), and the hover looks vary (`--surface-2`, `--surface-solid`, `--accent-soft`, `--accent-bg`).
-- **Pressed:** buttons, chips, tiles and switches, the map's buttons and the top bar's too, shrink to 97 % for `--t-press` while held, with no grey flash; rows keep their grey (`--surface-2`). With reduced motion, nothing moves.
+- **Pressed:** buttons, chips, tiles and switches, the map's buttons and the top bar's too, shrink to 97 % for `--t-press` while held, with no grey flash; rows keep their grey (`--surface-2`). A key a mouse drag starts on, in a row that scrolls sideways, lets go of its press. With reduced motion, nothing moves.
 - **Chosen:** never colour alone (#356). A chip: a green tint, a 2 px green border, black words. A switch: white, black words, a green icon or tick. A tile: a green border, icon and tick, black words. A row: a green tint and a tick. A switch that's off has a `--muted` edge, at least 3:1.
 - **Motion:** see [Motion](#motion) below: the timings, the curves and when things move.
 
@@ -364,6 +370,7 @@ Polku's motion follows Emil Kowalski's design engineering ([Great animations](ht
 - **A crossfade** between two states that still feels off gets 2 px of blur.
 - **The map:** colour and opacity changes use MapLibre's paint transitions; camera moves share one set of durations; no tweening of geometry.
 - **Rebuilt content:** where only a state changes, the control shows its change through `settleControls()` (`js/ui.js`); nothing re-animates on a rebuild the person didn't cause. What opens in a rebuilt panel (a group's rows, a sport's speeds, a stretch's waypoints) fades in only on the tap that opened it.
+- **What changes place** fades in where it lands, in `--t-open` on `--ease-out`: on a phone, When and the profile as the planner goes between half and full (full puts When over the profile, the peek and half under it), and Check's view and Route style's steps on a press. It's opacity only, so reduced motion keeps it; from the keyboard they change at once.
 - **Outdoors and battery:** nothing loops while idle unless it says something (busy), and it stops when done. A busy bar waits 300 ms before it shows, so a quick answer shows nothing, and it is never under something hidden.
 - **Reduced motion:** opacity only: things fade in place instead of sliding, pulses stop, the map's camera moves jump, and the planner's list scrolls at once. A chosen look's colours still fade, since nothing moves, and nothing shrinks, grows or turns. A busy bar (routing) stays in place and pulses in opacity, since it says something.
 
