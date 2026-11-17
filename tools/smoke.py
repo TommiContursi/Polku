@@ -20979,7 +20979,11 @@ KF_JS = """(() => {
   },
   // (scrolled back to the top first, as a person would where the sheet scrolls as one and the last fact's tap scrolled
   // the line away with the rest)
-  at(k) { polku.planner.listScroller().scrollTop = 0; const b = polku.planner.els.facts.querySelectorAll('.kf-b')[k]; if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + Math.min(80, r.width / 3), y: r.top + r.height / 2 }; },
+  // (on a phone at full, where the key facts are since #382: a tap before may have left the sheet at half)
+  async at(k) {
+    const p = polku.planner;
+    if (p.layout() === 'sheet' && p.panel.dataset.state !== 'full') { p.setSheetState('full', { remember: false }); await new Promise((r) => setTimeout(r, 500)); }
+    p.listScroller().scrollTop = 0; const b = p.els.facts.querySelectorAll('.kf-b')[k]; if (!b) return null; const r = b.getBoundingClientRect(); return r.width ? { x: r.left + Math.min(80, r.width / 3), y: r.top + r.height / 2 } : null; },
 }; return true; })()"""
 
 KF_CLIMBS = """(() => {
