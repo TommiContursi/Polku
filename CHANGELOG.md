@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-18
+
+### Ships with the water layers ([#119](https://github.com/TommiContursi/Polku/issues/119))
+
+- In Layers, **Ships (live AIS)** is under **Water & nautical**, beside the nautical marks and the shipping lanes, rather than under **Traffic & safety**. It's in the same place among the tiles you can add to the quick drawer. Whether it's on stays as you had it.
+
 ## 2026-11-17
 
 ### New typefaces ([#382](https://github.com/TommiContursi/Polku/issues/382))

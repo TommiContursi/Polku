@@ -40,4 +40,3 @@ export function openModal({ title, subtitle = '', wide = false, card = false, on
 }
 
 export const closeModal = () => { if (dlg && dlg.open) dlg.close(); };
-export const modalBody = () => (dlg && dlg.open ? dlg.querySelector('.modal-body') : null);
