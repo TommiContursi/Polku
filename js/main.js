@@ -1063,8 +1063,8 @@ const LAYER_GROUPS = [
   { id: 'dark', title: 'After dark', ids: ['lit'] },
   { id: 'routes', title: 'Marked routes', ids: ['lipasRoutes', 'wmtHiking', 'wmtMtb', 'wmtCycling'] },
   { id: 'places', title: 'Places', ids: ['lipasPoints', 'pois'] },
-  { id: 'water', title: 'Water & nautical', ids: ['nautical', 'depthAreas', 'depthContours', 'soundings', 'fairways'] },
-  { id: 'safety', title: 'Traffic & safety', ids: Object.keys(SAFETY_OVERLAYS) },
+  { id: 'water', title: 'Water & nautical', ids: ['nautical', 'depthAreas', 'depthContours', 'soundings', 'fairways', 'sfShips'] },
+  { id: 'safety', title: 'Traffic & safety', ids: Object.keys(SAFETY_OVERLAYS).filter((id) => id !== 'sfShips') },
   { id: 'roads', title: 'Roads (Digiroad)', ids: ['drPaved', 'drPrivate', 'drSpeed'] },
 ];
 

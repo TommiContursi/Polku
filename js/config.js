@@ -377,15 +377,7 @@ export const RASTER_OVERLAYS = {
   },
 };
 
-export const OVERLAY_GROUPS = [
-  { title: 'Water', ids: ['nautical', 'depthAreas', 'depthContours', 'soundings', 'fairways'] },
-  { title: 'Marked routes', ids: ['lipasRoutes', 'wmtHiking', 'wmtMtb', 'wmtCycling'] },
-  { title: 'Terrain map', ids: ['maastoOverlay'] },
-  { title: 'Places', ids: ['lipasPoints', 'pois'] },
-  { title: 'Roads (Digiroad)', ids: ['drPaved', 'drPrivate', 'drSpeed'] },
-];
-
-// Traffic & safety (see safety.js). Shown as their own Layers section.
+// Traffic & safety (see safety.js). Shown as their own Layers section, but for Ships, which are under Water & nautical (#119).
 export const SAFETY_OVERLAYS = {
   sfTraffic: { label: 'Busy roads (traffic volume)', note: 'Digiroad vehicles/day · zoom 10+' },
   sfIncidents: { label: 'Accidents & incidents', note: 'Fintraffic, live' },
@@ -457,11 +449,11 @@ export const QUICK_TILE = {
   nautical: { group: 'Water & nautical', label: 'Nautical marks', icon: 'buoy', zoom: 10.5 },
   depths: { group: 'Water & nautical', label: 'Depths', icon: 'depth', opts: true, note: 'Not for navigation', zoom: 10 },
   fairways: { group: 'Water & nautical', label: 'Shipping lanes', icon: 'ship', zoom: 9 },
+  sfShips: { group: 'Water & nautical', label: 'Ships', icon: 'ship', note: 'Live AIS', zoom: 8 },
   sfTraffic: { group: 'Traffic & safety', label: 'Busy roads', icon: 'car', zoom: 10 },
   sfIncidents: { group: 'Traffic & safety', label: 'Accidents & incidents', icon: 'warn' },
   sfRoadworks: { group: 'Traffic & safety', label: 'Road works', icon: 'cone' },
   sfRoadcond: { group: 'Traffic & safety', label: 'Road conditions', icon: 'car' },
-  sfShips: { group: 'Traffic & safety', label: 'Ships', icon: 'ship', note: 'Live AIS', zoom: 8 },
   sfCameras: { group: 'Traffic & safety', label: 'Road cameras', icon: 'camera' },
   restricted: { group: 'Traffic & safety', label: 'Military areas', icon: 'zone' },
   drPaved: { group: 'Roads (Digiroad)', label: 'Paved roads', icon: 'road', zoom: 8 },
