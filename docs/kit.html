@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polku's kit</title>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+/* The kit page (#382): the type list and the values, drawn by css/app.css itself. Only this page's own layout is here. */
+html, body { height: auto; overflow: visible; overscroll-behavior: auto; touch-action: auto; } /* (app.css holds the app still: this page scrolls) */
+body { margin: 0; padding: 16px; background: var(--surface-2); }
+.k-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; max-width: 1100px; margin: 0 auto 16px; }
+.k-top h1 { flex: 1 1 auto; margin: 0; font-family: var(--face-display); font-size: var(--font-card); letter-spacing: -0.01em; }
+.k-top p { flex-basis: 100%; margin: 0; color: var(--muted); font-size: var(--font-line); }
+.k-sec { max-width: 1100px; margin: 0 auto var(--group-gap); padding: 12px var(--words-in) 16px; border-radius: var(--radius); background: var(--surface-solid); }
+.k-sec > h2 { margin: 0 0 4px; font-family: var(--face-display); font-size: var(--font-heading); font-weight: var(--weight-strong); letter-spacing: -0.01em; }
+.k-sec > p { margin: 0 0 12px; color: var(--muted); font-size: var(--font-line); }
+.k-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px 24px; }
+.k-col > h3 { margin: 0 0 8px; color: var(--muted); font-size: var(--font-line); font-weight: var(--weight-key); }
+.k-role { display: grid; gap: 2px; padding: 8px 0; border-top: 1px solid var(--line); }
+.k-role > small, .k-val small { color: var(--muted); font-size: var(--font-line); font-variant-numeric: tabular-nums; }
+.k-sample { min-width: 0; overflow-wrap: anywhere; line-height: 1.25; }
+.k-d { font-family: var(--face-display); letter-spacing: -0.01em; }
+.k-row { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.k-val { display: grid; justify-items: start; gap: 4px; }
+.k-box { display: grid; place-items: center; min-width: 24px; border: 1px solid var(--key-edge); border-radius: var(--radius-control); background: var(--surface-solid); color: var(--text); font-size: var(--font-line); }
+.k-corner { width: 64px; height: 48px; border: 2px solid var(--accent); background: var(--accent-soft); }
+.k-group { padding: var(--group-pad); border-radius: var(--radius); background: var(--surface-2); }
+.k-group + .k-group { margin-top: var(--group-gap); }
+.k-group > b { display: block; padding: 6px 0 4px calc(var(--words-in) - var(--group-pad)); font-family: var(--face-display); font-size: var(--font-heading); letter-spacing: -0.01em; }
+.k-group > div { padding: 8px calc(var(--words-in) - var(--group-pad)); border-radius: var(--radius-control); background: var(--surface-solid); font-size: var(--font-row); }
+</style>
+</head>
+<body>
+<header class="k-top">
+  <h1>Polku's kit</h1>
+  <div class="seg" role="group" aria-label="Theme">
+    <button type="button" data-theme="light" aria-pressed="true">Light</button>
+    <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+  </div>
+  <p id="k-pointer"></p>
+</header>
+
+<section class="k-sec" aria-labelledby="k-type">
+  <h2 id="k-type">The type list</h2>
+  <p>One value for each role, by touch and with a mouse, read from <code>css/app.css</code>. Each sample says its size as the browser measures it.</p>
+  <div class="k-cols" id="k-type-cols"></div>
+</section>
+
+<section class="k-sec" aria-labelledby="k-zero">
+  <h2 id="k-zero">One zero</h2>
+  <p>Every figure is Bricolage Grotesque's, in words too, so every zero looks the same.</p>
+  <div class="k-cols" id="k-zero-cols"></div>
+</section>
+
+<section class="k-sec" aria-labelledby="k-weights">
+  <h2 id="k-weights">Weights</h2>
+  <p>400 for a line, 500 for a row's name, 600 for a key's words, 700 for numbers, headings and the main action.</p>
+  <div id="k-weight-rows"></div>
+</section>
+
+<section class="k-sec" aria-labelledby="k-sizes">
+  <h2 id="k-sizes">Sizes</h2>
+  <p>S, M, L and XL, and a row. By touch every target is 44 px, however small a control draws.</p>
+  <div class="k-cols" id="k-size-cols"></div>
+</section>
+
+<section class="k-sec" aria-labelledby="k-space">
+  <h2 id="k-space">Space</h2>
+  <p>A group's padding, the gap between groups, and the inset that lines a group's words up with its heading.</p>
+  <div class="k-group"><b>Reittiprofiili ja sääolosuhteet</b><div>Päällystämätön metsäautotie</div></div>
+  <div class="k-group"><b>Reittityyli ja nopeutesi</b><div>Maastopyöräilyreitin vaativuusaste</div></div>
+  <div class="k-row" id="k-space-vals"></div>
+</section>
+
+<section class="k-sec" aria-labelledby="k-corners">
+  <h2 id="k-corners">Corners</h2>
+  <p>6, 7 inside a track, 10 a control, 14 a card or a group, 20 a sheet, a pill and a circle.</p>
+  <div class="k-row" id="k-corner-row"></div>
+</section>
+
+<script>
+// Each column takes its values from app.css's own rules: :root (with a mouse) and :root under (pointer: coarse) (by touch).
+const ROLES = [
+  ['--font-card', "A card's title", 'Kaupinojan uimarannan pysäköintialue', 'd', 700],
+  ['--font-name', "The route's name", 'Kauppi – Kaupinoja – Teiskontie', 'd', 700],
+  ['--font-heading', "A section's heading", 'Reittiprofiili ja sääolosuhteet', 'd', 700],
+  ['--font-number', 'A number', '17,5 km · 1 h 05 min', 'd', 700],
+  ['--font-unit', "A number's unit", 'km · min · m', 't', 400],
+  ['--font-row', "A row's name", 'Maastopyöräilyreitin vaativuusaste', 't', 500],
+  ['--font-row', "A key's words", 'Lisää reittipiste tähän', 't', 600],
+  ['--font-line', "A row's line", 'Päällystämätön metsäautotie, 2,4 km', 't', 400],
+  ['--font-field', 'What you type', 'Hae paikkaa tai liitä koordinaatit', 't', 400],
+  ['--font-glance', 'A number read while moving', '12:30', 'd', 700],
+  ['--font-small', 'Small on purpose', '© OpenStreetMapin tekijät · 500 m', 't', 400],
+];
+const SIZES = [['--size-s', 'S'], ['--size-m', 'M'], ['--target', 'L'], ['--size-xl', 'XL'], ['--row-h', 'A row']];
+const CORNERS = ['--radius-small', '--radius-inner', '--radius-control', '--radius', '--radius-sheet', '--radius-pill', '--radius-round'];
+const SPACE = ['--group-pad', '--group-gap', '--words-in'];
+const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
+
+const sheet = [...document.styleSheets].find((s) => s.href && s.href.endsWith('/css/app.css'));
+const rules = [...sheet.cssRules];
+const mouse = rules.find((r) => r.selectorText === ':root' && r.style.getPropertyValue('--font-card'));
+const touch = rules.filter((r) => r.media && /pointer:\s*coarse/.test(r.media.mediaText)).flatMap((r) => [...r.cssRules]).find((r) => r.selectorText === ':root' && r.style.getPropertyValue('--font-card'));
+const names = [...new Set([...ROLES.map((r) => r[0]), ...SIZES.map((s) => s[0])])];
+const column = (title, rule) => {
+  const col = el('div', 'k-col');
+  col.append(el('h3', null, title));
+  for (const n of names) col.style.setProperty(n, rule.style.getPropertyValue(n).trim() || getComputedStyle(document.documentElement).getPropertyValue(n).trim());
+  return col;
+};
+const px = (node, prop = 'fontSize') => `${parseFloat(getComputedStyle(node)[prop])} px`;
+const COLS = [['By touch', touch], ['With a mouse', mouse]];
+
+// the type list
+for (const [title, rule] of COLS) {
+  const col = column(title, rule);
+  for (const [v, role, words, face, w] of ROLES) {
+    const row = el('div', 'k-role'), s = el('span', `k-sample${face === 'd' ? ' k-d' : ''}`, words), meta = el('small');
+    s.style.fontSize = `var(${v})`; s.style.fontWeight = w;
+    row.append(meta, s); col.append(row);
+    meta.dataset.role = `${role} · ${v} · ${face === 'd' ? 'Bricolage Grotesque' : 'Atkinson Hyperlegible Next'} ${w}`;
+    meta.dataset.of = '';
+  }
+  document.getElementById('k-type-cols').append(col);
+}
+// one zero: the same figures in the words' face and in Bricolage
+for (const [title, rule] of COLS) {
+  const col = column(title, rule);
+  for (const [face, label] of [['t', 'In words (a row)'], ['d', 'A number']]) {
+    const row = el('div', 'k-role'), s = el('span', `k-sample${face === 'd' ? ' k-d' : ''}`, '0 · 10 · 100 · 12:30 · 17,5 km · −3 °C · 100 %');
+    s.style.fontSize = `var(${face === 'd' ? '--font-number' : '--font-row'})`; s.style.fontWeight = face === 'd' ? 700 : 500;
+    row.append(el('small', null, label), s); col.append(row);
+  }
+  document.getElementById('k-zero-cols').append(col);
+}
+// weights
+for (const w of [400, 500, 600, 700]) {
+  const row = el('div', 'k-row');
+  for (const face of ['t', 'd']) { const s = el('span', `k-sample${face === 'd' ? ' k-d' : ''}`, `${w} Ääkköset ja numerot 0123456789`); s.style.fontWeight = w; s.style.fontSize = 'var(--font-row)'; row.append(s); }
+  document.getElementById('k-weight-rows').append(row);
+}
+// sizes
+for (const [title, rule] of COLS) {
+  const col = column(title, rule), row = el('div', 'k-row');
+  for (const [v, label] of SIZES) {
+    const box = el('span', 'k-box', label), val = el('span', 'k-val'), meta = el('small');
+    box.style.height = `var(${v})`; box.style.minWidth = v === '--row-h' ? '160px' : `var(${v})`;
+    val.append(box, meta); row.append(val);
+    meta.dataset.size = v;
+  }
+  col.append(row); document.getElementById('k-size-cols').append(col);
+}
+// space and corners
+for (const v of SPACE) { const val = el('span', 'k-val'); val.append(el('small', null, `${v}: ${getComputedStyle(document.documentElement).getPropertyValue(v).trim()}`)); document.getElementById('k-space-vals').append(val); }
+for (const v of CORNERS) {
+  const val = el('span', 'k-val'), box = el('span', 'k-corner');
+  box.style.borderRadius = `var(${v})`;
+  val.append(box, el('small', null, `${v}: ${getComputedStyle(document.documentElement).getPropertyValue(v).trim()}`));
+  document.getElementById('k-corner-row').append(val);
+}
+
+// measured, once the typefaces are in
+const measure = () => {
+  for (const m of document.querySelectorAll('small[data-role]')) m.textContent = `${m.dataset.role} · ${px(m.nextElementSibling)}`;
+  for (const m of document.querySelectorAll('small[data-size]')) m.textContent = `${m.dataset.size}: ${px(m.previousElementSibling, 'height')}`;
+};
+document.fonts.ready.then(measure);
+measure();
+
+const fine = matchMedia('(pointer: coarse)').matches ? 'by touch' : 'with a mouse';
+document.getElementById('k-pointer').textContent = `This device's pointer: ${fine}. The rest of Polku uses that column; both are drawn here.`;
+for (const b of document.querySelectorAll('.seg button')) b.addEventListener('click', () => {
+  document.documentElement.dataset.theme = b.dataset.theme;
+  for (const x of document.querySelectorAll('.seg button')) x.setAttribute('aria-pressed', x === b);
+});
+</script>
+</body>
+</html>

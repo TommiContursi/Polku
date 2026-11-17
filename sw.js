@@ -1,7 +1,7 @@
 // Polku service worker: keeps the app and saved offline areas working without
 // a connection.
 //
-// - App files (same origin): network first, the last copy seen after 3 s or offline.
+// - App files (same origin, the typefaces in fonts/ too): network first, the last copy seen after 3 s or offline.
 // - Versioned CDN files (unpkg): cache first.
 // - OpenFreeMap TileJSON, sprites and fonts: network first, cached copy as fallback.
 // - Map and terrain tiles saved with "Save offline" (js/offline.js): network

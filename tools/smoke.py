@@ -8421,6 +8421,25 @@ def design_colours(chrome):
     return not fails
 
 
+# The font sizes, weights and corners typed in place in css/app.css, rather than taken from the values on :root (#382).
+# The count may only fall: each of the migration's PRs moves some onto the values and lowers TOKENS_CEILING to the new count.
+TOKENS_CEILING = 527
+TOKENS_TYPED = re.compile(r'(?<![-\w])(?:font-size\s*:[^;}]*\d(?:\.\d+)?px|font\s*:[^;}]*\d(?:\.\d+)?px|font-weight\s*:\s*\d+|border(?:-[a-z]+)*-radius\s*:[^;}]*\d(?:\.\d+)?px)')
+
+
+def tokens(chrome):
+    """css/app.css types no more font sizes (in px), weights (as numbers) or corners (in px) than TOKENS_CEILING."""
+    css = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'css', 'app.css')).read()
+    css = re.sub(r'@font-face\s*{[^}]*}', '', re.sub(r'/\*.*?\*/', '', css, flags=re.S))  # (a typeface's own weights)
+    found = TOKENS_TYPED.findall(css)
+    kinds = {k: sum(1 for f in found if f.startswith(k)) for k in ('font-size', 'font:', 'font-weight', 'border')}
+    ok = len(found) <= TOKENS_CEILING
+    print(f"{'ok  ' if ok else 'FAIL'} css/app.css types {len(found)} font sizes, weights and corners in place (at most {TOKENS_CEILING}: "
+          f"{kinds['font-size'] + kinds['font:']} sizes, {kinds['font-weight']} weights, {kinds['border']} corners)"
+          + ('' if ok else '\n     - a new rule takes its size, weight and corner from the values on :root (DESIGN.md\'s Typography and Shapes)'), flush=True)
+    return ok
+
+
 # What the map draws with: the route line's colours, its glow's, the trails' difficulty, and the colours of the
 # route coloured by its gradient on the map (Colour by), with the difficulty scale itself
 PALETTE_SEEN = """(async (dark) => {
@@ -22597,6 +22616,7 @@ GROUPS = [
     ('effects', [fewer_effects, flat_offer], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
+    ('tokens', [tokens], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls, sideways_row], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers; a row that scrolls sideways: › at its end, a key\'s focus clear of the fade (WCAG 2.4.11)'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a kind hidden in Check shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),
