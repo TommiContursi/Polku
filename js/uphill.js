@@ -9,7 +9,7 @@
 // (js/trails.js, one Overpass query per z13 tile, shared).
 
 import { densify } from './geo.js';
-import { elevations, smooth } from './dem.js';
+import { elevations, smooth, retryFailed } from './dem.js';
 import { uphillClass, techBump } from './analysis.js';
 import { trailTile, tilesIn } from './trails.js';
 
@@ -17,10 +17,15 @@ const PIECE = 25;
 const MIN_ZOOM = 13;
 
 export class UphillLayer {
-  constructor(map, onData) {
+  constructor(map, onData, onStatus) {
     this.map = map;
     this.onData = onData;
+    this.onStatus = onStatus; // `missing` changed
     this.enabled = false;
+    // trails in view left without colours because their terrain didn't load (#130): said so in Layers, and graded
+    // again by themselves once dem.js asks for the tiles again (15 s), or at once back online
+    this.missing = false;
+    this.again = 0;
     this.fc = { type: 'FeatureCollection', features: [] };
     // feature key -> features; `partial` on the list when a terrain tile didn't load for it
     this.done = new Map();
@@ -29,6 +34,14 @@ export class UphillLayer {
     this.run = 0;
     map.on('moveend', () => this.schedule());
     map.on('sourcedata', (e) => { if (e.sourceId === 'ofm' && e.isSourceLoaded) this.schedule(); });
+    addEventListener('online', () => { if (this.missing) { retryFailed(); this.schedule(); } });
+  }
+
+  setMissing(on) {
+    if (on) { clearTimeout(this.again); this.again = setTimeout(() => navigator.onLine && this.schedule(), 16000); }
+    if (on === this.missing) return;
+    this.missing = on;
+    this.onStatus();
   }
 
   setEnabled(on) {
@@ -39,7 +52,7 @@ export class UphillLayer {
       // when it grades something new, so a cached view would stay blank)
       if (!was) this.publish();
       this.schedule();
-    } else { this.fc = { type: 'FeatureCollection', features: [] }; this.onData(this.fc); }
+    } else { this.fc = { type: 'FeatureCollection', features: [] }; this.onData(this.fc); this.setMissing(false); }
   }
 
   schedule() {
@@ -50,8 +63,9 @@ export class UphillLayer {
 
   async update() {
     const map = this.map;
-    if (!this.enabled || map.getZoom() < MIN_ZOOM || !map.getSource('ofm')) return;
+    if (!this.enabled || map.getZoom() < MIN_ZOOM || !map.getSource('ofm')) return this.setMissing(false);
     const run = ++this.run;
+    let missing = false;
     const b = map.getBounds();
     const view = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
     const feats = map.querySourceFeatures('ofm', {
@@ -96,11 +110,12 @@ export class UphillLayer {
         off += s.pts.length;
         const list = grade(s, e, t.props);
         // a tile that failed leaves its points without heights (dem.js asks for it again after a while)
-        if (ele.failed && e.some(Number.isNaN)) list.partial = true;
+        if (ele.failed && e.some(Number.isNaN)) list.partial = missing = true;
         this.done.set(t.key, list);
       });
       this.publish();
     }
+    this.setMissing(missing);
     this.loadOsm(view, run);
     // keep the cache bounded
     if (this.done.size > 6000) {
@@ -143,7 +158,8 @@ export class UphillLayer {
             out.push(...grade(s2, el, { 'mtb_scale': t['mtb:scale'] }, forced));
           }
           entry.result = out;
-          entry.partial = failed > 0; // graded again on a later map move
+          entry.partial = failed > 0; // graded again on the next update
+          if (entry.partial && run === this.run) this.setMissing(true);
           if (run === this.run || this.enabled) this.publish();
         })
         .catch(() => { this.osmTiles.delete(key); }); // trailTile waits 2 min before asking again

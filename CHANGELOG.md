@@ -2,6 +2,13 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-18
+
+### Uphill colours when the terrain is missing ([#130](https://github.com/TommiContursi/Polku/issues/130))
+
+- When the terrain doesn't load for some trails, Layers says so under **Uphill**: those trails have no uphill colours yet, and Polku keeps trying.
+- The uphill colours come in by themselves once the terrain loads, with the map standing still, and at once when your phone is back online. Before, they waited for the map to move.
+
 ## 2026-11-17
 
 ### New typefaces ([#382](https://github.com/TommiContursi/Polku/issues/382))
