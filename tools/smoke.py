@@ -20095,8 +20095,8 @@ def targets(chrome):
     return not fails
 
 
-# A row that scrolls sideways (`sideways()`, #382), with a mouse: › keeps a click while it fades at the row's end, so a
-# second click doesn't open the key under it, and it lets clicks through once it has gone; a key's focus brings a key out
+# A row that scrolls sideways (`sideways()`, #382), with a mouse: › keeps clicks for a double-click's interval after it
+# fades at the row's end, so clicking it again and again doesn't open the key under it, and lets them through after that; a key's focus brings a key out
 # from under the fade on either side (WCAG 2.4.11), while a click on a key half under it moves nothing (the review of #1050).
 SIDEWAYS_ROW = """(async () => {
   const { sideways } = await import(location.origin + '/js/ui.js');
@@ -20135,15 +20135,20 @@ def sideways_row(chrome):
             if pg.js(f"new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {{ const x = {SX}; ok(x.scrollLeft + x.clientWidth >= x.scrollWidth - 2); }})))"):
                 break
             time.sleep(0.3)
-        # a click more, a moment after the one that reached the end: › is fading (--t-press)
+        # clicks more after the one that reached the end, as someone clicking › again and again does: one while › fades
+        # (--t-press), one 300 ms after its fade, both within a double-click's interval
         pg.js("new Promise((ok) => { const a = document.querySelector('#sx-test .wx-hs-arrow.r'), go = () => (a.classList.contains('on') ? requestAnimationFrame(go) : ok(true)); go(); })")
+        t0 = time.time()
         click(at['x'], at['y'])
-        time.sleep(0.5)
+        time.sleep(max(0, t0 + 0.42 - time.time()))
+        click(at['x'], at['y'])
+        late = time.time() - t0
+        time.sleep(0.8)
         r = pg.js(f"(() => ({{ opened: window.opened, end: {SX}.scrollLeft, hit: document.elementFromPoint({at['x']}, {at['y']})?.closest('.wx-hs-arrow') ? 'the arrow' : 'a key' }}))()")
         if r['opened']:
-            fails.append(f'a click on › as it faded at the row\'s end opened {r["opened"]}')
+            fails.append(f'clicks on › as it faded at the row\'s end and {late * 1000:.0f} ms after opened {r["opened"]}')
         if r['hit'] != 'a key':
-            fails.append('› still takes clicks once it has faded at the row\'s end')
+            fails.append('› still takes clicks a second after it faded at the row\'s end')
         # a key's focus, both ways: Fact 4 shows 60 px, 32 of them under the fade
         pg.js(f"{SX}.scrollLeft = 0; window.opened = []; document.querySelectorAll('#sx-test .chip')[2].focus(); true")
         time.sleep(0.2)
