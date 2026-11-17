@@ -13237,6 +13237,7 @@ SA_AT = """(async (k) => {
   if (!b) return null;
   b.scrollIntoView({ block: 'center', inline: 'nearest' }); x.scrollLeft = 0; delete s.dataset.goal;
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  await new Promise((r) => setTimeout(r, 250)); // (› fades in over --t-press once the strip is back at its start)
   const R = b.getBoundingClientRect(), cx = R.left + R.width / 2, cy = R.top + R.height / 2;
   return { x: cx, y: cy, top: document.elementFromPoint(cx, cy)?.closest('.wx-hs-arrow') === b, shown: getComputedStyle(b).display !== 'none' && getComputedStyle(b).opacity === '1' };
 })"""
