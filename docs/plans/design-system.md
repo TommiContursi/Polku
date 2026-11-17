@@ -152,7 +152,7 @@ Each PR comes with:
 - **On `:root`:** the type list as the table above, the mouse's column on `:root` and the touch column under `pointer: coarse`; `--weight-row` (500) and `--weight-key` (600); S, M, L (`--target`), XL and a row by the pointer (a row 50 px by touch, 32 with a mouse); `--group-pad` 4, `--group-gap` 12 and `--words-in` 15 px with either pointer; `--radius-inner` (7). XS waits for a control that uses it (#382, 2026-11-17).
 - **Names already in use took their new value:** `--target`, `--size-m`, `--row-h`, `--font-row`, `--font-number` and `--font-field`, so what was already on them is denser with a mouse. Reading text on `--font-small` moved to `--font-line`, so none went under 12 px. `--font-control`, `--font-body`, `--font-title`, `--font-numeral` and `--weight-name` stay for the migration.
 - **`--pl-*` replaced** by `--font-name`, `--font-heading`, `--font-number`, `--font-row` and `--font-line`; `.card-float` no longer sets its rows and numbers.
-- **The typefaces:** cut to 48 and 23 kB (woff2), Bricolage's headings and numbers listed in one rule; DEVELOPING's "Hover and colours" has the files, their commits and the commands.
+- **The typefaces:** kept by the service worker as it installs; cut to 48 and 23 kB (woff2), Bricolage's headings and numbers listed in one rule; DEVELOPING's "Hover and colours" has the files, their commits and the commands.
 - **Checks:** `tokens`, its ceiling 527 (230 sizes, 130 weights, 167 corners). The kit page's own smoke group comes with the full kit.
 
 ### Not decided here
