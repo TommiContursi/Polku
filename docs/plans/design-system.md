@@ -46,7 +46,7 @@ Polku is a tool for planning, and it has to hold a great deal and keep growing. 
   - Every figure is set in Bricolage, rows included, so every zero looks the same: one text family takes its digits from Bricolage (`unicode-range`).
   - Before the files arrive the device's font shows (`font-display: swap`), with matched metrics so lines don't jump.
   - The profile's words on its canvas use the same families (`js/chart.js`). The map's own labels stay the map's (phase 20).
-- **The type list**, one value for each role, in `rem`. The values by touch are the user's (2026-11-17). The values with a mouse are proposed, denser than "a size smaller", and are tuned on the kit page:
+- **The type list**, one value for each role, in `rem`. Both columns are the user's (2026-11-17). With a mouse they're denser than "a size smaller", since a desktop is used up close. Both are tuned on the kit page:
 
   | Role | Value | By touch | With a mouse | Face, weight |
   |---|---|---|---|---|
@@ -65,7 +65,7 @@ Polku is a tool for planning, and it has to hold a great deal and keep growing. 
 - **Weights:** 400, 500 and 700, and 600 for a key's words. 650, 750 and 800 go.
 - **Sizes**, by the pointer:
   - By touch: XS 28, S 32, M 40, L 44 and XL 52 px, with every target 44 px.
-  - With a mouse, proposed denser: S 24, M 28, L 32 and XL 40 px, and a row 32 px. Today it's L 36, M 32 and a row 40. 24 px is WCAG 2.2's floor for a target.
+  - With a mouse, denser (the user, 2026-11-17): S 24, M 28, L 32 and XL 40 px, and a row 32 px. Today they're L 36, M 32 and a row 40. 24 px is WCAG 2.2's floor for a target. This replaces the 36 px with a mouse of #380 and §"The rules it keeps".
   - One rule gives a small control its 44 px target by touch, instead of today's three.
 - **Space:** today's `--space-*` (2 to 24 px) stay. Each role that sets a space gets a value by the pointer:
   - a group's padding;
@@ -148,7 +148,7 @@ Each PR comes with:
 
 ### Not decided here
 
-- The values with a mouse and the denser sizes: proposed above, tuned on the kit page.
+- The exact values of both columns: tuned on the kit page with the user.
 - The font files' bytes: measured once they're cut.
 - How a window's place is remembered when the screen's size changes.
 
