@@ -243,7 +243,7 @@ OPEN_CREDITS = "(async () => { document.querySelector('.maplibregl-ctrl-attrib-b
 # 22a: the drawer in three tabs, in the side panel: the start (no route), the first click's loop
 # offer, the leg you point at, and each tab (older code shows its single list at the same spot)
 SIDE = {'polku:plannerDock': '"left"'}
-START = ("(async () => { const p = polku.planner; p.setActive(true); p.clear(); if (p.setTab) p.setTab('route');"
+START = ("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setView('route');"
          " if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); await new Promise((r) => setTimeout(r, 600)); return true; })()")
 # 25b with A: a way to begin picked (`k`: draw, loop, find), and a control in it pressed (`then`); older code
 # shows its start as it was
@@ -259,7 +259,7 @@ FIRST_LENGTH = ("(async () => { const p = polku.planner, wait = (ms) => new Prom
                 " if (chip) chip.click(); else if (p.openLoop) p.openLoop([c.lng, c.lat]); await wait(700); return true; })()")
 START_TIP = START.replace("return true; })()", "const m = polku.map, c = m.getCenter(); m.fire('click', { point: m.project(c), lngLat: c, originalEvent: new MouseEvent('click') });"
                           " await new Promise((r) => setTimeout(r, 700)); return true; })()")
-LEG_LIT = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); if (p.setTab) p.setTab('route'); p.reveal('points'); await wait(400);"
+LEG_LIT = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setView('route'); p.reveal('points'); await wait(400);"
            " const r = document.querySelector('.wpl-row[data-i=\"0\"]'); if (r) r.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(400); return true; })()")
 # #198: the route close up with its chevrons moving (reduced motion off), and the leg under the
 # mouse glowing brighter (a real mousemove on the map; older code has no glow)
@@ -416,7 +416,7 @@ MARKS_VIEW = """(async () => {
 })()"""
 DEPARTURE_VIEW = """(async () => {
   const p = polku.planner;
-  p.setTab('check'); p.toggleSection('speed', false);
+  p.setView('check'); p.toggleSection('speed', false);
   if (p.layout() === 'sheet') p.setSheetState('half', { remember: false });
   document.querySelector('.sum-time').click();
   await new Promise((r) => setTimeout(r, 900));
@@ -540,9 +540,9 @@ SCENES = {
     'phone-view-card': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="polku.planner.setEditing(false); polku.planner.openPointCard(polku.planner.points[1]); true"),
     'desk-view': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js="polku.planner.setEditing(false); polku.planner.openPointCard(polku.planner.points[1]); true"),
     # the Route tab's first content, without the timeline over it (#740)
-    'phone-route-tab': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js="polku.planner.setTab('route'); true"),
-    'desk-route-tab': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE, js="polku.planner.setTab('route'); true"),
-    'desk-bottom-route-tab': dict(DESK, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}, js="polku.planner.setTab('route'); true"),
+    'phone-route-tab': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='half', js="polku.planner.setView('route'); true"),
+    'desk-route-tab': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE, js="polku.planner.setView('route'); true"),
+    'desk-bottom-route-tab': dict(DESK, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}, js="polku.planner.setView('route'); true"),
     'phone-full': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full'),
     'desk-paddle': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]]),
     'phone-paddle': dict(PHONE, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='half'),
@@ -942,7 +942,7 @@ DONE = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) 
 DONE_JS = lambda pre='', then='': DONE.replace('__PRE__', pre).replace('__THEN__', then)
 for size, viewport in [('desk', DESK), ('phone', PHONE)]:
     SCENES[f'{size}-done'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='peek', js=DONE_JS())
-    SCENES[f'{size}-done-route'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='half', js=DONE_JS("p.setTab('route');"))
+    SCENES[f'{size}-done-route'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='half', js=DONE_JS("p.setView('route');"))
     SCENES[f'{size}-done-closed'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='peek', js=DONE_JS(then='if (p.close) p.close();'))
     SCENES[f'{size}-done-paddle'] = dict(viewport, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='peek', js=DONE_JS())
 SCENES['phone-done-360'] = dict(PHONE, w=360, h=740, timeline=True, route='route-kauppi-mtb.json', state='peek',
