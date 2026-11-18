@@ -284,11 +284,13 @@ deviceMore.addEventListener('change', applyTheme);
 // Polku offers Fewer effects once on this device when it draws slowly here (#632), and before that, in 3D with the
 // hills raised, flat hills (#936): over 3 s of frames timed while the
 // map moves or something scrolls, more than half of it in frames slower than 30 a second. A gap over 1 s (a hidden
-// tab, a style loading) doesn't count, and a shorter long task alone can't fill half of it. Rows a browser draws late as they scroll in don't slow the frames: this can't see those.
+// tab, a style loading) doesn't count, and a shorter long task alone can't fill half of it. Frames are timed until
+// 300 ms after the last move, and on while every gap between them has a move in it, however long (#900: at two frames a
+// second each frame comes after the 300 ms). Rows a browser draws late as they scroll in don't slow the frames: this can't see those.
 {
-  let moved = 0, slow = 0, last = 0, until = 0, raf = 0, offered = false; // one offer a visit, so a second toast can't replace it
+  let moved = 0, slow = 0, last = 0, until = 0, movedAt = 0, raf = 0, offered = false; // one offer a visit, so a second toast can't replace it
   const frame = (t) => {
-    const d = t - last;
+    const d = t - last, prev = last;
     if (last && d < 1000) { moved += d; if (d > 34) slow += d; }
     last = t;
     if (moved >= 3000) {
@@ -303,13 +305,14 @@ deviceMore.addEventListener('change', applyTheme);
       }
       moved = slow = 0;
     }
-    if (performance.now() < until) raf = requestAnimationFrame(frame);
+    if (performance.now() < until || movedAt > prev) raf = requestAnimationFrame(frame);
     else raf = last = 0;
   };
   const offerFlat = () => state.terrain3d && state.raiseHills && !state.flatOffered;
   const moving = () => {
     if (offered || ((state.fewerEffects || state.fewerOffered) && !offerFlat())) return;
-    until = performance.now() + 300;
+    movedAt = performance.now();
+    until = movedAt + 300;
     if (!raf) raf = requestAnimationFrame(frame);
   };
   map.on('move', moving);

@@ -8808,9 +8808,29 @@ def appearance(chrome):
 SLOW_FRAMES = """(() => { window.__slow = true; const m = polku.map;
   const f = () => { if (!window.__slow) return; const t = performance.now(); while (performance.now() - t < 40) {} m.jumpTo({ bearing: m.getBearing() + 0.3 }); requestAnimationFrame(f); };
   requestAnimationFrame(f); return true; })()"""
+# A browser that draws Polku very slowly (#900): about two frames a second, each move made before a long frame, so the
+# frames come well over 300 ms after the last move. Polku still offers Fewer effects.
+VERY_SLOW_FRAMES = """(() => { window.__slow = true; const m = polku.map;
+  const f = () => { if (!window.__slow) return; m.jumpTo({ bearing: m.getBearing() + 0.3 }); const t = performance.now(); while (performance.now() - t < 450) {} requestAnimationFrame(f); };
+  requestAnimationFrame(f); return true; })()"""
 LOOK_NOW = """(() => ({ glass: document.documentElement.dataset.glass || 'none', search: getComputedStyle(document.querySelector('.search')).backdropFilter,
   saved: JSON.parse(localStorage.getItem('polku:settings')), toast: document.querySelector('#toast:not([hidden])')?.textContent || null,
   on: [...document.querySelectorAll('#settings-body .tg')].find((t) => t.textContent.startsWith('Fewer effects'))?.querySelector('input')?.checked ?? null }))()"""
+
+
+def fewer_effects_very_slow(chrome):
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb', 'fewerOffered': False})
+        pg.js(VERY_SLOW_FRAMES)
+        offered = pg.js("new Promise((ok) => { const t0 = performance.now(), f = () => { const t = document.querySelector('#toast:not([hidden])'); if (t && /slowly/.test(t.textContent)) ok(true); else if (performance.now() - t0 > 25000) ok(false); else setTimeout(f, 200); }; f(); })", timeout=30000)
+        pg.js("window.__slow = false, true")
+        fails = [] if offered else ['frames about two a second for 25 s while the map turned: no offer of Fewer effects']
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Fewer effects offered when Polku draws very slowly, two frames a second (#900)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 
 def fewer_effects(chrome):
@@ -22830,7 +22850,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239); the search field\'s hint in the glass\'s grey (#551)'),
     ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
-    ('effects', [fewer_effects, flat_offer], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
+    ('effects', [fewer_effects, fewer_effects_very_slow, flat_offer], 'Fewer effects (#632): offered once when frames are slow (very slow too, #900), its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('tokens', [tokens, chart_fonts], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did; a profile chart leaves no listener on document.fonts (#1066)'),
