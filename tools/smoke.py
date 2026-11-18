@@ -6825,7 +6825,8 @@ PACING = """(async () => {
 
 
 # Data sources says what failed (#687): a call with no answer (after its one retry) or an error answer counts as failed,
-# Overpass's too though it never backs off; a call that's cancelled (a losing mirror) or answers doesn't. Settings shows
+# Overpass's too though it never backs off, and a mirror osm.js gives up on at its deadline; a call that's cancelled (a
+# losing mirror) or answers doesn't. Settings shows
 # it under the source, and the note says map tiles and terrain aren't counted. A page with no app; mocked services.
 NET_FAILS = """(async () => {
   const errs = [], N = await import(location.origin + '/js/net.js'), U = await import(location.origin + '/js/usage.js');
@@ -6846,12 +6847,18 @@ NET_FAILS = """(async () => {
   await go('overpass', '/ok', { backoff: false });
   await go('fmi', '/slow', { timeoutMs: 100 });
   const of = (id) => N.usage().find((u) => u.id === id);
-  if (of('overpass').failed !== 2) errs.push(`Overpass: ${of('overpass').failed} failed, not 2 (a 504 and a dropped call; not the cancelled one or the answer)`);
+  // Overpass's own deadline in osm.js (every mirror stalls): each mirror it gave up on failed
+  const O = await import(location.origin + '/js/osm.js'), stalled = of('overpass').failed;
+  window.fetch = async (url, init) => (/interpreter/.test(String(url)) ? new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason))) : real(url, init));
+  await O.overpass('[out:json];out;', { timeoutMs: 100 }).catch(() => 0);
+  const mirrors = of('overpass').failed - stalled;
+  if (mirrors < 1) errs.push(`Overpass's deadline: ${mirrors} more failed after every mirror stalled`);
+  if (of('overpass').failed - mirrors !== 2) errs.push(`Overpass: ${of('overpass').failed} failed, not 2 (a 504 and a dropped call; not the cancelled one or the answer)`);
   if (of('fmi').failed !== 1) errs.push(`FMI: ${of('fmi').failed} failed, not 1 (a call that timed out)`);
   const box = document.createElement('div');
   U.renderUsage(box);
   const row = [...box.querySelectorAll('.use-row')].find((r) => r.querySelector('b')?.textContent === 'Overpass');
-  if (!row || !/2 failed/.test(row.textContent)) errs.push(`Data sources' Overpass row: “${row ? row.textContent : 'none'}”, no “2 failed”`);
+  if (!row || !new RegExp(`${2 + mirrors} failed`).test(row.textContent)) errs.push(`Data sources' Overpass row: “${row ? row.textContent : 'none'}”, no “${2 + mirrors} failed”`);
   if (!/map tiles and terrain/i.test(box.textContent)) errs.push('Data sources doesn’t say map tiles and terrain aren’t counted');
   window.fetch = real;
   return errs;
