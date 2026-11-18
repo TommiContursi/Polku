@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-18
 
+### 3D without a blank map ([#636](https://github.com/TommiContursi/Polku/issues/636))
+
+- Turning **3D** on, or **Raised hills** on or off, keeps the map on screen. Before, the whole map was drawn again from the start, so it went blank for a moment and its tiles loaded again.
+
 ### Best time to leave when the clocks change ([#1037](https://github.com/TommiContursi/Polku/issues/1037))
 
 - On the last Sunday of March and of October, when the clocks change, **Best time to leave** shows that day's own hours: 23 in March, and 25 in October, with the repeated hour shown twice. Before, the day always had 24 bars, so in October one hour was missing and the later bars stood an hour off the times under them.
