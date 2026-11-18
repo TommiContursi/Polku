@@ -14,6 +14,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-17
 
+### One type list in the planner and the cards ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- In the planner and the cards, each kind of text has one size: a card's title, a row's name, the line under it, a number and its word. The same kind of text now looks the same on every card and in every part of the planner, bigger on a phone and denser with a mouse.
+- A desktop's card at its spot on the map uses the same sizes as everything else with a mouse, so its title and numbers are no longer a step smaller than the planner's. The route's numbers no longer shrink in a narrow window or on a small phone.
+- Rows, buttons and notes in the planner and the cards have the same rounded corners, and the planner's sheet on a phone is as round as the other sheets.
+
 ### New typefaces ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 - Polku has typefaces of its own: Bricolage Grotesque for numbers and headings, and Atkinson Hyperlegible Next, made to be easy to read, for words. Every figure is set in Bricolage, so a zero looks the same in a row as in a number. Polku keeps the typefaces with the rest of the app, so they work offline too.

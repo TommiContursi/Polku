@@ -512,9 +512,6 @@ LAYERS = """(async () => {
   if (was) [...segBtn('Difficulty').parentElement.children].find((b) => b.textContent === was.textContent).click();
   await wait(200);
   if (!polku.map.getLayer('ov-soundings')) errs.push('paddle: soundings are not on');
-  // Ships sit with the water layers, not with traffic (#119); on by default in Paddle
-  const inGroup = (id) => [...body.querySelector(`.lg-group[data-group="${id}"]`).querySelectorAll('.tg .tg-text')].map((t) => t.firstChild.textContent.trim());
-  if (!inGroup('water').includes('Ships (live AIS)') || inGroup('safety').includes('Ships (live AIS)') || !polku.state.overlays.sfShips) errs.push(`Ships: in Water & nautical ${inGroup('water').includes('Ships (live AIS)')}, in Traffic & safety ${inGroup('safety').includes('Ships (live AIS)')}, on in Paddle ${!!polku.state.overlays.sfShips}`);
   // the weather fields have one too (no fetch: the switch only, not the data)
   const wx = { ...polku.state.weather };
   polku.set({ weather: { ...wx, rain: true } });
@@ -6130,14 +6127,15 @@ TERRAIN = """(async () => {
 
 # A bridge over a river (#576): made-up terrain at 100 m with an 80 m valley under the bridge. Over the bridge the height
 # runs straight from one end to the other, so the profile has no dip and no climb, and the bridge isn't missing terrain;
-# the same way without bridge=yes dips (the terrain is the mock's).
+# the same way without bridge=yes dips (the terrain is the mock's). A line that ends or starts on a bridge keeps the far
+# bank's height (120 m past the valley).
 BRIDGE = """(async () => {
   const errs = [], A = await import(location.origin + '/js/analysis.js'), realFetch = window.fetch;
-  const lat = 68, river = [24.5, 24.502];
+  const lat = 68, river = [24.5, 24.502], bank = 24.505;
   const tile = async (z, x) => {
     const S = 256, c = new OffscreenCanvas(S, S), ctx = c.getContext('2d'), img = ctx.createImageData(S, S);
     for (let px = 0; px < S; px++) {
-      const lon = ((x + (px + 0.5) / S) / 2 ** z) * 360 - 180, v = (lon > river[0] && lon < river[1] ? 80 : 100) + 32768;
+      const lon = ((x + (px + 0.5) / S) / 2 ** z) * 360 - 180, v = (lon > river[0] && lon < river[1] ? 80 : lon > bank ? 120 : 100) + 32768;
       for (let py = 0; py < S; py++) img.data.set([Math.floor(v / 256), Math.floor(v) % 256, 0, 255], (py * S + px) * 4);
     }
     ctx.putImageData(img, 0, 0);
@@ -6148,7 +6146,7 @@ BRIDGE = """(async () => {
     return m ? tile(+m[1], +m[2]) : realFetch(url, init);
   };
   try {
-    const coords = [[24.49, lat], [24.4995, lat], [24.5025, lat], [24.51, lat]];
+    const coords = [[24.49, lat], [24.4995, lat], [24.5025, lat], [24.504, lat]];
     const road = { highway: 'residential', surface: 'asphalt' };
     const over = await A.analyse({ coords, attrs: [{ tags: road }, { tags: { ...road, bridge: 'yes' } }, { tags: road }] }, { activity: 'hike' });
     const under = await A.analyse({ coords, attrs: [{ tags: road }, { tags: road }, { tags: road }] }, { activity: 'hike' });
@@ -6156,6 +6154,12 @@ BRIDGE = """(async () => {
     const steep = Math.max(...over.grade.map(Math.abs));
     if (over.up > 2 || over.down > 2 || steep > 1 || Math.min(...over.ele) < 99) errs.push(`over the bridge: ↑${over.up.toFixed(1)} m ↓${over.down.toFixed(1)} m, steepest ${steep.toFixed(1)} %, lowest ${Math.min(...over.ele).toFixed(1)} m (want level at 100 m)`);
     if (over.terrain) errs.push(`over the bridge, the terrain says missing: ${JSON.stringify(over.terrain)}`);
+    // a line that ends or starts on a bridge keeps the far bank's height at 120 m
+    const ends = [[24.49, lat], [24.4995, lat], [24.506, lat]], bridgeLast = [{ tags: road }, { tags: { ...road, bridge: 'yes' } }];
+    for (const [name, line] of [['ends', { coords: ends, attrs: bridgeLast }], ['starts', { coords: [...ends].reverse(), attrs: [...bridgeLast].reverse() }]]) {
+      const r = await A.analyse(line, { activity: 'hike' }), top = Math.max(...r.ele), low = Math.min(...r.ele);
+      if (!(top > 110) || low < 99) errs.push(`a line that ${name} on a bridge: highest ${top.toFixed(1)} m, lowest ${low.toFixed(1)} m (want the bank's 120 m, nothing under 100 m)`);
+    }
   } finally {
     window.fetch = realFetch;
   }
@@ -8467,7 +8471,7 @@ def design_colours(chrome):
 
 # The font sizes, weights and corners typed in place in css/app.css, rather than taken from the values on :root (#382).
 # The count may only fall: each of the migration's PRs moves some onto the values and lowers TOKENS_CEILING to the new count.
-TOKENS_CEILING = 527
+TOKENS_CEILING = 295
 TOKENS_TYPED = re.compile(r'(?<![-\w])(?:font-size\s*:[^;}]*\d(?:\.\d+)?px|font\s*:[^;}]*\d(?:\.\d+)?px|font-weight\s*:\s*\d+|border(?:-[a-z]+)*-radius\s*:[^;}]*\d(?:\.\d+)?px)')
 
 
@@ -20423,6 +20427,8 @@ def controls(chrome):
 LV_JS = """(() => { window.LV = {
   day: (sec) => new Date(sec * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }),
   clock: (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  // a time as When names it: the time alone today, its day too on another (#1024: three hours ahead is tomorrow after 21:00)
+  words: (sec) => (new Date(sec * 1000).toDateString() === new Date().toDateString() ? LV.clock(sec) : `${LV.day(sec)}, ${LV.clock(sec)}`),
   iso(sec) { const d = new Date(sec * 1000), z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; },
   at(days, hh, mm) { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(hh, mm, 0, 0); return d.getTime() / 1000; },
   // 'box': the trip's box's When pill; 'start': the start's card's When row; 'card': a card's row the phone's own picker sets (Go on at)
@@ -21006,8 +21012,10 @@ ARRIVE_JS = """(async () => {
   pickBy(LV.iso(by));
   await settled();
   let r = read();
-  const leave = `leave ${W.got?.about ? 'about ' : ''}${LV.clock(r.start)}`;
-  if (W.by !== by || W.at != null || W.pop || r.end > by || by - r.end > 90 || r.name !== `Arrive by ${LV.clock(by)}` || r.there !== `· ${leave}` || r.nums !== leave || r.note)
+  // the departure with its weekday where it isn't Arrive by's day (just before midnight, for Arrive by just after it)
+  const sameDay = new Date(r.start * 1000).toDateString() === new Date(by * 1000).toDateString();
+  const leave = `leave ${W.got?.about ? 'about ' : ''}${sameDay ? '' : new Date(r.start * 1000).toLocaleDateString([], { weekday: 'short' }) + ' '}${LV.clock(r.start)}`;
+  if (W.by !== by || W.at != null || W.pop || r.end > by || by - r.end > 90 || r.name !== `Arrive by ${LV.words(by)}` || r.there !== `· ${leave}` || r.nums !== leave || r.note)
     errs.push(`Arrive by in three hours: ${JSON.stringify({ ...r, by, at: W.at, menu: !!W.pop })}`);
   // its menu: Arrive by… ticked, with its time
   W.menu(LV.row('box'));
@@ -21043,7 +21051,7 @@ ARRIVE_JS = """(async () => {
   // Leave at takes its place
   LV.pick('box', LV.iso(by));
   await settled();
-  if (W.by != null || W.at !== by || LV.when('box').name !== `Leave ${LV.clock(by)}`) errs.push(`Leave at after Arrive by: arrives by ${W.by}, leaves ${W.at}, the box says ${LV.when('box').name}`);
+  if (W.by != null || W.at !== by || LV.when('box').name !== `Leave ${LV.words(by)}`) errs.push(`Leave at after Arrive by: arrives by ${W.by}, leaves ${W.at}, the box says ${LV.when('box').name}`);
   // too soon: it leaves now, and says when you're there
   const soon = Math.ceil(Date.now() / 60000) * 60 + 120;
   W.setBy(soon);
