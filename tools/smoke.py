@@ -10492,7 +10492,7 @@ B3D_WANT = {
 # job of its own on GitHub's runner, where the one group took 16–27 minutes (#411).
 # 3D off while its terrain is still loading (#288): on a slow network (300 ms a request), on and off again 0.1 to 1.2 s
 # later, 24 times, each in a new place so the terrain isn't loaded yet. No console error: MapLibre's terrain callback
-# read its terrain after it was gone (about one run in two hit it with 12 rounds).
+# read its terrain after it was gone. It depends on timing: before the fix about half the runs hit it, never after.
 def button3d_loading(chrome):
     pg = chrome.page(1440, 900, False)
     try:
@@ -10502,7 +10502,7 @@ def button3d_loading(chrome):
         pg.c.send('Network.enable', {}, pg.s)
         pg.c.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 300, 'downloadThroughput': 200000, 'uploadThroughput': 100000}, pg.s)
         for k, delay in enumerate([0.1, 0.2, 0.3, 0.5, 0.8, 1.2] * 4):
-            pg.js(f"(() => {{ polku.map.jumpTo({{ center: [{22 + k * 0.4:.1f}, {61 + (k % 3) * 0.5:.1f}], zoom: 12 }}); return true; }})()")
+            pg.js(f"(() => {{ polku.map.jumpTo({{ center: [{21 + k * 0.7:.1f}, {60.5 + (k % 4) * 0.6:.1f}], zoom: 12 }}); return true; }})()")
             time.sleep(0.3)
             pg.js("document.querySelector('#btn-3d').click(), true")
             time.sleep(delay)
