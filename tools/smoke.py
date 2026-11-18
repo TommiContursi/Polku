@@ -6319,6 +6319,7 @@ OBJECT_SHADOWS = """(async () => {
 
 # The sky in 3D (#644): from the sun's height at the map's hour, and the weather only while a forecast is loaded (WX_FIXED:
 # clear south of 63°, rain north of it). No forecast: the pale sky that claims no weather. The buildings lit by the sun.
+# On a pinned clock (PINNED_CLOCK), as the sun's heights it needs aren't there every day of the year.
 SKY_3D = """(async () => {
   const m = polku.map, w = polku.weather, out = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const { sunPosition } = await import(location.origin + '/js/sun.js'), { timeAtHour } = await import(location.origin + '/js/wxmap.js');
@@ -6348,11 +6349,22 @@ SKY_3D = """(async () => {
 })()"""
 
 
+# The page's clock for SKY_3D, from 2026-09-22 09:00 UTC on (#946): in Finland's winter the sun never gets 6° up, the
+# sky's day; on that day it's 27° at Tampere at the start and 24° at Oulu, dusk is 7 hours on and night 10.
+PINNED_CLOCK = """(() => {
+  const RealDate = Date, shift = RealDate.UTC(2026, 8, 22, 9) - RealDate.now();
+  window.Date = class extends RealDate {
+    constructor(...a) { super(...(a.length ? a : [RealDate.now() + shift])); }
+    static now() { return RealDate.now() + shift; }
+  };
+})();"""
+
+
 def sky_3d(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
     try:
-        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + "window.__wx.temp = 5; window.__wx.precip = (lat) => (lat > 63 ? 2 : 0); window.__wx.cloud = (lat) => (lat > 63 ? 100 : 0);"}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': PINNED_CLOCK + EMPTY_DEPTHS + WX_FIXED + "window.__wx.temp = 5; window.__wx.precip = (lat) => (lat > 63 ? 2 : 0); window.__wx.cloud = (lat) => (lat > 63 ? 100 : 0);"}, pg.s)
         pg.open_app({'activity': 'hike', 'terrain3d': True}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#11/61.4985/23.7640/0/60')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         fails += pg.js(SKY_3D, timeout=180000)
@@ -6822,6 +6834,58 @@ PACING = """(async () => {
   localStorage.removeItem('polku.usage');
   return errs;
 })()"""
+
+
+# Data sources says what failed (#687): a call with no answer (after its one retry) or an error answer counts as failed,
+# Overpass's too though it never backs off, and a mirror osm.js gives up on at its deadline; a call that's cancelled (a
+# losing mirror) or answers doesn't. Settings shows
+# it under the source, and the note says map tiles and terrain aren't counted. A page with no app; mocked services.
+NET_FAILS = """(async () => {
+  const errs = [], N = await import(location.origin + '/js/net.js'), U = await import(location.origin + '/js/usage.js');
+  const real = window.fetch;
+  window.fetch = async (url, init) => {
+    const u = String(url);
+    if (u.includes('/drop')) throw new TypeError('Failed to fetch');
+    if (u.includes('/slow')) return new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason)));
+    if (u.includes('/504')) return new Response('', { status: 504 });
+    if (u.includes('/ok')) return new Response('{}');
+    return real(url, init);
+  };
+  const go = (src, path, opts = {}) => N.request(src, `https://example.invalid${path}`, opts).catch((e) => e.name);
+  await go('overpass', '/504', { backoff: false });
+  await go('overpass', '/drop', { backoff: false });
+  const ac = new AbortController(), lost = go('overpass', '/slow', { backoff: false, signal: ac.signal });
+  setTimeout(() => ac.abort(), 50); await lost;
+  await go('overpass', '/ok', { backoff: false });
+  await go('fmi', '/slow', { timeoutMs: 100 });
+  const of = (id) => N.usage().find((u) => u.id === id);
+  // Overpass's own deadline in osm.js (every mirror stalls): each mirror it gave up on failed
+  await new Promise((ok) => document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: location.origin + '/css/app.css', onload: ok }))); // (osm.js's imports read its colours)
+  const O = await import(location.origin + '/js/osm.js'), stalled = of('overpass').failed;
+  window.fetch = async (url, init) => (/interpreter/.test(String(url)) ? new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason))) : real(url, init));
+  await O.overpass('[out:json];out;', { timeoutMs: 100 }).catch(() => 0);
+  const mirrors = of('overpass').failed - stalled;
+  if (mirrors < 1) errs.push(`Overpass's deadline: ${mirrors} more failed after every mirror stalled`);
+  if (of('overpass').failed - mirrors !== 2) errs.push(`Overpass: ${of('overpass').failed} failed, not 2 (a 504 and a dropped call; not the cancelled one or the answer)`);
+  if (of('fmi').failed !== 1) errs.push(`FMI: ${of('fmi').failed} failed, not 1 (a call that timed out)`);
+  const box = document.createElement('div');
+  U.renderUsage(box);
+  const row = [...box.querySelectorAll('.use-row')].find((r) => r.querySelector('b')?.textContent === 'Overpass');
+  if (!row || !new RegExp(`${2 + mirrors} failed`).test(row.textContent)) errs.push(`Data sources' Overpass row: “${row ? row.textContent : 'none'}”, no “${2 + mirrors} failed”`);
+  if (!/map tiles and terrain/i.test(box.textContent)) errs.push('Data sources doesn’t say map tiles and terrain aren’t counted');
+  window.fetch = real;
+  return errs;
+})()"""
+
+
+def net_fails(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.goto(BASE + 'sw.js')  # this origin, without the app
+    fails = pg.js(NET_FAILS, timeout=30000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Data sources counts the calls that failed, and says what it leaves out (#687)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 
 def pacing(chrome):
@@ -8744,9 +8808,29 @@ def appearance(chrome):
 SLOW_FRAMES = """(() => { window.__slow = true; const m = polku.map;
   const f = () => { if (!window.__slow) return; const t = performance.now(); while (performance.now() - t < 40) {} m.jumpTo({ bearing: m.getBearing() + 0.3 }); requestAnimationFrame(f); };
   requestAnimationFrame(f); return true; })()"""
+# A browser that draws Polku very slowly (#900): about two frames a second, each move made before a long frame, so the
+# frames come well over 300 ms after the last move. Polku still offers Fewer effects.
+VERY_SLOW_FRAMES = """(() => { window.__slow = true; const m = polku.map;
+  const f = () => { if (!window.__slow) return; m.jumpTo({ bearing: m.getBearing() + 0.3 }); const t = performance.now(); while (performance.now() - t < 450) {} requestAnimationFrame(f); };
+  requestAnimationFrame(f); return true; })()"""
 LOOK_NOW = """(() => ({ glass: document.documentElement.dataset.glass || 'none', search: getComputedStyle(document.querySelector('.search')).backdropFilter,
   saved: JSON.parse(localStorage.getItem('polku:settings')), toast: document.querySelector('#toast:not([hidden])')?.textContent || null,
   on: [...document.querySelectorAll('#settings-body .tg')].find((t) => t.textContent.startsWith('Fewer effects'))?.querySelector('input')?.checked ?? null }))()"""
+
+
+def fewer_effects_very_slow(chrome):
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb', 'fewerOffered': False})
+        pg.js(VERY_SLOW_FRAMES)
+        offered = pg.js("new Promise((ok) => { const t0 = performance.now(), f = () => { const t = document.querySelector('#toast:not([hidden])'); if (t && /slowly/.test(t.textContent)) ok(true); else if (performance.now() - t0 > 25000) ok(false); else setTimeout(f, 200); }; f(); })", timeout=30000)
+        pg.js("window.__slow = false, true")
+        fails = [] if offered else ['frames about two a second for 25 s while the map turned: no offer of Fewer effects']
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Fewer effects offered when Polku draws very slowly, two frames a second (#900)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 
 def fewer_effects(chrome):
@@ -21360,6 +21444,40 @@ def head_names(chrome):
     return not fails
 
 
+# An imported track has no way tags, so no surface (#493): on an MTB it's timed at the gravel speed, and Go's time
+# breakdown lists it under Gravel & unpaved, the row of that speed, not under Paved. Road's key facts don't call a way
+# with no surface unpaved.
+TRACK_ROWS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
+  const F = await import(location.origin + '/js/facts.js');
+  p.setActive(true);
+  p.clear();
+  const c = [];
+  for (let i = 0; i <= 30; i++) c.push([23.80 + i * 0.002, 61.51]);
+  p.loadTrack(c, 'Imported track');
+  for (let k = 0; k < 60 && !(p.analysis && p.analysis.time > 0); k++) await wait(200);
+  const a = p.analysis;
+  if (!a) return ['no analysis of the track'];
+  const rows = [...p.speedTable(a).querySelectorAll('.speed-row:not(.sub):not(.total) > span')].map((x) => x.textContent);
+  if (rows.join(', ') !== 'Gravel & unpaved') errs.push(`an imported track on an MTB: its time listed under ${rows.join(', ')}, not Gravel & unpaved (timed at the gravel speed)`);
+  const road = F.keyFacts(a, { sport: 'road' }).find((f) => f.k === 'unpaved');
+  if (road) errs.push(`Road: a track with no surface is said to be unpaved (${road.aria})`);
+  p.clear();
+  return errs;
+})()"""
+
+
+def track_rows(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.51/23.83')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(TRACK_ROWS, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} an imported track's time under the row of the speed it was timed at (#493)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def keyfacts(chrome):
     fails = []
 
@@ -22719,7 +22837,7 @@ GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, best_time, best_time_snow, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
-    ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
+    ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
@@ -22760,7 +22878,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239); the search field\'s hint in the glass\'s grey (#551)'),
     ('targets', [targets], 'phones, outside the planner (#235, #208): 44 px targets by a finger, words of 11 px (the map\'s buttons\' 12), no tap flash, no hover left after a tap, a switch held down'),
-    ('effects', [fewer_effects, flat_offer], 'Fewer effects (#632): offered once when frames are slow, its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
+    ('effects', [fewer_effects, fewer_effects_very_slow, flat_offer], 'Fewer effects (#632): offered once when frames are slow (very slow too, #900), its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('tokens', [tokens, chart_fonts], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did; a profile chart leaves no listener on document.fonts (#1066)'),
@@ -22787,7 +22905,7 @@ GROUPS = [
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list, tick_under], 'Leave now\'s refresh leaving focus and a Reorder drag alone (#966); Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave, when_start, arrive_by, best_time_menu], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
-    ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
+    ('keyfacts', [keyfacts, warn_slot, track_rows], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values); an imported track\'s time under the row of its speed (#493)'),
     ('views', [views, views_names], 'the planner\'s views, Route and Check (#424\'s C, #382): Route opens with Check\'s row, then the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, Check\'s count and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops, sheet_card_peek, sheet_profile_peek], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
