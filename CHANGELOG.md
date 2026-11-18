@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-18
 
+### Fewer effects on a very slow device ([#900](https://github.com/TommiContursi/Polku/issues/900))
+
+- Polku offers **Fewer effects** on a device that draws the map very slowly, at two or three frames a second, too. Before, it was offered only when the frames came faster than that, so the slowest devices, which need it most, never saw the offer.
+
 ### Uphill colours when the terrain is missing ([#130](https://github.com/TommiContursi/Polku/issues/130))
 
 - When the terrain doesn't load for some trails, Layers says so under **Uphill**: those trails have no uphill colours yet, and Polku keeps trying.
