@@ -125,12 +125,14 @@
       if (window.polku || !(e instanceof ErrorEvent || e.target instanceof HTMLScriptElement)) return;
       let again = false;
       try {
-        again = Date.now() - (+sessionStorage.getItem('polku:startRetry') || 0) > 60000;
-        if (again) sessionStorage.setItem('polku:startRetry', Date.now());
+        again = !sessionStorage.getItem('polku:startRetry');
+        if (again) sessionStorage.setItem('polku:startRetry', '1');
       } catch { /* private mode: no try more, so never a loop */ }
       if (again) location.reload();
       else document.getElementById('start-failed').hidden = false;
     }, true);
+    // started: a later failure gets its one try more again
+    addEventListener('load', () => { if (window.polku) try { sessionStorage.removeItem('polku:startRetry'); } catch { /* private mode */ } });
   </script>
 
   <script type="module" src="js/main.js"></script>

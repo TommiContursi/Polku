@@ -9524,6 +9524,8 @@ def start_fails(chrome):
         pg.map_loaded()
         if pg.js(banner):
             fails.append(f'{name}: the message still there after Reload opened Polku')
+        if pg.js("sessionStorage.getItem('polku:startRetry')"):
+            fails.append(f'{name}: Polku opened, but a later failure would get no try more')
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
 
     for w, h_, phone in ((390, 844, True), (1440, 900, False)):
