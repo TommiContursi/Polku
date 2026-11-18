@@ -73,7 +73,6 @@ export function ramp(stops, v) {
   }
   return hex(stops[stops.length - 1][1]);
 }
-export const rampHex = (stops, v) => `#${ramp(stops, v).map((x) => x.toString(16).padStart(2, '0')).join('')}`;
 const rampCss = (stops) => `linear-gradient(90deg, ${stops.map(([, c], i) => `${c} ${(i / (stops.length - 1)) * 100}%`).join(', ')})`;
 
 // One clock for the whole app: hour 0 is "now", hour k is k full hours ahead

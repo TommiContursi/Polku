@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-18
 
+### Ships with the water layers ([#119](https://github.com/TommiContursi/Polku/issues/119))
+
+- In Layers, **Ships (live AIS)** is under **Water & nautical**, beside the nautical marks and the shipping lanes, rather than under **Traffic & safety**. It's in the same place among the tiles you can add to the quick drawer. Whether it's on stays as you had it.
+
 ### Bridges in a way's profile ([#576](https://github.com/TommiContursi/Polku/issues/576))
 
 - In the profile of a road or a path you tap on the map, the height over a bridge runs straight from one end of the bridge to the other. Before, it dipped to the water or the valley under it, and the dip counted as climbing and could show as a steep stretch on a flat street. A planned route over a bridge still dips: the routing service doesn't say where its bridges are.
