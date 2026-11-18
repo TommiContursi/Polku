@@ -100,10 +100,11 @@ export async function request(source, url, opts = {}) {
       return send();
     });
   } catch (err) {
-    // no answer: failed, unless it was cancelled (a losing mirror, a view left) or the device is offline (#687)
-    if (!init.signal?.aborted && err.name !== 'AbortError' && err.name !== 'Limited' && navigator.onLine) {
+    // no answer: failed, a timeout too (the caller's own deadline aborts with a TimeoutError), unless it was cancelled
+    // (an AbortError: a losing mirror, a view left) or the device is offline (#687)
+    if (err.name !== 'AbortError' && err.name !== 'Limited' && navigator.onLine) {
       failed[source] = (failed[source] || 0) + 1;
-      if (err.name !== 'TimeoutError' && backoff) fail(source, 'down');
+      if (!init.signal?.aborted && err.name !== 'TimeoutError' && backoff) fail(source, 'down');
     }
     throw err;
   }
