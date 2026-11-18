@@ -14533,6 +14533,11 @@ BT_DST = """(async (want) => {
   const card = p.cards.current;
   card.btK = 2; card.btTry = null; p.btRedraw(card);
   if (!(await BT.until(() => card.bt?.[2]?.res && BT.done(), 40000))) return ['Sunday’s hours weren’t worked out'];
+  // the choices kept near the departure's own time of day: a Sunday noon departure is 12:00 on the clock (720 minutes), not
+  // the minutes since midnight, which are an hour more or less that day
+  const noon = BT.day(2, 12), c2 = {};
+  p.bestOpen.call({ trip: () => ({ start: noon }) }, c2);
+  if (c2.btAnchor !== 720) errs.push(`Sunday noon: the choices kept near ${c2.btAnchor} minutes, not 720 (12:00)`);
   const hrs = card.bt[2].res.hrs, slots = BT.box().querySelectorAll('.bt-slot').length, range = BT.box().querySelector('.bt-range');
   const hour = (x) => new Date(x.h0 * 1000).getHours();
   if (hrs.length !== want || slots !== want) errs.push(`Sunday: ${hrs.length} hours worked out, ${slots} slots, not ${want}`);
