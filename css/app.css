@@ -485,7 +485,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-now > div:not(.tl-now-main) { height: var(--tl-row); line-height: var(--tl-row); }
 .tl-now-main { height: var(--tl-icon); }
 .tl-now-main b { font-size: var(--font-number); font-weight: var(--weight-strong); line-height: 1; letter-spacing: -0.02em; }
-.tl-now-main small { margin-left: auto; align-self: flex-start; font-size: var(--font-line); color: var(--muted); white-space: normal; text-align: right; line-height: 1.15; } /* (on two short lines where there's no room: never cut, the row no taller than its icon, #243) */
+.tl-now-main small { margin-left: auto; align-self: flex-start; font-size: var(--font-small); color: var(--muted); white-space: normal; text-align: right; line-height: 1.15; } /* (on two short lines where there's no room: never cut, the row no taller than its icon, #243) */
 .tl-now-main small[lang] { hyphens: auto; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } /* (a place's name, broken as Finnish words are: two lines at most, whole in the tooltip, #1028) */
 .tl-now .tl-arrow { width: 12px; height: 12px; fill: currentColor; flex: none; }
 .tl-at { display: none; } /* (the time at the end of a phone's one-line reading in Your trip: below) */
