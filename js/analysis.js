@@ -97,8 +97,12 @@ export async function analyse(line, opt) {
   const gap = new Uint8Array(n);
   let known = 0;
   for (let i = 0; i < n; i++) if (Number.isFinite(raw[i])) known++; else gap[i] = 1;
-  const ele = smooth(fillGaps(raw, along), along, 30);
   const sAttr = src.map((i) => attrs[Math.min(i, attrs.length - 1)] || {});
+  // on a bridge the terrain is the water or the valley under it: the height runs straight from end to end (#576).
+  // A bridge's samples run from just past its first node to its last node; both nodes are on the banks and keep theirs.
+  const onBridge = (i) => { const b = sAttr[i].tags?.bridge; return !!b && b !== 'no' && b !== 'boardwalk'; };
+  for (let i = 1; i < n - 1; i++) if (onBridge(i) && onBridge(i + 1)) raw[i] = NaN;
+  const ele = smooth(fillGaps(raw, along), along, 30);
 
   // Grades over ±20 m
   const grade = new Float32Array(n);

@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-18
+
+### Bridges in a way's profile ([#576](https://github.com/TommiContursi/Polku/issues/576))
+
+- In the profile of a road or a path you tap on the map, the height over a bridge runs straight from one end of the bridge to the other. Before, it dipped to the water or the valley under it, and the dip counted as climbing and could show as a steep stretch on a flat street. A planned route over a bridge still dips: the routing service doesn't say where its bridges are.
+
 ## 2026-11-17
 
 ### One type list in the planner and the cards ([#382](https://github.com/TommiContursi/Polku/issues/382))
