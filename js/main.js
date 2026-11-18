@@ -172,11 +172,11 @@ map.once('styledata', () => {
   const tm = Object.getPrototypeOf(map.style.tileManagers.ofm), own = tm._updateRetainedTiles;
   if (typeof own !== 'function' || typeof tm._addTile !== 'function') throw new Error('MapLibre changed: no coarse map underneath (#1091)');
   tm._updateRetainedTiles = function (ideal, zoom) {
+    // asked for before the detail, so they aren't queued behind it (MapLibre loads 16 images at a time)
+    const ups = COARSE.has(this.id) ? ideal.map((t) => t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4))).filter((up, i) => up.key !== ideal[i].key) : [];
+    for (const up of ups) this._addTile(up);
     const retain = own.call(this, ideal, zoom);
-    if (COARSE.has(this.id)) for (const t of ideal) {
-      const up = t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4));
-      if (up.key !== t.key) { this._addTile(up); retain[up.key] = up; }
-    }
+    for (const up of ups) retain[up.key] = up;
     return retain;
   };
 });
