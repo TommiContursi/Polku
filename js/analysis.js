@@ -419,7 +419,7 @@ export function surfaceClass(a, i) {
   if (tags.portage) return 'carry';
   if (at.mode === 'water' || tags.route === 'water') return 'water';
   if (['path', 'bridleway', 'footway', 'steps'].includes(tags.highway)) return 'trail';
-  return PAVED.has(a.surf[i]) ? 'paved' : a.surf[i] === 'unknown' ? 'paved' : 'unpaved';
+  return PAVED.has(a.surf[i]) ? 'paved' : 'unpaved'; // with no surface too: timed as unpaved by estimateTime (#493)
 }
 
 /**
