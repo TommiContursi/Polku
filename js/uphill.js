@@ -67,8 +67,7 @@ export class UphillLayer {
     const run = ++this.run;
     const b = map.getBounds();
     const view = (this.view = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
-    // an OSM-tagged climb in view graded without some of its terrain counts too, until it's graded again
-    let missing = tilesIn(view).some(([x, y]) => this.osmTiles.get(`${x}/${y}`)?.partial);
+    let missing = false;
     const feats = map.querySourceFeatures('ofm', {
       sourceLayer: 'transportation',
       // Real trails only: tracks, paths/bridleways/steps, and footways that are
