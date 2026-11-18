@@ -1014,12 +1014,11 @@ function setActivity(k, { from = 'map' } = {}) {
 
 function set3d(on) {
   state.terrain3d = on;
-  const tilt = () => map.easeTo({ pitch: on ? Math.max(60, map.getPitch()) : 0, duration: 800 });
-  // the tilt started with no terrain on the map: MapLibre's easeTo over a terrain holds the map's centre at the height it
-  // had then (0, before the terrain's tiles load) until the next drag, and the map's points drift off what's drawn (#636)
-  if (on) tilt();
   applyStyle();
-  if (!on) tilt();
+  // freezeElevation: the map's centre follows the terrain's height again once the tilt ends. Without it MapLibre's easeTo
+  // over a terrain holds it at the height it had then (0, before the terrain's tiles load) until the next drag, and the
+  // map's points drift off what's drawn (#636)
+  map.easeTo({ pitch: on ? Math.max(60, map.getPitch()) : 0, duration: 800, freezeElevation: true });
   renderLayersPanel();
 }
 // the hills raised in 3D, or 3D only tilting the map, flat (#936)
