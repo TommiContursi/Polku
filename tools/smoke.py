@@ -512,6 +512,9 @@ LAYERS = """(async () => {
   if (was) [...segBtn('Difficulty').parentElement.children].find((b) => b.textContent === was.textContent).click();
   await wait(200);
   if (!polku.map.getLayer('ov-soundings')) errs.push('paddle: soundings are not on');
+  // Ships sit with the water layers, not with traffic (#119); on by default in Paddle
+  const inGroup = (id) => [...body.querySelector(`.lg-group[data-group="${id}"]`).querySelectorAll('.tg .tg-text')].map((t) => t.firstChild.textContent.trim());
+  if (!inGroup('water').includes('Ships (live AIS)') || inGroup('safety').includes('Ships (live AIS)') || !polku.state.overlays.sfShips) errs.push(`Ships: in Water & nautical ${inGroup('water').includes('Ships (live AIS)')}, in Traffic & safety ${inGroup('safety').includes('Ships (live AIS)')}, on in Paddle ${!!polku.state.overlays.sfShips}`);
   // the weather fields have one too (no fetch: the switch only, not the data)
   const wx = { ...polku.state.weather };
   polku.set({ weather: { ...wx, rain: true } });
