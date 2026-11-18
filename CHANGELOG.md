@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-18
 
+### Uphill colours when the terrain is missing ([#130](https://github.com/TommiContursi/Polku/issues/130))
+
+- When the terrain doesn't load for some trails, Layers says so under **Uphill**: those trails have no uphill colours yet, and Polku keeps trying.
+- The uphill colours come in by themselves once the terrain loads, with the map standing still, and at once when your phone is back online. Before, they waited for the map to move.
+
 ### Ships with the water layers ([#119](https://github.com/TommiContursi/Polku/issues/119))
 
 - In Layers, **Ships (live AIS)** is under **Water & nautical**, beside the nautical marks and the shipping lanes, rather than under **Traffic & safety**. It's in the same place among the tiles you can add to the quick drawer. Whether it's on stays as you had it.

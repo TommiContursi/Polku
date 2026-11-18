@@ -336,7 +336,7 @@ function applyStyle() {
 }
 
 // ------------------------------------------------------------------ modules
-const uphill = new UphillLayer(map, (fc) => setData('uphill', fc));
+const uphill = new UphillLayer(map, (fc) => setData('uphill', fc), () => { const n = $('#uphill-status'); if (n) n.hidden = !uphill.missing; });
 // Trail details from OSM; inside the tiles that have loaded, trails are drawn from them.
 let busyToldAt = 0;
 const details = new TrailDetails(map, {
@@ -1256,6 +1256,7 @@ function trailControls() {
       both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
       winter: 'Trails by how soon they open after snow (OSM mtb:winter), ploughed and unploughed paths, no access in winter, ski tracks: Trailmap’s winter classes, from OpenStreetMap where mapped (zoom 11+). In winter they show by themselves (the Winter group).',
     }[state.trailColors] || ''),
+    state.trailColors === 'up' || state.trailColors === 'both' ? h('p', { id: 'uphill-status', class: 'note', hidden: !uphill.missing }, 'The terrain didn’t load for some trails: no uphill colours there yet. Polku keeps trying.') : null,
     state.winterOn && state.trailColors !== 'winter' && state.trailColors !== 'off' ? h('p', { class: 'note' }, '❄ It’s winter here: the difficulty colours are faded, and the winter ways show over them (Winter, below).') : null,
     state.trailColors === 'down' || state.trailColors === 'both' ? trailColorOpacityRow('down', 'Difficulty') : null,
     state.trailColors === 'up' || state.trailColors === 'both' ? trailColorOpacityRow('up', 'Uphill') : null,

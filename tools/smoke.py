@@ -756,11 +756,12 @@ def trail_card(chrome):
 
 
 # Before the page loads: the terrain tiles fail (window.__dem.mode = 'ok' makes
-# them load: heights by the longitude, a hill every 0.02°), Overpass is held
+# them load: heights by the longitude, a hill every 0.02°; 'hold' keeps them waiting until release()), Overpass is held
 # back and the recorded Tykkikallio tile seeded (16 ways tagged mtb:scale:uphill).
 DEM_MOCK = """(() => {
   if (!/^\\/(#|$)/.test(location.pathname + location.hash)) return;
-  const realFetch = window.fetch, D = window.__dem = { mode: 'fail', asked: [] };
+  const realFetch = window.fetch, D = window.__dem = { mode: 'fail', asked: [], held: [] };
+  D.release = () => { D.mode = 'fail'; D.held.splice(0).forEach((no) => no()); }; // the held tiles fail, and so does what comes after
   const tile = async (z, x) => {
     const S = 256, c = new OffscreenCanvas(S, S), ctx = c.getContext('2d'), img = ctx.createImageData(S, S);
     for (let px = 0; px < S; px++) {
@@ -774,6 +775,7 @@ DEM_MOCK = """(() => {
     const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\/(\\d+)/.exec(String(url));
     if (!m) return realFetch(url, init);
     D.asked.push(`${D.mode} ${m[1]}/${m[2]}/${m[3]}`);
+    if (D.mode === 'hold') return new Promise((_, no) => D.held.push(() => no(new TypeError('Failed to fetch'))));
     return D.mode === 'fail' ? Promise.reject(new TypeError('Failed to fetch')) : tile(+m[1], +m[2]);
   };
   import(location.origin + '/js/trails.js').then(async (T) => {
@@ -782,25 +784,35 @@ DEM_MOCK = """(() => {
   });
 })()"""
 
-# The uphill colours when the terrain comes back late (#93): blank while it fails, then
-# every trail in view coloured after a small pan (as many pieces as with the terrain
-# there from the start), the OSM-tagged climbs too; trails coloured with the terrain
-# stay cached, so panning back and forth grades nothing again.
+# The uphill colours when the terrain comes back late (#93, #130): blank while it fails, and Layers says so under Uphill;
+# back online, every trail in view coloured with no map move (as many pieces as with the terrain there from the start),
+# the OSM-tagged climbs too, and the note gone; trails coloured with the terrain stay cached, so panning back and forth
+# grades nothing again; terrain failing in a new view comes in by itself, with the map standing still, once it loads;
+# and an OSM-tagged climb's terrain that fails after the next update has begun still shows the note.
 UPHILL_LATE = """(async () => {
   const m = polku.map, U = polku.uphill, D = window.__dem, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const pieces = () => U.fc.features.length, tagged = () => U.fc.features.filter((f) => f.properties.osm).length;
   // until the colours stop changing for 2 s
   const settle = async () => { let n = -1, t = Date.now(); const t0 = t; while (Date.now() - t0 < 30000 && Date.now() - t < 2000) { await wait(250); if (pieces() !== n) { n = pieces(); t = Date.now(); } } };
   const nudge = async () => { for (const dx of [60, -60]) { m.panBy([dx, 0], { duration: 0 }); await wait(500); } await settle(); };
+  // Layers' Trails & difficulty, where Uphill is picked: what it says while the terrain is missing
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); await wait(250); document.querySelector('#quick-layers .qt-more').click(); }
+  const note = () => { const n = document.querySelector('#uphill-status'); return n && n.getClientRects().length ? n.textContent : ''; };
+  const NOTE = 'The terrain didn’t load for some trails: no uphill colours there yet. Polku keeps trying.';
   await wait(1500); await settle();
   if (!U.enabled) return ['the uphill colours are not on'];
   if (!D.asked.length) return ['(the test) the terrain was never asked for'];
   if (pieces()) errs.push(`no terrain: ${pieces()} pieces coloured`);
-  // the terrain is back: failed tiles are asked for again after 15 s, on the next map move
+  if (note() !== NOTE) errs.push(`no terrain: Layers says “${note()}” under Uphill`);
+  // back online: the failed tiles asked for again at once, with no map move (not after 15 s)
   D.mode = 'ok';
-  await wait(16000);
-  await nudge();
+  const t0 = Date.now();
+  window.dispatchEvent(new Event('online'));
+  while (Date.now() - t0 < 8000 && !pieces()) await wait(250);
+  await settle();
   const back = pieces(), backTagged = tagged();
+  if (!back) errs.push('back online: no colours with the map standing still');
+  if (note()) errs.push(`terrain back: Layers still says “${note()}”`);
   // panning back and forth: the trails graded with the terrain are kept, not graded again
   const kept = new Map(U.done), asked = D.asked.length;
   await nudge();
@@ -814,6 +826,37 @@ UPHILL_LATE = """(async () => {
   if (all < 100 || allTagged < 5) errs.push(`(the test) only ${all} pieces, ${allTagged} from OSM tags, with the terrain loaded`);
   if (back < all * 0.95) errs.push(`terrain back: ${back} pieces coloured, against ${all} with the terrain there from the start`);
   if (backTagged < allTagged) errs.push(`terrain back: ${backTagged} pieces from OSM's uphill tags, against ${allTagged}`);
+  // a new view whose terrain fails, then loads: its colours come in by themselves with the map standing still (dem.js
+  // asks for a failed tile again after 15 s)
+  D.mode = 'fail';
+  m.panBy([1600, 0], { duration: 0 });
+  await wait(1000); await settle();
+  const away = pieces();
+  if (note() !== NOTE) errs.push(`a new view with no terrain: Layers says “${note()}” under Uphill`);
+  D.mode = 'ok';
+  const t1 = Date.now();
+  while (Date.now() - t1 < 25000 && pieces() === away) await wait(500);
+  await settle();
+  if (pieces() <= away) errs.push(`a new view, its terrain loading 15 s on: still ${pieces()} pieces, no more, with the map standing still`);
+  if (note()) errs.push(`a new view, its terrain loaded: Layers still says “${note()}”`);
+  // an OSM-tagged climb whose terrain is still loading when the next update comes, and then fails: Layers says so
+  // (out at sea, so no trail from the vector tiles is graded fine beside it)
+  const T = await import(location.origin + '/js/trails.js');
+  m.jumpTo({ center: [21.0, 62.6], zoom: 15 });
+  await wait(1500); await settle();
+  const c = m.getCenter(), [tx, ty] = T.tilesIn([c.lng, c.lat, c.lng, c.lat])[0], flat = [];
+  for (let i = 0; i <= 10; i++) flat.push(c.lng - 0.002 + i * 0.0004, c.lat);
+  T.seedTile(tx, ty, { v: 1, w: [[1, { highway: 'path', 'mtb:scale:uphill': '2' }, flat]], n: [] });
+  D.mode = 'hold';
+  U.osmTiles.clear(); U.update();
+  await wait(500);
+  if (!D.held.length) errs.push('(the test) the tagged climb’s terrain was never asked for');
+  U.update();
+  await wait(500);
+  D.release();
+  await wait(1500);
+  if (note() !== NOTE) errs.push(`a tagged climb whose terrain failed after the next update: Layers says “${note()}” under Uphill`);
+  D.mode = 'ok';
   return errs;
 })()"""
 
@@ -822,7 +865,7 @@ def uphill_late(chrome):
     pg = chrome.page(1440, 900, False)
     chrome.send('Page.addScriptToEvaluateOnNewDocument', {'source': DEM_MOCK}, pg.s)
     pg.open_app({'activity': 'mtb', 'trailsByActivity': {'mtb': {'trailColors': 'up'}}}, {'polku:plannerDock': '"left"'}, '#15/62.2289/25.7652')
-    fails = pg.js(UPHILL_LATE, timeout=120000)
+    fails = pg.js(UPHILL_LATE, timeout=180000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} uphill colours when the terrain comes back" + ''.join(f'\n     - {f}' for f in fails), flush=True)
