@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-18
 
+### When Polku doesn't finish loading ([#1088](https://github.com/TommiContursi/Polku/issues/1088))
+
+- When one of Polku's files doesn't arrive as it opens, on a bad connection or just after an update, Polku tries once more by itself. If that fails too, it says **Polku didn’t finish loading** with **Reload**, rather than staying without its map and saying nothing.
+
 ### Best time to leave when the clocks change ([#1037](https://github.com/TommiContursi/Polku/issues/1037))
 
 - On the last Sunday of March and of October, when the clocks change, **Best time to leave** shows that day's own hours: 23 in March, and 25 in October, with the repeated hour shown twice. Before, the day always had 24 bars, so in October one hour was missing and the later bars stood an hour off the times under them.

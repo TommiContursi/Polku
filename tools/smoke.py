@@ -9481,6 +9481,91 @@ def tile_fails(chrome):
     return not fails
 
 
+def start_fails(chrome):
+    """#1088: Polku's files stop it from starting, a file that doesn't arrive (the worker bypassed, as on a first visit)
+    or the worker's older saved copy beside new files (#481): it tries once more by itself, no more, then says so with
+    Reload, and Reload opens it once the file comes."""
+    fails = []
+    banner = "(() => { const b = document.querySelector('#start-failed'); return b && b.checkVisibility() ? b.textContent : '' })()"
+
+    def tries(pg):  # how often the page asked for js/safety.js
+        pg.js('true')  # (its answer brings in the events Chrome has sent so far)
+        return sum(1 for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Network.requestWillBeSent'
+                   and e['params']['request']['url'].endswith('js/safety.js'))
+
+    def failed(pg, name):
+        """The banner within 40 s, after one try more and no third."""
+        end, said = time.time() + 40, ''
+        while time.time() < end and not said:
+            time.sleep(0.5)
+            try:
+                said = pg.js(banner, timeout=5000)
+            except Exception:
+                pass  # (the page loading again)
+        if not said:
+            fails.append(f'{name}: no message after 40 s, {tries(pg)} tries, window.polku {pg.js("!!window.polku")}')
+            return False
+        if 'didn’t finish loading' not in said or 'Reload' not in said:
+            fails.append(f'{name}: the message says “{said}”')
+        time.sleep(4)  # long enough for a third try to show
+        if tries(pg) != 2:
+            fails.append(f'{name}: {tries(pg)} tries, not the first and one more')
+        return True
+
+    def reload_opens(pg, name):
+        r = pg.js("document.querySelector('#start-failed button').getBoundingClientRect().toJSON()")
+        pg.errors()  # (the failed start's own errors)
+        x, y = r['x'] + r['width'] / 2, r['y'] + r['height'] / 2
+        if pg.phone:
+            pg.tap(x, y)
+        else:
+            fold_click(pg, x, y)
+        pg.load_event()
+        pg.map_loaded()
+        if pg.js(banner):
+            fails.append(f'{name}: the message still there after Reload opened Polku')
+        fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+
+    for w, h_, phone in ((390, 844, True), (1440, 900, False)):
+        name = f'{w}x{h_}, js/safety.js not arriving'
+        pg = chrome.page(w, h_, phone)
+        pg.goto(BASE + 'sw.js')
+        pg.js("localStorage.clear(); sessionStorage.clear(); localStorage.setItem('polku:settings', JSON.stringify({activity: 'mtb', fewerOffered: true, flatOffered: true})); true")
+        chrome.send('Network.setBlockedURLs', {'urls': ['*js/safety.js']}, pg.s)
+        chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
+        shown = failed(pg, name)
+        chrome.send('Network.setBlockedURLs', {'urls': []}, pg.s)
+        if shown:
+            reload_opens(pg, name)
+        pg.close()
+
+    # a returning visitor on a slow network: the worker's saved js/safety.js is older than main.js, and the server's
+    # answer doesn't come within the worker's 3 s, in either try
+    name = '390x844, an older saved js/safety.js beside a new main.js'
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb'})
+    chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+    pg.js("(async () => { await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
+    pg.reload()
+    worker = next((t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js'), None)
+    if not pg.js('!!navigator.serviceWorker.controller') or not worker:
+        raise RuntimeError(f'{name}: the page has no service worker')
+    ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
+    pg.js("""caches.open('polku-shell-v1').then((c) => c.put(new URL('js/safety.js', location.href).href,
+      new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript' } }))).then(() => true)""")
+    chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)  # held, never let go
+    chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
+    chrome.send('Page.reload', {}, pg.s)
+    shown = failed(pg, name)
+    chrome.send('Fetch.disable', {}, ws)
+    chrome.send('Target.detachFromTarget', {'sessionId': ws})
+    if shown:
+        reload_opens(pg, name)
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Polku's files stopping it from starting: one try more, then a message with Reload that opens it (#1088, #481)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def panels(chrome):
     fails = []
     for w, h_, sport in [(390, 844, 'mtb'), (390, 844, 'paddle'), (375, 667, 'mtb'), (360, 740, 'hike'), (667, 375, 'gravel')]:
@@ -22964,6 +23049,7 @@ GROUPS = [
     ('resize', [resize_window], 'desktops (#1002): the window made smaller by its edge, down to 721 px, and larger again, by mouse: the planner\'s toolbar on one row and the timeline in its room beside the side panel, the panel dragged wide giving way, a card from the list beside the panel and then where cards go with the panel at the bottom (a narrow window, Move to the bottom), the credits folded where they\'d run under the map\'s buttons, a timeline you\'ve dragged clear of them, and the layout as it was when the window is large again'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
+    ('startfail', [start_fails], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit) or the worker\'s older saved copy beside new files (#481): one try more by itself, then a message whose Reload opens it (#1088)'),
     ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),

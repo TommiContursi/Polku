@@ -117,6 +117,21 @@
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <div class="drop-hint" aria-hidden="true"><span>Drop a GPX or KML file</span></div>
   <input id="file-input" type="file" accept=".gpx,.kml,application/gpx+xml,application/vnd.google-earth.kml+xml" hidden>
+  <div id="start-failed" class="offline-banner saved-copy" role="alert" hidden><span>Polku didn’t finish loading: a file didn’t arrive</span><button type="button" class="btn" onclick="location.reload()">Reload</button></div>
+  <script>
+    // A file of Polku's that didn't arrive, or the service worker's older saved copy beside new ones (#481), stops
+    // main.js before it starts: one try more by itself, then say so (#1088)
+    addEventListener('error', (e) => {
+      if (window.polku || !(e instanceof ErrorEvent || e.target instanceof HTMLScriptElement)) return;
+      let again = false;
+      try {
+        again = Date.now() - (+sessionStorage.getItem('polku:startRetry') || 0) > 60000;
+        if (again) sessionStorage.setItem('polku:startRetry', Date.now());
+      } catch { /* private mode: no try more, so never a loop */ }
+      if (again) location.reload();
+      else document.getElementById('start-failed').hidden = false;
+    }, true);
+  </script>
 
   <script type="module" src="js/main.js"></script>
 </body>
