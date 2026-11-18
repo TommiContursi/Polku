@@ -335,8 +335,9 @@ function applyStyle() {
   }
   // the terrain set here, not by the diff: MapLibre 5.24's diff fails on a terrain change and builds the whole style
   // again (the map blank for a moment), drawing a frame with no projection while the old terrain is on (#636). Off
-  // before the style changes, too: a style swapped would still call the terrain's callback for tiles on their way (#288)
-  if (JSON.stringify(style.terrain || null) !== JSON.stringify(map.getTerrain())) map.setTerrain(style.terrain || null);
+  // before the style changes, too: a style swapped would still call the terrain's callback for tiles on their way (#288).
+  // (Before the first style loads, as when the timeline opens with 3D on, getStyle() is undefined: that style's own load sets it.)
+  if (JSON.stringify(style.terrain || null) !== JSON.stringify(map.getTerrain()) && map.getStyle()) map.setTerrain(style.terrain || null);
   map.setStyle(style, { diff: true });
   syncView3d();
   saveSettings();
