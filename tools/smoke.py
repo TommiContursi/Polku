@@ -6828,7 +6828,7 @@ PACING = """(async () => {
 # Overpass's too though it never backs off; a call that's cancelled (a losing mirror) or answers doesn't. Settings shows
 # it under the source, and the note says map tiles and terrain aren't counted. A page with no app; mocked services.
 NET_FAILS = """(async () => {
-  const errs = [], N = await import(location.origin + '/js/net.js?fails'), U = await import(location.origin + '/js/usage.js?fails');
+  const errs = [], N = await import(location.origin + '/js/net.js'), U = await import(location.origin + '/js/usage.js');
   const real = window.fetch;
   window.fetch = async (url, init) => {
     const u = String(url);
