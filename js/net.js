@@ -100,7 +100,11 @@ export async function request(source, url, opts = {}) {
       return send();
     });
   } catch (err) {
-    if (!init.signal?.aborted && err.name !== 'AbortError' && err.name !== 'TimeoutError' && err.name !== 'Limited' && backoff && navigator.onLine) fail(source, 'down');
+    // no answer: failed, unless it was cancelled (a losing mirror, a view left) or the device is offline (#687)
+    if (!init.signal?.aborted && err.name !== 'AbortError' && err.name !== 'Limited' && navigator.onLine) {
+      failed[source] = (failed[source] || 0) + 1;
+      if (err.name !== 'TimeoutError' && backoff) fail(source, 'down');
+    }
     throw err;
   }
   const ref = SOURCES[source] && SOURCES[source].refused;
@@ -110,7 +114,9 @@ export async function request(source, url, opts = {}) {
     throw new Limited(source, e.until, e.reason);
   }
   if (res.status === 429 || (res.status >= 500 && res.status !== 501)) {
-    if (!backoff || (res.status >= 500 && typeof backoff === 'function' && !await backoff(res))) return res;
+    if (res.status >= 500 && typeof backoff === 'function' && !await backoff(res)) return res; // (an expected error answer)
+    failed[source] = (failed[source] || 0) + 1;
+    if (!backoff) return res;
     let wait = null;
     const ra = res.headers.get('Retry-After');
     if (ra) wait = /^\d+$/.test(ra) ? +ra * 1000 : Date.parse(ra) - Date.now();
@@ -229,6 +235,7 @@ function fail(source, reason, wait = null) {
 
 // ------------------------------------------------------------------ usage
 const session = {}; // source -> weighted calls
+const failed = {}; // source -> calls this session that got no answer or an error answer (#687)
 let today = loadToday();
 // source -> [[ms, weight], …] of the last hour, for the per-minute/hour bars (kept across reloads)
 const recent = today.recent || {};
@@ -265,12 +272,13 @@ function count(source, weight) {
 }
 const warned = new Set();
 
-/** Per source: calls this session, today, and use against each known limit window. */
+/** Per source: calls this session, those that failed, today, and use against each known limit window. */
 export function usage() {
   const now = Date.now();
   return Object.entries(SOURCES).map(([id, s]) => ({
     id, ...s,
     session: session[id] || 0,
+    failed: failed[id] || 0,
     today: today.counts[id] || 0,
     windows: (s.limits || []).map(([ms, max, name]) => ({
       name, max,
