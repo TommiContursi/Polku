@@ -7696,7 +7696,9 @@ def quick_swipe(chrome):
     pg.js("polku.planner.listScroller().scrollTop = 0; true")
     # on a row of the body (a button): a drag down moves the sheet like the rest. (The trip box's row: since #1050 the planner's
     # sections are above the route's list, so no waypoint's row is on screen at the body's top)
-    ON = """((sel, scroll) => { const el = document.querySelector(sel); if (scroll) el.scrollIntoView({ block: 'center' });
+    # (scroll: the sheet's own scroller only, as a finger would; scrollIntoView() moved the sheet too, which then came back)
+    ON = """((sel, scroll) => { const el = document.querySelector(sel), s = polku.planner.listScroller(), r = el.getBoundingClientRect(), v = s.getBoundingClientRect();
+      if (scroll) s.scrollTop += r.top + r.height / 2 - (v.top + v.height / 2);
       const b = el.getBoundingClientRect(), x = b.left + 40, y = b.top + b.height / 2, e = document.elementFromPoint(x, y); return { x, y, hit: !!e && el.contains(e) }; })"""
     body = pg.js(f"({ON})('#planner .trip-box .row', false)")
     if not body['hit']:
@@ -15592,7 +15594,7 @@ def toolbox(chrome):
     # its last button, scrolled to inside the card, is what's under its middle
     click(pg, '#btn-time', f'{name}: the timeline')
     # (End is under the panel's foot until the list is scrolled, since the planner's sections went above it, #1050: as low as it can sit)
-    pg.js("document.querySelector('#planner .wpl-point:has(.wp-end)').scrollIntoView({ block: 'end' }); true")
+    pg.js("(() => { const s = polku.planner.listScroller(); s.scrollTop += document.querySelector('#planner .wpl-point:has(.wp-end)').getBoundingClientRect().bottom - s.getBoundingClientRect().bottom; return true; })()")
     click(pg, '#planner .wpl-point:has(.wp-end)', f'{name}: End in the list')
     pg.js(SETTLED)
     c = pg.js("""(() => { const c = document.querySelector('.card-beside'); if (!c) return null; const r = c.getBoundingClientRect(), t = polku.planner.tools.getBoundingClientRect();
