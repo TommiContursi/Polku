@@ -333,6 +333,10 @@ function applyStyle() {
     const src = map.getSource(id), tiles = style.sources[id] && style.sources[id].tiles;
     if (src && tiles && src.tiles && src.tiles[0] !== tiles[0]) src.setTiles(tiles);
   }
+  // the terrain set here, not by the diff: MapLibre 5.24's diff fails on a terrain change and builds the whole style
+  // again (the map blank for a moment), drawing a frame with no projection while the old terrain is on (#636). Off
+  // before the style changes, too: a style swapped would still call the terrain's callback for tiles on their way (#288)
+  if (JSON.stringify(style.terrain || null) !== JSON.stringify(map.getTerrain())) map.setTerrain(style.terrain || null);
   map.setStyle(style, { diff: true });
   syncView3d();
   saveSettings();
@@ -1009,9 +1013,6 @@ function setActivity(k, { from = 'map' } = {}) {
 
 function set3d(on) {
   state.terrain3d = on;
-  // the terrain taken off before the style is rebuilt: a style swapped rather than diffed would still call MapLibre's
-  // terrain callback for the tiles on their way, after the terrain is gone (#288)
-  if (!on) map.setTerrain(null);
   applyStyle();
   map.easeTo({ pitch: on ? Math.max(60, map.getPitch()) : 0, duration: 800 });
   renderLayersPanel();
