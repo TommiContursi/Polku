@@ -240,8 +240,9 @@ class Page:
 
     def waiting(self):
         """What a page that hasn't loaded waits for: its requests sent and neither finished nor failed (as this page's
-        Network events tell), and the map's sources still loading (a worker's requests aren't in the events)."""
-        sent, done = {}, set()
+        Network events tell), Polku's own files that failed, and the map's sources still loading (a worker's requests
+        aren't in the events)."""
+        sent, done, failed = {}, set(), []
         for e in self.c.events:
             if e.get('sessionId') != self.s:
                 continue
@@ -250,13 +251,16 @@ class Page:
                 sent[p['requestId']] = p['request']['url']
             elif m in ('Network.loadingFinished', 'Network.loadingFailed'):
                 done.add(p['requestId'])
+                # one of Polku's own files that failed: a module missing stops the app before window.polku (#409)
+                if m == 'Network.loadingFailed' and sent.get(p['requestId'], '').startswith(BASE):
+                    failed.append(f"{sent[p['requestId']][len(BASE):]} failed ({p.get('errorText')})")
         try:
             out = self.js(MAP_WAITING, timeout=5000) or []
         except Exception as e:
             out = [f'(the map couldn’t be asked: {e})']
         # by address, without the query (a map's tiles share one) and without the page's own blob: and data: images
         urls = [u.split('?')[0] for k, u in sent.items() if k not in done and u.startswith('http')]
-        out += [f'{u[:120]}' + (f' ×{urls.count(u)}' if urls.count(u) > 1 else '') for u in dict.fromkeys(urls)]
+        out += failed + [f'{u[:120]}' + (f' ×{urls.count(u)}' if urls.count(u) > 1 else '') for u in dict.fromkeys(urls)]
         return ', '.join(out[:8]) + (f' and {len(out) - 8} more' if len(out) > 8 else '') if out else 'nothing that can be seen'
 
     def open_app(self, settings=None, storage=None, hash_='#13.6/61.5135/23.8170'):
