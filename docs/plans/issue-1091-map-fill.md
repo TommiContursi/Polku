@@ -6,7 +6,9 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 
 ## Where it stands
 
-- **Investigated, 2026-11-18.** The recommendation is A (below). The user's first pick, 2026-11-18, was A and B together, with a question about what they cost in requests; the answer is under [A and B, measured](#a-and-b-measured). Waiting for the user's choice.
+- **Investigated, 2026-11-18.** The user's first pick was A and B together, with a question about their cost in requests (answered under [A and B, measured](#a-and-b-measured)).
+- **Decided, 2026-11-18: A** (on #1091's description), not B. The coarse map follows the base map: dark on the night map, the aerial and MML maps coarser under their own detail.
+- **A: built** on `claude/coarse-map-1091`, for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`. C, D and E, and the zoom's ragged look, are to be talked over next.
 
 ## What people see
 
