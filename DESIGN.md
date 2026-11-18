@@ -258,7 +258,7 @@ One value for each role, on `:root`, in `rem`, so the browser's text size enlarg
 
 The weights are `--weight-regular` (400), `--weight-row` (500), `--weight-key` (600) and `--weight-strong` (700).
 
-Not on the list yet: most rules still type their size in px (`python3 tools/smoke.py tokens` counts them, and the count only falls), and four of today's values (`--font-control`, `--font-body`, `--font-title`, `--font-numeral`) and `--weight-name` (600) wait for the migration to map them onto a role. A desktop's card at its spot (`.card-float`) still sets its title and its big number a step smaller.
+The planner and the cards take their sizes, weights and corners from these values, each by what its text does: a card's title `--font-card`, a row's name `--font-row`, the line under it `--font-line`, a number `--font-number`. A desktop's card at its spot (`.card-float`) takes the same list as everything else used with a mouse; only its mark is smaller. Not on the list yet: Settings, Layers, the menus, the toolbar and the rest still type their sizes in px (`python3 tools/smoke.py tokens` counts them, and the count only falls), and `--font-body` and `--weight-name` (600) wait for them. A few of the planner's and the cards' still do too: a waypoint's figure and a loop's letter, which are the map's own markers' text, and the charts' bars and swatches, which get one look with the kit's charts. The plain row (`row`) and `way-chips`' chips are shared with Settings and move with it.
 
 ### Named Rules
 **The Tabular Numbers Rule.** Numbers that change or line up (times, distances, the timeline) use tabular figures, so they don't jump as they update.
@@ -300,7 +300,7 @@ Depth comes from floating over the map: what floats is glass with one soft shado
 
 ## Shapes
 
-Gently rounded, never sharp. The corners are values: `--radius-small` (6 px) for small things such as swatches and inputs, `--radius-inner` (7 px) for a control inside a track, `--radius-control` (10 px) for a control, `--radius` (14 px) for cards, panels and tiles, `--radius-sheet` (20 px) for the top of a phone's sheet, `--radius-pill` (999 px) for chips, the sport pill and switches, and `--radius-round` (50 %) for icon-only map buttons and dots. Today buttons and rows are still 10 to 12 px. The planner's sheet floats 8 px in from the screen's edges on a phone, with 18 px corners all round; the layer drawer's and the panels' sheets have 20 px corners at the top only. Borders are a single 1 px line in `--line`, used sparingly.
+Gently rounded, never sharp. The corners are values: `--radius-small` (6 px) for small things such as swatches and inputs, `--radius-inner` (7 px) for a control inside a track, `--radius-control` (10 px) for a control, `--radius` (14 px) for cards, panels and tiles, `--radius-sheet` (20 px) for the top of a phone's sheet, `--radius-pill` (999 px) for chips, the sport pill and switches, and `--radius-round` (50 %) for icon-only map buttons and dots. In the planner and the cards a key and a field are 10 px, a group's rows 10 px, and a note, a box and a card 14 px; the plain row shared with Settings is still 12 px; elsewhere buttons and rows are still 10 to 12 px until their area moves onto the values. The planner's sheet floats 8 px in from the screen's edges on a phone, with 20 px corners all round (`--radius-sheet`); the layer drawer's and the panels' sheets have 20 px corners at the top only. Borders are a single 1 px line in `--line`, used sparingly.
 
 ## Components
 
