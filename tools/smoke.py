@@ -6824,6 +6824,50 @@ PACING = """(async () => {
 })()"""
 
 
+# Data sources says what failed (#687): a call with no answer (after its one retry) or an error answer counts as failed,
+# Overpass's too though it never backs off; a call that's cancelled (a losing mirror) or answers doesn't. Settings shows
+# it under the source, and the note says map tiles and terrain aren't counted. A page with no app; mocked services.
+NET_FAILS = """(async () => {
+  const errs = [], N = await import(location.origin + '/js/net.js?fails'), U = await import(location.origin + '/js/usage.js?fails');
+  const real = window.fetch;
+  window.fetch = async (url, init) => {
+    const u = String(url);
+    if (u.includes('/drop')) throw new TypeError('Failed to fetch');
+    if (u.includes('/slow')) return new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason)));
+    if (u.includes('/504')) return new Response('', { status: 504 });
+    if (u.includes('/ok')) return new Response('{}');
+    return real(url, init);
+  };
+  const go = (src, path, opts = {}) => N.request(src, `https://example.invalid${path}`, opts).catch((e) => e.name);
+  await go('overpass', '/504', { backoff: false });
+  await go('overpass', '/drop', { backoff: false });
+  const ac = new AbortController(), lost = go('overpass', '/slow', { backoff: false, signal: ac.signal });
+  setTimeout(() => ac.abort(), 50); await lost;
+  await go('overpass', '/ok', { backoff: false });
+  await go('fmi', '/slow', { timeoutMs: 100 });
+  const of = (id) => N.usage().find((u) => u.id === id);
+  if (of('overpass').failed !== 2) errs.push(`Overpass: ${of('overpass').failed} failed, not 2 (a 504 and a dropped call; not the cancelled one or the answer)`);
+  if (of('fmi').failed !== 1) errs.push(`FMI: ${of('fmi').failed} failed, not 1 (a call that timed out)`);
+  const box = document.createElement('div');
+  U.renderUsage(box);
+  const row = [...box.querySelectorAll('.use-row')].find((r) => r.querySelector('b')?.textContent === 'Overpass');
+  if (!row || !/2 failed/.test(row.textContent)) errs.push(`Data sources' Overpass row: “${row ? row.textContent : 'none'}”, no “2 failed”`);
+  if (!/map tiles and terrain/i.test(box.textContent)) errs.push('Data sources doesn’t say map tiles and terrain aren’t counted');
+  window.fetch = real;
+  return errs;
+})()"""
+
+
+def net_fails(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.goto(BASE + 'sw.js')  # this origin, without the app
+    fails = pg.js(NET_FAILS, timeout=30000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Data sources counts the calls that failed, and says what it leaves out (#687)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def pacing(chrome):
     pg = chrome.page(1440, 900, False)
     pg.goto(BASE + 'sw.js')  # this origin, without the app
@@ -22691,7 +22735,7 @@ GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, best_time, best_time_snow, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
-    ('pacing', [pacing, paced_legs], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78)'),
+    ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
