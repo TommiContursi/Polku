@@ -22,7 +22,7 @@ import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot, sideways, holdArrow } from './ui.js';
-import { sweepDay, nameDay, good, dayStart, dayOffset } from './besttime.js';
+import { sweepDay, nameDay, good, dayStart, dayOffset, clockMins } from './besttime.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
@@ -7588,7 +7588,7 @@ export class Planner {
   // Opened (its row, or When's menu): at the departure's day, the choices kept near the time of day you came with
   bestOpen(card) {
     const t = this.trip().start;
-    Object.assign(card, { best: true, btK: dayOffset(t), btTry: null, btAnchor: Math.round((t - new Date(t * 1000).setHours(0, 0, 0, 0) / 1000) / 60) });
+    Object.assign(card, { best: true, btK: dayOffset(t), btTry: null, btAnchor: clockMins(t) });
   }
   // A day's sweep, kept on the card for this route, these speeds, stops and craft, and this hour of the clock (a pick only
   // moves the departure, so it's kept through it); while a new one works, the last one stands
@@ -7628,7 +7628,7 @@ export class Planner {
   bestBox(card) {
     const a = this.analysis, T = this.trip(), dep = T.start, nights = (a.waits || []).some((x) => isNight(x.stop));
     const depK = dayOffset(dep);
-    const anchor = card.btAnchor ?? Math.round((dep - new Date(dep * 1000).setHours(0, 0, 0, 0) / 1000) / 60);
+    const anchor = card.btAnchor ?? clockMins(dep);
     // the folded row: the best time as its value ("Good now", "Sun 08:00"), its line in a tooltip
     const r0 = this.btDay(card, depK), N0 = r0 && !r0.failed && nameDay(r0, anchor);
     const inside = N0 && [...N0.lit, ...N0.dark].some((w) => !w.least && dep >= r0.hrs[w.a].h0 && dep < r0.hrs[w.b].h0 + 3600);

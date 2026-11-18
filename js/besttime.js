@@ -23,6 +23,8 @@ export function dayStart(k) { const d = new Date(); d.setHours(0, 0, 0, 0); d.se
 // …and back: how many days from today epoch second `t` is
 // the next local midnight after `day0`'s
 const dayEnd = (day0) => { const d = new Date(day0 * 1000); d.setDate(d.getDate() + 1); return d.getTime() / 1000; };
+// the time of day on the clock in minutes (on a day the clocks change, not the minutes since midnight)
+export const clockMins = (t) => { const d = new Date(t * 1000); return d.getHours() * 60 + d.getMinutes(); };
 export const dayOffset = (t) => Math.round((new Date(t * 1000).setHours(0, 0, 0, 0) / 1000 - dayStart(0)) / 86400);
 
 // The open water on the route's water legs, as the water router left it (water.js's `reach`): each sample's place along
@@ -142,7 +144,7 @@ export function nameDay(day, anchor) {
   const least = Math.min(...live.map((x) => x.dark)), lim = least < 0.4 ? Math.max(0.1, least + 0.1) : 0.1;
   for (const x of live) x.grp = x.dark <= lim ? 'light' : x.dark >= 0.5 ? 'dark' : 'into';
   const used = new Set();
-  const mins = (x) => { const d = new Date(x.t * 1000); return d.getHours() * 60 + d.getMinutes(); }; // (the clock's, on any day)
+  const mins = (x) => clockMins(x.t);
   const usable = (x, lit) => x && !x.past && !x.none && !x.unknown && !x.out && x.grp === (lit ? 'light' : 'dark') && (lit || mins(x) >= 300);
   const near = (x) => { const d = Math.abs(mins(x) - anchor); return Math.min(d, 1440 - d); };
   const windows = (lit, max) => {
