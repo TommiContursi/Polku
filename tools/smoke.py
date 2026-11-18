@@ -6319,6 +6319,7 @@ OBJECT_SHADOWS = """(async () => {
 
 # The sky in 3D (#644): from the sun's height at the map's hour, and the weather only while a forecast is loaded (WX_FIXED:
 # clear south of 63°, rain north of it). No forecast: the pale sky that claims no weather. The buildings lit by the sun.
+# On a pinned clock (PINNED_CLOCK), as the sun's heights it needs aren't there every day of the year.
 SKY_3D = """(async () => {
   const m = polku.map, w = polku.weather, out = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const { sunPosition } = await import(location.origin + '/js/sun.js'), { timeAtHour } = await import(location.origin + '/js/wxmap.js');
@@ -6348,11 +6349,22 @@ SKY_3D = """(async () => {
 })()"""
 
 
+# The page's clock for SKY_3D, from 2026-09-22 09:00 UTC on (#946): in Finland's winter the sun never gets 6° up, the
+# sky's day; on that day it's 27° at Tampere at the start and 24° at Oulu, dusk is 7 hours on and night 10.
+PINNED_CLOCK = """(() => {
+  const RealDate = Date, shift = RealDate.UTC(2026, 8, 22, 9) - RealDate.now();
+  window.Date = class extends RealDate {
+    constructor(...a) { super(...(a.length ? a : [RealDate.now() + shift])); }
+    static now() { return RealDate.now() + shift; }
+  };
+})();"""
+
+
 def sky_3d(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
     try:
-        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + "window.__wx.temp = 5; window.__wx.precip = (lat) => (lat > 63 ? 2 : 0); window.__wx.cloud = (lat) => (lat > 63 ? 100 : 0);"}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': PINNED_CLOCK + EMPTY_DEPTHS + WX_FIXED + "window.__wx.temp = 5; window.__wx.precip = (lat) => (lat > 63 ? 2 : 0); window.__wx.cloud = (lat) => (lat > 63 ? 100 : 0);"}, pg.s)
         pg.open_app({'activity': 'hike', 'terrain3d': True}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#11/61.4985/23.7640/0/60')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         fails += pg.js(SKY_3D, timeout=180000)
