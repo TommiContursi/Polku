@@ -9772,9 +9772,11 @@ def panels_desktop(chrome):
                 x, top, bottom = r['body']
                 if r['more'] > 1 and bottom - top > 60:
                     mouse('mouseWheel', x, (top + bottom) / 2, deltaX=0, deltaY=400)
-                    time.sleep(0.4)
-                    if pg.js(f"document.querySelector('{pid} .panel-body').scrollTop") < 20:
-                        fails.append(f'{name}: the wheel over its body did not scroll it')
+                    # The wheel's scroll can show only after a second or more (#470), and a folded Settings may scroll less than 20 px
+                    want = min(20, r['more'] - 1)
+                    got = pg.js(f"new Promise((ok) => {{ const b = document.querySelector('{pid} .panel-body'), t0 = Date.now(), go = () => b.scrollTop >= {want} || Date.now() - t0 > 3000 ? ok(b.scrollTop) : setTimeout(go, 100); go(); }})")
+                    if got < want:
+                        fails.append(f'{name}: the wheel over its body scrolled it {got:.0f} px in 3 s, not {want:.0f} px')
                 if r['xin'] and r['xfree']:
                     click(*r['x'])
                     if pg.js(f"!document.querySelector('{pid}').hidden"):
