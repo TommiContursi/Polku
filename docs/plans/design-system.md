@@ -155,6 +155,13 @@ Each PR comes with:
 - **The typefaces:** kept by the service worker as it installs; cut to 48 and 23 kB (woff2), Bricolage's headings and numbers listed in one rule; DEVELOPING's "Hover and colours" has the files, their commits and the commands.
 - **Checks:** `tokens`, its ceiling 527 (230 sizes, 130 weights, 167 corners). The kit page's own smoke group comes with the full kit.
 
+### The planner and the cards on the values, as built (2026-11-17)
+
+- Every font size, weight and corner of the planner (the sheet and its side panel, the head, the numbers' box, the key facts, Route's list, Check's view, Route style and your speed, the round trip, When and the weather) and of the cards (every `.card` kind, `.card-float`, a pick card's facts) takes a role, chosen by what its text does. `tokens` fell from 527 to 295: sizes from 230 to 125, weights from 130 to 73, corners from 167 to 97.
+- Rules that made something smaller on a desktop's card or by the window's width (the numbers at 340 px and on a phone, `.card-float`'s title, number and words) are gone: the type list goes by the pointer.
+- `--font-control`, `--font-title` and `--font-numeral` are gone. `--font-body` and `--weight-name` stay for Layers' lit ways until Settings, Layers and the menus move.
+- What fits no role, as the user chose (#382, 2026-11-18): a count in a ball or a badge is `--font-line`, Heads-up's mark `--font-number`, the main action's words `--font-row`, Route style's own headings `--font-row` in bold, the name's field on a card `--font-card`. A waypoint's figure and a loop's letter stay the map's own text. Still typed: the charts' bars and swatches (2 to 4 px corners), which wait for the kit's charts, and the skeletons shared with the timeline, which wait for its PR. The plain row (`row`, its corners, its name's and value's weight and its line) and `way-chips`' chips are shared with Settings, so they move with Settings' PR.
+
 ### Not decided here
 
 - The exact values of both columns: tuned on the kit page with the user.

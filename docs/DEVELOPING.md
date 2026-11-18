@@ -413,7 +413,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | Control | Class | Where it's from |
 |---|---|---|
 | Back, in words, and ✕ on a row of their own | `way-bar`, `btn small quiet way-back`, `tool way-x` | the start's steps ("‹ Ways to begin") |
-| A heading and its line | `way-head`, `way-hint`: the title 17 px (`--font-title`), 15 px on a desktop's card; a long name breaks rather than leave its card | "Round trip from your start" |
+| A heading and its line | `way-head`, `way-hint`: the title `--font-card` (22 px by touch, 17 with a mouse, a desktop's card too), its line `--font-line`; a long name breaks rather than leave its card | "Round trip from your start" |
 | A section's heading in the planner, its tools at its end | `pl-h` inside its `pl-group`, at its top: an `h3` (`--font-heading`, its words `--words-in` in, where its group's are) and its tools, which go under it where its words need the room (`heading()` in `js/planner.js`) | Route profile, Route, Route style and your speed (#382) |
 | An icon key | `tool key`: M (`--size-m`), the key's face and `--key-edge`, 10 px corners, a finger's 44 px round it | the profile's size ⌃ (#382) |
 | A row that scrolls sideways | `sideways(row, label)` in `js/ui.js`: `side-x` in `side-wrap`, no bar, a 32 px fade where there's more (`more-l`, `more-r`), and with a mouse the `wx-hs-arrow`s there and a drag (`mouseDrag()`) | the key facts, the timeline's layers (never a row of actions: those wrap) |

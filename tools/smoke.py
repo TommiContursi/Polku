@@ -8464,7 +8464,7 @@ def design_colours(chrome):
 
 # The font sizes, weights and corners typed in place in css/app.css, rather than taken from the values on :root (#382).
 # The count may only fall: each of the migration's PRs moves some onto the values and lowers TOKENS_CEILING to the new count.
-TOKENS_CEILING = 527
+TOKENS_CEILING = 295
 TOKENS_TYPED = re.compile(r'(?<![-\w])(?:font-size\s*:[^;}]*\d(?:\.\d+)?px|font\s*:[^;}]*\d(?:\.\d+)?px|font-weight\s*:\s*\d+|border(?:-[a-z]+)*-radius\s*:[^;}]*\d(?:\.\d+)?px)')
 
 
@@ -20420,6 +20420,8 @@ def controls(chrome):
 LV_JS = """(() => { window.LV = {
   day: (sec) => new Date(sec * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }),
   clock: (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  // a time as When names it: the time alone today, its day too on another (#1024: three hours ahead is tomorrow after 21:00)
+  words: (sec) => (new Date(sec * 1000).toDateString() === new Date().toDateString() ? LV.clock(sec) : `${LV.day(sec)}, ${LV.clock(sec)}`),
   iso(sec) { const d = new Date(sec * 1000), z = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; },
   at(days, hh, mm) { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(hh, mm, 0, 0); return d.getTime() / 1000; },
   // 'box': the trip's box's When pill; 'start': the start's card's When row; 'card': a card's row the phone's own picker sets (Go on at)
@@ -21003,8 +21005,10 @@ ARRIVE_JS = """(async () => {
   pickBy(LV.iso(by));
   await settled();
   let r = read();
-  const leave = `leave ${W.got?.about ? 'about ' : ''}${LV.clock(r.start)}`;
-  if (W.by !== by || W.at != null || W.pop || r.end > by || by - r.end > 90 || r.name !== `Arrive by ${LV.clock(by)}` || r.there !== `· ${leave}` || r.nums !== leave || r.note)
+  // the departure with its weekday where it isn't Arrive by's day (just before midnight, for Arrive by just after it)
+  const sameDay = new Date(r.start * 1000).toDateString() === new Date(by * 1000).toDateString();
+  const leave = `leave ${W.got?.about ? 'about ' : ''}${sameDay ? '' : new Date(r.start * 1000).toLocaleDateString([], { weekday: 'short' }) + ' '}${LV.clock(r.start)}`;
+  if (W.by !== by || W.at != null || W.pop || r.end > by || by - r.end > 90 || r.name !== `Arrive by ${LV.words(by)}` || r.there !== `· ${leave}` || r.nums !== leave || r.note)
     errs.push(`Arrive by in three hours: ${JSON.stringify({ ...r, by, at: W.at, menu: !!W.pop })}`);
   // its menu: Arrive by… ticked, with its time
   W.menu(LV.row('box'));
@@ -21040,7 +21044,7 @@ ARRIVE_JS = """(async () => {
   // Leave at takes its place
   LV.pick('box', LV.iso(by));
   await settled();
-  if (W.by != null || W.at !== by || LV.when('box').name !== `Leave ${LV.clock(by)}`) errs.push(`Leave at after Arrive by: arrives by ${W.by}, leaves ${W.at}, the box says ${LV.when('box').name}`);
+  if (W.by != null || W.at !== by || LV.when('box').name !== `Leave ${LV.words(by)}`) errs.push(`Leave at after Arrive by: arrives by ${W.by}, leaves ${W.at}, the box says ${LV.when('box').name}`);
   // too soon: it leaves now, and says when you're there
   const soon = Math.ceil(Date.now() / 60000) * 60 + 120;
   W.setBy(soon);
