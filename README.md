@@ -93,7 +93,7 @@ Polku brings together open data and free public services. Each source keeps its 
 | Weather and radar | [Open-Meteo](https://open-meteo.com); [FMI open data](https://en.ilmatieteenlaitos.fi/open-data); [RainViewer](https://www.rainviewer.com/api.html) |
 | Map rendering | [MapLibre GL JS](https://maplibre.org); [maplibre-contour](https://github.com/onthegomap/maplibre-contour) |
 
-Requests are paced, cached and counted; see **Settings → Data sources**. Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
+Requests are paced, cached and counted, with those that failed; see **Settings → Data sources** (map tiles and terrain aren't counted there). Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
 
 Road/path selections and their route memberships, trail details and barriers,
 mapped winter maintenance/access, OSM water hazards, overnight places and
