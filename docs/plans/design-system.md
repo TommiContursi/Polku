@@ -164,10 +164,10 @@ Each PR comes with:
 
 ### Settings, Layers and the rest on the values, as built (2026-11-18)
 
-- Every font size, weight and corner left after the planner and the cards takes a role: Settings and Layers with the plain row (`row`) and `way-chips`, the layer drawer, the menus and the popup's ✕, the timeline and its skeletons, the top bar, the map's buttons, and the dialogs, tooltips, toasts and banners. `tokens` fell from 295 to 38: sizes from 125 to 11, weights from 73 to 5, corners from 97 to 22.
+- Every font size, weight and corner left after the planner and the cards takes a role: Settings and Layers with the plain row (`row`) and `way-chips`, the layer drawer, the menus and the popup's ✕, the timeline and its skeletons, the top bar, the map's buttons, and the dialogs, tooltips, toasts and banners. `tokens` fell from 295 to 42: sizes from 125 to 15, weights from 73 to 5, corners from 97 to 22.
 - The plain row's name and value are 500 (`--weight-row`) wherever it's used, the planner's and the cards' rows included; its corners 10 px and its line `--font-line`. `body` is `--font-row`, so text that sets no size of its own follows the pointer too.
-- What fits no role, by the precedents of 2026-11-18: a word under a map button's icon is `--font-small` (DESIGN.md's Small on Purpose Rule), the credits and the scale bar too; a menu's item has 7 px corners inside its menu; a warning's words in a line are 700. The width rules that set the map's buttons' words and the timeline's reading smaller are gone, as the planner's were.
-- `--font-body` and `--weight-name` are gone. Still typed: the drawing toolbar's keys (#1042), a waypoint's figure and a loop's letter (the map's own markers' text), and the charts' bars and swatches (the timeline's legend, the hour strip, Best time to leave, Data sources' meters), which wait for the kit's charts.
+- What fits no role, by the precedents of 2026-11-18: the credits, the scale bar and 3D's Drag are `--font-small`; a menu's item has 7 px corners inside its menu; a warning's words in a line are 700. The width rule that set the timeline's reading smaller is gone, as the planner's were.
+- `--font-body` and `--weight-name` are gone. Still typed: the drawing toolbar's keys (#1042); the words under the map's buttons' icons, 11 px and 12 on a phone (#719), where DESIGN.md's Small on Purpose Rule says `--font-small` and #719 says 12, so the review decides; a waypoint's figure and a loop's letter (the map's own markers' text), and the charts' bars and swatches (the timeline's legend, the hour strip, Best time to leave, Data sources' meters), which wait for the kit's charts.
 
 ### Not decided here
 

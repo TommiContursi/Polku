@@ -8581,8 +8581,9 @@ def design_colours(chrome):
 
 # The font sizes, weights and corners typed in place in css/app.css, rather than taken from the values on :root (#382).
 # The count may only fall. What's left: the drawing toolbar's keys (#1042), a waypoint's figure and a loop's letter (the
-# map's own markers' text), and the charts' bars and swatches, which wait for the kit's charts.
-TOKENS_CEILING = 38
+# map's own markers' text), the charts' bars and swatches, which wait for the kit's charts, and the words under the map's
+# buttons' icons (11 px, 12 on a phone: #719's 12 isn't on the type list).
+TOKENS_CEILING = 42
 TOKENS_TYPED = re.compile(r'(?<![-\w])(?:font-size\s*:[^;}]*\d(?:\.\d+)?px|font\s*:[^;}]*\d(?:\.\d+)?px|font-weight\s*:\s*\d+|border(?:-[a-z]+)*-radius\s*:[^;}]*\d(?:\.\d+)?px)')
 
 
