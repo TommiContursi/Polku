@@ -14523,6 +14523,54 @@ BT_MENU = """(async () => {
 })()"""
 
 
+# A day when the clocks change (#1037): Best time to leave's strip has the day's own hours, 23 on the last Sunday of March
+# and 25 on the last Sunday of October, and the axis's 06, 12 and 18 stand over the slots that leave at 06, 12 and 18.
+# The page's clock is pinned to the Friday before at 10:00 in Helsinki, and the strip stepped to Sunday.
+BT_DST = """(async (want) => {
+  const errs = [], p = polku.planner;
+  p.openWeather({ best: true });
+  if (!(await BT.until(() => BT.box()))) return ['no Best time to leave'];
+  const card = p.cards.current;
+  card.btK = 2; card.btTry = null; p.btRedraw(card);
+  if (!(await BT.until(() => card.bt?.[2]?.res && BT.done(), 40000))) return ['Sunday’s hours weren’t worked out'];
+  const hrs = card.bt[2].res.hrs, slots = BT.box().querySelectorAll('.bt-slot').length, range = BT.box().querySelector('.bt-range');
+  const hour = (x) => new Date(x.h0 * 1000).getHours();
+  if (hrs.length !== want || slots !== want) errs.push(`Sunday: ${hrs.length} hours worked out, ${slots} slots, not ${want}`);
+  if (+range.max !== want - 1) errs.push(`Sunday: the slider goes to ${range.max}, not ${want - 1}`);
+  const ends = [hour(hrs[0]), hour(hrs.at(-1))];
+  if (ends[0] !== 0 || ends[1] !== 23) errs.push(`Sunday: its hours run ${ends.join(' to ')}, not 00 to 23`);
+  for (const tag of BT.box().querySelectorAll('.bt-axis > span')) {
+    const v = +tag.textContent, i = hrs.findIndex((x) => hour(x) === v), at = parseFloat(tag.style.left), want_ = (i / hrs.length) * 100;
+    if (Math.abs(at - want_) > 0.5) errs.push(`Sunday: the axis's ${tag.textContent} at ${at.toFixed(1)} %, not over the ${tag.textContent}:00 slot at ${want_.toFixed(1)} %`);
+  }
+  return errs;
+})"""
+
+
+def best_time_dst(chrome):
+    fails = []
+    for when, want in (('2027-03-26T08:00:00Z', 23), ('2027-10-29T08:00:00Z', 25)):
+        clock = ("(() => { const R = Date, shift = R.parse('" + when + "') - R.now(); window.Date = class extends R {"
+                 " constructor(...a) { super(...(a.length ? a : [R.now() + shift])); } static now() { return R.now() + shift; } }; })();")
+        pg = chrome.page(1440, 900, False)
+        try:
+            pg.c.send('Emulation.setTimezoneOverride', {'timezoneId': 'Europe/Helsinki'}, pg.s)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': clock + EMPTY_DEPTHS + WX_FIXED + 'window.__wx.n = 120;'}, pg.s)
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
+            pg.js(BT_HELP)
+            if not pg.js(PC_ROUTE, timeout=30000):
+                fails.append(f'{want} hours: no route')
+            else:
+                fails += [f'{want} hours: {e}' for e in pg.js(f'({BT_DST})({want})', timeout=90000)]
+            fails += [f'{want} hours, console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Best time to leave on a day when the clocks change: 23 and 25 hours, the axis over its hours (#1037)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def best_time_menu(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
@@ -22876,7 +22924,7 @@ GROUPS = [
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list, tick_under], 'Leave now\'s refresh leaving focus and a Reorder drag alone (#966); Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
-    ('leave', [leave, when_start, arrive_by, best_time_menu], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
+    ('leave', [leave, when_start, arrive_by, best_time_menu, best_time_dst], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
     ('keyfacts', [keyfacts, warn_slot, track_rows], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values); an imported track\'s time under the row of its speed (#493)'),
     ('views', [views, views_names], 'the planner\'s views, Route and Check (#424\'s C, #382): Route opens with Check\'s row, then the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, Check\'s count and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
