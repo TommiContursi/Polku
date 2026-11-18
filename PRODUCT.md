@@ -10,7 +10,7 @@ web
 
 ## Users
 
-Polku began as its maker's own tool for mountain biking, paddling and multi-sport trips. It's meant for outdoor people of every kind: in Finland first, in other countries later.
+Polku began as its maker's own tool for mountain biking, paddling and multi-sport trips. It's meant for everyone who moves outdoors, for any reason: riding every kind of bike, running, paddling, climbing, walking the dog, a trip into the wild or exploring a town's own corners. In Finland first, in other countries later.
 
 Two kinds of user count the same:
 - **Someone opening Polku for the first time** understands it and starts planning without a tutorial.
@@ -22,7 +22,7 @@ The same person is in different situations at different moments, and the situati
 - out on the trail on a phone: moving, a quick glance, one thumb, wet or cold hands, bright sun;
 - looking back at a trip afterwards.
 
-The sports: mountain biking, gravel and road cycling, hiking, trail running, running, paddling (sea kayak, canoe, SUP) and swimming, and trips that combine them. Skiing is planned (phase 15c).
+The sports are how the planner draws and times a route: mountain biking, gravel and road cycling, hiking, trail running, running, paddling (sea kayak, canoe, SUP) and swimming, and trips that combine them. Skiing is planned (phase 15c). They don't limit who Polku is for: the map serves any way of moving, and a sport is added where a route needs to be drawn or timed differently.
 
 ## Product Purpose
 
