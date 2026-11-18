@@ -820,20 +820,20 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
    A 20 px icon, an 8 px gap and 8 px padding leave its label 72 px beside a › at 360 px (phase 24) */
 .qd-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .qt { position: relative; display: flex; min-height: 52px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); overflow: hidden; transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, border-color var(--t-press) ease; }
-.qt-tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px; border: 0; background: none; text-align: left; font-size: var(--font-row); font-weight: var(--weight-key); line-height: 1.2; color: var(--text); }
+.qt-tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px; border: 0; background: none; text-align: left; font-size: 12.5px; font-weight: var(--weight-key); line-height: 1.2; color: var(--text); }
 .qt-ic { position: relative; flex: none; color: var(--muted); transition: color var(--t-press) ease; }
 .qt.on .qt-ic::after { top: -8px; left: -8px; width: 16px; height: 16px; background-size: 11px; box-shadow: 0 0 0 2px var(--accent-soft); }
 /* a word that doesn't fit breaks only at the soft hyphens in its label (Sade­tutka, Tempera­ture), never where
    the browser would pick ("Sadetut-ka"); breaking anywhere is the last resort, so nothing overflows */
 .qt-l { min-width: 0; overflow-wrap: anywhere; hyphens: manual; }
-.qt-l small { display: block; margin-top: 2px; font-size: var(--font-line); font-weight: var(--weight-row); color: var(--muted); }
+.qt-l small { display: block; margin-top: 2px; font-size: 11px; font-weight: var(--weight-row); color: var(--muted); }
 .qt-l small.warn { color: var(--warn-text); font-weight: var(--weight-strong); }
 .qt-opt { flex: none; width: 44px; border: 0; border-left: 1px solid var(--line); background: none; display: grid; place-items: center; color: var(--muted); }
 .qt.on { border: 2px solid var(--accent); background: var(--accent-soft); }
 .qt.on .qt-tog { padding: 7px; } /* (chosen: the green icon, its tick and the border; the words stay black, as a chosen chip's: green words were 4.2:1 in dark, #376) */
 .qt.on .qt-ic, .qt.on .qt-opt { color: var(--accent); }
 .qt.on .qt-opt { border-left-color: color-mix(in srgb, var(--accent) 35%, transparent); }
-.qt-more { width: 100%; align-items: center; gap: 10px; padding: 8px 4px 8px 10px; background: var(--surface-solid); text-align: left; font: inherit; font-size: var(--font-row); font-weight: var(--weight-key); color: var(--text); }
+.qt-more { width: 100%; align-items: center; gap: 10px; padding: 8px 4px 8px 10px; background: var(--surface-solid); text-align: left; font: inherit; font-size: 12.5px; font-weight: var(--weight-key); color: var(--text); }
 .qt-more .qt-l { flex: 1; }
 .qt-more .chev { color: var(--muted); margin-right: 8px; }
 .qd :is(button, [role="radio"]):focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
