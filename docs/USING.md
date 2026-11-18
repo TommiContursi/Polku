@@ -147,6 +147,10 @@ Use **Save offline** in the planner's **More** (⋯) or on the whole route's car
 
 The saved map, terrain, route and profile work without a connection; routing, search, weather and traffic do not. Read the [limitations](../README.md#limitations), especially before planning on water.
 
+## When Polku doesn't finish loading
+
+If one of Polku's files doesn't arrive as it opens, on a bad connection or just after an update, Polku reloads once by itself. If that fails too, a banner says **Polku didn’t finish loading** with **Reload**: select it once the connection is better. A file that is still on its way, rather than one that failed, shows no banner; reload the page yourself if the map doesn't appear.
+
 ## What’s new
 
 Open **Settings → About Polku → What’s new** to read dated release notes over the map. The route stays as it was. Scroll the notes, use their links to read more, and close with **Close** or **Escape** to return to Settings.
