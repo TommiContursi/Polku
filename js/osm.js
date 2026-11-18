@@ -16,7 +16,7 @@ cache.prune((v) => v && Date.now() - v.at < 4 * OSM_TTL).catch(() => {});
 let preferred = 0;
 async function ask(i, query, signal, timeoutMs) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  const t = setTimeout(() => ctrl.abort(new DOMException('Overpass took too long', 'TimeoutError')), timeoutMs); // (a failure, not a cancel)
   if (signal) signal.addEventListener('abort', () => ctrl.abort());
   try {
     // mirrors take turns, so no back-off here; still counted for the usage readout
