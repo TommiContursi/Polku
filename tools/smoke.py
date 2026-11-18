@@ -12680,7 +12680,29 @@ def runner(chrome):
             fails.append(f'no {want!r} in {text!r}')
     if 'second line' in text:
         fails.append("a raised error's second line was printed")
-    print(f"{'ok  ' if not fails else 'FAIL'} the runner: unknown names, a group that raises, a profile in use" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+
+    # the dev server answers a burst of connections at once, as a page's module requests come: with Python's default queue
+    # of 5, macOS reset some of them, a module failed and the app never started (#409)
+    import socket
+    import threading
+    from urllib.parse import urlsplit
+    at, refused = urlsplit(BASE), []
+
+    def fetch():
+        try:
+            with socket.create_connection((at.hostname, at.port or 80), timeout=30) as s:
+                s.sendall(f'GET /js/config.js HTTP/1.1\r\nHost: {at.netloc}\r\nConnection: close\r\n\r\n'.encode())
+                while s.recv(1 << 16):
+                    pass
+        except OSError as e:
+            refused.append(type(e).__name__)
+    for _ in range(3):
+        ts = [threading.Thread(target=fetch) for _ in range(64)]
+        [t.start() for t in ts]
+        [t.join() for t in ts]
+    if refused:
+        fails.append(f'{len(refused)} of 192 connections to the dev server failed in bursts of 64 ({", ".join(sorted(set(refused)))})')
+    print(f"{'ok  ' if not fails else 'FAIL'} the runner: unknown names, a group that raises, a profile in use, the server under a burst" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -22963,7 +22985,7 @@ GROUPS = [
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops, sheet_card_peek, sheet_profile_peek], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
-    ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
+    ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254); the dev server answering a burst of connections (#409)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))
 
