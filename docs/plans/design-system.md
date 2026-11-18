@@ -162,6 +162,13 @@ Each PR comes with:
 - `--font-control`, `--font-title` and `--font-numeral` are gone. `--font-body` and `--weight-name` stay for Layers' lit ways until Settings, Layers and the menus move.
 - What fits no role, as the user chose (#382, 2026-11-18): a count in a ball or a badge is `--font-line`, Heads-up's mark `--font-number`, the main action's words `--font-row`, Route style's own headings `--font-row` in bold, the name's field on a card `--font-card`. A waypoint's figure and a loop's letter stay the map's own text. Still typed: the charts' bars and swatches (2 to 4 px corners), which wait for the kit's charts, and the skeletons shared with the timeline, which wait for its PR. The plain row (`row`, its corners, its name's and value's weight and its line) and `way-chips`' chips are shared with Settings, so they move with Settings' PR.
 
+### Settings, Layers and the rest on the values, as built (2026-11-18)
+
+- Every font size, weight and corner left after the planner and the cards takes a role: Settings and Layers with the plain row (`row`) and `way-chips`, the layer drawer, the menus and the popup's ✕, the timeline and its skeletons, the top bar, the map's buttons, and the dialogs, tooltips, toasts and banners. `tokens` fell from 295 to 38: sizes from 125 to 11, weights from 73 to 5, corners from 97 to 22.
+- The plain row's name and value are 500 (`--weight-row`) wherever it's used, the planner's and the cards' rows included; its corners 10 px and its line `--font-line`. `body` is `--font-row`, so text that sets no size of its own follows the pointer too.
+- What fits no role, by the precedents of 2026-11-18: a word under a map button's icon is `--font-small` (DESIGN.md's Small on Purpose Rule), the credits and the scale bar too; a menu's item has 7 px corners inside its menu; a warning's words in a line are 700. The width rules that set the map's buttons' words and the timeline's reading smaller are gone, as the planner's were.
+- `--font-body` and `--weight-name` are gone. Still typed: the drawing toolbar's keys (#1042), a waypoint's figure and a loop's letter (the map's own markers' text), and the charts' bars and swatches (the timeline's legend, the hour strip, Best time to leave, Data sources' meters), which wait for the kit's charts.
+
 ### Not decided here
 
 - The exact values of both columns: tuned on the kit page with the user.

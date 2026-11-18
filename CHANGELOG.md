@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-18
 
+### One type list everywhere ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+- Settings, Layers, the layer drawer, the menus, the timeline, the top bar, the map's buttons and Polku's dialogs, tooltips and messages use the same type list as the planner and the cards: each kind of text has one size, bigger on a phone and denser with a mouse.
+- A plain row's name and value, in Settings, the planner and the cards, are a little lighter, as the planner's own rows are.
+- Buttons, rows, menus and the boxes over the map have the same rounded corners as the planner and the cards.
+
 ### Best time to leave when the clocks change ([#1037](https://github.com/TommiContursi/Polku/issues/1037))
 
 - On the last Sunday of March and of October, when the clocks change, **Best time to leave** shows that day's own hours: 23 in March, and 25 in October, with the repeated hour shown twice. Before, the day always had 24 bars, so in October one hour was missing and the later bars stood an hour off the times under them.
