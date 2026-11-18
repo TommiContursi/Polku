@@ -10674,9 +10674,20 @@ def button3d(chrome, phones=False):
                 fails.append(f"{name}: the button is not under zoom and above Weather (after {b['prev']}, before {b['next']})")
             if b['w'] < 40 or b['h'] < 40:
                 fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px")
+            pg.js("window.__style = polku.map.style, true")
             mouse_click(pg, aim(pg, f'{name}, a click'))
             pg.idle()  # the terrain in, as a person looks at it (turned off while it loads: MapLibre’s own error, #288)
             b = expect(pg, f'{name}, a click', True)
+            # the terrain changes without the whole style built again: MapLibre's diff can't change it, and the
+            # rebuild blanks the map and draws a frame with no projection, a console error when the terrain goes off (#636)
+            for step in ('3D on', 'Raised hills off', 'Raised hills on'):
+                if step != '3D on':
+                    mouse_click(pg, pg.js("(() => { const r = document.querySelector('#view3d button[aria-label=\"Raised hills\"]').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))
+                    pg.idle()
+                if not pg.js("polku.map.style === window.__style"):
+                    fails.append(f'{name}, {step}: the whole map style was built again')
+                if pg.js("!!polku.map.getTerrain()") != (step != 'Raised hills off'):
+                    fails.append(f"{name}, {step}: the map's terrain is {'on' if step == 'Raised hills off' else 'off'}")
             if b['color'] != 'rgb(255, 255, 255)' or b['bg'] == pg.js("getComputedStyle(document.querySelector('#btn-locate')).backgroundColor"):
                 fails.append(f"{name}: pressed, the button is {b['color']} on {b['bg']}, not white on the accent")
             # a smooth-scrolling mouse's small steps zoom in 3D, as after a tilt by hand, and never tilt (#734)
