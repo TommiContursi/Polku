@@ -8,7 +8,7 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 
 - **Investigated, 2026-11-18.** The user's first pick was A and B together, with a question about their cost in requests (answered under [A and B, measured](#a-and-b-measured)).
 - **Decided, 2026-11-18: A** (on #1091's description), not B. The coarse map follows the base map: dark on the night map, the aerial and MML maps coarser under their own detail.
-- **A: built** on `claude/coarse-map-1091`, for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`. C, D and E, and the zoom's ragged look, are to be talked over next.
+- **A: built** on `claude/coarse-map-1091` ([#1097](https://github.com/TommiContursi/Polku/pull/1097)), for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`. C, D and E, and the zoom's ragged look, are to be talked over next.
 
 ## What people see
 
