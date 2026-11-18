@@ -162,6 +162,24 @@ const map = new maplibregl.Map({
   attributionControl: false,
   cooperativeGestures: false,
 });
+// A coarse map underneath (#1091): each base map tile in view keeps the tile four zoom levels up among MapLibre's own
+// tiles, so a place whose tile hasn't come shows that one (masked to the missing tile's square), never plain paper.
+// It's drawn in the map's own style, so it's dark on the night map and a coarser photo under the aerial one. MapLibre
+// GL JS has no option for it (Mapbox's prefetchZoomDelta), so this wraps its TileManager, once, on the prototype;
+// smoke's `coarse` fails if an upgrade changes what it uses.
+const COARSE = new Set(['ofm', 'ofmTrails', 'aerial', 'ortofi', 'maasto', 'mmlBase']);
+map.once('styledata', () => {
+  const tm = Object.getPrototypeOf(map.style.tileManagers.ofm), own = tm._updateRetainedTiles;
+  if (typeof own !== 'function' || typeof tm._addTile !== 'function') throw new Error('MapLibre changed: no coarse map underneath (#1091)');
+  tm._updateRetainedTiles = function (ideal, zoom) {
+    const retain = own.call(this, ideal, zoom);
+    if (COARSE.has(this.id)) for (const t of ideal) {
+      const up = t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4));
+      if (up.key !== t.key) { this._addTile(up); retain[up.key] = up; }
+    }
+    return retain;
+  };
+});
 installIcons(map);
 initGestures(map, { trackpadRotate: () => state.trackpadTilt });
 bindCrosshair(map);

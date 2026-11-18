@@ -6637,6 +6637,65 @@ AERIAL_LABELS = """(() => {
 })()"""
 
 
+COARSE_AT = r"""
+(async () => {
+  const m = polku.map, tm = m.style.tileManagers.ofm, f = [];
+  const tileOf = (z) => { const c = m.getCenter(), n = 2 ** z, r = c.lat * Math.PI / 180;
+    return `${z}/${Math.floor((c.lng + 180) / 360 * n)}/${Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)}`; };
+  const drawn = () => tm.getRenderableIds().map((k) => tm.getTileByID(k)).filter((t) => t.hasData()).map((t) => `${t.tileID.canonical.z}/${t.tileID.canonical.x}/${t.tileID.canonical.y}`);
+  const wait = async (ok, ms) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
+  if (!await wait(() => drawn().includes(tileOf(9)), 15000)) f.push(`the zoom 9 tile under the view isn't kept: ${drawn().join(' ')}`);
+  return f;
+})()
+"""
+
+COARSE_MOVE = r"""
+(async () => {
+  const m = polku.map, tm = m.style.tileManagers.ofm, f = [];
+  const tileOf = (z) => { const c = m.getCenter(), n = 2 ** z, r = c.lat * Math.PI / 180;
+    return `${z}/${Math.floor((c.lng + 180) / 360 * n)}/${Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)}`; };
+  const drawn = () => tm.getRenderableIds().map((k) => tm.getTileByID(k)).filter((t) => t.hasData()).map((t) => `${t.tileID.canonical.z}/${t.tileID.canonical.x}/${t.tileID.canonical.y}`);
+  const wait = async (ok, ms) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
+  m.panBy([m.getCanvas().clientWidth * 1.5, 0], { duration: 0 });
+  await new Promise((r) => setTimeout(r, 1500));
+  if (drawn().includes(tileOf(13))) f.push(`the zoom 13 tile came though it was held: ${tileOf(13)}`);
+  else if (!await wait(() => drawn().includes(tileOf(9)), 10000)) f.push(`a new place shows paper: no zoom 9 tile drawn in the place of ${tileOf(13)}: ${drawn().join(' ')}`);
+  return f;
+})()
+"""
+
+
+def coarse(chrome):
+    """A coarse map underneath (#1091): the base map's tile four zoom levels up stays drawn under the view, and stands in
+    for a tile that hasn't come (OpenFreeMap's zoom 13 held back with the Fetch domain, so it never comes)."""
+    fails = []
+    for w, h_, phone in ((1440, 900, False), (390, 844, True)):
+        pg = chrome.page(w, h_, phone)
+        sessions = [pg.s]
+        try:
+            pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')
+            fails += [f'{w}: {e}' for e in pg.js(COARSE_AT, timeout=30000)]
+            pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+            time.sleep(0.5)
+            sessions += [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e['params']['sessionId'] not in sessions]
+            for s_ in sessions:  # (dedicated workers' requests go through the page's; the rest don't take Fetch)
+                try:
+                    pg.c.send('Fetch.enable', {'patterns': [{'urlPattern': '*openfreemap.org/planet/*/13/*'}]}, s_)
+                except RuntimeError:
+                    pass
+            fails += [f'{w}: {e}' for e in pg.js(COARSE_MOVE, timeout=30000)]
+            fails += [f'{w} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            for s_ in sessions:
+                try:
+                    pg.c.send('Fetch.disable', {}, s_)
+                except RuntimeError:
+                    pass
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a coarse map underneath: the base map's zoom 9 tile stands in for a zoom 13 one that hasn't come (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def aerial_labels(chrome):
     fails = []
     for base in ('aerial', 'ortofi'):
@@ -23014,6 +23073,7 @@ GROUPS = [
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
+    ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
