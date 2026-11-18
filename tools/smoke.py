@@ -846,7 +846,7 @@ UPHILL_LATE = """(async () => {
   await wait(1500); await settle();
   const c = m.getCenter(), [tx, ty] = T.tilesIn([c.lng, c.lat, c.lng, c.lat])[0], flat = [];
   for (let i = 0; i <= 10; i++) flat.push(c.lng - 0.002 + i * 0.0004, c.lat);
-  T.seedTile(tx, ty, { v: 1, w: [[1, { highway: 'path', 'mtb:scale:uphill': '2' }, flat]] });
+  T.seedTile(tx, ty, { v: 1, w: [[1, { highway: 'path', 'mtb:scale:uphill': '2' }, flat]], n: [] });
   D.mode = 'hold';
   U.osmTiles.clear(); U.update();
   await wait(500);
