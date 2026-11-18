@@ -10626,6 +10626,20 @@ def button3d(chrome, phones=False):
         fails += [f'1440x900 keyboard console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
+        # 3D off while its terrain is still loading (#288): on, and off half a second later, five times, each in a new
+        # place so the terrain isn't loaded yet; no console error (MapLibre's _terrainDataCallback on a dropped terrain)
+        pg = page(1440, 900, False, 'mtb')
+        for k in range(5):
+            pg.js(f"(() => {{ polku.map.jumpTo({{ center: [{24 + k * 0.6}, 62.2], zoom: 12 }}); return true; }})()")
+            time.sleep(0.3)
+            pg.js("document.querySelector('#btn-3d').click(), true")
+            time.sleep(0.5)
+            pg.js("document.querySelector('#btn-3d').click(), true")
+            time.sleep(1.5)
+        expect(pg, '1440x900, 3D off while its terrain loads', False)
+        fails += [f'1440x900, 3D off while its terrain loads, console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+
         # the quick drawer: no 3D tile in any sport, MTB's in its place is Waymarked MTB; Edit doesn't offer 3D
         pg = page(1440, 900, False, 'mtb')
         got = pg.js(B3D_TILES)
