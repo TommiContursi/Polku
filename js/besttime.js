@@ -21,6 +21,8 @@ const HEAVY = 4; // mm an hour
 // Local midnight `k` days from today (epoch seconds)
 export function dayStart(k) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + k); return d.getTime() / 1000; }
 // …and back: how many days from today epoch second `t` is
+// the next local midnight after `day0`'s
+const dayEnd = (day0) => { const d = new Date(day0 * 1000); d.setDate(d.getDate() + 1); return d.getTime() / 1000; };
 export const dayOffset = (t) => Math.round((new Date(t * 1000).setHours(0, 0, 0, 0) / 1000 - dayStart(0)) / 86400);
 
 // The open water on the route's water legs, as the water router left it (water.js's `reach`): each sample's place along
@@ -100,15 +102,14 @@ function score(pl, a, start, t, calm, w, water) {
     sky: skyKind(w.precip[mid], w.temp[mid], w.cloud ? w.cloud[mid] : NaN, nightAt(start + t.tAt[mid], a.pts[mid]), w.thunder?.[mid] === 1) };
 }
 
-// A day's 24 departures, from local midnight `day0`: a passed hour has only its dark; the current hour is Leave now,
+// A day's departures, an hour apart from local midnight `day0` to the next (23 or 25 on a day the clocks change, #1037): a passed hour has only its dark; the current hour is Leave now,
 // from this minute. `failed`: true, or a back-off's words. `stale()`: the route or the forecast changed, so the answer is dropped (null). `old`: when the oldest copy of a forecast that
 // stood in for a failed request was fetched (ms), else null. The forecast is asked
 // for an hour at a time, so a failure stops the day at once (one failed request, not 24): the rest are the dark alone.
 export async function sweepDay(pl, a, day0, stale) {
   const now = Math.round(Date.now() / 60000) * 60, water = openWater(pl, a), hrs = [];
   let failed = false, old = null;
-  for (let j = 0; j < 24; j++) {
-    const h0 = day0 + j * 3600;
+  for (let h0 = day0, end = dayEnd(day0); h0 < end; h0 += 3600) {
     if (h0 + 3600 <= now) { const t = pl.timing(a, null, null, h0); hrs.push({ ...score(pl, a, h0, t, t, null, water), h0, past: true }); continue; } // (its dark, for the shade)
     const start = Math.max(h0, now), t0 = pl.timing(a, null, null, start);
     let w = null, t = t0, calm = t0;
@@ -141,7 +142,7 @@ export function nameDay(day, anchor) {
   const least = Math.min(...live.map((x) => x.dark)), lim = least < 0.4 ? Math.max(0.1, least + 0.1) : 0.1;
   for (const x of live) x.grp = x.dark <= lim ? 'light' : x.dark >= 0.5 ? 'dark' : 'into';
   const used = new Set();
-  const mins = (x) => Math.round((x.t - day.day0) / 60);
+  const mins = (x) => { const d = new Date(x.t * 1000); return d.getHours() * 60 + d.getMinutes(); }; // (the clock's, on any day)
   const usable = (x, lit) => x && !x.past && !x.none && !x.unknown && !x.out && x.grp === (lit ? 'light' : 'dark') && (lit || mins(x) >= 300);
   const near = (x) => { const d = Math.abs(mins(x) - anchor); return Math.min(d, 1440 - d); };
   const windows = (lit, max) => {
@@ -152,7 +153,7 @@ export function nameDay(day, anchor) {
       if (used.has(i) || (c.bar > 0.4 && !(poor && !out.length))) continue;
       let a = i, b = i;
       while (a > 0 && usable(hrs[a - 1], lit) && hrs[a - 1].bar <= c.bar + 0.05) a--;
-      while (b < 23 && usable(hrs[b + 1], lit) && hrs[b + 1].bar <= c.bar + 0.05) b++;
+      while (b < hrs.length - 1 && usable(hrs[b + 1], lit) && hrs[b + 1].bar <= c.bar + 0.05) b++;
       for (let j = a - 2; j <= b + 2; j++) used.add(j); // (two named departures at least two hours apart)
       out.push({ best: c, a, b, i, least: c.bar > 0.4 });
     }

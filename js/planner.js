@@ -7642,6 +7642,7 @@ export class Planner {
     const box = h('section', { class: 'bt', 'aria-label': 'Best time to leave' }, h('div', { class: 'rows' }, row));
     if (!card.best) return box;
     const k = Math.max(0, Math.min(9, card.btK ?? depK)), res = k === depK ? r0 : this.btDay(card, k), day0 = dayStart(k);
+    const n = Math.round((dayStart(k + 1) - day0) / 3600), slotOf = (v) => (new Date(day0 * 1000).setHours(v) / 1000 - day0) / 3600; // (23 or 25 hours on a day the clocks change, #1037)
     const hrs = res?.hrs, N = res && !res.failed ? nameDay(res, anchor) : { lit: [], dark: [] };
     const sky = (ic, size) => icon(`sky-${ic}`, size);
     // the day, ‹ ›; an ⓘ when the forecast is less certain, or ends that day
@@ -7658,8 +7659,8 @@ export class Planner {
     if (res?.old) box.append(h('p', { class: 'note wx-note stale-note' }, `Older forecast (from ${timeOf(res.old / 1000)}): Open-Meteo couldn’t be reached.`));
     const cur = hrs ? hrs.findIndex((x) => !x.past && x.h0 <= dep && dep < x.h0 + 3600) : -1;
     const marks = new Map([...N.lit, ...N.dark].map((w) => [w.i, w.least])); // (the named hours: least bad or not)
-    const read = h('p', { class: 'bt-read' }), range = h('input', { type: 'range', class: 'bt-range', 'data-k': 'bt-range', min: '0', max: '23', step: '1', 'aria-label': `Departure on ${new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' })}`, disabled: loading || failed ? true : null });
-    const slots = h('div', { class: 'bt-slots', 'aria-hidden': 'true' });
+    const read = h('p', { class: 'bt-read' }), range = h('input', { type: 'range', class: 'bt-range', 'data-k': 'bt-range', min: '0', max: String(n - 1), step: '1', 'aria-label': `Departure on ${new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' })}`, disabled: loading || failed ? true : null });
+    const slots = h('div', { class: 'bt-slots', 'aria-hidden': 'true', style: `grid-template-columns: repeat(${n}, minmax(0, 1fr))` });
     // the reading and the bars for the hour tried (`i`), else the departure: drawn again in place while a finger moves
     const draw = (i) => {
       const x = hrs?.[i ?? cur];
@@ -7668,7 +7669,7 @@ export class Planner {
       if (hrs) slots.replaceChildren(...hrs.map((y, j) => this.btSlot(y, j, hrs, marks, loading, failed, j === cur, j === i)));
       if (x) range.setAttribute('aria-valuetext', read.textContent);
     };
-    if (!hrs) slots.replaceChildren(...Array.from({ length: 24 }, () => h('span', { class: 'bt-slot skel' }, h('i', { class: 'bt-bar' }))));
+    if (!hrs) slots.replaceChildren(...Array.from({ length: n }, () => h('span', { class: 'bt-slot skel' }, h('i', { class: 'bt-bar' }))));
     const firstLive = hrs ? Math.max(0, hrs.findIndex((x) => !x.past)) : 0;
     range.min = String(firstLive);
     range.value = String(card.btTry ?? (cur >= 0 ? cur : N.lit[0]?.i ?? firstLive));
@@ -7676,9 +7677,9 @@ export class Planner {
     // the dark behind: one band where the trip would be in the dark, a lighter one where it runs into it
     const runs = [];
     (hrs || []).forEach((y, i) => { const c = y.dark >= 0.9 ? 'dark' : y.dark > 0 ? 'into' : ''; if (c && runs.at(-1)?.c === c && runs.at(-1).b === i - 1) runs.at(-1).b = i; else if (c) runs.push({ c, a: i, b: i }); });
-    const shade = h('div', { class: 'bt-shade', 'aria-hidden': 'true' }, ...runs.map((r) => h('i', { class: r.c, style: `left: ${(r.a / 24) * 100}%; width: ${((r.b - r.a + 1) / 24) * 100}%`, html: r.c === 'dark' && r.b > r.a ? icon('moon', 12) : '' })));
+    const shade = h('div', { class: 'bt-shade', 'aria-hidden': 'true' }, ...runs.map((r) => h('i', { class: r.c, style: `left: ${(r.a / n) * 100}%; width: ${((r.b - r.a + 1) / n) * 100}%`, html: r.c === 'dark' && r.b > r.a ? icon('moon', 12) : '' })));
     const strip = h('div', { class: 'bt-strip' }, shade, slots, range);
-    box.append(read, strip, h('div', { class: 'bt-axis' }, ...[0, 6, 12, 18].map((v) => h('span', { 'aria-hidden': 'true', style: `left: ${(v / 24) * 100}%` }, String(v).padStart(2, '0'))),
+    box.append(read, strip, h('div', { class: 'bt-axis' }, ...[0, 6, 12, 18].map((v) => h('span', { 'aria-hidden': 'true', style: `left: ${(slotOf(v) / n) * 100}%` }, String(v).padStart(2, '0'))),
       hrs && !failed ? infoDot('The bars', 'Each bar is the weather on your trip if you leave at that hour: the shorter, the better. Shaded hours are dark. Drag along the bars, and let go to leave then.') : null));
     if (hrs && !failed) this.btWire(card, strip, range, hrs, draw);
     if (loading) return box;
@@ -7760,7 +7761,7 @@ export class Planner {
   // A finger or the mouse along the bars tries each hour, and letting go leaves then (a tap is the same); a mouse's
   // pointing shows the reading. The keys: the arrows try, and a moment's rest or Enter leaves then
   btWire(card, strip, range, hrs, draw) {
-    const idx = (e) => { const r = strip.getBoundingClientRect(); return Math.max(0, Math.min(23, Math.floor((e.clientX - r.left) / (r.width / 24)))); };
+    const idx = (e) => { const r = strip.getBoundingClientRect(); return Math.max(0, Math.min(hrs.length - 1, Math.floor((e.clientX - r.left) / (r.width / hrs.length)))); };
     const ok = (i) => !hrs[i].past && !hrs[i].none;
     const tryAt = (i) => { if (hrs[i].past || card.btTry === i) return; card.btTry = i; draw(i); };
     const done = () => { card.btTry = null; draw(null); if (card.btLate) { card.btLate = false; this.btRedraw(card); } };
