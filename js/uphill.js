@@ -63,11 +63,12 @@ export class UphillLayer {
 
   async update() {
     const map = this.map;
-    if (!this.enabled || map.getZoom() < MIN_ZOOM || !map.getSource('ofm')) return this.setMissing(false);
+    if (!this.enabled || map.getZoom() < MIN_ZOOM || !map.getSource('ofm')) { this.view = null; return this.setMissing(false); }
     const run = ++this.run;
-    let missing = false;
     const b = map.getBounds();
-    const view = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+    const view = (this.view = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+    // an OSM-tagged climb in view graded without some of its terrain counts too, until it's graded again
+    let missing = tilesIn(view).some(([x, y]) => this.osmTiles.get(`${x}/${y}`)?.partial);
     const feats = map.querySourceFeatures('ofm', {
       sourceLayer: 'transportation',
       // Real trails only: tracks, paths/bridleways/steps, and footways that are
@@ -159,7 +160,8 @@ export class UphillLayer {
           }
           entry.result = out;
           entry.partial = failed > 0; // graded again on the next update
-          if (entry.partial && run === this.run) this.setMissing(true);
+          // still in view, whichever update asked for it (a later one doesn't ask again while it's on its way)
+          if (entry.partial && this.view && tilesIn(this.view).some(([x2, y2]) => x2 === x && y2 === y)) this.setMissing(true);
           if (run === this.run || this.enabled) this.publish();
         })
         .catch(() => { this.osmTiles.delete(key); }); // trailTile waits 2 min before asking again
