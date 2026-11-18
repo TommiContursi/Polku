@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Best time to leave when the clocks change ([#1037](https://github.com/TommiContursi/Polku/issues/1037))
 
-- On the last Sunday of March and of October, when the clocks change, **Best time to leave** shows that day's own hours: 23 in March and 25 in October, the hour that repeats twice. Before, the day always had 24 bars, so in October one hour was missing and the later bars stood an hour off the times under them.
+- On the last Sunday of March and of October, when the clocks change, **Best time to leave** shows that day's own hours: 23 in March, and 25 in October, with the repeated hour shown twice. Before, the day always had 24 bars, so in October one hour was missing and the later bars stood an hour off the times under them.
 
 ### Fewer effects on a very slow device ([#900](https://github.com/TommiContursi/Polku/issues/900))
 
