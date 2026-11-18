@@ -154,7 +154,7 @@ function set(k, v) {
   const p = new URLSearchParams(location.search); p.set(k, v);
   try { history.replaceState(null, '', '?' + p); } catch {} // (a preview from data: has no address to keep)
   if (k === 'f') { document.getElementById('frame').className = `frame f${v}`; map?.resize(); }
-  if (k === 'way') { if (v === 'now') ready.clear(); document.getElementById('what').textContent = WHAT[v]; if (map) { map.triggerRepaint(); loadAround(); } } // (as now: nothing loaded ahead stays ready)
+  if (k === 'way') { if (v === 'now') ready.clear(); document.getElementById('what').textContent = WHAT[v]; if (map) { map.jumpTo({ center: map.getCenter() }); loadAround(); } } // (a move of nothing: MapLibre chooses its tiles again, so A's coarse ones come now) // (as now: nothing loaded ahead stays ready)
   show();
 }
 for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.addEventListener('click', () => set(sw.dataset.k, b.dataset.v));

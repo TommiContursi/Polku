@@ -6,7 +6,7 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 
 ## Where it stands
 
-- **Investigated, 2026-11-18.** Waiting for the user's choice. The recommendation is A (below).
+- **Investigated, 2026-11-18.** The recommendation is A (below). The user's first pick, 2026-11-18, was A and B together, with a question about what they cost in requests; the answer is under [A and B, measured](#a-and-b-measured). Waiting for the user's choice.
 
 ## What people see
 
@@ -17,13 +17,13 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **The moves:** a mouse drag of 600 px; six presses of → (100 px each); a finger's slow drag of 300 px that rests before it lifts; a flick, which lets go moving so the map glides on; and two notches of the mouse wheel out. In MTB and in paddle, at zoom 13, each at a different town or archipelago so that a cold run starts cold.
 - **The network** as it is (a fast home connection), and slowed to Chrome DevTools' "Slow 4G" (562 ms of latency, 1.4 Mbit/s). The slowing reaches MapLibre's workers too: OpenFreeMap's tiles took 2–3 s instead of 0.3–0.6 s.
 - **What was recorded,** in every frame MapLibre drew: whether each source had its tiles in view loaded, and every 90 ms a 48 × 30 grid of the screen's pixels. From the grid: how much of the screen is plain paper (the background colour, `#f5f3ee`, with nothing drawn on it) beyond what's still paper when everything has come, and when the screen is 99 % like it finally is. A strip of thumbnails every 150 ms shows what a person sees.
-- **One run of each move,** on each network, at a place of its own (so a slow run's numbers say as much about what's at that place as about the move); a first round of 30 runs, partly on a profile that wasn't empty, showed the same. Nothing else was running Chrome on the machine. The Browser pane was hidden when the runs started (a hidden page doesn't draw), so they ran in a Chrome of their own; the mock-up was then tried in the pane.
+- **One run of each move,** on each network, at a place of its own (so a slow run's numbers say as much about what's at that place as about the move); a first round of 30 runs showed the same on the fast network (its slow runs were on a Chrome profile that wasn't empty, so they don't count). Nothing else was running Chrome on the machine. The Browser pane was hidden when the runs started (a hidden page doesn't draw), so they ran in a Chrome of their own; the mock-up was then tried in the pane.
 
 ### What it showed
 
 - **On a fast network the map is complete when it stops moving.** MapLibre has every tile in view within 0.2–0.6 s of the move starting, cold or warm alike, so the screen is like its end state within about 50 ms of the map stopping. What shows is paper at the edge that leads, while the map moves: up to 4 % of the screen for a drag or the keys, and 23–26 % during a flick on a phone, as the map glides into places it hasn't loaded. It lasts 150–300 ms. Cold and warm look the same, so this isn't the network: MapLibre asks for a tile only once it comes into view, and then has to lay it out.
-- **On a slow network the new part is plain paper for a second or more.** After a flick on a phone, three quarters of the screen is paper, with only the contour lines and the hillshade (from Mapterhorn, which come sooner), and the map comes in square by square, a 512 px tile at a time, for 1.8 s after it stops. The wheel zooming out leaves a frame of paper round the edges for 3 s. Warm, the same moves look like the fast network's.
-- **Then Polku's own layers come.** Trail details (from Polku's own OSM data on ducksoft.fi) come 0.4 s after the map stops on a fast network and 2 s on a slow one, and the trail lines are drawn again in their colours. In paddle, the depth areas, depth contours and soundings (Traficom's WMS, 24 images per move) come about 1 s after the stop and fade in over 150 ms; the nautical marks and Fintraffic's ships about 1 s after that. Each one is a separate change you see after the map has stopped: this is the "piece by piece".
+- **On a slow network the new part is plain paper for a second or more.** After a flick on a phone, three quarters of the screen is paper (with the contour lines and the hillshade where Mapterhorn's elevation tiles came first), and the map comes in square by square, a 512 px tile at a time, for 1.8 s after it stops. The wheel zooming out leaves a frame of paper round the edges for 3 s. Warm, the same moves look like the fast network's.
+- **Then Polku's own layers come, each on its own.** On a fast network most are in before the map stops; what comes after is LIPAS's routes (up to 0.3 s), in paddle the nautical marks (up to 0.8 s) and Fintraffic's ships (0.6–0.7 s), and, in one run of the first round, the trail lines drawn again in their colours when trail details came (0.5 s). On a slow network the base map itself comes 0.3–1 s after the stop, the hillshade up to 3.5 s, winter ways 1.7 s, and in paddle Traficom's depth areas, depth contours and soundings (24 images per move) 2–15 s, each fading in over 150 ms. Each is a separate change you see after the map has stopped: on a fast network this, the paper during a flick and the labels' fade below are the "piece by piece".
 - **Labels fade in** over 300 ms (MapLibre's `fadeDuration`), after the tile under them has come.
 - **What MapLibre does today with a tile that hasn't come:** it draws a coarser tile of the same map in its place, masked to the missing tile's square, but only one it already holds among the tiles in view. It asks for a coarser one only after the missing tile has failed or come, not while it loads, and a coarser tile in the browser's cache doesn't count. So after zooming in you see the old zoom enlarged, but after a move into a new place there is nothing to stand in, and the place stays paper. MapLibre GL JS has no option to change this, in 5.24 or in the newest version, 6.19.
 
@@ -52,6 +52,22 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **MapLibre GL JS** has none of these. A pull request proposes a `preload` option for camera animations ([#8670](https://github.com/maplibre/maplibre-gl-js/pull/8670)), not for drags. A plugin, [maplibre-preload](https://github.com/AbelVM/maplibre-preload), loads tiles ahead along a camera animation (not a drag) by reaching into MapLibre's internals or by fetching into the browser's cache, because MapLibre doesn't expose its tile cache ([maplibre-gl-js#6041](https://github.com/maplibre/maplibre-gl-js/issues/6041), open).
 - **MapLibre's options** were checked too: `fadeDuration` (labels, 300 ms), `maxTileCacheSize` (tiles kept once loaded; the default fits the view), `cancelPendingTileRequestsWhileZooming` (on) and `raster-fade-duration` (Polku's overlays, 150 ms) all act on tiles once they have come, so none of them fills a blank part sooner.
 
+## A and B, measured
+
+On 214afb8, in Chrome with its GPU: Polku in MTB at zoom 13 with an empty profile, as now, with A, and with A and B, at the same place for each size, then six moves: on a phone four flicks and two finger drags, on a desktop four mouse drags, the keys and the wheel. A and B were added from the console as described under [How A was tried](#how-a-was-tried). "Paper" is the most of the screen that was plain background during the first move, into a place not yet seen; the later moves showed almost none in any way. The tiles are OpenFreeMap's, as MapLibre asked for them, plus what A and B fetched.
+
+| Network, size | Paper: as now | Paper: A | Paper: A and B | Tiles as now | A adds | B adds (kB) | B's tiles later shown |
+|---|---|---|---|---|---|---|---|
+| Fast, 390 × 844 | 10 % | 1 % | 1 % | 15 | 2 | 19 (95 kB) | 6 |
+| Fast, 1440 × 900 | 3 % | 0 % | 0 % | 23 | 3 | 67 (346 kB) | 17 |
+| Slow 4G, 390 × 844 | 84 % | 1 % | 1 % | 15 | 1 | 26 (55 kB) | 6 |
+| Slow 4G, 1440 × 900 | 18 % | 5 % | 1 % | 24 | 3 | 53 (575 kB) | 15 |
+
+- **A does nearly all of it.** It takes the first move into a new place from 10–84 % paper to 0–5 %, for one to three more tiles per place (about 7–20 % more tiles).
+- **B adds little that shows after A:** a sharper map at once after a short move, and on a slow desktop 5 % paper down to 1 %. It costs two to three times the tiles of today, and three quarters of them were never shown (a move goes one way; B loads all four sides). Here that was 55–575 kB per six moves; in a town, where tiles are bigger, more.
+- **Neither calls any other service.** Both only fetch OpenFreeMap's map tiles: nothing goes to Overpass, LIPAS, BRouter, the weather, Traficom or Fintraffic, so their limits and Polku's pacing aren't touched. OpenFreeMap has no published limit, but it's a free, donation-funded service, and B would roughly triple what Polku asks of it.
+- **On a phone's data plan,** A costs a few tens of kB per new place; B a few hundred kB more per minute of moving around a town. B should then at least stay off when the browser says to save data (`navigator.connection.saveData`).
+
 ## The options
 
 All costs are against Polku as it is. OpenFreeMap has no published rate limit and serves from Cloudflare's cache; brouter.de isn't touched by any of these.
@@ -60,8 +76,8 @@ All costs are against Polku as it is. OpenFreeMap has no published rate limit an
 
 Every tile in view keeps the tile four zoom levels up among MapLibre's own tiles for that source, as Mapbox's and MapLibre Native's `prefetchZoomDelta` does. When you then move and a tile hasn't come, MapLibre's own stand-in, the coarser tile, is already there, drawn only in the missing tile's square: lakes, sea, forest, fields and the main roads appear at once, and the paths, buildings and names sharpen in where they come. Where the detail has come, nothing changes.
 
-- **Tried in Polku:** with zoom 13's tiles held back and never answered, a move of a screen and a half on a phone showed the zoom-9 tile in their place from 167 ms on: the forest, the open ground, the roads, the contours and the hillshade, with only the paths and small names missing ([what was run](#how-a-was-tried)). Fetching the same coarse tiles into the browser's cache instead did nothing: MapLibre never asked for them while the detail loaded (above).
-- **What people gain:** no plain paper after a move into a place the map hasn't shown, on any network, without anything moving on screen. On a fast network it removes the strip at the leading edge and the paper during a flick; on a slow one it turns one to three seconds of paper into a softer map that sharpens.
+- **Tried in Polku:** with zoom 13's tiles held back and never answered, a move of a screen and a half on a phone showed the zoom-9 tile in their place from 167 ms on: the forest, the open ground, the roads, the contours and the hillshade, with only the paths and small names missing ([what was run](#how-a-was-tried)); and in real moves the paper fell from 10–84 % to 0–5 % ([A and B, measured](#a-and-b-measured)). Fetching the same coarse tiles into the browser's cache instead did nothing: MapLibre never asked for them while the detail loaded (above).
+- **What people gain:** almost no plain paper after a move into a place the map hasn't shown, on any network, without anything moving on screen. On a fast network that is the paper during a flick on a phone; on a slow one, one to three seconds of paper become a softer map that sharpens. It doesn't change Polku's own layers coming in after the stop, or the names' fade (D and E).
 - **Requests:** a zoom-10 tile covers 16 × 16 zoom-14 tiles, so the view needs 1–4 coarse tiles (35–60 kB each over Finland) when you arrive somewhere, and almost none as you move around nearby: the same few cover a whole town. The first time in a region they load with the rest; after that they're there. Nothing goes to Polku's other services.
 - **Battery and data:** a few hundred kB per new region; MapLibre draws the coarse tiles masked to where the detail is missing, so a little more drawing per frame (one or two more tiles' layers, clipped), to be measured in the build.
 - **Offline:** Save offline already keeps zoom levels 5–14 of a route's area, so a saved area has its coarse tiles.
@@ -73,7 +89,7 @@ Every tile in view keeps the tile four zoom levels up among MapLibre's own tiles
 As A, plus the tiles at the map's own zoom half a screen beyond each edge, fetched into the browser's cache whenever the map stops, so a short move finds the detail ready too (Leaflet's `keepBuffer`, done ahead). This part does work through the cache: MapLibre asks for these tiles as they come into view, and gets them at once.
 
 - **What people gain:** short moves show the full detail at once, not the coarse map first.
-- **Requests:** about twice as many tiles as today, most never looked at (a person moves in one direction, the ring is loaded in all four). On a phone's data plan that's real.
+- **Requests:** two to three times the tiles of today, three quarters of them never shown ([measured](#a-and-b-measured)); only OpenFreeMap's. On a phone's data plan that's real, so it stays off when the browser asks to save data.
 - **Battery:** each extra tile is downloaded and kept, though not laid out until it's shown.
 - **Code:** about 25 more lines on top of A, in `js/offline.js` (which already turns an area into OpenFreeMap tile addresses for Save offline) and `js/main.js`.
 
@@ -85,11 +101,29 @@ The coarse tiles for the whole of Finland (zoom 0–8: about 270 tiles in Finlan
 - **Requests:** 20–30 MB once per install, and again each week when OpenFreeMap's tiles change their version (Save offline keeps its tiles under a key without the version; this would need the same); storage the browser may clear.
 - **Code:** about 40 lines in `sw.js` and `js/offline.js`, and a setting to turn it off for those on a small data plan. Too much for what it adds over A: worth looking at again only if A leaves a gap on first visits.
 
+### D: Polku's own layers come in together
+
+Each of Polku's loaders (trail details, LIPAS, lit and winter ways, and in paddle the depth data, marks and ships) waits for the map to stop and then shows what it gets as soon as it gets it, so after a stop the map changes three or four times. D holds what comes for up to about half a second after the first answer, and shows it all in one go.
+
+- **What people gain:** on a fast network, one change after the stop instead of several; the map looks finished sooner even though nothing comes faster.
+- **Requests:** none more. Starting the loaders before the map stops would add requests to the free services for places only passed by, so D doesn't.
+- **What it costs people:** the first layer to come waits for the others, up to half a second; a slow one (Traficom's depths on a slow network) can't be waited for and still comes on its own.
+- **Code:** a shared gate in `js/main.js` that each loader's `schedule()` reports to (`js/trails.js`, `js/lipas.js`, `js/lit.js` and the paddle layers): about 40–60 lines across five files, with smoke checks for each loader's timing. More than A, and it touches the loaders' saved-data and failure paths.
+
+### E: names without their fade
+
+MapLibre fades labels in over 300 ms (`fadeDuration`) once their tile has come. Setting it to 0 makes names appear with their tile.
+
+- **What people gain:** names are there with the map, not a moment after it; one change fewer.
+- **What it costs people:** names that collide while you zoom or rotate pop in and out instead of fading, which MapLibre's fade is there to soften. By DESIGN.md's "Motion" (no motion for what's seen hundreds of times a day) and /animate, the pop is acceptable; how it feels in a zoom is to be tried.
+- **Requests and battery:** none; a little less drawing.
+- **Code:** one option where the map is made.
+
 ### Not proposed
 
 - **A fade or a shimmer over parts not loaded yet.** Moving the map happens many times a minute and from the keyboard, so by DESIGN.md's "Motion" and the /animate rules it gets no motion; a shimmer would also loop on the map while you wait. A's coarse map gives the same "it's there" without anything moving. MapLibre can't fade vector tiles anyway, only raster ones.
-- **MapLibre's settings** (above): none fills a blank part sooner.
-- **Bringing Polku's own layers in sooner** (trail details, depths, marks): they wait for the map to stop on purpose, so a move doesn't send requests to free services for places passed by. Whether they could start a little sooner, or fill in together rather than one after another, is a question of its own if the user wants it.
+- **MapLibre's other settings** (above): none fills a blank part sooner.
+- **Starting Polku's own layers before the map stops:** they wait on purpose, so a move doesn't send requests to free services for places only passed by.
 
 ## Building A
 
