@@ -125,9 +125,8 @@
       if (window.polku || !(e instanceof ErrorEvent || e.target instanceof HTMLScriptElement)) return;
       let again = false;
       try {
-        again = !sessionStorage.getItem('polku:startRetry');
-        if (again) sessionStorage.setItem('polku:startRetry', '1');
-      } catch { /* private mode: no try more, so never a loop */ }
+        if (!sessionStorage.getItem('polku:startRetry')) { sessionStorage.setItem('polku:startRetry', '1'); again = true; }
+      } catch { /* no storage, or it's full: no try more, so never a loop */ }
       if (again) location.reload();
       else document.getElementById('start-failed').hidden = false;
     }, true);

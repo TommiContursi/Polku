@@ -9493,8 +9493,8 @@ def start_fails(chrome):
         return sum(1 for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Network.requestWillBeSent'
                    and e['params']['request']['url'].endswith('js/safety.js'))
 
-    def failed(pg, name):
-        """The banner within 40 s, after one try more and no third."""
+    def failed(pg, name, n=2):
+        """The banner within 40 s, after n tries (the first and one more) and no more."""
         end, said = time.time() + 40, ''
         while time.time() < end and not said:
             time.sleep(0.5)
@@ -9508,8 +9508,8 @@ def start_fails(chrome):
         if 'didn’t finish loading' not in said or 'Reload' not in said:
             fails.append(f'{name}: the message says “{said}”')
         time.sleep(4)  # long enough for a third try to show
-        if tries(pg) != 2:
-            fails.append(f'{name}: {tries(pg)} tries, not the first and one more')
+        if tries(pg) != n:
+            fails.append(f'{name}: {tries(pg)} tries, not {n}')
         return True
 
     def reload_opens(pg, name):
@@ -9540,6 +9540,15 @@ def start_fails(chrome):
         if shown:
             reload_opens(pg, name)
         pg.close()
+
+    # storage that can't be written (full): no try more, since it couldn't be counted, so never a loop
+    name = '390x844, js/safety.js not arriving, sessionStorage full'
+    pg = chrome.page(390, 844, True)
+    chrome.send('Page.addScriptToEvaluateOnNewDocument', {'source': "Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); };"}, pg.s)
+    chrome.send('Network.setBlockedURLs', {'urls': ['*js/safety.js']}, pg.s)
+    chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
+    failed(pg, name, 1)
+    pg.close()
 
     # a returning visitor on a slow network: the worker's saved js/safety.js is older than main.js, and the server's
     # answer doesn't come within the worker's 3 s, in either try
