@@ -6848,6 +6848,7 @@ NET_FAILS = """(async () => {
   await go('fmi', '/slow', { timeoutMs: 100 });
   const of = (id) => N.usage().find((u) => u.id === id);
   // Overpass's own deadline in osm.js (every mirror stalls): each mirror it gave up on failed
+  await new Promise((ok) => document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: location.origin + '/css/app.css', onload: ok }))); // (osm.js's imports read its colours)
   const O = await import(location.origin + '/js/osm.js'), stalled = of('overpass').failed;
   window.fetch = async (url, init) => (/interpreter/.test(String(url)) ? new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason))) : real(url, init));
   await O.overpass('[out:json];out;', { timeoutMs: 100 }).catch(() => 0);
