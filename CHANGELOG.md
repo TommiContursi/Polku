@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-18
 
+### What failed, in Data sources ([#687](https://github.com/TommiContursi/Polku/issues/687))
+
+- **Settings → Data sources** says how many calls to each service failed this session, with no answer or with an error, Overpass's too. A cancelled call, such as a mirror that lost the race, isn't counted as failed.
+- Its note says what the counts are: each call when it's sent, answered or not, and that map tiles and terrain aren't counted there.
+
 ### Uphill colours when the terrain is missing ([#130](https://github.com/TommiContursi/Polku/issues/130))
 
 - When the terrain doesn't load for some trails, Layers says so under **Uphill**: those trails have no uphill colours yet, and Polku keeps trying.
