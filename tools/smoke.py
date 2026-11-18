@@ -6319,6 +6319,7 @@ OBJECT_SHADOWS = """(async () => {
 
 # The sky in 3D (#644): from the sun's height at the map's hour, and the weather only while a forecast is loaded (WX_FIXED:
 # clear south of 63°, rain north of it). No forecast: the pale sky that claims no weather. The buildings lit by the sun.
+# On a pinned clock (PINNED_CLOCK), as the sun's heights it needs aren't there every day of the year.
 SKY_3D = """(async () => {
   const m = polku.map, w = polku.weather, out = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const { sunPosition } = await import(location.origin + '/js/sun.js'), { timeAtHour } = await import(location.origin + '/js/wxmap.js');
@@ -6348,11 +6349,22 @@ SKY_3D = """(async () => {
 })()"""
 
 
+# The page's clock for SKY_3D, from 2026-09-22 09:00 UTC on (#946): in Finland's winter the sun never gets 6° up, the
+# sky's day; on that day it's 27° at Tampere at the start and 24° at Oulu, dusk is 7 hours on and night 10.
+PINNED_CLOCK = """(() => {
+  const RealDate = Date, shift = RealDate.UTC(2026, 8, 22, 9) - RealDate.now();
+  window.Date = class extends RealDate {
+    constructor(...a) { super(...(a.length ? a : [RealDate.now() + shift])); }
+    static now() { return RealDate.now() + shift; }
+  };
+})();"""
+
+
 def sky_3d(chrome):
     fails = []
     pg = chrome.page(1440, 900, False)
     try:
-        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + "window.__wx.temp = 5; window.__wx.precip = (lat) => (lat > 63 ? 2 : 0); window.__wx.cloud = (lat) => (lat > 63 ? 100 : 0);"}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': PINNED_CLOCK + EMPTY_DEPTHS + WX_FIXED + "window.__wx.temp = 5; window.__wx.precip = (lat) => (lat > 63 ? 2 : 0); window.__wx.cloud = (lat) => (lat > 63 ? 100 : 0);"}, pg.s)
         pg.open_app({'activity': 'hike', 'terrain3d': True}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#11/61.4985/23.7640/0/60')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         fails += pg.js(SKY_3D, timeout=180000)
@@ -21384,6 +21396,40 @@ def head_names(chrome):
     return not fails
 
 
+# An imported track has no way tags, so no surface (#493): on an MTB it's timed at the gravel speed, and Go's time
+# breakdown lists it under Gravel & unpaved, the row of that speed, not under Paved. Road's key facts don't call a way
+# with no surface unpaved.
+TRACK_ROWS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
+  const F = await import(location.origin + '/js/facts.js');
+  p.setActive(true);
+  p.clear();
+  const c = [];
+  for (let i = 0; i <= 30; i++) c.push([23.80 + i * 0.002, 61.51]);
+  p.loadTrack(c, 'Imported track');
+  for (let k = 0; k < 60 && !(p.analysis && p.analysis.time > 0); k++) await wait(200);
+  const a = p.analysis;
+  if (!a) return ['no analysis of the track'];
+  const rows = [...p.speedTable(a).querySelectorAll('.speed-row:not(.sub):not(.total) > span')].map((x) => x.textContent);
+  if (rows.join(', ') !== 'Gravel & unpaved') errs.push(`an imported track on an MTB: its time listed under ${rows.join(', ')}, not Gravel & unpaved (timed at the gravel speed)`);
+  const road = F.keyFacts(a, { sport: 'road' }).find((f) => f.k === 'unpaved');
+  if (road) errs.push(`Road: a track with no surface is said to be unpaved (${road.aria})`);
+  p.clear();
+  return errs;
+})()"""
+
+
+def track_rows(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.51/23.83')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(TRACK_ROWS, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} an imported track's time under the row of the speed it was timed at (#493)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def keyfacts(chrome):
     fails = []
 
@@ -22811,7 +22857,7 @@ GROUPS = [
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list, tick_under], 'Leave now\'s refresh leaving focus and a Reorder drag alone (#966); Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave, when_start, arrive_by, best_time_menu], 'when you leave (25d, #364\'s C, #869): one When: the first screen\'s row, on the start\'s card too, and Go\'s pill, with one menu and the phone\'s own picker, Leave now, ▾ for a value you pick, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs); Arrive by: the departure worked back from it, too soon, passed, links, saved routes and Undo, the last morning on a trip with nights, a round trip\'s How long (#219)'),
-    ('keyfacts', [keyfacts, warn_slot], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
+    ('keyfacts', [keyfacts, warn_slot, track_rows], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known; what Check found to read in its place, #741, with nothing moving in both docks), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values); an imported track\'s time under the row of its speed (#493)'),
     ('views', [views, views_names], 'the planner\'s views, Route and Check (#424\'s C, #382): Route opens with Check\'s row, then the route\'s list (#740: at the phone\'s half and in both docks), then Route style › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs); what a screen reader hears (#386): the profile named by its numbers, Check\'s count and time in words, the headings one level at a time in the planner and in All layers'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops, sheet_card_peek, sheet_profile_peek], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),

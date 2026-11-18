@@ -8,6 +8,9 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - **Settings → Data sources** says how many calls to each service failed this session, with no answer or with an error, Overpass's too. A cancelled call, such as a mirror that lost the race, isn't counted as failed.
 - Its note says what the counts are: each call when it's sent, answered or not, and that map tiles and terrain aren't counted there.
+### The time on ways with no surface ([#493](https://github.com/TommiContursi/Polku/issues/493))
+
+- In the planner's time breakdown, a stretch with no known surface, such as an imported track or a line drawn freehand, is listed under **Gravel & unpaved**, at the speed it's timed at. Before, it was under **Paved** while timed at your gravel or trail speed, so it looked as if your paved speed wasn't used. Road's "Unpaved" fact still counts only ways known to be unpaved.
 
 ### Uphill colours when the terrain is missing ([#130](https://github.com/TommiContursi/Polku/issues/130))
 

@@ -125,7 +125,8 @@ export function keyFacts(a, { sport, days = [], noWeather = null }) {
   if (add >= STANDS.headMin || (add > 1 && add * 60 >= STANDS.headShare * a.time)) out.push({ k: 'bwind', stand: true, v: { add: Math.round(add) }, html: `Headwind adds <b>${Math.round(add)} min</b>`, aria: `Headwind adds ${Math.round(add)} min to the time: the weather along the route` });
   if (sport === 'road') {
     let rough = 0;
-    for (let i = 1; i < a.along.length; i++) if (['unpaved', 'trail'].includes(surfaceClass(a, i))) rough += a.along[i] - a.along[i - 1];
+    // (a way with no surface, such as an imported track's, is listed with the unpaved ones but isn't known to be unpaved)
+    for (let i = 1; i < a.along.length; i++) { const c = surfaceClass(a, i); if (c === 'trail' || (c === 'unpaved' && a.surf[i] !== 'unknown')) rough += a.along[i] - a.along[i - 1]; }
     if (rough >= STANDS.unpavedM) { const p = Math.round((rough / a.total) * 100); out.push({ k: 'unpaved', stand: true, v: { m: rough, p }, html: `Unpaved <b>${km(rough)}</b>, ${p} % of the way`, aria: `Unpaved ${km(rough)}, ${p} % of the way: show it in On the route` }); }
   }
   // the usual: a trip's hardest day, then the sport's own
