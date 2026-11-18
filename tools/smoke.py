@@ -6127,14 +6127,15 @@ TERRAIN = """(async () => {
 
 # A bridge over a river (#576): made-up terrain at 100 m with an 80 m valley under the bridge. Over the bridge the height
 # runs straight from one end to the other, so the profile has no dip and no climb, and the bridge isn't missing terrain;
-# the same way without bridge=yes dips (the terrain is the mock's).
+# the same way without bridge=yes dips (the terrain is the mock's). A line that ends or starts on a bridge keeps the far
+# bank's height (120 m past the valley).
 BRIDGE = """(async () => {
   const errs = [], A = await import(location.origin + '/js/analysis.js'), realFetch = window.fetch;
-  const lat = 68, river = [24.5, 24.502];
+  const lat = 68, river = [24.5, 24.502], bank = 24.505;
   const tile = async (z, x) => {
     const S = 256, c = new OffscreenCanvas(S, S), ctx = c.getContext('2d'), img = ctx.createImageData(S, S);
     for (let px = 0; px < S; px++) {
-      const lon = ((x + (px + 0.5) / S) / 2 ** z) * 360 - 180, v = (lon > river[0] && lon < river[1] ? 80 : 100) + 32768;
+      const lon = ((x + (px + 0.5) / S) / 2 ** z) * 360 - 180, v = (lon > river[0] && lon < river[1] ? 80 : lon > bank ? 120 : 100) + 32768;
       for (let py = 0; py < S; py++) img.data.set([Math.floor(v / 256), Math.floor(v) % 256, 0, 255], (py * S + px) * 4);
     }
     ctx.putImageData(img, 0, 0);
@@ -6145,7 +6146,7 @@ BRIDGE = """(async () => {
     return m ? tile(+m[1], +m[2]) : realFetch(url, init);
   };
   try {
-    const coords = [[24.49, lat], [24.4995, lat], [24.5025, lat], [24.51, lat]];
+    const coords = [[24.49, lat], [24.4995, lat], [24.5025, lat], [24.504, lat]];
     const road = { highway: 'residential', surface: 'asphalt' };
     const over = await A.analyse({ coords, attrs: [{ tags: road }, { tags: { ...road, bridge: 'yes' } }, { tags: road }] }, { activity: 'hike' });
     const under = await A.analyse({ coords, attrs: [{ tags: road }, { tags: road }, { tags: road }] }, { activity: 'hike' });
@@ -6153,6 +6154,12 @@ BRIDGE = """(async () => {
     const steep = Math.max(...over.grade.map(Math.abs));
     if (over.up > 2 || over.down > 2 || steep > 1 || Math.min(...over.ele) < 99) errs.push(`over the bridge: ↑${over.up.toFixed(1)} m ↓${over.down.toFixed(1)} m, steepest ${steep.toFixed(1)} %, lowest ${Math.min(...over.ele).toFixed(1)} m (want level at 100 m)`);
     if (over.terrain) errs.push(`over the bridge, the terrain says missing: ${JSON.stringify(over.terrain)}`);
+    // a line that ends or starts on a bridge keeps the far bank's height at 120 m
+    const ends = [[24.49, lat], [24.4995, lat], [24.506, lat]], bridgeLast = [{ tags: road }, { tags: { ...road, bridge: 'yes' } }];
+    for (const [name, line] of [['ends', { coords: ends, attrs: bridgeLast }], ['starts', { coords: [...ends].reverse(), attrs: [...bridgeLast].reverse() }]]) {
+      const r = await A.analyse(line, { activity: 'hike' }), top = Math.max(...r.ele), low = Math.min(...r.ele);
+      if (!(top > 110) || low < 99) errs.push(`a line that ${name} on a bridge: highest ${top.toFixed(1)} m, lowest ${low.toFixed(1)} m (want the bank's 120 m, nothing under 100 m)`);
+    }
   } finally {
     window.fetch = realFetch;
   }
