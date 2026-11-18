@@ -56,7 +56,7 @@ h1 { margin: 0 0 4px; font-size: 22px; }
   <p class="count" id="count" aria-live="polite"></p>
   <ul class="notes">
     <li><b>Try:</b> Slow, As now, then drag or flick the map a screen or two: the new part is plain paper until its tiles come, and they come square by square. Go somewhere new and do the same with A.</li>
-    <li><b>A</b> loads the map four zoom levels coarser for the area around the view whenever the map stops (1–4 tiles, each one sixteen times as wide). MapLibre already draws a coarser tile in the place of one that hasn't come yet; today the coarser one is seldom there in time. With A it is: lakes, sea, forest and the main roads are there at once, and the paths and buildings sharpen in.</li>
+    <li><b>A</b> keeps the map four zoom levels coarser under the view: 1–4 tiles, each one sixteen times as wide, so the same few cover a whole town and the area around it. MapLibre already draws a coarser tile it has in the place of one that hasn't come; today it seldom has one. With A it does: lakes, sea, forest and the main roads are there at once, and the paths, buildings and names sharpen in. The first time in a new region the coarse tiles come with the rest; after that they're there.</li>
     <li><b>B</b> also loads the tiles at the map's own zoom half a screen beyond each edge, so a short move finds them ready. It costs about twice the tiles, most of them never looked at.</li>
     <li>Nothing fades or moves on its own: the map is moved many times a minute, so it gets no motion (DESIGN.md, "Motion").</li>
     <li>Left out: Polku's controls, overlays, hillshade, contours and trail details. The counts are this page's tiles only.</li>
@@ -70,46 +70,60 @@ const q = new URLSearchParams(location.search);
 const S = { way: q.get('way') || 'now', net: q.get('net') || 'slow', f: q.get('f') || (innerWidth < 700 ? '390' : 'desk') };
 const WHAT = {
   now: 'As now: MapLibre asks only for the tiles in view. Where one hasn\'t come, you see the paper colour, or a coarser tile if one happens to be loaded.',
-  coarse: 'A: whenever the map stops, the map four zoom levels coarser is loaded for the area around the view. A part that hasn\'t come yet shows that coarse map: water, forest and main roads at once, the detail sharpening in.',
+  coarse: 'A: the map four zoom levels coarser is always kept under the view. A part that hasn\'t come yet shows that coarse map: water, forest and main roads at once, the detail sharpening in.',
   ahead: 'B: as A, and the tiles at the map\'s own zoom half a screen beyond each edge are loaded too, so a short move finds them ready.',
 };
 
-// Every tile goes through here: on a slow network it waits a second, unless it was loaded ahead.
-const ready = new Map(), count = { asked: 0, coarse: 0, ahead: 0 };
+// Every tile goes through here: on a slow network it waits a second, unless B loaded it ahead.
+const ready = new Map(), count = { detail: 0, coarse: 0, ahead: 0 };
 const wait = (ms, signal) => new Promise((ok, no) => { const t = setTimeout(ok, ms); signal?.addEventListener('abort', () => { clearTimeout(t); no(new DOMException('aborted', 'AbortError')); }); });
 const real = (url) => url.replace(/^delayed:\/\//, 'https://');
+const zoomOf = (url) => +url.match(/\/(\d+)\/\d+\/\d+\.pbf$/)[1];
 maplibregl.addProtocol('delayed', async (params, abort) => {
   const url = real(params.url);
   if (ready.has(url)) return { data: await ready.get(url) };
-  count.asked++; show();
+  count[map && zoomOf(url) <= Math.min(14, Math.floor(map.getZoom())) - 3 ? 'coarse' : 'detail']++; show();
   if (S.net === 'slow') await wait(1000, abort.signal);
   const res = await fetch(url, { signal: abort.signal });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return { data: await res.arrayBuffer() };
 });
-const ahead = (url, kind) => {
-  if (ready.has(url)) return;
-  count[kind]++;
-  ready.set(url, (S.net === 'slow' ? wait(1000) : Promise.resolve()).then(() => fetch(url)).then((r) => r.arrayBuffer()));
-};
 
+// A: every tile in view keeps the tile four zoom levels up among the map's own tiles. MapLibre draws a coarser tile it
+// has in the place of a missing one, masked to where the missing one would be; it just never has one in time today.
+// (MapLibre GL JS has no option for this: Mapbox's and MapLibre Native's prefetchZoomDelta. This reaches into its
+// TileManager, as a build would until there is one.)
+function keepCoarse(map) {
+  const tm = map.style.tileManagers.ofm, own = tm._updateRetainedTiles;
+  tm._updateRetainedTiles = function (ideal, zoom) {
+    const keep = own.call(this, ideal, zoom);
+    if (S.way !== 'now') for (const t of ideal) {
+      const up = t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4));
+      if (up.key !== t.key) { this._addTile(up); keep[up.key] = up; }
+    }
+    return keep;
+  };
+}
+
+// B: the tiles at the map's own zoom half a screen beyond each edge, fetched whenever the map stops.
 let template = null;
 const tileXY = (lon, lat, z) => { const n = 2 ** z, r = lat * Math.PI / 180; return [Math.floor((lon + 180) / 360 * n), Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)]; };
 function loadAround() {
-  if (S.way === 'now' || !template) return;
-  const b = map.getBounds(), w = b.getEast() - b.getWest(), h = b.getNorth() - b.getSouth(), z = Math.floor(map.getZoom());
-  const area = (k, zz) => {
-    const [x0, y0] = tileXY(b.getWest() - k * w, b.getNorth() + k * h, zz), [x1, y1] = tileXY(b.getEast() + k * w, b.getSouth() - k * h, zz);
-    const out = []; for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push(template.replace('{z}', zz).replace('{x}', x).replace('{y}', y));
-    return out;
-  };
-  for (const u of area(1, Math.max(0, Math.min(14, z) - 4))) ahead(u, 'coarse');
-  if (S.way === 'ahead' && z <= 14) for (const u of area(0.5, z)) ahead(u, 'ahead');
+  if (S.way !== 'ahead' || !template) return;
+  const b = map.getBounds(), w = b.getEast() - b.getWest(), h = b.getNorth() - b.getSouth(), z = Math.min(14, Math.floor(map.getZoom()));
+  const [x0, y0] = tileXY(b.getWest() - w / 2, b.getNorth() + h / 2, z), [x1, y1] = tileXY(b.getEast() + w / 2, b.getSouth() - h / 2, z);
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+    const url = template.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+    if (ready.has(url)) continue;
+    count.ahead++;
+    ready.set(url, (S.net === 'slow' ? wait(1000) : Promise.resolve()).then(() => fetch(url)).then((r) => r.arrayBuffer()));
+  }
+  show();
 }
 
 function show() {
-  document.getElementById('count').textContent = `Tiles asked for as the map needed them: ${count.asked}` +
-    (S.way !== 'now' ? ` · coarse tiles loaded ahead: ${count.coarse}` : '') + (S.way === 'ahead' ? ` · tiles around the view loaded ahead: ${count.ahead}` : '');
+  document.getElementById('count').textContent = `Tiles asked for: ${count.detail} as the map needed them` +
+    (count.coarse ? ` · ${count.coarse} coarse` : '') + (count.ahead ? ` · ${count.ahead} around the view, ahead` : '');
 }
 
 const L = (id, type, layer, paint, extra = {}) => ({ id, type, source: 'ofm', 'source-layer': layer, paint, ...extra });
@@ -140,7 +154,7 @@ function set(k, v) {
   const p = new URLSearchParams(location.search); p.set(k, v);
   try { history.replaceState(null, '', '?' + p); } catch {} // (a preview from data: has no address to keep)
   if (k === 'f') { document.getElementById('frame').className = `frame f${v}`; map?.resize(); }
-  if (k === 'way') { document.getElementById('what').textContent = WHAT[v]; loadAround(); }
+  if (k === 'way') { if (v === 'now') ready.clear(); document.getElementById('what').textContent = WHAT[v]; if (map) { map.triggerRepaint(); loadAround(); } } // (as now: nothing loaded ahead stays ready)
   show();
 }
 for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.addEventListener('click', () => set(sw.dataset.k, b.dataset.v));
@@ -155,6 +169,7 @@ document.getElementById('jump').addEventListener('click', () => {
 fetch('https://tiles.openfreemap.org/planet').then((r) => r.json()).then((j) => {
   template = j.tiles[0];
   map = new maplibregl.Map({ container: 'map', style: style(template), center: PLACES[0], zoom: 14, attributionControl: { compact: true } });
+  map.once('style.load', () => keepCoarse(map)); // (before the first tiles are chosen)
   map.on('load', loadAround);
   map.on('moveend', loadAround);
   window.mock = { map, count, ready };
