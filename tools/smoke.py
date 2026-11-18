@@ -10574,6 +10574,34 @@ B3D_WANT = {
 
 # The 3D button (#226): on desktops by mouse and keys, or (phones) by touch on phones and at 200 %. Two groups, each with a
 # job of its own on GitHub's runner, where the one group took 16–27 minutes (#411).
+# 3D off while its terrain is still loading (#288): on a slow network (300 ms a request), on and off again 0.1 to 1.2 s
+# later, 24 times, each in a new place so the terrain isn't loaded yet. No console error: MapLibre's terrain callback
+# read its terrain after it was gone. It depends on timing: before the fix about half the runs hit it, never after.
+def button3d_loading(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:seen3dHint2': 'true'})
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.c.send('Network.enable', {}, pg.s)
+        pg.c.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 300, 'downloadThroughput': 200000, 'uploadThroughput': 100000}, pg.s)
+        for k, delay in enumerate([0.1, 0.2, 0.3, 0.5, 0.8, 1.2] * 4):
+            pg.js(f"(() => {{ polku.map.jumpTo({{ center: [{21 + k * 0.7:.1f}, {60.5 + (k % 4) * 0.6:.1f}], zoom: 12 }}); return true; }})()")
+            time.sleep(0.3)
+            pg.js("document.querySelector('#btn-3d').click(), true")
+            time.sleep(delay)
+            pg.js("document.querySelector('#btn-3d').click(), true")
+            time.sleep(1.5)
+        time.sleep(3)
+        on = pg.js("polku.state.terrain3d || !!polku.map.getTerrain()")
+        fails = ['3D is still on after the last tap'] if on else []
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} 3D off while its terrain loads, on a slow network: no error (#288)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def button3d(chrome, phones=False):
     fails = []
 
@@ -22866,7 +22894,7 @@ GROUPS = [
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
-    ('button3d', [button3d, labels_3d, hills_3d, buildings_3d, pad3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels); the hills\' one light in 3D (#642); the buildings standing up (#643); the 3D pad\'s ⋯ and 3D height\'s value (#920)'),
+    ('button3d', [button3d, button3d_loading, labels_3d, hills_3d, buildings_3d, pad3d], 'the 3D button in the map\'s column on desktops (#226), and 3D off while its terrain loads (#288): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport; the words along a line standing up when tilted (#635, pixels); the hills\' one light in 3D (#642); the buildings standing up (#643); the 3D pad\'s ⋯ and 3D height\'s value (#920)'),
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),

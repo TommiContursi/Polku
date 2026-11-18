@@ -1009,6 +1009,9 @@ function setActivity(k, { from = 'map' } = {}) {
 
 function set3d(on) {
   state.terrain3d = on;
+  // the terrain taken off before the style is rebuilt: a style swapped rather than diffed would still call MapLibre's
+  // terrain callback for the tiles on their way, after the terrain is gone (#288)
+  if (!on) map.setTerrain(null);
   applyStyle();
   map.easeTo({ pitch: on ? Math.max(60, map.getPitch()) : 0, duration: 800 });
   renderLayersPanel();
