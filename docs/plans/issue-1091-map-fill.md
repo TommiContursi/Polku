@@ -246,7 +246,7 @@ From trying the crossfades: the jump itself is right, and what reads as broken i
 - **Jump, all fades in:** the map jumps and the new place waits under the map's paper colour (dark on the night map) until it's drawn with Polku's own layers, at most 2 s, then fades in all together.
 - **Jump, each part fades in:** the map jumps and the new place builds up as it comes, but each part that comes (the coarse map, the detail, Polku's own layers) fades in rather than appearing: the screen as it was is laid over the map and faded out whenever MapLibre draws a part that has come. To have that picture it copies every frame it draws, so it runs only after a far jump, until the place is drawn, at most 3 s. MapLibre can't fade a vector tile in on its own.
 
-Measured as the crossfades were, on the mock-up at the commit that added them (five jumps, places never loaded):
+Measured as the crossfades were, on the mock-up at 84dc05b (five jumps, places never loaded):
 
 | Network, size | Version | The new place shows | The new place's map drawn | Polku's layers drawn |
 |---|---|---|---|---|
