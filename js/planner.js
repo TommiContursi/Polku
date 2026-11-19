@@ -3423,16 +3423,15 @@ export class Planner {
     this.points.forEach((p, i) => {
       const last = i === n - 1, name = this.nameOf(i), lab = this.label(i), ch = many && this.changeAt(i);
       const sport = !many ? '' : i === 0 ? sp(this.legSport(0)) : ch ? `${sp(ch.from)} → ${sp(ch.to)}${ch.min ? ` · ${ch.min} min` : ''}` : '';
-      // (their names in the app's tooltip beside the row, as the list's tools have them)
-      const tips = [], tip = (t, label) => { tips.push([t, label]); return t; };
-      const btn = (ic, way, fn, disabled) => tip(h('button', { type: 'button', class: 'tool', 'aria-label': `Move ${name} ${way}`, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 18) }), `Move ${way}`);
+      // (no tooltips: Reorder's line says what the grip and the arrows do, and a tip under an arrow could take the click
+      // meant for the next row's, #304)
+      const btn = (ic, label, fn, disabled) => h('button', { type: 'button', class: 'tool', 'aria-label': label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 18) });
       const row = h('li', { class: 'wpl-row', 'data-i': String(i) },
-        tip(h('span', { class: 'wpl-grip', 'aria-hidden': 'true', html: icon('grip', 16) }), 'Drag to reorder'),
+        h('span', { class: 'wpl-grip', 'aria-hidden': 'true', html: icon('grip', 16) }),
         h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
         h('span', { class: 'wpl-main' }, h('b', { class: 'wpl-name' }, name), h('small', {}, [fmtDist(i ? this.lengthTo(i) : 0), name === lab ? '' : lab, sport].filter(Boolean).join(' · '))),
-        btn('chevronUp', 'earlier', () => this.movePointTo(i, i - 1), i === 0),
-        btn('chevronDown', 'later', () => this.movePointTo(i, i + 1), last));
-      for (const [t, label] of tips) tooltip(t, { name: label, beside: row });
+        btn('chevronUp', `Move ${name} earlier`, () => this.movePointTo(i, i - 1), i === 0),
+        btn('chevronDown', `Move ${name} later`, () => this.movePointTo(i, i + 1), last));
       row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') this.dragRow(e, row, i); });
       row.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !e.target.closest('button')) this.holdRow(e, row, i); });
       box.append(row);
