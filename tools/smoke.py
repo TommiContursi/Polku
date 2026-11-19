@@ -6868,68 +6868,82 @@ def coarse(chrome):
     return not fails
 
 
-# Polku's own layers come in together (#1091): Väylävirasto's tiles and Digitraffic's faults answered by the page after
-# window.__nmDelay ms (an empty chart, so no request leaves), before Polku loads
+# Polku's own layers come in together (#1091): Väylävirasto's tiles and Digitraffic's faults answered by the page (an
+# empty chart, so no request leaves), before Polku loads: window.__nmDelay ms after they're asked for, or, while
+# window.__nmHeld is a list, once window.__nmRelease() is called
 TOGETHER_FETCH = r"""
 (() => {
   const real = window.fetch;
   window.__nmDelay = 0;
+  window.__nmHeld = null;
+  window.__nmRelease = () => { const held = window.__nmHeld || []; window.__nmHeld = null; held.forEach((go) => go()); };
   window.fetch = (url, init) => {
     const u = String((url && url.url) || url);
     if (!u.startsWith('https://avoinapi.vaylapilvi.fi/') && !u.startsWith('https://meri.digitraffic.fi/')) return real(url, init);
     const body = JSON.stringify({ type: 'FeatureCollection', features: [] });
-    return new Promise((ok) => setTimeout(() => ok(new Response(body, { headers: { 'Content-Type': 'application/json' } })), window.__nmDelay));
+    return new Promise((ok) => {
+      const go = () => setTimeout(() => ok(new Response(body, { headers: { 'Content-Type': 'application/json' } })), window.__nmDelay);
+      if (window.__nmHeld) window.__nmHeld.push(go); else go();
+    });
   };
 })();
 """
 
-# In paddle, after a jump: LIPAS's answer and the nautical chart's, the chart's 200 ms and more later, drawn together
-# (in one go: MapLibre then lays out each source on its own), once each; with the chart's held 2 s, LIPAS's drawn before
-# it comes, in the first frame once the window's 500 ms are up; and once the answers are in, no loader is still busy
-# (one that stays busy would hold every stop 500 ms). A busy machine makes timers and frames late, so the times are each
-# loader's own and the window's end is a frame, with no tolerance in ms.
+# In paddle, after a jump:
+# - LIPAS's answer and the nautical chart's, the chart's let go 150 ms after the window opened (so on a busy machine
+#   too it comes inside it), are drawn together (in one go: MapLibre then lays out each source on its own), once each;
+# - with the chart's held 2 s, LIPAS's are drawn before it comes, in the first frame once 500 ms are up from when the
+#   window opened (a busy machine makes frames late, so a frame rather than a tolerance in ms);
+# - once the answers are in, no loader is still busy (one that stays busy would hold every stop 500 ms);
+# - the chart's tiles of a view you've left don't keep it busy.
 TOGETHER = r"""
 (async () => {
   const m = polku.map, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
   (await import(location.origin + '/js/lipas.js')).seedLipas(() => new Promise((ok) => setTimeout(() => ok({ type: 'FeatureCollection', features: [] }), window.__lipasDelay)));
   const log = [], t0 = () => performance.now(), frames = [];
   (function tick() { frames.push(t0()); if (frames.length > 2000) frames.shift(); requestAnimationFrame(tick); })();
+  // the window opens in the answer that's held first (on main, with no window, LIPAS's first answer)
+  let opened = null, release = null;
   for (const [obj, fn, as] of [[polku.lipas, 'publishNow', 'lipas answer'], [polku.nautical, 'publish', 'nm answer']]) {
     const own = obj[fn].bind(obj);
-    obj[fn] = (...a) => { log.push([as, t0()]); return own(...a); };
+    obj[fn] = (...a) => {
+      log.push([as, t0()]);
+      const r = own(...a);
+      if (opened == null && (polku.together ? polku.together.held : as === 'lipas answer')) { opened = t0(); if (release != null) setTimeout(window.__nmRelease, release); }
+      return r;
+    };
   }
   for (const [id, as] of [['lipasRoutes', 'lipas drawn'], ['nmMarks', 'nm drawn']]) {
     const src = m.getSource(id), own = src.setData.bind(src);
     src.setData = (d, ...a) => { log.push([as, t0()]); return own(d, ...a); };
   }
-  const jump = async (center, lipasMs, nmMs) => {
-    window.__lipasDelay = lipasMs; window.__nmDelay = nmMs; log.length = 0;
-    let stop = 0;
+  let stop = 0;
+  const jump = async (center, lipasMs, nm) => {
+    window.__lipasDelay = lipasMs; log.length = 0; opened = null;
+    if (nm.release != null) { window.__nmHeld = []; window.__nmDelay = 0; release = nm.release; } else { window.__nmHeld = null; window.__nmDelay = nm.delay; release = null; }
     m.once('moveend', () => { stop = t0(); });
     m.jumpTo({ center });
     await wait(3500);
     const at = (as) => log.filter((e) => e[0] === as).map((e) => Math.round(e[1] - stop));
-    return { lipasAnswer: at('lipas answer'), lipas: at('lipas drawn'), nmAnswer: at('nm answer'), nm: at('nm drawn') };
+    return { opened: opened == null ? null : Math.round(opened - stop), lipasAnswer: at('lipas answer'), lipas: at('lipas drawn'), nmAnswer: at('nm answer'), nm: at('nm drawn') };
   };
   const say = (d) => JSON.stringify(d);
-  let d = await jump([22.60, 60.05], 50, 150);
+  let d = await jump([22.60, 60.05], 50, { release: 150 });
   if (d.lipas.length !== 1 || d.nm.length !== 1 || Math.abs(d.lipas[0] - d.nm[0]) > 20) errs.push(`LIPAS's routes and the nautical marks, answered apart, aren't drawn together once (ms after the stop): ${say(d)}`);
-  d = await jump([25.40, 60.20], 50, 2000);
+  d = await jump([25.40, 60.20], 50, { delay: 2000 });
   const lipas = d.lipas[d.lipas.length - 1];
   if (lipas == null || !d.nmAnswer.length || lipas >= d.nmAnswer[0]) errs.push(`with the nautical chart's answer held 2 s, LIPAS's routes wait for it: ${say(d)}`);
-  // and drawn when the window closes: in the first frame from 500 ms after it opened (a busy machine's frames come late,
-  // so frames, not a tolerance in ms)
-  const until = polku.together ? polku.together.until : 0, drawnAt = log.filter((e) => e[0] === 'lipas drawn').map((e) => e[1]).pop();
-  const closes = frames.find((t) => t >= until);
-  if (drawnAt != null && closes != null && drawnAt > closes + 20) errs.push(`LIPAS's routes drawn ${Math.round(drawnAt - until)} ms after the window's 500 ms, ${Math.round(drawnAt - closes)} ms after the frame that should close it`);
+  else if (d.opened != null) {
+    const closes = frames.find((t) => t >= stop + d.opened + 500);
+    if (closes != null && stop + lipas > closes + 20) errs.push(`LIPAS's routes drawn ${lipas - d.opened} ms after the window opened, ${Math.round(stop + lipas - closes)} ms after the first frame from its 500 ms: ${say(d)}`);
+  }
   if (!d.nm.length || d.nm[0] < 2000) errs.push(`the nautical marks, answered after 2 s, aren't drawn when they come: ${say(d)}`);
-  d = await jump([22.60, 60.05], 50, 150);
+  d = await jump([22.60, 60.05], 50, { delay: 150 });
   if (!d.lipas.length) errs.push(`back where both have loaded, LIPAS's routes aren't drawn: ${say(d)}`);
   const busy = polku.together ? polku.together.loaders.filter((l) => l.busy).map((l) => l.constructor.name) : ['(no polku.together)'];
   if (busy.length) errs.push(`with every answer in, still busy: ${busy.join(', ')}`);
-  // the chart's tiles of a view you've left don't hold the next stop (#1115's review): asked for, answered after 3 s,
-  // and the map zoomed out under the chart's zoom meanwhile
-  window.__nmDelay = 3000;
+  // asked for, answered after 3 s, and the map zoomed out under the chart's zoom meanwhile
+  window.__nmHeld = null; window.__nmDelay = 3000;
   m.jumpTo({ center: [21.60, 60.30], zoom: 12 });
   await wait(800);
   m.jumpTo({ zoom: 9 });
