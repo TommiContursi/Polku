@@ -1448,8 +1448,8 @@ function renderLayersPanel() {
     timelineToggle(), wxToggle('rain'), wxToggle('cloud'), wxToggle('thunder'), wxToggle('wind'), wxToggle('temp'), wxToggle('snow'), wxToggle('towns'), effectsToggle(),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Radar, lightning and measured snow by FMI, and by RainViewer outside Finland. Scrub or play the next 48 hours on the timeline.')));
   refreshLitStatus();
-  p.scrollTop = keepScroll;
   settle();
+  p.scrollTop = keepScroll; // (after settle(): a layout before it would start the switches' transitions from their new look)
 }
 
 // ------------------------------------------------------------------ quick layer drawer (#123)
@@ -1969,8 +1969,8 @@ function renderSettingsPanel() {
     h('button', { type: 'button', class: 'btn', id: 'btn-changelog', onclick: (e) => openChangelog(e.currentTarget) }, 'What’s new'),
     h('p', { class: 'note' }, 'Read recent changes without leaving your route.'),
     h('div', { class: 'rows' }, comingRow('info', 'How to use Polku', ''), comingRow('info', 'Credits and licence', ''))));
-  p.scrollTop = keepScroll;
   settle();
+  p.scrollTop = keepScroll;
 }
 
 // ------------------------------------------------------------------ panels & buttons

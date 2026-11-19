@@ -534,7 +534,7 @@ LAYERS = """(async () => {
   // scroll isn't put back a frame late (#536)
   const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   for (const [name, box] of [['Layers', body], ['Settings', document.querySelector('#settings-body')]]) {
-    if (name === 'Settings') { document.querySelector('#btn-settings').click(); await wait(300); box.querySelectorAll('.lg-group').forEach((d) => d.open = true); }
+    if (name === 'Settings') { document.querySelector('#btn-settings').click(); await wait(300); box.querySelectorAll('.lg-group').forEach((d) => d.open = true); await wait(200); } // (their toggle, which keeps them open, comes later)
     box.scrollTop = 400;
     const at = box.scrollTop;
     if (at < 300) { errs.push(`${name}: too short to scroll (${at})`); continue; }
