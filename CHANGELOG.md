@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Clearer roads and buildings ([#1113](https://github.com/TommiContursi/Polku/issues/1113))
+
+- Roads, cycleways and buildings stand out more clearly on the **Trail map**, with stronger edges and slightly wider minor and service roads at intermediate zooms. Forest, field and water colours stay the same.
+
 ### A coarse map of Finland, kept on your device ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
 
 - Polku keeps a coarse map of the whole of Finland on your device, under 2 MB with the letters for its names, saved once. When you zoom out or jump to a new place, its lakes, sea and main roads are there at once, offline too in places you never saved, until the detail comes.
