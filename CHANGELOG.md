@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### What comes in after the map stops fades in ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- When the map stops, after you move it or it flies to a place, what comes in no longer appears piece by piece: each part fades in, briefly where little changes and up to 0.4 s where much does. Touching the map ends a fade at once. After a move with the arrow keys, or a search result chosen with **Enter**, everything appears at once, as before.
+
 ### Polku's own tooltips in the planner ([#304](https://github.com/TommiContursi/Polku/issues/304))
 
 - Pointing at the profile's controls (its size, **Colour by**, **On map** and **Whole route**) or at a day's weather in the trip's box shows Polku's own tooltip, with its name and, where it helps, what it does. It also shows when the control gets the keyboard's focus, and **Esc** hides it. The tooltips sit beside their row where there's room, so they don't cover the controls under them.
