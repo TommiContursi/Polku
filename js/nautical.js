@@ -126,7 +126,7 @@ export class NauticalLayer {
   }
 
   // an update or a drawing still to run, or a tile on its way: what comes after the map stops waits for it (#1091)
-  get busy() { return !!this.timer || !!this.pubTimer || [...this.tiles.values()].some((v) => v instanceof Promise); }
+  get busy() { return !!this.timer || !!this.pubTimer || (this.on && [...this.tiles.values()].some((v) => v instanceof Promise)); }
 
   update() {
     if (!this.on || this.map.getZoom() < 10.5) return;

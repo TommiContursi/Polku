@@ -266,7 +266,7 @@ map.on('webglcontextrestored', () => map.once('style.load', applyStyle));
 // Polku's own layers come in together (#1091). After the map stops, the first of their loaders' answers is held, and what
 // comes after it, while any of them is still busy (an update to run, tiles on their way), for 500 ms at most; then it's
 // all drawn at once. What comes later is drawn as it comes, and nothing else waits: a route, a pick, loops, a layer you
-// switch (configureLayers draws what's held first).
+// switch or Try again (configureLayers and retryLit draw what's held first).
 const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights']);
 const together = { loaders: [], armed: false, held: null, until: 0 };
 map.on('moveend', () => { together.armed = true; });
@@ -429,7 +429,8 @@ const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', r
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
 // (a tile that comes in may end "No data now" on the Lit ways tile)
 const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); }, onStatus: refreshLitStatus });
-$('#lit-status button').addEventListener('click', () => litWays.retry());
+const retryLit = () => { drawTogether(); litWays.retry(); }; // (Try again's answer is never held)
+$('#lit-status button').addEventListener('click', retryLit);
 
 // ------------------------------------------------------------------ winter
 // Winter switches itself on where there's snow (Auto), or is yours to set.
@@ -1498,7 +1499,7 @@ function renderLayersPanel() {
 
   for (const g of LAYER_GROUPS) {
     const kids = g.ids.map(overlayToggle);
-    if (g.id === 'dark') kids.push(h('div', { id: 'lit-load-status', class: 'note', hidden: true }, h('span'), h('button', { class: 'btn', type: 'button', onclick: () => litWays.retry(), hidden: true }, 'Try again')));
+    if (g.id === 'dark') kids.push(h('div', { id: 'lit-load-status', class: 'note', hidden: true }, h('span'), h('button', { class: 'btn', type: 'button', onclick: retryLit, hidden: true }, 'Try again')));
     if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up in Check, each with Avoid it on its card.'));
     if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
     p.append(layerGroup(g.id, g.title, g.ids.filter((id) => state.overlays[id]).length, ...kids));

@@ -5406,10 +5406,15 @@ WINTER = """(async () => {
     if (polku.map.getLayer('uphill-line')) errs.push('uphill colours with Winter picked');
     // the colours are explained: a click on a ski track's line (no trail under it) opens its card
     document.querySelector('#layers-panel .panel-close, #layers-panel [aria-label^=Close]')?.click();
-    const ski = polku.map.queryRenderedFeatures({ layers: ['winter-ski'] })[0];
+    // (a ski track whose middle is well inside the map: a line's middle may be off the screen, and which comes first
+    // varies, #998)
+    const ski = polku.map.queryRenderedFeatures({ layers: ['winter-ski'] }).map((f) => {
+      const cc = f.geometry.type === 'MultiLineString' ? f.geometry.coordinates[0] : f.geometry.coordinates;
+      return polku.map.project(cc[Math.floor(cc.length / 2)]);
+    }).find((p) => p.x > 60 && p.y > 80 && p.x < innerWidth - 120 && p.y < innerHeight - 60);
     if (!ski) errs.push('no ski track in view to click');
     else {
-      const cc = ski.geometry.type === 'MultiLineString' ? ski.geometry.coordinates[0] : ski.geometry.coordinates, q = polku.map.project(cc[Math.floor(cc.length / 2)]);
+      const q = ski;
       polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') });
       await wait(900);
       const card = document.querySelector('.pl-way.card')?.textContent || ''; // (the spot's card, 25d part 6)
