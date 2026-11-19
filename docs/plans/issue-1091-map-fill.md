@@ -321,6 +321,17 @@ To check in the build:
 - **Two canvases,** reused: the frame before becomes the picture, and the picture that faded becomes the next copy. Their size is set to 0 once nothing fades.
 - **One reading per part:** each `getImageData` waits for the GPU to finish the frame, 5–12 ms in Chrome on an M1 whether it reads the map's canvas, a copy of it, or a `createImageBitmap` later; so both frames are drawn into one 48 × 60 canvas and read once.
 
+What it costs, measured first, against main at ff0af452: headless Chrome with the Mac's GPU (Apple M1 Pro, no SwiftShader), motion as a person has it, a cold profile each run, MTB at Jyväskylä, twelve real flings in a row (touch on the phone page, the mouse on the desktop), each in a new direction and 2.2 s apart, so that parts come after every stop. The phone page is 390 × 844 at a device pixel ratio of 3 (the canvas 1170 × 2532) with the CPU slowed 4×; the desktop 1440 × 900 at 2. What would have been too much was written down first: on the phone page, the `render` listeners' time per frame in the 3 s after a stop rising by more than 2 ms at the median or 6 ms at p95, frames over 33 ms in the 1.5 s after a stop rising by more than one per stop, or the p95 frame interval there by more than 4 ms.
+
+| Two runs each | Fades | Frames over 33 ms after the stops | p95 frame after the stops | `render` listeners after a stop: median, p95 | A part's frame |
+|---|---|---|---|---|---|
+| Phone page, main | 0 | 11, 11 | 16.7–16.8 ms | 0, 0 ms | – |
+| Phone page, built | 5, 7 | 8, 10 | 16.8 ms | 0, 0.8 ms | 7–13 ms |
+| Desktop, main | 0 | 1, 1 | 16.7 ms | 0, 0 ms | – |
+| Desktop, built | 20, 16 | 1, 0 | 16.7–16.8 ms | 0, 0.2 ms | 12–15 ms |
+
+Copying a frame costs 0–0.1 ms of the main thread; the cost is each part's reading, a frame of 7–15 ms once per part. Reading the two frames apart, as first built, made a part's frame 10–29 ms. Not measured: a real phone (its GPU may wait longer for the reading), Safari and Firefox, the battery.
+
 ## How A was tried
 
 On 214afb8, in Chrome with its GPU at 390 × 844: Polku opened at zoom 13, the wrap above added to the `ofm` and `ofmTrails` tile managers from the console, OpenFreeMap's zoom-13 tile requests held with the DevTools protocol's Fetch domain so they never answered, then `map.panBy([700, 0])`. Within 0.8 s the tiles drawn were the zoom-9 one and the three zoom-13 ones still in view; the thumbnails showed the coarse map over the new part from 167 ms on. Without the wrap, the same held move left the new part paper.
