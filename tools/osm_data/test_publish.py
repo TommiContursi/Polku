@@ -426,11 +426,55 @@ class PublishTests(unittest.TestCase):
                 server.shutdown()
                 worker.join()
 
+    def test_country_checksum_and_polygon_come_from_beside_the_file_served(self):
+        # Geofabrik moves countries into folders of their own; its old addresses keep a different checksum (#1151)
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        step = workflow.split('name: Download one complete country, checksum and clipping polygon', 1)[1].split('\n      - name:', 1)[0]
+        script = '\n'.join(line for line in dedent(step.split('        run: |\n', 1)[1]).splitlines() if 'disk' not in line)
+        pbf, poly = b'the country itself', b'estonia\n1\nEND\nEND\n'
+        moved = {'/europe/estonia-261118.osm.pbf': (308, b'', '/europe/estonia/estonia-261118.osm.pbf'),
+                 '/europe/estonia-261118.osm.pbf.md5': (200, b'0' * 32 + b'  estonia-261118.osm.pbf\n', None),
+                 '/europe/estonia/estonia-261118.osm.pbf': (200, pbf, None),
+                 '/europe/estonia/estonia-261118.osm.pbf.md5': (200, hashlib.md5(pbf).hexdigest().encode() + b'  estonia-261118.osm.pbf\n', None),
+                 '/europe/estonia/estonia.poly': (200, poly, None)}
+        kept = {'/europe/estonia-261118.osm.pbf': (200, pbf, None),
+                '/europe/estonia-261118.osm.pbf.md5': (200, hashlib.md5(pbf).hexdigest().encode() + b'  estonia-261118.osm.pbf\n', None),
+                '/europe/estonia.poly': (200, poly, None)}
+        files = {}
+
+        class Geofabrik(BaseHTTPRequestHandler):
+            def do_GET(self):
+                code, body, location = files.get(self.path, (404, b'', None))
+                self.send_response(code)
+                if location: self.send_header('Location', location)
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            def log_message(self, *args): pass
+
+        with HTTPServer(('127.0.0.1', 0), Geofabrik) as server, tempfile.TemporaryDirectory() as tmp:
+            worker = Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                local = script.replace('https://download.geofabrik.de', f'http://127.0.0.1:{server.server_port}')
+                env = dict(os.environ, COUNTRY='estonia', SNAPSHOT='261118', NO_PROXY='127.0.0.1', no_proxy='127.0.0.1')
+                for layout, served in [('moved', moved), ('kept', kept)]:
+                    with self.subTest(layout=layout):
+                        files.clear(); files.update(served)
+                        result = subprocess.run(['bash', '-e', '-c', local], cwd=tmp, env=env, capture_output=True, text=True, timeout=30)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        build = Path(tmp) / 'osm-build'
+                        self.assertEqual((build / 'source.md5').read_text()[:32], hashlib.md5((build / 'source.osm.pbf').read_bytes()).hexdigest())
+                        self.assertEqual((build / 'coverage.poly').read_bytes(), poly)
+            finally:
+                server.shutdown()
+                worker.join()
+
     def test_country_download_leaves_time_to_build(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
         build = workflow.split('\n  build:\n', 1)[1].split('\n  geometry:', 1)[0]
         download = build.split('      - name: Download one complete country', 1)[1].split('\n      - name:', 1)[0]
-        curl = next(line for line in download.splitlines() if line.endswith('-o osm-build/source.osm.pbf')).split()
+        curl = next(line for line in download.splitlines() if '-o osm-build/source.osm.pbf' in line).split()
         transfer = int(curl[curl.index('--max-time') + 1])
         self.assertGreaterEqual(transfer, 22 * 60, 'the slowest Norway transfer needed over 21 minutes')
         retries = int(curl[curl.index('--retry-max-time') + 1])
@@ -444,7 +488,7 @@ class PublishTests(unittest.TestCase):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
         geometry = workflow.split('\n  geometry:\n', 1)[1].split('\n  bundle:', 1)[0]
         download = geometry.split('      - name: Download dated reference and checksum', 1)[1].split('\n      - name:', 1)[0]
-        curl = next(line for line in download.splitlines() if line.endswith('-o osm-build/europe.osm.pbf')).split()
+        curl = next(line for line in download.splitlines() if '-o osm-build/europe.osm.pbf' in line).split()
         transfer = int(curl[curl.index('--max-time') + 1])
         self.assertGreaterEqual(transfer, 100 * 60, 'the measured Europe transfer rate needs about 94 minutes')
         retries = int(curl[curl.index('--retry-max-time') + 1])
