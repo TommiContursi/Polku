@@ -8,6 +8,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - The menus, such as the route's **⋯** menu, the search results, a point's menu on the map and the list of sports now have the same thin scrollbar as the planner and the panels. It shows only while you scroll, or while a mouse is over it. Before, they had the browser's own wide scrollbar.
 
+### A coarse map underneath while the map fills in ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- When you move the map to a place it hasn't shown yet, the part whose detail hasn't come shows the same map less detailed, with its lakes, sea, forest and main roads, and the paths, buildings and names come in over it. Before, that part stayed plain background until its detail came, which on a slow connection took a second or more, and during a quick flick on a phone a quarter of the screen was empty for a moment even on a fast one.
+- The coarser map follows the base map you chose: dark on the night map, and a coarser photo under the aerial photos and the MML maps.
+
 ## 2026-11-18
 
 ### 3D without a blank map ([#636](https://github.com/TommiContursi/Polku/issues/636))

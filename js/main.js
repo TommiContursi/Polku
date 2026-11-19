@@ -162,6 +162,32 @@ const map = new maplibregl.Map({
   attributionControl: false,
   cooperativeGestures: false,
 });
+// A coarse map underneath (#1091): while a base map tile in view hasn't come, the tile four zoom levels up is kept among
+// MapLibre's own tiles, so its place shows that one (masked to the missing tile's square), never plain paper. Once the
+// detail is there it goes back to MapLibre's cache, ready for the next move, and out of what querySourceFeatures reads
+// (a coarse lake has no islands: round trips' water test). It's drawn in the map's own style, so it's dark on the
+// night map and a coarser photo under the aerial one. MapLibre GL JS has no option for it (Mapbox's prefetchZoomDelta),
+// so this wraps its TileManager, once, on the prototype; smoke's `coarse` fails if an upgrade changes what it uses.
+const COARSE = new Set(['ofm', 'ofmTrails', 'aerial', 'ortofi', 'maasto', 'mmlBase']);
+map.once('styledata', () => {
+  const tm = Object.getPrototypeOf(map.style.tileManagers.ofm), own = tm._updateRetainedTiles;
+  if (typeof own !== 'function' || typeof tm._addTile !== 'function' || typeof tm.getTileByID !== 'function') throw new Error('MapLibre changed: no coarse map underneath (#1091)');
+  tm._updateRetainedTiles = function (ideal, zoom) {
+    const ups = [];
+    if (COARSE.has(this.id)) {
+      for (const t of ideal) {
+        const up = t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4)), held = this.getTileByID(up.key);
+        // kept while it loads too, so a move doesn't ask for it again
+        if (up.key !== t.key && (!this.getTileByID(t.key)?.hasData() || (held && !held.hasData()))) ups.push(up);
+      }
+    }
+    // asked for before the detail, so they aren't queued behind it (MapLibre loads 16 images at a time)
+    for (const up of ups) this._addTile(up);
+    const retain = own.call(this, ideal, zoom);
+    for (const up of ups) retain[up.key] = up;
+    return retain;
+  };
+});
 installIcons(map);
 initGestures(map, { trackpadRotate: () => state.trackpadTilt });
 bindCrosshair(map);
