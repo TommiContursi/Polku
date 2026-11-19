@@ -1,8 +1,9 @@
 // Polku service worker: keeps the app and saved offline areas working without
 // a connection.
 //
-// - App files (same origin): network first, the last copy seen after 3 s or offline. The typefaces are kept
-//   when the worker installs.
+// - App files (same origin): the page itself network first, the last copy seen after 3 s or offline. Its other files
+//   come from the same version: all saved when the page was, else the network's, the saved copy only when the network
+//   fails or the device is offline (#481). The typefaces are kept when the worker installs.
 // - Versioned CDN files (unpkg): cache first.
 // - OpenFreeMap TileJSON, sprites and fonts: network first, cached copy as fallback.
 // - Map and terrain tiles saved with "Save offline" (js/offline.js): network
@@ -58,8 +59,12 @@ self.addEventListener('fetch', (e) => {
   if (url.origin === location.origin) {
     if (url.pathname === FLAG) return;
     // navigations are stored without the query (?r=… share links) and hash
-    const key = req.mode === 'navigate' ? url.origin + url.pathname : req;
-    e.respondWith(networkFirst(req, key, 3000, e.resultingClientId || e.clientId));
+    if (req.mode === 'navigate') e.respondWith(networkFirst(req, url.origin + url.pathname, 3000, e.resultingClientId || e.clientId));
+    // one version of the app per page (#481): a page that got the saved Polku gets every file saved; any other waits
+    // for the network's, the saved copy only when it fails or the device is offline (a time limit per file mixed old
+    // files with new ones after an update, and the app stayed blank)
+    else if (savedFor.has(e.clientId)) e.respondWith(cacheFirst(req));
+    else e.respondWith(networkFirst(req, req, 0, e.clientId));
   } else if (url.hostname === 'unpkg.com') e.respondWith(cacheFirst(req));
   else if (OFM_TILE.test(req.url)) e.respondWith(tile(req, ofmKey(req.url)));
   else if (DEM_TILE.test(req.url)) e.respondWith(tile(req, req.url));
@@ -85,7 +90,7 @@ async function networkFirst(req, key, ms, client = '') {
   return new Promise((resolve, reject) => {
     let done = false;
     const finish = (r) => { if (!done) { done = true; resolve(r); } };
-    const timer = setTimeout(async () => { const s = await saved(); if (s) finish(s); }, ms);
+    const timer = ms && setTimeout(async () => { const s = await saved(); if (s) finish(s); }, ms);
     net.then((r) => { clearTimeout(timer); finish(r); }, async (err) => {
       clearTimeout(timer);
       const s = await saved();
