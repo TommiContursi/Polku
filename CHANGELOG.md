@@ -8,6 +8,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - A path, forest track or cycling path closed to bikes now has short red bars across it in the cycling sports, instead of a thin red line beside it, so it stands out on a phone and on the dark map. The bars leave the line's own colour between them and the sides of the line to the overgrown, wet and private marks.
 
+### Streams and ditches by size ([#1138](https://github.com/TommiContursi/Polku/issues/1138))
+
+- Rivers, streams, ditches and drains are drawn wider when you zoom in, so they stand out on the map. Ditches and drains stay narrower than streams, so the two are easy to tell apart in the forest. A stream or ditch that only has water at times keeps a dashed line, now with longer dashes that still read as a dash.
+
 ### Cycling restriction marks on paths and forest tracks ([#1130](https://github.com/TommiContursi/Polku/issues/1130))
 
 - Red side marks show an explicit mapped bicycle prohibition on paths and forest tracks, including cycling paths, in cycling sports. Their size and spacing change with zoom and trail width class, with stronger marks in high contrast and faded marks in tunnels. Ordinary road edges do not carry these marks. Missing bicycle access information is not a prohibition. General and cycling restrictions stay consistent when detailed trail data replaces the base map.

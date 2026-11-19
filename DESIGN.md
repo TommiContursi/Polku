@@ -196,6 +196,8 @@ Cycling paths use surface-specific exponential zoom widths instead of physical-w
 
 Cycling restriction marks focus on paths and forest tracks, including cycling paths, excluding ordinary motor-road classes and footways. They are short red `#ff003c` bars across the line, drawn over its centre line: as long as the trail's halo is wide plus 2 px on each side (8/11/16 px at zoom 14/16/18, times the detailed trail's width factor, and the halo's 1.35 in high contrast), a quarter of their length thick (0.35 in high contrast) and two lengths apart. Crossing the line, they leave its sides to the overgrown, wet and private marks, and say it by shape as well as colour. Tunnel marks fade to 30%; general/private-access marks remain separate. Missing permission is not a prohibition.
 
+Small waterways come from zoom 13 and read by size: streams 1.5/4/8 px at zoom 14/16/18, ditches and drains 0.7/1.6/3 px; rivers and canals 3/5.5/9 px. All use the palette's `waterLine`. Intermittent ones are dashed `[4, 3]` (a multiple of the line's width); culverts are not drawn. They're drawn under the water's fill, so a river's centre line doesn't show where it crosses a lake or strait.
+
 Downhill MTB difficulty has turquoise S0− (`--mtb-s0-minus`) for very easy paths and neon-green S0 (`--mtb-s0`); S1–S6 retain the indexed scale's colors. The map, cards, keys and route/profile use the same class and words. Uphill, hiking, speed and smoothness keep the original indexed palette, including its darker green S0.
 
 ### Primary
