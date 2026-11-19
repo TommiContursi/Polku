@@ -3169,6 +3169,54 @@ def flow(chrome):
     return not fails
 
 
+LOST_CONTEXT = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map;
+  const until = async (ok, ms) => { const t0 = Date.now(); while (!(await ok()) && Date.now() - t0 < ms) await wait(200); };
+  const legs = async () => (m.style && m.getSource('route') ? (await m.getSource('route').getData()).features.filter((f) => f.properties.kind === 'leg').length : 0);
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  p.setActive(true);
+  p.setMode('line');
+  p.addPoint([24.930, 60.170]);
+  p.addPoint([24.940, 60.172]);
+  m.jumpTo({ center: [24.935, 60.171], zoom: 15 });
+  await until(async () => (await legs()) === 1 && m.loaded(), 8000);
+  const lose = m.painter.context.gl.getExtension('WEBGL_lose_context');
+  if (!lose) return ['no WEBGL_lose_context'];
+  lose.loseContext();
+  await wait(300);
+  // a third point while it's lost (the route and the lit leg), the first leg lit as it's back, before its style has loaded
+  try { p.addPoint([24.945, 60.175]); } catch (e) { errs.push(`while the context is lost: ${e.message}`); }
+  await wait(500);
+  const back = new Promise((ok) => m.once('webglcontextrestored', () => {
+    try { p.litLeg(0); } catch (e) { errs.push(`as it comes back: ${e.message}`); }
+    ok();
+  }));
+  lose.restoreContext();
+  await back;
+  await until(async () => (await legs()) === 2 && m.loaded(), 10000);
+  const n = await legs(), lit = m.getSource('routeLit') ? (await m.getSource('routeLit').getData()).features.length : -1;
+  if (n !== 2) errs.push(`after it came back: ${n} legs on the map, not 2`);
+  if (!m.getLayer('route-flow')) errs.push('after it came back: the moving chevrons have no layer');
+  if (!lit || m.getPaintProperty('route-line', 'line-opacity') !== 0.5) errs.push(`after it came back: the leg lit ${lit}, the route's opacity ${m.getPaintProperty('route-line', 'line-opacity')}`);
+  return errs;
+})()"""
+
+
+def lost_context(chrome):
+    """The map's WebGL context lost and back, as a phone does to a tab in the background (#1093): what the planner
+    sets meanwhile throws nothing and is on the map once it's back."""
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'run'}, hash_='#15/60.171/24.935')
+        fails = pg.js(LOST_CONTEXT, timeout=40000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's WebGL context lost and back: the route drawn meanwhile is on the map (#1093)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def access(chrome):
     pg = chrome.page(1440, 900, False)
     try:
@@ -23162,6 +23210,7 @@ GROUPS = [
     ('shortcut', [shortcut], 'Short cuts ok: Polku\'s profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)'),
     ('otherways', [otherways], 'other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo, a point taken back at once (#351) (mocked BRouter)'),
     ('flow', [flow], 'the route\'s glow and moving chevrons: they move, survive a style change, stop with reduced motion, the switch off or left alone'),
+    ('context', [lost_context], 'the map\'s WebGL context lost and back, as a phone does to a tab in the background: the route drawn meanwhile is on the map, nothing thrown (#1093)'),
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
     ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, an import\'s card clear of the track\'s end (#131), loops tapped on the map (mocked BRouter)'),
     ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
