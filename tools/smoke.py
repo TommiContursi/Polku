@@ -7272,10 +7272,17 @@ def fadein(chrome):
 
     def sessions(pg):
         """The page's session and its workers': on the first page a Chrome opens, the map's workers' requests don't go
-        through the page's Fetch domain (as `coarse` found)."""
+        through the page's Fetch domain (as `coarse` found). Chrome's cache is off in them, so no tile skips the hold."""
         pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
         time.sleep(0.5)
-        return [pg.s] + [e['params']['sessionId'] for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Target.attachedToTarget']
+        out = [pg.s] + [e['params']['sessionId'] for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Target.attachedToTarget']
+        for s_ in out:
+            try:
+                chrome.send('Network.enable', {}, s_)
+                chrome.send('Network.setCacheDisabled', {'cacheDisabled': True}, s_)
+            except RuntimeError:
+                pass  # (a worker without the Network domain)
+        return out
 
     def held_move(pg, move):
         """Makes the move with the tiles held, and lets them go once the map has stopped; how many were held."""
@@ -7329,34 +7336,44 @@ def fadein(chrome):
         after(pg, 'a search result chosen with the mouse', by_click('62.2200, 25.6700'), True)
         after(pg, 'the arrow keys', by_arrows, False)
         # a LIPAS route lit under the mouse ends a fade: it's drawn in the map's canvas, under the picture. LIPAS answers
-        # with a route through the view's middle (in EPSG:3067, from tm35ToLonLat inverted), drawn after the next stop.
+        # with a route through the view's middle (EPSG:3067, tm35ToLonLat inverted); a spot where the mouse lights it is
+        # found; then, the map kept still, a moveend has LIPAS answer again with more routes, and while they fade in the
+        # mouse goes to that spot.
         pg.js("""(async () => {
-          polku.map.jumpTo({ center: [25.745, 62.233], zoom: 14.5 }); // (Jyväsjärvi: open water along the route)
           const m = polku.map, c = m.getCenter(), { tm35ToLonLat } = await import(location.origin + '/js/geo.js'), k = Math.cos(c.lat * Math.PI / 180);
           let x = 500000 + (c.lng - 27) * 111320 * k, y = c.lat * 111000;
           for (let i = 0; i < 6; i++) { const [lo, la] = tm35ToLonLat(x, y); x += (c.lng - lo) * 111320 * k; y += (c.lat - la) * 111000; }
-          window.__routeAt = (i) => tm35ToLonLat(x + i * 250, y); // (a point on the route: east-west in EPSG:3067 isn't on the map)
-          (await import(location.origin + '/js/lipas.js')).seedLipas(() => Promise.resolve({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 1 },
-            geometry: { type: 'LineString', coordinates: [...Array(161).keys()].map((i) => [x - 20000 + i * 250, y]) } }] }));
+          window.__routeAt = (i) => tm35ToLonLat(x + i * 250, y); // (points on it: east-west in EPSG:3067 isn't on the map)
+          const line = (id, dy) => ({ type: 'Feature', properties: { id }, geometry: { type: 'LineString', coordinates: [...Array(161).keys()].map((i) => [x - 20000 + i * 250, y + dy]) } });
+          window.__routes = [line(1, 0)];
+          (await import(location.origin + '/js/lipas.js')).seedLipas(() => Promise.resolve({ type: 'FeatureCollection', features: window.__routes }));
           polku.lipas.tiles.clear();
-          return true; })()""")
-        held_move(pg, drag)
-        at = pg.js("""new Promise((ok) => { const m = polku.map, t0 = Date.now(), go = () => {
-          const a = document.querySelector('.map-fade')?.getAnimations()[0], drawn = m.queryRenderedFeatures({ layers: ['lipas-route'] }).length && a && a.effect.getTiming().duration - a.currentTime > 120;
-          if (!drawn && Date.now() - t0 < 4000) return requestAnimationFrame(go);
-          // a spot where the route is all a pointer finds (no way, icon or mark of its own within 10 px)
-          const open = (q) => m.queryRenderedFeatures([[q.x - 10, q.y - 10], [q.x + 10, q.y + 10]]).every((f) => f.layer.id.startsWith('lipas-route') || f.source === 'contours' || ['fill', 'background', 'hillshade', 'raster', 'fill-extrusion'].includes(f.layer.type));
-          for (let k = 0; drawn && k <= 40; k++) for (const s of [k, -k]) { const q = m.project(window.__routeAt(s)); if (q.x > 20 && q.x < innerWidth - 20 && document.elementFromPoint(q.x, q.y) === m.getCanvas() && open(q)) return ok([q.x, q.y]); }
-          ok(null); }; go(); })""")
-        if not at:
-            fails.append('a route lit under the mouse: no open spot on the LIPAS route while a fade had 120 ms left')
+          m.jumpTo({ center: c });
+          await new Promise((r) => setTimeout(r, 2500));
+          window.__more = () => { window.__routes = [line(1, 0), ...[...Array(16).keys()].map((i) => line(10 + i, 150 * (i + 1)))]; polku.lipas.tiles.clear(); document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); m.jumpTo({ center: m.getCenter() }); }; // (the last input a pointer's, off the map)
+          return true; })()""", timeout=20000)
+
+        def hover_at(x, y):
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': 'none', 'buttons': 0}, pg.s)
+            return pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!!polku.map.getFeatureState({ source: 'lipasRoutes', id: 1 }).hover))))")
+        spots = pg.js("""(() => { const m = polku.map, out = [];
+          for (let k = 0; k <= 40; k++) for (const s of [k, -k]) { const q = m.project(window.__routeAt(s)); if (q.x > 20 && q.x < innerWidth - 20 && q.y > 80 && document.elementFromPoint(q.x, q.y) === m.getCanvas()) out.push([q.x, q.y]); }
+          return out; })()""")
+        spot = next((p_ for p_ in spots[:12] if hover_at(*p_)), None)
+        if not spot:
+            fails.append(f'a route lit under the mouse: the mouse lit the LIPAS route nowhere on it ({len(spots)} spots)')
         else:
-            pg.js('window.__fade.gone.length = 0, true')  # (only how the fade on the map now goes)
-            for dx in (0, 1):
-                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at[0] + dx, 'y': at[1], 'button': 'none', 'buttons': 0}, pg.s)
-            left, gone = pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok([!!document.querySelector('.map-fade'), window.__fade.gone]))))")
-            if left or 'finished' in gone or not gone:
-                fails.append(f'a route lit under the mouse didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
+            hover_at(spot[0], 5)  # (off the map, onto the top bar: nothing lit)
+            pg.js('window.__more(), true')
+            ready = pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const a = document.querySelector('.map-fade')?.getAnimations()[0]; if (a && a.effect.getTiming().duration - a.currentTime > 120) ok(true); else if (Date.now() - t0 > 4000) ok(false); else requestAnimationFrame(go); }; go(); })")
+            if not ready:
+                fails.append('a route lit under the mouse: the routes LIPAS answered with, the map still, didn’t fade in')
+            else:
+                pg.js('window.__fade.gone.length = 0, true')  # (only how the fade on the map now goes)
+                hover_at(*spot)
+                left, gone = pg.js("[!!document.querySelector('.map-fade'), window.__fade.gone]")
+                if left or 'finished' in gone or not gone:
+                    fails.append(f'a route lit under the mouse didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
