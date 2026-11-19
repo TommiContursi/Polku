@@ -2,9 +2,9 @@
 // a connection.
 //
 // - App files (same origin): network first, the last copy seen after 3 s or offline. After the 3 s, a file other than
-//   the page itself takes its saved copy only when it's from the page's own deploy (#481), so a page never runs old
-//   files beside new ones; on a page given saved copies already, at once. The typefaces are kept when the worker
-//   installs.
+//   the page itself takes its saved copy only when it's from the page's own deploy, where that's known (#481), so a
+//   slow file doesn't put an older version beside newer ones; on a page given saved copies already, at once. A network
+//   failure takes any saved copy. The typefaces are kept when the worker installs.
 // - Versioned CDN files (unpkg): cache first.
 // - OpenFreeMap TileJSON, sprites and fonts: network first, cached copy as fallback.
 // - Map and terrain tiles saved with "Save offline" (js/offline.js): network
@@ -39,7 +39,8 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 // pages that got the saved copy of an app file (the server didn't answer in time), so the
 // page can say it may be an older Polku
 const savedFor = new Set();
-// each page's deploy: the Last-Modified of the page it got (GitHub Pages gives every file the deploy's time)
+// each page's deploy: the Last-Modified of the page it got (GitHub Pages gives every file the deploy's time); not known
+// for a page the worker didn't open (claimed, or after the worker restarted)
 const deployOf = new Map();
 
 self.addEventListener('message', (e) => {
@@ -70,7 +71,7 @@ self.addEventListener('fetch', (e) => {
       }));
     // one version of the app per page (#481): after the wait, only a saved copy from the page's own deploy (an older
     // file beside newer ones stopped the app); at once on a page that's already been given saved copies
-    } else e.respondWith(networkFirst(req, req, savedFor.has(e.clientId) ? 0 : 3000, e.clientId, deployOf.get(e.clientId) || null));
+    } else e.respondWith(networkFirst(req, req, savedFor.has(e.clientId) ? 0 : 3000, e.clientId, deployOf.get(e.clientId)));
   } else if (url.hostname === 'unpkg.com') e.respondWith(cacheFirst(req));
   else if (OFM_TILE.test(req.url)) e.respondWith(tile(req, ofmKey(req.url)));
   else if (DEM_TILE.test(req.url)) e.respondWith(tile(req, req.url));
@@ -78,15 +79,15 @@ self.addEventListener('fetch', (e) => {
   else if (previewNow !== false) e.respondWith(previewOn().then((on) => (on ? Response.error() : fetch(req))));
 });
 
-// `deploy`: after the wait, only a saved copy whose Last-Modified is this (null: none); undefined, any
-async function networkFirst(req, key, ms, client = '', deploy = undefined) {
+// `deploy`, when known: after the wait, only a saved copy with this Last-Modified
+async function networkFirst(req, key, ms, client = '', deploy = null) {
   const cache = await caches.open(SHELL);
   const match = () => cache.match(key);
   if (await previewOn()) return (await match()) || fetch(req);
   // the saved copy instead of the network's: remember which page got it
   const saved = async (late) => {
     const r = await match();
-    if (!r || (late && deploy !== undefined && (!deploy || r.headers.get('last-modified') !== deploy))) return null;
+    if (!r || (late && deploy && r.headers.get('last-modified') !== deploy)) return null;
     if (client) { savedFor.add(client); if (savedFor.size > 50) savedFor.delete(savedFor.values().next().value); }
     return r;
   };

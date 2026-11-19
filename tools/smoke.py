@@ -9756,9 +9756,10 @@ def start_fails(chrome):
     # js/safety.js is from an older deploy (its Last-Modified isn't the page's) and the server's answer comes after
     # 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try more (main mixed the two,
     # failed and tried again). With no update: the saved copies are the page's deploy's and every js/ file hangs for
-    # good: it opens from them, and says it may be an older Polku.
-    for case in ('update', 'hang'):
-        name = '390x844, ' + ('an older deploy’s js/safety.js saved, the new one 6 s late' if case == 'update' else 'every js/ file hanging, the saved copies the page’s deploy’s')
+    # good, the page itself too ('saved'): it opens from them, and says it may be an older Polku.
+    for case in ('update', 'hang', 'saved'):
+        name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
+                              'saved': 'the page and every js/ file hanging, the saved copies the page’s deploy’s'}[case]
         pg = chrome.page(390, 844, True)
         pg.open_app({'activity': 'mtb'})
         chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
@@ -9780,10 +9781,10 @@ def start_fails(chrome):
               const d = (await c.match(new URL('./', location.href).href)).headers.get('last-modified');
               for (const r of await c.keys()) if (r.url.startsWith(js)) { const a = await c.match(r), h = new Headers(a.headers); h.set('Last-Modified', d); await c.put(r, new Response(await a.blob(), { headers: h })); }
               return true; })()""")
-            chrome.send('Fetch.enable', {'patterns': [{'urlPattern': BASE + 'js/*'}]}, ws)
+            chrome.send('Fetch.enable', {'patterns': [{'urlPattern': BASE + 'js/*'}] + ([{'urlPattern': BASE}] if case == 'saved' else [])}, ws)
         chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
         chrome.send('Page.reload', {}, pg.s)
-        t0, opened, let_go = time.time(), False, case == 'hang'
+        t0, opened, let_go = time.time(), False, case != 'update'
         while time.time() - t0 < 30 and not opened:
             time.sleep(0.5)
             if not let_go and time.time() - t0 > 6:  # the new js/safety.js arrives
@@ -9796,7 +9797,7 @@ def start_fails(chrome):
                 opened = pg.js('!!window.polku', timeout=3000)
             except Exception:
                 pass  # (the page loading again)
-        if case == 'hang':
+        if case != 'update':
             chrome.send('Fetch.disable', {}, ws)
         chrome.send('Target.detachFromTarget', {'sessionId': ws})
         if not opened:
@@ -9805,7 +9806,7 @@ def start_fails(chrome):
             older = pg.js("new Promise((ok) => setTimeout(() => ok(!!document.querySelector('.offline-banner.saved-copy:not(#start-failed)')?.checkVisibility()), 1500))")
             if case == 'update' and tries(pg) != 1:
                 fails.append(f'{name}: {tries(pg)} tries, not 1')
-            if case == 'hang' and not older:
+            if case != 'update' and not older:
                 fails.append(f'{name}: opened without saying it may be an older Polku')
             fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
