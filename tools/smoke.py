@@ -11,6 +11,7 @@ raises fails and the rest still run. Needs the dev server (python3 serve.py) and
 Chrome. Draws a straight-line route (no routing requests). The forecast comes from
 Open-Meteo, cached for an hour. Exits 1 if anything fails.
 """
+import base64
 import json
 import math
 import os
@@ -9776,6 +9777,44 @@ def start_fails(chrome):
     print(f"{'ok  ' if not fails else 'FAIL'} Polku's files stopping it from starting: one try more, then a message with Reload that opens it (#1088, #481)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
+
+
+def cdn_tampered(chrome):
+    """#482: MapLibre from unpkg answered with other bytes than the version Polku was tested with (a line added, through
+    the Fetch domain): the browser refuses it (its integrity), and Polku says it didn't finish loading (#1088)."""
+    fails = []
+    name = '390x844, maplibre-gl.js from unpkg with a line added'
+    pg = chrome.page(390, 844, True)
+    pg.goto(BASE + 'sw.js')
+    pg.js("localStorage.clear(); sessionStorage.clear(); localStorage.setItem('polku:settings', JSON.stringify({activity: 'mtb', fewerOffered: true, flatOffered: true})); true")
+    chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*unpkg.com/maplibre-gl@*/dist/maplibre-gl.js', 'requestStage': 'Response'}]}, pg.s)
+    chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
+    end, said, ran, changed = time.time() + 40, '', False, 0
+    while time.time() < end and not said and not ran:
+        time.sleep(0.5)
+        try:
+            said, ran = pg.js("[(() => { const b = document.querySelector('#start-failed'); return b && b.checkVisibility() ? b.textContent : '' })(), !!window.__tampered]", timeout=5000)
+        except Exception:
+            pass  # (the page loading again)
+        for e in [e for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Fetch.requestPaused']:
+            chrome.events.remove(e)
+            p = e['params']
+            b = chrome.send('Fetch.getResponseBody', {'requestId': p['requestId']}, pg.s)
+            body = base64.b64decode(b['body']) if b.get('base64Encoded') else b['body'].encode()
+            chrome.send('Fetch.fulfillRequest', {'requestId': p['requestId'], 'responseCode': p.get('responseStatusCode', 200), 'responseHeaders': [h for h in p.get('responseHeaders', []) if h['name'].lower() != 'content-length'],
+                                                 'body': base64.b64encode(body + b'\nwindow.__tampered = true;\n').decode()}, pg.s)
+            changed += 1
+    chrome.send('Fetch.disable', {}, pg.s)
+    if not changed:
+        fails.append(f'{name}: unpkg was never asked for maplibre-gl.js (the check proves nothing)')
+    elif ran:
+        fails.append(f'{name}: the changed file ran')
+    elif 'didn’t finish loading' not in said:
+        fails.append(f'{name}: no message after 40 s ({changed} answers changed)')
+    pg.errors()  # (the refused file's own errors)
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MapLibre from unpkg with other bytes: refused, and Polku says it didn't finish loading (#482)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 def panels(chrome):
     fails = []
@@ -23276,7 +23315,7 @@ GROUPS = [
     ('resize', [resize_window], 'desktops (#1002): the window made smaller by its edge, down to 721 px, and larger again, by mouse: the planner\'s toolbar on one row and the timeline in its room beside the side panel, the panel dragged wide giving way, a card from the list beside the panel and then where cards go with the panel at the bottom (a narrow window, Move to the bottom), the credits folded where they\'d run under the map\'s buttons, a timeline you\'ve dragged clear of them, and the layout as it was when the window is large again'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails, tile_hangs], 'Paddle with the depth tiles failing last (a server error, a dropped connection) or never answering: the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399); a spot\'s link opens its card, a point added meanwhile stays (#419)'),
-    ('startfail', [start_fails], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit) or the worker\'s older saved copy beside new files (#481): one try more by itself, then a message whose Reload opens it (#1088)'),
+    ('startfail', [start_fails, cdn_tampered], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit) or the worker\'s older saved copy beside new files (#481): one try more by itself, then a message whose Reload opens it (#1088); MapLibre from unpkg with other bytes, refused (#482)'),
     ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
