@@ -725,9 +725,15 @@ def mtb_grades(chrome):
 # #1123: physical cycling paths, pedestrian ways and MTB footways keep distinct styles.
 def cycleway_style(chrome):
     pg = chrome.page(1440, 900, False)
-    pg.open_app({'activity': 'mtb', 'trailDetails': False, 'trailColors': 'down'})
+    pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': False, 'trailColors': 'down'})
     fails = pg.js("""(async () => {
       const errs=[], m=polku.map, F=await import('/js/facts.js');
+      const width=(id,z)=>m.style.getLayer(id)._transitionablePaint._values['line-width'].value.expression.evaluate({zoom:z});
+      const zooms=[12,14,16,18], normal=zooms.map(z=>width('cycleway-ground',z));
+      for(const z of zooms.slice(1)) {
+        const cycle=width('cycleway-ground',z), trail=width('path-ground-halo',z);
+        if(cycle<trail*.7)errs.push(`zoom ${z}: cycling stroke ${cycle}px is too narrow beside ${trail}px trail halo`);
+      }
       const cases=[
         [{subclass:'cycleway'},true],
         [{subclass:'footway',bicycle:'yes'},true],
@@ -767,8 +773,10 @@ def cycleway_style(chrome):
         const l=m.getStyle().layers.find(l=>l.id==='cycleway-ground');
         if(l.paint['line-color']!==color)errs.push(`${base}: cycleway color ${l.paint['line-color']}`);
         if(Math.abs(l.paint['line-opacity']-(base==='trail'?.95:.85)*.55)>.00001)errs.push(`${base}: Paddle dimming changed`);
-        if(!JSON.stringify(l.paint['line-width']).includes('2.16'))errs.push(`${base}: high-contrast width changed`);
+        for(const [i,z] of zooms.entries())if(Math.abs(width('cycleway-ground',z)-normal[i]*1.35)>.000001)errs.push(`${base}: zoom ${z} high contrast does not scale the cycling width by 1.35`);
       }
+      polku.set({activity:'road',highContrast:false});
+      for(const [i,z] of zooms.entries())if(z>=14&&width('cycleway-ground',z)<normal[i]*1.4-.000001)errs.push(`zoom ${z}: road cycling loses its width emphasis`);
       const key=document.querySelector('#layers-body').textContent;
       for(const surface of ['paved','unpaved','surface unknown'])if(!key.includes(`Cycling path (${surface})`))errs.push(`map key omits ${surface}`);
       if(!key.includes('cycling permission not implied'))errs.push('map key implies pedestrian access');

@@ -943,7 +943,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-color': aerial ? '#bfe0ff' : trail ? '#426f99' : P.cycleway,
         'line-dasharray': ['match', ['get', 'surface'], 'paved', ['literal', [6, 1.5]], 'unpaved', ['literal', [1, 0.5]], ['literal', [2.5, 1.5]]],
         // road cycling: cycleways are where you ride, so they stand out
-        'line-width': zi(12, 0.6, 15, 1.6 * k * (roadBike ? 1.5 : 1), 18, 3.5 * k * (roadBike ? 1.4 : 1)),
+        'line-width': zi(12, 1.4 * k, 14, 3 * k * (roadBike ? 1.5 : 1), 16, 5.5 * k * (roadBike ? 1.5 : 1), 18, 9 * k * (roadBike ? 1.4 : 1)),
         'line-opacity': (trail ? 0.95 : 0.85) * roadsDim,
       },
     });
