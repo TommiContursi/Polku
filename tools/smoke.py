@@ -11,6 +11,7 @@ raises fails and the rest still run. Needs the dev server (python3 serve.py) and
 Chrome. Draws a straight-line route (no routing requests). The forecast comes from
 Open-Meteo, cached for an hour. Exits 1 if anything fails.
 """
+import base64
 import json
 import math
 import os
@@ -19,7 +20,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cdp import BASE, Chrome  # noqa: E402
+from cdp import BASE, LOAD_STEP, Chrome  # noqa: E402
 
 # (width, height, phone, planner docked at the bottom on desktop)
 VIEWPORTS = [(1440, 900, False, False), (1440, 900, False, True), (1024, 768, False, False), (390, 844, True, False), (360, 740, True, False)]
@@ -9735,10 +9736,113 @@ def tile_fails(chrome):
     return not fails
 
 
+
+# polku.map.__loads counts MapLibre's load events (as DEPTHS_FAIL_LAST does), and window.__steps Polku's load steps
+# (each restores the link's route or the saved one, and nothing else does)
+COUNT_LOADS = """document.addEventListener('DOMContentLoaded', () => {
+  if (!window.maplibregl) return;  // (open_app's first page)
+  const fire = maplibregl.Map.prototype.fire;
+  maplibregl.Map.prototype.fire = function (e) { if ((e && e.type || e) === 'load') this.__loads = (this.__loads || 0) + 1; return fire.apply(this, arguments); };
+});
+window.__steps = 0;
+let app;
+Object.defineProperty(window, 'polku', { configurable: true, get: () => app, set(v) {
+  app = v;
+  for (const k of ['restore', 'loadSaved']) { const f = v.planner[k]; v.planner[k] = function (...a) { window.__steps++; return f.apply(this, a); }; }
+} });"""
+
+
+def tile_hangs(chrome):
+    """#419: Paddle with a saved route and the planner left open, Traficom's depth tiles held with the Fetch domain, so
+    they never answer and MapLibre's load event never comes. Polku opens anyway: the route and the planner are back and
+    the snow is looked up; a share link's route opens in the route's view; a spot's link opens its card. A point added
+    while they're held stays once they come, with one load event, and the load step has run once (the review of #1109:
+    a second run kept the point too)."""
+    fails = []
+    held = "new Promise((ok) => { const t0 = Date.now(), go = () => (window.polku && (WANT)) || Date.now() - t0 > 20000 ? setTimeout(() => ok(!!(window.polku && (WANT))), 300) : setTimeout(go, 100); go(); })"
+    looks = """({ loaded: !!polku.map._loaded, loads: polku.map.__loads || 0, steps: window.__steps, points: polku.planner.points.length, active: !!polku.planner.active,
+      view: !!(polku.planner.active && polku.planner.inView()), shared: /[?&](r|pin)=/.test(location.search),
+      card: polku.planner.cards.current ? polku.planner.cards.current.kind : null,
+      saved: ((JSON.parse(localStorage.getItem('polku:route') || 'null') || {}).points || []).length })"""
+
+    def hold(pg):
+        pg.c.send('Fetch.enable', {'patterns': [{'urlPattern': '*traficom.fi*GetMap*'}]}, pg.s)
+
+    def release(pg):
+        for e in [e for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Fetch.requestPaused']:
+            chrome.events.remove(e)
+            try:
+                chrome.send('Fetch.continueRequest', {'requestId': e['params']['requestId']}, pg.s)
+            except RuntimeError:
+                pass  # (a request the page has given up)
+        chrome.send('Fetch.disable', {}, pg.s)
+
+    def paused(pg):
+        pg.js('true')  # (its answer brings in the events Chrome has sent so far)
+        return sum(1 for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Fetch.requestPaused')
+
+    def asked(pg, host):
+        return any(e.get('sessionId') == pg.s and e.get('method') == 'Network.requestWillBeSent' and host in e['params']['request']['url'] for e in chrome.events)
+
+    for w, h_, phone in ((390, 844, True), (1440, 900, False)):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'paddle'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#14.2/61.5155/23.8220')
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        pg.js("polku.planner.setEditing(false); true")
+        share = pg.js("polku.planner.shareUrl()")
+        pg.js("localStorage.setItem('polku:plannerOpen', JSON.stringify({ open: true })); true")
+        pg.close()
+        # a fresh page each time: the real depth tiles (no EMPTY_DEPTHS), held
+        for case in ('saved', 'share', 'pin'):
+            name = f'{w}x{h_}, the depth tiles never answering: ' + {'saved': 'the saved route, the planner left open', 'share': 'a share link', 'pin': 'a spot’s link'}[case]
+            pg = chrome.page(w, h_, phone)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COUNT_LOADS}, pg.s)
+            hold(pg)
+            if case == 'share':
+                pg.goto(BASE + 'sw.js')
+                pg.js("localStorage.removeItem('polku:route'); true")  # so the route comes from the link
+                pg.goto(share)
+            elif case == 'pin':
+                pg.goto(BASE + 'sw.js')
+                pg.js("localStorage.removeItem('polku:route'); localStorage.removeItem('polku:plannerOpen'); true")
+                pg.goto(BASE + '?pin=61.5155,23.8220&pn=Test#14.2/61.5155/23.8220')
+            else:
+                pg.goto(BASE + '#14.2/61.5155/23.8220')
+            want = {'saved': f'polku.planner.points.length === {len(TB_PTS)} && polku.planner.active', 'share': f'polku.planner.points.length === {len(TB_PTS)}',
+                    'pin': 'polku.planner.cards.current'}[case]
+            pg.js(held.replace('WANT', want), timeout=30000)
+            s = pg.js(looks)
+            if not paused(pg) or s['loaded']:
+                fails.append(f"{name}: {paused(pg)} depth tiles held, the map {'loaded' if s['loaded'] else 'not loaded'} (the check proves nothing)")
+            elif case == 'saved' and (s['points'] != len(TB_PTS) or not s['active'] or not asked(pg, 'opendata.fmi.fi/wfs')):
+                fails.append(f"{name}: {s['points']} points, the planner {'open' if s['active'] else 'closed'}, FMI's snow {'' if asked(pg, 'opendata.fmi.fi/wfs') else 'not '}asked for")
+            elif case == 'share' and (s['points'] != len(TB_PTS) or not s['view'] or s['shared']):
+                fails.append(f"{name}: {s['points']} points, the route's view {'open' if s['view'] else 'not open'}{', the link still in the address' if s['shared'] else ''}")
+            elif case == 'pin' and (not s['card'] or s['shared']):
+                fails.append(f"{name}: the card {s['card']}{', the link still in the address' if s['shared'] else ''}")
+            elif case == 'saved':
+                # a point added before the tiles come stays once they do, and the load step doesn't run again
+                pg.js("polku.planner.setEditing(true); polku.planner.addPoint([23.85, 61.525]); true")
+                time.sleep(1)
+                release(pg)
+                pg.map_loaded()
+                pg.js(LOAD_STEP)
+                time.sleep(1)
+                s = pg.js(looks)
+                if s['loads'] != 1 or s['steps'] != 1 or s['points'] != len(TB_PTS) + 1 or s['saved'] != len(TB_PTS) + 1:
+                    fails.append(f"{name}: once the tiles came, {s['loads']} load events, {s['steps']} load steps, {s['points']} points, {s['saved']} saved (not 1, 1, {len(TB_PTS) + 1} and {len(TB_PTS) + 1})")
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's tiles never answering: Polku still opens the saved route, a share link and a spot's link (#419)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def start_fails(chrome):
-    """#1088: Polku's files stop it from starting, a file that doesn't arrive (the worker bypassed, as on a first visit)
-    or the worker's older saved copy beside new files (#481): it tries once more by itself, no more, then says so with
-    Reload, and Reload opens it once the file comes."""
+    """#1088: a file of Polku's that doesn't arrive (the worker bypassed, as on a first visit) stops it from starting: it
+    tries once more by itself, no more, then says so with Reload, and Reload opens it once the file comes. #481: the
+    worker never gives an older deploy's saved file beside new ones, and with no update a file that hangs opens from
+    the saved copy."""
     fails = []
     banner = "(() => { const b = document.querySelector('#start-failed'); return b && b.checkVisibility() ? b.textContent : '' })()"
 
@@ -9770,6 +9874,8 @@ def start_fails(chrome):
         r = pg.js("document.querySelector('#start-failed button').getBoundingClientRect().toJSON()")
         pg.errors()  # (the failed start's own errors)
         x, y = r['x'] + r['width'] / 2, r['y'] + r['height'] / 2
+        # (the failed loads' own load events: Reload looks over the saved copies first, so it loads again a moment later)
+        chrome.events = [e for e in chrome.events if not (e.get('sessionId') == pg.s and e.get('method') == 'Page.loadEventFired')]
         if pg.phone:
             pg.tap(x, y)
         else:
@@ -9804,30 +9910,175 @@ def start_fails(chrome):
     failed(pg, name, 1)
     pg.close()
 
-    # a returning visitor on a slow network: the worker's saved js/safety.js is older than main.js, and the server's
-    # answer doesn't come within the worker's 3 s, in either try
-    name = '390x844, an older saved js/safety.js beside a new main.js'
+    # The worker's saved copies (#481), a returning visitor on a slow network. Just after an update: the saved
+    # js/safety.js is from an older deploy (its Last-Modified isn't the page's) and the server's answer comes after
+    # 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try more (main mixed the two,
+    # failed and tried again). With no update: the saved copies are the page's deploy's and every js/ file hangs for
+    # good, the page itself too ('saved'): it opens from them, and says it may be an older Polku.
+    for case in ('update', 'hang', 'saved'):
+        name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
+                              'saved': 'the page and every js/ file hanging, the saved copies the page’s deploy’s'}[case]
+        pg = chrome.page(390, 844, True)
+        pg.open_app({'activity': 'mtb'})
+        chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); return true })()")
+        pg.reload()
+        pg.js("(async () => { await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
+        pg.reload()  # (every file saved as it comes)
+        worker = next((t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js'), None)
+        if not pg.js('!!navigator.serviceWorker.controller') or not worker:
+            raise RuntimeError(f'{name}: the page has no service worker')
+        ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
+        if case == 'update':
+            pg.js("""caches.open('polku-shell-v1').then((c) => c.put(new URL('js/safety.js', location.href).href,
+              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' } }))).then(() => true)""")
+            chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)
+        else:
+            # (serve.py gives each file its own time; GitHub Pages gives every file the deploy's: the page's, here)
+            pg.js("""(async () => { const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href;
+              const d = (await c.match(new URL('./', location.href).href)).headers.get('last-modified');
+              for (const r of await c.keys()) if (r.url.startsWith(js)) { const a = await c.match(r), h = new Headers(a.headers); h.set('Last-Modified', d); await c.put(r, new Response(await a.blob(), { headers: h })); }
+              return true; })()""")
+            chrome.send('Fetch.enable', {'patterns': [{'urlPattern': BASE + 'js/*'}] + ([{'urlPattern': BASE}] if case == 'saved' else [])}, ws)
+        chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
+        chrome.send('Page.reload', {}, pg.s)
+        t0, opened, let_go = time.time(), False, case != 'update'
+        while time.time() - t0 < 30 and not opened:
+            time.sleep(0.5)
+            if not let_go and time.time() - t0 > 6:  # the new js/safety.js arrives
+                for e in [e for e in chrome.events if e.get('sessionId') == ws and e.get('method') == 'Fetch.requestPaused']:
+                    chrome.events.remove(e)
+                    chrome.send('Fetch.continueRequest', {'requestId': e['params']['requestId']}, ws)
+                chrome.send('Fetch.disable', {}, ws)
+                let_go = True
+            try:
+                opened = pg.js('!!window.polku', timeout=3000)
+            except Exception:
+                pass  # (the page loading again)
+        if case != 'update':
+            chrome.send('Fetch.disable', {}, ws)
+        chrome.send('Target.detachFromTarget', {'sessionId': ws})
+        if not opened:
+            fails.append(f'{name}: Polku didn’t open in 30 s, window.polku {pg.js("!!window.polku")}, the message {"shown" if pg.js(banner) else "not shown"}')
+        else:
+            older = pg.js("new Promise((ok) => setTimeout(() => ok(!!document.querySelector('.offline-banner.saved-copy:not(#start-failed)')?.checkVisibility()), 1500))")
+            if case == 'update' and tries(pg) != 1:
+                fails.append(f'{name}: {tries(pg)} tries, not 1')
+            if case != 'update' and not older:
+                fails.append(f'{name}: opened without saying it may be an older Polku')
+            fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Polku's files stopping it from starting: one try more, then a message with Reload that opens it (#1088); one deploy's files per page from the worker (#481)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+
+def cdn_tampered(chrome):
+    """#482: MapLibre from unpkg answered with other bytes than the version Polku was tested with (a line added, through
+    the Fetch domain): the browser refuses it (its integrity), and Polku says it didn't finish loading (#1088). Through
+    the service worker too, which keeps unpkg's files as they first came (the review of #1109): the refused copy goes
+    before trying again, so once unpkg answers right, Polku opened again starts."""
+    fails = []
+    pattern = {'urlPattern': '*unpkg.com/maplibre-gl@*/dist/maplibre-gl.js', 'requestStage': 'Response'}
+    message = "[(() => { const b = document.querySelector('#start-failed'); return b && b.checkVisibility() ? b.textContent : '' })(), !!window.__tampered, !!window.polku]"
+
+    def alter(session):  # unpkg's answers paused so far, a line added to each
+        n = 0
+        for e in [e for e in chrome.events if e.get('sessionId') == session and e.get('method') == 'Fetch.requestPaused']:
+            chrome.events.remove(e)
+            p = e['params']
+            b = chrome.send('Fetch.getResponseBody', {'requestId': p['requestId']}, session)
+            body = base64.b64decode(b['body']) if b.get('base64Encoded') else b['body'].encode()
+            chrome.send('Fetch.fulfillRequest', {'requestId': p['requestId'], 'responseCode': p.get('responseStatusCode', 200), 'responseHeaders': [h for h in p.get('responseHeaders', []) if h['name'].lower() != 'content-length'],
+                                                 'body': base64.b64encode(body + b'\nwindow.__tampered = true;\n').decode()}, session)
+            n += 1
+        return n
+
+    def watch(pg, session, until, secs=40):
+        """The page's state once `until` holds of it, or after secs, answering unpkg with altered bytes meanwhile."""
+        end, said, ran, opened, changed = time.time() + secs, '', False, False, 0
+        while time.time() < end:
+            time.sleep(0.5)
+            try:
+                pg.js('true', timeout=3000)  # (its answer brings in the events Chrome has sent so far)
+            except Exception:
+                pass
+            if session:
+                changed += alter(session)
+            try:
+                said, ran, opened = pg.js(message, timeout=3000)
+            except Exception:
+                continue  # (the page loading again)
+            if until(said, ran, opened):
+                break
+        return said, ran, opened, changed
+
+    # the worker bypassed, as on a first visit
+    name = '390x844, maplibre-gl.js from unpkg with a line added'
+    pg = chrome.page(390, 844, True)
+    pg.goto(BASE + 'sw.js')
+    pg.js("localStorage.clear(); sessionStorage.clear(); localStorage.setItem('polku:settings', JSON.stringify({activity: 'mtb', fewerOffered: true, flatOffered: true})); true")
+    chrome.send('Fetch.enable', {'patterns': [pattern]}, pg.s)
+    chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
+    said, ran, opened, changed = watch(pg, pg.s, lambda said, ran, opened: said or ran)
+    chrome.send('Fetch.disable', {}, pg.s)
+    if not changed:
+        fails.append(f'{name}: unpkg was never asked for maplibre-gl.js (the check proves nothing)')
+    elif ran:
+        fails.append(f'{name}: the changed file ran')
+    elif 'didn’t finish loading' not in said:
+        fails.append(f'{name}: no message after 40 s ({changed} answers changed)')
+    pg.errors()  # (the refused file's own errors)
+    pg.close()
+
+    # through the worker: its saved copy gone, so it asks unpkg, gets the altered file and keeps it
+    name = '390x844, through the service worker, maplibre-gl.js from unpkg with a line added'
     pg = chrome.page(390, 844, True)
     pg.open_app({'activity': 'mtb'})
     chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+    pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); return true })()")
+    pg.reload()
     pg.js("(async () => { await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
     pg.reload()
     worker = next((t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js'), None)
     if not pg.js('!!navigator.serviceWorker.controller') or not worker:
         raise RuntimeError(f'{name}: the page has no service worker')
     ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
-    pg.js("""caches.open('polku-shell-v1').then((c) => c.put(new URL('js/safety.js', location.href).href,
-      new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript' } }))).then(() => true)""")
-    chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)  # held, never let go
-    chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
-    chrome.send('Page.reload', {}, pg.s)
-    shown = failed(pg, name)
-    chrome.send('Fetch.disable', {}, ws)
-    chrome.send('Target.detachFromTarget', {'sessionId': ws})
-    if shown:
-        reload_opens(pg, name)
+    # (the worker's own fetch would take the HTTP cache's copy, which the Fetch domain doesn't pause)
+    chrome.send('Network.enable', {}, ws)
+    chrome.send('Network.setCacheDisabled', {'cacheDisabled': True}, ws)
+    pg.js("caches.open('polku-shell-v1').then(async (c) => { for (const r of await c.keys()) if (r.url.includes('/maplibre-gl.js')) await c.delete(r); return true; })")
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} Polku's files stopping it from starting: one try more, then a message with Reload that opens it (#1088, #481)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    chrome.send('Fetch.enable', {'patterns': [pattern]}, ws)
+    # a fresh tab (a reload in the same one takes MapLibre from Chrome's memory, never asking the worker)
+    pg = chrome.page(390, 844, True)
+    chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+    chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
+    said, ran, opened, changed = watch(pg, ws, lambda said, ran, opened: said or ran)
+    chrome.send('Fetch.disable', {}, ws)
+    if not changed:
+        fails.append(f'{name}: the worker never asked unpkg for maplibre-gl.js (the check proves nothing)')
+    elif ran:
+        fails.append(f'{name}: the changed file ran')
+    elif 'didn’t finish loading' not in said:
+        fails.append(f'{name}: no message after 40 s ({changed} answers changed)')
+    else:
+        # unpkg answers right again: Polku opened again (a fresh tab) opens. (Reload in the same tab may take the
+        # refused copy from Chrome's memory, which no page can clear.)
+        pg.errors()  # (the refused file's own errors)
+        pg.close()
+        pg = chrome.page(390, 844, True)
+        chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
+        said, ran, opened, _ = watch(pg, None, lambda said, ran, opened: opened)
+        if not opened:
+            fails.append(f'{name}: Polku opened again didn’t start once unpkg answered right ({"the message" if said else "no message"})')
+        fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+    pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+    chrome.send('Target.detachFromTarget', {'sessionId': ws})
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MapLibre from unpkg with other bytes: refused, and Polku says it didn't finish loading; once unpkg answers right, it opens again, through the worker too (#482)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -23330,8 +23581,8 @@ GROUPS = [
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('resize', [resize_window], 'desktops (#1002): the window made smaller by its edge, down to 721 px, and larger again, by mouse: the planner\'s toolbar on one row and the timeline in its room beside the side panel, the panel dragged wide giving way, a card from the list beside the panel and then where cards go with the panel at the bottom (a narrow window, Move to the bottom), the credits folded where they\'d run under the map\'s buttons, a timeline you\'ve dragged clear of them, and the layout as it was when the window is large again'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
-    ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
-    ('startfail', [start_fails], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit) or the worker\'s older saved copy beside new files (#481): one try more by itself, then a message whose Reload opens it (#1088)'),
+    ('tilefail', [tile_fails, tile_hangs], 'Paddle with the depth tiles failing last (a server error, a dropped connection) or never answering: the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399); a spot\'s link opens its card, a point added meanwhile stays (#419)'),
+    ('startfail', [start_fails, cdn_tampered], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit): one try more by itself, then a message whose Reload opens it (#1088); the worker\'s saved copies just after an update (the page waits for the new file) and with no update (a hanging file opens from the saved copy, #481); MapLibre from unpkg with other bytes, refused (#482)'),
     ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
