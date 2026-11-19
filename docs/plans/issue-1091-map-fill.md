@@ -16,8 +16,9 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **Tried, 2026-11-19:** the crossfade read as a sudden change and then the place building up piece by piece (the copy opened on its slow network, where the hold gives up before the place is drawn), and today's flight, zooming out and back in, felt better. So two more versions, from that idea: the map flies there as now, and the place fades in after it lands, all together or each part as it comes: [the flight, then a fade](#the-flight-then-a-fade).
 - **Decided, 2026-11-19: no crossfade; the flight stays, and once it has landed each part of the place fades in** (on #1091's description). In the mock-up its fade was hard to tell from today's, so it's to be easier to see: the mock-up's Fade switch sets the first one (0.26 s) beside an even 0.4 s.
 - **Decided, 2026-11-19: the fade is 0.4 s at an even pace** (on #1091's description), about the longest it should be.
-- **Two more ideas from trying it, in the mock-up to choose:** the same fade after you move the map yourself (After a move: fades in too), and a fade whose length follows how much of the map the part changes, 0.2–0.4 s (Fade: by what comes): [after a move, and by what comes](#after-a-move-and-by-what-comes).
-- **Next:** the user's choice of those two, then the build.
+- **Two more ideas from trying it:** the same fade after you move the map yourself, and a fade whose length follows how much of the map the part changes: [after a move, and by what comes](#after-a-move-and-by-what-comes). A ghost of the frame before over the map after quick swipes was fixed in the mock-up: no picture over a moving map.
+- **Decided, 2026-11-19: both** (on #1091's description): the parts fade in after a move of your own too, never from the arrow keys, each over 0.2–0.4 s by how much of the map it changes.
+- **Next:** [building it](#building-it).
 
 ## What people see
 
@@ -276,7 +277,7 @@ Measured as the crossfades were, on the mock-up at 01ca0b7 (five flights, places
 
 ### After a move, and by what comes
 
-Two ideas from trying the chosen version, 2026-11-19: moving the map sideways shows the same building up from pieces, so it should fade in too; and how long a fade wants to be depends on the place, longer where much comes at once (a town's paths and streets) and shorter where little does (a few paths in a forest).
+Both chosen, 2026-11-19. Two ideas from trying the chosen version, the same day: moving the map sideways shows the same building up from pieces, so it should fade in too; and how long a fade wants to be depends on the place, longer where much comes at once (a town's paths and streets) and shorter where little does (a few paths in a forest).
 
 - **After a move: fades in too.** When you've dragged, flicked, pinched or wheeled the map yourself, what comes once it stops (squares still on their way, Polku's own layers) fades in as after a flight, until the map is drawn and Polku's loaders aren't busy, at most 3 s. While the map still moves nothing can fade: a picture of the frame before wouldn't line up with a moving map, and MapLibre has no fade for vector tiles. From the arrow keys nothing fades (DESIGN.md), and a touch, the wheel or a key ends a fade at once.
 - **No picture over a moving map.** Trying it, quick swipes and mouse flicks left a ghost of the frame before over the map. Grabbing the map again while it still glides ends the glide with a `moveend` while you're already dragging, so a fade began under your finger: in quick mouse flings in Chrome, 148 of 435 frames drawn while the map moved had a picture over it. Now a picture goes the moment the map moves and a fade starts only on a still map: 0 of 465, and the fades after a stop still come.
@@ -290,21 +291,26 @@ Recommended, and chosen on 2026-11-19, with its fade still to be settled (above)
 
 An idea for a next round, not built: the place drawn out of focus while it builds after the landing (a CSS blur on the map's canvas), coming into focus in one step once it's drawn, as a photo does while it loads. It shows something even where the overview has nothing, and hides the squares' edges; a full-screen blur costs a phone's GPU while it lasts.
 
-### Building it, if chosen
+### Building it
 
-One PR, for the version chosen (here as for each part fades in; the crossfades' steps differ in steps 1 and 2):
+As decided on 2026-11-19: the flight stays; whenever the map stops, after it flies to a place or after you move it yourself, what comes in after the stop fades in, each part over 0.2–0.4 s by how much of the map it changes. One PR:
 
-1. `js/main.js`, beside the coarse map: `fadeInAfter(keys)`, called with a camera move, which from the move's `moveend` until the map is drawn and Polku's loaders aren't busy (D's `busy`), at most 3 s, fades in each part as the mock-up's `partsFrame()` does, on `--t-sheet` and `--ease-out` read from the CSS. A touch, a click, the wheel or a key on the map ends it; so does the next move. About 40 lines.
-2. Its callers, the camera moves that fly, each saying whether the keys started it: `js/search.js`'s `choose()` (a result tapped, by `pointerdown`, or chosen with Enter), `fitRoute()` from Show the whole route (the button's click, `e.detail === 0` from the keys, and the `F` key) and from opening the planner away from its route, and an imported track's frame (`js/main.js`). Never: a share link's route framed once it's routed, the first view, or the map's room changing with the sheet.
-3. Smoke, in a new group `jump`: after a search result's flight, a part that comes fades in with an `opacity` animation; with reduced motion the same; from the keys no animation; a touch on the map ends it; and quick flings with real mouse input, grabbed again while the map glides, never leave a picture over a moving map (the mock-up's `ghost.py` in the session notes counts such frames).
-4. DESIGN.md's "Motion" (the map's line: after a camera move, what comes fades in), DEVELOPING's map section, and CHANGELOG: "After the map flies to a search result or the whole route, the place no longer comes in piece by piece: each part fades in as it comes."
+1. `js/main.js`, beside the coarse map, as the mock-up's `partsFrame()`, `changedShare()` and `afterMove()`, about 60 lines:
+   - On `moveend`, unless the last input before the move was a key (anywhere: the map, the search box, a button; a document-level listener that notes whether the last `keydown` or `pointerdown`/`wheel` came last) or the map is still moving: from then on, each frame MapLibre draws is copied, and when a frame shows a part that has come (a `sourcedata` event with a tile, Polku's own layers' sources included), the frame before is laid over the map and faded out on `opacity`, `linear`, over 200 ms + 200 ms × (the share of 48 × 30 cells that changed ÷ 0.25), at most 400 ms.
+   - It stops when the map is drawn and Polku's loaders aren't busy (D's `busy`), or after 3 s.
+   - The picture goes the moment the map moves, and a touch, a click, the wheel or a key on the map ends a fade at once. The picture lies above the canvas and the HTML markers, under the map's controls and cards, and never takes a touch.
+   - Reduced motion keeps it, as it's opacity only. Nothing else changes: no fade while the map moves, no fade before the first view is drawn, and a share link's or the first view's camera move is a jump, as now.
+2. Smoke, in a new group `fadein`: after a search result's flight and after a move with the mouse, a part that comes fades in with an `opacity` animation of 200–400 ms; with reduced motion the same; after a move with the arrow keys, and after a search result chosen with Enter, none; a touch on the map ends it; and quick flings with real mouse input, grabbed again while the map glides, never leave a picture over a moving map (as the mock-up's `ghost.py` in the session notes counts).
+3. DESIGN.md's "Motion" (the map's line: what comes after the map stops fades in, 0.2–0.4 s by how much it changes, never from the keys), DEVELOPING's map section, and CHANGELOG: "When the map stops, after you move it or it flies to a place, what comes in no longer appears piece by piece: each part fades in, briefly where little changes and up to 0.4 s where much does."
+4. It moves things, so the session stops before its PR opens and asks the user to run /review-animations.
 
 To check in the build:
 
+- Frame times and battery on a phone while you move around a lot: a frame is copied after every stop until the map is drawn (on a fast network about 0.6 s, as Polku's own layers come then), and each part that comes reads two 48 × 30 images. This decides whether it ships; measure it first, against main.
 - A result's card opens when the camera stops, as now, while its place is still fading in. Whether that reads well is to be tried.
-- HTML markers (the route's points, your position, a card's pin) aren't in the map's canvas: they appear at once, above the fading parts.
-- The copies take two canvases of the screen's size for up to 3 s after a landing: about 20 MB each at 1440 × 900 on a Retina screen, 12 MB on a phone.
-- Safari and Firefox, and a real phone on a real mobile network; frame times during the fade against today's flight.
+- HTML markers (the route's points, your position, a card's pin) aren't in the map's canvas: under the picture they'd seem to wait for it, above it they'd appear at once. Try both.
+- The copies take two canvases of the screen's size: about 20 MB each at 1440 × 900 on a Retina screen, 12 MB on a phone.
+- The night map, the aerial and MML bases (raster tiles, already faded by MapLibre's `raster-fade-duration`: one fade, not two), 3D, and Safari and Firefox, on a real phone on a real mobile network.
 
 ## How A was tried
 

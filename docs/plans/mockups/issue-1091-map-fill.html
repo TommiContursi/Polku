@@ -22,6 +22,7 @@
   Fade: how the parts fade in after the flight, quick as first built, even and longer to be easier to see, or by how much
   of the map a part changes (an idea from trying it: a town's many paths want the longer fade, a forest's few a shorter).
   After a move: whether what comes once you've moved the map yourself fades in the same way.
+  Chosen, 2026-11-19: flies there, each part fades in, after a move too, by what comes; the page opens on that.
   ?round=fill|jump  &way=now|coarse|ahead  &jump=fly|drawn|now|all|parts  &fade=quick|even  &pan=now|fade  &net=fast|slow  &f=390|desk  &motion=full|reduced
   PACKED: the Artifact copy has no network beyond its own files, so its tiles come from pack.json (a build script
   outside the repo turns this on).
@@ -99,15 +100,16 @@ h1 { margin: 0 0 4px; font-size: 22px; }
     <li>Left out: Polku's controls, overlays, hillshade, contours and trail details. The counts are this page's tiles only.</li>
   </ul>
   <ul class="notes" data-round="jump">
-    <li><b>Try:</b> Slow, As now, then go to a search result: the map flies there for 0.9 s and the place fills in after it lands. Then the same with each crossfade. Then go to a place nearby: it moves there in every version.</li>
+    <li><b>Chosen, 2026-11-19:</b> the map flies there as now, and once it stops, after a flight or a move of your own, each part that comes fades in, over 0.2–0.4 s by how much it changes. The page opens on that; the other versions stay behind the switches.</li>
+    <li><b>Try:</b> Slow, As now, then go to a search result: the map flies there for 0.9 s and the place fills in after it lands. Then the same with each version. Then go to a place nearby: it moves there in every version.</li>
     <li><b>Polku as it is now</b> under every version: the coarse map underneath (A), Finland's zoom-6 overview kept on the device (C), and Polku's own layers drawn together after the map stops (D). Here those layers are a stand-in: the paths again, in a trail colour, coming 0.35 s after the stop (the loaders' timers) and then the network's time.</li>
     <li><b>Which jumps:</b> a search result, a place, and Show the whole route, and only when the new view shares nothing with the old one. When they overlap the camera moves there as now, so you see where it went. A drag, a pinch, the wheel and the keys never crossfade.</li>
     <li><b>Crossfade once drawn</b> holds a picture of the old view while the new place's map is drawn under it, at most 0.4 s, then fades it out in 0.18 s. On a fast network you see the new place finished; on a slow one, after 0.4 s, what the coarse map has until the place's own tiles come: Finland's overview has lakes, sea and main roads, so in a forest that's paper for a moment. Polku's own layers come after it in their one change, as after any move.</li>
     <li><b>Crossfade at once</b> fades the old view out in 0.18 s straight away, and the new place fills in under it as it comes.</li>
     <li><b>Flies there, all fades in</b> (from trying the crossfades): the map flies there as now; where it lands it stays as it is, without parts coming in one by one, until the place is drawn with Polku's own layers, at most 2 s, and then the finished place fades in, all of it together.</li>
     <li><b>Flies there, each part fades in</b> (chosen, 2026-11-19): the map flies there as now, and after it lands each part that comes (the detail, Polku's own layers) fades in rather than appearing. On a fast network most of the place has come by the time the map lands, so what fades in is mostly Polku's own layers; on Slow, the detail too.</li>
-    <li><b>Fade</b>, for those two: quick is 0.26 s on DESIGN.md's ease-out, most of it in the first 0.1 s, as first built; even is 0.4 s at an even pace, as MapLibre fades the map's names in, so the fade itself shows (chosen, 2026-11-19). By what comes is as even, but its length follows how much of the map the part changes: 0.2 s for a few paths in a forest, up to 0.4 s when a quarter or more of the map changes, as a town's paths and streets do. The line under the map says the last one.</li>
-    <li><b>After a move</b>, fades in too: when you've dragged, flicked, pinched or wheeled the map yourself, what comes once it stops (the squares still on their way, Polku's own layers) fades in the same way. While the map still moves nothing can: a picture of the frame before wouldn't line up with it. From the arrow keys nothing fades.</li>
+    <li><b>Fade</b>, for those two: quick is 0.26 s on DESIGN.md's ease-out, most of it in the first 0.1 s, as first built; even is 0.4 s at an even pace, as MapLibre fades the map's names in, so the fade itself shows (chosen first, 2026-11-19). By what comes (chosen in its place, the same day) is as even, but its length follows how much of the map the part changes: 0.2 s for a few paths in a forest, up to 0.4 s when a quarter or more of the map changes, as a town's paths and streets do. The line under the map says the last one.</li>
+    <li><b>After a move</b>, fades in too (chosen, 2026-11-19): when you've dragged, flicked, pinched or wheeled the map yourself, what comes once it stops (the squares still on their way, Polku's own layers) fades in the same way. While the map still moves nothing can: a picture of the frame before wouldn't line up with it. From the arrow keys nothing fades.</li>
     <li><b>Each search result</b> goes to a place the map hasn't loaded, as one usually does: what the page kept of the places before is forgotten first, all but Finland's overview.</li>
     <li><b>From the keys</b> (Tab to a button, then Enter) nothing fades: once drawn still holds the old view, then shows the new one at once; at once just jumps; the two that fly fly as now, and their parts come in as they come. DESIGN.md: nothing started from the keyboard moves.</li>
     <li><b>Reduced motion</b> (the switch, or your device's setting): the flight becomes a jump, as MapLibre does today; the crossfade stays, as it's opacity only.</li>
@@ -129,7 +131,7 @@ const PLACES = [
   { name: 'Nuuksion kansallispuisto', at: [24.500, 60.310] },
 ];
 const q = new URLSearchParams(location.search);
-const S = { round: q.get('round') || 'jump', way: q.get('way') || 'now', jump: q.get('jump') || 'fly', fade: q.get('fade') || 'even', pan: q.get('pan') || 'now', net: q.get('net') || (q.get('round') === 'fill' ? 'slow' : 'fast'), f: q.get('f') || (innerWidth < 700 ? '390' : 'desk'),
+const S = { round: q.get('round') || 'jump', way: q.get('way') || 'now', jump: q.get('jump') || 'parts', fade: q.get('fade') || 'auto', pan: q.get('pan') || 'fade', net: q.get('net') || (q.get('round') === 'fill' ? 'slow' : 'fast'), f: q.get('f') || (innerWidth < 700 ? '390' : 'desk'),
   motion: q.get('motion') || (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full') };
 const WHAT = {
   now: 'As now: MapLibre asks only for the tiles in view. Where one hasn\'t come, you see the paper colour, or a coarser tile if one happens to be loaded.',
