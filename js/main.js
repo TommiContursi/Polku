@@ -263,9 +263,36 @@ map.on('error', (e) => {
 // then brings back the one it had at the loss. Once that has loaded, it's built again from `data`, with what came meanwhile.
 map.on('webglcontextrestored', () => map.once('style.load', applyStyle));
 
+// Polku's own layers come in together (#1091). After the map stops, the first of their loaders' answers is held, and what
+// comes after it, while any of them is still busy (an update to run, tiles on their way), for 500 ms at most; then it's
+// all drawn at once. What comes later is drawn as it comes, and nothing else waits: a route, a pick, loops, a layer you
+// switch or Try again (configureLayers and retryLit draw what's held first).
+const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights']);
+const together = { loaders: [], armed: false, held: null, until: 0 };
+map.on('moveend', () => { together.armed = true; });
+function holdTogether(id) {
+  const t = together;
+  if (!t.armed || !TOGETHER.has(id)) return false;
+  if (!t.held) {
+    if (!t.loaders.some((l) => l.busy)) { t.armed = false; return false; } // nothing more is coming
+    t.held = new Set();
+    t.until = performance.now() + 500; // from the first answer, never later (the map stops again at every arrow press)
+    requestAnimationFrame(function wait() { if (!t.held) return; if (t.loaders.some((l) => l.busy) && performance.now() < t.until) requestAnimationFrame(wait); else drawTogether(); });
+  }
+  t.held.add(id);
+  return true;
+}
+function drawTogether() {
+  const held = together.held;
+  together.held = null;
+  together.armed = false;
+  for (const id of held || []) id === 'trailCoverage' ? restyleTrails() : setData(id, data[id]);
+}
+
 function setData(id, fc) {
   data[id] = fc;
   if (id === 'route' && flow) flow.setData(fc);
+  if (holdTogether(id)) return;
   if (!map.style) return; // (the context lost: above)
   const src = map.getSource(id);
   if (src) src.setData(fc);
@@ -387,7 +414,7 @@ const details = new TrailDetails(map, {
   onData: (ways, points) => { setData('trailWays', ways); setData('trailPoints', points); },
   onCoverage: (area) => {
     ctx.trailCoverage = area;
-    if (state.trailDetails) map.setStyle(buildStyle(state, ctx), { diff: true }); // only the trail filters change
+    if (!holdTogether('trailCoverage')) restyleTrails(); // (with the trails it hides the map's own under)
   },
   onBusy: () => {
     detailsBusyAt = Date.now();
@@ -397,11 +424,13 @@ const details = new TrailDetails(map, {
     toast('Trail details: the OpenStreetMap server is busy — trying again in a couple of minutes');
   },
 });
+function restyleTrails() { if (state.trailDetails) map.setStyle(buildStyle(state, ctx), { diff: true }); } // only the trail filters change
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
 // (a tile that comes in may end "No data now" on the Lit ways tile)
 const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); }, onStatus: refreshLitStatus });
-$('#lit-status button').addEventListener('click', () => litWays.retry());
+const retryLit = () => { drawTogether(); litWays.retry(); }; // (Try again's answer is never held)
+$('#lit-status button').addEventListener('click', retryLit);
 
 // ------------------------------------------------------------------ winter
 // Winter switches itself on where there's snow (Auto), or is yours to set.
@@ -455,6 +484,7 @@ let mapTime = () => Date.now() / 1000;
 const safety = new SafetyLayers(map, { setData, time: () => mapTime() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
+together.loaders = [details, lipas, litWays, winterWays, uphill, nautical];
 
 flow = new RouteFlow(map, {
   enabled: () => state.routeFlow,
@@ -720,7 +750,7 @@ function setWeather(patch) {
 }
 // Console debugging: polku.set({ base: 'night' }) etc.
 window.polku = {
-  map, planner, state, uphill, trailDetails: details, flow, lipas, weather, safety, cameras, nautical, locate, heading, compass,
+  map, planner, state, uphill, trailDetails: details, flow, lipas, weather, safety, cameras, nautical, together, locate, heading, compass,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderSettingsPanel();
@@ -829,6 +859,7 @@ function placePanels() {
 const DANGER_TYPES = Object.entries(LIPAS_TYPES).filter(([, t]) => t.danger).map(([k]) => +k);
 
 function configureLayers() {
+  drawTogether(); // (what you switch is never held)
   const a = ACTIVITIES[state.activity];
   const o = state.overlays;
   // in winter: ski tracks, skating and snowmobile routes too (so feet and bikes keep off ski tracks)
@@ -1470,7 +1501,7 @@ function renderLayersPanel() {
 
   for (const g of LAYER_GROUPS) {
     const kids = g.ids.map(overlayToggle);
-    if (g.id === 'dark') kids.push(h('div', { id: 'lit-load-status', class: 'note', hidden: true }, h('span'), h('button', { class: 'btn', type: 'button', onclick: () => litWays.retry(), hidden: true }, 'Try again')));
+    if (g.id === 'dark') kids.push(h('div', { id: 'lit-load-status', class: 'note', hidden: true }, h('span'), h('button', { class: 'btn', type: 'button', onclick: retryLit, hidden: true }, 'Try again')));
     if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up in Check, each with Avoid it on its card.'));
     if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
     p.append(layerGroup(g.id, g.title, g.ids.filter((id) => state.overlays[id]).length, ...kids));

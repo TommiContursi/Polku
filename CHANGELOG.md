@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Polku's own layers come in together ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- When the map stops, Polku's own layers (trail details, official routes, lit and winter ways, the uphill colours and the nautical marks) now appear together, rather than one after another over half a second. A layer that is slow to come doesn't hold the others back for more than half a second: it appears on its own when it comes.
+
 ### The hills lit by the sun ([#1119](https://github.com/TommiContursi/Polku/issues/1119))
 
 - On a new device the hillshade is lit by **The sun** at the timeline's hour, so the hills stand out more than in the fixed light. The shadows that hills, trees and buildings cast are off at first; turn them on under **Hillshade** in **Layers**. While the sun is down the hills have the fixed light, and if you've already set the map up, it keeps the light you have.

@@ -222,7 +222,9 @@ export class WinterWays {
     onWinterTile(() => this.publish());
   }
   setEnabled(on) { this.on = on; this.schedule(0); this.publish(); }
-  schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => this.update(), ms); }
+  schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => { this.timer = 0; this.update(); }, ms); }
+  // an update still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
+  get busy() { return !!this.timer || (this.on && this.map.getZoom() >= WINTER_MIN_ZOOM && this.keys().some((k) => tiles.get(k)?.data === null)); }
   keys() {
     const b = this.map.getBounds();
     return winterTilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]).map(([x, y]) => `${x}/${y}`);

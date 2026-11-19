@@ -213,9 +213,13 @@ export class TrailDetails {
     this.enabled = false;
     this.shown = null;
     this.timer = 0;
+    this.want = []; // the tiles in view
     map.on('moveend', () => this.schedule());
     onTile(() => this.schedule(60));
   }
+
+  // an update still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
+  get busy() { return this.enabled && (!!this.timer || this.want.some(([x, y]) => tiles.get(`${x}/${y}`)?.data === null)); }
 
   setEnabled(on) {
     if (on === this.enabled) return;
@@ -227,10 +231,11 @@ export class TrailDetails {
   schedule(ms = 300) {
     if (!this.enabled) return;
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.update(), ms);
+    this.timer = setTimeout(() => { this.timer = 0; this.update(); }, ms);
   }
 
   update() {
+    this.want = [];
     if (!this.enabled) return;
     const map = this.map;
     const z = map.getZoom();
@@ -238,7 +243,7 @@ export class TrailDetails {
     // the world on a phone at zoom 1 is millions, 0.4 s and 840 MB on every move (#667)
     if (z < 13) { this.publish([]); return; }
     const b = map.getBounds();
-    const want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+    const want = (this.want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]));
     if (z >= MIN_ZOOM && want.length <= MAX_VIEW) {
       for (const [x, y] of want) {
         if (!loadedTile(x, y)) trailTile(x, y).catch((err) => { if (!err.held && this.app.onBusy) this.app.onBusy(); });
