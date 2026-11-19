@@ -329,6 +329,10 @@ What it costs, measured first, against main at ff0af452: headless Chrome with th
 | Phone page, built | 5, 7 | 8, 10 | 16.8 ms | 0, 0.8 ms | 7–13 ms |
 | Desktop, main | 0 | 1, 1 | 16.7 ms | 0, 0 ms | – |
 | Desktop, built | 20, 16 | 1, 0 | 16.7–16.8 ms | 0, 0.2 ms | 12–15 ms |
+| Phone page with a route (its chevrons drawn every frame), the timeline, wind and rain, main | 0 | 8, 4 | 16.7–16.8 ms | 0, 0 ms | – |
+| The same, built | 2, 2 | 8, 10 | 16.8 ms | 0, 0.6 ms | 5–12 ms |
+
+(With a route, the swipes were shorter, above the planner's sheet, so fewer parts came: ten stops a run.)
 
 Copying a frame costs 0–0.1 ms of the main thread; the cost is each part's reading, a frame of 7–15 ms once per part. Reading the two frames apart, as first built, made a part's frame 10–29 ms. Not measured: a real phone (its GPU may wait longer for the reading), Safari and Firefox, the battery.
 
