@@ -278,7 +278,9 @@ export class ProfileChart {
     canvas.parentElement.append(this.resetBtn);
     new ResizeObserver(() => this.draw()).observe(canvas);
     // once Polku's typefaces are in (a canvas isn't drawn again when they arrive), and nothing kept after (#1066)
-    document.fonts.load(`10px ${getComputedStyle(document.documentElement).getPropertyValue('--face-text')}`, '0a').then(() => this.draw());
+    // (it rejects when a fallback face has none of its local fonts, as on Linux without Arial or Roboto: drawn anyway, #1142)
+    const draw = () => this.draw();
+    document.fonts.load(`10px ${getComputedStyle(document.documentElement).getPropertyValue('--face-text')}`, '0a').then(draw, draw);
     this.bindPointer();
   }
 

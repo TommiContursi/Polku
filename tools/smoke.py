@@ -820,6 +820,37 @@ def cycleway_style(chrome):
     return not fails
 
 
+# #1138: streams read wider than ditches and drains; intermittent ones keep a dash; culverts stay hidden;
+# the lines sit under the water's fill, so a river's line doesn't show across a lake.
+def waterway_style(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'})
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map;
+      const paint=(prop,z,p)=>m.style.getLayer('waterway')._transitionablePaint._values[prop].value.expression.evaluate({zoom:z},{type:2,properties:p});
+      for(const base of ['trail','plain','night']) for(const activity of ['mtb','paddle']) {
+        polku.set({base,activity});
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        const at=`${base}/${activity}`, w=(cls,z)=>paint('line-width',z,{class:cls,intermittent:0});
+        if(!(w('stream',16)>=4))errs.push(`${at}: a stream is ${w('stream',16)} px at zoom 16`);
+        for(const cls of ['ditch','drain'])for(const z of [14,16,18])if(!(w(cls,z)<=w('stream',z)*.65))errs.push(`${at}: a ${cls} is ${w(cls,z)} px beside a ${w('stream',z)} px stream at zoom ${z}`);
+        if(!(w('river',16)>w('stream',16)))errs.push(`${at}: a river is no wider than a stream`);
+        for(const cls of ['river','stream','ditch','drain']) {
+          if(JSON.stringify(paint('line-dasharray',16,{class:cls,intermittent:0}))!=='[1,0]')errs.push(`${at}: a ${cls} is dashed`);
+          if(JSON.stringify(paint('line-dasharray',16,{class:cls,intermittent:1}))!=='[4,3]')errs.push(`${at}: an intermittent ${cls} has no long dash`);
+        }
+        if(m.style.getLayer('waterway')._featureFilter.filter({zoom:16},{type:2,properties:{class:'stream',brunnel:'tunnel'}}))errs.push(`${at}: culverts are drawn`);
+        const ids=m.getStyle().layers.map(l=>l.id);
+        if(!(ids.indexOf('waterway')<ids.indexOf('water')))errs.push(`${at}: a river's line is drawn over the lake it crosses`);
+      }
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} streams, ditches and intermittent waterways (#1138)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1130: cycling side marks stay on paths/tracks and use zoom/width categories.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
@@ -9436,10 +9467,23 @@ def chart_fonts(chrome):
           for (let k = 0; k < 3; k++) { const box = document.body.appendChild(document.createElement('div')); new ProfileChart(box.appendChild(document.createElement('canvas')), null); box.remove(); }
           return added; })()""")
         fails = [f'three charts made and dropped left {len(added)} listeners on document.fonts ({", ".join(added)})'] if added else []
+        # a computer without Arial or Roboto, as GitHub's runners: the fallback face loads none of its fonts (#1142)
+        drawn = pg.js("""(async () => {
+          document.head.appendChild(document.createElement('style')).textContent = '@font-face { font-family: "Atkinson Fallback"; src: local("No Such Font 1142"); }';
+          const { ProfileChart } = await import(location.origin + '/js/chart.js');
+          let drawn = 0;
+          const draw = ProfileChart.prototype.draw;
+          ProfileChart.prototype.draw = function (...a) { drawn++; return draw.apply(this, a); };
+          const box = document.body.appendChild(document.createElement('div'));
+          new ProfileChart(box.appendChild(document.createElement('canvas')), null);
+          await new Promise((r) => setTimeout(r, 500));
+          ProfileChart.prototype.draw = draw; box.remove();
+          return drawn; })()""")
+        if not drawn: fails.append('without the fallback font\'s Arial or Roboto, the chart is never drawn')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a profile chart leaves no listener on document.fonts (#1066)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} a profile chart leaves no listener on document.fonts (#1066), and draws without the fallback font (#1142)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -24240,7 +24284,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
@@ -24286,7 +24330,7 @@ GROUPS = [
     ('effects', [fewer_effects, fewer_effects_very_slow, flat_offer], 'Fewer effects (#632): offered once when frames are slow (very slow too, #900), its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
-    ('tokens', [tokens, chart_fonts], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did; a profile chart leaves no listener on document.fonts (#1066)'),
+    ('tokens', [tokens, chart_fonts], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did; a profile chart leaves no listener on document.fonts (#1066) and draws without the fallback font (#1142)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls, sideways_row], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers; a row that scrolls sideways: › at its end, a key\'s focus clear of the fade (WCAG 2.4.11)'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a kind hidden in Check shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),

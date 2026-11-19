@@ -8,6 +8,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - When the map stops, after you move it or it flies to a place, what comes in no longer appears piece by piece: each part fades in, briefly where little changes and up to 0.4 s where much does. Touching the map ends a fade at once. After a move with the arrow keys, or a search result chosen with **Enter**, everything appears at once, as before.
 
+### Streams and ditches by size ([#1138](https://github.com/TommiContursi/Polku/issues/1138))
+
+- Rivers, streams, ditches and drains are drawn wider when you zoom in, so they stand out on the map. Ditches and drains stay narrower than streams, so the two are easy to tell apart in the forest. A stream or ditch that only has water at times keeps a dashed line, now with longer dashes that still read as a dash.
+
 ### Cycling restriction marks on paths and forest tracks ([#1130](https://github.com/TommiContursi/Polku/issues/1130))
 
 - Red side marks show an explicit mapped bicycle prohibition on paths and forest tracks, including cycling paths, in cycling sports. Their size and spacing change with zoom and trail width class, with stronger marks in high contrast and faded marks in tunnels. Ordinary road edges do not carry these marks. Missing bicycle access information is not a prohibition. General and cycling restrictions stay consistent when detailed trail data replaces the base map.
