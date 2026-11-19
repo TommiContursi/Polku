@@ -7760,30 +7760,54 @@ def quick_swipe(chrome):
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)
     pg.js("polku.planner.listScroller().scrollTop = 0; true")
-    # on a waypoint's row (a button, most of the list): a drag down moves the sheet like the rest
-    body = pg.js("(() => { const b = document.querySelector('#planner .wpl-point').getBoundingClientRect(); return [b.left + 40, b.top + b.height / 2]; })()")
-    pg.swipe(body[0], body[1], body[1] + 300, ms=700, hold=0.2)
+    # on a row of the body (a button): a drag down moves the sheet like the rest. (The trip box's row: since #1050 the planner's
+    # sections are above the route's list, so no waypoint's row is on screen at the body's top)
+    # (scroll: the sheet's own scroller only, as a finger would; scrollIntoView() moved the sheet too, which then came back)
+    ON = """((sel, scroll) => { const el = document.querySelector(sel), s = polku.planner.listScroller(), r = el.getBoundingClientRect(), v = s.getBoundingClientRect();
+      if (scroll) s.scrollTop += r.top + r.height / 2 - (v.top + v.height / 2);
+      const b = el.getBoundingClientRect(), x = b.left + 40, y = b.top + b.height / 2, e = document.elementFromPoint(x, y); return { x, y, hit: !!e && el.contains(e) }; })"""
+    body = pg.js(f"({ON})('#planner .trip-box .row', false)")
+    if not body['hit']:
+        fails.append(f'planner: the trip box’s row isn’t on screen at the body’s top: {body}')
+    pg.swipe(body['x'], body['y'], body['y'] + 300, ms=700, hold=0.2)
     pg.js(SETTLED)
     if st()['st'] == 'full':
-        fails.append('planner: a drag down on the body at its top (from a waypoint’s row) did not move the sheet')
-    # and a tap on the row still opens its point's card (25d's part 4); Back puts the sheet back
+        fails.append('planner: a drag down on the body at its top (from the trip box’s row) did not move the sheet')
+    # a waypoint's row, scrolled to: a drag down scrolls the sheet back, and neither holds the row to move it nor opens its card
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)
-    row = pg.js("(() => { const b = document.querySelector('#planner .wpl-point').getBoundingClientRect(); return [b.left + 40, b.top + b.height / 2]; })()")
-    pg.tap(row[0], row[1])
+    row = pg.js(f"({ON})('#planner .wpl-point', true)")
+    was = pg.js("[polku.planner.listScroller().scrollTop, JSON.stringify(polku.planner.points)]")
+    pg.swipe(row['x'], row['y'], row['y'] + 200, ms=700, hold=0.2)
+    pg.js(SETTLED)
+    r = pg.js("({ st: polku.planner.panel.dataset.state, top: polku.planner.listScroller().scrollTop, card: !!polku.planner.cards.current, moved: JSON.stringify(polku.planner.points) !== %s })" % json.dumps(was[1]))
+    if not row['hit'] or r['st'] != 'full' or r['top'] >= was[0] - 100 or r['card'] or r['moved']:
+        fails.append(f'planner: a drag down on a waypoint’s row (scrolled to, {row}, from {was[0]}) didn’t scroll the sheet: {r}')
+    # and a tap on the row still opens its point's card (25d's part 4); Back puts the sheet back
+    row = pg.js(f"({ON})('#planner .wpl-point', true)")
+    if not row['hit']:
+        fails.append(f'planner: a waypoint’s row, scrolled to, isn’t under its middle: {row}')
+    pg.tap(row['x'], row['y'])
     time.sleep(0.5)
     if pg.js("polku.planner.cards.current && polku.planner.cards.current.kind") != 'point':
         fails.append('planner: a tap on a waypoint’s row did not open its card')
     pg.js("polku.planner.cards.close(); true")
-    # in Reorder a row keeps its own drag (a finger held 0.45 s): the sheet stays
+    # in Reorder a row keeps its own drag (a finger held 0.45 s): the sheet stays, and the list doesn't scroll under it.
+    # (Its row scrolled to: since #1050 the planner's sections above the list keep it off screen at the body's top)
     pg.js("(() => { const p = polku.planner; p.reordering = true; p.renderWaypoints(); p.setSheetState('full'); return true; })()")
     pg.js(SETTLED)
-    pg.js("polku.planner.listScroller().scrollTop = 0; true")
-    grip = pg.js("(() => { const b = document.querySelector('#planner .wpl-row').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
-    pg.swipe(grip[0], grip[1], grip[1] + 40, ms=400, hold=0.6)
+    grip = pg.js(f"({ON})('#planner .wpl-row', true)")
+    was = pg.js("polku.planner.listScroller().scrollTop")
+    pg.touch('start', grip['x'], grip['y'])
+    time.sleep(0.6)
+    for k in range(1, 9):
+        pg.touch('move', grip['x'], grip['y'] + 5 * k)
+        time.sleep(0.04)
+    pg.touch('end')
     pg.js(SETTLED)
-    if st()['st'] != 'full':
-        fails.append(f'planner: a drag on a row of Reorder moved the sheet to {st()["st"]}')
+    r = pg.js("({ st: polku.planner.panel.dataset.state, top: polku.planner.listScroller().scrollTop })")
+    if not grip['hit'] or r['st'] != 'full' or abs(r['top'] - was) > 1:
+        fails.append(f'planner: a held drag on a row of Reorder ({grip}, scrolled to {was}) moved the sheet or the list: {r}')
     pg.js("(() => { const p = polku.planner; p.undo(); p.reordering = false; p.renderWaypoints(); return true; })()")
     # a tap on the handle still folds it
     pg.js("polku.planner.setSheetState('half'); true")
@@ -10838,9 +10862,20 @@ def button3d(chrome, phones=False):
                 fails.append(f"{name}: the button is not under zoom and above Weather (after {b['prev']}, before {b['next']})")
             if b['w'] < 40 or b['h'] < 40:
                 fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px")
+            pg.js("window.__style = polku.map.style, true")
             mouse_click(pg, aim(pg, f'{name}, a click'))
             pg.idle()  # the terrain in, as a person looks at it (turned off while it loads: MapLibre’s own error, #288)
             b = expect(pg, f'{name}, a click', True)
+            # the terrain changes without the whole style built again: MapLibre's diff can't change it, and the
+            # rebuild blanks the map and draws a frame with no projection, a console error when the terrain goes off (#636)
+            for step in ('3D on', 'Raised hills off', 'Raised hills on'):
+                if step != '3D on':
+                    mouse_click(pg, pg.js("(() => { const r = document.querySelector('#view3d button[aria-label=\"Raised hills\"]').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()"))
+                    pg.idle()
+                if not pg.js("polku.map.style === window.__style"):
+                    fails.append(f'{name}, {step}: the whole map style was built again')
+                if pg.js("!!polku.map.getTerrain()") != (step != 'Raised hills off'):
+                    fails.append(f"{name}, {step}: the map's terrain is {'on' if step == 'Raised hills off' else 'off'}")
             if b['color'] != 'rgb(255, 255, 255)' or b['bg'] == pg.js("getComputedStyle(document.querySelector('#btn-locate')).backgroundColor"):
                 fails.append(f"{name}: pressed, the button is {b['color']} on {b['bg']}, not white on the accent")
             # a smooth-scrolling mouse's small steps zoom in 3D, as after a tilt by hand, and never tilt (#734)
@@ -15635,6 +15670,8 @@ def toolbox(chrome):
     # a card from the list stays clear of the toolbar at the foot (#468): End's, the lowest row, with the timeline closed;
     # its last button, scrolled to inside the card, is what's under its middle
     click(pg, '#btn-time', f'{name}: the timeline')
+    # (End is under the panel's foot until the list is scrolled, since the planner's sections went above it, #1050: as low as it can sit)
+    pg.js("(() => { const s = polku.planner.listScroller(); s.scrollTop += document.querySelector('#planner .wpl-point:has(.wp-end)').getBoundingClientRect().bottom - s.getBoundingClientRect().bottom; return true; })()")
     click(pg, '#planner .wpl-point:has(.wp-end)', f'{name}: End in the list')
     pg.js(SETTLED)
     c = pg.js("""(() => { const c = document.querySelector('.card-beside'); if (!c) return null; const r = c.getBoundingClientRect(), t = polku.planner.tools.getBoundingClientRect();
