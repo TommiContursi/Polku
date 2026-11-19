@@ -6,7 +6,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Polku's own tooltips in the planner ([#304](https://github.com/TommiContursi/Polku/issues/304))
 
-- Pointing at the profile's controls (its size, **Colour by**, **On map** and **Whole route**), at a day's weather in the trip's box, or at **Reorder**'s grip and arrows shows Polku's own tooltip, with its name and, where it helps, what it does. It also shows when the control gets the keyboard's focus, and **Esc** hides it. The tooltips sit beside their row where there's room, so they don't cover the controls under them.
+- Pointing at the profile's controls (its size, **Colour by**, **On map** and **Whole route**) or at a day's weather in the trip's box shows Polku's own tooltip, with its name and, where it helps, what it does. It also shows when the control gets the keyboard's focus, and **Esc** hides it. The tooltips sit beside their row where there's room, so they don't cover the controls under them.
+- **Reorder**'s grip and arrows no longer show a tooltip: the line above them says what they do.
 
 ### Polku's own tooltips on the map's buttons and the top bar ([#304](https://github.com/TommiContursi/Polku/issues/304))
 
