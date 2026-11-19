@@ -4,9 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
-### Polku opens on a bad connection ([#419](https://github.com/TommiContursi/Polku/issues/419))
+### Polku opens on a bad connection ([#419](https://github.com/TommiContursi/Polku/issues/419), [#481](https://github.com/TommiContursi/Polku/issues/481))
 
 - When one of the map's tiles doesn't arrive as Polku opens, your saved route, a shared route, the planner you left open and a shared spot's card still come back, at most a few seconds after the map appears. Before, they waited for every tile of the map, so on a bad connection, or while Traficom's depth maps were slow, they could stay away until you moved the map.
+- Just after Polku has been updated, on a slow connection, it waits for the new version's files instead of mixing them with the copies it saved from the last version, which could leave it without its map. With no update in between, a file that's slow to come is still taken from the saved copy after 3 seconds, as before.
 
 ### Layers and Settings stay where you scrolled ([#536](https://github.com/TommiContursi/Polku/issues/536))
 

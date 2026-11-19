@@ -9683,9 +9683,10 @@ def tile_hangs(chrome):
 
 
 def start_fails(chrome):
-    """#1088: Polku's files stop it from starting, a file that doesn't arrive (the worker bypassed, as on a first visit)
-    or the worker's older saved copy beside new files (#481): it tries once more by itself, no more, then says so with
-    Reload, and Reload opens it once the file comes."""
+    """#1088: a file of Polku's that doesn't arrive (the worker bypassed, as on a first visit) stops it from starting: it
+    tries once more by itself, no more, then says so with Reload, and Reload opens it once the file comes. #481: the
+    worker never gives an older deploy's saved file beside new ones, and with no update a file that hangs opens from
+    the saved copy."""
     fails = []
     banner = "(() => { const b = document.querySelector('#start-failed'); return b && b.checkVisibility() ? b.textContent : '' })()"
 
@@ -9751,30 +9752,65 @@ def start_fails(chrome):
     failed(pg, name, 1)
     pg.close()
 
-    # a returning visitor on a slow network: the worker's saved js/safety.js is older than main.js, and the server's
-    # answer doesn't come within the worker's 3 s, in either try
-    name = '390x844, an older saved js/safety.js beside a new main.js'
-    pg = chrome.page(390, 844, True)
-    pg.open_app({'activity': 'mtb'})
-    chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
-    pg.js("(async () => { await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
-    pg.reload()
-    worker = next((t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js'), None)
-    if not pg.js('!!navigator.serviceWorker.controller') or not worker:
-        raise RuntimeError(f'{name}: the page has no service worker')
-    ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
-    pg.js("""caches.open('polku-shell-v1').then((c) => c.put(new URL('js/safety.js', location.href).href,
-      new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript' } }))).then(() => true)""")
-    chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)  # held, never let go
-    chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
-    chrome.send('Page.reload', {}, pg.s)
-    shown = failed(pg, name)
-    chrome.send('Fetch.disable', {}, ws)
-    chrome.send('Target.detachFromTarget', {'sessionId': ws})
-    if shown:
-        reload_opens(pg, name)
-    pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} Polku's files stopping it from starting: one try more, then a message with Reload that opens it (#1088, #481)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    # The worker's saved copies (#481), a returning visitor on a slow network. Just after an update: the saved
+    # js/safety.js is from an older deploy (its Last-Modified isn't the page's) and the server's answer comes after
+    # 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try more (main mixed the two,
+    # failed and tried again). With no update: the saved copies are the page's deploy's and every js/ file hangs for
+    # good: it opens from them, and says it may be an older Polku.
+    for case in ('update', 'hang'):
+        name = '390x844, ' + ('an older deploy’s js/safety.js saved, the new one 6 s late' if case == 'update' else 'every js/ file hanging, the saved copies the page’s deploy’s')
+        pg = chrome.page(390, 844, True)
+        pg.open_app({'activity': 'mtb'})
+        chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); return true })()")
+        pg.reload()
+        pg.js("(async () => { await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
+        pg.reload()  # (every file saved as it comes)
+        worker = next((t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js'), None)
+        if not pg.js('!!navigator.serviceWorker.controller') or not worker:
+            raise RuntimeError(f'{name}: the page has no service worker')
+        ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
+        if case == 'update':
+            pg.js("""caches.open('polku-shell-v1').then((c) => c.put(new URL('js/safety.js', location.href).href,
+              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' } }))).then(() => true)""")
+            chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)
+        else:
+            # (serve.py gives each file its own time; GitHub Pages gives every file the deploy's: the page's, here)
+            pg.js("""(async () => { const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href;
+              const d = (await c.match(new URL('./', location.href).href)).headers.get('last-modified');
+              for (const r of await c.keys()) if (r.url.startsWith(js)) { const a = await c.match(r), h = new Headers(a.headers); h.set('Last-Modified', d); await c.put(r, new Response(await a.blob(), { headers: h })); }
+              return true; })()""")
+            chrome.send('Fetch.enable', {'patterns': [{'urlPattern': BASE + 'js/*'}]}, ws)
+        chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
+        chrome.send('Page.reload', {}, pg.s)
+        t0, opened, let_go = time.time(), False, case == 'hang'
+        while time.time() - t0 < 30 and not opened:
+            time.sleep(0.5)
+            if not let_go and time.time() - t0 > 6:  # the new js/safety.js arrives
+                for e in [e for e in chrome.events if e.get('sessionId') == ws and e.get('method') == 'Fetch.requestPaused']:
+                    chrome.events.remove(e)
+                    chrome.send('Fetch.continueRequest', {'requestId': e['params']['requestId']}, ws)
+                chrome.send('Fetch.disable', {}, ws)
+                let_go = True
+            try:
+                opened = pg.js('!!window.polku', timeout=3000)
+            except Exception:
+                pass  # (the page loading again)
+        if case == 'hang':
+            chrome.send('Fetch.disable', {}, ws)
+        chrome.send('Target.detachFromTarget', {'sessionId': ws})
+        if not opened:
+            fails.append(f'{name}: Polku didn’t open in 30 s, window.polku {pg.js("!!window.polku")}, the message {"shown" if pg.js(banner) else "not shown"}')
+        else:
+            older = pg.js("new Promise((ok) => setTimeout(() => ok(!!document.querySelector('.offline-banner.saved-copy:not(#start-failed)')?.checkVisibility()), 1500))")
+            if case == 'update' and tries(pg) != 1:
+                fails.append(f'{name}: {tries(pg)} tries, not 1')
+            if case == 'hang' and not older:
+                fails.append(f'{name}: opened without saying it may be an older Polku')
+            fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Polku's files stopping it from starting: one try more, then a message with Reload that opens it (#1088); one deploy's files per page from the worker (#481)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -23315,7 +23351,7 @@ GROUPS = [
     ('resize', [resize_window], 'desktops (#1002): the window made smaller by its edge, down to 721 px, and larger again, by mouse: the planner\'s toolbar on one row and the timeline in its room beside the side panel, the panel dragged wide giving way, a card from the list beside the panel and then where cards go with the panel at the bottom (a narrow window, Move to the bottom), the credits folded where they\'d run under the map\'s buttons, a timeline you\'ve dragged clear of them, and the layout as it was when the window is large again'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails, tile_hangs], 'Paddle with the depth tiles failing last (a server error, a dropped connection) or never answering: the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399); a spot\'s link opens its card, a point added meanwhile stays (#419)'),
-    ('startfail', [start_fails, cdn_tampered], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit) or the worker\'s older saved copy beside new files (#481): one try more by itself, then a message whose Reload opens it (#1088); MapLibre from unpkg with other bytes, refused (#482)'),
+    ('startfail', [start_fails, cdn_tampered], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit): one try more by itself, then a message whose Reload opens it (#1088); the worker\'s saved copies just after an update (the page waits for the new file) and with no update (a hanging file opens from the saved copy, #481); MapLibre from unpkg with other bytes, refused (#482)'),
     ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
