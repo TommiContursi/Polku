@@ -166,7 +166,7 @@ function wayFeature(id, t, flat) {
   const track = t.highway === 'track';
   const props = {
     // the vector tiles' own names, so hover, click and the uphill grade treat these like tile trails
-    class: track ? 'track' : 'path', subclass: t.highway, mtb_scale: t['mtb:scale'], surface: t.surface, bicycle: t.bicycle, foot: t.foot, horse: t.horse,
+    class: track ? 'track' : 'path', subclass: t.highway, mtb_scale: t['mtb:scale'], surface: t.surface, bicycle: t.bicycle, foot: t.foot, horse: t.horse, access: t.access,
     brunnel: yes(t.bridge) ? 'bridge' : yes(t.tunnel) ? 'tunnel' : undefined,
     osm: id, trail: isTrail(t), mtb: mtbClass(t['mtb:scale']),
     w, vis: visClass(t), wf: track ? 1 : HALO_W[w], cf: CENTRE_W[w],

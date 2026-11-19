@@ -157,9 +157,9 @@ jobs:
           mkdir -p osm-build
           df -h .
           python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "Complete OSM country builds require 25 GiB free disk"'
-          curl --fail --location --retry 3 --retry-max-time 300 --connect-timeout 30 --max-time 1800 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf
-          curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf.md5" -o osm-build/source.md5
-          curl --fail --location --retry 3 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY.poly" -o osm-build/coverage.poly
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --retry-max-time 300 --connect-timeout 30 --max-time 1800 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf.md5" -o osm-build/source.md5
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY.poly" -o osm-build/coverage.poly
       - name: Transform, validate and measure
         env:
           COUNTRY: ${{ matrix.country }}
@@ -288,10 +288,11 @@ jobs:
           SOURCE_URL: https://download.geofabrik.de/europe-${{ steps.reference.outputs.stamp }}.osm.pbf
         run: |
           df -h .
+          SOURCE_BYTES=$(curl --head --fail --silent --show-error --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 30 --output /dev/null --write-out '%header{content-length}' "$SOURCE_URL")
+          export SOURCE_BYTES
           python - <<'PYCODE'
-          import json,os,shutil,urllib.request
-          with urllib.request.urlopen(urllib.request.Request(os.environ['SOURCE_URL'],method='HEAD'),timeout=30) as r:
-              size=int(r.headers.get('Content-Length',0))
+          import json,os,shutil
+          size=int(os.environ['SOURCE_BYTES'] or 0)
           free=shutil.disk_usage('.').free
           print(json.dumps({'source_bytes':size,'free_bytes':free,'staging_reserve_bytes':25*1024**3}))
           assert size>0 and free>=size+25*1024**3, 'Insufficient reference download/staging disk on this runner'
@@ -301,8 +302,8 @@ jobs:
         env:
           SOURCE_URL: https://download.geofabrik.de/europe-${{ steps.reference.outputs.stamp }}.osm.pbf
         run: |
-          curl --fail --location --retry 3 --retry-max-time 300 --connect-timeout 30 --max-time 7200 "$SOURCE_URL" -o osm-build/europe.osm.pbf
-          curl --fail --location --retry 3 --max-time 60 "$SOURCE_URL.md5" -o osm-build/europe.md5
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --retry-max-time 300 --connect-timeout 30 --max-time 7200 "$SOURCE_URL" -o osm-build/europe.osm.pbf
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "$SOURCE_URL.md5" -o osm-build/europe.md5
           df -h .
       - name: Complete original references and compile local geometry
         env:
