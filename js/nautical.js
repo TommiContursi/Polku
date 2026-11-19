@@ -122,8 +122,11 @@ export class NauticalLayer {
 
   schedule(delay = 350) {
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.update(), delay);
+    this.timer = setTimeout(() => { this.timer = 0; this.update(); }, delay);
   }
+
+  // an update or a drawing still to run, or a tile on its way: what comes after the map stops waits for it (#1091)
+  get busy() { return !!this.timer || !!this.pubTimer || [...this.tiles.values()].some((v) => v instanceof Promise); }
 
   update() {
     if (!this.on || this.map.getZoom() < 10.5) return;
@@ -159,7 +162,7 @@ export class NauticalLayer {
 
   publishSoon() {
     clearTimeout(this.pubTimer);
-    this.pubTimer = setTimeout(() => this.publish(), 120);
+    this.pubTimer = setTimeout(() => { this.pubTimer = 0; this.publish(); }, 120);
   }
 
   collect(key) {

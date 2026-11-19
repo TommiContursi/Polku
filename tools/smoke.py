@@ -6868,6 +6868,72 @@ def coarse(chrome):
     return not fails
 
 
+# Polku's own layers come in together (#1091): Väylävirasto's tiles and Digitraffic's faults answered by the page after
+# window.__nmDelay ms (an empty chart, so no request leaves), before Polku loads
+TOGETHER_FETCH = r"""
+(() => {
+  const real = window.fetch;
+  window.__nmDelay = 0;
+  window.fetch = (url, init) => {
+    const u = String((url && url.url) || url);
+    if (!u.startsWith('https://avoinapi.vaylapilvi.fi/') && !u.startsWith('https://meri.digitraffic.fi/')) return real(url, init);
+    const body = JSON.stringify({ type: 'FeatureCollection', features: [] });
+    return new Promise((ok) => setTimeout(() => ok(new Response(body, { headers: { 'Content-Type': 'application/json' } })), window.__nmDelay));
+  };
+})();
+"""
+
+# In paddle, after a jump: LIPAS's answer and the nautical chart's, the chart's 200 ms and more later, drawn in the same
+# frame, once each; the chart's held 2 s, LIPAS's not held past 500 ms; with both loaded already, nothing waits. ("The
+# same frame" is no animation frame between their setData calls: MapLibre then lays out each source on its own.)
+TOGETHER = r"""
+(async () => {
+  const m = polku.map, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  (await import(location.origin + '/js/lipas.js')).seedLipas(() => new Promise((ok) => setTimeout(() => ok({ type: 'FeatureCollection', features: [] }), window.__lipasDelay)));
+  let frame = 0;
+  (function tick() { frame++; requestAnimationFrame(tick); })();
+  const drawn = [];
+  for (const id of ['lipasRoutes', 'nmMarks']) {
+    const src = m.getSource(id), own = src.setData.bind(src);
+    src.setData = (d, ...a) => { drawn.push([id, frame, performance.now()]); return own(d, ...a); };
+  }
+  const jump = async (center, lipasMs, nmMs) => {
+    window.__lipasDelay = lipasMs; window.__nmDelay = nmMs; drawn.length = 0;
+    let stop = 0;
+    m.once('moveend', () => { stop = performance.now(); });
+    m.jumpTo({ center });
+    await wait(3500);
+    const of = (id) => drawn.filter((d) => d[0] === id).map(([, f, t]) => ({ frame: f, ms: Math.round(t - stop) }));
+    return { lipas: of('lipasRoutes'), nm: of('nmMarks') };
+  };
+  const say = (d) => JSON.stringify(d);
+  let d = await jump([22.60, 60.05], 50, 150);
+  if (d.lipas.length !== 1 || d.nm.length !== 1 || d.lipas[0].frame !== d.nm[0].frame) errs.push(`LIPAS's routes and the nautical marks, answered 200 ms and more apart, aren't drawn together once: ${say(d)}`);
+  d = await jump([25.40, 60.20], 50, 2000);
+  const lipas = d.lipas[d.lipas.length - 1];
+  if (!lipas || lipas.ms > 950) errs.push(`with the nautical chart's answer held 2 s, LIPAS's routes wait for it: ${say(d)}`);
+  if (!d.nm.length || d.nm[0].ms < 2000) errs.push(`the nautical marks, answered after 2 s, aren't drawn when they come: ${say(d)}`);
+  d = await jump([22.60, 60.05], 50, 150);
+  if (!d.lipas.length || d.lipas[0].ms > 500) errs.push(`back where both have loaded, LIPAS's routes still wait: ${say(d)}`);
+  return errs;
+})()
+"""
+
+
+def together(chrome):
+    """Polku's own layers come in together after the map stops (#1091)."""
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': TOGETHER_FETCH}, pg.s)
+        pg.open_app({'activity': 'paddle'}, hash_='#12/60.1800/22.1000')
+        fails = pg.js(TOGETHER, timeout=30000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Polku's own layers come in together after the map stops, 500 ms at most (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def aerial_labels(chrome):
     fails = []
     for base in ('aerial', 'ortofi'):
@@ -23586,6 +23652,7 @@ GROUPS = [
     ('layers', [layers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
+    ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),

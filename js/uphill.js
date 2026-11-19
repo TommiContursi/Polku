@@ -31,6 +31,7 @@ export class UphillLayer {
     this.done = new Map();
     this.osmTiles = new Map(); // z13 trail-details tile -> { result, partial }
     this.timer = 0;
+    this.working = 0;
     this.run = 0;
     map.on('moveend', () => this.schedule());
     map.on('sourcedata', (e) => { if (e.sourceId === 'ofm' && e.isSourceLoaded) this.schedule(); });
@@ -58,8 +59,11 @@ export class UphillLayer {
   schedule() {
     if (!this.enabled) return;
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.update(), 350);
+    this.timer = setTimeout(() => { this.timer = 0; this.working++; this.update().finally(() => this.working--); }, 350);
   }
+
+  // an update still to run or running (its terrain on its way): what comes after the map stops waits for it (#1091)
+  get busy() { return !!this.timer || this.working > 0; }
 
   async update() {
     const map = this.map;
