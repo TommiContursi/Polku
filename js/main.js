@@ -2,7 +2,7 @@
 
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
-  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
   QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT,
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
@@ -57,9 +57,9 @@ const DEFAULTS = {
   fewerOffered: false, // Polku has offered Fewer effects on this device, once, as frames were slow
   flatOffered: false, // Polku has offered flat hills on this device, once, as frames were slow in 3D
   hillshade: true,
-  hillLight: 'fixed', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910)
-  hillShadows: true, // with the sun's light, the shadows the hills cast
-  objectShadows: true, // with the sun's light, the shadows trees and buildings cast (#919)
+  hillLight: 'sun', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910, the default since #1119)
+  hillShadows: false, // with the sun's light, the shadows the hills cast
+  objectShadows: false, // with the sun's light, the shadows trees and buildings cast (#919)
   contours: true,
   terrain3d: false, // the 3D button: tilted, with the hills raised while raiseHills is on
   raiseHills: true, // off: 3D only tilts the map, flat, as tilting it by hand does
@@ -263,9 +263,36 @@ map.on('error', (e) => {
 // then brings back the one it had at the loss. Once that has loaded, it's built again from `data`, with what came meanwhile.
 map.on('webglcontextrestored', () => map.once('style.load', applyStyle));
 
+// Polku's own layers come in together (#1091). After the map stops, the first of their loaders' answers is held, and what
+// comes after it, while any of them is still busy (an update to run, tiles on their way), for 500 ms at most; then it's
+// all drawn at once. What comes later is drawn as it comes, and nothing else waits: a route, a pick, loops, a layer you
+// switch or Try again (configureLayers and retryLit draw what's held first).
+const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights']);
+const together = { loaders: [], armed: false, held: null, until: 0 };
+map.on('moveend', () => { together.armed = true; });
+function holdTogether(id) {
+  const t = together;
+  if (!t.armed || !TOGETHER.has(id)) return false;
+  if (!t.held) {
+    if (!t.loaders.some((l) => l.busy)) { t.armed = false; return false; } // nothing more is coming
+    t.held = new Set();
+    t.until = performance.now() + 500; // from the first answer, never later (the map stops again at every arrow press)
+    requestAnimationFrame(function wait() { if (!t.held) return; if (t.loaders.some((l) => l.busy) && performance.now() < t.until) requestAnimationFrame(wait); else drawTogether(); });
+  }
+  t.held.add(id);
+  return true;
+}
+function drawTogether() {
+  const held = together.held;
+  together.held = null;
+  together.armed = false;
+  for (const id of held || []) id === 'trailCoverage' ? restyleTrails() : setData(id, data[id]);
+}
+
 function setData(id, fc) {
   data[id] = fc;
   if (id === 'route' && flow) flow.setData(fc);
+  if (holdTogether(id)) return;
   if (!map.style) return; // (the context lost: above)
   const src = map.getSource(id);
   if (src) src.setData(fc);
@@ -387,7 +414,7 @@ const details = new TrailDetails(map, {
   onData: (ways, points) => { setData('trailWays', ways); setData('trailPoints', points); },
   onCoverage: (area) => {
     ctx.trailCoverage = area;
-    if (state.trailDetails) map.setStyle(buildStyle(state, ctx), { diff: true }); // only the trail filters change
+    if (!holdTogether('trailCoverage')) restyleTrails(); // (with the trails it hides the map's own under)
   },
   onBusy: () => {
     detailsBusyAt = Date.now();
@@ -397,11 +424,13 @@ const details = new TrailDetails(map, {
     toast('Trail details: the OpenStreetMap server is busy — trying again in a couple of minutes');
   },
 });
+function restyleTrails() { if (state.trailDetails) map.setStyle(buildStyle(state, ctx), { diff: true }); } // only the trail filters change
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
 // (a tile that comes in may end "No data now" on the Lit ways tile)
 const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); }, onStatus: refreshLitStatus });
-$('#lit-status button').addEventListener('click', () => litWays.retry());
+const retryLit = () => { drawTogether(); litWays.retry(); }; // (Try again's answer is never held)
+$('#lit-status button').addEventListener('click', retryLit);
 
 // ------------------------------------------------------------------ winter
 // Winter switches itself on where there's snow (Auto), or is yours to set.
@@ -455,6 +484,7 @@ let mapTime = () => Date.now() / 1000;
 const safety = new SafetyLayers(map, { setData, time: () => mapTime() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
+together.loaders = [details, lipas, litWays, winterWays, uphill, nautical];
 
 flow = new RouteFlow(map, {
   enabled: () => state.routeFlow,
@@ -677,16 +707,18 @@ const weather = new WeatherOverlay(map, {
 });
 mapTime = () => timeAtHour(weather.hour);
 // the sun at the map's hour (to ten minutes, so the shadows' tiles keep), from the map's middle, for style.js
-// shortcut: the light is worked out when the style is built, so after a long pan or ten minutes without a rebuild it's a little off
 const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
-let litFor = 0, shadeFor = 0;
+const sunNow = () => sunPosition(sunHour(), map.getCenter().toArray());
+const sunKey = (p) => (p.alt > 0.5 ? `${Math.round(p.az)} ${Math.round(p.alt)}` : 'down'); // (as style.js draws it)
+let litFor = 0, litSun = '', shadeFor = 0;
 // the shadows' tiles move on to the hour once the last hour's are all drawn: MapLibre keeps those on screen while the
 // next ones are worked out (setTiles() in applyStyle()), so a playing timeline steps them as fast as the device can
 const shadowsDrawn = () => SHADOWS.every((id) => !map.getSource(id) || map.isSourceLoaded(id));
 ctx.sunAt = () => {
-  litFor = sunHour();
+  const p = sunNow();
+  litFor = sunHour(); litSun = sunKey(p);
   if (shadowsDrawn()) shadeFor = litFor;
-  return { t: shadeFor, ...sunPosition(litFor, map.getCenter().toArray()) };
+  return { t: shadeFor, ...p };
 };
 // the sky in 3D (#644): the sun's place at the map's hour, and the weather at the map's middle only while a forecast is loaded
 const skyNow = () => {
@@ -695,8 +727,8 @@ const skyNow = () => {
 };
 let skyFor = '';
 ctx.skyAt = () => { const k = skyNow(); skyFor = JSON.stringify(k); return k; };
-// the hills' light or the sky built for another hour, place or forecast
-const lightStale = () => (state.hillshade && state.hillLight === 'sun' && (sunHour() !== litFor || (shadeFor !== litFor && shadowsDrawn())))
+// the hills' light (none on Aerial) or the sky built for another hour, place or forecast
+const lightStale = () => (state.hillshade && !isAerial(state.base) && state.hillLight === 'sun' && (sunHour() !== litFor || sunKey(sunNow()) !== litSun || (shadeFor !== litFor && shadowsDrawn())))
   || (state.terrain3d && JSON.stringify(skyNow()) !== skyFor);
 map.on('moveend', () => { if (lightStale()) applyStyle(); });
 map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)
@@ -718,7 +750,7 @@ function setWeather(patch) {
 }
 // Console debugging: polku.set({ base: 'night' }) etc.
 window.polku = {
-  map, planner, state, uphill, trailDetails: details, flow, lipas, weather, safety, cameras, nautical, locate, heading, compass,
+  map, planner, state, uphill, trailDetails: details, flow, lipas, weather, safety, cameras, nautical, together, locate, heading, compass,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderSettingsPanel();
@@ -827,6 +859,7 @@ function placePanels() {
 const DANGER_TYPES = Object.entries(LIPAS_TYPES).filter(([, t]) => t.danger).map(([k]) => +k);
 
 function configureLayers() {
+  drawTogether(); // (what you switch is never held)
   const a = ACTIVITIES[state.activity];
   const o = state.overlays;
   // in winter: ski tracks, skating and snowmobile routes too (so feet and bikes keep off ski tracks)
@@ -1131,7 +1164,7 @@ const KEYS = {
   ],
   trails: () => [
     ...(state.trailColors === 'down' || state.trailColors === 'both'
-      ? [h('h3', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
+      ? [h('h3', {}, 'MTB difficulty (halo)'), ...MTB_GRADES.map((k) => keyItem(keyLine(`background:${MTB_COLORS[k]};height:8px`), MTB_SCALE_TEXT[k])), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
     ...(state.trailColors === 'up' || state.trailColors === 'both'
       ? [h('h3', {}, state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty'), ...UPHILL_TEXT.map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)), keyItem(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')] : []),
     ...(state.trailDetails ? [
@@ -1293,7 +1326,7 @@ function trailControls() {
     }),
     h('p', { class: 'note' }, {
       off: `Trails and roads drawn for ${act.label.toLowerCase()}: what matters for it stands out. Turn on difficulty or uphill colours here.`,
-      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0 green → S6 dark purple). White halo = not graded yet.',
+      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0− turquoise, S0 bright green → S6 dark purple). White halo = not graded yet.',
       up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
       both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
       winter: 'Trails by how soon they open after snow (OSM mtb:winter), ploughed and unploughed paths, no access in winter, ski tracks: Trailmap’s winter classes, from OpenStreetMap where mapped (zoom 11+). In winter they show by themselves (the Winter group).',
@@ -1468,7 +1501,7 @@ function renderLayersPanel() {
 
   for (const g of LAYER_GROUPS) {
     const kids = g.ids.map(overlayToggle);
-    if (g.id === 'dark') kids.push(h('div', { id: 'lit-load-status', class: 'note', hidden: true }, h('span'), h('button', { class: 'btn', type: 'button', onclick: () => litWays.retry(), hidden: true }, 'Try again')));
+    if (g.id === 'dark') kids.push(h('div', { id: 'lit-load-status', class: 'note', hidden: true }, h('span'), h('button', { class: 'btn', type: 'button', onclick: retryLit, hidden: true }, 'Try again')));
     if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up in Check, each with Avoid it on its card.'));
     if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
     p.append(layerGroup(g.id, g.title, g.ids.filter((id) => state.overlays[id]).length, ...kids));

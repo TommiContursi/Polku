@@ -9,6 +9,18 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Pointing at the profile's controls (its size, **Colour by**, **On map** and **Whole route**) or at a day's weather in the trip's box shows Polku's own tooltip, with its name and, where it helps, what it does. It also shows when the control gets the keyboard's focus, and **Esc** hides it. The tooltips sit beside their row where there's room, so they don't cover the controls under them.
 - **Reorder**'s grip and arrows no longer show a tooltip: the line above them says what they do.
 
+### Polku's own layers come in together ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- When the map stops, Polku's own layers (trail details, official routes, lit and winter ways, the uphill colours and the nautical marks) now appear together, rather than one after another over half a second. A layer that is slow to come doesn't hold the others back for more than half a second: it appears on its own when it comes.
+
+### The hills lit by the sun ([#1119](https://github.com/TommiContursi/Polku/issues/1119))
+
+- On a new device the hillshade is lit by **The sun** at the timeline's hour, so the hills stand out more than in the fixed light. The shadows that hills, trees and buildings cast are off at first; turn them on under **Hillshade** in **Layers**. While the sun is down the hills have the fixed light, and if you've already set the map up, it keeps the light you have.
+
+### The easiest MTB grades ([#673](https://github.com/TommiContursi/Polku/issues/673))
+
+- MTB difficulty distinguishes S0− · Very easy path in turquoise from S0 · Easy path in brighter green, on the map and in cards, the map key and route profiles. Uphill difficulty and the other colour scales keep their existing colours.
+
 ### Polku's own tooltips on the map's buttons and the top bar ([#304](https://github.com/TommiContursi/Polku/issues/304))
 
 - Pointing at a button in the map's column (**Plan**, **Layers**, **Weather**, **3D**, the compass, location and zoom) or in the top bar (**Plan**, **Settings**) shows Polku's own tooltip, as on the planner's toolbar: its name, its key where it has one, and what it does. It also shows when the button gets the keyboard's focus, and **Esc** hides it. The map's column has its tooltips to the left, so none covers the next button.

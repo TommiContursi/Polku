@@ -118,7 +118,9 @@ export class LitWays {
     this.schedule(0);
   }
   retry() { forgetLitFailures(); this.since = Date.now(); this.schedule(0); }
-  schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => this.update(), ms); }
+  schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => { this.timer = 0; this.update(); }, ms); }
+  // an update still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
+  get busy() { return !!this.timer || [...this.wanted].some((k) => tiles.get(k)?.data === null); }
   update() {
     const z = this.map.getZoom();
     // zoomed out it draws nothing: list no tiles (Finland in view at zoom 5 is 300,000 of them, Codex's review of #641)

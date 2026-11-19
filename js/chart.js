@@ -2,7 +2,7 @@
 // fill is coloured by the selected mode, hover is synced both ways with the
 // map, and dragging across the chart zooms into a stretch.
 
-import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, GRADE_BANDS, OFFROAD_BIKE, isWater, SPORT_COLORS, ACTIVITIES } from './config.js';
+import { gradeColor, DIFF_COLORS, MTB_COLORS, mtbClass, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, GRADE_BANDS, OFFROAD_BIKE, isWater, SPORT_COLORS, ACTIVITIES } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
 import { windClass, tempBand, rainBand, forecastKnown, skyKind, WIND_CLASSES, TEMP_BANDS, RAIN_BANDS } from './weather.js';
 import { nightAt } from './sun.js';
@@ -77,9 +77,9 @@ export function colorAt(a, i, mode) {
     case 'uphill': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : '#d6dde3';
     case 'surface': return SURFACE_COLORS[a.surf[i]] || SURFACE_COLORS.unknown;
     case 'way': return WAY_COLORS[a.way[i]] || WAY_COLORS.other;
-    case 'down': return a.down6[i] >= 0 ? DIFF_COLORS[a.down6[i]] : '#d6dde3';
+    case 'down': return MTB_COLORS[downClass(a, i)] || NO_TERRAIN;
     // as on the map: climbs by their uphill grade, the rest by MTB difficulty
-    case 'both': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : a.down6[i] >= 0 ? DIFF_COLORS[a.down6[i]] : '#d6dde3';
+    case 'both': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : MTB_COLORS[downClass(a, i)] || NO_TERRAIN;
     case 'wind': return a.wind ? windClass(a, i).color : '#e2e8f0';
     case 'temp': return a.wind ? tempBand(a.wind.temp[i]).color : '#e2e8f0';
     case 'rain': return a.wind ? rainBand(a.wind.precip[i], a.wind.temp[i]).color : '#e2e8f0';
@@ -93,6 +93,8 @@ export function colorAt(a, i, mode) {
   }
 }
 const tagsAt = (a, i) => (a.attr[i] && a.attr[i].tags) || {};
+export const downClass = (a, i) => mtbClass(tagsAt(a, i)['mtb:scale']);
+const mtbOrder = (k) => k === '0-' ? -1 : k === 'not graded' ? 99 : k;
 
 // The category of sample i in a mode: one key drives the totals, the bar's segments and the map's previews (the route's
 // Check, and a pick's Colour by).
@@ -106,8 +108,8 @@ export function breakdownKey(a, mode, i) {
     case 'temp': return a.wind && tempBand(a.wind.temp[i]).key;
     case 'rain': return a.wind && rainBand(a.wind.precip[i], a.wind.temp[i]).key;
     case 'uphill': return noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down';
-    case 'both': return a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99;
-    case 'down': return a.down6[i] >= 0 ? a.down6[i] : 'not graded';
+    case 'both': return a.upCls[i] >= 0 ? 10 + a.upCls[i] : downClass(a, i) !== -1 ? downClass(a, i) : 99;
+    case 'down': return downClass(a, i) !== -1 ? downClass(a, i) : 'not graded';
     case 'grade': return noTerrain(a, i) ? GRADE_BANDS.length : GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min);
     default: return WAY_SCALES[mode].of(tagsAt(a, i)) || 'none';
   }
@@ -121,9 +123,9 @@ export function breakdownRows(a, mode) {
   if ((mode === 'width' || mode === 'vis') && (!a.td || !a.td[mode].some((k) => k >= 0))) return [];
   if (mode === 'surface' && !a.surf.some((k) => k !== 'unknown')) return [];
   if (mode === 'grade' && a.terrain?.all) return [];
-  if (mode === 'down' && !a.down6.some((k) => k >= 0)) return [];
+  if (mode === 'down' && !a.attr.some((_, i) => downClass(a, i) !== -1)) return [];
   if (mode === 'uphill' && a.terrain?.all && !a.upCls.some((k) => k >= 0)) return [];
-  if (mode === 'both' && a.terrain?.all && !a.upCls.some((k) => k >= 0) && !a.down6.some((k) => k >= 0)) return [];
+  if (mode === 'both' && a.terrain?.all && !a.upCls.some((k) => k >= 0) && !a.attr.some((_, i) => downClass(a, i) !== -1)) return [];
   let rows;
   const n = a.along.length;
   const sumBy = () => {
@@ -155,14 +157,14 @@ export function breakdownRows(a, mode) {
     rows = [...m.entries()].sort((x, y) => last(x[0]) - last(y[0]) || x[0] - y[0])
       .map(([k, d]) => [typeof k === 'string' ? k : UPHILL_TEXT[k], d, typeof k === 'string' ? '#d6dde3' : DIFF_COLORS[k], k]);
   } else if (mode === 'both') {
-    // climbs by uphill grade, the rest by MTB difficulty: S0…S6, then ↑S0…↑S5, then not graded
+    // climbs by uphill grade, the rest by MTB difficulty: S0−…S6, then ↑S0…↑S5, then not graded
     const m = sumBy();
-    rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3', k]
-      : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10], k] : [MTB_SCALE_TEXT[k].split(':')[0], d, DIFF_COLORS[k], k]));
+    rows = [...m.entries()].sort((x, y) => mtbOrder(x[0]) - mtbOrder(y[0])).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3', k]
+      : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10], k] : [MTB_SCALE_TEXT[k].split(':')[0], d, MTB_COLORS[k], k]));
   } else if (mode === 'down') {
     const m = sumBy();
-    rows = [...m.entries()].sort((x, y) => (x[0] === 'not graded' ? 1 : y[0] === 'not graded' ? -1 : x[0] - y[0]))
-      .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : DIFF_COLORS[k], k]);
+    rows = [...m.entries()].sort((x, y) => mtbOrder(x[0]) - mtbOrder(y[0]))
+      .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : MTB_COLORS[k], k]);
   } else if (mode === 'grade') {
     // where the terrain is missing: not flat, unknown
     const m = sumBy();
@@ -184,8 +186,9 @@ const dot = (color) => `<i class="dot" style="background:${color}"></i>`;
 export function routeReadout(a, i, road = '') {
   const g = Math.round(a.grade[i] * 10) / 10 || 0; // no "-0.0 %"
   const trail = [];
+  const down = downClass(a, i);
   if (a.upCls[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.upCls[i]])}${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
-  if (a.down6[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.down6[i]])}${MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0]}`);
+  if (down !== -1) trail.push(`${dot(MTB_COLORS[down])}${MTB_SCALE_TEXT[down].split(' · ')[0]}`);
   trail.push((road ? `${escapeHtml(road)} · ` : '') + (a.surf[i] && a.surf[i] !== 'unknown' ? `${escapeHtml(a.way[i])} · ${escapeHtml(a.surf[i].replace('_', ' '))}` : escapeHtml(a.way[i])));
   // trail details where OSM has them
   if (a.td && a.td.trail[i]) {
@@ -225,7 +228,8 @@ export function sampleRows(a, i, road = '', water = false) {
   const rows = water || noTerrain(a, i) ? [] : [`Grade ${a.grade[i] >= 0 ? '+' : ''}${a.grade[i].toFixed(1)} %`];
   if (!water) {
     if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
-    if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
+    const down = downClass(a, i);
+    if (down !== -1) rows.push(MTB_SCALE_TEXT[down].split(' · ')[0] + ' downhill');
     rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${escapeHtml(a.way[i])} · ${escapeHtml(a.surf[i].replace('_', ' '))}`);
   }
   if (pastForecast(a, i)) rows.push('No forecast yet');

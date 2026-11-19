@@ -94,6 +94,7 @@
   /* The colour scales (the plan's §2), read by the JavaScript through js/palette.js. Each step keeps the colour
      it had; a scale's words and keys are in its table in js/config.js, js/chart.js or js/weather.js. */
   --diff-s0: #22a447; --diff-s1: #c7c100; --diff-s2: #f59e0b; --diff-s3: #ef4444; --diff-s4: #c026d3; --diff-s5: #7e22ce; --diff-s6: #4c1d95;
+  --mtb-s0-minus: #00b8a0; --mtb-s0: #64e600;
   --grade-20: #6d28d9; --grade-15: #dc2626; --grade-10: #f97316; --grade-6: #facc15; --grade-3: #a3d977;
   --grade-flat: #8fb996; --grade-down: #7cb7f2; --grade-steep-down: #3b82f6;
   --surf-paved: #64748b; --surf-stones: #94a3b8; --surf-compacted: #d4a017; --surf-fine-gravel: #e0b84a; --surf-gravel: #c58b2b;

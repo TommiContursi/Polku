@@ -77,8 +77,11 @@ export class LipasLayer {
 
   schedule(delay = 300) {
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.update(), delay);
+    this.timer = setTimeout(() => { this.timer = 0; this.update(); }, delay);
   }
+
+  // an update or a drawing still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
+  get busy() { return !!this.timer || !!this.publishTimer || [...this.view].some((k) => this.tiles.get(k) instanceof Promise); }
 
   inFinland() {
     const c = this.map.getCenter();
@@ -194,7 +197,7 @@ export class LipasLayer {
 
   publish() {
     clearTimeout(this.publishTimer);
-    this.publishTimer = setTimeout(() => this.publishNow(), 0);
+    this.publishTimer = setTimeout(() => { this.publishTimer = 0; this.publishNow(); }, 0);
   }
 
   publishNow() {
