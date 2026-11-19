@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Layers and Settings stay where you scrolled ([#536](https://github.com/TommiContursi/Polku/issues/536))
 
-- After you turn something on or off in **Layers** or **Settings**, the panel stays where you scrolled it, also when you scroll on straight away. Before, on a slow device, the panel could jump back to where it was a moment earlier, and **Settings** flashed to its top first.
+- After you turn something on or off in **Layers** or **Settings**, the panel stays where you scrolled it, also when you scroll on straight away. Before, on a slow device, the panel could jump back to where it was a moment earlier.
 
 ## 2026-11-18
 
