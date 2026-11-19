@@ -787,8 +787,8 @@ def cycleway_style(chrome):
           if(!('mtb_scale' in tags)&&cycling!==(kind==='cycleway'))errs.push(`${id}: disagrees with way facts`);
         }
         for(const [surface,want] of [['paved',[6,1.5]],['unpaved',[1,.5]],[undefined,[2.5,1.5]],['other',[2.5,1.5]]]) {
-          const got=layer.paint.get('line-dasharray').value;
-          const dash=got.evaluate?got.evaluate({zoom:16},{type:2,properties:{surface}},{}):got;
+          const raw=m.getPaintProperty(id,'line-dasharray'), got=layer.paint.get('line-dasharray').value;
+          const dash=typeof raw[0]==='number'?raw:got.evaluate({zoom:16},{type:2,properties:{surface}},{});
           const expected=pass==='tunnel'?[6,1.5]:pass==='bridge'&&surface==='unpaved'?[1,.8]:want;
           if(JSON.stringify(dash)!==JSON.stringify(expected))errs.push(`${id}: ${surface??'unknown'} dashes ${JSON.stringify(dash)}`);
         }
