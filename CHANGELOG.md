@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Wetlands as blue dashes ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
+
+- Wetlands are drawn as rows of short blue dashes on a grey-blue ground from zoom 11, as on Finnish maps, in place of the green tufts. The map's data doesn't say what kind of wetland it is, so the pattern doesn't tell bog from marsh or reeds, whether trees grow there or how easy it is to cross.
+
 ### Streams and ditches by size ([#1138](https://github.com/TommiContursi/Polku/issues/1138))
 
 - Rivers, streams, ditches and drains are drawn wider when you zoom in, so they stand out on the map. Ditches and drains stay narrower than streams, so the two are easy to tell apart in the forest. A stream or ditch that only has water at times keeps a dashed line, now with longer dashes that still read as a dash.

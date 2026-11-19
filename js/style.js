@@ -42,7 +42,7 @@ const BUILDING_HEIGHT = ['get', 'render_height'];
 const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
-    wetland: '#d9ebe3', sand: '#f3e7bb', rock: '#e2dfd8', ice: '#f4fbff',
+    wetland: '#dce5e3', wetlandDash: '#8fb0d3', sand: '#f3e7bb', rock: '#e2dfd8', ice: '#f4fbff',
     residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
@@ -53,7 +53,7 @@ const PALETTES = {
   },
   plain: {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
-    wetland: '#eef4f2', sand: '#f4f1e6', rock: '#efeeec', ice: '#fafdff',
+    wetland: '#eef4f2', wetlandDash: '#b4c9de', sand: '#f4f1e6', rock: '#efeeec', ice: '#fafdff',
     residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6',
     park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3',
     building: '#e6e3df', buildingLine: '#d6d1cb',
@@ -64,7 +64,7 @@ const PALETTES = {
   },
   night: {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
-    wetland: '#18232a', sand: '#2a271f', rock: '#22221f', ice: '#20262b',
+    wetland: '#18232a', wetlandDash: '#2f5679', sand: '#2a271f', rock: '#22221f', ice: '#20262b',
     residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d',
     park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3',
     building: '#272b31', buildingLine: '#30353c',
@@ -192,7 +192,8 @@ export function buildStyle(s, ctx) {
     lc('lc-grass', ['grass'], P.grass);
     lc('lc-wood', ['wood'], P.wood, { 'fill-opacity': P.woodOpacity });
     lc('lc-wetland', ['wetland'], P.wetland);
-    add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 12, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': 'wetland_bg_11', 'fill-opacity': s.base === 'night' ? 0.25 : 0.55 } });
+    // blue dashes from zoom 11 (js/icons.js): the tiles' wetlands are all one kind, so nothing about reeds, trees or footing (#1144)
+    add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 11, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': `wetland-${P.wetland.slice(1)}-${P.wetlandDash.slice(1)}` } });
     lc('lc-sand', ['sand'], P.sand);
     lc('lc-rock', ['rock'], P.rock);
     lc('lc-ice', ['ice'], P.ice);
