@@ -339,7 +339,7 @@ const parts = { on: false, copy: null, came: false, over: null, until: 0 };
 // After a move of your own (After a move: fades in too), what comes once the map stops fades in as after a flight.
 function afterMove() {
   if (fromGo) { fromGo = false; return; } // (go() says what its own flight does)
-  if (S.round === 'jump' && S.pan === 'fade' && !keysMoved) startParts();
+  if (S.round === 'jump' && S.pan === 'fade' && !keysMoved && !map.isMoving()) startParts();
 }
 function startParts() { Object.assign(parts, { on: true, copy: null, came: false, until: performance.now() + 3000 }); }
 function stopParts(now) {
@@ -347,6 +347,8 @@ function stopParts(now) {
   if (now && parts.over) { parts.over.anim.cancel(); parts.over.el.remove(); parts.over = null; }
 }
 function partsFrame() {
+  // No picture over a moving map: it would show as a ghost (a glide grabbed again ends with a moveend while you drag).
+  if (map.isMoving()) { if (snap || parts.over || parts.on) dropSnap(); return; }
   if (!parts.on) return;
   const c = map.getCanvas();
   if (parts.came && parts.copy) {
