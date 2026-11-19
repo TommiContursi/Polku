@@ -789,6 +789,23 @@ function addRoads(s, P, hc, layers, ctx) {
   const cyclingPath = ['any', ['==', ['get', 'subclass'], 'cycleway'], ['all',
     ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]],
     ['in', ['get', 'bicycle'], ['literal', ['yes', 'designated']]], ['!', ['has', 'mtb_scale']]]];
+  const noBike = ['==', ['get', 'bicycle'], 'no'];
+  const noBikeTicks = (id, source, filter) => {
+    const category = source === 'trailWays' ? ['get', 'w'] : ['literal', 1];
+    const offset = (narrow, usual, wide) => ['*', hc ? -1.5 : -1, ['match', category, 0, narrow, [2, 3], wide, usual]];
+    add({
+      id, type: 'line', source, ...(source === 'trailWays' ? {} : { 'source-layer': 'transportation' }), minzoom: 13.3,
+      filter: ['all', filter, ['!=', ['get', 'subclass'], 'footway'],
+        ['any', ['!', ['in', ['get', 'access'], ['literal', ['no', 'private']]]], ['==', ['get', 'foot'], 'yes']]],
+      paint: {
+        'line-color': '#ff003c',
+        'line-width': hc ? zi(12, 2, 14, 3, 16, 6, 18, 9) : zi(14, 2, 16, 3, 18, 6),
+        'line-offset': zi(14, offset(1, 2.5, 3), 16, offset(3, 5, 8), 18, offset(4, 10, 14)),
+        'line-dasharray': hc ? [0.4, 0.5] : [0.2, 0.5],
+        'line-opacity': zi(13.3, 0, 14, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.3, 1]),
+      },
+    });
+  };
 
   for (const brunnel of ['tunnel', 'ground', 'bridge']) {
     const bf = brunnel === 'ground'
@@ -856,6 +873,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': zi(10, 0, 10.5, 0.8 * roadsDim, 14, roadsDim),
       },
     });
+    if (bikeAct) noBikeTicks(`track-${brunnel}-nobike`, 'ofm', ['all', ['==', ['get', 'class'], 'track'], bf, noBike]);
 
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
     // With trail details on, the trails inside the loaded detail tiles are
@@ -863,7 +881,6 @@ function addRoads(s, P, hc, layers, ctx) {
     const trailSet = ['any', ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', ['path', 'bridleway', 'steps']]], ['all', ['==', ['get', 'subclass'], 'footway'], ['has', 'mtb_scale']]];
     const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], ['!', cyclingPath], bf,
       ...(covered ? [['!', ['all', trailSet, ['within', ctx.trailCoverage]]]] : [])];
-    const noBike = ['==', ['get', 'bicycle'], 'no'];
     const noFoot = ['==', ['get', 'foot'], 'no'];
     const sidewalkish = ['all', ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]], ['!', ['has', 'mtb_scale']]];
     const haloOf = (idx) => (diffOn ? mtbColor(idx, plainHalo) : footAct ? (darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)') : plainHalo);
@@ -890,11 +907,6 @@ function addRoads(s, P, hc, layers, ctx) {
       filter: trailFilter,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': haloOpacity },
-    });
-    // Explicit no-bike marker: small red ticks beside the line.
-    const noBikeTicks = (id, source, filter) => add({
-      id, type: 'line', source, ...(source === 'ofmTrails' ? { 'source-layer': 'transportation' } : {}), minzoom: 14, filter,
-      paint: { 'line-color': '#dc2626', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, 3, 18, 8), 'line-dasharray': [0.4, 1.6] },
     });
     if (bikeAct) noBikeTicks(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike]);
     add({
@@ -966,6 +978,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': (trail ? (brunnel === 'tunnel' ? 0.5 : 1) : 0.85) * roadsDim,
       },
     });
+    if (bikeAct) noBikeTicks(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBike]);
   }
 
   // Ways marked private or closed for your sport (#104): purple dots beside the line, on the

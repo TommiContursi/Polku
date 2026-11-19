@@ -820,6 +820,74 @@ def cycleway_style(chrome):
     return not fails
 
 
+# #1130: cycling side marks stay on paths/tracks and use zoom/width categories.
+def cycling_restrictions(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': True})
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, passes=['ground','bridge','tunnel'];
+      const value=(id,prop,z,p)=>m.style.getLayer(id)._transitionablePaint._values[prop].value.expression.evaluate({zoom:z},{type:2,properties:p});
+      for(const activity of ['mtb','gravel','road'])for(const highContrast of [false,true]) {
+        polku.set({activity,highContrast,trailDetails:true});
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        if(m.getStyle().layers.some(l=>l.id.startsWith('road-')&&l.id.endsWith('-nobike')))errs.push('cycling side marks leaked onto ordinary roads');
+        for(const pass of passes)for(const [way,props] of [
+          [`track-${pass}`,{class:'track'}], [`cycleway-${pass}`,{class:'path',subclass:'cycleway'}],
+          [`path-${pass}`,{class:'path',subclass:'path'}], [`path-osm-${pass}`,{class:'path',subclass:'path',trail:true}]
+        ]) {
+          const id=`${way}-nobike`, l=m.style.getLayer(id);
+          if(!l){errs.push(`${id} missing`);continue;}
+          const tags={...props,...(pass==='ground'?{}:{brunnel:pass})};
+          const matches=p=>l._featureFilter.filter({zoom:16},{type:2,properties:p});
+          for(const bicycle of ['no','yes','designated','permissive','dismount',undefined])if(matches({...tags,...(bicycle?{bicycle}:{})})!==(bicycle==='no'))errs.push(`${id}: bicycle=${bicycle??'unknown'} misclassified`);
+          if(matches({...tags,bicycle:'no',subclass:'footway'})||matches({...tags,access:'no',foot:'yes'}))errs.push(`${id}: footway or missing bicycle permission became a prohibition`);
+          if(matches({...tags,bicycle:'no',access:'no',foot:'no'}))errs.push(`${id}: cycling and general access marks duplicated`);
+          for(const other of passes.filter(x=>x!==pass))if(matches({...tags,brunnel:other,bicycle:'no'}))errs.push(`${id}: wrong structure`);
+          for(const [i,z] of [14,16,18].entries()) {
+            const width=value(id,'line-width',z,tags), want=(highContrast?[3,6,9]:[2,3,6])[i];
+            if(width!==want)errs.push(`${id}: zoom ${z} mark width ${width}, expected ${want}`);
+            for(const w of [0,1,2,3]) {
+              const sizes=way.startsWith('path-osm-')?(w===0?[1,3,4]:w>=2?[3,8,14]:[2.5,5,10]):[2.5,5,10];
+              if(value(id,'line-offset',z,{...tags,w})!==-sizes[i]*(highContrast?1.5:1))errs.push(`${id}: zoom ${z} width category ${w} offset changed`);
+            }
+          }
+          if(value(id,'line-opacity',16,tags)!==(pass==='tunnel'?.3:1))errs.push(`${id}: tunnel fading changed`);
+          if(JSON.stringify(m.getPaintProperty(id,'line-dasharray'))!==JSON.stringify(highContrast?[.4,.5]:[.2,.5]))errs.push(`${id}: mark spacing changed`);
+        }
+      }
+      // Exercise Overpass -> slim tile -> rendered features, not only synthetic filter properties.
+      const T=await import('/js/trails.js'), samples=[
+        {access:'no',foot:'no',bicycle:'no',red:false},
+        {access:'no',foot:'yes',bicycle:'no',red:true},
+        {foot:'yes',bicycle:'no',red:true},
+        {access:'private',foot:'no',bicycle:'no',red:false},
+        {access:'private',foot:'yes',bicycle:'no',red:true},
+        {access:'no',foot:'yes',red:false},
+      ];
+      T.holdFetches();
+      T.seedTile(4682,2273,{elements:samples.map(({red,...tags},i)=>({type:'way',id:900000+i,
+        tags:{highway:'path',...tags},geometry:[{lon:25.7652,lat:62.2289},{lon:25.7653,lat:62.229}]}))});
+      let converted;
+      const details=new T.TrailDetails(m,{onData:ways=>{converted=ways;},onCoverage:()=>{}});
+      details.publish([[4682,2273]]);
+      for(const [i,sample] of samples.entries()) {
+        const f=converted.features.find(f=>f.id===900000+i);
+        if(f?.properties.access!==sample.access)errs.push(`trail conversion lost access=${sample.access??'unknown'}`);
+        if(!f||m.style.getLayer('path-osm-ground-nobike')._featureFilter.filter({zoom:16},{type:2,properties:f.properties})!==sample.red)errs.push(`converted trail ${i}: cycling/general access marks disagree`);
+      }
+      for(const activity of ['hike','run','trailrun','paddle']) {
+        polku.set({activity});
+        if(m.getStyle().layers.some(l=>l.id.endsWith('-nobike')))errs.push(`${activity}: cycling prohibition shown in another sport`);
+      }
+      if(!document.querySelector('#layers-body').textContent.includes('No bikes (beside a path or forest track)'))errs.push('map key misstates restriction coverage');
+      return [...new Set(errs)];
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} cycling restriction marks on paths and tracks (#1130)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def trails(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/62.2289/25.7652')
@@ -23934,7 +24002,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
