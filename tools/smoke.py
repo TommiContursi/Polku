@@ -3197,7 +3197,7 @@ LOST_CONTEXT = """(async () => {
   await until(async () => (await legs()) === 2 && m.loaded(), 10000);
   const n = await legs(), lit = m.getSource('routeLit') ? (await m.getSource('routeLit').getData()).features.length : -1;
   if (n !== 2) errs.push(`after it came back: ${n} legs on the map, not 2`);
-  if (!m.getLayer('route-flow')) errs.push('after it came back: no moving chevrons\' layer');
+  if (!m.getLayer('route-flow')) errs.push('after it came back: the moving chevrons have no layer');
   if (!lit || m.getPaintProperty('route-line', 'line-opacity') !== 0.5) errs.push(`after it came back: the leg lit ${lit}, the route's opacity ${m.getPaintProperty('route-line', 'line-opacity')}`);
   return errs;
 })()"""
