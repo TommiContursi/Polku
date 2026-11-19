@@ -103,7 +103,7 @@ Finland's tiles at zoom 6, 15 of them and 0.95 MB as sent (measured 2026-11-19: 
 
 - **What people gain:** over A, a first move into a new region of Finland and a zoom out don't wait for a coarse tile from the network; the zoom out's ragged look is softer. Offline, places never saved show Finland's lakes, sea and main roads rather than paper.
 - **Requests:** 15 tiles once per install, and again when OpenFreeMap's weekly version changes only if Polku asks for them online (saved tiles are kept under a key without the version, as Save offline's are). Nothing to Polku's other services.
-- **Code:** about 30 lines in `js/offline.js` and `js/main.js`.
+- **Code:** about 40 lines in `js/offline.js`, `sw.js` and `js/main.js`.
 - **First proposed** as zoom 0–8 (about 270 tiles, 20–30 MB), with a setting to turn it off: too much for what it adds.
 
 ### D: Polku's own layers come in together
@@ -146,11 +146,12 @@ To check in the browser pane: MTB and paddle, 390 × 844 and 1440 × 900, drag, 
 One PR:
 
 1. `js/offline.js`: `saveOverview()` puts Finland's 15 zoom-6 tiles (box 19.0–31.6° E, 59.6–70.1° N) into the offline tile cache under their versionless keys, once, when Polku is online and the service worker runs, the way `saveArea()` does (`fetch`, `X-Size`), and keeps their keys where `dropUnused()` counts them as used, so removing a saved area never removes them. A failed tile is asked for again on the next start. Settings' offline storage counts them.
-2. `js/main.js`, A's wrap: for `ofm` only, an ideal tile above zoom 6 with no data also keeps its zoom-6 ancestor, beside the one four zoom levels up when that is above zoom 6. MapLibre then draws the finest of them that has data. Neither is kept once the detail has come, as now (round trips' water test).
-3. Smoke: `coarse` holds zoom 9 and zoom 13 and checks that zoom 6 is drawn in their place, and that it's gone from `querySourceFeatures` once the detail has come; `offline` checks that removing a saved area leaves the overview's tiles.
-4. DEVELOPING (the coarse map's bullet and the offline section) and CHANGELOG.
+2. `sw.js`, `tile()`: a saved OpenFreeMap tile at zoom 6 or lower is answered from the cache at once, and refreshed in the background (into the same versionless key), rather than the network first with the saved copy after 4 s. Otherwise, when OpenFreeMap's weekly version changes, the browser's HTTP cache doesn't have the new URLs and the overview would wait for the network, up to 4 s, just when it should stand in. Saved areas' zoom 5 and 6 tiles get the same; coarse tiles barely change in a week.
+3. `js/main.js`, A's wrap: for `ofm` only, an ideal tile above zoom 6 with no data also keeps its zoom-6 ancestor, beside the one four zoom levels up when that is above zoom 6. MapLibre then draws the finest of them that has data. Neither is kept once the detail has come, as now (round trips' water test).
+4. Smoke: `coarse` holds zoom 9 and zoom 13 and checks that zoom 6 is drawn in their place, and that it's gone from `querySourceFeatures` once the detail has come; `offline` checks that removing a saved area leaves the overview's tiles.
+5. DEVELOPING (the coarse map's bullet and the offline section) and CHANGELOG.
 
-To check: offline, with the network off and the worker running, at a place never saved; a zoom out from 13 to 8 on the slowed network; the night map (the overview is drawn in the map's style, so dark); that under the aerial and MML bases only their own coarse tiles show.
+To check: offline, with the network off and the worker running, at a place never saved; online with the overview saved and the HTTP cache cleared (a new weekly version), on the slowed network, that the overview shows at once; a zoom out from 13 to 8 on the slowed network; the night map (the overview is drawn in the map's style, so dark); that under the aerial and MML bases only their own coarse tiles show.
 
 ## Building D
 
