@@ -78,7 +78,7 @@ h1 { margin: 0 0 4px; font-size: 22px; }
   <p class="what" id="what"></p>
   <div class="frame" id="frame"><div id="map"></div></div>
   <p class="count" id="count" aria-live="polite"></p>
-  <p class="count" id="last" aria-live="polite"></p>
+  <p class="count" id="last" aria-live="polite" data-round="jump"></p>
   <ul class="notes" data-round="fill">
     <li><b>Try:</b> Slow, As now, then drag or flick the map a screen or two: the new part is plain paper until its tiles come, and they come square by square. Go somewhere new and do the same with A.</li>
     <li><b>A</b> keeps the map four zoom levels coarser under the view: 1–4 tiles, each one sixteen times as wide, so the same few cover a whole town and the area around it. MapLibre already draws a coarser tile it has in the place of one that hasn't come; today it seldom has one. With A it does: lakes, sea, forest and the main roads are there at once, and the paths, buildings and names sharpen in. The first time in a new region the coarse tiles come with the rest; after that they're there.</li>
@@ -189,7 +189,7 @@ function keepOverview() {
   const [x0, y0] = tileXY(19.0, 70.1, 6), [x1, y1] = tileXY(31.6, 59.6, 6);
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     const url = template.replace('{z}', 6).replace('{x}', x).replace('{y}', y);
-    if (!kept.has(url)) kept.set(url, get(url));
+    if (!kept.has(url)) { const p = get(url); p.catch(() => {}); kept.set(url, p); }
   }
 }
 function loadAround() {
@@ -200,7 +200,9 @@ function loadAround() {
     const url = template.replace('{z}', z).replace('{x}', x).replace('{y}', y);
     if (ready.has(url)) continue;
     count.ahead++;
-    ready.set(url, (S.net === 'slow' ? wait(1000) : Promise.resolve()).then(() => get(url)));
+    const p = (S.net === 'slow' ? wait(1000) : Promise.resolve()).then(() => get(url));
+    p.catch(() => {}); // (one that fails fails when the map asks for it)
+    ready.set(url, p);
   }
   show();
 }
@@ -302,7 +304,7 @@ const style = (tiles) => ({
     L('track', 'line', 'transportation', { 'line-color': P.track, 'line-width': 1.2, 'line-dasharray': [3, 1.5] }, { filter: ['==', ['get', 'class'], 'track'], minzoom: 11 }),
     L('road-case', 'line', 'transportation', { 'line-color': P.roadCase, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 16, 6.5] }, { filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' } }),
     L('road', 'line', 'transportation', { 'line-color': ['match', ['get', 'class'], 'motorway', P.motorway, 'trunk', P.trunk, 'primary', P.primary, 'secondary', P.secondary, P.road], 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 16, 5] }, { filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' } }),
-    { id: 'own', type: 'line', source: 'own', paint: { 'line-color': P.own, 'line-width': 2.5, 'line-opacity': 0.85 }, layout: { 'line-cap': 'round', 'line-join': 'round' } },
+    { id: 'own', type: 'line', source: 'own', paint: { 'line-color': P.own, 'line-width': 1.8, 'line-opacity': 0.75 }, layout: { 'line-cap': 'round', 'line-join': 'round' } },
     L('water-name', 'symbol', 'water_name', { 'text-color': P.waterText, 'text-halo-color': '#fff', 'text-halo-width': 1 }, { layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Italic'], 'text-size': 12 } }),
     L('place', 'symbol', 'place', { 'text-color': P.text, 'text-halo-color': '#fff', 'text-halo-width': 1.5 }, { layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': ['match', ['get', 'class'], 'city', 16, 'town', 14, 12] } }),
   ],
