@@ -820,6 +820,37 @@ def cycleway_style(chrome):
     return not fails
 
 
+# #1138: streams read wider than ditches and drains; intermittent ones keep a dash; culverts stay hidden;
+# the lines sit under the water's fill, so a river's line doesn't show across a lake.
+def waterway_style(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'})
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map;
+      const paint=(prop,z,p)=>m.style.getLayer('waterway')._transitionablePaint._values[prop].value.expression.evaluate({zoom:z},{type:2,properties:p});
+      for(const base of ['trail','plain','night']) for(const activity of ['mtb','paddle']) {
+        polku.set({base,activity});
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        const at=`${base}/${activity}`, w=(cls,z)=>paint('line-width',z,{class:cls,intermittent:0});
+        if(!(w('stream',16)>=4))errs.push(`${at}: a stream is ${w('stream',16)} px at zoom 16`);
+        for(const cls of ['ditch','drain'])for(const z of [14,16,18])if(!(w(cls,z)<=w('stream',z)*.65))errs.push(`${at}: a ${cls} is ${w(cls,z)} px beside a ${w('stream',z)} px stream at zoom ${z}`);
+        if(!(w('river',16)>w('stream',16)))errs.push(`${at}: a river is no wider than a stream`);
+        for(const cls of ['river','stream','ditch','drain']) {
+          if(JSON.stringify(paint('line-dasharray',16,{class:cls,intermittent:0}))!=='[1,0]')errs.push(`${at}: a ${cls} is dashed`);
+          if(JSON.stringify(paint('line-dasharray',16,{class:cls,intermittent:1}))!=='[4,3]')errs.push(`${at}: an intermittent ${cls} has no long dash`);
+        }
+        if(m.style.getLayer('waterway')._featureFilter.filter({zoom:16},{type:2,properties:{class:'stream',brunnel:'tunnel'}}))errs.push(`${at}: culverts are drawn`);
+        const ids=m.getStyle().layers.map(l=>l.id);
+        if(!(ids.indexOf('waterway')<ids.indexOf('water')))errs.push(`${at}: a river's line is drawn over the lake it crosses`);
+      }
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} streams, ditches and intermittent waterways (#1138)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1130: cycling side marks stay on paths/tracks and use zoom/width categories.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
@@ -24003,7 +24034,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
