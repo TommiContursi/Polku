@@ -3185,10 +3185,11 @@ LOST_CONTEXT = """(async () => {
   if (!lose) return ['no WEBGL_lose_context'];
   lose.loseContext();
   await wait(300);
-  // what comes while it's lost: a third point (the route and the lit leg), the first leg lit
-  try { p.addPoint([24.945, 60.175]); p.litLeg(0); } catch (e) { errs.push(`while the context is lost: ${e.message}`); }
+  // a third point while it's lost (the route and the lit leg), the first leg lit as it's back, before its style has loaded
+  try { p.addPoint([24.945, 60.175]); } catch (e) { errs.push(`while the context is lost: ${e.message}`); }
   await wait(500);
   lose.restoreContext();
+  try { p.litLeg(0); } catch (e) { errs.push(`as it comes back: ${e.message}`); }
   await until(async () => (await legs()) === 2 && m.loaded(), 10000);
   const n = await legs(), lit = m.getSource('routeLit') ? (await m.getSource('routeLit').getData()).features.length : -1;
   if (n !== 2) errs.push(`after it came back: ${n} legs on the map, not 2`);
