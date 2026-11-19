@@ -1,6 +1,6 @@
 # The map fills in as you move it (#1091)
 
-When you move the map, its new parts come in piece by piece, and on a fast connection that still feels slow. This is the investigation the issue asks for: what people see, measured; how other maps make theirs look ready at once; the options with their costs; and a mock-up to choose from. Nothing is built in the app yet.
+When you move the map, its new parts come in piece by piece, and on a fast connection that still feels slow. This is the investigation the issue asks for: what people see, measured; how other maps make theirs look ready at once; the options with their costs; and a mock-up to choose from; then what was decided and how it is built.
 
 The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html), a real map on OpenFreeMap's tiles that you move, as Polku fills it in today and with options A and B, on the network as it is or held a second per tile.
 
@@ -8,7 +8,9 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 
 - **Investigated, 2026-11-18.** The user's first pick was A and B together, with a question about their cost in requests (answered under [A and B, measured](#a-and-b-measured)).
 - **Decided, 2026-11-18: A** (on #1091's description), not B. The coarse map follows the base map: dark on the night map, the aerial and MML maps coarser under their own detail.
-- **A: built** on `claude/coarse-map-1091` ([#1097](https://github.com/TommiContursi/Polku/pull/1097)), for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`. C, D and E, and the zoom's ragged look, are to be talked over next.
+- **A: built** ([#1097](https://github.com/TommiContursi/Polku/pull/1097), merged 2026-11-19), for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`.
+- **Decided, 2026-11-19: C and D next** (on #1091's description). C as Finland's zoom-6 overview, 15 tiles and 0.95 MB once, not the zoom 0–8 one; D as written. The crossfade on long jumps is shown as a mock-up and decided with /animate before it's built. A low data mode is its own idea, #1103.
+- **Next:** [Building C](#building-c) and [Building D](#building-d), one PR each, then [the crossfade's mock-up](#the-crossfade-on-long-jumps-a-mock-up-first).
 
 ## What people see
 
@@ -95,13 +97,14 @@ As A, plus the tiles at the map's own zoom half a screen beyond each edge, fetch
 - **Battery:** each extra tile is downloaded and kept, though not laid out until it's shown.
 - **Code:** about 25 more lines on top of A, in `js/offline.js` (which already turns an area into OpenFreeMap tile addresses for Save offline) and `js/main.js`.
 
-### C: a coarse Finland kept by the service worker
+### C: Finland's overview, kept by the service worker
 
-The coarse tiles for the whole of Finland (zoom 0–8: about 270 tiles in Finland's box, 90–200 kB each at zooms 7 and 8, so 20–30 MB), saved by the service worker the first time Polku runs, as Organic Maps ships its world map. The coarse map is then there even on the first visit to a place, and offline.
+Finland's tiles at zoom 6, 15 of them and 0.95 MB as sent (measured 2026-11-19: zoom 5 would add 6 tiles and 0.62 MB, zoom 7 is 60 tiles and 5.5 MB), saved by the service worker the first time Polku runs, as Organic Maps ships its world map. A then keeps the zoom-6 tile too, besides the one four zoom levels up, while the detail hasn't come. So the overview is there at once on the first visit to a place, when you zoom out (a view at zoom 7–10 gets zoom 6, finer than A's tile four levels up, which there is zoom 3–6), and offline anywhere in Finland.
 
-- **What people gain:** over A, only the first move into a new region of Finland, and offline use in places never saved.
-- **Requests:** 20–30 MB once per install, and again each week when OpenFreeMap's tiles change their version (Save offline keeps its tiles under a key without the version; this would need the same); storage the browser may clear.
-- **Code:** about 40 lines in `sw.js` and `js/offline.js`, and a setting to turn it off for those on a small data plan. Too much for what it adds over A: worth looking at again only if A leaves a gap on first visits.
+- **What people gain:** over A, a first move into a new region of Finland and a zoom out don't wait for a coarse tile from the network; the zoom out's ragged look is softer. Offline, places never saved show Finland's lakes, sea and main roads rather than paper.
+- **Requests:** 15 tiles once per install, and again when OpenFreeMap's weekly version changes only if Polku asks for them online (saved tiles are kept under a key without the version, as Save offline's are). Nothing to Polku's other services.
+- **Code:** about 30 lines in `js/offline.js` and `js/main.js`.
+- **First proposed** as zoom 0–8 (about 270 tiles, 20–30 MB), with a setting to turn it off: too much for what it adds.
 
 ### D: Polku's own layers come in together
 
@@ -137,6 +140,32 @@ One PR, if chosen:
 4. CHANGELOG: "Moving the map no longer shows plain paper while its tiles come: a coarser map is there underneath, and the detail sharpens in."
 
 To check in the browser pane: MTB and paddle, 390 × 844 and 1440 × 900, drag, flick, keys and the wheel, on the network as it is and slowed; islands in a lake (a coarse tile's water must never show over the detail's land); the aerial and MML bases; offline with a saved area; frame times against today's.
+
+## Building C
+
+One PR:
+
+1. `js/offline.js`: `saveOverview()` puts Finland's 15 zoom-6 tiles (box 19.0–31.6° E, 59.6–70.1° N) into the offline tile cache under their versionless keys, once, when Polku is online and the service worker runs, the way `saveArea()` does (`fetch`, `X-Size`), and keeps their keys where `dropUnused()` counts them as used, so removing a saved area never removes them. A failed tile is asked for again on the next start. Settings' offline storage counts them.
+2. `js/main.js`, A's wrap: for `ofm` only, an ideal tile above zoom 6 with no data also keeps its zoom-6 ancestor, beside the one four zoom levels up when that is above zoom 6. MapLibre then draws the finest of them that has data. Neither is kept once the detail has come, as now (round trips' water test).
+3. Smoke: `coarse` holds zoom 9 and zoom 13 and checks that zoom 6 is drawn in their place, and that it's gone from `querySourceFeatures` once the detail has come; `offline` checks that removing a saved area leaves the overview's tiles.
+4. DEVELOPING (the coarse map's bullet and the offline section) and CHANGELOG.
+
+To check: offline, with the network off and the worker running, at a place never saved; a zoom out from 13 to 8 on the slowed network; the night map (the overview is drawn in the map's style, so dark); that under the aerial and MML bases only their own coarse tiles show.
+
+## Building D
+
+One PR:
+
+1. `js/main.js`, `setData()`: after the map stops (`moveend`), the first answer from one of the loaders that wait for it (trail details, LIPAS, lit and winter ways, uphill, the nautical layers) opens a window of up to 500 ms. What comes in it is held and shown together when the window closes, or sooner once every loader that started after the stop has answered (each loader's `schedule()` says it started, one line each). What comes after the window shows on its own, as now. A route, a pick, a round trip's loops and anything you did yourself are never held.
+2. A loader that fails or is cancelled says so too, so the window doesn't wait for it; a failure still shows as it does now.
+3. Smoke: a check with two loaders' answers held apart by 200 ms that they show in the same frame, and one with an answer held 2 s that the other's isn't held past 500 ms.
+4. DEVELOPING (the loaders' section) and CHANGELOG.
+
+To check: MTB and paddle at 390 × 844 and 1440 × 900, on the network as it is and slowed; that nothing you do yourself waits.
+
+## The crossfade on long jumps: a mock-up first
+
+When the camera jumps far (a search result, Go to a place, the route fitted to the screen), the old view could fade into the new one over a snapshot rather than the new place filling in tile by tile. A drag, a pinch, the wheel and the keys never get it: they happen many times a minute, and by DESIGN.md's "Motion" what is started from the keyboard doesn't move. It's motion, so it's decided with /animate, and shown first as a mock-up beside A, C and D at 390 px and 1440 px, on the network as it is and slowed, before anything is built.
 
 ## How A was tried
 
