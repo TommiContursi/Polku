@@ -2220,9 +2220,9 @@ requestAnimationFrame(() => { syncWxH(); document.body.classList.add('ready'); }
 // the map was moved (#393): one more frame. (The quick drawer's "No data now" comes from the same errors.)
 map.on('error', (e) => { if (e.tile) map.triggerRepaint(); });
 // MapLibre fires `load` once every tile in view is in or has failed, so one that never answers (a slow depth tile, a
-// phone's bad connection) held all of this (#419): it runs on `load`, or LOAD_WAIT after the style has loaded, whichever
-// comes first, and once. With tiles still coming it's as after a pan: the route and the layers need only the style.
-const LOAD_WAIT = 0;
+// phone's bad connection) held all of this (#419): it runs on `load`, or 3 s after the style has loaded, whichever comes
+// first, and once. With tiles still coming it's as after a pan: the route and the layers need only the style. The 3 s
+// keep the order Polku has always opened in on a good connection.
 let started = false;
 const start = () => {
   if (started) return;
@@ -2261,4 +2261,4 @@ const start = () => {
   }
 };
 map.once('load', start);
-map.once('style.load', () => setTimeout(start, LOAD_WAIT));
+map.once('style.load', () => setTimeout(start, 3000));

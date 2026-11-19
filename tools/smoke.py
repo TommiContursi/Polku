@@ -20,7 +20,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cdp import BASE, Chrome  # noqa: E402
+from cdp import BASE, LOAD_STEP, Chrome  # noqa: E402
 
 # (width, height, phone, planner docked at the bottom on desktop)
 VIEWPORTS = [(1440, 900, False, False), (1440, 900, False, True), (1024, 768, False, False), (390, 844, True, False), (360, 740, True, False)]

@@ -28,7 +28,8 @@ IDLE = ("new Promise((ok) => { const m = polku.map; const t = setTimeout(ok, 200
 # Polku's load step (the saved route, the planner left open, the layers) runs on MapLibre's load event, which comes in
 # a frame after the map counts as loaded: late on a busy machine, and a check that had begun meanwhile had its route
 # drawn again under it (#248). _loaded is MapLibre's own flag, set as it fires the event; 45 s at most. (A check that
-# holds the event back, as column does, finds the flag set and goes on.)
+# holds the event back, as column does, finds the flag set and goes on.) The step also runs 3 s after the style has
+# loaded when the event hasn't come by then (#419), and then only once: this waits for the event all the same.
 LOAD_STEP = ("new Promise((ok) => { const t0 = Date.now(), go = () => polku.map._loaded ? setTimeout(() => ok(true))"
              " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 50); go(); })")
 # Polku there and its map loaded (MapLibre's loaded(): the style, and every tile in or failed), 300 s at most. The old wait
