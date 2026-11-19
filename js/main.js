@@ -299,8 +299,7 @@ function drawTogether() {
 const fade = { by: null, on: false, came: false, until: 0, copy: null, spare: null, over: null };
 addEventListener('keydown', (e) => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) fade.by = 'keys'; }, true);
 for (const ev of ['pointerdown', 'wheel']) addEventListener(ev, () => { fade.by = 'pointer'; }, { capture: true, passive: true });
-const grid = Object.assign(document.createElement('canvas'), { width: 48, height: 30 }).getContext('2d');
-const cells = (src) => { grid.drawImage(src, 0, 0, 48, 30); return grid.getImageData(0, 0, 48, 30).data; };
+const grid = Object.assign(document.createElement('canvas'), { width: 48, height: 60 }).getContext('2d');
 // a raster that fades in by itself (raster-fade-duration: the photo and terrain bases, the overlays) isn't faded twice
 const fadesItself = (id) => map.getLayersOrder().some((l) => { const s = map.getLayer(l); return s.source === id && s.type === 'raster' && map.getPaintProperty(l, 'raster-fade-duration') !== 0; });
 // (the two copies give their memory back once nothing fades)
@@ -329,9 +328,12 @@ map.on('render', () => {
   if (!f.on) return;
   if (f.came && f.copy && f.copy.width === c.width && f.copy.height === c.height) {
     f.came = false;
-    const a = cells(f.copy), b = cells(c);
+    // the frame before above, this one below, read at once: each reading waits for the GPU (5–12 ms measured)
+    grid.drawImage(f.copy, 0, 0, 48, 30);
+    grid.drawImage(c, 0, 30, 48, 30);
+    const px = grid.getImageData(0, 0, 48, 60).data, half = 48 * 30 * 4;
     let n = 0;
-    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) n++;
+    for (let i = 0; i < half; i += 4) if (Math.abs(px[i] - px[half + i]) + Math.abs(px[i + 1] - px[half + i + 1]) + Math.abs(px[i + 2] - px[half + i + 2]) > 24) n++;
     if (n) {
       // the frame before is the picture, with the part before this one as far as it has faded in
       const pic = f.copy, o = f.over, g = pic.getContext('2d');
