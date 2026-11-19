@@ -47,6 +47,12 @@ function validateTile(json) {
   const point = (p) => p && Number.isFinite(p.lon) && Number.isFinite(p.lat) && Math.abs(p.lon) <= 180 && Math.abs(p.lat) <= 90;
   for (const e of json.elements) {
     if (!Number.isSafeInteger(e?.id) || !e.tags || typeof e.tags !== 'object') throw new Error('Invalid OSM object');
+    if (e.area !== undefined) { // an assembled way or multipolygon (the wetlands product): polygons of closed rings
+      if (!['way', 'relation'].includes(e.type) || !Array.isArray(e.area) || !e.area.length || !e.area.every((rings) => Array.isArray(rings) && rings.length
+        && rings.every((r) => Array.isArray(r) && r.length >= 4 && r.every((v) => Array.isArray(v) && v.length === 2 && point({ lon: v[0], lat: v[1] }))
+          && r[0][0] === r.at(-1)[0] && r[0][1] === r.at(-1)[1]))) throw new Error('Invalid OSM area');
+      continue;
+    }
     if (e.type === 'way' && (!Array.isArray(e.nodes) || e.nodes.length < 2 || e.nodes.length !== e.geometry?.length
       || !e.nodes.every(Number.isSafeInteger) || !e.geometry.every(point))) throw new Error('Incomplete OSM way geometry');
     if (e.type === 'node' && !point(e)) throw new Error('Incomplete OSM node geometry');
@@ -303,4 +309,64 @@ export async function geometryTiles(url, box, signal) {
     seen.set(key,base);
   }
   return {tiles,source:tiles[0].source};
+}
+
+
+// ---------------------------------------------------------------- reedbeds (#1144)
+// OpenFreeMap's wetlands are all one kind; the reedbeds among them come from the hosted `wetlands` product, the view's
+// z12 tiles from zoom 12, for style.js's `lc-reedbed` (only on the vector base maps, so nothing loads without it). A
+// release without the product, a place outside its coverage or a read that fails leaves them generic wetland.
+export const REED_Z = 12;
+const reedTiles = new Map(); // "x/y" -> { data } (null while on its way), or { failedAt }
+let reedsHeld = false;
+/** Tests: read no reedbeds (seed them instead). */
+export function holdReedbeds(on = true) { reedsHeld = on; }
+export function seedReedbeds(x, y, json) { reedTiles.set(`${x}/${y}`, { data: validateTile(json) }); }
+
+export class Reedbeds {
+  constructor(map, url, onData) {
+    this.map = map;
+    this.url = url;
+    this.onData = onData;
+    this.timer = 0;
+    this.want = [];
+    this.shown = null;
+    map.on('moveend', () => this.schedule());
+    map.on('styledata', () => this.schedule()); // (the base map changed: lc-reedbed came or went)
+  }
+  // an update still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
+  get busy() { return !!this.timer || this.want.some((k) => reedTiles.get(k)?.data === null); }
+  schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => { this.timer = 0; this.update(); }, ms); }
+  update() {
+    const map = this.map;
+    this.want = [];
+    // (zoomed out, no tiles are listed: millions of them, #667)
+    if (map.getStyle() && map.getLayer('lc-reedbed') && map.getZoom() >= REED_Z) {
+      const b = map.getBounds();
+      const [x0, y0] = lonLatToTile(b.getWest(), b.getNorth(), REED_Z).map(Math.floor), [x1, y1] = lonLatToTile(b.getEast(), b.getSouth(), REED_Z).map(Math.floor);
+      for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) this.want.push(`${x}/${y}`);
+    }
+    if (this.want.length > 16) this.want = [];
+    for (const key of this.want) {
+      const have = reedTiles.get(key);
+      if (reedsHeld || have && (!have.failedAt || Date.now() - have.failedAt < 120e3)) continue;
+      const entry = { data: null };
+      reedTiles.set(key, entry);
+      hostedTile(this.url, 'wetlands', REED_Z, key.split('/').map(Number), (err) => { throw err; })
+        .then((json) => { entry.data = json; }, () => { if (reedTiles.get(key) === entry) reedTiles.set(key, { failedAt: Date.now() }); })
+        .finally(() => this.schedule(60));
+    }
+    if (reedTiles.size > 64) for (const [k, t] of reedTiles) { if (reedTiles.size <= 64) break; if (!this.want.includes(k) && t.data !== null) reedTiles.delete(k); }
+    this.publish(this.want.filter((k) => reedTiles.get(k)?.data));
+  }
+  publish(keys) {
+    const key = keys.join(';');
+    if (key === this.shown) return;
+    this.shown = key;
+    const features = new Map(); // a reedbed across tiles comes once
+    for (const k of keys) for (const e of reedTiles.get(k).data.elements) {
+      if (e.area) features.set(`${e.type}/${e.id}`, { type: 'Feature', properties: { osm: e.id, osmType: e.type }, geometry: { type: 'MultiPolygon', coordinates: e.area } });
+    }
+    this.onData({ type: 'FeatureCollection', features: [...features.values()] });
+  }
 }

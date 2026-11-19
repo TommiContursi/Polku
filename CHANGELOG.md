@@ -2,11 +2,17 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-20
+
+### Reedbeds on the map ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
+
+- Reedbeds that OpenStreetMap marks as such are drawn with small reed tufts from zoom 12 on the Trail, Plain and Night maps, so a shore's reeds no longer look like a bog. Where Polku's own map data can't be read, or doesn't cover the place, they're drawn as ordinary wetland.
+
 ## 2026-11-19
 
 ### Wetlands as blue dashes ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
 
-- Wetlands are drawn as rows of short blue dashes on a grey-blue ground from zoom 11, as on Finnish maps, in place of the green tufts. The map's data doesn't say what kind of wetland it is, so the pattern doesn't tell bog from marsh or reeds, whether trees grow there or how easy it is to cross.
+- Wetlands are drawn as rows of short blue dashes on a grey-blue ground from zoom 11, as on Finnish maps, in place of the green tufts. The pattern doesn't tell bog from marsh, whether trees grow there or how easy it is to cross.
 
 ### Streams and ditches by size ([#1138](https://github.com/TommiContursi/Polku/issues/1138))
 

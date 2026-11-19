@@ -3,9 +3,10 @@
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
   DIFF_COLORS, MTB_COLORS, MTB_GRADES, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
-  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT,
+  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT, OSM_DATA_MANIFEST,
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
+import { Reedbeds } from './osm-data.js';
 import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
 import { pointForecasts, sampleAt, skyKind } from './weather.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
@@ -267,7 +268,7 @@ map.on('webglcontextrestored', () => map.once('style.load', applyStyle));
 // comes after it, while any of them is still busy (an update to run, tiles on their way), for 500 ms at most; then it's
 // all drawn at once. What comes later is drawn as it comes, and nothing else waits: a route, a pick, loops, a layer you
 // switch or Try again (configureLayers and retryLit draw what's held first).
-const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights']);
+const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights', 'reedbeds']);
 const together = { loaders: [], armed: false, held: null, until: 0 };
 map.on('moveend', () => { together.armed = true; });
 function holdTogether(id) {
@@ -427,6 +428,7 @@ const details = new TrailDetails(map, {
 function restyleTrails() { if (state.trailDetails) map.setStyle(buildStyle(state, ctx), { diff: true }); } // only the trail filters change
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
+const reedbeds = new Reedbeds(map, OSM_DATA_MANIFEST, (fc) => setData('reedbeds', fc)); // OSM's reedbeds on the vector base maps (#1144)
 // (a tile that comes in may end "No data now" on the Lit ways tile)
 const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); }, onStatus: refreshLitStatus });
 const retryLit = () => { drawTogether(); litWays.retry(); }; // (Try again's answer is never held)
@@ -484,7 +486,7 @@ let mapTime = () => Date.now() / 1000;
 const safety = new SafetyLayers(map, { setData, time: () => mapTime() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
-together.loaders = [details, lipas, litWays, winterWays, uphill, nautical];
+together.loaders = [details, lipas, litWays, winterWays, uphill, nautical, reedbeds];
 
 flow = new RouteFlow(map, {
   enabled: () => state.routeFlow,

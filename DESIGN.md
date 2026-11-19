@@ -196,7 +196,9 @@ Cycling paths use surface-specific exponential zoom widths instead of physical-w
 
 Cycling restriction side marks focus on paths and forest tracks, including cycling paths, excluding ordinary motor-road classes and footways. They use red `#ff003c`, 2/3/6 px strokes at zoom 14/16/18 (3/6/9 px in high contrast), with short closely spaced dashes. Their left-side offset follows zoom and detailed trail width class, with a usual-width fallback for vector tiles. Tunnel marks fade to 30%; general/private-access marks remain separate. Missing permission is not a prohibition.
 
-Wetlands are Polku's own pattern from zoom 11 (`wetland()` in `js/icons.js`): 1 px dashes, 6 on and 2 off, every 4 px, alternate rows offset by half a dash, in the palette's `wetlandDash` on its `wetland` colour (Trail `#8fb0d3` on `#dce5e3`). One pattern for every wetland: the data has no kinds.
+Wetlands are Polku's own pattern from zoom 11 (`wetland()` in `js/icons.js`): 1 px dashes, 6 on and 2 off, every 4 px, alternate rows offset by half a dash, in the palette's `wetlandDash` on its `wetland` colour (Trail `#8fb0d3` on `#dce5e3`). The tiles' wetlands have no kinds, so one pattern covers bog, fen and marsh.
+
+Reedbeds are drawn over it from zoom 12 (`lc-reedbed`), from Polku's own OSM data: `reedbed()` in `js/icons.js`, tufts of three 1 px strokes (a 4.5 px stem and two splayed 4 px ones) on a 12 px tile, two tufts a row apart and offset by half a tile, in the palette's `reed` on its `wetland` colour (Trail `#5f8a5a`, Plain `#9bb796`, Night `#4f7a55`). The ground covers the dashes under it.
 
 Small waterways come from zoom 13 and read by size: streams 1.5/4/8 px at zoom 14/16/18, ditches and drains 0.7/1.6/3 px; rivers and canals 3/5.5/9 px. All use the palette's `waterLine`. Intermittent ones are dashed `[4, 3]` (a multiple of the line's width); culverts are not drawn. They're drawn under the water's fill, so a river's centre line doesn't show where it crosses a lake or strait.
 
