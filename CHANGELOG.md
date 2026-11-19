@@ -2,12 +2,14 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-11-19
+## 2026-11-20
 
 ### Every path and forest track from zoom 13 ([#1128](https://github.com/TommiContursi/Polku/issues/1128))
 
 - With **Trail details** on, as in MTB, hiking and trail running, every path and forest track now shows from zoom 13 where Polku has its own trail data, as in Finland. Before, most of them showed only from zoom 14, and what showed at zoom 13 depended on whether you had already zoomed in there. Forest tracks keep their dashes and difficulty colours.
 - **Zoom in to see every trail** now shows until zoom 14 wherever the map still leaves some paths and tracks out, and goes once the trail details cover the map.
+
+## 2026-11-19
 
 ### No-bike marks you can see at a glance ([#1137](https://github.com/TommiContursi/Polku/issues/1137))
 
