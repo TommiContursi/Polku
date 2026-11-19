@@ -17,8 +17,8 @@
   trail colour.
   "Slow network" holds every tile the map asks for for a second, as a phone on a poor connection; a tile that was
   loaded ahead (B) or kept on the device (C) comes at once.
-  Then two more, from trying it: the map jumps at once, and the new place fades in when it's all drawn, or each part
-  fades in as it comes.
+  Then two more, from trying it: the map flies there as now, and once it has landed the new place fades in when it's
+  all drawn, or each part fades in as it comes. Every search result goes to a place the map hasn't loaded.
   ?round=fill|jump  &way=now|coarse|ahead  &jump=fly|drawn|now|all|parts  &net=fast|slow  &f=390|desk  &motion=full|reduced
   PACKED: the Artifact copy has no network beyond its own files, so its tiles come from pack.json (a build script
   outside the repo turns this on).
@@ -46,7 +46,6 @@ h1 { margin: 0 0 4px; font-size: 22px; }
 #map { position: absolute; inset: 0; }
 /* the old view, over the map's canvas and under its controls; never in the way of a touch */
 .snap { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.cover { background: #f5f3ee; } /* the map's paper */
 .count { margin: 8px 0 0; font-size: 13px; font-variant-numeric: tabular-nums; }
 .what { max-width: 760px; margin: 6px 0 0; }
 .notes { margin-top: 24px; max-width: 760px; }
@@ -63,7 +62,7 @@ h1 { margin: 0 0 4px; font-size: 22px; }
     <button data-v="now">As now</button><button data-v="coarse">A: Coarse map underneath</button><button data-v="ahead">B: A, and the area around loaded ahead</button>
   </div></div>
   <div class="bar" data-round="jump"><span>Jump</span><div class="sw" data-k="jump">
-    <button data-v="fly">As now: flies there</button><button data-v="drawn">Crossfade once drawn</button><button data-v="now">Crossfade at once</button><button data-v="all">Jump, all fades in</button><button data-v="parts">Jump, each part fades in</button>
+    <button data-v="fly">As now: flies there</button><button data-v="drawn">Crossfade once drawn</button><button data-v="now">Crossfade at once</button><button data-v="all">Flies there, all fades in</button><button data-v="parts">Flies there, each part fades in</button>
   </div></div>
   <div class="bar"><span>Network</span><div class="sw" data-k="net">
     <button data-v="fast">As it is</button><button data-v="slow">Slow: a second a tile</button>
@@ -95,9 +94,10 @@ h1 { margin: 0 0 4px; font-size: 22px; }
     <li><b>Which jumps:</b> a search result, a place, and Show the whole route, and only when the new view shares nothing with the old one. When they overlap the camera moves there as now, so you see where it went. A drag, a pinch, the wheel and the keys never crossfade.</li>
     <li><b>Crossfade once drawn</b> holds a picture of the old view while the new place's map is drawn under it, at most 0.4 s, then fades it out in 0.18 s. On a fast network you see the new place finished; on a slow one, after 0.4 s, what the coarse map has until the place's own tiles come: Finland's overview has lakes, sea and main roads, so in a forest that's paper for a moment. Polku's own layers come after it in their one change, as after any move.</li>
     <li><b>Crossfade at once</b> fades the old view out in 0.18 s straight away, and the new place fills in under it as it comes.</li>
-    <li><b>Jump, all fades in</b> (from trying the crossfades): the old view goes at once, the new place waits under the map's paper colour until it's drawn with Polku's own layers, at most 2 s, and then fades in in 0.26 s, all of it together.</li>
-    <li><b>Jump, each part fades in:</b> the old view goes at once and the new place builds up as it comes, but each part that comes (the coarse map, the detail, Polku's own layers) fades in over 0.26 s rather than appearing.</li>
-    <li><b>From the keys</b> (Tab to a button, then Enter) nothing fades: once drawn and all fades in wait the same way, then show the new place at once; at once and each part just jump. DESIGN.md: nothing started from the keyboard moves.</li>
+    <li><b>Flies there, all fades in</b> (from trying the crossfades): the map flies there as now; where it lands it stays as it is, without parts coming in one by one, until the place is drawn with Polku's own layers, at most 2 s, and then the finished place fades in in 0.26 s, all of it together.</li>
+    <li><b>Flies there, each part fades in:</b> the map flies there as now, and after it lands each part that comes (the detail, Polku's own layers) fades in over 0.26 s rather than appearing.</li>
+    <li><b>Each search result</b> goes to a place the map hasn't loaded, as one usually does: what the page kept of the places before is forgotten first, all but Finland's overview.</li>
+    <li><b>From the keys</b> (Tab to a button, then Enter) nothing fades: once drawn still holds the old view, then shows the new one at once; at once just jumps; the two that fly fly as now, and their parts come in as they come. DESIGN.md: nothing started from the keyboard moves.</li>
     <li><b>Reduced motion</b> (the switch, or your device's setting): the flight becomes a jump, as MapLibre does today; the crossfade stays, as it's opacity only.</li>
     <li>A touch, a click, the wheel or a key on the map while the old view shows drops it at once. The new place's names finish MapLibre's own 0.3 s fade after the crossfade.</li>
     <li>Left out: Polku's controls, cards, markers and the route. The picture is of the map's canvas only, so markers and cards drawn in HTML aren't in it: to be checked in a build.</li>
@@ -126,8 +126,8 @@ const WHAT = {
   fly: 'As now: a search result flies there in 0.9 s, zooming out and back in. The new place fills in as it comes: the coarse map at once, the detail sharpening in, then Polku\'s own layers in one change.',
   drawn: 'Crossfade once drawn: the old view stays still while the new place\'s map is drawn under it, at most 0.4 s, then fades out in 0.18 s.',
   jumpnow: 'Crossfade at once: the old view fades out in 0.18 s straight away, and the new place fills in under it as it comes.',
-  all: 'Jump, all fades in: the old view goes at once; the new place waits under the map\'s paper colour until it\'s drawn, at most 2 s, then fades in in 0.26 s.',
-  parts: 'Jump, each part fades in: the old view goes at once, and each part of the new place fades in over 0.26 s as it comes.',
+  all: 'Flies there, all fades in: the map flies there as now; once it has landed, the finished place fades in all together when it\'s drawn, at most 2 s later, in 0.26 s.',
+  parts: 'Flies there, each part fades in: the map flies there as now, and once it has landed each part of the place fades in over 0.26 s as it comes.',
 };
 
 // Every tile goes through here: on a slow network it waits a second, unless B loaded it ahead or C keeps it.
@@ -248,22 +248,16 @@ function go(place, keys) {
   const cam = { center: place.at, zoom: Math.max(map.getZoom(), 14) };
   Object.assign(jumpState, { t0: performance.now(), name: place.name, moved: false, went: 0, base: 0, done: 0 });
   jumpTiles = 0;
-  if (S.jump === 'fly' || !far(cam.center, cam.zoom)) {
+  const isFar = far(cam.center, cam.zoom);
+  if (isFar) forget();
+  if (S.jump === 'fly' || S.jump === 'all' || S.jump === 'parts' || !isFar) {
+    // (listening first: with reduced motion the flight is a jump, and ends at once)
+    if (!keys && S.jump === 'all') map.once('moveend', holdLanding);
+    if (!keys && S.jump === 'parts') map.once('moveend', startParts);
     if (S.motion === 'reduced') map.jumpTo(cam); else map.flyTo({ ...cam, duration: 900 }); // (js/search.js)
     jumpState.moved = true;
     return;
   }
-  if (S.jump === 'all') { // the new place under the map's paper colour until it's drawn, Polku's own layers too
-    const el = document.createElement('div');
-    el.className = 'snap cover';
-    map.getCanvasContainer().append(el);
-    const mine = snap = { el, until: 'all', keys, ms: '--t-sheet' };
-    map.jumpTo(cam);
-    jumpState.moved = true;
-    setTimeout(() => fade(mine), 2000);
-    return;
-  }
-  if (S.jump === 'parts') { map.jumpTo(cam); jumpState.moved = true; if (!keys) startParts(); return; }
   // The picture of the old view is taken in a frame MapLibre draws, while its canvas still holds it (the map has no
   // preserveDrawingBuffer), and stays over the map until the new place's map is drawn under it, or for at most 0.4 s:
   // on a fast network that's 0.06–0.16 s, and at most it's 0.58 s with the fade, still sooner than the flight's 0.9 s.
@@ -276,6 +270,22 @@ function go(place, keys) {
     map.jumpTo(cam);
     jumpState.moved = true;
     if (mine.until) setTimeout(() => fade(mine), 400); else fade(mine);
+  });
+  map.triggerRepaint();
+}
+// A search result goes where the map hasn't been: what MapLibre kept of the places before, and which tiles have come
+// over this page's simulated network, are forgotten; Finland's overview stays, as it's kept on the device (C).
+function forget() { map.style.tileManagers.ofm._outOfViewCache.reset(); seen.clear(); }
+// Flies there, all fades in: where the map lands, a picture of it is held until the place is drawn with Polku's own
+// layers (at most 2 s), so nothing comes in on its own, and then fades out over the finished place.
+function holdLanding() {
+  map.once('render', () => {
+    const c = map.getCanvas(), el = document.createElement('canvas');
+    el.width = c.width; el.height = c.height; el.className = 'snap';
+    el.getContext('2d').drawImage(c, 0, 0);
+    map.getCanvasContainer().append(el);
+    const mine = snap = { el, until: 'all', keys: false, ms: '--t-sheet' };
+    if (jumpState.done) fade(mine); else setTimeout(() => fade(mine), 2000);
   });
   map.triggerRepaint();
 }
@@ -295,7 +305,7 @@ function checkDone() {
   if (snap?.until === 'all') fade(snap);
 }
 
-// Each part fades in: after a far jump, what MapLibre draws new (a tile, Polku's own layers) comes in over --t-sheet
+// Each part fades in: once the map has landed, what MapLibre draws new (a tile, Polku's own layers) comes in over --t-sheet
 // rather than at once. The screen as it was, before the part came, is laid over the map and faded out; to have it,
 // every frame drawn is copied, so this runs only until the place is drawn, at most 3 s.
 const parts = { on: false, copy: null, came: false, over: null, until: 0 };

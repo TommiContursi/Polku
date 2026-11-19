@@ -13,7 +13,7 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **C: built** ([#1108](https://github.com/TommiContursi/Polku/pull/1108), merged 2026-11-19). Beyond the plan: OpenFreeMap's glyph ranges are kept with the overview and the worker answers them cache first, as MapLibre draws a vector tile only once its names' glyphs have come (on Slow 4G the zoom-6 tile waited 1.9 s for two ranges).
 - **D: built** ([#1115](https://github.com/TommiContursi/Polku/pull/1115), merged 2026-11-19); how it differs from the plan and what it measured: [D, as built](#d-as-built).
 - **The crossfade on long jumps: a mock-up, 2026-11-19,** decided with /animate and measured, with one recommendation: [the crossfade on long jumps](#the-crossfade-on-long-jumps).
-- **Tried, 2026-11-19:** the crossfade read as a sudden change and then the place building up piece by piece (the copy opened on its slow network, where the hold gives up before the place is drawn), and the jump alone felt better. So two more versions, from that idea: the map jumps at once, and the new place fades in when it's all drawn, or each part fades in as it comes: [a jump that fades in](#a-jump-that-fades-in).
+- **Tried, 2026-11-19:** the crossfade read as a sudden change and then the place building up piece by piece (the copy opened on its slow network, where the hold gives up before the place is drawn), and today's flight, zooming out and back in, felt better. So two more versions, from that idea: the map flies there as now, and the place fades in after it lands, all together or each part as it comes: [the flight, then a fade](#the-flight-then-a-fade).
 - **Next:** the user's choice among the versions (or none); nothing is built until then.
 
 ## What people see
@@ -130,7 +130,7 @@ MapLibre fades labels in over 300 ms (`fadeDuration`) once their tile has come. 
 
 ### Not proposed
 
-- **A fade or a shimmer over parts not loaded yet.** Moving the map happens many times a minute and from the keyboard, so by DESIGN.md's "Motion" and the /animate rules it gets no motion; a shimmer would also loop on the map while you wait. A's coarse map gives the same "it's there" without anything moving. MapLibre can't fade vector tiles anyway, only raster ones.
+- **A fade or a shimmer over parts not loaded yet,** as you move the map yourself (after the camera's flight to a search result it's proposed: [the flight, then a fade](#the-flight-then-a-fade)). Moving the map happens many times a minute and from the keyboard, so by DESIGN.md's "Motion" and the /animate rules it gets no motion; a shimmer would also loop on the map while you wait. A's coarse map gives the same "it's there" without anything moving. MapLibre can't fade vector tiles anyway, only raster ones.
 - **MapLibre's other settings** (above): none fills a blank part sooner.
 - **Starting Polku's own layers before the map stops:** they wait on purpose, so a move doesn't send requests to free services for places only passed by.
 
@@ -239,50 +239,57 @@ Crossfade once drawn was recommended first. For a far jump started with a tap or
 
 Crossfade at once is the simpler of the two (no hold, about 10 lines fewer) and differs only in what you see under the fade. Leaving it as it is stays a fair choice now that A, C and D are in: the flight's 0.9 s and its filling in are what remains.
 
-### A jump that fades in
+### The flight, then a fade
 
-From trying the crossfades: the jump itself is right, and what reads as broken is the place building up after it, the base first, then the roads, then Polku's own layers, each appearing at once. Two versions answer that, both decided by /animate's rules above: the press moves the map at once, the new place enters on `opacity` in `--t-sheet` (260 ms, the size of what enters is a sheet's or more) on `--ease-out`, nothing fades from the keys, reduced motion keeps it as it's opacity only, and a touch on the map ends it.
+From trying the crossfades: the flight itself, zooming out and back in, is what feels right, and what reads as broken is the place building up after it lands, the base first, then the roads, then Polku's own layers, each appearing at once. So two versions keep today's flight and change only how the place comes in after it, both by /animate's rules above: `opacity` in `--t-sheet` (260 ms, as what enters is a sheet's size or more) on `--ease-out`, nothing fades from the keys (the flight is as today), reduced motion keeps the fades as they're opacity only (MapLibre turns the flight into a jump), and a touch on the map ends them. (A first build of these two jumped without flying; it was the wrong reading of the idea and was replaced.)
 
-- **Jump, all fades in:** the map jumps and the new place waits under the map's paper colour (dark on the night map) until it's drawn with Polku's own layers, at most 2 s, then fades in all together.
-- **Jump, each part fades in:** the map jumps and the new place builds up as it comes, but each part that comes (the coarse map, the detail, Polku's own layers) fades in rather than appearing: the screen as it was is laid over the map and faded out whenever MapLibre draws a part that has come. To have that picture it copies every frame it draws, so it runs only after a far jump, until the place is drawn, at most 3 s. MapLibre can't fade a vector tile in on its own.
+- **Flies there, all fades in:** where the map lands, a picture of it is held, so nothing comes in on its own, until the place is drawn with Polku's own layers, at most 2 s; then the finished place fades in all together.
+- **Flies there, each part fades in:** after the map lands, each part that comes (the detail, Polku's own layers) fades in rather than appearing: the screen as it was is laid over the map and faded out whenever MapLibre draws a part that has come. To have that picture it copies every frame it draws, so it runs only from the landing until the place is drawn, at most 3 s. MapLibre can't fade a vector tile in on its own.
 
-Measured as the crossfades were, on the mock-up at 84dc05b (five jumps, places never loaded):
+Every search result in the mock-up now goes to a place the map hasn't loaded, as one usually does: what the page kept of the places before is forgotten first, all but Finland's overview. Before, a place visited once came back finished, with nothing left to fade in.
 
-| Network, size | Version | The new place shows | The new place's map drawn | Polku's layers drawn |
+Measured as the crossfades were, on the mock-up at the commit that added them (five flights, places never loaded):
+
+| Network, size | Version | The map drawn after landing | The finished place shows | Polku's layers drawn |
 |---|---|---|---|---|
-| Fast, 390 × 844 | Jump, all fades in | 0.61–0.63 s | 0.04–0.09 s | 0.61–0.63 s |
-| Fast, 390 × 844 | Jump, each part fades in | at once | 0.04–0.10 s | 0.61–0.62 s |
-| Fast, 1440 × 900 | Jump, all fades in | 0.61–0.63 s | 0.05–0.12 s | 0.61–0.63 s |
-| Fast, 1440 × 900 | Jump, each part fades in | at once | 0.05–0.10 s | 0.61–0.63 s |
-| Slow 4G, 390 × 844 | Jump, all fades in | 0.76–1.69 s | 0.73–1.64 s | 0.76–1.69 s |
-| Slow 4G, 390 × 844 | Jump, each part fades in | at once | 0.73–1.63 s | 0.76–1.68 s |
-| Slow 4G, 1440 × 900 | Jump, all fades in | 0.77–1.96 s | 0.73–1.90 s | 0.77–1.96 s |
-| Slow 4G, 1440 × 900 | Jump, each part fades in | at once | 0.74–1.90 s | 0.77–1.94 s |
+| Fast, 390 × 844 | As now: flies there | 0.95–0.98 s | as it comes | 1.52–1.53 s |
+| Fast, 390 × 844 | Flies there, all fades in | 0.94–0.97 s | 1.52 s, all together | 1.52 s |
+| Fast, 390 × 844 | Flies there, each part fades in | 0.94–0.96 s | each part as it comes | 1.52–1.53 s |
+| Fast, 1440 × 900 | As now: flies there | 0.95–0.99 s | as it comes | 1.52–1.54 s |
+| Fast, 1440 × 900 | Flies there, all fades in | 0.95–0.98 s | 1.53–1.55 s, all together | 1.53–1.55 s |
+| Fast, 1440 × 900 | Flies there, each part fades in | 0.95–0.99 s | each part as it comes | 1.52–1.54 s |
+| Slow 4G, 390 × 844 | As now: flies there | 1.65–2.43 s | as it comes | 1.68–2.45 s |
+| Slow 4G, 390 × 844 | Flies there, all fades in | 1.64–2.44 s | 1.67–2.47 s, all together | 1.67–2.47 s |
+| Slow 4G, 390 × 844 | Flies there, each part fades in | 1.62–2.73 s | each part as it comes | 1.67–2.76 s |
+| Slow 4G, 1440 × 900 | As now: flies there | 1.64–2.82 s | as it comes | 1.68–2.87 s |
+| Slow 4G, 1440 × 900 | Flies there, all fades in | 1.64–2.81 s | 1.67–2.88 s, all together | 1.67–2.88 s |
+| Slow 4G, 1440 × 900 | Flies there, each part fades in | 1.64–2.83 s | each part as it comes | 1.67–2.86 s |
 
-- **All fades in shows paper for 0.6 s on a fast network,** though the map is drawn in a tenth of a second, as it waits for Polku's own layers (in Polku, 0.5–0.7 s after a jump: [D, as built](#d-as-built)). Waiting for the map alone would show it in 0.16–0.38 s in Polku, with Polku's layers coming after it in one change.
-- **Each part fades in answers at once:** on a fast network the map is in within a tenth of a second and Polku's layers fade in at 0.6 s; on a slow one the place comes as it does today, but nothing appears at once.
-- Checked: from the keys nothing fades; a touch on the map ends the cover or the fading part at once; with reduced motion both fade on `opacity` only; no errors.
+- **Neither changes when anything comes,** only how: the timings are today's flight's. Times are from the press; the flight takes 0.9 s.
+- **All fades in holds the landing still for about 0.55 s on a fast network,** though the map is drawn as it lands, as it waits for Polku's own layers (in Polku, 0.5–0.7 s after the camera stops: [D, as built](#d-as-built)). On Slow 4G the landing is mostly paper (Finland's overview in a forest), held until the place is drawn, then one fade.
+- **Each part fades in leaves the map live:** the detail and Polku's layers come when they come, each softened over 0.26 s.
+- Checked: from the keys the flight is as today and nothing fades; a touch on the map ends the hold or the fading part at once; with reduced motion both fade on `opacity` only and the flight is a jump; no errors; in the Artifact copy a place visited before asks for its tiles again.
 
-### Recommended: jump, each part fades in
+### Recommended: flies there, each part fades in
 
-For a far jump started with a tap or a click: the press moves the map at once, nothing flies, and nothing in the new place appears at once, on any network. On a fast network the place is there within a tenth of a second (0.16–0.38 s in Polku) and Polku's own layers fade in 0.9 s sooner than after a flight; a jump asks OpenFreeMap for a fifth to a tenth of a flight's tiles. What it costs people: you no longer see which way the new place lies. What it costs to build: about 50 lines, its callers and a smoke group, and a copy of every frame for up to 3 s after a far jump, whose cost on a phone is the first thing a build measures (frame times against today's flight). If that copy costs too much, all fades in is the cheaper one, waiting for the map alone.
+For a search result, Show the whole route and the other camera moves of #540: the flight stays, and nothing in the new place appears at once, on any network, while the map stays live. What it costs to build: about 40 lines, the callers that fly, a smoke group, and a copy of every frame for up to 3 s after a flight lands, whose cost on a phone is the first thing a build measures (frame times against today). If that costs too much, all fades in is the cheaper one: one picture, one fade.
 
-An idea for a next round, not built: the new place drawn out of focus while it builds (a CSS blur on the map's canvas), coming into focus in one step once it's drawn, as a photo does while it loads. It shows something at once even where the overview has nothing, and hides the squares' edges; a full-screen blur costs a phone's GPU while it lasts.
+An idea for a next round, not built: the place drawn out of focus while it builds after the landing (a CSS blur on the map's canvas), coming into focus in one step once it's drawn, as a photo does while it loads. It shows something even where the overview has nothing, and hides the squares' edges; a full-screen blur costs a phone's GPU while it lasts.
 
 ### Building it, if chosen
 
-One PR, for the version chosen (here as for each part fades in; the crossfades' steps differ only in step 1):
+One PR, for the version chosen (here as for each part fades in; the crossfades' steps differ in steps 1 and 2):
 
-1. `js/main.js`, beside the coarse map: `jumpFar(cam, { keys })`, which says whether the new view shares any of the old one (the map's size in Mercator units at each zoom, as the mock-up's `far()`), and if not jumps, and until the map is drawn and Polku's loaders aren't busy (D's `busy`), at most 3 s, fades in each part as the mock-up's `partsFrame()` does, on `--t-sheet` and `--ease-out` read from the CSS. A touch, a click, the wheel or a key on the map ends it; so does the next jump. About 50 lines.
-2. Its callers, each saying whether the keys started it: `js/search.js`'s `choose()` (a result tapped, by `pointerdown`, or chosen with Enter), `fitRoute()` from Show the whole route (the button's click, `e.detail === 0` from the keys, and the `F` key) and from opening the planner away from its route, and an imported track's frame (`js/main.js`). Never: a share link's route framed once it's routed, the first view, a round trip's loop (it overlaps anyway), or the map's room changing with the sheet.
-3. Smoke, in a new group `jump`: a far search result moves the map at once, and a part that comes after it fades in with an `opacity` animation; with reduced motion the same; from the keys no animation; a near one moves as now; a touch on the map ends it.
-4. DESIGN.md's "Motion" (the map's line: a long jump goes there at once and the new place fades in), DEVELOPING's map section, and CHANGELOG: "Going far, to a search result or the whole route, no longer flies there: the map goes there at once, and the new place fades in as it comes."
+1. `js/main.js`, beside the coarse map: `fadeInAfter(keys)`, called with a camera move, which from the move's `moveend` until the map is drawn and Polku's loaders aren't busy (D's `busy`), at most 3 s, fades in each part as the mock-up's `partsFrame()` does, on `--t-sheet` and `--ease-out` read from the CSS. A touch, a click, the wheel or a key on the map ends it; so does the next move. About 40 lines.
+2. Its callers, the camera moves that fly, each saying whether the keys started it: `js/search.js`'s `choose()` (a result tapped, by `pointerdown`, or chosen with Enter), `fitRoute()` from Show the whole route (the button's click, `e.detail === 0` from the keys, and the `F` key) and from opening the planner away from its route, and an imported track's frame (`js/main.js`). Never: a share link's route framed once it's routed, the first view, or the map's room changing with the sheet.
+3. Smoke, in a new group `jump`: after a search result's flight, a part that comes fades in with an `opacity` animation; with reduced motion the same; from the keys no animation; a touch on the map ends it.
+4. DESIGN.md's "Motion" (the map's line: after a camera move, what comes fades in), DEVELOPING's map section, and CHANGELOG: "After the map flies to a search result or the whole route, the place no longer comes in piece by piece: each part fades in as it comes."
 
 To check in the build:
 
-- A result's card opens when the camera stops, which with a jump is at once, before its place has faded in. Whether that reads well, or the card waits, is to be tried.
+- A result's card opens when the camera stops, as now, while its place is still fading in. Whether that reads well is to be tried.
 - HTML markers (the route's points, your position, a card's pin) aren't in the map's canvas: they appear at once, above the fading parts.
-- The copies take two canvases of the screen's size for up to 3 s: about 20 MB each at 1440 × 900 on a Retina screen, 12 MB on a phone.
+- The copies take two canvases of the screen's size for up to 3 s after a landing: about 20 MB each at 1440 × 900 on a Retina screen, 12 MB on a phone.
 - Safari and Firefox, and a real phone on a real mobile network; frame times during the fade against today's flight.
 
 ## How A was tried
