@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Cycling restrictions on roads and paths ([#1130](https://github.com/TommiContursi/Polku/issues/1130))
+
+- Red side marks show roads, forest tracks and cycling paths explicitly tagged as closed to bicycles, as well as trails. In cycling sports, the marks stay outside the way’s band, including wide roads and trails. Missing bicycle access information is not shown as a prohibition.
+
 ### Cycling paths and their surfaces ([#1123](https://github.com/TommiContursi/Polku/issues/1123))
 
 - Cycling paths stand out with wider blue strokes, comparable to trail bands. On the Trail map, stronger blue dashes sit on a white backing so they stay clear of terrain markings. They have long dashes for a known paved surface, short dashes for unpaved and intermediate dashes when the surface is unknown. The map key explains each pattern.

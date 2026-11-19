@@ -820,6 +820,57 @@ def cycleway_style(chrome):
     return not fails
 
 
+# #1130: the same explicit cycling restriction reaches every drawn kind of way.
+def cycling_restrictions(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': True})
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, passes=['ground','bridge','tunnel'];
+      const value=(id,prop,z,p)=>{
+        const v=m.style.getLayer(id)._transitionablePaint._values[prop].value;
+        return v.expression?v.expression.evaluate({zoom:z},{type:2,properties:p}):v.value;
+      };
+      for(const activity of ['mtb','gravel','road'])for(const highContrast of [false,true]) {
+        polku.set({activity,highContrast,trailDetails:true});
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        for(const pass of passes) {
+          const ways=['service','minor','tertiary','secondary','primary','trunk','motorway'].map(cls=>
+            [`road-${pass}-${cls}`,`road-${pass}-${cls}-casing`,{class:cls}]);
+          ways.push([`track-${pass}`,`track-${pass}-halo`,{class:'track'}],
+            [`cycleway-${pass}`,`cycleway-${pass}-casing`,{class:'path',subclass:'cycleway'}],
+            [`path-${pass}`,`path-${pass}-halo`,{class:'path',subclass:'path'}],
+            [`path-osm-${pass}`,`path-osm-${pass}-halo`,{class:'path',subclass:'path',trail:true}]);
+          for(const [way,band,props] of ways) {
+            const id=`${way}-nobike`, l=m.style.getLayer(id);
+            if(!l){errs.push(`${activity}: ${id} missing`);continue;}
+            const tags={...props,...(pass==='ground'?{}:{brunnel:pass})};
+            for(const bicycle of ['no','yes','designated','permissive','dismount',undefined]) {
+              const p={...tags,...(bicycle?{bicycle}:{})};
+              if(l._featureFilter.filter({zoom:16},{type:2,properties:p})!==(bicycle==='no'))errs.push(`${id}: bicycle=${bicycle??'unknown'} misclassified`);
+            }
+            for(const other of passes.filter(x=>x!==pass))if(l._featureFilter.filter({zoom:16},{type:2,properties:{...tags,brunnel:other,bicycle:'no'}}))errs.push(`${id}: wrong structure ${other}`);
+            for(const z of [14,16,18])for(const surface of ['paved','unpaved'])for(const wf of [.62,1,1.6]) {
+              const p={...tags,bicycle:'no',surface,wf};
+              const offset=value(id,'line-offset',z,p), width=value(id,'line-width',z,p), edge=value(band,'line-width',z,p)/2;
+              if(offset-width/2<edge-.001)errs.push(`${activity}/${highContrast}: ${id} hidden inside its band at z${z}`);
+              if(highContrast&&width<5)errs.push(`${id}: high contrast does not enlarge marks`);
+            }
+          }
+        }
+      }
+      for(const activity of ['hike','run','trailrun','paddle']) {
+        polku.set({activity});
+        if(m.getStyle().layers.some(l=>l.id.endsWith('-nobike')))errs.push(`${activity}: cycling prohibition shown in another sport`);
+      }
+      if(!document.querySelector('#layers-body').textContent.includes('No bikes (beside a road or path)'))errs.push('map key still limits no-bike marks to paths');
+      return [...new Set(errs)];
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} cycling restrictions on every way kind (#1130)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def trails(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/62.2289/25.7652')
@@ -23934,7 +23985,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

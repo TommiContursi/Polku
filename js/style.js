@@ -789,6 +789,15 @@ function addRoads(s, P, hc, layers, ctx) {
   const cyclingPath = ['any', ['==', ['get', 'subclass'], 'cycleway'], ['all',
     ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]],
     ['in', ['get', 'bicycle'], ['literal', ['yes', 'designated']]], ['!', ['has', 'mtb_scale']]]];
+  const noBike = ['==', ['get', 'bicycle'], 'no'];
+  const noBikeTicks = (id, source, filter, band) => add({
+    id, type: 'line', source, ...(source === 'trailWays' ? {} : { 'source-layer': 'transportation' }), minzoom: 14, filter,
+    paint: {
+      'line-color': '#dc2626', 'line-width': 4 * k, 'line-dasharray': [0.4, 1.6],
+      // Keep zoom at the top level, and each mark outside the way's actual band.
+      'line-offset': band.map((v, i) => i >= 4 && i % 2 === 0 ? ['+', ['*', 0.5, v], 2.5 * k] : v),
+    },
+  });
 
   for (const brunnel of ['tunnel', 'ground', 'bridge']) {
     const bf = brunnel === 'ground'
@@ -797,20 +806,22 @@ function addRoads(s, P, hc, layers, ctx) {
     const op = (brunnel === 'tunnel' ? 0.5 : 1) * roadsDim;
 
     // casings
+    const roadBands = {};
     for (const cls of ['service', 'minor', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']) {
       if (aerial && (cls === 'service')) continue;
       const casingColor = gravel ? ['case', unpaved, '#c4842d', roadCase] : roadCase;
+      const band = roadBands[cls] = trail && !gravel && cls === 'minor' ? ze(1.4, 11, 0.6, 14, 3.6, 18, 14.85)
+        : trail && !gravel && cls === 'service' ? ze(1.4, 13, 0.6, 15, 2.7, 18, 9.45)
+        : gravel && cls !== 'motorway' && cls !== 'trunk'
+        ? roadW(cls, ['case', unpaved, 2.5, 1.35])
+        : roadW(cls, 1.35);
       add({
         id: `road-${brunnel}-${cls}-casing`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: roadMin[cls],
         filter: ['all', ['==', ['get', 'class'], cls], bf],
         layout: { 'line-join': 'round', 'line-cap': brunnel === 'ground' ? 'round' : 'butt' },
         paint: {
           'line-color': aerial ? 'rgba(0,0,0,0.5)' : casingColor,
-          'line-width': trail && !gravel && cls === 'minor' ? ze(1.4, 11, 0.6, 14, 3.6, 18, 14.85)
-            : trail && !gravel && cls === 'service' ? ze(1.4, 13, 0.6, 15, 2.7, 18, 9.45)
-            : gravel && cls !== 'motorway' && cls !== 'trunk'
-            ? roadW(cls, ['case', unpaved, 2.5, 1.35])
-            : roadW(cls, 1.35),
+          'line-width': band,
           'line-opacity': zi(roadMin[cls], 0, roadMin[cls] + 0.5, mmlBase ? 0 : op),
           ...(brunnel === 'tunnel' ? { 'line-dasharray': [0.6, 0.4] } : {}),
         },
@@ -831,6 +842,8 @@ function addRoads(s, P, hc, layers, ctx) {
           'line-opacity': (mmlBase ? 0 : 1) * op,
         },
       });
+      if (bikeAct) noBikeTicks(`road-${brunnel}-${cls}-nobike`, 'ofm',
+        ['all', ['==', ['get', 'class'], cls], bf, noBike], roadBands[cls]);
     }
 
     // Tracks (forest roads, metsäautotie-ish): long dashes like the Finnish terrain map.
@@ -856,6 +869,8 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': zi(10, 0, 10.5, 0.8 * roadsDim, 14, roadsDim),
       },
     });
+    if (bikeAct) noBikeTicks(`track-${brunnel}-nobike`, 'ofm',
+      ['all', ['==', ['get', 'class'], 'track'], bf, noBike], zi(11, 2, 14, 4 * k, 16, 7 * k, 18, 12 * k));
 
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
     // With trail details on, the trails inside the loaded detail tiles are
@@ -863,7 +878,6 @@ function addRoads(s, P, hc, layers, ctx) {
     const trailSet = ['any', ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', ['path', 'bridleway', 'steps']]], ['all', ['==', ['get', 'subclass'], 'footway'], ['has', 'mtb_scale']]];
     const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], ['!', cyclingPath], bf,
       ...(covered ? [['!', ['all', trailSet, ['within', ctx.trailCoverage]]]] : [])];
-    const noBike = ['==', ['get', 'bicycle'], 'no'];
     const noFoot = ['==', ['get', 'foot'], 'no'];
     const sidewalkish = ['all', ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]], ['!', ['has', 'mtb_scale']]];
     const haloOf = (idx) => (diffOn ? mtbColor(idx, plainHalo) : footAct ? (darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)') : plainHalo);
@@ -891,12 +905,7 @@ function addRoads(s, P, hc, layers, ctx) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': haloOpacity },
     });
-    // Explicit no-bike marker: small red ticks beside the line.
-    const noBikeTicks = (id, source, filter) => add({
-      id, type: 'line', source, ...(source === 'ofmTrails' ? { 'source-layer': 'transportation' } : {}), minzoom: 14, filter,
-      paint: { 'line-color': '#dc2626', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, 3, 18, 8), 'line-dasharray': [0.4, 1.6] },
-    });
-    if (bikeAct) noBikeTicks(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike]);
+    if (bikeAct) noBikeTicks(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike], haloW(1));
     add({
       id: `path-${brunnel}`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: trailFilter,
@@ -923,7 +932,7 @@ function addRoads(s, P, hc, layers, ctx) {
           'line-opacity': ['*', haloOpacity, ['match', vis, 1, 0.9, 2, 0.75, 3, 0.55, 1]],
         },
       });
-      if (bikeAct) noBikeTicks(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBike]);
+      if (bikeAct) noBikeTicks(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBike], haloW(['get', 'wf']));
       add({
         id: `path-osm-${brunnel}`, type: 'line', source: 'trailWays', minzoom: 12,
         filter: osmFilter,
@@ -936,12 +945,14 @@ function addRoads(s, P, hc, layers, ctx) {
       });
     }
     // Cycling infrastructure: surface patterns use only the tiles' known coarse class.
+    const cycleWidth = zi(12, 1.4 * k, 14, 3 * k * (roadBike ? 1.5 : 1), 16, 5.5 * k * (roadBike ? 1.5 : 1), 18, 9 * k * (roadBike ? 1.4 : 1));
+    const cycleBand = zi(12, 2 * k, 14, 4 * k * (roadBike ? 1.5 : 1), 16, 7.5 * k * (roadBike ? 1.5 : 1), 18, 12 * k * (roadBike ? 1.4 : 1));
     if (trail) add({
       id: `cycleway-${brunnel}-casing`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', isPathClass, cyclingPath, bf],
       paint: {
         'line-color': '#ffffff',
-        'line-width': zi(12, 2 * k, 14, 4 * k * (roadBike ? 1.5 : 1), 16, 7.5 * k * (roadBike ? 1.5 : 1), 18, 12 * k * (roadBike ? 1.4 : 1)),
+        'line-width': cycleBand,
         'line-opacity': 0.95 * roadsDim,
       },
     });
@@ -952,10 +963,12 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-color': aerial ? '#bfe0ff' : trail ? (hc ? '#001bc7' : '#3148d8') : P.cycleway,
         'line-dasharray': ['match', ['get', 'surface'], 'paved', ['literal', [6, 1.5]], 'unpaved', ['literal', [1, 0.5]], ['literal', [2.5, 1.5]]],
         // road cycling: cycleways are where you ride, so they stand out
-        'line-width': zi(12, 1.4 * k, 14, 3 * k * (roadBike ? 1.5 : 1), 16, 5.5 * k * (roadBike ? 1.5 : 1), 18, 9 * k * (roadBike ? 1.4 : 1)),
+        'line-width': cycleWidth,
         'line-opacity': (trail ? 0.95 : 0.85) * roadsDim,
       },
     });
+    if (bikeAct) noBikeTicks(`cycleway-${brunnel}-nobike`, 'ofm',
+      ['all', isPathClass, cyclingPath, bf, noBike], trail ? cycleBand : cycleWidth);
   }
 
   // Ways marked private or closed for your sport (#104): purple dots beside the line, on the

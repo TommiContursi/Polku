@@ -194,6 +194,8 @@ The Trail map keeps its pale terrain fills, with stronger road edges and flat bu
 
 Cycling paths have prominent blue strokes, comparable to MTB trail bands (3 px at zoom 14, 5.5 px at 16 and 9 px at 18 before high-contrast or road-cycling emphasis), with surface dashes: long for known paved, short for known unpaved and intermediate for unknown. On the Trail map, the blue is `#3148d8` (`#001bc7` in high contrast), with a solid white casing underneath (4/7.5/12 px at zoom 14/16/18, scaled with high contrast and Road emphasis). Other basemaps retain their own cycling colors and have no added casing. Cycleways and explicitly bike-allowed footways/pedestrian streets use that style; MTB-graded footways keep their difficulty presentation. Other pedestrian ways use the footpath style, without implying a cycling prohibition. Signed cycling routes remain separate overlays.
 
+Explicit cycling prohibitions have red side marks on roads, tracks, cycling paths and trails in cycling sports from zoom 14. The marks are 4 px thick (scaled by 1.35 in high contrast), with 0.5 px between their inner edge and the way's outer band; detailed trails use their mapped width. Missing access information and dismount requirements do not receive a prohibition mark. Existing purple access marks keep their separate meaning.
+
 Downhill MTB difficulty has turquoise S0− (`--mtb-s0-minus`) for very easy paths and neon-green S0 (`--mtb-s0`); S1–S6 retain the indexed scale's colors. The map, cards, keys and route/profile use the same class and words. Uphill, hiking, speed and smoothness keep the original indexed palette, including its darker green S0.
 
 ### Primary
