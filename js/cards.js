@@ -10,7 +10,7 @@ import { notRight, isHttp, thingOf } from './inspect.js';
 import { elevation, retryFailed as retryTerrainTiles } from './dem.js';
 import { iconUrl } from './icons.js';
 import { darkWords } from './palette.js';
-import { ACTIVITIES, CRAFTS, LIPAS_TYPES, DIFF_COLORS, isLipasRoute } from './config.js';
+import { ACTIVITIES, CRAFTS, LIPAS_TYPES, DIFF_COLORS, MTB_COLORS, mtbClass, isLipasRoute } from './config.js';
 import { STYLES, styleName } from './styles.js';
 import { fmtDist, fmtDuration, compass, bearing, lineLength } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
@@ -628,10 +628,10 @@ const factGroup = (title, list) => {
 const SIGN_OF = { Cycling: { separate: 'separated', shared: 'shared', cycleway: 'bikepath', lane: 'lane', track: 'track', beside: 'track', walk: 'footway', no: 'nobikes' }, 'One way': { one: 'oneway', cars: 'bikesboth' } };
 function factParts(label, parts) {
   return parts.flatMap(([key, text], i) => {
-    const g = /^(MTB|Hiking|Uphill)$/.test(label) && /^↑?([ST])([0-6])/.exec(key), name = (SIGN_OF[label] || {})[key];
+    const g = /^(MTB|Hiking|Uphill)$/.test(label) && /^↑?([ST])([0-6](?:[-−])?)/.exec(key), name = (SIGN_OF[label] || {})[key];
     let mark = null, words = text;
     if (g) {
-      const c = DIFF_COLORS[+g[2] - (g[1] === 'T' ? 1 : 0)]; // (hiking's T1 is the scale's first colour)
+      const c = label === 'MTB' ? MTB_COLORS[mtbClass(g[2].replace('−', '-'))] : DIFF_COLORS[parseInt(g[2], 10) - (g[1] === 'T' ? 1 : 0)];
       mark = h('span', { class: `badge${darkWords(c) ? ' ink' : ''}`, style: `background:${c}` }, g[0]);
       words = text.slice(g[0].length).trimStart();
       if (!i) words = cap(words); // ("S2 difficult path": the badge, then "Difficult path")

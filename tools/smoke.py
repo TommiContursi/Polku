@@ -671,6 +671,57 @@ ROUTE_TRAILS = """(async () => {
 })()"""
 
 
+# #673: retaining the raw suffix must keep 0− distinct through display consumers, without changing uphill colors.
+def mtb_grades(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'trailColors': 'down', 'trailDetails': False})
+    fails = pg.js("""(async () => {
+      const F=await import('/js/facts.js'), C=await import('/js/chart.js'), H=await import('/js/hover.js'), errs=[];
+      const cases=[['0-','S0−','#00b8a0'],['0','S0','#64e600'],['0+','S0','#64e600'],['1','S1','#c7c100'],['6','S6','#4c1d95']];
+      for(const [raw,label,color] of cases){
+        const tags={'mtb:scale':raw,highway:'path'}, fact=F.mtbGrade(tags);
+        if(fact?.value!==label)errs.push(`${raw}: fact says ${fact?.value}, expected ${label}`);
+        const a={attr:[{tags}],down6:[parseInt(raw)],upCls:[-1]};
+        if(C.colorAt(a,0,'down')!==color||C.colorAt(a,0,'both')!==color)errs.push(`${raw}: route/profile color differs`);
+        const f={layer:{id:'path-ground'},properties:{class:'path',subclass:'path',mtb_scale:raw}};
+        const hint=H.describe(f,[f],{bike:true,terrain:false});
+        if(!hint?.bits.join(' ').includes(label))errs.push(`${raw}: hover omits ${label}`);
+        const paint=polku.map.style.getLayer('path-ground-halo').paint.get('line-color');
+        const c=paint.value.evaluate({zoom:16},{type:2,properties:{mtb_scale:raw}},{});
+        const hex='#'+[c.r,c.g,c.b].map(v=>Math.round(v*255).toString(16).padStart(2,'0')).join('');
+        if(hex!==color)errs.push(`${raw}: vector halo ${hex}, expected ${color}`);
+      }
+      for(const raw of [null,'','22','-1','2bad'])if(F.mtbGrade({'mtb:scale':raw}))errs.push(`invalid grade ${raw} was displayed as known`);
+      const raw=['0-','0-','0','1',null,'0+'];
+      const a={total:50,along:[0,10,20,30,40,50],attr:raw.map(v=>({tags:v==null?{}:{'mtb:scale':v}})),down6:[0,0,0,1,-1,0],upCls:[-1,-1,-1,-1,-1,-1],surf:raw.map(()=>'ground'),way:raw.map(()=>'path')};
+      for(const mode of ['down','both']){
+        const rows=C.breakdownRows(a,mode);
+        if(rows.length!==4||!rows[0][0].startsWith('S0−')||rows[0][1]!==10||rows[1][1]!==20||rows.reduce((n,r)=>n+r[1],0)!==50)errs.push(`${mode}: 0−/S0/unknown distances merged`);
+      }
+      if(!C.sampleRows({...a,grade:[0,0,0,0,0,0]},1).some(s=>s.includes('S0−')))errs.push('profile readout lost 0−');
+      if(C.colorAt({upCls:[0]},0,'uphill')!=='#22a447'||F.WAY_SCALES.hiking.items.T1[1]!=='#22a447')errs.push('uphill or hiking S0 palette changed');
+      const T=await import('/js/trails.js'), fx=await (await fetch('/tools/fixtures/trails-tykkikallio.json')).json();
+      for(const w of fx.w)w[1]['mtb:scale']='0-';
+      T.holdFetches();T.seedTile(4682,2273,fx);
+      polku.set({trailDetails:true});polku.map.jumpTo({center:[25.7652,62.2289],zoom:16});
+      let detail;
+      for(let n=0;n<80;n++){
+        detail=polku.map.getSource('trailWays')?.serialize().data.features.find(f=>f.properties.mtb_scale==='0-');
+        if(detail)break;await new Promise(r=>setTimeout(r,100));
+      }
+      if(!detail||detail.properties.mtb!=='0-')errs.push('loaded trail details lost the 0− class');
+      else {
+        const v=polku.map.style.getLayer('path-osm-ground-halo').paint.get('line-color').value.evaluate({zoom:16},{type:2,properties:detail.properties},{});
+        if(Math.round(v.g*255)!==184||Math.round(v.b*255)!==160)errs.push('loaded trail halo is not turquoise');
+      }
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MTB 0− and S0 display (#673)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def trails(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/62.2289/25.7652')
@@ -6334,8 +6385,9 @@ SUNLIGHT_APP = """(async (step) => {
     shadows: !!m.getLayer('sun-shadow'), objects: !!m.getLayer('obj-shadow'), light: polku.state.hillLight });
   const out = [], expect = (where, want) => { const got = read(); if (Object.keys(want).some((k) => JSON.stringify(got[k]) !== JSON.stringify(want[k]))) out.push(`${where}: ${JSON.stringify(got)}, not ${JSON.stringify(want)}`); };
   if (step === 'before') {
-    expect('the fixed light at first', { method: 'multidirectional', shadows: false, light: 'fixed' });
-    polku.set({ hillLight: 'sun' }); w.setHour(up); await wait(1500);
+    w.setHour(up); await wait(1500);
+    expect('the sun at first, with no shadows (#1119)', { method: 'combined', shadows: false, objects: false, light: 'sun' });
+    polku.set({ hillShadows: true, objectShadows: true }); await wait(1500);
     expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true, objects: true });
     // (once the hour before's are drawn, #945)
     const tiles = () => m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0], want = `t=${Math.round(timeAtHour(up) / 600) * 600}`;
@@ -6349,8 +6401,21 @@ SUNLIGHT_APP = """(async (step) => {
     polku.set({ objectShadows: true }); w.setHour(down); await wait(1500);
     expect(`the sun down, +${down} h`, { method: 'multidirectional', shadows: false, light: 'sun' });
     w.setHour(up); await wait(1500);
+    // a long way at the same hour, as a first visit's locate: the light follows the map's middle (#1120)
+    const ll0 = m.getCenter().toArray(); m.jumpTo({ center: [19.9, 60.1] }); await wait(1500);
+    expect('the sun over Åland, at the same hour', { method: 'combined', dir: Math.round(at(up).az) });
+    m.jumpTo({ center: ll0 }); await wait(1500);
+    // Aerial has no hillshade: an hour on, moving the map rebuilds no style and saves nothing (#1120)
+    polku.set({ base: 'aerial' }); w.setHour(up + 1); await wait(1500);
+    let saves = 0; const set0 = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) { if (k === 'polku:settings') saves++; return set0.call(this, k, v); };
+    for (const dx of [0.01, -0.01, 0.01]) { m.jumpTo({ center: [m.getCenter().lng + dx, m.getCenter().lat] }); await wait(400); }
+    Storage.prototype.setItem = set0;
+    if (saves) out.push(`on Aerial, three moves an hour on saved the settings ${saves} times (the style rebuilt)`);
+    polku.set({ base: 'trail' }); w.setHour(up); await wait(1500);
   } else {
     expect('after a reload, the sun kept', { light: 'sun' });
+    if (!polku.state.hillShadows || !polku.state.objectShadows) out.push('after a reload, the shadows switched off');
     polku.set({ hillLight: 'fixed' }); await wait(1000);
     expect('Fixed light', { method: 'multidirectional', shadows: false, light: 'fixed' });
   }
@@ -11580,8 +11645,9 @@ def pad3d(chrome):
             got = pg.js(PAD3D)
             if got['val'] != '1.6×' or got['ex'] != 1.6 or got['terrain'] != 1.6:
                 fails.append(f"→ on 3D height: it says {got['val']}, the setting {got['ex']}, the map's terrain {got['terrain']}, not 1.6")
-            pg.js("[...document.querySelectorAll('.menu-pop .seg button')].find((b) => b.textContent === 'The sun').click(), true")
-            time.sleep(0.6)
+            for light in ('Fixed light', 'The sun'):  # (the sun's on at first, #1119)
+                pg.js(f"[...document.querySelectorAll('.menu-pop .seg button')].find((b) => b.textContent === '{light}').click(), true")
+                time.sleep(0.6)
             got = pg.js(PAD3D)
             if not got['open'] or 'Hills’ shadows' not in got['text'] or 'buildings’ shadows' not in got['text'] or pg.js("polku.state.hillLight") != 'sun':
                 fails.append(f"The sun in the menu: {got['text'] or 'the menu closed'}")
@@ -11723,7 +11789,7 @@ def buildings_3d(chrome):
     print(f"{'ok  ' if not fails else 'FAIL'} the buildings in 3D: standing at their heights, under the route, none flat; their switch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
-# Hills in 3D (#642): while 3D is on the hillshade has one light from the north-west, fixed to the map; off, the flat
+# Hills in 3D (#642), with the fixed light: while 3D is on the hillshade has one light from the north-west, fixed to the map; off, the flat
 # map's light from four directions comes back. Both kept after a reload. 3D height starts at 1.5.
 HILLS_3D = """(() => { const m = polku.map, p = (k) => m.getPaintProperty('hillshade', k);
   return { on: polku.state.terrain3d, ex: m.getTerrain() ? m.getTerrain().exaggeration : null, method: p('hillshade-method'), dir: p('hillshade-illumination-direction'), anchor: p('hillshade-illumination-anchor') }; })()"""
@@ -11734,7 +11800,7 @@ def hills_3d(chrome):
     pg = chrome.page(1440, 900, False)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
-        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#13/61.8790/25.0650')
+        pg.open_app({'activity': 'mtb', 'hillLight': 'fixed'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#13/61.8790/25.0650')
 
         def expect(where, on):
             got = pg.js(HILLS_3D)
@@ -23688,7 +23754,7 @@ GROUPS = [
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
-    ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
+    ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),

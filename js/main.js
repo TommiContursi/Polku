@@ -2,7 +2,7 @@
 
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
-  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
   QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT,
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
@@ -57,9 +57,9 @@ const DEFAULTS = {
   fewerOffered: false, // Polku has offered Fewer effects on this device, once, as frames were slow
   flatOffered: false, // Polku has offered flat hills on this device, once, as frames were slow in 3D
   hillshade: true,
-  hillLight: 'fixed', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910)
-  hillShadows: true, // with the sun's light, the shadows the hills cast
-  objectShadows: true, // with the sun's light, the shadows trees and buildings cast (#919)
+  hillLight: 'sun', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910, the default since #1119)
+  hillShadows: false, // with the sun's light, the shadows the hills cast
+  objectShadows: false, // with the sun's light, the shadows trees and buildings cast (#919)
   contours: true,
   terrain3d: false, // the 3D button: tilted, with the hills raised while raiseHills is on
   raiseHills: true, // off: 3D only tilts the map, flat, as tilting it by hand does
@@ -707,16 +707,18 @@ const weather = new WeatherOverlay(map, {
 });
 mapTime = () => timeAtHour(weather.hour);
 // the sun at the map's hour (to ten minutes, so the shadows' tiles keep), from the map's middle, for style.js
-// shortcut: the light is worked out when the style is built, so after a long pan or ten minutes without a rebuild it's a little off
 const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
-let litFor = 0, shadeFor = 0;
+const sunNow = () => sunPosition(sunHour(), map.getCenter().toArray());
+const sunKey = (p) => (p.alt > 0.5 ? `${Math.round(p.az)} ${Math.round(p.alt)}` : 'down'); // (as style.js draws it)
+let litFor = 0, litSun = '', shadeFor = 0;
 // the shadows' tiles move on to the hour once the last hour's are all drawn: MapLibre keeps those on screen while the
 // next ones are worked out (setTiles() in applyStyle()), so a playing timeline steps them as fast as the device can
 const shadowsDrawn = () => SHADOWS.every((id) => !map.getSource(id) || map.isSourceLoaded(id));
 ctx.sunAt = () => {
-  litFor = sunHour();
+  const p = sunNow();
+  litFor = sunHour(); litSun = sunKey(p);
   if (shadowsDrawn()) shadeFor = litFor;
-  return { t: shadeFor, ...sunPosition(litFor, map.getCenter().toArray()) };
+  return { t: shadeFor, ...p };
 };
 // the sky in 3D (#644): the sun's place at the map's hour, and the weather at the map's middle only while a forecast is loaded
 const skyNow = () => {
@@ -725,8 +727,8 @@ const skyNow = () => {
 };
 let skyFor = '';
 ctx.skyAt = () => { const k = skyNow(); skyFor = JSON.stringify(k); return k; };
-// the hills' light or the sky built for another hour, place or forecast
-const lightStale = () => (state.hillshade && state.hillLight === 'sun' && (sunHour() !== litFor || (shadeFor !== litFor && shadowsDrawn())))
+// the hills' light (none on Aerial) or the sky built for another hour, place or forecast
+const lightStale = () => (state.hillshade && !isAerial(state.base) && state.hillLight === 'sun' && (sunHour() !== litFor || sunKey(sunNow()) !== litSun || (shadeFor !== litFor && shadowsDrawn())))
   || (state.terrain3d && JSON.stringify(skyNow()) !== skyFor);
 map.on('moveend', () => { if (lightStale()) applyStyle(); });
 map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)
@@ -1162,7 +1164,7 @@ const KEYS = {
   ],
   trails: () => [
     ...(state.trailColors === 'down' || state.trailColors === 'both'
-      ? [h('h3', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
+      ? [h('h3', {}, 'MTB difficulty (halo)'), ...MTB_GRADES.map((k) => keyItem(keyLine(`background:${MTB_COLORS[k]};height:8px`), MTB_SCALE_TEXT[k])), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
     ...(state.trailColors === 'up' || state.trailColors === 'both'
       ? [h('h3', {}, state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty'), ...UPHILL_TEXT.map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)), keyItem(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')] : []),
     ...(state.trailDetails ? [
@@ -1324,7 +1326,7 @@ function trailControls() {
     }),
     h('p', { class: 'note' }, {
       off: `Trails and roads drawn for ${act.label.toLowerCase()}: what matters for it stands out. Turn on difficulty or uphill colours here.`,
-      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0 green → S6 dark purple). White halo = not graded yet.',
+      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0− turquoise, S0 bright green → S6 dark purple). White halo = not graded yet.',
       up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
       both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
       winter: 'Trails by how soon they open after snow (OSM mtb:winter), ploughed and unploughed paths, no access in winter, ski tracks: Trailmap’s winter classes, from OpenStreetMap where mapped (zoom 11+). In winter they show by themselves (the Winter group).',
