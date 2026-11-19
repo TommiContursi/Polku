@@ -246,29 +246,17 @@ function ownAfterStop() {
   }, 350);
 }
 
-// The long jump. Far: the new view shares nothing with the one you're looking at (the build computes the same).
+// The long jump.
 const jumpState = { t0: 0, name: '', moved: false, went: 0, base: 0, done: 0 };
 let jumpTiles = 0, snap = null;
-function far(to, zoom) {
-  const half = (z) => { const k = 512 * 2 ** z; return [map.getCanvas().clientWidth / 2 / k, map.getCanvas().clientHeight / 2 / k]; };
-  const a = maplibregl.MercatorCoordinate.fromLngLat(map.getCenter()), b = maplibregl.MercatorCoordinate.fromLngLat(to);
-  const [aw, ah] = half(map.getZoom()), [bw, bh] = half(zoom);
-  return Math.abs(a.x - b.x) > aw + bw || Math.abs(a.y - b.y) > ah + bh;
-}
 const ms = (token) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(token)), EASE = 'cubic-bezier(0.23, 1, 0.32, 1)';
 // how the parts fade in after a flight (the Fade switch): even is MapLibre's own pace for names, a little longer;
 // by what comes, 0.2 s and up to 0.4 s as the share of the map that changes goes up to a quarter
 const partFade = (changed = 1) => (S.fade === 'quick' ? { duration: ms('--t-sheet'), easing: EASE }
   : { duration: S.fade === 'auto' ? Math.round(200 + 200 * Math.min(1, changed / 0.25)) : 400, easing: 'linear' });
-// How much of the map a part changes: the frame before and the frame with it, each shrunk to 48 × 30, cell by cell.
+// a frame shrunk to 48 × 30, to tell how much of the map a part changes
 const grid = Object.assign(document.createElement('canvas'), { width: 48, height: 30 }), gctx = grid.getContext('2d', { willReadFrequently: true });
 const cells = (src) => { gctx.drawImage(src, 0, 0, 48, 30); return gctx.getImageData(0, 0, 48, 30).data; };
-function changedShare(before, after) {
-  const a = cells(before), b = cells(after);
-  let n = 0;
-  for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) n++;
-  return n / (48 * 30);
-}
 function dropSnap() { if (snap) { snap.anim?.cancel(); snap.el.remove(); snap = null; } stopParts(true); }
 let fromGo = false, keysMoved = false; // (a move of go()'s own; the last move was the arrow keys')
 function go(place, keys) {
@@ -277,8 +265,14 @@ function go(place, keys) {
   const cam = { center: place.at, zoom: Math.max(map.getZoom(), 14) };
   Object.assign(jumpState, { t0: performance.now(), name: place.name, moved: false, went: 0, base: 0, done: 0 });
   jumpTiles = 0;
-  const isFar = far(cam.center, cam.zoom);
-  if (isFar) forget();
+  // Far: the new view shares nothing with the one you're looking at (each view's half-size in Mercator units)
+  const half = (z) => { const k = 512 * 2 ** z; return [map.getCanvas().clientWidth / 2 / k, map.getCanvas().clientHeight / 2 / k]; };
+  const a = maplibregl.MercatorCoordinate.fromLngLat(map.getCenter()), b = maplibregl.MercatorCoordinate.fromLngLat(cam.center);
+  const [aw, ah] = half(map.getZoom()), [bw, bh] = half(cam.zoom);
+  const isFar = Math.abs(a.x - b.x) > aw + bw || Math.abs(a.y - b.y) > ah + bh;
+  // A search result goes where the map hasn't been: what MapLibre kept of the places before, and which tiles have come
+  // over this page's simulated network, are forgotten; Finland's overview stays, as it's kept on the device (C).
+  if (isFar) { map.style.tileManagers.ofm._outOfViewCache.reset(); seen.clear(); }
   if (S.jump === 'fly' || S.jump === 'all' || S.jump === 'parts' || !isFar) {
     // (listening first: with reduced motion the flight is a jump, and ends at once)
     if (!keys && S.jump === 'all') map.once('moveend', holdLanding);
@@ -302,9 +296,6 @@ function go(place, keys) {
   });
   map.triggerRepaint();
 }
-// A search result goes where the map hasn't been: what MapLibre kept of the places before, and which tiles have come
-// over this page's simulated network, are forgotten; Finland's overview stays, as it's kept on the device (C).
-function forget() { map.style.tileManagers.ofm._outOfViewCache.reset(); seen.clear(); }
 // Flies there, all fades in: where the map lands, a picture of it is held until the place is drawn with Polku's own
 // layers (at most 2 s), so nothing comes in on its own, and then fades out over the finished place.
 function holdLanding() {
@@ -361,7 +352,14 @@ function partsFrame() {
     // (the screen as it was includes the part still fading in before this one)
     if (o) { g.globalAlpha = +getComputedStyle(o.el).opacity; g.drawImage(o.el, 0, 0); o.anim.cancel(); o.el.remove(); }
     map.getCanvasContainer().append(el);
-    const share = S.fade === 'auto' ? changedShare(parts.copy, c) : 1, timing = partFade(share);
+    let share = 1;
+    if (S.fade === 'auto') { // how much of the map it changes: the frame before and this one, cell by cell
+      const a = cells(parts.copy), b = cells(c);
+      let n = 0;
+      for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) n++;
+      share = n / (48 * 30);
+    }
+    const timing = partFade(share);
     if (S.fade === 'auto') document.getElementById('faded').textContent = `The last part changed ${Math.round(share * 100)} % of the map and faded in over ${(timing.duration / 1000).toFixed(2)} s.`;
     const mine = parts.over = { el, anim: el.animate([{ opacity: 1 }, { opacity: 0 }], { ...timing, fill: 'forwards' }) };
     mine.anim.finished.then(() => { if (parts.over === mine) parts.over = null; el.remove(); }, () => {});

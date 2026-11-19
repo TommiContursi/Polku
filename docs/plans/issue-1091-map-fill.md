@@ -295,7 +295,7 @@ An idea for a next round, not built: the place drawn out of focus while it build
 
 As decided on 2026-11-19: the flight stays; whenever the map stops, after it flies to a place or after you move it yourself, what comes in after the stop fades in, each part over 0.2–0.4 s by how much of the map it changes. One PR:
 
-1. `js/main.js`, beside the coarse map, as the mock-up's `partsFrame()`, `changedShare()` and `afterMove()`, about 60 lines:
+1. `js/main.js`, beside the coarse map, as the mock-up's `partsFrame()` and `afterMove()`, about 60 lines:
    - On `moveend`, unless the last input before the move was a key (anywhere: the map, the search box, a button; a document-level listener that notes whether the last `keydown` or `pointerdown`/`wheel` came last) or the map is still moving: from then on, each frame MapLibre draws is copied, and when a frame shows a part that has come (a `sourcedata` event with a tile, Polku's own layers' sources included), the frame before is laid over the map and faded out on `opacity`, `linear`, over 200 ms + 200 ms × (the share of 48 × 30 cells that changed ÷ 0.25), at most 400 ms.
    - It stops when the map is drawn and Polku's loaders aren't busy (D's `busy`), or after 3 s.
    - The picture goes the moment the map moves, and a touch, a click, the wheel or a key on the map ends a fade at once. The picture lies above the canvas and the HTML markers, under the map's controls and cards, and never takes a touch.
