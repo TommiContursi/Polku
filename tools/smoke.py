@@ -6644,7 +6644,13 @@ COARSE_AT = r"""
     return `${z}/${Math.floor((c.lng + 180) / 360 * n)}/${Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)}`; };
   const drawn = () => tm.getRenderableIds().map((k) => tm.getTileByID(k)).filter((t) => t.hasData()).map((t) => `${t.tileID.canonical.z}/${t.tileID.canonical.x}/${t.tileID.canonical.y}`);
   const wait = async (ok, ms) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
-  if (!await wait(() => drawn().includes(tileOf(9)), 15000)) f.push(`the zoom 9 tile under the view isn't kept: ${drawn().join(' ')}`);
+  // once the detail has come the coarse tile is gone from what the planner reads (a coarse lake has no islands)
+  if (!await wait(() => m.loaded() && m.areTilesLoaded(), 20000)) f.push('the map never finished loading');
+  await new Promise((r) => setTimeout(r, 500));
+  const water = m.querySourceFeatures('ofm', { sourceLayer: 'water' });
+  if (!water.length) f.push('no water in the view to check');
+  const coarse = [...new Set(water.filter((w) => w._z !== 13).map((w) => `${w._z}/${w._x}/${w._y}`))];
+  if (coarse.length) f.push(`round trips' water test reads coarse tiles under the loaded detail: ${coarse.join(' ')}`);
   return f;
 })()
 """
@@ -6666,8 +6672,9 @@ COARSE_MOVE = r"""
 
 
 def coarse(chrome):
-    """A coarse map underneath (#1091): the base map's tile four zoom levels up stays drawn under the view, and stands in
-    for a tile that hasn't come (OpenFreeMap's zoom 13 held back with the Fetch domain, so it never comes)."""
+    """A coarse map underneath (#1091): the base map's tile four zoom levels up stands in for a tile that hasn't come
+    (OpenFreeMap's zoom 13 held back with the Fetch domain, so it never comes), and once the detail has come it's gone
+    from what querySourceFeatures reads (Codex on #1097: a coarse lake's water over an island's land)."""
     fails = []
     for w, h_, phone in ((1440, 900, False), (390, 844, True)):
         pg = chrome.page(w, h_, phone)
