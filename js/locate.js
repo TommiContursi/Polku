@@ -310,7 +310,6 @@ export class Locate {
     const b = this.btn, label = LABELS[key] + (old ? ' (no newer position for a minute: the grey dot is where you were)' : '');
     b.dataset.state = st;
     b.setAttribute('aria-pressed', String(st === 'follow' || st === 'ahead'));
-    b.title = label;
     b.setAttribute('aria-label', label);
     b.innerHTML = (st === 'ahead' ? AHEAD : CROSSHAIR) + (st === 'free' ? '<span class="locate-label">Follow</span>' : '');
   }
