@@ -7121,19 +7121,34 @@ def fadein(chrome):
             key(pg, 'ArrowRight', 39)
             time.sleep(0.06)
 
+    def sessions(pg):
+        """The page's session and its workers': on the first page a Chrome opens, the map's workers' requests don't go
+        through the page's Fetch domain (as `coarse` found)."""
+        pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+        time.sleep(0.5)
+        return [pg.s] + [e['params']['sessionId'] for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Target.attachedToTarget']
+
     def held_move(pg, move):
         """Makes the move with the tiles held, and lets them go once the map has stopped; how many were held."""
-        pg.c.send('Fetch.enable', {'patterns': [{'urlPattern': '*openfreemap.org/planet/*/14/*'}]}, pg.s)
+        for s_ in pg.held_in:
+            try:
+                chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*openfreemap.org/planet/*/14/*'}]}, s_)
+            except RuntimeError:
+                pass  # (a worker that doesn't take Fetch)
         move(pg)
         pg.js(FADEIN_STILL, timeout=20000)
-        held = [e for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Fetch.requestPaused']
+        held = [e for e in chrome.events if e.get('sessionId') in pg.held_in and e.get('method') == 'Fetch.requestPaused']
         for e in held:
             chrome.events.remove(e)
             try:
-                chrome.send('Fetch.continueRequest', {'requestId': e['params']['requestId']}, pg.s)
+                chrome.send('Fetch.continueRequest', {'requestId': e['params']['requestId']}, e['sessionId'])
             except RuntimeError:
                 pass  # (one MapLibre has given up)
-        chrome.send('Fetch.disable', {}, pg.s)
+        for s_ in pg.held_in:
+            try:
+                chrome.send('Fetch.disable', {}, s_)
+            except RuntimeError:
+                pass
         return len(held)
 
     def after(pg, label, move, want):
@@ -7159,6 +7174,7 @@ def fadein(chrome):
     try:
         pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
         pg.js(FADEIN_WATCH)
+        pg.held_in = sessions(pg)
         after(pg, 'a drag with the mouse', drag, True)
         after(pg, 'a search result chosen with Enter', by_enter, False)
         after(pg, 'a search result chosen with the mouse', by_click('62.2200, 25.6700'), True)
@@ -7171,6 +7187,7 @@ def fadein(chrome):
     try:
         pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
         pg.js(FADEIN_WATCH)
+        pg.held_in = sessions(pg)
 
         def swipes(pg):  # two, up the screen: the map moves further than a tile's height
             for _ in range(2):
@@ -7201,6 +7218,7 @@ def fadein(chrome):
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
         pg.js(FADEIN_WATCH)
+        pg.held_in = sessions(pg)
         after(pg, 'with motion, a search result’s flight', by_click('62.2700, 25.6400'), True)
         for i in range(8):
             mouse(pg, 'mousePressed', 970, 450)
