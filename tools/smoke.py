@@ -9587,6 +9587,100 @@ def tile_fails(chrome):
     return not fails
 
 
+
+# polku.map.__loads counts MapLibre's load events (as DEPTHS_FAIL_LAST does)
+COUNT_LOADS = """document.addEventListener('DOMContentLoaded', () => {
+  if (!window.maplibregl) return;  // (open_app's first page)
+  const fire = maplibregl.Map.prototype.fire;
+  maplibregl.Map.prototype.fire = function (e) { if ((e && e.type || e) === 'load') this.__loads = (this.__loads || 0) + 1; return fire.apply(this, arguments); };
+});"""
+
+
+def tile_hangs(chrome):
+    """#419: Paddle with a saved route and the planner left open, Traficom's depth tiles held with the Fetch domain, so
+    they never answer and MapLibre's load event never comes. Polku opens anyway: the route and the planner are back and
+    the snow is looked up; a share link's route opens in the route's view; a spot's link opens its card. A point added
+    while they're held stays once they come, with one load event."""
+    fails = []
+    held = "new Promise((ok) => { const t0 = Date.now(), go = () => (window.polku && (WANT)) || Date.now() - t0 > 20000 ? setTimeout(() => ok(!!(window.polku && (WANT))), 300) : setTimeout(go, 100); go(); })"
+    looks = """({ loaded: !!polku.map._loaded, loads: polku.map.__loads || 0, points: polku.planner.points.length, active: !!polku.planner.active,
+      view: !!(polku.planner.active && polku.planner.inView()), shared: /[?&](r|pin)=/.test(location.search),
+      card: polku.planner.cards.current ? polku.planner.cards.current.kind : null,
+      saved: ((JSON.parse(localStorage.getItem('polku:route') || 'null') || {}).points || []).length })"""
+
+    def hold(pg):
+        pg.c.send('Fetch.enable', {'patterns': [{'urlPattern': '*traficom.fi*GetMap*'}]}, pg.s)
+
+    def release(pg):
+        for e in [e for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Fetch.requestPaused']:
+            chrome.events.remove(e)
+            try:
+                chrome.send('Fetch.continueRequest', {'requestId': e['params']['requestId']}, pg.s)
+            except RuntimeError:
+                pass  # (a request the page has given up)
+        chrome.send('Fetch.disable', {}, pg.s)
+
+    def paused(pg):
+        pg.js('true')  # (its answer brings in the events Chrome has sent so far)
+        return sum(1 for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Fetch.requestPaused')
+
+    def asked(pg, host):
+        return any(e.get('sessionId') == pg.s and e.get('method') == 'Network.requestWillBeSent' and host in e['params']['request']['url'] for e in chrome.events)
+
+    for w, h_, phone in ((390, 844, True), (1440, 900, False)):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'paddle'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#14.2/61.5155/23.8220')
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        pg.js("polku.planner.setEditing(false); true")
+        share = pg.js("polku.planner.shareUrl()")
+        pg.js("localStorage.setItem('polku:plannerOpen', JSON.stringify({ open: true })); true")
+        pg.close()
+        # a fresh page each time: the real depth tiles (no EMPTY_DEPTHS), held
+        for case in ('saved', 'share', 'pin'):
+            name = f'{w}x{h_}, the depth tiles never answering: ' + {'saved': 'the saved route, the planner left open', 'share': 'a share link', 'pin': 'a spot’s link'}[case]
+            pg = chrome.page(w, h_, phone)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COUNT_LOADS}, pg.s)
+            hold(pg)
+            if case == 'share':
+                pg.goto(BASE + 'sw.js')
+                pg.js("localStorage.removeItem('polku:route'); true")  # so the route comes from the link
+                pg.goto(share)
+            elif case == 'pin':
+                pg.goto(BASE + 'sw.js')
+                pg.js("localStorage.removeItem('polku:route'); localStorage.removeItem('polku:plannerOpen'); true")
+                pg.goto(BASE + '?pin=61.5155,23.8220&pn=Test#14.2/61.5155/23.8220')
+            else:
+                pg.goto(BASE + '#14.2/61.5155/23.8220')
+            want = {'saved': f'polku.planner.points.length === {len(TB_PTS)} && polku.planner.active', 'share': f'polku.planner.points.length === {len(TB_PTS)}',
+                    'pin': 'polku.planner.cards.current'}[case]
+            pg.js(held.replace('WANT', want), timeout=30000)
+            s = pg.js(looks)
+            if not paused(pg) or s['loaded']:
+                fails.append(f"{name}: {paused(pg)} depth tiles held, the map {'loaded' if s['loaded'] else 'not loaded'} (the check proves nothing)")
+            elif case == 'saved' and (s['points'] != len(TB_PTS) or not s['active'] or not asked(pg, 'opendata.fmi.fi/wfs')):
+                fails.append(f"{name}: {s['points']} points, the planner {'open' if s['active'] else 'closed'}, FMI's snow {'' if asked(pg, 'opendata.fmi.fi/wfs') else 'not '}asked for")
+            elif case == 'share' and (s['points'] != len(TB_PTS) or not s['view'] or s['shared']):
+                fails.append(f"{name}: {s['points']} points, the route's view {'open' if s['view'] else 'not open'}{', the link still in the address' if s['shared'] else ''}")
+            elif case == 'pin' and (not s['card'] or s['shared']):
+                fails.append(f"{name}: the card {s['card']}{', the link still in the address' if s['shared'] else ''}")
+            elif case == 'saved':
+                # a point added before the tiles come stays once they do, and the load step doesn't run again
+                pg.js("polku.planner.setEditing(true); polku.planner.addPoint([23.85, 61.525]); true")
+                time.sleep(1)
+                release(pg)
+                pg.map_loaded()
+                pg.js(LOAD_STEP)
+                time.sleep(1)
+                s = pg.js(looks)
+                if s['loads'] != 1 or s['points'] != len(TB_PTS) + 1 or s['saved'] != len(TB_PTS) + 1:
+                    fails.append(f"{name}: once the tiles came, {s['loads']} load events, {s['points']} points, {s['saved']} saved (not 1, {len(TB_PTS) + 1} and {len(TB_PTS) + 1})")
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's tiles never answering: Polku still opens the saved route, a share link and a spot's link (#419)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def start_fails(chrome):
     """#1088: Polku's files stop it from starting, a file that doesn't arrive (the worker bypassed, as on a first visit)
     or the worker's older saved copy beside new files (#481): it tries once more by itself, no more, then says so with
@@ -23181,7 +23275,7 @@ GROUPS = [
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240), Settings a drawer swiped and tapped away (#634); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('resize', [resize_window], 'desktops (#1002): the window made smaller by its edge, down to 721 px, and larger again, by mouse: the planner\'s toolbar on one row and the timeline in its room beside the side panel, the panel dragged wide giving way, a card from the list beside the panel and then where cards go with the panel at the bottom (a narrow window, Move to the bottom), the credits folded where they\'d run under the map\'s buttons, a timeline you\'ve dragged clear of them, and the layout as it was when the window is large again'),
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
-    ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
+    ('tilefail', [tile_fails, tile_hangs], 'Paddle with the depth tiles failing last (a server error, a dropped connection) or never answering: the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399); a spot\'s link opens its card, a point added meanwhile stays (#419)'),
     ('startfail', [start_fails], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit) or the worker\'s older saved copy beside new files (#481): one try more by itself, then a message whose Reload opens it (#1088)'),
     ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
