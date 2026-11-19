@@ -670,6 +670,23 @@ ROUTE_TRAILS = """(async () => {
   return errs;
 })()"""
 
+# A route along a path with a track beside it (#1128): the trail data holds every track, and each sample takes the
+# details of the way the router says it's on, the path 3 m off, not the track 1 m off.
+ALONG_TRACK = """(async () => {
+  const T = await import(location.origin + '/js/trails.js'), G = await import(location.origin + '/js/geo.js');
+  const lat = 62.3, m = 1 / 111195, line = (dy) => [25.8, lat + dy * m, 25.804, lat + dy * m], pts = [];
+  for (let k = 0; k <= 20; k++) pts.push([25.8 + k * 0.0002, lat]);
+  T.holdFetches();
+  for (const [x, y] of T.tilesIn([25.799, lat - 0.001, 25.805, lat + 0.001]))
+    T.seedTile(x, y, { v: 1, w: [[1, { highway: 'path', width: '0.4' }, line(3)], [2, { highway: 'track' }, line(1)]], n: [] });
+  const n = pts.length, by = () => new Uint8Array(n);
+  const a = { pts, along: pts.map((p) => G.dist(pts[0], p)), attr: pts.map(() => ({ tags: { highway: 'path' } })),
+    td: { trail: by(), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: by(), mud: by(), tree: by(), ford: by(), boardwalk: by(), points: [] } };
+  if (!await T.detailsAlong(a)) return ['no trail details along the route'];
+  const narrow = [...a.td.width].filter((w) => w === 0).length;
+  return narrow === n ? [] : [`${narrow} of ${n} samples have the path's width (0.4 m): the others matched the track beside it`];
+})()"""
+
 
 # #673: retaining the raw suffix must keep 0− distinct through display consumers, without changing uphill colors.
 def mtb_grades(chrome):
@@ -729,6 +746,7 @@ def trails(chrome):
     pg.js("polku.map.jumpTo({ center: [25.7652, 62.2289], zoom: 16 }); true")
     fails = pg.js(TRAILS)
     fails += [f'route: {e}' for e in pg.js(ROUTE_TRAILS)]
+    fails += [f'route beside a track: {e}' for e in pg.js(ALONG_TRACK)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     fails += trail_card(chrome)

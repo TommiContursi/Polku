@@ -28,16 +28,17 @@ const NODE_KEEP = ['barrier', 'obstacle', 'ford', 'access', 'bicycle', 'foot', '
 const BARRIER_NODES = 'gate|lift_gate|swing_gate|sliding_gate|wicket_gate|hampshire_gate|bump_gate|chain|rope|bar|block|stile|kissing_gate|turnstile'
   + '|horse_stile|full-height_turnstile|cycle_barrier|motorcycle_barrier|log|fallen_tree|windfall|debris';
 
-// Every trail (so the map can draw them all from OSM), the tracks, footways and
-// cycleways that have something worth showing, fences, walls and hedges, and
-// the gates, stiles, fallen trees and fords anywhere in the tile (a gate is as
-// often on a service road or in a fence as on a trail).
+// Every trail and track (so the map can draw them all from OSM, #1128), the
+// footways and cycleways that have something worth showing, fences, walls and
+// hedges, and the gates, stiles, fallen trees and fords anywhere in the tile (a
+// gate is as often on a service road or in a fence as on a trail). The hosted
+// trails data (`products()` in tools/osm_data/builder.py) keeps the same set.
 export function tileQuery(x, y) {
   const [w, s, e, n] = tileBounds(x, y, TILE_Z);
   const bb = `${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)}`;
   return `[out:json][timeout:25];way[highway~"^(path|bridleway|steps|footway|track|cycleway)$"](${bb})->.all;`
-    + '(way.all[highway~"^(path|bridleway|steps)$"];way.all[highway=footway]["mtb:scale"];'
-    + 'way.all[~"^(obstacle|ford|mtb:scale:uphill)$"~"."];way.all[surface=mud];way.all[highway=track][trail_visibility];'
+    + '(way.all[highway~"^(path|bridleway|steps|track)$"];way.all[highway=footway]["mtb:scale"];'
+    + 'way.all[~"^(obstacle|ford|mtb:scale:uphill)$"~"."];way.all[surface=mud];'
     + `way[barrier~"^(fence|wall|hedge|city_wall)$"](${bb}););out tags geom qt;`
     + `(node[barrier~"^(${BARRIER_NODES})$"](${bb});node[obstacle](${bb});node[ford][ford!=no](${bb}););out qt;`;
 }
@@ -83,7 +84,7 @@ export function trailTile(x, y) {
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
   entry.promise = hostedTile(OSM_DATA_MANIFEST, 'trails', TILE_Z, [x, y],
-    () => cachedOverpass(`trails2/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }), { slim: slimTile })
+    () => cachedOverpass(`trails3/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }), { slim: slimTile })
     .then((data) => { entry.data = data; arrived(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
   tiles.set(key, entry);
@@ -374,19 +375,19 @@ export async function detailsAlong(a, { maxTiles = 40 } = {}) {
     if (at.mode === 'water' || at.mode === 'line') continue;
     const dir = bearing(pts[Math.max(0, i - 1)], pts[Math.min(n - 1, i + 1)]);
     const cx = Math.floor(pts[i][0] / CELL), cy = Math.floor(pts[i][1] / CELL);
+    // the router's way type wins: a road beside a muddy footway stays a dry road, and a path
+    // beside a track takes the path's details, however close the track is (#1128)
+    const hw = at.tags && at.tags.highway;
     let best = null, bd = 5;
     for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
       for (const seg of grid.get(`${cx + dx},${cy + dy}`) || []) {
-        if (skew(dir, seg.ang) > 35) continue;
+        if (skew(dir, seg.ang) > 35 || (hw && hw !== seg.t.highway)) continue;
         const d = pointSegment(pts[i], seg.p0, seg.p1).d;
         if (d < bd) { bd = d; best = seg; }
       }
     }
     if (!best) continue;
     const t = best.t;
-    // the router's way type wins: a road beside a muddy footway stays a dry road
-    const hw = at.tags && at.tags.highway;
-    if (hw && hw !== t.highway) continue;
     if (['path', 'bridleway', 'footway', 'steps'].includes(t.highway)) {
       td.trail[i] = 1;
       if (td.width[i] < 0) td.width[i] = t.width != null ? widthClass(t) : -1;
