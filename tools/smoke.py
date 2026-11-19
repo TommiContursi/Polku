@@ -7268,7 +7268,7 @@ def fadein(chrome):
           for (let i = 0; i < 6; i++) { const [lo, la] = tm35ToLonLat(x, y); x += (c.lng - lo) * 111320 * k; y += (c.lat - la) * 111000; }
           window.__routeAt = (i) => tm35ToLonLat(x + i * 250, y); // (a point on the route: east-west in EPSG:3067 isn't on the map)
           (await import(location.origin + '/js/lipas.js')).seedLipas(() => Promise.resolve({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 1 },
-            geometry: { type: 'LineString', coordinates: [[x - 20000, y], [x + 20000, y]] } }] }));
+            geometry: { type: 'LineString', coordinates: [...Array(161).keys()].map((i) => [x - 20000 + i * 250, y]) } }] }));
           polku.lipas.tiles.clear();
           return true; })()""")
         held_move(pg, drag)
