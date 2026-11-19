@@ -192,6 +192,8 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 
 The Trail map keeps its pale terrain fills, with stronger road edges and flat building outlines so streets, trails and buildings can be read together. Minor and service roads widen modestly at intermediate zooms; cycling sports retain the warm unpaved-road emphasis. Other basemaps and 3D building colours keep their own appearance.
 
+Cycling paths use surface-specific exponential zoom widths instead of physical-width tags. On the Trail map, normal paved strokes are about 3.52/6 px at zoom 16/18, unpaved about 4.57/6 px; high contrast uses 4/10 px and 5/10 px respectively. Road cycling does not inflate those strokes. The solid white ground casing has its own 6/12 px curve (7/16 px in high contrast), fading in from zoom 13 to 14. Bridges have separate deck/stroke widths; tunnels are narrower and faded, with long dashes and no added white casing. Blue is `#3148d8`, darkened to `#001bc7` in high contrast except in tunnels. Surface dashes are long for paved, short for unpaved and intermediate for unknown; tunnels use the long pattern. Explicitly bike-allowed footways/pedestrian streets use the cycling style; MTB-graded footways retain difficulty. Other pedestrian ways do not imply a prohibition. Signed routes stay separate. Other basemap appearances retain their existing rules.
+
 Downhill MTB difficulty has turquoise S0− (`--mtb-s0-minus`) for very easy paths and neon-green S0 (`--mtb-s0`); S1–S6 retain the indexed scale's colors. The map, cards, keys and route/profile use the same class and words. Uphill, hiking, speed and smoothness keep the original indexed palette, including its darker green S0.
 
 ### Primary
