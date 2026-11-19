@@ -176,11 +176,11 @@ Measured on a fast network at 1440 × 900, in Chrome with its GPU, one cold run 
 
 | After the stop | Today | With D |
 |---|---|---|
-| A short move at zoom 13 (MTB, paddle) | 1 change, at 0.3 s | the same |
+| A short move at zoom 13 (MTB, paddle) | 1 change, at 0.3 s | not measured; held at most until the other loaders' updates have run (their timers are 300–350 ms) |
 | A move at zoom 14.5 or a jump, MTB | 3–6 changes over 0.25–0.4 s, the last at 0.6–0.7 s | 2–3 changes over 16–57 ms, the last at 0.5–0.7 s; once 5 over 0.23 s, with 726 routes and 647 trails to lay out |
 | A jump, paddle | 6 changes over 0.3–0.4 s, the last at 0.7 s | 4–5 changes over 61–80 ms, the last at 0.7 s |
 
-"Changes" are frames in which one of Polku's sources changed; MapLibre lays each source out on its own, so a burst still spans a few frames. The layers are complete at about the same time as today; what goes is the sequence before it. Not measured with D: a slow network, and a phone.
+"Changes" are frames in which one of Polku's sources changed; MapLibre lays each source out on its own, so a burst still spans a few frames. The layers are complete at about the same time as today; what goes is the sequence before it. Not measured with D: a slow network, and a phone. Seen after a jump in Chrome with its GPU at 1440 × 900 and 390 × 844, in MTB and paddle: every layer drawn, nothing held or busy, no errors.
 
 ## The crossfade on long jumps: a mock-up first
 
