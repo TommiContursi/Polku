@@ -335,19 +335,17 @@ map.on('render', () => {
     const px = grid.getImageData(0, 0, 48, 60).data, half = 48 * 30 * 4;
     let n = 0;
     for (let i = 0; i < half; i += 4) if (Math.abs(px[i] - px[half + i]) + Math.abs(px[i + 1] - px[half + i + 1]) + Math.abs(px[i + 2] - px[half + i + 2]) > 24) n++;
-    if (n) {
-      // the frame before is the picture, with the part before this one as far as it has faded in
-      // (and fading out no sooner than that part would have)
-      const pic = f.copy, o = f.over, g = pic.getContext('2d'), was = o?.getAnimations()[0], left = was ? was.effect.getTiming().duration - was.currentTime : 0;
-      if (o) { g.globalAlpha = +getComputedStyle(o).opacity; g.drawImage(o, 0, 0); g.globalAlpha = 1; o.getAnimations().forEach((x) => x.cancel()); o.remove(); }
-      f.copy = o || f.spare || document.createElement('canvas');
-      f.spare = null;
-      f.over = pic;
-      pic.className = 'map-fade';
-      c.after(pic);
-      pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(Math.max(left, 200 + 200 * Math.min(1, n / (48 * 30) / 0.25))), easing: 'linear', fill: 'forwards' })
-        .finished.then(() => { if (f.over === pic) { pic.remove(); f.over = null; f.spare = pic; restFade(); } }, () => {});
-    }
+    // the frame before is the picture, with the part before this one as far as it has faded in (and fading out no sooner
+    // than that part would have); a part too thin to change a cell, a path, still fades, over 0.2 s
+    const pic = f.copy, o = f.over, g = pic.getContext('2d'), was = o?.getAnimations()[0], left = was ? was.effect.getTiming().duration - was.currentTime : 0;
+    if (o) { g.globalAlpha = +getComputedStyle(o).opacity; g.drawImage(o, 0, 0); g.globalAlpha = 1; o.getAnimations().forEach((x) => x.cancel()); o.remove(); }
+    f.copy = o || f.spare || document.createElement('canvas');
+    f.spare = null;
+    f.over = pic;
+    pic.className = 'map-fade';
+    c.after(pic);
+    pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(Math.max(left, 200 + 200 * Math.min(1, n / (48 * 30) / 0.25))), easing: 'linear', fill: 'forwards' })
+      .finished.then(() => { if (f.over === pic) { pic.remove(); f.over = null; f.spare = pic; restFade(); } }, () => {});
   }
   f.copy ||= document.createElement('canvas');
   if (f.copy.width !== c.width || f.copy.height !== c.height) Object.assign(f.copy, { width: c.width, height: c.height });
