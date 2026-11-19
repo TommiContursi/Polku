@@ -3423,13 +3423,16 @@ export class Planner {
     this.points.forEach((p, i) => {
       const last = i === n - 1, name = this.nameOf(i), lab = this.label(i), ch = many && this.changeAt(i);
       const sport = !many ? '' : i === 0 ? sp(this.legSport(0)) : ch ? `${sp(ch.from)} → ${sp(ch.to)}${ch.min ? ` · ${ch.min} min` : ''}` : '';
-      const btn = (ic, label, fn, disabled) => h('button', { type: 'button', class: 'tool', 'aria-label': label, title: label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 18) });
+      // (their names in the app's tooltip beside the row, as the list's tools have them)
+      const tips = [], tip = (t, label) => { tips.push([t, label]); return t; };
+      const btn = (ic, way, fn, disabled) => tip(h('button', { type: 'button', class: 'tool', 'aria-label': `Move ${name} ${way}`, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 18) }), `Move ${way}`);
       const row = h('li', { class: 'wpl-row', 'data-i': String(i) },
-        h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
+        tip(h('span', { class: 'wpl-grip', 'aria-hidden': 'true', html: icon('grip', 16) }), 'Drag to reorder'),
         h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
         h('span', { class: 'wpl-main' }, h('b', { class: 'wpl-name' }, name), h('small', {}, [fmtDist(i ? this.lengthTo(i) : 0), name === lab ? '' : lab, sport].filter(Boolean).join(' · '))),
-        btn('chevronUp', `Move ${name} earlier`, () => this.movePointTo(i, i - 1), i === 0),
-        btn('chevronDown', `Move ${name} later`, () => this.movePointTo(i, i + 1), last));
+        btn('chevronUp', 'earlier', () => this.movePointTo(i, i - 1), i === 0),
+        btn('chevronDown', 'later', () => this.movePointTo(i, i + 1), last));
+      for (const [t, label] of tips) tooltip(t, { name: label, beside: row });
       row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') this.dragRow(e, row, i); });
       row.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !e.target.closest('button')) this.holdRow(e, row, i); });
       box.append(row);
@@ -4712,12 +4715,18 @@ export class Planner {
     this.els.stats = h('div', { class: 'stats' });
     this.els.modesBar = h('div', { class: 'chip-groups' });
     this.els.modeSel = h('select', { 'aria-label': 'Colour the profile by', onchange: (e) => this.showMode(e.target.value) });
-    this.els.modeSelect = h('label', { class: 'mode-select', title: 'What the colours of the profile show' },
+    this.els.modeSelect = h('label', { class: 'mode-select' },
       h('span', { class: 'mode-select-label' }, 'Colour by'),
       h('span', { class: 'mode-select-box' }, this.els.modeSel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('caret', 12) })));
     this.els.mapToggle = h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => this.setColorOnMap(e.target.checked) });
-    this.els.mapToggleRow = h('label', { class: 'tg tg-inline', title: 'Colour the route line on the map the same way as the profile' },
+    this.els.mapToggleRow = h('label', { class: 'tg tg-inline' },
       h('span', { class: 'tg-text' }, 'On map'), this.els.mapToggle, h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    // (beside their row, clear of the key facts under it; a mouse points at the switch's label, the keyboard's focus is on
+    // its hidden input: the tip on both)
+    const profTop = h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow), onMapTip = { name: 'On map', text: 'Colours the route on the map as the profile.', beside: profTop };
+    tooltip(this.els.modeSel, { name: 'Colour by', text: 'What the colours of the profile show.', beside: profTop });
+    tooltip(this.els.mapToggleRow, onMapTip);
+    tooltip(this.els.mapToggle, onMapTip);
     this.els.breakdown = h('div', { class: 'breakdown' });
     this.els.climbs = h('div', { class: 'list climbs' });
     this.els.warnings = h('div', { class: 'list warnings' });
@@ -4726,13 +4735,14 @@ export class Planner {
     // legs and their points on it and what colours it right above it (22a)
     this.profCompact = store.get('profileCompact', false);
     this.els.profSize = h('button', { type: 'button', class: 'tool key prof-size', onclick: () => this.setProfileCompact(!this.profCompact) });
+    tooltip(this.els.profSize, () => ({ name: this.els.profSize.getAttribute('aria-label'), beside: 'left' })); // (by the heading, not over the profile's Whole route)
     // its heading with its size at its end, the chart in a group with Colour by and On map under it, the key facts after (#382)
     const profTitle = h('span', {}, 'Route profile');
     this.els.profZone = h('section', { class: `pl-profile${this.profCompact ? ' compact' : ''}`, 'data-sec': 'profile', 'aria-labelledby': 'pl-profile-h' },
       h('div', { class: 'pl-group' }, this.heading(h('h3', { id: 'pl-profile-h' }, profTitle), this.els.profSize), h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas', role: 'img' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true }),
         // at a phone's peek (#742): a tap opens the profile at half, where it's scrubbed, and a drag moves the sheet
-        h('button', { type: 'button', class: 'prof-open', 'aria-label': 'Open the profile', title: 'Open the profile', onclick: () => this.setSheetState('half') })),
-      h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow),
+        h('button', { type: 'button', class: 'prof-open', 'aria-label': 'Open the profile', onclick: () => this.setSheetState('half') })),
+      profTop,
       sideways(this.els.facts, 'Key facts')));
     this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
     this.renderProfileSize();
@@ -4878,8 +4888,7 @@ export class Planner {
   renderProfileSize() {
     this.els.profZone.classList.toggle('compact', this.profCompact);
     this.els.profSize.innerHTML = icon(this.profCompact ? 'chevronDown' : 'chevronUp', 16);
-    this.els.profSize.title = this.profCompact ? 'A taller profile' : 'A smaller profile';
-    this.els.profSize.setAttribute('aria-label', this.els.profSize.title);
+    this.els.profSize.setAttribute('aria-label', this.profCompact ? 'A taller profile' : 'A smaller profile');
   }
 
   // Layers › Your route, and Settings › Route arrows and marks: what the route shows on the map besides its line
@@ -7497,6 +7506,7 @@ export class Planner {
       const row = item({ icon: wx && !wx.none ? `sky-${this.daySky(a, d, wx)}` : 'cloudSun', label: many ? `Day ${d.n} · ${shortDate(d.t0)}` : line, line: many ? line : '', chev: true, k: `day-${d.n}`,
         onclick: (e) => this.openWeather({ day: k, el: e.currentTarget }) });
       row.setAttribute('aria-label', `${many ? `Day ${d.n} · ${shortDate(d.t0)}` : 'The weather'}: ${line}. Open the weather on the way`); // (its words as shown, WCAG 2.5.3)
+      tooltip(row, { beside: true, name: 'Weather on the way', text: 'The day hour by hour where you’ll be: the sky, rain, wind and the dark.' });
       return row;
     }));
   }
