@@ -47,7 +47,7 @@ class ProductTests(unittest.TestCase):
         text = OSM.replace('  <way id="10">', EXTRA + '  <way id="10">')
         text = text.replace('  <relation id="100">', WAYS + '  <relation id="100">').replace('</osm>', REL + '</osm>')
         out, manifest = self.build(text)
-        for name, zoom, ids in [('trails', 13, [4, 5, 10, 20]), ('winter', 12, [21, 24]),
+        for name, zoom, ids in [('trails', 13, [4, 5, 10, 20, 24, 25]), ('winter', 12, [21, 24]),
                                 ('hazards', 11, [6, 22]), ('places', 12, [7, 23, 200])]:
             self.assertIn(name, manifest['datasets'])
             self.assertEqual(manifest['datasets'][name]['zoom'], zoom)

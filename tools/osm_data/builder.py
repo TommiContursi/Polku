@@ -117,11 +117,11 @@ def products(kind, tags):
                  'ford' in tags and tags['ford'] != 'no')
         hazard = tags.get('seamark:type') in {'rock', 'obstruction', 'wreck'} or tags.get('natural') in {'rock', 'reef', 'shoal'}
     else:
-        trail = (h in {'path', 'bridleway', 'steps'} or
-                 h in {'footway', 'track', 'cycleway'} and
+        trail = (h in {'path', 'bridleway', 'steps', 'track'} or
+                 h in {'footway', 'cycleway'} and
                  (h == 'footway' and 'mtb:scale' in tags or
                   any(tags.get(k) for k in ['obstacle', 'ford', 'mtb:scale:uphill']) or
-                  tags.get('surface') == 'mud' or h == 'track' and 'trail_visibility' in tags) or
+                  tags.get('surface') == 'mud') or
                  tags.get('barrier') in {'fence', 'wall', 'hedge', 'city_wall'})
         hazard = tags.get('natural') in {'reef', 'shoal'} or tags.get('seamark:type') in {'rock', 'obstruction'}
         if ('mtb:winter' in tags or any(tags.get(k) for k in ['snowplowing', 'winter_service', 'bicycle:winter', 'foot:winter']) or

@@ -670,6 +670,23 @@ ROUTE_TRAILS = """(async () => {
   return errs;
 })()"""
 
+# A route along a path with a track beside it (#1128): the trail data holds every track, and each sample takes the
+# details of the way the router says it's on, the path 3 m off, not the track 1 m off.
+ALONG_TRACK = """(async () => {
+  const T = await import(location.origin + '/js/trails.js'), G = await import(location.origin + '/js/geo.js');
+  const lat = 62.3, m = 1 / 111195, line = (dy) => [25.8, lat + dy * m, 25.804, lat + dy * m], pts = [];
+  for (let k = 0; k <= 20; k++) pts.push([25.8 + k * 0.0002, lat]);
+  T.holdFetches();
+  for (const [x, y] of T.tilesIn([25.799, lat - 0.001, 25.805, lat + 0.001]))
+    T.seedTile(x, y, { v: 1, w: [[1, { highway: 'path', width: '0.4' }, line(3)], [2, { highway: 'track' }, line(1)]], n: [] });
+  const n = pts.length, by = () => new Uint8Array(n);
+  const a = { pts, along: pts.map((p) => G.dist(pts[0], p)), attr: pts.map(() => ({ tags: { highway: 'path' } })),
+    td: { trail: by(), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: by(), mud: by(), tree: by(), ford: by(), boardwalk: by(), points: [] } };
+  if (!await T.detailsAlong(a)) return ['no trail details along the route'];
+  const narrow = [...a.td.width].filter((w) => w === 0).length;
+  return narrow === n ? [] : [`${narrow} of ${n} samples have the path's width (0.4 m): the others matched the track beside it`];
+})()"""
+
 
 # #673: retaining the raw suffix must keep 0− distinct through display consumers, without changing uphill colors.
 def mtb_grades(chrome):
@@ -795,6 +812,7 @@ def trails(chrome):
     pg.js("polku.map.jumpTo({ center: [25.7652, 62.2289], zoom: 16 }); true")
     fails = pg.js(TRAILS)
     fails += [f'route: {e}' for e in pg.js(ROUTE_TRAILS)]
+    fails += [f'route beside a track: {e}' for e in pg.js(ALONG_TRACK)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     fails += trail_card(chrome)
@@ -6996,6 +7014,107 @@ def coarse(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} a coarse map underneath: the base map's zoom 9 tile stands in for a zoom 13 one that hasn't come, Finland's zoom 6 overview for both, kept and answered at once (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Polku's own layers come in together (#1091): Väylävirasto's tiles and Digitraffic's faults answered by the page (an
+# empty chart, so no request leaves), before Polku loads: window.__nmDelay ms after they're asked for, or, while
+# window.__nmHeld is a list, once window.__nmRelease() is called
+TOGETHER_FETCH = r"""
+(() => {
+  const real = window.fetch;
+  window.__nmDelay = 0;
+  window.__nmHeld = null;
+  window.__nmRelease = () => { const held = window.__nmHeld || []; window.__nmHeld = null; held.forEach((go) => go()); };
+  window.fetch = (url, init) => {
+    const u = String((url && url.url) || url);
+    if (!u.startsWith('https://avoinapi.vaylapilvi.fi/') && !u.startsWith('https://meri.digitraffic.fi/')) return real(url, init);
+    const body = JSON.stringify({ type: 'FeatureCollection', features: [] });
+    return new Promise((ok) => {
+      const go = () => setTimeout(() => ok(new Response(body, { headers: { 'Content-Type': 'application/json' } })), window.__nmDelay);
+      if (window.__nmHeld) window.__nmHeld.push(go); else go();
+    });
+  };
+})();
+"""
+
+# In paddle, after a jump:
+# - LIPAS's answer and the nautical chart's, the chart's let go 150 ms after the window opened (so on a busy machine
+#   too it comes inside it), are drawn together (in one go: MapLibre then lays out each source on its own), once each;
+# - with the chart's held 2 s, LIPAS's are drawn before it comes, in the first frame once 500 ms are up from when the
+#   window opened (a busy machine makes frames late, so a frame rather than a tolerance in ms);
+# - once the answers are in, no loader is still busy (one that stays busy would hold every stop 500 ms);
+# - the chart's tiles of a view you've left don't keep it busy.
+TOGETHER = r"""
+(async () => {
+  const m = polku.map, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  (await import(location.origin + '/js/lipas.js')).seedLipas(() => new Promise((ok) => setTimeout(() => ok({ type: 'FeatureCollection', features: [] }), window.__lipasDelay)));
+  const log = [], t0 = () => performance.now(), frames = [];
+  (function tick() { frames.push(t0()); if (frames.length > 2000) frames.shift(); requestAnimationFrame(tick); })();
+  // the window opens in the answer that's held first (on main, with no window, LIPAS's first answer)
+  let opened = null, release = null;
+  for (const [obj, fn, as] of [[polku.lipas, 'publishNow', 'lipas answer'], [polku.nautical, 'publish', 'nm answer']]) {
+    const own = obj[fn].bind(obj);
+    obj[fn] = (...a) => {
+      log.push([as, t0()]);
+      const r = own(...a);
+      if (opened == null && (polku.together ? polku.together.held : as === 'lipas answer')) { opened = t0(); if (release != null) setTimeout(window.__nmRelease, release); }
+      return r;
+    };
+  }
+  for (const [id, as] of [['lipasRoutes', 'lipas drawn'], ['nmMarks', 'nm drawn']]) {
+    const src = m.getSource(id), own = src.setData.bind(src);
+    src.setData = (d, ...a) => { log.push([as, t0()]); return own(d, ...a); };
+  }
+  let stop = 0;
+  const jump = async (center, lipasMs, nm) => {
+    window.__lipasDelay = lipasMs; log.length = 0; opened = null;
+    if (nm.release != null) { window.__nmHeld = []; window.__nmDelay = 0; release = nm.release; } else { window.__nmHeld = null; window.__nmDelay = nm.delay; release = null; }
+    m.once('moveend', () => { stop = t0(); });
+    m.jumpTo({ center });
+    await wait(3500);
+    const at = (as) => log.filter((e) => e[0] === as).map((e) => Math.round(e[1] - stop));
+    return { opened: opened == null ? null : Math.round(opened - stop), lipasAnswer: at('lipas answer'), lipas: at('lipas drawn'), nmAnswer: at('nm answer'), nm: at('nm drawn') };
+  };
+  const say = (d) => JSON.stringify(d);
+  let d = await jump([22.60, 60.05], 50, { release: 150 });
+  if (d.lipas.length !== 1 || d.nm.length !== 1 || Math.abs(d.lipas[0] - d.nm[0]) > 20) errs.push(`LIPAS's routes and the nautical marks, answered apart, aren't drawn together once (ms after the stop): ${say(d)}`);
+  d = await jump([25.40, 60.20], 50, { delay: 2000 });
+  const lipas = d.lipas[d.lipas.length - 1];
+  if (lipas == null || !d.nmAnswer.length || lipas >= d.nmAnswer[0]) errs.push(`with the nautical chart's answer held 2 s, LIPAS's routes wait for it: ${say(d)}`);
+  else if (d.opened != null) {
+    const closes = frames.find((t) => t >= stop + d.opened + 500);
+    if (closes != null && stop + lipas > closes + 20) errs.push(`LIPAS's routes drawn ${lipas - d.opened} ms after the window opened, ${Math.round(stop + lipas - closes)} ms after the first frame from its 500 ms: ${say(d)}`);
+  }
+  if (!d.nm.length || d.nm[0] < 2000) errs.push(`the nautical marks, answered after 2 s, aren't drawn when they come: ${say(d)}`);
+  d = await jump([22.60, 60.05], 50, { delay: 150 });
+  if (!d.lipas.length) errs.push(`back where both have loaded, LIPAS's routes aren't drawn: ${say(d)}`);
+  const busy = polku.together ? polku.together.loaders.filter((l) => l.busy).map((l) => l.constructor.name) : ['(no polku.together)'];
+  if (busy.length) errs.push(`with every answer in, still busy: ${busy.join(', ')}`);
+  // asked for, answered after 3 s, and the map zoomed out under the chart's zoom meanwhile
+  window.__nmHeld = null; window.__nmDelay = 3000;
+  m.jumpTo({ center: [21.60, 60.30], zoom: 12 });
+  await wait(800);
+  m.jumpTo({ zoom: 9 });
+  for (let k = 0; k < 15 && polku.nautical.busy; k++) await wait(100);
+  if (polku.nautical.busy) errs.push('zoomed out of the chart, it is still busy with the tiles of the view before');
+  await wait(2500);
+  return errs;
+})()
+"""
+
+
+def together(chrome):
+    """Polku's own layers come in together after the map stops (#1091)."""
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': TOGETHER_FETCH}, pg.s)
+        pg.open_app({'activity': 'paddle'}, hash_='#12/60.1800/22.1000')
+        fails = pg.js(TOGETHER, timeout=30000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Polku's own layers come in together after the map stops, 500 ms at most (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -23707,6 +23826,91 @@ def map_tips(chrome):
     return not fails
 
 
+
+# The planner's own tooltips (#304): the profile's controls and the trip's box's day, each by a
+# mouse (its name after the delay, covering no other control of the planner), the keyboard's focus where it takes one,
+# and none left with a title; Reorder's grip and arrows with neither.
+PLANNER_TIPS = [('.pl-profile .prof-size', 'A smaller profile'), ('.pl-profile .mode-select-label', 'Colour by'), ('.pl-profile .mode-select select', 'Colour by'), ('.pl-profile .tg-inline', 'On map'),
+                ('.chart-reset', 'Whole route'), ('.trip-days .row', 'Weather on the way')]
+
+
+def planner_tips(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': WX_FIXED}, pg.s)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:profileCompact': 'false'}, '#13/61.514/23.822')
+
+    def mouse(sel, name):
+        b = pg.js(f"""(() => {{ const b = document.querySelector({json.dumps(sel)}); if (!b || !b.getClientRects().length) return null;
+          const r = b.getBoundingClientRect(); return {{ x: r.left + r.width / 2, y: r.top + r.height / 2, title: b.closest('[title]')?.getAttribute('title') ?? null }}; }})()""")
+        if not b:
+            return fails.append(f'{sel}: not on the screen')
+        if b['title'] is not None:
+            fails.append(f'{sel}: still has the browser’s tooltip “{b["title"]}”')
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': b['x'], 'y': b['y'], 'button': 'none'}, pg.s)
+        time.sleep(0.6)
+        for _ in range(20):  # (after its delay, on a page still busy drawing the route)
+            tip = pg.js(TIP_NOW)
+            if tip:
+                break
+            time.sleep(0.1)
+        if not tip.startswith(name):
+            fails.append(f'{sel}: a mouse over it shows “{tip}”, not {name}')
+        # (beside a row, under a button: never over another of the planner's controls; an edge touching, under 4 px, isn't
+        # covering: the size button's tip, beside it in the heading, on Whole route's top edge just under it)
+        over = pg.js(f"""(() => {{ const t = document.getElementById('tip'), b = document.querySelector({json.dumps(sel)});
+          if (t.hidden) return '';
+          const r = t.getBoundingClientRect(), hit = [...polku.planner.panel.querySelectorAll('button, select, .tg-inline, .wpl-grip')]
+            .filter((o) => o.getClientRects().length && !o.contains(b) && !b.contains(o))
+            .find((o) => {{ const q = o.getBoundingClientRect(); return Math.min(q.right, r.right) - Math.max(q.left, r.left) > 4 && Math.min(q.bottom, r.bottom) - Math.max(q.top, r.top) > 4; }});
+          return hit ? hit.getAttribute('aria-label') || hit.textContent.trim() : ''; }})()""")
+        if over:
+            fails.append(f'{sel}: its tooltip covers {over}')
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 500, 'button': 'none'}, pg.s)
+        time.sleep(0.3)
+
+    if not pg.js(PC_ROUTE, timeout=30000) or not pg.js("""(async () => { const p = polku.planner;
+        for (let k = 0; k < 100 && !(p.analysis?.wind && document.querySelector('.trip-days .row')); k++) await new Promise((r) => setTimeout(r, 100));
+        p.chart.setView([0, 400], true); return !!document.querySelector('.trip-days .row'); })()""", timeout=15000):
+        fails.append('no route with its forecast')
+    else:
+        for sel, name in PLANNER_TIPS:
+            mouse(sel, name)
+        # Colour by's caption to its select and back: its tip stays up all the way
+        pts = pg.js("""[...document.querySelectorAll('.pl-profile .mode-select-label, .pl-profile .mode-select select')].map((e) => { const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })""")
+        seen = []
+        for k, (x, y) in enumerate([pts[0], pts[1], pts[0]]):
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': 'none'}, pg.s)
+            time.sleep(0.9 if not k else 0.3)
+            seen.append(pg.js(TIP_NOW)[:9])
+        if seen != ['Colour by'] * 3:
+            fails.append(f'Colour by: its caption, its select and its caption again show {seen}')
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 500, 'button': 'none'}, pg.s)
+        time.sleep(0.3)
+        # the keyboard: focus shows it at once, as its description
+        for ev in ('rawKeyDown', 'keyUp'):
+            pg.c.send('Input.dispatchKeyEvent', {'type': ev, 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
+        for sel, name in (('.pl-profile .prof-size', 'A smaller profile'), ('.pl-profile .mode-select select', 'Colour by'), ('.pl-profile .tg-inline input', 'On map'), ('.trip-days .row', 'Weather on the way')):
+            got = pg.js(f"""(() => {{ const b = document.querySelector({json.dumps(sel)}); b.focus(); const t = document.getElementById('tip');
+              return {{ tip: t.hidden ? '' : t.textContent, desc: b.getAttribute('aria-describedby') }}; }})()""")
+            if not got['tip'].startswith(name) or got['desc'] != 'tip':
+                fails.append(f'{sel}: the keyboard’s focus shows {got}')
+        pg.js("document.activeElement.blur(); true")
+        # its name follows the state: a smaller profile, then a taller one
+        pg.js("document.querySelector('.pl-profile .prof-size').click(); true")
+        mouse('.pl-profile .prof-size', 'A taller profile')
+        # Reorder's grip and arrows: no tooltip (its line says what they do; one under an arrow could take the next row's
+        # click), and no title either
+        pg.js("[...document.querySelectorAll('.wpl-foot button')].find((b) => b.textContent.trim() === 'Reorder').click(); true")
+        time.sleep(0.3)
+        left = pg.js("""[...document.querySelectorAll('.wpl-row [title], .wpl-row[title]')].map((e) => e.getAttribute('title'))""")
+        if left:
+            fails.append(f'Reorder: still has the browser’s tooltips {left}')
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Polku's tooltips in the planner: the profile and the trip's box, none on Reorder" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
@@ -23718,6 +23922,7 @@ GROUPS = [
     ('layers', [layers, cycleway_style], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
+    ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
     ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
@@ -23769,7 +23974,7 @@ GROUPS = [
     ('tilefail', [tile_fails, tile_hangs], 'Paddle with the depth tiles failing last (a server error, a dropped connection) or never answering: the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399); a spot\'s link opens its card, a point added meanwhile stays (#419)'),
     ('startfail', [start_fails, cdn_tampered], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit): one try more by itself, then a message whose Reload opens it (#1088); the worker\'s saved copies just after an update (the page waits for the new file) and with no update (a hanging file opens from the saved copy, #481); MapLibre from unpkg with other bytes, refused (#482)'),
     ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),
-    ('tips', [map_tips], 'Polku\'s own tooltips in place of the browser\'s (#304): the map\'s buttons and the top bar, by a mouse and the keyboard, none left with a title'),
+    ('tips', [map_tips, planner_tips], 'Polku\'s own tooltips in place of the browser\'s (#304): the map\'s buttons and the top bar, the planner\'s profile and trip\'s box (none on Reorder), by a mouse and the keyboard, none left with a title'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),

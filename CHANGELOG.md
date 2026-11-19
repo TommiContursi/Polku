@@ -9,6 +9,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Cycling paths stand out with wider blue strokes, comparable to trail bands. They have long dashes for a known paved surface, short dashes for unpaved and intermediate dashes when the surface is unknown. The map key explains each pattern.
 - Footpaths and pedestrian streets use the cycling style only where bicycles are explicitly allowed in the map data. MTB-graded footpaths keep their difficulty colours. Other pedestrian ways use the footpath style, without implying that cycling is prohibited.
 
+### Polku's own tooltips in the planner ([#304](https://github.com/TommiContursi/Polku/issues/304))
+
+- Pointing at the profile's controls (its size, **Colour by**, **On map** and **Whole route**) or at a day's weather in the trip's box shows Polku's own tooltip, with its name and, where it helps, what it does. It also shows when the control gets the keyboard's focus, and **Esc** hides it. The tooltips sit beside their row where there's room, so they don't cover the controls under them.
+- **Reorder**'s grip and arrows no longer show a tooltip: the line above them says what they do.
+
+### Polku's own layers come in together ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- When the map stops, Polku's own layers (trail details, official routes, lit and winter ways, the uphill colours and the nautical marks) now appear together, rather than one after another over half a second. A layer that is slow to come doesn't hold the others back for more than half a second: it appears on its own when it comes.
+
 ### The hills lit by the sun ([#1119](https://github.com/TommiContursi/Polku/issues/1119))
 
 - On a new device the hillshade is lit by **The sun** at the timeline's hour, so the hills stand out more than in the fixed light. The shadows that hills, trees and buildings cast are off at first; turn them on under **Hillshade** in **Layers**. While the sun is down the hills have the fixed light, and if you've already set the map up, it keeps the light you have.

@@ -10,8 +10,9 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **Decided, 2026-11-18: A** (on #1091's description), not B. The coarse map follows the base map: dark on the night map, the aerial and MML maps coarser under their own detail.
 - **A: built** ([#1097](https://github.com/TommiContursi/Polku/pull/1097), merged 2026-11-19), for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`.
 - **Decided, 2026-11-19: C and D next** (on #1091's description). C as Finland's zoom-6 overview, 15 tiles and 0.95 MB once, not the zoom 0–8 one; D as written. The crossfade on long jumps is shown as a mock-up and decided with /animate before it's built. A low data mode is its own idea, #1103.
-- **C: built** on `claude/overview-c-1091`. Beyond the plan: OpenFreeMap's glyph ranges are kept with the overview and the worker answers them cache first, as MapLibre draws a vector tile only once its names' glyphs have come (on Slow 4G the zoom-6 tile waited 1.9 s for two ranges).
-- **Next:** [Building D](#building-d), after #1093's fix (the same `setData()`), then [the crossfade's mock-up](#the-crossfade-on-long-jumps-a-mock-up-first).
+- **C: built** ([#1108](https://github.com/TommiContursi/Polku/pull/1108), merged 2026-11-19). Beyond the plan: OpenFreeMap's glyph ranges are kept with the overview and the worker answers them cache first, as MapLibre draws a vector tile only once its names' glyphs have come (on Slow 4G the zoom-6 tile waited 1.9 s for two ranges).
+- **D: built** on `claude/layers-together-1091`; how it differs from the plan and what it measured: [D, as built](#d-as-built).
+- **Next:** [the crossfade's mock-up](#the-crossfade-on-long-jumps-a-mock-up-first).
 
 ## What people see
 
@@ -164,6 +165,26 @@ One PR:
 4. DEVELOPING (the loaders' section) and CHANGELOG.
 
 To check: MTB and paddle at 390 × 844 and 1440 × 900, on the network as it is and slowed; that nothing you do yourself waits.
+
+### D, as built
+
+- **Busy, not started and answered.** Rather than each loader saying when it starts and when it has answered (a path that forgets to answer would hold every stop for 500 ms), each has a `busy` getter read from what it already keeps: its update's timer, its tiles in view still on their way, and for LIPAS and the chart the timer of their drawing. The window waits while any is busy, checked once a frame.
+- **Nothing busy, nothing held:** when the first answer comes and no loader is busy, it's drawn at once. A fixed 500 ms window, tried first, only made the one change most stops have half a second late.
+- **Trail details' coverage** (the area where the map's own trails give way to theirs) waits with their data, or those trails would vanish for up to half a second.
+
+Measured on a fast network at 1440 × 900, in Chrome with its GPU, one cold run per place, with what each of Polku's own sources drew after the stop and when MapLibre had laid it out:
+
+| After the stop | Today | With D |
+|---|---|---|
+| A short move at zoom 13 (MTB, paddle) | 1 change, at 0.3 s | not measured; held at most until the other loaders' updates have run (their timers are 300–350 ms) |
+| A move at zoom 14.5 or a jump, MTB | 3–6 changes over 0.25–0.4 s, the last at 0.6–0.7 s | 2–3 changes over 16–57 ms, the last at 0.5–0.7 s; once 5 over 0.23 s, with 726 routes and 647 trails to lay out |
+| A jump, paddle | 6 changes over 0.3–0.4 s, the last at 0.7 s | 4–5 changes over 61–80 ms, the last at 0.7 s |
+
+"Changes" are frames in which one of Polku's sources changed; MapLibre lays each source out on its own, so a burst still spans a few frames. The layers are complete at about the same time as today; what goes is the sequence before it.
+
+On Slow 4G (DevTools' 562 ms and 1.4 Mbit/s) at the same places, D gains little and costs the half second it was allowed. The answers come over 1.9–6.6 s, as today, so most come after the window and are drawn on their own: 5–44 changes against today's 5–42, with the last at the same time. What came at 0.3 s today (the tiles already loaded) comes at 0.8 s, when the window closes.
+
+Not measured with D: a phone. Seen after a jump in Chrome with its GPU at 1440 × 900 and 390 × 844, in MTB and paddle: every layer drawn, nothing held or busy, no errors.
 
 ## The crossfade on long jumps: a mock-up first
 
