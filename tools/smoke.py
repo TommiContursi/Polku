@@ -6741,6 +6741,70 @@ COARSE_MOVE = r"""
 })()
 """
 
+COARSE_JUMP = r"""
+(async () => {
+  const m = polku.map, tm = m.style.tileManagers.ofm, f = [];
+  const tileOf = (z) => { const c = m.getCenter(), n = 2 ** z, r = c.lat * Math.PI / 180;
+    return `${z}/${Math.floor((c.lng + 180) / 360 * n)}/${Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)}`; };
+  const drawn = () => tm.getRenderableIds().map((k) => tm.getTileByID(k)).filter((t) => t.hasData()).map((t) => `${t.tileID.canonical.z}/${t.tileID.canonical.x}/${t.tileID.canonical.y}`);
+  const wait = async (ok, ms) => { const t0 = Date.now(); while (!ok() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 100)); return ok(); };
+  // into another zoom 9 tile, in the same zoom 6 one
+  m.jumpTo({ center: [m.getCenter().lng + 1.5, m.getCenter().lat] });
+  await new Promise((r) => setTimeout(r, 1500));
+  if (drawn().includes(tileOf(9))) f.push(`the zoom 9 tile came though it was held: ${tileOf(9)}`);
+  else if (!await wait(() => drawn().includes(tileOf(6)), 10000)) f.push(`no zoom 6 tile (Finland's overview) drawn in the place of ${tileOf(13)} and ${tileOf(9)}: ${drawn().join(' ')}`);
+  // round trips' water test doesn't read it (its lakes have no islands): with only zoom 6 there, no water at zoom 13
+  else if ((await import(location.origin + '/js/roundtrip.js')).waterOf(m).count) f.push(`round trips' water test reads Finland's overview at zoom 13 (#1108's review)`);
+  return f;
+})()
+"""
+
+COARSE_KEEP = r"""
+(async () => {
+  const f = [], off = await import(location.origin + '/js/offline.js'), { idb } = await import(location.origin + '/js/idb.js');
+  await off.saveOverview();
+  const c = await caches.open('polku-offline-tiles'), keys = (await c.keys()).map((r) => r.url).filter((u) => u.includes('/planet/offline/6/'));
+  if (keys.length !== 15) f.push(`Finland's overview: ${keys.length} of its 15 zoom 6 tiles kept`);
+  // and the names' letters, which MapLibre waits for before it draws a tile: 3 typefaces, 4 ranges
+  const glyphs = (await (await caches.open('polku-shell-v1')).keys()).filter((r) => r.url.includes('/fonts/Noto%20Sans')).length;
+  if (glyphs < 15) f.push(`Finland's overview: ${glyphs} of the 15 glyph ranges kept`);
+  // Save offline's size is what it kept (#1108's review: six workers' sums overwrote each other)
+  const area = await off.saveArea({ name: 'smoke', line: [[24.93, 60.165], [24.95, 60.175]], bbox: [24.93, 60.165, 24.95, 60.175], route: null }, { buffer: 150, terrain: false }, () => {}, new AbortController().signal);
+  let kept = 0;
+  for (const k of area.keys) kept += +((await c.match(k))?.headers.get('X-Size') || 0);
+  if (area.bytes !== kept) f.push(`Save offline says ${area.bytes} bytes for ${kept} kept`);
+  await off.removeArea(area.id);
+  await idb('offline').set('smoke-area', { id: 'smoke-area', name: 'smoke', created: 0, keys: [keys[0]] });
+  await off.removeArea('smoke-area');
+  if (keys[0] && !await c.match(keys[0])) f.push(`removing a saved area removed the overview's ${keys[0]}`);
+  return f;
+})()
+"""
+
+COARSE_OPENED_OFFLINE = r"""
+Object.defineProperty(Navigator.prototype, 'onLine', { get: () => false });
+new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); })
+  .observe(document, { childList: true, subtree: true });
+"""
+
+# The worker answers a saved overview tile from the cache at once (Codex on #1105: after OpenFreeMap's weekly version
+# changes, the HTTP cache has none of the new URLs), and refreshes it behind it. 6/33/18, outside the overview, is one
+# nothing in view asks for.
+COARSE_WORKER = r"""
+(async () => {
+  const f = [], { ofmTemplate } = await import(location.origin + '/js/offline.js'), key = 'https://tiles.openfreemap.org/planet/offline/6/33/18.pbf';
+  const c = await caches.open('polku-offline-tiles');
+  await c.put(key, new Response('saved', { headers: { 'X-Size': '5' } }));
+  const body = await (await fetch((await ofmTemplate()).replace('{z}', 6).replace('{x}', 33).replace('{y}', 18), { cache: 'no-store' })).text();
+  if (body !== 'saved') f.push('a saved overview tile went to the network first');
+  const t0 = Date.now();
+  while (Date.now() - t0 < 10000 && (await c.match(key)).headers.get('X-Size') === '5') await new Promise((r) => setTimeout(r, 200));
+  if ((await c.match(key)).headers.get('X-Size') === '5') f.push('a saved overview tile wasn\'t refreshed behind it');
+  await c.delete(key);
+  return f;
+})()
+"""
+
 
 def coarse(chrome):
     """A coarse map underneath (#1091): the base map's tile four zoom levels up stands in for a tile that hasn't come
@@ -6762,6 +6826,12 @@ def coarse(chrome):
                 except RuntimeError:
                     pass
             fails += [f'{w}: {e}' for e in pg.js(COARSE_MOVE, timeout=30000)]
+            for s_ in sessions:  # zoom 9 held too: Finland's overview at zoom 6 stands in
+                try:
+                    pg.c.send('Fetch.enable', {'patterns': [{'urlPattern': '*openfreemap.org/planet/*/13/*'}, {'urlPattern': '*openfreemap.org/planet/*/9/*'}]}, s_)
+                except RuntimeError:
+                    pass
+            fails += [f'{w}: {e}' for e in pg.js(COARSE_JUMP, timeout=30000)]
             fails += [f'{w} console: {e[:160]}' for e in pg.errors()]
         finally:
             for s_ in sessions:
@@ -6770,7 +6840,31 @@ def coarse(chrome):
                 except RuntimeError:
                     pass
             pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a coarse map underneath: the base map's zoom 9 tile stands in for a zoom 13 one that hasn't come (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    # opened offline, Polku says so and that elsewhere there's only the coarse map (#1108's review)
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COARSE_OPENED_OFFLINE}, pg.s)
+        pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')
+        said = pg.js("new Promise((ok) => setTimeout(() => ok(window.__toasts || []), 1500))")
+        if not any('offline' in t and 'coarse map' in t for t in said):
+            fails.append(f'opened offline, nothing says so: {said}')
+    finally:
+        pg.close()
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')
+        fails += pg.js(COARSE_KEEP, timeout=60000)
+        pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
+        pg.reload()
+        if not pg.js('!!navigator.serviceWorker.controller'):
+            fails.append('the overview check: the page is not controlled by the worker')
+        else:
+            fails += pg.js(COARSE_WORKER, timeout=30000)
+        fails += [f'overview console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a coarse map underneath: the base map's zoom 9 tile stands in for a zoom 13 one that hasn't come, Finland's zoom 6 overview for both, kept and answered at once (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

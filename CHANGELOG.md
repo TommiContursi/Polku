@@ -9,6 +9,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - When one of the map's tiles doesn't arrive as Polku opens, your saved route, a shared route and the planner you left open still come back, at most a few seconds after the map appears, and a shared spot's card a few seconds after that. Before, they waited for every tile of the map, so on a bad connection, or while Traficom's depth maps were slow, they could stay away until you moved the map.
 - Just after Polku has been updated, on a slow connection, it waits for the new version's files instead of mixing them with the copies it saved from the last version, which could leave it without its map. With no update in between, a file that's slow to come is still taken from the saved copy after 3 seconds, as before.
 
+### A coarse map of Finland, kept on your device ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- Polku keeps a coarse map of the whole of Finland on your device, under 2 MB with the letters for its names, saved once. When you zoom out or jump to a new place, its lakes, sea and main roads are there at once, offline too in places you never saved, until the detail comes.
+- When Polku opens without a connection, it says so, as it does when the connection drops, and that outside your saved areas there's only the coarse map. **Preview offline** shows the coarse map too, and its banner says so.
+
 ### The route after switching apps ([#1093](https://github.com/TommiContursi/Polku/issues/1093))
 
 - When your phone takes the map's graphics memory back while Polku is in the background, a route leg or trail details that arrive in that time are on the map once you're back. Before, the map came back without them until the next change.

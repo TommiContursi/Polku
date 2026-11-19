@@ -6,9 +6,12 @@
 //   slow file doesn't put an older version beside newer ones; on a page given saved copies already, at once. A network
 //   failure takes any saved copy. The typefaces are kept when the worker installs.
 // - Versioned CDN files (unpkg): cache first.
-// - OpenFreeMap TileJSON, sprites and fonts: network first, cached copy as fallback.
+// - OpenFreeMap TileJSON and sprites: network first, cached copy as fallback. Its fonts (the names'
+//   letters, which a tile waits for before it's drawn): cache first.
 // - Map and terrain tiles saved with "Save offline" (js/offline.js): network
 //   first, the saved copy after 4 s or offline. Unsaved tiles pass straight through.
+//   A saved OpenFreeMap tile at zoom 6 or lower (Finland's overview, a saved area's)
+//   is the saved copy at once, refreshed behind it: it stands in while the detail loads.
 // - "Preview offline" (set from the page) answers only from what's saved, so you
 //   can check an area before a trip.
 
@@ -73,8 +76,9 @@ self.addEventListener('fetch', (e) => {
     // file beside newer ones stopped the app); at once on a page that's already been given saved copies
     } else e.respondWith(networkFirst(req, req, savedFor.has(e.clientId) ? 0 : 3000, e.clientId, deployOf.get(e.clientId)));
   } else if (url.hostname === 'unpkg.com') e.respondWith(cacheFirst(req));
-  else if (OFM_TILE.test(req.url)) e.respondWith(tile(req, ofmKey(req.url)));
+  else if (OFM_TILE.test(req.url)) e.respondWith(tile(req, ofmKey(req.url), +req.url.match(OFM_TILE)[1] <= 6));
   else if (DEM_TILE.test(req.url)) e.respondWith(tile(req, req.url));
+  else if (url.hostname === 'tiles.openfreemap.org' && url.pathname.startsWith('/fonts/')) e.respondWith(cacheFirst(req));
   else if (url.hostname === 'tiles.openfreemap.org') e.respondWith(networkFirst(req, req, 4000));
   else if (previewNow !== false) e.respondWith(previewOn().then((on) => (on ? Response.error() : fetch(req))));
 });
@@ -117,12 +121,24 @@ async function cacheFirst(req) {
   return res;
 }
 
-async function tile(req, key) {
+const refreshed = new Set(); // coarse tiles asked for again since the worker started
+async function tile(req, key, coarse = false) {
   const cache = await caches.open(TILES);
   const saved = await cache.match(key);
   if (await previewOn()) return saved || Response.error();
   if (!saved) return fetch(req);
   if (!navigator.onLine) return saved;
+  if (coarse) {
+    if (!refreshed.has(key)) {
+      refreshed.add(key);
+      fetch(req).then(async (r) => {
+        if (!r.ok) return;
+        const blob = await r.blob();
+        await cache.put(key, new Response(blob, { headers: { 'Content-Type': r.headers.get('Content-Type') || 'application/octet-stream', 'X-Size': String(blob.size) } }));
+      }).catch(() => refreshed.delete(key));
+    }
+    return saved;
+  }
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(saved), 4000);
     fetch(req).then((r) => { clearTimeout(timer); resolve(r.ok ? r : saved); }, () => { clearTimeout(timer); resolve(saved); });
