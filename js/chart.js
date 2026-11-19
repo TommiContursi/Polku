@@ -8,7 +8,7 @@ import { windClass, tempBand, rainBand, forecastKnown, skyKind, WIND_CLASSES, TE
 import { nightAt } from './sun.js';
 import { tripTimes, timeOf } from './trip.js';
 import { WAY_SCALES, NOT_MAPPED } from './facts.js';
-import { escapeHtml, icon } from './ui.js';
+import { escapeHtml, icon, tooltip } from './ui.js';
 import { fromCss } from './palette.js';
 
 export const WAY_COLORS = fromCss({
@@ -272,7 +272,8 @@ export class ProfileChart {
     this.onClick = () => {};
     this.onZoom = () => {};
     this.pad = { l: 40, r: 10, t: 10, b: 20 };
-    this.resetBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'chart-reset', textContent: 'Whole route', hidden: true, title: 'Zoom the profile back out' });
+    this.resetBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'chart-reset', textContent: 'Whole route', hidden: true });
+    tooltip(this.resetBtn, { name: 'Whole route', text: 'Zooms the profile back out.' });
     this.resetBtn.addEventListener('click', () => this.setView(null, true));
     canvas.parentElement.append(this.resetBtn);
     new ResizeObserver(() => this.draw()).observe(canvas);
