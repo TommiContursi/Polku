@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Layers and Settings stay where you scrolled ([#536](https://github.com/TommiContursi/Polku/issues/536))
+
+- After you turn something on or off in **Layers** or **Settings**, the panel stays where you scrolled it, also when you scroll on straight away. Before, on a slow device, the panel could jump back to where it was a moment earlier.
+
 ### A coarse map underneath while the map fills in ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
 
 - When you move the map to a place it hasn't shown yet, the part whose detail hasn't come shows the same map less detailed, with its lakes, sea, forest and main roads, and the paths, buildings and names come in over it. Before, that part stayed plain background until its detail came, which on a slow connection took a second or more, and during a quick flick on a phone a quarter of the screen was empty for a moment even on a fast one.
