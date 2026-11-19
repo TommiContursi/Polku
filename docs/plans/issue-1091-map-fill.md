@@ -248,7 +248,7 @@ From trying the crossfades: the flight itself, zooming out and back in, is what 
 
 Every search result in the mock-up now goes to a place the map hasn't loaded, as one usually does: what the page kept of the places before is forgotten first, all but Finland's overview. Before, a place visited once came back finished, with nothing left to fade in.
 
-Measured as the crossfades were, on the mock-up at the commit that added them (five flights, places never loaded):
+Measured as the crossfades were, on the mock-up at 01ca0b7 (five flights, places never loaded):
 
 | Network, size | Version | The map drawn after landing | The finished place shows | Polku's layers drawn |
 |---|---|---|---|---|
