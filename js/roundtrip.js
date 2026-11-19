@@ -48,8 +48,11 @@ export function waterOf(map) {
   const polys = [];
   let feats = [];
   try { feats = map.querySourceFeatures('ofm', { sourceLayer: 'water' }); } catch { /* no tiles yet */ }
+  // not the coarse map's tiles kept where the detail hasn't come (js/main.js, #1091) more than four zoom levels up:
+  // Finland's zoom 6 overview has lakes with no islands
+  const coarsest = Math.floor(map.getZoom()) - 4;
   for (const f of feats) {
-    if (f.properties.class === 'swimming_pool') continue;
+    if (f.properties.class === 'swimming_pool' || f._z < coarsest) continue;
     const g = f.geometry;
     const list = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
     for (const rings of list) {

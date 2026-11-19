@@ -10,7 +10,8 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **Decided, 2026-11-18: A** (on #1091's description), not B. The coarse map follows the base map: dark on the night map, the aerial and MML maps coarser under their own detail.
 - **A: built** ([#1097](https://github.com/TommiContursi/Polku/pull/1097), merged 2026-11-19), for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`.
 - **Decided, 2026-11-19: C and D next** (on #1091's description). C as Finland's zoom-6 overview, 15 tiles and 0.95 MB once, not the zoom 0–8 one; D as written. The crossfade on long jumps is shown as a mock-up and decided with /animate before it's built. A low data mode is its own idea, #1103.
-- **Next:** [Building C](#building-c) and [Building D](#building-d), one PR each, then [the crossfade's mock-up](#the-crossfade-on-long-jumps-a-mock-up-first).
+- **C: built** on `claude/overview-c-1091`. Beyond the plan: OpenFreeMap's glyph ranges are kept with the overview and the worker answers them cache first, as MapLibre draws a vector tile only once its names' glyphs have come (on Slow 4G the zoom-6 tile waited 1.9 s for two ranges).
+- **Next:** [Building D](#building-d), after #1093's fix (the same `setData()`), then [the crossfade's mock-up](#the-crossfade-on-long-jumps-a-mock-up-first).
 
 ## What people see
 

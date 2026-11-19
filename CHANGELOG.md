@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### A coarse map of Finland, kept on your device ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- Polku keeps a coarse map of the whole of Finland on your device, under 2 MB with the letters for its names, saved once. When you zoom out or jump to a new place, its lakes, sea and main roads are there at once, offline too in places you never saved, until the detail comes.
+- When Polku opens without a connection, it says so, as it does when the connection drops, and that outside your saved areas there's only the coarse map. **Preview offline** shows the coarse map too, and its banner says so.
+
 ### The route after switching apps ([#1093](https://github.com/TommiContursi/Polku/issues/1093))
 
 - When your phone takes the map's graphics memory back while Polku is in the background, a route leg or trail details that arrive in that time are on the map once you're back. Before, the map came back without them until the next change.
