@@ -1,8 +1,10 @@
 // Polku service worker: keeps the app and saved offline areas working without
 // a connection.
 //
-// - App files (same origin): network first, the last copy seen after 3 s or offline. The typefaces are kept
-//   when the worker installs.
+// - App files (same origin): network first, the last copy seen after 3 s or offline. After the 3 s, a file other than
+//   the page itself takes its saved copy only when it's from the page's own deploy, where that's known (#481), so a
+//   slow file doesn't put an older version beside newer ones; on a page given saved copies already, at once. A network
+//   failure takes any saved copy. The typefaces are kept when the worker installs.
 // - Versioned CDN files (unpkg): cache first.
 // - OpenFreeMap TileJSON and sprites: network first, cached copy as fallback. Its fonts (the names'
 //   letters, which a tile waits for before it's drawn): cache first.
@@ -40,6 +42,9 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 // pages that got the saved copy of an app file (the server didn't answer in time), so the
 // page can say it may be an older Polku
 const savedFor = new Set();
+// each page's deploy: the Last-Modified of the page it got (GitHub Pages gives every file the deploy's time); not known
+// for a page the worker didn't open (claimed, or after the worker restarted)
+const deployOf = new Map();
 
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'saved-copy?') {
@@ -60,9 +65,16 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin === location.origin) {
     if (url.pathname === FLAG) return;
-    // navigations are stored without the query (?r=… share links) and hash
-    const key = req.mode === 'navigate' ? url.origin + url.pathname : req;
-    e.respondWith(networkFirst(req, key, 3000, e.resultingClientId || e.clientId));
+    if (req.mode === 'navigate') {
+      // stored without the query (?r=… share links) and hash
+      const page = e.resultingClientId || e.clientId;
+      e.respondWith(networkFirst(req, url.origin + url.pathname, 3000, page).then((r) => {
+        if (page) { deployOf.set(page, r.headers.get('last-modified')); if (deployOf.size > 50) deployOf.delete(deployOf.keys().next().value); }
+        return r;
+      }));
+    // one version of the app per page (#481): after the wait, only a saved copy from the page's own deploy (an older
+    // file beside newer ones stopped the app); at once on a page that's already been given saved copies
+    } else e.respondWith(networkFirst(req, req, savedFor.has(e.clientId) ? 0 : 3000, e.clientId, deployOf.get(e.clientId)));
   } else if (url.hostname === 'unpkg.com') e.respondWith(cacheFirst(req));
   else if (OFM_TILE.test(req.url)) e.respondWith(tile(req, ofmKey(req.url), +req.url.match(OFM_TILE)[1] <= 6));
   else if (DEM_TILE.test(req.url)) e.respondWith(tile(req, req.url));
@@ -71,14 +83,16 @@ self.addEventListener('fetch', (e) => {
   else if (previewNow !== false) e.respondWith(previewOn().then((on) => (on ? Response.error() : fetch(req))));
 });
 
-async function networkFirst(req, key, ms, client = '') {
+// `deploy`, when known: after the wait, only a saved copy with this Last-Modified
+async function networkFirst(req, key, ms, client = '', deploy = null) {
   const cache = await caches.open(SHELL);
   const match = () => cache.match(key);
   if (await previewOn()) return (await match()) || fetch(req);
   // the saved copy instead of the network's: remember which page got it
-  const saved = async () => {
+  const saved = async (late) => {
     const r = await match();
-    if (r && client) { savedFor.add(client); if (savedFor.size > 50) savedFor.delete(savedFor.values().next().value); }
+    if (!r || (late && deploy && r.headers.get('last-modified') !== deploy)) return null;
+    if (client) { savedFor.add(client); if (savedFor.size > 50) savedFor.delete(savedFor.values().next().value); }
     return r;
   };
   const net = fetch(req).then((res) => {
@@ -89,7 +103,7 @@ async function networkFirst(req, key, ms, client = '') {
   return new Promise((resolve, reject) => {
     let done = false;
     const finish = (r) => { if (!done) { done = true; resolve(r); } };
-    const timer = setTimeout(async () => { const s = await saved(); if (s) finish(s); }, ms);
+    const timer = setTimeout(async () => { const s = await saved(true); if (s) finish(s); }, ms);
     net.then((r) => { clearTimeout(timer); finish(r); }, async (err) => {
       clearTimeout(timer);
       const s = await saved();

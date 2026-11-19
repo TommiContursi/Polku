@@ -448,7 +448,6 @@ function winterNote() {
 const escapeAttr = (t) => String(t).replace(/[&"<>]/g, (c) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[c]);
 let winterTimer = 0;
 map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(() => checkWinter(), 1500); });
-map.once('load', () => checkWinter(true));
 
 let hadRoute = false; // (a route drawn, for All layers' Your route group)
 // road works and road conditions at the map's hour (the weather's, once it's made)
@@ -2232,7 +2231,15 @@ requestAnimationFrame(() => { syncWxH(); document.body.classList.add('ready'); }
 // that fails with anything but a 404 asks for no frame. When it was the last one, the load step below waited until
 // the map was moved (#393): one more frame. (The quick drawer's "No data now" comes from the same errors.)
 map.on('error', (e) => { if (e.tile) map.triggerRepaint(); });
-map.on('load', () => {
+// MapLibre fires `load` once every tile in view is in or has failed, so one that never answers (a slow depth tile, a
+// phone's bad connection) held all of this (#419): it runs on `load`, or 3 s after the style has loaded, whichever comes
+// first, and once. With tiles still coming it's as after a pan: the route and the layers need only the style. The 3 s
+// keep the order Polku has always opened in on a good connection.
+let started = false;
+const start = () => {
+  if (started) return;
+  started = true;
+  checkWinter(true);
   // Start with the attribution collapsed to its (i) button on small screens (and it stays so: above).
   if (window.innerWidth < 720) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
   configureLayers();
@@ -2257,9 +2264,13 @@ map.on('load', () => {
   // you had stays as it was
   if (pin) {
     history.replaceState(null, '', location.pathname + location.hash);
-    map.once('idle', () => {
+    // (idle, or 4 s: a tile that never answers holds idle as it held load)
+    const settled = (fn) => { let done = false; const go = () => { if (!done) { done = true; fn(); } }; map.once('idle', go); setTimeout(go, 4000); };
+    settled(() => {
       map.jumpTo({ center: pin.ll, zoom: Math.max(map.getZoom(), 14) });
-      map.once('idle', () => planner.openSpotCard(pin.ll, { pin: true, name: pin.name }));
+      settled(() => planner.openSpotCard(pin.ll, { pin: true, name: pin.name }));
     });
   }
-});
+};
+map.once('load', start);
+map.once('style.load', () => setTimeout(start, 3000));
