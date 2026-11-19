@@ -12,6 +12,8 @@ colors:
   route-water: "#0369a1"
   route-line: "#9c0050"
   route-loading: "#9ca3af"
+  mtb-s0-minus: "#00b8a0"
+  mtb-s0: "#64e600"
   you: "#1a73e8"
   you-soft: "rgba(26, 115, 232, 0.12)"
   glass-read: "rgba(255, 255, 255, 0.72)"
@@ -188,7 +190,9 @@ This file holds the tokens: colours, type, shapes, spacing, depth and motion. **
 
 A quiet, cool green-grey interface with one forest-green accent, so that the map and the route line hold the colour. The names below are the CSS variables in `css/app.css` (`--accent`, `--route`…); dark mode redefines the same variables, listed in the frontmatter with a `dark-` prefix.
 
-The Trail map keeps its pale terrain fills, with stronger road edges and flat building outlines so streets, trails and buildings can be read together. Minor and service roads widen modestly at intermediate zooms; cycling sports retain the warm unpaved-road emphasis. Other basemaps, 3D building colours and difficulty scales keep their own appearance.
+The Trail map keeps its pale terrain fills, with stronger road edges and flat building outlines so streets, trails and buildings can be read together. Minor and service roads widen modestly at intermediate zooms; cycling sports retain the warm unpaved-road emphasis. Other basemaps and 3D building colours keep their own appearance.
+
+Downhill MTB difficulty has turquoise S0− (`--mtb-s0-minus`) for very easy paths and neon-green S0 (`--mtb-s0`); S1–S6 retain the indexed scale's colors. The map, cards, keys and route/profile use the same class and words. Uphill, hiking, speed and smoothness keep the original indexed palette, including its darker green S0.
 
 ### Primary
 - **Accent (forest green)**: links, the chosen chip's border, the chosen switch's icon, ticks and the active state of map buttons. In dark mode a lighter green, so it still reads on dark surfaces.

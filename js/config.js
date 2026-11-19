@@ -140,21 +140,27 @@ export const CRAFT = {
 export const CRAFTS = { paddle: CRAFT };
 
 // ---------------------------------------------------------------------------
-// Difficulty palettes. Same hue ladder for downhill (mtb:scale) and uphill
-// (mtb:scale:uphill) so the two views read the same way.
+// Uphill and the other indexed scales keep their original palette.
 
 export const DIFF_COLORS = fromCss(['--diff-s0', '--diff-s1', '--diff-s2', '--diff-s3', '--diff-s4', '--diff-s5', '--diff-s6']);
 
-// the grades' names, as on the user's MTB trail map (MTB-TrailMap-JOSM-Style); a short code alone only where it's clear
-export const MTB_SCALE_TEXT = [
-  'S0 · Easy path',
-  'S1 · Intermediate path',
-  'S2 · Difficult path',
-  'S3 · Very difficult path',
-  'S4 · Extremely difficult path',
-  'S5 · Almost impossible path',
-  'S6 · Unridable path',
-];
+// Downhill display order is separate from numeric routing and uphill grades.
+export const MTB_GRADES = ['0-', 0, 1, 2, 3, 4, 5, 6];
+export const MTB_SCALE_TEXT = {
+  '0-': 'S0− · Very easy path',
+  0: 'S0 · Easy path',
+  1: 'S1 · Intermediate path',
+  2: 'S2 · Difficult path',
+  3: 'S3 · Very difficult path',
+  4: 'S4 · Extremely difficult path',
+  5: 'S5 · Almost impossible path',
+  6: 'S6 · Unridable path',
+};
+export const MTB_COLORS = fromCss(Object.fromEntries(MTB_GRADES.map((k) => [k, k === '0-' ? '--mtb-s0-minus' : k === 0 ? '--mtb-s0' : `--diff-s${k}`])));
+export function mtbClass(value) {
+  const raw = String(value ?? '');
+  return raw === '0-' ? '0-' : /^[0-6][+-]?$/.test(raw) ? Number(raw[0]) : -1;
+}
 
 // What each MTB grade (mtb:scale) means for a rider, as Heads-up says it: from the MTB-TrailMap JOSM style's guide
 export const MTB_MEANS = [

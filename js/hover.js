@@ -5,7 +5,7 @@
 // The cursor is checked once per frame; tooltips only when the pointer rests.
 // Map text appears first; OSM/terrain enrichment keeps its original delay.
 
-import { DIFF_COLORS, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
+import { DIFF_COLORS, MTB_COLORS, MTB_SCALE_TEXT, mtbClass, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
 import { inspectLayers, pickFeature, hitBox, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
@@ -247,8 +247,8 @@ function way(feats, ctx) {
   const title = (route && route.properties.name) || (w ? w.name : 'Trail');
   if (route && route.properties.name && w) said.push(bits[bits.push(e(w.name)) - 1]);
   const wp = w ? w.p : {};
-  const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
-  if (Number.isFinite(idx)) said.push(bits[bits.push(`${dot(DIFF_COLORS[idx])}S${idx}`) - 1]);
+  const idx = mtbClass(wp.mtb_scale);
+  if (idx !== -1) said.push(bits[bits.push(`${dot(MTB_COLORS[idx])}${MTB_SCALE_TEXT[idx].split(' · ')[0]}`) - 1]);
   if (up) bits.push(`${dot(DIFF_COLORS[up.properties.cls])}${UPHILL_TEXT[up.properties.cls].split(' ')[0]} ${up.properties.grade} %`);
   const upAt = bits.length;
   if (wp.surface) said.push(bits[bits.push(e(String(wp.surface).replace(/_/g, ' '))) - 1]);
