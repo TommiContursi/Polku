@@ -7431,6 +7431,14 @@ def fadein(chrome):
                 pg.c.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}, pg.s)
                 pg.js(FADEIN_STILL, timeout=20000)
         after(pg, 'swipes on a phone', swipes, True)
+        # a move made at once mid-fade (following you, heading up: no frame drawn while it moves) takes the picture with
+        # it (Codex on #1136)
+        held_move(pg, swipes)
+        if not pg.js(FADEIN_SEEN):
+            fails.append('a phone: nothing faded in after more swipes, so a move made at once couldn’t be tried')
+        elif pg.js("(() => { const m = polku.map, c = m.getCanvas(); m.jumpTo({ center: m.unproject([c.clientWidth / 2 + 120, c.clientHeight / 2]) }, { polkuFollow: true }); return !!document.querySelector('.map-fade'); })()"):
+            fails.append('a phone: a move made at once, as following you does, left the picture of the view before over the map')
+        # (last: a touch is a tap, which opens a card over the swipes' start)
         pg.js('window.__fade.gone.length = 0, true')
         held_move(pg, swipes)
         if not pg.js(FADEIN_SEEN):
@@ -7441,13 +7449,6 @@ def fadein(chrome):
             pg.c.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}, pg.s)
             if left or 'finished' in gone or not gone:
                 fails.append(f'a phone: a touch on the map didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
-        # a move made at once mid-fade (following you, heading up: no frame drawn while it moves) takes the picture with
-        # it (Codex on #1136)
-        held_move(pg, swipes)
-        if not pg.js(FADEIN_SEEN):
-            fails.append('a phone: nothing faded in after more swipes, so a move made at once couldn’t be tried')
-        elif pg.js("(() => { const m = polku.map, c = m.getCanvas(); m.jumpTo({ center: m.unproject([c.clientWidth / 2 + 120, c.clientHeight / 2]) }, { polkuFollow: true }); return !!document.querySelector('.map-fade'); })()"):
-            fails.append('a phone: a move made at once, as following you does, left the picture of the view before over the map')
         fails += [f'phone console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
