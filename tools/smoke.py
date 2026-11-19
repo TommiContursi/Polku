@@ -7286,6 +7286,7 @@ def fadein(chrome):
 
     def held_move(pg, move):
         """Makes the move with the tiles held, and lets them go once the map has stopped; how many were held."""
+        pg.held_in = sessions(pg)  # (afresh: a worker started since isn't held otherwise)
         for s_ in pg.held_in:
             try:
                 chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*openfreemap.org/planet/*/14/*'}]}, s_)
@@ -7330,14 +7331,13 @@ def fadein(chrome):
     try:
         pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
         pg.js(FADEIN_WATCH)
-        pg.held_in = sessions(pg)
         after(pg, 'a drag with the mouse', drag, True)
         after(pg, 'a search result chosen with Enter', by_enter, False)
         after(pg, 'a search result chosen with the mouse', by_click('62.2200, 25.6700'), True)
         after(pg, 'the arrow keys', by_arrows, False)
         # a LIPAS route lit under the mouse ends a fade: it's drawn in the map's canvas, under the picture. LIPAS answers
         # with a route through the view's middle (EPSG:3067, tm35ToLonLat inverted); a spot where the mouse lights it is
-        # found; then, the map kept still, a moveend has LIPAS answer again with more routes, and while they fade in the
+        # found; then, the map kept still, more routes come on that layer after a moveend, and while they fade in the
         # mouse goes to that spot.
         pg.js("""(async () => {
           const m = polku.map, c = m.getCenter(), { tm35ToLonLat } = await import(location.origin + '/js/geo.js'), k = Math.cos(c.lat * Math.PI / 180);
@@ -7345,12 +7345,17 @@ def fadein(chrome):
           for (let i = 0; i < 6; i++) { const [lo, la] = tm35ToLonLat(x, y); x += (c.lng - lo) * 111320 * k; y += (c.lat - la) * 111000; }
           window.__routeAt = (i) => tm35ToLonLat(x + i * 250, y); // (points on it: east-west in EPSG:3067 isn't on the map)
           const line = (id, dy) => ({ type: 'Feature', properties: { id }, geometry: { type: 'LineString', coordinates: [...Array(161).keys()].map((i) => [x - 20000 + i * 250, y + dy]) } });
-          window.__routes = [line(1, 0)];
-          (await import(location.origin + '/js/lipas.js')).seedLipas(() => Promise.resolve({ type: 'FeatureCollection', features: window.__routes }));
+          (await import(location.origin + '/js/lipas.js')).seedLipas(() => Promise.resolve({ type: 'FeatureCollection', features: [line(1, 0)] }));
           polku.lipas.tiles.clear();
           m.jumpTo({ center: c });
           await new Promise((r) => setTimeout(r, 2500));
-          window.__more = () => { window.__routes = [line(1, 0), ...[...Array(16).keys()].map((i) => line(10 + i, 150 * (i + 1)))]; polku.lipas.tiles.clear(); document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); m.jumpTo({ center: m.getCenter() }); }; // (the last input a pointer's, off the map)
+          // a still map's moveend after a pointer's input (off the map), and Polku's LIPAS layer given more routes at once
+          window.__more = () => {
+            document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+            m.jumpTo({ center: m.getCenter() });
+            const pts = [...Array(161).keys()].map((i) => window.__routeAt(i - 80)), f = (id, dLat) => ({ type: 'Feature', properties: { lipas: true, type: 4405, lipasId: id }, geometry: { type: 'LineString', coordinates: pts.map(([lo, la]) => [lo, la + dLat]) } });
+            m.getSource('lipasRoutes').setData({ type: 'FeatureCollection', features: [f(1, 0), ...[...Array(16).keys()].map((i) => f(100 + i, 0.001 * (i + 1)))] });
+          };
           return true; })()""", timeout=20000)
 
         def hover_at(x, y):
@@ -7367,7 +7372,7 @@ def fadein(chrome):
             pg.js('window.__more(), true')
             ready = pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const a = document.querySelector('.map-fade')?.getAnimations()[0]; if (a && a.effect.getTiming().duration - a.currentTime > 120) ok(true); else if (Date.now() - t0 > 4000) ok(false); else requestAnimationFrame(go); }; go(); })")
             if not ready:
-                fails.append('a route lit under the mouse: the routes LIPAS answered with, the map still, didn’t fade in')
+                fails.append('a route lit under the mouse: more LIPAS routes after a still moveend didn’t fade in')
             else:
                 pg.js('window.__fade.gone.length = 0, true')  # (only how the fade on the map now goes)
                 hover_at(*spot)
@@ -7382,7 +7387,6 @@ def fadein(chrome):
     try:
         pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
         pg.js(FADEIN_WATCH)
-        pg.held_in = sessions(pg)
 
         def swipes(pg):  # two, up the screen: the map moves further than a tile's height
             for _ in range(2):
@@ -7413,7 +7417,6 @@ def fadein(chrome):
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
         pg.js(FADEIN_WATCH)
-        pg.held_in = sessions(pg)
         after(pg, 'with motion, a search result’s flight', by_click('62.2700, 25.6400'), True)
         for i in range(8):
             mouse(pg, 'mousePressed', 970, 450)
