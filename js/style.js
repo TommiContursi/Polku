@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
   isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
 import { warnMarkId } from './icons.js';
@@ -85,9 +85,10 @@ export const isTopo = (base) => base === 'mml' || base === 'maasto';
 // the lit stretch comes and goes with the pointer
 export const routeDim = (lit) => ({ 'route-glow': lit ? 0.1 : 0.3, 'route-casing': lit ? 0.6 : 0.9, 'route-line': lit ? 0.5 : 1, 'route-color': lit ? 0.5 : 1 });
 
-// mtb:scale → 0..6, or -1 when missing. (to-number("") is 0, hence the has-guard.)
-const MTB_IDX = ['case', ['has', 'mtb_scale'], ['to-number', ['slice', ['to-string', ['get', 'mtb_scale']], 0, 1], -1], -1];
+// Raw suffixes keep their whole grade except 0−; missing/invalid values match no class.
+const MTB_IDX = ['match', ['to-string', ['get', 'mtb_scale']], ...MTB_GRADES.flatMap((k) => [k === '0-' ? '0-' : [String(k), `${k}+`, ...(k > 0 ? [`${k}-`] : [])], String(k)]), ''];
 const diffColor = (idxExpr, none) => ['match', idxExpr, ...DIFF_COLORS.flatMap((c, i) => [i, c]), none];
+const mtbColor = (idxExpr, none) => ['match', ['to-string', idxExpr], ...MTB_GRADES.flatMap((k) => [String(k), MTB_COLORS[k]]), none];
 
 const isPathClass = ['==', ['get', 'class'], 'path'];
 // the trail colours' own opacities (Layers → Trails & difficulty), 0.1–1: 'down' difficulty, 'up' uphill
@@ -496,14 +497,14 @@ export function buildStyle(s, ctx) {
   if (s.labelsDown) {
     add({
       id: 'mtb-label', type: 'symbol', source: 'ofm', 'source-layer': 'transportation', minzoom: 14.5,
-      filter: ['all', ['has', 'mtb_scale'], ['in', ['get', 'class'], ['literal', ['path', 'track']]]],
+      filter: ['all', ['!=', MTB_IDX, ''], ['in', ['get', 'class'], ['literal', ['path', 'track']]]],
       layout: {
         'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'symbol-spacing': zi(14.5, 170, 18, 320),
-        'text-field': ['concat', 'S', ['to-string', ['get', 'mtb_scale']]],
+        'text-field': ['concat', 'S', ['case', ['==', MTB_IDX, '0-'], '0−', ['to-string', ['get', 'mtb_scale']]]],
         'text-font': FONT_B, 'text-size': zi(14.5, 10, 18, 14), 'text-offset': [0, -1.1],
         'text-keep-upright': true, 'text-max-angle': 40, 'text-padding': 1,
       },
-      paint: { 'text-color': diffColor(MTB_IDX, '#ffffff'), 'text-halo-color': '#111111', 'text-halo-width': 1.6 },
+      paint: { 'text-color': mtbColor(MTB_IDX, '#ffffff'), 'text-halo-color': '#111111', 'text-halo-width': 1.6 },
     });
   }
   if (s.labelsUp) {
@@ -835,7 +836,7 @@ function addRoads(s, P, hc, layers, ctx) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': diffOn
-          ? diffColor(MTB_IDX, plainHalo)
+          ? mtbColor(MTB_IDX, plainHalo)
           : gravel ? (darkBase ? '#8a5a22' : '#e9b56c') : plainHalo,
         'line-width': zi(11, 2, 14, 4 * k, 16, 7 * k, 18, 12 * k),
         'line-opacity': (diffOn ? 0.9 * trailColorOpacity(s, 'down') : gravel ? 0.9 : 0.7) * roadsDim,
@@ -861,7 +862,7 @@ function addRoads(s, P, hc, layers, ctx) {
     const noBike = ['==', ['get', 'bicycle'], 'no'];
     const noFoot = ['==', ['get', 'foot'], 'no'];
     const sidewalkish = ['all', ['==', ['get', 'subclass'], 'footway'], ['!', ['has', 'mtb_scale']]];
-    const haloOf = (idx) => (diffOn ? diffColor(idx, plainHalo) : footAct ? (darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)') : plainHalo);
+    const haloOf = (idx) => (diffOn ? mtbColor(idx, plainHalo) : footAct ? (darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)') : plainHalo);
     const haloOpacity0 = [
       'case',
       bikeAct ? noBike : noFoot, 0.25,

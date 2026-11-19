@@ -2,7 +2,7 @@
 
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
-  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
   QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT,
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
@@ -1131,7 +1131,7 @@ const KEYS = {
   ],
   trails: () => [
     ...(state.trailColors === 'down' || state.trailColors === 'both'
-      ? [h('h3', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
+      ? [h('h3', {}, 'MTB difficulty (halo)'), ...MTB_GRADES.map((k) => keyItem(keyLine(`background:${MTB_COLORS[k]};height:8px`), MTB_SCALE_TEXT[k])), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
     ...(state.trailColors === 'up' || state.trailColors === 'both'
       ? [h('h3', {}, state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty'), ...UPHILL_TEXT.map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)), keyItem(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')] : []),
     ...(state.trailDetails ? [
@@ -1293,7 +1293,7 @@ function trailControls() {
     }),
     h('p', { class: 'note' }, {
       off: `Trails and roads drawn for ${act.label.toLowerCase()}: what matters for it stands out. Turn on difficulty or uphill colours here.`,
-      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0 green → S6 dark purple). White halo = not graded yet.',
+      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0− turquoise, S0 bright green → S6 dark purple). White halo = not graded yet.',
       up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
       both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
       winter: 'Trails by how soon they open after snow (OSM mtb:winter), ploughed and unploughed paths, no access in winter, ski tracks: Trailmap’s winter classes, from OpenStreetMap where mapped (zoom 11+). In winter they show by themselves (the Winter group).',

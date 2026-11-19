@@ -13,7 +13,7 @@
 import { lonLatToTile, tileBounds, pointSegment, dist } from './geo.js';
 import { cachedOverpass } from './osm.js';
 import { hostedTile, forgetHostedFailures } from './osm-data.js';
-import { OSM_DATA_MANIFEST } from './config.js';
+import { OSM_DATA_MANIFEST, mtbClass } from './config.js';
 
 export const TILE_Z = 13;
 export const MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
@@ -135,10 +135,6 @@ const VIS = { excellent: 0, good: 0, intermediate: 1, medium: 1, moderate: 1, ba
 export const visClass = (t) => VIS[String(t.trail_visibility || '').toLowerCase()] ?? 0;
 export const VIS_TEXT = ['clear', 'faint in places', 'hard to see', 'barely visible'];
 
-const mtbIdx = (v) => {
-  const n = parseInt(String(v ?? ''), 10);
-  return Number.isFinite(n) && n >= 0 && n <= 6 ? n : -1;
-};
 const obstacles = (t) => String(t.obstacle || '').toLowerCase();
 const yes = (v) => v != null && v !== 'no';
 // the trails style.js draws from OSM (the same set it hides from the vector tiles)
@@ -171,7 +167,7 @@ function wayFeature(id, t, flat) {
     // the vector tiles' own names, so hover, click and the uphill grade treat these like tile trails
     class: track ? 'track' : 'path', subclass: t.highway, mtb_scale: t['mtb:scale'], surface: t.surface, bicycle: t.bicycle, foot: t.foot, horse: t.horse,
     brunnel: yes(t.bridge) ? 'bridge' : yes(t.tunnel) ? 'tunnel' : undefined,
-    osm: id, trail: isTrail(t), mtb: mtbIdx(t['mtb:scale']),
+    osm: id, trail: isTrail(t), mtb: mtbClass(t['mtb:scale']),
     w, vis: visClass(t), wf: track ? 1 : HALO_W[w], cf: CENTRE_W[w],
     veg: /vegetation/.test(o), mud: t.surface === 'mud' || /mud/.test(o), tree: /fallen.?trees?/.test(o), wayford: yes(t.ford),
     boardwalk: t.bridge === 'boardwalk',

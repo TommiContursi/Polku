@@ -1,7 +1,7 @@
 // The facts a card shows (25d). Pure: read from the route's analysis and what the planner says of a point, so a
 // missing one says so in its place, in the same words on every card. 1b adds the route's, by sport.
 import { fmtDist, fmtDuration } from './geo.js';
-import { OFFROAD_BIKE, isWater, ACTIVITIES, UPHILL_TEXT, MTB_SCALE_TEXT } from './config.js';
+import { OFFROAD_BIKE, isWater, ACTIVITIES, UPHILL_TEXT, MTB_SCALE_TEXT, mtbClass } from './config.js';
 import { surfaceClass } from './analysis.js';
 import { VIS_TEXT, visClass } from './trails.js';
 import { forecastKnown } from './weather.js';
@@ -13,12 +13,12 @@ import { fromCss } from './palette.js';
 export const SPORT_FACTS = { mtb: ['clock', 'grade', 'mtb'], gravel: ['clock', 'grade', 'surface'], road: ['clock', 'grade', 'surface'], hike: ['clock', 'grade', 'sac'], trailrun: ['clock', 'grade', 'sac'], run: ['clock', 'grade', 'surface'], paddle: ['clock', 'wind', 'temp'], swim: ['clock', 'wind', 'temp'] };
 
 // one short word a grade, on its own line under it
-const MTB_WORDS = MTB_SCALE_TEXT.map((t) => t.split(' · ')[1].toLowerCase()); // "easy path", "intermediate path"…
 const SAC = { hiking: ['T1', 'easy'], mountain_hiking: ['T2', 'medium'], demanding_mountain_hiking: ['T3', 'hard'], alpine_hiking: ['T4', 'alpine'], demanding_alpine_hiking: ['T5', 'alpine'], difficult_alpine_hiking: ['T6', 'alpine'] };
 // a way's MTB grade (mtb:scale, or the uphill one), as "S1" and its word; null when it isn't mapped
 export function mtbGrade(tags, key = 'mtb:scale') {
-  const n = parseInt(tags && tags[key], 10);
-  return n >= 0 && n <= 6 ? { value: `S${n}`, word: MTB_WORDS[n] } : null;
+  const n = key === 'mtb:scale' ? mtbClass(tags && tags[key]) : parseInt(tags && tags[key], 10);
+  const [value, word] = (MTB_SCALE_TEXT[n] || '').split(' · ');
+  return word ? { value, word: word.toLowerCase() } : null;
 }
 // a way's trail grade (sac_scale), as "T1" and its word; null when it isn't mapped
 export function sacGrade(tags) {

@@ -1,7 +1,7 @@
 // Route planner: waypoints, per-leg routing modes, undo/redo, the bottom sheet
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
-import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS } from './config.js';
+import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, MTB_GRADES, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
@@ -9,7 +9,7 @@ import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain, downClass } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
@@ -3344,7 +3344,7 @@ export class Planner {
     let g0 = Infinity, g1 = -Infinity, up = -1, down = -1, kw = -1, kr = -1, kc = -1, lo = Infinity, hi = -Infinity, gust = 0;
     for (let k = k0; k <= k1; k++) {
       if (!noTerrain(a, k)) { g0 = Math.min(g0, a.grade[k]); g1 = Math.max(g1, a.grade[k]); }
-      up = Math.max(up, a.upCls[k]); down = Math.max(down, a.down6[k]);
+      up = Math.max(up, a.upCls[k]); down = Math.max(down, MTB_GRADES.indexOf(downClass(a, k)));
       if (k < k1) { const key = `${a.way[k]}|${a.surf[k]}`, was = ways.get(key); ways.set(key, { k: was ? was.k : k, m: (was ? was.m : 0) + a.along[k + 1] - a.along[k] }); }
       if (w && forecastKnown(w, k)) {
         if (kw < 0 || w.speed[k] > w.speed[kw]) kw = k;
@@ -3357,7 +3357,7 @@ export class Planner {
       const pct = (g) => `${g >= 0 ? '+' : ''}${g.toFixed(1)}`, main = [...ways.values()].sort((p, q) => q.m - p.m)[0];
       if (g0 <= g1) rows.push(`Grade ${pct(g0) === pct(g1) ? pct(g0) : `${pct(g0)} to ${pct(g1)}`} %`);
       if (up >= 0) rows.push(`Uphill ${UPHILL_TEXT[up].split(' · ')[0]}`);
-      if (down >= 0) rows.push(`${MTB_SCALE_TEXT[down].split(' · ')[0]} downhill`);
+      if (down >= 0) rows.push(`${MTB_SCALE_TEXT[MTB_GRADES[down]].split(' · ')[0]} downhill`);
       if (main) { const road = this.roadAt(main.k); rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${escapeHtml(a.way[main.k])} · ${escapeHtml(a.surf[main.k].replace('_', ' '))}`); }
     }
     if (kw < 0) return w ? [...rows, 'No forecast yet'] : rows;
