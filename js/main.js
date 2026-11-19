@@ -21,7 +21,7 @@ import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
 import { prefetchWater } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
-import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection } from './offline.js';
+import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist, compass as side } from './geo.js';
@@ -162,8 +162,8 @@ const map = new maplibregl.Map({
   attributionControl: false,
   cooperativeGestures: false,
 });
-// A coarse map underneath (#1091): while a base map tile in view hasn't come, the tile four zoom levels up is kept among
-// MapLibre's own tiles, so its place shows that one (masked to the missing tile's square), never plain paper. Once the
+// A coarse map underneath (#1091): while a base map tile in view hasn't come, the tile four zoom levels up (and for the
+// vector base, zoom 6's too) is kept among MapLibre's own tiles, so its place shows that one (masked to the missing tile's square), never plain paper. Once the
 // detail is there it goes back to MapLibre's cache, ready for the next move, and out of what querySourceFeatures reads
 // (a coarse lake has no islands: round trips' water test). It's drawn in the map's own style, so it's dark on the
 // night map and a coarser photo under the aerial one. MapLibre GL JS has no option for it (Mapbox's prefetchZoomDelta),
@@ -176,9 +176,14 @@ map.once('styledata', () => {
     const ups = [];
     if (COARSE.has(this.id)) {
       for (const t of ideal) {
-        const up = t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4)), held = this.getTileByID(up.key);
-        // kept while it loads too, so a move doesn't ask for it again
-        if (up.key !== t.key && (!this.getTileByID(t.key)?.hasData() || (held && !held.hasData()))) ups.push(up);
+        const missing = !this.getTileByID(t.key)?.hasData();
+        // the base map's zoom 6 too: Finland's overview, kept by js/offline.js, so it's there at once (C)
+        const zs = this.id === 'ofm' && t.overscaledZ > 6 ? new Set([Math.max(6, t.overscaledZ - 4), 6]) : [Math.max(this._source.minzoom, t.overscaledZ - 4)];
+        for (const z of zs) {
+          const up = t.scaledTo(z), held = this.getTileByID(up.key);
+          // kept while it loads too, so a move doesn't ask for it again
+          if (up.key !== t.key && (missing || (held && !held.hasData()))) ups.push(up);
+        }
       }
     }
     // asked for before the detail, so they aren't queued behind it (MapLibre loads 16 images at a time)
@@ -2203,6 +2208,8 @@ onStatus((src, s) => {
 
 // ------------------------------------------------------------------ boot
 registerServiceWorker();
+// Finland's overview, once the map in view has come (a tile that fails is asked for again on the next start)
+map.once('idle', () => saveOverview().catch(() => {}));
 applyTheme(); // (as index.html's <head> did, unless the service worker gave an older index.html than this)
 initOfflineStatus();
 document.body.dataset.activity = state.activity;
