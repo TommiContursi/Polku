@@ -831,8 +831,8 @@ def waterway_style(chrome):
         polku.set({base,activity});
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         const at=`${base}/${activity}`, w=(cls,z)=>paint('line-width',z,{class:cls,intermittent:0});
-        if(!(w('stream',16)>=2))errs.push(`${at}: a stream is ${w('stream',16)} px at zoom 16`);
-        for(const cls of ['ditch','drain'])for(const z of [14,16,18])if(!(w(cls,z)<=w('stream',z)*.6))errs.push(`${at}: a ${cls} is ${w(cls,z)} px beside a ${w('stream',z)} px stream at zoom ${z}`);
+        if(!(w('stream',16)>=4))errs.push(`${at}: a stream is ${w('stream',16)} px at zoom 16`);
+        for(const cls of ['ditch','drain'])for(const z of [14,16,18])if(!(w(cls,z)<=w('stream',z)*.65))errs.push(`${at}: a ${cls} is ${w(cls,z)} px beside a ${w('stream',z)} px stream at zoom ${z}`);
         if(!(w('river',16)>w('stream',16)))errs.push(`${at}: a river is no wider than a stream`);
         for(const cls of ['river','stream','ditch','drain']) {
           if(JSON.stringify(paint('line-dasharray',16,{class:cls,intermittent:0}))!=='[1,0]')errs.push(`${at}: a ${cls} is dashed`);

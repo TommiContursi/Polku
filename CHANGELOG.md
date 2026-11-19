@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Streams and ditches by size ([#1138](https://github.com/TommiContursi/Polku/issues/1138))
 
-- Streams are drawn wider than before when you zoom in, and ditches and drains narrower than streams, so the two are easier to tell apart in the forest. Rivers and canals are unchanged. A stream or ditch that only has water at times keeps a dashed line, now with longer dashes that still read as a dash.
+- Rivers, streams, ditches and drains are drawn wider when you zoom in, so they stand out on the map. Ditches and drains stay narrower than streams, so the two are easy to tell apart in the forest. A stream or ditch that only has water at times keeps a dashed line, now with longer dashes that still read as a dash.
 
 ### Cycling restriction marks on paths and forest tracks ([#1130](https://github.com/TommiContursi/Polku/issues/1130))
 
