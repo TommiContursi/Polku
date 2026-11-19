@@ -57,9 +57,9 @@ const DEFAULTS = {
   fewerOffered: false, // Polku has offered Fewer effects on this device, once, as frames were slow
   flatOffered: false, // Polku has offered flat hills on this device, once, as frames were slow in 3D
   hillshade: true,
-  hillLight: 'fixed', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910)
-  hillShadows: true, // with the sun's light, the shadows the hills cast
-  objectShadows: true, // with the sun's light, the shadows trees and buildings cast (#919)
+  hillLight: 'sun', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910, the default since #1119)
+  hillShadows: false, // with the sun's light, the shadows the hills cast
+  objectShadows: false, // with the sun's light, the shadows trees and buildings cast (#919)
   contours: true,
   terrain3d: false, // the 3D button: tilted, with the hills raised while raiseHills is on
   raiseHills: true, // off: 3D only tilts the map, flat, as tilting it by hand does
@@ -677,16 +677,18 @@ const weather = new WeatherOverlay(map, {
 });
 mapTime = () => timeAtHour(weather.hour);
 // the sun at the map's hour (to ten minutes, so the shadows' tiles keep), from the map's middle, for style.js
-// shortcut: the light is worked out when the style is built, so after a long pan or ten minutes without a rebuild it's a little off
 const sunHour = () => Math.round(timeAtHour(weather.hour) / 600) * 600;
-let litFor = 0, shadeFor = 0;
+const sunNow = () => sunPosition(sunHour(), map.getCenter().toArray());
+const sunKey = (p) => (p.alt > 0.5 ? `${Math.round(p.az)} ${Math.round(p.alt)}` : 'down'); // (as style.js draws it)
+let litFor = 0, litSun = '', shadeFor = 0;
 // the shadows' tiles move on to the hour once the last hour's are all drawn: MapLibre keeps those on screen while the
 // next ones are worked out (setTiles() in applyStyle()), so a playing timeline steps them as fast as the device can
 const shadowsDrawn = () => SHADOWS.every((id) => !map.getSource(id) || map.isSourceLoaded(id));
 ctx.sunAt = () => {
-  litFor = sunHour();
+  const p = sunNow();
+  litFor = sunHour(); litSun = sunKey(p);
   if (shadowsDrawn()) shadeFor = litFor;
-  return { t: shadeFor, ...sunPosition(litFor, map.getCenter().toArray()) };
+  return { t: shadeFor, ...p };
 };
 // the sky in 3D (#644): the sun's place at the map's hour, and the weather at the map's middle only while a forecast is loaded
 const skyNow = () => {
@@ -695,8 +697,8 @@ const skyNow = () => {
 };
 let skyFor = '';
 ctx.skyAt = () => { const k = skyNow(); skyFor = JSON.stringify(k); return k; };
-// the hills' light or the sky built for another hour, place or forecast
-const lightStale = () => (state.hillshade && state.hillLight === 'sun' && (sunHour() !== litFor || (shadeFor !== litFor && shadowsDrawn())))
+// the hills' light (none on Aerial) or the sky built for another hour, place or forecast
+const lightStale = () => (state.hillshade && !isAerial(state.base) && state.hillLight === 'sun' && (sunHour() !== litFor || sunKey(sunNow()) !== litSun || (shadeFor !== litFor && shadowsDrawn())))
   || (state.terrain3d && JSON.stringify(skyNow()) !== skyFor);
 map.on('moveend', () => { if (lightStale()) applyStyle(); });
 map.on('idle', () => { if (lightStale()) applyStyle(); }); // (the shadows catching up with the hour)

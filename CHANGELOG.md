@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### The hills lit by the sun ([#1119](https://github.com/TommiContursi/Polku/issues/1119))
+
+- On a new device the hillshade is lit by **The sun** at the timeline's hour, so the hills stand out more than in the fixed light. The shadows that hills, trees and buildings cast are off at first; turn them on under **Hillshade** in **Layers**. While the sun is down the hills have the fixed light, and if you've already set the map up, it keeps the light you have.
+
 ### The easiest MTB grades ([#673](https://github.com/TommiContursi/Polku/issues/673))
 
 - MTB difficulty distinguishes S0− · Very easy path in turquoise from S0 · Easy path in brighter green, on the map and in cards, the map key and route profiles. Uphill difficulty and the other colour scales keep their existing colours.
