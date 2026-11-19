@@ -4,13 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
-### Cycling restrictions on roads and paths ([#1130](https://github.com/TommiContursi/Polku/issues/1130))
+### Cycling restriction marks on paths and forest tracks ([#1130](https://github.com/TommiContursi/Polku/issues/1130))
 
-- Red side marks show roads, forest tracks and cycling paths explicitly tagged as closed to bicycles, as well as trails. In cycling sports, the marks stay outside the way’s band, including wide roads and trails. Missing bicycle access information is not shown as a prohibition.
+- Red side marks show an explicit mapped bicycle prohibition on paths and forest tracks, including cycling paths, in cycling sports. Their size and spacing change with zoom and trail width class, with stronger marks in high contrast and faded marks in tunnels. Ordinary road edges do not carry these marks. Missing bicycle access information is not a prohibition.
 
 ### Cycling paths and their surfaces ([#1123](https://github.com/TommiContursi/Polku/issues/1123))
 
-- Cycling paths stand out with wider blue strokes, comparable to trail bands. On the Trail map, stronger blue dashes sit on a white backing so they stay clear of terrain markings. They have long dashes for a known paved surface, short dashes for unpaved and intermediate dashes when the surface is unknown. The map key explains each pattern.
+- Cycling paths use blue strokes balanced with surrounding roads as you zoom. On the Trail map, stronger blue dashes sit on a white backing so they stay clear of terrain markings. They have long dashes for a known paved surface, short dashes for unpaved and intermediate dashes when the surface is unknown. The map key explains each pattern.
 - Footpaths and pedestrian streets use the cycling style only where bicycles are explicitly allowed in the map data. MTB-graded footpaths keep their difficulty colours. Other pedestrian ways use the footpath style, without implying that cycling is prohibited.
 
 ### Polku's own tooltips in the planner ([#304](https://github.com/TommiContursi/Polku/issues/304))

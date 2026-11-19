@@ -745,12 +745,11 @@ def cycleway_style(chrome):
     pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': False, 'trailColors': 'down'})
     fails = pg.js("""(async () => {
       const errs=[], m=polku.map, F=await import('/js/facts.js');
-      const width=(id,z)=>m.style.getLayer(id)._transitionablePaint._values['line-width'].value.expression.evaluate({zoom:z});
+      const width=(id,z,p={})=>m.style.getLayer(id)._transitionablePaint._values['line-width'].value.expression.evaluate({zoom:z},{type:2,properties:p});
       const zooms=[12,14,16,18], normal=zooms.map(z=>width('cycleway-ground',z));
-      for(const z of zooms.slice(1)) {
-        const cycle=width('cycleway-ground',z), trail=width('path-ground-halo',z);
-        if(cycle<trail*.7)errs.push(`zoom ${z}: cycling stroke ${cycle}px is too narrow beside ${trail}px trail halo`);
-      }
+      if(Math.abs(width('cycleway-ground',16,{surface:'paved'})-3.5213114754)>.00001||width('cycleway-ground',18,{surface:'paved'})!==6)errs.push('paved cycleway is out of scale');
+      if(Math.abs(width('cycleway-ground',16,{surface:'unpaved'})-(2.4+3.6*(1.2**2-1)/(1.2**3-1)))>.00001)errs.push('unpaved width curve changed');
+      if(width('cycleway-ground',16,{surface:'paved',width:1,wf:.62})!==width('cycleway-ground',16,{surface:'paved',width:5,wf:1.6}))errs.push('cycling width incorrectly follows physical width tags');
       const cases=[
         [{subclass:'cycleway'},true],
         [{subclass:'footway',bicycle:'yes'},true],
@@ -769,12 +768,13 @@ def cycleway_style(chrome):
       for(const pass of ['ground','bridge','tunnel']) {
         const id=`cycleway-${pass}`, layer=m.style.getLayer(id);
         const layers=m.getStyle().layers, casing=layers.find(l=>l.id===`${id}-casing`);
-        if(!casing)errs.push(`${id}: white casing missing`);
+        if(pass==='tunnel') { if(casing)errs.push('tunnel has an unsupported white casing'); }
+        else if(!casing)errs.push(`${id}: white casing missing`);
         else {
           if(JSON.stringify(casing.filter)!==JSON.stringify(layers.find(l=>l.id===id).filter))errs.push(`${id}: casing changes which ways are drawn`);
           if(casing.paint['line-color']!=='#ffffff'||casing.paint['line-dasharray'])errs.push(`${id}: casing is not solid white`);
           if(layers.indexOf(casing)>layers.findIndex(l=>l.id===id))errs.push(`${id}: casing covers the blue dashes`);
-          for(const z of zooms)if(width(`${id}-casing`,z)<width(id,z)+.5)errs.push(`${id}: zoom ${z} casing does not separate the stroke from terrain`);
+          if(pass==='ground'&&(width(casing.id,16)!==6||width(casing.id,18)!==12))errs.push('white casing is out of scale');
         }
         if(m.getPaintProperty(id,'line-color')!=='#3148d8')errs.push(`${id}: normal cycling blue is not the stronger contrast color`);
         for(const [tags,cycling] of cases) {
@@ -787,9 +787,10 @@ def cycleway_style(chrome):
           if(!('mtb_scale' in tags)&&cycling!==(kind==='cycleway'))errs.push(`${id}: disagrees with way facts`);
         }
         for(const [surface,want] of [['paved',[6,1.5]],['unpaved',[1,.5]],[undefined,[2.5,1.5]],['other',[2.5,1.5]]]) {
-          const got=layer.paint.get('line-dasharray').value;
-          const dash=got.evaluate?got.evaluate({zoom:16},{type:2,properties:{surface}},{}):got;
-          if(JSON.stringify(dash)!==JSON.stringify(want))errs.push(`${id}: ${surface??'unknown'} dashes ${JSON.stringify(dash)}`);
+          const raw=m.getPaintProperty(id,'line-dasharray'), got=layer.paint.get('line-dasharray').value;
+          const dash=typeof raw[0]==='number'?raw:got.evaluate({zoom:16},{type:2,properties:{surface}},{});
+          const expected=pass==='tunnel'?[6,1.5]:pass==='bridge'&&surface==='unpaved'?[1,.8]:want;
+          if(JSON.stringify(dash)!==JSON.stringify(expected))errs.push(`${id}: ${surface??'unknown'} dashes ${JSON.stringify(dash)}`);
         }
       }
       // Trail contrast improves; other basemap colors and sport dimming remain.
@@ -798,17 +799,16 @@ def cycleway_style(chrome):
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         const l=m.getStyle().layers.find(l=>l.id==='cycleway-ground');
         if(l.paint['line-color']!==color)errs.push(`${base}: cycleway color ${l.paint['line-color']}`);
-        if(Math.abs(l.paint['line-opacity']-(base==='trail'?.95:.85)*.55)>.00001)errs.push(`${base}: Paddle dimming changed`);
+        if(Math.abs(l.paint['line-opacity']-(base==='trail'?1:.85)*.55)>.00001)errs.push(`${base}: Paddle dimming changed`);
         const casing=m.getStyle().layers.find(l=>l.id==='cycleway-ground-casing');
         if(base==='trail') {
-          if(!casing||casing.paint['line-opacity']!==l.paint['line-opacity'])errs.push('Trail: casing loses Paddle dimming');
-          else for(const z of zooms)if(width(casing.id,z)<=width(l.id,z))errs.push(`Trail: zoom ${z} casing loses high-contrast separation`);
+          if(!casing||width(casing.id,16)!==7||width(casing.id,18)!==16)errs.push('Trail: high-contrast casing scale changed');
+          if(width(l.id,16,{surface:'paved'})!==4||width(l.id,16,{surface:'unpaved'})!==5||width(l.id,18)!==10)errs.push('Trail: high-contrast surface widths changed');
         } else if(casing)errs.push(`${base}: Trail casing leaked into another basemap`);
-        for(const [i,z] of zooms.entries())if(Math.abs(width('cycleway-ground',z)-normal[i]*1.35)>.000001)errs.push(`${base}: zoom ${z} high contrast does not scale the cycling width by 1.35`);
+
       }
       polku.set({base:'trail',activity:'road',highContrast:false});
-      for(const [i,z] of zooms.entries())if(z>=14&&width('cycleway-ground',z)<normal[i]*1.4-.000001)errs.push(`zoom ${z}: road cycling loses its width emphasis`);
-      if(m.getLayer('cycleway-ground-casing'))for(const z of zooms)if(width('cycleway-ground-casing',z)<=width('cycleway-ground',z))errs.push(`zoom ${z}: Road cycling loses its casing`);
+      for(const [i,z] of zooms.entries())if(width('cycleway-ground',z)!==normal[i])errs.push(`zoom ${z}: Road cycling inflates the Trail-map stroke`);
       const key=document.querySelector('#layers-body').textContent;
       for(const surface of ['paved','unpaved','surface unknown'])if(!key.includes(`Cycling path (${surface})`))errs.push(`map key omits ${surface}`);
       if(!key.includes('cycling permission not implied'))errs.push('map key implies pedestrian access');
@@ -820,54 +820,51 @@ def cycleway_style(chrome):
     return not fails
 
 
-# #1130: the same explicit cycling restriction reaches every drawn kind of way.
+# #1130: cycling side marks stay on paths/tracks and use zoom/width categories.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': True})
     fails = pg.js("""(async () => {
       const errs=[], m=polku.map, passes=['ground','bridge','tunnel'];
-      const value=(id,prop,z,p)=>{
-        const v=m.style.getLayer(id)._transitionablePaint._values[prop].value;
-        return v.expression?v.expression.evaluate({zoom:z},{type:2,properties:p}):v.value;
-      };
+      const value=(id,prop,z,p)=>m.style.getLayer(id)._transitionablePaint._values[prop].value.expression.evaluate({zoom:z},{type:2,properties:p});
       for(const activity of ['mtb','gravel','road'])for(const highContrast of [false,true]) {
         polku.set({activity,highContrast,trailDetails:true});
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-        for(const pass of passes) {
-          const ways=['service','minor','tertiary','secondary','primary','trunk','motorway'].map(cls=>
-            [`road-${pass}-${cls}`,`road-${pass}-${cls}-casing`,{class:cls}]);
-          ways.push([`track-${pass}`,`track-${pass}-halo`,{class:'track'}],
-            [`cycleway-${pass}`,`cycleway-${pass}-casing`,{class:'path',subclass:'cycleway'}],
-            [`path-${pass}`,`path-${pass}-halo`,{class:'path',subclass:'path'}],
-            [`path-osm-${pass}`,`path-osm-${pass}-halo`,{class:'path',subclass:'path',trail:true}]);
-          for(const [way,band,props] of ways) {
-            const id=`${way}-nobike`, l=m.style.getLayer(id);
-            if(!l){errs.push(`${activity}: ${id} missing`);continue;}
-            const tags={...props,...(pass==='ground'?{}:{brunnel:pass})};
-            for(const bicycle of ['no','yes','designated','permissive','dismount',undefined]) {
-              const p={...tags,...(bicycle?{bicycle}:{})};
-              if(l._featureFilter.filter({zoom:16},{type:2,properties:p})!==(bicycle==='no'))errs.push(`${id}: bicycle=${bicycle??'unknown'} misclassified`);
-            }
-            for(const other of passes.filter(x=>x!==pass))if(l._featureFilter.filter({zoom:16},{type:2,properties:{...tags,brunnel:other,bicycle:'no'}}))errs.push(`${id}: wrong structure ${other}`);
-            for(const z of [14,16,18])for(const surface of ['paved','unpaved'])for(const wf of [.62,1,1.6]) {
-              const p={...tags,bicycle:'no',surface,wf};
-              const offset=value(id,'line-offset',z,p), width=value(id,'line-width',z,p), edge=value(band,'line-width',z,p)/2;
-              if(offset-width/2<edge-.001)errs.push(`${activity}/${highContrast}: ${id} hidden inside its band at z${z}`);
-              if(highContrast&&width<5)errs.push(`${id}: high contrast does not enlarge marks`);
+        if(m.getStyle().layers.some(l=>l.id.startsWith('road-')&&l.id.endsWith('-nobike')))errs.push('cycling side marks leaked onto ordinary roads');
+        for(const pass of passes)for(const [way,props] of [
+          [`track-${pass}`,{class:'track'}], [`cycleway-${pass}`,{class:'path',subclass:'cycleway'}],
+          [`path-${pass}`,{class:'path',subclass:'path'}], [`path-osm-${pass}`,{class:'path',subclass:'path',trail:true}]
+        ]) {
+          const id=`${way}-nobike`, l=m.style.getLayer(id);
+          if(!l){errs.push(`${id} missing`);continue;}
+          const tags={...props,...(pass==='ground'?{}:{brunnel:pass})};
+          const matches=p=>l._featureFilter.filter({zoom:16},{type:2,properties:p});
+          for(const bicycle of ['no','yes','designated','permissive','dismount',undefined])if(matches({...tags,...(bicycle?{bicycle}:{})})!==(bicycle==='no'))errs.push(`${id}: bicycle=${bicycle??'unknown'} misclassified`);
+          if(matches({...tags,bicycle:'no',subclass:'footway'})||matches({...tags,access:'no',foot:'yes'}))errs.push(`${id}: footway or missing bicycle permission became a prohibition`);
+          if(matches({...tags,bicycle:'no',access:'no',foot:'no'}))errs.push(`${id}: cycling and general access marks duplicated`);
+          for(const other of passes.filter(x=>x!==pass))if(matches({...tags,brunnel:other,bicycle:'no'}))errs.push(`${id}: wrong structure`);
+          for(const [i,z] of [14,16,18].entries()) {
+            const width=value(id,'line-width',z,tags), want=(highContrast?[3,6,9]:[2,3,6])[i];
+            if(width!==want)errs.push(`${id}: zoom ${z} mark width ${width}, expected ${want}`);
+            for(const w of [0,1,2,3]) {
+              const sizes=way.startsWith('path-osm-')?(w===0?[1,3,4]:w>=2?[3,8,14]:[2.5,5,10]):[2.5,5,10];
+              if(value(id,'line-offset',z,{...tags,w})!==-sizes[i]*(highContrast?1.5:1))errs.push(`${id}: zoom ${z} width category ${w} offset changed`);
             }
           }
+          if(value(id,'line-opacity',16,tags)!==(pass==='tunnel'?.3:1))errs.push(`${id}: tunnel fading changed`);
+          if(JSON.stringify(m.getPaintProperty(id,'line-dasharray'))!==JSON.stringify(highContrast?[.4,.5]:[.2,.5]))errs.push(`${id}: mark spacing changed`);
         }
       }
       for(const activity of ['hike','run','trailrun','paddle']) {
         polku.set({activity});
         if(m.getStyle().layers.some(l=>l.id.endsWith('-nobike')))errs.push(`${activity}: cycling prohibition shown in another sport`);
       }
-      if(!document.querySelector('#layers-body').textContent.includes('No bikes (beside a road or path)'))errs.push('map key still limits no-bike marks to paths');
+      if(!document.querySelector('#layers-body').textContent.includes('No bikes (beside a path or forest track)'))errs.push('map key misstates restriction coverage');
       return [...new Set(errs)];
     })()""")
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} cycling restrictions on every way kind (#1130)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} cycling restriction marks on paths and tracks (#1130)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
