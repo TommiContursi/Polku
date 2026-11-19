@@ -374,7 +374,7 @@ export function tooltip(el, tip) {
   el.addEventListener('pointerleave', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(); });
   el.addEventListener('focus', () => { if (el.matches(':focus-visible')) show(); });
   el.addEventListener('blur', () => { if (tipFor === el) hideTip(0); });
-  for (const ev of ['pointerdown', 'click']) el.addEventListener(ev, () => { clearTimeout(tipShow); if (tipFor === el) hideTip(0); }); // (click: a key's too, so words a press changes aren't left up)
+  el.addEventListener('pointerdown', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(0); });
 }
 // A round ⓘ for what a drawing can't say itself (the design round's rule: no grey words explaining things): its words in
 // tooltip() for a mouse and the keyboard, and in the same bubble on a tap, until the next tap anywhere. `tool info-dot`
