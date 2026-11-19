@@ -2,7 +2,7 @@
 
 When you move the map, its new parts come in piece by piece, and on a fast connection that still feels slow. This is the investigation the issue asks for: what people see, measured; how other maps make theirs look ready at once; the options with their costs; and a mock-up to choose from; then what was decided and how it is built.
 
-The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html), a real map on OpenFreeMap's tiles that you move, as Polku fills it in today and with options A and B, on the network as it is or held a second per tile.
+The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html), a real map on OpenFreeMap's tiles that you move, on the network as it is or held a second per tile. Round 1 shows Polku filling it in as it did on 2026-11-18, with options A and B; round 2 the crossfade on long jumps, beside Polku as it is now.
 
 ## Where it stands
 
@@ -11,8 +11,9 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **A: built** ([#1097](https://github.com/TommiContursi/Polku/pull/1097), merged 2026-11-19), for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`.
 - **Decided, 2026-11-19: C and D next** (on #1091's description). C as Finland's zoom-6 overview, 15 tiles and 0.95 MB once, not the zoom 0–8 one; D as written. The crossfade on long jumps is shown as a mock-up and decided with /animate before it's built. A low data mode is its own idea, #1103.
 - **C: built** ([#1108](https://github.com/TommiContursi/Polku/pull/1108), merged 2026-11-19). Beyond the plan: OpenFreeMap's glyph ranges are kept with the overview and the worker answers them cache first, as MapLibre draws a vector tile only once its names' glyphs have come (on Slow 4G the zoom-6 tile waited 1.9 s for two ranges).
-- **D: built** on `claude/layers-together-1091`; how it differs from the plan and what it measured: [D, as built](#d-as-built).
-- **Next:** [the crossfade's mock-up](#the-crossfade-on-long-jumps-a-mock-up-first).
+- **D: built** ([#1115](https://github.com/TommiContursi/Polku/pull/1115), merged 2026-11-19); how it differs from the plan and what it measured: [D, as built](#d-as-built).
+- **The crossfade on long jumps: a mock-up, 2026-11-19,** decided with /animate and measured, with one recommendation: [the crossfade on long jumps](#the-crossfade-on-long-jumps).
+- **Next:** the user's choice of the crossfade (or none); nothing is built until then.
 
 ## What people see
 
@@ -186,9 +187,71 @@ On Slow 4G (DevTools' 562 ms and 1.4 Mbit/s) at the same places, D gains little 
 
 Not measured with D: a phone. Seen after a jump in Chrome with its GPU at 1440 × 900 and 390 × 844, in MTB and paddle: every layer drawn, nothing held or busy, no errors.
 
-## The crossfade on long jumps: a mock-up first
+## The crossfade on long jumps
 
-When the camera jumps far (a search result, Go to a place, the route fitted to the screen), the old view could fade into the new one over a snapshot rather than the new place filling in tile by tile. A drag, a pinch, the wheel and the keys never get it: they happen many times a minute, and by DESIGN.md's "Motion" what is started from the keyboard doesn't move. It's motion, so it's decided with /animate, and shown first as a mock-up beside A, C and D at 390 px and 1440 px, on the network as it is and slowed, before anything is built.
+When the camera jumps far (a search result, Show the whole route, an imported track), the old view could fade into the new one over a picture of it, rather than flying there and then filling in. The mock-up's round 2 shows it beside Polku as it is now, with A, C and D, at 390 px and 1440 px, on the network as it is and slowed. Nothing is built until the user chooses.
+
+### What /animate decided
+
+- **Whether it moves:** a long jump comes a few times in a session, not many times a minute, so it may move, when a tap or a click started it. Started from the keyboard it doesn't move (DESIGN.md, "Motion"): the old view is held the same way, and the new one shows at once. A drag, a pinch, the wheel and the arrow keys never get it.
+- **What it's for:** keeping a jarring change off the screen: the new place filling in after it lands. A flight has a purpose of its own, showing where the new place is from where you were, which is why #540 kept the camera's moves, so the crossfade takes a flight's place only when the new view shares nothing with the old one. When they overlap, the camera moves there as now.
+- **How:** a copy of the map's canvas, taken in a frame MapLibre draws (Polku's map has no `preserveDrawingBuffer`), laid over the map, held while the new place's map is drawn under it, at most 0.4 s, then faded out with WAAPI on `opacity`, `--t-open` (180 ms) on `--ease-out`, as anything leaving does. The new place shows at most 0.58 s after the press, sooner than today's 0.9 s flight even when it hasn't come.
+- **Reduced motion:** kept, as it's opacity only; DESIGN.md has things fade in place instead of moving. Today MapLibre turns the flight into a cut under reduced motion, so this replaces a cut with a fade.
+- **Interrupting:** a touch, a click, the wheel or a key on the map drops the picture at once, and a second jump replaces it. The picture never takes a touch (`pointer-events: none`).
+- **Not used:** DESIGN.md's 2 px blur for a crossfade that still feels off. A blur over the whole map costs frames on a phone, so it comes only if trying the fade shows it's needed.
+
+### The versions
+
+- **As now: flies there.** `flyTo` (or `fitBounds`) in 0.9 s, zooming out and back in; the place then fills in: the coarse map at once (A, C), the detail sharpening in, and Polku's own layers in one change (D).
+- **Crossfade once drawn** (recommended): the picture is held until the new place's map is drawn, at most 0.4 s, then fades. Polku's own layers come after it in their one change, as after any move.
+- **Crossfade at once:** the picture fades straight away, and the new place fills in under it as it comes.
+
+### Measured
+
+On the mock-up at 2a9b, in Chrome with its GPU (Apple M1 Pro, Metal), headless, motion as a person has it, an empty profile for each version, Finland's overview fetched first as C keeps it. Each version made five jumps from one national park or town to the next, into places the profile had never loaded (Jyväskylä, Koli, the Eastern Gulf of Finland, Pallas, Hossa, Nuuksio), on the network as it is and on DevTools' Slow 4G (562 ms, 1.4 Mbit/s). "Polku's layers" is the mock-up's stand-in for D, drawn 0.6 s after the map stops on a fast network; it says when the map stops, not how long Polku's loaders take.
+
+| Network, size | Version | The old view goes | The new place's map drawn | Polku's layers drawn | Tiles asked for |
+|---|---|---|---|---|---|
+| Fast, 390 × 844 | As now: flies there | flies 0.9 s | 0.94–0.98 s | 1.52–1.55 s | 34–57 |
+| Fast, 390 × 844 | Crossfade once drawn | 0.05–0.12 s | 0.05–0.12 s | 0.61–0.63 s | 5–8 |
+| Fast, 390 × 844 | Crossfade at once | at once | 0.05–0.12 s | 0.61–0.63 s | 5–8 |
+| Fast, 1440 × 900 | As now: flies there | flies 0.9 s | 0.94–0.97 s | 1.52–1.53 s | 55–83 |
+| Fast, 1440 × 900 | Crossfade once drawn | 0.06–0.19 s | 0.06–0.19 s | 0.61–0.63 s | 7–14 |
+| Fast, 1440 × 900 | Crossfade at once | at once | 0.05–0.10 s | 0.61–0.63 s | 7–14 |
+| Slow 4G, 390 × 844 | As now: flies there | flies 0.9 s | 1.65–2.45 s | 1.68–2.50 s | 50–63 |
+| Slow 4G, 390 × 844 | Crossfade once drawn | 0.40 s | 0.73–1.66 s | 0.76–1.70 s | 5–8 |
+| Slow 4G, 390 × 844 | Crossfade at once | at once | 0.73–1.66 s | 0.76–1.71 s | 5–8 |
+| Slow 4G, 1440 × 900 | As now: flies there | flies 0.9 s | 1.65–2.83 s | 1.68–2.86 s | 91–102 |
+| Slow 4G, 1440 × 900 | Crossfade once drawn | 0.40 s | 0.76–1.91 s | 0.77–1.94 s | 7–14 |
+| Slow 4G, 1440 × 900 | Crossfade at once | at once | 0.77–1.91 s | 0.82–1.98 s | 7–14 |
+
+- **On a fast network the new place is finished within 0.05–0.19 s of the press,** against 0.94–0.98 s when it flies, and Polku's own layers come 0.9 s sooner, since the map stops at once.
+- **On Slow 4G the new place's map is drawn 0.2–1 s sooner** (about 0.9 s at four places of five), as nothing is asked for along the way. The hold then ends at 0.4 s, before it's drawn, and the coarse map shows under the fade with the detail sharpening in, as after a flight.
+- **A jump asks OpenFreeMap for 5–14 tiles, a flight for 34–102,** the tiles of the places it passes over.
+- **Once drawn and at once differ by at most 0.2 s on a fast network:** at once shows the coarse map and the detail coming in under the fading picture; once drawn shows the place finished. On Slow 4G once drawn shows the coarse map 0.4 s later.
+- **A first set of these runs doesn't count:** it fetched the overview over the slowed network, and some of a flight's tiles failed when asked for twice. Both were fixed in the mock-up and run again.
+
+### Recommended: crossfade once drawn
+
+For a far jump started with a tap or a click: the place you asked for is there, finished, in a tenth of a second on a fast network, rather than after a 0.9 s flight and its filling in, and Polku's own layers come 0.9 s sooner. On a slow network it's never later than the flight: 0.4 s of the old view, then the coarse map sharpening. It asks OpenFreeMap for a fifth to a tenth of the tiles. What it costs people: you no longer see which way the new place lies from where you were; the search result's name and its card say where you went. What it costs to build: about 40 lines and four callers, a smoke group, and a canvas the size of the screen for under a second.
+
+Crossfade at once is the simpler of the two (no hold, about 10 lines fewer) and differs only in what you see under the fade. Leaving it as it is stays a fair choice now that A, C and D are in: the flight's 0.9 s and its filling in are what remains.
+
+### Building it, if chosen
+
+One PR:
+
+1. `js/main.js`, beside the coarse map: `jumpFar(cam, { keys })`, which says whether the new view shares any of the old one (the map's size in Mercator units at each zoom, as the mock-up's `far()`), and if not takes the picture in a `render` event, jumps under it, holds it until `areTilesLoaded()` or 0.4 s, and fades it on `--t-open` and `--ease-out` read from the CSS. A touch, a click, the wheel or a key on the map drops it; so does the next jump. About 40 lines.
+2. Its callers, each saying whether the keys started it: `js/search.js`'s `choose()` (a result tapped, by `pointerdown`, or chosen with Enter), `fitRoute()` from Show the whole route (the button's click, `e.detail === 0` from the keys, and the `F` key) and from opening the planner away from its route, and an imported track's frame (`js/main.js`). Never: a share link's route framed once it's routed, the first view, a round trip's loop (it overlaps anyway), or the map's room changing with the sheet.
+3. Smoke, in a new group `jump`: a far search result shows the picture and it's gone within 0.6 s, with an `opacity` animation; with reduced motion the same; from the keys no animation; a near one moves as now, with no picture; a touch during the hold drops it.
+4. DESIGN.md's "Motion" (the map's line: a long jump crossfades), DEVELOPING's map section, and CHANGELOG: "Going far, to a search result or the whole route, no longer flies there: the map you were looking at fades into the new place once it's drawn."
+
+To check in the build:
+
+- A result's card opens when the camera stops, which with a jump is at once, so it shows over the picture of the old view while it's held. Whether that reads well, or the card waits for the fade, is to be tried.
+- HTML markers (the route's points, your position, a card's pin) move with the camera: the picture must lie above them, or they show at the new place over the old view.
+- The picture takes a canvas of the screen's size for under a second: about 20 MB at 1440 × 900 on a Retina screen, 12 MB on a phone.
+- Safari and Firefox, and a real phone on a real mobile network; frame times during the fade against today's flight.
 
 ## How A was tried
 

@@ -5,20 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <title>Map fill-in</title>
-<meta name="description" content="Mock-up for #1091: a real map that you move, as Polku fills it in today and with a coarse map ready underneath.">
+<meta name="description" content="Mock-up for #1091: a real map that you move, as Polku fills it in, and a crossfade on long jumps.">
 <!--
-  #1091, 2026-11-18. A real MapLibre 5.24 map on OpenFreeMap's tiles, drawn in a short copy of the trail map's colours
-  (js/style.js's PALETTES.trail): water, land cover, roads, paths, buildings and place names, no overlays. Not Polku:
-  no planner, no hillshade or contours, no trail details.
+  #1091. A real MapLibre 5.24 map on OpenFreeMap's tiles, drawn in a short copy of the trail map's colours
+  (js/style.js's PALETTES.trail): water, land cover, roads, paths, buildings and place names. Not Polku: no planner,
+  no hillshade or contours, no trail details.
+  Round 1 (2026-11-18), filling in: as now, A and B, with "Go somewhere new" jumping at once.
+  Round 2 (2026-11-19), long jumps: Polku as it is now (A, C and D: a coarse map underneath, Finland's zoom-6
+  overview kept on the device, and its own layers coming in together after the stop), and a long jump that flies
+  there as now or crossfades from a snapshot of the old view. Polku's own layers are a stand-in: the paths again in a
+  trail colour.
   "Slow network" holds every tile the map asks for for a second, as a phone on a poor connection; a tile that was
-  loaded ahead comes at once, like one from the browser's cache.
-  ?way=now|coarse|ahead  &net=fast|slow  &f=390|desk
+  loaded ahead (B) or kept on the device (C) comes at once.
+  ?round=fill|jump  &way=now|coarse|ahead  &jump=fly|drawn|now  &net=fast|slow  &f=390|desk  &motion=full|reduced
+  PACKED: the Artifact copy has no network beyond its own files, so its tiles come from pack.json (a build script
+  outside the repo turns this on).
 -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous">
 <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
 <style>
-:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --switch-bg: #d4d8d5; --switch-on: #fff; }
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --switch-bg: #d4d8d5; --switch-on: #fff;
+  --t-open: 180ms; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); } /* DESIGN.md's tokens */
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--page-fg); background: var(--page-bg); }
 .cv { max-width: 1100px; margin: 0 auto; }
 h1 { margin: 0 0 4px; font-size: 22px; }
@@ -27,11 +36,14 @@ h1 { margin: 0 0 4px; font-size: 22px; }
 .sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
 .sw button, .go { min-height: 28px; padding: 3px 11px; border: 0; border-radius: 18px; background: none; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
 .sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 650; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
-.go { background: var(--switch-on); box-shadow: 0 1px 2px rgba(0,0,0,.12); font-weight: 650; }
+.go { background: var(--switch-on); box-shadow: 0 1px 2px rgba(0,0,0,.12); font-weight: 650; text-align: left; }
+:focus-visible { outline: 2px solid #1d5fa8; outline-offset: 2px; }
 .frame { position: relative; overflow: hidden; margin-top: 12px; border-radius: 26px; box-shadow: 0 0 0 1px rgba(0,0,0,.18), 0 18px 40px rgba(0,0,0,.18); background: #f5f3ee; }
 .frame.f390 { width: min(390px, 100%); height: 640px; }
 .frame.fdesk { width: 100%; height: 620px; border-radius: 10px; }
 #map { position: absolute; inset: 0; }
+/* the old view, over the map's canvas and under its controls; never in the way of a touch */
+.snap { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .count { margin: 8px 0 0; font-size: 13px; font-variant-numeric: tabular-nums; }
 .what { max-width: 760px; margin: 6px 0 0; }
 .notes { margin-top: 24px; max-width: 760px; }
@@ -41,61 +53,123 @@ h1 { margin: 0 0 4px; font-size: 22px; }
 <body>
 <main class="cv">
   <h1>Map fill-in (#1091)</h1>
-  <div class="bar"><span>Way</span><div class="sw" data-k="way">
+  <div class="bar"><span>Round</span><div class="sw" data-k="round">
+    <button data-v="fill">1. Filling in (2026-11-18)</button><button data-v="jump">2. Long jumps (2026-11-19)</button>
+  </div></div>
+  <div class="bar" data-round="fill"><span>Way</span><div class="sw" data-k="way">
     <button data-v="now">As now</button><button data-v="coarse">A: Coarse map underneath</button><button data-v="ahead">B: A, and the area around loaded ahead</button>
+  </div></div>
+  <div class="bar" data-round="jump"><span>Jump</span><div class="sw" data-k="jump">
+    <button data-v="fly">As now: flies there</button><button data-v="drawn">Crossfade once drawn</button><button data-v="now">Crossfade at once</button>
   </div></div>
   <div class="bar"><span>Network</span><div class="sw" data-k="net">
     <button data-v="fast">As it is</button><button data-v="slow">Slow: a second a tile</button>
   </div></div>
+  <div class="bar" data-round="jump"><span>Motion</span><div class="sw" data-k="motion">
+    <button data-v="full">Full</button><button data-v="reduced">Reduced</button>
+  </div></div>
   <div class="bar"><span>Frame</span><div class="sw" data-k="f">
     <button data-v="390">Phone 390</button><button data-v="desk">Desktop</button>
   </div>
-  <button class="go" id="jump" type="button">Go somewhere new</button></div>
+  <button class="go" id="jump" type="button" data-round="fill">Go somewhere new</button></div>
+  <div class="bar" data-round="jump"><span>Go</span>
+    <button class="go" id="far" type="button"></button><button class="go" id="near" type="button">A place nearby</button>
+  </div>
   <p class="what" id="what"></p>
   <div class="frame" id="frame"><div id="map"></div></div>
   <p class="count" id="count" aria-live="polite"></p>
-  <ul class="notes">
+  <p class="count" id="last" aria-live="polite"></p>
+  <ul class="notes" data-round="fill">
     <li><b>Try:</b> Slow, As now, then drag or flick the map a screen or two: the new part is plain paper until its tiles come, and they come square by square. Go somewhere new and do the same with A.</li>
     <li><b>A</b> keeps the map four zoom levels coarser under the view: 1–4 tiles, each one sixteen times as wide, so the same few cover a whole town and the area around it. MapLibre already draws a coarser tile it has in the place of one that hasn't come; today it seldom has one. With A it does: lakes, sea, forest and the main roads are there at once, and the paths, buildings and names sharpen in. The first time in a new region the coarse tiles come with the rest; after that they're there.</li>
     <li><b>B</b> also loads the tiles at the map's own zoom half a screen beyond each edge, so a short move finds them ready. It costs two to three times the tiles, three quarters of them never shown.</li>
     <li>Nothing fades or moves on its own: the map is moved many times a minute, so it gets no motion (DESIGN.md, "Motion").</li>
     <li>Left out: Polku's controls, overlays, hillshade, contours and trail details. The counts are this page's tiles only.</li>
   </ul>
+  <ul class="notes" data-round="jump">
+    <li><b>Try:</b> Slow, As now, then go to a search result: the map flies there for 0.9 s and the place fills in after it lands. Then the same with each crossfade. Then go to a place nearby: it moves there in every version.</li>
+    <li><b>Polku as it is now</b> under every version: the coarse map underneath (A), Finland's zoom-6 overview kept on the device (C), and Polku's own layers drawn together after the map stops (D). Here those layers are a stand-in: the paths again, in a trail colour, coming 0.35 s after the stop (the loaders' timers) and then the network's time.</li>
+    <li><b>Which jumps:</b> a search result, a place, and Show the whole route, and only when the new view shares nothing with the old one. When they overlap the camera moves there as now, so you see where it went. A drag, a pinch, the wheel and the keys never crossfade.</li>
+    <li><b>Crossfade once drawn</b> holds a picture of the old view while the new place's map is drawn under it, at most 0.4 s, then fades it out in 0.18 s. On a fast network you see the new place finished; on a slow one, after 0.4 s, the coarse map with the detail sharpening in. Polku's own layers come after it in their one change, as after any move.</li>
+    <li><b>Crossfade at once</b> fades the old view out in 0.18 s straight away, and the new place fills in under it as it comes.</li>
+    <li><b>From the keys</b> (Tab to a button, then Enter) nothing fades: once drawn still holds the old view, then shows the new one at once; at once just jumps. DESIGN.md: nothing started from the keyboard moves.</li>
+    <li><b>Reduced motion</b> (the switch, or your device's setting): the flight becomes a jump, as MapLibre does today; the crossfade stays, as it's opacity only.</li>
+    <li>A touch, a click, the wheel or a key on the map while the old view shows drops it at once. The new place's names finish MapLibre's own 0.3 s fade after the crossfade.</li>
+    <li>Left out: Polku's controls, cards, markers and the route. The picture is of the map's canvas only, so markers and cards drawn in HTML aren't in it: to be checked in a build.</li>
+    <li data-packed hidden>In this copy the tiles are part of the page: "As it is" holds each a third of a second the first time, as OpenFreeMap's took on a fast connection. Each place has its zoom 14 and 13 around it and the coarser map; the flight's middle shows Finland's overview only.</li>
+  </ul>
 </main>
 <script>
+const PACKED = false;
 const P = { bg: '#f5f3ee', wood: '#dbeacd', grass: '#e8f1d9', farmland: '#f7f0cf', wetland: '#d9ebe3', residential: '#ece8e2', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f',
-  building: '#d9d1c8', motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', road: '#ffffff', roadCase: '#b5ad9f', track: '#6b4f2a', path: '#1f1f1f', text: '#2c2721' };
-const PLACES = [[25.73, 62.24], [23.76, 61.50], [27.68, 62.89], [29.76, 62.60], [21.60, 63.09], [28.19, 61.06], [25.47, 65.01], [24.94, 60.17], [22.27, 60.45], [26.70, 60.47], [24.73, 61.00], [27.27, 61.69]];
+  building: '#d9d1c8', motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', road: '#ffffff', roadCase: '#b5ad9f', track: '#6b4f2a', path: '#1f1f1f', text: '#2c2721', own: '#d9480f' };
+const PLACES = [
+  { name: 'Jyväskylä harbour', at: [25.735, 62.236] },
+  { name: 'Kolin kansallispuisto', at: [29.810, 63.095] },
+  { name: 'Itäisen Suomenlahden kansallispuisto', at: [27.180, 60.420] },
+  { name: 'Pallas-Yllästunturin kansallispuisto', at: [24.060, 68.060] },
+  { name: 'Hossan kansallispuisto', at: [29.580, 65.470] },
+  { name: 'Nuuksion kansallispuisto', at: [24.500, 60.310] },
+];
 const q = new URLSearchParams(location.search);
-const S = { way: q.get('way') || 'now', net: q.get('net') || 'slow', f: q.get('f') || (innerWidth < 700 ? '390' : 'desk') };
+const S = { round: q.get('round') || 'jump', way: q.get('way') || 'now', jump: q.get('jump') || 'fly', net: q.get('net') || 'slow', f: q.get('f') || (innerWidth < 700 ? '390' : 'desk'),
+  motion: q.get('motion') || (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full') };
 const WHAT = {
   now: 'As now: MapLibre asks only for the tiles in view. Where one hasn\'t come, you see the paper colour, or a coarser tile if one happens to be loaded.',
   coarse: 'A: the map four zoom levels coarser is always kept under the view. A part that hasn\'t come yet shows that coarse map: water, forest and main roads at once, the detail sharpening in.',
   ahead: 'B: as A, and the tiles at the map\'s own zoom half a screen beyond each edge are loaded too, so a short move finds them ready.',
+  fly: 'As now: a search result flies there in 0.9 s, zooming out and back in. The new place fills in as it comes: the coarse map at once, the detail sharpening in, then Polku\'s own layers in one change.',
+  drawn: 'Crossfade once drawn: the old view stays still while the new place\'s map is drawn under it, at most 0.4 s, then fades out in 0.18 s.',
+  jumpnow: 'Crossfade at once: the old view fades out in 0.18 s straight away, and the new place fills in under it as it comes.',
 };
 
-// Every tile goes through here: on a slow network it waits a second, unless B loaded it ahead.
-const ready = new Map(), count = { detail: 0, coarse: 0, ahead: 0 };
+// Every tile goes through here: on a slow network it waits a second, unless B loaded it ahead or C keeps it.
+const ready = new Map(), kept = new Map(), count = { detail: 0, coarse: 0, ahead: 0, missing: 0 }, seen = new Set();
 const wait = (ms, signal) => new Promise((ok, no) => { const t = setTimeout(ok, ms); signal?.addEventListener('abort', () => { clearTimeout(t); no(new DOMException('aborted', 'AbortError')); }); });
 const real = (url) => url.replace(/^delayed:\/\//, 'https://');
-const zoomOf = (url) => +url.match(/\/(\d+)\/\d+\/\d+\.pbf$/)[1];
+let pack = null; // (PACKED: the tiles and names' glyphs, by their path)
+async function get(url, signal) {
+  if (!PACKED) { const res = await fetch(url, { signal }); if (!res.ok) throw new Error(`${res.status} ${url}`); return res.arrayBuffer(); }
+  const b = (await pack)[new URL(url).pathname.replace(/^\/planet\/[^/]+/, '').replace(/\.pbf$/, '')];
+  if (!b) { count.missing++; show(); throw new Error(`not in this copy: ${url}`); }
+  return Uint8Array.from(atob(b), (c) => c.charCodeAt(0)).buffer;
+}
 maplibregl.addProtocol('delayed', async (params, abort) => {
-  const url = real(params.url);
-  if (ready.has(url)) return { data: await ready.get(url) };
-  count[map && zoomOf(url) <= Math.min(14, Math.floor(map.getZoom())) - 3 ? 'coarse' : 'detail']++; show();
+  const url = real(params.url), tile = url.match(/\/(\d+)\/\d+\/\d+\.pbf$/);
+  if (!tile) return { data: await get(url, abort.signal) }; // (the names' glyphs)
+  // (a copy each time: MapLibre hands the data to its worker, and a tile asked for again would find it gone)
+  if (ready.has(url)) return { data: (await ready.get(url)).slice(0) };
+  if (S.round === 'jump' && kept.has(url)) return { data: (await kept.get(url)).slice(0) };
+  const z = +tile[1];
+  count[map && z <= Math.min(14, Math.floor(map.getZoom())) - 3 ? 'coarse' : 'detail']++; jumpTiles++; show(); showLast();
   if (S.net === 'slow') await wait(1000, abort.signal);
-  const res = await fetch(url, { signal: abort.signal });
-  if (!res.ok) throw new Error(`${res.status} ${url}`);
-  return { data: await res.arrayBuffer() };
+  else if (PACKED && !seen.has(url)) await wait(330, abort.signal); // (the network as it is; then the browser's cache)
+  seen.add(url);
+  return { data: await get(url, abort.signal) };
 });
 
 // A: every tile in view keeps the tile four zoom levels up among the map's own tiles. MapLibre draws a coarser tile it
 // has in the place of a missing one, masked to where the missing one would be; it just never has one in time today.
 // (MapLibre GL JS has no option for this: Mapbox's and MapLibre Native's prefetchZoomDelta. This reaches into its
-// TileManager, as a build would until there is one.)
+// TileManager, as a build would until there is one.) Round 2 does what js/main.js does since #1097 and #1108: only
+// while the detail is missing, and zoom 6's too (C).
 function keepCoarse(map) {
   const tm = map.style.tileManagers.ofm, own = tm._updateRetainedTiles;
   tm._updateRetainedTiles = function (ideal, zoom) {
+    if (S.round === 'jump') {
+      const ups = [];
+      for (const t of ideal) {
+        const missing = !this.getTileByID(t.key)?.hasData();
+        for (const z of t.overscaledZ > 6 ? new Set([Math.max(6, t.overscaledZ - 4), 6]) : [Math.max(this._source.minzoom, t.overscaledZ - 4)]) {
+          const up = t.scaledTo(z), held = this.getTileByID(up.key);
+          if (up.key !== t.key && (missing || (held && !held.hasData()))) ups.push(up);
+        }
+      }
+      for (const up of ups) this._addTile(up);
+      const keep = own.call(this, ideal, zoom);
+      for (const up of ups) keep[up.key] = up;
+      return keep;
+    }
     const keep = own.call(this, ideal, zoom);
     if (S.way !== 'now') for (const t of ideal) {
       const up = t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4));
@@ -108,29 +182,115 @@ function keepCoarse(map) {
 // B: the tiles at the map's own zoom half a screen beyond each edge, fetched whenever the map stops.
 let template = null;
 const tileXY = (lon, lat, z) => { const n = 2 ** z, r = lat * Math.PI / 180; return [Math.floor((lon + 180) / 360 * n), Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)]; };
+
+// C: Finland's zoom-6 overview, kept on the device the first time (js/offline.js's saveOverview(), 15 tiles), and
+// answered from there at once (sw.js). Round 2 only.
+function keepOverview() {
+  const [x0, y0] = tileXY(19.0, 70.1, 6), [x1, y1] = tileXY(31.6, 59.6, 6);
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+    const url = template.replace('{z}', 6).replace('{x}', x).replace('{y}', y);
+    if (!kept.has(url)) kept.set(url, get(url));
+  }
+}
 function loadAround() {
-  if (S.way !== 'ahead' || !template) return;
+  if (S.round !== 'fill' || S.way !== 'ahead' || !template) return;
   const b = map.getBounds(), w = b.getEast() - b.getWest(), h = b.getNorth() - b.getSouth(), z = Math.min(14, Math.floor(map.getZoom()));
   const [x0, y0] = tileXY(b.getWest() - w / 2, b.getNorth() + h / 2, z), [x1, y1] = tileXY(b.getEast() + w / 2, b.getSouth() - h / 2, z);
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
     const url = template.replace('{z}', z).replace('{x}', x).replace('{y}', y);
     if (ready.has(url)) continue;
     count.ahead++;
-    ready.set(url, (S.net === 'slow' ? wait(1000) : Promise.resolve()).then(() => fetch(url)).then((r) => r.arrayBuffer()));
+    ready.set(url, (S.net === 'slow' ? wait(1000) : Promise.resolve()).then(() => get(url)));
   }
   show();
 }
 
+// D's stand-in: Polku's own layers (trail details, LIPAS, lit ways…) wait for the map to stop, run their update after
+// 0.35 s, wait for the network, and are drawn in one change. Here they draw the map's own paths again in a trail colour.
+const own = { busy: false, timer: 0, run: 0 };
+function ownAfterStop() {
+  if (S.round !== 'jump') return;
+  clearTimeout(own.timer);
+  const run = ++own.run;
+  own.busy = true;
+  own.timer = setTimeout(async () => {
+    await wait(S.net === 'slow' ? 1500 : 250); // (their services, answering)
+    while (run === own.run && !map.isSourceLoaded('ofm')) await wait(50); // (the stand-in reads the map's own paths)
+    if (run !== own.run) return;
+    const paths = map.querySourceFeatures('ofm', { sourceLayer: 'transportation', filter: ['in', ['get', 'class'], ['literal', ['path', 'track']]] });
+    map.getSource('own').setData({ type: 'FeatureCollection', features: paths.map((f) => ({ type: 'Feature', geometry: f.geometry, properties: {} })) });
+    own.busy = false;
+  }, 350);
+}
+
+// The long jump. Far: the new view shares nothing with the one you're looking at (the build computes the same).
+const jumpState = { t0: 0, name: '', moved: false, went: 0, base: 0, done: 0 };
+let jumpTiles = 0, snap = null;
+function far(to, zoom) {
+  const half = (z) => { const k = 512 * 2 ** z; return [map.getCanvas().clientWidth / 2 / k, map.getCanvas().clientHeight / 2 / k]; };
+  const a = maplibregl.MercatorCoordinate.fromLngLat(map.getCenter()), b = maplibregl.MercatorCoordinate.fromLngLat(to);
+  const [aw, ah] = half(map.getZoom()), [bw, bh] = half(zoom);
+  return Math.abs(a.x - b.x) > aw + bw || Math.abs(a.y - b.y) > ah + bh;
+}
+function dropSnap() { if (snap) { snap.anim?.cancel(); snap.el.remove(); snap = null; } }
+function go(place, keys) {
+  dropSnap();
+  const cam = { center: place.at, zoom: Math.max(map.getZoom(), 14) };
+  Object.assign(jumpState, { t0: performance.now(), name: place.name, moved: false, went: 0, base: 0, done: 0 });
+  jumpTiles = 0;
+  if (S.jump === 'fly' || !far(cam.center, cam.zoom)) {
+    if (S.motion === 'reduced') map.jumpTo(cam); else map.flyTo({ ...cam, duration: 900 }); // (js/search.js)
+    jumpState.moved = true;
+    return;
+  }
+  // The picture of the old view is taken in a frame MapLibre draws, while its canvas still holds it (the map has no
+  // preserveDrawingBuffer), and stays over the map until the new place's map is drawn under it, or for at most 0.4 s:
+  // on a fast network that's 0.06–0.16 s, and at most it's 0.58 s with the fade, still sooner than the flight's 0.9 s.
+  map.once('render', () => {
+    const c = map.getCanvas(), el = document.createElement('canvas');
+    el.width = c.width; el.height = c.height; el.className = 'snap';
+    el.getContext('2d').drawImage(c, 0, 0);
+    map.getCanvasContainer().append(el);
+    const mine = snap = { el, hold: S.jump === 'drawn', keys };
+    map.jumpTo(cam);
+    jumpState.moved = true;
+    if (mine.hold) setTimeout(() => fade(mine), 400); else fade(mine);
+  });
+  map.triggerRepaint();
+}
+function fade(s) {
+  if (snap !== s || s.anim || s.gone) return;
+  jumpState.went = performance.now() - jumpState.t0; showLast();
+  if (s.keys) { s.gone = true; dropSnap(); return; } // (from the keys: no motion)
+  s.anim = s.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--t-open')), easing: 'cubic-bezier(0.23, 1, 0.32, 1)', fill: 'forwards' });
+  s.anim.finished.then(() => { if (snap === s) { snap.el.remove(); snap = null; } }, () => {});
+}
+// The map drawn: every tile in view has come (the old view can go); then Polku's own layers, no longer waiting.
+function checkDone() {
+  if (!jumpState.moved || jumpState.done || map.isMoving() || !map.areTilesLoaded()) return;
+  if (!jumpState.base) { jumpState.base = performance.now() - jumpState.t0; showLast(); if (snap?.hold) fade(snap); }
+  if (own.busy) return;
+  jumpState.done = performance.now() - jumpState.t0; showLast();
+}
+
 function show() {
   document.getElementById('count').textContent = `Tiles asked for: ${count.detail} as the map needed them` +
-    (count.coarse ? ` · ${count.coarse} coarse` : '') + (count.ahead ? ` · ${count.ahead} around the view, ahead` : '');
+    (count.coarse ? ` · ${count.coarse} coarse` : '') + (count.ahead ? ` · ${count.ahead} around the view, ahead` : '') + (count.missing ? ` · ${count.missing} not in this copy` : '');
+}
+const sec = (ms) => `${(ms / 1000).toFixed(2)} s`;
+function showLast() {
+  const j = jumpState;
+  document.getElementById('last').textContent = !j.t0 ? '' : `Last jump, to ${j.name}: ` +
+    (j.went ? `the old view went at ${sec(j.went)}` : S.jump === 'fly' || !snap ? 'moved there' : 'the old view still shows') +
+    ` · the map drawn ${j.base ? `at ${sec(j.base)}` : 'not yet'} · Polku's layers ${j.done ? `at ${sec(j.done)}` : 'not yet'} · ${jumpTiles} tiles asked for`;
 }
 
 const L = (id, type, layer, paint, extra = {}) => ({ id, type, source: 'ofm', 'source-layer': layer, paint, ...extra });
 const style = (tiles) => ({
   version: 8,
-  glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
-  sources: { ofm: { type: 'vector', tiles: [tiles.replace(/^https:\/\//, 'delayed://')], maxzoom: 14, attribution: '© OpenFreeMap © OpenMapTiles © OpenStreetMap' } },
+  glyphs: 'delayed://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  sources: { ofm: { type: 'vector', tiles: [tiles.replace(/^https:\/\//, 'delayed://')], maxzoom: 14, attribution: '© OpenFreeMap © OpenMapTiles © OpenStreetMap' },
+    own: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } },
   layers: [
     { id: 'bg', type: 'background', paint: { 'background-color': P.bg } },
     L('landuse', 'fill', 'landuse', { 'fill-color': P.residential }, { filter: ['in', ['get', 'class'], ['literal', ['residential', 'suburb', 'neighbourhood']]] }),
@@ -142,37 +302,69 @@ const style = (tiles) => ({
     L('track', 'line', 'transportation', { 'line-color': P.track, 'line-width': 1.2, 'line-dasharray': [3, 1.5] }, { filter: ['==', ['get', 'class'], 'track'], minzoom: 11 }),
     L('road-case', 'line', 'transportation', { 'line-color': P.roadCase, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 16, 6.5] }, { filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' } }),
     L('road', 'line', 'transportation', { 'line-color': ['match', ['get', 'class'], 'motorway', P.motorway, 'trunk', P.trunk, 'primary', P.primary, 'secondary', P.secondary, P.road], 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 16, 5] }, { filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' } }),
+    { id: 'own', type: 'line', source: 'own', paint: { 'line-color': P.own, 'line-width': 2.5, 'line-opacity': 0.85 }, layout: { 'line-cap': 'round', 'line-join': 'round' } },
     L('water-name', 'symbol', 'water_name', { 'text-color': P.waterText, 'text-halo-color': '#fff', 'text-halo-width': 1 }, { layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Italic'], 'text-size': 12 } }),
     L('place', 'symbol', 'place', { 'text-color': P.text, 'text-halo-color': '#fff', 'text-halo-width': 1.5 }, { layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': ['match', ['get', 'class'], 'city', 16, 'town', 14, 12] } }),
   ],
 });
 
-let map;
+let map, place = 0, nearSide = 1;
+const farButton = document.getElementById('far');
+const nextPlace = () => PLACES[(place + 1) % PLACES.length];
 function set(k, v) {
   S[k] = v;
   for (const b of document.querySelectorAll(`.sw[data-k="${k}"] button`)) b.setAttribute('aria-pressed', String(b.dataset.v === v));
   const p = new URLSearchParams(location.search); p.set(k, v);
   try { history.replaceState(null, '', '?' + p); } catch {} // (a preview from data: has no address to keep)
   if (k === 'f') { document.getElementById('frame').className = `frame f${v}`; map?.resize(); }
-  if (k === 'way') { if (v === 'now') ready.clear(); document.getElementById('what').textContent = WHAT[v]; if (map) { map.jumpTo({ center: map.getCenter() }); loadAround(); } } // (a move of nothing: MapLibre chooses its tiles again, so A's coarse ones come now) // (as now: nothing loaded ahead stays ready)
+  if (k === 'round') {
+    for (const el of document.querySelectorAll('[data-round]')) el.hidden = el.dataset.round !== v;
+    if (v === 'fill') { map?.getSource('own')?.setData({ type: 'FeatureCollection', features: [] }); own.run++; own.busy = false; }
+  }
+  if (k === 'round' || k === 'way' || k === 'jump') {
+    document.getElementById('what').textContent = S.round === 'fill' ? WHAT[S.way] : WHAT[S.jump === 'now' ? 'jumpnow' : S.jump];
+    if (k !== 'jump') { if (S.way === 'now') ready.clear(); if (map) { map.jumpTo({ center: map.getCenter() }); loadAround(); } } // (a move of nothing: MapLibre chooses its tiles again, so A's coarse ones come now) // (as now: nothing loaded ahead stays ready)
+  }
   show();
 }
 for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.addEventListener('click', () => set(sw.dataset.k, b.dataset.v));
-for (const k of ['way', 'net', 'f']) set(k, S[k]);
+for (const k of ['round', 'way', 'jump', 'net', 'motion', 'f']) set(k, S[k]);
+farButton.textContent = `Go to a search result: ${nextPlace().name}`;
 
-let place = 0;
 document.getElementById('jump').addEventListener('click', () => {
   place = (place + 1) % PLACES.length;
-  map.jumpTo({ center: PLACES[place], zoom: 14 });
+  map.jumpTo({ center: PLACES[place].at, zoom: 14 });
+  farButton.textContent = `Go to a search result: ${nextPlace().name}`;
+});
+// (a click from the keys has no pointer: detail 0)
+farButton.addEventListener('click', (e) => {
+  place = (place + 1) % PLACES.length;
+  go(PLACES[place], e.detail === 0);
+  farButton.textContent = `Go to a search result: ${nextPlace().name}`;
+});
+document.getElementById('near').addEventListener('click', (e) => {
+  const c = map.getCanvas(), p = map.project(map.getCenter());
+  go({ name: 'a place nearby', at: map.unproject([p.x + nearSide * c.clientWidth * 0.7, p.y]).toArray() }, e.detail === 0);
+  nearSide = -nearSide;
 });
 
-fetch('https://tiles.openfreemap.org/planet').then((r) => r.json()).then((j) => {
-  template = j.tiles[0];
-  map = new maplibregl.Map({ container: 'map', style: style(template), center: PLACES[0], zoom: 14, attributionControl: { compact: true } });
+if (PACKED) {
+  pack = fetch('pack.json').then((r) => r.json());
+  document.getElementById('count').textContent = 'Loading the map tiles this copy holds…';
+  for (const li of document.querySelectorAll('[data-packed]')) li.hidden = false;
+}
+(PACKED ? pack.then((p) => p.template) : fetch('https://tiles.openfreemap.org/planet').then((r) => r.json()).then((j) => j.tiles[0])).then((tiles) => {
+  template = tiles;
+  map = new maplibregl.Map({ container: 'map', style: style(template), center: PLACES[0].at, zoom: 14, attributionControl: { compact: true } });
   map.once('style.load', () => keepCoarse(map)); // (before the first tiles are chosen)
   map.on('load', loadAround);
+  keepOverview();
   map.on('moveend', loadAround);
-  window.mock = { map, count, ready };
+  map.on('moveend', ownAfterStop);
+  map.on('render', checkDone);
+  // touching the map while the old view shows: the map is yours at once
+  for (const ev of ['pointerdown', 'wheel', 'keydown']) map.getContainer().addEventListener(ev, dropSnap, { capture: true, passive: true });
+  window.mock = { map, count, ready, kept, own, jumpState };
 });
 </script>
 </body>
