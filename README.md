@@ -124,7 +124,7 @@ Polku's original application code is proprietary: © 2026 Tommi Contursi, all ri
 - **Water routing cannot assess every hazard.** It does not use depths and does not know currents, rapids, private shores or bird-protection areas. Use official charts and keep a lookout.
 - **A path on the map is not necessarily an official route or permission to enter.** Respect everyman's rights, access restrictions and local rules. Ski tracks are not for walking or cycling.
 - **Offline covers the saved map, terrain and route.** Elsewhere in Finland there's only the coarse map, with no trails or terrain. Routing, search, weather and traffic still need a connection.
-- **The full trail network appears from zoom 14.** Zoom in if trails seem to be missing.
+- **The full trail network appears from zoom 14,** or from zoom 13 with **Trail details** on where Polku has its own trail data, as in Finland. Zoom in if trails seem to be missing.
 - **FMI weather and forest-fire warnings are not shown.** No open source currently allows Polku to fetch them directly from a browser.
 
 ## Using Polku
