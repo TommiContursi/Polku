@@ -3,7 +3,7 @@
   "shards": [
     ["changelog", "trails", "lipas", "marked", "backtostart", "shortcut", "sports", "colours", "toolbox", "tips", "390x844"],
     ["layers", "raster", "header", "routebits", "detour", "winterroute", "previews", "quick", "contrast", "targets", "sportmenu", "1440x900"],
-    ["water", "editing", "routemenu", "avoid", "flow", "winter", "sweep", "drawer", "heading", "panels", "column", "tilefail", "startfail", "controls", "lit", "coarse"],
+    ["water", "editing", "routemenu", "avoid", "flow", "winter", "sweep", "drawer", "heading", "panels", "column", "tilefail", "startfail", "controls", "lit", "coarse", "context"],
     ["radar", "weather", "pacing", "loading", "hover", "multi", "terrain", "sunlight", "stops", "access", "otherways", "loops", "fit", "marks", "runner", "1024x768", "360x740"],
     ["button3d"],
     ["button3dphone"],

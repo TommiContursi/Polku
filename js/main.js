@@ -21,7 +21,7 @@ import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
 import { prefetchWater } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
-import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection } from './offline.js';
+import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist, compass as side } from './geo.js';
@@ -162,8 +162,8 @@ const map = new maplibregl.Map({
   attributionControl: false,
   cooperativeGestures: false,
 });
-// A coarse map underneath (#1091): while a base map tile in view hasn't come, the tile four zoom levels up is kept among
-// MapLibre's own tiles, so its place shows that one (masked to the missing tile's square), never plain paper. Once the
+// A coarse map underneath (#1091): while a base map tile in view hasn't come, the tile four zoom levels up (and for the
+// vector base, zoom 6's too) is kept among MapLibre's own tiles, so its place shows that one (masked to the missing tile's square), never plain paper. Once the
 // detail is there it goes back to MapLibre's cache, ready for the next move, and out of what querySourceFeatures reads
 // (a coarse lake has no islands: round trips' water test). It's drawn in the map's own style, so it's dark on the
 // night map and a coarser photo under the aerial one. MapLibre GL JS has no option for it (Mapbox's prefetchZoomDelta),
@@ -176,9 +176,14 @@ map.once('styledata', () => {
     const ups = [];
     if (COARSE.has(this.id)) {
       for (const t of ideal) {
-        const up = t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4)), held = this.getTileByID(up.key);
-        // kept while it loads too, so a move doesn't ask for it again
-        if (up.key !== t.key && (!this.getTileByID(t.key)?.hasData() || (held && !held.hasData()))) ups.push(up);
+        const missing = !this.getTileByID(t.key)?.hasData();
+        // the base map's zoom 6 too: Finland's overview, kept by js/offline.js, so it's there at once (C)
+        const zs = this.id === 'ofm' && t.overscaledZ > 6 ? new Set([Math.max(6, t.overscaledZ - 4), 6]) : [Math.max(this._source.minzoom, t.overscaledZ - 4)];
+        for (const z of zs) {
+          const up = t.scaledTo(z), held = this.getTileByID(up.key);
+          // kept while it loads too, so a move doesn't ask for it again
+          if (up.key !== t.key && (missing || (held && !held.hasData()))) ups.push(up);
+        }
       }
     }
     // asked for before the detail, so they aren't queued behind it (MapLibre loads 16 images at a time)
@@ -254,11 +259,16 @@ map.on('error', (e) => {
   if (e && e.error && !/404|Failed to fetch|AbortError/.test(String(e.error.message || e.error))) console.warn(e.error);
 });
 
+// A phone can take the map's WebGL context from a tab in the background (#1093): MapLibre has no style until it's back,
+// then brings back the one it had at the loss. Once that has loaded, it's built again from `data`, with what came meanwhile.
+map.on('webglcontextrestored', () => map.once('style.load', applyStyle));
+
 function setData(id, fc) {
   data[id] = fc;
+  if (id === 'route' && flow) flow.setData(fc);
+  if (!map.style) return; // (the context lost: above)
   const src = map.getSource(id);
   if (src) src.setData(fc);
-  if (id === 'route' && flow) flow.setData(fc);
   if (id === 'routeLit' && src) for (const [layer, v] of Object.entries(routeDim(fc.features.length > 0))) map.setPaintProperty(layer, 'line-opacity', v);
 }
 
@@ -438,7 +448,6 @@ function winterNote() {
 const escapeAttr = (t) => String(t).replace(/[&"<>]/g, (c) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[c]);
 let winterTimer = 0;
 map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(() => checkWinter(), 1500); });
-map.once('load', () => checkWinter(true));
 
 let hadRoute = false; // (a route drawn, for All layers' Your route group)
 // road works and road conditions at the map's hour (the weather's, once it's made)
@@ -451,7 +460,7 @@ flow = new RouteFlow(map, {
   enabled: () => state.routeFlow,
   onMoving: (on) => {
     ctx.flowMoving = on;
-    if (map.getLayer('route-arrows')) map.setLayoutProperty('route-arrows', 'visibility', on ? 'none' : 'visible');
+    if (map.style?.getLayer('route-arrows')) map.setLayoutProperty('route-arrows', 'visibility', on ? 'none' : 'visible');
   },
 });
 if (data.route) flow.setData(data.route);
@@ -2217,6 +2226,8 @@ onStatus((src, s) => {
 
 // ------------------------------------------------------------------ boot
 registerServiceWorker();
+// Finland's overview, once the map in view has come (a tile that fails is asked for again on the next start)
+map.once('idle', () => saveOverview().catch(() => {}));
 applyTheme(); // (as index.html's <head> did, unless the service worker gave an older index.html than this)
 initOfflineStatus();
 document.body.dataset.activity = state.activity;
@@ -2234,7 +2245,15 @@ requestAnimationFrame(() => { syncWxH(); document.body.classList.add('ready'); }
 // that fails with anything but a 404 asks for no frame. When it was the last one, the load step below waited until
 // the map was moved (#393): one more frame. (The quick drawer's "No data now" comes from the same errors.)
 map.on('error', (e) => { if (e.tile) map.triggerRepaint(); });
-map.on('load', () => {
+// MapLibre fires `load` once every tile in view is in or has failed, so one that never answers (a slow depth tile, a
+// phone's bad connection) held all of this (#419): it runs on `load`, or 3 s after the style has loaded, whichever comes
+// first, and once. With tiles still coming it's as after a pan: the route and the layers need only the style. The 3 s
+// keep the order Polku has always opened in on a good connection.
+let started = false;
+const start = () => {
+  if (started) return;
+  started = true;
+  checkWinter(true);
   // Start with the attribution collapsed to its (i) button on small screens (and it stays so: above).
   if (window.innerWidth < 720) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
   configureLayers();
@@ -2259,9 +2278,13 @@ map.on('load', () => {
   // you had stays as it was
   if (pin) {
     history.replaceState(null, '', location.pathname + location.hash);
-    map.once('idle', () => {
+    // (idle, or 4 s: a tile that never answers holds idle as it held load)
+    const settled = (fn) => { let done = false; const go = () => { if (!done) { done = true; fn(); } }; map.once('idle', go); setTimeout(go, 4000); };
+    settled(() => {
       map.jumpTo({ center: pin.ll, zoom: Math.max(map.getZoom(), 14) });
-      map.once('idle', () => planner.openSpotCard(pin.ll, { pin: true, name: pin.name }));
+      settled(() => planner.openSpotCard(pin.ll, { pin: true, name: pin.name }));
     });
   }
-});
+};
+map.once('load', start);
+map.once('style.load', () => setTimeout(start, 3000));

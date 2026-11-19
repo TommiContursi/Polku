@@ -23,7 +23,8 @@ const SIZE = { ofm: (z) => (z <= 9 ? 250e3 : z <= 11 ? 130e3 : z === 12 ? 70e3 :
 const MAX_TILES = 8000;
 const ZOOMS = [5, 14]; // vector tiles stop at 14 (overzoomed beyond); 512 px terrain at 14 serves map zoom 15+
 const FONTS = ['Noto Sans Regular', 'Noto Sans Bold', 'Noto Sans Italic'];
-const RANGES = ['0-255', '256-511', '8192-8447', '8448-8703']; // Latin, Finnish/Nordic letters, punctuation, arrows
+const RANGES = ['0-255', '256-511', '1024-1279', '8192-8447', '8448-8703']; // Latin, Finnish/Nordic letters, Cyrillic (names over the border), punctuation, arrows
+const GLYPHS = FONTS.flatMap((f) => RANGES.map((r) => OFM_GLYPHS.replace('{fontstack}', f).replace('{range}', r)));
 const areas = idb('offline');
 
 export const offlineSupported = () => 'serviceWorker' in navigator && 'caches' in window && window.isSecureContext;
@@ -74,7 +75,7 @@ async function saveShell() {
     if ((u.origin === location.origin && /\.(js|css)$/.test(u.pathname)) || u.hostname === 'unpkg.com') urls.add(u.origin + u.pathname);
   }
   for (const s of ['', '@2x']) for (const ext of ['.json', '.png']) urls.add(`${OFM_SPRITE}${s}${ext}`);
-  for (const f of FONTS) for (const r of RANGES) urls.add(OFM_GLYPHS.replace('{fontstack}', f).replace('{range}', r));
+  for (const u of GLYPHS) urls.add(u);
   await Promise.all([...urls].map(async (u) => {
     try {
       const res = await fetch(u, { cache: 'no-store' });
@@ -102,9 +103,8 @@ export async function saveArea({ name, line, bbox, route }, { buffer, terrain },
         else {
           const res = await fetch(t.url, { signal });
           if (res.ok) {
-            const blob = await res.blob();
-            bytes += blob.size;
-            await cache.put(key, new Response(blob, { headers: { 'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream', 'X-Size': String(blob.size) } }));
+            const n = await keep(cache, key, res); // (not `bytes += await …`: six workers would overwrite each other's sums)
+            bytes += n;
             fresh.push(key);
           } else if (res.status !== 404) failed++; // 404: no terrain there (sea)
         }
@@ -125,6 +125,40 @@ export async function saveArea({ name, line, bbox, route }, { buffer, terrain },
   return area;
 }
 
+// A tile kept in the offline cache, with its size for the areas' totals; its bytes.
+async function keep(cache, key, res) {
+  const blob = await res.blob();
+  await cache.put(key, new Response(blob, { headers: { 'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream', 'X-Size': String(blob.size) } }));
+  return blob.size;
+}
+
+// Finland's overview (#1091's C): OpenFreeMap's 15 tiles at zoom 6, kept once, so the coarse map underneath
+// (js/main.js) is there at once anywhere in Finland, offline too, and the worker answers them from here at once.
+const OVERVIEW = (() => {
+  const [x0, y0] = lonLatToTile(19.0, 70.1, 6).map(Math.floor), [x1, y1] = lonLatToTile(31.6, 59.6, 6).map(Math.floor), out = [];
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push([x, y]);
+  return out;
+})();
+const overviewKeys = OVERVIEW.map(([x, y]) => `https://tiles.openfreemap.org/planet/offline/6/${x}/${y}.pbf`);
+
+/** Saves what's missing of Finland's overview and the names' letters it needs (MapLibre draws a tile only once its
+ * names' glyphs have come); one that fails is asked for again on the next start. */
+export async function saveOverview() {
+  if (!offlineSupported()) return;
+  const shell = await caches.open(SHELL);
+  for (const u of GLYPHS) {
+    if (await shell.match(u)) continue;
+    const res = await fetch(u, { cache: 'no-store' });
+    if (res.ok) await shell.put(u, res);
+  }
+  const cache = await caches.open(TILES), tpl = await ofmTemplate();
+  for (const [i, [x, y]] of OVERVIEW.entries()) {
+    if (await cache.match(overviewKeys[i])) continue;
+    const res = await fetch(tpl.replace('{z}', 6).replace('{x}', x).replace('{y}', y));
+    if (res.ok) await keep(cache, overviewKeys[i], res);
+  }
+}
+
 export async function listAreas() {
   try { return (await areas.all()).sort((a, b) => b.created - a.created); } catch { return []; }
 }
@@ -139,7 +173,7 @@ export async function removeArea(id) {
 
 // Delete tiles no saved area refers to any more (areas can overlap).
 async function dropUnused(keys) {
-  const used = new Set((await listAreas()).flatMap((a) => a.keys));
+  const used = new Set([...overviewKeys, ...(await listAreas()).flatMap((a) => a.keys)]);
   const cache = await caches.open(TILES);
   await Promise.all(keys.filter((k) => !used.has(k)).map((k) => cache.delete(k)));
 }
@@ -161,12 +195,12 @@ export async function setPreview(on) {
   location.reload();
 }
 
-/** Banner while previewing, and a toast when the connection drops or returns. */
+/** Banner while previewing, and a toast when Polku opens offline or the connection drops or returns. */
 export async function initOfflineStatus() {
   if (!offlineSupported()) return;
   if (await previewActive()) {
     document.body.append(h('div', { class: 'offline-banner', role: 'status' },
-      h('span', { html: `${icon('offline', 16)} Offline preview: only saved areas load` }),
+      h('span', { html: `${icon('offline', 16)} Offline preview: saved areas, and a coarse map of Finland` }),
       h('button', { type: 'button', class: 'btn', onclick: () => setPreview(false) }, 'Exit')));
   }
   // the app itself from the saved copy (the server didn't answer within 3 s): it may be an older Polku
@@ -185,10 +219,12 @@ export async function initOfflineStatus() {
     sw.addEventListener('message', onMsg);
     sw.controller.postMessage({ type: 'saved-copy?' });
   }
-  window.addEventListener('offline', async () => {
+  const offline = async () => {
     const n = (await listAreas()).length;
-    toast(n ? 'You’re offline — saved areas and their routes still work' : 'You’re offline — the map needs a connection (save an area from the route panel next time)', { ms: 6000 });
-  });
+    toast(n ? 'You’re offline — saved areas and their routes still work; elsewhere only a coarse map of Finland' : 'You’re offline — only a coarse map of Finland, without trails (save an area from the route panel next time)', { ms: 6000 });
+  };
+  window.addEventListener('offline', offline);
+  if (!navigator.onLine) offline(); // opened offline: the coarse map alone mustn't look like the whole map
   window.addEventListener('online', () => toast('Back online'));
 }
 
