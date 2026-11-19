@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### One quiet scrollbar everywhere ([#1100](https://github.com/TommiContursi/Polku/issues/1100))
+
+- The menus, such as the route's **⋯** menu, the search results, a point's menu on the map and the list of sports now have the same thin scrollbar as the planner and the panels. It shows only while you scroll, or while a mouse is over it. Before, they had the browser's own wide scrollbar.
+
 ### Layers and Settings stay where you scrolled ([#536](https://github.com/TommiContursi/Polku/issues/536))
 
 - After you turn something on or off in **Layers** or **Settings**, the panel stays where you scrolled it, also when you scroll on straight away. Before, on a slow device, the panel could jump back to where it was a moment earlier.
