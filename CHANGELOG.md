@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Clearer roads and buildings ([#1113](https://github.com/TommiContursi/Polku/issues/1113))
+
+- Roads, cycleways and buildings stand out more clearly on the **Trail map**, with stronger edges and slightly wider minor and service roads at intermediate zooms. Forest, field and water colours stay the same.
+
 ### Polku opens on a bad connection ([#419](https://github.com/TommiContursi/Polku/issues/419), [#481](https://github.com/TommiContursi/Polku/issues/481))
 
 - When one of the map's tiles doesn't arrive as Polku opens, your saved route, a shared route and the planner you left open still come back, at most a few seconds after the map appears, and a shared spot's card a few seconds after that. Before, they waited for every tile of the map, so on a bad connection, or while Traficom's depth maps were slow, they could stay away until you moved the map.

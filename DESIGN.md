@@ -188,6 +188,8 @@ This file holds the tokens: colours, type, shapes, spacing, depth and motion. **
 
 A quiet, cool green-grey interface with one forest-green accent, so that the map and the route line hold the colour. The names below are the CSS variables in `css/app.css` (`--accent`, `--route`…); dark mode redefines the same variables, listed in the frontmatter with a `dark-` prefix.
 
+The Trail map keeps its pale terrain fills, with stronger road edges and flat building outlines so streets, trails and buildings can be read together. Minor and service roads widen modestly at intermediate zooms; cycling sports retain the warm unpaved-road emphasis. Other basemaps, 3D building colours and difficulty scales keep their own appearance.
+
 ### Primary
 - **Accent (forest green)**: links, the chosen chip's border, the chosen switch's icon, ticks and the active state of map buttons. In dark mode a lighter green, so it still reads on dark surfaces.
 - **Focus (green)**: the focus ring, on every control: the accent's green in light mode and a lighter one in dark.

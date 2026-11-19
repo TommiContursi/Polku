@@ -300,7 +300,7 @@ export function buildStyle(s, ctx) {
 
   // ---- Buildings ----------------------------------------------------------
   if (vectorFills) {
-    add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': P.building, 'fill-outline-color': P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
+    add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': s.base === 'trail' ? '#bdb8b0' : P.building, 'fill-outline-color': s.base === 'trail' ? '#918b81' : P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
   }
   // the hills' shadows, and the trees' and buildings' (js/shadows.js, #919) from zoom 14: over water, fields and roofs
@@ -752,6 +752,8 @@ function addRoads(s, P, hc, layers, ctx) {
   const plainHalo = darkBase ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
   const roadsDim = isWater(act) ? 0.55 : 1;
   const k = hc ? 1.35 : 1;
+  const trail = s.base === 'trail';
+  const roadCase = trail ? '#817a6d' : P.roadCase;
 
   const roadStops = {
     motorway: [6, 0.8, 12, 3, 18, 22],
@@ -759,8 +761,8 @@ function addRoads(s, P, hc, layers, ctx) {
     primary: [7, 0.5, 12, 2.2, 18, 18],
     secondary: [8, 0.4, 12, 1.8, 18, 16],
     tertiary: [9, 0.4, 12, 1.4, 18, 14],
-    minor: [11, 0.3, 14, 1.8, 18, 11],
-    service: [13, 0.3, 15, 1.4, 18, 7],
+    minor: [11, 0.3, 14, trail ? 2.2 : 1.8, 18, 11],
+    service: [13, 0.3, 15, trail ? 1.6 : 1.4, 18, 7],
   };
   // Zoom expressions can't be wrapped in arithmetic, so scale each stop instead.
   const roadW = (cls, f = 1) =>
@@ -792,14 +794,16 @@ function addRoads(s, P, hc, layers, ctx) {
     // casings
     for (const cls of ['service', 'minor', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']) {
       if (aerial && (cls === 'service')) continue;
-      const casingColor = gravel ? ['case', unpaved, '#c4842d', P.roadCase] : P.roadCase;
+      const casingColor = gravel ? ['case', unpaved, '#c4842d', roadCase] : roadCase;
       add({
         id: `road-${brunnel}-${cls}-casing`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: roadMin[cls],
         filter: ['all', ['==', ['get', 'class'], cls], bf],
         layout: { 'line-join': 'round', 'line-cap': brunnel === 'ground' ? 'round' : 'butt' },
         paint: {
           'line-color': aerial ? 'rgba(0,0,0,0.5)' : casingColor,
-          'line-width': gravel && cls !== 'motorway' && cls !== 'trunk'
+          'line-width': trail && !gravel && cls === 'minor' ? ze(1.4, 11, 0.6, 14, 3.6, 18, 14.85)
+            : trail && !gravel && cls === 'service' ? ze(1.4, 13, 0.6, 15, 2.7, 18, 9.45)
+            : gravel && cls !== 'motorway' && cls !== 'trunk'
             ? roadW(cls, ['case', unpaved, 2.5, 1.35])
             : roadW(cls, 1.35),
           'line-opacity': zi(roadMin[cls], 0, roadMin[cls] + 0.5, mmlBase ? 0 : op),
@@ -931,10 +935,10 @@ function addRoads(s, P, hc, layers, ctx) {
       id: `cycleway-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', isPathClass, ['in', ['get', 'subclass'], ['literal', ['cycleway', 'pedestrian']]], bf],
       paint: {
-        'line-color': aerial ? '#bfe0ff' : P.cycleway,
+        'line-color': aerial ? '#bfe0ff' : trail ? '#426f99' : P.cycleway,
         // road cycling: cycleways are where you ride, so they stand out
         'line-width': zi(12, 0.6, 15, 1.6 * k * (roadBike ? 1.5 : 1), 18, 3.5 * k * (roadBike ? 1.4 : 1)),
-        'line-opacity': 0.85 * roadsDim,
+        'line-opacity': (trail ? 0.95 : 0.85) * roadsDim,
       },
     });
   }
