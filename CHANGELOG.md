@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### A coarse map of Finland, kept on your device ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
 
-- Polku keeps a coarse map of the whole of Finland on your device, about 1 MB, saved once. When you zoom out or jump to a new place, its lakes, sea and main roads are there at once, offline too in places you never saved, until the detail comes.
+- Polku keeps a coarse map of the whole of Finland on your device, under 2 MB with the letters for its names, saved once. When you zoom out or jump to a new place, its lakes, sea and main roads are there at once, offline too in places you never saved, until the detail comes.
 
 ### One quiet scrollbar everywhere ([#1100](https://github.com/TommiContursi/Polku/issues/1100))
 

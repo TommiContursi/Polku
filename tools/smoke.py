@@ -6704,6 +6704,8 @@ COARSE_JUMP = r"""
   await new Promise((r) => setTimeout(r, 1500));
   if (drawn().includes(tileOf(9))) f.push(`the zoom 9 tile came though it was held: ${tileOf(9)}`);
   else if (!await wait(() => drawn().includes(tileOf(6)), 10000)) f.push(`no zoom 6 tile (Finland's overview) drawn in the place of ${tileOf(13)} and ${tileOf(9)}: ${drawn().join(' ')}`);
+  // round trips' water test doesn't read it (its lakes have no islands): with only zoom 6 there, no water at zoom 13
+  else if ((await import(location.origin + '/js/roundtrip.js')).waterOf(m).count) f.push(`round trips' water test reads Finland's overview at zoom 13 (#1108's review)`);
   return f;
 })()
 """
@@ -6716,7 +6718,13 @@ COARSE_KEEP = r"""
   if (keys.length !== 15) f.push(`Finland's overview: ${keys.length} of its 15 zoom 6 tiles kept`);
   // and the names' letters, which MapLibre waits for before it draws a tile: 3 typefaces, 4 ranges
   const glyphs = (await (await caches.open('polku-shell-v1')).keys()).filter((r) => r.url.includes('/fonts/Noto%20Sans')).length;
-  if (glyphs < 12) f.push(`Finland's overview: ${glyphs} of the 12 glyph ranges kept`);
+  if (glyphs < 15) f.push(`Finland's overview: ${glyphs} of the 15 glyph ranges kept`);
+  // Save offline's size is what it kept (#1108's review: six workers' sums overwrote each other)
+  const area = await off.saveArea({ name: 'smoke', line: [[24.93, 60.165], [24.95, 60.175]], bbox: [24.93, 60.165, 24.95, 60.175], route: null }, { buffer: 150, terrain: false }, () => {}, new AbortController().signal);
+  let kept = 0;
+  for (const k of area.keys) kept += +((await c.match(k))?.headers.get('X-Size') || 0);
+  if (area.bytes !== kept) f.push(`Save offline says ${area.bytes} bytes for ${kept} kept`);
+  await off.removeArea(area.id);
   await idb('offline').set('smoke-area', { id: 'smoke-area', name: 'smoke', created: 0, keys: [keys[0]] });
   await off.removeArea('smoke-area');
   if (keys[0] && !await c.match(keys[0])) f.push(`removing a saved area removed the overview's ${keys[0]}`);
@@ -6725,17 +6733,19 @@ COARSE_KEEP = r"""
 """
 
 # The worker answers a saved overview tile from the cache at once (Codex on #1105: after OpenFreeMap's weekly version
-# changes, the HTTP cache has none of the new URLs), and refreshes it behind it. 6/35/14 is one nothing in view asks for.
+# changes, the HTTP cache has none of the new URLs), and refreshes it behind it. 6/33/18, outside the overview, is one
+# nothing in view asks for.
 COARSE_WORKER = r"""
 (async () => {
-  const f = [], { ofmTemplate } = await import(location.origin + '/js/offline.js'), key = 'https://tiles.openfreemap.org/planet/offline/6/35/14.pbf';
+  const f = [], { ofmTemplate } = await import(location.origin + '/js/offline.js'), key = 'https://tiles.openfreemap.org/planet/offline/6/33/18.pbf';
   const c = await caches.open('polku-offline-tiles');
   await c.put(key, new Response('saved', { headers: { 'X-Size': '5' } }));
-  const body = await (await fetch((await ofmTemplate()).replace('{z}', 6).replace('{x}', 35).replace('{y}', 14), { cache: 'no-store' })).text();
+  const body = await (await fetch((await ofmTemplate()).replace('{z}', 6).replace('{x}', 33).replace('{y}', 18), { cache: 'no-store' })).text();
   if (body !== 'saved') f.push('a saved overview tile went to the network first');
   const t0 = Date.now();
   while (Date.now() - t0 < 10000 && (await c.match(key)).headers.get('X-Size') === '5') await new Promise((r) => setTimeout(r, 200));
   if ((await c.match(key)).headers.get('X-Size') === '5') f.push('a saved overview tile wasn\'t refreshed behind it');
+  await c.delete(key);
   return f;
 })()
 """

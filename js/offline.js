@@ -23,7 +23,7 @@ const SIZE = { ofm: (z) => (z <= 9 ? 250e3 : z <= 11 ? 130e3 : z === 12 ? 70e3 :
 const MAX_TILES = 8000;
 const ZOOMS = [5, 14]; // vector tiles stop at 14 (overzoomed beyond); 512 px terrain at 14 serves map zoom 15+
 const FONTS = ['Noto Sans Regular', 'Noto Sans Bold', 'Noto Sans Italic'];
-const RANGES = ['0-255', '256-511', '8192-8447', '8448-8703']; // Latin, Finnish/Nordic letters, punctuation, arrows
+const RANGES = ['0-255', '256-511', '1024-1279', '8192-8447', '8448-8703']; // Latin, Finnish/Nordic letters, Cyrillic (names over the border), punctuation, arrows
 const GLYPHS = FONTS.flatMap((f) => RANGES.map((r) => OFM_GLYPHS.replace('{fontstack}', f).replace('{range}', r)));
 const areas = idb('offline');
 
@@ -103,7 +103,8 @@ export async function saveArea({ name, line, bbox, route }, { buffer, terrain },
         else {
           const res = await fetch(t.url, { signal });
           if (res.ok) {
-            bytes += await keep(cache, key, res);
+            const n = await keep(cache, key, res); // (not `bytes += await …`: six workers would overwrite each other's sums)
+            bytes += n;
             fresh.push(key);
           } else if (res.status !== 404) failed++; // 404: no terrain there (sea)
         }

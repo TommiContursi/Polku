@@ -70,7 +70,7 @@ Water routes are calculated in the browser. Polku turns the map's water polygons
 
 ## Offline and sharing
 
-**Save offline** stores the map and terrain along a route, together with the route and its profile, so Polku can load without a connection. Without it, Polku keeps only a coarse map of Finland (lakes, sea and main roads, about 1 MB), which it also shows while the detailed map loads. **Preview offline** shows only what is saved, so you can check coverage before leaving. Routing, search, weather and traffic still need a connection. On an iPhone, add Polku to the home screen to help keep offline data available.
+**Save offline** stores the map and terrain along a route, together with the route and its profile, so Polku can load without a connection. Without it, Polku keeps only a coarse map of Finland (lakes, sea and main roads, under 2 MB), which it also shows while the detailed map loads. **Preview offline** shows only what is saved, so you can check coverage before leaving. Routing, search, weather and traffic still need a connection. On an iPhone, add Polku to the home screen to help keep offline data available.
 
 Routes can be imported from GPX or KML, exported as GPX, or shared with a link. A share link carries when you leave, once it's set; a date that has passed opens leaving now. An exported GPX has the planned times in its waypoints' descriptions and none on the track, so other apps don't read it as a recorded activity. For an imported track, use GPX to preserve its exact line: share links may route it again.
 
