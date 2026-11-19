@@ -6780,6 +6780,12 @@ COARSE_KEEP = r"""
 })()
 """
 
+COARSE_OPENED_OFFLINE = r"""
+Object.defineProperty(Navigator.prototype, 'onLine', { get: () => false });
+new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); })
+  .observe(document, { childList: true, subtree: true });
+"""
+
 # The worker answers a saved overview tile from the cache at once (Codex on #1105: after OpenFreeMap's weekly version
 # changes, the HTTP cache has none of the new URLs), and refreshes it behind it. 6/33/18, outside the overview, is one
 # nothing in view asks for.
@@ -6833,6 +6839,16 @@ def coarse(chrome):
                 except RuntimeError:
                     pass
             pg.close()
+    # opened offline, Polku says so and that elsewhere there's only the coarse map (#1108's review)
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COARSE_OPENED_OFFLINE}, pg.s)
+        pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')
+        said = pg.js("new Promise((ok) => setTimeout(() => ok(window.__toasts || []), 1500))")
+        if not any('offline' in t and 'coarse map' in t for t in said):
+            fails.append(f'opened offline, nothing says so: {said}')
+    finally:
+        pg.close()
     pg = chrome.page(390, 844, True)
     try:
         pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')

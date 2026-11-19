@@ -195,12 +195,12 @@ export async function setPreview(on) {
   location.reload();
 }
 
-/** Banner while previewing, and a toast when the connection drops or returns. */
+/** Banner while previewing, and a toast when Polku opens offline or the connection drops or returns. */
 export async function initOfflineStatus() {
   if (!offlineSupported()) return;
   if (await previewActive()) {
     document.body.append(h('div', { class: 'offline-banner', role: 'status' },
-      h('span', { html: `${icon('offline', 16)} Offline preview: only saved areas load` }),
+      h('span', { html: `${icon('offline', 16)} Offline preview: saved areas, and a coarse map of Finland` }),
       h('button', { type: 'button', class: 'btn', onclick: () => setPreview(false) }, 'Exit')));
   }
   // the app itself from the saved copy (the server didn't answer within 3 s): it may be an older Polku
@@ -219,10 +219,12 @@ export async function initOfflineStatus() {
     sw.addEventListener('message', onMsg);
     sw.controller.postMessage({ type: 'saved-copy?' });
   }
-  window.addEventListener('offline', async () => {
+  const offline = async () => {
     const n = (await listAreas()).length;
-    toast(n ? 'You’re offline — saved areas and their routes still work' : 'You’re offline — the map needs a connection (save an area from the route panel next time)', { ms: 6000 });
-  });
+    toast(n ? 'You’re offline — saved areas and their routes still work; elsewhere only a coarse map of Finland' : 'You’re offline — only a coarse map of Finland, without trails (save an area from the route panel next time)', { ms: 6000 });
+  };
+  window.addEventListener('offline', offline);
+  if (!navigator.onLine) offline(); // opened offline: the coarse map alone mustn't look like the whole map
   window.addEventListener('online', () => toast('Back online'));
 }
 
