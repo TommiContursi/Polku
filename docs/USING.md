@@ -92,6 +92,8 @@ On a desktop, **⌄** in the planner's header folds it down to its line at the f
 
 ## Read the map
 
+**MTB difficulty** shows S0− (very easy paths) in turquoise and S0 (easy paths) in bright green, followed by S1–S6. The map key, trail cards and route/profile breakdowns use the same grades. Uphill difficulty keeps its own colors. A white halo means no mapped MTB grade, not S0−.
+
 With editing off, a pointing-hand cursor shows roads, paths, routes and other map features you can click. Empty map space keeps the grab cursor. Rest the pointer briefly for a hint; fuller map details can follow after it appears.
 
 The terrain maps keep more detail when you zoom out, and aerial photos use sharper images on high-density screens. Close-up detail still depends on the original photography. If a closer **Aerial** image is unavailable, the map enlarges the available coarser image. **Depth contours** appear from zoom level 10 and **Depth soundings** from level 13; the depths are displayed for planning, not navigation, and never used for routing.

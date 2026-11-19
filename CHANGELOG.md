@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### The easiest MTB grades ([#673](https://github.com/TommiContursi/Polku/issues/673))
+
+- MTB difficulty distinguishes S0− · Very easy path in turquoise from S0 · Easy path in brighter green, on the map and in cards, the map key and route profiles. Uphill difficulty and the other colour scales keep their existing colours.
+
 ### Clearer roads and buildings ([#1113](https://github.com/TommiContursi/Polku/issues/1113))
 
 - Roads, cycleways and buildings stand out more clearly on the **Trail map**, with stronger edges and slightly wider minor and service roads at intermediate zooms. Forest, field and water colours stay the same.
