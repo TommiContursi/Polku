@@ -294,9 +294,8 @@ function drawTogether() {
 // made at every position), each frame MapLibre draws is copied until the map is drawn and Polku's loaders aren't busy,
 // at most 3 s. When a frame shows a part that has come, the frame before is laid over the map, under its markers, and
 // faded out: 0.2 s, up to 0.4 s as the share of the map the part changes rises to a quarter (both frames shrunk to
-// 48 × 30, cell by cell). MapLibre has no fade for vector tiles. A picture never stays over a moving map (a glide
-// grabbed again ends with a moveend while you drag), and a touch, the wheel, a key or a highlight under the mouse on
-// the map ends a fade.
+// 48 × 30, cell by cell). MapLibre has no fade for vector tiles. A picture never stays over a moving map, and a touch,
+// the wheel, a key or a highlight under the mouse on the map ends a fade.
 const fade = { by: null, on: false, came: false, until: 0, copy: null, spare: null, over: null };
 addEventListener('keydown', (e) => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) fade.by = 'keys'; }, true);
 for (const ev of ['pointerdown', 'wheel']) addEventListener(ev, () => { fade.by = 'pointer'; }, { capture: true, passive: true });
@@ -323,9 +322,11 @@ map.on('sourcedata', (e) => {
     : !(type === 'raster' && map.getLayersOrder().some((l) => { const s = map.getLayer(l); return s.source === e.sourceId && s.type === 'raster' && map.getPaintProperty(l, 'raster-fade-duration') !== 0; }))) fade.came = true;
 });
 for (const ev of ['pointerdown', 'wheel', 'keydown']) map.getContainer().addEventListener(ev, dropFade, { capture: true, passive: true });
+// any camera move drops the picture, as it starts: one made at once (heading up, following you, reduced motion) has
+// stopped before a frame is drawn
+map.on('movestart', dropFade);
 map.on('render', () => {
   const f = fade, c = map.getCanvas();
-  if (map.isMoving()) { if (f.on || f.over) dropFade(); return; }
   if (!f.on) return;
   if (f.came && f.copy && f.copy.width === c.width && f.copy.height === c.height) {
     f.came = false;

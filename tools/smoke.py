@@ -7250,6 +7250,8 @@ FADEIN_WATCH = r"""
   return true;
 })()
 """
+# a picture over the map, 3 s at most
+FADEIN_SEEN = "new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('.map-fade') || Date.now() - t0 > 3000 ? ok(!!document.querySelector('.map-fade')) : requestAnimationFrame(go); go(); })"
 # the map still for 150 ms, 15 s at most
 FADEIN_STILL = "new Promise((ok) => { const m = polku.map, t0 = Date.now(); let since = 0; const go = () => { since = m.isMoving() ? 0 : since || Date.now(); if ((since && Date.now() - since > 150) || Date.now() - t0 > 15000) ok(true); else setTimeout(go, 30); }; setTimeout(go, 100); })"
 
@@ -7259,8 +7261,8 @@ def fadein(chrome):
     the map moves and let go once it has stopped, so a part always comes after the stop. After a move by mouse and after
     a search result chosen with the mouse, it fades in on opacity over 200–400 ms, `linear`, with reduced motion (as the
     checks' pages have it) and with motion; after the arrow keys and a search result chosen with Enter nothing fades;
-    a touch on the map ends a fade at once; and quick mouse flings, grabbed again while the map glides, never leave a
-    picture over a moving map."""
+    a touch on the map, a route lit under the mouse and a move made at once end a fade at once; and quick mouse flings,
+    grabbed again while the map glides, never leave a picture over a moving map."""
     fails = []
 
     def mouse(pg, kind, x, y):
@@ -7431,7 +7433,7 @@ def fadein(chrome):
         after(pg, 'swipes on a phone', swipes, True)
         pg.js('window.__fade.gone.length = 0, true')
         held_move(pg, swipes)
-        if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('.map-fade') || Date.now() - t0 > 3000 ? ok(!!document.querySelector('.map-fade')) : requestAnimationFrame(go); go(); })"):
+        if not pg.js(FADEIN_SEEN):
             fails.append('a phone: nothing faded in after the second swipe, so a touch couldn’t end it')
         else:
             pg.c.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': 200, 'y': 300}]}, pg.s)
@@ -7439,6 +7441,13 @@ def fadein(chrome):
             pg.c.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}, pg.s)
             if left or 'finished' in gone or not gone:
                 fails.append(f'a phone: a touch on the map didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
+        # a move made at once mid-fade (following you, heading up: no frame drawn while it moves) takes the picture with
+        # it (Codex on #1136)
+        held_move(pg, swipes)
+        if not pg.js(FADEIN_SEEN):
+            fails.append('a phone: nothing faded in after more swipes, so a move made at once couldn’t be tried')
+        elif pg.js("(() => { const m = polku.map, c = m.getCanvas(); m.jumpTo({ center: m.unproject([c.clientWidth / 2 + 120, c.clientHeight / 2]) }, { polkuFollow: true }); return !!document.querySelector('.map-fade'); })()"):
+            fails.append('a phone: a move made at once, as following you does, left the picture of the view before over the map')
         fails += [f'phone console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
