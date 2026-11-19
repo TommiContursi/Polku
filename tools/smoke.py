@@ -530,6 +530,22 @@ LAYERS = """(async () => {
     await wait(200);
     if (polku.map.getPaintProperty('ov-depthAreas', 'raster-opacity') !== 0.3) errs.push('the opacity slider did not change the map');
   }
+  // drawn again, Layers and Settings stay where they were scrolled, and a scroll before the next frame stays put: the
+  // scroll isn't put back a frame late (#536)
+  const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  for (const [name, box] of [['Layers', body], ['Settings', document.querySelector('#settings-body')]]) {
+    if (name === 'Settings') { document.querySelector('#btn-settings').click(); await wait(300); box.querySelectorAll('.lg-group').forEach((d) => d.open = true); }
+    box.scrollTop = 400;
+    const at = box.scrollTop;
+    if (at < 300) { errs.push(`${name}: too short to scroll (${at})`); continue; }
+    polku.set({ weather: { ...wx, rain: !wx.rain } });
+    if (box.scrollTop !== at) errs.push(`${name}, drawn again: scrolled ${box.scrollTop}, not ${at}`);
+    box.scrollTop = at - 200;
+    await frames();
+    if (box.scrollTop !== at - 200) errs.push(`${name}, scrolled just after it was drawn again: jumped back to ${box.scrollTop}, not ${at - 200}`);
+    polku.set({ weather: wx });
+    await wait(200);
+  }
   return errs;
 })()"""
 
