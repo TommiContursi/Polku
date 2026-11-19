@@ -208,7 +208,7 @@ When the camera jumps far (a search result, Show the whole route, an imported tr
 
 ### Measured
 
-On the mock-up at 2a9b, in Chrome with its GPU (Apple M1 Pro, Metal), headless, motion as a person has it, an empty profile for each version, Finland's overview fetched first as C keeps it. Each version made five jumps from one national park or town to the next, into places the profile had never loaded (Jyväskylä, Koli, the Eastern Gulf of Finland, Pallas, Hossa, Nuuksio), on the network as it is and on DevTools' Slow 4G (562 ms, 1.4 Mbit/s). "Polku's layers" is the mock-up's stand-in for D, drawn 0.6 s after the map stops on a fast network; it says when the map stops, not how long Polku's loaders take.
+On the mock-up at e7a4b49, in Chrome with its GPU (Apple M1 Pro, Metal), headless, motion as a person has it, an empty profile for each version, Finland's overview fetched first as C keeps it. Each version made five jumps from one national park or town to the next, into places the profile had never loaded (Jyväskylä, Koli, the Eastern Gulf of Finland, Pallas, Hossa, Nuuksio), on the network as it is and on DevTools' Slow 4G (562 ms, 1.4 Mbit/s). "Polku's layers" is the mock-up's stand-in for D, drawn 0.6 s after the map stops on a fast network; it says when the map stops, not how long Polku's loaders take.
 
 | Network, size | Version | The old view goes | The new place's map drawn | Polku's layers drawn | Tiles asked for |
 |---|---|---|---|---|---|
@@ -226,14 +226,14 @@ On the mock-up at 2a9b, in Chrome with its GPU (Apple M1 Pro, Metal), headless, 
 | Slow 4G, 1440 × 900 | Crossfade at once | at once | 0.77–1.91 s | 0.82–1.98 s | 7–14 |
 
 - **On a fast network the new place is finished within 0.05–0.19 s of the press,** against 0.94–0.98 s when it flies, and Polku's own layers come 0.9 s sooner, since the map stops at once.
-- **On Slow 4G the new place's map is drawn 0.2–1 s sooner** (about 0.9 s at four places of five), as nothing is asked for along the way. The hold then ends at 0.4 s, before it's drawn, and the coarse map shows under the fade with the detail sharpening in, as after a flight.
+- **On Slow 4G the new place's map is drawn 0.2–1 s sooner** (about 0.9 s at four places of five), as nothing is asked for along the way. The hold then ends at 0.4 s, before it's drawn, and under the fade is what the coarse map has: Finland's overview shows lakes, sea and main roads, so on Koli's forested hill it was paper for about half a second, as the flight's middle is. A longer hold wouldn't hide it: on Slow 4G the map was drawn within 0.9 s, the flight's time, at one place of five.
 - **A jump asks OpenFreeMap for 5–14 tiles, a flight for 34–102,** the tiles of the places it passes over.
 - **Once drawn and at once differ by at most 0.2 s on a fast network:** at once shows the coarse map and the detail coming in under the fading picture; once drawn shows the place finished. On Slow 4G once drawn shows the coarse map 0.4 s later.
 - **A first set of these runs doesn't count:** it fetched the overview over the slowed network, and some of a flight's tiles failed when asked for twice. Both were fixed in the mock-up and run again.
 
 ### Recommended: crossfade once drawn
 
-For a far jump started with a tap or a click: the place you asked for is there, finished, in a tenth of a second on a fast network, rather than after a 0.9 s flight and its filling in, and Polku's own layers come 0.9 s sooner. On a slow network it's never later than the flight: 0.4 s of the old view, then the coarse map sharpening. It asks OpenFreeMap for a fifth to a tenth of the tiles. What it costs people: you no longer see which way the new place lies from where you were; the search result's name and its card say where you went. What it costs to build: about 40 lines and four callers, a smoke group, and a canvas the size of the screen for under a second.
+For a far jump started with a tap or a click: the place you asked for is there, finished, in a tenth of a second on a fast network, rather than after a 0.9 s flight and its filling in, and Polku's own layers come 0.9 s sooner. On a slow network it's never later than the flight: 0.4 s of the old view, then what the coarse map has until the place comes, 0.2–1 s sooner than after a flight. It asks OpenFreeMap for a fifth to a tenth of the tiles. What it costs people: you no longer see which way the new place lies from where you were; the search result's name and its card say where you went. What it costs to build: about 40 lines and four callers, a smoke group, and a canvas the size of the screen for under a second.
 
 Crossfade at once is the simpler of the two (no hold, about 10 lines fewer) and differs only in what you see under the fade. Leaving it as it is stays a fair choice now that A, C and D are in: the flight's 0.9 s and its filling in are what remains.
 
