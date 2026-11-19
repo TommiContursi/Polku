@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-19
+
+### Layers and Settings stay where you scrolled ([#536](https://github.com/TommiContursi/Polku/issues/536))
+
+- After you turn something on or off in **Layers** or **Settings**, the panel stays where you scrolled it, also when you scroll on straight away. Before, on a slow device, the panel could jump back to where it was a moment earlier, and **Settings** flashed to its top first.
+
 ## 2026-11-18
 
 ### 3D without a blank map ([#636](https://github.com/TommiContursi/Polku/issues/636))
