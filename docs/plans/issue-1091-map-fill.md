@@ -18,7 +18,7 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **Decided, 2026-11-19: the fade is 0.4 s at an even pace** (on #1091's description), about the longest it should be.
 - **Two more ideas from trying it:** the same fade after you move the map yourself, and a fade whose length follows how much of the map the part changes: [after a move, and by what comes](#after-a-move-and-by-what-comes). A ghost of the frame before over the map after quick swipes was fixed in the mock-up: no picture over a moving map.
 - **Decided, 2026-11-19: both** (on #1091's description): the parts fade in after a move of your own too, never from the arrow keys, each over 0.2–0.4 s by how much of the map it changes.
-- **The fade-in: built** (the PR after #1126); how it differs from the plan and what its cost measured: [as built](#as-built).
+- **The fade-in: built** ([#1136](https://github.com/TommiContursi/Polku/pull/1136), a draft after #1126); how it differs from the plan and what its cost measured: [as built](#as-built).
 
 ## What people see
 
