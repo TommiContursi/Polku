@@ -6350,6 +6350,18 @@ SUNLIGHT_APP = """(async (step) => {
     polku.set({ objectShadows: true }); w.setHour(down); await wait(1500);
     expect(`the sun down, +${down} h`, { method: 'multidirectional', shadows: false, light: 'sun' });
     w.setHour(up); await wait(1500);
+    // a long way at the same hour, as a first visit's locate: the light follows the map's middle (#1120)
+    const ll0 = m.getCenter().toArray(); m.jumpTo({ center: [19.9, 60.1] }); await wait(1500);
+    expect('the sun over Åland, at the same hour', { method: 'combined', dir: Math.round(at(up).az) });
+    m.jumpTo({ center: ll0 }); await wait(1500);
+    // Aerial has no hillshade: an hour on, moving the map rebuilds no style and saves nothing (#1120)
+    polku.set({ base: 'aerial' }); w.setHour(up + 1); await wait(1500);
+    let saves = 0; const set0 = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) { if (k === 'polku:settings') saves++; return set0.call(this, k, v); };
+    for (const dx of [0.01, -0.01, 0.01]) { m.jumpTo({ center: [m.getCenter().lng + dx, m.getCenter().lat] }); await wait(400); }
+    Storage.prototype.setItem = set0;
+    if (saves) out.push(`on Aerial, three moves an hour on saved the settings ${saves} times (the style rebuilt)`);
+    polku.set({ base: 'trail' }); w.setHour(up); await wait(1500);
   } else {
     expect('after a reload, the sun kept', { light: 'sun' });
     if (!polku.state.hillShadows || !polku.state.objectShadows) out.push('after a reload, the shadows switched off');
