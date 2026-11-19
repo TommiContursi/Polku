@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-18
 
+### 3D without a blank map ([#636](https://github.com/TommiContursi/Polku/issues/636))
+
+- Turning **3D** on, or **Raised hills** on or off, keeps the map on screen. Before, the whole map was drawn again from the start, so it went blank for a moment and its tiles loaded again.
+
 ### When Polku doesn't finish loading ([#1088](https://github.com/TommiContursi/Polku/issues/1088))
 
 - When one of Polku's files doesn't arrive as it opens, on a bad connection or just after an update, Polku tries once more by itself. If that fails too, it says **Polku didn’t finish loading** with **Reload**, rather than staying without its map and saying nothing.
