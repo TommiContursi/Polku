@@ -14,10 +14,9 @@ Outside Finland the map stays as it is, on OpenFreeMap's tiles and OSM.
 - **Researched, 2026-11-19.** Services, access, licence, coverage and CORS
   were checked, and a vector-tile archive was built from two real map sheets
   (below). Nothing is built in the app.
-- **Needs the user's choice:** how the data reaches the map
-  ([Delivery](#delivery)). The recommendation needs no account, key or
-  backend, but it adds a monthly build job, a build-only tool and about
-  1–3 GB on the data host.
+- **Decided, 2026-11-20: Polku's own archive** (on #1147 and #1148), built
+  from Kapsi's keyless copy. No MML API key in the app; a key, if one is
+  ever needed, is used only by the build job as a GitHub secret.
 - **Waits on #1146** for the bogs: in Finland, MML's bogs and OSM's
   wetlands would otherwise be drawn twice ([Drawing](#drawing)).
 
@@ -124,6 +123,10 @@ boundaries come the same way, from Kapsi's per-sheet vector files.
   decoded, holds the class codes as numbers (34100, 35300, 35412); GDAL's
   own read-back showed the field empty, so the codes in the other tiles
   weren't checked.
+- **The input:** `mtkmaasto.zip` holds one file, `mtkmaasto.gpkg`,
+  deflated, 52.4 GB unpacked (its zip directory, read with range requests,
+  2026-11-20). The OSM builds' runners had 85 GB free, so the job streams
+  the download into the unpacked file rather than keeping the zip as well.
 - **Not measured:** the whole country's size and largest tile (scaling the
   two sheets by area gives about 2 GB; Lapland's large bogs may differ),
   the runner's time and disk for the 22.8 GB input, and the per-sheet
