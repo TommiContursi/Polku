@@ -4715,16 +4715,18 @@ export class Planner {
     this.els.stats = h('div', { class: 'stats' });
     this.els.modesBar = h('div', { class: 'chip-groups' });
     this.els.modeSel = h('select', { 'aria-label': 'Colour the profile by', onchange: (e) => this.showMode(e.target.value) });
-    this.els.modeSelect = h('label', { class: 'mode-select' },
-      h('span', { class: 'mode-select-label' }, 'Colour by'),
+    const modeCaption = h('span', { class: 'mode-select-label' }, 'Colour by');
+    this.els.modeSelect = h('label', { class: 'mode-select' }, modeCaption,
       h('span', { class: 'mode-select-box' }, this.els.modeSel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('caret', 12) })));
     this.els.mapToggle = h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => this.setColorOnMap(e.target.checked) });
     this.els.mapToggleRow = h('label', { class: 'tg tg-inline' },
       h('span', { class: 'tg-text' }, 'On map'), this.els.mapToggle, h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
-    // (beside their row, clear of the key facts under it; a mouse points at the switch's label, the keyboard's focus is on
-    // its hidden input: the tip on both)
-    const profTop = h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow), onMapTip = { name: 'On map', text: 'Colours the route on the map as the profile.', beside: profTop };
-    tooltip(this.els.modeSel, { name: 'Colour by', text: 'What the colours of the profile show.', beside: profTop });
+    // (beside their row, clear of the key facts under it. Colour by's on its caption and its select, side by side, so it hands
+    // over between them; On map's on the switch's label for a mouse and its hidden input for the keyboard's focus)
+    const profTop = h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow);
+    const modeTip = { name: 'Colour by', text: 'What the colours of the profile show.', beside: profTop }, onMapTip = { name: 'On map', text: 'Colours the route on the map as the profile.', beside: profTop };
+    tooltip(modeCaption, modeTip);
+    tooltip(this.els.modeSel, modeTip);
     tooltip(this.els.mapToggleRow, onMapTip);
     tooltip(this.els.mapToggle, onMapTip);
     this.els.breakdown = h('div', { class: 'breakdown' });

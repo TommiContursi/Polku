@@ -23579,7 +23579,7 @@ def map_tips(chrome):
 # The planner's own tooltips (#304): the profile's controls, the trip's box's day, Reorder's grip and arrows. Each by a
 # mouse (its name after the delay, covering no other control of the planner), the keyboard's focus where it takes one,
 # and none left with a title.
-PLANNER_TIPS = [('.pl-profile .prof-size', 'A smaller profile'), ('.pl-profile .mode-select select', 'Colour by'), ('.pl-profile .tg-inline', 'On map'),
+PLANNER_TIPS = [('.pl-profile .prof-size', 'A smaller profile'), ('.pl-profile .mode-select-label', 'Colour by'), ('.pl-profile .mode-select select', 'Colour by'), ('.pl-profile .tg-inline', 'On map'),
                 ('.chart-reset', 'Whole route'), ('.trip-days .row', 'Weather on the way')]
 REORDER_TIPS = [('.wpl-row:nth-child(2) .wpl-grip', 'Drag to reorder'), ('.wpl-row:nth-child(2) button[aria-label$=" earlier"]', 'Move earlier'),
                 ('.wpl-row:nth-child(2) button[aria-label$=" later"]', 'Move later')]
@@ -23627,6 +23627,17 @@ def planner_tips(chrome):
     else:
         for sel, name in PLANNER_TIPS:
             mouse(sel, name)
+        # Colour by's caption to its select and back: its tip stays up all the way
+        pts = pg.js("""[...document.querySelectorAll('.pl-profile .mode-select-label, .pl-profile .mode-select select')].map((e) => { const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })""")
+        seen = []
+        for k, (x, y) in enumerate([pts[0], pts[1], pts[0]]):
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': 'none'}, pg.s)
+            time.sleep(0.9 if not k else 0.3)
+            seen.append(pg.js(TIP_NOW)[:9])
+        if seen != ['Colour by'] * 3:
+            fails.append(f'Colour by: its caption, its select and its caption again show {seen}')
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 500, 'button': 'none'}, pg.s)
+        time.sleep(0.3)
         # the keyboard: focus shows it at once, as its description
         for ev in ('rawKeyDown', 'keyUp'):
             pg.c.send('Input.dispatchKeyEvent', {'type': ev, 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
