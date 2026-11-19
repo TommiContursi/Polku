@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Polku's own layers come in together ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- When the map stops, Polku's own layers (trail details, official routes, lit and winter ways, the uphill colours and the nautical marks) now appear together, rather than one after another over half a second. A layer that is slow to come doesn't hold the others back for more than half a second: it appears on its own when it comes.
+
 ### Polku's own tooltips on the map's buttons and the top bar ([#304](https://github.com/TommiContursi/Polku/issues/304))
 
 - Pointing at a button in the map's column (**Plan**, **Layers**, **Weather**, **3D**, the compass, location and zoom) or in the top bar (**Plan**, **Settings**) shows Polku's own tooltip, as on the planner's toolbar: its name, its key where it has one, and what it does. It also shows when the button gets the keyboard's focus, and **Esc** hides it. The map's column has its tooltips to the left, so none covers the next button.
