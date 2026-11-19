@@ -7260,6 +7260,32 @@ def fadein(chrome):
         after(pg, 'a search result chosen with Enter', by_enter, False)
         after(pg, 'a search result chosen with the mouse', by_click('62.2200, 25.6700'), True)
         after(pg, 'the arrow keys', by_arrows, False)
+        # a LIPAS route lit under the mouse ends a fade: it's drawn in the map's canvas, under the picture. LIPAS answers
+        # with a route along the view's middle (in EPSG:3067, from tm35ToLonLat inverted), drawn after the next stop.
+        pg.js("""(async () => {
+          const m = polku.map, c = m.getCenter(), { tm35ToLonLat } = await import(location.origin + '/js/geo.js'), k = Math.cos(c.lat * Math.PI / 180);
+          let x = 500000 + (c.lng - 27) * 111320 * k, y = c.lat * 111000;
+          for (let i = 0; i < 6; i++) { const [lo, la] = tm35ToLonLat(x, y); x += (c.lng - lo) * 111320 * k; y += (c.lat - la) * 111000; }
+          window.__routeLat = c.lat;
+          (await import(location.origin + '/js/lipas.js')).seedLipas(() => Promise.resolve({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 1 },
+            geometry: { type: 'LineString', coordinates: [[x - 20000, y], [x + 20000, y]] } }] }));
+          polku.lipas.tiles.clear();
+          return true; })()""")
+        pg.js('window.__fade.gone.length = 0, true')
+        held_move(pg, drag)
+        at = pg.js("""new Promise((ok) => { const m = polku.map, t0 = Date.now(), go = () => {
+          const drawn = m.queryRenderedFeatures({ layers: ['lipas-route'] }).length && document.querySelector('.map-fade');
+          if (!drawn && Date.now() - t0 < 4000) return requestAnimationFrame(go);
+          const y = m.project([m.getCenter().lng, window.__routeLat]).y, x = [...Array(30).keys()].map((i) => 100 + i * 40).find((x) => document.elementFromPoint(x, y) === m.getCanvas());
+          ok(drawn && x != null ? [x, y] : null); }; go(); })""")
+        if not at:
+            fails.append('a route lit under the mouse: the LIPAS route and a fade weren’t on the map together')
+        else:
+            for dx in (0, 2):
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at[0] + dx, 'y': at[1], 'button': 'none', 'buttons': 0}, pg.s)
+            left, gone = pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok([!!document.querySelector('.map-fade'), window.__fade.gone]))))")
+            if left or 'finished' in gone or not gone:
+                fails.append(f'a route lit under the mouse didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()

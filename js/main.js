@@ -295,7 +295,8 @@ function drawTogether() {
 // at most 3 s. When a frame shows a part that has come, the frame before is laid over the map, under its markers, and
 // faded out: 0.2 s, up to 0.4 s as the share of the map the part changes rises to a quarter (both frames shrunk to
 // 48 × 30, cell by cell). MapLibre has no fade for vector tiles. A picture never stays over a moving map (a glide
-// grabbed again ends with a moveend while you drag), and a touch, the wheel or a key on the map ends a fade.
+// grabbed again ends with a moveend while you drag), and a touch, the wheel, a key or a highlight under the mouse on
+// the map ends a fade.
 const fade = { by: null, on: false, came: false, until: 0, copy: null, spare: null, over: null };
 addEventListener('keydown', (e) => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) fade.by = 'keys'; }, true);
 for (const ev of ['pointerdown', 'wheel']) addEventListener(ev, () => { fade.by = 'pointer'; }, { capture: true, passive: true });
@@ -336,14 +337,15 @@ map.on('render', () => {
     for (let i = 0; i < half; i += 4) if (Math.abs(px[i] - px[half + i]) + Math.abs(px[i + 1] - px[half + i + 1]) + Math.abs(px[i + 2] - px[half + i + 2]) > 24) n++;
     if (n) {
       // the frame before is the picture, with the part before this one as far as it has faded in
-      const pic = f.copy, o = f.over, g = pic.getContext('2d');
+      // (and fading out no sooner than that part would have)
+      const pic = f.copy, o = f.over, g = pic.getContext('2d'), was = o?.getAnimations()[0], left = was ? was.effect.getTiming().duration - was.currentTime : 0;
       if (o) { g.globalAlpha = +getComputedStyle(o).opacity; g.drawImage(o, 0, 0); g.globalAlpha = 1; o.getAnimations().forEach((x) => x.cancel()); o.remove(); }
       f.copy = o || f.spare || document.createElement('canvas');
       f.spare = null;
       f.over = pic;
       pic.className = 'map-fade';
       c.after(pic);
-      pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(200 + 200 * Math.min(1, n / (48 * 30) / 0.25)), easing: 'linear', fill: 'forwards' })
+      pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(Math.max(left, 200 + 200 * Math.min(1, n / (48 * 30) / 0.25))), easing: 'linear', fill: 'forwards' })
         .finished.then(() => { if (f.over === pic) { pic.remove(); f.over = null; f.spare = pic; restFade(); } }, () => {});
     }
   }
@@ -371,6 +373,7 @@ function routeHoverLeg(leg) {
   if (ctx.hoverLeg != null) map.setFeatureState({ source: 'route', id: ctx.hoverLeg }, { hover: false });
   ctx.hoverLeg = v;
   if (v != null) map.setFeatureState({ source: 'route', id: v }, { hover: true });
+  dropFade(); // (it's drawn in the map's canvas, under a fading picture)
 }
 
 // The LIPAS route under the mouse is lit along all its parts: they share its LIPAS id, the feature state's
@@ -381,6 +384,7 @@ function routeHoverRoute(p) {
   if (hoveredRoute != null) map.setFeatureState({ source: 'lipasRoutes', id: hoveredRoute }, { hover: false });
   hoveredRoute = id;
   if (id != null) map.setFeatureState({ source: 'lipasRoutes', id }, { hover: true });
+  dropFade();
 }
 
 // Light or dark (#323): the device's (Automatic, also when it changes), the person's, or the map's (Match the map: dark
