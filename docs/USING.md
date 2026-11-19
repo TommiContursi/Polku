@@ -143,7 +143,7 @@ A tap or a click outside an open menu only closes it: what's under it, the map o
 
 ## Before going offline
 
-Use **Save offline** in the planner's **More** (⋯) or on the whole route's card. Then use **Preview offline** to check the saved coverage. On an iPhone, add Polku to the home screen to help keep the saved data available.
+Use **Save offline** in the planner's **More** (⋯) or on the whole route's card. Then use **Preview offline** to check the saved coverage. Outside saved areas, Polku shows only a coarse map of Finland, with its lakes, sea and main roads. On an iPhone, add Polku to the home screen to help keep the saved data available.
 
 The saved map, terrain, route and profile work without a connection; routing, search, weather and traffic do not. Read the [limitations](../README.md#limitations), especially before planning on water.
 

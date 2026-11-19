@@ -70,7 +70,7 @@ Water routes are calculated in the browser. Polku turns the map's water polygons
 
 ## Offline and sharing
 
-**Save offline** stores the map and terrain along a route, together with the route and its profile, so Polku can load without a connection. **Preview offline** shows only what is saved, so you can check coverage before leaving. Routing, search, weather and traffic still need a connection. On an iPhone, add Polku to the home screen to help keep offline data available.
+**Save offline** stores the map and terrain along a route, together with the route and its profile, so Polku can load without a connection. Without it, Polku keeps only a coarse map of Finland (lakes, sea and main roads, about 1 MB), which it also shows while the detailed map loads. **Preview offline** shows only what is saved, so you can check coverage before leaving. Routing, search, weather and traffic still need a connection. On an iPhone, add Polku to the home screen to help keep offline data available.
 
 Routes can be imported from GPX or KML, exported as GPX, or shared with a link. A share link carries when you leave, once it's set; a date that has passed opens leaving now. An exported GPX has the planned times in its waypoints' descriptions and none on the track, so other apps don't read it as a recorded activity. For an imported track, use GPX to preserve its exact line: share links may route it again.
 
@@ -121,7 +121,7 @@ Polku's original application code is proprietary: © 2026 Tommi Contursi, all ri
 - **Estimates and mapped data have gaps.** Uphill grades, travel times and wave heights are estimates from terrain, tags and forecasts. They cannot confirm conditions on the ground.
 - **Water routing cannot assess every hazard.** It does not use depths and does not know currents, rapids, private shores or bird-protection areas. Use official charts and keep a lookout.
 - **A path on the map is not necessarily an official route or permission to enter.** Respect everyman's rights, access restrictions and local rules. Ski tracks are not for walking or cycling.
-- **Offline covers the saved map, terrain and route.** Routing, search, weather and traffic still need a connection.
+- **Offline covers the saved map, terrain and route.** Elsewhere in Finland there's only the coarse map, with no trails or terrain. Routing, search, weather and traffic still need a connection.
 - **The full trail network appears from zoom 14.** Zoom in if trails seem to be missing.
 - **FMI weather and forest-fire warnings are not shown.** No open source currently allows Polku to fetch them directly from a browser.
 
