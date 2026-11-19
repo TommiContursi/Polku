@@ -7271,16 +7271,16 @@ def fadein(chrome):
             geometry: { type: 'LineString', coordinates: [[x - 20000, y], [x + 20000, y]] } }] }));
           polku.lipas.tiles.clear();
           return true; })()""")
-        pg.js('window.__fade.gone.length = 0, true')
         held_move(pg, drag)
         at = pg.js("""new Promise((ok) => { const m = polku.map, t0 = Date.now(), go = () => {
-          const drawn = m.queryRenderedFeatures({ layers: ['lipas-route'] }).length && document.querySelector('.map-fade');
+          const a = document.querySelector('.map-fade')?.getAnimations()[0], drawn = m.queryRenderedFeatures({ layers: ['lipas-route'] }).length && a && a.effect.getTiming().duration - a.currentTime > 120;
           if (!drawn && Date.now() - t0 < 4000) return requestAnimationFrame(go);
           const y = m.project([m.getCenter().lng, window.__routeLat]).y, x = [...Array(30).keys()].map((i) => 100 + i * 40).find((x) => document.elementFromPoint(x, y) === m.getCanvas());
           ok(drawn && x != null ? [x, y] : null); }; go(); })""")
         if not at:
-            fails.append('a route lit under the mouse: the LIPAS route and a fade weren’t on the map together')
+            fails.append('a route lit under the mouse: the LIPAS route and a fade with 120 ms left weren’t on the map together')
         else:
+            pg.js('window.__fade.gone.length = 0, true')  # (only how the fade on the map now goes)
             for dx in (0, 2):
                 pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at[0] + dx, 'y': at[1], 'button': 'none', 'buttons': 0}, pg.s)
             left, gone = pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok([!!document.querySelector('.map-fade'), window.__fade.gone]))))")
