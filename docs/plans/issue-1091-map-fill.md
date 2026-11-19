@@ -18,7 +18,7 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **Decided, 2026-11-19: the fade is 0.4 s at an even pace** (on #1091's description), about the longest it should be.
 - **Two more ideas from trying it:** the same fade after you move the map yourself, and a fade whose length follows how much of the map the part changes: [after a move, and by what comes](#after-a-move-and-by-what-comes). A ghost of the frame before over the map after quick swipes was fixed in the mock-up: no picture over a moving map.
 - **Decided, 2026-11-19: both** (on #1091's description): the parts fade in after a move of your own too, never from the arrow keys, each over 0.2–0.4 s by how much of the map it changes.
-- **Next:** [building it](#building-it).
+- **The fade-in: built** (the PR after #1126); how it differs from the plan and what its cost measured: [as built](#as-built).
 
 ## What people see
 
@@ -311,6 +311,15 @@ To check in the build:
 - HTML markers (the route's points, your position, a card's pin) aren't in the map's canvas: under the picture they'd seem to wait for it, above it they'd appear at once. Try both.
 - The copies take two canvases of the screen's size: about 20 MB each at 1440 × 900 on a Retina screen, 12 MB on a phone.
 - The night map, the aerial and MML bases (raster tiles, already faded by MapLibre's `raster-fade-duration`: one fade, not two), 3D, and Safari and Firefox, on a real phone on a real mobile network.
+
+### As built
+
+- **The picture lies under the markers,** right after the map's canvas: above them it would hide every marker and fade it back in each time a part came. It lies under the weather's wind and rain canvases too, and under the controls and cards, as planned.
+- **Nothing fades before any input,** as from the keys: the first view, a share link's and a spot's jump come as before, with no flag of their own. Nor do the moves that follow your position, which come with every fix: copying frames after each of them would cost a phone's battery on the trail.
+- **What counts as a part:** a tile of any source, except a GeoJSON source other than Polku's own layers (`TOGETHER`), so a hover, a pick or the route never waits for a fade, and a raster that fades in by itself (`raster-fade-duration` not 0: the photo and terrain bases, the overlays), so those fade once. Hillshade, contours, the trails' and shadows' tiles and the weather's fields count.
+- **"The map is drawn"** is `map.loaded()`, not `areTilesLoaded()`: a GeoJSON source's `setData` is on its way to its worker for a frame or two after D draws, and the tiles alone would say drawn before Polku's own layers had come.
+- **Two canvases,** reused: the frame before becomes the picture, and the picture that faded becomes the next copy. Their size is set to 0 once nothing fades.
+- **One reading per part:** each `getImageData` waits for the GPU to finish the frame, 5–12 ms in Chrome on an M1 whether it reads the map's canvas, a copy of it, or a `createImageBitmap` later; so both frames are drawn into one 48 × 60 canvas and read once.
 
 ## How A was tried
 
