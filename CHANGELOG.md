@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### The route after switching apps ([#1093](https://github.com/TommiContursi/Polku/issues/1093))
+
+- When your phone takes the map's graphics memory back while Polku is in the background, a route leg or trail details that arrive in that time are on the map once you're back. Before, the map came back without them until the next change.
+
 ### One quiet scrollbar everywhere ([#1100](https://github.com/TommiContursi/Polku/issues/1100))
 
 - The menus, such as the route's **⋯** menu, the search results, a point's menu on the map and the list of sports now have the same thin scrollbar as the planner and the panels. It shows only while you scroll, or while a mouse is over it. Before, they had the browser's own wide scrollbar.
