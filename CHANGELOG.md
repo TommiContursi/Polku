@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Polku's own tooltips on the map's buttons and the top bar ([#304](https://github.com/TommiContursi/Polku/issues/304))
+
+- Pointing at a button in the map's column (**Plan**, **Layers**, **Weather**, **3D**, the compass, location and zoom) or in the top bar (**Plan**, **Settings**) shows Polku's own tooltip, as on the planner's toolbar: its name, its key where it has one, and what it does. It also shows when the button gets the keyboard's focus, and **Esc** hides it. The map's column has its tooltips to the left, so none covers the next button.
+
 ### Clearer roads and buildings ([#1113](https://github.com/TommiContursi/Polku/issues/1113))
 
 - Roads, cycleways and buildings stand out more clearly on the **Trail map**, with stronger edges and slightly wider minor and service roads at intermediate zooms. Forest, field and water colours stay the same.

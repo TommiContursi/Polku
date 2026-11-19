@@ -52,7 +52,6 @@ export class CompassControl {
         : hasCompass() ? 'North is up — tap to face the way you face' : 'North is up — drag here or scroll sideways with two fingers to rotate';
     if (label !== this.label) {
       this.label = label;
-      this.btn.title = label;
       this.btn.setAttribute('aria-label', label);
     }
     this.onMode(this.mode);
