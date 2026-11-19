@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### Polku opens on a bad connection ([#419](https://github.com/TommiContursi/Polku/issues/419))
+
+- When one of the map's tiles doesn't arrive as Polku opens, your saved route, a shared route, the planner you left open and a shared spot's card still come back, at most a few seconds after the map appears. Before, they waited for every tile of the map, so on a bad connection, or while Traficom's depth maps were slow, they could stay away until you moved the map.
+
 ### Layers and Settings stay where you scrolled ([#536](https://github.com/TommiContursi/Polku/issues/536))
 
 - After you turn something on or off in **Layers** or **Settings**, the panel stays where you scrolled it, also when you scroll on straight away. Before, on a slow device, the panel could jump back to where it was a moment earlier.
