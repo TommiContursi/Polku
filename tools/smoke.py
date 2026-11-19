@@ -3188,8 +3188,12 @@ LOST_CONTEXT = """(async () => {
   // a third point while it's lost (the route and the lit leg), the first leg lit as it's back, before its style has loaded
   try { p.addPoint([24.945, 60.175]); } catch (e) { errs.push(`while the context is lost: ${e.message}`); }
   await wait(500);
+  const back = new Promise((ok) => m.once('webglcontextrestored', () => {
+    try { p.litLeg(0); } catch (e) { errs.push(`as it comes back: ${e.message}`); }
+    ok();
+  }));
   lose.restoreContext();
-  try { p.litLeg(0); } catch (e) { errs.push(`as it comes back: ${e.message}`); }
+  await back;
   await until(async () => (await legs()) === 2 && m.loaded(), 10000);
   const n = await legs(), lit = m.getSource('routeLit') ? (await m.getSource('routeLit').getData()).features.length : -1;
   if (n !== 2) errs.push(`after it came back: ${n} legs on the map, not 2`);
