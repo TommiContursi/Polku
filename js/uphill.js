@@ -62,7 +62,8 @@ export class UphillLayer {
     this.timer = setTimeout(() => { this.timer = 0; this.working++; this.update().finally(() => this.working--); }, 350);
   }
 
-  // an update still to run or running (its terrain on its way): what comes after the map stops waits for it (#1091)
+  // an update still to run or running, or a trail-details tile in view still being graded (its terrain on its way): what
+  // comes after the map stops waits for it (#1091)
   get busy() { return !!this.timer || this.working > 0; }
 
   async update() {
@@ -147,6 +148,7 @@ export class UphillLayer {
       if (had && !had.partial) continue;
       const entry = { result: had ? had.result : null }; // what's shown stays until it's graded again
       this.osmTiles.set(key, entry);
+      this.working++; // (graded in view: what comes after the map stops waits for it too)
       trailTile(x, y)
         .then(async (data) => {
           const out = [];
@@ -167,7 +169,8 @@ export class UphillLayer {
           if (entry.partial && this.view && tilesIn(this.view).some(([x2, y2]) => x2 === x && y2 === y)) this.setMissing(true);
           if (run === this.run || this.enabled) this.publish();
         })
-        .catch(() => { this.osmTiles.delete(key); }); // trailTile waits 2 min before asking again
+        .catch(() => { this.osmTiles.delete(key); }) // trailTile waits 2 min before asking again
+        .finally(() => this.working--);
     }
   }
 }

@@ -6885,13 +6885,15 @@ TOGETHER_FETCH = r"""
 
 # In paddle, after a jump: LIPAS's answer and the nautical chart's, the chart's 200 ms and more later, drawn together
 # (in one go: MapLibre then lays out each source on its own), once each; with the chart's held 2 s, LIPAS's drawn before
-# it comes; and once the answers are in, no loader is still busy (one that stays busy would hold every stop 500 ms).
-# Timers, not frames, as a busy machine makes both late.
+# it comes, in the first frame once the window's 500 ms are up; and once the answers are in, no loader is still busy
+# (one that stays busy would hold every stop 500 ms). A busy machine makes timers and frames late, so the times are each
+# loader's own and the window's end is a frame, with no tolerance in ms.
 TOGETHER = r"""
 (async () => {
   const m = polku.map, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
   (await import(location.origin + '/js/lipas.js')).seedLipas(() => new Promise((ok) => setTimeout(() => ok({ type: 'FeatureCollection', features: [] }), window.__lipasDelay)));
-  const log = [], t0 = () => performance.now();
+  const log = [], t0 = () => performance.now(), frames = [];
+  (function tick() { frames.push(t0()); if (frames.length > 2000) frames.shift(); requestAnimationFrame(tick); })();
   for (const [obj, fn, as] of [[polku.lipas, 'publishNow', 'lipas answer'], [polku.nautical, 'publish', 'nm answer']]) {
     const own = obj[fn].bind(obj);
     obj[fn] = (...a) => { log.push([as, t0()]); return own(...a); };
@@ -6915,11 +6917,25 @@ TOGETHER = r"""
   d = await jump([25.40, 60.20], 50, 2000);
   const lipas = d.lipas[d.lipas.length - 1];
   if (lipas == null || !d.nmAnswer.length || lipas >= d.nmAnswer[0]) errs.push(`with the nautical chart's answer held 2 s, LIPAS's routes wait for it: ${say(d)}`);
+  // and drawn when the window closes: in the first frame from 500 ms after it opened (a busy machine's frames come late,
+  // so frames, not a tolerance in ms)
+  const until = polku.together ? polku.together.until : 0, drawnAt = log.filter((e) => e[0] === 'lipas drawn').map((e) => e[1]).pop();
+  const closes = frames.find((t) => t >= until);
+  if (drawnAt != null && closes != null && drawnAt > closes + 20) errs.push(`LIPAS's routes drawn ${Math.round(drawnAt - until)} ms after the window's 500 ms, ${Math.round(drawnAt - closes)} ms after the frame that should close it`);
   if (!d.nm.length || d.nm[0] < 2000) errs.push(`the nautical marks, answered after 2 s, aren't drawn when they come: ${say(d)}`);
   d = await jump([22.60, 60.05], 50, 150);
   if (!d.lipas.length) errs.push(`back where both have loaded, LIPAS's routes aren't drawn: ${say(d)}`);
   const busy = polku.together ? polku.together.loaders.filter((l) => l.busy).map((l) => l.constructor.name) : ['(no polku.together)'];
   if (busy.length) errs.push(`with every answer in, still busy: ${busy.join(', ')}`);
+  // the chart's tiles of a view you've left don't hold the next stop (#1115's review): asked for, answered after 3 s,
+  // and the map zoomed out under the chart's zoom meanwhile
+  window.__nmDelay = 3000;
+  m.jumpTo({ center: [21.60, 60.30], zoom: 12 });
+  await wait(800);
+  m.jumpTo({ zoom: 9 });
+  for (let k = 0; k < 15 && polku.nautical.busy; k++) await wait(100);
+  if (polku.nautical.busy) errs.push('zoomed out of the chart, it is still busy with the tiles of the view before');
+  await wait(2500);
   return errs;
 })()
 """

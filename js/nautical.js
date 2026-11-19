@@ -111,6 +111,7 @@ export class NauticalLayer {
     this.tiles = new Map(); // "layer/x/y" -> features | Promise
     this.faults = null;
     this.timer = 0;
+    this.view = new Set();
     map.on('moveend', () => this.schedule());
   }
 
@@ -125,10 +126,11 @@ export class NauticalLayer {
     this.timer = setTimeout(() => { this.timer = 0; this.update(); }, delay);
   }
 
-  // an update or a drawing still to run, or a tile on its way: what comes after the map stops waits for it (#1091)
-  get busy() { return !!this.timer || !!this.pubTimer || (this.on && [...this.tiles.values()].some((v) => v instanceof Promise)); }
+  // on, an update or a drawing still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
+  get busy() { return this.on && (!!this.timer || !!this.pubTimer || [...this.view].some((id) => this.tiles.get(id) instanceof Promise)); }
 
   update() {
+    this.view = new Set(); // the tiles in view
     if (!this.on || this.map.getZoom() < 10.5) return;
     const c = this.map.getCenter();
     if (!(c.lng > 19 && c.lng < 32 && c.lat > 59.3 && c.lat < 70.3)) return;
@@ -138,7 +140,7 @@ export class NauticalLayer {
     if ((x1 - x0 + 1) * (y1 - y0 + 1) > 6) return;
     for (let x = x0; x <= x1; x++) {
       for (let y = y0; y <= y1; y++) {
-        for (const [key, layer] of Object.entries(LAYERS)) this.load(key, layer, x, y);
+        for (const [key, layer] of Object.entries(LAYERS)) { this.view.add(`${key}/${x}/${y}`); this.load(key, layer, x, y); }
       }
     }
     this.loadFaults();
